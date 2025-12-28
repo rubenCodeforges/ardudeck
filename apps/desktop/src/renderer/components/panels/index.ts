@@ -1,0 +1,24 @@
+export { AttitudePanel, AttitudeIndicator } from './AttitudePanel';
+export { AltitudePanel } from './AltitudePanel';
+export { SpeedPanel } from './SpeedPanel';
+export { BatteryPanel } from './BatteryPanel';
+export { GpsPanel } from './GpsPanel';
+export { PositionPanel } from './PositionPanel';
+export { VelocityPanel } from './VelocityPanel';
+export { FlightModePanel } from './FlightModePanel';
+export { MapPanel } from './MapPanel';
+
+// Panel registry for dockview
+export const PANEL_COMPONENTS = {
+  attitude: { component: 'AttitudePanel', title: 'Attitude' },
+  altitude: { component: 'AltitudePanel', title: 'Altitude' },
+  speed: { component: 'SpeedPanel', title: 'Speed' },
+  battery: { component: 'BatteryPanel', title: 'Battery' },
+  gps: { component: 'GpsPanel', title: 'GPS' },
+  position: { component: 'PositionPanel', title: 'Position' },
+  velocity: { component: 'VelocityPanel', title: 'Velocity' },
+  flightMode: { component: 'FlightModePanel', title: 'Flight Mode' },
+  map: { component: 'MapPanel', title: 'Map' },
+} as const;
+
+export type PanelId = keyof typeof PANEL_COMPONENTS;

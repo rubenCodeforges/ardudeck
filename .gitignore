@@ -1,0 +1,88 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# Electron
+release/
+*.dmg
+*.exe
+*.AppImage
+*.snap
+*.deb
+*.rpm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.prettiercache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Legacy Mission Planner (reference repo, not part of this project)
+MissionPlanner/
+
+# Firmware files (downloaded on-demand from ArduPilot servers)
+firmware/
+firmwares/
+*.apj
+*.bin
+*.hex
+*.px4
+
+# Generated MAVLink types (can be regenerated)
+# packages/mavlink-ts/src/generated/
+
+# Electron store data
+%APPDATA%/ardudeck/
+
+# Debug
+.debug/

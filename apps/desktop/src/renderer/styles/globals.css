@@ -1,0 +1,223 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-700;
+  }
+
+  body {
+    @apply bg-[#0a0a0f] text-gray-100 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl;
+  }
+
+  .card-header {
+    @apply px-4 py-3 border-b border-gray-700/50;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  .btn {
+    @apply px-4 py-2.5 rounded-lg font-medium transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400
+           text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40
+           focus:ring-blue-500;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-700/50 hover:bg-gray-600/50 text-gray-200
+           border border-gray-600/50 hover:border-gray-500/50
+           focus:ring-gray-500;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400
+           text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40
+           focus:ring-red-500;
+  }
+
+  .input {
+    @apply w-full bg-gray-900/50 border border-gray-700/50 rounded-lg px-3 py-2.5
+           text-gray-100 placeholder-gray-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50
+           transition-all duration-200;
+  }
+
+  .select {
+    @apply w-full bg-gray-900/50 border border-gray-700/50 rounded-lg pl-3 pr-10 py-2.5
+           text-gray-100 cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50
+           transition-all duration-200;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-400 mb-1.5;
+  }
+
+  .tab-group {
+    @apply flex gap-1 p-1 bg-gray-900/50 rounded-lg;
+  }
+
+  .tab {
+    @apply flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
+           text-gray-400 hover:text-gray-200;
+  }
+
+  .tab-active {
+    @apply bg-gray-700/50 text-white shadow-sm;
+  }
+
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .status-dot-connected {
+    @apply bg-emerald-500 shadow-lg shadow-emerald-500/50;
+  }
+
+  .status-dot-disconnected {
+    @apply bg-gray-500;
+  }
+}
+
+/* Prevent text selection on UI elements */
+button,
+select,
+.no-select {
+  user-select: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Smooth transitions */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Telemetry value transitions */
+.telemetry-value {
+  transition: color 0.15s ease-out;
+}
+
+/* Tabular numbers for consistent width during updates */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle pulse animation for live data */
+@keyframes data-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.data-updating {
+  animation: data-pulse 0.3s ease-in-out;
+}
+
+/* Dockview dark theme customization */
+.dockview-theme-dark {
+  --dv-background-color: #0a0a0f;
+  --dv-paneview-header-border-color: #1f2937;
+  --dv-tabs-and-actions-container-background-color: #111827;
+  --dv-activegroup-visiblepanel-tab-background-color: #1f2937;
+  --dv-activegroup-hiddenpanel-tab-background-color: #111827;
+  --dv-inactivegroup-visiblepanel-tab-background-color: #1a1a24;
+  --dv-inactivegroup-hiddenpanel-tab-background-color: #111827;
+  --dv-tab-divider-color: #374151;
+  --dv-activegroup-visiblepanel-tab-color: #f3f4f6;
+  --dv-activegroup-hiddenpanel-tab-color: #9ca3af;
+  --dv-inactivegroup-visiblepanel-tab-color: #d1d5db;
+  --dv-inactivegroup-hiddenpanel-tab-color: #6b7280;
+  --dv-separator-border: #374151;
+  --dv-group-view-background-color: #0d0d14;
+  --dv-tabs-container-scrollbar-color: #4b5563;
+  --dv-icon-hover-background-color: #374151;
+  --dv-floating-box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --dv-drag-over-background-color: rgba(59, 130, 246, 0.2);
+  --dv-drag-over-border-color: rgba(59, 130, 246, 0.5);
+}
+
+.dockview-theme-dark .tab {
+  border-radius: 4px 4px 0 0;
+}
+
+.dockview-theme-dark .groupview > .content-container {
+  background: #0d0d14;
+}
+
+/* Leaflet map customization */
+.leaflet-container {
+  background: #0d0d14;
+  font-family: inherit;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(31, 41, 55, 0.9) !important;
+  color: #d1d5db !important;
+  border: 1px solid rgba(75, 85, 99, 0.5) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(55, 65, 81, 0.9) !important;
+  color: #f3f4f6 !important;
+}
+
+.leaflet-control-zoom-in {
+  border-radius: 4px 4px 0 0 !important;
+}
+
+.leaflet-control-zoom-out {
+  border-radius: 0 0 4px 4px !important;
+}
+
+/* Vehicle and home markers */
+.vehicle-marker,
+.home-marker {
+  background: transparent;
+  border: none;
+}
+
+/* Map tile styling for dark mode */
+.leaflet-tile-pane {
+  filter: brightness(0.85) contrast(1.1) saturate(0.9);
+}

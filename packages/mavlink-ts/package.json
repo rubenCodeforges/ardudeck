@@ -1,0 +1,35 @@
+{
+  "name": "@ardudeck/mavlink-ts",
+  "version": "0.1.0",
+  "description": "TypeScript MAVLink protocol library",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "generate": "node ../mavlink-generator/dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mavlink",
+    "drone",
+    "ardupilot",
+    "uav"
+  ]
+}
