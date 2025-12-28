@@ -75,19 +75,25 @@ function calculateDestination(lat: number, lon: number, bearing: number, distanc
 
 // Custom vehicle marker icon (arrow pointing in heading direction)
 function createVehicleIcon(heading: number, armed: boolean): L.DivIcon {
-  const color = armed ? '#ef4444' : '#3b82f6';
+  const fillColor = armed ? '#f97316' : '#22d3ee'; // Orange when armed, cyan when disarmed
+  const strokeColor = armed ? '#7c2d12' : '#0e7490'; // Dark orange / dark cyan outlines
 
   return L.divIcon({
     className: 'vehicle-marker',
     html: `
-      <div style="transform: rotate(${heading}deg); width: 40px; height: 40px;">
-        <svg viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="0.5">
-          <path d="M12 2L4 20l8-4 8 4L12 2z"/>
+      <div style="transform: rotate(${heading}deg); width: 48px; height: 48px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+        <svg viewBox="0 0 24 24">
+          <!-- Dark outline for contrast -->
+          <path d="M12 2L4 20l8-4 8 4L12 2z" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+          <!-- White outline -->
+          <path d="M12 2L4 20l8-4 8 4L12 2z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+          <!-- Colored fill -->
+          <path d="M12 2L4 20l8-4 8 4L12 2z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1" stroke-linejoin="round"/>
         </svg>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
@@ -95,14 +101,19 @@ function createVehicleIcon(heading: number, armed: boolean): L.DivIcon {
 const homeIcon = L.divIcon({
   className: 'home-marker',
   html: `
-    <div style="width: 28px; height: 28px;">
-      <svg viewBox="0 0 24 24" fill="#10b981" stroke="white" stroke-width="1">
-        <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z"/>
+    <div style="width: 32px; height: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+      <svg viewBox="0 0 24 24">
+        <!-- Dark outline for contrast -->
+        <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" fill="none" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- White outline -->
+        <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+        <!-- Green fill -->
+        <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" fill="#22c55e" stroke="#166534" stroke-width="0.5" stroke-linejoin="round"/>
       </svg>
     </div>
   `,
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
 });
 
 // Component to handle map updates and resize
@@ -157,17 +168,38 @@ function HeadingLine({
   armed: boolean;
 }) {
   const endPoint = calculateDestination(position[0], position[1], heading, length);
+  const lineColor = armed ? '#f97316' : '#22d3ee'; // Match vehicle colors
 
   return (
-    <Polyline
-      positions={[position, endPoint]}
-      pathOptions={{
-        color: armed ? '#ef4444' : '#3b82f6',
-        weight: 2,
-        opacity: 0.8,
-        dashArray: '5, 5',
-      }}
-    />
+    <>
+      {/* Dark outline for contrast */}
+      <Polyline
+        positions={[position, endPoint]}
+        pathOptions={{
+          color: '#000',
+          weight: 6,
+          opacity: 0.6,
+        }}
+      />
+      {/* White outline */}
+      <Polyline
+        positions={[position, endPoint]}
+        pathOptions={{
+          color: '#fff',
+          weight: 4,
+          opacity: 0.9,
+        }}
+      />
+      {/* Main colored line */}
+      <Polyline
+        positions={[position, endPoint]}
+        pathOptions={{
+          color: lineColor,
+          weight: 3,
+          opacity: 1,
+        }}
+      />
+    </>
   );
 }
 
@@ -521,14 +553,26 @@ export function MapPanel() {
 
         {/* Flight trail */}
         {trail.length > 1 && (
-          <Polyline
-            positions={trail}
-            pathOptions={{
-              color: '#3b82f6',
-              weight: 3,
-              opacity: 0.8,
-            }}
-          />
+          <>
+            {/* Dark outline for contrast */}
+            <Polyline
+              positions={trail}
+              pathOptions={{
+                color: '#000',
+                weight: 5,
+                opacity: 0.4,
+              }}
+            />
+            {/* Main trail */}
+            <Polyline
+              positions={trail}
+              pathOptions={{
+                color: '#a855f7', // Purple for trail
+                weight: 3,
+                opacity: 0.9,
+              }}
+            />
+          </>
         )}
 
         {/* Home to vehicle line */}

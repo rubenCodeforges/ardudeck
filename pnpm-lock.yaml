@@ -29,10 +29,10 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@modern-copter/comms':
+      '@ardudeck/comms':
         specifier: workspace:*
         version: link:../../packages/comms
-      '@modern-copter/mavlink-ts':
+      '@ardudeck/mavlink-ts':
         specifier: workspace:*
         version: link:../../packages/mavlink-ts
       dockview:
@@ -105,7 +105,7 @@ importers:
 
   packages/comms:
     dependencies:
-      '@modern-copter/mavlink-ts':
+      '@ardudeck/mavlink-ts':
         specifier: workspace:*
         version: link:../mavlink-ts
       serialport:
