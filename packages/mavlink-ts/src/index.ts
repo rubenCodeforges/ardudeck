@@ -12,5 +12,5 @@ export * from './core/mavlink-parser.js';
 export * from './core/mavlink-serializer.js';
 export * from './core/signing.js';
 
-// Re-export generated types (will be populated by generator)
-// export * from './generated/index.js';
+// Re-export generated types
+export * from './generated/index.js';

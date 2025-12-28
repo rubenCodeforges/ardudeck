@@ -3,6 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "description": "ArduDeck - Modern Ground Control Station for ArduPilot",
+  "author": {
+    "name": "Ruben M",
+    "url": "https://github.com/rubenCodeforges"
+  },
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rubenCodeforges/ardudeck.git"
+  },
+  "homepage": "https://github.com/rubenCodeforges/ardudeck#readme",
+  "bugs": {
+    "url": "https://github.com/rubenCodeforges/ardudeck/issues"
+  },
+  "keywords": [
+    "ardupilot",
+    "ground-control-station",
+    "gcs",
+    "drone",
+    "uav",
+    "mavlink",
+    "mission-planner",
+    "quadcopter",
+    "pixhawk",
+    "electron",
+    "react",
+    "typescript"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

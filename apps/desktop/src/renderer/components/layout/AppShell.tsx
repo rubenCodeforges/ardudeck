@@ -20,7 +20,7 @@ export function AppShell({ children }: AppShellProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </div>
-          <h1 className="text-lg font-semibold text-white">Modern Mission Planner</h1>
+          <h1 className="text-lg font-semibold text-white">ArduDeck</h1>
         </div>
 
         <div className="ml-auto flex items-center gap-6">

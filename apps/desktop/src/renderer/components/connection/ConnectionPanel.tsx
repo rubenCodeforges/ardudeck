@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
-import type { SerialPortInfo } from '@modern-copter/comms';
+import type { SerialPortInfo } from '@ardudeck/comms';
 
 const BAUD_RATES = [115200, 57600, 38400, 19200, 9600];
 

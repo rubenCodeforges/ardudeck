@@ -15,8 +15,22 @@ import {
   type SerialPortInfo,
   type ScanResult,
 } from '@ardudeck/comms';
-import { MAVLinkParser, type MAVLinkPacket } from '@ardudeck/mavlink-ts';
+import {
+  MAVLinkParser,
+  type MAVLinkPacket,
+  serializeV1,
+  serializeV2,
+  deserializeParamValue,
+  serializeParamRequestList,
+  serializeParamSet,
+  PARAM_REQUEST_LIST_ID,
+  PARAM_REQUEST_LIST_CRC_EXTRA,
+  PARAM_SET_ID,
+  PARAM_SET_CRC_EXTRA,
+  type ParamValue,
+} from '@ardudeck/mavlink-ts';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema } from '../shared/ipc-channels.js';
+import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES } from '../shared/telemetry-types.js';
 
@@ -39,6 +53,14 @@ let connectionState: ConnectionState = {
   packetsReceived: 0,
   packetsSent: 0,
 };
+
+// Detected MAVLink version from flight controller (1 or 2)
+let detectedMavlinkVersion: 1 | 2 = 1; // Default to v1 for compatibility
+
+// Parameter download state
+let expectedParamCount = 0;
+let receivedParams = new Map<string, ParamValue>();
+let paramDownloadTimeout: NodeJS.Timeout | null = null;
 
 // Autopilot type names (from MAV_AUTOPILOT enum)
 const AUTOPILOT_NAMES: Record<number, string> = {
@@ -150,6 +172,7 @@ function readFloat(payload: Uint8Array, offset: number): number {
 // MAVLink message IDs
 const MSG_HEARTBEAT = 0;
 const MSG_SYS_STATUS = 1;
+const MSG_PARAM_VALUE = 22;
 const MSG_GPS_RAW_INT = 24;
 const MSG_ATTITUDE = 30;
 const MSG_GLOBAL_POSITION_INT = 33;
@@ -258,6 +281,55 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'vfrHud', data: vfrHud });
       break;
     }
+
+    case MSG_PARAM_VALUE: {
+      // Deserialize parameter value
+      const param = deserializeParamValue(payload);
+
+      // Track received parameters
+      receivedParams.set(param.paramId, param);
+      expectedParamCount = param.paramCount;
+
+      // Reset timeout on each received param
+      if (paramDownloadTimeout) {
+        clearTimeout(paramDownloadTimeout);
+        paramDownloadTimeout = setTimeout(() => {
+          if (receivedParams.size < expectedParamCount) {
+            safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
+              `Timeout: received ${receivedParams.size}/${expectedParamCount} parameters`);
+          }
+        }, 10000); // 10 second timeout after last param
+      }
+
+      // Send parameter to renderer
+      const paramPayload: ParamValuePayload = {
+        paramId: param.paramId,
+        paramValue: param.paramValue,
+        paramType: param.paramType,
+        paramCount: param.paramCount,
+        paramIndex: param.paramIndex,
+      };
+      safeSend(mainWindow, IPC_CHANNELS.PARAM_VALUE, paramPayload);
+
+      // Send progress update
+      const progress: ParameterProgress = {
+        total: param.paramCount,
+        received: receivedParams.size,
+        percentage: Math.round((receivedParams.size / param.paramCount) * 100),
+      };
+      safeSend(mainWindow, IPC_CHANNELS.PARAM_PROGRESS, progress);
+
+      // Check if complete
+      if (receivedParams.size >= param.paramCount) {
+        if (paramDownloadTimeout) {
+          clearTimeout(paramDownloadTimeout);
+          paramDownloadTimeout = null;
+        }
+        safeSend(mainWindow, IPC_CHANNELS.PARAM_COMPLETE);
+        sendLog(mainWindow, 'info', `Downloaded ${receivedParams.size} parameters`);
+      }
+      break;
+    }
   }
 }
 
@@ -330,6 +402,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
           // Handle heartbeat (msgid 0)
           if (packet.msgid === 0) {
+            // Detect MAVLink version from packet format
+            detectedMavlinkVersion = packet.isMavlink2 ? 2 : 1;
+
             // Parse heartbeat payload: type(1), autopilot(1), base_mode(1), custom_mode(4), system_status(1), mavlink_version(1)
             const vehicleType = packet.payload[0];
             const autopilotType = packet.payload[1];
@@ -348,7 +423,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
               connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
 
-              sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}`);
+              sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
               sendConnectionState(mainWindow);
             }
           }
@@ -503,6 +578,94 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS.LAYOUT_GET_ACTIVE, async (): Promise<string> => {
     return layoutStore.get('activeLayout', 'default');
+  });
+
+  // Parameter management handlers
+
+  // Request all parameters from flight controller
+  ipcMain.handle(IPC_CHANNELS.PARAM_REQUEST_ALL, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    // Reset parameter tracking state
+    receivedParams.clear();
+    expectedParamCount = 0;
+
+    // Clear any existing timeout
+    if (paramDownloadTimeout) {
+      clearTimeout(paramDownloadTimeout);
+    }
+
+    try {
+      // Build PARAM_REQUEST_LIST message
+      // Use target component 1 (MAV_COMP_ID_AUTOPILOT1) for the main autopilot
+      // Note: Can't use 0 because MAVLink v2 trims trailing zeros from payload
+      const targetSys = connectionState.systemId ?? 1;
+      const targetComp = 1; // MAV_COMP_ID_AUTOPILOT1
+
+      const payload = serializeParamRequestList({
+        targetSystem: targetSys,
+        targetComponent: targetComp,
+      });
+
+      // Use detected MAVLink version for compatibility
+      const packet = detectedMavlinkVersion === 2
+        ? serializeV2(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 })
+        : serializeV1(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', 'Requesting parameters from flight controller...');
+
+      // Set initial timeout (30 seconds for first response)
+      paramDownloadTimeout = setTimeout(() => {
+        if (receivedParams.size === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
+            'Timeout: no parameters received after 30 seconds');
+        }
+      }, 30000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to request parameters', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Set a single parameter
+  ipcMain.handle(IPC_CHANNELS.PARAM_SET, async (_, paramId: string, value: number, type: number): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      // Build PARAM_SET message
+      const payload = serializeParamSet({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1, // MAV_COMP_ID_AUTOPILOT1
+        paramId,
+        paramValue: value,
+        paramType: type,
+      });
+
+      // Use detected MAVLink version for compatibility
+      const packet = detectedMavlinkVersion === 2
+        ? serializeV2(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA, { sysid: 255, compid: 190 })
+        : serializeV1(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA, { sysid: 255, compid: 190 });
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Setting parameter ${paramId} = ${value}`);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', `Failed to set parameter ${paramId}`, message);
+      return { success: false, error: message };
+    }
   });
 }
 

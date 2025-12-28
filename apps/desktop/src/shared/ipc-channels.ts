@@ -29,6 +29,14 @@ export const IPC_CHANNELS = {
   LAYOUT_DELETE: 'layout:delete',
   LAYOUT_SET_ACTIVE: 'layout:set-active',
   LAYOUT_GET_ACTIVE: 'layout:get-active',
+
+  // Parameters
+  PARAM_REQUEST_ALL: 'param:request-all',
+  PARAM_SET: 'param:set',
+  PARAM_VALUE: 'param:value',
+  PARAM_PROGRESS: 'param:progress',
+  PARAM_COMPLETE: 'param:complete',
+  PARAM_ERROR: 'param:error',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

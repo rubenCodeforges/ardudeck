@@ -6,6 +6,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
+import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -92,6 +93,37 @@ const api = {
 
   getActiveLayout: (): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.LAYOUT_GET_ACTIVE),
+
+  // Parameter management
+  requestAllParameters: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_REQUEST_ALL),
+
+  setParameter: (paramId: string, value: number, type: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_SET, paramId, value, type),
+
+  onParamValue: (callback: (param: ParamValuePayload) => void) => {
+    const handler = (_: unknown, param: ParamValuePayload) => callback(param);
+    ipcRenderer.on(IPC_CHANNELS.PARAM_VALUE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_VALUE, handler);
+  },
+
+  onParamProgress: (callback: (progress: ParameterProgress) => void) => {
+    const handler = (_: unknown, progress: ParameterProgress) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.PARAM_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_PROGRESS, handler);
+  },
+
+  onParamComplete: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on(IPC_CHANNELS.PARAM_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_COMPLETE, handler);
+  },
+
+  onParamError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.PARAM_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_ERROR, handler);
+  },
 };
 
 // Expose to renderer
