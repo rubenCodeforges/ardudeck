@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="apps/desktop/resources/logo-text.png" alt="ArduDeck Logo" width="200" />
+  <img src="apps/desktop/resources/banner.png" alt="ArduDeck" />
 </p>
-
-<h1 align="center">ArduDeck</h1>
 
 <p align="center">
   <a href="https://opensource.org/licenses/GPL-3.0"><img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="License: GPL-3.0" /></a>
