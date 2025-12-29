@@ -7,6 +7,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
+import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -124,6 +125,10 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.PARAM_ERROR, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_ERROR, handler);
   },
+
+  // Parameter metadata
+  fetchParameterMetadata: (mavType: number): Promise<{ success: boolean; metadata?: ParameterMetadataStore; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_METADATA_FETCH, mavType),
 };
 
 // Expose to renderer

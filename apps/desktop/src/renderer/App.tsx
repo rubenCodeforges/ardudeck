@@ -76,18 +76,34 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
 function App() {
   const { connectionState, setConnectionState } = useConnectionStore();
   const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, reset } = useTelemetryStore();
-  const { currentView } = useNavigationStore();
-  const { updateParameter, setProgress, setComplete, setError, reset: resetParameters } = useParameterStore();
+  const { currentView, setView } = useNavigationStore();
+  const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata } = useParameterStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Auto-collapse sidebar when connected
+  // Auto-collapse sidebar and reset to telemetry view when connected
   useEffect(() => {
     if (connectionState.isConnected) {
       setSidebarCollapsed(true);
+      setView('telemetry');
     } else {
       setSidebarCollapsed(false);
     }
-  }, [connectionState.isConnected]);
+  }, [connectionState.isConnected, setView]);
+
+  // Auto-load parameters and metadata when connected
+  useEffect(() => {
+    if (connectionState.isConnected) {
+      // Small delay to ensure connection is stable
+      const timer = setTimeout(() => {
+        fetchParameters();
+        // Fetch metadata based on vehicle type
+        if (connectionState.mavType !== undefined) {
+          fetchMetadata(connectionState.mavType);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [connectionState.isConnected, connectionState.mavType, fetchParameters, fetchMetadata]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {

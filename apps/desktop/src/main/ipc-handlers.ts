@@ -31,6 +31,7 @@ import {
 } from '@ardudeck/mavlink-ts';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema } from '../shared/ipc-channels.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
+import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES } from '../shared/telemetry-types.js';
 
@@ -61,6 +62,9 @@ let detectedMavlinkVersion: 1 | 2 = 1; // Default to v1 for compatibility
 let expectedParamCount = 0;
 let receivedParams = new Map<string, ParamValue>();
 let paramDownloadTimeout: NodeJS.Timeout | null = null;
+
+// Parameter metadata cache (keyed by vehicle type)
+const metadataCache = new Map<VehicleType, ParameterMetadataStore>();
 
 // Autopilot type names (from MAV_AUTOPILOT enum)
 const AUTOPILOT_NAMES: Record<number, string> = {
@@ -422,6 +426,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               connectionState.componentId = packet.compid;
               connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
               connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
+              connectionState.mavType = vehicleType;
 
               sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
               sendConnectionState(mainWindow);
@@ -667,6 +672,140 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: message };
     }
   });
+
+  // Fetch parameter metadata from ArduPilot
+  ipcMain.handle(IPC_CHANNELS.PARAM_METADATA_FETCH, async (_, mavType: number): Promise<{ success: boolean; metadata?: ParameterMetadataStore; error?: string }> => {
+    const vehicleType = mavTypeToVehicleType(mavType);
+    if (!vehicleType) {
+      return { success: false, error: `Unknown vehicle type: ${mavType}` };
+    }
+
+    // Check cache first
+    const cached = metadataCache.get(vehicleType);
+    if (cached) {
+      sendLog(mainWindow, 'info', `Using cached parameter metadata for ${vehicleType}`);
+      return { success: true, metadata: cached };
+    }
+
+    const url = PARAMETER_METADATA_URLS[vehicleType];
+    sendLog(mainWindow, 'info', `Fetching parameter metadata from ${url}...`);
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const xml = await response.text();
+      const metadata = parseParameterXml(xml);
+
+      // Cache it
+      metadataCache.set(vehicleType, metadata);
+
+      sendLog(mainWindow, 'info', `Loaded ${Object.keys(metadata).length} parameter definitions for ${vehicleType}`);
+      return { success: true, metadata };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', `Failed to fetch parameter metadata`, message);
+      return { success: false, error: message };
+    }
+  });
+}
+
+/**
+ * Parse ArduPilot apm.pdef.xml into metadata store
+ */
+function parseParameterXml(xml: string): ParameterMetadataStore {
+  const metadata: ParameterMetadataStore = {};
+
+  // apm.pdef.xml format:
+  // <param humanName="..." name="ArduPlane:PARAM_NAME" documentation="...">
+  //   <field name="Range">min max</field>
+  //   <field name="Units">unit</field>
+  //   <values><value code="0">Disabled</value><value code="1">Enabled</value></values>
+  //   <bitmask><bit code="0">BitName</bit></bitmask>
+  // </param>
+
+  // Match param elements - attributes can be in any order
+  const paramRegex = /<param\s+([^>]+)>([\s\S]*?)<\/param>/g;
+  const attrRegex = /(\w+)="([^"]*)"/g;
+  const fieldRegex = /<field\s+name="([^"]*)">([\s\S]*?)<\/field>/g;
+  const valueRegex = /<value\s+code="(\d+)"[^>]*>([^<]*)<\/value>/g;
+  const bitRegex = /<bit\s+code="(\d+)"[^>]*>([^<]*)<\/bit>/g;
+
+  let match;
+  while ((match = paramRegex.exec(xml)) !== null) {
+    const [, attrString, content] = match;
+
+    // Parse attributes
+    const attrs: Record<string, string> = {};
+    let attrMatch;
+    while ((attrMatch = attrRegex.exec(attrString)) !== null) {
+      attrs[attrMatch[1]] = attrMatch[2];
+    }
+
+    // Extract param name - strip vehicle prefix (e.g., "ArduPlane:PARAM" -> "PARAM")
+    let paramName = attrs.name || '';
+    const colonIndex = paramName.indexOf(':');
+    if (colonIndex !== -1) {
+      paramName = paramName.substring(colonIndex + 1);
+    }
+
+    if (!paramName) continue;
+
+    const param: ParameterMetadata = {
+      name: paramName,
+      humanName: attrs.humanName || paramName,
+      description: attrs.documentation || '',
+    };
+
+    // Parse field elements
+    let fieldMatch;
+    while ((fieldMatch = fieldRegex.exec(content)) !== null) {
+      const [, fieldName, fieldValue] = fieldMatch;
+      const value = fieldValue.trim();
+
+      switch (fieldName) {
+        case 'Range': {
+          const parts = value.split(/\s+/);
+          if (parts.length >= 2) {
+            param.range = {
+              min: parseFloat(parts[0]),
+              max: parseFloat(parts[1]),
+            };
+          }
+          break;
+        }
+        case 'Units':
+          param.units = value;
+          break;
+        case 'Increment':
+          param.increment = parseFloat(value);
+          break;
+        case 'RebootRequired':
+          param.rebootRequired = value.toLowerCase() === 'true';
+          break;
+      }
+    }
+
+    // Parse <values> element
+    let valueMatch;
+    while ((valueMatch = valueRegex.exec(content)) !== null) {
+      if (!param.values) param.values = {};
+      param.values[parseInt(valueMatch[1], 10)] = valueMatch[2].trim();
+    }
+
+    // Parse <bitmask> element
+    let bitMatch;
+    while ((bitMatch = bitRegex.exec(content)) !== null) {
+      if (!param.bitmask) param.bitmask = {};
+      param.bitmask[parseInt(bitMatch[1], 10)] = bitMatch[2].trim();
+    }
+
+    metadata[paramName] = param;
+  }
+
+  return metadata;
 }
 
 function sendConnectionState(mainWindow: BrowserWindow): void {

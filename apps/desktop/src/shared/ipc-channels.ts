@@ -37,6 +37,10 @@ export const IPC_CHANNELS = {
   PARAM_PROGRESS: 'param:progress',
   PARAM_COMPLETE: 'param:complete',
   PARAM_ERROR: 'param:error',
+
+  // Parameter metadata
+  PARAM_METADATA_FETCH: 'param:metadata-fetch',
+  PARAM_METADATA_RESULT: 'param:metadata-result',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -64,6 +68,7 @@ export interface ConnectionState {
   componentId?: number;
   autopilot?: string;
   vehicleType?: string;
+  mavType?: number; // Raw MAV_TYPE for metadata lookup
   packetsReceived: number;
   packetsSent: number;
 }

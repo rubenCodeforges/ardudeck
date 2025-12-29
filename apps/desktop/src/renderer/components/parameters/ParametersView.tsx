@@ -1,12 +1,13 @@
 /**
  * Parameters View - Full parameter management
- * Displays parameter table with search, refresh, and editing
+ * Displays parameter table with search, refresh, editing, and group filtering
  */
 
 import { useState, useCallback } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { getParamTypeName } from '../../../shared/parameter-types';
+import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 
 export function ParametersView() {
   const { connectionState } = useConnectionStore();
@@ -17,12 +18,16 @@ export function ParametersView() {
     error,
     lastRefresh,
     searchQuery,
+    selectedGroup,
     filteredParameters,
     fetchParameters,
     setParameter,
     setSearchQuery,
+    setSelectedGroup,
     revertParameter,
     modifiedCount,
+    groupCounts,
+    getDescription,
   } = useParameterStore();
 
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -160,6 +165,45 @@ export function ParametersView() {
         )}
       </div>
 
+      {/* Group tabs */}
+      {paramCount > 0 && (
+        <div className="shrink-0 px-4 py-2 border-b border-gray-800/50 bg-gray-900/20 overflow-x-auto">
+          <div className="flex gap-1">
+            {PARAMETER_GROUPS.map((group) => {
+              const count = groupCounts().get(group.id) ?? 0;
+              const isActive = selectedGroup === group.id;
+              // Don't show groups with 0 parameters (except 'all')
+              if (group.id !== 'all' && count === 0) return null;
+
+              return (
+                <button
+                  key={group.id}
+                  onClick={() => setSelectedGroup(group.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                    isActive
+                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                  }`}
+                  title={group.description}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={group.icon} />
+                  </svg>
+                  {group.name}
+                  {count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-blue-500/30 text-blue-300' : 'bg-gray-700/50 text-gray-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Parameter table */}
       <div className="flex-1 overflow-auto">
         {paramCount === 0 && !isLoading ? (
@@ -168,18 +212,19 @@ export function ParametersView() {
               <svg className="w-16 h-16 mx-auto mb-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
               </svg>
-              <p className="text-lg mb-2">Click "Refresh" to download parameters</p>
-              <p className="text-sm text-gray-600">Parameters will appear here once downloaded from the flight controller</p>
+              <p className="text-lg mb-2">Loading parameters...</p>
+              <p className="text-sm text-gray-600">Parameters will download automatically when connected</p>
             </div>
           </div>
         ) : (
           <table className="w-full">
             <thead className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-gray-800/50">
               <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                <th className="px-4 py-3 font-medium w-[280px]">Name</th>
-                <th className="px-4 py-3 font-medium w-[180px]">Value</th>
-                <th className="px-4 py-3 font-medium w-[100px]">Type</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium w-[220px]">Name</th>
+                <th className="px-4 py-3 font-medium w-[120px]">Value</th>
+                <th className="px-4 py-3 font-medium w-[80px]">Type</th>
+                <th className="px-4 py-3 font-medium">Description</th>
+                <th className="px-4 py-3 font-medium w-[100px]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
@@ -215,6 +260,9 @@ export function ParametersView() {
                     <span className="text-xs text-gray-500">{getParamTypeName(param.type)}</span>
                   </td>
                   <td className="px-4 py-2.5">
+                    <span className="text-sm text-gray-400 line-clamp-2">{getDescription(param.id) || '—'}</span>
+                  </td>
+                  <td className="px-4 py-2.5">
                     {param.isModified && (
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs">
@@ -240,10 +288,16 @@ export function ParametersView() {
       {/* Status bar */}
       <div className="shrink-0 px-4 py-2 border-t border-gray-800/50 bg-gray-900/30 text-xs text-gray-500 flex items-center gap-4">
         <span>{paramCount} parameters</span>
-        {searchQuery && displayParams.length !== paramCount && (
+        {(searchQuery || selectedGroup !== 'all') && displayParams.length !== paramCount && (
           <>
             <span className="text-gray-700">|</span>
             <span>{displayParams.length} shown</span>
+          </>
+        )}
+        {selectedGroup !== 'all' && (
+          <>
+            <span className="text-gray-700">|</span>
+            <span>Group: {PARAMETER_GROUPS.find(g => g.id === selectedGroup)?.name}</span>
           </>
         )}
         <span className="text-gray-700">|</span>
