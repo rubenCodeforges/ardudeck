@@ -9,6 +9,13 @@ import { useParameterStore, type SortColumn } from '../../stores/parameter-store
 import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 
+// Simple toast notification state
+type ToastType = 'success' | 'error' | 'info';
+interface Toast {
+  message: string;
+  type: ToastType;
+}
+
 // Sort indicator component
 function SortIndicator({ column, currentColumn, direction }: {
   column: SortColumn;
@@ -53,6 +60,8 @@ export function ParametersView() {
     toggleSort,
     revertParameter,
     modifiedCount,
+    modifiedParameters,
+    markAllAsSaved,
     groupCounts,
     getDescription,
     hasOfficialDescription,
@@ -61,9 +70,82 @@ export function ParametersView() {
   const [editingParam, setEditingParam] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
 
+  const [isWritingFlash, setIsWritingFlash] = useState(false);
+  const [isSavingFile, setIsSavingFile] = useState(false);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [showWriteConfirm, setShowWriteConfirm] = useState(false);
+  const [toast, setToast] = useState<Toast | null>(null);
+
+  // Auto-hide toast after 3 seconds
+  const showToast = useCallback((message: string, type: ToastType) => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
   const handleRefresh = useCallback(() => {
     fetchParameters();
   }, [fetchParameters]);
+
+  const handleWriteToFlashClick = useCallback(() => {
+    // Show confirmation dialog
+    setShowWriteConfirm(true);
+  }, []);
+
+  const handleWriteToFlashConfirm = useCallback(async () => {
+    setShowWriteConfirm(false);
+    setIsWritingFlash(true);
+    try {
+      const result = await window.electronAPI?.writeParamsToFlash();
+      if (result?.success) {
+        markAllAsSaved();
+        showToast('Parameters saved to flash successfully', 'success');
+      } else {
+        showToast(result?.error ?? 'Failed to write to flash', 'error');
+      }
+    } catch (err) {
+      showToast('Failed to write to flash', 'error');
+    } finally {
+      setIsWritingFlash(false);
+    }
+  }, [markAllAsSaved, showToast]);
+
+  const handleSaveToFile = useCallback(async () => {
+    setIsSavingFile(true);
+    try {
+      const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
+      const result = await window.electronAPI?.saveParamsToFile(params);
+      if (result?.success) {
+        showToast(`Saved ${params.length} parameters to file`, 'success');
+      } else if (result?.error && result.error !== 'Cancelled') {
+        showToast(result.error, 'error');
+      }
+    } finally {
+      setIsSavingFile(false);
+    }
+  }, [parameters, showToast]);
+
+  const handleLoadFromFile = useCallback(async () => {
+    setIsLoadingFile(true);
+    try {
+      const result = await window.electronAPI?.loadParamsFromFile();
+      if (result?.success && result.params) {
+        // Apply loaded parameters
+        let appliedCount = 0;
+        for (const param of result.params) {
+          const existing = parameters.get(param.id);
+          if (existing) {
+            await setParameter(param.id, param.value);
+            appliedCount++;
+          }
+        }
+        showToast(`Applied ${appliedCount} of ${result.params.length} parameters`, 'success');
+      } else if (result?.error && result.error !== 'Cancelled') {
+        showToast(result.error, 'error');
+      }
+    } finally {
+      setIsLoadingFile(false);
+    }
+  }, [parameters, setParameter, showToast]);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -137,16 +219,59 @@ export function ParametersView() {
     <div className="h-full flex flex-col">
       {/* Toolbar */}
       <div className="shrink-0 px-4 py-3 border-b border-gray-800/50 bg-gray-900/30">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-gray-700/30 text-blue-400 disabled:text-gray-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            className="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-gray-700/30 text-blue-400 disabled:text-gray-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            title="Download parameters from flight controller"
           >
             <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             {isLoading ? 'Downloading...' : 'Refresh'}
+          </button>
+
+          {/* Write to Flash button - only show if there are modified params */}
+          {modified > 0 && (
+            <button
+              onClick={handleWriteToFlashClick}
+              disabled={isWritingFlash}
+              className="px-3 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-gray-700/30 text-green-400 disabled:text-gray-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              title="Save parameters to flight controller's permanent storage (EEPROM)"
+            >
+              <svg className={`w-4 h-4 ${isWritingFlash ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              {isWritingFlash ? 'Writing...' : 'Write to Flash'}
+            </button>
+          )}
+
+          <div className="w-px h-6 bg-gray-700/50 mx-1" />
+
+          {/* File operations */}
+          <button
+            onClick={handleSaveToFile}
+            disabled={isSavingFile || paramCount === 0}
+            className="px-3 py-2 bg-gray-700/30 hover:bg-gray-700/50 disabled:bg-gray-800/30 text-gray-300 disabled:text-gray-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            title="Save parameters to file"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {isSavingFile ? 'Saving...' : 'Save'}
+          </button>
+
+          <button
+            onClick={handleLoadFromFile}
+            disabled={isLoadingFile}
+            className="px-3 py-2 bg-gray-700/30 hover:bg-gray-700/50 disabled:bg-gray-800/30 text-gray-300 disabled:text-gray-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            title="Load parameters from file"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            {isLoadingFile ? 'Loading...' : 'Load'}
           </button>
 
           <div className="flex-1 relative">
@@ -389,6 +514,79 @@ export function ParametersView() {
           </>
         )}
       </div>
+
+      {/* Write to Flash Confirmation Modal */}
+      {showWriteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-800">
+              <h3 className="text-lg font-semibold text-white">Write Parameters to Flash</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                The following {modifiedParameters().length} parameter(s) will be saved permanently to the flight controller.
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 uppercase">
+                    <th className="pb-2">Parameter</th>
+                    <th className="pb-2 text-right">Original</th>
+                    <th className="pb-2 text-center px-2">→</th>
+                    <th className="pb-2">New</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/50">
+                  {modifiedParameters().map(param => (
+                    <tr key={param.id}>
+                      <td className="py-2 font-mono text-gray-300">{param.id}</td>
+                      <td className="py-2 text-right font-mono text-gray-500">{param.originalValue}</td>
+                      <td className="py-2 text-center text-gray-600">→</td>
+                      <td className="py-2 font-mono text-amber-400">{param.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-800 flex justify-end gap-3">
+              <button
+                onClick={() => setShowWriteConfirm(false)}
+                className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWriteToFlashConfirm}
+                className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors"
+              >
+                Write to Flash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 ${
+          toast.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-400' :
+          toast.type === 'error' ? 'bg-red-500/20 border border-red-500/30 text-red-400' :
+          'bg-blue-500/20 border border-blue-500/30 text-blue-400'
+        }`}>
+          {toast.type === 'success' && (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+          {toast.type === 'error' && (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <span className="text-sm">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

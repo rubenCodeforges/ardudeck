@@ -25,6 +25,7 @@ interface ParameterStore {
   // Computed
   filteredParameters: () => ParameterWithMeta[];
   modifiedCount: () => number;
+  modifiedParameters: () => ParameterWithMeta[];
   groupCounts: () => Map<string, number>;
   getDescription: (paramId: string) => string;
   hasOfficialDescription: (paramId: string) => boolean;
@@ -44,6 +45,7 @@ interface ParameterStore {
   setSortColumn: (column: SortColumn) => void;
   toggleSort: (column: SortColumn) => void;
   revertParameter: (paramId: string) => void;
+  markAllAsSaved: () => void;
   reset: () => void;
 }
 
@@ -100,6 +102,14 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     const { parameters } = get();
     // Exclude read-only params from modified count
     return Array.from(parameters.values()).filter(p => p.isModified && !p.isReadOnly).length;
+  },
+
+  modifiedParameters: () => {
+    const { parameters } = get();
+    // Get all modified params (excluding read-only)
+    return Array.from(parameters.values())
+      .filter(p => p.isModified && !p.isReadOnly)
+      .sort((a, b) => a.id.localeCompare(b.id));
   },
 
   groupCounts: () => {
@@ -266,6 +276,25 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       }
 
       return { parameters: params };
+    });
+  },
+
+  markAllAsSaved: () => {
+    set(state => {
+      const params = new Map(state.parameters);
+
+      // Reset originalValue to current value for all params
+      for (const [id, param] of params) {
+        if (param.isModified) {
+          params.set(id, {
+            ...param,
+            originalValue: param.value,
+            isModified: false,
+          });
+        }
+      }
+
+      return { parameters: params, showOnlyModified: false };
     });
   },
 

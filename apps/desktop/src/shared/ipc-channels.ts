@@ -37,6 +37,9 @@ export const IPC_CHANNELS = {
   PARAM_PROGRESS: 'param:progress',
   PARAM_COMPLETE: 'param:complete',
   PARAM_ERROR: 'param:error',
+  PARAM_WRITE_FLASH: 'param:write-flash',
+  PARAM_SAVE_FILE: 'param:save-file',
+  PARAM_LOAD_FILE: 'param:load-file',
 
   // Parameter metadata
   PARAM_METADATA_FETCH: 'param:metadata-fetch',

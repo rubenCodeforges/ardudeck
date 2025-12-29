@@ -129,6 +129,16 @@ const api = {
   // Parameter metadata
   fetchParameterMetadata: (mavType: number): Promise<{ success: boolean; metadata?: ParameterMetadataStore; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_METADATA_FETCH, mavType),
+
+  // Parameter file operations
+  writeParamsToFlash: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_WRITE_FLASH),
+
+  saveParamsToFile: (params: Array<{ id: string; value: number }>): Promise<{ success: boolean; error?: string; filePath?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_FILE, params),
+
+  loadParamsFromFile: (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }> }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_LOAD_FILE),
 };
 
 // Expose to renderer

@@ -3,7 +3,7 @@
  * Handles communication between renderer and main process
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
 import Store from 'electron-store';
 import {
   listSerialPorts,
@@ -23,10 +23,13 @@ import {
   deserializeParamValue,
   serializeParamRequestList,
   serializeParamSet,
+  serializeCommandLong,
   PARAM_REQUEST_LIST_ID,
   PARAM_REQUEST_LIST_CRC_EXTRA,
   PARAM_SET_ID,
   PARAM_SET_CRC_EXTRA,
+  COMMAND_LONG_ID,
+  COMMAND_LONG_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema } from '../shared/ipc-channels.js';
@@ -707,6 +710,133 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', `Failed to fetch parameter metadata`, message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Write parameters to flash (persistent storage)
+  // Sends MAV_CMD_PREFLIGHT_STORAGE (245) with param1=1 (write all)
+  ipcMain.handle(IPC_CHANNELS.PARAM_WRITE_FLASH, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      // MAV_CMD_PREFLIGHT_STORAGE = 245
+      // param1 = 1 (MAV_PFS_CMD_WRITE_ALL - write all params to storage)
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1, // MAV_COMP_ID_AUTOPILOT1
+        command: 245, // MAV_CMD_PREFLIGHT_STORAGE
+        confirmation: 0,
+        param1: 1, // MAV_PFS_CMD_WRITE_ALL
+        param2: 0,
+        param3: 0,
+        param4: 0,
+        param5: 0,
+        param6: 0,
+        param7: 0,
+      });
+
+      const packet = detectedMavlinkVersion === 2
+        ? serializeV2(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 })
+        : serializeV1(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 });
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', 'Writing parameters to flash...');
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to write parameters to flash', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Save parameters to file
+  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>): Promise<{ success: boolean; error?: string; filePath?: string }> => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Parameters',
+        defaultPath: 'parameters.param',
+        filters: [
+          { name: 'Parameter Files', extensions: ['param'] },
+          { name: 'Text Files', extensions: ['txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      // Format: PARAM_NAME,VALUE (one per line)
+      const content = params.map(p => `${p.id},${p.value}`).join('\n');
+
+      const fs = await import('fs/promises');
+      await fs.writeFile(result.filePath, content, 'utf-8');
+
+      sendLog(mainWindow, 'info', `Saved ${params.length} parameters to ${result.filePath}`);
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to save parameters', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Load parameters from file
+  ipcMain.handle(IPC_CHANNELS.PARAM_LOAD_FILE, async (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }> }> => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Load Parameters',
+        filters: [
+          { name: 'Parameter Files', extensions: ['param'] },
+          { name: 'Text Files', extensions: ['txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const filePath = result.filePaths[0];
+      const fs = await import('fs/promises');
+      const content = await fs.readFile(filePath, 'utf-8');
+
+      // Parse: PARAM_NAME,VALUE (one per line)
+      // Also supports PARAM_NAME VALUE (space-separated, like Mission Planner)
+      const params: Array<{ id: string; value: number }> = [];
+      const lines = content.split(/\r?\n/);
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue; // Skip empty lines and comments
+
+        // Try comma-separated first, then space/tab
+        let parts = trimmed.split(',');
+        if (parts.length < 2) {
+          parts = trimmed.split(/\s+/);
+        }
+
+        if (parts.length >= 2) {
+          const id = parts[0].trim();
+          const value = parseFloat(parts[1].trim());
+
+          if (id && !isNaN(value)) {
+            params.push({ id, value });
+          }
+        }
+      }
+
+      sendLog(mainWindow, 'info', `Loaded ${params.length} parameters from ${filePath}`);
+      return { success: true, params };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to load parameters', message);
       return { success: false, error: message };
     }
   });
