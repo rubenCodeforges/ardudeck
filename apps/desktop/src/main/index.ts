@@ -14,6 +14,19 @@ const __dirname = dirname(__filename);
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 function createWindow(): BrowserWindow {
+  // Get the icon path based on platform
+  // In dev: __dirname is out/main/, resources is at ../../resources/
+  // In prod: app.getAppPath() points to the app root
+  const resourcesPath = isDev
+    ? join(__dirname, '../../resources')
+    : join(app.getAppPath(), 'resources');
+
+  const iconPath = process.platform === 'win32'
+    ? join(resourcesPath, 'icon.ico')
+    : process.platform === 'darwin'
+    ? join(resourcesPath, 'icon.icns')
+    : join(resourcesPath, 'icon.png');
+
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -21,6 +34,7 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,

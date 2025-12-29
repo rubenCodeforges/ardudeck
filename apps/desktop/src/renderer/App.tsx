@@ -9,6 +9,7 @@ import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore } from './stores/navigation-store';
 import { useParameterStore } from './stores/parameter-store';
 import type { ElectronAPI } from '../main/preload';
+import logoImage from './assets/logo.png';
 
 declare global {
   interface Window {
@@ -157,11 +158,9 @@ function App() {
       return (
         <div className="h-full flex items-center justify-center p-8">
           <div className="text-center max-w-md">
-            {/* Icon */}
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-gray-700/50 flex items-center justify-center mb-6">
-              <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+            {/* Logo */}
+            <div className="mx-auto w-48 h-48 mb-6 rounded-3xl overflow-hidden">
+              <img src={logoImage} alt="ArduDeck" className="w-full h-full object-cover" />
             </div>
 
             <h2 className="text-2xl font-semibold text-white mb-3">

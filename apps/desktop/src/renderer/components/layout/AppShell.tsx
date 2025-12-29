@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { DebugConsole } from '../debug/DebugConsole';
+import iconImage from '../../assets/icon.png';
 
 interface AppShellProps {
   children: ReactNode;
@@ -15,11 +16,7 @@ export function AppShell({ children }: AppShellProps) {
       <header className="h-14 border-b border-gray-800/50 bg-gray-900/50 backdrop-blur-sm flex items-center px-6 shrink-0">
         <div className="flex items-center gap-3">
           {/* Logo */}
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </div>
+          <img src={iconImage} alt="ArduDeck" className="h-8 rounded-md" />
           <h1 className="text-lg font-semibold text-white">ArduDeck</h1>
         </div>
 

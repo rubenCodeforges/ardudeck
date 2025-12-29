@@ -1,12 +1,20 @@
-# ArduDeck
+<p align="center">
+  <img src="apps/desktop/resources/logo-text.png" alt="ArduDeck Logo" width="200" />
+</p>
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Electron](https://img.shields.io/badge/Electron-28-47848F?logo=electron)](https://www.electronjs.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://reactjs.org/)
-[![MAVLink](https://img.shields.io/badge/MAVLink-v1%2Fv2-green)](https://mavlink.io/)
+<h1 align="center">ArduDeck</h1>
 
-**A modern, cross-platform ground control station (GCS) for ArduPilot drones and vehicles.**
+<p align="center">
+  <a href="https://opensource.org/licenses/GPL-3.0"><img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="License: GPL-3.0" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript" alt="TypeScript" /></a>
+  <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-28-47848F?logo=electron" alt="Electron" /></a>
+  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React" /></a>
+  <a href="https://mavlink.io/"><img src="https://img.shields.io/badge/MAVLink-v1%2Fv2-green" alt="MAVLink" /></a>
+</p>
+
+<p align="center">
+  <strong>A modern, cross-platform ground control station (GCS) for ArduPilot drones and vehicles.</strong>
+</p>
 
 ArduDeck is a next-generation mission planner built with Electron, React, and TypeScript. It provides real-time telemetry, parameter management, and mission planning for ArduPilot-powered UAVs, multirotors, planes, rovers, and boats.
 
