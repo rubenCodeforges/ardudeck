@@ -41,6 +41,17 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 - **Save/Load Layouts** — Multiple named layout profiles
 - **Resizable Panels** — Flexible workspace arrangement
 
+### Mission Planning
+- **Interactive Map Editing** — Click to add waypoints, drag to reposition
+- **Waypoint Table** — Beginner-friendly with human-readable summaries
+- **Altitude Profile** — Terrain-aware visualization with drag-to-edit
+- **Terrain Data** — Real elevation data from Open-Meteo (Copernicus DEM)
+- **Collision Detection** — Visual warnings when path intersects terrain
+- **Spline Waypoints** — Smooth curved flight paths with Catmull-Rom interpolation
+- **Command Support** — Takeoff, Waypoint, Loiter, Land, RTL, Speed changes
+- **File Operations** — Save/Load .waypoints and QGC .plan formats
+- **Upload/Download** — Full MAVLink mission protocol support
+
 ### Parameter Management
 - **Full Parameter List** — View all 800+ ArduPilot parameters
 - **Search & Filter** — Quick parameter lookup by name or group
@@ -52,6 +63,15 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 - **Auto-Load Metadata** — Descriptions from ArduPilot XML + 600 fallback descriptions
 - **MAVLink v1/v2 Auto-Detection** — Compatible with legacy and modern flight controllers
 
+### Settings & Vehicle Profiles
+- **Vehicle Profiles** — Create and manage multiple vehicle configurations
+- **All Vehicle Types** — Copter, Plane, VTOL, Rover, Boat, Submarine
+- **Type-Specific Properties** — Frame size, wingspan, hull type, thruster count, etc.
+- **Performance Estimates** — Flight time, range, cruise speed based on specs
+- **Live Weather** — GPS-based weather conditions from Open-Meteo API
+- **Maritime Data** — Wave height, swell info for boats/subs
+- **Persistent Storage** — Profiles saved to disk, survive app restarts
+
 ### Connectivity
 - **Serial (USB)** — Direct connection via COM/ttyUSB ports
 - **TCP Client** — Network connection to SITL or telemetry bridges
@@ -62,8 +82,40 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 
 ## Screenshots
 
-<!-- Add screenshots here -->
-*Coming soon*
+### Welcome Screen
+*Clean connection interface with serial, TCP, and UDP options*
+
+![Welcome Screen](docs/screenshots/welcome_screen_not_connected.png)
+
+### Telemetry Dashboard
+*Real-time flight data with customizable dockable panels*
+
+![Dashboard Default](docs/screenshots/dashboard_screeen_layout_default.png)
+
+### Custom Dashboard Layouts
+*Drag & drop panels to create your perfect workspace*
+
+![Dashboard Layout 1](docs/screenshots/dashboard_screeen_layout_1.png)
+
+### Mission Planning
+*Interactive map with waypoint editing and terrain-aware altitude profile*
+
+![Mission Planner](docs/screenshots/mission_planner_screen.png)
+
+### Mission + Telemetry
+*Monitor live telemetry alongside your mission plan*
+
+![Mission Telemetry](docs/screenshots/dashboard_screeen_layout_Mission_Telemetery.png)
+
+### Parameter Management
+*Search, edit, and validate 800+ ArduPilot parameters*
+
+![Parameters](docs/screenshots/params_screen.png)
+
+### Settings & Vehicle Profiles
+*Manage multiple vehicles with type-specific properties and live weather*
+
+![Settings](docs/screenshots/settings_screen.png)
 
 ---
 
@@ -186,7 +238,8 @@ ArduDeck supports all ArduPilot vehicle types:
 - [x] **Epic 3.5** — Parameter Metadata (Grouping, Auto-load, 600+ descriptions)
 - [x] **Epic 3.6** — Parameter File Operations (Write to Flash, Save/Load files, Toasts)
 - [x] **Epic 3.7** — Parameter Validation (Range, Enum, Increment checks)
-- [ ] **Epic 4** — Mission Planning (Waypoints, Geofencing)
+- [x] **Epic 4** — Mission Planning (Waypoints, Map editing, Altitude profile, Terrain)
+- [x] **Epic 4.5** — Settings & Vehicle Profiles (Multi-vehicle, Weather, Persistence)
 - [ ] **Epic 5** — Calibration Wizards (Compass, Accelerometer, Radio)
 - [ ] **Epic 6** — Production Ready (Auto-updater, Logging, Mobile app)
 

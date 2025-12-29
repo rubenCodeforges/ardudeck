@@ -130,7 +130,11 @@ function getCommandParams(cmd: number): Array<{
   }
 }
 
-export function WaypointTablePanel() {
+interface WaypointTablePanelProps {
+  readOnly?: boolean;
+}
+
+export function WaypointTablePanel({ readOnly = false }: WaypointTablePanelProps) {
   const {
     missionItems,
     selectedSeq,
@@ -146,7 +150,8 @@ export function WaypointTablePanel() {
   const [dropTargetSeq, setDropTargetSeq] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const selectedWaypoint = missionItems.find(wp => wp.seq === selectedSeq);
+  // In readOnly mode, don't show selection for editing
+  const selectedWaypoint = readOnly ? null : missionItems.find(wp => wp.seq === selectedSeq);
 
   const handleRowClick = (seq: number) => {
     setSelectedSeq(seq);
@@ -178,13 +183,7 @@ export function WaypointTablePanel() {
     const lat = baseLat + 0.001;
     const lon = baseLon + 0.001;
 
-    // For first waypoint, pass GPS as home position
-    const isFirstWaypoint = missionItems.length === 0;
-    const homePosition = isFirstWaypoint && gpsState.hasGpsFix
-      ? { lat: gpsState.lat, lon: gpsState.lon }
-      : undefined;
-
-    addWaypoint(lat, lon, alt, homePosition);
+    addWaypoint(lat, lon, alt);
   };
 
   // Drag and drop handlers
@@ -231,8 +230,17 @@ export function WaypointTablePanel() {
             <svg className="w-12 h-12 mb-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
-            <p className="text-sm font-medium mb-1">No waypoints yet</p>
-            <p className="text-xs text-gray-600 text-center">Click "Add" below or click on the map to add waypoints</p>
+            {readOnly ? (
+              <>
+                <p className="text-sm font-medium mb-1">No mission loaded</p>
+                <p className="text-xs text-gray-600 text-center">No mission on flight controller</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium mb-1">No waypoints yet</p>
+                <p className="text-xs text-gray-600 text-center">Click "Add" below or click on the map to add waypoints</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-800/50">
@@ -246,37 +254,43 @@ export function WaypointTablePanel() {
               return (
                 <div
                   key={wp.seq}
-                  onClick={() => handleRowClick(wp.seq)}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, wp.seq)}
-                  onDragOver={(e) => handleDragOver(e, wp.seq)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, wp.seq)}
-                  onDragEnd={handleDragEnd}
-                  className={`flex items-center gap-2 px-2 py-2 cursor-pointer transition-colors ${
+                  onClick={() => !readOnly && handleRowClick(wp.seq)}
+                  draggable={!readOnly}
+                  onDragStart={(e) => !readOnly && handleDragStart(e, wp.seq)}
+                  onDragOver={(e) => !readOnly && handleDragOver(e, wp.seq)}
+                  onDragLeave={!readOnly ? handleDragLeave : undefined}
+                  onDrop={(e) => !readOnly && handleDrop(e, wp.seq)}
+                  onDragEnd={!readOnly ? handleDragEnd : undefined}
+                  className={`flex items-center gap-2 px-2 py-2 transition-colors ${
+                    readOnly ? '' : 'cursor-pointer'
+                  } ${
                     isDropTarget ? 'border-t-2 border-t-blue-500' : ''
                   } ${
                     isDragging
                       ? 'opacity-50 bg-gray-800/50'
-                      : isSelected
-                      ? 'bg-blue-500/20 border-l-2 border-l-blue-500'
                       : isCurrent
                       ? 'bg-orange-500/10 border-l-2 border-l-orange-500'
+                      : isSelected && !readOnly
+                      ? 'bg-blue-500/20 border-l-2 border-l-blue-500'
+                      : readOnly
+                      ? 'border-l-2 border-l-transparent'
                       : 'hover:bg-gray-800/30 border-l-2 border-l-transparent'
                   }`}
                 >
-                  {/* Drag handle */}
-                  <div className="text-gray-600 cursor-grab active:cursor-grabbing">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
-                    </svg>
-                  </div>
+                  {/* Drag handle - hidden in readOnly mode */}
+                  {!readOnly && (
+                    <div className="text-gray-600 cursor-grab active:cursor-grabbing">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+                      </svg>
+                    </div>
+                  )}
 
                   {/* Number badge */}
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                     isCurrent
                       ? 'bg-orange-500 text-white'
-                      : isSelected
+                      : isSelected && !readOnly
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-700 text-gray-300'
                   }`}>
@@ -295,19 +309,21 @@ export function WaypointTablePanel() {
                     )}
                   </div>
 
-                  {/* Delete button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(wp.seq);
-                    }}
-                    className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0"
-                    title="Delete"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  {/* Delete button - hidden in readOnly mode */}
+                  {!readOnly && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(wp.seq);
+                      }}
+                      className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0"
+                      title="Delete"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -405,18 +421,20 @@ export function WaypointTablePanel() {
         </div>
       )}
 
-      {/* Add waypoint button */}
-      <div className="p-2 border-t border-gray-700/50">
-        <button
-          onClick={handleAddWaypoint}
-          className="w-full py-2 text-sm text-gray-300 hover:text-white bg-gray-700/50 hover:bg-gray-600/50 rounded transition-colors flex items-center justify-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Waypoint
-        </button>
-      </div>
+      {/* Add waypoint button - hidden in readOnly mode */}
+      {!readOnly && (
+        <div className="p-2 border-t border-gray-700/50">
+          <button
+            onClick={handleAddWaypoint}
+            className="w-full py-2 text-sm text-gray-300 hover:text-white bg-gray-700/50 hover:bg-gray-600/50 rounded transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Waypoint
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { useMissionStore } from '../../stores/mission-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { commandHasLocation, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { getElevations, interpolatePathPoints } from '../../utils/elevation-api';
 
@@ -8,9 +9,6 @@ interface TerrainPoint {
   distance: number;
   elevation: number;
 }
-
-// Default safe altitude buffer above terrain (meters)
-const DEFAULT_SAFE_ALTITUDE_BUFFER = 30;
 
 // Calculate distance between two coordinates using Haversine formula
 function haversineDistance(
@@ -58,12 +56,16 @@ interface ProfilePoint {
   altitude: number;
 }
 
-export function AltitudeProfilePanel() {
+interface AltitudeProfilePanelProps {
+  readOnly?: boolean;
+}
+
+export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 400, height: 150 });
 
-  // Drag state
+  // Drag state (disabled in readOnly mode)
   const [draggingSeq, setDraggingSeq] = useState<number | null>(null);
   const [dragAltitude, setDragAltitude] = useState<number | null>(null);
 
@@ -73,6 +75,8 @@ export function AltitudeProfilePanel() {
   const [waypointElevations, setWaypointElevations] = useState<Map<number, number>>(new Map());
 
   const { missionItems, selectedSeq, setSelectedSeq, updateWaypoint, setHasTerrainCollisions } = useMissionStore();
+  const { missionDefaults } = useSettingsStore();
+  const safeAltitudeBuffer = missionDefaults.safeAltitudeBuffer;
 
   // Filter to only items with locations
   const waypoints = useMemo(
@@ -319,7 +323,7 @@ export function AltitudeProfilePanel() {
     return terrainData
       .map((t, i) => {
         const x = xScale(t.distance);
-        const y = yScale(t.elevation + DEFAULT_SAFE_ALTITUDE_BUFFER);
+        const y = yScale(t.elevation + safeAltitudeBuffer);
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
       })
       .join(' ');
@@ -369,7 +373,7 @@ export function AltitudeProfilePanel() {
         const dist = dist1 + t * (dist2 - dist1);
         const flightAlt = alt1 + t * (alt2 - alt1);
         const terrainAlt = getTerrainAtDistance(dist);
-        const safeAlt = terrainAlt + DEFAULT_SAFE_ALTITUDE_BUFFER;
+        const safeAlt = terrainAlt + safeAltitudeBuffer;
 
         const isColliding = flightAlt < safeAlt;
 
@@ -417,8 +421,9 @@ export function AltitudeProfilePanel() {
     return e.clientY - rect.top - margin.top;
   }, [margin.top]);
 
-  // Start dragging a waypoint
+  // Start dragging a waypoint (disabled in readOnly mode)
   const handleDragStart = useCallback((seq: number, e: React.MouseEvent) => {
+    if (readOnly) return;
     e.preventDefault();
     e.stopPropagation();
     setDraggingSeq(seq);
@@ -428,7 +433,7 @@ export function AltitudeProfilePanel() {
     if (wp) {
       setDragAltitude(wp.altitude);
     }
-  }, [waypoints, setSelectedSeq]);
+  }, [waypoints, setSelectedSeq, readOnly]);
 
   // Handle mouse move during drag
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -480,7 +485,7 @@ export function AltitudeProfilePanel() {
     <div ref={containerRef} className="h-full w-full bg-gray-900/50 overflow-hidden relative">
       {waypoints.length === 0 ? (
         <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-          No waypoints to display
+          {readOnly ? 'No mission loaded' : 'No waypoints to display'}
         </div>
       ) : (
         <>
@@ -497,7 +502,7 @@ export function AltitudeProfilePanel() {
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-3 h-0.5 bg-amber-500" style={{ borderStyle: 'dashed' }} />
-                <span className="text-gray-500">Safe +{DEFAULT_SAFE_ALTITUDE_BUFFER}m</span>
+                <span className="text-gray-500">Safe +{safeAltitudeBuffer}m</span>
               </span>
             </>
           )}
@@ -507,13 +512,13 @@ export function AltitudeProfilePanel() {
               Collision!
             </span>
           )}
-          <span className="text-gray-500">Drag points to edit</span>
+          {!readOnly && <span className="text-gray-500">Drag points to edit</span>}
         </div>
         <svg
           ref={svgRef}
           width={dimensions.width}
           height={dimensions.height}
-          className={`select-none ${draggingSeq !== null ? 'cursor-ns-resize' : ''}`}
+          className={`select-none ${!readOnly && draggingSeq !== null ? 'cursor-ns-resize' : ''}`}
         >
           <g transform={`translate(${margin.left}, ${margin.top})`}>
             {/* Grid lines */}
@@ -606,14 +611,14 @@ export function AltitudeProfilePanel() {
               // Calculate AGL (Above Ground Level)
               const groundElevation = waypointElevations.get(p.wp.seq);
               const agl = groundElevation !== undefined ? displayAlt - groundElevation : null;
-              const isBelowSafe = agl !== null && agl < DEFAULT_SAFE_ALTITUDE_BUFFER;
+              const isBelowSafe = agl !== null && agl < safeAltitudeBuffer;
 
               return (
                 <g
                   key={p.wp.seq}
                   onClick={() => handleWaypointClick(p.wp.seq)}
-                  onMouseDown={(e) => handleDragStart(p.wp.seq, e)}
-                  className={isDragging ? 'cursor-ns-resize' : 'cursor-grab'}
+                  onMouseDown={(e) => !readOnly && handleDragStart(p.wp.seq, e)}
+                  className={readOnly ? 'cursor-default' : isDragging ? 'cursor-ns-resize' : 'cursor-grab'}
                 >
                   {/* Vertical line to point */}
                   <line

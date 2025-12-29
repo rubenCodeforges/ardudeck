@@ -23,6 +23,10 @@ import {
   VelocityPanel,
   FlightModePanel,
   MapPanel,
+  // Mission panels (for monitoring during flight)
+  MissionMapPanel,
+  WaypointTablePanel,
+  AltitudeProfilePanel,
   PANEL_COMPONENTS,
 } from '../panels';
 
@@ -34,6 +38,7 @@ function PanelWrapper({ component }: { component: React.ComponentType }) {
 
 // Component registry for dockview
 const components: Record<string, React.FC<IDockviewPanelProps>> = {
+  // Telemetry panels
   AttitudePanel: () => <PanelWrapper component={AttitudePanel} />,
   AltitudePanel: () => <PanelWrapper component={AltitudePanel} />,
   SpeedPanel: () => <PanelWrapper component={SpeedPanel} />,
@@ -43,13 +48,21 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   VelocityPanel: () => <PanelWrapper component={VelocityPanel} />,
   FlightModePanel: () => <PanelWrapper component={FlightModePanel} />,
   MapPanel: () => <PanelWrapper component={MapPanel} />,
+  // Mission panels (for monitoring during flight) - readOnly mode
+  MissionMapPanel: () => <MissionMapPanel readOnly />,
+  WaypointTablePanel: () => <WaypointTablePanel readOnly />,
+  AltitudeProfilePanel: () => <AltitudeProfilePanel readOnly />,
 };
 
-// Preset layout definitions
+// Preset layout definitions (pilotView is the default)
 const PRESET_LAYOUTS = {
-  default: 'Default',
   pilotView: 'Pilot View',
+  missionTelemetry: 'Mission Telemetry',
+  allPanels: 'All Panels',
 } as const;
+
+// The default preset to load when no saved layout exists
+const DEFAULT_PRESET: PresetLayoutKey = 'pilotView';
 
 type PresetLayoutKey = keyof typeof PRESET_LAYOUTS;
 
@@ -118,7 +131,109 @@ const PILOT_VIEW_LAYOUT: SerializedDockview = {
   activeGroup: '1',
 };
 
-// Default layout configuration - Map center, panels on sides
+// Mission Telemetry preset - Mission Map left, Waypoints/Battery top-right, AltProfile/Attitude bottom-right
+const MISSION_TELEMETRY_LAYOUT: SerializedDockview = {
+  grid: {
+    root: {
+      type: 'branch',
+      data: [
+        {
+          type: 'leaf',
+          data: { views: ['missionMap'], activeView: 'missionMap', id: '1' },
+          size: 807,
+        },
+        {
+          type: 'branch',
+          data: [
+            {
+              type: 'branch',
+              data: [
+                { type: 'leaf', data: { views: ['waypoints'], activeView: 'waypoints', id: '3' }, size: 476 },
+                { type: 'leaf', data: { views: ['battery'], activeView: 'battery', id: '4' }, size: 331 },
+              ],
+              size: 321,
+            },
+            {
+              type: 'branch',
+              data: [
+                { type: 'leaf', data: { views: ['altitudeProfile'], activeView: 'altitudeProfile', id: '2' }, size: 476 },
+                { type: 'leaf', data: { views: ['attitude'], activeView: 'attitude', id: '5' }, size: 331 },
+              ],
+              size: 401,
+            },
+          ],
+          size: 807,
+        },
+      ],
+      size: 722,
+    },
+    width: 1614,
+    height: 722,
+    orientation: 'HORIZONTAL',
+  },
+  panels: {
+    missionMap: { id: 'missionMap', contentComponent: 'MissionMapPanel', title: 'Mission Map' },
+    altitudeProfile: { id: 'altitudeProfile', contentComponent: 'AltitudeProfilePanel', title: 'Altitude Profile' },
+    waypoints: { id: 'waypoints', contentComponent: 'WaypointTablePanel', title: 'Waypoints' },
+    battery: { id: 'battery', contentComponent: 'BatteryPanel', title: 'Battery' },
+    attitude: { id: 'attitude', contentComponent: 'AttitudePanel', title: 'Attitude' },
+  },
+  activeGroup: '5',
+};
+
+// All Panels preset - Map center, all telemetry panels around it
+const ALL_PANELS_LAYOUT: SerializedDockview = {
+  grid: {
+    root: {
+      type: 'branch',
+      data: [
+        {
+          type: 'branch',
+          data: [
+            { type: 'leaf', data: { views: ['attitude'], activeView: 'attitude', id: '1' }, size: 200 },
+            { type: 'leaf', data: { views: ['altitude'], activeView: 'altitude', id: '2' }, size: 200 },
+            { type: 'leaf', data: { views: ['speed'], activeView: 'speed', id: '3' }, size: 200 },
+          ],
+          size: 200,
+        },
+        {
+          type: 'leaf',
+          data: { views: ['map'], activeView: 'map', id: '4' },
+          size: 600,
+        },
+        {
+          type: 'branch',
+          data: [
+            { type: 'leaf', data: { views: ['battery'], activeView: 'battery', id: '5' }, size: 150 },
+            { type: 'leaf', data: { views: ['gps'], activeView: 'gps', id: '6' }, size: 150 },
+            { type: 'leaf', data: { views: ['position'], activeView: 'position', id: '7' }, size: 150 },
+            { type: 'leaf', data: { views: ['velocity'], activeView: 'velocity', id: '8' }, size: 150 },
+            { type: 'leaf', data: { views: ['flightMode'], activeView: 'flightMode', id: '9' }, size: 150 },
+          ],
+          size: 200,
+        },
+      ],
+      size: 900,
+    },
+    width: 1000,
+    height: 900,
+    orientation: 'HORIZONTAL',
+  },
+  panels: {
+    map: { id: 'map', contentComponent: 'MapPanel', title: 'Map' },
+    attitude: { id: 'attitude', contentComponent: 'AttitudePanel', title: 'Attitude' },
+    altitude: { id: 'altitude', contentComponent: 'AltitudePanel', title: 'Altitude' },
+    speed: { id: 'speed', contentComponent: 'SpeedPanel', title: 'Speed' },
+    battery: { id: 'battery', contentComponent: 'BatteryPanel', title: 'Battery' },
+    gps: { id: 'gps', contentComponent: 'GpsPanel', title: 'GPS' },
+    position: { id: 'position', contentComponent: 'PositionPanel', title: 'Position' },
+    velocity: { id: 'velocity', contentComponent: 'VelocityPanel', title: 'Velocity' },
+    flightMode: { id: 'flightMode', contentComponent: 'FlightModePanel', title: 'Flight Mode' },
+  },
+  activeGroup: '4',
+};
+
+// Legacy default layout configuration - Map center, panels on sides (used as fallback)
 function createDefaultLayout(api: DockviewApi): void {
   // Main center group - Map (primary view)
   const centerGroup = api.addGroup();
@@ -178,9 +293,15 @@ function loadPresetLayout(api: DockviewApi, preset: PresetLayoutKey): void {
     case 'pilotView':
       api.fromJSON(PILOT_VIEW_LAYOUT);
       break;
-    case 'default':
+    case 'missionTelemetry':
+      api.fromJSON(MISSION_TELEMETRY_LAYOUT);
+      break;
+    case 'allPanels':
+      api.fromJSON(ALL_PANELS_LAYOUT);
+      break;
     default:
-      createDefaultLayout(api);
+      // Default to Pilot View
+      api.fromJSON(PILOT_VIEW_LAYOUT);
       break;
   }
 }
@@ -427,8 +548,8 @@ export function TelemetryDashboard() {
       }
     }
 
-    // Create default layout
-    createDefaultLayout(event.api);
+    // Create default layout (Pilot View)
+    loadPresetLayout(event.api, DEFAULT_PRESET);
     setLayoutLoaded(true);
   }, [layouts, activeLayoutName]);
 
@@ -458,18 +579,18 @@ export function TelemetryDashboard() {
       } catch (e) {
         console.warn('Failed to load layout:', e);
         apiRef.current.clear();
-        createDefaultLayout(apiRef.current);
+        loadPresetLayout(apiRef.current, DEFAULT_PRESET);
       }
     } else {
       apiRef.current.clear();
-      createDefaultLayout(apiRef.current);
+      loadPresetLayout(apiRef.current, DEFAULT_PRESET);
     }
   }, [layouts, setActiveLayout]);
 
   const handleResetLayout = useCallback(() => {
     if (!apiRef.current) return;
     apiRef.current.clear();
-    createDefaultLayout(apiRef.current);
+    loadPresetLayout(apiRef.current, DEFAULT_PRESET);
   }, []);
 
   const handleAddPanel = useCallback((id: string, component: string, title: string) => {

@@ -3,15 +3,25 @@ import {
   type MissionItem,
   type MissionProgress,
   createDefaultWaypoint,
+  createTakeoffWaypoint,
   calculateMissionDistance,
   estimateMissionTime,
   MAV_CMD,
   MAV_FRAME,
 } from '../../shared/mission-types';
+import { useSettingsStore } from './settings-store';
+
+// Home position (separate from waypoints, used as reference point)
+interface HomePosition {
+  lat: number;
+  lon: number;
+  alt: number;  // Altitude (usually 0 for ground level)
+}
 
 interface MissionStore {
   // State
   missionItems: MissionItem[];
+  homePosition: HomePosition | null;  // Home/launch position
   isLoading: boolean;
   progress: MissionProgress | null;
   error: string | null;
@@ -31,8 +41,12 @@ interface MissionStore {
   uploadMission: () => Promise<boolean>;
   clearMissionFromFC: () => Promise<boolean>;
 
+  // Home position
+  setHomePosition: (lat: number, lon: number, alt?: number) => void;
+  clearHomePosition: () => void;
+
   // Local editing
-  addWaypoint: (lat: number, lon: number, alt?: number, homePosition?: { lat: number; lon: number }) => void;
+  addWaypoint: (lat: number, lon: number, alt?: number) => void;
   insertWaypoint: (afterSeq: number, lat: number, lon: number, alt?: number) => void;
   updateWaypoint: (seq: number, updates: Partial<MissionItem>) => void;
   removeWaypoint: (seq: number) => void;
@@ -61,6 +75,7 @@ interface MissionStore {
 export const useMissionStore = create<MissionStore>((set, get) => ({
   // Initial state
   missionItems: [],
+  homePosition: null,
   isLoading: false,
   progress: null,
   error: null,
@@ -138,45 +153,42 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     }
   },
 
-  // Local editing
-  addWaypoint: (lat: number, lon: number, alt: number = 100, homePosition?: { lat: number; lon: number }) => {
-    const { missionItems } = get();
-    const seq = missionItems.length;
-    const newItem = createDefaultWaypoint(seq, lat, lon, alt);
+  // Home position management
+  setHomePosition: (lat: number, lon: number, alt: number = 0) => {
+    set({ homePosition: { lat, lon, alt }, isDirty: true });
+  },
 
-    // If this is the first waypoint, add takeoff first at home/GPS position
-    if (seq === 0) {
-      // Use provided home position (GPS), or fall back to clicked position
-      const homeLat = homePosition?.lat ?? lat;
-      const homeLon = homePosition?.lon ?? lon;
+  clearHomePosition: () => {
+    set({ homePosition: null, isDirty: true });
+  },
 
-      const takeoff: MissionItem = {
-        seq: 0,
-        frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
-        command: MAV_CMD.NAV_TAKEOFF,
-        current: false,
-        autocontinue: true,
-        param1: 0,
-        param2: 0,
-        param3: 0,
-        param4: NaN,
-        latitude: homeLat,
-        longitude: homeLon,
-        altitude: alt,
-      };
-      newItem.seq = 1;
-      set({
-        missionItems: [takeoff, newItem],
-        isDirty: true,
-        selectedSeq: 1,
-      });
-    } else {
-      set({
-        missionItems: [...missionItems, newItem],
-        isDirty: true,
-        selectedSeq: seq,
-      });
+  // Local editing - simple: one click = one waypoint
+  // First waypoint is always Takeoff, subsequent are regular waypoints
+  // Requires home position to be set first
+  addWaypoint: (lat: number, lon: number, alt?: number) => {
+    const { missionItems, homePosition } = get();
+
+    // Can't add waypoints without home position
+    if (!homePosition) {
+      return;
     }
+
+    // Get default altitudes from settings
+    const { missionDefaults } = useSettingsStore.getState();
+    const defaultAlt = alt ?? missionDefaults.defaultWaypointAltitude;
+
+    const seq = missionItems.length;
+
+    // First waypoint should be Takeoff
+    const newItem = seq === 0
+      ? createTakeoffWaypoint(seq, lat, lon, missionDefaults.defaultTakeoffAltitude)
+      : createDefaultWaypoint(seq, lat, lon, defaultAlt);
+
+    set({
+      missionItems: [...missionItems, newItem],
+      isDirty: true,
+      selectedSeq: seq,
+    });
   },
 
   insertWaypoint: (afterSeq: number, lat: number, lon: number, alt: number = 100) => {
@@ -250,6 +262,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   clearMission: () => {
     set({
       missionItems: [],
+      homePosition: null,
       isDirty: false,
       selectedSeq: null,
       currentSeq: null,
@@ -349,6 +362,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   reset: () => {
     set({
       missionItems: [],
+      homePosition: null,
       isLoading: false,
       progress: null,
       error: null,

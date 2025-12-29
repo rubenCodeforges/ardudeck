@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ViewId = 'telemetry' | 'parameters' | 'mission';
+export type ViewId = 'telemetry' | 'parameters' | 'mission' | 'settings';
 
 interface NavigationStore {
   // State

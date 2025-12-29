@@ -60,6 +60,10 @@ export const IPC_CHANNELS = {
   MISSION_REACHED: 'mission:reached',
   MISSION_SAVE_FILE: 'mission:save-file',
   MISSION_LOAD_FILE: 'mission:load-file',
+
+  // Settings/Vehicle profiles
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_SAVE: 'settings:save',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -119,4 +123,81 @@ export interface SavedLayout {
 export interface LayoutStoreSchema {
   activeLayout: string;
   layouts: Record<string, SavedLayout>;
+}
+
+/**
+ * Vehicle type for profiles
+ */
+export type SettingsVehicleType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat' | 'sub';
+
+/**
+ * Vehicle profile for performance calculations
+ */
+export interface SettingsVehicleProfile {
+  id: string;
+  name: string;
+  type: SettingsVehicleType;
+  weight: number;
+  batteryCells: number;
+  batteryCapacity: number;
+  batteryDischarge?: number;
+  // Copter
+  frameSize?: number;
+  motorCount?: number;
+  motorKv?: number;
+  propSize?: string;
+  escRating?: number;
+  // Plane
+  wingspan?: number;
+  wingArea?: number;
+  stallSpeed?: number;
+  // VTOL
+  vtolMotorCount?: number;
+  transitionSpeed?: number;
+  // Rover
+  wheelbase?: number;
+  wheelDiameter?: number;
+  driveType?: 'differential' | 'ackermann' | 'skid';
+  maxSpeed?: number;
+  // Boat
+  hullLength?: number;
+  hullType?: 'displacement' | 'planing' | 'catamaran' | 'pontoon';
+  propellerType?: 'prop' | 'jet' | 'paddle';
+  displacement?: number;
+  // Sub
+  maxDepth?: number;
+  thrusterCount?: number;
+  buoyancy?: 'positive' | 'neutral' | 'negative';
+  // Notes
+  notes?: string;
+}
+
+/**
+ * Mission planning defaults
+ */
+export interface SettingsMissionDefaults {
+  safeAltitudeBuffer: number;
+  defaultWaypointAltitude: number;
+  defaultTakeoffAltitude: number;
+}
+
+/**
+ * Flight statistics
+ */
+export interface SettingsFlightStats {
+  totalFlightTimeSeconds: number;
+  totalDistanceMeters: number;
+  totalMissions: number;
+  lastFlightDate: string | null;
+  lastConnectionDate: string | null;
+}
+
+/**
+ * Settings store schema (persisted to disk)
+ */
+export interface SettingsStoreSchema {
+  missionDefaults: SettingsMissionDefaults;
+  vehicles: SettingsVehicleProfile[];
+  activeVehicleId: string | null;
+  flightStats: SettingsFlightStats;
 }

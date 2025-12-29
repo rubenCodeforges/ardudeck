@@ -38,11 +38,17 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
     await uploadMission();
   };
 
-  const handleClear = async () => {
+  // New mission - just clears local, doesn't touch FC
+  const handleNew = () => {
+    clearMission();
+  };
+
+  // Clear from FC - sends clear command to flight controller
+  const handleClearFC = async () => {
     if (isConnected) {
       await clearMissionFromFC();
+      clearMission(); // Also clear local after FC confirms
     }
-    clearMission();
   };
 
   const handleSaveFile = async () => {
@@ -116,21 +122,41 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
         </button>
 
         <button
-          onClick={handleClear}
-          disabled={isLoading}
+          onClick={handleClearFC}
+          disabled={!isConnected || isLoading}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-            !isLoading
+            isConnected && !isLoading
               ? 'bg-red-600/80 hover:bg-red-500/80 text-white'
               : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
           }`}
-          title="Clear mission"
+          title={isConnected ? 'Clear mission from flight controller' : 'Connect to clear mission from FC'}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
-          Clear
+          Clear FC
         </button>
       </div>
+
+      {/* Separator */}
+      <div className="w-px h-6 bg-gray-700/50" />
+
+      {/* New Mission */}
+      <button
+        onClick={handleNew}
+        disabled={isLoading || !hasItems}
+        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+          !isLoading && hasItems
+            ? 'bg-gray-700/50 hover:bg-gray-600/50 text-gray-300'
+            : 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
+        }`}
+        title="Start a new mission (clears current waypoints)"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        New
+      </button>
 
       {/* Separator */}
       <div className="w-px h-6 bg-gray-700/50" />

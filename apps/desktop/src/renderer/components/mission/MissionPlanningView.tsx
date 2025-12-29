@@ -162,29 +162,31 @@ export function MissionPlanningView() {
       {/* Status bar */}
       <MissionStatusBar />
 
-      {/* Toast notification */}
+      {/* Toast notification - positioned at top center */}
       {toast && (
-        <div className={`fixed bottom-16 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 ${
-          toast.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-400' :
-          toast.type === 'error' ? 'bg-red-500/20 border border-red-500/30 text-red-400' :
-          'bg-blue-500/20 border border-blue-500/30 text-blue-400'
-        }`}>
-          {toast.type === 'success' && (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-          {toast.type === 'error' && (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          )}
-          {toast.type === 'info' && (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-          <span className="text-sm">{toast.message}</span>
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
+          <div className={`px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 pointer-events-auto ${
+            toast.type === 'success' ? 'bg-emerald-900/90 border border-emerald-500/50 text-emerald-300' :
+            toast.type === 'error' ? 'bg-red-900/90 border border-red-500/50 text-red-300' :
+            'bg-blue-900/90 border border-blue-500/50 text-blue-300'
+          }`}>
+            {toast.type === 'success' && (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+            {toast.type === 'error' && (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            {toast.type === 'info' && (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
         </div>
       )}
     </div>

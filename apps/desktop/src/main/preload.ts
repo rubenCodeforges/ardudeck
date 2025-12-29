@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -208,6 +208,13 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.MISSION_CLEAR_COMPLETE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_CLEAR_COMPLETE, handler);
   },
+
+  // Settings/Vehicle profiles
+  getSettings: (): Promise<SettingsStoreSchema> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET),
+
+  saveSettings: (settings: SettingsStoreSchema): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings),
 };
 
 // Expose to renderer

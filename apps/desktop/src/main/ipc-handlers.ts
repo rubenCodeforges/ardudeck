@@ -61,7 +61,7 @@ import {
   MISSION_SET_CURRENT_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema } from '../shared/ipc-channels.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
@@ -75,6 +75,35 @@ const layoutStore = new Store<LayoutStoreSchema>({
   defaults: {
     activeLayout: 'default',
     layouts: {},
+  },
+});
+
+// Settings/vehicle profile storage
+const settingsStore = new Store<SettingsStoreSchema>({
+  name: 'settings',
+  defaults: {
+    missionDefaults: {
+      safeAltitudeBuffer: 30,
+      defaultWaypointAltitude: 100,
+      defaultTakeoffAltitude: 50,
+    },
+    vehicles: [{
+      id: 'default',
+      name: 'My Vehicle',
+      type: 'copter',
+      frameSize: 5,
+      weight: 600,
+      batteryCells: 4,
+      batteryCapacity: 1500,
+    }],
+    activeVehicleId: 'default',
+    flightStats: {
+      totalFlightTimeSeconds: 0,
+      totalDistanceMeters: 0,
+      totalMissions: 0,
+      lastFlightDate: null,
+      lastConnectionDate: null,
+    },
   },
 });
 
@@ -1094,6 +1123,15 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS.LAYOUT_GET_ACTIVE, async (): Promise<string> => {
     return layoutStore.get('activeLayout', 'default');
+  });
+
+  // Settings/Vehicle profile handlers
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, async (): Promise<SettingsStoreSchema> => {
+    return settingsStore.store;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_SAVE, async (_, settings: SettingsStoreSchema): Promise<void> => {
+    settingsStore.set(settings);
   });
 
   // Parameter management handlers

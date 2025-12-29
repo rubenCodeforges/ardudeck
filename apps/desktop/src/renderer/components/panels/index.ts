@@ -8,8 +8,14 @@ export { VelocityPanel } from './VelocityPanel';
 export { FlightModePanel } from './FlightModePanel';
 export { MapPanel } from './MapPanel';
 
+// Re-export mission panels for use in telemetry dashboard
+export { MissionMapPanel } from '../mission/MissionMapPanel';
+export { WaypointTablePanel } from '../mission/WaypointTablePanel';
+export { AltitudeProfilePanel } from '../mission/AltitudeProfilePanel';
+
 // Panel registry for dockview
 export const PANEL_COMPONENTS = {
+  // Telemetry panels
   attitude: { component: 'AttitudePanel', title: 'Attitude' },
   altitude: { component: 'AltitudePanel', title: 'Altitude' },
   speed: { component: 'SpeedPanel', title: 'Speed' },
@@ -19,6 +25,10 @@ export const PANEL_COMPONENTS = {
   velocity: { component: 'VelocityPanel', title: 'Velocity' },
   flightMode: { component: 'FlightModePanel', title: 'Flight Mode' },
   map: { component: 'MapPanel', title: 'Map' },
+  // Mission panels (for monitoring during flight)
+  missionMap: { component: 'MissionMapPanel', title: 'Mission Map' },
+  waypoints: { component: 'WaypointTablePanel', title: 'Waypoints' },
+  altitudeProfile: { component: 'AltitudeProfilePanel', title: 'Altitude Profile' },
 } as const;
 
 export type PanelId = keyof typeof PANEL_COMPONENTS;

@@ -5,11 +5,13 @@ import { TelemetryDashboard } from './components/telemetry/TelemetryDashboard';
 import { NavigationRail } from './components/navigation/NavigationRail';
 import { ParametersView } from './components/parameters/ParametersView';
 import { MissionPlanningView } from './components/mission';
+import { SettingsView } from './components/settings';
 import { useConnectionStore } from './stores/connection-store';
 import { useTelemetryStore } from './stores/telemetry-store';
-import { useNavigationStore } from './stores/navigation-store';
+import { useNavigationStore, type ViewId } from './stores/navigation-store';
 import { useParameterStore } from './stores/parameter-store';
 import { useMissionStore } from './stores/mission-store';
+import { initializeSettings, useSettingsStore, type VehicleType } from './stores/settings-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
 
@@ -17,6 +19,88 @@ declare global {
   interface Window {
     electronAPI: ElectronAPI;
   }
+}
+
+// Map MAV_TYPE to our vehicle types
+const mavTypeToVehicleType: Record<number, VehicleType> = {
+  0: 'copter', 1: 'plane', 2: 'copter', 3: 'copter', 4: 'copter',
+  10: 'rover', 11: 'boat', 12: 'sub', 13: 'copter', 14: 'copter',
+  15: 'copter', 16: 'plane', 19: 'vtol', 20: 'vtol', 21: 'vtol',
+  22: 'vtol', 23: 'vtol', 24: 'vtol', 25: 'vtol',
+};
+
+const VEHICLE_TYPE_NAMES: Record<VehicleType, string> = {
+  copter: 'Multicopter', plane: 'Fixed Wing', vtol: 'VTOL',
+  rover: 'Rover', boat: 'Boat', sub: 'Submarine',
+};
+
+// Module-level flag to track if user dismissed mismatch warning this session
+let mismatchDismissedForSession = false;
+
+// Vehicle type mismatch dialog
+function VehicleMismatchDialog({
+  profileType,
+  fcType,
+  onUpdateProfile,
+  onIgnore,
+  onDismissSession,
+}: {
+  profileType: VehicleType;
+  fcType: VehicleType;
+  onUpdateProfile: () => void;
+  onIgnore: () => void;
+  onDismissSession: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-xl border border-amber-500/50 w-full max-w-md mx-4 overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-700 bg-amber-500/10">
+          <div className="flex items-center gap-3">
+            <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h2 className="text-lg font-semibold text-white">Vehicle Type Mismatch</h2>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-5">
+          <p className="text-gray-300 mb-4">
+            Your vehicle profile is set to <span className="font-semibold text-amber-400">{VEHICLE_TYPE_NAMES[profileType]}</span> but
+            the connected flight controller is a <span className="font-semibold text-blue-400">{VEHICLE_TYPE_NAMES[fcType]}</span>.
+          </p>
+          <p className="text-gray-400 text-sm">
+            Performance estimates and settings may not be accurate for your actual vehicle.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-4 border-t border-gray-700 flex flex-col gap-2">
+          <button
+            onClick={onUpdateProfile}
+            className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+          >
+            Update Profile to {VEHICLE_TYPE_NAMES[fcType]}
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onIgnore}
+              className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+            >
+              Ignore Once
+            </button>
+            <button
+              onClick={onDismissSession}
+              className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+            >
+              Don't Ask Again
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
@@ -82,6 +166,7 @@ function App() {
   const { currentView, setView } = useNavigationStore();
   const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata } = useParameterStore();
   const {
+    fetchMission,
     setMissionItems,
     updateProgress: updateMissionProgress,
     setCurrentSeq,
@@ -90,19 +175,81 @@ function App() {
     setClearComplete,
     reset: resetMission,
   } = useMissionStore();
+  const { vehicles, activeVehicleId, updateVehicle } = useSettingsStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Auto-collapse sidebar and reset to telemetry view when connected
+  // Mismatch dialog state
+  const [showMismatchDialog, setShowMismatchDialog] = useState(false);
+  const [pendingView, setPendingView] = useState<ViewId | null>(null);
+  const [detectedFcType, setDetectedFcType] = useState<VehicleType | null>(null);
+
+  // Get active vehicle profile type
+  const activeVehicle = vehicles.find(v => v.id === activeVehicleId);
+  const profileType = activeVehicle?.type || 'copter';
+
+  // Custom view change handler that checks for mismatch
+  const handleViewChange = (viewId: ViewId) => {
+    // Only check mismatch when connected and not already dismissed
+    if (connectionState.isConnected && !mismatchDismissedForSession && connectionState.mavType !== undefined) {
+      const fcType = mavTypeToVehicleType[connectionState.mavType] || 'copter';
+
+      // Check if profile type mismatches FC type
+      if (profileType !== fcType) {
+        setDetectedFcType(fcType);
+        setPendingView(viewId);
+        setShowMismatchDialog(true);
+        return;
+      }
+    }
+
+    // No mismatch or dismissed, proceed with view change
+    setView(viewId);
+  };
+
+  // Handle mismatch dialog actions
+  const handleUpdateProfile = () => {
+    if (activeVehicle && detectedFcType) {
+      updateVehicle(activeVehicle.id, { type: detectedFcType });
+    }
+    setShowMismatchDialog(false);
+    if (pendingView) {
+      setView(pendingView);
+      setPendingView(null);
+    }
+  };
+
+  const handleIgnoreMismatch = () => {
+    setShowMismatchDialog(false);
+    if (pendingView) {
+      setView(pendingView);
+      setPendingView(null);
+    }
+  };
+
+  const handleDismissSession = () => {
+    mismatchDismissedForSession = true;
+    setShowMismatchDialog(false);
+    if (pendingView) {
+      setView(pendingView);
+      setPendingView(null);
+    }
+  };
+
+  // Initialize settings on mount
+  useEffect(() => {
+    initializeSettings();
+  }, []);
+
+  // Auto-collapse sidebar when connected (keep user's current view)
   useEffect(() => {
     if (connectionState.isConnected) {
       setSidebarCollapsed(true);
-      setView('telemetry');
     } else {
       setSidebarCollapsed(false);
     }
-  }, [connectionState.isConnected, setView]);
+  }, [connectionState.isConnected]);
 
-  // Auto-load parameters and metadata when connected
+  // Auto-load parameters, metadata, and mission when connected
   useEffect(() => {
     if (connectionState.isConnected) {
       // Small delay to ensure connection is stable
@@ -112,10 +259,12 @@ function App() {
         if (connectionState.mavType !== undefined) {
           fetchMetadata(connectionState.mavType);
         }
+        // Auto-download mission from flight controller
+        fetchMission();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [connectionState.isConnected, connectionState.mavType, fetchParameters, fetchMetadata]);
+  }, [connectionState.isConnected, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {
@@ -258,6 +407,8 @@ function App() {
         return <ParametersView />;
       case 'mission':
         return <MissionPlanningView />;
+      case 'settings':
+        return <SettingsView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;
@@ -268,7 +419,7 @@ function App() {
     <AppShell>
       <div className="flex h-full">
         {/* Navigation Rail */}
-        <NavigationRail />
+        <NavigationRail onViewChange={handleViewChange} />
 
         {/* Sidebar - collapsible */}
         <aside className={`border-r border-gray-800/50 bg-gray-900/30 shrink-0 transition-all duration-300 ${
@@ -299,6 +450,17 @@ function App() {
           {renderMainContent()}
         </main>
       </div>
+
+      {/* Vehicle type mismatch dialog */}
+      {showMismatchDialog && detectedFcType && (
+        <VehicleMismatchDialog
+          profileType={profileType}
+          fcType={detectedFcType}
+          onUpdateProfile={handleUpdateProfile}
+          onIgnore={handleIgnoreMismatch}
+          onDismissSession={handleDismissSession}
+        />
+      )}
     </AppShell>
   );
 }

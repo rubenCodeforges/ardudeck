@@ -191,6 +191,38 @@ export function createDefaultWaypoint(
 }
 
 /**
+ * Create a takeoff waypoint
+ * Takeoff at specified location to target altitude
+ * @param seq Sequence number
+ * @param latitude Launch latitude
+ * @param longitude Launch longitude
+ * @param altitude Target altitude to climb to (meters, relative to home)
+ * @param pitch Minimum pitch during takeoff (degrees, 0 = straight up)
+ */
+export function createTakeoffWaypoint(
+  seq: number,
+  latitude: number,
+  longitude: number,
+  altitude: number = 50,
+  pitch: number = 15,
+): MissionItem {
+  return {
+    seq,
+    frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
+    command: MAV_CMD.NAV_TAKEOFF,
+    current: false,
+    autocontinue: true,
+    param1: pitch,   // Minimum pitch (degrees)
+    param2: 0,       // Empty
+    param3: 0,       // Empty
+    param4: NaN,     // Yaw (NaN = keep current)
+    latitude,
+    longitude,
+    altitude,
+  };
+}
+
+/**
  * Get human-readable name for a command
  */
 export function getCommandName(command: number): string {
