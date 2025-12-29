@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Parameter, ParameterWithMeta, ParameterProgress, ParamValuePayload } from '../../shared/parameter-types.js';
 import { isReadOnlyParameter, generateFallbackDescription } from '../../shared/parameter-types.js';
 import { parameterBelongsToGroup } from '../../shared/parameter-groups.js';
-import type { ParameterMetadataStore } from '../../shared/parameter-metadata.js';
+import { validateParameterValue, type ParameterMetadataStore, type ValidationResult } from '../../shared/parameter-metadata.js';
 
 export type SortColumn = 'name' | 'status';
 export type SortDirection = 'asc' | 'desc';
@@ -29,6 +29,8 @@ interface ParameterStore {
   groupCounts: () => Map<string, number>;
   getDescription: (paramId: string) => string;
   hasOfficialDescription: (paramId: string) => boolean;
+  validateParameter: (paramId: string, value: number) => ValidationResult;
+  getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; values?: Record<number, string>; units?: string } | null;
 
   // Actions
   fetchParameters: () => Promise<void>;
@@ -152,6 +154,23 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     if (!metadata) return false;
     const meta = metadata[paramId];
     return Boolean(meta?.description);
+  },
+
+  validateParameter: (paramId: string, value: number) => {
+    const { metadata } = get();
+    const meta = metadata?.[paramId];
+    return validateParameterValue(value, meta);
+  },
+
+  getParameterMetadata: (paramId: string) => {
+    const { metadata } = get();
+    const meta = metadata?.[paramId];
+    if (!meta) return null;
+    return {
+      range: meta.range,
+      values: meta.values,
+      units: meta.units,
+    };
   },
 
   fetchParameters: async () => {

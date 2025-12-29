@@ -34,6 +34,68 @@ export const PARAMETER_METADATA_URLS: Record<VehicleType, string> = {
 };
 
 // Map MAVLink MAV_TYPE to our VehicleType
+/**
+ * Validation result for parameter values
+ */
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+  warning?: string;
+}
+
+/**
+ * Validate a parameter value against its metadata
+ */
+export function validateParameterValue(
+  value: number,
+  metadata: ParameterMetadata | undefined
+): ValidationResult {
+  if (!metadata) {
+    // No metadata available - allow any value
+    return { valid: true };
+  }
+
+  // Check if value is in allowed values list (enum-like params)
+  if (metadata.values && Object.keys(metadata.values).length > 0) {
+    const allowedValues = Object.keys(metadata.values).map(Number);
+    if (!allowedValues.includes(value)) {
+      const options = Object.entries(metadata.values)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ');
+      return {
+        valid: false,
+        error: `Value must be one of: ${options}`,
+      };
+    }
+    return { valid: true };
+  }
+
+  // Check range bounds
+  if (metadata.range) {
+    const { min, max } = metadata.range;
+    if (value < min || value > max) {
+      return {
+        valid: false,
+        error: `Value must be between ${min} and ${max}${metadata.units ? ` ${metadata.units}` : ''}`,
+      };
+    }
+  }
+
+  // Check increment (warn but don't block)
+  if (metadata.increment && metadata.increment > 0) {
+    const remainder = Math.abs(value % metadata.increment);
+    if (remainder > 0.0001 && Math.abs(remainder - metadata.increment) > 0.0001) {
+      return {
+        valid: true,
+        warning: `Value should be a multiple of ${metadata.increment}`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+// Map MAVLink MAV_TYPE to our VehicleType
 export function mavTypeToVehicleType(mavType: number): VehicleType | null {
   // MAV_TYPE values from MAVLink
   switch (mavType) {

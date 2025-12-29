@@ -37,9 +37,13 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 
 ### Parameter Management
 - **Full Parameter List** — View all 800+ ArduPilot parameters
-- **Search & Filter** — Quick parameter lookup
-- **Inline Editing** — Click to edit, Enter to save
+- **Search & Filter** — Quick parameter lookup by name or group
+- **Inline Editing** — Click to edit, Enter to save, Escape to cancel
+- **Real-Time Validation** — Range, enum, and increment checks with error tooltips
 - **Modified Tracking** — Visual indicator with revert option
+- **Write to Flash** — Persist changes to EEPROM with confirmation dialog
+- **Save/Load Files** — Export and import .param files
+- **Auto-Load Metadata** — Descriptions from ArduPilot XML + 600 fallback descriptions
 - **MAVLink v1/v2 Auto-Detection** — Compatible with legacy and modern flight controllers
 
 ### Connectivity
@@ -173,7 +177,9 @@ ArduDeck supports all ArduPilot vehicle types:
 - [x] **Epic 2.5** — Dockable Dashboard (Panel system, Layout persistence)
 - [x] **Epic 2.6** — Map Panel (Leaflet, Vehicle tracking, Overlays)
 - [x] **Epic 3** — Parameter Management (Download, Edit, Upload)
-- [ ] **Epic 3.5** — Parameter Improvements (Grouping, Auto-load, Metadata)
+- [x] **Epic 3.5** — Parameter Metadata (Grouping, Auto-load, 600+ descriptions)
+- [x] **Epic 3.6** — Parameter File Operations (Write to Flash, Save/Load files, Toasts)
+- [x] **Epic 3.7** — Parameter Validation (Range, Enum, Increment checks)
 - [ ] **Epic 4** — Mission Planning (Waypoints, Geofencing)
 - [ ] **Epic 5** — Calibration Wizards (Compass, Accelerometer, Radio)
 - [ ] **Epic 6** — Production Ready (Auto-updater, Logging, Mobile app)

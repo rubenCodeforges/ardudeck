@@ -65,10 +65,14 @@ export function ParametersView() {
     groupCounts,
     getDescription,
     hasOfficialDescription,
+    validateParameter,
+    getParameterMetadata,
   } = useParameterStore();
 
   const [editingParam, setEditingParam] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editWarning, setEditWarning] = useState<string | null>(null);
 
   const [isWritingFlash, setIsWritingFlash] = useState(false);
   const [isSavingFile, setIsSavingFile] = useState(false);
@@ -154,22 +158,54 @@ export function ParametersView() {
   const startEdit = useCallback((paramId: string, currentValue: number) => {
     setEditingParam(paramId);
     setEditValue(String(currentValue));
+    setEditError(null);
+    setEditWarning(null);
   }, []);
 
   const cancelEdit = useCallback(() => {
     setEditingParam(null);
     setEditValue('');
+    setEditError(null);
+    setEditWarning(null);
   }, []);
 
+  // Strict number validation - rejects "0c", "1.2.3", etc.
+  const isValidNumberString = useCallback((str: string): boolean => {
+    const trimmed = str.trim();
+    if (trimmed === '') return false;
+    // Use Number() which is stricter than parseFloat()
+    // parseFloat("0c") = 0, but Number("0c") = NaN
+    return !isNaN(Number(trimmed)) && isFinite(Number(trimmed));
+  }, []);
+
+  const handleEditChange = useCallback((paramId: string, value: string) => {
+    setEditValue(value);
+    if (!isValidNumberString(value)) {
+      setEditError('Invalid number');
+      setEditWarning(null);
+    } else {
+      const numValue = Number(value.trim());
+      const result = validateParameter(paramId, numValue);
+      setEditError(result.error ?? null);
+      setEditWarning(result.warning ?? null);
+    }
+  }, [validateParameter, isValidNumberString]);
+
   const saveEdit = useCallback(async (paramId: string) => {
-    const newValue = parseFloat(editValue);
-    if (isNaN(newValue)) {
-      cancelEdit();
+    if (!isValidNumberString(editValue)) {
+      setEditError('Invalid number');
+      return;
+    }
+    const newValue = Number(editValue.trim());
+    // Validate before saving
+    const result = validateParameter(paramId, newValue);
+    if (!result.valid) {
+      setEditError(result.error ?? 'Invalid value');
       return;
     }
     await setParameter(paramId, newValue);
     cancelEdit();
-  }, [editValue, setParameter, cancelEdit]);
+  }, [editValue, setParameter, cancelEdit, validateParameter]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, paramId: string) => {
     if (e.key === 'Enter') {
@@ -424,19 +460,39 @@ export function ParametersView() {
                         {param.value}
                       </span>
                     ) : editingParam === param.id ? (
-                      <input
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, param.id)}
-                        onBlur={() => saveEdit(param.id)}
-                        autoFocus
-                        className="w-full px-2 py-1 bg-gray-800 border border-blue-500/50 rounded text-sm font-mono text-gray-200 focus:outline-none"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => handleEditChange(param.id, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, param.id)}
+                          onBlur={() => !editError && saveEdit(param.id)}
+                          autoFocus
+                          className={`w-full px-2 py-1 bg-gray-800 border rounded text-sm font-mono text-gray-200 focus:outline-none ${
+                            editError ? 'border-red-500/50' : editWarning ? 'border-amber-500/50' : 'border-blue-500/50'
+                          }`}
+                        />
+                        {(editError || editWarning) && (
+                          <div className={`absolute left-0 top-full mt-1 px-2 py-1 text-xs rounded shadow-lg z-10 max-w-xs ${
+                            editError ? 'bg-red-900/90 text-red-300' : 'bg-amber-900/90 text-amber-300'
+                          }`}>
+                            {editError || editWarning}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <button
                         onClick={() => startEdit(param.id, param.value)}
                         className="font-mono text-sm text-gray-300 hover:text-blue-400 transition-colors tabular-nums"
+                        title={(() => {
+                          const meta = getParameterMetadata(param.id);
+                          if (!meta) return undefined;
+                          const hints: string[] = [];
+                          if (meta.range) hints.push(`Range: ${meta.range.min} to ${meta.range.max}`);
+                          if (meta.values) hints.push(`Values: ${Object.entries(meta.values).map(([k,v]) => `${k}=${v}`).join(', ')}`);
+                          if (meta.units) hints.push(`Units: ${meta.units}`);
+                          return hints.length > 0 ? hints.join('\n') : undefined;
+                        })()}
                       >
                         {param.value}
                       </button>
