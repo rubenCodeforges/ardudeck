@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import type { Parameter, ParameterWithMeta, ParameterProgress, ParamValuePayload } from '../../shared/parameter-types.js';
+import { isReadOnlyParameter, generateFallbackDescription } from '../../shared/parameter-types.js';
 import { parameterBelongsToGroup } from '../../shared/parameter-groups.js';
 import type { ParameterMetadataStore } from '../../shared/parameter-metadata.js';
+
+export type SortColumn = 'name' | 'status';
+export type SortDirection = 'asc' | 'desc';
 
 interface ParameterStore {
   // State
@@ -14,12 +18,16 @@ interface ParameterStore {
   lastRefresh: number;
   searchQuery: string;
   selectedGroup: string;
+  showOnlyModified: boolean;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
 
   // Computed
   filteredParameters: () => ParameterWithMeta[];
   modifiedCount: () => number;
   groupCounts: () => Map<string, number>;
   getDescription: (paramId: string) => string;
+  hasOfficialDescription: (paramId: string) => boolean;
 
   // Actions
   fetchParameters: () => Promise<void>;
@@ -31,6 +39,10 @@ interface ParameterStore {
   setError: (error: string | null) => void;
   setSearchQuery: (query: string) => void;
   setSelectedGroup: (group: string) => void;
+  setShowOnlyModified: (show: boolean) => void;
+  toggleShowOnlyModified: () => void;
+  setSortColumn: (column: SortColumn) => void;
+  toggleSort: (column: SortColumn) => void;
   revertParameter: (paramId: string) => void;
   reset: () => void;
 }
@@ -45,14 +57,22 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   lastRefresh: 0,
   searchQuery: '',
   selectedGroup: 'all',
+  showOnlyModified: false,
+  sortColumn: 'name' as SortColumn,
+  sortDirection: 'asc' as SortDirection,
 
   filteredParameters: () => {
-    const { parameters, searchQuery, selectedGroup } = get();
+    const { parameters, searchQuery, selectedGroup, showOnlyModified, sortColumn, sortDirection } = get();
     let params = Array.from(parameters.values());
 
     // Filter by group first
     if (selectedGroup !== 'all') {
       params = params.filter(p => parameterBelongsToGroup(p.id, selectedGroup));
+    }
+
+    // Filter by modified status
+    if (showOnlyModified) {
+      params = params.filter(p => p.isModified);
     }
 
     // Then filter by search query
@@ -61,12 +81,25 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       params = params.filter(p => p.id.toLowerCase().includes(query));
     }
 
-    return params.sort((a, b) => a.id.localeCompare(b.id));
+    // Sort
+    params.sort((a, b) => {
+      let comparison = 0;
+      if (sortColumn === 'name') {
+        comparison = a.id.localeCompare(b.id);
+      } else if (sortColumn === 'status') {
+        // Modified params first when ascending, last when descending
+        comparison = (a.isModified ? 1 : 0) - (b.isModified ? 1 : 0);
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return params;
   },
 
   modifiedCount: () => {
     const { parameters } = get();
-    return Array.from(parameters.values()).filter(p => p.isModified).length;
+    // Exclude read-only params from modified count
+    return Array.from(parameters.values()).filter(p => p.isModified && !p.isReadOnly).length;
   },
 
   groupCounts: () => {
@@ -93,9 +126,22 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
   getDescription: (paramId: string) => {
     const { metadata } = get();
-    if (!metadata) return '';
+    // Try official metadata first
+    if (metadata) {
+      const meta = metadata[paramId];
+      if (meta?.description) {
+        return meta.description;
+      }
+    }
+    // Fallback to generated description
+    return generateFallbackDescription(paramId);
+  },
+
+  hasOfficialDescription: (paramId: string) => {
+    const { metadata } = get();
+    if (!metadata) return false;
     const meta = metadata[paramId];
-    return meta?.description || '';
+    return Boolean(meta?.description);
   },
 
   fetchParameters: async () => {
@@ -161,6 +207,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     set(state => {
       const params = new Map(state.parameters);
       const existing = params.get(param.paramId);
+      const readOnly = isReadOnlyParameter(param.paramId);
 
       params.set(param.paramId, {
         id: param.paramId,
@@ -169,6 +216,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
         index: param.paramIndex,
         originalValue: existing?.originalValue ?? param.paramValue,
         isModified: existing ? existing.originalValue !== param.paramValue : false,
+        isReadOnly: readOnly,
       });
 
       return { parameters: params };
@@ -188,6 +236,21 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   setSelectedGroup: (group) => set({ selectedGroup: group }),
+
+  setShowOnlyModified: (show) => set({ showOnlyModified: show }),
+
+  toggleShowOnlyModified: () => set(state => ({ showOnlyModified: !state.showOnlyModified })),
+
+  setSortColumn: (column) => set({ sortColumn: column }),
+
+  toggleSort: (column) => set(state => {
+    if (state.sortColumn === column) {
+      // Toggle direction if same column
+      return { sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' };
+    }
+    // New column, default to ascending
+    return { sortColumn: column, sortDirection: 'asc' };
+  }),
 
   revertParameter: (paramId) => {
     set(state => {
@@ -216,5 +279,8 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     lastRefresh: 0,
     searchQuery: '',
     selectedGroup: 'all',
+    showOnlyModified: false,
+    sortColumn: 'name',
+    sortDirection: 'asc',
   }),
 }));

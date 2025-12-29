@@ -5,9 +5,31 @@
 
 import { useState, useCallback } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
-import { useParameterStore } from '../../stores/parameter-store';
+import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
 import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
+
+// Sort indicator component
+function SortIndicator({ column, currentColumn, direction }: {
+  column: SortColumn;
+  currentColumn: SortColumn;
+  direction: 'asc' | 'desc';
+}) {
+  const isActive = column === currentColumn;
+  return (
+    <span className={`ml-1 inline-block transition-transform ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`}>
+      {direction === 'asc' || !isActive ? (
+        <svg className="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        </svg>
+      ) : (
+        <svg className="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      )}
+    </span>
+  );
+}
 
 export function ParametersView() {
   const { connectionState } = useConnectionStore();
@@ -19,15 +41,21 @@ export function ParametersView() {
     lastRefresh,
     searchQuery,
     selectedGroup,
+    showOnlyModified,
+    sortColumn,
+    sortDirection,
     filteredParameters,
     fetchParameters,
     setParameter,
     setSearchQuery,
     setSelectedGroup,
+    toggleShowOnlyModified,
+    toggleSort,
     revertParameter,
     modifiedCount,
     groupCounts,
     getDescription,
+    hasOfficialDescription,
   } = useParameterStore();
 
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -135,9 +163,22 @@ export function ParametersView() {
           </div>
 
           {modified > 0 && (
-            <div className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium">
+            <button
+              onClick={toggleShowOnlyModified}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                showOnlyModified
+                  ? 'bg-amber-500/30 text-amber-300 ring-1 ring-amber-500/50'
+                  : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+              }`}
+              title={showOnlyModified ? 'Show all parameters' : 'Show only modified parameters'}
+            >
+              {showOnlyModified && (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              )}
               {modified} modified
-            </div>
+            </button>
           )}
         </div>
 
@@ -220,11 +261,27 @@ export function ParametersView() {
           <table className="w-full">
             <thead className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-gray-800/50">
               <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                <th className="px-4 py-3 font-medium w-[220px]">Name</th>
+                <th className="px-4 py-3 font-medium w-[220px]">
+                  <button
+                    onClick={() => toggleSort('name')}
+                    className="group flex items-center hover:text-gray-300 transition-colors"
+                  >
+                    Name
+                    <SortIndicator column="name" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </th>
                 <th className="px-4 py-3 font-medium w-[120px]">Value</th>
                 <th className="px-4 py-3 font-medium w-[80px]">Type</th>
                 <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium w-[100px]">Status</th>
+                <th className="px-4 py-3 font-medium w-[100px]">
+                  <button
+                    onClick={() => toggleSort('status')}
+                    className="group flex items-center hover:text-gray-300 transition-colors"
+                  >
+                    Status
+                    <SortIndicator column="status" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
@@ -237,7 +294,11 @@ export function ParametersView() {
                     <span className="font-mono text-sm text-gray-200">{param.id}</span>
                   </td>
                   <td className="px-4 py-2.5">
-                    {editingParam === param.id ? (
+                    {param.isReadOnly ? (
+                      <span className="font-mono text-sm text-gray-500 tabular-nums" title="Read-only parameter">
+                        {param.value}
+                      </span>
+                    ) : editingParam === param.id ? (
                       <input
                         type="text"
                         value={editValue}
@@ -260,10 +321,23 @@ export function ParametersView() {
                     <span className="text-xs text-gray-500">{getParamTypeName(param.type)}</span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="text-sm text-gray-400 line-clamp-2">{getDescription(param.id) || '—'}</span>
+                    <span
+                      className={`text-sm line-clamp-2 ${
+                        hasOfficialDescription(param.id)
+                          ? 'text-gray-400'
+                          : 'text-gray-500 italic'
+                      }`}
+                      title={hasOfficialDescription(param.id) ? undefined : 'Auto-generated description'}
+                    >
+                      {getDescription(param.id)}
+                    </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    {param.isModified && (
+                    {param.isReadOnly ? (
+                      <span className="px-2 py-0.5 bg-gray-700/50 text-gray-500 rounded text-xs">
+                        Read-only
+                      </span>
+                    ) : param.isModified ? (
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs">
                           Modified
@@ -276,7 +350,7 @@ export function ParametersView() {
                           (revert)
                         </button>
                       </div>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -288,10 +362,16 @@ export function ParametersView() {
       {/* Status bar */}
       <div className="shrink-0 px-4 py-2 border-t border-gray-800/50 bg-gray-900/30 text-xs text-gray-500 flex items-center gap-4">
         <span>{paramCount} parameters</span>
-        {(searchQuery || selectedGroup !== 'all') && displayParams.length !== paramCount && (
+        {(searchQuery || selectedGroup !== 'all' || showOnlyModified) && displayParams.length !== paramCount && (
           <>
             <span className="text-gray-700">|</span>
             <span>{displayParams.length} shown</span>
+          </>
+        )}
+        {showOnlyModified && (
+          <>
+            <span className="text-gray-700">|</span>
+            <span className="text-amber-400">Modified only</span>
           </>
         )}
         {selectedGroup !== 'all' && (
