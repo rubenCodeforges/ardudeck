@@ -44,6 +44,22 @@ export const IPC_CHANNELS = {
   // Parameter metadata
   PARAM_METADATA_FETCH: 'param:metadata-fetch',
   PARAM_METADATA_RESULT: 'param:metadata-result',
+
+  // Mission planning
+  MISSION_DOWNLOAD: 'mission:download',
+  MISSION_UPLOAD: 'mission:upload',
+  MISSION_CLEAR: 'mission:clear',
+  MISSION_SET_CURRENT: 'mission:set-current',
+  MISSION_ITEM: 'mission:item',
+  MISSION_PROGRESS: 'mission:progress',
+  MISSION_COMPLETE: 'mission:complete',
+  MISSION_UPLOAD_COMPLETE: 'mission:upload-complete',
+  MISSION_CLEAR_COMPLETE: 'mission:clear-complete',
+  MISSION_ERROR: 'mission:error',
+  MISSION_CURRENT: 'mission:current',
+  MISSION_REACHED: 'mission:reached',
+  MISSION_SAVE_FILE: 'mission:save-file',
+  MISSION_LOAD_FILE: 'mission:load-file',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

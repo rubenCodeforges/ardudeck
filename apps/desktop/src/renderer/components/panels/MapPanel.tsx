@@ -339,7 +339,7 @@ export function MapPanel() {
   const defaultPosition: [number, number] = [51.505, -0.09];
 
   // Get current position from GPS data
-  const hasValidGps = gps.fix >= 2 && gps.lat !== 0 && gps.lon !== 0;
+  const hasValidGps = gps.fixType >= 2 && gps.lat !== 0 && gps.lon !== 0;
   const gpsPosition: [number, number] | null = hasValidGps
     ? [gps.lat, gps.lon]
     : null;

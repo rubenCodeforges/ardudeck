@@ -10,6 +10,9 @@ import 'dockview-react/dist/styles/dockview.css';
 
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useLayoutStore } from '../../stores/layout-store';
+
+// Reserved layout name for auto-save (separate from user-named layouts)
+const TELEMETRY_AUTOSAVE_NAME = '__telemetry_autosave';
 import {
   AttitudePanel,
   AltitudePanel,
@@ -42,7 +45,80 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   MapPanel: () => <PanelWrapper component={MapPanel} />,
 };
 
-// Default layout configuration
+// Preset layout definitions
+const PRESET_LAYOUTS = {
+  default: 'Default',
+  pilotView: 'Pilot View',
+} as const;
+
+type PresetLayoutKey = keyof typeof PRESET_LAYOUTS;
+
+// Check if a layout name is a preset
+function isPresetLayout(name: string): name is PresetLayoutKey {
+  return name in PRESET_LAYOUTS;
+}
+
+// Pilot View preset - Map on left, all telemetry panels in 3x2 grid on right
+const PILOT_VIEW_LAYOUT: SerializedDockview = {
+  grid: {
+    root: {
+      type: 'branch',
+      data: [
+        {
+          type: 'leaf',
+          data: { views: ['map'], activeView: 'map', id: '1' },
+          size: 600,
+        },
+        {
+          type: 'branch',
+          data: [
+            {
+              type: 'branch',
+              data: [
+                { type: 'leaf', data: { views: ['battery'], activeView: 'battery', id: '3' }, size: 200 },
+                { type: 'leaf', data: { views: ['attitude'], activeView: 'attitude', id: '2' }, size: 200 },
+              ],
+              size: 300,
+            },
+            {
+              type: 'branch',
+              data: [
+                { type: 'leaf', data: { views: ['gps'], activeView: 'gps', id: '4' }, size: 200 },
+                { type: 'leaf', data: { views: ['altitude'], activeView: 'altitude', id: '7' }, size: 200 },
+              ],
+              size: 300,
+            },
+            {
+              type: 'branch',
+              data: [
+                { type: 'leaf', data: { views: ['position'], activeView: 'position', id: '5' }, size: 200 },
+                { type: 'leaf', data: { views: ['speed'], activeView: 'speed', id: '6' }, size: 200 },
+              ],
+              size: 300,
+            },
+          ],
+          size: 400,
+        },
+      ],
+      size: 900,
+    },
+    width: 1000,
+    height: 900,
+    orientation: 'HORIZONTAL',
+  },
+  panels: {
+    map: { id: 'map', contentComponent: 'MapPanel', title: 'Map' },
+    attitude: { id: 'attitude', contentComponent: 'AttitudePanel', title: 'Attitude' },
+    battery: { id: 'battery', contentComponent: 'BatteryPanel', title: 'Battery' },
+    gps: { id: 'gps', contentComponent: 'GpsPanel', title: 'GPS' },
+    position: { id: 'position', contentComponent: 'PositionPanel', title: 'Position' },
+    speed: { id: 'speed', contentComponent: 'SpeedPanel', title: 'Speed' },
+    altitude: { id: 'altitude', contentComponent: 'AltitudePanel', title: 'Altitude' },
+  },
+  activeGroup: '1',
+};
+
+// Default layout configuration - Map center, panels on sides
 function createDefaultLayout(api: DockviewApi): void {
   // Main center group - Map (primary view)
   const centerGroup = api.addGroup();
@@ -96,17 +172,32 @@ function createDefaultLayout(api: DockviewApi): void {
   });
 }
 
+// Load a preset layout by name
+function loadPresetLayout(api: DockviewApi, preset: PresetLayoutKey): void {
+  switch (preset) {
+    case 'pilotView':
+      api.fromJSON(PILOT_VIEW_LAYOUT);
+      break;
+    case 'default':
+    default:
+      createDefaultLayout(api);
+      break;
+  }
+}
+
 // Layout toolbar component
 function LayoutToolbar({
   onSave,
   onLoad,
   onReset,
+  onAddPanel,
   layouts,
   activeLayout,
 }: {
   onSave: (name: string) => void;
   onLoad: (name: string) => void;
   onReset: () => void;
+  onAddPanel: (id: string, component: string, title: string) => void;
   layouts: string[];
   activeLayout: string;
 }) {
@@ -130,10 +221,18 @@ function LayoutToolbar({
         onChange={(e) => onLoad(e.target.value)}
         className="bg-gray-700/50 border border-gray-600/50 rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
       >
-        <option value="default">Default</option>
-        {layouts.filter(l => l !== 'default').map((name) => (
-          <option key={name} value={name}>{name}</option>
-        ))}
+        <optgroup label="Presets">
+          {Object.entries(PRESET_LAYOUTS).map(([key, name]) => (
+            <option key={key} value={key}>{name}</option>
+          ))}
+        </optgroup>
+        {layouts.length > 0 && (
+          <optgroup label="Saved">
+            {layouts.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </optgroup>
+        )}
       </select>
 
       {showSaveDialog ? (
@@ -183,13 +282,13 @@ function LayoutToolbar({
       <div className="flex-1" />
 
       {/* Add panel dropdown */}
-      <AddPanelDropdown />
+      <AddPanelDropdown onAddPanel={onAddPanel} />
     </div>
   );
 }
 
 // Add panel dropdown
-function AddPanelDropdown() {
+function AddPanelDropdown({ onAddPanel }: { onAddPanel: (id: string, component: string, title: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -208,11 +307,11 @@ function AddPanelDropdown() {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700/50 rounded-lg shadow-xl z-20 py-1 min-w-[150px]">
-            {Object.entries(PANEL_COMPONENTS).map(([id, { title }]) => (
+            {Object.entries(PANEL_COMPONENTS).map(([id, { component, title }]) => (
               <button
                 key={id}
                 onClick={() => {
-                  // Panel will be added via context - for now just close
+                  onAddPanel(id, component, title);
                   setIsOpen(false);
                 }}
                 className="w-full px-3 py-1.5 text-left text-xs text-gray-300 hover:bg-gray-700/50 transition-colors"
@@ -275,20 +374,53 @@ function QuickStatsBar() {
 export function TelemetryDashboard() {
   const apiRef = useRef<DockviewApi | null>(null);
   const { layouts, activeLayoutName, loadLayouts, saveLayout, setActiveLayout } = useLayoutStore();
+  const [layoutLoaded, setLayoutLoaded] = useState(false);
 
   // Load layouts on mount
   useEffect(() => {
     loadLayouts();
   }, [loadLayouts]);
 
-  const onReady = useCallback((event: DockviewReadyEvent) => {
+  // Auto-save layout when it changes
+  useEffect(() => {
+    if (!apiRef.current || !layoutLoaded) return;
+
+    const handleLayoutChange = () => {
+      if (apiRef.current) {
+        const data = apiRef.current.toJSON();
+        window.electronAPI?.saveLayout(TELEMETRY_AUTOSAVE_NAME, data);
+      }
+    };
+
+    // Subscribe to layout changes
+    const disposable = apiRef.current.onDidLayoutChange(handleLayoutChange);
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [layoutLoaded]);
+
+  const onReady = useCallback(async (event: DockviewReadyEvent) => {
     apiRef.current = event.api;
 
-    // Try to load saved layout
+    // First, try to load auto-saved layout (most recent state)
+    try {
+      const autoSaved = await window.electronAPI?.getLayout(TELEMETRY_AUTOSAVE_NAME);
+      if (autoSaved?.data) {
+        event.api.fromJSON(autoSaved.data as SerializedDockview);
+        setLayoutLoaded(true);
+        return;
+      }
+    } catch (e) {
+      console.warn('Failed to load auto-saved layout:', e);
+    }
+
+    // Fall back to named layout from store
     const savedLayout = layouts[activeLayoutName];
     if (savedLayout?.data) {
       try {
         event.api.fromJSON(savedLayout.data as SerializedDockview);
+        setLayoutLoaded(true);
         return;
       } catch (e) {
         console.warn('Failed to load saved layout, using default:', e);
@@ -297,6 +429,7 @@ export function TelemetryDashboard() {
 
     // Create default layout
     createDefaultLayout(event.api);
+    setLayoutLoaded(true);
   }, [layouts, activeLayoutName]);
 
   const handleSaveLayout = useCallback(async (name: string) => {
@@ -310,6 +443,14 @@ export function TelemetryDashboard() {
     if (!apiRef.current) return;
     await setActiveLayout(name);
 
+    // Check if it's a preset layout
+    if (isPresetLayout(name)) {
+      apiRef.current.clear();
+      loadPresetLayout(apiRef.current, name);
+      return;
+    }
+
+    // Otherwise load from saved layouts
     const layout = layouts[name];
     if (layout?.data) {
       try {
@@ -331,6 +472,20 @@ export function TelemetryDashboard() {
     createDefaultLayout(apiRef.current);
   }, []);
 
+  const handleAddPanel = useCallback((id: string, component: string, title: string) => {
+    if (!apiRef.current) return;
+
+    // Generate unique panel id (in case the panel is already open)
+    const uniqueId = `${id}-${Date.now()}`;
+
+    // Add panel to the currently active group or create new one
+    apiRef.current.addPanel({
+      id: uniqueId,
+      component,
+      title,
+    });
+  }, []);
+
   return (
     <div className="h-full flex flex-col">
       {/* Quick stats bar */}
@@ -341,7 +496,8 @@ export function TelemetryDashboard() {
         onSave={handleSaveLayout}
         onLoad={handleLoadLayout}
         onReset={handleResetLayout}
-        layouts={Object.keys(layouts)}
+        onAddPanel={handleAddPanel}
+        layouts={Object.keys(layouts).filter(name => !name.startsWith('__'))}
         activeLayout={activeLayoutName}
       />
 

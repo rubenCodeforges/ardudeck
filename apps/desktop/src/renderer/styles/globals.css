@@ -11,6 +11,22 @@
     @apply bg-[#0a0a0f] text-gray-100 antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
+  /* Dark theme for native select dropdowns */
+  select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: #1f2937;
+    color: #e5e7eb;
+    padding: 4px 8px;
+  }
+
+  select option:checked,
+  select option:hover {
+    background-color: #374151;
+  }
 }
 
 @layer components {
@@ -215,6 +231,23 @@ select,
 .home-marker {
   background: transparent;
   border: none;
+}
+
+/* Waypoint markers - ensure proper drag behavior */
+.waypoint-marker {
+  cursor: grab !important;
+}
+
+.waypoint-marker:active {
+  cursor: grabbing !important;
+}
+
+.leaflet-marker-draggable .waypoint-marker {
+  cursor: grab !important;
+}
+
+.leaflet-dragging .waypoint-marker {
+  cursor: grabbing !important;
 }
 
 /* Map tile styling for dark mode */

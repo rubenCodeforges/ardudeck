@@ -8,6 +8,7 @@ import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLo
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
+import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -139,6 +140,74 @@ const api = {
 
   loadParamsFromFile: (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }> }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_LOAD_FILE),
+
+  // Mission planning
+  downloadMission: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_DOWNLOAD),
+
+  uploadMission: (items: MissionItem[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_UPLOAD, items),
+
+  clearMission: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_CLEAR),
+
+  setCurrentWaypoint: (seq: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_SET_CURRENT, seq),
+
+  saveMissionToFile: (items: MissionItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_SAVE_FILE, items),
+
+  loadMissionFromFile: (): Promise<{ success: boolean; items?: MissionItem[]; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LOAD_FILE),
+
+  // Mission event listeners
+  onMissionItem: (callback: (item: MissionItem) => void) => {
+    const handler = (_: unknown, item: MissionItem) => callback(item);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_ITEM, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_ITEM, handler);
+  },
+
+  onMissionProgress: (callback: (progress: MissionProgress) => void) => {
+    const handler = (_: unknown, progress: MissionProgress) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_PROGRESS, handler);
+  },
+
+  onMissionComplete: (callback: (items: MissionItem[]) => void) => {
+    const handler = (_: unknown, items: MissionItem[]) => callback(items);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_COMPLETE, handler);
+  },
+
+  onMissionError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_ERROR, handler);
+  },
+
+  onMissionCurrent: (callback: (seq: number) => void) => {
+    const handler = (_: unknown, seq: number) => callback(seq);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_CURRENT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_CURRENT, handler);
+  },
+
+  onMissionReached: (callback: (seq: number) => void) => {
+    const handler = (_: unknown, seq: number) => callback(seq);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_REACHED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_REACHED, handler);
+  },
+
+  onMissionUploadComplete: (callback: (itemCount: number) => void) => {
+    const handler = (_: unknown, itemCount: number) => callback(itemCount);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_UPLOAD_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_UPLOAD_COMPLETE, handler);
+  },
+
+  onMissionClearComplete: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on(IPC_CHANNELS.MISSION_CLEAR_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_CLEAR_COMPLETE, handler);
+  },
 };
 
 // Expose to renderer

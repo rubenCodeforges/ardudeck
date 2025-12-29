@@ -24,12 +24,41 @@ import {
   serializeParamRequestList,
   serializeParamSet,
   serializeCommandLong,
+  serializeMissionRequestList,
+  serializeMissionRequest,
+  serializeMissionRequestInt,
+  serializeMissionCount,
+  serializeMissionItem,
+  serializeMissionItemInt,
+  serializeMissionClearAll,
+  serializeMissionAck,
+  serializeMissionSetCurrent,
+  deserializeMissionItemInt,
+  deserializeMissionItem,
   PARAM_REQUEST_LIST_ID,
   PARAM_REQUEST_LIST_CRC_EXTRA,
   PARAM_SET_ID,
   PARAM_SET_CRC_EXTRA,
   COMMAND_LONG_ID,
   COMMAND_LONG_CRC_EXTRA,
+  MISSION_REQUEST_LIST_ID,
+  MISSION_REQUEST_LIST_CRC_EXTRA,
+  MISSION_REQUEST_ID,
+  MISSION_REQUEST_CRC_EXTRA,
+  MISSION_REQUEST_INT_ID,
+  MISSION_REQUEST_INT_CRC_EXTRA,
+  MISSION_COUNT_ID,
+  MISSION_COUNT_CRC_EXTRA,
+  MISSION_ITEM_ID,
+  MISSION_ITEM_CRC_EXTRA,
+  MISSION_ITEM_INT_ID,
+  MISSION_ITEM_INT_CRC_EXTRA,
+  MISSION_ACK_ID,
+  MISSION_ACK_CRC_EXTRA,
+  MISSION_CLEAR_ALL_ID,
+  MISSION_CLEAR_ALL_CRC_EXTRA,
+  MISSION_SET_CURRENT_ID,
+  MISSION_SET_CURRENT_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema } from '../shared/ipc-channels.js';
@@ -37,6 +66,8 @@ import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-t
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES } from '../shared/telemetry-types.js';
+import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
+import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
 
 // Layout storage
 const layoutStore = new Store<LayoutStoreSchema>({
@@ -68,6 +99,23 @@ let paramDownloadTimeout: NodeJS.Timeout | null = null;
 
 // Parameter metadata cache (keyed by vehicle type)
 const metadataCache = new Map<VehicleType, ParameterMetadataStore>();
+
+// Mission download state
+let missionDownloadState: {
+  expected: number;
+  received: Map<number, MissionItem>;
+  timeout: NodeJS.Timeout | null;
+} | null = null;
+
+// Mission upload state
+let missionUploadState: {
+  items: MissionItem[];
+  currentSeq: number;
+  timeout: NodeJS.Timeout | null;
+} | null = null;
+
+// Track pending clear operation
+let missionClearPending = false;
 
 // Autopilot type names (from MAV_AUTOPILOT enum)
 const AUTOPILOT_NAMES: Record<number, string> = {
@@ -185,10 +233,39 @@ const MSG_ATTITUDE = 30;
 const MSG_GLOBAL_POSITION_INT = 33;
 const MSG_VFR_HUD = 74;
 
+// Mission message IDs
+const MSG_MISSION_ITEM = 39;
+const MSG_MISSION_REQUEST = 40;
+const MSG_MISSION_SET_CURRENT = 41;
+const MSG_MISSION_CURRENT = 42;
+const MSG_MISSION_REQUEST_LIST = 43;
+const MSG_MISSION_COUNT = 44;
+const MSG_MISSION_CLEAR_ALL = 45;
+const MSG_MISSION_ITEM_REACHED = 46;
+const MSG_MISSION_ACK = 47;
+const MSG_MISSION_REQUEST_INT = 51;
+const MSG_MISSION_ITEM_INT = 73;
+
+// MAVLink v1 CRC_EXTRA values (without mission_type extension field)
+// These differ from v2 because v2 includes the mission_type field in CRC calculation
+const MISSION_REQUEST_LIST_CRC_EXTRA_V1 = 132;  // v2 = 148
+const MISSION_COUNT_CRC_EXTRA_V1 = 221;         // v2 = 52
+const MISSION_REQUEST_CRC_EXTRA_V1 = 230;       // v2 = 177
+const MISSION_ITEM_CRC_EXTRA_V1 = 254;          // v2 = 95
+const MISSION_CLEAR_ALL_CRC_EXTRA_V1 = 232;     // v2 = 25
+const MISSION_ACK_CRC_EXTRA_V1 = 153;           // v2 = 146
+
 // Parse telemetry from MAVLink packet
 // NOTE: MAVLink v2 orders payload fields by size (largest first for alignment)
 function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void {
   const { msgid, payload } = packet;
+
+  // Log mission-related messages for debugging
+  const missionMsgIds = [39, 40, 41, 42, 43, 44, 45, 46, 47, 51, 73];
+  if (missionMsgIds.includes(msgid)) {
+    const hexPayload = Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    sendLog(mainWindow, 'debug', `Received MSG #${msgid} (len=${payload.length}): ${hexPayload}`);
+  }
 
   switch (msgid) {
     case MSG_HEARTBEAT: {
@@ -337,7 +414,438 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       }
       break;
     }
+
+    // Mission messages - wrap in try-catch for payload size variations
+    case MSG_MISSION_COUNT: {
+      // FC responded with mission count during download
+      if (!missionDownloadState) {
+        sendLog(mainWindow, 'debug', `Received MISSION_COUNT but no download in progress`);
+        break;
+      }
+
+      try {
+        // MISSION_COUNT payload byte order:
+        // Some FCs use v2 byte order (size-sorted) even in v1 packets!
+        // v1 order: target_system(1), target_component(1), count(2) - count at offset 2
+        // v2 order: count(2), target_system(1), target_component(1), [mission_type(1)] - count at offset 0
+        //
+        // Detection: If bytes 2-3 are our GCS IDs (255, 190) or count at offset 2 is unreasonable,
+        // assume v2 byte order (count at offset 0)
+        let count: number;
+        const countAtOffset0 = payload[0] | (payload[1] << 8);
+        const countAtOffset2 = payload[2] | (payload[3] << 8);
+
+        // Check if bytes 2-3 look like GCS IDs (255, 190) - indicates v2 order
+        const looksLikeV2Order = (payload[2] === 0xFF && payload[3] === 0xBE) ||
+                                 (payload[2] === 0xFF && payload[3] === 0x01) ||  // compid 1
+                                 countAtOffset2 > 1000;  // Unreasonable count
+
+        if (payload.length >= 5 || looksLikeV2Order) {
+          // v2 byte order: count is at offset 0
+          count = countAtOffset0;
+          sendLog(mainWindow, 'debug', `MISSION_COUNT using v2 byte order: count=${count}`);
+        } else {
+          // v1 byte order: count is at offset 2
+          count = countAtOffset2;
+          sendLog(mainWindow, 'debug', `MISSION_COUNT using v1 byte order: count=${count}`);
+        }
+        missionDownloadState.expected = count;
+
+        sendLog(mainWindow, 'debug', `Mission has ${count} items (payload len: ${payload.length})`);
+
+        if (count === 0) {
+          // Empty mission
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_COMPLETE, []);
+          missionDownloadState = null;
+        } else {
+          // Request first item
+          requestMissionItem(mainWindow, 0);
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'error', 'Failed to parse MISSION_COUNT', String(err));
+      }
+      break;
+    }
+
+    case MSG_MISSION_ITEM:
+    case MSG_MISSION_ITEM_INT: {
+      // FC sent mission item during download (MISSION_ITEM for v1, MISSION_ITEM_INT for v2)
+      if (!missionDownloadState) break;
+
+      try {
+        let item: MissionItem;
+
+        if (msgid === MSG_MISSION_ITEM_INT) {
+          // MAVLink v2 format with int32 lat/lon
+          const msg = deserializeMissionItemInt(payload);
+          item = {
+            seq: msg.seq,
+            frame: msg.frame,
+            command: msg.command,
+            current: msg.current === 1,
+            autocontinue: msg.autocontinue === 1,
+            param1: msg.param1,
+            param2: msg.param2,
+            param3: msg.param3,
+            param4: msg.param4,
+            latitude: msg.x / 1e7,   // INT format uses lat*1e7
+            longitude: msg.y / 1e7,
+            altitude: msg.z,
+          };
+        } else {
+          // MAVLink v1 format with float lat/lon
+          const msg = deserializeMissionItem(payload);
+          item = {
+            seq: msg.seq,
+            frame: msg.frame,
+            command: msg.command,
+            current: msg.current === 1,
+            autocontinue: msg.autocontinue === 1,
+            param1: msg.param1,
+            param2: msg.param2,
+            param3: msg.param3,
+            param4: msg.param4,
+            latitude: msg.x,   // Float format
+            longitude: msg.y,
+            altitude: msg.z,
+          };
+        }
+
+        missionDownloadState.received.set(item.seq, item);
+
+        // Send item to renderer
+        safeSend(mainWindow, IPC_CHANNELS.MISSION_ITEM, item);
+
+        // Send progress
+        const progress: MissionProgress = {
+          total: missionDownloadState.expected,
+          transferred: missionDownloadState.received.size,
+          operation: 'download',
+        };
+        safeSend(mainWindow, IPC_CHANNELS.MISSION_PROGRESS, progress);
+
+        // Reset timeout
+        if (missionDownloadState.timeout) {
+          clearTimeout(missionDownloadState.timeout);
+        }
+        missionDownloadState.timeout = setTimeout(() => {
+          if (missionDownloadState && missionDownloadState.received.size < missionDownloadState.expected) {
+            safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR,
+              `Timeout: received ${missionDownloadState.received.size}/${missionDownloadState.expected} mission items`);
+            missionDownloadState = null;
+          }
+        }, 5000);
+
+        // Check if complete
+        if (missionDownloadState.received.size >= missionDownloadState.expected) {
+          // All items received, send ACK and complete
+          sendMissionAck(mainWindow, MAV_MISSION_RESULT.ACCEPTED);
+
+          // Convert map to sorted array
+          const items = Array.from(missionDownloadState.received.values())
+            .sort((a, b) => a.seq - b.seq);
+
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_COMPLETE, items);
+          sendLog(mainWindow, 'info', `Downloaded ${items.length} mission items`);
+
+          if (missionDownloadState.timeout) {
+            clearTimeout(missionDownloadState.timeout);
+          }
+          missionDownloadState = null;
+        } else {
+          // Request next item
+          requestMissionItem(mainWindow, item.seq + 1);
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'error', 'Failed to parse mission item', String(err));
+      }
+      break;
+    }
+
+    case MSG_MISSION_REQUEST:
+    case MSG_MISSION_REQUEST_INT: {
+      // FC requesting mission item during upload
+      if (!missionUploadState) {
+        sendLog(mainWindow, 'debug', `Received MISSION_REQUEST but no upload in progress`);
+        break;
+      }
+
+      try {
+        // MISSION_REQUEST payload byte order:
+        // Some FCs use v2 byte order (size-sorted) even in v1 packets!
+        // v1 order: target_system(1), target_component(1), seq(2) - seq at offset 2
+        // v2 order: seq(2), target_system(1), target_component(1), [mission_type(1)] - seq at offset 0
+        let seq: number;
+        const seqAtOffset0 = payload[0] | (payload[1] << 8);
+        const seqAtOffset2 = payload[2] | (payload[3] << 8);
+
+        // Check if bytes 2-3 look like GCS IDs (255, 190) - indicates v2 order
+        const looksLikeV2Order = (payload[2] === 0xFF && payload[3] === 0xBE) ||
+                                 (payload[2] === 0xFF && payload[3] === 0x01) ||
+                                 seqAtOffset2 > 1000;  // Unreasonable seq
+
+        if (msgid === MSG_MISSION_REQUEST_INT || looksLikeV2Order) {
+          // v2 byte order: seq is at offset 0
+          seq = seqAtOffset0;
+        } else {
+          // v1 byte order: seq is at offset 2
+          seq = seqAtOffset2;
+        }
+
+        sendLog(mainWindow, 'debug', `FC requesting mission item ${seq} (msg ${msgid}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`);
+
+        if (seq < missionUploadState.items.length) {
+          sendMissionItem(mainWindow, missionUploadState.items[seq]);
+          missionUploadState.currentSeq = seq;
+
+          // Send progress
+          const progress: MissionProgress = {
+            total: missionUploadState.items.length,
+            transferred: seq + 1,
+            operation: 'upload',
+          };
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_PROGRESS, progress);
+
+          // Reset timeout
+          if (missionUploadState.timeout) {
+            clearTimeout(missionUploadState.timeout);
+          }
+          missionUploadState.timeout = setTimeout(() => {
+            safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Upload timeout: FC stopped requesting items');
+            missionUploadState = null;
+          }, 5000);
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'error', 'Failed to parse MISSION_REQUEST', String(err));
+      }
+      break;
+    }
+
+    case MSG_MISSION_ACK: {
+      // FC acknowledged operation
+      try {
+        // MAVLink v1: 3 bytes (target_system, target_component, type)
+        // MAVLink v2: 4 bytes (adds mission_type)
+        // type is at byte offset 2
+        const ackType = payload.length >= 3 ? payload[2] : 0;
+
+        if (ackType === MAV_MISSION_RESULT.ACCEPTED) {
+          if (missionUploadState) {
+            const itemCount = missionUploadState.items.length;
+            sendLog(mainWindow, 'info', `Mission upload complete: ${itemCount} items`);
+            if (missionUploadState.timeout) {
+              clearTimeout(missionUploadState.timeout);
+            }
+            missionUploadState = null;
+            // Send upload completion event to renderer
+            safeSend(mainWindow, IPC_CHANNELS.MISSION_UPLOAD_COMPLETE, itemCount);
+          }
+          if (missionClearPending) {
+            sendLog(mainWindow, 'info', 'Mission cleared from flight controller');
+            missionClearPending = false;
+            // Send clear completion event to renderer
+            safeSend(mainWindow, IPC_CHANNELS.MISSION_CLEAR_COMPLETE);
+          }
+        } else {
+          // Error
+          const errorMsg = getMissionResultName(ackType);
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, `Mission error: ${errorMsg}`);
+          sendLog(mainWindow, 'error', `Mission ACK error: ${errorMsg}`);
+
+          if (missionUploadState) {
+            if (missionUploadState.timeout) {
+              clearTimeout(missionUploadState.timeout);
+            }
+            missionUploadState = null;
+          }
+          if (missionDownloadState) {
+            if (missionDownloadState.timeout) {
+              clearTimeout(missionDownloadState.timeout);
+            }
+            missionDownloadState = null;
+          }
+          missionClearPending = false;
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'error', 'Failed to parse MISSION_ACK', String(err));
+      }
+      break;
+    }
+
+    case MSG_MISSION_CURRENT: {
+      // FC reports current waypoint
+      // Handle both MAVLink v1 (2 bytes) and v2 (6 bytes) formats
+      let seq: number;
+      if (payload.length >= 2) {
+        seq = payload[0] | (payload[1] << 8); // Little-endian uint16
+        safeSend(mainWindow, IPC_CHANNELS.MISSION_CURRENT, seq);
+      }
+      break;
+    }
+
+    case MSG_MISSION_ITEM_REACHED: {
+      // FC reached a waypoint
+      try {
+        if (payload.length >= 2) {
+          const seq = payload[0] | (payload[1] << 8);
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_REACHED, seq);
+          sendLog(mainWindow, 'info', `Reached waypoint ${seq}`);
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'error', 'Failed to parse MISSION_ITEM_REACHED', String(err));
+      }
+      break;
+    }
   }
+}
+
+// Helper: Request a mission item from FC
+function requestMissionItem(mainWindow: BrowserWindow, seq: number): void {
+  if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+
+  let packet: Uint8Array;
+  const targetSystem = connectionState.systemId ?? 1;
+
+  if (detectedMavlinkVersion === 2) {
+    // MAVLink v2: Use MISSION_REQUEST_INT (preferred, higher precision)
+    const payload = serializeMissionRequestInt({
+      targetSystem,
+      targetComponent: 1,
+      seq,
+      missionType: MAV_MISSION_TYPE.MISSION,
+    });
+    packet = serializeV2(MISSION_REQUEST_INT_ID, payload, MISSION_REQUEST_INT_CRC_EXTRA, { sysid: 255, compid: 190 });
+  } else {
+    // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
+    // ArduPilot uses v2 byte order internally regardless of packet format.
+    // v2 order: seq(2), target_system(1), target_component(1) - no mission_type for v1
+    // Use v1 CRC_EXTRA (230) instead of v2 (177)
+    const payload = new Uint8Array(4);
+    payload[0] = seq & 0xff;              // seq low byte
+    payload[1] = (seq >> 8) & 0xff;       // seq high byte
+    payload[2] = targetSystem & 0xff;     // target_system
+    payload[3] = 1;                       // target_component
+    packet = serializeV1(MISSION_REQUEST_ID, payload, MISSION_REQUEST_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+  }
+
+  sendLog(mainWindow, 'debug', `Requesting mission item ${seq} (MAVLink v${detectedMavlinkVersion})`);
+
+  currentTransport.write(packet).catch(err => {
+    sendLog(mainWindow, 'error', `Failed to request mission item ${seq}`, String(err));
+  });
+}
+
+// Helper: Send a mission item to FC
+function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): void {
+  if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+
+  let packet: Uint8Array;
+  const targetSystem = connectionState.systemId ?? 1;
+
+  if (detectedMavlinkVersion === 2) {
+    // MAVLink v2: Use MISSION_ITEM_INT (preferred, higher precision)
+    const payload = serializeMissionItemInt({
+      targetSystem,
+      targetComponent: 1,
+      seq: item.seq,
+      frame: item.frame,
+      command: item.command,
+      current: item.current ? 1 : 0,
+      autocontinue: item.autocontinue ? 1 : 0,
+      param1: item.param1,
+      param2: item.param2,
+      param3: item.param3,
+      param4: item.param4,
+      x: Math.round(item.latitude * 1e7),
+      y: Math.round(item.longitude * 1e7),
+      z: item.altitude,
+      missionType: MAV_MISSION_TYPE.MISSION,
+    });
+    packet = serializeV2(MISSION_ITEM_INT_ID, payload, MISSION_ITEM_INT_CRC_EXTRA, { sysid: 255, compid: 190 });
+  } else {
+    // MAVLink v1: Use MISSION_ITEM (legacy format with float lat/lon)
+    // v1 payload is 37 bytes (no mission_type), v2 is 38 bytes
+    const fullPayload = serializeMissionItem({
+      targetSystem,
+      targetComponent: 1,
+      seq: item.seq,
+      frame: item.frame,
+      command: item.command,
+      current: item.current ? 1 : 0,
+      autocontinue: item.autocontinue ? 1 : 0,
+      param1: item.param1,
+      param2: item.param2,
+      param3: item.param3,
+      param4: item.param4,
+      x: item.latitude,  // Float format for v1
+      y: item.longitude,
+      z: item.altitude,
+      missionType: 0, // Ignored for v1
+    });
+    // Slice off the last byte (mission_type) for v1
+    // Use v1 CRC_EXTRA (254) instead of v2 (95)
+    const payload = fullPayload.slice(0, 37);
+    packet = serializeV1(MISSION_ITEM_ID, payload, MISSION_ITEM_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+  }
+
+  sendLog(mainWindow, 'debug', `Sending mission item ${item.seq} (MAVLink v${detectedMavlinkVersion})`);
+
+  currentTransport.write(packet).catch(err => {
+    sendLog(mainWindow, 'error', `Failed to send mission item ${item.seq}`, String(err));
+  });
+}
+
+// Helper: Send mission ACK
+function sendMissionAck(mainWindow: BrowserWindow, result: number): void {
+  if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+
+  let packet: Uint8Array;
+  const targetSystem = connectionState.systemId ?? 1;
+
+  if (detectedMavlinkVersion === 2) {
+    const payload = serializeMissionAck({
+      targetSystem,
+      targetComponent: 1,
+      type: result,
+      missionType: MAV_MISSION_TYPE.MISSION,
+    });
+    packet = serializeV2(MISSION_ACK_ID, payload, MISSION_ACK_CRC_EXTRA, { sysid: 255, compid: 190 });
+  } else {
+    // MAVLink v1: 3 bytes (no mission_type)
+    // Use v1 CRC_EXTRA (153) instead of v2 (146)
+    const payload = new Uint8Array(3);
+    payload[0] = targetSystem & 0xff;
+    payload[1] = 1; // target_component
+    payload[2] = result & 0xff;
+    packet = serializeV1(MISSION_ACK_ID, payload, MISSION_ACK_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+  }
+
+  currentTransport.write(packet).catch(err => {
+    sendLog(mainWindow, 'error', 'Failed to send mission ACK', String(err));
+  });
+}
+
+// Helper: Get human-readable mission result name
+function getMissionResultName(result: number): string {
+  const names: Record<number, string> = {
+    [MAV_MISSION_RESULT.ACCEPTED]: 'Accepted',
+    [MAV_MISSION_RESULT.ERROR]: 'General error',
+    [MAV_MISSION_RESULT.UNSUPPORTED_FRAME]: 'Unsupported frame',
+    [MAV_MISSION_RESULT.UNSUPPORTED]: 'Unsupported command',
+    [MAV_MISSION_RESULT.NO_SPACE]: 'No space on vehicle',
+    [MAV_MISSION_RESULT.INVALID]: 'Invalid mission item',
+    [MAV_MISSION_RESULT.INVALID_PARAM1]: 'Invalid param1',
+    [MAV_MISSION_RESULT.INVALID_PARAM2]: 'Invalid param2',
+    [MAV_MISSION_RESULT.INVALID_PARAM3]: 'Invalid param3',
+    [MAV_MISSION_RESULT.INVALID_PARAM4]: 'Invalid param4',
+    [MAV_MISSION_RESULT.INVALID_PARAM5_X]: 'Invalid x/latitude',
+    [MAV_MISSION_RESULT.INVALID_PARAM6_Y]: 'Invalid y/longitude',
+    [MAV_MISSION_RESULT.INVALID_PARAM7]: 'Invalid z/altitude',
+    [MAV_MISSION_RESULT.INVALID_SEQUENCE]: 'Invalid sequence',
+    [MAV_MISSION_RESULT.DENIED]: 'Denied',
+    [MAV_MISSION_RESULT.OPERATION_CANCELLED]: 'Operation cancelled',
+  };
+  return names[result] || `Unknown error (${result})`;
 }
 
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
@@ -840,6 +1348,304 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: message };
     }
   });
+
+  // ============================================================================
+  // Mission Planning handlers
+  // ============================================================================
+
+  // Download mission from flight controller
+  ipcMain.handle(IPC_CHANNELS.MISSION_DOWNLOAD, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    // Initialize download state
+    missionDownloadState = {
+      expected: 0,
+      received: new Map(),
+      timeout: null,
+    };
+
+    try {
+      // Send MISSION_REQUEST_LIST to start download
+      // v1: target_system(1), target_component(1) = 2 bytes
+      // v2: target_system(1), target_component(1), mission_type(1) = 3 bytes
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionRequestList({
+          targetSystem,
+          targetComponent: 1,
+          missionType: MAV_MISSION_TYPE.MISSION,
+        });
+        packet = serializeV2(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        // MAVLink v1: manual payload (no mission_type)
+        // Use v1 CRC_EXTRA (132) instead of v2 (148)
+        const payload = new Uint8Array(2);
+        payload[0] = targetSystem & 0xff;
+        payload[1] = 1; // target_component
+        packet = serializeV1(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Requesting mission from flight controller (MAVLink v${detectedMavlinkVersion})...`);
+
+      // Set initial timeout
+      missionDownloadState.timeout = setTimeout(() => {
+        if (missionDownloadState && missionDownloadState.received.size === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Timeout: no response from flight controller');
+          missionDownloadState = null;
+        }
+      }, 10000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to request mission', message);
+      missionDownloadState = null;
+      return { success: false, error: message };
+    }
+  });
+
+  // Upload mission to flight controller
+  ipcMain.handle(IPC_CHANNELS.MISSION_UPLOAD, async (_, items: MissionItem[]): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    if (items.length === 0) {
+      return { success: false, error: 'No mission items to upload' };
+    }
+
+    // Initialize upload state
+    missionUploadState = {
+      items,
+      currentSeq: 0,
+      timeout: null,
+    };
+
+    try {
+      // Send MISSION_COUNT to start upload
+      // MAVLink v1 and v2 have different payload formats:
+      // v1: target_system(1), target_component(1), count(2) = 4 bytes (declaration order)
+      // v2: count(2), target_system(1), target_component(1), mission_type(1) = 5 bytes (size order)
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionCount({
+          targetSystem,
+          targetComponent: 1,
+          count: items.length,
+          missionType: MAV_MISSION_TYPE.MISSION,
+        });
+        packet = serializeV2(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
+        // ArduPilot uses v2 byte order internally regardless of packet format.
+        // v2 order: count(2), target_system(1), target_component(1) - no mission_type for v1
+        const payload = new Uint8Array(4);
+        payload[0] = items.length & 0xff;         // count low byte
+        payload[1] = (items.length >> 8) & 0xff;  // count high byte
+        payload[2] = targetSystem & 0xff;         // target_system
+        payload[3] = 1;                           // target_component
+        packet = serializeV1(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      // Log raw bytes for debugging
+      const hexBytes = Array.from(packet).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      sendLog(mainWindow, 'debug', `Sent MISSION_COUNT: ${hexBytes}`);
+      sendLog(mainWindow, 'info', `Uploading ${items.length} mission items (MAVLink v${detectedMavlinkVersion})...`);
+
+      // Set timeout waiting for FC to request first item
+      missionUploadState.timeout = setTimeout(() => {
+        if (missionUploadState && missionUploadState.currentSeq === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Timeout: FC did not request mission items');
+          missionUploadState = null;
+        }
+      }, 10000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to upload mission', message);
+      missionUploadState = null;
+      return { success: false, error: message };
+    }
+  });
+
+  // Clear mission from flight controller
+  ipcMain.handle(IPC_CHANNELS.MISSION_CLEAR, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      // v1: target_system(1), target_component(1) = 2 bytes
+      // v2: target_system(1), target_component(1), mission_type(1) = 3 bytes
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionClearAll({
+          targetSystem,
+          targetComponent: 1,
+          missionType: MAV_MISSION_TYPE.MISSION,
+        });
+        packet = serializeV2(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        // MAVLink v1: manual payload (no mission_type)
+        // Use v1 CRC_EXTRA (232) instead of v2 (25)
+        const payload = new Uint8Array(2);
+        payload[0] = targetSystem & 0xff;
+        payload[1] = 1; // target_component
+        packet = serializeV1(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      // Set pending flag before sending
+      missionClearPending = true;
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Clearing mission from flight controller (MAVLink v${detectedMavlinkVersion})...`);
+      return { success: true };
+    } catch (error) {
+      missionClearPending = false;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to clear mission', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Set current waypoint
+  ipcMain.handle(IPC_CHANNELS.MISSION_SET_CURRENT, async (_, seq: number): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      // v1 wire order: target_system(1), target_component(1), seq(2)
+      // v2 wire order: seq(2), target_system(1), target_component(1)
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionSetCurrent({
+          targetSystem,
+          targetComponent: 1,
+          seq,
+        });
+        packet = serializeV2(MISSION_SET_CURRENT_ID, payload, MISSION_SET_CURRENT_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
+        // ArduPilot uses v2 byte order internally regardless of packet format.
+        // v2 order: seq(2), target_system(1), target_component(1)
+        const payload = new Uint8Array(4);
+        payload[0] = seq & 0xff;              // seq low byte
+        payload[1] = (seq >> 8) & 0xff;       // seq high byte
+        payload[2] = targetSystem & 0xff;     // target_system
+        payload[3] = 1;                       // target_component
+        packet = serializeV1(MISSION_SET_CURRENT_ID, payload, MISSION_SET_CURRENT_CRC_EXTRA, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Setting current waypoint to ${seq} (MAVLink v${detectedMavlinkVersion})`);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to set current waypoint', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Save mission to file
+  ipcMain.handle(IPC_CHANNELS.MISSION_SAVE_FILE, async (_, items: MissionItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Mission',
+        defaultPath: 'mission.waypoints',
+        filters: [
+          { name: 'Waypoints', extensions: ['waypoints', 'txt'] },
+          { name: 'QGC Plan', extensions: ['plan'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const ext = path.extname(result.filePath).toLowerCase();
+
+      let content: string;
+      if (ext === '.plan') {
+        // QGC Plan format (JSON)
+        content = formatQgcPlan(items);
+      } else {
+        // QGC WPL format (default)
+        content = formatWaypointsFile(items);
+      }
+
+      await fs.writeFile(result.filePath, content, 'utf-8');
+
+      sendLog(mainWindow, 'info', `Saved mission (${items.length} items) to ${result.filePath}`);
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to save mission', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Load mission from file
+  ipcMain.handle(IPC_CHANNELS.MISSION_LOAD_FILE, async (): Promise<{ success: boolean; items?: MissionItem[]; error?: string }> => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Load Mission',
+        filters: [
+          { name: 'Mission Files', extensions: ['waypoints', 'txt', 'plan'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const filePath = result.filePaths[0];
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const content = await fs.readFile(filePath, 'utf-8');
+      const ext = path.extname(filePath).toLowerCase();
+
+      let items: MissionItem[];
+      if (ext === '.plan') {
+        items = parseQgcPlan(content);
+      } else {
+        items = parseWaypointsFile(content);
+      }
+
+      sendLog(mainWindow, 'info', `Loaded mission (${items.length} items) from ${filePath}`);
+      return { success: true, items };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to load mission', message);
+      return { success: false, error: message };
+    }
+  });
 }
 
 /**
@@ -940,4 +1746,149 @@ function parseParameterXml(xml: string): ParameterMetadataStore {
 
 function sendConnectionState(mainWindow: BrowserWindow): void {
   safeSend(mainWindow, IPC_CHANNELS.CONNECTION_STATE, connectionState);
+}
+
+// ============================================================================
+// Mission File Format Helpers
+// ============================================================================
+
+/**
+ * Format mission items to QGC WPL 110 format (.waypoints)
+ * Format: seq current frame cmd p1 p2 p3 p4 lat lon alt autocontinue
+ */
+function formatWaypointsFile(items: MissionItem[]): string {
+  const lines = ['QGC WPL 110'];
+
+  for (const item of items) {
+    const line = [
+      item.seq,
+      item.current ? 1 : 0,
+      item.frame,
+      item.command,
+      item.param1,
+      item.param2,
+      item.param3,
+      item.param4,
+      item.latitude.toFixed(8),
+      item.longitude.toFixed(8),
+      item.altitude.toFixed(6),
+      item.autocontinue ? 1 : 0,
+    ].join('\t');
+    lines.push(line);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Parse QGC WPL 110 format (.waypoints) to mission items
+ */
+function parseWaypointsFile(content: string): MissionItem[] {
+  const items: MissionItem[] = [];
+  const lines = content.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip header and empty lines
+    if (!trimmed || trimmed.startsWith('QGC WPL')) continue;
+
+    // Split by tabs or spaces
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 12) continue;
+
+    const item: MissionItem = {
+      seq: parseInt(parts[0], 10),
+      current: parts[1] === '1',
+      frame: parseInt(parts[2], 10),
+      command: parseInt(parts[3], 10),
+      param1: parseFloat(parts[4]),
+      param2: parseFloat(parts[5]),
+      param3: parseFloat(parts[6]),
+      param4: parseFloat(parts[7]),
+      latitude: parseFloat(parts[8]),
+      longitude: parseFloat(parts[9]),
+      altitude: parseFloat(parts[10]),
+      autocontinue: parts[11] === '1',
+    };
+
+    items.push(item);
+  }
+
+  return items;
+}
+
+/**
+ * Format mission items to QGC Plan format (JSON)
+ */
+function formatQgcPlan(items: MissionItem[]): string {
+  const plan = {
+    fileType: 'Plan',
+    geoFence: { circles: [], polygons: [], version: 2 },
+    groundStation: 'ArduDeck',
+    mission: {
+      cruiseSpeed: 15,
+      firmwareType: 3, // ArduPilot
+      globalPlanAltitudeMode: 1,
+      hoverSpeed: 5,
+      items: items.map(item => ({
+        AMSLAltAboveTerrain: null,
+        Altitude: item.altitude,
+        AltitudeMode: 1, // Relative
+        autoContinue: item.autocontinue,
+        command: item.command,
+        doJumpId: item.seq + 1,
+        frame: item.frame,
+        params: [item.param1, item.param2, item.param3, item.param4, item.latitude, item.longitude, item.altitude],
+        type: 'SimpleItem',
+      })),
+      plannedHomePosition: items.length > 0 ? [items[0].latitude, items[0].longitude, items[0].altitude] : [0, 0, 0],
+      vehicleType: 2,
+      version: 2,
+    },
+    rallyPoints: { points: [], version: 2 },
+    version: 1,
+  };
+
+  return JSON.stringify(plan, null, 2);
+}
+
+/**
+ * Parse QGC Plan format (JSON) to mission items
+ */
+function parseQgcPlan(content: string): MissionItem[] {
+  const items: MissionItem[] = [];
+
+  try {
+    const plan = JSON.parse(content);
+
+    if (plan.mission?.items) {
+      let seq = 0;
+      for (const planItem of plan.mission.items) {
+        if (planItem.type !== 'SimpleItem') continue;
+
+        const params = planItem.params || [];
+        const item: MissionItem = {
+          seq: seq++,
+          current: false,
+          frame: planItem.frame ?? 3, // Default to GLOBAL_RELATIVE_ALT
+          command: planItem.command ?? 16,
+          param1: params[0] ?? 0,
+          param2: params[1] ?? 0,
+          param3: params[2] ?? 0,
+          param4: params[3] ?? 0,
+          latitude: params[4] ?? planItem.coordinate?.[0] ?? 0,
+          longitude: params[5] ?? planItem.coordinate?.[1] ?? 0,
+          altitude: params[6] ?? planItem.coordinate?.[2] ?? planItem.Altitude ?? 0,
+          autocontinue: planItem.autoContinue ?? true,
+        };
+
+        items.push(item);
+      }
+    }
+  } catch {
+    // Invalid JSON
+  }
+
+  return items;
 }

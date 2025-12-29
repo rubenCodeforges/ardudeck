@@ -13,6 +13,10 @@ const __dirname = dirname(__filename);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
+// Set app name early to ensure consistent userData path in dev mode
+// This ensures electron-store saves to %APPDATA%/ardudeck/ instead of %APPDATA%/Electron/
+app.name = 'ardudeck';
+
 function createWindow(): BrowserWindow {
   // Get the icon path based on platform
   // In dev: __dirname is out/main/, resources is at ../../resources/

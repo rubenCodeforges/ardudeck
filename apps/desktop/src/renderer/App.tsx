@@ -4,10 +4,12 @@ import { ConnectionPanel } from './components/connection/ConnectionPanel';
 import { TelemetryDashboard } from './components/telemetry/TelemetryDashboard';
 import { NavigationRail } from './components/navigation/NavigationRail';
 import { ParametersView } from './components/parameters/ParametersView';
+import { MissionPlanningView } from './components/mission';
 import { useConnectionStore } from './stores/connection-store';
 import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore } from './stores/navigation-store';
 import { useParameterStore } from './stores/parameter-store';
+import { useMissionStore } from './stores/mission-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
 
@@ -79,6 +81,15 @@ function App() {
   const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, reset } = useTelemetryStore();
   const { currentView, setView } = useNavigationStore();
   const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata } = useParameterStore();
+  const {
+    setMissionItems,
+    updateProgress: updateMissionProgress,
+    setCurrentSeq,
+    setError: setMissionError,
+    setUploadComplete,
+    setClearComplete,
+    reset: resetMission,
+  } = useMissionStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Auto-collapse sidebar and reset to telemetry view when connected
@@ -109,14 +120,15 @@ function App() {
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {
       setConnectionState(state);
-      // Reset telemetry and parameters when disconnected
+      // Reset telemetry, parameters, and mission when disconnected
       if (!state.isConnected && !state.isWaitingForHeartbeat) {
         reset();
         resetParameters();
+        resetMission();
       }
     });
     return unsubscribe;
-  }, [setConnectionState, reset, resetParameters]);
+  }, [setConnectionState, reset, resetParameters, resetMission]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onTelemetryUpdate((update) => {
@@ -147,12 +159,34 @@ function App() {
     };
   }, [updateParameter, setProgress, setComplete, setError]);
 
+  // Mission events
+  useEffect(() => {
+    const unsubComplete = window.electronAPI?.onMissionComplete(setMissionItems);
+    const unsubProgress = window.electronAPI?.onMissionProgress(updateMissionProgress);
+    const unsubCurrent = window.electronAPI?.onMissionCurrent(setCurrentSeq);
+    const unsubError = window.electronAPI?.onMissionError(setMissionError);
+    const unsubUploadComplete = window.electronAPI?.onMissionUploadComplete(setUploadComplete);
+    const unsubClearComplete = window.electronAPI?.onMissionClearComplete(setClearComplete);
+
+    return () => {
+      unsubComplete?.();
+      unsubProgress?.();
+      unsubCurrent?.();
+      unsubError?.();
+      unsubUploadComplete?.();
+      unsubClearComplete?.();
+    };
+  }, [setMissionItems, updateMissionProgress, setCurrentSeq, setMissionError, setUploadComplete, setClearComplete]);
+
   // Render the appropriate view based on navigation
   const renderMainContent = () => {
     if (!connectionState.isConnected) {
-      // Show welcome screen for telemetry view, or parameters placeholder for parameters view
+      // Show view-specific content when disconnected
       if (currentView === 'parameters') {
         return <ParametersView />;
+      }
+      if (currentView === 'mission') {
+        return <MissionPlanningView />;
       }
       // Default welcome screen for telemetry
       return (
@@ -222,6 +256,8 @@ function App() {
     switch (currentView) {
       case 'parameters':
         return <ParametersView />;
+      case 'mission':
+        return <MissionPlanningView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;
