@@ -11,6 +11,8 @@ import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore, type ViewId } from './stores/navigation-store';
 import { useParameterStore } from './stores/parameter-store';
 import { useMissionStore } from './stores/mission-store';
+import { useFenceStore } from './stores/fence-store';
+import { useRallyStore } from './stores/rally-store';
 import { initializeSettings, useSettingsStore, type VehicleType } from './stores/settings-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
@@ -175,6 +177,27 @@ function App() {
     setClearComplete,
     reset: resetMission,
   } = useMissionStore();
+
+  // Fence store
+  const {
+    setFenceItems,
+    updateProgress: updateFenceProgress,
+    setFenceStatus,
+    setError: setFenceError,
+    setUploadComplete: setFenceUploadComplete,
+    setClearComplete: setFenceClearComplete,
+    reset: resetFence,
+  } = useFenceStore();
+
+  // Rally store
+  const {
+    setRallyItems,
+    updateProgress: updateRallyProgress,
+    setError: setRallyError,
+    setUploadComplete: setRallyUploadComplete,
+    setClearComplete: setRallyClearComplete,
+    reset: resetRally,
+  } = useRallyStore();
   const { vehicles, activeVehicleId, updateVehicle } = useSettingsStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -269,15 +292,17 @@ function App() {
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {
       setConnectionState(state);
-      // Reset telemetry, parameters, and mission when disconnected
+      // Reset telemetry, parameters, mission, fence, and rally when disconnected
       if (!state.isConnected && !state.isWaitingForHeartbeat) {
         reset();
         resetParameters();
         resetMission();
+        resetFence();
+        resetRally();
       }
     });
     return unsubscribe;
-  }, [setConnectionState, reset, resetParameters, resetMission]);
+  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onTelemetryUpdate((update) => {
@@ -326,6 +351,42 @@ function App() {
       unsubClearComplete?.();
     };
   }, [setMissionItems, updateMissionProgress, setCurrentSeq, setMissionError, setUploadComplete, setClearComplete]);
+
+  // Fence events
+  useEffect(() => {
+    const unsubComplete = window.electronAPI?.onFenceComplete(setFenceItems);
+    const unsubProgress = window.electronAPI?.onFenceProgress(updateFenceProgress);
+    const unsubStatus = window.electronAPI?.onFenceStatus(setFenceStatus);
+    const unsubError = window.electronAPI?.onFenceError(setFenceError);
+    const unsubUploadComplete = window.electronAPI?.onFenceUploadComplete(setFenceUploadComplete);
+    const unsubClearComplete = window.electronAPI?.onFenceClearComplete(setFenceClearComplete);
+
+    return () => {
+      unsubComplete?.();
+      unsubProgress?.();
+      unsubStatus?.();
+      unsubError?.();
+      unsubUploadComplete?.();
+      unsubClearComplete?.();
+    };
+  }, [setFenceItems, updateFenceProgress, setFenceStatus, setFenceError, setFenceUploadComplete, setFenceClearComplete]);
+
+  // Rally events
+  useEffect(() => {
+    const unsubComplete = window.electronAPI?.onRallyComplete(setRallyItems);
+    const unsubProgress = window.electronAPI?.onRallyProgress(updateRallyProgress);
+    const unsubError = window.electronAPI?.onRallyError(setRallyError);
+    const unsubUploadComplete = window.electronAPI?.onRallyUploadComplete(setRallyUploadComplete);
+    const unsubClearComplete = window.electronAPI?.onRallyClearComplete(setRallyClearComplete);
+
+    return () => {
+      unsubComplete?.();
+      unsubProgress?.();
+      unsubError?.();
+      unsubUploadComplete?.();
+      unsubClearComplete?.();
+    };
+  }, [setRallyItems, updateRallyProgress, setRallyError, setRallyUploadComplete, setRallyClearComplete]);
 
   // Render the appropriate view based on navigation
   const renderMainContent = () => {

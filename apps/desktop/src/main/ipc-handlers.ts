@@ -68,6 +68,8 @@ import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, Flig
 import { COPTER_MODES, PLANE_MODES } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
 import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
+import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
+import type { RallyItem } from '../shared/rally-types.js';
 
 // Layout storage
 const layoutStore = new Store<LayoutStoreSchema>({
@@ -145,6 +147,38 @@ let missionUploadState: {
 
 // Track pending clear operation
 let missionClearPending = false;
+
+// Fence download state
+let fenceDownloadState: {
+  expected: number;
+  received: Map<number, FenceItem>;
+  timeout: NodeJS.Timeout | null;
+} | null = null;
+
+// Fence upload state
+let fenceUploadState: {
+  items: FenceItem[];
+  currentSeq: number;
+  timeout: NodeJS.Timeout | null;
+} | null = null;
+
+let fenceClearPending = false;
+
+// Rally download state
+let rallyDownloadState: {
+  expected: number;
+  received: Map<number, RallyItem>;
+  timeout: NodeJS.Timeout | null;
+} | null = null;
+
+// Rally upload state
+let rallyUploadState: {
+  items: RallyItem[];
+  currentSeq: number;
+  timeout: NodeJS.Timeout | null;
+} | null = null;
+
+let rallyClearPending = false;
 
 // Autopilot type names (from MAV_AUTOPILOT enum)
 const AUTOPILOT_NAMES: Record<number, string> = {
@@ -274,6 +308,9 @@ const MSG_MISSION_ITEM_REACHED = 46;
 const MSG_MISSION_ACK = 47;
 const MSG_MISSION_REQUEST_INT = 51;
 const MSG_MISSION_ITEM_INT = 73;
+
+// Fence message ID
+const MSG_FENCE_STATUS = 162;
 
 // MAVLink v1 CRC_EXTRA values (without mission_type extension field)
 // These differ from v2 because v2 includes the mission_type field in CRC calculation
@@ -722,6 +759,25 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         }
       } catch (err) {
         sendLog(mainWindow, 'error', 'Failed to parse MISSION_ITEM_REACHED', String(err));
+      }
+      break;
+    }
+
+    case MSG_FENCE_STATUS: {
+      // FENCE_STATUS (162) - breach_status(1), breach_count(2), breach_type(1), breach_time(4)
+      // Wire order (MAVLink v2 size-sorted): breach_time(4), breach_count(2), breach_status(1), breach_type(1)
+      try {
+        if (payload.length >= 8) {
+          const status: FenceStatus = {
+            breachTime: readUint32(payload, 0),
+            breachCount: readUint16(payload, 4),
+            breachStatus: payload[6],
+            breachType: payload[7],
+          };
+          safeSend(mainWindow, IPC_CHANNELS.FENCE_STATUS, status);
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'error', 'Failed to parse FENCE_STATUS', String(err));
       }
       break;
     }
@@ -1684,6 +1740,436 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: message };
     }
   });
+
+  // ============================================================================
+  // Geofencing handlers (mission_type = FENCE)
+  // ============================================================================
+
+  // Download fence from flight controller
+  ipcMain.handle(IPC_CHANNELS.FENCE_DOWNLOAD, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    fenceDownloadState = {
+      expected: 0,
+      received: new Map(),
+      timeout: null,
+    };
+
+    try {
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionRequestList({
+          targetSystem,
+          targetComponent: 1,
+          missionType: MAV_MISSION_TYPE.FENCE,
+        });
+        packet = serializeV2(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        // MAVLink v1 doesn't support fence mission type in the standard way
+        // Most FCs require v2 for fence operations
+        const payload = new Uint8Array(3);
+        payload[0] = targetSystem & 0xff;
+        payload[1] = 1;
+        payload[2] = MAV_MISSION_TYPE.FENCE;
+        packet = serializeV1(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Requesting fence from flight controller (MAVLink v${detectedMavlinkVersion})...`);
+
+      fenceDownloadState.timeout = setTimeout(() => {
+        if (fenceDownloadState && fenceDownloadState.received.size === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.FENCE_ERROR, 'Timeout: no response from flight controller');
+          fenceDownloadState = null;
+        }
+      }, 10000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to request fence', message);
+      fenceDownloadState = null;
+      return { success: false, error: message };
+    }
+  });
+
+  // Upload fence to flight controller
+  ipcMain.handle(IPC_CHANNELS.FENCE_UPLOAD, async (_, items: FenceItem[]): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    if (items.length === 0) {
+      return { success: false, error: 'No fence items to upload' };
+    }
+
+    fenceUploadState = {
+      items,
+      currentSeq: 0,
+      timeout: null,
+    };
+
+    try {
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionCount({
+          targetSystem,
+          targetComponent: 1,
+          count: items.length,
+          missionType: MAV_MISSION_TYPE.FENCE,
+        });
+        packet = serializeV2(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        const payload = new Uint8Array(5);
+        payload[0] = items.length & 0xff;
+        payload[1] = (items.length >> 8) & 0xff;
+        payload[2] = targetSystem & 0xff;
+        payload[3] = 1;
+        payload[4] = MAV_MISSION_TYPE.FENCE;
+        packet = serializeV1(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Uploading ${items.length} fence items (MAVLink v${detectedMavlinkVersion})...`);
+
+      fenceUploadState.timeout = setTimeout(() => {
+        if (fenceUploadState && fenceUploadState.currentSeq === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.FENCE_ERROR, 'Timeout: FC did not request fence items');
+          fenceUploadState = null;
+        }
+      }, 10000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to upload fence', message);
+      fenceUploadState = null;
+      return { success: false, error: message };
+    }
+  });
+
+  // Clear fence from flight controller
+  ipcMain.handle(IPC_CHANNELS.FENCE_CLEAR, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionClearAll({
+          targetSystem,
+          targetComponent: 1,
+          missionType: MAV_MISSION_TYPE.FENCE,
+        });
+        packet = serializeV2(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        const payload = new Uint8Array(3);
+        payload[0] = targetSystem & 0xff;
+        payload[1] = 1;
+        payload[2] = MAV_MISSION_TYPE.FENCE;
+        packet = serializeV1(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      fenceClearPending = true;
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Clearing fence from flight controller (MAVLink v${detectedMavlinkVersion})...`);
+      return { success: true };
+    } catch (error) {
+      fenceClearPending = false;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to clear fence', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Save fence to file
+  ipcMain.handle(IPC_CHANNELS.FENCE_SAVE_FILE, async (_, items: FenceItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Fence',
+        defaultPath: 'fence.txt',
+        filters: [
+          { name: 'Fence Files', extensions: ['txt', 'fence'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const fs = await import('fs/promises');
+      const content = formatFenceFile(items);
+      await fs.writeFile(result.filePath, content, 'utf-8');
+
+      sendLog(mainWindow, 'info', `Saved fence (${items.length} items) to ${result.filePath}`);
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to save fence', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Load fence from file
+  ipcMain.handle(IPC_CHANNELS.FENCE_LOAD_FILE, async (): Promise<{ success: boolean; items?: FenceItem[]; error?: string }> => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Load Fence',
+        filters: [
+          { name: 'Fence Files', extensions: ['txt', 'fence'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const filePath = result.filePaths[0];
+      const fs = await import('fs/promises');
+      const content = await fs.readFile(filePath, 'utf-8');
+      const items = parseFenceFile(content);
+
+      sendLog(mainWindow, 'info', `Loaded fence (${items.length} items) from ${filePath}`);
+      return { success: true, items };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to load fence', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // ============================================================================
+  // Rally Points handlers (mission_type = RALLY)
+  // ============================================================================
+
+  // Download rally points from flight controller
+  ipcMain.handle(IPC_CHANNELS.RALLY_DOWNLOAD, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    rallyDownloadState = {
+      expected: 0,
+      received: new Map(),
+      timeout: null,
+    };
+
+    try {
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionRequestList({
+          targetSystem,
+          targetComponent: 1,
+          missionType: MAV_MISSION_TYPE.RALLY,
+        });
+        packet = serializeV2(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        const payload = new Uint8Array(3);
+        payload[0] = targetSystem & 0xff;
+        payload[1] = 1;
+        payload[2] = MAV_MISSION_TYPE.RALLY;
+        packet = serializeV1(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Requesting rally points from flight controller (MAVLink v${detectedMavlinkVersion})...`);
+
+      rallyDownloadState.timeout = setTimeout(() => {
+        if (rallyDownloadState && rallyDownloadState.received.size === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.RALLY_ERROR, 'Timeout: no response from flight controller');
+          rallyDownloadState = null;
+        }
+      }, 10000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to request rally points', message);
+      rallyDownloadState = null;
+      return { success: false, error: message };
+    }
+  });
+
+  // Upload rally points to flight controller
+  ipcMain.handle(IPC_CHANNELS.RALLY_UPLOAD, async (_, items: RallyItem[]): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    if (items.length === 0) {
+      return { success: false, error: 'No rally points to upload' };
+    }
+
+    rallyUploadState = {
+      items,
+      currentSeq: 0,
+      timeout: null,
+    };
+
+    try {
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionCount({
+          targetSystem,
+          targetComponent: 1,
+          count: items.length,
+          missionType: MAV_MISSION_TYPE.RALLY,
+        });
+        packet = serializeV2(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        const payload = new Uint8Array(5);
+        payload[0] = items.length & 0xff;
+        payload[1] = (items.length >> 8) & 0xff;
+        payload[2] = targetSystem & 0xff;
+        payload[3] = 1;
+        payload[4] = MAV_MISSION_TYPE.RALLY;
+        packet = serializeV1(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Uploading ${items.length} rally points (MAVLink v${detectedMavlinkVersion})...`);
+
+      rallyUploadState.timeout = setTimeout(() => {
+        if (rallyUploadState && rallyUploadState.currentSeq === 0) {
+          safeSend(mainWindow, IPC_CHANNELS.RALLY_ERROR, 'Timeout: FC did not request rally points');
+          rallyUploadState = null;
+        }
+      }, 10000);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to upload rally points', message);
+      rallyUploadState = null;
+      return { success: false, error: message };
+    }
+  });
+
+  // Clear rally points from flight controller
+  ipcMain.handle(IPC_CHANNELS.RALLY_CLEAR, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    try {
+      let packet: Uint8Array;
+      const targetSystem = connectionState.systemId ?? 1;
+
+      if (detectedMavlinkVersion === 2) {
+        const payload = serializeMissionClearAll({
+          targetSystem,
+          targetComponent: 1,
+          missionType: MAV_MISSION_TYPE.RALLY,
+        });
+        packet = serializeV2(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA, { sysid: 255, compid: 190 });
+      } else {
+        const payload = new Uint8Array(3);
+        payload[0] = targetSystem & 0xff;
+        payload[1] = 1;
+        payload[2] = MAV_MISSION_TYPE.RALLY;
+        packet = serializeV1(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
+      }
+
+      rallyClearPending = true;
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Clearing rally points from flight controller (MAVLink v${detectedMavlinkVersion})...`);
+      return { success: true };
+    } catch (error) {
+      rallyClearPending = false;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to clear rally points', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Save rally points to file
+  ipcMain.handle(IPC_CHANNELS.RALLY_SAVE_FILE, async (_, items: RallyItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Rally Points',
+        defaultPath: 'rally.txt',
+        filters: [
+          { name: 'Rally Files', extensions: ['txt', 'rally'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const fs = await import('fs/promises');
+      const content = formatRallyFile(items);
+      await fs.writeFile(result.filePath, content, 'utf-8');
+
+      sendLog(mainWindow, 'info', `Saved rally points (${items.length} items) to ${result.filePath}`);
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to save rally points', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Load rally points from file
+  ipcMain.handle(IPC_CHANNELS.RALLY_LOAD_FILE, async (): Promise<{ success: boolean; items?: RallyItem[]; error?: string }> => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Load Rally Points',
+        filters: [
+          { name: 'Rally Files', extensions: ['txt', 'rally'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const filePath = result.filePaths[0];
+      const fs = await import('fs/promises');
+      const content = await fs.readFile(filePath, 'utf-8');
+      const items = parseRallyFile(content);
+
+      sendLog(mainWindow, 'info', `Loaded rally points (${items.length} items) from ${filePath}`);
+      return { success: true, items };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to load rally points', message);
+      return { success: false, error: message };
+    }
+  });
 }
 
 /**
@@ -1926,6 +2412,140 @@ function parseQgcPlan(content: string): MissionItem[] {
     }
   } catch {
     // Invalid JSON
+  }
+
+  return items;
+}
+
+// ============================================================================
+// Fence File Format Helpers
+// ============================================================================
+
+/**
+ * Format fence items to simple text format
+ * Format: seq cmd frame p1 p2 p3 p4 lat lon alt
+ */
+function formatFenceFile(items: FenceItem[]): string {
+  const lines = ['# ArduDeck Fence File v1'];
+  lines.push('# seq cmd frame p1 p2 p3 p4 lat lon alt');
+
+  for (const item of items) {
+    const line = [
+      item.seq,
+      item.command,
+      item.frame,
+      item.param1,
+      item.param2,
+      item.param3,
+      item.param4,
+      item.latitude.toFixed(8),
+      item.longitude.toFixed(8),
+      item.altitude.toFixed(6),
+    ].join('\t');
+    lines.push(line);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Parse fence file format
+ */
+function parseFenceFile(content: string): FenceItem[] {
+  const items: FenceItem[] = [];
+  const lines = content.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip comments and empty lines
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    // Split by tabs or spaces
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 10) continue;
+
+    const item: FenceItem = {
+      seq: parseInt(parts[0], 10),
+      command: parseInt(parts[1], 10),
+      frame: parseInt(parts[2], 10),
+      param1: parseFloat(parts[3]),
+      param2: parseFloat(parts[4]),
+      param3: parseFloat(parts[5]),
+      param4: parseFloat(parts[6]),
+      latitude: parseFloat(parts[7]),
+      longitude: parseFloat(parts[8]),
+      altitude: parseFloat(parts[9]),
+    };
+
+    items.push(item);
+  }
+
+  return items;
+}
+
+// ============================================================================
+// Rally File Format Helpers
+// ============================================================================
+
+/**
+ * Format rally items to simple text format
+ * Format: seq cmd frame p1 p2 p3 p4 lat lon alt
+ */
+function formatRallyFile(items: RallyItem[]): string {
+  const lines = ['# ArduDeck Rally Points File v1'];
+  lines.push('# seq cmd frame p1 p2 p3 p4 lat lon alt');
+
+  for (const item of items) {
+    const line = [
+      item.seq,
+      item.command,
+      item.frame,
+      item.param1,
+      item.param2,
+      item.param3,
+      item.param4,
+      item.latitude.toFixed(8),
+      item.longitude.toFixed(8),
+      item.altitude.toFixed(6),
+    ].join('\t');
+    lines.push(line);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Parse rally file format
+ */
+function parseRallyFile(content: string): RallyItem[] {
+  const items: RallyItem[] = [];
+  const lines = content.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip comments and empty lines
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    // Split by tabs or spaces
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 10) continue;
+
+    const item: RallyItem = {
+      seq: parseInt(parts[0], 10),
+      command: parseInt(parts[1], 10),
+      frame: parseInt(parts[2], 10),
+      param1: parseFloat(parts[3]),
+      param2: parseFloat(parts[4]),
+      param3: parseFloat(parts[5]),
+      param4: parseFloat(parts[6]),
+      latitude: parseFloat(parts[7]),
+      longitude: parseFloat(parts[8]),
+      altitude: parseFloat(parts[9]),
+    };
+
+    items.push(item);
   }
 
   return items;

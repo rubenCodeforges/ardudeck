@@ -74,7 +74,7 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
   const [terrainLoading, setTerrainLoading] = useState(false);
   const [waypointElevations, setWaypointElevations] = useState<Map<number, number>>(new Map());
 
-  const { missionItems, selectedSeq, setSelectedSeq, updateWaypoint, setHasTerrainCollisions } = useMissionStore();
+  const { missionItems, selectedSeq, currentSeq, setSelectedSeq, updateWaypoint, setHasTerrainCollisions } = useMissionStore();
   const { missionDefaults } = useSettingsStore();
   const safeAltitudeBuffer = missionDefaults.safeAltitudeBuffer;
 
@@ -606,7 +606,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
               const displayAlt = isDragging && dragAltitude !== null ? dragAltitude : p.altitude;
               const y = yScale(displayAlt);
               const isSelected = p.wp.seq === selectedSeq;
-              const color = getWaypointColor(p.wp.command);
+              const isCurrent = p.wp.seq === currentSeq;
+              const color = isCurrent ? '#f97316' : getWaypointColor(p.wp.command); // Orange for current
 
               // Calculate AGL (Above Ground Level)
               const groundElevation = waypointElevations.get(p.wp.seq);
@@ -636,33 +637,33 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
                   <circle
                     cx={x}
                     cy={y}
-                    r={isDragging ? 10 : isSelected ? 8 : 6}
+                    r={isDragging ? 10 : isCurrent ? 9 : isSelected ? 8 : 6}
                     fill={isDragging ? '#fbbf24' : isBelowSafe ? '#ef4444' : color}
-                    stroke={isDragging ? 'white' : isSelected ? 'white' : isBelowSafe ? '#fca5a5' : 'rgba(255,255,255,0.5)'}
-                    strokeWidth={isDragging || isSelected ? 2 : 1}
+                    stroke={isDragging ? 'white' : isCurrent ? '#fbbf24' : isSelected ? 'white' : isBelowSafe ? '#fca5a5' : 'rgba(255,255,255,0.5)'}
+                    strokeWidth={isDragging || isCurrent || isSelected ? 2 : 1}
                   />
 
                   {/* Waypoint number */}
                   <text
                     x={x}
-                    y={y - (isDragging ? 16 : 12)}
+                    y={y - (isDragging ? 16 : isCurrent ? 14 : 12)}
                     textAnchor="middle"
-                    fill={isDragging ? '#fbbf24' : isBelowSafe ? '#ef4444' : '#d1d5db'}
-                    fontSize={isDragging ? 11 : 10}
-                    fontWeight={isDragging || isSelected ? 'bold' : 'normal'}
+                    fill={isDragging ? '#fbbf24' : isCurrent ? '#f97316' : isBelowSafe ? '#ef4444' : '#d1d5db'}
+                    fontSize={isDragging ? 11 : isCurrent ? 11 : 10}
+                    fontWeight={isDragging || isCurrent || isSelected ? 'bold' : 'normal'}
                   >
                     {i + 1}
                   </text>
 
-                  {/* Altitude label with AGL (show when dragging, selected, or first/last) */}
-                  {(isDragging || isSelected || i === 0 || i === profileData.length - 1) && (
+                  {/* Altitude label with AGL (show when dragging, selected, current, or first/last) */}
+                  {(isDragging || isSelected || isCurrent || i === 0 || i === profileData.length - 1) && (
                     <text
                       x={x}
                       y={y + (y < chartHeight / 2 ? 20 : -20)}
                       textAnchor="middle"
-                      fill={isDragging ? '#fbbf24' : isBelowSafe ? '#ef4444' : '#9ca3af'}
-                      fontSize={isDragging ? 11 : 9}
-                      fontWeight={isDragging ? 'bold' : 'normal'}
+                      fill={isDragging ? '#fbbf24' : isCurrent ? '#f97316' : isBelowSafe ? '#ef4444' : '#9ca3af'}
+                      fontSize={isDragging || isCurrent ? 11 : 9}
+                      fontWeight={isDragging || isCurrent ? 'bold' : 'normal'}
                     >
                       {Math.round(displayAlt)}m
                       {agl !== null && (

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import {
@@ -8,6 +8,11 @@ import {
   commandHasLocation,
   type MissionItem
 } from '../../../shared/mission-types';
+import { FenceListPanel } from '../geofence/FenceListPanel';
+import { RallyListPanel } from '../rally/RallyListPanel';
+import { useFenceStore } from '../../stores/fence-store';
+import { useRallyStore } from '../../stores/rally-store';
+import { useEditModeStore } from '../../stores/edit-mode-store';
 
 // Helper to get GPS state without subscribing (avoids re-renders)
 function getGpsState() {
@@ -135,6 +140,44 @@ interface WaypointTablePanelProps {
 }
 
 export function WaypointTablePanel({ readOnly = false }: WaypointTablePanelProps) {
+  // Use shared edit mode from toolbar
+  const activeMode = useEditModeStore((state) => state.activeMode);
+  const prevModeRef = useRef(activeMode);
+
+  // Get fence and rally store actions to clear edit modes when switching
+  const setFenceDrawMode = useFenceStore((state) => state.setDrawMode);
+  const setRallyAddMode = useRallyStore((state) => state.setAddMode);
+
+  // Clear edit modes when switching away from a mode
+  useEffect(() => {
+    const prevMode = prevModeRef.current;
+    if (prevMode !== activeMode) {
+      // Clear fence draw mode when leaving geofence
+      if (prevMode === 'geofence') {
+        setFenceDrawMode('none');
+      }
+      // Clear rally add mode when leaving rally
+      if (prevMode === 'rally') {
+        setRallyAddMode(false);
+      }
+      prevModeRef.current = activeMode;
+    }
+  }, [activeMode, setFenceDrawMode, setRallyAddMode]);
+
+  return (
+    <div className="h-full flex flex-col bg-gray-900/50">
+      {/* Content based on active mode - no tabs, controlled by toolbar */}
+      <div className="flex-1 overflow-hidden">
+        {activeMode === 'mission' && <WaypointListContent readOnly={readOnly} />}
+        {activeMode === 'geofence' && <FenceListPanel readOnly={readOnly} />}
+        {activeMode === 'rally' && <RallyListPanel readOnly={readOnly} />}
+      </div>
+    </div>
+  );
+}
+
+// Extracted waypoint list content (original WaypointTablePanel content)
+function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   const {
     missionItems,
     selectedSeq,

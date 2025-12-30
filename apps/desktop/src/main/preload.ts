@@ -9,6 +9,8 @@ import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, Flig
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
+import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
+import type { RallyItem } from '../shared/rally-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -207,6 +209,124 @@ const api = {
     const handler = () => callback();
     ipcRenderer.on(IPC_CHANNELS.MISSION_CLEAR_COMPLETE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_CLEAR_COMPLETE, handler);
+  },
+
+  // ============================================================================
+  // Geofencing (mission_type = FENCE)
+  // ============================================================================
+
+  downloadFence: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FENCE_DOWNLOAD),
+
+  uploadFence: (items: FenceItem[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FENCE_UPLOAD, items),
+
+  clearFence: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FENCE_CLEAR),
+
+  saveFenceToFile: (items: FenceItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FENCE_SAVE_FILE, items),
+
+  loadFenceFromFile: (): Promise<{ success: boolean; items?: FenceItem[]; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FENCE_LOAD_FILE),
+
+  // Fence event listeners
+  onFenceItem: (callback: (item: FenceItem) => void) => {
+    const handler = (_: unknown, item: FenceItem) => callback(item);
+    ipcRenderer.on(IPC_CHANNELS.FENCE_ITEM, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_ITEM, handler);
+  },
+
+  onFenceProgress: (callback: (progress: MissionProgress) => void) => {
+    const handler = (_: unknown, progress: MissionProgress) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.FENCE_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_PROGRESS, handler);
+  },
+
+  onFenceComplete: (callback: (items: FenceItem[]) => void) => {
+    const handler = (_: unknown, items: FenceItem[]) => callback(items);
+    ipcRenderer.on(IPC_CHANNELS.FENCE_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_COMPLETE, handler);
+  },
+
+  onFenceError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.FENCE_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_ERROR, handler);
+  },
+
+  onFenceUploadComplete: (callback: (itemCount: number) => void) => {
+    const handler = (_: unknown, itemCount: number) => callback(itemCount);
+    ipcRenderer.on(IPC_CHANNELS.FENCE_UPLOAD_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_UPLOAD_COMPLETE, handler);
+  },
+
+  onFenceClearComplete: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on(IPC_CHANNELS.FENCE_CLEAR_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_CLEAR_COMPLETE, handler);
+  },
+
+  onFenceStatus: (callback: (status: FenceStatus) => void) => {
+    const handler = (_: unknown, status: FenceStatus) => callback(status);
+    ipcRenderer.on(IPC_CHANNELS.FENCE_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FENCE_STATUS, handler);
+  },
+
+  // ============================================================================
+  // Rally Points (mission_type = RALLY)
+  // ============================================================================
+
+  downloadRally: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RALLY_DOWNLOAD),
+
+  uploadRally: (items: RallyItem[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RALLY_UPLOAD, items),
+
+  clearRally: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RALLY_CLEAR),
+
+  saveRallyToFile: (items: RallyItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RALLY_SAVE_FILE, items),
+
+  loadRallyFromFile: (): Promise<{ success: boolean; items?: RallyItem[]; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RALLY_LOAD_FILE),
+
+  // Rally event listeners
+  onRallyItem: (callback: (item: RallyItem) => void) => {
+    const handler = (_: unknown, item: RallyItem) => callback(item);
+    ipcRenderer.on(IPC_CHANNELS.RALLY_ITEM, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_ITEM, handler);
+  },
+
+  onRallyProgress: (callback: (progress: MissionProgress) => void) => {
+    const handler = (_: unknown, progress: MissionProgress) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.RALLY_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_PROGRESS, handler);
+  },
+
+  onRallyComplete: (callback: (items: RallyItem[]) => void) => {
+    const handler = (_: unknown, items: RallyItem[]) => callback(items);
+    ipcRenderer.on(IPC_CHANNELS.RALLY_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_COMPLETE, handler);
+  },
+
+  onRallyError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.RALLY_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_ERROR, handler);
+  },
+
+  onRallyUploadComplete: (callback: (itemCount: number) => void) => {
+    const handler = (_: unknown, itemCount: number) => callback(itemCount);
+    ipcRenderer.on(IPC_CHANNELS.RALLY_UPLOAD_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_UPLOAD_COMPLETE, handler);
+  },
+
+  onRallyClearComplete: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on(IPC_CHANNELS.RALLY_CLEAR_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_CLEAR_COMPLETE, handler);
   },
 
   // Settings/Vehicle profiles

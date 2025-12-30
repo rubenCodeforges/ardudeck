@@ -61,6 +61,33 @@ export const IPC_CHANNELS = {
   MISSION_SAVE_FILE: 'mission:save-file',
   MISSION_LOAD_FILE: 'mission:load-file',
 
+  // Geofencing (mission_type = FENCE)
+  FENCE_DOWNLOAD: 'fence:download',
+  FENCE_UPLOAD: 'fence:upload',
+  FENCE_CLEAR: 'fence:clear',
+  FENCE_ITEM: 'fence:item',
+  FENCE_PROGRESS: 'fence:progress',
+  FENCE_COMPLETE: 'fence:complete',
+  FENCE_UPLOAD_COMPLETE: 'fence:upload-complete',
+  FENCE_CLEAR_COMPLETE: 'fence:clear-complete',
+  FENCE_ERROR: 'fence:error',
+  FENCE_STATUS: 'fence:status',
+  FENCE_SAVE_FILE: 'fence:save-file',
+  FENCE_LOAD_FILE: 'fence:load-file',
+
+  // Rally points (mission_type = RALLY)
+  RALLY_DOWNLOAD: 'rally:download',
+  RALLY_UPLOAD: 'rally:upload',
+  RALLY_CLEAR: 'rally:clear',
+  RALLY_ITEM: 'rally:item',
+  RALLY_PROGRESS: 'rally:progress',
+  RALLY_COMPLETE: 'rally:complete',
+  RALLY_UPLOAD_COMPLETE: 'rally:upload-complete',
+  RALLY_CLEAR_COMPLETE: 'rally:clear-complete',
+  RALLY_ERROR: 'rally:error',
+  RALLY_SAVE_FILE: 'rally:save-file',
+  RALLY_LOAD_FILE: 'rally:load-file',
+
   // Settings/Vehicle profiles
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',

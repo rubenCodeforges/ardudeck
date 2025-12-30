@@ -6,6 +6,14 @@ import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { commandHasLocation, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 
+// Geofence and Rally overlays
+import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
+import { FenceDrawTool } from '../geofence/FenceDrawTool';
+import { RallyMapOverlay } from '../rally/RallyMapOverlay';
+import { useFenceStore } from '../../stores/fence-store';
+import { useRallyStore } from '../../stores/rally-store';
+import { useEditModeStore } from '../../stores/edit-mode-store';
+
 // Build the complete mission path with curves for spline waypoints
 function buildMissionPath(waypoints: MissionItem[]): {
   positions: [number, number][];
@@ -230,19 +238,24 @@ function MapResizeHandler() {
 
 // Map click handler for adding waypoints or setting home
 // Supports: Add mode, Set Home mode, or Shift+click (quick add)
+// Disabled when fence or rally editing is active (they have their own click handlers)
 function MapClickHandler({
   onMapClick,
   isAddMode,
   isSettingHomeMode,
   readOnly,
+  isFenceOrRallyActive,
 }: {
   onMapClick: (lat: number, lng: number) => void;
   isAddMode: boolean;
   isSettingHomeMode: boolean;
   readOnly: boolean;
+  isFenceOrRallyActive: boolean;
 }) {
   useMapEvents({
     click: (e) => {
+      // Don't handle mission clicks when fence/rally editing is active
+      if (isFenceOrRallyActive) return;
       // Handle click if in any edit mode OR Shift+click (and not readOnly)
       if (!readOnly && (isAddMode || isSettingHomeMode || e.originalEvent.shiftKey)) {
         onMapClick(e.latlng.lat, e.latlng.lng);
@@ -414,8 +427,42 @@ const DraggableMarker = memo(function DraggableMarker({
   );
 });
 
+// Clickable path segment for right-click insertion
+function ClickablePathSegment({
+  positions,
+  afterSeq,
+  onRightClick,
+}: {
+  positions: [number, number][];
+  afterSeq: number;
+  onRightClick: (e: L.LeafletMouseEvent, afterSeq: number) => void;
+}) {
+  return (
+    <Polyline
+      positions={positions}
+      pathOptions={{
+        color: 'transparent',
+        weight: 20, // Wide invisible clickable area
+        opacity: 0,
+      }}
+      eventHandlers={{
+        contextmenu: (e) => onRightClick(e, afterSeq),
+      }}
+    />
+  );
+}
+
 interface MissionMapPanelProps {
   readOnly?: boolean;
+}
+
+// Context menu state type
+interface ContextMenuState {
+  x: number;
+  y: number;
+  lat: number;
+  lon: number;
+  afterSeq: number;
 }
 
 export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
@@ -423,6 +470,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
   const [isAddingWaypoint, setIsAddingWaypoint] = useState(false);
   const [isSettingHome, setIsSettingHome] = useState(false);
   const [fitTrigger, setFitTrigger] = useState(0);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   const {
     missionItems,
@@ -431,9 +479,25 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
     currentSeq,
     setSelectedSeq,
     addWaypoint,
+    insertWaypoint,
     updateWaypoint,
     setHomePosition,
   } = useMissionStore();
+
+  // Get active edit mode from toolbar
+  const activeMode = useEditModeStore((state) => state.activeMode);
+
+  // Get fence and rally stores for floating tools
+  const fenceDrawMode = useFenceStore((state) => state.drawMode);
+  const setFenceDrawMode = useFenceStore((state) => state.setDrawMode);
+  const fenceInclusionMode = useFenceStore((state) => state.inclusionMode);
+  const setFenceInclusionMode = useFenceStore((state) => state.setInclusionMode);
+
+  const rallyAddMode = useRallyStore((state) => state.addMode);
+  const setRallyAddMode = useRallyStore((state) => state.setAddMode);
+
+  // Disable mission editing when fence or rally editing is active
+  const isFenceOrRallyActive = fenceDrawMode !== 'none' || rallyAddMode;
 
   // Filter to only items with locations
   const waypoints = missionItems.filter(item => commandHasLocation(item.command));
@@ -480,6 +544,43 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
     updateWaypoint(seq, { latitude: lat, longitude: lng });
   }, [updateWaypoint]);
 
+  // Handle right-click on path segment to insert waypoint
+  const handlePathRightClick = useCallback((e: L.LeafletMouseEvent, afterSeq: number) => {
+    if (readOnly) return;
+    e.originalEvent.preventDefault();
+
+    // Get screen position for context menu
+    const containerPoint = e.containerPoint;
+
+    setContextMenu({
+      x: containerPoint.x,
+      y: containerPoint.y,
+      lat: e.latlng.lat,
+      lon: e.latlng.lng,
+      afterSeq,
+    });
+  }, [readOnly]);
+
+  // Handle insert waypoint from context menu
+  const handleInsertWaypoint = useCallback(() => {
+    if (!contextMenu) return;
+
+    // Get altitude from adjacent waypoints (average)
+    const prevWp = waypoints.find(wp => wp.seq === contextMenu.afterSeq);
+    const nextWp = waypoints.find(wp => wp.seq === contextMenu.afterSeq + 1);
+    const alt = prevWp && nextWp
+      ? Math.round((prevWp.altitude + nextWp.altitude) / 2)
+      : prevWp?.altitude ?? 100;
+
+    insertWaypoint(contextMenu.afterSeq, contextMenu.lat, contextMenu.lon, alt);
+    setContextMenu(null);
+  }, [contextMenu, waypoints, insertWaypoint]);
+
+  // Close context menu on click elsewhere
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
   const layer = MAP_LAYERS[activeLayer];
 
   // Build complete path with curves for spline waypoints
@@ -501,6 +602,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
           isAddMode={isAddingWaypoint}
           isSettingHomeMode={isSettingHome}
           readOnly={readOnly}
+          isFenceOrRallyActive={isFenceOrRallyActive}
         />
         <FitToBounds waypoints={waypoints} trigger={fitTrigger} />
         <FocusOnSelected waypoints={waypoints} selectedSeq={selectedSeq} />
@@ -522,6 +624,22 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
             }}
           />
         )}
+
+        {/* Clickable path segments for right-click insertion (hidden in readOnly mode) */}
+        {!readOnly && waypoints.length > 1 && waypoints.slice(0, -1).map((wp, i) => {
+          const nextWp = waypoints[i + 1];
+          return (
+            <ClickablePathSegment
+              key={`segment-${wp.seq}`}
+              positions={[
+                [wp.latitude, wp.longitude],
+                [nextWp.latitude, nextWp.longitude],
+              ]}
+              afterSeq={wp.seq}
+              onRightClick={handlePathRightClick}
+            />
+          );
+        })}
 
         {/* Loiter radius circles - param3 is radius for all loiter commands */}
         {waypoints
@@ -569,6 +687,13 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
             readOnly={readOnly}
           />
         ))}
+
+        {/* Geofence overlays - always visible */}
+        <FenceMapOverlay readOnly={readOnly} />
+        <FenceDrawTool />
+
+        {/* Rally point overlays - always visible */}
+        <RallyMapOverlay readOnly={readOnly} />
       </MapContainer>
 
       {/* Layer selector */}
@@ -588,86 +713,224 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
         ))}
       </div>
 
-      {/* Bottom controls */}
+      {/* Bottom controls - mode-specific floating tools */}
       <div className="absolute bottom-3 left-3 z-[1000] flex items-center gap-2">
-        {/* GPS warning for first waypoint - only show when adding mode is active */}
-        {!readOnly && isAddingWaypoint && missionItems.length === 0 && <GpsWarning />}
+        {/* === MISSION MODE TOOLS === */}
+        {activeMode === 'mission' && (
+          <>
+            {/* GPS warning for first waypoint - only show when adding mode is active */}
+            {!readOnly && isAddingWaypoint && missionItems.length === 0 && <GpsWarning />}
 
-        {/* Add WP button - hidden in readOnly mode, disabled without home */}
-        {!readOnly && (
-          <button
-            onClick={() => {
-              if (!homePosition) return; // Can't add without home
-              setIsAddingWaypoint(!isAddingWaypoint);
-              setIsSettingHome(false); // Exit home mode if entering add mode
-            }}
-            disabled={!homePosition}
-            className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              !homePosition
-                ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-                : isAddingWaypoint
-                  ? 'bg-blue-600 text-white'
+            {/* Add WP button - hidden in readOnly mode, disabled without home */}
+            {!readOnly && (
+              <button
+                onClick={() => {
+                  if (!homePosition) return; // Can't add without home
+                  setIsAddingWaypoint(!isAddingWaypoint);
+                  setIsSettingHome(false); // Exit home mode if entering add mode
+                }}
+                disabled={!homePosition}
+                className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  !homePosition
+                    ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
+                    : isAddingWaypoint
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
+                }`}
+                title={!homePosition ? 'Set Home position first' : isAddingWaypoint ? 'Click on map to add waypoints' : 'Enter waypoint adding mode'}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {isAddingWaypoint ? 'Click map' : 'Add WP'}
+              </button>
+            )}
+
+            {/* Hint for Shift+click - show when NOT in add mode (as a shortcut hint) */}
+            {!readOnly && !isAddingWaypoint && !isSettingHome && homePosition && (
+              <span className="text-xs text-gray-500 bg-gray-800/90 px-2.5 py-1.5 rounded">
+                <kbd className="bg-gray-700 px-1 rounded text-gray-400">Shift</kbd>+click to add
+              </span>
+            )}
+
+            {waypoints.length > 0 && (
+              <button
+                onClick={() => setFitTrigger(t => t + 1)}
+                className="px-2.5 py-1.5 rounded text-xs font-medium bg-gray-800/90 text-gray-300 hover:bg-gray-700/90 transition-colors flex items-center gap-1.5"
+                title="Fit map to show all waypoints"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                Fit
+              </button>
+            )}
+
+            {/* Set Home button - hidden in readOnly mode */}
+            {!readOnly && (
+              <button
+                onClick={handleToggleSetHome}
+                className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  isSettingHome
+                    ? 'bg-emerald-600 text-white'
+                    : homePosition
+                      ? 'bg-emerald-600/80 text-white'
+                      : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
+                }`}
+                title={isSettingHome ? 'Click on map to set home position' : homePosition ? 'Click to change home position' : 'Set home position by clicking on map'}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                {isSettingHome ? 'Click map' : homePosition ? 'Home ✓' : 'Set Home'}
+              </button>
+            )}
+
+            {/* Hint for Set Home mode */}
+            {!readOnly && isSettingHome && (
+              <span className="text-xs text-emerald-400 bg-gray-800/90 px-2.5 py-1.5 rounded">
+                Click on map to set home
+              </span>
+            )}
+          </>
+        )}
+
+        {/* === GEOFENCE MODE TOOLS === */}
+        {activeMode === 'geofence' && !readOnly && (
+          <>
+            {/* Include/Exclude toggle */}
+            <div className="flex items-center bg-gray-800/90 rounded overflow-hidden">
+              <button
+                onClick={() => setFenceInclusionMode(true)}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  fenceInclusionMode
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+                title="Draw inclusion zones (vehicle must stay inside)"
+              >
+                Include
+              </button>
+              <button
+                onClick={() => setFenceInclusionMode(false)}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  !fenceInclusionMode
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+                title="Draw exclusion zones (vehicle must stay outside)"
+              >
+                Exclude
+              </button>
+            </div>
+
+            {/* Draw polygon button */}
+            {(() => {
+              const polygonMode = fenceInclusionMode ? 'polygon-inclusion' : 'polygon-exclusion';
+              const isPolygonActive = fenceDrawMode === polygonMode;
+              const activeColor = fenceInclusionMode ? 'bg-green-600' : 'bg-red-600';
+              return (
+                <button
+                  onClick={() => setFenceDrawMode(isPolygonActive ? 'none' : polygonMode)}
+                  className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    isPolygonActive
+                      ? `${activeColor} text-white`
+                      : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
+                  }`}
+                  title={`Draw ${fenceInclusionMode ? 'inclusion' : 'exclusion'} polygon`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16l-2 14H6L4 5z" />
+                  </svg>
+                  {isPolygonActive ? 'Drawing...' : 'Polygon'}
+                </button>
+              );
+            })()}
+
+            {/* Draw circle button */}
+            {(() => {
+              const circleMode = fenceInclusionMode ? 'circle-inclusion' : 'circle-exclusion';
+              const isCircleActive = fenceDrawMode === circleMode;
+              const activeColor = fenceInclusionMode ? 'bg-green-600' : 'bg-red-600';
+              return (
+                <button
+                  onClick={() => setFenceDrawMode(isCircleActive ? 'none' : circleMode)}
+                  className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    isCircleActive
+                      ? `${activeColor} text-white`
+                      : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
+                  }`}
+                  title={`Draw ${fenceInclusionMode ? 'inclusion' : 'exclusion'} circle`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="12" cy="12" r="9" strokeWidth={2} />
+                  </svg>
+                  {isCircleActive ? 'Drawing...' : 'Circle'}
+                </button>
+              );
+            })()}
+
+            {/* Return point button */}
+            <button
+              onClick={() => setFenceDrawMode(fenceDrawMode === 'return-point' ? 'none' : 'return-point')}
+              className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                fenceDrawMode === 'return-point'
+                  ? 'bg-amber-600 text-white'
                   : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
-            }`}
-            title={!homePosition ? 'Set Home position first' : isAddingWaypoint ? 'Click on map to add waypoints' : 'Enter waypoint adding mode'}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {isAddingWaypoint ? 'Click map' : 'Add WP'}
-          </button>
+              }`}
+              title="Set fence return point (where vehicle flies on breach)"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {fenceDrawMode === 'return-point' ? 'Click map' : 'Return Pt'}
+            </button>
+
+            {/* Drawing hint */}
+            {fenceDrawMode !== 'none' && (
+              <span className={`text-xs bg-gray-800/90 px-2.5 py-1.5 rounded ${
+                fenceDrawMode === 'return-point' ? 'text-amber-400' :
+                fenceInclusionMode ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {fenceDrawMode.startsWith('polygon-') ? 'Click to add points, double-click to finish' :
+                 fenceDrawMode.startsWith('circle-') ? 'Click center, then click edge for radius' :
+                 'Click to set return point'}
+              </span>
+            )}
+          </>
         )}
 
-        {/* Hint for Shift+click - show when NOT in add mode (as a shortcut hint) */}
-        {!readOnly && !isAddingWaypoint && !isSettingHome && homePosition && (
-          <span className="text-xs text-gray-500 bg-gray-800/90 px-2.5 py-1.5 rounded">
-            <kbd className="bg-gray-700 px-1 rounded text-gray-400">Shift</kbd>+click to add
-          </span>
-        )}
-
-        {waypoints.length > 0 && (
-          <button
-            onClick={() => setFitTrigger(t => t + 1)}
-            className="px-2.5 py-1.5 rounded text-xs font-medium bg-gray-800/90 text-gray-300 hover:bg-gray-700/90 transition-colors flex items-center gap-1.5"
-            title="Fit map to show all waypoints"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-            Fit
-          </button>
-        )}
-
-        {/* Set Home button - hidden in readOnly mode */}
-        {!readOnly && (
-          <button
-            onClick={handleToggleSetHome}
-            className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              isSettingHome
-                ? 'bg-emerald-600 text-white'
-                : homePosition
-                  ? 'bg-emerald-600/80 text-white'
+        {/* === RALLY MODE TOOLS === */}
+        {activeMode === 'rally' && !readOnly && (
+          <>
+            <button
+              onClick={() => setRallyAddMode(!rallyAddMode)}
+              className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                rallyAddMode
+                  ? 'bg-orange-600 text-white'
                   : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
-            }`}
-            title={isSettingHome ? 'Click on map to set home position' : homePosition ? 'Click to change home position' : 'Set home position by clicking on map'}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            {isSettingHome ? 'Click map' : homePosition ? 'Home ✓' : 'Set Home'}
-          </button>
-        )}
+              }`}
+              title="Add rally points by clicking on map"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {rallyAddMode ? 'Click map' : 'Add Rally'}
+            </button>
 
-        {/* Hint for Set Home mode */}
-        {!readOnly && isSettingHome && (
-          <span className="text-xs text-emerald-400 bg-gray-800/90 px-2.5 py-1.5 rounded">
-            Click on map to set home
-          </span>
+            {/* Adding hint */}
+            {rallyAddMode && (
+              <span className="text-xs text-orange-400 bg-gray-800/90 px-2.5 py-1.5 rounded">
+                Click on map to add rally point (ESC to cancel)
+              </span>
+            )}
+          </>
         )}
       </div>
 
-      {/* Placeholder message when no waypoints */}
-      {waypoints.length === 0 && !readOnly && (
+      {/* Placeholder message when no waypoints - only in mission mode */}
+      {activeMode === 'mission' && waypoints.length === 0 && !readOnly && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-gray-900/80 backdrop-blur-sm px-6 py-4 rounded-xl text-center">
             {isSettingHome ? (
@@ -699,6 +962,36 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
             <div className="text-gray-500 text-sm">No mission loaded</div>
           </div>
         </div>
+      )}
+
+      {/* Context menu for inserting waypoint */}
+      {contextMenu && (
+        <>
+          {/* Backdrop to close menu */}
+          <div
+            className="fixed inset-0 z-[1100]"
+            onClick={handleCloseContextMenu}
+            onContextMenu={(e) => { e.preventDefault(); handleCloseContextMenu(); }}
+          />
+          {/* Menu */}
+          <div
+            className="absolute z-[1200] bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 min-w-[180px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              onClick={handleInsertWaypoint}
+              className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Insert waypoint here
+            </button>
+            <div className="px-3 py-1 text-[10px] text-gray-500 border-t border-gray-700 mt-1">
+              Between WP {contextMenu.afterSeq + 1} → {contextMenu.afterSeq + 2}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
