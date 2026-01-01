@@ -72,6 +72,16 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 - **Maritime Data** — Wave height, swell info for boats/subs
 - **Persistent Storage** — Profiles saved to disk, survive app restarts
 
+### Firmware Flash
+- **Multi-Protocol Detection** — Auto-detect boards via MAVLink, MSP, or STM32 bootloader
+- **USB VID/PID Recognition** — 30+ known boards identified by USB IDs
+- **ArduPilot Support** — Flash ArduCopter, ArduPlane, ArduRover, ArduSub
+- **Betaflight Support** — Flash Betaflight/iNav/Cleanflight firmware
+- **Boot Pad Wizard** — Guided entry for boards requiring manual bootloader activation
+- **STM32 Serial Bootloader** — Native USART flashing (no external tools needed)
+- **Progress Tracking** — Real-time erase/write/verify progress with detailed logging
+- **Firmware Caching** — Downloaded firmware cached for fast re-flashing
+
 ### Connectivity
 - **Serial (USB)** — Direct connection via COM/ttyUSB ports
 - **TCP Client** — Network connection to SITL or telemetry bridges
@@ -240,8 +250,10 @@ ArduDeck supports all ArduPilot vehicle types:
 - [x] **Epic 3.7** — Parameter Validation (Range, Enum, Increment checks)
 - [x] **Epic 4** — Mission Planning (Waypoints, Map editing, Altitude profile, Terrain)
 - [x] **Epic 4.5** — Settings & Vehicle Profiles (Multi-vehicle, Weather, Persistence)
-- [ ] **Epic 5** — Calibration Wizards (Compass, Accelerometer, Radio)
-- [ ] **Epic 6** — Production Ready (Auto-updater, Logging, Mobile app)
+- [x] **Epic 4.7** — Geofence & Rally Points (Inclusion/exclusion zones, Emergency landing)
+- [x] **Epic 5** — Firmware Flash (Board detection, ArduPilot/Betaflight flashing)
+- [ ] **Epic 6** — Calibration Wizards (Compass, Accelerometer, Radio)
+- [ ] **Epic 7** — Production Ready (Auto-updater, Logging, Mobile app)
 
 ---
 
