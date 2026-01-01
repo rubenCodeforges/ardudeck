@@ -11,6 +11,7 @@ import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
+import type { DetectedBoard, FirmwareVersion, FlashProgress, FlashResult, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FlashOptions } from '../shared/firmware-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -335,6 +336,115 @@ const api = {
 
   saveSettings: (settings: SettingsStoreSchema): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings),
+
+  // ============================================================================
+  // Firmware Flash
+  // ============================================================================
+
+  detectBoard: (): Promise<{ success: boolean; boards?: DetectedBoard[]; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_DETECT_BOARD),
+
+  fetchFirmwareManifest: (
+    source: FirmwareSource,
+    vehicleType: FirmwareVehicleType,
+    boardId: string
+  ): Promise<{ success: boolean; manifest?: FirmwareManifest; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_FETCH_MANIFEST, source, vehicleType, boardId),
+
+  fetchFirmwareBoards: (
+    source: FirmwareSource,
+    vehicleType: FirmwareVehicleType
+  ): Promise<{ success: boolean; boards?: Array<{ id: string; name: string; category: string }>; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_FETCH_BOARDS, source, vehicleType),
+
+  fetchFirmwareVersions: (
+    source: FirmwareSource,
+    vehicleType: FirmwareVehicleType,
+    boardId: string
+  ): Promise<{ success: boolean; groups?: Array<{ major: string; label: string; versions: FirmwareVersion[]; isLatest: boolean }>; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_FETCH_VERSIONS, source, vehicleType, boardId),
+
+  downloadFirmware: (version: FirmwareVersion): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_DOWNLOAD, version),
+
+  flashFirmware: (firmwarePath: string, board: DetectedBoard, options?: FlashOptions): Promise<{ success: boolean; result?: FlashResult; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_FLASH, firmwarePath, board, options),
+
+  abortFlash: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_ABORT),
+
+  selectFirmwareFile: (): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_SELECT_FILE),
+
+  enterBootloader: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_ENTER_BOOTLOADER),
+
+  listSerialPorts: (): Promise<{
+    success: boolean;
+    ports?: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string }>;
+    error?: string;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_LIST_PORTS),
+
+  probeSTM32: (port: string): Promise<{
+    success: boolean;
+    chipId?: number;
+    mcu?: string;
+    family?: string;
+    error?: string;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_PROBE_STM32, port),
+
+  queryMavlinkBoard: (port: string, baudRate?: number): Promise<{
+    success: boolean;
+    boardName?: string;
+    boardId?: number;
+    vehicleType?: string;
+    firmwareVersion?: string;
+    error?: string;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_QUERY_MAVLINK, port, baudRate),
+
+  queryMspBoard: (port: string, baudRate?: number): Promise<{
+    success: boolean;
+    firmware?: string;
+    firmwareVersion?: string;
+    boardId?: string;
+    boardName?: string;
+    error?: string;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_QUERY_MSP, port, baudRate),
+
+  autoDetectBoard: (port: string): Promise<{
+    success: boolean;
+    protocol?: 'mavlink' | 'msp' | 'dfu' | 'usb';
+    boardName?: string;
+    boardId?: string;
+    firmware?: string;
+    firmwareVersion?: string;
+    mcuType?: string;
+    error?: string;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_AUTO_DETECT, port),
+
+  // Firmware event listeners
+  onFlashProgress: (callback: (progress: FlashProgress) => void) => {
+    const handler = (_: unknown, progress: FlashProgress) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.FIRMWARE_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FIRMWARE_PROGRESS, handler);
+  },
+
+  onFlashComplete: (callback: (result: FlashResult) => void) => {
+    const handler = (_: unknown, result: FlashResult) => callback(result);
+    ipcRenderer.on(IPC_CHANNELS.FIRMWARE_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FIRMWARE_COMPLETE, handler);
+  },
+
+  onFlashError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.FIRMWARE_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FIRMWARE_ERROR, handler);
+  },
 };
 
 // Expose to renderer

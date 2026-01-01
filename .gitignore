@@ -71,11 +71,11 @@ CLAUDE.md
 MissionPlanner/
 
 # Firmware files (downloaded on-demand from ArduPilot servers)
-firmware/
-firmwares/
+# Note: Don't ignore apps/desktop/src/main/firmware/ (source code)
+/firmware/
+/firmwares/
+**/ardudeck-firmware/
 *.apj
-*.bin
-*.hex
 *.px4
 
 # Generated MAVLink types (can be regenerated)

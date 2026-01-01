@@ -14,11 +14,17 @@ export class SerialTransport extends BaseTransport {
   private rxBuffer: Uint8Array[] = [];
   private _portName: string;
   private _isOpen = false;
+  private _dataBits: 5 | 6 | 7 | 8;
+  private _parity: 'none' | 'even' | 'odd' | 'mark' | 'space';
+  private _stopBits: 1 | 1.5 | 2;
 
   constructor(portName: string, options: TransportOptions = {}) {
     super();
     this._portName = portName;
     this.baudRate = options.baudRate ?? 115200;
+    this._dataBits = options.dataBits ?? 8;
+    this._parity = options.parity ?? 'none';
+    this._stopBits = options.stopBits ?? 1;
     this.dtrEnable = options.dtrEnable ?? false;
     this.rtsEnable = options.rtsEnable ?? false;
     this.readTimeout = options.readTimeout ?? 5000;
@@ -50,6 +56,9 @@ export class SerialTransport extends BaseTransport {
       this.port = new SerialPort({
         path: this._portName,
         baudRate: this.baudRate,
+        dataBits: this._dataBits,
+        parity: this._parity,
+        stopBits: this._stopBits,
         autoOpen: false,
       });
 

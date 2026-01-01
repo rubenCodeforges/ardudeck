@@ -70,6 +70,8 @@ import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
 import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
+import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
+import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
 
 // Layout storage
 const layoutStore = new Store<LayoutStoreSchema>({
@@ -179,6 +181,9 @@ let rallyUploadState: {
 } | null = null;
 
 let rallyClearPending = false;
+
+// Firmware flash state
+let firmwareAbortController: AbortController | null = null;
 
 // Autopilot type names (from MAV_AUTOPILOT enum)
 const AUTOPILOT_NAMES: Record<number, string> = {
@@ -2169,6 +2174,796 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'error', 'Failed to load rally points', message);
       return { success: false, error: message };
     }
+  });
+
+  // ============================================================================
+  // Firmware Flash Handlers
+  // ============================================================================
+
+  // Detect connected boards
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_DETECT_BOARD, async (): Promise<{ success: boolean; boards?: DetectedBoard[]; error?: string }> => {
+    try {
+      const boards = await detectBoards();
+      sendLog(mainWindow, 'info', `Detected ${boards.length} board(s)`);
+      return { success: true, boards };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Board detection failed', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Fetch firmware manifest
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_FETCH_MANIFEST, async (
+    _,
+    source: FirmwareSource,
+    vehicleType: FirmwareVehicleType,
+    boardId: string
+  ): Promise<{ success: boolean; manifest?: FirmwareManifest; error?: string }> => {
+    try {
+      sendLog(mainWindow, 'info', `Fetching ${source} firmware manifest for ${vehicleType}/${boardId}...`);
+      const manifest = await fetchFirmwareVersions(source, vehicleType, boardId);
+      sendLog(mainWindow, 'info', `Found ${manifest.versions.length} firmware versions`);
+      return { success: true, manifest };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to fetch firmware manifest', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Fetch available boards for a firmware source/vehicle type
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_FETCH_BOARDS, async (
+    _,
+    source: FirmwareSource,
+    vehicleType: FirmwareVehicleType
+  ): Promise<{ success: boolean; boards?: BoardInfo[]; error?: string }> => {
+    try {
+      sendLog(mainWindow, 'info', `Fetching ${source} boards for ${vehicleType}...`);
+
+      if (source === 'ardupilot') {
+        const boards = await getArduPilotBoards(vehicleType);
+        sendLog(mainWindow, 'info', `Found ${boards.length} ${vehicleType} boards`);
+        return { success: true, boards };
+      }
+
+      if (source === 'betaflight') {
+        const boards = getBetaflightBoards();
+        sendLog(mainWindow, 'info', `Found ${boards.length} Betaflight boards`);
+        return { success: true, boards };
+      }
+
+      if (source === 'inav') {
+        const boards = getInavBoards();
+        sendLog(mainWindow, 'info', `Found ${boards.length} iNav boards`);
+        return { success: true, boards };
+      }
+
+      // For other sources (px4, custom), return empty (they use detected board only)
+      return { success: true, boards: [] };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to fetch boards', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Fetch version groups for a board
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_FETCH_VERSIONS, async (
+    _,
+    source: FirmwareSource,
+    vehicleType: FirmwareVehicleType,
+    boardId: string
+  ): Promise<{ success: boolean; groups?: VersionGroup[]; error?: string }> => {
+    try {
+      sendLog(mainWindow, 'info', `Fetching ${source} versions for ${vehicleType}/${boardId}...`);
+
+      if (source === 'ardupilot') {
+        const groups = await getArduPilotVersions(vehicleType, boardId);
+        const totalVersions = groups.reduce((sum, g) => sum + g.versions.length, 0);
+        sendLog(mainWindow, 'info', `Found ${groups.length} version groups (${totalVersions} total versions)`);
+        return { success: true, groups };
+      }
+
+      // For other sources, get flat list and group
+      const manifest = await fetchFirmwareVersions(source, vehicleType, boardId);
+      const groups: VersionGroup[] = [{
+        major: 'all',
+        label: 'All Versions',
+        versions: manifest.versions,
+        isLatest: true,
+      }];
+      return { success: true, groups };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to fetch versions', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Download firmware
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_DOWNLOAD, async (
+    _,
+    version: FirmwareVersion
+  ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    try {
+      sendLog(mainWindow, 'info', `Downloading firmware ${version.version}...`);
+      const filePath = await downloadFirmware(version, mainWindow);
+      sendLog(mainWindow, 'info', `Firmware downloaded to ${filePath}`);
+      return { success: true, filePath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Firmware download failed', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Flash firmware
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_FLASH, async (
+    _,
+    firmwarePath: string,
+    board: DetectedBoard,
+    options?: FlashOptions
+  ): Promise<{ success: boolean; result?: FlashResult; error?: string }> => {
+    try {
+      sendLog(mainWindow, 'info', `Flashing firmware to ${board.name}...`);
+      sendLog(mainWindow, 'info', `Flasher type: ${board.flasher}, path: ${firmwarePath}`);
+      sendLog(mainWindow, 'info', `Board: ${JSON.stringify({ name: board.name, boardId: board.boardId, port: board.port, detectionMethod: board.detectionMethod })}`);
+      if (options?.noRebootSequence) {
+        sendLog(mainWindow, 'info', 'No reboot sequence - assuming board is already in bootloader mode');
+      }
+
+      // Create new abort controller for this flash operation
+      firmwareAbortController = new AbortController();
+
+      let result: FlashResult;
+
+      // For boards with serial port, check USB VID to determine method
+      // CP2102/FTDI (10c4, 0403, 1a86) = Serial bootloader, STM32 native (0483) = DFU
+      const hasSerialPort = board.port && (board.detectionMethod === 'msp' || board.detectionMethod === 'bootloader');
+
+      if (hasSerialPort) {
+        const vid = board.usbVid;
+        const isNativeUsb = vid === 0x0483; // STM32 native USB
+        const isUsbSerial = vid === 0x10c4 || vid === 0x0403 || vid === 0x1a86; // CP2102, FTDI, CH340
+
+        if (isNativeUsb) {
+          sendLog(mainWindow, 'info', 'Board with native USB - using DFU...');
+          result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+        } else if (isUsbSerial || board.detectionMethod === 'bootloader') {
+          // USB-serial adapters OR boards already in bootloader mode -> use serial bootloader
+          sendLog(mainWindow, 'info', 'Board with USB-serial adapter - using serial bootloader...');
+          // If already detected via bootloader, skip reboot sequence
+          const flashOptions = board.detectionMethod === 'bootloader'
+            ? { ...options, noRebootSequence: true }
+            : options;
+          if (!flashOptions?.noRebootSequence && board.detectionMethod === 'msp') {
+            sendLog(mainWindow, 'info', 'Will send MSP reboot to bootloader first...');
+          }
+          result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, flashOptions);
+        } else {
+          // Unknown VID, try DFU first
+          sendLog(mainWindow, 'info', `Board with unknown VID ${vid?.toString(16)} - trying DFU...`);
+          result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+        }
+      } else if (board.flasher === 'dfu') {
+        sendLog(mainWindow, 'info', 'Using DFU flasher...');
+        result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+      } else if (board.flasher === 'avrdude') {
+        sendLog(mainWindow, 'info', 'Using AVRdude flasher...');
+        result = await flashWithAvrdude(firmwarePath, board, mainWindow, firmwareAbortController);
+      } else if (board.flasher === 'serial' && board.port) {
+        // USB-serial boards (CP2102/FTDI) use STM32 UART bootloader
+        // Note: This requires boot pads to be shorted for bootloader entry
+        sendLog(mainWindow, 'info', 'Using STM32 serial bootloader...');
+        if (!options?.noRebootSequence) {
+          sendLog(mainWindow, 'warn', 'Serial bootloader may require BOOT pads to be shorted!');
+        }
+        try {
+          result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, options);
+        } catch (flashError) {
+          const errMsg = flashError instanceof Error ? flashError.message : String(flashError);
+          sendLog(mainWindow, 'error', `Serial flasher error: ${errMsg}`);
+          return { success: false, error: `Serial flash failed: ${errMsg}` };
+        }
+      } else {
+        return { success: false, error: `Unsupported flasher type: ${board.flasher}` };
+      }
+
+      // Clear abort controller
+      firmwareAbortController = null;
+
+      if (result.success) {
+        sendLog(mainWindow, 'info', `Firmware flash complete in ${(result.duration || 0) / 1000}s`);
+        safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_COMPLETE, result);
+      } else {
+        sendLog(mainWindow, 'error', 'Firmware flash failed', result.error || 'Unknown error');
+        safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_ERROR, result.error || 'Unknown error');
+      }
+
+      return { success: result.success, result, error: result.error };
+    } catch (error) {
+      firmwareAbortController = null;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Firmware flash failed', message);
+      safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_ERROR, message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Abort flash operation
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_ABORT, async (): Promise<{ success: boolean }> => {
+    if (firmwareAbortController) {
+      firmwareAbortController.abort();
+      firmwareAbortController = null;
+      sendLog(mainWindow, 'info', 'Firmware flash aborted');
+    }
+    return { success: true };
+  });
+
+  // Select custom firmware file
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_SELECT_FILE, async (): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Select Firmware File',
+        filters: [
+          { name: 'Firmware Files', extensions: ['apj', 'bin', 'hex', 'px4'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const filePath = result.filePaths[0];
+      sendLog(mainWindow, 'info', `Selected firmware file: ${filePath}`);
+
+      // Copy to cache directory
+      const cachedPath = await copyCustomFirmware(filePath);
+      return { success: true, filePath: cachedPath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to select firmware file', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Enter bootloader mode via MAVLink
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_ENTER_BOOTLOADER, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected to flight controller' };
+    }
+
+    try {
+      // Send MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN with param1=3 (bootloader mode)
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        command: 246, // MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN
+        confirmation: 0,
+        param1: 3, // 3 = reboot into bootloader
+        param2: 0,
+        param3: 0,
+        param4: 0,
+        param5: 0,
+        param6: 0,
+        param7: 0,
+      });
+
+      const packet = detectedMavlinkVersion === 2
+        ? serializeV2(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 })
+        : serializeV1(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 });
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', 'Sent bootloader reboot command');
+
+      // Disconnect since FC will reboot
+      if (currentTransport?.isOpen) {
+        await currentTransport.close();
+      }
+      currentTransport = null;
+      mavlinkParser = null;
+      connectionState = {
+        isConnected: false,
+        packetsReceived: 0,
+        packetsSent: 0,
+      };
+      sendConnectionState(mainWindow);
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to enter bootloader', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // List available serial ports
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_LIST_PORTS, async (): Promise<{
+    success: boolean;
+    ports?: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string }>;
+    error?: string;
+  }> => {
+    try {
+      const { listSerialPorts } = await import('@ardudeck/comms');
+      const ports = await listSerialPorts();
+      return {
+        success: true,
+        ports: ports.map(p => ({
+          path: p.path,
+          manufacturer: p.manufacturer,
+          vendorId: p.vendorId,
+          productId: p.productId,
+        })),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to list serial ports', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Probe STM32 bootloader on a specific port
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_PROBE_STM32, async (
+    _event,
+    port: string
+  ): Promise<{
+    success: boolean;
+    chipId?: number;
+    mcu?: string;
+    family?: string;
+    error?: string;
+  }> => {
+    try {
+      const { detectSTM32Chip } = await import('./firmware/stm32-bootloader.js');
+      const result = await detectSTM32Chip(port);
+
+      if (result) {
+        sendLog(mainWindow, 'info', `Detected STM32 chip on ${port}: ${result.chipInfo?.mcu || 'Unknown'}`);
+        return {
+          success: true,
+          chipId: result.chipId,
+          mcu: result.chipInfo?.mcu,
+          family: result.chipInfo?.family,
+        };
+      }
+
+      return { success: false, error: 'No STM32 bootloader detected' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'warn', `STM32 probe failed on ${port}`, message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Query board info via MAVLink (when firmware is running)
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_QUERY_MAVLINK, async (
+    _event,
+    port: string,
+    baudRate: number = 115200
+  ): Promise<{
+    success: boolean;
+    boardName?: string;
+    boardId?: number;
+    vehicleType?: string;
+    firmwareVersion?: string;
+    error?: string;
+  }> => {
+    const { SerialTransport } = await import('@ardudeck/comms');
+    const {
+      MAVLinkParser,
+      serializeV1,
+      serializeV2,
+      AUTOPILOT_VERSION_ID,
+      deserializeAutopilotVersion,
+      COMMAND_LONG_ID,
+      COMMAND_LONG_CRC_EXTRA,
+      serializeCommandLong,
+    } = await import('@ardudeck/mavlink-ts');
+    const { getBoardInfoFromVersion } = await import('../shared/board-ids.js');
+
+    const MAV_CMD_REQUEST_MESSAGE = 512;
+    let transport: InstanceType<typeof SerialTransport> | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    let dataHandler: ((data: Uint8Array) => void) | null = null;
+
+    try {
+      sendLog(mainWindow, 'info', `Querying MAVLink on ${port}...`);
+
+      transport = new SerialTransport(port, { baudRate });
+      await transport.open();
+
+      const parser = new MAVLinkParser();
+      let targetSystem = 1;
+      let targetComponent = 1;
+      let mavlinkVersion: 1 | 2 = 1;
+      let vehicleTypeName = 'Unknown';
+
+      // Wait for heartbeat first to get system/component IDs
+      const heartbeatResult = await new Promise<{ targetSystem: number; targetComponent: number; mavlinkVersion: 1 | 2; vehicleTypeName: string }>((resolve, reject) => {
+        timeoutId = setTimeout(() => {
+          sendLog(mainWindow, 'warn', 'No heartbeat received (timeout 3s) - is firmware running?');
+          reject(new Error('No heartbeat received (timeout 3s)'));
+        }, 3000);
+
+        dataHandler = (data: Uint8Array) => {
+          parser.feed(data);
+          let packet;
+          while ((packet = parser.parseNext()) !== null) {
+            if (packet.msgId === 0) { // HEARTBEAT
+              const payload = packet.payload;
+              const vehicleType = payload.length > 4 ? payload[4] : 0;
+              const vTypeName = VEHICLE_NAMES[vehicleType] || `Type ${vehicleType}`;
+
+              const autopilotType = payload.length > 5 ? payload[5] : 0;
+              const autopilotName = AUTOPILOT_NAMES[autopilotType] || `Autopilot ${autopilotType}`;
+
+              sendLog(mainWindow, 'info', `Heartbeat received: ${autopilotName}, ${vTypeName}`);
+              sendLog(mainWindow, 'debug', `  system: ${packet.systemId}, component: ${packet.componentId}, MAVLink v${packet.magic === 0xFD ? 2 : 1}`);
+
+              if (timeoutId) clearTimeout(timeoutId);
+              resolve({
+                targetSystem: packet.systemId,
+                targetComponent: packet.componentId,
+                mavlinkVersion: packet.magic === 0xFD ? 2 : 1,
+                vehicleTypeName: vTypeName,
+              });
+            }
+          }
+        };
+
+        transport!.on('data', dataHandler);
+      });
+
+      targetSystem = heartbeatResult.targetSystem;
+      targetComponent = heartbeatResult.targetComponent;
+      mavlinkVersion = heartbeatResult.mavlinkVersion;
+      vehicleTypeName = heartbeatResult.vehicleTypeName;
+
+      // Request AUTOPILOT_VERSION message
+      const cmdPayload = serializeCommandLong({
+        targetSystem,
+        targetComponent,
+        command: MAV_CMD_REQUEST_MESSAGE,
+        confirmation: 0,
+        param1: AUTOPILOT_VERSION_ID, // Message ID to request
+        param2: 0,
+        param3: 0,
+        param4: 0,
+        param5: 0,
+        param6: 0,
+        param7: 0,
+      });
+
+      const packet = mavlinkVersion === 2
+        ? serializeV2(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA)
+        : serializeV1(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA);
+
+      await transport.write(packet);
+      sendLog(mainWindow, 'debug', 'Sent MAV_CMD_REQUEST_MESSAGE for AUTOPILOT_VERSION');
+
+      // Wait for AUTOPILOT_VERSION response
+      const result = await new Promise<{ boardName?: string; boardId?: number; boardTypeId?: number; firmwareVersion?: string }>((resolve, reject) => {
+        timeoutId = setTimeout(() => {
+          sendLog(mainWindow, 'warn', 'AUTOPILOT_VERSION timeout (2s) - board may not support this message');
+          reject(new Error('No AUTOPILOT_VERSION response (timeout 2s)'));
+        }, 2000);
+
+        // Remove old handler and add new one
+        if (dataHandler) transport!.off('data', dataHandler);
+
+        dataHandler = (data: Uint8Array) => {
+          parser.feed(data);
+          let pkt;
+          while ((pkt = parser.parseNext()) !== null) {
+            if (pkt.msgId === AUTOPILOT_VERSION_ID) {
+              const version = deserializeAutopilotVersion(pkt.payload);
+
+              // Extract board type ID (upper 16 bits of boardVersion)
+              const boardTypeId = (version.boardVersion >> 16) & 0xFFFF;
+              const boardInfo = getBoardInfoFromVersion(version.boardVersion);
+
+              // Parse firmware version (4 bytes: major.minor.patch.type)
+              const fwMajor = (version.flightSwVersion >> 24) & 0xFF;
+              const fwMinor = (version.flightSwVersion >> 16) & 0xFF;
+              const fwPatch = (version.flightSwVersion >> 8) & 0xFF;
+              const firmwareVersion = `${fwMajor}.${fwMinor}.${fwPatch}`;
+
+              // Log detailed info
+              sendLog(mainWindow, 'info', `AUTOPILOT_VERSION received:`);
+              sendLog(mainWindow, 'info', `  boardVersion: 0x${version.boardVersion.toString(16)} (raw: ${version.boardVersion})`);
+              sendLog(mainWindow, 'info', `  boardTypeId: ${boardTypeId} (0x${boardTypeId.toString(16)})`);
+              sendLog(mainWindow, 'info', `  firmware: v${firmwareVersion}`);
+              sendLog(mainWindow, 'info', `  vendorId: 0x${version.vendorId.toString(16)}, productId: 0x${version.productId.toString(16)}`);
+
+              if (boardInfo) {
+                sendLog(mainWindow, 'info', `  Matched board: ${boardInfo.name} (${boardInfo.displayName})`);
+              } else {
+                sendLog(mainWindow, 'warn', `  Board ID ${boardTypeId} not in database - please report this!`);
+              }
+
+              if (timeoutId) clearTimeout(timeoutId);
+              resolve({
+                boardName: boardInfo?.name,
+                boardId: version.boardVersion,
+                boardTypeId,
+                firmwareVersion,
+              });
+            }
+          }
+        };
+
+        transport!.on('data', dataHandler);
+      });
+
+      sendLog(mainWindow, 'info', `Board detection complete: ${result.boardName || 'Unknown (ID: ' + result.boardTypeId + ')'}`);
+      if (!result.boardName) {
+        sendLog(mainWindow, 'warn', `Add board ID ${result.boardTypeId} to board-ids.ts to support this board`);
+      }
+
+      return {
+        success: true,
+        boardName: result.boardName,
+        boardId: result.boardId,
+        vehicleType: vehicleTypeName,
+        firmwareVersion: result.firmwareVersion,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'warn', `MAVLink query failed on ${port}`, message);
+      return { success: false, error: message };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (dataHandler && transport) {
+        transport.off('data', dataHandler);
+      }
+      if (transport) {
+        try {
+          await transport.close();
+        } catch {
+          // Ignore close errors
+        }
+      }
+    }
+  });
+
+  // Query board info via MSP (Betaflight/iNav)
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_QUERY_MSP, async (
+    _event,
+    port: string,
+    baudRate: number = 115200
+  ): Promise<{
+    success: boolean;
+    firmware?: string;
+    firmwareVersion?: string;
+    boardId?: string;
+    boardName?: string;
+    error?: string;
+  }> => {
+    try {
+      sendLog(mainWindow, 'info', `Querying MSP on ${port}...`);
+      const { queryMSPBoard, getFirmwareTypeName, mapMspBoardToArduPilot } = await import('./firmware/msp-detector.js');
+
+      const result = await queryMSPBoard(port, baudRate);
+
+      if (result && (result.fcVariant || result.boardId)) {
+        const firmwareName = getFirmwareTypeName(result.fcVariant);
+        const mappedBoard = mapMspBoardToArduPilot(result.boardId);
+
+        sendLog(mainWindow, 'info', `MSP detected: ${firmwareName} v${result.fcVersion}`);
+        sendLog(mainWindow, 'info', `  Board: ${result.boardId} (${result.boardName || 'unknown'})`);
+        if (mappedBoard) {
+          sendLog(mainWindow, 'info', `  Mapped to ArduPilot board: ${mappedBoard}`);
+        }
+
+        return {
+          success: true,
+          firmware: firmwareName,
+          firmwareVersion: result.fcVersion,
+          boardId: result.boardId,
+          boardName: mappedBoard || result.boardId,
+        };
+      }
+
+      sendLog(mainWindow, 'debug', 'No MSP response');
+      return { success: false, error: 'No MSP response' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'warn', `MSP query failed on ${port}`, message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Comprehensive auto-detect: tries all protocols
+  ipcMain.handle(IPC_CHANNELS.FIRMWARE_AUTO_DETECT, async (
+    _event,
+    port: string
+  ): Promise<{
+    success: boolean;
+    protocol?: 'mavlink' | 'msp' | 'dfu' | 'usb';
+    boardName?: string;
+    boardId?: string;
+    firmware?: string;
+    firmwareVersion?: string;
+    mcuType?: string;
+    error?: string;
+  }> => {
+    sendLog(mainWindow, 'info', `Auto-detecting board on ${port}...`);
+
+    // Try MAVLink first (ArduPilot/PX4)
+    try {
+      sendLog(mainWindow, 'debug', 'Trying MAVLink...');
+      const { SerialTransport } = await import('@ardudeck/comms');
+      const {
+        MAVLinkParser,
+        serializeV1,
+        serializeV2,
+        AUTOPILOT_VERSION_ID,
+        deserializeAutopilotVersion,
+        COMMAND_LONG_ID,
+        COMMAND_LONG_CRC_EXTRA,
+        serializeCommandLong,
+      } = await import('@ardudeck/mavlink-ts');
+      const { getBoardInfoFromVersion } = await import('../shared/board-ids.js');
+
+      const transport = new SerialTransport(port, { baudRate: 115200 });
+      await transport.open();
+
+      const parser = new MAVLinkParser();
+      let gotHeartbeat = false;
+
+      // Quick heartbeat check (1.5s timeout)
+      const heartbeatResult = await Promise.race([
+        new Promise<{ systemId: number; componentId: number; mavVersion: 1 | 2; vehicleType: number } | null>((resolve) => {
+          const handler = (data: Uint8Array) => {
+            parser.feed(data);
+            let pkt;
+            while ((pkt = parser.parseNext()) !== null) {
+              if (pkt.msgId === 0) { // HEARTBEAT
+                gotHeartbeat = true;
+                transport.off('data', handler);
+                resolve({
+                  systemId: pkt.systemId,
+                  componentId: pkt.componentId,
+                  mavVersion: pkt.magic === 0xFD ? 2 : 1,
+                  vehicleType: pkt.payload.length > 4 ? pkt.payload[4]! : 0,
+                });
+              }
+            }
+          };
+          transport.on('data', handler);
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+      ]);
+
+      if (heartbeatResult) {
+        sendLog(mainWindow, 'info', `MAVLink heartbeat received (${VEHICLE_NAMES[heartbeatResult.vehicleType] || 'Unknown'})`);
+
+        // Request AUTOPILOT_VERSION
+        const cmdPayload = serializeCommandLong({
+          targetSystem: heartbeatResult.systemId,
+          targetComponent: heartbeatResult.componentId,
+          command: 512, // MAV_CMD_REQUEST_MESSAGE
+          confirmation: 0,
+          param1: AUTOPILOT_VERSION_ID,
+          param2: 0, param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+        });
+
+        const packet = heartbeatResult.mavVersion === 2
+          ? serializeV2(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA)
+          : serializeV1(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA);
+
+        await transport.write(packet);
+
+        // Wait for AUTOPILOT_VERSION (1s timeout)
+        const versionResult = await Promise.race([
+          new Promise<{ boardName?: string; firmwareVersion?: string } | null>((resolve) => {
+            const handler = (data: Uint8Array) => {
+              parser.feed(data);
+              let pkt;
+              while ((pkt = parser.parseNext()) !== null) {
+                if (pkt.msgId === AUTOPILOT_VERSION_ID) {
+                  const version = deserializeAutopilotVersion(pkt.payload);
+                  const boardInfo = getBoardInfoFromVersion(version.boardVersion);
+                  const fwMajor = (version.flightSwVersion >> 24) & 0xFF;
+                  const fwMinor = (version.flightSwVersion >> 16) & 0xFF;
+                  const fwPatch = (version.flightSwVersion >> 8) & 0xFF;
+
+                  transport.off('data', handler);
+                  resolve({
+                    boardName: boardInfo?.name,
+                    firmwareVersion: `${fwMajor}.${fwMinor}.${fwPatch}`,
+                  });
+                }
+              }
+            };
+            transport.on('data', handler);
+          }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+        ]);
+
+        await transport.close();
+
+        if (versionResult?.boardName) {
+          sendLog(mainWindow, 'info', `Detected: ${versionResult.boardName} (ArduPilot v${versionResult.firmwareVersion})`);
+          return {
+            success: true,
+            protocol: 'mavlink',
+            boardName: versionResult.boardName,
+            boardId: versionResult.boardName.toLowerCase(),
+            firmware: 'ArduPilot',
+            firmwareVersion: versionResult.firmwareVersion,
+          };
+        }
+
+        // Got heartbeat but no board info - still ArduPilot
+        return {
+          success: true,
+          protocol: 'mavlink',
+          firmware: 'ArduPilot',
+          boardName: VEHICLE_NAMES[heartbeatResult.vehicleType] || 'Unknown ArduPilot',
+        };
+      }
+
+      await transport.close();
+    } catch (e) {
+      // MAVLink failed, continue to MSP
+      sendLog(mainWindow, 'debug', 'MAVLink detection failed, trying MSP...');
+    }
+
+    // Try MSP (Betaflight/iNav)
+    try {
+      const { queryMSPBoard, getFirmwareTypeName, mapMspBoardToArduPilot } = await import('./firmware/msp-detector.js');
+      const mspResult = await queryMSPBoard(port, 115200);
+
+      if (mspResult && (mspResult.fcVariant || mspResult.boardId)) {
+        const firmwareName = getFirmwareTypeName(mspResult.fcVariant);
+        const mappedBoard = mapMspBoardToArduPilot(mspResult.boardId);
+
+        sendLog(mainWindow, 'info', `Detected: ${firmwareName} v${mspResult.fcVersion} on ${mspResult.boardId}`);
+        if (mappedBoard) {
+          sendLog(mainWindow, 'info', `  Mapped to ArduPilot board: ${mappedBoard}`);
+        }
+
+        return {
+          success: true,
+          protocol: 'msp',
+          boardName: mappedBoard || mspResult.boardId,
+          boardId: mappedBoard || mspResult.boardId,  // Use mapped ID for ArduPilot board matching
+          firmware: firmwareName,
+          firmwareVersion: mspResult.fcVersion,
+        };
+      }
+    } catch (e) {
+      sendLog(mainWindow, 'debug', 'MSP detection failed, trying STM32 bootloader...');
+    }
+
+    // Try STM32 bootloader
+    try {
+      const { detectSTM32Chip } = await import('./firmware/stm32-bootloader.js');
+      const stm32Result = await detectSTM32Chip(port);
+
+      if (stm32Result) {
+        const mcuType = stm32Result.chipInfo?.mcu || 'Unknown MCU';
+        sendLog(mainWindow, 'info', `STM32 bootloader detected: ${mcuType}`);
+        return {
+          success: true,
+          protocol: 'bootloader',  // Use 'bootloader' so UI shows suggested boards
+          mcuType,
+          boardName: `${mcuType} (in bootloader)`,
+          inBootloader: true,
+        };
+      }
+    } catch (e) {
+      sendLog(mainWindow, 'debug', 'STM32 bootloader detection failed');
+    }
+
+    sendLog(mainWindow, 'warn', `Could not identify board on ${port}`);
+    return { success: false, error: 'No compatible firmware detected' };
   });
 }
 

@@ -14,6 +14,10 @@ export interface TransportOptions {
   baudRate?: number;
   /** Data bits (5, 6, 7, or 8) */
   dataBits?: 5 | 6 | 7 | 8;
+  /** Parity ('none', 'even', 'odd', 'mark', 'space') */
+  parity?: 'none' | 'even' | 'odd' | 'mark' | 'space';
+  /** Stop bits (1, 1.5, or 2) */
+  stopBits?: 1 | 1.5 | 2;
   /** Enable DTR signal */
   dtrEnable?: boolean;
   /** Enable RTS signal */

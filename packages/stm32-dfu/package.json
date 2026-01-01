@@ -1,0 +1,35 @@
+{
+  "name": "@ardudeck/stm32-dfu",
+  "version": "0.1.0",
+  "description": "Native TypeScript STM32 DFU flashing library using libusb",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "usb": "^2.14.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.5"
+  },
+  "keywords": ["stm32", "dfu", "dfuse", "firmware", "flash", "usb", "libusb"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ardudeck/stm32-dfu"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

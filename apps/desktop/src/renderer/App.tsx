@@ -6,6 +6,7 @@ import { NavigationRail } from './components/navigation/NavigationRail';
 import { ParametersView } from './components/parameters/ParametersView';
 import { MissionPlanningView } from './components/mission';
 import { SettingsView } from './components/settings';
+import { FirmwareFlashView } from './components/firmware';
 import { useConnectionStore } from './stores/connection-store';
 import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore, type ViewId } from './stores/navigation-store';
@@ -398,6 +399,9 @@ function App() {
       if (currentView === 'mission') {
         return <MissionPlanningView />;
       }
+      if (currentView === 'firmware') {
+        return <FirmwareFlashView />;
+      }
       // Default welcome screen for telemetry
       return (
         <div className="h-full flex items-center justify-center p-8">
@@ -470,6 +474,8 @@ function App() {
         return <MissionPlanningView />;
       case 'settings':
         return <SettingsView />;
+      case 'firmware':
+        return <FirmwareFlashView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;

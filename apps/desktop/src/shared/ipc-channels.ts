@@ -91,6 +91,25 @@ export const IPC_CHANNELS = {
   // Settings/Vehicle profiles
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
+
+  // Firmware flash
+  FIRMWARE_DETECT_BOARD: 'firmware:detect-board',
+  FIRMWARE_FETCH_MANIFEST: 'firmware:fetch-manifest',
+  FIRMWARE_FETCH_BOARDS: 'firmware:fetch-boards',
+  FIRMWARE_FETCH_VERSIONS: 'firmware:fetch-versions',
+  FIRMWARE_DOWNLOAD: 'firmware:download',
+  FIRMWARE_FLASH: 'firmware:flash',
+  FIRMWARE_ABORT: 'firmware:abort',
+  FIRMWARE_PROGRESS: 'firmware:progress',
+  FIRMWARE_COMPLETE: 'firmware:complete',
+  FIRMWARE_ERROR: 'firmware:error',
+  FIRMWARE_SELECT_FILE: 'firmware:select-file',
+  FIRMWARE_ENTER_BOOTLOADER: 'firmware:enter-bootloader',
+  FIRMWARE_LIST_PORTS: 'firmware:list-ports',
+  FIRMWARE_PROBE_STM32: 'firmware:probe-stm32',
+  FIRMWARE_QUERY_MAVLINK: 'firmware:query-mavlink',
+  FIRMWARE_QUERY_MSP: 'firmware:query-msp',
+  FIRMWARE_AUTO_DETECT: 'firmware:auto-detect',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
