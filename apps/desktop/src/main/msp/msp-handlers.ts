@@ -438,6 +438,20 @@ async function getFeatures(): Promise<number | null> {
   }
 }
 
+/**
+ * Get live RC channel values (for modes wizard live feedback)
+ */
+async function getRc(): Promise<{ channels: number[] } | null> {
+  try {
+    const payload = await sendMspRequest(MSP.RC, 300);
+    const rc = deserializeRc(payload);
+    return { channels: rc.channels };
+  } catch (error) {
+    console.error('[MSP] Get RC failed:', error);
+    return null;
+  }
+}
+
 // =============================================================================
 // MSP Commands
 // =============================================================================
@@ -501,6 +515,7 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_MODE_RANGES, async () => getModeRanges());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MODE_RANGE, async (_event, index: number, mode: MSPModeRange) => setModeRange(index, mode));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_FEATURES, async () => getFeatures());
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_RC, async () => getRc());
 
   // Command handlers
   ipcMain.handle(IPC_CHANNELS.MSP_SAVE_EEPROM, async () => saveEeprom());
@@ -522,6 +537,7 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_MODE_RANGES);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MODE_RANGE);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_FEATURES);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_RC);
 
   // Command handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SAVE_EEPROM);

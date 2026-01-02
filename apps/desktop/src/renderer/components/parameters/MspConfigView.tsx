@@ -8,6 +8,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useModesWizardStore } from '../../stores/modes-wizard-store';
+import ModesWizard from '../modes/ModesWizard';
+import ModesAdvancedEditor from '../modes/ModesAdvancedEditor';
 
 // Types
 interface MSPPidCoefficients {
@@ -950,6 +953,212 @@ function SensorCard({
   );
 }
 
+// Modes Tab Content - Uses the new modes wizard and advanced editor
+function ModesTabContent() {
+  const {
+    isWizardOpen,
+    viewMode,
+    setViewMode,
+    openWizard,
+    closeWizard,
+    originalModes,
+    rcChannels,
+    isLoading,
+    loadFromFC,
+    startRcPolling,
+    stopRcPolling,
+    lastSaveSuccess,
+  } = useModesWizardStore();
+
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  // Load modes and start RC polling on mount
+  useEffect(() => {
+    loadFromFC();
+    startRcPolling();
+    return () => stopRcPolling();
+  }, [loadFromFC, startRcPolling, stopRcPolling]);
+
+  // Show success toast when lastSaveSuccess becomes true
+  useEffect(() => {
+    if (lastSaveSuccess) {
+      setShowSuccessToast(true);
+      const timer = setTimeout(() => setShowSuccessToast(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastSaveSuccess]);
+
+  const getRcValue = (auxChannel: number) => rcChannels[auxChannel + 4] || 1500;
+
+  // Mode info for display
+  const MODE_DISPLAY: Record<number, { name: string; icon: string; color: string }> = {
+    0: { name: 'ARM', icon: '⚡', color: 'bg-red-500' },
+    1: { name: 'ANGLE', icon: '📐', color: 'bg-blue-500' },
+    2: { name: 'HORIZON', icon: '🌅', color: 'bg-purple-500' },
+    7: { name: 'GPS RESCUE', icon: '🛟', color: 'bg-green-500' },
+    13: { name: 'BEEPER', icon: '🔊', color: 'bg-yellow-500' },
+    28: { name: 'AIRMODE', icon: '🌀', color: 'bg-cyan-500' },
+  };
+
+  const AUX_NAMES = ['AUX 1', 'AUX 2', 'AUX 3', 'AUX 4'];
+
+  return (
+    <div className="max-w-full px-4 space-y-4">
+      {/* Success toast */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-3 bg-green-600 text-white rounded-lg shadow-xl flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="font-medium">Modes saved to flight controller!</span>
+        </div>
+      )}
+
+      {/* Header with view toggle */}
+      <div className="flex items-center justify-between">
+        <div className="bg-purple-500/10 rounded-xl border border-purple-500/30 p-4 flex items-center gap-4 flex-1 mr-4">
+          <span className="text-2xl">🎮</span>
+          <div>
+            <p className="text-purple-400 font-medium">Flight Modes</p>
+            <p className="text-sm text-gray-400">
+              Configure how your quad responds to switch positions on your transmitter.
+            </p>
+          </div>
+        </div>
+
+        {/* View toggle */}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg bg-zinc-800 p-0.5">
+            <button
+              onClick={() => setViewMode('wizard')}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                viewMode === 'wizard'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('advanced')}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                viewMode === 'advanced'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Advanced
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Simple view - shows current modes + wizard button */}
+      {viewMode === 'wizard' && (
+        <>
+          {/* Loading state */}
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto" />
+              <p className="text-sm text-zinc-500 mt-2">Loading modes from flight controller...</p>
+            </div>
+          ) : originalModes.length === 0 ? (
+            /* No modes configured - show wizard prompt */
+            <div className="text-center py-12 bg-zinc-800/30 rounded-xl border border-zinc-700/50">
+              <span className="text-5xl mb-4 block">🎮</span>
+              <h3 className="text-lg font-medium text-zinc-300 mb-2">No Modes Configured</h3>
+              <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
+                Your flight controller doesn't have any modes set up yet.
+                Use the wizard to configure recommended modes for your flying style.
+              </p>
+              <button
+                onClick={openWizard}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+              >
+                <span>🧙</span>
+                Start Setup Wizard
+              </button>
+            </div>
+          ) : (
+            /* Show existing modes */
+            <div className="space-y-4">
+              {/* Mode cards */}
+              <div className="grid gap-3">
+                {originalModes.map((mode, idx) => {
+                  const info = MODE_DISPLAY[mode.boxId] || {
+                    name: `Mode ${mode.boxId}`,
+                    icon: '❓',
+                    color: 'bg-zinc-500'
+                  };
+                  const rcValue = getRcValue(mode.auxChannel);
+                  const isActive = rcValue >= mode.rangeStart && rcValue <= mode.rangeEnd;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isActive
+                          ? 'bg-zinc-800/80 border-green-500/50 shadow-lg shadow-green-500/10'
+                          : 'bg-zinc-800/50 border-zinc-700/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg ${info.color}/20 flex items-center justify-center`}>
+                            <span className="text-xl">{info.icon}</span>
+                          </div>
+                          <div>
+                            <div className="font-medium text-zinc-100">{info.name}</div>
+                            <div className="text-xs text-zinc-500">
+                              {AUX_NAMES[mode.auxChannel] || `AUX ${mode.auxChannel + 1}`} · {mode.rangeStart}-{mode.rangeEnd}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="text-xs text-zinc-500">Current</div>
+                            <div className="font-mono text-sm text-yellow-400">{rcValue}</div>
+                          </div>
+                          {isActive ? (
+                            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full animate-pulse">
+                              ACTIVE
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs bg-zinc-700/50 text-zinc-500 rounded-full">
+                              INACTIVE
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Reconfigure button */}
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={openWizard}
+                  className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-lg text-sm transition-colors flex items-center gap-2"
+                >
+                  <span>🧙</span>
+                  Reconfigure with Wizard
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Advanced editor (shown in advanced mode) */}
+      {viewMode === 'advanced' && <ModesAdvancedEditor />}
+
+      {/* Wizard modal */}
+      <ModesWizard isOpen={isWizardOpen} onClose={closeWizard} />
+    </div>
+  );
+}
+
 export function MspConfigView() {
   const { connectionState } = useConnectionStore();
   const { gps, attitude } = useTelemetryStore();
@@ -1187,48 +1396,7 @@ export function MspConfigView() {
 
 
         {/* Modes Tab */}
-        {activeTab === 'modes' && (
-          <div className="max-w-full px-4 space-y-4">
-            <div className="bg-purple-500/10 rounded-xl border border-purple-500/30 p-4 flex items-center gap-4 mb-6">
-              <span className="text-2xl">🎮</span>
-              <div>
-                <p className="text-purple-400 font-medium">How modes work</p>
-                <p className="text-sm text-gray-400">
-                  Each mode is triggered when an AUX channel value is within its range.
-                  Move your transmitter switches to see the live indicator move!
-                </p>
-              </div>
-            </div>
-
-            {modes.filter(m => m.rangeStart !== m.rangeEnd).length === 0 ? (
-              <div className="text-center py-16 bg-gray-800/20 rounded-xl border border-gray-700/30">
-                <span className="text-5xl mb-4 block">🎮</span>
-                <h3 className="text-lg font-medium text-gray-300 mb-2">No modes configured</h3>
-                <p className="text-gray-500 max-w-md mx-auto">
-                  Your flight controller doesn't have any modes set up yet.
-                  Use the Setup Wizard to configure recommended modes for your flying style.
-                </p>
-                <button className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm">
-                  🧙 Start Setup Wizard
-                </button>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {modes.filter(m => m.rangeStart !== m.rangeEnd).map((mode, idx) => (
-                  <ModeChannelIndicator
-                    key={idx}
-                    mode={mode}
-                    rcValue={rcChannels[mode.auxChannel + 4] || 1500}
-                  />
-                ))}
-              </div>
-            )}
-
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Mode editing coming soon. For now, modes are displayed read-only.
-            </p>
-          </div>
-        )}
+        {activeTab === 'modes' && <ModesTabContent />}
 
         {/* Sensors Tab */}
         {activeTab === 'sensors' && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import type { SerialPortInfo } from '@ardudeck/comms';
+import { DriverAssistant } from './DriverAssistant';
 
 const BAUD_RATES = [115200, 57600, 38400, 19200, 9600];
 
@@ -14,12 +15,21 @@ export function ConnectionPanel() {
   const [tcpPort, setTcpPort] = useState(5760);
   const [udpPort, setUdpPort] = useState(14550);
   const [isScanning, setIsScanning] = useState(false);
+  const [showDriverHelp, setShowDriverHelp] = useState(false);
+  const [scanFailed, setScanFailed] = useState(false);
 
   useEffect(() => {
     if (window.electronAPI) {
       refreshPorts();
+
+      // Listen for connection errors from main process
+      const unsubscribe = window.electronAPI.onConnectionError((errorMsg) => {
+        setError(errorMsg);
+      });
+
+      return () => unsubscribe();
     }
-  }, []);
+  }, [setError]);
 
   const refreshPorts = async () => {
     const portList = await window.electronAPI.listPorts();
@@ -32,14 +42,17 @@ export function ConnectionPanel() {
   const handleScan = async () => {
     setIsScanning(true);
     setError(null);
+    setScanFailed(false);
     try {
       const results = await window.electronAPI.scanPorts();
       if (results.length > 0) {
         const first = results[0]!;
         setSelectedPort(first.port);
         setBaudRate(first.baudRate);
+        setScanFailed(false);
       } else {
         setError('No MAVLink devices found');
+        setScanFailed(true);
       }
     } finally {
       setIsScanning(false);
@@ -201,11 +214,17 @@ export function ConnectionPanel() {
 
         {/* Error display */}
         {error && (
-          <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm text-red-300">{error}</p>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+            {/* Show driver help after scan failure or connection error on serial */}
+            {connectionType === 'serial' && (
+              <DriverAssistant />
+            )}
           </div>
         )}
 
@@ -285,6 +304,26 @@ export function ConnectionPanel() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Manual driver help toggle - only show for serial when not already showing due to error */}
+        {connectionType === 'serial' && !connectionState.isConnected && !error && (
+          <div className="pt-2 border-t border-gray-800/50">
+            <button
+              onClick={() => setShowDriverHelp(!showDriverHelp)}
+              className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Device not showing? Get driver help
+            </button>
+            {showDriverHelp && (
+              <div className="mt-3">
+                <DriverAssistant />
+              </div>
+            )}
           </div>
         )}
       </div>

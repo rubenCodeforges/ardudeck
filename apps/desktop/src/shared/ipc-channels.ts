@@ -146,6 +146,9 @@ export const IPC_CHANNELS = {
   // MSP Progress/Status
   MSP_PROGRESS: 'msp:progress',
   MSP_ERROR: 'msp:error',
+
+  // Driver utilities
+  DRIVER_OPEN_BUNDLED: 'driver:open-bundled',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

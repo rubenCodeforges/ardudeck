@@ -486,6 +486,9 @@ const api = {
   mspGetFeatures: (): Promise<number | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
 
+  mspGetRc: (): Promise<{ channels: number[] } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC),
+
   // MSP Commands
   mspSaveEeprom: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SAVE_EEPROM),
@@ -511,6 +514,10 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.MSP_TELEMETRY_UPDATE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MSP_TELEMETRY_UPDATE, handler);
   },
+
+  // Driver utilities
+  openBundledDriver: (driverName: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRIVER_OPEN_BUNDLED, driverName),
 };
 
 // Expose to renderer

@@ -72,6 +72,14 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
+  // Set macOS dock icon
+  if (process.platform === 'darwin') {
+    const resourcesPath = isDev
+      ? join(__dirname, '../../resources')
+      : join(app.getAppPath(), 'resources');
+    app.dock.setIcon(join(resourcesPath, 'icon.png'));
+  }
+
   const mainWindow = createWindow();
 
   // Setup IPC handlers

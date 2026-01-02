@@ -3,7 +3,9 @@
  * Handles communication between renderer and main process
  */
 
-import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { ipcMain, BrowserWindow, dialog, app, shell } from 'electron';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import Store from 'electron-store';
 import {
   listSerialPorts,
@@ -1130,7 +1132,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             startMspTelemetry(10);
           } else {
             // Neither MAVLink nor MSP
-            sendLog(mainWindow, 'error', 'No protocol detected', 'Device did not respond to MAVLink or MSP. Check connection.');
+            const errorMsg = 'Device did not respond to MAVLink or MSP. Check connection.';
+            sendLog(mainWindow, 'error', 'No protocol detected', errorMsg);
+            safeSend(mainWindow, 'connection:error', errorMsg);
             connectionState.isWaitingForHeartbeat = false;
             sendConnectionState(mainWindow);
             currentTransport?.close();
@@ -3009,6 +3013,40 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Register MSP handlers for Betaflight/iNav/Cleanflight support
   registerMspHandlers(mainWindow);
+
+  // ============================================================================
+  // Driver utilities
+  // ============================================================================
+
+  ipcMain.handle(IPC_CHANNELS.DRIVER_OPEN_BUNDLED, async (_event, driverName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Get the resources path (works in both dev and production)
+      const resourcesPath = app.isPackaged
+        ? join(process.resourcesPath, 'drivers')
+        : join(app.getAppPath(), 'resources/drivers');
+
+      const driverPath = join(resourcesPath, driverName);
+
+      console.log('Opening bundled driver:', driverPath);
+
+      // Check if file exists
+      if (!existsSync(driverPath)) {
+        console.error('Driver file not found:', driverPath);
+        return { success: false, error: `Driver file not found: ${driverName}` };
+      }
+
+      // Open the file with default system application
+      const result = await shell.openPath(driverPath);
+      if (result) {
+        // shell.openPath returns empty string on success, error message on failure
+        return { success: false, error: result };
+      }
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
 }
 
 /**
