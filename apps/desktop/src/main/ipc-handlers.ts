@@ -956,6 +956,91 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     });
   });
 
+  // Port watcher for detecting new devices (with safety measures)
+  let portWatchInterval: ReturnType<typeof setInterval> | null = null;
+  let lastKnownPorts: string[] = [];
+  let portWatchErrorCount = 0;
+  const PORT_WATCH_INTERVAL = 5000; // 5 seconds - safer for USB drivers
+  const PORT_WATCH_MAX_ERRORS = 3; // Stop watching after 3 consecutive errors
+
+  const stopPortWatcher = () => {
+    if (portWatchInterval) {
+      clearInterval(portWatchInterval);
+      portWatchInterval = null;
+      portWatchErrorCount = 0;
+      console.log('[PortWatcher] Stopped');
+    }
+  };
+
+  ipcMain.handle(IPC_CHANNELS.COMMS_START_PORT_WATCH, async (): Promise<void> => {
+    // Don't start if already connected - no need to watch for new ports
+    if (currentTransport) {
+      console.log('[PortWatcher] Skipping - already connected');
+      return;
+    }
+
+    // Stop any existing watcher
+    stopPortWatcher();
+
+    // Initialize with current ports (with error handling)
+    try {
+      const ports = await listSerialPorts();
+      lastKnownPorts = ports.map(p => p.path);
+    } catch (error) {
+      console.error('[PortWatcher] Failed to get initial port list:', error);
+      lastKnownPorts = [];
+    }
+
+    // Poll for new ports every 5 seconds (safer interval)
+    portWatchInterval = setInterval(async () => {
+      // Safety: Don't poll if we're now connected
+      if (currentTransport) {
+        console.log('[PortWatcher] Auto-stopping - connection established');
+        stopPortWatcher();
+        return;
+      }
+
+      try {
+        const currentPorts = await listSerialPorts();
+        const currentPaths = currentPorts.map(p => p.path);
+
+        // Find new ports
+        const newPorts = currentPorts.filter(p => !lastKnownPorts.includes(p.path));
+
+        // Find removed ports
+        const removedPorts = lastKnownPorts.filter(p => !currentPaths.includes(p));
+
+        if (newPorts.length > 0) {
+          console.log('[PortWatcher] New ports detected:', newPorts.map(p => p.path));
+          safeSend(mainWindow, IPC_CHANNELS.COMMS_NEW_PORT, { newPorts, removedPorts: [] });
+        }
+
+        if (removedPorts.length > 0) {
+          console.log('[PortWatcher] Ports removed:', removedPorts);
+          safeSend(mainWindow, IPC_CHANNELS.COMMS_NEW_PORT, { newPorts: [], removedPorts });
+        }
+
+        lastKnownPorts = currentPaths;
+        portWatchErrorCount = 0; // Reset error count on success
+      } catch (error) {
+        portWatchErrorCount++;
+        console.error(`[PortWatcher] Error polling ports (${portWatchErrorCount}/${PORT_WATCH_MAX_ERRORS}):`, error);
+
+        // Stop watching if too many consecutive errors (driver might be unstable)
+        if (portWatchErrorCount >= PORT_WATCH_MAX_ERRORS) {
+          console.error('[PortWatcher] Too many errors, stopping to prevent system instability');
+          stopPortWatcher();
+        }
+      }
+    }, PORT_WATCH_INTERVAL);
+
+    console.log('[PortWatcher] Started (interval: 5s, auto-stops when connected)');
+  });
+
+  ipcMain.handle(IPC_CHANNELS.COMMS_STOP_PORT_WATCH, async (): Promise<void> => {
+    stopPortWatcher();
+  });
+
   // Connect to a device
   ipcMain.handle(IPC_CHANNELS.COMMS_CONNECT, async (_, options: ConnectOptions): Promise<boolean> => {
     // Clear any existing heartbeat timeout

@@ -233,20 +233,20 @@ export function ParametersView() {
           </div>
 
           <h2 className="text-2xl font-semibold text-white mb-3">
-            Parameter Management
+            Configuration
           </h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
-            Connect to your flight controller to view and edit parameters.
-            Parameters control every aspect of your vehicle's behavior.
+            Connect to your flight controller to configure your vehicle.
+            Supports ArduPilot, PX4, Betaflight, and iNav.
           </p>
 
           <div className="p-4 rounded-xl bg-gray-800/30 border border-gray-700/30 text-left">
             <h3 className="text-sm font-medium text-gray-200 mb-2">What you can do:</h3>
             <ul className="text-xs text-gray-500 space-y-1">
-              <li>• View all 800+ vehicle parameters</li>
-              <li>• Search and filter by name</li>
-              <li>• Edit values with type validation</li>
-              <li>• Upload changes to flight controller</li>
+              <li>• <span className="text-gray-400">ArduPilot/PX4:</span> Full parameter management</li>
+              <li>• <span className="text-gray-400">Betaflight/iNav:</span> PID tuning, rates, flight modes</li>
+              <li>• Search, filter, and edit with validation</li>
+              <li>• Save changes to flight controller</li>
             </ul>
           </div>
         </div>

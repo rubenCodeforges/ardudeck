@@ -8,6 +8,9 @@ export const IPC_CHANNELS = {
   COMMS_SCAN_PORTS: 'comms:scan-ports',
   COMMS_CONNECT: 'comms:connect',
   COMMS_DISCONNECT: 'comms:disconnect',
+  COMMS_NEW_PORT: 'comms:new-port',
+  COMMS_START_PORT_WATCH: 'comms:start-port-watch',
+  COMMS_STOP_PORT_WATCH: 'comms:stop-port-watch',
 
   // MAVLink messages
   MAVLINK_PACKET: 'mavlink:packet',
@@ -286,6 +289,18 @@ export interface SettingsFlightStats {
 }
 
 /**
+ * Connection memory - remembers last used connection settings
+ */
+export interface SettingsConnectionMemory {
+  lastSerialPort?: string;
+  lastBaudRate?: number;
+  lastTcpHost?: string;
+  lastTcpPort?: number;
+  lastUdpPort?: number;
+  lastConnectionType?: 'serial' | 'tcp' | 'udp';
+}
+
+/**
  * Settings store schema (persisted to disk)
  */
 export interface SettingsStoreSchema {
@@ -293,6 +308,7 @@ export interface SettingsStoreSchema {
   vehicles: SettingsVehicleProfile[];
   activeVehicleId: string | null;
   flightStats: SettingsFlightStats;
+  connectionMemory?: SettingsConnectionMemory;
 }
 
 // =============================================================================

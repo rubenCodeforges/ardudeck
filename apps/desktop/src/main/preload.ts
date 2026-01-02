@@ -39,6 +39,19 @@ const api = {
   disconnect: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.COMMS_DISCONNECT),
 
+  // Port watching for detecting new devices
+  startPortWatch: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMMS_START_PORT_WATCH),
+
+  stopPortWatch: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMMS_STOP_PORT_WATCH),
+
+  onPortChange: (callback: (event: { newPorts: SerialPortInfo[]; removedPorts: string[] }) => void) => {
+    const handler = (_: unknown, event: { newPorts: SerialPortInfo[]; removedPorts: string[] }) => callback(event);
+    ipcRenderer.on(IPC_CHANNELS.COMMS_NEW_PORT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMMS_NEW_PORT, handler);
+  },
+
   // MAVLink
   sendMessage: (payload: number[]): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SEND, payload),

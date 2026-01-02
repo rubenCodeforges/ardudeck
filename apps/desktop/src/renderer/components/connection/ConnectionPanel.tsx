@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import type { SerialPortInfo } from '@ardudeck/comms';
 import { DriverAssistant } from './DriverAssistant';
 
@@ -7,6 +8,7 @@ const BAUD_RATES = [115200, 57600, 38400, 19200, 9600];
 
 export function ConnectionPanel() {
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();
+  const { connectionMemory, updateConnectionMemory } = useSettingsStore();
   const [ports, setPorts] = useState<SerialPortInfo[]>([]);
   const [selectedPort, setSelectedPort] = useState('');
   const [baudRate, setBaudRate] = useState(115200);
@@ -17,25 +19,87 @@ export function ConnectionPanel() {
   const [isScanning, setIsScanning] = useState(false);
   const [showDriverHelp, setShowDriverHelp] = useState(false);
   const [scanFailed, setScanFailed] = useState(false);
+  const hasAppliedMemory = useRef(false);
+
+  // Apply connection memory on mount
+  useEffect(() => {
+    if (connectionMemory && !hasAppliedMemory.current) {
+      if (connectionMemory.lastConnectionType) {
+        setConnectionType(connectionMemory.lastConnectionType);
+      }
+      if (connectionMemory.lastBaudRate) {
+        setBaudRate(connectionMemory.lastBaudRate);
+      }
+      if (connectionMemory.lastTcpHost) {
+        setTcpHost(connectionMemory.lastTcpHost);
+      }
+      if (connectionMemory.lastTcpPort) {
+        setTcpPort(connectionMemory.lastTcpPort);
+      }
+      if (connectionMemory.lastUdpPort) {
+        setUdpPort(connectionMemory.lastUdpPort);
+      }
+      hasAppliedMemory.current = true;
+    }
+  }, [connectionMemory]);
 
   useEffect(() => {
     if (window.electronAPI) {
       refreshPorts();
 
+      // Start port watching for new devices (only when not connected)
+      if (!connectionState.isConnected) {
+        window.electronAPI.startPortWatch();
+      }
+
+      // Listen for new port events
+      const unsubscribePortChange = window.electronAPI.onPortChange((event) => {
+        console.log('[ConnectionPanel] Port change detected:', event);
+        refreshPorts().then(() => {
+          // If a new port matches our last used port, auto-select it
+          if (event.newPorts.length > 0 && connectionMemory?.lastSerialPort) {
+            const rememberedPort = event.newPorts.find(p => p.path === connectionMemory.lastSerialPort);
+            if (rememberedPort) {
+              console.log('[ConnectionPanel] Auto-selecting remembered port:', rememberedPort.path);
+              setSelectedPort(rememberedPort.path);
+            }
+          }
+        });
+      });
+
       // Listen for connection errors from main process
-      const unsubscribe = window.electronAPI.onConnectionError((errorMsg) => {
+      const unsubscribeError = window.electronAPI.onConnectionError((errorMsg) => {
         setError(errorMsg);
       });
 
-      return () => unsubscribe();
+      return () => {
+        unsubscribePortChange();
+        unsubscribeError();
+        window.electronAPI.stopPortWatch();
+      };
     }
-  }, [setError]);
+  }, [setError, connectionMemory?.lastSerialPort, connectionState.isConnected]);
+
+  // Restart port watching when disconnected
+  useEffect(() => {
+    if (!connectionState.isConnected && window.electronAPI) {
+      // Small delay to ensure disconnect is complete
+      const timer = setTimeout(() => {
+        window.electronAPI.startPortWatch();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [connectionState.isConnected]);
 
   const refreshPorts = async () => {
     const portList = await window.electronAPI.listPorts();
     setPorts(portList);
+
+    // Try to select the remembered port, fall back to first available
     if (portList.length > 0 && !selectedPort) {
-      setSelectedPort(portList[0]?.path ?? '');
+      const rememberedPort = connectionMemory?.lastSerialPort;
+      const portToSelect = portList.find(p => p.path === rememberedPort) || portList[0];
+      setSelectedPort(portToSelect?.path ?? '');
     }
   };
 
@@ -60,12 +124,34 @@ export function ConnectionPanel() {
   };
 
   const handleConnect = async () => {
+    let success = false;
+
     if (connectionType === 'serial') {
-      await connect({ type: 'serial', port: selectedPort, baudRate });
+      success = await connect({ type: 'serial', port: selectedPort, baudRate });
+      if (success) {
+        updateConnectionMemory({
+          lastSerialPort: selectedPort,
+          lastBaudRate: baudRate,
+          lastConnectionType: 'serial',
+        });
+      }
     } else if (connectionType === 'tcp') {
-      await connect({ type: 'tcp', host: tcpHost, tcpPort });
+      success = await connect({ type: 'tcp', host: tcpHost, tcpPort });
+      if (success) {
+        updateConnectionMemory({
+          lastTcpHost: tcpHost,
+          lastTcpPort: tcpPort,
+          lastConnectionType: 'tcp',
+        });
+      }
     } else {
-      await connect({ type: 'udp', udpPort });
+      success = await connect({ type: 'udp', udpPort });
+      if (success) {
+        updateConnectionMemory({
+          lastUdpPort: udpPort,
+          lastConnectionType: 'udp',
+        });
+      }
     }
   };
 

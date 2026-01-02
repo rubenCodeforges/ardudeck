@@ -291,6 +291,7 @@ Built with passion by Codeforges.
 - [Mission Planner](https://github.com/ArduPilot/MissionPlanner) — Original GCS reference
 - [MAVLink](https://mavlink.io/) — Micro Air Vehicle communication protocol
 - [QGroundControl](http://qgroundcontrol.com/) — Cross-platform GCS inspiration
+- [Leaflet](https://leafletjs.com/) — Interactive maps library
 
 ---
 

@@ -60,9 +60,36 @@ const pendingResponses = new Map<
 // Track commands that returned errors (to avoid spam logging)
 const unsupportedCommands = new Set<number>();
 
+// Request mutex - ensures only one MSP request is in-flight at a time
+let requestMutex: Promise<void> = Promise.resolve();
+let mutexRelease: (() => void) | null = null;
+
+// Config command lock - prevents telemetry from interfering with config reads
+let configLockCount = 0;
+
+// RC polling state - prevents overlapping RC polls
+let rcPollInFlight = false;
+
 // =============================================================================
 // Helpers
 // =============================================================================
+
+/**
+ * Acquire the request mutex. Returns a release function.
+ * This ensures only one MSP request is in-flight at a time.
+ */
+async function acquireMutex(): Promise<() => void> {
+  // Wait for any existing request to complete
+  await requestMutex;
+
+  // Create a new promise that will be resolved when we release
+  let release: () => void;
+  requestMutex = new Promise(resolve => {
+    release = resolve;
+  });
+
+  return release!;
+}
 
 function safeSend(channel: string, data: unknown): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -85,17 +112,24 @@ async function sendMspRequest(command: number, timeout: number = 1000): Promise<
     throw new Error('MSP transport not connected');
   }
 
-  const packet = buildMspV1Request(command);
-  await currentTransport.write(packet);
+  // Acquire mutex - only one request at a time
+  const release = await acquireMutex();
 
-  return new Promise((resolve, reject) => {
-    const timeoutHandle = setTimeout(() => {
-      pendingResponses.delete(command);
-      reject(new Error(`MSP command ${command} timed out`));
-    }, timeout);
+  try {
+    const packet = buildMspV1Request(command);
+    await currentTransport.write(packet);
 
-    pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
-  });
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      const timeoutHandle = setTimeout(() => {
+        pendingResponses.delete(command);
+        reject(new Error(`MSP command ${command} timed out`));
+      }, timeout);
+
+      pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
+    });
+  } finally {
+    release();
+  }
 }
 
 async function sendMspRequestWithPayload(command: number, payload: Uint8Array, timeout: number = 1000): Promise<Uint8Array> {
@@ -103,17 +137,24 @@ async function sendMspRequestWithPayload(command: number, payload: Uint8Array, t
     throw new Error('MSP transport not connected');
   }
 
-  const packet = buildMspV1RequestWithPayload(command, payload);
-  await currentTransport.write(packet);
+  // Acquire mutex - only one request at a time
+  const release = await acquireMutex();
 
-  return new Promise((resolve, reject) => {
-    const timeoutHandle = setTimeout(() => {
-      pendingResponses.delete(command);
-      reject(new Error(`MSP command ${command} timed out`));
-    }, timeout);
+  try {
+    const packet = buildMspV1RequestWithPayload(command, payload);
+    await currentTransport.write(packet);
 
-    pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
-  });
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      const timeoutHandle = setTimeout(() => {
+        pendingResponses.delete(command);
+        reject(new Error(`MSP command ${command} timed out`));
+      }, timeout);
+
+      pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
+    });
+  } finally {
+    release();
+  }
 }
 
 function handleMspResponse(command: number, payload: Uint8Array): void {
@@ -122,6 +163,23 @@ function handleMspResponse(command: number, payload: Uint8Array): void {
     clearTimeout(pending.timeout);
     pendingResponses.delete(command);
     pending.resolve(payload);
+  }
+}
+
+/**
+ * Run a config command with telemetry paused.
+ * This prevents telemetry polling from interfering with config reads.
+ */
+async function withConfigLock<T>(fn: () => Promise<T>): Promise<T> {
+  configLockCount++;
+  try {
+    // Small delay to let any in-flight telemetry requests complete
+    if (configLockCount === 1) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return await fn();
+  } finally {
+    configLockCount--;
   }
 }
 
@@ -229,6 +287,11 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
   telemetryInterval = setInterval(async () => {
     if (!currentTransport?.isOpen) {
+      return;
+    }
+
+    // Skip telemetry polling while config commands are running
+    if (configLockCount > 0) {
       return;
     }
 
@@ -354,6 +417,11 @@ export function stopMspTelemetry(): void {
   pendingResponses.clear();
   unsupportedCommands.clear();
 
+  // Reset mutex, config lock, and RC poll state
+  requestMutex = Promise.resolve();
+  configLockCount = 0;
+  rcPollInFlight = false;
+
   mspParser = null;
   currentTransport = null;
 }
@@ -363,92 +431,116 @@ export function stopMspTelemetry(): void {
 // =============================================================================
 
 async function getPid(): Promise<MSPPid | null> {
-  try {
-    const payload = await sendMspRequest(MSP.PID, 1000);
-    return deserializePid(payload);
-  } catch (error) {
-    console.error('[MSP] Get PID failed:', error);
-    return null;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.PID, 1000);
+      return deserializePid(payload);
+    } catch (error) {
+      console.error('[MSP] Get PID failed:', error);
+      return null;
+    }
+  });
 }
 
 async function setPid(pid: MSPPid): Promise<boolean> {
-  try {
-    const payload = serializePid(pid);
-    await sendMspRequestWithPayload(MSP.SET_PID, payload, 1000);
-    sendLog('info', 'PIDs updated');
-    return true;
-  } catch (error) {
-    sendLog('error', 'Failed to set PIDs', error instanceof Error ? error.message : String(error));
-    return false;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = serializePid(pid);
+      await sendMspRequestWithPayload(MSP.SET_PID, payload, 1000);
+      sendLog('info', 'PIDs updated');
+      return true;
+    } catch (error) {
+      sendLog('error', 'Failed to set PIDs', error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  });
 }
 
 async function getRcTuning(): Promise<MSPRcTuning | null> {
-  try {
-    const payload = await sendMspRequest(MSP.RC_TUNING, 1000);
-    return deserializeRcTuning(payload);
-  } catch (error) {
-    console.error('[MSP] Get RC Tuning failed:', error);
-    return null;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.RC_TUNING, 1000);
+      return deserializeRcTuning(payload);
+    } catch (error) {
+      console.error('[MSP] Get RC Tuning failed:', error);
+      return null;
+    }
+  });
 }
 
 async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
-  try {
-    const payload = serializeRcTuning(rcTuning);
-    await sendMspRequestWithPayload(MSP.SET_RC_TUNING, payload, 1000);
-    sendLog('info', 'Rates updated');
-    return true;
-  } catch (error) {
-    sendLog('error', 'Failed to set rates', error instanceof Error ? error.message : String(error));
-    return false;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeRcTuning(rcTuning);
+      await sendMspRequestWithPayload(MSP.SET_RC_TUNING, payload, 1000);
+      sendLog('info', 'Rates updated');
+      return true;
+    } catch (error) {
+      sendLog('error', 'Failed to set rates', error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  });
 }
 
 async function getModeRanges(): Promise<MSPModeRange[] | null> {
-  try {
-    const payload = await sendMspRequest(MSP.MODE_RANGES, 1000);
-    return deserializeModeRanges(payload);
-  } catch (error) {
-    console.error('[MSP] Get Mode Ranges failed:', error);
-    return null;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.MODE_RANGES, 1000);
+      return deserializeModeRanges(payload);
+    } catch (error) {
+      console.error('[MSP] Get Mode Ranges failed:', error);
+      return null;
+    }
+  });
 }
 
 async function setModeRange(index: number, mode: MSPModeRange): Promise<boolean> {
-  try {
-    const payload = serializeModeRange(index, mode);
-    await sendMspRequestWithPayload(MSP.SET_MODE_RANGE, payload, 1000);
-    return true;
-  } catch (error) {
-    sendLog('error', 'Failed to set mode range', error instanceof Error ? error.message : String(error));
-    return false;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeModeRange(index, mode);
+      await sendMspRequestWithPayload(MSP.SET_MODE_RANGE, payload, 1000);
+      return true;
+    } catch (error) {
+      sendLog('error', 'Failed to set mode range', error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  });
 }
 
 async function getFeatures(): Promise<number | null> {
-  try {
-    const payload = await sendMspRequest(MSP.FEATURE_CONFIG, 1000);
-    const config = deserializeFeatureConfig(payload);
-    return config.features;
-  } catch (error) {
-    console.error('[MSP] Get Features failed:', error);
-    return null;
-  }
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.FEATURE_CONFIG, 1000);
+      const config = deserializeFeatureConfig(payload);
+      return config.features;
+    } catch (error) {
+      console.error('[MSP] Get Features failed:', error);
+      return null;
+    }
+  });
 }
 
 /**
  * Get live RC channel values (for modes wizard live feedback)
+ * This skips if a poll is already in-flight to prevent queue buildup.
+ * Does NOT use configLock since it's a quick single command.
  */
 async function getRc(): Promise<{ channels: number[] } | null> {
+  // Skip if already polling - prevents queue buildup
+  if (rcPollInFlight) {
+    return null;
+  }
+
+  rcPollInFlight = true;
   try {
-    const payload = await sendMspRequest(MSP.RC, 300);
+    const payload = await sendMspRequest(MSP.RC, 200);
     const rc = deserializeRc(payload);
     return { channels: rc.channels };
   } catch (error) {
-    console.error('[MSP] Get RC failed:', error);
+    // Silently fail - this is polled frequently
     return null;
+  } finally {
+    rcPollInFlight = false;
   }
 }
 
@@ -457,14 +549,16 @@ async function getRc(): Promise<{ channels: number[] } | null> {
 // =============================================================================
 
 async function saveEeprom(): Promise<boolean> {
-  try {
-    await sendMspRequest(MSP.EEPROM_WRITE, 5000);
-    sendLog('info', 'Settings saved to EEPROM');
-    return true;
-  } catch (error) {
-    sendLog('error', 'EEPROM save failed', error instanceof Error ? error.message : String(error));
-    return false;
-  }
+  return withConfigLock(async () => {
+    try {
+      await sendMspRequest(MSP.EEPROM_WRITE, 5000);
+      sendLog('info', 'Settings saved to EEPROM');
+      return true;
+    } catch (error) {
+      sendLog('error', 'EEPROM save failed', error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  });
 }
 
 async function calibrateAcc(): Promise<boolean> {

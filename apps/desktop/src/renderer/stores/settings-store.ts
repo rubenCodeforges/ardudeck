@@ -87,6 +87,18 @@ export interface MissionDefaults {
 }
 
 /**
+ * Connection memory - remembers last used connection settings
+ */
+export interface ConnectionMemory {
+  lastSerialPort?: string;
+  lastBaudRate?: number;
+  lastTcpHost?: string;
+  lastTcpPort?: number;
+  lastUdpPort?: number;
+  lastConnectionType?: 'serial' | 'tcp' | 'udp';
+}
+
+/**
  * App-level settings store
  */
 interface SettingsStore {
@@ -103,6 +115,9 @@ interface SettingsStore {
 
   // Flight stats
   flightStats: FlightStats;
+
+  // Connection memory
+  connectionMemory: ConnectionMemory;
 
   // Computed
   getActiveVehicle: () => VehicleProfile | null;
@@ -127,6 +142,9 @@ interface SettingsStore {
   updateFlightStats: (updates: Partial<FlightStats>) => void;
   incrementMissionCount: () => void;
   addFlightTime: (seconds: number, distanceMeters: number) => void;
+
+  // Actions - Connection memory
+  updateConnectionMemory: (updates: Partial<ConnectionMemory>) => void;
 
   // Reset
   resetToDefaults: () => void;
@@ -289,6 +307,11 @@ const DEFAULT_FLIGHT_STATS: FlightStats = {
   lastConnectionDate: null,
 };
 
+const DEFAULT_CONNECTION_MEMORY: ConnectionMemory = {
+  lastBaudRate: 115200,
+  lastConnectionType: 'serial',
+};
+
 // Debounce timer for auto-save
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -303,6 +326,7 @@ export const useSettingsStore = create<SettingsStore>()(
   vehicles: [{ ...DEFAULT_VEHICLE }],
   activeVehicleId: 'default',
   flightStats: { ...DEFAULT_FLIGHT_STATS },
+  connectionMemory: { ...DEFAULT_CONNECTION_MEMORY },
 
   // Computed
   getActiveVehicle: () => {
@@ -356,6 +380,7 @@ export const useSettingsStore = create<SettingsStore>()(
           vehicles: settings.vehicles?.length ? settings.vehicles : [{ ...DEFAULT_VEHICLE }],
           activeVehicleId: settings.activeVehicleId || settings.vehicles?.[0]?.id || 'default',
           flightStats: settings.flightStats || { ...DEFAULT_FLIGHT_STATS },
+          connectionMemory: settings.connectionMemory || { ...DEFAULT_CONNECTION_MEMORY },
           _isInitialized: true,
         });
         console.log('[Settings] Loaded from disk:', settings.vehicles?.length || 0, 'vehicles');
@@ -381,6 +406,7 @@ export const useSettingsStore = create<SettingsStore>()(
         vehicles: state.vehicles,
         activeVehicleId: state.activeVehicleId,
         flightStats: state.flightStats,
+        connectionMemory: state.connectionMemory,
       };
       console.log('[Settings] Saving payload:', payload.vehicles?.length, 'vehicles');
       await window.electronAPI?.saveSettings(payload);
@@ -473,6 +499,13 @@ export const useSettingsStore = create<SettingsStore>()(
     }));
   },
 
+  // Actions - Connection memory
+  updateConnectionMemory: (updates) => {
+    set((state) => ({
+      connectionMemory: { ...state.connectionMemory, ...updates },
+    }));
+  },
+
   // Reset
   resetToDefaults: () => {
     set({
@@ -480,6 +513,7 @@ export const useSettingsStore = create<SettingsStore>()(
       vehicles: [{ ...DEFAULT_VEHICLE }],
       activeVehicleId: 'default',
       flightStats: { ...DEFAULT_FLIGHT_STATS },
+      connectionMemory: { ...DEFAULT_CONNECTION_MEMORY },
     });
   },
 })));
@@ -499,6 +533,7 @@ useSettingsStore.subscribe(
     vehicles: state.vehicles,
     activeVehicleId: state.activeVehicleId,
     flightStats: state.flightStats,
+    connectionMemory: state.connectionMemory,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -508,7 +543,8 @@ useSettingsStore.subscribe(
         curr.missionDefaults !== prev.missionDefaults ||
         curr.vehicles !== prev.vehicles ||
         curr.activeVehicleId !== prev.activeVehicleId ||
-        curr.flightStats !== prev.flightStats
+        curr.flightStats !== prev.flightStats ||
+        curr.connectionMemory !== prev.connectionMemory
       ) {
         debouncedSave();
       }
