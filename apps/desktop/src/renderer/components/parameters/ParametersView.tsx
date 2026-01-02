@@ -1,6 +1,7 @@
 /**
  * Parameters View - Full parameter management
  * Displays parameter table with search, refresh, editing, and group filtering
+ * For MSP connections, shows Betaflight/iNav config instead
  */
 
 import { useState, useCallback } from 'react';
@@ -8,6 +9,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
 import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
+import { MspConfigView } from './MspConfigView';
 
 // Simple toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -214,6 +216,11 @@ export function ParametersView() {
       cancelEdit();
     }
   }, [saveEdit, cancelEdit]);
+
+  // Show MSP config for Betaflight/iNav boards
+  if (connectionState.isConnected && connectionState.protocol === 'msp') {
+    return <MspConfigView />;
+  }
 
   if (!connectionState.isConnected) {
     return (

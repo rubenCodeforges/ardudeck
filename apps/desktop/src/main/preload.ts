@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -444,6 +444,72 @@ const api = {
     const handler = (_: unknown, error: string) => callback(error);
     ipcRenderer.on(IPC_CHANNELS.FIRMWARE_ERROR, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.FIRMWARE_ERROR, handler);
+  },
+
+  // ============================================================================
+  // MSP (Betaflight/iNav/Cleanflight)
+  // ============================================================================
+
+  // MSP Connection
+  mspConnect: (options: MSPConnectOptions): Promise<MSPConnectionState> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_CONNECT, options),
+
+  mspDisconnect: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_DISCONNECT),
+
+  // MSP Telemetry
+  mspStartTelemetry: (rateHz?: number): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_START_TELEMETRY, rateHz),
+
+  mspStopTelemetry: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_STOP_TELEMETRY),
+
+  // MSP Config
+  mspGetPid: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_PID),
+
+  mspSetPid: (pid: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_PID, pid),
+
+  mspGetRcTuning: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC_TUNING),
+
+  mspSetRcTuning: (rcTuning: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RC_TUNING, rcTuning),
+
+  mspGetModeRanges: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MODE_RANGES),
+
+  mspSetModeRange: (index: number, mode: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_MODE_RANGE, index, mode),
+
+  mspGetFeatures: (): Promise<number | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
+
+  // MSP Commands
+  mspSaveEeprom: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SAVE_EEPROM),
+
+  mspCalibrateAcc: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_CALIBRATE_ACC),
+
+  mspCalibrateMag: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_CALIBRATE_MAG),
+
+  mspReboot: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_REBOOT),
+
+  // MSP Event Listeners
+  onMspConnectionState: (callback: (state: MSPConnectionState) => void) => {
+    const handler = (_: unknown, state: MSPConnectionState) => callback(state);
+    ipcRenderer.on(IPC_CHANNELS.MSP_CONNECTION_STATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MSP_CONNECTION_STATE, handler);
+  },
+
+  onMspTelemetryUpdate: (callback: (data: MSPTelemetryData) => void) => {
+    const handler = (_: unknown, data: MSPTelemetryData) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.MSP_TELEMETRY_UPDATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MSP_TELEMETRY_UPDATE, handler);
   },
 };
 

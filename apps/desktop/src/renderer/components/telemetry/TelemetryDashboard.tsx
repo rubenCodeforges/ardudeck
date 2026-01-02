@@ -10,6 +10,7 @@ import 'dockview-react/dist/styles/dockview.css';
 
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useLayoutStore } from '../../stores/layout-store';
+import { useConnectionStore } from '../../stores/connection-store';
 
 // Reserved layout name for auto-save (separate from user-named layouts)
 const TELEMETRY_AUTOSAVE_NAME = '__telemetry_autosave';
@@ -314,6 +315,7 @@ function LayoutToolbar({
   onAddPanel,
   layouts,
   activeLayout,
+  supportsMissionPlanning,
 }: {
   onSave: (name: string) => void;
   onLoad: (name: string) => void;
@@ -321,9 +323,18 @@ function LayoutToolbar({
   onAddPanel: (id: string, component: string, title: string) => void;
   layouts: string[];
   activeLayout: string;
+  supportsMissionPlanning: boolean;
 }) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [layoutName, setLayoutName] = useState('');
+
+  // Filter presets to hide Mission Telemetry for boards without mission planning
+  const availablePresets = Object.entries(PRESET_LAYOUTS).filter(([key]) => {
+    if (key === 'missionTelemetry' && !supportsMissionPlanning) {
+      return false;
+    }
+    return true;
+  });
 
   const handleSave = () => {
     if (layoutName.trim()) {
@@ -343,7 +354,7 @@ function LayoutToolbar({
         className="bg-gray-700/50 border border-gray-600/50 rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
       >
         <optgroup label="Presets">
-          {Object.entries(PRESET_LAYOUTS).map(([key, name]) => (
+          {availablePresets.map(([key, name]) => (
             <option key={key} value={key}>{name}</option>
           ))}
         </optgroup>
@@ -403,14 +414,25 @@ function LayoutToolbar({
       <div className="flex-1" />
 
       {/* Add panel dropdown */}
-      <AddPanelDropdown onAddPanel={onAddPanel} />
+      <AddPanelDropdown onAddPanel={onAddPanel} supportsMissionPlanning={supportsMissionPlanning} />
     </div>
   );
 }
 
+// Mission-related panel IDs that require mission planning support
+const MISSION_PANEL_IDS = ['missionMap', 'waypoints', 'altitudeProfile'];
+
 // Add panel dropdown
-function AddPanelDropdown({ onAddPanel }: { onAddPanel: (id: string, component: string, title: string) => void }) {
+function AddPanelDropdown({ onAddPanel, supportsMissionPlanning }: { onAddPanel: (id: string, component: string, title: string) => void; supportsMissionPlanning: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Filter out mission panels if mission planning is not supported
+  const availablePanels = Object.entries(PANEL_COMPONENTS).filter(([id]) => {
+    if (MISSION_PANEL_IDS.includes(id) && !supportsMissionPlanning) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="relative">
@@ -428,7 +450,7 @@ function AddPanelDropdown({ onAddPanel }: { onAddPanel: (id: string, component: 
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700/50 rounded-lg shadow-xl z-20 py-1 min-w-[150px]">
-            {Object.entries(PANEL_COMPONENTS).map(([id, { component, title }]) => (
+            {availablePanels.map(([id, { component, title }]) => (
               <button
                 key={id}
                 onClick={() => {
@@ -495,7 +517,15 @@ function QuickStatsBar() {
 export function TelemetryDashboard() {
   const apiRef = useRef<DockviewApi | null>(null);
   const { layouts, activeLayoutName, loadLayouts, saveLayout, setActiveLayout } = useLayoutStore();
+  const { connectionState } = useConnectionStore();
   const [layoutLoaded, setLayoutLoaded] = useState(false);
+
+  // Check if mission planning is supported
+  // Betaflight (BTFL) and Cleanflight (CLFL) do NOT support missions
+  // iNav (INAV) and MAVLink (ArduPilot) DO support missions
+  const isMspBetaflight = connectionState.protocol === 'msp' && connectionState.fcVariant === 'BTFL';
+  const isMspCleanflight = connectionState.protocol === 'msp' && connectionState.fcVariant === 'CLFL';
+  const supportsMissionPlanning = !isMspBetaflight && !isMspCleanflight;
 
   // Load layouts on mount
   useEffect(() => {
@@ -620,6 +650,7 @@ export function TelemetryDashboard() {
         onAddPanel={handleAddPanel}
         layouts={Object.keys(layouts).filter(name => !name.startsWith('__'))}
         activeLayout={activeLayoutName}
+        supportsMissionPlanning={supportsMissionPlanning}
       />
 
       {/* Dockview container */}

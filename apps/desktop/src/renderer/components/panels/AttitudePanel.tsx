@@ -3,13 +3,15 @@ import { PanelContainer, formatNumber } from './panel-utils';
 
 // Exported for reuse in MapPanel
 export function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: number; pitch: number; heading: number; size?: number }) {
-  const clampedPitch = Math.max(-45, Math.min(45, pitch));
+  // Clamp pitch but allow more range for display
+  const clampedPitch = Math.max(-60, Math.min(60, pitch));
 
   // All dimensions proportional to size
   const scale = size / 200; // Base scale (200px is the reference size)
   const ringWidth = 30 * scale; // Compass ring width
   const innerSize = size - (ringWidth * 2);
-  const pitchOffset = (clampedPitch / 45) * (innerSize / 4);
+  // Increase pitch sensitivity - move horizon by 40% of inner size at max pitch
+  const pitchOffset = (clampedPitch / 60) * (innerSize * 0.4);
 
   // Compass tick marks
   const compassTicks = [];
@@ -72,15 +74,37 @@ export function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: 
         style={{ left: ringWidth, top: ringWidth, width: innerSize, height: innerSize }}
       >
         <div className="absolute inset-0" style={{ transform: `rotate(${-roll}deg)` }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-600 to-blue-500" style={{ transform: `translateY(${pitchOffset}px)` }} />
-          <div className="absolute inset-0 bg-gradient-to-b from-amber-700 to-amber-800" style={{ transform: `translateY(${innerSize / 2 + pitchOffset}px)` }} />
+          {/* Sky - extends above visible area to prevent clipping */}
+          <div
+            className="absolute bg-gradient-to-b from-blue-600 to-blue-500"
+            style={{
+              left: 0,
+              right: 0,
+              top: -innerSize,
+              height: innerSize * 1.5,
+              transform: `translateY(${pitchOffset}px)`
+            }}
+          />
+          {/* Ground - extends below visible area */}
+          <div
+            className="absolute bg-gradient-to-b from-amber-700 to-amber-800"
+            style={{
+              left: 0,
+              right: 0,
+              top: innerSize / 2,
+              height: innerSize * 1.5,
+              transform: `translateY(${pitchOffset}px)`
+            }}
+          />
+          {/* Horizon line */}
           <div className="absolute left-0 right-0 bg-white/90" style={{ top: `calc(50% + ${pitchOffset}px)`, height: Math.max(1, 2 * scale) }} />
-          {[-20, -10, 10, 20].map(p => (
+          {/* Pitch ladder marks */}
+          {[-30, -20, -10, 10, 20, 30].map(p => (
             <div
               key={p}
               className="absolute left-1/4 right-1/4 bg-white/40"
               style={{
-                top: `calc(50% + ${pitchOffset + (p / 45) * innerSize / 4}px)`,
+                top: `calc(50% + ${pitchOffset + (p / 60) * innerSize * 0.4}px)`,
                 height: Math.max(1, 1 * scale)
               }}
             />

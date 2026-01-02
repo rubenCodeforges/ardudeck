@@ -15,6 +15,7 @@
   "dependencies": {
     "@ardudeck/comms": "workspace:*",
     "@ardudeck/mavlink-ts": "workspace:*",
+    "@ardudeck/msp-ts": "workspace:*",
     "@ardudeck/stm32-dfu": "workspace:*",
     "dockview": "^4.13.0",
     "dockview-react": "^4.13.0",

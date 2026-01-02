@@ -110,6 +110,42 @@ export const IPC_CHANNELS = {
   FIRMWARE_QUERY_MAVLINK: 'firmware:query-mavlink',
   FIRMWARE_QUERY_MSP: 'firmware:query-msp',
   FIRMWARE_AUTO_DETECT: 'firmware:auto-detect',
+
+  // MSP Connection (Betaflight/iNav/Cleanflight)
+  MSP_CONNECT: 'msp:connect',
+  MSP_DISCONNECT: 'msp:disconnect',
+  MSP_CONNECTION_STATE: 'msp:connection-state',
+
+  // MSP Telemetry
+  MSP_TELEMETRY_UPDATE: 'msp:telemetry-update',
+  MSP_START_TELEMETRY: 'msp:start-telemetry',
+  MSP_STOP_TELEMETRY: 'msp:stop-telemetry',
+
+  // MSP Configuration
+  MSP_GET_STATUS: 'msp:get-status',
+  MSP_GET_ATTITUDE: 'msp:get-attitude',
+  MSP_GET_ANALOG: 'msp:get-analog',
+  MSP_GET_RC: 'msp:get-rc',
+  MSP_GET_MOTOR: 'msp:get-motor',
+  MSP_GET_GPS: 'msp:get-gps',
+  MSP_GET_PID: 'msp:get-pid',
+  MSP_SET_PID: 'msp:set-pid',
+  MSP_GET_RC_TUNING: 'msp:get-rc-tuning',
+  MSP_SET_RC_TUNING: 'msp:set-rc-tuning',
+  MSP_GET_MODE_RANGES: 'msp:get-mode-ranges',
+  MSP_SET_MODE_RANGE: 'msp:set-mode-range',
+  MSP_GET_FEATURES: 'msp:get-features',
+  MSP_CONFIG_UPDATE: 'msp:config-update',
+
+  // MSP Commands
+  MSP_SAVE_EEPROM: 'msp:save-eeprom',
+  MSP_CALIBRATE_ACC: 'msp:calibrate-acc',
+  MSP_CALIBRATE_MAG: 'msp:calibrate-mag',
+  MSP_REBOOT: 'msp:reboot',
+
+  // MSP Progress/Status
+  MSP_PROGRESS: 'msp:progress',
+  MSP_ERROR: 'msp:error',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -132,12 +168,20 @@ export interface ConnectOptions {
 export interface ConnectionState {
   isConnected: boolean;
   isWaitingForHeartbeat?: boolean;
+  protocol?: 'mavlink' | 'msp'; // Auto-detected protocol
   transport?: string;
+  // MAVLink-specific
   systemId?: number;
   componentId?: number;
   autopilot?: string;
   vehicleType?: string;
   mavType?: number; // Raw MAV_TYPE for metadata lookup
+  // MSP-specific (Betaflight/iNav)
+  fcVariant?: string; // "BTFL", "INAV", "CLFL"
+  fcVersion?: string; // "4.5.1"
+  boardId?: string; // "SPRACINGH7"
+  apiVersion?: string;
+  // Stats
   packetsReceived: number;
   packetsSent: number;
 }
@@ -246,4 +290,118 @@ export interface SettingsStoreSchema {
   vehicles: SettingsVehicleProfile[];
   activeVehicleId: string | null;
   flightStats: SettingsFlightStats;
+}
+
+// =============================================================================
+// MSP Types (Betaflight/iNav/Cleanflight)
+// =============================================================================
+
+/**
+ * MSP connection options
+ */
+export interface MSPConnectOptions {
+  port: string;
+  baudRate?: number; // Default: 115200
+}
+
+/**
+ * MSP connection state
+ */
+export interface MSPConnectionState {
+  isConnected: boolean;
+  port: string;
+  baudRate: number;
+  fcVariant: string; // "BTFL", "INAV", "CLFL"
+  fcVersion: string; // "4.5.1"
+  boardId: string; // "SPRACINGH7"
+  apiVersion: string;
+  lastError?: string;
+}
+
+/**
+ * MSP telemetry data (combined from multiple MSP messages)
+ */
+export interface MSPTelemetryData {
+  // Attitude (from MSP_ATTITUDE)
+  attitude?: {
+    roll: number; // degrees
+    pitch: number; // degrees
+    yaw: number; // degrees (heading)
+  };
+
+  // Altitude (from MSP_ALTITUDE)
+  altitude?: {
+    altitude: number; // meters
+    vario: number; // m/s
+  };
+
+  // Analog/Battery (from MSP_ANALOG)
+  analog?: {
+    voltage: number; // volts
+    mAhDrawn: number;
+    rssi: number; // 0-100%
+    current: number; // amps
+  };
+
+  // Status (from MSP_STATUS)
+  status?: {
+    cycleTime: number; // microseconds
+    cpuLoad: number; // 0-100%
+    armingFlags: number;
+    flightModeFlags: number;
+    isArmed: boolean;
+  };
+
+  // RC Channels (from MSP_RC)
+  rc?: {
+    channels: number[]; // 16 channels, 1000-2000
+  };
+
+  // Motors (from MSP_MOTOR)
+  motors?: {
+    values: number[]; // 4-8 motors
+  };
+
+  // GPS (from MSP_RAW_GPS)
+  gps?: {
+    fixType: number;
+    satellites: number;
+    lat: number; // decimal degrees
+    lon: number; // decimal degrees
+    alt: number; // meters
+    speed: number; // m/s
+    heading: number; // degrees
+  };
+
+  // Timestamps
+  timestamp: number;
+}
+
+/**
+ * MSP PID configuration
+ */
+export interface MSPPidConfig {
+  roll: { p: number; i: number; d: number };
+  pitch: { p: number; i: number; d: number };
+  yaw: { p: number; i: number; d: number };
+}
+
+/**
+ * MSP rates configuration
+ */
+export interface MSPRatesConfig {
+  rcRate: number[];
+  superRate: number[];
+  rcExpo: number[];
+  ratesType: number; // 0=Betaflight, 3=Actual, 4=Quick
+}
+
+/**
+ * MSP mode range
+ */
+export interface MSPModeRange {
+  boxId: number;
+  auxChannel: number;
+  rangeStart: number;
+  rangeEnd: number;
 }

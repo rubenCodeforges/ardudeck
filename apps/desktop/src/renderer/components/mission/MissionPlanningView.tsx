@@ -14,6 +14,8 @@ import { MissionMapPanel } from './MissionMapPanel';
 import { WaypointTablePanel } from './WaypointTablePanel';
 import { AltitudeProfilePanel } from './AltitudeProfilePanel';
 import { useMissionStore } from '../../stores/mission-store';
+import { useConnectionStore } from '../../stores/connection-store';
+import { useNavigationStore } from '../../stores/navigation-store';
 
 // Reserved layout name for mission view (auto-save/restore)
 const MISSION_LAYOUT_NAME = '__mission_autosave';
@@ -66,11 +68,140 @@ function createDefaultLayout(api: DockviewApi): void {
   });
 }
 
+// Component for when mission planning is not available
+function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardId: string }) {
+  const { setView } = useNavigationStore();
+
+  return (
+    <div className="h-full flex items-center justify-center bg-gray-950 p-8">
+      <div className="max-w-2xl text-center">
+        {/* Icon */}
+        <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-600/20 border border-orange-500/30 flex items-center justify-center">
+          <span className="text-5xl leading-none flex items-center justify-center w-full h-full">🗺️</span>
+        </div>
+
+        {/* Title */}
+        <h1 className="text-2xl font-bold text-white mb-3">
+          Mission Planning Not Available
+        </h1>
+
+        {/* Explanation */}
+        <p className="text-gray-400 mb-6 leading-relaxed">
+          Your <span className="text-orange-400 font-medium">{fcVariant === 'BTFL' ? 'Betaflight' : fcVariant}</span> flight controller
+          on <span className="text-blue-400">{boardId}</span> doesn't support autonomous waypoint missions.
+          {fcVariant === 'BTFL' && (
+            <> Betaflight is designed for FPV racing and freestyle flying with manual control.</>
+          )}
+        </p>
+
+        {/* What you can do */}
+        <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6 text-left mb-6">
+          <h3 className="text-sm font-medium text-gray-300 mb-4 flex items-center gap-2">
+            <span>💡</span> Want autonomous missions? Here are your options:
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                <span className="text-xl">🔄</span>
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-400">Flash iNav Firmware</h4>
+                <p className="text-sm text-gray-500">
+                  iNav is a fork of Betaflight with full GPS navigation and mission planning support.
+                  Same board, different firmware. Go to <span className="text-gray-400">Firmware Flash</span> and select iNav.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
+                <span className="text-xl">🛩️</span>
+              </div>
+              <div>
+                <h4 className="font-medium text-green-400">Use ArduPilot Hardware</h4>
+                <p className="text-sm text-gray-500">
+                  For the most advanced mission planning, consider a Pixhawk or compatible board running ArduPilot.
+                  Supports copters, planes, VTOLs, rovers, boats, and submarines.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Supported boards */}
+        <div className="text-sm text-gray-500">
+          <p className="mb-2">Boards that support mission planning:</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {['Pixhawk', 'Cube', 'Matek F405-WSE', 'Kakute F7', 'Any iNav board'].map((board) => (
+              <span key={board} className="px-2 py-1 bg-gray-800 rounded text-gray-400 text-xs">
+                {board}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div className="flex items-center justify-center gap-3 mt-8">
+          <button
+            onClick={() => setView('firmware')}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            🔧 Flash iNav Firmware
+          </button>
+          <button
+            onClick={() => setView('telemetry')}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors"
+          >
+            ← Back to Telemetry
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MissionPlanningView() {
   const apiRef = useRef<DockviewApi | null>(null);
+  const { connectionState } = useConnectionStore();
   const { lastSuccessMessage, error, clearLastSuccessMessage } = useMissionStore();
   const [toast, setToast] = useState<Toast | null>(null);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
+
+  // Check if mission planning is supported
+  // Betaflight (BTFL) does NOT support missions
+  // iNav (INAV) DOES support missions
+  // MAVLink (ArduPilot) DOES support missions
+  const isMspBetaflight = connectionState.protocol === 'msp' && connectionState.fcVariant === 'BTFL';
+  const isMspCleanflight = connectionState.protocol === 'msp' && connectionState.fcVariant === 'CLFL';
+  const missionPlanningUnavailable = isMspBetaflight || isMspCleanflight;
+
+  // If not connected, show "Connect First" message
+  if (!connectionState.isConnected) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-950 p-8">
+        <div className="max-w-md text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 border border-blue-500/30 flex items-center justify-center">
+            <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">Connect to a Vehicle</h1>
+          <p className="text-gray-400 text-sm">
+            Connect to a flight controller to plan missions, upload waypoints, and configure autonomous flight paths.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If connected to Betaflight, show "Not Available" message
+  if (missionPlanningUnavailable) {
+    return (
+      <MissionNotAvailable
+        fcVariant={connectionState.fcVariant || 'Unknown'}
+        boardId={connectionState.boardId || 'Unknown Board'}
+      />
+    );
+  }
 
   // Watch for success messages from store
   useEffect(() => {

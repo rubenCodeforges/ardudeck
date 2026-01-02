@@ -134,7 +134,14 @@ function MapController({
 
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(() => {
-        map.invalidateSize();
+        // Safety check: ensure map is initialized and has valid container
+        try {
+          if (map && map.getContainer()) {
+            map.invalidateSize();
+          }
+        } catch {
+          // Map not ready yet, ignore
+        }
       }, 100);
     });
 

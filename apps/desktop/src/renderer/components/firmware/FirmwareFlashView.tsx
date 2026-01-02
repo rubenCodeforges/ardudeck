@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFirmwareStore, type BoardInfo } from '../../stores/firmware-store';
-import type { FirmwareVehicleType } from '../../../shared/firmware-types';
+import { useConnectionStore } from '../../stores/connection-store';
+import type { FirmwareVehicleType, FirmwareSource } from '../../../shared/firmware-types';
 import { FIRMWARE_SOURCE_NAMES, KNOWN_BOARDS } from '../../../shared/firmware-types';
 import { BoardPicker } from './BoardPicker';
 import { BootPadWizard } from './BootPadWizard';
@@ -343,6 +344,26 @@ const VEHICLE_TYPE_NAMES: Record<FirmwareVehicleType, string> = {
   sub: 'Sub',
 };
 
+// Supported vehicle types per firmware source
+// This filters what vehicle types are available when selecting firmware
+const FIRMWARE_SUPPORTED_VEHICLES: Record<FirmwareSource, FirmwareVehicleType[]> = {
+  ardupilot: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],  // Full support
+  px4: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],        // Full support
+  betaflight: ['copter'],                                           // Racing/freestyle multirotors only
+  inav: ['copter', 'plane', 'rover', 'boat'],                      // Navigation firmware, no VTOL/sub
+  custom: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],     // User uploads, any type
+};
+
+// Get vehicle types available for a firmware source
+function getAvailableVehicleTypes(source: FirmwareSource): FirmwareVehicleType[] {
+  return FIRMWARE_SUPPORTED_VEHICLES[source] || ['copter'];
+}
+
+// Check if a vehicle type is supported by a firmware source
+function isVehicleTypeSupported(type: FirmwareVehicleType, source: FirmwareSource): boolean {
+  return FIRMWARE_SUPPORTED_VEHICLES[source]?.includes(type) ?? false;
+}
+
 export function FirmwareFlashView() {
   const store = useFirmwareStore();
   const {
@@ -402,6 +423,37 @@ export function FirmwareFlashView() {
     closeBootPadWizard,
   } = store;
 
+  // Get connection state to auto-detect board when connected
+  const { connectionState } = useConnectionStore();
+  const isConnected = connectionState.isConnected;
+  const connectedBoardId = connectionState.boardId;
+  const connectedProtocol = connectionState.protocol;
+  const connectedFcVariant = connectionState.fcVariant;
+
+  // Auto-detect board from connection if already connected
+  useEffect(() => {
+    if (isConnected && connectedBoardId && !detectedBoard) {
+      // Set detected board info from connection state
+      const boardInfo: BoardInfo = {
+        id: connectedBoardId,
+        name: connectedBoardId,
+        category: connectedProtocol === 'msp' ? 'Betaflight/iNav' : 'ArduPilot',
+      };
+      setSelectedBoard(boardInfo);
+
+      // Auto-select firmware source based on protocol
+      if (connectedProtocol === 'msp') {
+        if (connectedFcVariant === 'BTFL') {
+          setSelectedSource('betaflight');
+        } else if (connectedFcVariant === 'INAV') {
+          setSelectedSource('inav');
+        }
+      } else if (connectedProtocol === 'mavlink') {
+        setSelectedSource('ardupilot');
+      }
+    }
+  }, [isConnected, connectedBoardId, connectedProtocol, connectedFcVariant, detectedBoard, setSelectedBoard, setSelectedSource]);
+
   // Fetch boards on mount and when source/vehicle changes
   useEffect(() => {
     if (selectedSource !== 'custom') {
@@ -428,6 +480,21 @@ export function FirmwareFlashView() {
     };
   }, [setFlashProgress, setFlashError]);
 
+  // Auto-select a valid vehicle type when source changes and current type is not supported
+  useEffect(() => {
+    const availableTypes = getAvailableVehicleTypes(selectedSource);
+    if (!availableTypes.includes(selectedVehicleType)) {
+      // Current type not supported, select the first available type
+      setSelectedVehicleType(availableTypes[0]);
+    }
+  }, [selectedSource, selectedVehicleType, setSelectedVehicleType]);
+
+  // Get available vehicle types for current source
+  const availableVehicleTypes = useMemo(() =>
+    getAvailableVehicleTypes(selectedSource),
+    [selectedSource]
+  );
+
   // Filter versions based on release type
   const filteredVersions = useMemo(() => {
     if (!selectedVersionGroup) return [];
@@ -441,10 +508,12 @@ export function FirmwareFlashView() {
 
   const isFlashing =
     flashState !== 'idle' && flashState !== 'complete' && flashState !== 'error';
+  // Can't flash while connected to a board (need to disconnect first)
   const canFlash =
     (selectedSource === 'custom' ? !!customFirmwarePath : !!selectedVersion) &&
     !!detectedBoard &&
-    !isFlashing;
+    !isFlashing &&
+    !isConnected;  // Must disconnect from board before flashing
 
   return (
     <div className="flex flex-col h-full bg-zinc-950">
@@ -490,6 +559,32 @@ export function FirmwareFlashView() {
       {/* Main Content - Single Column */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-2xl mx-auto p-6 space-y-6">
+          {/* Warning banner when connected to a board */}
+          {isConnected && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="text-amber-300 font-medium">Connected to {connectedBoardId || 'board'}</h4>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Flashing requires disconnecting from the board first. The board will reboot into bootloader mode for flashing.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {connectedProtocol === 'msp' && connectedFcVariant ? (
+                      <>Currently running: <span className="text-purple-400">{connectedFcVariant}</span> firmware</>
+                    ) : connectedProtocol === 'mavlink' ? (
+                      <>Currently running: <span className="text-blue-400">ArduPilot/MAVLink</span> firmware</>
+                    ) : (
+                      'Board info auto-detected from active connection'
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Board Detection Card */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
             <div className="flex items-center gap-2 mb-4">
@@ -615,27 +710,52 @@ export function FirmwareFlashView() {
           <div>
             <label className="block text-sm font-medium text-zinc-400 mb-3">
               Vehicle Type
+              {selectedSource === 'betaflight' && (
+                <span className="ml-2 text-xs text-amber-400/80 font-normal">
+                  (Betaflight only supports multirotors)
+                </span>
+              )}
+              {selectedSource === 'inav' && (
+                <span className="ml-2 text-xs text-cyan-400/80 font-normal">
+                  (iNav supports copters, planes, rovers, boats)
+                </span>
+              )}
             </label>
             <div className="flex flex-wrap gap-2">
-              {(Object.keys(VEHICLE_ICONS) as FirmwareVehicleType[]).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedVehicleType(type)}
-                  disabled={isFlashing}
-                  className={`
-                    px-3 py-2 rounded-lg border transition-all flex items-center gap-2
-                    ${
-                      selectedVehicleType === type
+              {(Object.keys(VEHICLE_ICONS) as FirmwareVehicleType[]).map((type) => {
+                const isAvailable = availableVehicleTypes.includes(type);
+                const isSelected = selectedVehicleType === type;
+                const isDisabled = isFlashing || !isAvailable;
+
+                return (
+                  <button
+                    key={type}
+                    onClick={() => isAvailable && setSelectedVehicleType(type)}
+                    disabled={isDisabled}
+                    title={!isAvailable ? `${VEHICLE_TYPE_NAMES[type]} not supported by ${FIRMWARE_SOURCE_NAMES[selectedSource]}` : undefined}
+                    className={`
+                      px-3 py-2 rounded-lg border transition-all flex items-center gap-2 relative
+                      ${isSelected
                         ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                        : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-                    }
-                    ${isFlashing ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                >
-                  <div className="w-5 h-5">{VEHICLE_ICONS[type]}</div>
-                  <span className="text-sm font-medium">{VEHICLE_TYPE_NAMES[type]}</span>
-                </button>
-              ))}
+                        : isAvailable
+                          ? 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-600 cursor-not-allowed'
+                      }
+                      ${isFlashing ? 'opacity-50 cursor-not-allowed' : ''}
+                    `}
+                  >
+                    <div className={`w-5 h-5 ${!isAvailable ? 'opacity-40' : ''}`}>{VEHICLE_ICONS[type]}</div>
+                    <span className={`text-sm font-medium ${!isAvailable ? 'line-through decoration-zinc-600' : ''}`}>
+                      {VEHICLE_TYPE_NAMES[type]}
+                    </span>
+                    {!isAvailable && (
+                      <svg className="w-3.5 h-3.5 absolute -top-1 -right-1 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

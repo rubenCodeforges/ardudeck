@@ -273,9 +273,10 @@ function App() {
     }
   }, [connectionState.isConnected]);
 
-  // Auto-load parameters, metadata, and mission when connected
+  // Auto-load parameters, metadata, and mission when connected (MAVLink only)
   useEffect(() => {
-    if (connectionState.isConnected) {
+    // Only fetch MAVLink-specific data for MAVLink connections
+    if (connectionState.isConnected && connectionState.protocol !== 'msp') {
       // Small delay to ensure connection is stable
       const timer = setTimeout(() => {
         fetchParameters();
@@ -288,7 +289,7 @@ function App() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [connectionState.isConnected, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
+  }, [connectionState.isConnected, connectionState.protocol, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {

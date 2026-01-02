@@ -72,6 +72,7 @@ import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
+import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry } from './msp/index.js';
 
 // Layout storage
 const layoutStore = new Store<LayoutStoreSchema>({
@@ -998,8 +999,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Create parser
       mavlinkParser = new MAVLinkParser();
 
-      // Setup data handler
-      currentTransport.on('data', async (data: Uint8Array) => {
+      // MAVLink data handler (stored so we can remove it for MSP)
+      const mavlinkDataHandler = async (data: Uint8Array) => {
         if (!mavlinkParser) return;
 
         for await (const packet of mavlinkParser.parse(data)) {
@@ -1023,6 +1024,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
               connectionState.isWaitingForHeartbeat = false;
               connectionState.isConnected = true;
+              connectionState.protocol = 'mavlink';
               connectionState.systemId = packet.sysid;
               connectionState.componentId = packet.compid;
               connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
@@ -1056,7 +1058,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             sendConnectionState(mainWindow);
           }
         }
-      });
+      };
+
+      // Setup data handler
+      currentTransport.on('data', mavlinkDataHandler);
 
       currentTransport.on('error', (error: Error) => {
         console.error('Transport error:', error);
@@ -1089,16 +1094,49 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       };
       sendConnectionState(mainWindow);
 
-      // Set heartbeat timeout (5 seconds)
-      heartbeatTimeout = setTimeout(() => {
-        if (connectionState.isWaitingForHeartbeat) {
-          sendLog(mainWindow, 'error', 'No MAVLink heartbeat received', 'Timeout after 5 seconds. Is this a MAVLink device?');
-          connectionState.isWaitingForHeartbeat = false;
-          sendConnectionState(mainWindow);
-          // Close the transport
-          currentTransport?.close();
+      // Set heartbeat timeout - try MSP if no MAVLink heartbeat
+      heartbeatTimeout = setTimeout(async () => {
+        if (connectionState.isWaitingForHeartbeat && currentTransport?.isOpen) {
+          sendLog(mainWindow, 'info', 'No MAVLink heartbeat, trying MSP protocol...');
+
+          // IMPORTANT: Remove MAVLink handler before trying MSP
+          currentTransport.removeListener('data', mavlinkDataHandler);
+          mavlinkParser = null;
+
+          // Try MSP detection
+          const mspInfo = await tryMspDetection(currentTransport, mainWindow);
+
+          if (mspInfo) {
+            // MSP detected! Update connection state
+            sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}`, `Board: ${mspInfo.boardId}`);
+
+            connectionState = {
+              isConnected: true,
+              isWaitingForHeartbeat: false,
+              protocol: 'msp',
+              transport: transportName,
+              fcVariant: mspInfo.fcVariant,
+              fcVersion: mspInfo.fcVersion,
+              boardId: mspInfo.boardId,
+              apiVersion: mspInfo.apiVersion,
+              autopilot: mspInfo.fcVariant, // Show variant as autopilot
+              vehicleType: 'Multirotor', // MSP boards are typically multirotors
+              packetsReceived: connectionState.packetsReceived,
+              packetsSent: connectionState.packetsSent,
+            };
+            sendConnectionState(mainWindow);
+
+            // Start MSP telemetry (sends to same TELEMETRY_UPDATE channel)
+            startMspTelemetry(10);
+          } else {
+            // Neither MAVLink nor MSP
+            sendLog(mainWindow, 'error', 'No protocol detected', 'Device did not respond to MAVLink or MSP. Check connection.');
+            connectionState.isWaitingForHeartbeat = false;
+            sendConnectionState(mainWindow);
+            currentTransport?.close();
+          }
         }
-      }, 5000);
+      }, 2500); // Shorter timeout, then try MSP
 
       return true;
     } catch (error) {
@@ -1113,6 +1151,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Disconnect
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
+    // Stop MSP telemetry if running
+    stopMspTelemetry();
+
     if (currentTransport?.isOpen) {
       await currentTransport.close();
     }
@@ -2965,6 +3006,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     sendLog(mainWindow, 'warn', `Could not identify board on ${port}`);
     return { success: false, error: 'No compatible firmware detected' };
   });
+
+  // Register MSP handlers for Betaflight/iNav/Cleanflight support
+  registerMspHandlers(mainWindow);
 }
 
 /**

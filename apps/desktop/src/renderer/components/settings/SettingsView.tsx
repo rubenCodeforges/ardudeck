@@ -3,6 +3,17 @@ import { useSettingsStore, type VehicleProfile, type VehicleType } from '../../s
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 
+// Vehicle types supported by each firmware
+// Betaflight: Only multirotors (racing/freestyle focused)
+// iNav: Multirotors, planes, rovers (GPS navigation firmware)
+// MAVLink (ArduPilot): Everything
+const FIRMWARE_SUPPORTED_TYPES: Record<string, VehicleType[]> = {
+  BTFL: ['copter'],  // Betaflight - racing/freestyle multirotors only
+  CLFL: ['copter'],  // Cleanflight - multirotors only
+  INAV: ['copter', 'plane', 'rover', 'boat'],  // iNav - navigation firmware
+  // MAVLink/ArduPilot supports everything via different firmware (Copter, Plane, Rover, Sub)
+};
+
 // Map MAV_TYPE to our vehicle types
 // See: https://mavlink.io/en/messages/common.html#MAV_TYPE
 const mavTypeToVehicleType: Record<number, VehicleType> = {
@@ -105,6 +116,94 @@ const VEHICLE_TYPE_NAMES: Record<VehicleType, string> = {
   boat: 'Boat',
   sub: 'Submarine',
 };
+
+// Firmware display names
+const FIRMWARE_NAMES: Record<string, string> = {
+  BTFL: 'Betaflight',
+  CLFL: 'Cleanflight',
+  INAV: 'iNav',
+};
+
+// Check if a vehicle profile type is compatible with the connected board
+function checkProfileCompatibility(
+  profileType: VehicleType | undefined,
+  fcVariant: string | undefined,
+  protocol: 'mavlink' | 'msp' | undefined
+): { compatible: boolean; message?: string; supportedTypes?: VehicleType[] } {
+  if (!profileType || !protocol) return { compatible: true };
+
+  // MAVLink (ArduPilot) supports all vehicle types
+  if (protocol === 'mavlink') return { compatible: true };
+
+  // MSP protocol - check firmware variant
+  if (protocol === 'msp' && fcVariant) {
+    const supportedTypes = FIRMWARE_SUPPORTED_TYPES[fcVariant];
+    if (supportedTypes && !supportedTypes.includes(profileType)) {
+      return {
+        compatible: false,
+        message: `Your ${VEHICLE_TYPE_NAMES[profileType]} profile is not compatible with ${FIRMWARE_NAMES[fcVariant] || fcVariant}`,
+        supportedTypes,
+      };
+    }
+  }
+
+  return { compatible: true };
+}
+
+// Profile compatibility warning banner
+function ProfileCompatibilityBanner({
+  profileType,
+  fcVariant,
+  boardId,
+  supportedTypes,
+  onCreateNewProfile,
+}: {
+  profileType: VehicleType;
+  fcVariant: string;
+  boardId?: string;
+  supportedTypes: VehicleType[];
+  onCreateNewProfile: (type: VehicleType) => void;
+}) {
+  return (
+    <div className="mb-6 bg-gradient-to-r from-amber-900/40 to-orange-900/30 border border-amber-500/40 rounded-xl p-4">
+      <div className="flex items-start gap-4">
+        {/* Warning Icon */}
+        <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+          <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+
+        {/* Message Content */}
+        <div className="flex-1">
+          <h3 className="text-lg font-medium text-amber-300">Profile Compatibility Issue</h3>
+          <p className="text-sm text-gray-300 mt-1">
+            Your current profile is configured for <span className="font-medium text-amber-400">{VEHICLE_TYPE_NAMES[profileType]}</span>,
+            but you're connected to a <span className="font-medium text-blue-400">{FIRMWARE_NAMES[fcVariant] || fcVariant}</span> board
+            {boardId && <span className="text-gray-400"> ({boardId})</span>}.
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            {FIRMWARE_NAMES[fcVariant] || fcVariant} only supports: {supportedTypes.map(t => VEHICLE_TYPE_NAMES[t]).join(', ')}.
+          </p>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {supportedTypes.map((type) => (
+              <button
+                key={type}
+                onClick={() => onCreateNewProfile(type)}
+                className="flex items-center gap-2 px-3 py-2 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 rounded-lg text-sm text-amber-200 transition-colors"
+              >
+                <div className="w-5 h-5">{VEHICLE_ICONS[type]}</div>
+                Create {VEHICLE_TYPE_NAMES[type]} Profile
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Circular gauge component
 function CircularGauge({
@@ -228,16 +327,68 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
   const { gps } = useTelemetryStore();
   const [weather, setWeather] = useState<WeatherData | null>(weatherCache.data);
   const [loading, setLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationSource, setLocationSource] = useState<'vehicle' | 'device' | null>(null);
+
+  // Fallback: Get user's device location if vehicle GPS is not available
+  useEffect(() => {
+    if (gps.lat !== 0 || gps.lon !== 0) {
+      // Vehicle GPS is available, use it
+      setLocationSource('vehicle');
+      return;
+    }
+
+    // Try IP-based geolocation (more reliable than browser geolocation)
+    const fetchIpLocation = async () => {
+      try {
+        // Use ip-api.com (free, no API key needed, 45 req/min limit)
+        const response = await fetch('http://ip-api.com/json/?fields=lat,lon,status');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'success' && data.lat && data.lon) {
+            setUserLocation({ lat: data.lat, lon: data.lon });
+            setLocationSource('device');
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('IP geolocation failed:', err);
+      }
+
+      // Fallback: try browser geolocation if IP lookup fails
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+            });
+            setLocationSource('device');
+          },
+          (error) => {
+            console.log('Browser geolocation error:', error.message);
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
+      }
+    };
+
+    fetchIpLocation();
+  }, [gps.lat, gps.lon]);
+
+  // Determine which location to use
+  const effectiveLat = gps.lat !== 0 ? gps.lat : userLocation?.lat ?? 0;
+  const effectiveLon = gps.lon !== 0 ? gps.lon : userLocation?.lon ?? 0;
 
   useEffect(() => {
-    // Only fetch if we have GPS coords
-    if (gps.lat === 0 && gps.lon === 0) return;
+    // Only fetch if we have coords from either source
+    if (effectiveLat === 0 && effectiveLon === 0) return;
 
     // Check if cache is still valid (same location within threshold, not expired)
     const now = Date.now();
     const locationChanged =
-      Math.abs(gps.lat - weatherCache.lat) > WEATHER_LOCATION_THRESHOLD ||
-      Math.abs(gps.lon - weatherCache.lon) > WEATHER_LOCATION_THRESHOLD;
+      Math.abs(effectiveLat - weatherCache.lat) > WEATHER_LOCATION_THRESHOLD ||
+      Math.abs(effectiveLon - weatherCache.lon) > WEATHER_LOCATION_THRESHOLD;
     const cacheExpired = now - weatherCache.timestamp > WEATHER_CACHE_DURATION;
 
     // Use cache if valid
@@ -256,7 +407,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
       try {
         // Fetch standard weather data
         const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${gps.lat.toFixed(4)}&longitude=${gps.lon.toFixed(4)}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,visibility,cloud_cover,relative_humidity_2m,surface_pressure`
+          `https://api.open-meteo.com/v1/forecast?latitude=${effectiveLat.toFixed(4)}&longitude=${effectiveLon.toFixed(4)}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,visibility,cloud_cover,relative_humidity_2m,surface_pressure`
         );
 
         if (!response.ok) {
@@ -272,7 +423,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
         if (vehicleType === 'boat' || vehicleType === 'sub') {
           try {
             const marineResponse = await fetch(
-              `https://marine-api.open-meteo.com/v1/marine?latitude=${gps.lat.toFixed(4)}&longitude=${gps.lon.toFixed(4)}&current=wave_height,swell_wave_height,swell_wave_direction,swell_wave_period`
+              `https://marine-api.open-meteo.com/v1/marine?latitude=${effectiveLat.toFixed(4)}&longitude=${effectiveLon.toFixed(4)}&current=wave_height,swell_wave_height,swell_wave_direction,swell_wave_period`
             );
             if (marineResponse.ok) {
               const marine = await marineResponse.json();
@@ -316,8 +467,8 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
 
           // Update cache
           weatherCache.data = weatherData;
-          weatherCache.lat = gps.lat;
-          weatherCache.lon = gps.lon;
+          weatherCache.lat = effectiveLat;
+          weatherCache.lon = effectiveLon;
           weatherCache.timestamp = now;
 
           setWeather(weatherData);
@@ -339,14 +490,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
     }, WEATHER_CACHE_DURATION);
 
     return () => clearInterval(interval);
-  }, [gps.lat, gps.lon, vehicleType]); // Refetch when vehicle type changes (for marine data)
+  }, [effectiveLat, effectiveLon, vehicleType]); // Refetch when location or vehicle type changes
 
   const getWindDirection = (deg: number) => {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return directions[Math.round(deg / 45) % 8];
   };
 
-  if (gps.lat === 0 && gps.lon === 0) {
+  // No location available at all
+  if (effectiveLat === 0 && effectiveLon === 0) {
     return (
       <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-4 h-full">
         <div className="flex items-center gap-2 mb-4">
@@ -360,8 +512,8 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <div className="text-gray-500 text-sm">Waiting for GPS</div>
-          <div className="text-gray-600 text-xs mt-1">Connect to vehicle for weather</div>
+          <div className="text-gray-500 text-sm">Getting location...</div>
+          <div className="text-gray-600 text-xs mt-1">Connect vehicle or allow location access</div>
         </div>
       </div>
     );
@@ -503,7 +655,19 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${getStatusColor()}`}>
             {isBad ? 'No Go' : isCaution ? 'Caution' : 'Good'}
           </span>
-          <div className="text-[10px] text-gray-500 mt-1">{getVehicleLabel()} conditions</div>
+          <div className="text-[10px] text-gray-500 mt-1 flex items-center justify-end gap-1">
+            {locationSource === 'device' && (
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            )}
+            {locationSource === 'vehicle' && (
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              </svg>
+            )}
+            {getVehicleLabel()} conditions
+          </div>
         </div>
       </div>
 
@@ -775,6 +939,34 @@ export function SettingsView() {
   };
   const estimatedPower = estimatePower();
 
+  // Check profile compatibility with connected board
+  const profileCompatibility = checkProfileCompatibility(
+    activeVehicle?.type,
+    connectionState.fcVariant,
+    connectionState.protocol
+  );
+
+  // Handler to create a new profile with the compatible type
+  const handleCreateCompatibleProfile = (type: VehicleType) => {
+    const boardId = connectionState.boardId || 'Unknown';
+    const newVehicleData = {
+      name: `${boardId} ${VEHICLE_TYPE_NAMES[type]}`,
+      type,
+      weight: type === 'copter' ? 500 : type === 'plane' ? 1500 : 1000,
+      batteryCells: 4,
+      batteryCapacity: type === 'copter' ? 1300 : type === 'plane' ? 3000 : 5000,
+      // Copter-specific defaults
+      ...(type === 'copter' && { frameSize: 127, motorCount: 4, motorKv: 2400, propSize: '5x4.5' }),  // 127mm = 5"
+      // Plane-specific defaults
+      ...(type === 'plane' && { wingspan: 1200, wingArea: 24 }),
+      // Rover/boat defaults
+      ...(type === 'rover' && { driveType: 'differential' as const }),
+      ...(type === 'boat' && { hullType: 'displacement' as const }),
+    };
+    const newVehicleId = addVehicle(newVehicleData);
+    setActiveVehicle(newVehicleId);
+  };
+
   return (
     <div className="h-full overflow-auto bg-gray-900/30">
       <div className="max-w-6xl mx-auto p-6">
@@ -785,6 +977,17 @@ export function SettingsView() {
             Configure mission defaults and vehicle profiles
           </p>
         </div>
+
+        {/* Profile Compatibility Warning */}
+        {connectionState.isConnected && !profileCompatibility.compatible && activeVehicle && connectionState.fcVariant && (
+          <ProfileCompatibilityBanner
+            profileType={activeVehicle.type}
+            fcVariant={connectionState.fcVariant}
+            boardId={connectionState.boardId}
+            supportedTypes={profileCompatibility.supportedTypes || []}
+            onCreateNewProfile={handleCreateCompatibleProfile}
+          />
+        )}
 
         {/* ============================================ */}
         {/* SECTION: Vehicle & Status Info */}
@@ -841,7 +1044,7 @@ export function SettingsView() {
                         {activeVehicle.type === 'sub' && 'Depth'}
                       </div>
                       <div className="text-sm text-white font-medium">
-                        {activeVehicle.type === 'copter' && `${activeVehicle.frameSize || 5}" ${activeVehicle.motorCount === 6 ? 'Hex' : activeVehicle.motorCount === 8 ? 'Octo' : 'Quad'}`}
+                        {activeVehicle.type === 'copter' && `${activeVehicle.frameSize || 127}mm ${activeVehicle.motorCount === 6 ? 'Hex' : activeVehicle.motorCount === 8 ? 'Octo' : 'Quad'}`}
                         {activeVehicle.type === 'plane' && `${activeVehicle.wingspan || 1200}mm`}
                         {activeVehicle.type === 'vtol' && `${activeVehicle.wingspan || 1500}mm`}
                         {activeVehicle.type === 'rover' && (activeVehicle.driveType === 'ackermann' ? 'Car' : activeVehicle.driveType === 'skid' ? 'Skid' : 'Tank')}
@@ -1048,7 +1251,7 @@ export function SettingsView() {
                     addVehicle({
                       name: `Vehicle ${vehicles.length + 1}`,
                       type: 'copter',
-                      frameSize: 5,
+                      frameSize: 127,  // 5" = 127mm
                       weight: 600,
                       batteryCells: 4,
                       batteryCapacity: 1500,
@@ -1088,6 +1291,102 @@ export function SettingsView() {
 }
 
 // Input field component for vehicle forms
+/**
+ * Frame size input with mm/inches toggle
+ * Stores value in mm internally for consistency
+ * Common frame sizes: 127mm (5"), 178mm (7"), 254mm (10"), 320mm, 450mm
+ */
+function FrameSizeInput({
+  value,
+  onChange,
+}: {
+  value: number | undefined;
+  onChange: (mm: number | undefined) => void;
+}) {
+  const [unit, setUnit] = useState<'mm' | 'in'>('mm');
+
+  // Convert stored mm to display value
+  const displayValue = value !== undefined
+    ? unit === 'mm'
+      ? value
+      : Math.round(value / 25.4 * 10) / 10  // mm to inches, 1 decimal
+    : '';
+
+  // Handle input and convert to mm for storage
+  const handleChange = (inputVal: string) => {
+    if (inputVal === '') {
+      onChange(undefined);
+      return;
+    }
+    const numVal = parseFloat(inputVal);
+    if (isNaN(numVal) || numVal < 0) return;
+
+    // Convert to mm for storage
+    const mmValue = unit === 'mm' ? Math.round(numVal) : Math.round(numVal * 25.4);
+    onChange(mmValue);
+  };
+
+  // Common presets for quick selection
+  const presets = [
+    { mm: 127, label: '5"' },
+    { mm: 178, label: '7"' },
+    { mm: 254, label: '10"' },
+    { mm: 320, label: '320' },
+    { mm: 450, label: '450' },
+  ];
+
+  return (
+    <div>
+      <label className="block text-xs text-gray-400 mb-1">Frame Size (diagonal)</label>
+      <div className="flex items-center">
+        <input
+          type="number"
+          value={displayValue}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder={unit === 'mm' ? '450' : '5'}
+          min={0}
+          step={unit === 'mm' ? 10 : 0.5}
+          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-l-lg border-r-0 text-white text-sm focus:outline-none focus:border-blue-500 focus:z-10"
+        />
+        <button
+          type="button"
+          onClick={() => setUnit(unit === 'mm' ? 'in' : 'mm')}
+          className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-r-lg text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors min-w-[40px]"
+          title="Toggle between mm and inches"
+        >
+          {unit}
+        </button>
+      </div>
+      {/* Quick presets */}
+      <div className="flex gap-1 mt-1.5">
+        {presets.map((p) => (
+          <button
+            key={p.mm}
+            type="button"
+            onClick={() => onChange(p.mm)}
+            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+              value === p.mm
+                ? 'bg-blue-600/50 text-blue-300'
+                : 'bg-gray-800 text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {/* Show conversion */}
+      {value !== undefined && value > 0 && (
+        <div className="text-[10px] text-gray-500 mt-1">
+          {unit === 'mm'
+            ? `≈ ${(value / 25.4).toFixed(1)}" prop diagonal`
+            : `= ${value}mm motor-to-motor`
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VehicleInputField({
   label,
   value,
@@ -1235,17 +1534,9 @@ function VehicleEditModal({
                 Airframe
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <VehicleSelectField
-                  label="Frame Size"
-                  value={vehicle.frameSize || 5}
-                  onChange={(v) => onUpdate({ frameSize: Number(v) })}
-                  options={[
-                    { value: 3, label: '3" (Toothpick/Cinewhoop)' },
-                    { value: 5, label: '5" (Freestyle/Racing)' },
-                    { value: 7, label: '7" (Long Range)' },
-                    { value: 10, label: '10" (Cinelift/AP)' },
-                    { value: 12, label: '12"+ (Heavy Lift)' },
-                  ]}
+                <FrameSizeInput
+                  value={vehicle.frameSize}
+                  onChange={(mm) => onUpdate({ frameSize: mm })}
                 />
                 <VehicleSelectField
                   label="Motor Count"
@@ -1717,7 +2008,7 @@ function VehicleCard({
 
     switch (vehicle.type) {
       case 'copter':
-        if (vehicle.frameSize) parts.push(`${vehicle.frameSize}"`);
+        if (vehicle.frameSize) parts.push(`${vehicle.frameSize}mm`);
         if (vehicle.motorCount) {
           const motorNames: Record<number, string> = { 3: 'Tri', 4: 'Quad', 6: 'Hex', 8: 'Octo' };
           parts.push(motorNames[vehicle.motorCount] || `${vehicle.motorCount}M`);

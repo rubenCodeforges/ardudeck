@@ -35,6 +35,9 @@ importers:
       '@ardudeck/mavlink-ts':
         specifier: workspace:*
         version: link:../../packages/mavlink-ts
+      '@ardudeck/msp-ts':
+        specifier: workspace:*
+        version: link:../../packages/msp-ts
       '@ardudeck/stm32-dfu':
         specifier: workspace:*
         version: link:../../packages/stm32-dfu
@@ -129,6 +132,15 @@ importers:
         version: 5.9.3
 
   packages/mavlink-ts:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.3)
+
+  packages/msp-ts:
     devDependencies:
       typescript:
         specifier: ^5.7.2

@@ -24,7 +24,7 @@ export interface VehicleProfile {
   batteryDischarge?: number;  // C rating (optional, for advanced users)
 
   // === COPTER-SPECIFIC ===
-  frameSize?: number;         // inches (5, 7, 10, etc.)
+  frameSize?: number;         // mm diagonal (127=5", 178=7", 254=10", 320, 450, etc.)
   motorCount?: number;        // 3=tri, 4=quad, 6=hex, 8=octo
   motorKv?: number;           // Motor KV rating
   propSize?: string;          // e.g., "5x4.5", "10x4.7"
@@ -118,7 +118,7 @@ interface SettingsStore {
   updateMissionDefaults: (updates: Partial<MissionDefaults>) => void;
 
   // Actions - Vehicles
-  addVehicle: (vehicle: Omit<VehicleProfile, 'id'>) => void;
+  addVehicle: (vehicle: Omit<VehicleProfile, 'id'>) => string;  // Returns the new vehicle's ID
   updateVehicle: (id: string, updates: Partial<VehicleProfile>) => void;
   removeVehicle: (id: string) => void;
   setActiveVehicle: (id: string | null) => void;
@@ -143,7 +143,7 @@ const DEFAULT_VEHICLE: VehicleProfile = {
   id: 'default',
   name: 'My Vehicle',
   type: 'copter',
-  frameSize: 5,          // 5" quad
+  frameSize: 127,        // 5" quad (127mm)
   weight: 600,           // 600g AUW
   batteryCells: 4,       // 4S
   batteryCapacity: 1500, // 1500 mAh
@@ -169,9 +169,10 @@ function estimateCruiseSpeed(vehicle: VehicleProfile): number {
     case 'copter': {
       // Larger frames = faster cruise, but diminishing returns
       // Motor count affects efficiency (more motors = slightly slower cruise for same size)
-      const frameSize = vehicle.frameSize || 5;
+      // frameSize is in mm, convert to inches for calculation (127mm = 5")
+      const frameSizeInches = (vehicle.frameSize || 127) / 25.4;
       const motorFactor = vehicle.motorCount ? (4 / vehicle.motorCount) * 0.9 + 0.1 : 1;
-      return (8 + frameSize * 0.8) * motorFactor; // 5" quad = ~12 m/s
+      return (8 + frameSizeInches * 0.8) * motorFactor; // 5" quad = ~12 m/s
     }
     case 'plane': {
       // Wing loading affects cruise speed: heavier per area = faster
@@ -228,9 +229,10 @@ function estimatePowerDraw(vehicle: VehicleProfile): number {
       // Base: 150-200W per kg at cruise
       // More motors = slightly more efficient (redundancy)
       // Larger props = more efficient
+      // frameSize is in mm, convert to inches for calculation (127mm = 5")
       const motorCount = vehicle.motorCount || 4;
-      const frameSize = vehicle.frameSize || 5;
-      const baseWattsPerKg = 200 - (motorCount - 4) * 5 - (frameSize - 5) * 3;
+      const frameSizeInches = (vehicle.frameSize || 127) / 25.4;
+      const baseWattsPerKg = 200 - (motorCount - 4) * 5 - (frameSizeInches - 5) * 3;
       return (weight / 1000) * Math.max(140, baseWattsPerKg);
     }
     case 'plane': {
@@ -411,6 +413,7 @@ export const useSettingsStore = create<SettingsStore>()(
     set((state) => ({
       vehicles: [...state.vehicles, vehicle],
     }));
+    return id;  // Return the new vehicle's ID
   },
 
   updateVehicle: (id, updates) => {
