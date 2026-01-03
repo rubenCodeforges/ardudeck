@@ -165,6 +165,9 @@ export async function dfuseDownload(
     // Wait for download to complete
     await dfuWaitForState(device, interfaceNumber, [DfuState.dfuDNLOAD_IDLE]);
 
+    // BSOD FIX: Add delay between download blocks to prevent USB driver stress
+    await new Promise(resolve => setTimeout(resolve, 10));
+
     offset = end;
     blockNum++;
 
@@ -351,6 +354,9 @@ export async function dfuseEraseRange(
   for (let i = 0; i < sectors.length; i++) {
     const sectorAddr = sectors[i]!;
     await dfuseEraseSector(device, interfaceNumber, sectorAddr);
+
+    // BSOD FIX: Add delay between sector erases to let flash controller settle
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     if (onProgress) {
       onProgress({

@@ -7,10 +7,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
+import inavLogo from '../../assets/inav-logo.png';
+import betaflightLogo from '../../assets/betaflight-logo.svg';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
 import ModesWizard from '../modes/ModesWizard';
 import ModesAdvancedEditor from '../modes/ModesAdvancedEditor';
+import { ServoWizardInline } from '../servo-wizard';
+import NavigationTab from './NavigationTab';
 
 // Types
 interface MSPPidCoefficients {
@@ -1159,10 +1163,12 @@ function ModesTabContent() {
   );
 }
 
+type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servos' | 'navigation';
+
 export function MspConfigView() {
   const { connectionState } = useConnectionStore();
   const { gps, attitude } = useTelemetryStore();
-  const [activeTab, setActiveTab] = useState<'tuning' | 'rates' | 'modes' | 'sensors'>('tuning');
+  const [activeTab, setActiveTab] = useState<TabId>('tuning');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1187,6 +1193,10 @@ export function MspConfigView() {
   }), [attitude, gps, features]);
 
   const isInav = connectionState.fcVariant === 'INAV';
+
+  // Check if board has SERVO_TILT feature enabled (bit 5)
+  // Some boards don't have servo outputs in multirotor mode
+  const hasServoFeature = (features & (1 << 5)) !== 0;
 
   // Load config
   const loadConfig = useCallback(async () => {
@@ -1292,12 +1302,20 @@ export function MspConfigView() {
       <div className="shrink-0 px-6 py-4 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/90 to-gray-900/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
-              <span className="text-2xl">🐝</span>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden ${
+              connectionState.fcVariant === 'INAV'
+                ? 'bg-white'
+                : 'bg-gradient-to-br from-orange-500 to-red-600'
+            }`}>
+              <img
+                src={connectionState.fcVariant === 'INAV' ? inavLogo : betaflightLogo}
+                alt={connectionState.fcVariant === 'INAV' ? 'iNav' : 'Betaflight'}
+                className="w-10 h-10 object-contain"
+              />
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">
-                {connectionState.fcVariant === 'BTFL' ? 'Betaflight' : connectionState.fcVariant} Tuning
+                {connectionState.fcVariant === 'BTFL' ? 'Betaflight' : connectionState.fcVariant === 'INAV' ? 'iNav' : connectionState.fcVariant} Tuning
               </h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span className="text-blue-400">{connectionState.fcVersion}</span>
@@ -1331,11 +1349,17 @@ export function MspConfigView() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-4 flex-wrap">
           {[
             { id: 'tuning', label: 'PID Tuning', icon: '🎚️', desc: 'How your quad flies' },
             { id: 'rates', label: 'Rates', icon: '📊', desc: 'How fast it turns' },
             { id: 'modes', label: 'Flight Modes', icon: '🎮', desc: 'Switch functions' },
+            // iNav-specific tabs (before Sensors)
+            ...(isInav ? [
+              { id: 'servos', label: 'Servo Setup', icon: '🛫', desc: 'Configure control surfaces' },
+              { id: 'navigation', label: 'Navigation', icon: '🧭', desc: 'RTH & GPS settings' },
+            ] : []),
+            // Sensors always last
             { id: 'sensors', label: 'Sensors', icon: '📡', desc: 'Hardware status' },
           ].map((tab) => (
             <button
@@ -1453,6 +1477,16 @@ export function MspConfigView() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Servo Setup Wizard (iNav only) */}
+        {activeTab === 'servos' && isInav && (
+          <ServoWizardInline />
+        )}
+
+        {/* Navigation Tab (iNav only) */}
+        {activeTab === 'navigation' && isInav && (
+          <NavigationTab modified={modified} setModified={setModified} />
         )}
       </div>
     </div>

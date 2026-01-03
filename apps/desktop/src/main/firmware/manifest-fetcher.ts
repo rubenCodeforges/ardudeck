@@ -16,6 +16,15 @@ import {
 } from '../../shared/firmware-types.js';
 
 /**
+ * Estimate binary firmware size from Intel HEX file size
+ * HEX format is ~2.3x larger than binary due to ASCII encoding + overhead
+ * Each 16 bytes of data becomes ~45 chars in HEX format
+ */
+function hexToBinarySize(hexSize: number): number {
+  return Math.round(hexSize / 2.3);
+}
+
+/**
  * Which vehicle types each firmware source supports
  */
 const SUPPORTED_VEHICLES: Record<FirmwareSource, FirmwareVehicleType[]> = {
@@ -60,7 +69,56 @@ let manifestCache: {
   boards: Map<string, BoardInfo[]>;  // vehicleType -> boards
 } | null = null;
 
+// Cache for GitHub release asset sizes
+const githubAssetSizeCache: Map<string, number> = new Map();
+
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Fetch file size from GitHub releases API
+ * @param owner GitHub repo owner (e.g., "iNavFlight")
+ * @param repo GitHub repo name (e.g., "inav")
+ * @param tag Release tag (e.g., "7.1.2" or "2.6.1")
+ * @param assetPattern Pattern to match asset name (e.g., "SPEEDYBEEF3")
+ */
+async function fetchGitHubAssetSize(owner: string, repo: string, tag: string, assetPattern: string): Promise<number | undefined> {
+  const cacheKey = `${owner}/${repo}/${tag}/${assetPattern}`;
+  if (githubAssetSizeCache.has(cacheKey)) {
+    return githubAssetSizeCache.get(cacheKey);
+  }
+
+  return new Promise((resolve) => {
+    const url = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
+
+    https.get(url, { headers: { 'User-Agent': 'ArduDeck-GCS' } }, (res) => {
+      if (res.statusCode !== 200) {
+        resolve(undefined);
+        return;
+      }
+
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const release = JSON.parse(data);
+          const pattern = assetPattern.toLowerCase();
+          const asset = release.assets?.find((a: any) =>
+            a.name.toLowerCase().includes(pattern) &&
+            (a.name.endsWith('.hex') || a.name.endsWith('.bin'))
+          );
+          if (asset?.size) {
+            githubAssetSizeCache.set(cacheKey, asset.size);
+            resolve(asset.size);
+          } else {
+            resolve(undefined);
+          }
+        } catch {
+          resolve(undefined);
+        }
+      });
+    }).on('error', () => resolve(undefined));
+  });
+}
 
 /**
  * Fetch the ArduPilot manifest.json
@@ -298,6 +356,7 @@ const BETAFLIGHT_BOARDS: BoardInfo[] = [
   { id: 'SPEEDYBEEF7', name: 'SpeedyBee F7', category: 'SpeedyBee' },
   { id: 'SPEEDYBEEF7V3', name: 'SpeedyBee F7 v3', category: 'SpeedyBee' },
   { id: 'SPEEDYBEEF7MINI', name: 'SpeedyBee F7 Mini', category: 'SpeedyBee' },
+  // Note: SpeedyBee F3 does NOT exist in Betaflight releases
 
   // SPRacing
   { id: 'SPRACINGF3', name: 'SPRacing F3', category: 'SPRacing' },
@@ -436,6 +495,17 @@ const INAV_BOARDS: BoardInfo[] = [
 
   // Generic
   { id: 'GENERIC', name: 'Generic Flight Controller', category: 'Generic' },
+
+  // F3 boards - FrSky/Airhero supported until iNav 2.6.1
+  { id: 'FRSKYF3', name: 'FrSky F3', category: 'F3 Boards' },
+  { id: 'AIRHEROF3', name: 'Airhero F3', category: 'F3 Boards' },
+  { id: 'AIRHEROF3_QUAD', name: 'Airhero F3 Quad', category: 'F3 Boards' },
+
+  // SPRacing F3 boards - supported until iNav 2.0.0 (dropped in 2.1.0)
+  { id: 'SPRACINGF3', name: 'SPRacing F3', category: 'F3 Boards (Legacy)' },
+  { id: 'SPRACINGF3EVO', name: 'SPRacing F3 EVO', category: 'F3 Boards (Legacy)' },
+  { id: 'SPRACINGF3MINI', name: 'SPRacing F3 Mini', category: 'F3 Boards (Legacy)' },
+  { id: 'SPRACINGF3NEO', name: 'SPRacing F3 Neo', category: 'F3 Boards (Legacy)' },
 ];
 
 /**
@@ -826,7 +896,7 @@ function getBetaflightCuratedVersions(boardId: string): FirmwareVersion[] {
         downloadUrl: `${baseUrl}/3.5.7/betaflight_3.5.7_${boardIdUpper}.hex`,
         boardId: boardIdUpper,
         vehicleType: 'Copter',
-        fileSize: 230000, // ~225KB typical for F3
+        fileSize: hexToBinarySize(530000), // ~230KB binary
       },
       {
         version: '3.5.6',
@@ -835,7 +905,7 @@ function getBetaflightCuratedVersions(boardId: string): FirmwareVersion[] {
         downloadUrl: `${baseUrl}/3.5.6/betaflight_3.5.6_${boardIdUpper}.hex`,
         boardId: boardIdUpper,
         vehicleType: 'Copter',
-        fileSize: 230000,
+        fileSize: hexToBinarySize(530000), // ~230KB binary
       },
     ];
   }
@@ -948,31 +1018,104 @@ function getBetaflightCuratedVersions(boardId: string): FirmwareVersion[] {
 function getInavCuratedVersions(vehicleType: FirmwareVehicleType, boardId: string): FirmwareVersion[] {
   let targetBoard = 'SPEEDYBEEF405V3';
   const boardIdUpper = boardId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const baseUrl = 'https://github.com/iNavFlight/inav/releases/download';
 
+  // Check if this is one of the F3 boards that iNav supports
+  // SPRacing F3 boards: last supported in iNav 2.0.0 (dropped in 2.1.0)
+  // FrSky/Airhero F3 boards: last supported in iNav 2.6.1
+  const isSPRacingF3 = boardIdUpper.includes('SPRACINGF3') ||
+                       (boardIdUpper.includes('SPRACING') && boardIdUpper.includes('F3'));
+
+  if (isSPRacingF3) {
+    // Map to correct SPRacing F3 target name
+    let f3Target = 'SPRACINGF3';
+    if (boardIdUpper.includes('EVO')) {
+      f3Target = 'SPRACINGF3EVO';
+    } else if (boardIdUpper.includes('MINI')) {
+      f3Target = 'SPRACINGF3MINI';
+    } else if (boardIdUpper.includes('NEO')) {
+      f3Target = 'SPRACINGF3NEO';
+    }
+
+    // Return iNav 2.0.0 - last version with SPRacing F3 support
+    return [
+      {
+        version: '2.0.0',
+        releaseType: 'stable',
+        releaseDate: '2018-08-20',
+        releaseNotes: 'Last iNav version supporting SPRacing F3 boards',
+        downloadUrl: `${baseUrl}/2.0.0/inav_2.0.0_${f3Target}.hex`,
+        boardId: f3Target,
+        vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
+        fileSize: hexToBinarySize(628000), // ~273KB binary
+      },
+    ];
+  }
+
+  // FrSky/Airhero F3 boards: supported until iNav 2.6.1
+  const inavF3Targets = ['FRSKYF3', 'AIRHEROF3', 'AIRHEROF3_QUAD'];
+  const isInavF3Board = inavF3Targets.includes(boardIdUpper) ||
+                        boardIdUpper.includes('AIRHERO') ||
+                        (boardIdUpper.includes('FRSKY') && boardIdUpper.includes('F3'));
+
+  if (isInavF3Board) {
+    // Map to correct iNav F3 target name
+    let f3Target = boardIdUpper;
+    if (boardIdUpper.includes('AIRHERO')) {
+      f3Target = boardIdUpper.includes('QUAD') ? 'AIRHEROF3_QUAD' : 'AIRHEROF3';
+    } else if (boardIdUpper.includes('FRSKY')) {
+      f3Target = 'FRSKYF3';
+    }
+
+    // Return legacy iNav versions for F3 boards
+    return [
+      {
+        version: '2.6.1',
+        releaseType: 'stable',
+        releaseDate: '2020-12-27',
+        releaseNotes: 'Last version supporting FrSky/Airhero F3 boards',
+        downloadUrl: `${baseUrl}/2.6.1/inav_2.6.1_${f3Target}.hex`,
+        boardId: f3Target,
+        vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
+        fileSize: hexToBinarySize(715000), // ~311KB binary
+      },
+      {
+        version: '2.5.2',
+        releaseType: 'stable',
+        releaseDate: '2020-06-20',
+        downloadUrl: `${baseUrl}/2.5.2/inav_2.5.2_${f3Target}.hex`,
+        boardId: f3Target,
+        vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
+        fileSize: hexToBinarySize(700000), // ~304KB binary
+      },
+    ];
+  }
+
+  // Modern boards (F4/F7/H7)
   if (boardIdUpper.includes('SPEEDYBEE')) {
     targetBoard = 'SPEEDYBEEF405V3';
   } else if (boardIdUpper.includes('MATEK')) {
     targetBoard = boardIdUpper.includes('H7') ? 'MATEKH743' : 'MATEKF405SE';
   }
 
-  const baseUrl = 'https://github.com/iNavFlight/inav/releases/download';
-
   return [
     {
       version: '7.1.2',
       releaseType: 'stable',
-      releaseDate: '',
+      releaseDate: '2024-03-15',
       downloadUrl: `${baseUrl}/7.1.2/inav_7.1.2_${targetBoard}.hex`,
       boardId: targetBoard,
       vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
+      fileSize: hexToBinarySize(1200000), // ~522KB binary
     },
     {
       version: '7.0.1',
       releaseType: 'stable',
-      releaseDate: '',
+      releaseDate: '2023-12-01',
       downloadUrl: `${baseUrl}/7.0.1/inav_7.0.1_${targetBoard}.hex`,
       boardId: targetBoard,
       vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
+      fileSize: hexToBinarySize(1170000), // ~509KB binary
     },
   ];
 }

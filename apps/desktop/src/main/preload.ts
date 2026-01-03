@@ -499,8 +499,40 @@ const api = {
   mspGetFeatures: (): Promise<number | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
 
+  mspGetMixerConfig: (): Promise<{ mixer: number; isMultirotor: boolean } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MIXER_CONFIG),
+
   mspGetRc: (): Promise<{ channels: number[] } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC),
+
+  // MSP Servo Config (iNav)
+  mspGetServoConfigs: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_CONFIGS),
+
+  mspSetServoConfig: (index: number, config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_CONFIG, index, config),
+
+  mspGetServoValues: (): Promise<number[] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_VALUES),
+
+  mspGetServoMixer: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_MIXER),
+
+  mspSetServoMixer: (index: number, rule: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_MIXER, index, rule),
+
+  // MSP Navigation Config (iNav)
+  mspGetNavConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_NAV_CONFIG),
+
+  mspSetNavConfig: (config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_NAV_CONFIG, config),
+
+  mspGetGpsConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_GPS_CONFIG),
+
+  mspSetGpsConfig: (config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_GPS_CONFIG, config),
 
   // MSP Commands
   mspSaveEeprom: (): Promise<boolean> =>

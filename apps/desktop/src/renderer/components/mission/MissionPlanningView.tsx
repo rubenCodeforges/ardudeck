@@ -16,6 +16,8 @@ import { AltitudeProfilePanel } from './AltitudeProfilePanel';
 import { useMissionStore } from '../../stores/mission-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useNavigationStore } from '../../stores/navigation-store';
+import { useFirmwareStore } from '../../stores/firmware-store';
+import { isUnsupportedF3Board, hasInavF3Support } from '../../../shared/board-mappings';
 
 // Reserved layout name for mission view (auto-save/restore)
 const MISSION_LAYOUT_NAME = '__mission_autosave';
@@ -71,6 +73,133 @@ function createDefaultLayout(api: DockviewApi): void {
 // Component for when mission planning is not available
 function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardId: string }) {
   const { setView } = useNavigationStore();
+  const { setSelectedSource, setPendingBoardMatch } = useFirmwareStore();
+
+  // Check if this is an F3 board (not supported by modern iNav either)
+  const isF3Board = isUnsupportedF3Board(boardId);
+
+  const handleFlashInav = async () => {
+    // Save the Betaflight board ID to match against iNav boards
+    const betaflightBoardId = boardId;
+
+    // Disconnect from current board first (they'll need to reconnect in bootloader mode)
+    try {
+      await window.electronAPI.disconnect();
+    } catch {
+      // Ignore disconnect errors
+    }
+
+    // Wait for connection state to fully update
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Set pending board match BEFORE setting source (so fetchBoards can use it)
+    if (betaflightBoardId && betaflightBoardId !== 'Unknown Board') {
+      setPendingBoardMatch(betaflightBoardId);
+    }
+
+    // Pre-select iNav firmware source BEFORE navigating
+    // This sets sourceExplicitlySet=true and prevents auto-detect from overriding
+    // It also triggers fetchBoards which will auto-match the board
+    setSelectedSource('inav');
+
+    // Now navigate - the firmware view will see 'inav' already selected
+    setView('firmware');
+  };
+
+  // F3 boards with iNav support can flash legacy iNav 2.6.1
+  const canUseInavF3 = isF3Board && hasInavF3Support(boardId);
+
+  if (isF3Board && canUseInavF3) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-950 p-8">
+        <div className="max-w-2xl text-center">
+          {/* Icon */}
+          <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500/20 to-yellow-600/20 border border-orange-500/30 flex items-center justify-center">
+            <span className="text-5xl leading-none flex items-center justify-center w-full h-full">🗺️</span>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-white mb-3">
+            Legacy iNav Available
+          </h1>
+
+          {/* Explanation */}
+          <p className="text-gray-400 mb-6 leading-relaxed">
+            Your <span className="text-orange-400 font-medium">{boardId}</span> is an F3 board with 256KB flash.
+            You can flash <span className="text-blue-400 font-medium">iNav 2.6.1</span> for basic mission planning and GPS navigation.
+          </p>
+
+          {/* Note about limitations */}
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
+            <p className="text-yellow-400/90 text-sm">
+              <strong>Note:</strong> iNav 2.6.1 supports waypoint missions but lacks newer features like safehome and advanced failsafes available in modern iNav 7.x on F4+ boards.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setView('telemetry')}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={handleFlashInav}
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
+            >
+              Flash iNav 2.6.1
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // F3 boards WITHOUT iNav support - need hardware upgrade
+  if (isF3Board && !canUseInavF3) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-950 p-8">
+        <div className="max-w-2xl text-center">
+          {/* Icon */}
+          <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-600/20 border border-red-500/30 flex items-center justify-center">
+            <span className="text-5xl leading-none flex items-center justify-center w-full h-full">⚠️</span>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-white mb-3">
+            Hardware Upgrade Needed
+          </h1>
+
+          {/* Explanation */}
+          <p className="text-gray-400 mb-6 leading-relaxed">
+            Your <span className="text-red-400 font-medium">{boardId}</span> is an F3 board that was never supported by iNav.
+            For mission planning, you need an F4 or newer board.
+          </p>
+
+          {/* Upgrade suggestions */}
+          <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-4 text-left mb-6">
+            <p className="text-sm text-gray-400 mb-3">Recommended upgrades:</p>
+            <div className="flex flex-wrap gap-2">
+              {['SpeedyBee F405 V3', 'Matek F405-SE', 'Kakute F7'].map((board) => (
+                <span key={board} className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-xs">
+                  {board}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <button
+            onClick={() => setView('telemetry')}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors"
+          >
+            ← Back to Telemetry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex items-center justify-center bg-gray-950 p-8">
@@ -142,7 +271,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
         {/* Quick actions */}
         <div className="flex items-center justify-center gap-3 mt-8">
           <button
-            onClick={() => setView('firmware')}
+            onClick={handleFlashInav}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
             🔧 Flash iNav Firmware

@@ -10,6 +10,7 @@ import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { DetectedBoard, FlashProgress, FlashResult, FlashOptions } from '../../shared/firmware-types.js';
 import { rebootToBootloader } from './msp-detector.js';
+import { acquireFlashLock, releaseFlashLock } from './flash-guard.js';
 
 // Inline firmware image type to avoid import issues
 interface FirmwareImage {
@@ -105,7 +106,9 @@ class STM32SerialBootloader {
   private async waitForAck(timeout: number = 1000, acceptSyncEcho: boolean = false): Promise<boolean> {
     this.lastResponseWasNack = false;
     const startTime = Date.now();
-    const pollInterval = 5; // Check every 5ms
+    // BSOD FIX: Increased from 5ms to 25ms to reduce USB-serial driver stress
+    // Aggressive polling can cause IRQ overload on CH340/CP210x/FTDI drivers
+    const pollInterval = 25;
 
     while (Date.now() - startTime < timeout) {
       const byte = await this.transport.readByte();
@@ -153,12 +156,14 @@ class STM32SerialBootloader {
 
       // Pulse DTR to reset (if connected to RESET pin)
       await this.setDtr(true);
-      await new Promise(r => setTimeout(r, 100));
+      // BSOD FIX: Increased from 100ms to 150ms for signal propagation
+      await new Promise(r => setTimeout(r, 150));
       await this.setDtr(false);
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 150));
 
       // Wait for bootloader to start
-      await new Promise(r => setTimeout(r, 500));
+      // BSOD FIX: Increased from 500ms to 750ms to let driver settle
+      await new Promise(r => setTimeout(r, 750));
     } catch (e) {
       sendLog(this.window, 'warn', `DTR/RTS control failed: ${e}`);
     }
@@ -493,10 +498,12 @@ class STM32SerialBootloader {
           onProgress(Math.round((written / totalBytes) * 100));
         }
 
+        // BSOD FIX: Increased from 15ms to 25ms
         // Delay between writes to let bootloader and serial buffers settle
         // CP2102 and similar USB-serial adapters need time to flush their buffers
         // Too fast = buffer overflow = lost data = bootloader stops responding
-        await new Promise(r => setTimeout(r, 15));
+        // Also prevents IRQ overload that can cause Windows BSOD
+        await new Promise(r => setTimeout(r, 25));
 
         // Every 64 blocks (16KB), take a longer pause to let everything settle
         // This helps prevent buffer overflow on longer flashes
@@ -611,6 +618,15 @@ export async function flashWithSerialBootloader(
     };
   }
 
+  // BSOD FIX: Acquire flash lock to prevent concurrent operations
+  if (!acquireFlashLock('serial')) {
+    return {
+      success: false,
+      error: 'Another flash operation is already in progress. Please wait for it to complete.',
+      duration: Date.now() - startTime,
+    };
+  }
+
   sendLog(window, 'info', `Starting serial bootloader flash: ${firmwarePath}`);
   sendLog(window, 'info', `Port: ${board.port}`);
 
@@ -678,10 +694,11 @@ export async function flashWithSerialBootloader(
           foundResponsiveBaudRate = true;
 
           // Try a few more times with delays - bootloader might need time to reset
+          // BSOD FIX: Increased delays to prevent driver stress from rapid port cycling
           for (let retry = 0; retry < 3; retry++) {
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 1000)); // Was 500ms
             await bootloader.close();
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 1000));  // BSOD FIX: Was 500ms, increased for full driver release
 
             bootloader = new STM32SerialBootloader(board.port, window, baudRate);
             await bootloader.open();
@@ -833,6 +850,9 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
       duration: Date.now() - startTime,
     };
   } finally {
+    // BSOD FIX: Always release flash lock
+    releaseFlashLock();
+
     if (bootloader) {
       try {
         await bootloader.close();

@@ -69,6 +69,11 @@ export class SerialTransport extends BaseTransport {
       });
 
       this.port.on('error', (err: Error) => {
+        // BSOD FIX: Mark port as closed on error to prevent stale state
+        this._isOpen = false;
+        // BSOD FIX: Remove all listeners to prevent further events after error
+        // This prevents zombie event handlers from firing on a dead port
+        this.port?.removeAllListeners();
         this.emit('error', err);
       });
 
@@ -100,16 +105,32 @@ export class SerialTransport extends BaseTransport {
     });
   }
 
+  /**
+   * Close the serial port with graceful shutdown
+   * BSOD FIX: Added drain before close and settling delay to prevent driver stress
+   */
   async close(): Promise<void> {
     if (!this.port || !this.isOpen) {
       return;
     }
 
+    // BSOD FIX: Drain pending writes before closing to prevent driver issues
+    try {
+      await new Promise<void>((resolve) => {
+        this.port!.drain(() => resolve());
+      });
+    } catch {
+      // Ignore drain errors - port may already be in error state
+    }
+
+    // BSOD FIX: Small delay for driver to process drained data
+    await new Promise(r => setTimeout(r, 100));
+
     return new Promise((resolve, reject) => {
       this.port!.close((err) => {
         if (err) {
-          reject(new Error(`Failed to close port: ${err.message}`));
-          return;
+          // Don't reject on close errors - port may already be closed
+          console.warn(`Warning closing port: ${err.message}`);
         }
         this._isOpen = false;
         this.port = null;

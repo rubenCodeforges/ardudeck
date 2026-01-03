@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { commandHasLocation, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
+import { useIpLocation } from '../../utils/ip-geolocation';
 
 // Geofence and Rally overlays
 import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
@@ -110,8 +111,8 @@ const MAP_LAYERS = {
 
 type LayerKey = keyof typeof MAP_LAYERS;
 
-// Default center (will be updated to vehicle position or mission area)
-const DEFAULT_CENTER: [number, number] = [51.505, -0.09];
+// Default center fallback (London) - will be overridden by IP geolocation
+const FALLBACK_CENTER: [number, number] = [51.505, -0.09];
 const DEFAULT_ZOOM = 15;
 
 // Get color based on command type
@@ -472,6 +473,14 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
   const [fitTrigger, setFitTrigger] = useState(0);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
+  // IP geolocation fallback (used when no GPS or mission items)
+  const [ipLocation] = useIpLocation();
+
+  // Dynamic default center - use IP location if available
+  const defaultCenter: [number, number] = ipLocation
+    ? [ipLocation.lat, ipLocation.lon]
+    : FALLBACK_CENTER;
+
   const {
     missionItems,
     homePosition,
@@ -591,7 +600,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
   return (
     <div className="h-full w-full relative">
       <MapContainer
-        center={DEFAULT_CENTER}
+        center={defaultCenter}
         zoom={DEFAULT_ZOOM}
         className="h-full w-full"
         zoomControl={false}

@@ -243,7 +243,14 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
     const { isPollingRc, rcPollInterval } = get();
     if (isPollingRc || rcPollInterval) return;
 
+    // BSOD FIX: Track if a request is in progress to prevent stacking
+    let rcPollPending = false;
+
     const interval = setInterval(async () => {
+      // BSOD FIX: Skip if previous request still pending (FC slow to respond)
+      if (rcPollPending) return;
+
+      rcPollPending = true;
       try {
         const result = await window.electronAPI?.mspGetRc();
         if (result?.channels) {
@@ -251,6 +258,8 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         }
       } catch {
         // Silently ignore polling errors
+      } finally {
+        rcPollPending = false;
       }
     }, 100); // 10Hz polling
 

@@ -19,6 +19,7 @@ import {
   type FlashProgress as DfuProgress,
 } from '@ardudeck/stm32-dfu';
 import { rebootToBootloader } from './msp-detector.js';
+import { acquireFlashLock, releaseFlashLock } from './flash-guard.js';
 
 /**
  * Send progress update to renderer
@@ -98,6 +99,15 @@ export async function flashWithDfu(
 ): Promise<FlashResult> {
   const startTime = Date.now();
   let device: DfuDevice | null = null;
+
+  // BSOD FIX: Acquire flash lock to prevent concurrent operations
+  if (!acquireFlashLock('dfu')) {
+    return {
+      success: false,
+      error: 'Another flash operation is already in progress. Please wait for it to complete.',
+      duration: Date.now() - startTime,
+    };
+  }
 
   sendLog(window, 'info', `Starting DFU flash: ${firmwarePath}`);
 
@@ -277,6 +287,9 @@ export async function flashWithDfu(
       duration: Date.now() - startTime,
     };
   } finally {
+    // BSOD FIX: Always release flash lock
+    releaseFlashLock();
+
     // Make sure device is closed
     if (device?.isOpen) {
       try {

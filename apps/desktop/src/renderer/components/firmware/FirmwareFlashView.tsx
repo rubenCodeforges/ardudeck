@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFirmwareStore, type BoardInfo } from '../../stores/firmware-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import type { FirmwareVehicleType, FirmwareSource } from '../../../shared/firmware-types';
@@ -378,6 +378,7 @@ export function FirmwareFlashView() {
     selectedBoard,
     isFetchingBoards,
     boardsError,
+    boardSearchQuery,
     versionGroups,
     selectedVersionGroup,
     selectedVersion,
@@ -392,6 +393,7 @@ export function FirmwareFlashView() {
     detectBoard,
     setSelectedVehicleType,
     setSelectedSource,
+    autoSetSource,
     setSelectedBoard,
     setSelectedVersionGroup,
     setSelectedVersion,
@@ -421,6 +423,10 @@ export function FirmwareFlashView() {
     wizardFirmwareSource,
     openBootPadWizard,
     closeBootPadWizard,
+    // Detection cleanup
+    clearDetection,
+    // Explicit source flag
+    sourceExplicitlySet,
   } = store;
 
   // Get connection state to auto-detect board when connected
@@ -442,17 +448,20 @@ export function FirmwareFlashView() {
       setSelectedBoard(boardInfo);
 
       // Auto-select firmware source based on protocol
-      if (connectedProtocol === 'msp') {
-        if (connectedFcVariant === 'BTFL') {
-          setSelectedSource('betaflight');
-        } else if (connectedFcVariant === 'INAV') {
-          setSelectedSource('inav');
+      // But only if user hasn't explicitly selected a source
+      if (!sourceExplicitlySet) {
+        if (connectedProtocol === 'msp') {
+          if (connectedFcVariant === 'BTFL') {
+            autoSetSource('betaflight');
+          } else if (connectedFcVariant === 'INAV') {
+            autoSetSource('inav');
+          }
+        } else if (connectedProtocol === 'mavlink') {
+          autoSetSource('ardupilot');
         }
-      } else if (connectedProtocol === 'mavlink') {
-        setSelectedSource('ardupilot');
       }
     }
-  }, [isConnected, connectedBoardId, connectedProtocol, connectedFcVariant, detectedBoard, setSelectedBoard, setSelectedSource]);
+  }, [isConnected, connectedBoardId, connectedProtocol, connectedFcVariant, detectedBoard, sourceExplicitlySet, setSelectedBoard, autoSetSource]);
 
   // Fetch boards on mount and when source/vehicle changes
   useEffect(() => {
@@ -489,6 +498,44 @@ export function FirmwareFlashView() {
     }
   }, [selectedSource, selectedVehicleType, setSelectedVehicleType]);
 
+  // Track previous port paths to detect changes (board plug/unplug)
+  const prevPortPathsRef = useRef<string>('');
+
+  // Compute isFlashing early (needed by port polling effect)
+  const isFlashing =
+    flashState !== 'idle' && flashState !== 'complete' && flashState !== 'error';
+
+  // Poll serial ports and clear detection when ports change (board plugged/unplugged)
+  useEffect(() => {
+    // Don't poll while flashing
+    if (isFlashing) return;
+
+    // Load ports on mount
+    loadSerialPorts();
+
+    const pollInterval = setInterval(() => {
+      loadSerialPorts();
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [loadSerialPorts]);
+
+  // Clear detection state when ports change
+  useEffect(() => {
+    const currentPaths = availablePorts.map(p => p.path).sort().join(',');
+    const prevPaths = prevPortPathsRef.current;
+
+    // Only clear if we had ports before and they changed (not on initial load)
+    if (prevPaths && currentPaths !== prevPaths) {
+      console.log('[FirmwareFlash] Ports changed, clearing detection state');
+      console.log('  Previous:', prevPaths);
+      console.log('  Current:', currentPaths);
+      clearDetection();
+    }
+
+    prevPortPathsRef.current = currentPaths;
+  }, [availablePorts, clearDetection]);
+
   // Get available vehicle types for current source
   const availableVehicleTypes = useMemo(() =>
     getAvailableVehicleTypes(selectedSource),
@@ -506,9 +553,7 @@ export function FirmwareFlashView() {
     });
   }, [selectedVersionGroup, includeBeta, includeDev]);
 
-  const isFlashing =
-    flashState !== 'idle' && flashState !== 'complete' && flashState !== 'error';
-  // Can't flash while connected to a board (need to disconnect first)
+  // Can only flash after clicking Connect (which sets detectedBoard with port info)
   const canFlash =
     (selectedSource === 'custom' ? !!customFirmwarePath : !!selectedVersion) &&
     !!detectedBoard &&
@@ -662,23 +707,38 @@ export function FirmwareFlashView() {
                   isLoading={isFetchingBoards}
                   error={boardsError}
                   placeholder="Search or select your board..."
+                  initialSearchQuery={boardSearchQuery}
                 />
               </div>
-              <button
-                onClick={detectBoard}
-                disabled={isDetecting || isFlashing}
-                title="Auto-detect connected board"
-                className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-zinc-300 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {isDetecting ? (
-                  <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                )}
-                <span className="hidden sm:inline">Auto-detect</span>
-              </button>
+              {/* Show button based on state:
+                  - Nothing selected: Auto-detect
+                  - Board manually selected but not connected: Connect
+                  - Already connected: hide button */}
+              {!detectedBoard && (
+                <button
+                  onClick={detectBoard}
+                  disabled={isDetecting || isFlashing}
+                  title={selectedBoard ? "Connect to board" : "Auto-detect board"}
+                  className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                    selectedBoard
+                      ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                      : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
+                  } disabled:bg-zinc-800 disabled:text-zinc-600`}
+                >
+                  {isDetecting ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
+                        selectedBoard
+                          ? "M13 10V3L4 14h7v7l9-11h-7z"
+                          : "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      } />
+                    </svg>
+                  )}
+                  {selectedBoard ? 'Connect' : 'Auto-detect'}
+                </button>
+              )}
             </div>
 
             {/* Suggested boards when MCU detected via bootloader */}
@@ -938,6 +998,23 @@ export function FirmwareFlashView() {
                 />
               </div>
             </div>
+
+            {/* Success message - tell user to reconnect */}
+            {flashState === 'complete' && (
+              <div className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-emerald-300 font-medium">Firmware flashed successfully!</p>
+                    <p className="text-zinc-400 text-sm mt-1">
+                      Unplug and reconnect your board to start using the new firmware.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Error display - different styles for boot pad vs other errors */}
             {flashError && (() => {

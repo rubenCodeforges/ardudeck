@@ -138,7 +138,21 @@ export const IPC_CHANNELS = {
   MSP_GET_MODE_RANGES: 'msp:get-mode-ranges',
   MSP_SET_MODE_RANGE: 'msp:set-mode-range',
   MSP_GET_FEATURES: 'msp:get-features',
+  MSP_GET_MIXER_CONFIG: 'msp:get-mixer-config',
   MSP_CONFIG_UPDATE: 'msp:config-update',
+
+  // MSP Servo Configuration (iNav)
+  MSP_GET_SERVO_CONFIGS: 'msp:get-servo-configs',
+  MSP_SET_SERVO_CONFIG: 'msp:set-servo-config',
+  MSP_GET_SERVO_VALUES: 'msp:get-servo-values',
+  MSP_GET_SERVO_MIXER: 'msp:get-servo-mixer',
+  MSP_SET_SERVO_MIXER: 'msp:set-servo-mixer',
+
+  // MSP Navigation Settings (iNav)
+  MSP_GET_NAV_CONFIG: 'msp:get-nav-config',
+  MSP_SET_NAV_CONFIG: 'msp:set-nav-config',
+  MSP_GET_GPS_CONFIG: 'msp:get-gps-config',
+  MSP_SET_GPS_CONFIG: 'msp:set-gps-config',
 
   // MSP Commands
   MSP_SAVE_EEPROM: 'msp:save-eeprom',

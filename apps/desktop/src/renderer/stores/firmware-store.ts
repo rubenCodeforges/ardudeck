@@ -8,6 +8,7 @@ import type {
   FlashProgress,
   ReleaseType,
 } from '../../shared/firmware-types';
+import { findMatchingInavBoard } from '../../shared/board-mappings';
 
 /**
  * Board info from manifest
@@ -57,6 +58,7 @@ interface FirmwareStore {
 
   // Firmware source
   selectedSource: FirmwareSource;
+  sourceExplicitlySet: boolean; // User explicitly selected source, don't auto-override
 
   // Board selection (from manifest)
   availableBoards: BoardInfo[];
@@ -64,6 +66,7 @@ interface FirmwareStore {
   isFetchingBoards: boolean;
   boardsError: string | null;
   boardSearchQuery: string;
+  pendingBoardMatch: string | null; // Betaflight board ID to match after fetching iNav boards
 
   // Version selection
   versionGroups: VersionGroup[];
@@ -101,6 +104,7 @@ interface FirmwareStore {
   detectBoard: () => Promise<void>;
   setDetectedBoard: (board: DetectedBoard | null) => void;
   setDetectionError: (error: string | null) => void;
+  clearDetection: () => void;
 
   // Actions - Serial Ports
   loadSerialPorts: () => Promise<void>;
@@ -111,7 +115,9 @@ interface FirmwareStore {
   // Actions - Selection
   setSelectedVehicleType: (type: FirmwareVehicleType) => void;
   setSelectedSource: (source: FirmwareSource) => void;
+  autoSetSource: (source: FirmwareSource) => void; // Auto-detect sets source without marking explicit
   setBoardSearchQuery: (query: string) => void;
+  setPendingBoardMatch: (boardId: string | null) => void;
   setSelectedBoard: (board: BoardInfo | null) => void;
   setSelectedVersionGroup: (group: VersionGroup | null) => void;
   setSelectedVersion: (version: FirmwareVersion | null) => void;
@@ -170,6 +176,7 @@ const initialState = {
 
   // Firmware source
   selectedSource: 'ardupilot' as FirmwareSource,
+  sourceExplicitlySet: false,
 
   // Board selection
   availableBoards: [],
@@ -177,6 +184,7 @@ const initialState = {
   isFetchingBoards: false,
   boardsError: null,
   boardSearchQuery: '',
+  pendingBoardMatch: null,
 
   // Version selection
   versionGroups: [],
@@ -259,10 +267,14 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       set({ detectedBoard: board, isDetecting: false });
 
       // Auto-select firmware source based on detection protocol
+      // But only if user hasn't explicitly set a source
       const detectionMethod = board.detectionMethod;
       let targetSource = get().selectedSource;
+      const { sourceExplicitlySet } = get();
 
-      if (detectionMethod === 'msp') {
+      if (sourceExplicitlySet) {
+        console.log('[FirmwareStore] Source explicitly set by user, skipping auto-select');
+      } else if (detectionMethod === 'msp') {
         // MSP = Betaflight/iNav/Cleanflight boards - switch to Betaflight
         console.log('[FirmwareStore] MSP detected - switching to Betaflight source');
         targetSource = 'betaflight';
@@ -312,6 +324,25 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
 
   setDetectedBoard: (board) => set({ detectedBoard: board }),
   setDetectionError: (error) => set({ detectionError: error }),
+
+  // Clear all detection-related state (call when ports change)
+  // Note: Don't reset sourceExplicitlySet here - that should only reset on full reset
+  // This allows user to navigate to firmware flash with a pre-selected source
+  clearDetection: () => set({
+    detectedBoard: null,
+    isDetecting: false,
+    detectionError: null,
+    isProbing: false,
+    // Also clear selections that depend on detection
+    selectedBoard: null,
+    selectedVersionGroup: null,
+    selectedVersion: null,
+    versionGroups: [],
+    // Clear flash state when board is disconnected
+    flashState: 'idle',
+    flashProgress: null,
+    flashError: null,
+  }),
 
   // Serial port actions
   loadSerialPorts: async () => {
@@ -421,6 +452,25 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
   setSelectedSource: (source) => {
     set({
       selectedSource: source,
+      sourceExplicitlySet: true, // Mark as explicitly set to prevent auto-override
+      selectedBoard: null,
+      selectedVersionGroup: null,
+      selectedVersion: null,
+      availableBoards: [],
+      versionGroups: [],
+      customFirmwarePath: null,
+    });
+    // Fetch boards for new source (unless custom)
+    if (source !== 'custom') {
+      get().fetchBoards();
+    }
+  },
+
+  // Auto-detect sets source without marking it as explicitly set
+  autoSetSource: (source) => {
+    set({
+      selectedSource: source,
+      // Don't set sourceExplicitlySet - this is auto-detection
       selectedBoard: null,
       selectedVersionGroup: null,
       selectedVersion: null,
@@ -435,6 +485,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
   },
 
   setBoardSearchQuery: (query) => set({ boardSearchQuery: query }),
+  setPendingBoardMatch: (boardId) => set({ pendingBoardMatch: boardId }),
 
   setSelectedBoard: (board) => {
     set({
@@ -489,6 +540,22 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
           isFetchingBoards: false,
           boardsError: null,
         });
+
+        // Check if there's a pending board match (e.g., from Betaflight -> iNav transition)
+        const { pendingBoardMatch, selectedSource: currentSource } = get();
+        if (pendingBoardMatch && currentSource === 'inav') {
+          const matchingBoard = findMatchingInavBoard(pendingBoardMatch, result.boards);
+          if (matchingBoard) {
+            console.log(`[FirmwareStore] Auto-selected iNav board "${matchingBoard.name}" for Betaflight "${pendingBoardMatch}"`);
+            set({ selectedBoard: matchingBoard, pendingBoardMatch: null });
+            // Fetch versions for the matched board
+            get().fetchVersions();
+          } else {
+            console.log(`[FirmwareStore] No iNav board found for Betaflight "${pendingBoardMatch}"`);
+            // Clear pending match and set search query so user can find manually
+            set({ pendingBoardMatch: null, boardSearchQuery: pendingBoardMatch });
+          }
+        }
       } else {
         const errorMsg = result?.error || 'Failed to fetch boards (no error message)';
         console.error('[FirmwareStore] fetchBoards failed:', errorMsg);
@@ -575,7 +642,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
     const { selectedSource, selectedVersion, customFirmwarePath, detectedBoard } = get();
 
     if (!detectedBoard) {
-      set({ flashError: 'No board detected' });
+      set({ flashError: 'No board connected. Click Connect first.' });
       return;
     }
 

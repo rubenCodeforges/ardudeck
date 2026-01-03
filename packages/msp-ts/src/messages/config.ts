@@ -61,6 +61,11 @@ export interface MSPFeatureConfig {
   features: number;     // Bitmask of enabled features
 }
 
+export interface MSPMixerConfig {
+  mixer: number;        // Mixer type (see MIXER_TYPES)
+  reversedMotors?: boolean;
+}
+
 // =============================================================================
 // Deserializers
 // =============================================================================
@@ -248,6 +253,80 @@ export function serializeFeatureConfig(config: MSPFeatureConfig): Uint8Array {
   return builder.build();
 }
 
+/**
+ * Deserialize MSP_MIXER_CONFIG response
+ */
+export function deserializeMixerConfig(payload: Uint8Array): MSPMixerConfig {
+  const reader = new PayloadReader(payload);
+
+  const config: MSPMixerConfig = {
+    mixer: reader.readU8(),
+  };
+
+  // Optional: reversed motors flag (if present)
+  if (reader.remaining() >= 1) {
+    config.reversedMotors = reader.readU8() === 1;
+  }
+
+  return config;
+}
+
+// =============================================================================
+// Mixer Types
+// =============================================================================
+
+/**
+ * Mixer type IDs from Betaflight/iNav
+ */
+export const MIXER_TYPES: Record<number, { name: string; isMultirotor: boolean; isPlane: boolean }> = {
+  0: { name: 'TRI', isMultirotor: true, isPlane: false },
+  1: { name: 'QUADP', isMultirotor: true, isPlane: false },
+  2: { name: 'QUADP', isMultirotor: true, isPlane: false },
+  3: { name: 'QUADX', isMultirotor: true, isPlane: false },
+  4: { name: 'BICOPTER', isMultirotor: true, isPlane: false },
+  5: { name: 'GIMBAL', isMultirotor: false, isPlane: false },
+  6: { name: 'Y6', isMultirotor: true, isPlane: false },
+  7: { name: 'HEX6', isMultirotor: true, isPlane: false },
+  8: { name: 'FLYING_WING', isMultirotor: false, isPlane: true },
+  9: { name: 'Y4', isMultirotor: true, isPlane: false },
+  10: { name: 'HEX6X', isMultirotor: true, isPlane: false },
+  11: { name: 'OCTOX8', isMultirotor: true, isPlane: false },
+  12: { name: 'OCTOFLATP', isMultirotor: true, isPlane: false },
+  13: { name: 'OCTOFLATX', isMultirotor: true, isPlane: false },
+  14: { name: 'AIRPLANE', isMultirotor: false, isPlane: true },
+  15: { name: 'HELI_120_CCPM', isMultirotor: false, isPlane: false },
+  16: { name: 'HELI_90_DEG', isMultirotor: false, isPlane: false },
+  17: { name: 'VTAIL4', isMultirotor: true, isPlane: false },
+  18: { name: 'HEX6H', isMultirotor: true, isPlane: false },
+  20: { name: 'DUALCOPTER', isMultirotor: true, isPlane: false },
+  21: { name: 'SINGLECOPTER', isMultirotor: true, isPlane: false },
+  22: { name: 'ATAIL4', isMultirotor: true, isPlane: false },
+  23: { name: 'CUSTOM', isMultirotor: false, isPlane: false },
+  24: { name: 'CUSTOM_AIRPLANE', isMultirotor: false, isPlane: true },
+  25: { name: 'CUSTOM_TRI', isMultirotor: true, isPlane: false },
+};
+
+/**
+ * Check if mixer type is a multirotor (quad, hex, etc.)
+ */
+export function isMultirotorMixer(mixerType: number): boolean {
+  return MIXER_TYPES[mixerType]?.isMultirotor ?? false;
+}
+
+/**
+ * Check if mixer type requires servo setup (plane, flying wing, etc.)
+ */
+export function isPlaneMixer(mixerType: number): boolean {
+  return MIXER_TYPES[mixerType]?.isPlane ?? false;
+}
+
+/**
+ * Get mixer name from type ID
+ */
+export function getMixerName(mixerType: number): string {
+  return MIXER_TYPES[mixerType]?.name ?? `Unknown (${mixerType})`;
+}
+
 // =============================================================================
 // Feature Flags
 // =============================================================================
@@ -335,3 +414,360 @@ export const RATES_TYPE_NAMES: Record<number, string> = {
   3: 'Actual',
   4: 'Quick',
 };
+
+// =============================================================================
+// Servo Configuration Types (iNav/Betaflight)
+// =============================================================================
+
+export interface MSPServoConfig {
+  min: number;              // Minimum PWM (typically 1000)
+  max: number;              // Maximum PWM (typically 2000)
+  middle: number;           // Center/neutral PWM (typically 1500)
+  rate: number;             // Servo rate/scaling (-100 to +100)
+  forwardFromChannel: number; // Forward RC channel (255 = disabled)
+  reversedSources: number;  // Bitfield of reversed input sources
+}
+
+export interface MSPServoMixerRule {
+  targetChannel: number;    // Servo output index (0-7)
+  inputSource: number;      // Input source (see SERVO_INPUT_SOURCE)
+  rate: number;             // Mix rate (-125 to +125, percentage)
+  speed: number;            // Speed limiting (0 = none, 1-255 = slower)
+  min: number;              // Min output override (-100 to 0, 0 = no limit)
+  max: number;              // Max output override (0 to 100, 0 = no limit)
+  box: number;              // Activation mode box ID (0 = always active)
+}
+
+// Servo input sources (for mixer rules)
+export const SERVO_INPUT_SOURCE = {
+  STABILIZED_ROLL: 0,
+  STABILIZED_PITCH: 1,
+  STABILIZED_YAW: 2,
+  STABILIZED_THROTTLE: 3,
+  RC_ROLL: 4,
+  RC_PITCH: 5,
+  RC_YAW: 6,
+  RC_THROTTLE: 7,
+  RC_AUX1: 8,
+  RC_AUX2: 9,
+  RC_AUX3: 10,
+  RC_AUX4: 11,
+  GIMBAL_PITCH: 12,
+  GIMBAL_ROLL: 13,
+  FLAPERON: 14,      // iNav
+  HEADTRACKER: 15,   // iNav
+  MANUAL_RC: 16,     // iNav - direct RC input
+} as const;
+
+export const SERVO_INPUT_SOURCE_NAMES: Record<number, string> = {
+  0: 'Stabilized Roll',
+  1: 'Stabilized Pitch',
+  2: 'Stabilized Yaw',
+  3: 'Stabilized Throttle',
+  4: 'RC Roll',
+  5: 'RC Pitch',
+  6: 'RC Yaw',
+  7: 'RC Throttle',
+  8: 'AUX 1',
+  9: 'AUX 2',
+  10: 'AUX 3',
+  11: 'AUX 4',
+  12: 'Gimbal Pitch',
+  13: 'Gimbal Roll',
+  14: 'Flaperon',
+  15: 'Headtracker',
+  16: 'Manual RC',
+};
+
+/**
+ * Deserialize MSP_SERVO_CONFIGURATIONS response
+ * Returns array of servo configurations (typically 8 servos)
+ */
+export function deserializeServoConfigurations(payload: Uint8Array): MSPServoConfig[] {
+  const reader = new PayloadReader(payload);
+  const servos: MSPServoConfig[] = [];
+
+  // Each servo config is 14 bytes in Betaflight/iNav
+  while (reader.remaining() >= 14) {
+    servos.push({
+      min: reader.readU16(),
+      max: reader.readU16(),
+      middle: reader.readU16(),
+      rate: reader.readS8(),
+      forwardFromChannel: reader.readU8(),
+      reversedSources: reader.readU32(),
+      // Skip 2 reserved bytes if present
+    });
+    // Some FC versions have padding
+    if (reader.remaining() >= 2 && reader.remaining() < 14) {
+      reader.skip(2);
+    }
+  }
+
+  return servos;
+}
+
+/**
+ * Serialize MSP_SET_SERVO_CONFIGURATION payload
+ * Sets configuration for a single servo by index
+ */
+export function serializeServoConfiguration(index: number, config: MSPServoConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(index);
+  builder.writeU16(config.min);
+  builder.writeU16(config.max);
+  builder.writeU16(config.middle);
+  builder.writeS8(config.rate);
+  builder.writeU8(config.forwardFromChannel);
+  builder.writeU32(config.reversedSources);
+
+  return builder.build();
+}
+
+/**
+ * Deserialize MSP_SERVO response (live servo values)
+ * Returns array of current servo PWM values
+ */
+export function deserializeServoValues(payload: Uint8Array): number[] {
+  const reader = new PayloadReader(payload);
+  const values: number[] = [];
+
+  while (reader.remaining() >= 2) {
+    values.push(reader.readU16());
+  }
+
+  return values;
+}
+
+// =============================================================================
+// iNav Servo Mixer Rules (MSP2_INAV_SERVO_MIXER)
+// =============================================================================
+
+/**
+ * Deserialize iNav servo mixer rules
+ */
+export function deserializeServoMixerRules(payload: Uint8Array): MSPServoMixerRule[] {
+  const reader = new PayloadReader(payload);
+  const rules: MSPServoMixerRule[] = [];
+
+  // Each rule is 7 bytes in iNav
+  while (reader.remaining() >= 7) {
+    rules.push({
+      targetChannel: reader.readU8(),
+      inputSource: reader.readU8(),
+      rate: reader.readS8(),
+      speed: reader.readU8(),
+      min: reader.readS8(),
+      max: reader.readS8(),
+      box: reader.readU8(),
+    });
+  }
+
+  return rules;
+}
+
+/**
+ * Serialize a single iNav servo mixer rule
+ */
+export function serializeServoMixerRule(index: number, rule: MSPServoMixerRule): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(index);
+  builder.writeU8(rule.targetChannel);
+  builder.writeU8(rule.inputSource);
+  builder.writeS8(rule.rate);
+  builder.writeU8(rule.speed);
+  builder.writeS8(rule.min);
+  builder.writeS8(rule.max);
+  builder.writeU8(rule.box);
+
+  return builder.build();
+}
+
+// =============================================================================
+// iNav Navigation Settings
+// =============================================================================
+
+export interface MSPNavConfig {
+  // General navigation
+  userControlMode: number;       // User control mode (0=GPS, 1=NAV_ALTHOLD, etc.)
+  maxNavigationSpeed: number;    // Max nav speed in cm/s
+  maxClimbRate: number;          // Max climb rate in cm/s
+  maxManualSpeed: number;        // Max manual speed in cm/s
+  maxManualClimbRate: number;    // Max manual climb rate in cm/s
+  landDescendRate: number;       // Landing descent rate cm/s
+  landSlowdownMinAlt: number;    // Altitude to start slowing down landing (cm)
+  landSlowdownMaxAlt: number;    // Altitude to be at min speed (cm)
+  emergencyDescentRate: number;  // Emergency descent rate cm/s
+  // RTH settings
+  rthAltControlMode: number;     // RTH altitude mode (0=current, 1=extra, 2=fixed, 3=max, 4=at_least)
+  rthAbortThreshold: number;     // Abort RTH if closer than this (m)
+  rthAltitude: number;           // RTH altitude in cm
+  // Waypoint settings
+  waypointRadius: number;        // WP reached radius in cm
+  waypointSafeAlt: number;       // Safe altitude for WP missions in cm
+  // Position hold
+  maxBankAngle: number;          // Max bank angle (degrees * 10)
+  // Cruise
+  useThrottleMidForAlthold: boolean;
+  hoverThrottle: number;         // Hover throttle (0-1000)
+}
+
+export const NAV_RTH_ALT_MODE = {
+  CURRENT: 0,       // Return at current altitude
+  EXTRA: 1,         // Return at current + extra altitude
+  FIXED: 2,         // Return at fixed altitude
+  MAX: 3,           // Return at max of current/fixed
+  AT_LEAST: 4,      // Return at least at fixed altitude
+} as const;
+
+export const NAV_RTH_ALT_MODE_NAMES: Record<number, string> = {
+  0: 'Current',
+  1: 'Extra',
+  2: 'Fixed',
+  3: 'Max',
+  4: 'At Least',
+};
+
+/**
+ * Deserialize MSP2_INAV_NAV_POSHOLD response
+ */
+export function deserializeNavPoshold(payload: Uint8Array): Partial<MSPNavConfig> {
+  const reader = new PayloadReader(payload);
+
+  return {
+    userControlMode: reader.readU8(),
+    maxNavigationSpeed: reader.readU16(),
+    maxClimbRate: reader.readU16(),
+    maxManualSpeed: reader.readU16(),
+    maxManualClimbRate: reader.readU16(),
+    maxBankAngle: reader.readU8(),
+    useThrottleMidForAlthold: reader.readU8() === 1,
+    hoverThrottle: reader.readU16(),
+  };
+}
+
+/**
+ * Deserialize MSP_NAV_CONFIG response (iNav)
+ */
+export function deserializeNavConfig(payload: Uint8Array): Partial<MSPNavConfig> {
+  const reader = new PayloadReader(payload);
+
+  // Structure varies by iNav version, handle common fields
+  const config: Partial<MSPNavConfig> = {};
+
+  if (reader.remaining() >= 2) {
+    config.maxNavigationSpeed = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.maxClimbRate = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.waypointRadius = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.waypointSafeAlt = reader.readU16();
+  }
+  if (reader.remaining() >= 1) {
+    config.rthAltControlMode = reader.readU8();
+  }
+  if (reader.remaining() >= 2) {
+    config.rthAltitude = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.landDescendRate = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.landSlowdownMinAlt = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.landSlowdownMaxAlt = reader.readU16();
+  }
+  if (reader.remaining() >= 2) {
+    config.emergencyDescentRate = reader.readU16();
+  }
+
+  return config;
+}
+
+/**
+ * Serialize MSP_SET_NAV_CONFIG payload
+ */
+export function serializeNavConfig(config: Partial<MSPNavConfig>): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU16(config.maxNavigationSpeed ?? 300);    // cm/s
+  builder.writeU16(config.maxClimbRate ?? 500);          // cm/s
+  builder.writeU16(config.waypointRadius ?? 100);        // cm
+  builder.writeU16(config.waypointSafeAlt ?? 2000);      // cm
+  builder.writeU8(config.rthAltControlMode ?? 0);
+  builder.writeU16(config.rthAltitude ?? 1000);          // cm
+  builder.writeU16(config.landDescendRate ?? 200);       // cm/s
+  builder.writeU16(config.landSlowdownMinAlt ?? 500);    // cm
+  builder.writeU16(config.landSlowdownMaxAlt ?? 200);    // cm
+  builder.writeU16(config.emergencyDescentRate ?? 500);  // cm/s
+
+  return builder.build();
+}
+
+// =============================================================================
+// iNav GPS Config
+// =============================================================================
+
+export interface MSPGpsConfig {
+  provider: number;         // GPS provider (0=NMEA, 1=UBLOX, 2=MSP, etc.)
+  sbasMode: number;         // SBAS mode (0=auto, 1=disabled, 2=enabled)
+  autoConfig: boolean;      // Auto-configure GPS
+  autoBaud: boolean;        // Auto-detect baud rate
+  homePointOnce: boolean;   // Set home point once
+  ubloxUseGalileo: boolean; // Enable Galileo
+}
+
+export const GPS_PROVIDER = {
+  NMEA: 0,
+  UBLOX: 1,
+  MSP: 2,
+  FAKE: 3,
+} as const;
+
+export const GPS_SBAS_MODE = {
+  AUTO: 0,
+  EGNOS: 1,
+  WAAS: 2,
+  MSAS: 3,
+  GAGAN: 4,
+  NONE: 5,
+} as const;
+
+/**
+ * Deserialize MSP_GPS_CONFIG response
+ */
+export function deserializeGpsConfig(payload: Uint8Array): MSPGpsConfig {
+  const reader = new PayloadReader(payload);
+
+  return {
+    provider: reader.readU8(),
+    sbasMode: reader.readU8(),
+    autoConfig: reader.readU8() === 1,
+    autoBaud: reader.readU8() === 1,
+    homePointOnce: reader.remaining() >= 1 ? reader.readU8() === 1 : false,
+    ubloxUseGalileo: reader.remaining() >= 1 ? reader.readU8() === 1 : false,
+  };
+}
+
+/**
+ * Serialize MSP_SET_GPS_CONFIG payload
+ */
+export function serializeGpsConfig(config: MSPGpsConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(config.provider);
+  builder.writeU8(config.sbasMode);
+  builder.writeU8(config.autoConfig ? 1 : 0);
+  builder.writeU8(config.autoBaud ? 1 : 0);
+  builder.writeU8(config.homePointOnce ? 1 : 0);
+  builder.writeU8(config.ubloxUseGalileo ? 1 : 0);
+
+  return builder.build();
+}

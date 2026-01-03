@@ -1,7 +1,8 @@
 /**
  * Parameters View - Full parameter management
- * Displays parameter table with search, refresh, editing, and group filtering
- * For MSP connections, shows Betaflight/iNav config instead
+ * Routes to protocol-specific config views:
+ * - MSP: Betaflight/iNav config (MspConfigView)
+ * - MAVLink: ArduPilot config (MavlinkConfigView)
  */
 
 import { useState, useCallback } from 'react';
@@ -10,6 +11,7 @@ import { useParameterStore, type SortColumn } from '../../stores/parameter-store
 import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { MspConfigView } from './MspConfigView';
+import MavlinkConfigView from '../mavlink-config/MavlinkConfigView';
 
 // Simple toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -220,6 +222,11 @@ export function ParametersView() {
   // Show MSP config for Betaflight/iNav boards
   if (connectionState.isConnected && connectionState.protocol === 'msp') {
     return <MspConfigView />;
+  }
+
+  // Show MAVLink config for ArduPilot/PX4 boards
+  if (connectionState.isConnected && connectionState.protocol === 'mavlink') {
+    return <MavlinkConfigView />;
   }
 
   if (!connectionState.isConnected) {

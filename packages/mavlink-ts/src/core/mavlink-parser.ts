@@ -21,7 +21,11 @@ import type { MAVLinkPacket, ParserStats, MessageInfo } from './types.js';
  * Buffers incoming bytes and yields complete, validated packets
  */
 export class MAVLinkParser {
-  private buffer: Uint8Array = new Uint8Array(0);
+  // BSOD FIX: Pre-allocate buffer to avoid constant memory allocation in hot loop
+  // MAVLink packets are max ~280 bytes, so 4KB is plenty for buffering
+  private static readonly INITIAL_BUFFER_SIZE = 4096;
+  private buffer: Uint8Array = new Uint8Array(MAVLinkParser.INITIAL_BUFFER_SIZE);
+  private bufferLength = 0; // Actual data length in buffer (not buffer capacity)
   private stats: ParserStats = {
     packetsReceived: 0,
     badCRC: 0,
@@ -59,7 +63,8 @@ export class MAVLinkParser {
    * Reset parser state and statistics
    */
   reset(): void {
-    this.buffer = new Uint8Array(0);
+    // BSOD FIX: Don't reallocate, just reset length
+    this.bufferLength = 0;
     this.stats = {
       packetsReceived: 0,
       badCRC: 0,
@@ -81,17 +86,25 @@ export class MAVLinkParser {
    * Reference: MavlinkParse.cs ReadPacket method (lines 128-234)
    */
   async *parse(data: Uint8Array): AsyncGenerator<MAVLinkPacket> {
-    // Append new data to buffer
-    const newBuffer = new Uint8Array(this.buffer.length + data.length);
-    newBuffer.set(this.buffer);
-    newBuffer.set(data, this.buffer.length);
-    this.buffer = newBuffer;
+    // BSOD FIX: Grow buffer only when necessary (rare), avoid constant allocation
+    const requiredLength = this.bufferLength + data.length;
+    if (requiredLength > this.buffer.length) {
+      // Double the buffer size or use required length, whichever is larger
+      const newSize = Math.max(this.buffer.length * 2, requiredLength);
+      const newBuffer = new Uint8Array(newSize);
+      newBuffer.set(this.buffer.subarray(0, this.bufferLength));
+      this.buffer = newBuffer;
+    }
+
+    // Copy new data without allocation (reuse existing buffer)
+    this.buffer.set(data, this.bufferLength);
+    this.bufferLength += data.length;
     this.stats.bytesReceived += data.length;
 
     while (true) {
       // Find start byte (STX)
       let startIdx = -1;
-      for (let i = 0; i < this.buffer.length; i++) {
+      for (let i = 0; i < this.bufferLength; i++) {
         if (
           this.buffer[i] === MAVLINK_STX_V2 ||
           this.buffer[i] === MAVLINK_STX_V1
@@ -103,13 +116,16 @@ export class MAVLinkParser {
 
       // No start byte found, clear buffer
       if (startIdx === -1) {
-        this.buffer = new Uint8Array(0);
+        // BSOD FIX: Don't reallocate, just reset length
+        this.bufferLength = 0;
         return;
       }
 
       // Discard bytes before start marker
       if (startIdx > 0) {
-        this.buffer = this.buffer.slice(startIdx);
+        // BSOD FIX: Shift data in-place instead of reallocating
+        this.buffer.copyWithin(0, startIdx, this.bufferLength);
+        this.bufferLength -= startIdx;
       }
 
       const header = this.buffer[0];
@@ -119,7 +135,7 @@ export class MAVLinkParser {
         : MAVLINK_NUM_HEADER_BYTES_V1;
 
       // Wait for complete header
-      if (this.buffer.length < headerLen) {
+      if (this.bufferLength < headerLen) {
         return;
       }
 
@@ -135,13 +151,15 @@ export class MAVLinkParser {
       );
 
       // Wait for complete packet
-      if (this.buffer.length < packetLength) {
+      if (this.bufferLength < packetLength) {
         return;
       }
 
-      // Extract packet bytes
+      // Extract packet bytes (need a copy for parsePacket)
       const packetBytes = this.buffer.slice(0, packetLength);
-      this.buffer = this.buffer.slice(packetLength);
+      // BSOD FIX: Shift remaining data in-place instead of reallocating
+      this.buffer.copyWithin(0, packetLength, this.bufferLength);
+      this.bufferLength -= packetLength;
 
       // Parse packet structure
       const packet = parsePacket(packetBytes);

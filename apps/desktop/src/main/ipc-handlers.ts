@@ -118,6 +118,39 @@ let currentTransport: Transport | null = null;
 let currentVehicleType = 0; // 1=plane, 2=copter, etc.
 let mavlinkParser: MAVLinkParser | null = null;
 let heartbeatTimeout: NodeJS.Timeout | null = null;
+
+// BSOD FIX: Store handler references for proper cleanup on disconnect
+// Without this, handlers accumulate on reconnect cycles causing driver stress
+let mavlinkDataHandler: ((data: Uint8Array) => Promise<void>) | null = null;
+let transportErrorHandler: ((err: Error) => void) | null = null;
+let transportCloseHandler: (() => void) | null = null;
+
+// BSOD FIX: MAVLink processing state to prevent overlapping packet processing
+let processingMavlink = false;
+const pendingMavlinkData: Uint8Array[] = [];
+
+/**
+ * BSOD FIX: Clean up all transport event listeners
+ * Must be called BEFORE closing transport to prevent orphaned handlers
+ */
+function cleanupTransportListeners(): void {
+  if (currentTransport) {
+    if (mavlinkDataHandler) {
+      currentTransport.removeListener('data', mavlinkDataHandler);
+    }
+    if (transportErrorHandler) {
+      currentTransport.removeListener('error', transportErrorHandler);
+    }
+    if (transportCloseHandler) {
+      currentTransport.removeListener('close', transportCloseHandler);
+    }
+  }
+  mavlinkDataHandler = null;
+  transportErrorHandler = null;
+  transportCloseHandler = null;
+  processingMavlink = false;
+  pendingMavlinkData.length = 0;
+}
 let logId = 0;
 let connectionState: ConnectionState = {
   isConnected: false,
@@ -1049,10 +1082,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       heartbeatTimeout = null;
     }
 
+    // BSOD FIX: Clean up existing listeners before closing
+    cleanupTransportListeners();
+
     // Disconnect existing connection
     if (currentTransport?.isOpen) {
       await currentTransport.close();
     }
+    currentTransport = null;
+
+    // BSOD FIX: Wait for driver to fully release port resources
+    // Windows USB-serial drivers (CH340, CP210x, FTDI) need time to cleanup
+    await new Promise(r => setTimeout(r, 500));
 
     try {
       // Create appropriate transport
@@ -1086,77 +1127,101 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Create parser
       mavlinkParser = new MAVLinkParser();
 
-      // MAVLink data handler (stored so we can remove it for MSP)
-      const mavlinkDataHandler = async (data: Uint8Array) => {
+      // BSOD FIX: MAVLink data handler with backpressure to prevent event loop starvation
+      // Stored at module level so we can properly remove it on disconnect
+      mavlinkDataHandler = async (data: Uint8Array) => {
         if (!mavlinkParser) return;
 
-        for await (const packet of mavlinkParser.parse(data)) {
-          connectionState.packetsReceived++;
+        // BSOD FIX: Queue data and process with backpressure
+        pendingMavlinkData.push(data);
 
-          // Handle heartbeat (msgid 0)
-          if (packet.msgid === 0) {
-            // Detect MAVLink version from packet format
-            detectedMavlinkVersion = packet.isMavlink2 ? 2 : 1;
+        // Skip if already processing - prevents overlapping async loops
+        if (processingMavlink) return;
+        processingMavlink = true;
 
-            // Parse heartbeat payload: type(1), autopilot(1), base_mode(1), custom_mode(4), system_status(1), mavlink_version(1)
-            const vehicleType = packet.payload[0];
-            const autopilotType = packet.payload[1];
+        try {
+          while (pendingMavlinkData.length > 0) {
+            const chunk = pendingMavlinkData.shift()!;
 
-            // First heartbeat - connection confirmed!
-            if (connectionState.isWaitingForHeartbeat) {
-              if (heartbeatTimeout) {
-                clearTimeout(heartbeatTimeout);
-                heartbeatTimeout = null;
+            for await (const packet of mavlinkParser.parse(chunk)) {
+              connectionState.packetsReceived++;
+
+              // Handle heartbeat (msgid 0)
+              if (packet.msgid === 0) {
+                // Detect MAVLink version from packet format
+                detectedMavlinkVersion = packet.isMavlink2 ? 2 : 1;
+
+                // Parse heartbeat payload: type(1), autopilot(1), base_mode(1), custom_mode(4), system_status(1), mavlink_version(1)
+                const vehicleType = packet.payload[0];
+                const autopilotType = packet.payload[1];
+
+                // First heartbeat - connection confirmed!
+                if (connectionState.isWaitingForHeartbeat) {
+                  if (heartbeatTimeout) {
+                    clearTimeout(heartbeatTimeout);
+                    heartbeatTimeout = null;
+                  }
+
+                  connectionState.isWaitingForHeartbeat = false;
+                  connectionState.isConnected = true;
+                  connectionState.protocol = 'mavlink';
+                  connectionState.systemId = packet.sysid;
+                  connectionState.componentId = packet.compid;
+                  connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
+                  connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
+                  connectionState.mavType = vehicleType;
+
+                  sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
+                  sendConnectionState(mainWindow);
+                }
               }
 
-              connectionState.isWaitingForHeartbeat = false;
-              connectionState.isConnected = true;
-              connectionState.protocol = 'mavlink';
-              connectionState.systemId = packet.sysid;
-              connectionState.componentId = packet.compid;
-              connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
-              connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
-              connectionState.mavType = vehicleType;
+              // Parse telemetry data from known message types
+              parseTelemetry(mainWindow, packet);
 
-              sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
-              sendConnectionState(mainWindow);
+              // Log packets (limit to not spam)
+              if (connectionState.packetsReceived <= 10 || connectionState.packetsReceived % 100 === 0) {
+                sendLog(mainWindow, 'packet', `MSG #${packet.msgid}`, `sysid=${packet.sysid} compid=${packet.compid} seq=${packet.seq} len=${packet.payload.length}`);
+              }
+
+              // Send packet to renderer
+              safeSend(mainWindow, IPC_CHANNELS.MAVLINK_PACKET, {
+                msgid: packet.msgid,
+                sysid: packet.sysid,
+                compid: packet.compid,
+                seq: packet.seq,
+                payload: Array.from(packet.payload),
+              });
+
+              // Update packet count periodically
+              if (connectionState.packetsReceived % 50 === 0) {
+                sendConnectionState(mainWindow);
+              }
+            }
+
+            // BSOD FIX: Yield to event loop between chunks to prevent starvation
+            if (pendingMavlinkData.length > 0) {
+              await new Promise(r => setImmediate(r));
             }
           }
-
-          // Parse telemetry data from known message types
-          parseTelemetry(mainWindow, packet);
-
-          // Log packets (limit to not spam)
-          if (connectionState.packetsReceived <= 10 || connectionState.packetsReceived % 100 === 0) {
-            sendLog(mainWindow, 'packet', `MSG #${packet.msgid}`, `sysid=${packet.sysid} compid=${packet.compid} seq=${packet.seq} len=${packet.payload.length}`);
-          }
-
-          // Send packet to renderer
-          safeSend(mainWindow, IPC_CHANNELS.MAVLINK_PACKET, {
-            msgid: packet.msgid,
-            sysid: packet.sysid,
-            compid: packet.compid,
-            seq: packet.seq,
-            payload: Array.from(packet.payload),
-          });
-
-          // Update packet count periodically
-          if (connectionState.packetsReceived % 50 === 0) {
-            sendConnectionState(mainWindow);
-          }
+        } finally {
+          processingMavlink = false;
         }
       };
 
       // Setup data handler
       currentTransport.on('data', mavlinkDataHandler);
 
-      currentTransport.on('error', (error: Error) => {
+      // BSOD FIX: Store handler references for proper cleanup
+      transportErrorHandler = (error: Error) => {
         console.error('Transport error:', error);
         sendLog(mainWindow, 'error', 'Transport error', error.message);
         safeSend(mainWindow, 'connection:error', error.message);
-      });
+      };
+      currentTransport.on('error', transportErrorHandler);
 
-      currentTransport.on('close', () => {
+      // BSOD FIX: Store handler references for proper cleanup
+      transportCloseHandler = () => {
         if (heartbeatTimeout) {
           clearTimeout(heartbeatTimeout);
           heartbeatTimeout = null;
@@ -1165,7 +1230,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         connectionState.isWaitingForHeartbeat = false;
         sendLog(mainWindow, 'info', 'Connection closed');
         sendConnectionState(mainWindow);
-      });
+      };
+      currentTransport.on('close', transportCloseHandler);
 
       // Open connection
       await currentTransport.open();
@@ -1187,8 +1253,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           sendLog(mainWindow, 'info', 'No MAVLink heartbeat, trying MSP protocol...');
 
           // IMPORTANT: Remove MAVLink handler before trying MSP
-          currentTransport.removeListener('data', mavlinkDataHandler);
+          // BSOD FIX: Use stored handler reference and clear it
+          if (mavlinkDataHandler) {
+            currentTransport.removeListener('data', mavlinkDataHandler);
+            mavlinkDataHandler = null;
+          }
           mavlinkParser = null;
+          processingMavlink = false;
+          pendingMavlinkData.length = 0;
 
           // Try MSP detection
           const mspInfo = await tryMspDetection(currentTransport, mainWindow);
@@ -1242,6 +1314,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
     // Stop MSP telemetry if running
     stopMspTelemetry();
+
+    // BSOD FIX: Clean up all event listeners BEFORE closing transport
+    // This prevents orphaned handlers that accumulate on reconnect cycles
+    cleanupTransportListeners();
 
     if (currentTransport?.isOpen) {
       await currentTransport.close();

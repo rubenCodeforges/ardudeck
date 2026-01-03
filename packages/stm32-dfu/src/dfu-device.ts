@@ -116,6 +116,7 @@ export class DfuDevice {
 
   /**
    * Wait for a DFU device to appear (useful after reset)
+   * BSOD FIX: Increased polling interval from 200ms to 500ms to reduce USB enumeration stress
    * @param timeout Timeout in milliseconds
    * @param vid Optional vendor ID filter
    * @returns DfuDevice or null
@@ -126,9 +127,12 @@ export class DfuDevice {
     while (Date.now() - startTime < timeout) {
       const devices = DfuDevice.findAll(vid);
       if (devices.length > 0) {
+        // BSOD FIX: Add delay after finding device to let driver stabilize
+        await new Promise(resolve => setTimeout(resolve, 100));
         return devices[0]!;
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // BSOD FIX: Increased from 200ms to 500ms to reduce USB enumeration stress
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     return null;

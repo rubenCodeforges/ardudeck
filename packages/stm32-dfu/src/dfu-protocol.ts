@@ -23,7 +23,18 @@ import type { DfuStatusResponse, DfuFunctionalDescriptor } from './types.js';
 import { DfuError, UsbError } from './types.js';
 
 /**
+ * Delay helper for rate limiting USB operations
+ * BSOD FIX: Prevents driver stress from rapid USB control transfers
+ */
+const USB_TRANSFER_DELAY_MS = 20;
+
+async function usbDelay(): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, USB_TRANSFER_DELAY_MS));
+}
+
+/**
  * Perform USB control transfer (promisified)
+ * BSOD FIX: Added post-transfer delay to prevent Windows driver stress
  */
 export async function controlTransfer(
   device: Device,
@@ -34,7 +45,7 @@ export async function controlTransfer(
   dataOrLength: Buffer | number,
   timeout: number = DFU_TIMEOUT,
 ): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
+  const result = await new Promise<Buffer>((resolve, reject) => {
     device.timeout = timeout;
     device.controlTransfer(
       bmRequestType,
@@ -51,6 +62,11 @@ export async function controlTransfer(
       }
     );
   });
+
+  // BSOD FIX: Add delay after each USB operation to prevent driver stress
+  await usbDelay();
+
+  return result;
 }
 
 /**
@@ -235,7 +251,8 @@ export async function dfuWaitForState(
     }
 
     // Wait for poll timeout before retrying
-    const waitTime = Math.max(status.pollTimeout, 10);
+    // BSOD FIX: Increased minimum from 10ms to 25ms to reduce USB traffic
+    const waitTime = Math.max(status.pollTimeout, 25);
     await new Promise(resolve => setTimeout(resolve, waitTime));
   }
 

@@ -20,6 +20,31 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 
 ---
 
+## Table of Contents
+
+- [Features](#features)
+  - [Real-Time Telemetry](#real-time-telemetry)
+  - [Interactive Map](#interactive-map)
+  - [Dockable Dashboard](#dockable-dashboard)
+  - [Mission Planning](#mission-planning)
+  - [Parameter Management](#parameter-management)
+  - [Settings & Vehicle Profiles](#settings--vehicle-profiles)
+  - [Firmware Flash](#firmware-flash)
+  - [Connectivity](#connectivity)
+- [Screenshots](#screenshots)
+- [Quick Start](#quick-start)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Packages](#packages)
+- [Supported Vehicles](#supported-vehicles)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
+- [Acknowledgments](#acknowledgments)
+
+---
+
 ## Features
 
 ### Real-Time Telemetry
@@ -76,7 +101,8 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 - **Multi-Protocol Detection** — Auto-detect boards via MAVLink, MSP, or STM32 bootloader
 - **USB VID/PID Recognition** — 30+ known boards identified by USB IDs
 - **ArduPilot Support** — Flash ArduCopter, ArduPlane, ArduRover, ArduSub
-- **Betaflight Support** — Flash Betaflight/iNav/Cleanflight firmware
+- **Betaflight/iNav Support** — Flash Betaflight and iNav firmware with curated version lists
+- **F3 Legacy Support** — SPRacing F3 (iNav 2.0.0), FrSky F3 (iNav 2.6.1), Betaflight 3.5.7
 - **Boot Pad Wizard** — Guided entry for boards requiring manual bootloader activation
 - **STM32 Serial Bootloader** — Native USART flashing (no external tools needed)
 - **Progress Tracking** — Real-time erase/write/verify progress with detailed logging

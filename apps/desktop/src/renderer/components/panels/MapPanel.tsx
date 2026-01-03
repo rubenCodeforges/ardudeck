@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { AttitudeIndicator } from './AttitudePanel';
+import { useIpLocation } from '../../utils/ip-geolocation';
 
 // Map layer definitions
 const MAP_LAYERS = {
@@ -342,8 +343,13 @@ export function MapPanel() {
   const lastUpdateRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Default position (London) - used when no GPS
-  const defaultPosition: [number, number] = [51.505, -0.09];
+  // IP geolocation fallback (used when GPS not available)
+  const [ipLocation] = useIpLocation();
+
+  // Default position - use IP location if available, otherwise fallback to London
+  const defaultPosition: [number, number] = ipLocation
+    ? [ipLocation.lat, ipLocation.lon]
+    : [51.505, -0.09];
 
   // Get current position from GPS data
   const hasValidGps = gps.fixType >= 2 && gps.lat !== 0 && gps.lon !== 0;
@@ -351,7 +357,7 @@ export function MapPanel() {
     ? [gps.lat, gps.lon]
     : null;
 
-  // Vehicle display position - use GPS if available, otherwise use default or last known
+  // Vehicle display position - use GPS if available, otherwise use home, then IP location
   const vehiclePosition: [number, number] = gpsPosition || homePosition || defaultPosition;
 
   // Calculate distance and bearing to home

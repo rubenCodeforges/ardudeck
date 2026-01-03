@@ -8,6 +8,7 @@ interface BoardPickerProps {
   isLoading?: boolean;
   error?: string | null;
   placeholder?: string;
+  initialSearchQuery?: string;
 }
 
 export function BoardPicker({
@@ -17,13 +18,23 @@ export function BoardPicker({
   isLoading = false,
   error = null,
   placeholder = 'Select board manually...',
+  initialSearchQuery = '',
 }: BoardPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAllBoards, setShowAllBoards] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  // Auto-expand when there's an initial search query
+  const [showAllBoards, setShowAllBoards] = useState(!!initialSearchQuery);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Update search query when initialSearchQuery prop changes
+  useEffect(() => {
+    if (initialSearchQuery) {
+      setSearchQuery(initialSearchQuery);
+      setShowAllBoards(true);
+    }
+  }, [initialSearchQuery]);
 
   // Close on click outside
   useEffect(() => {
