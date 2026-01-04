@@ -272,22 +272,23 @@ export const MSP2 = {
   INAV_SET_PROGRAMMING_PID: 0x2027,
   INAV_PROGRAMMING_PID_STATUS: 0x2028,
 
-  // iNav specific - Navigation
-  INAV_NAV_POSHOLD: 0x2010,
-  INAV_SET_NAV_POSHOLD: 0x2011,
-  INAV_CALIBRATION_DATA: 0x2012,
-  INAV_SET_CALIBRATION_DATA: 0x2013,
-  INAV_POSITION_ESTIMATION_CONFIG: 0x2014,
-  INAV_SET_POSITION_ESTIMATION_CONFIG: 0x2015,
+  // iNav specific - Mixer (0x2010-0x201F)
+  // NOTE: These are the ACTUAL iNav MSP2 codes from inav-configurator
+  INAV_MIXER: 0x2010,
+  INAV_SET_MIXER: 0x2011,
+  INAV_OSD_LAYOUTS: 0x2012,
+  INAV_OSD_SET_LAYOUT_ITEM: 0x2013,
+  INAV_OSD_ALARMS: 0x2014,
+  INAV_OSD_SET_ALARMS: 0x2015,
   INAV_RTH_AND_LAND_CONFIG: 0x2016,
   INAV_SET_RTH_AND_LAND_CONFIG: 0x2017,
-  INAV_FW_CONFIG: 0x2018,
-  INAV_SET_FW_CONFIG: 0x2019,
-  INAV_FWUPD_PREPARE: 0x201A,
-  INAV_FWUPD_STORE: 0x201B,
-  INAV_FWUPD_EXEC: 0x201C,
-  INAV_FWUPD_ROLLBACK_PREPARE: 0x201D,
-  INAV_FWUPD_ROLLBACK_EXEC: 0x201E,
+  INAV_SELECT_BATTERY_PROFILE: 0x2018,
+  INAV_DEBUG: 0x2019,
+  INAV_BLACKBOX_CONFIG: 0x201A,
+  INAV_SET_BLACKBOX_CONFIG: 0x201B,
+  INAV_TEMP_SENSOR_CONFIG: 0x201C,
+  INAV_SET_TEMP_SENSOR_CONFIG: 0x201D,
+  INAV_TEMPERATURES: 0x201E,
 
   // Sensor commands
   SENSOR_RANGEFINDER: 0x1F01,
@@ -296,6 +297,25 @@ export const MSP2 = {
   SENSOR_COMPASS: 0x1F04,
   SENSOR_BAROMETER: 0x1F05,
   SENSOR_AIRSPEED: 0x1F06,
+} as const;
+
+// =============================================================================
+// iNav Platform Types (for MSP2_INAV_MIXER)
+// =============================================================================
+
+export const INAV_PLATFORM_TYPE = {
+  /** Quadcopter, Hexacopter, Octocopter, etc. */
+  MULTIROTOR: 0,
+  /** Fixed-wing airplane */
+  AIRPLANE: 1,
+  /** Helicopter with collective pitch */
+  HELICOPTER: 2,
+  /** Y3 or similar tricopter */
+  TRICOPTER: 3,
+  /** Ground vehicle */
+  ROVER: 4,
+  /** Watercraft */
+  BOAT: 5,
 } as const;
 
 // =============================================================================

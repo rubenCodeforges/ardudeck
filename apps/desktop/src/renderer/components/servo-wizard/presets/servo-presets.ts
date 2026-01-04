@@ -154,6 +154,26 @@ export interface ControlSurfaceAssignment {
 // Aircraft type categories
 export type AircraftCategory = 'fixed_wing' | 'multirotor' | 'other';
 
+// MSP mixer type IDs (from iNav/Betaflight) - Legacy MSP v1
+export const MIXER_TYPE = {
+  TRI: 0,
+  QUADX: 3,
+  GIMBAL: 5,
+  FLYING_WING: 8,
+  AIRPLANE: 14,
+  CUSTOM_AIRPLANE: 24,
+} as const;
+
+// iNav Platform Types (for MSP2_INAV_SET_MIXER) - This is the CORRECT way to set aircraft type!
+export const PLATFORM_TYPE = {
+  MULTIROTOR: 0,
+  AIRPLANE: 1,
+  HELICOPTER: 2,
+  TRICOPTER: 3,
+  ROVER: 4,
+  BOAT: 5,
+} as const;
+
 // Aircraft preset definition
 export interface AircraftPreset {
   id: string;
@@ -164,6 +184,10 @@ export interface AircraftPreset {
   tip: string;
   servoCount: number;
   controlSurfaces: ControlSurface[];
+  // iNav platform type (MSP2_INAV_SET_MIXER) - THE CORRECT WAY!
+  platformType: number;
+  // MSP mixer type (legacy MSP v1) - fallback for Betaflight
+  mixerType: number;
   // Default mixer rules for each control surface
   defaultRules: Record<ControlSurface, ServoMixerRule[]>;
 }
@@ -179,6 +203,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
     tip: 'Most common setup for planes. Separate control surfaces for each axis.',
     servoCount: 4,
     controlSurfaces: ['aileron_left', 'aileron_right', 'elevator', 'rudder'],
+    platformType: PLATFORM_TYPE.AIRPLANE,
+    mixerType: MIXER_TYPE.AIRPLANE,
     defaultRules: {
       aileron_left: [{ inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: 100 }],
       aileron_right: [{ inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: -100 }],
@@ -204,6 +230,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
     tip: 'Elevons combine aileron and elevator function. No tail surfaces.',
     servoCount: 2,
     controlSurfaces: ['elevon_left', 'elevon_right'],
+    platformType: PLATFORM_TYPE.AIRPLANE,
+    mixerType: MIXER_TYPE.FLYING_WING,
     defaultRules: {
       aileron_left: [],
       aileron_right: [],
@@ -234,6 +262,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
     tip: 'V-tail surfaces combine elevator and rudder. Standard ailerons.',
     servoCount: 4,
     controlSurfaces: ['aileron_left', 'aileron_right', 'vtail_left', 'vtail_right'],
+    platformType: PLATFORM_TYPE.AIRPLANE,
+    mixerType: MIXER_TYPE.CUSTOM_AIRPLANE,
     defaultRules: {
       aileron_left: [{ inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: 100 }],
       aileron_right: [{ inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: -100 }],
@@ -264,6 +294,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
     tip: 'Like flying wing but with a vertical tail for rudder.',
     servoCount: 3,
     controlSurfaces: ['elevon_left', 'elevon_right', 'rudder'],
+    platformType: PLATFORM_TYPE.AIRPLANE,
+    mixerType: MIXER_TYPE.CUSTOM_AIRPLANE,
     defaultRules: {
       aileron_left: [],
       aileron_right: [],
@@ -294,6 +326,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
     tip: 'Only the rear yaw servo needs configuration. Motors are handled separately.',
     servoCount: 1,
     controlSurfaces: ['yaw_servo'],
+    platformType: PLATFORM_TYPE.TRICOPTER,
+    mixerType: MIXER_TYPE.TRI,
     defaultRules: {
       aileron_left: [],
       aileron_right: [],
@@ -318,6 +352,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
     tip: 'For camera stabilization. Uses RC input, not stabilized output.',
     servoCount: 2,
     controlSurfaces: ['gimbal_pan', 'gimbal_tilt'],
+    platformType: PLATFORM_TYPE.MULTIROTOR, // Gimbal typically on quads
+    mixerType: MIXER_TYPE.GIMBAL,
     defaultRules: {
       aileron_left: [],
       aileron_right: [],

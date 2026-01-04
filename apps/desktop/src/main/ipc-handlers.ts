@@ -74,7 +74,7 @@ import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
-import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry } from './msp/index.js';
+import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection } from './msp/index.js';
 
 // Layout storage
 const layoutStore = new Store<LayoutStoreSchema>({
@@ -1285,8 +1285,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             };
             sendConnectionState(mainWindow);
 
-            // Start MSP telemetry (sends to same TELEMETRY_UPDATE channel)
-            startMspTelemetry(10);
+            // NOTE: MSP telemetry is NOT auto-started here.
+            // The renderer will start/stop telemetry based on which view is active.
+            // This prevents wasted polling when user is on config screens.
           } else {
             // Neither MAVLink nor MSP
             const errorMsg = 'Device did not respond to MAVLink or MSP. Check connection.';
@@ -1312,24 +1313,42 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Disconnect
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
-    // Stop MSP telemetry if running
-    stopMspTelemetry();
+    try {
+      // Full cleanup of MSP connection (stops telemetry AND clears transport)
+      cleanupMspConnection();
 
-    // BSOD FIX: Clean up all event listeners BEFORE closing transport
-    // This prevents orphaned handlers that accumulate on reconnect cycles
-    cleanupTransportListeners();
+      // BSOD FIX: Clean up all event listeners BEFORE closing transport
+      // This prevents orphaned handlers that accumulate on reconnect cycles
+      cleanupTransportListeners();
 
-    if (currentTransport?.isOpen) {
-      await currentTransport.close();
+      // Clear heartbeat timeout to prevent reconnection attempts
+      if (heartbeatTimeout) {
+        clearTimeout(heartbeatTimeout);
+        heartbeatTimeout = null;
+      }
+
+      if (currentTransport?.isOpen) {
+        try {
+          await currentTransport.close();
+        } catch (closeErr) {
+          // Transport may already be closed or in bad state - ignore
+          console.warn('[Disconnect] Transport close error (ignoring):', closeErr);
+        }
+      }
+    } catch (error) {
+      // Log but don't crash on disconnect errors
+      console.error('[Disconnect] Error during disconnect:', error);
+    } finally {
+      // Always reset state, even if errors occurred
+      currentTransport = null;
+      mavlinkParser = null;
+      connectionState = {
+        isConnected: false,
+        packetsReceived: 0,
+        packetsSent: 0,
+      };
+      sendConnectionState(mainWindow);
     }
-    currentTransport = null;
-    mavlinkParser = null;
-    connectionState = {
-      isConnected: false,
-      packetsReceived: 0,
-      packetsSent: 0,
-    };
-    sendConnectionState(mainWindow);
   });
 
   // Send MAVLink message
@@ -3587,4 +3606,52 @@ function parseRallyFile(content: string): RallyItem[] {
   }
 
   return items;
+}
+
+/**
+ * Cleanup function for app shutdown
+ * CRITICAL: Must be called on app quit to properly release USB/serial resources
+ * Without this, Windows USB drivers (CH340, CP210x, FTDI) may not release properly,
+ * causing issues on next connection or potential BSOD.
+ */
+export async function cleanupOnShutdown(): Promise<void> {
+  console.log('[Shutdown] Starting cleanup...');
+
+  try {
+    // Full cleanup of MSP connection (stops telemetry AND clears transport)
+    cleanupMspConnection();
+    console.log('[Shutdown] MSP connection cleaned up');
+  } catch (err) {
+    console.warn('[Shutdown] Error cleaning up MSP:', err);
+  }
+
+  try {
+    // Clean up transport listeners
+    cleanupTransportListeners();
+    console.log('[Shutdown] Transport listeners cleaned up');
+  } catch (err) {
+    console.warn('[Shutdown] Error cleaning transport listeners:', err);
+  }
+
+  try {
+    // Close transport if open
+    if (currentTransport?.isOpen) {
+      await currentTransport.close();
+      console.log('[Shutdown] Transport closed');
+    }
+  } catch (err) {
+    console.warn('[Shutdown] Error closing transport:', err);
+  }
+
+  // Clear heartbeat timeout
+  if (heartbeatTimeout) {
+    clearTimeout(heartbeatTimeout);
+    heartbeatTimeout = null;
+  }
+
+  // Reset state
+  currentTransport = null;
+  mavlinkParser = null;
+
+  console.log('[Shutdown] Cleanup complete');
 }

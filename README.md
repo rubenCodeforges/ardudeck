@@ -97,6 +97,15 @@ ArduDeck is a next-generation mission planner built with Electron, React, and Ty
 - **Maritime Data** — Wave height, swell info for boats/subs
 - **Persistent Storage** — Profiles saved to disk, survive app restarts
 
+### Betaflight/iNav Configuration
+- **Auto-Detection** — Automatically detects MSP protocol (Betaflight/iNav) vs MAVLink
+- **PID Tuning** — Beginner-friendly presets (Beginner, Freestyle, Racing, Cinematic)
+- **Rate Curves** — Visual rate curve editor with presets
+- **Modes Wizard** — Step-by-step mode configuration with live RC feedback
+- **Servo Wizard** — Fixed-wing servo setup with aircraft presets (Traditional, Flying Wing, V-Tail, Delta)
+- **Platform Type Change** — Convert multirotor to airplane with MSP2 + CLI fallback for iNav 2.0.0
+- **Custom Profiles** — Save/load custom PID tunes and rate profiles
+
 ### Firmware Flash
 - **Multi-Protocol Detection** — Auto-detect boards via MAVLink, MSP, or STM32 bootloader
 - **USB VID/PID Recognition** — 30+ known boards identified by USB IDs

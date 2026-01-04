@@ -118,7 +118,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
     get().checkServoSupport();
   },
 
-  // Check if FC supports servo commands and detect mixer type
+  // Check if FC supports servo commands and detect platform type
   checkServoSupport: async () => {
     set({ isCheckingSupport: true, supportError: null });
 
@@ -131,17 +131,31 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         ]);
       };
 
-      // Check the mixer type to determine if it's a multirotor or plane
+      // Check the platform type to determine if it's a multirotor or plane
+      // First try the proper iNav MSP2 command
       let isMultirotor = false;
       try {
-        const mixerConfig = await withTimeout(window.electronAPI.mspGetMixerConfig(), 2000);
-        if (mixerConfig) {
-          isMultirotor = mixerConfig.isMultirotor;
-          console.log('[ServoWizard] Mixer type:', mixerConfig.mixer, 'isMultirotor:', isMultirotor);
+        const inavConfig = await withTimeout(window.electronAPI.mspGetInavMixerConfig(), 2000);
+        if (inavConfig) {
+          // platformType: 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
+          isMultirotor = inavConfig.platformType === 0;
+          const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
+          console.log('[ServoWizard] iNav platform:', platformNames[inavConfig.platformType] ?? 'UNKNOWN',
+            'isMultirotor:', isMultirotor);
         }
       } catch (err) {
-        // Mixer config not available - assume plane (show all options)
-        console.log('[ServoWizard] Mixer config not available:', err);
+        // iNav MSP2 not available - try legacy MSP command
+        console.log('[ServoWizard] iNav mixer config not available, trying legacy:', err);
+        try {
+          const mixerConfig = await withTimeout(window.electronAPI.mspGetMixerConfig(), 2000);
+          if (mixerConfig) {
+            isMultirotor = mixerConfig.isMultirotor;
+            console.log('[ServoWizard] Legacy mixer type:', mixerConfig.mixer, 'isMultirotor:', isMultirotor);
+          }
+        } catch (legacyErr) {
+          // Mixer config not available - assume plane (show all options)
+          console.log('[ServoWizard] Legacy mixer config not available:', legacyErr);
+        }
       }
 
       // For multirotors, check if SERVO_TILT feature is enabled (bit 5)
@@ -274,7 +288,8 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
   },
 
   // Select aircraft type and load default assignments
-  selectAircraftType: (presetId: string) => {
+  // Also sets the platform type on the FC so it knows it's a plane/wing/etc.
+  selectAircraftType: async (presetId: string) => {
     const preset = getPreset(presetId);
     if (!preset) return;
 
@@ -285,6 +300,36 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
       assignments,
       originalAssignments: JSON.parse(JSON.stringify(assignments)),
     });
+
+    // Set the platform type on the FC so it's configured as the right aircraft type
+    // This is critical - without it, the FC might think it's a quad!
+    // The backend handles MSP2 -> CLI fallback automatically for old iNav
+    const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
+    const platformName = platformNames[preset.platformType] ?? 'UNKNOWN';
+
+    try {
+      console.log(`[ServoWizard] Setting platform to ${platformName} (${preset.platformType}) for ${preset.name}`);
+
+      // Use mspSetInavPlatformType - it has CLI fallback for old iNav built-in
+      const success = await window.electronAPI.mspSetInavPlatformType(preset.platformType);
+      if (success) {
+        console.log(`[ServoWizard] Platform type set successfully`);
+        // Update local state to reflect the change
+        set({ isMultirotor: preset.platformType === 0 });
+      } else {
+        // Both MSP2 and CLI fallback failed
+        console.error(`[ServoWizard] Failed to set platform type (MSP2 + CLI both failed)`);
+        // Show user a helpful message
+        set({
+          supportError: `Could not change platform to ${platformName}. For iNav 2.0.0, you may need to use iNav Configurator to change the mixer type, then reconnect.`,
+        });
+      }
+    } catch (err) {
+      console.error('[ServoWizard] Error setting platform type:', err);
+      set({
+        supportError: `Error changing platform: ${err instanceof Error ? err.message : 'Unknown error'}. Try using iNav Configurator to change the mixer type.`,
+      });
+    }
   },
 
   // Update a specific assignment

@@ -139,6 +139,10 @@ export const IPC_CHANNELS = {
   MSP_SET_MODE_RANGE: 'msp:set-mode-range',
   MSP_GET_FEATURES: 'msp:get-features',
   MSP_GET_MIXER_CONFIG: 'msp:get-mixer-config',
+  MSP_SET_MIXER_CONFIG: 'msp:set-mixer-config',
+  // iNav-specific mixer config (proper MSP2 commands for platform type)
+  MSP_GET_INAV_MIXER_CONFIG: 'msp:get-inav-mixer-config',
+  MSP_SET_INAV_PLATFORM_TYPE: 'msp:set-inav-platform-type',
   MSP_CONFIG_UPDATE: 'msp:config-update',
 
   // MSP Servo Configuration (iNav)

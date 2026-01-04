@@ -502,6 +502,25 @@ const api = {
   mspGetMixerConfig: (): Promise<{ mixer: number; isMultirotor: boolean } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MIXER_CONFIG),
 
+  mspSetMixerConfig: (mixerType: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_MIXER_CONFIG, mixerType),
+
+  // iNav-specific mixer config (proper MSP2 commands for platform type)
+  mspGetInavMixerConfig: (): Promise<{
+    yawMotorDirection: number;
+    yawJumpPreventionLimit: number;
+    motorStopOnLow: number;
+    platformType: number;  // 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
+    hasFlaps: number;
+    appliedMixerPreset: number;
+    numberOfMotors: number;
+    numberOfServos: number;
+  } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_INAV_MIXER_CONFIG),
+
+  mspSetInavPlatformType: (platformType: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_INAV_PLATFORM_TYPE, platformType),
+
   mspGetRc: (): Promise<{ channels: number[] } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC),
 

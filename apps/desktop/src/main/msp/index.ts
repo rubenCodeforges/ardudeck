@@ -10,4 +10,5 @@ export {
   tryMspDetection,
   startMspTelemetry,
   stopMspTelemetry,
+  cleanupMspConnection,
 } from './msp-handlers.js';

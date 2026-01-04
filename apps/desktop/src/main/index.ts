@@ -6,7 +6,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { setupIpcHandlers } from './ipc-handlers.js';
+import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -96,4 +96,42 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// BSOD Prevention: Clean up serial/USB connections before app quits
+// This is CRITICAL for Windows USB drivers (CH340, CP210x, FTDI)
+// Without proper cleanup, drivers may not release, causing issues on reconnect
+app.on('before-quit', async (event) => {
+  // Prevent immediate quit to allow async cleanup
+  event.preventDefault();
+
+  try {
+    await cleanupOnShutdown();
+  } catch (err) {
+    console.error('[App] Cleanup error:', err);
+  }
+
+  // Now actually quit
+  app.exit(0);
+});
+
+// Also handle SIGINT/SIGTERM for graceful shutdown in dev mode
+process.on('SIGINT', async () => {
+  console.log('[App] SIGINT received, cleaning up...');
+  try {
+    await cleanupOnShutdown();
+  } catch (err) {
+    console.error('[App] Cleanup error:', err);
+  }
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('[App] SIGTERM received, cleaning up...');
+  try {
+    await cleanupOnShutdown();
+  } catch (err) {
+    console.error('[App] Cleanup error:', err);
+  }
+  process.exit(0);
 });

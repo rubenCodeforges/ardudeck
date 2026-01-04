@@ -66,6 +66,21 @@ export interface MSPMixerConfig {
   reversedMotors?: boolean;
 }
 
+/**
+ * iNav-specific mixer configuration (MSP2_INAV_MIXER)
+ * This is the CORRECT way to change platform type on iNav boards.
+ */
+export interface MSPInavMixerConfig {
+  yawMotorDirection: number;      // -1 or 1
+  yawJumpPreventionLimit: number; // 0-255
+  motorStopOnLow: number;         // 0 or 1
+  platformType: number;           // 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
+  hasFlaps: number;               // 0 or 1
+  appliedMixerPreset: number;     // Preset ID (int16)
+  numberOfMotors: number;         // Read-only from FC
+  numberOfServos: number;         // Read-only from FC
+}
+
 // =============================================================================
 // Deserializers
 // =============================================================================
@@ -269,6 +284,75 @@ export function deserializeMixerConfig(payload: Uint8Array): MSPMixerConfig {
   }
 
   return config;
+}
+
+/**
+ * Serialize MSP_SET_MIXER_CONFIG payload
+ */
+export function serializeMixerConfig(mixerType: number): Uint8Array {
+  const builder = new PayloadBuilder();
+  builder.writeU8(mixerType);
+  // Note: Some firmware versions expect reversed_motors byte, but for basic
+  // mixer changes we just send the mixer type. A reboot is typically required.
+  return builder.build();
+}
+
+/**
+ * Deserialize MSP2_INAV_MIXER response
+ *
+ * This is the proper iNav command for reading platform configuration.
+ * Use platformType to determine if board is multirotor (0) or airplane (1).
+ */
+export function deserializeInavMixerConfig(payload: Uint8Array): MSPInavMixerConfig {
+  const reader = new PayloadReader(payload);
+
+  return {
+    yawMotorDirection: reader.readS8(),
+    yawJumpPreventionLimit: reader.readU8(),
+    motorStopOnLow: reader.readU8(),
+    platformType: reader.readS8(),
+    hasFlaps: reader.readS8(),
+    appliedMixerPreset: reader.readS16(),
+    numberOfMotors: reader.readS8(),
+    numberOfServos: reader.readS8(),
+  };
+}
+
+/**
+ * Serialize MSP2_INAV_SET_MIXER payload
+ *
+ * This is the proper iNav command for changing platform type.
+ * platformType: 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
+ */
+export function serializeInavMixerConfig(config: MSPInavMixerConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeS8(config.yawMotorDirection);
+  builder.writeU8(config.yawJumpPreventionLimit);
+  builder.writeU8(config.motorStopOnLow);
+  builder.writeS8(config.platformType);
+  builder.writeS8(config.hasFlaps);
+  builder.writeS16(config.appliedMixerPreset);
+  builder.writeU8(0);  // Filler byte
+  builder.writeU8(0);  // Filler byte
+
+  return builder.build();
+}
+
+/**
+ * Check if iNav platformType is a multirotor type
+ */
+export function isInavMultirotor(platformType: number): boolean {
+  // 0 = MULTIROTOR, 3 = TRICOPTER
+  return platformType === 0 || platformType === 3;
+}
+
+/**
+ * Check if iNav platformType is a fixed-wing type
+ */
+export function isInavFixedWing(platformType: number): boolean {
+  // 1 = AIRPLANE
+  return platformType === 1;
 }
 
 // =============================================================================

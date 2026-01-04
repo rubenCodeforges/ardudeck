@@ -65,10 +65,12 @@ temp/
 
 # Claude Code
 .claude/
-CLAUDE.md
 
 # Legacy Mission Planner (reference repo, not part of this project)
 MissionPlanner/
+
+# iNav Configurator (reference repo)
+inav-configurator/
 
 # Firmware files (downloaded on-demand from ArduPilot servers)
 # Note: Don't ignore apps/desktop/src/main/firmware/ (source code)
