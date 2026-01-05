@@ -293,8 +293,8 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - PID Tuning: Beginner-friendly presets (Beginner/Freestyle/Racing/Cinematic)
   - Rate Curves: Visual rate curve editor with presets
   - Modes Wizard: Step-by-step mode configuration with presets, live RC feedback ✅
-  - Servo Wizard: Fixed-wing servo setup with aircraft presets, platform type change ✅
-  - Platform Type Change: Convert multirotor↔airplane via MSP2 + CLI fallback ✅
+  - Servo Wizard: Fixed-wing servo setup with aircraft presets ⚠️ (needs mmix/smix for legacy boards)
+  - Platform Type Change: Convert multirotor↔airplane ⚠️ (platform_type only, missing mixer rules)
   - Custom Profiles: Save/load custom PID tunes and rate profiles (localStorage)
   - Protocol-aware UI: Mission planning hidden for Betaflight (not supported)
 
@@ -322,9 +322,9 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - Navigation tab: RTH altitude, nav speeds, GPS config, landing settings
   - Beginner-friendly explanations: Header info boxes explain concepts in plain language
 
-  ### iNav Platform Type Change - COMPLETE (2026-01-04)
+  ### iNav Platform Type & Mixer Configuration - NEEDS REWORK
 
-  **Problem solved:** Servo wizard can now change quad boards to airplane mode on iNav.
+  **Status:** ⚠️ INCOMPLETE - UI designed wrong, assumes all boards work the same
 
   **Key insight:** iNav uses `platformType` (not mixer type!) via `MSP2_INAV_SET_MIXER` (0x2011).
 
@@ -350,6 +350,80 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   Byte 8: numberOfServos (int8)
   ```
 
+  #### CRITICAL: iNav 2.0.0 Breaking Changes
+
+  **The `mixer X` CLI command was REMOVED in iNav 2.0.0!**
+  - Source: https://github.com/iNavFlight/inav/wiki/2.0.0-Release-Notes
+  - `mixer AIRPLANE`, `mixer FLYING_WING`, etc. do NOT work
+  - Only `set platform_type = X` works for changing platform
+
+  **Legacy MSP_MIXER_CONFIG (cmd 42) returns STALE data:**
+  - Returns old mixer type (e.g., 3=QUADX) even after platform_type changed to AIRPLANE
+  - This value cannot be updated via CLI on iNav 2.0+
+  - Only MSP2_INAV_MIXER returns correct platformType
+
+  #### What Setting platform_type Does vs Doesn't Do
+
+  | Sets platform_type | Does NOT configure |
+  |-------------------|-------------------|
+  | Flight mode behavior | Motor mixer (mmix) |
+  | Available flight modes | Servo mixer (smix) |
+  | UI display in configurator | Actual control surface mixing |
+
+  **Setting `platform_type = AIRPLANE` alone does NOT make a flying wing work!**
+  You also need mmix/smix rules for the specific aircraft configuration.
+
+  #### Flying Wing Mixer Rules (Example)
+  ```
+  # Motor mixer - single motor, throttle only
+  mmix reset
+  mmix 0  1.000  0.000  0.000  0.000
+  mmix 1  1.000  0.000  0.000  0.000
+
+  # Servo mixer - elevon mixing
+  smix reset
+  smix 0 3 0 50 0    # servo 3 (left elevon): +roll (input 0)
+  smix 1 3 1 50 0    # servo 3 (left elevon): +pitch (input 1)
+  smix 2 4 0 -50 0   # servo 4 (right elevon): -roll (reversed)
+  smix 3 4 1 50 0    # servo 4 (right elevon): +pitch
+  ```
+
+  #### Other Aircraft Mixer Rules Needed
+  - **Traditional**: Separate aileron/elevator/rudder servos
+  - **V-Tail**: Ruddervator mixing (rudder + elevator on 2 servos)
+  - **Delta Wing**: Similar to flying wing
+  - **Custom Airplane**: User-defined mixing
+
+  #### Race Condition in getInavMixerConfig()
+
+  **Problem:** Multiple concurrent calls can cause wrong platform detection:
+  1. Call 1: Checks cache (null), enters withConfigLock, starts MSP2
+  2. Call 2: Checks cache (null), waits on lock
+  3. Call 1: MSP2 succeeds, sets cache, returns
+  4. Call 2: Gets lock, but already passed cache check → retries MSP2 → times out → legacy fallback → WRONG VALUE
+
+  **Fix needed:** Double-checked locking - check cache INSIDE withConfigLock too:
+  ```typescript
+  return withConfigLock(async () => {
+    // Double-check cache inside lock
+    if (cachedInavMixerConfig) {
+      return cachedInavMixerConfig;
+    }
+    // ... rest of function
+  });
+  ```
+
+  #### UI Rework Required
+
+  **Current problem:** UI assumes all boards work the same way.
+
+  **What needs to change:**
+  1. **Detect board capabilities FIRST** - probe what MSP commands work
+  2. **Don't assume** - read actual config from board, don't guess
+  3. **Legacy boards need full CLI config** - platform_type + mmix + smix rules
+  4. **Modern boards** - can use MSP2 commands
+  5. **Show actual board state** - not cached/assumed values
+
   #### Implementation Files
   | File | Purpose |
   |------|---------|
@@ -360,20 +434,35 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | `components/servo-wizard/presets/servo-presets.ts` | PLATFORM_TYPE constant, preset platformType values |
   | `stores/servo-wizard-store.ts` | checkServoSupport(), selectAircraftType() |
 
-  #### CLI Fallback for iNav 2.0.0
-  Old iNav (2.0.0) may not support MSP2. CLI fallback sends:
-  ```
-  #                              (enter CLI mode)
-  set platform_type = AIRPLANE   (for newer iNav)
-  mixer AIRPLANE                 (for old iNav 2.0.0)
-  save                           (reboots board)
-  ```
-
   #### BSOD Prevention in Platform Change
   - Config lock pauses telemetry during MSP2 commands
   - CLI commands have 200-500ms delays between writes
   - Connection cleanup after board reboot
   - Transport guards prevent operations on closed connections
+
+  #### Debug Logging System (Future Implementation)
+
+  **Problem:** Too many console.log statements make debugging impossible.
+
+  **Solution idea:** Configurable debug flags stored in localStorage:
+  ```typescript
+  // Suggested flags
+  DEBUG_FLAGS = {
+    MSP_PACKETS: false,    // Raw packet hex dumps
+    MSP_COMMANDS: false,   // Command send/receive
+    MSP_PARSING: false,    // Data parsing
+    MSP_TELEMETRY: false,  // Telemetry updates
+    MSP_CONFIG: false,     // Config operations
+    MSP_CLI: false,        // CLI mode operations
+    // ... etc
+  }
+  ```
+
+  **Implementation notes:**
+  - Store flags in localStorage (renderer), sync to main process via IPC
+  - Add Settings UI toggle for each flag group
+  - Default ALL flags to OFF
+  - Main process needs `setDebugFlags()` IPC handler to receive flags on app startup
 
   ### iNav CLI Servo Config Fallback - COMPLETE (2026-01-05)
 
