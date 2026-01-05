@@ -105,6 +105,9 @@ let configLockCount = 0;
 // RC polling state - prevents overlapping RC polls
 let rcPollInFlight = false;
 
+// CLI servo config mode - when MSP_SET_SERVO_CONFIGURATION is not supported
+let servoCliModeActive = false;
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -150,6 +153,12 @@ async function sendMspRequest(command: number, timeout: number = 1000): Promise<
     throw new Error('MSP transport not connected');
   }
 
+  // CRITICAL: Block ALL MSP requests while in CLI mode
+  // CLI mode is raw serial - sending MSP packets will corrupt the CLI session
+  if (servoCliModeActive) {
+    throw new Error('MSP blocked - CLI mode active');
+  }
+
   // Acquire mutex - only one request at a time
   const release = await acquireMutex();
 
@@ -173,6 +182,11 @@ async function sendMspRequest(command: number, timeout: number = 1000): Promise<
 async function sendMspRequestWithPayload(command: number, payload: Uint8Array, timeout: number = 1000): Promise<Uint8Array> {
   if (!currentTransport || !currentTransport.isOpen) {
     throw new Error('MSP transport not connected');
+  }
+
+  // CRITICAL: Block ALL MSP requests while in CLI mode
+  if (servoCliModeActive) {
+    throw new Error('MSP blocked - CLI mode active');
   }
 
   // Acquire mutex - only one request at a time
@@ -203,6 +217,11 @@ async function sendMspV2Request(command: number, timeout: number = 1000): Promis
     throw new Error('MSP transport not connected');
   }
 
+  // CRITICAL: Block ALL MSP requests while in CLI mode
+  if (servoCliModeActive) {
+    throw new Error('MSP blocked - CLI mode active');
+  }
+
   // Acquire mutex - only one request at a time
   const release = await acquireMutex();
 
@@ -226,6 +245,11 @@ async function sendMspV2Request(command: number, timeout: number = 1000): Promis
 async function sendMspV2RequestWithPayload(command: number, payload: Uint8Array, timeout: number = 1000): Promise<Uint8Array> {
   if (!currentTransport || !currentTransport.isOpen) {
     throw new Error('MSP transport not connected');
+  }
+
+  // CRITICAL: Block ALL MSP requests while in CLI mode
+  if (servoCliModeActive) {
+    throw new Error('MSP blocked - CLI mode active');
   }
 
   // Acquire mutex - only one request at a time
@@ -561,6 +585,13 @@ export function cleanupMspConnection(): void {
   configLockCount = 0;
   rcPollInFlight = false;
 
+  // Reset CLI servo fallback state
+  servoCliModeActive = false;
+  usesCliServoFallback = false;
+  servoConfigModeProbed = false;
+  cliResponseListener = null;
+  cliResponse = '';
+
   // Clear transport and parser
   mspParser = null;
   currentTransport = null;
@@ -696,28 +727,63 @@ async function getFeatures(): Promise<number | null> {
  * This is the CORRECT way to detect platform type on iNav boards.
  *
  * Returns platformType: 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
+ *
+ * Falls back to legacy MSP_MIXER_CONFIG for old iNav 2.0.0.
  */
 async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
   // Guard: return null if not connected
   if (!currentTransport?.isOpen) return null;
 
   return withConfigLock(async () => {
+    // Try MSP2 first (iNav 2.5+)
     try {
-      // Use MSP2_INAV_MIXER (0x2010) - the proper iNav command
       const payload = await sendMspV2Request(MSP2.INAV_MIXER, 2000);
       const config = deserializeInavMixerConfig(payload);
 
-      // Log for debugging
       const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
       const platformName = platformNames[config.platformType] ?? `UNKNOWN(${config.platformType})`;
-      console.log(`[MSP] iNav Mixer config: platformType=${config.platformType} (${platformName})`);
-      sendLog('info', `Platform: ${platformName}`, `Motors: ${config.numberOfMotors}, Servos: ${config.numberOfServos}`);
+      console.log(`[MSP] iNav Mixer config: platformType=${config.platformType} (${platformName}), mixerPreset=${config.appliedMixerPreset}`);
+      sendLog('info', `Platform: ${platformName}`, `Mixer: ${config.appliedMixerPreset}, Servos: ${config.numberOfServos}`);
 
       return config;
-    } catch (error) {
-      console.error('[MSP] Get iNav Mixer Config failed:', error);
-      // Fallback to old MSP command for Betaflight or very old iNav
-      return null;
+    } catch (msp2Error) {
+      // MSP2 failed - try legacy MSP_MIXER_CONFIG for old iNav
+      const msg = msp2Error instanceof Error ? msp2Error.message : String(msp2Error);
+      if (msg.includes('not supported')) {
+        console.log('[MSP] MSP2 mixer config not supported, trying legacy MSP...');
+      } else {
+        console.warn('[MSP] MSP2 mixer config failed:', msg);
+      }
+
+      try {
+        // Use legacy MSP_MIXER_CONFIG (works on iNav 2.0.0)
+        const payload = await sendMspRequest(MSP.MIXER_CONFIG, 2000);
+        const legacyConfig = deserializeMixerConfig(payload);
+
+        // Map legacy mixer type to platform type
+        // 8=FLYING_WING, 14=AIRPLANE, 3=QUADX, etc.
+        const isMultirotor = isMultirotorMixer(legacyConfig.mixer);
+        const platformType = isMultirotor ? 0 : 1; // 0=multirotor, 1=airplane
+
+        const platformNames = ['MULTIROTOR', 'AIRPLANE'];
+        console.log(`[MSP] Legacy mixer: type=${legacyConfig.mixer}, platformType=${platformType} (${platformNames[platformType]})`);
+        sendLog('info', `Platform: ${platformNames[platformType]} (legacy)`, `Mixer type: ${legacyConfig.mixer}`);
+
+        // Return a partial config with the mixer type as appliedMixerPreset
+        return {
+          yawMotorDirection: 1,
+          yawJumpPreventionLimit: 200,
+          motorStopOnLow: 0,
+          platformType,
+          hasFlaps: 0,
+          appliedMixerPreset: legacyConfig.mixer, // This is the key - mixer type for auto-detection
+          numberOfMotors: 0,
+          numberOfServos: 0,
+        } as MSPInavMixerConfig;
+      } catch (legacyError) {
+        console.error('[MSP] Legacy mixer config also failed:', legacyError);
+        return null;
+      }
     }
   });
 }
@@ -977,7 +1043,25 @@ async function getServoConfigs(): Promise<MSPServoConfig[] | null> {
   return withConfigLock(async () => {
     try {
       const payload = await sendMspRequest(MSP.SERVO_CONFIGURATIONS, 1000);
-      return deserializeServoConfigurations(payload);
+
+      // Log RAW bytes for debugging
+      console.log(`[MSP] RAW servo payload (${payload.length} bytes): ${Array.from(payload.slice(0, 56)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+      if (payload.length > 56) {
+        console.log(`[MSP] RAW servo payload continued: ${Array.from(payload.slice(56)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+      }
+
+      const configs = deserializeServoConfigurations(payload);
+
+      // Log what we read from FC
+      if (configs) {
+        console.log('[MSP] READ servo configs from FC:');
+        configs.forEach((c, i) => {
+          console.log(`  Servo ${i}: min=${c.min} mid=${c.middle} max=${c.max} rate=${c.rate}`);
+        });
+        sendLog('info', 'Read servo configs', `${configs.length} servos`);
+      }
+
+      return configs;
     } catch (error) {
       console.error('[MSP] Get Servo Configurations failed:', error);
       return null;
@@ -985,9 +1069,241 @@ async function getServoConfigs(): Promise<MSPServoConfig[] | null> {
   });
 }
 
+/**
+ * CLI fallback for setting servo config on old iNav that doesn't support MSP 212
+ * Uses: servo <index> <min> <max> <middle> <rate> <forward_channel> <reversed_sources>
+ */
+// Persistent CLI response listener
+let cliResponseListener: ((data: Uint8Array) => void) | null = null;
+
+// CLI response buffer - module-level for access across calls
+let cliResponse = '';
+
+// Track if we're using CLI fallback (old board that doesn't support MSP_SET_SERVO_CONFIGURATION)
+// This affects servo value range limits: old boards typically support 750-2250, modern 500-2500
+let usesCliServoFallback = false;
+let servoConfigModeProbed = false; // Track if we've already probed
+
+/**
+ * Check if the connected board requires CLI fallback for servo config
+ * Used by UI to determine valid servo value ranges
+ */
+function getServoConfigMode(): { usesCli: boolean; minValue: number; maxValue: number } {
+  return {
+    usesCli: usesCliServoFallback,
+    // Old iNav (~2.0.0) has tighter limits, modern iNav allows 500-2500
+    minValue: usesCliServoFallback ? 750 : 500,
+    maxValue: usesCliServoFallback ? 2250 : 2500,
+  };
+}
+
+/**
+ * Probe if MSP_SET_SERVO_CONFIGURATION is supported
+ * Reads current servo 0 config and tries to write it back unchanged
+ * Sets usesCliServoFallback flag based on result
+ */
+async function probeServoConfigMode(): Promise<{ usesCli: boolean; minValue: number; maxValue: number }> {
+  console.log('[MSP] probeServoConfigMode called, transport open:', currentTransport?.isOpen, 'already probed:', servoConfigModeProbed);
+
+  if (!currentTransport?.isOpen) {
+    console.log('[MSP] Transport not open, returning default mode');
+    return getServoConfigMode();
+  }
+
+  // Only probe once per connection
+  if (servoConfigModeProbed) {
+    console.log('[MSP] Already probed, returning cached result');
+    return getServoConfigMode();
+  }
+
+  servoConfigModeProbed = true;
+  console.log('[MSP] Probing servo config mode...');
+
+  try {
+    // Read current servo configs
+    const configs = await getServoConfigs();
+    if (!configs || configs.length === 0) {
+      console.log('[MSP] No servo configs available');
+      return getServoConfigMode();
+    }
+
+    // Get first servo config
+    const servo0 = configs[0];
+
+    // Try to write it back unchanged via MSP
+    const payload = serializeServoConfiguration(0, {
+      min: servo0.min,
+      max: servo0.max,
+      middle: servo0.middle,
+      rate: servo0.rate,
+      forwardFromChannel: servo0.forwardFromChannel ?? 255,
+      reversedSources: servo0.reversedSources ?? 0,
+    });
+
+    await sendMspRequestWithPayload(MSP.SET_SERVO_CONFIGURATION, payload, 2000);
+    console.log('[MSP] MSP_SET_SERVO_CONFIGURATION supported - using MSP mode');
+    usesCliServoFallback = false;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log('[MSP] Servo config probe failed:', msg);
+
+    // Detect CLI fallback needed: "not supported", command number, or timeout
+    // Old iNav may not respond at all (timeout) or return error
+    if (msg.includes('not supported') || msg.includes('212') || msg.includes('timed out') || msg.includes('timeout')) {
+      console.log('[MSP] MSP_SET_SERVO_CONFIGURATION not supported - will use CLI fallback');
+      usesCliServoFallback = true;
+    } else {
+      // Other errors - assume CLI fallback to be safe
+      console.log('[MSP] Unknown error, assuming CLI fallback needed');
+      usesCliServoFallback = true;
+    }
+  }
+
+  const result = getServoConfigMode();
+  console.log('[MSP] Servo config mode result:', result);
+  return result;
+}
+
+async function setServoConfigViaCli(index: number, config: MSPServoConfig): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  try {
+    // Enter CLI mode if not already in it
+    if (!servoCliModeActive) {
+      // CRITICAL: Set CLI mode flag FIRST to block all incoming MSP requests
+      servoCliModeActive = true;
+      usesCliServoFallback = true; // Mark that we're using CLI fallback
+
+      // BSOD Prevention: Stop telemetry during CLI commands
+      stopMspTelemetry();
+
+      // Cancel all pending MSP responses (they will never complete in CLI mode)
+      for (const [, pending] of pendingResponses) {
+        clearTimeout(pending.timeout);
+        pending.reject(new Error('MSP cancelled - entering CLI mode'));
+      }
+      pendingResponses.clear();
+
+      sendLog('info', 'CLI mode', 'Entering CLI for legacy servo config');
+
+      // Wait for any in-flight data to settle
+      await new Promise(r => setTimeout(r, 100));
+
+      // Add persistent listener to capture CLI responses
+      cliResponse = '';
+      cliResponseListener = (data: Uint8Array) => {
+        const text = new TextDecoder().decode(data);
+        cliResponse += text;
+      };
+      currentTransport.on('data', cliResponseListener);
+
+      // Send '#' to enter CLI mode
+      await currentTransport.write(new Uint8Array([0x23])); // '#'
+      await new Promise(r => setTimeout(r, 500));
+
+      // Validate CLI entry
+      if (!cliResponse.includes('CLI')) {
+        console.warn('[MSP] CLI mode entry not confirmed');
+      }
+
+      // Log current servo config from board (useful for advanced users)
+      cliResponse = '';
+      await currentTransport.write(new TextEncoder().encode('servo\n'));
+      await new Promise(r => setTimeout(r, 500));
+      const servoOutput = cliResponse.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+      console.log('[MSP] Board servo config:\n' + servoOutput);
+      sendLog('info', 'CLI servo config', servoOutput.split('\n').slice(1, 5).join(', '));
+    }
+
+    // iNav CLI servo command format: servo <n> <min> <max> <mid> <rate>
+    // Reference: https://github.com/iNavFlight/inav/blob/master/docs/Servo.md
+    const cmd = `servo ${index} ${config.min} ${config.max} ${config.middle} ${config.rate}\n`;
+
+    sendLog('info', `CLI servo ${index}`, `${config.min}-${config.max} mid=${config.middle}`);
+
+    // Send command and capture response
+    cliResponse = '';
+    await currentTransport.write(new TextEncoder().encode(cmd));
+    await new Promise(r => setTimeout(r, 300));
+
+    const response = cliResponse.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+    // Log board response for advanced users
+    if (response && !response.endsWith('#')) {
+      console.log(`[MSP] Board response: ${response}`);
+    }
+
+    // Check for parse error (usually means value out of range)
+    if (response.includes('Parse error')) {
+      sendLog('error', `Servo ${index} failed`, 'Value out of range for this firmware');
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[MSP] CLI servo config failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Save servo config via CLI and exit CLI mode
+ * Call this after all servo configs have been sent via CLI
+ */
+async function saveServoConfigViaCli(): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  // If not in CLI mode, nothing to save via CLI
+  if (!servoCliModeActive) {
+    console.log('[MSP] Not in CLI mode, skipping CLI save');
+    return true;
+  }
+
+  try {
+    // Wait a bit before save to ensure all commands are processed
+    await new Promise(r => setTimeout(r, 500));
+
+    // Send save command (this reboots the board)
+    // Use \n (newline) - iNav configurator uses this (cli.js line 506)
+    console.log('[MSP] CLI: save');
+    await currentTransport.write(new TextEncoder().encode('save\n'));
+
+    sendLog('info', 'Servo config saved via CLI', 'Board will reboot');
+
+    // Wait for save to complete and board to start rebooting
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Clean up CLI listener
+    if (cliResponseListener && currentTransport) {
+      currentTransport.off('data', cliResponseListener);
+      cliResponseListener = null;
+    }
+
+    // Clean up connection state since board is rebooting
+    cleanupMspConnection();
+    servoCliModeActive = false;
+
+    return true;
+  } catch (error) {
+    console.error('[MSP] CLI save failed:', error);
+    // Clean up CLI listener on error too
+    if (cliResponseListener && currentTransport) {
+      currentTransport.off('data', cliResponseListener);
+      cliResponseListener = null;
+    }
+    servoCliModeActive = false;
+    return false;
+  }
+}
+
 async function setServoConfig(index: number, config: MSPServoConfig): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) return false;
+
+  // If already in CLI mode, use CLI
+  if (servoCliModeActive) {
+    return setServoConfigViaCli(index, config);
+  }
 
   return withConfigLock(async () => {
     try {
@@ -996,28 +1312,40 @@ async function setServoConfig(index: number, config: MSPServoConfig): Promise<bo
       sendLog('info', `Servo ${index} config updated`);
       return true;
     } catch (error) {
-      sendLog('error', 'Failed to set servo config', error instanceof Error ? error.message : String(error));
+      const msg = error instanceof Error ? error.message : String(error);
+
+      // If MSP 212 not supported, try CLI fallback
+      if (msg.includes('not supported')) {
+        console.log('[MSP] MSP 212 not supported, trying CLI fallback...');
+        return await setServoConfigViaCli(index, config);
+      }
+
+      sendLog('error', 'Failed to set servo config', msg);
       return false;
     }
   });
 }
 
 async function getServoValues(): Promise<number[] | null> {
-  // Guard: return null if not connected
-  if (!currentTransport?.isOpen) return null;
+  // Guard: return null if not connected or in CLI mode
+  if (!currentTransport?.isOpen || servoCliModeActive) return null;
 
   try {
     const payload = await sendMspRequest(MSP.SERVO, 300);
     return deserializeServoValues(payload);
   } catch (error) {
-    console.error('[MSP] Get Servo Values failed:', error);
+    // Don't log CLI mode blocks as errors - they're expected
+    const msg = error instanceof Error ? error.message : String(error);
+    if (!msg.includes('CLI mode')) {
+      console.error('[MSP] Get Servo Values failed:', error);
+    }
     return null;
   }
 }
 
 async function getServoMixer(): Promise<MSPServoMixerRule[] | null> {
-  // Guard: return null if not connected
-  if (!currentTransport?.isOpen) return null;
+  // Guard: return null if not connected or in CLI mode
+  if (!currentTransport?.isOpen || servoCliModeActive) return null;
 
   return withConfigLock(async () => {
     try {
@@ -1025,7 +1353,13 @@ async function getServoMixer(): Promise<MSPServoMixerRule[] | null> {
       const payload = await sendMspV2Request(MSP2.INAV_SERVO_MIXER, 1000);
       return deserializeServoMixerRules(payload);
     } catch (error) {
-      console.error('[MSP] Get Servo Mixer failed:', error);
+      // MSP2 servo mixer not supported on old iNav - this is expected
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('not supported') || msg.includes('CLI mode')) {
+        console.log('[MSP] Servo mixer MSP2 not supported (old iNav) - skipping');
+      } else {
+        console.warn('[MSP] Get Servo Mixer failed:', msg);
+      }
       return null;
     }
   });
@@ -1042,7 +1376,13 @@ async function setServoMixerRule(index: number, rule: MSPServoMixerRule): Promis
       sendLog('info', `Servo mixer rule ${index} updated`);
       return true;
     } catch (error) {
-      sendLog('error', 'Failed to set servo mixer rule', error instanceof Error ? error.message : String(error));
+      const msg = error instanceof Error ? error.message : String(error);
+      // Don't spam UI for unsupported MSP2 on old iNav
+      if (msg.includes('not supported')) {
+        console.log('[MSP] Set Servo Mixer MSP2 not supported (old iNav)');
+      } else {
+        sendLog('error', 'Failed to set servo mixer rule', msg);
+      }
       return false;
     }
   });
@@ -1132,6 +1472,12 @@ async function saveEeprom(): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) return false;
 
+  // If we're in CLI mode, MSP won't work - return false to trigger CLI fallback
+  if (servoCliModeActive) {
+    console.log('[MSP] In CLI mode, skipping MSP EEPROM save (will use CLI save)');
+    return false;
+  }
+
   return withConfigLock(async () => {
     try {
       await sendMspRequest(MSP.EEPROM_WRITE, 5000);
@@ -1211,9 +1557,11 @@ export function registerMspHandlers(window: BrowserWindow): void {
   // Servo config handlers (iNav)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_CONFIGS, async () => getServoConfigs());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_CONFIG, async (_event, index: number, config: MSPServoConfig) => setServoConfig(index, config));
+  ipcMain.handle(IPC_CHANNELS.MSP_SAVE_SERVO_CLI, async () => saveServoConfigViaCli()); // CLI fallback for old iNav
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_VALUES, async () => getServoValues());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_MIXER, async () => getServoMixer());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER, async (_event, index: number, rule: MSPServoMixerRule) => setServoMixerRule(index, rule));
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE, async () => probeServoConfigMode());
 
   // Navigation config handlers (iNav)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_NAV_CONFIG, async () => getNavConfig());
@@ -1258,9 +1606,11 @@ export function unregisterMspHandlers(): void {
   // Servo config handlers (iNav)
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_CONFIGS);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SAVE_SERVO_CLI);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_VALUES);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE);
 
   // Navigation config handlers (iNav)
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_NAV_CONFIG);

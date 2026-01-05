@@ -531,6 +531,9 @@ const api = {
   mspSetServoConfig: (index: number, config: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_CONFIG, index, config),
 
+  mspSaveServoCli: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SAVE_SERVO_CLI),
+
   mspGetServoValues: (): Promise<number[] | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_VALUES),
 
@@ -539,6 +542,9 @@ const api = {
 
   mspSetServoMixer: (index: number, rule: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_MIXER, index, rule),
+
+  mspGetServoConfigMode: (): Promise<{ usesCli: boolean; minValue: number; maxValue: number }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE),
 
   // MSP Navigation Config (iNav)
   mspGetNavConfig: (): Promise<unknown> =>

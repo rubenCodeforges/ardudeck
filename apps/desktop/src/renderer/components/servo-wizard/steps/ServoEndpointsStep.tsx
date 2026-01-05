@@ -21,6 +21,8 @@ export default function ServoEndpointsStep() {
     stopServoPolling,
     nextStep,
     prevStep,
+    servoRangeLimits,
+    usesCliFallback,
   } = useServoWizardStore();
 
   // Track which servo is being tested
@@ -71,6 +73,17 @@ export default function ServoEndpointsStep() {
           Set how far each servo can move. If your servo makes a grinding noise at full stick, reduce the limits here.
         </p>
       </div>
+
+      {/* CLI fallback warning */}
+      {usesCliFallback && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-2">
+          <span className="text-amber-400 shrink-0">⚠️</span>
+          <p className="text-xs text-amber-300">
+            <strong>Old iNav detected:</strong> Servo range limited to {servoRangeLimits.min}-{servoRangeLimits.max}µs.
+            Values outside this range may cause errors.
+          </p>
+        </div>
+      )}
 
       {/* Polling toggle */}
       <div className="flex items-center justify-center gap-4">
@@ -148,6 +161,7 @@ export default function ServoEndpointsStep() {
                 currentValue={currentValue}
                 onChange={(endpoints) => handleEndpointChange(index, endpoints)}
                 onTestPosition={(position) => handleTestPosition(index, position)}
+                rangeLimits={servoRangeLimits}
               />
 
               {/* Rate slider */}

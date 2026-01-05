@@ -2,8 +2,7 @@
  * TraditionalPlaneDiagram
  *
  * Top-down SVG diagram of a traditional 4-servo airplane.
- * Shows aileron, elevator, and rudder positions with labels.
- * Supports live animation of control surfaces based on servo values.
+ * Clean geometric shapes that actually look like a plane.
  */
 
 import { ControlSurface } from '../presets/servo-presets';
@@ -11,8 +10,7 @@ import { ControlSurface } from '../presets/servo-presets';
 interface Props {
   highlightSurface?: ControlSurface | null;
   onSurfaceClick?: (surface: ControlSurface) => void;
-  servoLabels?: Record<ControlSurface, string>; // e.g., { aileron_left: 'S0' }
-  // Deflection values: -1 (full down/left) to +1 (full up/right), 0 = center
+  servoLabels?: Record<ControlSurface, string>;
   surfaceDeflections?: Partial<Record<ControlSurface, number>>;
 }
 
@@ -22,25 +20,19 @@ export default function TraditionalPlaneDiagram({
   servoLabels = {},
   surfaceDeflections = {},
 }: Props) {
-  // Get deflection for a surface (clamped to -1 to 1)
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
   };
 
-  // Surface style with optional glow for highlighted surfaces
   const surfaceStyle = (surface: ControlSurface) => {
     const isHighlighted = highlightSurface === surface;
-    const deflection = getDeflection(surface);
-    const hasMovement = Math.abs(deflection) > 0.05;
-
     return {
-      fill: isHighlighted ? '#3B82F6' : hasMovement ? '#4B5563' : '#4B5563',
-      stroke: isHighlighted ? '#60A5FA' : hasMovement ? '#60A5FA' : '#6B7280',
-      strokeWidth: 2,
+      fill: isHighlighted ? '#3B82F6' : '#4B5563',
+      stroke: isHighlighted ? '#60A5FA' : '#6B7280',
+      strokeWidth: 1.5,
       cursor: onSurfaceClick ? 'pointer' : 'default',
-      transition: 'fill 0.15s, stroke 0.15s, transform 0.1s',
-      filter: isHighlighted ? 'drop-shadow(0 0 4px #3B82F6)' : 'none',
+      filter: isHighlighted ? 'drop-shadow(0 0 6px #3B82F6)' : 'none',
     };
   };
 
@@ -48,158 +40,134 @@ export default function TraditionalPlaneDiagram({
     if (onSurfaceClick) onSurfaceClick(surface);
   };
 
-  // Calculate transforms for animated surfaces
-  // Ailerons deflect by rotating around their hinge (translate to simulate depth change in top view)
-  const leftAileronDeflection = getDeflection('aileron_left');
-  const rightAileronDeflection = getDeflection('aileron_right');
-  const elevatorDeflection = getDeflection('elevator');
-  const rudderDeflection = getDeflection('rudder');
-
-  // In top-down view, aileron deflection appears as a slight vertical shift
-  // and a change in the visual width/shape of the control surface
-  const aileronTransform = (deflection: number, cx: number) => {
-    // Shift up/down to simulate deflection (up to 3px)
-    const ty = deflection * 3;
-    return `translate(0, ${ty})`;
-  };
-
-  // Elevator also appears as vertical shift in top view
-  const elevatorTransform = (deflection: number) => {
-    const ty = deflection * 3;
-    return `translate(0, ${ty})`;
-  };
-
-  // Rudder rotates around its hinge point
-  const rudderTransform = (deflection: number) => {
-    // Rotate around the hinge point (top of rudder)
-    const angle = deflection * 15; // Max 15 degrees rotation
-    return `rotate(${angle}, 150, 175)`;
-  };
+  const leftAileronD = getDeflection('aileron_left');
+  const rightAileronD = getDeflection('aileron_right');
+  const elevatorD = getDeflection('elevator');
+  const rudderD = getDeflection('rudder');
 
   return (
-    <svg viewBox="0 0 300 200" className="w-full h-auto max-w-md">
-      {/* Fuselage */}
-      <ellipse cx="150" cy="100" rx="20" ry="70" fill="#374151" stroke="#4B5563" strokeWidth="2" />
-
-      {/* Nose */}
-      <ellipse cx="150" cy="25" rx="12" ry="15" fill="#374151" stroke="#4B5563" strokeWidth="2" />
-
-      {/* Main wings */}
-      <path
-        d="M130 85 L20 75 L20 85 L130 100 Z"
+    <svg viewBox="0 0 300 220" className="w-full h-auto max-w-md">
+      {/* === FUSELAGE - rounded rectangle body === */}
+      <rect
+        x="138"
+        y="30"
+        width="24"
+        height="140"
+        rx="12"
+        ry="12"
         fill="#374151"
         stroke="#4B5563"
-        strokeWidth="2"
+        strokeWidth="1.5"
       />
-      <path
-        d="M170 85 L280 75 L280 85 L170 100 Z"
+      {/* Nose - semicircle */}
+      <ellipse cx="150" cy="30" rx="12" ry="10" fill="#374151" stroke="#4B5563" strokeWidth="1.5" />
+      {/* Canopy */}
+      <ellipse cx="150" cy="50" rx="6" ry="10" fill="#1F2937" stroke="#4B5563" strokeWidth="1" />
+
+      {/* === LEFT WING - swept back === */}
+      <polygon
+        points="138,75 138,100 30,95 40,80"
         fill="#374151"
         stroke="#4B5563"
-        strokeWidth="2"
+        strokeWidth="1.5"
       />
-
-      {/* Left aileron - animated */}
-      <g transform={aileronTransform(leftAileronDeflection, 45)}>
-        <path
-          d="M20 75 L20 85 L70 87 L70 77 Z"
+      {/* Left aileron - on trailing edge */}
+      <g transform={`translate(0, ${leftAileronD * 2})`}>
+        <polygon
+          points="30,90 30,95 75,97 75,92"
           style={surfaceStyle('aileron_left')}
           onClick={handleClick('aileron_left')}
         />
       </g>
-      {/* Left aileron label */}
-      <text x="45" y="68" textAnchor="middle" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        L Aileron
-      </text>
+      <text x="55" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="10">L Aileron</text>
       {servoLabels.aileron_left && (
-        <text x="45" y="96" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
+        <text x="55" y="110" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.aileron_left}
         </text>
       )}
 
-      {/* Right aileron - animated */}
-      <g transform={aileronTransform(rightAileronDeflection, 255)}>
-        <path
-          d="M280 75 L280 85 L230 87 L230 77 Z"
+      {/* === RIGHT WING - swept back === */}
+      <polygon
+        points="162,75 162,100 270,95 260,80"
+        fill="#374151"
+        stroke="#4B5563"
+        strokeWidth="1.5"
+      />
+      {/* Right aileron - on trailing edge */}
+      <g transform={`translate(0, ${rightAileronD * 2})`}>
+        <polygon
+          points="270,90 270,95 225,97 225,92"
           style={surfaceStyle('aileron_right')}
           onClick={handleClick('aileron_right')}
         />
       </g>
-      {/* Right aileron label */}
-      <text x="255" y="68" textAnchor="middle" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        R Aileron
-      </text>
+      <text x="245" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="10">R Aileron</text>
       {servoLabels.aileron_right && (
-        <text x="255" y="96" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
+        <text x="245" y="110" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.aileron_right}
         </text>
       )}
 
-      {/* Horizontal stabilizer */}
-      <path
-        d="M130 160 L90 155 L90 165 L130 168 Z"
+      {/* === HORIZONTAL STABILIZER === */}
+      {/* Left stabilizer */}
+      <polygon
+        points="138,160 138,172 80,170 85,162"
         fill="#374151"
         stroke="#4B5563"
-        strokeWidth="2"
+        strokeWidth="1.5"
       />
-      <path
-        d="M170 160 L210 155 L210 165 L170 168 Z"
+      {/* Right stabilizer */}
+      <polygon
+        points="162,160 162,172 220,170 215,162"
         fill="#374151"
         stroke="#4B5563"
-        strokeWidth="2"
+        strokeWidth="1.5"
       />
 
-      {/* Elevator - animated */}
-      <g transform={elevatorTransform(elevatorDeflection)}>
-        <path
-          d="M90 155 L90 165 L110 166 L110 157 Z"
+      {/* Elevator surfaces */}
+      <g transform={`translate(0, ${elevatorD * 2})`}>
+        <polygon
+          points="80,167 80,170 115,171 115,168"
           style={surfaceStyle('elevator')}
           onClick={handleClick('elevator')}
         />
-        <path
-          d="M210 155 L210 165 L190 166 L190 157 Z"
+        <polygon
+          points="220,167 220,170 185,171 185,168"
           style={surfaceStyle('elevator')}
           onClick={handleClick('elevator')}
         />
       </g>
-      {/* Elevator label */}
-      <text x="150" y="150" textAnchor="middle" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        Elevator
-      </text>
+      <text x="150" y="155" textAnchor="middle" fill="#9CA3AF" fontSize="10">Elevator</text>
       {servoLabels.elevator && (
-        <text x="150" y="182" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
+        <text x="150" y="185" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.elevator}
         </text>
       )}
 
-      {/* Vertical stabilizer (top view - thin line) */}
-      <rect x="147" y="160" width="6" height="25" fill="#374151" stroke="#4B5563" strokeWidth="1" />
+      {/* === VERTICAL STABILIZER === */}
+      <rect x="146" y="155" width="8" height="25" fill="#374151" stroke="#4B5563" strokeWidth="1.5" />
 
-      {/* Rudder - animated with rotation */}
-      <g transform={rudderTransform(rudderDeflection)}>
+      {/* Rudder */}
+      <g transform={`rotate(${rudderD * 12}, 150, 170)`}>
         <rect
-          x="147"
-          y="175"
-          width="6"
-          height="15"
+          x="146"
+          y="170"
+          width="8"
+          height="14"
           style={surfaceStyle('rudder')}
           onClick={handleClick('rudder')}
         />
       </g>
-      {/* Rudder label */}
-      <text x="175" y="185" textAnchor="start" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        Rudder
-      </text>
+      <text x="168" y="190" textAnchor="start" fill="#9CA3AF" fontSize="10">Rudder</text>
       {servoLabels.rudder && (
-        <text x="175" y="195" textAnchor="start" fill="#60A5FA" fontSize="9" fontWeight="bold">
+        <text x="168" y="200" textAnchor="start" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.rudder}
         </text>
       )}
 
-      {/* Direction arrow */}
-      <path d="M150 10 L145 20 L155 20 Z" fill="#6B7280" />
-      <text x="165" y="18" fill="#6B7280" fontSize="8">
-        FRONT
-      </text>
+      {/* Direction indicator */}
+      <polygon points="150,8 146,16 154,16" fill="#6B7280" />
+      <text x="162" y="14" fill="#6B7280" fontSize="8">FRONT</text>
     </svg>
   );
 }

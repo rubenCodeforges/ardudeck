@@ -44,6 +44,8 @@ interface ServoTuningCardProps {
   onUpdateEndpoints: (endpoints: { min: number; center: number; max: number }) => void;
   onReverse: () => void;
   onTestPosition?: (position: 'min' | 'center' | 'max') => void;
+  /** Valid servo range limits (old iNav: 750-2250, modern: 500-2500) */
+  rangeLimits?: { min: number; max: number };
 }
 
 export default function ServoTuningCard({
@@ -55,6 +57,7 @@ export default function ServoTuningCard({
   onUpdateEndpoints,
   onReverse,
   onTestPosition,
+  rangeLimits = { min: 500, max: 2500 },
 }: ServoTuningCardProps) {
   const [dragging, setDragging] = useState<'min' | 'center' | 'max' | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -65,15 +68,18 @@ export default function ServoTuningCard({
 
   const { min, center, max } = assignment;
 
-  // Convert PWM to percentage (500-2500 range mapped to 0-100%)
-  const toPercent = (v: number) => ((v - 500) / 2000) * 100;
-  const fromPercent = (p: number) => Math.round((p / 100) * 2000 + 500);
+  // Calculate range span for percentage conversion
+  const rangeSpan = rangeLimits.max - rangeLimits.min;
+
+  // Convert PWM to percentage (rangeLimits mapped to 0-100%)
+  const toPercent = (v: number) => ((v - rangeLimits.min) / rangeSpan) * 100;
+  const fromPercent = (p: number) => Math.round((p / 100) * rangeSpan + rangeLimits.min);
   const snap = (v: number) => Math.round(v / 10) * 10;
 
   const minPercent = toPercent(min);
   const centerPercent = toPercent(center);
   const maxPercent = toPercent(max);
-  const valuePercent = toPercent(Math.max(500, Math.min(2500, currentValue)));
+  const valuePercent = toPercent(Math.max(rangeLimits.min, Math.min(rangeLimits.max, currentValue)));
 
   const inRange = currentValue >= min && currentValue <= max;
 
@@ -98,16 +104,16 @@ export default function ServoTuningCard({
 
       if (dragging === 'min') {
         const newMin = Math.min(value, center - 50);
-        onUpdateEndpoints({ min: Math.max(500, newMin), center, max });
+        onUpdateEndpoints({ min: Math.max(rangeLimits.min, newMin), center, max });
       } else if (dragging === 'center') {
         const newCenter = Math.max(min + 50, Math.min(max - 50, value));
         onUpdateEndpoints({ min, center: newCenter, max });
       } else if (dragging === 'max') {
         const newMax = Math.max(value, center + 50);
-        onUpdateEndpoints({ min, center, max: Math.min(2500, newMax) });
+        onUpdateEndpoints({ min, center, max: Math.min(rangeLimits.max, newMax) });
       }
     },
-    [dragging, min, center, max, onUpdateEndpoints]
+    [dragging, min, center, max, onUpdateEndpoints, rangeLimits]
   );
 
   const handlePointerUp = useCallback(() => {

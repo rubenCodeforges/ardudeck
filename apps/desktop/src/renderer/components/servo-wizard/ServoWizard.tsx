@@ -37,6 +37,7 @@ export default function ServoWizard() {
     currentStep,
     currentStepIndex,
     selectedPresetId,
+    selectedPreset,
     assignments,
     goToStep,
     servoSupported,
@@ -267,48 +268,40 @@ export default function ServoWizard() {
     );
   }
 
-  // Render Tune view
-  if (viewMode === 'tune') {
-    return (
-      <ServoTuningView onSwitchToWizard={() => setViewMode('wizard')} />
-    );
-  }
+  // Common header with mode toggle (consistent in both views)
+  const renderHeader = () => (
+    <div className="bg-zinc-900/50 border-b border-zinc-800/50 px-6 py-4">
+      <div className="flex items-center justify-between max-w-3xl mx-auto">
+        {/* Mode toggle - always in same position */}
+        <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('wizard')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              viewMode === 'wizard'
+                ? 'bg-blue-500 text-white'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            Wizard
+          </button>
+          <button
+            onClick={() => setViewMode('tune')}
+            disabled={!selectedPresetId || assignments.length === 0}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              viewMode === 'tune'
+                ? 'bg-blue-500 text-white'
+                : !selectedPresetId || assignments.length === 0
+                ? 'text-zinc-600 cursor-not-allowed'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+            title={!selectedPresetId ? 'Complete wizard first' : 'Fine-tune servos'}
+          >
+            Tune
+          </button>
+        </div>
 
-  // Render Wizard view
-  return (
-    <div className="flex flex-col h-full">
-      {/* Mode toggle + Progress stepper */}
-      <div className="bg-zinc-900/50 border-b border-zinc-800/50 px-6 py-4">
-        <div className="flex items-center justify-between max-w-3xl mx-auto">
-          {/* Mode toggle */}
-          <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('wizard')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                viewMode === 'wizard'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Wizard
-            </button>
-            <button
-              onClick={() => setViewMode('tune')}
-              disabled={!selectedPresetId || assignments.length === 0}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                viewMode === 'tune'
-                  ? 'bg-blue-500 text-white'
-                  : !selectedPresetId || assignments.length === 0
-                  ? 'text-zinc-600 cursor-not-allowed'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-              title={!selectedPresetId ? 'Complete wizard first' : 'Fine-tune servos'}
-            >
-              Tune
-            </button>
-          </div>
-
-          {/* Step indicators */}
+        {/* Right side: Step indicators (wizard) or Live status (tune) */}
+        {viewMode === 'wizard' ? (
           <div className="flex items-center">
             {STEPS.map((step, index) => {
               const info = STEP_INFO[step];
@@ -318,7 +311,6 @@ export default function ServoWizard() {
 
               return (
                 <div key={step} className="flex items-center">
-                  {/* Step indicator */}
                   <button
                     onClick={() => isAccessible && goToStep(step)}
                     disabled={!isAccessible}
@@ -327,7 +319,6 @@ export default function ServoWizard() {
                     }`}
                     title={info.description}
                   >
-                    {/* Circle with number/icon */}
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                         isActive
@@ -339,7 +330,6 @@ export default function ServoWizard() {
                     >
                       {isCompleted ? '✓' : info.icon}
                     </div>
-                    {/* Label */}
                     <span
                       className={`text-[10px] font-medium ${
                         isActive ? 'text-blue-400' : isCompleted ? 'text-green-400' : 'text-zinc-500'
@@ -348,8 +338,6 @@ export default function ServoWizard() {
                       {info.label}
                     </span>
                   </button>
-
-                  {/* Connector line */}
                   {index < STEPS.length - 1 && (
                     <div
                       className={`w-8 h-0.5 mx-1 ${
@@ -361,8 +349,33 @@ export default function ServoWizard() {
               );
             })}
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{selectedPreset?.icon}</span>
+            <div>
+              <span className="text-sm font-medium text-white">{selectedPreset?.name}</span>
+              <span className="text-xs text-zinc-500 ml-2">- {assignments.length} servos</span>
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+
+  // Render Tune view
+  if (viewMode === 'tune') {
+    return (
+      <div className="flex flex-col h-full">
+        {renderHeader()}
+        <ServoTuningView />
+      </div>
+    );
+  }
+
+  // Render Wizard view
+  return (
+    <div className="flex flex-col h-full">
+      {renderHeader()}
 
       {/* Step content */}
       <div className="flex-1 overflow-y-auto p-6">

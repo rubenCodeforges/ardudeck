@@ -148,9 +148,11 @@ export const IPC_CHANNELS = {
   // MSP Servo Configuration (iNav)
   MSP_GET_SERVO_CONFIGS: 'msp:get-servo-configs',
   MSP_SET_SERVO_CONFIG: 'msp:set-servo-config',
+  MSP_SAVE_SERVO_CLI: 'msp:save-servo-cli', // CLI fallback for old iNav
   MSP_GET_SERVO_VALUES: 'msp:get-servo-values',
   MSP_GET_SERVO_MIXER: 'msp:get-servo-mixer',
   MSP_SET_SERVO_MIXER: 'msp:set-servo-mixer',
+  MSP_GET_SERVO_CONFIG_MODE: 'msp:get-servo-config-mode', // Check if using CLI fallback + valid ranges
 
   // MSP Navigation Settings (iNav)
   MSP_GET_NAV_CONFIG: 'msp:get-nav-config',
@@ -184,6 +186,8 @@ export interface ConnectOptions {
   host?: string;
   tcpPort?: number;
   udpPort?: number;
+  /** Force a specific protocol, skipping auto-detection */
+  protocol?: 'mavlink' | 'msp';
 }
 
 /**

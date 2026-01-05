@@ -427,6 +427,12 @@ export function FirmwareFlashView() {
     clearDetection,
     // Explicit source flag
     sourceExplicitlySet,
+    // Post-flash configuration
+    postFlashState,
+    postFlashMessage,
+    postFlashError,
+    startPostFlashConfig,
+    resetPostFlashState,
   } = store;
 
   // Get connection state to auto-detect board when connected
@@ -476,6 +482,9 @@ export function FirmwareFlashView() {
     const unsubComplete = window.electronAPI?.onFlashComplete?.((result) => {
       if (result.success) {
         setFlashProgress({ state: 'complete', progress: 100, message: 'Flash complete!' });
+        // Trigger post-flash configuration for iNav plane firmware
+        // The startPostFlashConfig will check if it should run based on source/vehicleType
+        startPostFlashConfig();
       } else {
         setFlashError(result.error || 'Flash failed');
       }
@@ -487,7 +496,7 @@ export function FirmwareFlashView() {
       unsubComplete?.();
       unsubError?.();
     };
-  }, [setFlashProgress, setFlashError]);
+  }, [setFlashProgress, setFlashError, startPostFlashConfig]);
 
   // Auto-select a valid vehicle type when source changes and current type is not supported
   useEffect(() => {
@@ -999,20 +1008,73 @@ export function FirmwareFlashView() {
               </div>
             </div>
 
-            {/* Success message - tell user to reconnect */}
+            {/* Success message - show post-flash configuration status */}
             {flashState === 'complete' && (
-              <div className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <p className="text-emerald-300 font-medium">Firmware flashed successfully!</p>
-                    <p className="text-zinc-400 text-sm mt-1">
-                      Unplug and reconnect your board to start using the new firmware.
-                    </p>
+              <div className="mb-4 space-y-3">
+                {/* Flash complete */}
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-emerald-300 font-medium">Firmware flashed successfully!</p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Post-flash configuration status (for iNav plane) */}
+                {postFlashState !== 'idle' && postFlashState !== 'skipped' && (
+                  <div className={`p-4 rounded-lg border ${
+                    postFlashState === 'error'
+                      ? 'bg-red-500/10 border-red-500/30'
+                      : postFlashState === 'complete'
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : 'bg-blue-500/10 border-blue-500/30'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      {/* Icon based on state */}
+                      {postFlashState === 'error' ? (
+                        <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      ) : postFlashState === 'complete' ? (
+                        <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      ) : (
+                        <div className="w-5 h-5 flex-shrink-0 mt-0.5">
+                          <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      <div>
+                        <p className={`font-medium ${
+                          postFlashState === 'error'
+                            ? 'text-red-300'
+                            : postFlashState === 'complete'
+                              ? 'text-emerald-300'
+                              : 'text-blue-300'
+                        }`}>
+                          {postFlashState === 'error'
+                            ? 'Platform configuration failed'
+                            : postFlashState === 'complete'
+                              ? 'Platform configured as Airplane'
+                              : 'Configuring for Airplane mode...'}
+                        </p>
+                        <p className="text-zinc-400 text-sm mt-1">
+                          {postFlashError || postFlashMessage || 'Processing...'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Final message */}
+                {(postFlashState === 'complete' || postFlashState === 'skipped' || postFlashState === 'idle') && (
+                  <p className="text-zinc-400 text-sm">
+                    Unplug and reconnect your board to start using the new firmware.
+                  </p>
+                )}
               </div>
             )}
 

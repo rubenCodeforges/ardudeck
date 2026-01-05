@@ -14,6 +14,8 @@ interface ServoEndpointSliderProps {
   currentValue: number;
   onChange: (endpoints: { min: number; center: number; max: number }) => void;
   onTestPosition?: (position: 'min' | 'center' | 'max') => void;
+  /** Valid servo range limits (old iNav: 750-2250, modern: 500-2500) */
+  rangeLimits?: { min: number; max: number };
 }
 
 export default function ServoEndpointSlider({
@@ -23,12 +25,16 @@ export default function ServoEndpointSlider({
   currentValue,
   onChange,
   onTestPosition,
+  rangeLimits = { min: 500, max: 2500 },
 }: ServoEndpointSliderProps) {
   const [dragging, setDragging] = useState<'min' | 'center' | 'max' | null>(null);
 
-  // Convert PWM value to percentage position
-  const toPercent = (v: number) => ((v - 500) / 2000) * 100;
-  const fromPercent = (p: number) => Math.round((p / 100) * 2000 + 500);
+  // Calculate range span for percentage conversion
+  const rangeSpan = rangeLimits.max - rangeLimits.min;
+
+  // Convert PWM value to percentage position (based on valid range limits)
+  const toPercent = (v: number) => ((v - rangeLimits.min) / rangeSpan) * 100;
+  const fromPercent = (p: number) => Math.round((p / 100) * rangeSpan + rangeLimits.min);
 
   // Snap to nearest 10us
   const snap = (v: number) => Math.round(v / 10) * 10;
@@ -49,19 +55,19 @@ export default function ServoEndpointSlider({
       const percent = ((e.clientX - rect.left) / rect.width) * 100;
       const value = snap(fromPercent(Math.max(0, Math.min(100, percent))));
 
-      // Enforce constraints
+      // Enforce constraints (use rangeLimits for min/max bounds)
       if (dragging === 'min') {
         const newMin = Math.min(value, center - 50);
-        onChange({ min: Math.max(500, newMin), center, max });
+        onChange({ min: Math.max(rangeLimits.min, newMin), center, max });
       } else if (dragging === 'center') {
         const newCenter = Math.max(min + 50, Math.min(max - 50, value));
         onChange({ min, center: newCenter, max });
       } else if (dragging === 'max') {
         const newMax = Math.max(value, center + 50);
-        onChange({ min, center, max: Math.min(2500, newMax) });
+        onChange({ min, center, max: Math.min(rangeLimits.max, newMax) });
       }
     },
-    [dragging, min, center, max, onChange]
+    [dragging, min, center, max, onChange, rangeLimits]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -85,7 +91,7 @@ export default function ServoEndpointSlider({
             value={min}
             onChange={(e) => onChange({ min: snap(Number(e.target.value)), center, max })}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-            min={500}
+            min={rangeLimits.min}
             max={center - 50}
             step={10}
           />
@@ -110,7 +116,7 @@ export default function ServoEndpointSlider({
             onChange={(e) => onChange({ min, center, max: snap(Number(e.target.value)) })}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
             min={center + 50}
-            max={2500}
+            max={rangeLimits.max}
             step={10}
           />
         </div>

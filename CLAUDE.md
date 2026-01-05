@@ -130,12 +130,24 @@
 
   In Progress / Future
 
-  | Epic              | Description                                             | Status      |
-  |-------------------|---------------------------------------------------------|-------------|
-  | 5. Firmware Flash | Flash ArduPilot/PX4/Betaflight firmware                 | ✅ Complete |
-  | 6. Calibration    | Compass, accelerometer, radio, ESC calibration wizards  | Next up     |
-  | 7. Setup Wizards  | Vehicle setup, frame config, motor test, receiver setup | Planned     |
-  | 8. Production     | Auto-updater, crash reporting, mobile app               | Planned     |
+  | Epic | Description | Priority | Status |
+  |------|-------------|----------|--------|
+  | 5. Firmware Flash | Flash ArduPilot/PX4/Betaflight firmware | - | ✅ Complete |
+  | 6. Calibration | Compass, accelerometer, radio, ESC calibration wizards | P1 | Next up |
+  | 7. OSD Configuration | OSD element editor for Betaflight/iNav | P0 | Planned |
+  | 8. CLI Terminal | Raw CLI access for power users | P0 | Planned |
+  | 9. VTX Configuration | Video transmitter band/channel/power | P1 | Planned |
+  | 10. MSP Failsafe | Betaflight/iNav failsafe config (extend SafetyTab) | P1 | Planned |
+  | 11. GPS Rescue | Betaflight 4.6 GPS rescue/position hold config | P1 | Planned |
+  | 12. LED Strip | LED function/color configuration | P2 | Planned |
+  | 13. Blackbox | Log download and basic viewer | P2 | Planned |
+  | 14. Setup Wizards | Vehicle setup, frame config, motor test | P2 | Planned |
+  | 15. PIFF Tuning | iNav position controller (not PID) | P3 | Planned |
+  | 16. Programming | iNav logic conditions framework | P3 | Planned |
+  | 17. Mobile App | Flutter mobile GCS | P4 | Planned |
+  | 18. Production | Auto-updater, crash reporting | P4 | Planned |
+
+  **Priority Legend:** P0 = Must have (90%+ users expect), P1 = High, P2 = Medium, P3 = Low, P4 = Future
 
   ---
   Critical Technical Notes
@@ -336,9 +348,73 @@
   - Connection cleanup after board reboot
   - Transport guards prevent operations on closed connections
 
-  Still TODO:
-  - PIFF tuning: iNav uses PIFF controller (not PID) for position
-  - Programming tab: iNav's logic conditions framework
+  ### iNav CLI Servo Config Fallback - COMPLETE (2026-01-05)
+
+  **Problem solved:** Servo wizard now works on old iNav 2.0.0 boards where `MSP_SET_SERVO_CONFIGURATION` (212) is not supported.
+
+  #### Detection Flow
+  1. On servo wizard open, `probeServoConfigMode()` is called
+  2. Reads current servo 0 config via MSP
+  3. Tries to write it back unchanged via `MSP_SET_SERVO_CONFIGURATION` (212)
+  4. If fails with "not supported" or timeout → `usesCliServoFallback = true`
+  5. UI adjusts servo range limits accordingly
+
+  #### Servo Range Limits
+  | Board Type | Min | Max | Reason |
+  |------------|-----|-----|--------|
+  | Modern iNav (2.1+) | 500 | 2500 | Defined in `servo.h` as `SERVO_OUTPUT_MIN/MAX` |
+  | Old iNav (2.0.0) | 750 | 2250 | CLI `servo` command rejects values outside this range |
+
+  #### CLI Servo Command Format (iNav 2.0.0)
+  ```
+  servo <index> <min> <max> <mid> <rate>
+  ```
+  - Only 5 parameters (NOT 6 like modern iNav)
+  - No `forward_from_channel` parameter
+  - Values outside 750-2250 cause "Parse error"
+
+  #### CLI Mode Flow
+  ```
+  #                           → Enter CLI mode (0x23)
+  servo 0 1000 2000 1500 100  → Set servo 0 endpoints
+  servo 1 1000 2000 1500 100  → Set servo 1 endpoints
+  ...
+  save                        → Save to EEPROM and reboot
+  ```
+
+  #### Critical Implementation Details
+  - **Line endings:** Use `\n` only (NOT `\r\n` - causes parse errors!)
+  - **CLI mode blocking:** Set `servoCliModeActive = true` BEFORE entering CLI to block all MSP requests
+  - **Response capture:** Add persistent `data` listener to accumulate CLI responses
+  - **Timing:** 500ms after `#`, 300ms after each command, 500ms before `save`
+  - **Cleanup:** Remove CLI listener, call `cleanupMspConnection()` after board reboots
+
+  #### State Variables (msp-handlers.ts)
+  ```typescript
+  let servoCliModeActive = false;      // Blocks MSP requests during CLI mode
+  let usesCliServoFallback = false;    // True if MSP 212 not supported
+  let servoConfigModeProbed = false;   // Only probe once per connection
+  let cliResponse = '';                // Accumulates CLI output
+  let cliResponseListener = null;      // Data listener for CLI responses
+  ```
+
+  #### Implementation Files
+  | File | Purpose |
+  |------|---------|
+  | `main/msp/msp-handlers.ts` | `probeServoConfigMode()`, `setServoConfigViaCli()`, `saveServoConfigViaCli()` |
+  | `stores/servo-wizard-store.ts` | `servoRangeLimits`, `usesCliFallback` state, skips MSP2 mixer when CLI mode |
+  | `components/servo-wizard/tuning/ServoTuningCard.tsx` | `rangeLimits` prop for dynamic slider limits |
+  | `components/servo-wizard/tuning/ServoTuningView.tsx` | Warning banner for old iNav |
+  | `shared/ipc-channels.ts` | `MSP_GET_SERVO_CONFIG_MODE` channel |
+  | `main/preload.ts` | `mspGetServoConfigMode()` API |
+
+  ### iNav-Specific TODO (P3)
+
+  | Feature | Description | Complexity |
+  |---------|-------------|------------|
+  | PIFF Tuning | iNav position controller (different from PID) | Medium |
+  | Programming Tab | Logic conditions framework for automation | High |
+  | AssistNow GPS | Faster cold start via satellite data | Medium |
 
   ---
   Epic 5: Firmware Flash
@@ -409,6 +485,143 @@
   | components/firmware/FirmwareFlashView.tsx | Firmware flash UI with Connect/Auto-detect flow                 |
   | components/firmware/BoardPicker.tsx       | Searchable board dropdown                                       |
   | components/firmware/BootPadWizard.tsx     | Boot pad flash wizard for manual bootloader entry               |
+
+  ### 5.6 Post-Flash Auto-Configuration (iNav) ✅ COMPLETE (2026-01-04)
+
+  When flashing iNav firmware with "Plane" vehicle type selected, ArduDeck automatically configures the board as airplane after flash.
+
+  **Flow:**
+  1. User selects Vehicle Type = "Plane" + iNav firmware
+  2. Flash completes
+  3. Auto-wait 4 seconds for board reboot
+  4. Auto-reconnect via MSP
+  5. Read platformType via MSP2_INAV_MIXER
+  6. If platformType !== AIRPLANE, set via MSP2_INAV_SET_MIXER
+  7. Save to EEPROM and reboot
+
+  **BSOD Prevention (CRITICAL):**
+  All post-flash operations use conservative delays to prevent driver overload:
+  - 4000ms wait after flash for board reboot
+  - 1000ms delay after MSP connect before commands
+  - 500ms delay after platform type change
+  - 1000ms delay after EEPROM save before reboot
+  - 500ms delay before disconnect after reboot command
+
+  **Implementation Files:**
+  | File | Purpose |
+  |------|---------|
+  | `stores/firmware-store.ts` | `startPostFlashConfig()` action, postFlashState/Message/Error |
+  | `components/firmware/FirmwareFlashView.tsx` | Triggers post-flash config, shows status UI |
+
+  ---
+  ## Competitive Feature Gaps
+
+  Based on analysis of Betaflight Configurator, iNav Configurator, Mission Planner, and QGroundControl.
+
+  ### Priority Legend
+  - **P0**: Must have - 90%+ of users expect this
+  - **P1**: High priority - Major competitive gap
+  - **P2**: Medium priority - Nice to have
+  - **P3**: Low priority - Niche/advanced features
+  - **P4**: Future - Long-term roadmap
+
+  ### Betaflight/iNav Gaps (Largest User Base)
+
+  | Feature | Competitor | Status | Files to Create |
+  |---------|------------|--------|-----------------|
+  | **OSD Configuration** | Both have full OSD editors | 5% (constants only) | `OsdConfigTab.tsx`, MSP handlers |
+  | **CLI Terminal** | Both have CLI access | 0% | `CliTerminal.tsx`, raw serial handler |
+  | **VTX Configuration** | Both have VTX settings | 5% (constants only) | `VtxConfigTab.tsx`, MSP handlers |
+  | **GPS Rescue** | Betaflight 4.6 major feature | 0% | `GpsRescueTab.tsx`, MSP handlers |
+  | **LED Strip** | Both have LED config | 5% (constants only) | `LedStripTab.tsx`, MSP handlers |
+  | **Blackbox Viewer** | Separate app (blackbox.betaflight.com) | 0% | Complex - may defer |
+  | **Failsafe (MSP)** | Both have full failsafe config | 60% (MAVLink only) | Extend SafetyTab for MSP |
+
+  ### ArduPilot Gaps (Professional Users)
+
+  | Feature | Mission Planner Has | Status | Notes |
+  |---------|---------------------|--------|-------|
+  | **Calibration Wizards** | Full wizard suite | Planned | Next major epic |
+  | **DataFlash Logs** | Full log viewer | 0% | Very high complexity |
+  | **SITL Integration** | Built-in simulator | 0% | Very high complexity |
+  | **Remote-ID** | FAA compliant | 0% | Regulatory requirement |
+
+  ### ArduDeck Competitive Advantages
+
+  Things we do better than competitors:
+  1. **Cross-platform** - Windows/Mac/Linux (Mission Planner is Windows-only)
+  2. **Multi-firmware** - One app for Betaflight + iNav + ArduPilot
+  3. **Modern UI** - React/Tailwind vs legacy C# WinForms
+  4. **Beginner wizards** - Modes wizard, servo wizard with visual guides
+  5. **Stability** - BSOD prevention, production-grade USB handling
+
+  ---
+  ## Epic 6-9: MSP Feature Parity
+
+  Bring ArduDeck to feature parity with Betaflight/iNav Configurator for the most-used features.
+
+  ### Epic 6: OSD Configuration (P0)
+
+  **Why P0:** 90%+ of FPV pilots customize their OSD. This is table-stakes.
+
+  | Task | Description | Complexity |
+  |------|-------------|------------|
+  | 6.1 MSP Handlers | `mspGetOsdConfig`, `mspSetOsdConfig` | Medium |
+  | 6.2 Element Editor | Drag-drop OSD element positioning | High |
+  | 6.3 Font Manager | Upload custom OSD fonts | Medium |
+  | 6.4 Preview | Live OSD preview (optional) | High |
+
+  **Reference:** `/inav-configurator/tabs/osd-panel.html`
+
+  **Files to create:**
+  - `components/osd/OsdConfigTab.tsx` - Main OSD editor
+  - `components/osd/OsdElementPicker.tsx` - Element selector
+  - `components/osd/OsdCanvas.tsx` - Visual positioning canvas
+  - MSP handlers in `main/msp/msp-handlers.ts`
+
+  ### Epic 7: CLI Terminal (P0)
+
+  **Why P0:** Power users expect CLI access. Both configurators have it.
+
+  | Task | Description | Complexity |
+  |------|-------------|------------|
+  | 7.1 Raw Serial | Send/receive raw serial data | Low |
+  | 7.2 Terminal UI | xterm.js or similar terminal emulator | Medium |
+  | 7.3 Command History | Up/down arrow history, autocomplete | Medium |
+
+  **Reference:** `/inav-configurator/tabs/cli.html`
+
+  **Files to create:**
+  - `components/cli/CliTerminal.tsx` - Terminal UI
+  - IPC handler for raw serial passthrough
+
+  ### Epic 8: VTX Configuration (P1)
+
+  **Why P1:** Simple feature, all FPV pilots need it.
+
+  | Task | Description | Complexity |
+  |------|-------------|------------|
+  | 8.1 MSP Handlers | `mspGetVtxConfig`, `mspSetVtxConfig` | Low |
+  | 8.2 Config UI | Band/channel/power selector | Low |
+  | 8.3 VTX Tables | Custom VTX table support | Medium |
+
+  **Files to create:**
+  - `components/vtx/VtxConfigTab.tsx` - VTX settings UI
+  - MSP handlers for VTX_CONFIG (88/89)
+
+  ### Epic 9: MSP Failsafe (P1)
+
+  **Why P1:** Safety-critical feature, partially implemented.
+
+  | Task | Description | Complexity |
+  |------|-------------|------------|
+  | 9.1 MSP Handlers | Deserialize FAILSAFE_CONFIG (75/76) | Low |
+  | 9.2 Extend SafetyTab | Add MSP failsafe to existing tab | Medium |
+  | 9.3 GPS Rescue | Betaflight 4.6 GPS rescue PIDs | Medium |
+
+  **Files to modify:**
+  - `components/mavlink-config/SafetyTab.tsx` - Extend for MSP
+  - `main/msp/msp-handlers.ts` - Add failsafe handlers
 
   ---
   Future Epic: Setup Wizards

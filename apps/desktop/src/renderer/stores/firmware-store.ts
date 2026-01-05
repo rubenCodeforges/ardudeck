@@ -97,6 +97,11 @@ interface FirmwareStore {
   wizardFirmwareVersion: string | null;
   wizardFirmwareSource: string | null;
 
+  // Post-flash configuration (for iNav plane firmware)
+  postFlashState: 'idle' | 'waiting' | 'connecting' | 'configuring' | 'saving' | 'complete' | 'error' | 'skipped';
+  postFlashMessage: string | null;
+  postFlashError: string | null;
+
   // Actions - Mode
   setAdvancedMode: (advanced: boolean) => void;
 
@@ -143,6 +148,11 @@ interface FirmwareStore {
   setFlashProgress: (progress: FlashProgress) => void;
   setFlashState: (state: FlashState) => void;
   setFlashError: (error: string | null) => void;
+
+  // Post-flash configuration actions
+  startPostFlashConfig: () => Promise<void>;
+  skipPostFlashConfig: () => void;
+  resetPostFlashState: () => void;
 
   // Boot pad wizard actions
   openBootPadWizard: () => void;
@@ -214,6 +224,11 @@ const initialState = {
   wizardBoardName: null as string | null,
   wizardFirmwareVersion: null as string | null,
   wizardFirmwareSource: null as string | null,
+
+  // Post-flash configuration
+  postFlashState: 'idle' as const,
+  postFlashMessage: null as string | null,
+  postFlashError: null as string | null,
 };
 
 export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
@@ -743,6 +758,186 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
     flashState: 'error',
     // Reset progress on error so UI shows clean state
     flashProgress: { state: 'error', progress: 0, message: 'Flash failed' },
+  }),
+
+  // Post-flash configuration actions
+  startPostFlashConfig: async () => {
+    const { selectedSource, selectedVehicleType, detectedBoard } = get();
+
+    // Only for iNav plane firmware
+    if (selectedSource !== 'inav' || selectedVehicleType !== 'plane') {
+      set({ postFlashState: 'skipped' });
+      return;
+    }
+
+    const port = detectedBoard?.port;
+    if (!port) {
+      set({
+        postFlashState: 'error',
+        postFlashError: 'No port found for reconnection',
+      });
+      return;
+    }
+
+    // Helper to attempt connection with MSP detection
+    const tryConnect = async (): Promise<boolean> => {
+      try {
+        const result = await window.electronAPI?.connect?.({
+          type: 'serial',
+          port,
+          baudRate: 115200,
+          protocol: 'msp',
+        });
+        if (!result) return false;
+
+        // Wait for connection to stabilize
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Try to read mixer config as a connection test
+        const mixerConfig = await window.electronAPI?.mspGetInavMixerConfig?.();
+        return mixerConfig !== null && mixerConfig !== undefined;
+      } catch {
+        // Disconnect on failure before retry
+        try { await window.electronAPI?.disconnect?.(); } catch {}
+        return false;
+      }
+    };
+
+    try {
+      // Step 1: Wait for board to reboot
+      // USB-serial chips (CH340, CP210x) need significant time after board reboot
+      set({
+        postFlashState: 'waiting',
+        postFlashMessage: 'Waiting for board to reboot (6s)...',
+        postFlashError: null,
+      });
+      await new Promise(resolve => setTimeout(resolve, 6000));
+
+      // Step 2: Try to connect with retries
+      // USB-serial chips often need multiple attempts after a flash
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 3000;
+      let connected = false;
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        set({
+          postFlashState: 'connecting',
+          postFlashMessage: `Connecting to board (attempt ${attempt}/${MAX_RETRIES})...`,
+        });
+
+        connected = await tryConnect();
+        if (connected) {
+          console.log(`[PostFlash] Connected on attempt ${attempt}`);
+          break;
+        }
+
+        if (attempt < MAX_RETRIES) {
+          set({
+            postFlashMessage: `Connection failed, retrying in ${RETRY_DELAY / 1000}s...`,
+          });
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        }
+      }
+
+      if (!connected) {
+        throw new Error(
+          'Could not connect after flash. The USB-serial chip may need a physical unplug/replug. ' +
+          'Disconnect the board, reconnect it, then use Servo Wizard to configure as airplane.'
+        );
+      }
+
+      // Step 3: Check platform type
+      set({
+        postFlashState: 'configuring',
+        postFlashMessage: 'Checking platform configuration...',
+      });
+
+      const mixerConfig = await window.electronAPI?.mspGetInavMixerConfig?.();
+      if (!mixerConfig) {
+        throw new Error('Failed to read iNav mixer config');
+      }
+
+      console.log('[PostFlash] Current platformType:', mixerConfig.platformType);
+
+      // platformType: 0=MULTIROTOR, 1=AIRPLANE
+      if (mixerConfig.platformType === 1) {
+        // Already airplane, we're done
+        set({
+          postFlashState: 'complete',
+          postFlashMessage: 'Board already configured as airplane',
+        });
+        await window.electronAPI?.disconnect?.();
+        return;
+      }
+
+      // Step 4: Set platform to AIRPLANE
+      set({
+        postFlashMessage: 'Configuring board as airplane...',
+      });
+
+      const setResult = await window.electronAPI?.mspSetInavPlatformType?.(1); // 1 = AIRPLANE
+      if (!setResult) {
+        throw new Error('Failed to set platform type to airplane');
+      }
+
+      // BSOD Prevention: Delay after platform type change
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 5: Save to EEPROM
+      set({
+        postFlashState: 'saving',
+        postFlashMessage: 'Saving to EEPROM...',
+      });
+
+      await window.electronAPI?.mspSaveEeprom?.();
+
+      // BSOD Prevention: Delay after EEPROM save before reboot
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 6: Reboot
+      set({
+        postFlashMessage: 'Rebooting board...',
+      });
+
+      await window.electronAPI?.mspReboot?.();
+
+      // BSOD Prevention: Wait before disconnect to let reboot command complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Disconnect (board is rebooting)
+      await window.electronAPI?.disconnect?.();
+
+      set({
+        postFlashState: 'complete',
+        postFlashMessage: 'Board configured as airplane! Reconnect when ready.',
+      });
+
+    } catch (error) {
+      console.error('[PostFlash] Configuration failed:', error);
+      set({
+        postFlashState: 'error',
+        postFlashError: error instanceof Error ? error.message : 'Configuration failed',
+      });
+
+      // Try to disconnect cleanly
+      try {
+        await window.electronAPI?.disconnect?.();
+      } catch {
+        // Ignore disconnect errors
+      }
+    }
+  },
+
+  skipPostFlashConfig: () => set({
+    postFlashState: 'skipped',
+    postFlashMessage: null,
+    postFlashError: null,
+  }),
+
+  resetPostFlashState: () => set({
+    postFlashState: 'idle',
+    postFlashMessage: null,
+    postFlashError: null,
   }),
 
   // Boot pad wizard actions

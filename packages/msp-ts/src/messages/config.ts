@@ -566,25 +566,46 @@ export const SERVO_INPUT_SOURCE_NAMES: Record<number, string> = {
 /**
  * Deserialize MSP_SERVO_CONFIGURATIONS response
  * Returns array of servo configurations (typically 8 servos)
+ *
+ * Format detection:
+ * - iNav uses 7 bytes per servo: min(2) + max(2) + middle(2) + rate(1)
+ * - Betaflight uses 12 bytes per servo: min(2) + max(2) + middle(2) + rate(1) + forward(1) + reversed(4)
  */
 export function deserializeServoConfigurations(payload: Uint8Array): MSPServoConfig[] {
   const reader = new PayloadReader(payload);
   const servos: MSPServoConfig[] = [];
 
-  // Each servo config is 14 bytes in Betaflight/iNav
-  while (reader.remaining() >= 14) {
-    servos.push({
-      min: reader.readU16(),
-      max: reader.readU16(),
-      middle: reader.readU16(),
-      rate: reader.readS8(),
-      forwardFromChannel: reader.readU8(),
-      reversedSources: reader.readU32(),
-      // Skip 2 reserved bytes if present
-    });
-    // Some FC versions have padding
-    if (reader.remaining() >= 2 && reader.remaining() < 14) {
-      reader.skip(2);
+  // Detect format based on payload size
+  // Old Betaflight/iNav: 14 bytes per servo (min, max, mid, rate, 2 padding, forward, reversed)
+  // New iNav MSP2: 7 bytes per servo (min, max, mid, rate) - but we use MSP_SERVO_CONFIGURATIONS (120)
+  // 112 bytes = 8 servos × 14 bytes (Betaflight/old iNav format)
+  const bytesPerServo = payload.length % 14 === 0 ? 14 : (payload.length % 7 === 0 ? 7 : 14);
+
+  console.log(`[MSP] Servo format detection: ${payload.length} bytes, using ${bytesPerServo}-byte format`);
+
+  if (bytesPerServo === 7) {
+    // New iNav MSP2 format: 7 bytes per servo
+    while (reader.remaining() >= 7) {
+      servos.push({
+        min: reader.readU16(),
+        max: reader.readU16(),
+        middle: reader.readU16(),
+        rate: reader.readS8(),
+        forwardFromChannel: 255,
+        reversedSources: 0,
+      });
+    }
+  } else {
+    // Betaflight/old iNav format: 14 bytes per servo
+    while (reader.remaining() >= 14) {
+      const min = reader.readU16();
+      const max = reader.readU16();
+      const middle = reader.readU16();
+      const rate = reader.readS8();
+      reader.skip(2); // 2 padding bytes
+      const forwardFromChannel = reader.readU8();
+      const reversedSources = reader.readU32();
+      servos.push({ min, max, middle, rate, forwardFromChannel, reversedSources });
     }
   }
 

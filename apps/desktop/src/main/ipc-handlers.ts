@@ -1235,6 +1235,56 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // Open connection
       await currentTransport.open();
+
+      // If protocol is forced to MSP, skip MAVLink detection entirely
+      if (options.protocol === 'msp') {
+        sendLog(mainWindow, 'info', `Port opened, using MSP protocol (forced)...`);
+
+        // Don't set up MAVLink handler at all
+        mavlinkParser = null;
+        mavlinkDataHandler = null;
+
+        // Set state to connecting (NOT waiting for heartbeat)
+        connectionState = {
+          isConnected: false,
+          isWaitingForHeartbeat: false,
+          transport: transportName,
+          packetsReceived: 0,
+          packetsSent: 0,
+        };
+        sendConnectionState(mainWindow);
+
+        // Go directly to MSP detection
+        const mspInfo = await tryMspDetection(currentTransport, mainWindow);
+
+        if (mspInfo) {
+          sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}`, `Board: ${mspInfo.boardId}`);
+
+          connectionState = {
+            isConnected: true,
+            isWaitingForHeartbeat: false,
+            protocol: 'msp',
+            transport: transportName,
+            fcVariant: mspInfo.fcVariant,
+            fcVersion: mspInfo.fcVersion,
+            boardId: mspInfo.boardId,
+            apiVersion: mspInfo.apiVersion,
+            autopilot: mspInfo.fcVariant,
+            vehicleType: 'Multirotor',
+            packetsReceived: connectionState.packetsReceived,
+            packetsSent: connectionState.packetsSent,
+          };
+          sendConnectionState(mainWindow);
+          return true;
+        } else {
+          const errorMsg = 'Device did not respond to MSP protocol.';
+          sendLog(mainWindow, 'error', 'MSP detection failed', errorMsg);
+          safeSend(mainWindow, 'connection:error', errorMsg);
+          currentTransport?.close();
+          return false;
+        }
+      }
+
       sendLog(mainWindow, 'info', `Port opened, waiting for MAVLink heartbeat...`);
 
       // Set state to waiting for heartbeat (NOT connected yet)
