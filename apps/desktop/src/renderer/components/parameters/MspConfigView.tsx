@@ -63,6 +63,7 @@ const DEFAULT_PIDS: MSPPid = {
 };
 
 // Default Betaflight rates (for reset functionality)
+// Note: rollPitchRate is the legacy combined rate field - old iNav uses this, not separate rollRate/pitchRate
 const DEFAULT_RATES: Partial<MSPRcTuning> = {
   rcRate: 100,
   rcExpo: 0,
@@ -70,12 +71,14 @@ const DEFAULT_RATES: Partial<MSPRcTuning> = {
   rcPitchExpo: 0,
   rcYawRate: 100,
   rcYawExpo: 0,
+  rollPitchRate: 70, // Legacy combined rate for old iNav
   rollRate: 70,
   pitchRate: 70,
   yawRate: 70,
 };
 
 // Rate Presets - common rate configurations
+// Note: rollPitchRate is legacy combined rate for old iNav - must match rollRate for compatibility
 const RATE_PRESETS = {
   beginner: {
     name: 'Beginner',
@@ -83,7 +86,7 @@ const RATE_PRESETS = {
     icon: '🐣',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     rates: {
-      rcRate: 80, rcExpo: 20, rollRate: 40,
+      rcRate: 80, rcExpo: 20, rollPitchRate: 40, rollRate: 40,
       rcPitchRate: 80, rcPitchExpo: 20, pitchRate: 40,
       rcYawRate: 80, rcYawExpo: 20, yawRate: 40,
     },
@@ -94,7 +97,7 @@ const RATE_PRESETS = {
     icon: '🎭',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     rates: {
-      rcRate: 100, rcExpo: 15, rollRate: 70,
+      rcRate: 100, rcExpo: 15, rollPitchRate: 70, rollRate: 70,
       rcPitchRate: 100, rcPitchExpo: 15, pitchRate: 70,
       rcYawRate: 100, rcYawExpo: 10, yawRate: 65,
     },
@@ -105,7 +108,7 @@ const RATE_PRESETS = {
     icon: '🏎️',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     rates: {
-      rcRate: 120, rcExpo: 5, rollRate: 80,
+      rcRate: 120, rcExpo: 5, rollPitchRate: 80, rollRate: 80,
       rcPitchRate: 120, rcPitchExpo: 5, pitchRate: 80,
       rcYawRate: 110, rcYawExpo: 0, yawRate: 70,
     },
@@ -116,7 +119,7 @@ const RATE_PRESETS = {
     icon: '🎬',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     rates: {
-      rcRate: 70, rcExpo: 40, rollRate: 30,
+      rcRate: 70, rcExpo: 40, rollPitchRate: 30, rollRate: 30,
       rcPitchRate: 70, rcPitchExpo: 40, pitchRate: 30,
       rcYawRate: 60, rcYawExpo: 30, yawRate: 25,
     },
@@ -340,11 +343,13 @@ function RatesTab({
   updateRcTuning,
   setRcTuning,
   setModified,
+  isLegacyInav = false,
 }: {
   rcTuning: MSPRcTuning;
   updateRcTuning: (field: keyof MSPRcTuning, value: number) => void;
   setRcTuning: (rates: MSPRcTuning) => void;
   setModified: (v: boolean) => void;
+  isLegacyInav?: boolean;  // Legacy iNav < 2.3.0 has no per-axis RC rates
 }) {
   const [customProfiles, setCustomProfiles] = useState<Record<string, { name: string; data: Partial<MSPRcTuning> }>>({});
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -529,19 +534,23 @@ function RatesTab({
               <span>{icon}</span> {axis}
             </h3>
             <div className="space-y-4">
-              <TuningSlider
-                label="Center Rate"
-                value={rcTuning[rcRate] as number}
-                onChange={(v) => updateRcTuning(rcRate, v)}
-                color={color}
-                hint="Sensitivity near center"
-              />
+              {/* Center Rate - hidden for legacy iNav < 2.3.0 (RC_RATE fixed at 100) */}
+              {!isLegacyInav && (
+                <TuningSlider
+                  label="Center Rate"
+                  value={rcTuning[rcRate] as number}
+                  onChange={(v) => updateRcTuning(rcRate, v)}
+                  color={color}
+                  hint="Sensitivity near center"
+                />
+              )}
               <TuningSlider
                 label="Max Rate"
                 value={rcTuning[superRate] as number}
                 onChange={(v) => updateRcTuning(superRate, v)}
                 color={color}
                 hint="Full stick speed"
+                max={isLegacyInav ? 1000 : 200}
               />
               <TuningSlider
                 label="Expo"
@@ -1168,6 +1177,17 @@ export function MspConfigView() {
 
   const isInav = connectionState.fcVariant === 'INAV';
 
+  // Check for legacy iNav (< 2.3.0) which has different CLI params and no per-axis RC rates
+  const isLegacyInav = useMemo(() => {
+    if (!isInav || !connectionState.fcVersion) return false;
+    const version = connectionState.fcVersion; // e.g., "2.0.0" or "2.3.0"
+    const parts = version.split('.').map(Number);
+    if (parts.length < 2) return false;
+    const [major, minor] = parts;
+    // iNav < 2.3.0 is considered legacy
+    return major < 2 || (major === 2 && minor < 3);
+  }, [isInav, connectionState.fcVersion]);
+
   // Check if board has SERVO_TILT feature enabled (bit 5)
   // Some boards don't have servo outputs in multirotor mode
   const hasServoFeature = (features & (1 << 5)) !== 0;
@@ -1185,7 +1205,26 @@ export function MspConfigView() {
         window.electronAPI?.mspGetFeatures(),
       ]);
       if (pidData) setPid(pidData as MSPPid);
-      if (rcData) setRcTuning(rcData as MSPRcTuning);
+      if (rcData) {
+        const rc = rcData as MSPRcTuning;
+        // Normalize for old iNav which uses combined fields:
+        // - rollPitchRate instead of separate rollRate/pitchRate
+        // - rcRate/rcExpo for both roll AND pitch (no separate rcPitchRate/rcPitchExpo)
+        const isOldINav = rc.rcPitchRate === 0 && rc.rollRate === 0;
+        if (isOldINav) {
+          console.log(`[UI] Old iNav detected: normalizing combined fields`);
+          // Max rates: use rollPitchRate for both roll and pitch
+          if (rc.rollPitchRate > 0) {
+            rc.rollRate = rc.rollPitchRate;
+            rc.pitchRate = rc.rollPitchRate;
+          }
+          // Center rates: use rcRate for pitch too (old iNav has no rcPitchRate)
+          rc.rcPitchRate = rc.rcRate;
+          // Expo: use rcExpo for pitch too (old iNav has no rcPitchExpo)
+          rc.rcPitchExpo = rc.rcExpo;
+        }
+        setRcTuning(rc);
+      }
       if (modesData) setModes(modesData as MSPModeRange[]);
       if (typeof featuresData === 'number') setFeatures(featuresData);
       console.log('[UI] loadConfig complete, setting modified=false');
@@ -1260,7 +1299,24 @@ export function MspConfigView() {
 
   const updateRcTuning = (field: keyof MSPRcTuning, value: number) => {
     if (!rcTuning) return;
-    setRcTuning({ ...rcTuning, [field]: value });
+    const updates: Partial<MSPRcTuning> = { [field]: value };
+
+    // iNav supports separate rollRate/pitchRate via MSP2 0x2007/0x2008
+    // Only sync rollPitchRate for legacy compatibility (won't affect modern iNav)
+    if (field === 'rollRate' || field === 'pitchRate') {
+      updates.rollPitchRate = value;
+    }
+
+    // iNav uses same expo for Roll AND Pitch - keep them synced
+    if (isInav) {
+      if (field === 'rcExpo') {
+        updates.rcPitchExpo = value;
+      } else if (field === 'rcPitchExpo') {
+        updates.rcExpo = value;
+      }
+    }
+
+    setRcTuning({ ...rcTuning, ...updates });
     setModified(true);
   };
 
@@ -1392,6 +1448,7 @@ export function MspConfigView() {
             updateRcTuning={updateRcTuning}
             setRcTuning={setRcTuning}
             setModified={setModified}
+            isLegacyInav={isLegacyInav}
           />
         )}
 

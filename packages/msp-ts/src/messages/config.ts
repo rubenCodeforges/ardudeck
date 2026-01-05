@@ -178,6 +178,63 @@ export function deserializeRcTuning(payload: Uint8Array): MSPRcTuning {
 }
 
 /**
+ * Deserialize MSP_RC_TUNING response for iNav (11 bytes)
+ *
+ * iNav format (from MSPHelper.js):
+ * - Byte 0: RC_RATE (fixed at 100)
+ * - Byte 1: RC_EXPO (0-100)
+ * - Byte 2: roll_rate (stored/10, so 4 = 40°/s)
+ * - Byte 3: pitch_rate (stored/10)
+ * - Byte 4: yaw_rate (stored/10)
+ * - Byte 5: dynamic_THR_PID (TPA)
+ * - Byte 6: throttle_MID (0-100)
+ * - Byte 7: throttle_EXPO (0-100)
+ * - Bytes 8-9: TPA breakpoint (16-bit LE)
+ * - Byte 10: RC_YAW_EXPO (0-100)
+ */
+export function deserializeRcTuningInav(payload: Uint8Array): MSPRcTuning {
+  const reader = new PayloadReader(payload);
+
+  // Read raw bytes first
+  const rcRate = reader.readU8();      // 0: RC_RATE (fixed at 100 for iNav)
+  const rcExpo = reader.readU8();      // 1: RC_EXPO
+  const rollRateRaw = reader.readU8(); // 2: roll_rate / 10
+  const pitchRateRaw = reader.readU8();// 3: pitch_rate / 10
+  const yawRateRaw = reader.readU8();  // 4: yaw_rate / 10
+  const dynThrPID = reader.readU8();   // 5: TPA
+  const throttleMid = reader.readU8(); // 6: throttle mid
+  const throttleExpo = reader.readU8();// 7: throttle expo
+  const tpaBreakpoint = reader.remaining() >= 2 ? reader.readU16() : 1500; // 8-9: TPA breakpoint
+  const rcYawExpo = reader.remaining() >= 1 ? reader.readU8() : 0; // 10: yaw expo
+
+  // Convert rates: stored as /10, so multiply by 10 to get °/s
+  const rollRate = rollRateRaw * 10;
+  const pitchRate = pitchRateRaw * 10;
+  const yawRate = yawRateRaw * 10;
+
+  return {
+    rcRate: 100, // Fixed for iNav
+    rcExpo,
+    rollPitchRate: rollRate, // Legacy: use roll rate
+    yawRate,
+    dynThrPID,
+    throttleMid,
+    throttleExpo,
+    tpaBreakpoint,
+    rcYawExpo,
+    // iNav uses fixed values for these
+    rcYawRate: 100,
+    rcPitchRate: 100,
+    // iNav uses same rcExpo for both Roll AND Pitch (shared expo)
+    rcPitchExpo: rcExpo,
+    rollRate,
+    pitchRate,
+    yawRateLimit: 0,
+    ratesType: 0,
+  };
+}
+
+/**
  * Serialize MSP_SET_RC_TUNING payload
  */
 export function serializeRcTuning(rcTuning: MSPRcTuning): Uint8Array {
@@ -199,6 +256,59 @@ export function serializeRcTuning(rcTuning: MSPRcTuning): Uint8Array {
   builder.writeU8(rcTuning.pitchRate);
   builder.writeU16(rcTuning.yawRateLimit);
   builder.writeU8(rcTuning.ratesType);
+
+  return builder.build();
+}
+
+/**
+ * Serialize MSP_SET_RC_TUNING payload for iNav (11 bytes)
+ *
+ * iNav format from MSPHelper.js:
+ * - Byte 0: RC_RATE * 100 (always 100 for iNav)
+ * - Byte 1: RC_EXPO (0-100)
+ * - Byte 2: roll_rate / 10 (so 400°/s → 40)
+ * - Byte 3: pitch_rate / 10
+ * - Byte 4: yaw_rate / 10
+ * - Byte 5: dynamic_THR_PID (TPA)
+ * - Byte 6: throttle_MID (0-100)
+ * - Byte 7: throttle_EXPO (0-100)
+ * - Bytes 8-9: TPA breakpoint (16-bit LE)
+ * - Byte 10: RC_YAW_EXPO (0-100)
+ */
+export function serializeRcTuningInav(rcTuning: MSPRcTuning): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  // RC_RATE - fixed at 100 for iNav
+  builder.writeU8(100);
+
+  // RC_EXPO - stored as 0-100
+  builder.writeU8(Math.round(rcTuning.rcExpo || 0));
+
+  // Rates: iNav stores as rate/10, so 400°/s = 40
+  // Our rcTuning has values in °/s from the UI (40 = 40°/s)
+  const rollRate = rcTuning.rollRate || rcTuning.rollPitchRate || 40;
+  const pitchRate = rcTuning.pitchRate || rcTuning.rollPitchRate || 40;
+  const yawRate = rcTuning.yawRate || 40;
+
+  // Divide by 10 for wire format, clamp to valid range 4-100 (= 40-1000°/s)
+  builder.writeU8(Math.max(4, Math.min(100, Math.round(rollRate / 10))));
+  builder.writeU8(Math.max(4, Math.min(100, Math.round(pitchRate / 10))));
+  builder.writeU8(Math.max(4, Math.min(100, Math.round(yawRate / 10))));
+
+  // TPA (0-100)
+  builder.writeU8(rcTuning.dynThrPID || 0);
+
+  // Throttle mid (0-100)
+  builder.writeU8(rcTuning.throttleMid || 50);
+
+  // Throttle expo (0-100)
+  builder.writeU8(rcTuning.throttleExpo || 0);
+
+  // TPA breakpoint (16-bit LE)
+  builder.writeU16(rcTuning.tpaBreakpoint || 1500);
+
+  // RC_YAW_EXPO (0-100)
+  builder.writeU8(Math.round(rcTuning.rcYawExpo || 0));
 
   return builder.build();
 }
@@ -875,4 +985,159 @@ export function serializeGpsConfig(config: MSPGpsConfig): Uint8Array {
   builder.writeU8(config.ubloxUseGalileo ? 1 : 0);
 
   return builder.build();
+}
+
+// =============================================================================
+// iNav Rate Profile (MSP2 0x2007 / 0x2008)
+// =============================================================================
+
+/**
+ * iNav Rate Profile - used instead of RC_TUNING for iNav firmware
+ * Note: iNav has RC_RATE fixed at 100, not settable!
+ */
+export interface MSPInavRateProfile {
+  // Throttle settings
+  throttleMid: number;        // 0-100 (percentage)
+  throttleExpo: number;       // 0-100
+  dynThrPID: number;          // Dynamic throttle PID
+  tpaBreakpoint: number;      // TPA breakpoint (uint16)
+
+  // Stabilized rates
+  rcExpo: number;             // Roll/pitch expo 0-100
+  rcYawExpo: number;          // Yaw expo 0-100
+  rollRate: number;           // Roll rate in deg/s (stored as /10)
+  pitchRate: number;          // Pitch rate in deg/s (stored as /10)
+  yawRate: number;            // Yaw rate in deg/s (stored as /10)
+
+  // Manual mode rates (optional, for airplane)
+  manualRcExpo?: number;
+  manualRcYawExpo?: number;
+  manualRollRate?: number;
+  manualPitchRate?: number;
+  manualYawRate?: number;
+}
+
+/**
+ * Deserialize MSPV2_INAV_RATE_PROFILE (0x2007) response
+ */
+export function deserializeInavRateProfile(payload: Uint8Array): MSPInavRateProfile {
+  const reader = new PayloadReader(payload);
+
+  // Throttle (5 bytes)
+  const throttleMid = reader.readU8();
+  const throttleExpo = reader.readU8();
+  const dynThrPID = reader.readU8();
+  const tpaBreakpoint = reader.readU16();
+
+  // Stabilized (5 bytes)
+  const rcExpo = reader.readU8();
+  const rcYawExpo = reader.readU8();
+  const rollRate = reader.readU8() * 10;  // Stored as /10
+  const pitchRate = reader.readU8() * 10;
+  const yawRate = reader.readU8() * 10;
+
+  const profile: MSPInavRateProfile = {
+    throttleMid,
+    throttleExpo,
+    dynThrPID,
+    tpaBreakpoint,
+    rcExpo,
+    rcYawExpo,
+    rollRate,
+    pitchRate,
+    yawRate,
+  };
+
+  // Manual mode (5 bytes) - optional, may not be present
+  if (reader.remaining() >= 5) {
+    profile.manualRcExpo = reader.readU8();
+    profile.manualRcYawExpo = reader.readU8();
+    profile.manualRollRate = reader.readU8();
+    profile.manualPitchRate = reader.readU8();
+    profile.manualYawRate = reader.readU8();
+  }
+
+  return profile;
+}
+
+/**
+ * Serialize MSPV2_INAV_SET_RATE_PROFILE (0x2008) payload
+ * This is what iNav configurator uses to save rates!
+ */
+export function serializeInavRateProfile(profile: MSPInavRateProfile): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  // Throttle (5 bytes)
+  builder.writeU8(profile.throttleMid);
+  builder.writeU8(profile.throttleExpo);
+  builder.writeU8(profile.dynThrPID);
+  builder.writeU16(profile.tpaBreakpoint);
+
+  // Stabilized (5 bytes) - rates stored as value/10
+  builder.writeU8(profile.rcExpo);
+  builder.writeU8(profile.rcYawExpo);
+  builder.writeU8(Math.round(profile.rollRate / 10));
+  builder.writeU8(Math.round(profile.pitchRate / 10));
+  builder.writeU8(Math.round(profile.yawRate / 10));
+
+  // Manual mode (5 bytes)
+  builder.writeU8(profile.manualRcExpo ?? 0);
+  builder.writeU8(profile.manualRcYawExpo ?? 0);
+  builder.writeU8(profile.manualRollRate ?? 0);
+  builder.writeU8(profile.manualPitchRate ?? 0);
+  builder.writeU8(profile.manualYawRate ?? 0);
+
+  return builder.build();
+}
+
+/**
+ * Convert MSPRcTuning to MSPInavRateProfile for saving to iNav
+ */
+export function rcTuningToInavRateProfile(rcTuning: MSPRcTuning): MSPInavRateProfile {
+  return {
+    throttleMid: rcTuning.throttleMid,
+    throttleExpo: rcTuning.throttleExpo,
+    dynThrPID: rcTuning.dynThrPID,
+    tpaBreakpoint: rcTuning.tpaBreakpoint,
+    rcExpo: rcTuning.rcExpo,
+    rcYawExpo: rcTuning.rcYawExpo,
+    // Use rollPitchRate as fallback for old iNav compatibility
+    rollRate: rcTuning.rollRate || rcTuning.rollPitchRate || 70,
+    pitchRate: rcTuning.pitchRate || rcTuning.rollPitchRate || 70,
+    yawRate: rcTuning.yawRate || 70,
+    manualRcExpo: 0,
+    manualRcYawExpo: 0,
+    manualRollRate: 0,
+    manualPitchRate: 0,
+    manualYawRate: 0,
+  };
+}
+
+/**
+ * Convert MSPInavRateProfile to MSPRcTuning (for reading from iNav)
+ * Used when reading rates via INAV_RATE_PROFILE (0x2007)
+ */
+export function inavRateProfileToRcTuning(profile: MSPInavRateProfile): MSPRcTuning {
+  return {
+    // iNav RC_RATE is fixed at 100
+    rcRate: 100,
+    rcExpo: profile.rcExpo,
+    // For legacy compatibility, use rollRate for rollPitchRate
+    rollPitchRate: profile.rollRate,
+    yawRate: profile.yawRate,
+    dynThrPID: profile.dynThrPID,
+    throttleMid: profile.throttleMid,
+    throttleExpo: profile.throttleExpo,
+    tpaBreakpoint: profile.tpaBreakpoint,
+    rcYawExpo: profile.rcYawExpo,
+    // iNav doesn't have separate yaw/pitch rate tuning - use same values
+    rcYawRate: 100,
+    // iNav uses same rcExpo for both Roll AND Pitch (shared expo)
+    rcPitchRate: 100,
+    rcPitchExpo: profile.rcExpo, // Same as roll expo!
+    rollRate: profile.rollRate,
+    pitchRate: profile.pitchRate,
+    yawRateLimit: 0,
+    ratesType: 0,
+  };
 }

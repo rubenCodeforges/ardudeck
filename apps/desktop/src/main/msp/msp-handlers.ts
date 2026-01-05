@@ -36,7 +36,9 @@ import {
   deserializePid,
   serializePid,
   deserializeRcTuning,
+  deserializeRcTuningInav,
   serializeRcTuning,
+  serializeRcTuningInav,
   deserializeModeRanges,
   serializeModeRange,
   deserializeFeatureConfig,
@@ -48,6 +50,11 @@ import {
   deserializeInavMixerConfig,
   serializeInavMixerConfig,
   isInavMultirotor,
+  // iNav Rate Profile (MSP2 0x2007/0x2008 - what iNav configurator uses!)
+  deserializeInavRateProfile,
+  serializeInavRateProfile,
+  rcTuningToInavRateProfile,
+  inavRateProfileToRcTuning,
   // Servo Config
   deserializeServoConfigurations,
   serializeServoConfiguration,
@@ -94,6 +101,19 @@ const pendingResponses = new Map<
 
 // Track commands that returned errors (to avoid spam logging)
 const unsupportedCommands = new Set<number>();
+
+// Track firmware type for protocol decisions
+let isInavFirmware = false;
+let inavVersion = ''; // e.g., "2.0.0"
+
+// Check if iNav version is legacy (< 2.3.0) - different CLI params, no per-axis RC rates
+function isLegacyInav(): boolean {
+  if (!isInavFirmware || !inavVersion) return false;
+  const parts = inavVersion.split('.').map(Number);
+  if (parts.length < 2) return false;
+  const [major, minor] = parts;
+  return major < 2 || (major === 2 && minor < 3);
+}
 
 // Request mutex - ensures only one MSP request is in-flight at a time
 let requestMutex: Promise<void> = Promise.resolve();
@@ -394,6 +414,12 @@ export async function tryMspDetection(
     } catch { /* ignore */ }
 
     sendLog('info', `MSP detected: ${fcVariant} ${fcVersion}`, `Board: ${boardId}`);
+
+    // Track firmware type for protocol decisions
+    isInavFirmware = fcVariant === 'INAV';
+    inavVersion = isInavFirmware ? fcVersion : '';
+    const legacy = isLegacyInav();
+    console.log(`[MSP] Firmware: ${fcVariant} ${fcVersion}, isInavFirmware=${isInavFirmware}, isLegacyInav=${legacy}`);
 
     return {
       fcVariant,
@@ -773,15 +799,39 @@ async function getRcTuning(): Promise<MSPRcTuning | null> {
   if (!currentTransport?.isOpen) return null;
 
   return withConfigLock(async () => {
+    // Try iNav MSP2 RATE_PROFILE first (0x2007) - this is what iNav configurator uses!
     try {
-      // Increased timeout for slow F3 boards with old firmware (iNav 2.0.0)
-      console.log('[MSP] Reading RC_TUNING...');
+      console.log('[MSP] Trying INAV_RATE_PROFILE (0x2007)...');
+      const payload = await sendMspV2Request(MSP2.INAV_RATE_PROFILE, 2000);
+      console.log('[MSP] INAV_RATE_PROFILE response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
+      const inavProfile = deserializeInavRateProfile(payload);
+      console.log('[MSP] INAV_RATE_PROFILE parsed:', JSON.stringify(inavProfile));
+      const rcTuning = inavRateProfileToRcTuning(inavProfile);
+      console.log('[MSP] Converted to RC_TUNING:', JSON.stringify(rcTuning));
+      sendLog('info', `Rates loaded (iNav): roll=${rcTuning.rollRate} pitch=${rcTuning.pitchRate} yaw=${rcTuning.yawRate}`);
+      return rcTuning;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log('[MSP] INAV_RATE_PROFILE failed:', msg, '- trying MSP_RC_TUNING...');
+    }
+
+    // Fall back to standard MSP_RC_TUNING (111)
+    // Use iNav-specific deserializer if connected to iNav (rates need *10)
+    try {
+      console.log(`[MSP] Reading RC_TUNING (111) for ${isInavFirmware ? 'iNav' : 'Betaflight'}...`);
       sendLog('info', 'Reading rates from FC...');
       const payload = await sendMspRequest(MSP.RC_TUNING, 2000);
       console.log('[MSP] RC_TUNING response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
-      const rcTuning = deserializeRcTuning(payload);
+
+      // iNav and Betaflight have different formats for MSP_RC_TUNING
+      // iNav: 11 bytes, rates stored as /10
+      // Betaflight: 17+ bytes, rates stored directly
+      const rcTuning = isInavFirmware
+        ? deserializeRcTuningInav(payload)
+        : deserializeRcTuning(payload);
+
       console.log('[MSP] RC_TUNING parsed:', JSON.stringify(rcTuning));
-      sendLog('info', `Rates loaded: rcRate=${rcTuning.rcRate} rollRate=${rcTuning.rollRate}`);
+      sendLog('info', `Rates loaded: roll=${rcTuning.rollRate} pitch=${rcTuning.pitchRate} yaw=${rcTuning.yawRate}`);
       return rcTuning;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -806,12 +856,59 @@ async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
     return await setRcTuningViaCli(rcTuning);
   }
 
-  // Try MSP first
+  // For iNav: use MSP2 INAV_SET_RATE_PROFILE (0x2008) - same format as read (0x2007)
+  // This ensures read/write use consistent byte layout
+  if (isInavFirmware) {
+    const msp2Success = await withConfigLock(async () => {
+      try {
+        // Convert rcTuning to iNav rate profile format
+        const inavProfile = rcTuningToInavRateProfile(rcTuning);
+        const payload = serializeInavRateProfile(inavProfile);
+
+        console.log('[MSP] INAV_SET_RATE_PROFILE (0x2008) payload:', payload.length, 'bytes');
+        console.log('[MSP] Payload hex:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        console.log('[MSP] iNav profile: rollRate=%d (raw=%d), pitchRate=%d (raw=%d), yawRate=%d (raw=%d), rcExpo=%d',
+          inavProfile.rollRate, inavProfile.rollRate / 10,
+          inavProfile.pitchRate, inavProfile.pitchRate / 10,
+          inavProfile.yawRate, inavProfile.yawRate / 10,
+          inavProfile.rcExpo);
+
+        sendLog('info', `Sending rates via MSP2 0x2008 (${payload.length} bytes)...`);
+        await sendMspV2RequestWithPayload(MSP2.INAV_SET_RATE_PROFILE, payload, 2000);
+        console.log('[MSP] INAV_SET_RATE_PROFILE success');
+        sendLog('info', 'Rates sent to FC (iNav MSP2)');
+        return true;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] INAV_SET_RATE_PROFILE failed:', msg);
+        if (msg.includes('not supported')) {
+          sendLog('warn', 'MSP2 not supported, trying MSP1...');
+          return null; // Signal to try MSP1 fallback
+        }
+        sendLog('error', 'Failed to set rates', msg);
+        return false;
+      }
+    });
+
+    if (msp2Success !== null) {
+      return msp2Success;
+    }
+
+    // Fall back to MSP_SET_RC_TUNING (204) for older iNav
+    console.log('[MSP] Falling back to MSP_SET_RC_TUNING (204) for iNav...');
+  }
+
+  // For Betaflight (or iNav MSP2 fallback): use MSP_SET_RC_TUNING (204)
   const mspSuccess = await withConfigLock(async () => {
     try {
-      const payload = serializeRcTuning(rcTuning);
-      console.log('[MSP] SET_RC_TUNING payload:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
-      sendLog('info', `Sending rates (${payload.length} bytes)...`);
+      const payload = isInavFirmware
+        ? serializeRcTuningInav(rcTuning)
+        : serializeRcTuning(rcTuning);
+
+      console.log(`[MSP] SET_RC_TUNING (${isInavFirmware ? 'iNav' : 'Betaflight'}) payload:`, payload.length, 'bytes');
+      console.log('[MSP] Payload hex:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
+
+      sendLog('info', `Sending rates via MSP 204 (${payload.length} bytes)...`);
       await sendMspRequestWithPayload(MSP.SET_RC_TUNING, payload, 2000);
       console.log('[MSP] SET_RC_TUNING success');
       sendLog('info', 'Rates sent to FC');
@@ -819,9 +916,8 @@ async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_RC_TUNING failed:', msg);
-      // Check if MSP not supported - will try CLI fallback
       if (msg.includes('not supported')) {
-        sendLog('warn', 'MSP SET_RC_TUNING not supported, trying CLI...');
+        sendLog('warn', 'MSP not supported, trying CLI...');
         return null; // Signal to try CLI fallback
       }
       sendLog('error', 'Failed to set rates', msg);
@@ -829,12 +925,11 @@ async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
     }
   });
 
-  // If MSP worked or definitively failed, return result
   if (mspSuccess !== null) {
     return mspSuccess;
   }
 
-  // CLI fallback for old iNav that doesn't support MSP_SET_RC_TUNING
+  // CLI fallback for very old firmware that doesn't support MSP 204
   return await setRcTuningViaCli(rcTuning);
 }
 
@@ -876,30 +971,114 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
       await new Promise(r => setTimeout(r, 1000));
     }
 
-    // Set rate values via CLI (iNav parameter names)
-    const commands = [
-      `set rc_rate = ${rcTuning.rcRate}`,
-      `set rc_expo = ${rcTuning.rcExpo}`,
-      `set rc_yaw_expo = ${rcTuning.rcYawExpo}`,
-      `set roll_rate = ${rcTuning.rollRate}`,
-      `set pitch_rate = ${rcTuning.pitchRate}`,
-      `set yaw_rate = ${rcTuning.yawRate}`,
-      `set thr_mid = ${rcTuning.throttleMid}`,
-      `set thr_expo = ${rcTuning.throttleExpo}`,
+    // Set rate values via CLI (works for both modern and legacy iNav)
+    // IMPORTANT: Old iNav 2.0.0 uses combined rollPitchRate - both roll_rate and pitch_rate
+    // CLI commands may write to the same field! Use rollPitchRate as canonical value.
+    // Range: 6-180 for old iNav
+
+    // Get rate values - prefer individual rates, fall back to combined rollPitchRate
+    // UI sends rates in °/s (e.g., 70, 200, 360)
+    const rollRateDegSec = rcTuning.rollRate || rcTuning.rollPitchRate || 70;
+    const pitchRateDegSec = rcTuning.pitchRate || rcTuning.rollPitchRate || 70;
+    const yawRateDegSec = rcTuning.yawRate || 70;
+
+    // IMPORTANT: iNav CLI stores rates as value/10 (same as MSP2 storage format)
+    // So 70°/s should be sent as `roll_rate = 7`, 200°/s as `roll_rate = 20`
+    // Clamp to valid range: 4-100 (which is 40-1000°/s)
+    const rollRateStored = Math.max(4, Math.min(100, Math.round(rollRateDegSec / 10)));
+    const pitchRateStored = Math.max(4, Math.min(100, Math.round(pitchRateDegSec / 10)));
+    const yawRateStored = Math.max(4, Math.min(100, Math.round(yawRateDegSec / 10)));
+
+    // CLI commands for iNav rates
+    // Note: Old iNav 2.0.0 may use different parameter names!
+    // We try multiple variations and log which ones work
+    const commands: Array<{ cmd: string; critical?: boolean }> = [
+      // Expo (percentage 0-100)
+      { cmd: `set rc_expo = ${rcTuning.rcExpo || 0}` },
+      { cmd: `set rc_yaw_expo = ${rcTuning.rcYawExpo || 0}` },
+      // Max rates - try multiple naming conventions for old iNav
+      // iNav stores rates as value/10 internally (so 7 = 70°/s)
+      // But CLI might expect °/s directly - we'll try both
+      { cmd: `set roll_rate = ${rollRateStored}`, critical: true },
+      { cmd: `set pitch_rate = ${pitchRateStored}`, critical: true },
+      { cmd: `set yaw_rate = ${yawRateStored}` },
+      // Throttle settings
+      { cmd: `set thr_mid = ${rcTuning.throttleMid || 50}` },
+      { cmd: `set thr_expo = ${rcTuning.throttleExpo || 0}` },
     ];
 
-    for (const cmd of commands) {
+    // Alternative rate commands to try if the primary ones fail
+    const altRateCommands = [
+      // Try with full °/s values (some old firmware might not divide by 10)
+      { cmd: `set roll_rate = ${rollRateDegSec}`, name: 'roll_rate (full)' },
+      { cmd: `set pitch_rate = ${pitchRateDegSec}`, name: 'pitch_rate (full)' },
+      // Try alternative names used in older firmware
+      { cmd: `set mc_p_roll = ${rollRateStored}`, name: 'mc_p_roll' },
+      { cmd: `set mc_p_pitch = ${pitchRateStored}`, name: 'mc_p_pitch' },
+      { cmd: `set fw_p_roll = ${rollRateStored}`, name: 'fw_p_roll' },
+      { cmd: `set fw_p_pitch = ${pitchRateStored}`, name: 'fw_p_pitch' },
+    ];
+
+    console.log(`[MSP] CLI rates: roll=${rollRateStored} (${rollRateDegSec}°/s), pitch=${pitchRateStored} (${pitchRateDegSec}°/s), yaw=${yawRateStored} (${yawRateDegSec}°/s)`);
+    console.log(`[MSP] CLI rcTuning input: rollRate=${rcTuning.rollRate}, pitchRate=${rcTuning.pitchRate}, rollPitchRate=${rcTuning.rollPitchRate}`);
+
+    // Track which critical commands failed so we can try alternatives
+    let rollRateFailed = false;
+    let pitchRateFailed = false;
+
+    for (const { cmd, critical } of commands) {
       tuningCliResponse = '';
       console.log(`[MSP] CLI: ${cmd}`);
       await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
-      await new Promise(r => setTimeout(r, 300)); // Wait longer
+      await new Promise(r => setTimeout(r, 300));
 
-      if (tuningCliResponse.includes('Invalid') || tuningCliResponse.includes('error')) {
-        console.error('[MSP] CLI command failed:', tuningCliResponse);
+      // Log response for debugging
+      const response = tuningCliResponse.trim();
+      if (response && !response.endsWith('#')) {
+        console.log(`[MSP] CLI response: ${response.split('\n')[0]}`);
+      }
+      const failed = tuningCliResponse.includes('Invalid') || tuningCliResponse.includes('error');
+      if (failed) {
+        console.warn('[MSP] CLI command FAILED:', cmd);
+        sendLog('warn', 'CLI command failed', `${cmd}: ${response.split('\n')[0]}`);
+        if (critical && cmd.includes('roll_rate')) rollRateFailed = true;
+        if (critical && cmd.includes('pitch_rate')) pitchRateFailed = true;
       }
     }
 
-    sendLog('info', 'Rates set via CLI', 'Call save to persist');
+    // If roll/pitch rate commands failed, try alternatives
+    if (rollRateFailed || pitchRateFailed) {
+      console.log('[MSP] Primary rate commands failed, trying alternatives...');
+      sendLog('info', 'Trying alternative CLI commands...');
+
+      for (const { cmd, name } of altRateCommands) {
+        // Skip if we only need to fix one axis
+        if (!rollRateFailed && cmd.includes('roll')) continue;
+        if (!pitchRateFailed && cmd.includes('pitch')) continue;
+
+        tuningCliResponse = '';
+        console.log(`[MSP] CLI alt (${name}): ${cmd}`);
+        await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
+        await new Promise(r => setTimeout(r, 300));
+
+        const response = tuningCliResponse.trim();
+        const failed = tuningCliResponse.includes('Invalid') || tuningCliResponse.includes('error');
+        if (!failed) {
+          console.log(`[MSP] CLI alt SUCCESS: ${name}`);
+          sendLog('info', `Alternative worked: ${name}`);
+          if (cmd.includes('roll')) rollRateFailed = false;
+          if (cmd.includes('pitch')) pitchRateFailed = false;
+        } else {
+          console.log(`[MSP] CLI alt failed: ${name} - ${response.split('\n')[0]}`);
+        }
+      }
+    }
+
+    if (rollRateFailed || pitchRateFailed) {
+      sendLog('warn', 'Some rate commands failed', 'Check CLI parameter names for your firmware');
+    } else {
+      sendLog('info', 'Rates set via CLI', 'Call save to persist');
+    }
     return true;
   } catch (error) {
     console.error('[MSP] CLI rates set failed:', error);

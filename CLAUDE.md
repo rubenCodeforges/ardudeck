@@ -196,6 +196,33 @@
 
   Open-Meteo Elevation API (free, no key): renderer/utils/elevation-api.ts
 
+### MSP Protocol - iNav Rate Profile
+
+**CRITICAL:** iNav and Betaflight use DIFFERENT MSP commands and byte formats for rates!
+
+**iNav Rate Commands (MSP2):**
+- Read: `INAV_RATE_PROFILE` (0x2007) - 15 bytes
+- Write: `INAV_SET_RATE_PROFILE` (0x2008) - 15 bytes
+
+**iNav Rate Profile Format (15 bytes):**
+```
+Throttle (5 bytes): throttleMid, throttleExpo, dynThrPID, tpaBreakpoint(2)
+Stabilized (5 bytes): rcExpo, rcYawExpo, rollRate/10, pitchRate/10, yawRate/10
+Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate, manualYawRate
+```
+
+**Key iNav Differences:**
+- Rates stored as value÷10 (so 40°/s = 4 on wire, multiply by 10 when reading)
+- `rcExpo` is SHARED for Roll AND Pitch (no separate pitch expo)
+- `rcRate` is FIXED at 100 (not configurable)
+- Roll and Pitch rates ARE separate (unlike old combined `rollPitchRate`)
+
+**Betaflight Rate Commands (MSP1):**
+- Read: `MSP_RC_TUNING` (111) - 17+ bytes
+- Write: `MSP_SET_RC_TUNING` (204) - 17+ bytes
+
+**DO NOT MIX:** Using MSP1 write with MSP2 read will corrupt values due to different byte layouts!
+
   ---
   Key File Reference
 
