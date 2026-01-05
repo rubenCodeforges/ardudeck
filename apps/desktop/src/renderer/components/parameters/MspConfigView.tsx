@@ -227,14 +227,12 @@ function TuningSlider({
   const percentage = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className="group">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium text-gray-200 whitespace-nowrap">{label}</span>
+    <div>
+      <div className="flex items-start justify-between mb-2">
+        <div className="min-w-0">
+          <span className="text-sm font-medium text-gray-200">{label}</span>
           {hint && (
-            <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              {hint}
-            </span>
+            <p className="text-xs text-gray-500 mt-0.5">{hint}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -341,17 +339,11 @@ function RatesTab({
   rcTuning,
   updateRcTuning,
   setRcTuning,
-  saveRates,
-  saving,
-  modified,
   setModified,
 }: {
   rcTuning: MSPRcTuning;
   updateRcTuning: (field: keyof MSPRcTuning, value: number) => void;
   setRcTuning: (rates: MSPRcTuning) => void;
-  saveRates: () => Promise<void>;
-  saving: boolean;
-  modified: boolean;
   setModified: (v: boolean) => void;
 }) {
   const [customProfiles, setCustomProfiles] = useState<Record<string, { name: string; data: Partial<MSPRcTuning> }>>({});
@@ -433,19 +425,11 @@ function RatesTab({
 
       {/* Presets - same pattern as PIDs */}
       <div className="bg-gradient-to-r from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/30 p-5">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium text-white">Quick Presets</h3>
-          <button
-            onClick={resetToDefaults}
-            className="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-          >
-            Reset to Defaults
-          </button>
-        </div>
+        <h3 className="text-lg font-medium text-white mb-2">Quick Presets</h3>
         <p className="text-sm text-gray-400 mb-4">
           Pick a preset that matches your flying style, or create your own.
         </p>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-5 gap-3">
           {Object.entries(RATE_PRESETS).map(([key, preset]) => (
             <button
               key={key}
@@ -457,32 +441,80 @@ function RatesTab({
               <div className="text-xs text-gray-400">{preset.description}</div>
             </button>
           ))}
+          {/* Stock/Default preset */}
+          <button
+            onClick={resetToDefaults}
+            className="p-4 rounded-xl border bg-gradient-to-br from-gray-600/20 to-gray-700/10 border-gray-600/30 hover:scale-105 transition-all text-left"
+          >
+            <div className="text-2xl mb-2">🔄</div>
+            <div className="font-medium text-white">Stock</div>
+            <div className="text-xs text-gray-400">Factory defaults</div>
+          </button>
         </div>
 
-        {/* Custom profiles */}
-        {Object.keys(customProfiles).length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-700/30">
-            <h4 className="text-sm font-medium text-gray-400 mb-2">Your Saved Profiles</h4>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(customProfiles).map(([id, profile]) => (
-                <div key={id} className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => loadProfile(id)}
-                    className="px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-gray-600/50 transition-colors"
-                  >
-                    {profile.name}
-                  </button>
-                  <button
-                    onClick={() => deleteProfile(id)}
-                    className="px-2 py-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-600/50 transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+        {/* My Presets - always visible */}
+        <div className="mt-4 pt-4 border-t border-gray-700/30">
+          <h4 className="text-sm font-medium text-gray-400 mb-2">My Presets</h4>
+          <div className="flex flex-wrap gap-2 items-center">
+            {Object.entries(customProfiles).map(([id, profile]) => (
+              <div key={id} className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => loadProfile(id)}
+                  className="px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-gray-600/50 transition-colors"
+                >
+                  {profile.name}
+                </button>
+                <button
+                  onClick={() => deleteProfile(id)}
+                  className="px-2 py-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-600/50 transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {/* Add preset button/input */}
+            {showSaveDialog ? (
+              <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Name..."
+                  className="w-24 px-2 py-1.5 bg-transparent text-white text-sm focus:outline-none"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveProfile();
+                    if (e.key === 'Escape') setShowSaveDialog(false);
+                  }}
+                />
+                <button
+                  onClick={saveProfile}
+                  disabled={!profileName.trim()}
+                  className="px-2 py-1.5 text-emerald-400 hover:text-emerald-300 disabled:text-gray-600 transition-colors"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => setShowSaveDialog(false)}
+                  className="px-2 py-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSaveDialog(true)}
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
+                title="Save current settings as a preset"
+              >
+                <span>+</span> Add Current
+              </button>
+            )}
           </div>
-        )}
+          {Object.keys(customProfiles).length === 0 && !showSaveDialog && (
+            <p className="text-xs text-gray-600 mt-2">No custom presets yet</p>
+          )}
+        </div>
       </div>
 
       {/* Rate sliders */}
@@ -532,53 +564,6 @@ function RatesTab({
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={saveRates}
-          disabled={saving || !modified}
-          className="px-6 py-3 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-800 disabled:text-gray-500 text-white transition-all"
-        >
-          {saving ? 'Applying...' : '✓ Apply Rate Changes'}
-        </button>
-
-        {showSaveDialog ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={profileName}
-              onChange={(e) => setProfileName(e.target.value)}
-              placeholder="Profile name..."
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveProfile();
-                if (e.key === 'Escape') setShowSaveDialog(false);
-              }}
-            />
-            <button
-              onClick={saveProfile}
-              disabled={!profileName.trim()}
-              className="px-3 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white transition-colors"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => setShowSaveDialog(false)}
-              className="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowSaveDialog(true)}
-            className="px-4 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-          >
-            💾 Save as Profile
-          </button>
-        )}
-      </div>
     </div>
   );
 }
@@ -588,17 +573,11 @@ function PidTuningTab({
   pid,
   setPid,
   updatePid,
-  savePid,
-  saving,
-  modified,
   setModified,
 }: {
   pid: MSPPid;
   setPid: (pids: MSPPid) => void;
   updatePid: (axis: 'roll' | 'pitch' | 'yaw', field: 'p' | 'i' | 'd', value: number) => void;
-  savePid: () => Promise<void>;
-  saving: boolean;
-  modified: boolean;
   setModified: (v: boolean) => void;
 }) {
   const [customProfiles, setCustomProfiles] = useState<Record<string, { name: string; data: MSPPid }>>({});
@@ -610,16 +589,18 @@ function PidTuningTab({
     setCustomProfiles(loadCustomProfiles<MSPPid>(PID_PROFILES_KEY));
   }, []);
 
-  // Apply a PID preset
+  // Apply a PID preset (merge with current to preserve altHold, posHold, etc.)
   const applyPreset = (presetKey: keyof typeof PID_PRESETS) => {
     const preset = PID_PRESETS[presetKey];
-    setPid(preset.pids);
+    // IMPORTANT: Merge with current pid to preserve optional PIDs (altHold, posHold, level, mag, etc.)
+    // Without this, MSP_SET_PID sends 9 bytes instead of 30, causing the command to fail
+    setPid({ ...pid, ...preset.pids });
     setModified(true);
   };
 
-  // Reset to Betaflight defaults
+  // Reset to Betaflight defaults (merge to preserve optional PIDs)
   const resetToDefaults = () => {
-    setPid(DEFAULT_PIDS);
+    setPid({ ...pid, ...DEFAULT_PIDS });
     setModified(true);
   };
 
@@ -640,11 +621,11 @@ function PidTuningTab({
     setShowSaveDialog(false);
   };
 
-  // Load a custom profile
+  // Load a custom profile (merge to preserve optional PIDs)
   const loadProfile = (id: string) => {
     const profile = customProfiles[id];
     if (profile) {
-      setPid(profile.data);
+      setPid({ ...pid, ...profile.data });
       setModified(true);
     }
   };
@@ -661,19 +642,11 @@ function PidTuningTab({
     <div className="max-w-full px-4 space-y-6">
       {/* Presets - beginner friendly */}
       <div className="bg-gradient-to-r from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/30 p-5">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium text-white">Quick Presets</h3>
-          <button
-            onClick={resetToDefaults}
-            className="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-          >
-            Reset to Defaults
-          </button>
-        </div>
+        <h3 className="text-lg font-medium text-white mb-2">Quick Presets</h3>
         <p className="text-sm text-gray-400 mb-4">
-          Not sure where to start? Pick a preset that matches your flying style, or create your own.
+          Pick a preset that matches your flying style, or create your own.
         </p>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-5 gap-3">
           {Object.entries(PID_PRESETS).map(([key, preset]) => (
             <button
               key={key}
@@ -685,32 +658,80 @@ function PidTuningTab({
               <div className="text-xs text-gray-400">{preset.description}</div>
             </button>
           ))}
+          {/* Stock/Default preset */}
+          <button
+            onClick={resetToDefaults}
+            className="p-4 rounded-xl border bg-gradient-to-br from-gray-600/20 to-gray-700/10 border-gray-600/30 hover:scale-105 transition-all text-left"
+          >
+            <div className="text-2xl mb-2">🔄</div>
+            <div className="font-medium text-white">Stock</div>
+            <div className="text-xs text-gray-400">Factory defaults</div>
+          </button>
         </div>
 
-        {/* Custom profiles */}
-        {Object.keys(customProfiles).length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-700/30">
-            <h4 className="text-sm font-medium text-gray-400 mb-2">Your Saved Tunes</h4>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(customProfiles).map(([id, profile]) => (
-                <div key={id} className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => loadProfile(id)}
-                    className="px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-gray-600/50 transition-colors"
-                  >
-                    {profile.name}
-                  </button>
-                  <button
-                    onClick={() => deleteProfile(id)}
-                    className="px-2 py-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-600/50 transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+        {/* My Presets - always visible */}
+        <div className="mt-4 pt-4 border-t border-gray-700/30">
+          <h4 className="text-sm font-medium text-gray-400 mb-2">My Presets</h4>
+          <div className="flex flex-wrap gap-2 items-center">
+            {Object.entries(customProfiles).map(([id, profile]) => (
+              <div key={id} className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => loadProfile(id)}
+                  className="px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-gray-600/50 transition-colors"
+                >
+                  {profile.name}
+                </button>
+                <button
+                  onClick={() => deleteProfile(id)}
+                  className="px-2 py-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-600/50 transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {/* Add preset button/input */}
+            {showSaveDialog ? (
+              <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Name..."
+                  className="w-24 px-2 py-1.5 bg-transparent text-white text-sm focus:outline-none"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveProfile();
+                    if (e.key === 'Escape') setShowSaveDialog(false);
+                  }}
+                />
+                <button
+                  onClick={saveProfile}
+                  disabled={!profileName.trim()}
+                  className="px-2 py-1.5 text-emerald-400 hover:text-emerald-300 disabled:text-gray-600 transition-colors"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => setShowSaveDialog(false)}
+                  className="px-2 py-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSaveDialog(true)}
+                className="px-3 py-1.5 text-sm rounded-lg bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
+                title="Save current settings as a preset"
+              >
+                <span>+</span> Add Current
+              </button>
+            )}
           </div>
-        )}
+          {Object.keys(customProfiles).length === 0 && !showSaveDialog && (
+            <p className="text-xs text-gray-600 mt-2">No custom presets yet</p>
+          )}
+        </div>
       </div>
 
       {/* PID Sliders */}
@@ -741,9 +762,9 @@ function PidTuningTab({
             </div>
           </div>
           <div className="space-y-5">
-            <TuningSlider label="P - Response" value={pid.pitch.p} onChange={(v) => updatePid('pitch', 'p', v)} color="#3B82F6" />
-            <TuningSlider label="I - Stability" value={pid.pitch.i} onChange={(v) => updatePid('pitch', 'i', v)} color="#10B981" />
-            <TuningSlider label="D - Smoothness" value={pid.pitch.d} onChange={(v) => updatePid('pitch', 'd', v)} color="#8B5CF6" />
+            <TuningSlider label="P - Response" value={pid.pitch.p} onChange={(v) => updatePid('pitch', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
+            <TuningSlider label="I - Stability" value={pid.pitch.i} onChange={(v) => updatePid('pitch', 'i', v)} color="#10B981" hint="Higher = more stable" />
+            <TuningSlider label="D - Smoothness" value={pid.pitch.d} onChange={(v) => updatePid('pitch', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
           </div>
         </div>
 
@@ -757,9 +778,9 @@ function PidTuningTab({
             </div>
           </div>
           <div className="space-y-5">
-            <TuningSlider label="P - Response" value={pid.yaw.p} onChange={(v) => updatePid('yaw', 'p', v)} color="#3B82F6" />
-            <TuningSlider label="I - Stability" value={pid.yaw.i} onChange={(v) => updatePid('yaw', 'i', v)} color="#10B981" />
-            <TuningSlider label="D - Smoothness" value={pid.yaw.d} onChange={(v) => updatePid('yaw', 'd', v)} color="#8B5CF6" />
+            <TuningSlider label="P - Response" value={pid.yaw.p} onChange={(v) => updatePid('yaw', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
+            <TuningSlider label="I - Stability" value={pid.yaw.i} onChange={(v) => updatePid('yaw', 'i', v)} color="#10B981" hint="Higher = more stable" />
+            <TuningSlider label="D - Smoothness" value={pid.yaw.d} onChange={(v) => updatePid('yaw', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
           </div>
         </div>
       </div>
@@ -785,53 +806,6 @@ function PidTuningTab({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={savePid}
-          disabled={saving || !modified}
-          className="px-6 py-3 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-800 disabled:text-gray-500 text-white transition-all"
-        >
-          {saving ? 'Applying...' : '✓ Apply PID Changes'}
-        </button>
-
-        {showSaveDialog ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={profileName}
-              onChange={(e) => setProfileName(e.target.value)}
-              placeholder="Tune name..."
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveProfile();
-                if (e.key === 'Escape') setShowSaveDialog(false);
-              }}
-            />
-            <button
-              onClick={saveProfile}
-              disabled={!profileName.trim()}
-              className="px-3 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white transition-colors"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => setShowSaveDialog(false)}
-              className="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowSaveDialog(true)}
-            className="px-4 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-          >
-            💾 Save as Tune
-          </button>
-        )}
-      </div>
     </div>
   );
 }
@@ -1200,6 +1174,7 @@ export function MspConfigView() {
 
   // Load config
   const loadConfig = useCallback(async () => {
+    console.log('[UI] loadConfig called - this will reset modified state!');
     setLoading(true);
     setError(null);
     try {
@@ -1213,6 +1188,7 @@ export function MspConfigView() {
       if (rcData) setRcTuning(rcData as MSPRcTuning);
       if (modesData) setModes(modesData as MSPModeRange[]);
       if (typeof featuresData === 'number') setFeatures(featuresData);
+      console.log('[UI] loadConfig complete, setting modified=false');
       setModified(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load config');
@@ -1227,56 +1203,59 @@ export function MspConfigView() {
     }
   }, [connectionState.isConnected, connectionState.protocol, loadConfig]);
 
-  // Save handlers
-  const savePid = async () => {
-    if (!pid) return;
+  // Single save function that saves everything (PIDs + Rates + EEPROM)
+  const saveAll = async () => {
+    if (!modified) return;
     setSaving(true);
+    setError(null);
+    console.log('[UI] saveAll: saving PIDs, Rates, and EEPROM');
+
     try {
-      const success = await window.electronAPI?.mspSetPid(pid);
-      if (success) setModified(false);
+      // Save PIDs if available
+      if (pid) {
+        console.log('[UI] Saving PIDs...');
+        const pidSuccess = await window.electronAPI?.mspSetPid(pid);
+        if (!pidSuccess) {
+          setError('Failed to save PIDs');
+          return;
+        }
+      }
+
+      // Save Rates if available
+      if (rcTuning) {
+        console.log('[UI] Saving Rates...');
+        const ratesSuccess = await window.electronAPI?.mspSetRcTuning(rcTuning);
+        if (!ratesSuccess) {
+          setError('Failed to save Rates');
+          return;
+        }
+      }
+
+      // Save to EEPROM
+      console.log('[UI] Saving to EEPROM...');
+      const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
+      if (!eepromSuccess) {
+        setError('Failed to save to EEPROM');
+        return;
+      }
+
+      setModified(false);
+      console.log('[UI] All settings saved successfully');
     } catch (err) {
+      console.error('[UI] Save error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
     }
-  };
-
-  const saveRates = async () => {
-    if (!rcTuning) return;
-    setSaving(true);
-    try {
-      const success = await window.electronAPI?.mspSetRcTuning(rcTuning);
-      if (success) setModified(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveToEeprom = async () => {
-    setSaving(true);
-    try {
-      await window.electronAPI?.mspSaveEeprom();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save to EEPROM');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Apply preset
-  const applyPreset = (presetKey: keyof typeof PID_PRESETS) => {
-    const preset = PID_PRESETS[presetKey];
-    setPid(preset.pids);
-    setModified(true);
   };
 
   // Update handlers
   const updatePid = (axis: 'roll' | 'pitch' | 'yaw', field: 'p' | 'i' | 'd', value: number) => {
     if (!pid) return;
+    console.log(`[UI] updatePid: ${axis}.${field} = ${value}, setting modified=true`);
     setPid({ ...pid, [axis]: { ...pid[axis], [field]: value } });
     setModified(true);
+    console.log('[UI] modified state set to true');
   };
 
   const updateRcTuning = (field: keyof MSPRcTuning, value: number) => {
@@ -1339,11 +1318,15 @@ export function MspConfigView() {
               Refresh
             </button>
             <button
-              onClick={saveToEeprom}
-              disabled={saving}
-              className="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/25"
+              onClick={saveAll}
+              disabled={saving || !modified}
+              className={`px-5 py-2 text-sm font-medium rounded-lg shadow-lg transition-all ${
+                modified
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-500/25'
+                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              💾 Save to Board
+              {saving ? '💾 Saving...' : '💾 Save All Changes'}
             </button>
           </div>
         </div>
@@ -1397,9 +1380,6 @@ export function MspConfigView() {
             pid={pid}
             setPid={setPid}
             updatePid={updatePid}
-            savePid={savePid}
-            saving={saving}
-            modified={modified}
             setModified={setModified}
           />
         )}
@@ -1411,9 +1391,6 @@ export function MspConfigView() {
             rcTuning={rcTuning}
             updateRcTuning={updateRcTuning}
             setRcTuning={setRcTuning}
-            saveRates={saveRates}
-            saving={saving}
-            modified={modified}
             setModified={setModified}
           />
         )}

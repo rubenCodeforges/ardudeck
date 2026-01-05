@@ -133,13 +133,36 @@ export default function NavigationTab({ modified, setModified }: Props) {
 
   // Save all changes
   const saveAll = async () => {
+    setError(null);
     try {
-      await window.electronAPI.mspSetNavConfig(navConfig);
-      if (gpsConfig) {
-        await window.electronAPI.mspSetGpsConfig(gpsConfig);
+      console.log('[Navigation] Saving nav config...');
+      const navSuccess = await window.electronAPI.mspSetNavConfig(navConfig);
+      if (!navSuccess) {
+        // MSP2 might not be supported on old iNav - try GPS config only
+        console.log('[Navigation] Nav config save failed (may not be supported on old iNav)');
       }
+
+      if (gpsConfig) {
+        console.log('[Navigation] Saving GPS config...');
+        const gpsSuccess = await window.electronAPI.mspSetGpsConfig(gpsConfig);
+        if (!gpsSuccess) {
+          setError('Failed to set GPS config');
+          return;
+        }
+      }
+
+      // Save to EEPROM
+      console.log('[Navigation] Saving to EEPROM...');
+      const eepromSuccess = await window.electronAPI.mspSaveEeprom();
+      if (!eepromSuccess) {
+        setError('Config sent but EEPROM save failed - changes may not persist');
+        return;
+      }
+
+      console.log('[Navigation] Saved successfully');
       setModified(false);
     } catch (err) {
+      console.error('[Navigation] Save error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save');
     }
   };

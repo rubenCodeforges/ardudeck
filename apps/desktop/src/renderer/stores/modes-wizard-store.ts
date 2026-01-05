@@ -316,30 +316,44 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
   },
 
   saveToFC: async () => {
-    const { pendingModes, originalModes } = get();
+    const { pendingModes } = get();
     set({ isSaving: true, saveError: null });
 
     try {
+      console.log('[ModesWizard] Saving modes to FC...');
+
       // First, clear existing modes by setting empty ranges
       // We need to clear up to 20 mode slots
       for (let i = 0; i < 20; i++) {
-        await window.electronAPI?.mspSetModeRange(i, {
+        const success = await window.electronAPI?.mspSetModeRange(i, {
           boxId: 0,
           auxChannel: 0,
           rangeStart: 900,
           rangeEnd: 900, // Same start/end = disabled
         });
+        if (!success) {
+          throw new Error(`Failed to clear mode slot ${i}`);
+        }
       }
 
       // Set new modes
       for (let i = 0; i < pendingModes.length; i++) {
         const mode = pendingModes[i];
-        await window.electronAPI?.mspSetModeRange(i, mode);
+        console.log(`[ModesWizard] Setting mode ${i}: boxId=${mode.boxId} aux=${mode.auxChannel} range=${mode.rangeStart}-${mode.rangeEnd}`);
+        const success = await window.electronAPI?.mspSetModeRange(i, mode);
+        if (!success) {
+          throw new Error(`Failed to set mode ${i}`);
+        }
       }
 
       // Save to EEPROM
-      await window.electronAPI?.mspSaveEeprom();
+      console.log('[ModesWizard] Saving to EEPROM...');
+      const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
+      if (!eepromSuccess) {
+        throw new Error('Modes sent but EEPROM save failed');
+      }
 
+      console.log('[ModesWizard] Modes saved successfully');
       set({
         isSaving: false,
         originalModes: [...pendingModes],
@@ -348,9 +362,11 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
 
       return true;
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save modes';
+      console.error('[ModesWizard] Save failed:', msg);
       set({
         isSaving: false,
-        saveError: error instanceof Error ? error.message : 'Failed to save modes',
+        saveError: msg,
       });
       return false;
     }

@@ -218,19 +218,41 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
 
   // Save all changes
   const saveAll = async () => {
+    setError(null);
     try {
+      console.log('[ServoMixer] Saving servo configs...');
+
       // Save servo configs
       for (let i = 0; i < servoConfigs.length; i++) {
-        await window.electronAPI.mspSetServoConfig(i, servoConfigs[i]);
+        const success = await window.electronAPI.mspSetServoConfig(i, servoConfigs[i]);
+        if (!success) {
+          setError(`Failed to save servo ${i} config`);
+          return;
+        }
       }
 
-      // Save mixer rules
+      // Save mixer rules (may fail on old iNav - that's OK)
+      console.log('[ServoMixer] Saving mixer rules...');
       for (let i = 0; i < mixerRules.length; i++) {
-        await window.electronAPI.mspSetServoMixer(i, mixerRules[i]);
+        const success = await window.electronAPI.mspSetServoMixer(i, mixerRules[i]);
+        if (!success) {
+          console.log(`[ServoMixer] Mixer rule ${i} save skipped (may not be supported)`);
+          // Don't fail - old iNav doesn't support MSP2 mixer commands
+        }
       }
 
+      // Save to EEPROM
+      console.log('[ServoMixer] Saving to EEPROM...');
+      const eepromSuccess = await window.electronAPI.mspSaveEeprom();
+      if (!eepromSuccess) {
+        setError('Servo config sent but EEPROM save failed');
+        return;
+      }
+
+      console.log('[ServoMixer] Saved successfully');
       setModified(false);
     } catch (err) {
+      console.error('[ServoMixer] Save error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save');
     }
   };

@@ -408,6 +408,60 @@
   | `shared/ipc-channels.ts` | `MSP_GET_SERVO_CONFIG_MODE` channel |
   | `main/preload.ts` | `mspGetServoConfigMode()` API |
 
+  ### MSP PID/Rates CLI Fallback - COMPLETE (2026-01-05)
+
+  **Problem solved:** PID tuning now works on old iNav 2.0.0 boards where `MSP_SET_PID` (202) and `MSP_SET_RC_TUNING` (204) are not supported.
+
+  #### Critical Bug Fixed: Preset Payload Size
+
+  **Symptom:** Sliders worked but presets didn't save - MSP command rejected.
+
+  **Root cause:** PID presets only defined `roll`, `pitch`, `yaw` (9 bytes), but the board expects ALL PID controllers including `altHold`, `posHold`, `level`, `mag`, etc. (30 bytes).
+
+  **Fix:** Presets now **merge** with current PIDs instead of replacing:
+  ```typescript
+  // WRONG - loses optional PIDs, sends 9 bytes
+  setPid(preset.pids);
+
+  // CORRECT - preserves optional PIDs, sends 30 bytes
+  setPid({ ...pid, ...preset.pids });
+  ```
+
+  **Files fixed:**
+  - `MspConfigView.tsx` - `applyPreset()`, `resetToDefaults()`, `loadProfile()` now merge
+
+  #### CLI Tuning Fallback Pattern
+
+  When MSP write commands fail with "not supported", CLI fallback is triggered automatically.
+
+  **State Variables:**
+  ```typescript
+  let tuningCliModeActive = false;    // Blocks MSP, routes to CLI
+  let tuningCliResponse = '';         // Accumulates CLI output
+  let tuningCliListener = null;       // Data listener for responses
+  ```
+
+  **Flow:**
+  1. `setPid()` tries MSP 202 → fails "not supported"
+  2. Sets `tuningCliModeActive = true`, enters CLI with `#`
+  3. Sends `set p_roll = X`, `set i_roll = X`, etc.
+  4. `setRcTuning()` sees `tuningCliModeActive`, skips MSP, uses CLI
+  5. `saveEeprom()` sees `tuningCliModeActive`, uses `save` command
+  6. Board reboots, flags reset
+
+  **Key difference from servo CLI:** Individual tuning commands do NOT call `save` - only `saveEeprom()` saves at the end. This prevents board rebooting between PID and Rates changes.
+
+  **CLI Parameter Names (iNav 2.0.0):**
+  - PIDs: `p_roll`, `i_roll`, `d_roll`, etc. (may not exist on very old boards!)
+  - Rates: `rc_rate`, `rc_expo`, `roll_rate`, `pitch_rate`, `yaw_rate`
+  - Some old iNav versions have different parameter names - check CLI response for "Invalid name"
+
+  #### Implementation Files
+  | File | Changes |
+  |------|---------|
+  | `main/msp/msp-handlers.ts` | `tuningCliModeActive`, `setPidViaCli()`, `setRcTuningViaCli()`, `setModeRangeViaCli()` |
+  | `MspConfigView.tsx` | Preset/profile apply now merges with current PIDs |
+
   ### iNav-Specific TODO (P3)
 
   | Feature | Description | Complexity |
