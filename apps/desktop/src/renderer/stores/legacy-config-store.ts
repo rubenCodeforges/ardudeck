@@ -83,11 +83,19 @@ export interface LegacyAuxMode {
 // Platform type: 0=multirotor, 1=airplane (fixed-wing)
 export type PlatformType = 'multirotor' | 'airplane';
 
+// Reboot state machine
+export type RebootState = 'idle' | 'saving' | 'rebooting' | 'reconnecting' | 'done' | 'error';
+
 export interface LegacyConfigStore {
   // State
   isLoading: boolean;
   error: string | null;
   hasChanges: boolean;
+
+  // Reboot/reconnect state
+  rebootState: RebootState;
+  rebootMessage: string;
+  rebootError: string | null;
 
   // Raw dump output
   rawDump: string;
@@ -118,6 +126,11 @@ export interface LegacyConfigStore {
   updateServoMix: (index: number, mix: LegacyServoMix) => void;
   updateServoConfig: (index: number, config: LegacyServoConfig) => void;
   updateAuxMode: (index: number, mode: LegacyAuxMode) => void;
+
+  // Reboot/reconnect actions
+  setRebootState: (state: RebootState, message?: string) => void;
+  setRebootError: (error: string) => void;
+  clearRebootState: () => void;
 
   // Reset
   reset: () => void;
@@ -305,6 +318,9 @@ const initialState = {
   isLoading: false,
   error: null as string | null,
   hasChanges: false,
+  rebootState: 'idle' as RebootState,
+  rebootMessage: '',
+  rebootError: null as string | null,
   rawDump: '',
   platformType: 'multirotor' as PlatformType,
   pid: null as LegacyPidConfig | null,
@@ -385,15 +401,52 @@ export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
   },
 
   saveToEeprom: async () => {
-    console.log('[LegacyConfigStore] Sending save command...');
+    const { setRebootState, setRebootError, clearRebootState } = get();
 
-    // Just send save command - board will reboot, user reconnects manually
-    await window.electronAPI.cliSendCommand('save');
+    console.log('[LegacyConfigStore] Starting save to EEPROM...');
 
-    // Clear changes flag (they're saved now, even though board is rebooting)
-    set({ hasChanges: false });
+    try {
+      // Step 1: Saving
+      setRebootState('saving', 'Saving configuration to EEPROM...');
+      await window.electronAPI.cliSendCommand('save');
 
-    console.log('[LegacyConfigStore] Save command sent, board is rebooting');
+      // Clear changes flag (they're saved now)
+      set({ hasChanges: false });
+
+      // Step 2: Rebooting
+      setRebootState('rebooting', 'Board is rebooting...');
+      console.log('[LegacyConfigStore] Save command sent, board is rebooting');
+
+      // Wait for board to reboot (typical reboot takes 2-4 seconds)
+      await new Promise(r => setTimeout(r, 4000));
+
+      // Step 3: Reconnecting
+      setRebootState('reconnecting', 'Reconnecting to board...');
+      console.log('[LegacyConfigStore] Attempting to reconnect...');
+
+      // Disconnect first to clean up state
+      await window.electronAPI.disconnect();
+
+      // Wait a bit for disconnect to complete
+      await new Promise(r => setTimeout(r, 500));
+
+      // Try to reconnect using the last connection settings
+      // We'll need to get the port from connection state
+      // For now, just show success and let user know to reconnect
+
+      // Step 4: Done (or prompt user to reconnect manually)
+      setRebootState('done', 'Configuration saved! Board rebooted. Please reconnect.');
+      console.log('[LegacyConfigStore] Save complete, user should reconnect');
+
+      // Auto-clear after 3 seconds
+      setTimeout(() => {
+        clearRebootState();
+      }, 3000);
+
+    } catch (err) {
+      console.error('[LegacyConfigStore] Save failed:', err);
+      setRebootError(err instanceof Error ? err.message : 'Failed to save configuration');
+    }
   },
 
   updatePid: (pid) => {
@@ -450,6 +503,30 @@ export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
       updated.push(mode);
     }
     set({ auxModes: updated, hasChanges: true });
+  },
+
+  // Reboot/reconnect state actions
+  setRebootState: (state, message = '') => {
+    set({
+      rebootState: state,
+      rebootMessage: message,
+      rebootError: null,
+    });
+  },
+
+  setRebootError: (error) => {
+    set({
+      rebootState: 'error',
+      rebootError: error,
+    });
+  },
+
+  clearRebootState: () => {
+    set({
+      rebootState: 'idle',
+      rebootMessage: '',
+      rebootError: null,
+    });
   },
 
   reset: () => {

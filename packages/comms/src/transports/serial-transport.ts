@@ -108,31 +108,50 @@ export class SerialTransport extends BaseTransport {
   /**
    * Close the serial port with graceful shutdown
    * BSOD FIX: Added drain before close and settling delay to prevent driver stress
+   * Added timeout to prevent hanging if port is in bad state
    */
   async close(): Promise<void> {
-    if (!this.port || !this.isOpen) {
+    if (!this.port) {
+      this._isOpen = false;
       return;
     }
 
+    // Mark as closed immediately to prevent new operations
+    this._isOpen = false;
+
     // BSOD FIX: Drain pending writes before closing to prevent driver issues
+    // Use timeout to prevent hanging
     try {
-      await new Promise<void>((resolve) => {
-        this.port!.drain(() => resolve());
-      });
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          this.port!.drain(() => resolve());
+        }),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('Drain timeout')), 1000)
+        ),
+      ]);
     } catch {
-      // Ignore drain errors - port may already be in error state
+      // Ignore drain errors/timeout - port may already be in error state
+      console.warn('[SerialTransport] Drain timeout or error, continuing with close');
     }
 
     // BSOD FIX: Small delay for driver to process drained data
     await new Promise(r => setTimeout(r, 100));
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
+      // Timeout for close operation
+      const closeTimeout = setTimeout(() => {
+        console.warn('[SerialTransport] Close timeout, forcing cleanup');
+        this.port = null;
+        resolve();
+      }, 2000);
+
       this.port!.close((err) => {
+        clearTimeout(closeTimeout);
         if (err) {
           // Don't reject on close errors - port may already be closed
-          console.warn(`Warning closing port: ${err.message}`);
+          console.warn(`[SerialTransport] Warning closing port: ${err.message}`);
         }
-        this._isOpen = false;
         this.port = null;
         resolve();
       });
@@ -190,12 +209,19 @@ export class SerialTransport extends BaseTransport {
     }
 
     return new Promise((resolve, reject) => {
+      // Timeout to prevent hanging on write
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Write timeout - port may be in bad state'));
+      }, this.writeTimeout);
+
       this.port!.write(Buffer.from(data), (err) => {
         if (err) {
+          clearTimeout(timeoutId);
           reject(new Error(`Write failed: ${err.message}`));
           return;
         }
         this.port!.drain((err) => {
+          clearTimeout(timeoutId);
           if (err) {
             reject(new Error(`Drain failed: ${err.message}`));
             return;

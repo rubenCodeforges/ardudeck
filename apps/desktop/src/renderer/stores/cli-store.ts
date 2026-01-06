@@ -17,11 +17,19 @@ export interface CliParameter {
   section?: string; // 'master', 'profile', 'battery_profile', etc.
 }
 
+// Reboot state machine for CLI save command
+export type CliRebootState = 'idle' | 'saving' | 'rebooting' | 'reconnecting' | 'done' | 'error';
+
 export interface CliStore {
   // CLI Mode State
   isCliMode: boolean;
   isEntering: boolean;
   isExiting: boolean;
+
+  // Reboot/reconnect state (triggered by 'save' command)
+  rebootState: CliRebootState;
+  rebootMessage: string;
+  rebootError: string | null;
 
   // Terminal Output
   output: string;
@@ -66,6 +74,12 @@ export interface CliStore {
   parseDump: (dumpOutput: string) => void;
   parseHelp: (helpOutput: string) => void;
   fetchDump: () => Promise<void>;
+
+  // Reboot/reconnect actions (for save command)
+  setRebootState: (state: CliRebootState, message?: string) => void;
+  setRebootError: (error: string) => void;
+  clearRebootState: () => void;
+  handleSaveCommand: () => Promise<void>;
 
   // Reset
   reset: () => void;
@@ -228,6 +242,11 @@ export const useCliStore = create<CliStore>((set, get) => ({
   isEntering: false,
   isExiting: false,
 
+  // Reboot state
+  rebootState: 'idle' as CliRebootState,
+  rebootMessage: '',
+  rebootError: null,
+
   output: '',
   outputLines: [],
 
@@ -275,11 +294,20 @@ export const useCliStore = create<CliStore>((set, get) => ({
   },
 
   sendCommand: async (command: string) => {
-    const { addToHistory, appendOutput } = get();
+    const { addToHistory, appendOutput, handleSaveCommand } = get();
 
     // Add to history if non-empty
     if (command.trim()) {
       addToHistory(command);
+    }
+
+    // Check if this is a save command - triggers reboot flow
+    if (command.trim().toLowerCase() === 'save') {
+      // Echo command to output
+      appendOutput(`# ${command}\n`);
+      // Handle save with reboot overlay
+      await handleSaveCommand();
+      return;
     }
 
     // Echo command to output
@@ -413,12 +441,84 @@ export const useCliStore = create<CliStore>((set, get) => ({
     }
   },
 
+  // Reboot/reconnect state actions
+  setRebootState: (state, message = '') => {
+    set({
+      rebootState: state,
+      rebootMessage: message,
+      rebootError: null,
+    });
+  },
+
+  setRebootError: (error) => {
+    set({
+      rebootState: 'error',
+      rebootError: error,
+    });
+  },
+
+  clearRebootState: () => {
+    set({
+      rebootState: 'idle',
+      rebootMessage: '',
+      rebootError: null,
+    });
+  },
+
+  // Handle save command - triggers reboot flow
+  handleSaveCommand: async () => {
+    const { setRebootState, setRebootError, clearRebootState, appendOutput } = get();
+
+    console.log('[CLI Store] Starting save command flow...');
+
+    try {
+      // Step 1: Saving
+      setRebootState('saving', 'Saving configuration to EEPROM...');
+
+      // Send save command
+      await window.electronAPI.cliSendCommand('save');
+
+      // Step 2: Rebooting
+      setRebootState('rebooting', 'Board is rebooting...');
+      console.log('[CLI Store] Save command sent, board is rebooting');
+
+      // Wait for board to reboot (typical reboot takes 2-4 seconds)
+      await new Promise(r => setTimeout(r, 4000));
+
+      // Step 3: Reconnecting
+      setRebootState('reconnecting', 'Cleaning up connection...');
+      console.log('[CLI Store] Disconnecting to clean up state...');
+
+      // Disconnect to clean up state
+      await window.electronAPI.disconnect();
+
+      // Wait a bit for disconnect to complete
+      await new Promise(r => setTimeout(r, 500));
+
+      // Step 4: Done
+      setRebootState('done', 'Configuration saved! Board rebooted. Please reconnect.');
+      console.log('[CLI Store] Save complete, user should reconnect');
+
+      // Auto-clear after 3 seconds
+      setTimeout(() => {
+        clearRebootState();
+      }, 3000);
+
+    } catch (err) {
+      console.error('[CLI Store] Save failed:', err);
+      setRebootError(err instanceof Error ? err.message : 'Failed to save configuration');
+    }
+  },
+
   // Reset
   reset: () => {
     set({
       isCliMode: false,
       isEntering: false,
       isExiting: false,
+      rebootState: 'idle',
+      rebootMessage: '',
+      rebootError: null,
       output: '',
       outputLines: [],
       historyIndex: -1,

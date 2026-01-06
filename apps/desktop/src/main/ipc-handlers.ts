@@ -1410,17 +1410,23 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Disconnect
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
+    console.log('[Disconnect] Starting disconnect...');
+
     try {
       // Exit CLI mode first (sends 'exit' command to leave board in MSP mode)
       // This prevents board staying in CLI mode after disconnect
+      // NOTE: exitCliModeIfActive has internal timeout, won't block forever
       await exitCliModeIfActive();
+      console.log('[Disconnect] CLI mode exited');
 
       // Full cleanup of MSP connection (stops telemetry AND clears transport)
       cleanupMspConnection();
+      console.log('[Disconnect] MSP connection cleaned up');
 
       // BSOD FIX: Clean up all event listeners BEFORE closing transport
       // This prevents orphaned handlers that accumulate on reconnect cycles
       cleanupTransportListeners();
+      console.log('[Disconnect] Transport listeners cleaned up');
 
       // Clear heartbeat timeout to prevent reconnection attempts
       if (heartbeatTimeout) {
@@ -1428,12 +1434,32 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         heartbeatTimeout = null;
       }
 
-      if (currentTransport?.isOpen) {
+      if (currentTransport) {
+        const transport = currentTransport;
         try {
-          await currentTransport.close();
+          // Only attempt close if actually open
+          if (transport.isOpen) {
+            // Use timeout to prevent hanging on close
+            const closePromise = transport.close();
+            const timeoutPromise = new Promise<void>((_, reject) =>
+              setTimeout(() => reject(new Error('Transport close timeout')), 2000)
+            );
+
+            await Promise.race([closePromise, timeoutPromise]);
+            console.log('[Disconnect] Transport closed');
+          } else {
+            console.log('[Disconnect] Transport already closed');
+          }
         } catch (closeErr) {
-          // Transport may already be closed or in bad state - ignore
-          console.warn('[Disconnect] Transport close error (ignoring):', closeErr);
+          // Transport may already be closed or in bad state - force cleanup
+          console.warn('[Disconnect] Transport close error (forcing cleanup):', closeErr);
+
+          // Try to remove all listeners to prevent further issues
+          try {
+            transport.removeAllListeners();
+          } catch {
+            // Ignore
+          }
         }
       }
     } catch (error) {
@@ -1441,6 +1467,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       console.error('[Disconnect] Error during disconnect:', error);
     } finally {
       // Always reset state, even if errors occurred
+      // This ensures we can reconnect even if close failed
       currentTransport = null;
       mavlinkParser = null;
       connectionState = {
@@ -1449,6 +1476,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         packetsSent: 0,
       };
       sendConnectionState(mainWindow);
+      console.log('[Disconnect] Disconnect complete, state reset');
     }
   });
 

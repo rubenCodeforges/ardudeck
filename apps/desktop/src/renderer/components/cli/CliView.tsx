@@ -12,7 +12,17 @@ import CliTerminal from './CliTerminal';
 
 export default function CliView() {
   const { connectionState } = useConnectionStore();
-  const { isCliMode, hasDumpData, fetchDump, output, clearOutput } = useCliStore();
+  const {
+    isCliMode,
+    hasDumpData,
+    fetchDump,
+    output,
+    clearOutput,
+    rebootState,
+    rebootMessage,
+    rebootError,
+    clearRebootState,
+  } = useCliStore();
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveOutput = async () => {
@@ -134,6 +144,67 @@ export default function CliView() {
       <div className="flex-1 p-4 min-h-0">
         <CliTerminal />
       </div>
+
+      {/* Reboot/Reconnect overlay */}
+      {rebootState !== 'idle' && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-8 max-w-md mx-4 shadow-2xl text-center">
+            {/* Icon based on state */}
+            {rebootState === 'error' ? (
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            ) : rebootState === 'done' ? (
+              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {/* Title */}
+            <h3 className="text-lg font-semibold text-white mb-2">
+              {rebootState === 'saving' && 'Saving Configuration'}
+              {rebootState === 'rebooting' && 'Rebooting Board'}
+              {rebootState === 'reconnecting' && 'Disconnecting'}
+              {rebootState === 'done' && 'Save Complete'}
+              {rebootState === 'error' && 'Save Failed'}
+            </h3>
+
+            {/* Message */}
+            <p className="text-sm text-zinc-400 mb-4">
+              {rebootError || rebootMessage}
+            </p>
+
+            {/* Progress indicator for non-terminal states */}
+            {(rebootState === 'saving' || rebootState === 'rebooting' || rebootState === 'reconnecting') && (
+              <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+                <div className="flex gap-1">
+                  <div className={`w-2 h-2 rounded-full ${rebootState === 'saving' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${rebootState === 'rebooting' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${rebootState === 'reconnecting' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
+                </div>
+              </div>
+            )}
+
+            {/* Dismiss button for terminal states */}
+            {(rebootState === 'done' || rebootState === 'error') && (
+              <button
+                onClick={clearRebootState}
+                className="mt-4 px-6 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm transition-colors"
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

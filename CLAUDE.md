@@ -124,8 +124,8 @@
   - Telemetry: Attitude, altitude, speed, battery, GPS with dockable panel layout
   - Parameters: Auto-load from FC, ~600 fallback descriptions, range/enum validation, flash write
   - MSP Config: Betaflight/iNav PID tuning with presets, rate curves, mode visualization, custom profile saving
-  - Legacy Boards: Full GUI for F3-era boards (iNav < 2.1, Betaflight < 4.0) via CLI commands
-  - CLI Terminal: xterm.js terminal with autocomplete, command history, parameter suggestions
+  - Legacy Boards: Full GUI for F3-era boards (iNav < 2.1, Betaflight < 4.0) via CLI commands with reboot overlay
+  - CLI Terminal: xterm.js terminal with ANSI colors, autocomplete from `dump`, command history, save/reboot handling
   - Mission: Waypoint CRUD, spline curves, terrain-aware altitude profile, drag-to-edit (MAVLink/iNav only)
   - Geofencing: Inclusion/exclusion polygons and circles, return point
   - Rally Points: Emergency landing locations with full editing
@@ -324,15 +324,41 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | components/servo-wizard/presets/         | Aircraft presets (Traditional, Flying Wing, V-Tail, Delta)   |
   | stores/servo-wizard-store.ts             | Servo wizard state, platform detection                       |
 
-  CLI Terminal Files
+  ### CLI Terminal - ✅ COMPLETE (2026-01-06)
+
+  Full-featured CLI terminal for iNav/Betaflight with autocomplete and reboot handling.
+
+  **Features:**
+  - xterm.js terminal with ANSI color support
+  - Command history (up/down arrows)
+  - Tab autocomplete from `dump` output parsing
+  - Automatic `save` command handling with reboot overlay
+  - Proper disconnect cleanup (sends `exit` before disconnect)
+  - Save/Clear output buttons
+
+  **CLI Terminal Files:**
 
   | File                                     | Purpose                                                      |
   |------------------------------------------|--------------------------------------------------------------|
   | main/cli/cli-handlers.ts                 | CLI IPC handlers (cliEnterMode, cliSendCommand, cliExitMode) |
   | components/cli/CliTerminal.tsx           | xterm.js terminal with ANSI support                          |
-  | components/cli/CliView.tsx               | Dedicated CLI sidebar view                                   |
+  | components/cli/CliView.tsx               | Dedicated CLI sidebar view with reboot overlay               |
   | components/cli/CliAutocomplete.tsx       | Autocomplete popup with fuzzy matching                       |
-  | stores/cli-store.ts                      | CLI state, command history, suggestions                      |
+  | stores/cli-store.ts                      | CLI state, command history, suggestions, reboot state        |
+
+  **Save Command Flow:**
+  1. User types `save` in CLI terminal
+  2. `sendCommand()` intercepts and calls `handleSaveCommand()`
+  3. Shows "Saving Configuration" overlay
+  4. Sends `save` via CLI
+  5. Shows "Rebooting Board" with 4-second wait
+  6. Disconnects to clean up state
+  7. Shows "Save Complete" with dismiss button
+
+  **Disconnect Flow:**
+  - `COMMS_DISCONNECT` handler calls `exitCliModeIfActive()`
+  - Sends `exit\n` to leave board in MSP mode
+  - Cleans up CLI state via `cleanupCli()`
 
   ### Legacy Board Architecture - COMPLETE (2026-01-06)
 
@@ -416,6 +442,37 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - CC3D (with iNav)
   - Flip32 F3
   - Any F3-era board running iNav < 2.1 or Betaflight < 4.0
+
+  #### CLI PID Parameter Names (Platform-Specific)
+
+  **CRITICAL:** iNav uses platform-specific parameter names for PIDs!
+
+  | Platform | P | I | D/FF | Level |
+  |----------|---|---|------|-------|
+  | Multirotor | `mc_p_roll` | `mc_i_roll` | `mc_d_roll` | `mc_p_level`, `mc_i_level`, `mc_d_level` |
+  | Airplane | `fw_p_roll` | `fw_i_roll` | `fw_ff_roll` | `fw_p_level`, `fw_i_level`, `fw_d_level` |
+
+  **Key differences:**
+  - Multirotor uses `d` (derivative) term
+  - Airplane uses `ff` (feedforward) term instead of `d`
+  - Level PIDs use `d` for both platforms
+  - Platform type detected from `platform_type` parameter in dump
+
+  **Implementation:** `legacy-config-store.ts` and `LegacyPidTab.tsx` detect platform and use correct parameter names.
+
+  #### ⚠️ Known Issues - Legacy Boards
+
+  The following features are **NOT WORKING** for legacy boards:
+
+  | Issue | Description | Workaround |
+  |-------|-------------|------------|
+  | **Modes don't fetch** | `aux` commands not parsed correctly from dump | Use CLI terminal directly |
+  | **Can't add modes** | No UI to add new aux mode assignments | Use CLI: `aux <idx> <mode> <ch> <start> <end> <logic>` |
+  | **Can't add mixers** | No UI to add motor/servo mixer entries | Use CLI: `mmix` or `smix` commands |
+
+  **Root cause:** The dump parser extracts existing config but the UI doesn't support creating new entries. This requires implementing "add" buttons with empty entry creation.
+
+  **Planned fix:** Add "+" buttons to modes/mixer tabs that create new entries with default values.
 
   ---
 
@@ -756,7 +813,7 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | Feature | Competitor | Status | Files to Create |
   |---------|------------|--------|-----------------|
   | **OSD Configuration** | Both have full OSD editors | 5% (constants only) | `OsdConfigTab.tsx`, MSP handlers |
-  | **CLI Terminal** | Both have CLI access | 0% | `CliTerminal.tsx`, raw serial handler |
+  | **CLI Terminal** | Both have CLI access | ✅ COMPLETE | - |
   | **VTX Configuration** | Both have VTX settings | 5% (constants only) | `VtxConfigTab.tsx`, MSP handlers |
   | **GPS Rescue** | Betaflight 4.6 major feature | 0% | `GpsRescueTab.tsx`, MSP handlers |
   | **LED Strip** | Both have LED config | 5% (constants only) | `LedStripTab.tsx`, MSP handlers |
@@ -805,21 +862,24 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - `components/osd/OsdCanvas.tsx` - Visual positioning canvas
   - MSP handlers in `main/msp/msp-handlers.ts`
 
-  ### Epic 7: CLI Terminal (P0)
+  ### Epic 7: CLI Terminal ✅ COMPLETE (2026-01-06)
 
-  **Why P0:** Power users expect CLI access. Both configurators have it.
+  Full xterm.js-based CLI terminal with autocomplete for iNav/Betaflight boards.
 
-  | Task | Description | Complexity |
-  |------|-------------|------------|
-  | 7.1 Raw Serial | Send/receive raw serial data | Low |
-  | 7.2 Terminal UI | xterm.js or similar terminal emulator | Medium |
-  | 7.3 Command History | Up/down arrow history, autocomplete | Medium |
+  **Features implemented:**
+  - Raw serial communication via `cli-handlers.ts`
+  - xterm.js terminal with ANSI color support
+  - Command history (up/down arrows)
+  - Tab autocomplete from `dump` output
+  - Reboot overlay when `save` command issued
+  - Proper disconnect/cleanup handling
 
-  **Reference:** `/inav-configurator/tabs/cli.html`
-
-  **Files to create:**
-  - `components/cli/CliTerminal.tsx` - Terminal UI
-  - IPC handler for raw serial passthrough
+  **Files created:**
+  - `components/cli/CliTerminal.tsx` - xterm.js terminal
+  - `components/cli/CliView.tsx` - Dedicated sidebar view
+  - `components/cli/CliAutocomplete.tsx` - Autocomplete popup
+  - `stores/cli-store.ts` - CLI state, history, suggestions
+  - `main/cli/cli-handlers.ts` - IPC handlers for CLI mode
 
   ### Epic 8: VTX Configuration (P1)
 

@@ -69,25 +69,38 @@ export function isCliModeActive(): boolean {
 
 /**
  * Exit CLI mode if active (call before disconnect to leave board in MSP mode)
+ * Uses timeout to prevent hanging if board is in bad state
  */
 export async function exitCliModeIfActive(): Promise<void> {
   if (cliModeActive && currentTransport?.isOpen) {
     console.log('[CLI] Exiting CLI mode before disconnect...');
     try {
-      await currentTransport.write(new TextEncoder().encode('exit\n'));
+      // Use timeout to prevent hanging - if write takes > 1 second, skip it
+      const writePromise = currentTransport.write(new TextEncoder().encode('exit\n'));
+      const timeoutPromise = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('CLI exit write timeout')), 1000)
+      );
+
+      await Promise.race([writePromise, timeoutPromise]);
       await delay(300);
       console.log('[CLI] Sent exit command');
     } catch (err) {
-      console.warn('[CLI] Failed to send exit command:', err);
+      console.warn('[CLI] Failed to send exit command (continuing with disconnect):', err);
+      // Don't block disconnect on CLI exit failure
     }
   }
-  // Reset state regardless
+  // Reset state regardless - ALWAYS clean up even if write failed
   if (cliDataListener && currentTransport) {
-    currentTransport.off('data', cliDataListener);
+    try {
+      currentTransport.off('data', cliDataListener);
+    } catch {
+      // Ignore errors removing listener
+    }
   }
   cliDataListener = null;
   cliModeActive = false;
   onCliModeChange?.(false);
+  console.log('[CLI] CLI state cleaned up');
 }
 
 /**
