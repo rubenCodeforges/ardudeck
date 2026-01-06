@@ -5,13 +5,25 @@
  * Provides raw CLI access for power users and legacy F3 board configuration.
  */
 
+import { useState } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useCliStore } from '../../stores/cli-store';
 import CliTerminal from './CliTerminal';
 
 export default function CliView() {
   const { connectionState } = useConnectionStore();
-  const { isCliMode, hasDumpData, fetchDump } = useCliStore();
+  const { isCliMode, hasDumpData, fetchDump, output, clearOutput } = useCliStore();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveOutput = async () => {
+    if (!output) return;
+    setIsSaving(true);
+    try {
+      await window.electronAPI.cliSaveOutput(output);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
@@ -36,6 +48,33 @@ export default function CliView() {
 
         {/* Quick actions */}
         <div className="flex items-center gap-2">
+          {/* Save output to file */}
+          <button
+            onClick={handleSaveOutput}
+            disabled={!output || isSaving}
+            className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            title="Save terminal output to file"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+
+          {/* Clear terminal */}
+          <button
+            onClick={clearOutput}
+            disabled={!output}
+            className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            title="Clear terminal output"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear
+          </button>
+
+          {/* Load config for autocomplete */}
           {!hasDumpData && isCliMode && (
             <button
               onClick={() => fetchDump()}

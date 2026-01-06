@@ -604,6 +604,9 @@ const api = {
   cliGetDump: (): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLI_GET_DUMP),
 
+  cliSaveOutput: (content: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_SAVE_OUTPUT, content),
+
   onCliData: (callback: (data: string) => void) => {
     const handler = (_: unknown, data: string) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.CLI_DATA_RECEIVED, handler);

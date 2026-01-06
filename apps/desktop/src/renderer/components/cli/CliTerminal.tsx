@@ -14,7 +14,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
-import { useCliStore, setupCliDataListener, cleanupCliDataListener } from '../../stores/cli-store';
+import { useCliStore } from '../../stores/cli-store';
 import { useConnectionStore } from '../../stores/connection-store';
 
 interface CliTerminalProps {
@@ -108,8 +108,7 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
     });
     resizeObserver.observe(terminalRef.current);
 
-    // Setup CLI data listener
-    setupCliDataListener();
+    // Note: CLI data listener is set up globally in App.tsx
 
     // Write welcome message
     term.writeln('\x1b[1;36m╔════════════════════════════════════════════════════╗\x1b[0m');
@@ -122,11 +121,17 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
     term.writeln('\x1b[1;36m╚════════════════════════════════════════════════════╝\x1b[0m');
     term.writeln('');
 
+    // Restore previous session output (persists across view switches)
+    const storedOutput = useCliStore.getState().output;
+    if (storedOutput) {
+      term.writeln('\x1b[90m--- Previous session output ---\x1b[0m');
+      term.write(storedOutput);
+    }
+
     setIsReady(true);
     onReady?.();
 
     return () => {
-      cleanupCliDataListener();
       resizeObserver.disconnect();
       term.dispose();
       xtermRef.current = null;

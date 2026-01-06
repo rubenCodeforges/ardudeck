@@ -15,6 +15,8 @@ import { useParameterStore } from './stores/parameter-store';
 import { useMissionStore } from './stores/mission-store';
 import { useFenceStore } from './stores/fence-store';
 import { useRallyStore } from './stores/rally-store';
+import { useLegacyConfigStore } from './stores/legacy-config-store';
+import { useCliStore, setupCliDataListener, cleanupCliDataListener } from './stores/cli-store';
 import { initializeSettings, useSettingsStore, type VehicleType } from './stores/settings-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
@@ -200,6 +202,8 @@ function App() {
     setClearComplete: setRallyClearComplete,
     reset: resetRally,
   } = useRallyStore();
+  const { reset: resetLegacyConfig } = useLegacyConfigStore();
+  const { reset: resetCli } = useCliStore();
   const { vehicles, activeVehicleId, updateVehicle } = useSettingsStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -265,6 +269,16 @@ function App() {
     initializeSettings();
   }, []);
 
+  // Initialize CLI data listener globally (captures CLI output from any view)
+  useEffect(() => {
+    console.log('[App] Setting up global CLI data listener');
+    setupCliDataListener();
+    return () => {
+      console.log('[App] Cleaning up global CLI data listener');
+      cleanupCliDataListener();
+    };
+  }, []);
+
   // Auto-collapse sidebar when connected (keep user's current view)
   useEffect(() => {
     if (connectionState.isConnected) {
@@ -318,16 +332,19 @@ function App() {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {
       setConnectionState(state);
       // Reset telemetry, parameters, mission, fence, and rally when disconnected
+      // Reset all stores when disconnected
       if (!state.isConnected && !state.isWaitingForHeartbeat) {
         reset();
         resetParameters();
         resetMission();
         resetFence();
         resetRally();
+        resetLegacyConfig();
+        resetCli();
       }
     });
     return unsubscribe;
-  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally]);
+  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onTelemetryUpdate((update) => {

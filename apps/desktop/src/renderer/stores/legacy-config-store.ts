@@ -80,6 +80,9 @@ export interface LegacyAuxMode {
   logic: number;
 }
 
+// Platform type: 0=multirotor, 1=airplane (fixed-wing)
+export type PlatformType = 'multirotor' | 'airplane';
+
 export interface LegacyConfigStore {
   // State
   isLoading: boolean;
@@ -88,6 +91,9 @@ export interface LegacyConfigStore {
 
   // Raw dump output
   rawDump: string;
+
+  // Platform type (detected from dump)
+  platformType: PlatformType;
 
   // Parsed config
   pid: LegacyPidConfig | null;
@@ -103,7 +109,7 @@ export interface LegacyConfigStore {
 
   // Actions
   loadConfig: () => Promise<void>;
-  saveChanges: () => Promise<boolean>;
+  saveToEeprom: () => Promise<void>;
 
   // Update actions (mark hasChanges)
   updatePid: (pid: LegacyPidConfig) => void;
@@ -130,6 +136,7 @@ function parseDump(dump: string): {
   auxModes: LegacyAuxMode[];
   features: Set<string>;
   parameters: Map<string, string>;
+  platformType: PlatformType;
 } {
   const lines = dump.split('\n');
   const parameters = new Map<string, string>();
@@ -223,30 +230,43 @@ function parseDump(dump: string): {
     }
   }
 
+  // Detect platform type from parameters
+  // iNav uses: platform_type = AIRPLANE or platform_type = MULTIROTOR
+  const platformTypeStr = parameters.get('platform_type')?.toUpperCase() || '';
+  const platformType: PlatformType = platformTypeStr.includes('AIRPLANE') ? 'airplane' : 'multirotor';
+
+  console.log('[LegacyConfigStore] Detected platform:', platformType, '(from:', platformTypeStr, ')');
+
   // Build PID config from parameters
+  // iNav uses different parameter names based on platform:
+  // - Multirotor: mc_p_roll, mc_i_roll, mc_d_roll
+  // - Fixed-wing: fw_p_roll, fw_i_roll, fw_ff_roll (note: ff = feedforward, not d!)
+  const prefix = platformType === 'airplane' ? 'fw' : 'mc';
+  const dTerm = platformType === 'airplane' ? 'ff' : 'd'; // Fixed-wing uses feedforward
+
   const pid: LegacyPidConfig = {
     roll: {
-      p: parseInt(parameters.get('p_roll') || '0'),
-      i: parseInt(parameters.get('i_roll') || '0'),
-      d: parseInt(parameters.get('d_roll') || '0'),
-      ff: parseInt(parameters.get('f_roll') || parameters.get('ff_roll') || '0'),
+      p: parseInt(parameters.get(`${prefix}_p_roll`) || '0'),
+      i: parseInt(parameters.get(`${prefix}_i_roll`) || '0'),
+      d: parseInt(parameters.get(`${prefix}_${dTerm}_roll`) || '0'),
+      ff: platformType === 'airplane' ? 0 : parseInt(parameters.get('f_roll') || '0'),
     },
     pitch: {
-      p: parseInt(parameters.get('p_pitch') || '0'),
-      i: parseInt(parameters.get('i_pitch') || '0'),
-      d: parseInt(parameters.get('d_pitch') || '0'),
-      ff: parseInt(parameters.get('f_pitch') || parameters.get('ff_pitch') || '0'),
+      p: parseInt(parameters.get(`${prefix}_p_pitch`) || '0'),
+      i: parseInt(parameters.get(`${prefix}_i_pitch`) || '0'),
+      d: parseInt(parameters.get(`${prefix}_${dTerm}_pitch`) || '0'),
+      ff: platformType === 'airplane' ? 0 : parseInt(parameters.get('f_pitch') || '0'),
     },
     yaw: {
-      p: parseInt(parameters.get('p_yaw') || '0'),
-      i: parseInt(parameters.get('i_yaw') || '0'),
-      d: parseInt(parameters.get('d_yaw') || '0'),
-      ff: parseInt(parameters.get('f_yaw') || parameters.get('ff_yaw') || '0'),
+      p: parseInt(parameters.get(`${prefix}_p_yaw`) || '0'),
+      i: parseInt(parameters.get(`${prefix}_i_yaw`) || '0'),
+      d: parseInt(parameters.get(`${prefix}_${dTerm}_yaw`) || '0'),
+      ff: platformType === 'airplane' ? 0 : parseInt(parameters.get('f_yaw') || '0'),
     },
     level: {
-      p: parseInt(parameters.get('p_level') || '0'),
-      i: parseInt(parameters.get('i_level') || '0'),
-      d: parseInt(parameters.get('d_level') || '0'),
+      p: parseInt(parameters.get(`${prefix}_p_level`) || '0'),
+      i: parseInt(parameters.get(`${prefix}_i_level`) || '0'),
+      d: parseInt(parameters.get(`${prefix}_d_level`) || '0'),
     },
   };
 
@@ -273,6 +293,7 @@ function parseDump(dump: string): {
     auxModes,
     features,
     parameters,
+    platformType,
   };
 }
 
@@ -285,6 +306,7 @@ const initialState = {
   error: null as string | null,
   hasChanges: false,
   rawDump: '',
+  platformType: 'multirotor' as PlatformType,
   pid: null as LegacyPidConfig | null,
   rates: null as LegacyRatesConfig | null,
   motorMixer: [] as LegacyMotorMix[],
@@ -295,22 +317,52 @@ const initialState = {
   parameters: new Map<string, string>(),
 };
 
+// Guard to prevent double-loading
+let loadInProgress = false;
+
 export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
   ...initialState,
 
   loadConfig: async () => {
+    // Prevent double-loading
+    if (loadInProgress) {
+      console.log('[LegacyConfigStore] loadConfig already in progress, skipping');
+      return;
+    }
+
+    // Skip if already have config data
+    const { pid } = get();
+    if (pid !== null) {
+      console.log('[LegacyConfigStore] Already have config data, skipping reload');
+      return;
+    }
+
+    loadInProgress = true;
     set({ isLoading: true, error: null });
 
     try {
+      console.log('[LegacyConfigStore] Loading config via CLI dump...');
+
       // Get dump via CLI
       const dump = await window.electronAPI.cliGetDump();
+
+      console.log('[LegacyConfigStore] Dump received:', dump.length, 'chars');
 
       // Parse the dump
       const parsed = parseDump(dump);
 
+      console.log('[LegacyConfigStore] Parsed config:', {
+        pid: parsed.pid.roll.p !== 0 ? 'OK' : 'ZERO',
+        rates: parsed.rates.rollRate !== 0 ? 'OK' : 'ZERO',
+        parameters: parsed.parameters.size,
+        servos: parsed.servoConfigs.length,
+        modes: parsed.auxModes.length,
+      });
+
       set({
         isLoading: false,
         rawDump: dump,
+        platformType: parsed.platformType,
         pid: parsed.pid,
         rates: parsed.rates,
         motorMixer: parsed.motorMixer,
@@ -327,27 +379,21 @@ export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
         isLoading: false,
         error: err instanceof Error ? err.message : 'Failed to load config',
       });
+    } finally {
+      loadInProgress = false;
     }
   },
 
-  saveChanges: async () => {
-    set({ isLoading: true, error: null });
+  saveToEeprom: async () => {
+    console.log('[LegacyConfigStore] Sending save command...');
 
-    try {
-      // Send save command (will reboot board)
-      await window.electronAPI.cliSendCommand('save');
+    // Just send save command - board will reboot, user reconnects manually
+    await window.electronAPI.cliSendCommand('save');
 
-      // Clear changes flag
-      set({ isLoading: false, hasChanges: false });
-      return true;
-    } catch (err) {
-      console.error('[LegacyConfigStore] Failed to save:', err);
-      set({
-        isLoading: false,
-        error: err instanceof Error ? err.message : 'Failed to save',
-      });
-      return false;
-    }
+    // Clear changes flag (they're saved now, even though board is rebooting)
+    set({ hasChanges: false });
+
+    console.log('[LegacyConfigStore] Save command sent, board is rebooting');
   },
 
   updatePid: (pid) => {
@@ -407,6 +453,8 @@ export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
   },
 
   reset: () => {
+    console.log('[LegacyConfigStore] Reset');
+    loadInProgress = false;
     set(initialState);
   },
 }));

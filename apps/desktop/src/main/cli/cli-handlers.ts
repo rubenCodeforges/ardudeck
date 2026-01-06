@@ -5,7 +5,8 @@
  * Uses the same transport as MSP but bypasses the MSP protocol layer.
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { writeFile } from 'fs/promises';
 import type { Transport } from '@ardudeck/comms';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 
@@ -67,15 +68,40 @@ export function isCliModeActive(): boolean {
 }
 
 /**
+ * Exit CLI mode if active (call before disconnect to leave board in MSP mode)
+ */
+export async function exitCliModeIfActive(): Promise<void> {
+  if (cliModeActive && currentTransport?.isOpen) {
+    console.log('[CLI] Exiting CLI mode before disconnect...');
+    try {
+      await currentTransport.write(new TextEncoder().encode('exit\n'));
+      await delay(300);
+      console.log('[CLI] Sent exit command');
+    } catch (err) {
+      console.warn('[CLI] Failed to send exit command:', err);
+    }
+  }
+  // Reset state regardless
+  if (cliDataListener && currentTransport) {
+    currentTransport.off('data', cliDataListener);
+  }
+  cliDataListener = null;
+  cliModeActive = false;
+  onCliModeChange?.(false);
+}
+
+/**
  * Clean up CLI state (called on disconnect)
  */
 export function cleanupCli(): void {
+  console.log('[CLI] cleanupCli: resetting CLI state');
   if (cliDataListener && currentTransport) {
     currentTransport.off('data', cliDataListener);
   }
   cliDataListener = null;
   cliModeActive = false;
   currentTransport = null;
+  console.log('[CLI] cleanupCli: done');
 }
 
 // =============================================================================
@@ -106,15 +132,20 @@ function delay(ms: number): Promise<void> {
  * Enter CLI mode by sending '#' character
  */
 async function enterCliMode(): Promise<boolean> {
+  console.log('[CLI] enterCliMode: transport open?', currentTransport?.isOpen, 'already active?', cliModeActive);
+
   if (!currentTransport?.isOpen) {
+    console.log('[CLI] enterCliMode: no transport, returning false');
     return false;
   }
 
   if (cliModeActive) {
+    console.log('[CLI] enterCliMode: already active, returning true');
     return true;
   }
 
   try {
+    console.log('[CLI] enterCliMode: activating CLI mode...');
 
     // CRITICAL: Set CLI mode active FIRST to stop MSP handler from processing data
     cliModeActive = true;
@@ -136,8 +167,10 @@ async function enterCliMode(): Promise<boolean> {
     // Wait for CLI prompt
     await delay(500);
 
+    console.log('[CLI] enterCliMode: success');
     return true;
   } catch (err) {
+    console.error('[CLI] enterCliMode: error', err);
     // Cleanup on error
     if (cliDataListener && currentTransport) {
       currentTransport.off('data', cliDataListener);
@@ -197,20 +230,27 @@ async function exitCliMode(): Promise<boolean> {
  * Command should NOT include trailing newline - we add it
  */
 async function sendCliCommand(command: string): Promise<void> {
+  console.log('[CLI] sendCliCommand:', command);
+
   if (!currentTransport?.isOpen) {
+    console.error('[CLI] Transport not connected, cannot send command');
     throw new Error('Transport not connected');
   }
 
   if (!cliModeActive) {
+    console.log('[CLI] Not in CLI mode, auto-entering...');
     // Auto-enter CLI mode if not already in it
     const entered = await enterCliMode();
     if (!entered) {
+      console.error('[CLI] Failed to auto-enter CLI mode');
       throw new Error('Failed to enter CLI mode');
     }
+    console.log('[CLI] Auto-entered CLI mode successfully');
   }
 
   // Verify listener is still attached (defensive)
   if (!cliDataListener) {
+    console.log('[CLI] Re-attaching data listener');
     cliDataListener = (data: Uint8Array) => {
       const text = new TextDecoder().decode(data);
       safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, text);
@@ -220,6 +260,7 @@ async function sendCliCommand(command: string): Promise<void> {
 
   // Send command with newline (NOT \r\n - causes parse errors!)
   await currentTransport.write(new TextEncoder().encode(command + '\n'));
+  console.log('[CLI] Command sent');
 }
 
 /**
@@ -256,16 +297,21 @@ async function getCliDump(): Promise<string> {
   try {
     // Enter CLI mode if not already
     if (!wasInCliMode) {
+      console.log('[CLI] getCliDump: entering CLI mode...');
       const entered = await enterCliMode();
       if (!entered) {
         throw new Error('Failed to enter CLI mode');
       }
+    } else {
+      console.log('[CLI] getCliDump: already in CLI mode');
     }
 
     // Accumulate dump output
     let dumpOutput = '';
+    let lastDataTime = Date.now();
     const dumpListener = (data: Uint8Array) => {
       dumpOutput += new TextDecoder().decode(data);
+      lastDataTime = Date.now();
     };
 
     // Temporarily replace the data listener to capture dump
@@ -275,10 +321,27 @@ async function getCliDump(): Promise<string> {
     currentTransport.on('data', dumpListener);
 
     // Send dump command
+    console.log('[CLI] Sending dump command...');
     await currentTransport.write(new TextEncoder().encode('dump\n'));
 
-    // Wait for dump to complete (can be large)
-    await delay(3000);
+    // Wait for dump to complete with dynamic timeout
+    // Keep waiting as long as data is still coming in
+    const startTime = Date.now();
+    const maxWait = 10000; // 10 seconds max
+    const idleTimeout = 500; // Stop after 500ms of no data
+
+    while (Date.now() - startTime < maxWait) {
+      await delay(200);
+      // If no data received for idleTimeout, dump is complete
+      if (Date.now() - lastDataTime > idleTimeout && dumpOutput.length > 0) {
+        console.log('[CLI] Dump complete (idle timeout), received', dumpOutput.length, 'chars');
+        break;
+      }
+    }
+
+    if (Date.now() - startTime >= maxWait) {
+      console.log('[CLI] Dump reached max wait time, received', dumpOutput.length, 'chars');
+    }
 
     // Restore normal listener
     currentTransport.off('data', dumpListener);
@@ -289,6 +352,7 @@ async function getCliDump(): Promise<string> {
     // Also send to renderer for display
     safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, dumpOutput);
 
+    console.log('[CLI] Dump returned:', dumpOutput.length, 'chars');
     return dumpOutput;
   } catch (err) {
     console.error('[CLI] Failed to get dump:', err);
@@ -324,5 +388,32 @@ function registerIpcHandlers(): void {
   // Get config dump
   ipcMain.handle(IPC_CHANNELS.CLI_GET_DUMP, async () => {
     return getCliDump();
+  });
+
+  // Save CLI output to file
+  ipcMain.handle(IPC_CHANNELS.CLI_SAVE_OUTPUT, async (_, content: string): Promise<boolean> => {
+    if (!mainWindow) return false;
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save CLI Output',
+      defaultPath: `cli-dump-${new Date().toISOString().slice(0, 10)}.txt`,
+      filters: [
+        { name: 'Text Files', extensions: ['txt'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return false;
+    }
+
+    try {
+      await writeFile(result.filePath, content, 'utf-8');
+      console.log('[CLI] Output saved to:', result.filePath);
+      return true;
+    } catch (err) {
+      console.error('[CLI] Failed to save output:', err);
+      return false;
+    }
   });
 }

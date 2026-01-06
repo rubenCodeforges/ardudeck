@@ -11,4 +11,5 @@ export {
   startMspTelemetry,
   stopMspTelemetry,
   cleanupMspConnection,
+  exitCliModeIfActive,
 } from './msp-handlers.js';

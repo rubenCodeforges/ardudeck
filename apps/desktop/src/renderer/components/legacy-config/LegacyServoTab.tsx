@@ -2,10 +2,73 @@
  * Legacy Servo Tab
  *
  * Servo endpoint configuration for legacy F3 boards.
- * Uses servo <index> <min> <max> <mid> <rate> CLI command.
+ * Modern UI with visual sliders and range indicators.
  */
 
 import { useLegacyConfigStore, type LegacyServoConfig } from '../../stores/legacy-config-store';
+
+// Servo slider component
+function ServoSlider({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  color,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  color: string;
+}) {
+  const percentage = ((value - min) / (max - min)) * 100;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-zinc-400">{label}</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onChange(Math.max(min, value - 10))}
+            className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs"
+          >
+            -
+          </button>
+          <input
+            type="number"
+            min={min}
+            max={max}
+            value={value}
+            onChange={(e) => onChange(Math.min(max, Math.max(min, parseInt(e.target.value) || min)))}
+            className="w-16 px-2 py-0.5 text-center text-sm bg-zinc-900 border border-zinc-700 rounded text-white"
+          />
+          <button
+            onClick={() => onChange(Math.min(max, value + 10))}
+            className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div
+        className="relative h-2 bg-zinc-800 rounded-full overflow-hidden cursor-pointer"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const newValue = Math.round((x / rect.width) * (max - min) + min);
+          onChange(Math.min(max, Math.max(min, newValue)));
+        }}
+      >
+        <div
+          className="absolute left-0 top-0 h-full rounded-full transition-all"
+          style={{ width: `${percentage}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function LegacyServoTab() {
   const { servoConfigs, updateServoConfig } = useLegacyConfigStore();
@@ -20,99 +83,179 @@ export default function LegacyServoTab() {
 
   if (servoConfigs.length === 0) {
     return (
-      <div className="text-center py-8 text-zinc-500">
-        No servo configurations found. Add servos via CLI or they may not be configured.
+      <div className="text-center py-12 text-zinc-500">
+        <div className="text-4xl mb-3">⚙️</div>
+        <p>No servo configurations found.</p>
+        <p className="text-sm mt-1">Run the dump command to load configuration.</p>
       </div>
     );
   }
 
+  const servoColors = ['#EF4444', '#22C55E', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981'];
+
   return (
-    <div className="space-y-4 max-w-3xl">
-      <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-        <p className="text-sm text-blue-300">
-          <strong>Servo Endpoints:</strong> Configure min/max/center positions and rate for each servo.
-          Range: 750-2250μs for legacy boards. Changes are sent immediately.
-        </p>
+    <div className="space-y-6">
+      {/* Info Banner */}
+      <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">⚙️</span>
+          <div>
+            <p className="text-sm text-amber-300 font-medium">Servo Endpoint Configuration</p>
+            <p className="text-xs text-amber-300/70 mt-1">
+              Configure min/max/center positions and rate for each servo.
+              Range: 750-2250μs for legacy F3 boards. Changes are sent immediately.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        {servoConfigs.map((servo) => (
-          <div key={servo.index} className="bg-zinc-900 rounded-lg p-4 border border-zinc-800">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-white">Servo {servo.index}</h3>
-              <span className="text-xs text-zinc-500">
-                Range: {servo.min}μs - {servo.max}μs
-              </span>
-            </div>
+      {/* Servo Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {servoConfigs.map((servo, idx) => {
+          const color = servoColors[idx % servoColors.length]!;
+          const travelRange = servo.max - servo.min;
+          const isReversed = servo.rate < 0;
 
-            <div className="grid grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Min (μs)</label>
-                <input
-                  type="number"
-                  min="750"
-                  max="2250"
-                  value={servo.min}
-                  onChange={(e) => handleChange({ ...servo, min: parseInt(e.target.value) || 1000 })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white"
-                />
+          return (
+            <div key={servo.index} className="bg-zinc-900/50 rounded-xl border border-zinc-800 overflow-hidden">
+              {/* Header */}
+              <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: color }}
+                  >
+                    S{servo.index}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Servo {servo.index}</h3>
+                    <p className="text-xs text-zinc-400">Travel: {travelRange}μs</p>
+                  </div>
+                </div>
+                {isReversed && (
+                  <span className="px-2 py-1 rounded-full bg-orange-500/20 text-orange-400 text-xs font-medium">
+                    Reversed
+                  </span>
+                )}
               </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Max (μs)</label>
-                <input
-                  type="number"
-                  min="750"
-                  max="2250"
-                  value={servo.max}
-                  onChange={(e) => handleChange({ ...servo, max: parseInt(e.target.value) || 2000 })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Center (μs)</label>
-                <input
-                  type="number"
-                  min="750"
-                  max="2250"
-                  value={servo.mid}
-                  onChange={(e) => handleChange({ ...servo, mid: parseInt(e.target.value) || 1500 })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Rate (%)</label>
-                <input
-                  type="number"
-                  min="-125"
-                  max="125"
-                  value={servo.rate}
-                  onChange={(e) => handleChange({ ...servo, rate: parseInt(e.target.value) || 100 })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white"
-                />
-              </div>
-            </div>
 
-            {/* Visual range indicator */}
-            <div className="mt-3 relative h-2 bg-zinc-800 rounded">
-              <div
-                className="absolute h-full bg-blue-500/30 rounded"
-                style={{
-                  left: `${((servo.min - 750) / 1500) * 100}%`,
-                  width: `${((servo.max - servo.min) / 1500) * 100}%`,
-                }}
-              />
-              <div
-                className="absolute w-1 h-full bg-blue-500 rounded"
-                style={{ left: `${((servo.mid - 750) / 1500) * 100}%` }}
-              />
+              {/* Controls */}
+              <div className="p-5 space-y-4">
+                {/* Visual Range */}
+                <div className="relative h-8 bg-zinc-800 rounded-lg overflow-hidden">
+                  {/* Range bar */}
+                  <div
+                    className="absolute h-full transition-all opacity-40"
+                    style={{
+                      left: `${((servo.min - 750) / 1500) * 100}%`,
+                      width: `${((servo.max - servo.min) / 1500) * 100}%`,
+                      backgroundColor: color,
+                    }}
+                  />
+                  {/* Center marker */}
+                  <div
+                    className="absolute w-1 h-full transition-all"
+                    style={{
+                      left: `${((servo.mid - 750) / 1500) * 100}%`,
+                      backgroundColor: color,
+                    }}
+                  />
+                  {/* PWM center line */}
+                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-zinc-600" />
+                </div>
+                <div className="flex justify-between text-xs text-zinc-500">
+                  <span>750μs</span>
+                  <span>1500μs</span>
+                  <span>2250μs</span>
+                </div>
+
+                {/* Sliders */}
+                <div className="grid grid-cols-2 gap-4">
+                  <ServoSlider
+                    label="Minimum"
+                    value={servo.min}
+                    onChange={(v) => handleChange({ ...servo, min: v })}
+                    min={750}
+                    max={2250}
+                    color={color}
+                  />
+                  <ServoSlider
+                    label="Maximum"
+                    value={servo.max}
+                    onChange={(v) => handleChange({ ...servo, max: v })}
+                    min={750}
+                    max={2250}
+                    color={color}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <ServoSlider
+                    label="Center"
+                    value={servo.mid}
+                    onChange={(v) => handleChange({ ...servo, mid: v })}
+                    min={750}
+                    max={2250}
+                    color={color}
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">Rate</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleChange({ ...servo, rate: -servo.rate })}
+                          className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs"
+                        >
+                          ↔ Rev
+                        </button>
+                        <input
+                          type="number"
+                          min={-125}
+                          max={125}
+                          value={servo.rate}
+                          onChange={(e) => handleChange({ ...servo, rate: parseInt(e.target.value) || 100 })}
+                          className="w-16 px-2 py-0.5 text-center text-sm bg-zinc-900 border border-zinc-700 rounded text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="relative h-2 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="absolute top-0 h-full rounded-full transition-all"
+                        style={{
+                          left: servo.rate >= 0 ? '50%' : `${50 + (servo.rate / 125) * 50}%`,
+                          width: `${(Math.abs(servo.rate) / 125) * 50}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick presets */}
+                <div className="flex gap-2 pt-2 border-t border-zinc-800">
+                  <button
+                    onClick={() => handleChange({ ...servo, min: 1000, max: 2000, mid: 1500, rate: 100 })}
+                    className="flex-1 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+                  >
+                    Reset Default
+                  </button>
+                  <button
+                    onClick={() => handleChange({ ...servo, min: 1100, max: 1900, mid: 1500, rate: 100 })}
+                    className="flex-1 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+                  >
+                    Safe Range
+                  </button>
+                  <button
+                    onClick={() => handleChange({ ...servo, min: 750, max: 2250, mid: 1500, rate: 100 })}
+                    className="flex-1 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+                  >
+                    Full Range
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between text-xs text-zinc-600 mt-1">
-              <span>750</span>
-              <span>1500</span>
-              <span>2250</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

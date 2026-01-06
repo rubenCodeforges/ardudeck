@@ -177,6 +177,7 @@ export const IPC_CHANNELS = {
   CLI_SEND_RAW: 'cli:send-raw',
   CLI_DATA_RECEIVED: 'cli:data-received',
   CLI_GET_DUMP: 'cli:get-dump',
+  CLI_SAVE_OUTPUT: 'cli:save-output',
 
   // Driver utilities
   DRIVER_OPEN_BUNDLED: 'driver:open-bundled',
@@ -206,6 +207,7 @@ export interface ConnectionState {
   isWaitingForHeartbeat?: boolean;
   protocol?: 'mavlink' | 'msp'; // Auto-detected protocol
   transport?: string;
+  portPath?: string; // Serial port path for reconnection
   // MAVLink-specific
   systemId?: number;
   componentId?: number;

@@ -76,7 +76,10 @@ import {
   type MSPInavMixerConfig,
 } from '@ardudeck/msp-ts';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
-import { initCliHandlers, setCliTransport, setCliModeChangeCallback, cleanupCli, isCliModeActive } from '../cli/cli-handlers.js';
+import { initCliHandlers, setCliTransport, setCliModeChangeCallback, cleanupCli, isCliModeActive, exitCliModeIfActive } from '../cli/cli-handlers.js';
+
+// Re-export for use in ipc-handlers disconnect
+export { exitCliModeIfActive };
 
 // =============================================================================
 // State (managed by main ipc-handlers, not here)
@@ -106,6 +109,10 @@ const unsupportedCommands = new Set<number>();
 // Track firmware type for protocol decisions
 let isInavFirmware = false;
 let inavVersion = ''; // e.g., "2.0.0"
+
+// Track platform type for CLI PID commands
+// 0=multirotor, 1=airplane (fixed-wing)
+let currentPlatformType = 0;
 
 // Check if iNav version is legacy (< 2.3.0) - different CLI params, no per-axis RC rates
 function isLegacyInav(): boolean {
@@ -354,6 +361,10 @@ export async function tryMspDetection(
   mainWindow = window;
   currentTransport = transport;
   mspParser = new MSPParser();
+
+  // Reset all CLI mode flags to ensure clean state
+  servoCliModeActive = false;
+  tuningCliModeActive = false;
 
   // Share transport with CLI handlers
   setCliTransport(transport);
@@ -646,6 +657,11 @@ export function cleanupMspConnection(): void {
   tuningCliListener = null;
   tuningCliResponse = '';
 
+  // Reset firmware/platform detection state
+  isInavFirmware = false;
+  inavVersion = '';
+  currentPlatformType = 0;
+
   // Clear transport and parser
   mspParser = null;
   currentTransport = null;
@@ -721,7 +737,10 @@ async function setPid(pid: MSPPid): Promise<boolean> {
 
 /**
  * CLI fallback for setting PIDs on old iNav that doesn't support MSP 202
- * Uses: set p_roll = X, set i_roll = X, etc.
+ *
+ * iNav uses different parameter names based on platform type:
+ * - Multirotor: mc_p_roll, mc_i_roll, mc_d_roll, etc.
+ * - Fixed-wing: fw_p_roll, fw_i_roll, fw_ff_roll (note: ff = feedforward, not d!)
  *
  * NOTE: Does NOT call 'save' - caller must call saveEeprom() after all changes
  */
@@ -767,17 +786,25 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
       }
     }
 
-    // Set PID values via CLI
+    // Build CLI commands based on platform type
+    // 0 = multirotor (mc_*), 1+ = fixed-wing (fw_*)
+    const isFixedWing = currentPlatformType === 1;
+    const prefix = isFixedWing ? 'fw' : 'mc';
+    // Fixed-wing uses 'ff' (feedforward) for the third term, multirotor uses 'd' (derivative)
+    const dTerm = isFixedWing ? 'ff' : 'd';
+
+    console.log(`[MSP] Setting PIDs for ${isFixedWing ? 'fixed-wing' : 'multirotor'} (prefix=${prefix}, dTerm=${dTerm})`);
+
     const commands = [
-      `set p_roll = ${pid.roll.p}`,
-      `set i_roll = ${pid.roll.i}`,
-      `set d_roll = ${pid.roll.d}`,
-      `set p_pitch = ${pid.pitch.p}`,
-      `set i_pitch = ${pid.pitch.i}`,
-      `set d_pitch = ${pid.pitch.d}`,
-      `set p_yaw = ${pid.yaw.p}`,
-      `set i_yaw = ${pid.yaw.i}`,
-      `set d_yaw = ${pid.yaw.d}`,
+      `set ${prefix}_p_roll = ${pid.roll.p}`,
+      `set ${prefix}_i_roll = ${pid.roll.i}`,
+      `set ${prefix}_${dTerm}_roll = ${pid.roll.d}`,
+      `set ${prefix}_p_pitch = ${pid.pitch.p}`,
+      `set ${prefix}_i_pitch = ${pid.pitch.i}`,
+      `set ${prefix}_${dTerm}_pitch = ${pid.pitch.d}`,
+      `set ${prefix}_p_yaw = ${pid.yaw.p}`,
+      `set ${prefix}_i_yaw = ${pid.yaw.i}`,
+      `set ${prefix}_${dTerm}_yaw = ${pid.yaw.d}`,
     ];
 
     for (const cmd of commands) {
@@ -793,7 +820,7 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
       }
     }
 
-    sendLog('info', 'PIDs set via CLI', 'Call save to persist');
+    sendLog('info', 'PIDs set via CLI', `${isFixedWing ? 'Fixed-wing' : 'Multirotor'} - call save to persist`);
     return true;
   } catch (error) {
     console.error('[MSP] CLI PID set failed:', error);
@@ -1248,6 +1275,9 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
       const payload = await sendMspV2Request(MSP2.INAV_MIXER, 2000);
       const config = deserializeInavMixerConfig(payload);
 
+      // Cache platform type for CLI commands
+      currentPlatformType = config.platformType;
+
       const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
       const platformName = platformNames[config.platformType] ?? `UNKNOWN(${config.platformType})`;
       console.log(`[MSP] iNav Mixer config: platformType=${config.platformType} (${platformName}), mixerPreset=${config.appliedMixerPreset}`);
@@ -1272,6 +1302,9 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
         // 8=FLYING_WING, 14=AIRPLANE, 3=QUADX, etc.
         const isMultirotor = isMultirotorMixer(legacyConfig.mixer);
         const platformType = isMultirotor ? 0 : 1; // 0=multirotor, 1=airplane
+
+        // Cache platform type for CLI commands
+        currentPlatformType = platformType;
 
         const platformNames = ['MULTIROTOR', 'AIRPLANE'];
         console.log(`[MSP] Legacy mixer: type=${legacyConfig.mixer}, platformType=${platformType} (${platformNames[platformType]})`);

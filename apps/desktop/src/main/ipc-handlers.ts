@@ -74,7 +74,7 @@ import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
-import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection } from './msp/index.js';
+import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive } from './msp/index.js';
 
 // =============================================================================
 // Legacy Board Detection
@@ -1307,6 +1307,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             isWaitingForHeartbeat: false,
             protocol: 'msp',
             transport: transportName,
+            portPath: options.port, // Store port path for reconnection
             fcVariant: mspInfo.fcVariant,
             fcVersion: mspInfo.fcVersion,
             boardId: mspInfo.boardId,
@@ -1368,6 +1369,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               isWaitingForHeartbeat: false,
               protocol: 'msp',
               transport: transportName,
+              portPath: options.port, // Store port path for reconnection
               fcVariant: mspInfo.fcVariant,
               fcVersion: mspInfo.fcVersion,
               boardId: mspInfo.boardId,
@@ -1409,6 +1411,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Disconnect
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
     try {
+      // Exit CLI mode first (sends 'exit' command to leave board in MSP mode)
+      // This prevents board staying in CLI mode after disconnect
+      await exitCliModeIfActive();
+
       // Full cleanup of MSP connection (stops telemetry AND clears transport)
       cleanupMspConnection();
 
