@@ -140,6 +140,16 @@ export interface ServoMixerRule {
   rate: number; // -125 to +125
 }
 
+// Motor mixer rule for CLI mmix command
+// Format: mmix <index> <throttle> <roll> <pitch> <yaw>
+export interface MotorMixerRule {
+  motorIndex: number;
+  throttle: number;  // Weight for throttle (typically 1.0)
+  roll: number;      // Weight for roll (-1.0 to 1.0)
+  pitch: number;     // Weight for pitch (-1.0 to 1.0)
+  yaw: number;       // Weight for yaw (-1.0 to 1.0)
+}
+
 // Control surface assignment (which servo, what rules)
 export interface ControlSurfaceAssignment {
   surface: ControlSurface;
@@ -188,8 +198,11 @@ export interface AircraftPreset {
   platformType: number;
   // MSP mixer type (legacy MSP v1) - fallback for Betaflight
   mixerType: number;
-  // Default mixer rules for each control surface
+  // Default mixer rules for each control surface (smix)
   defaultRules: Record<ControlSurface, ServoMixerRule[]>;
+  // Motor mixer rules for legacy iNav boards (mmix)
+  // Required for proper motor configuration on iNav 2.0.0+
+  motorMixerRules: MotorMixerRule[];
 }
 
 // All aircraft presets
@@ -219,6 +232,10 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
       gimbal_pan: [],
       gimbal_tilt: [],
     },
+    // Single motor - throttle only (from iNav legacy AIRPLANE mixer)
+    motorMixerRules: [
+      { motorIndex: 0, throttle: 1.0, roll: 0, pitch: 0, yaw: 0 },
+    ],
   },
 
   flying_wing: {
@@ -251,6 +268,10 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
       gimbal_pan: [],
       gimbal_tilt: [],
     },
+    // Single pusher motor - throttle only (from iNav legacy FLYING_WING mixer)
+    motorMixerRules: [
+      { motorIndex: 0, throttle: 1.0, roll: 0, pitch: 0, yaw: 0 },
+    ],
   },
 
   vtail: {
@@ -283,6 +304,10 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
       gimbal_pan: [],
       gimbal_tilt: [],
     },
+    // Single motor - throttle only
+    motorMixerRules: [
+      { motorIndex: 0, throttle: 1.0, roll: 0, pitch: 0, yaw: 0 },
+    ],
   },
 
   delta: {
@@ -315,6 +340,10 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
       gimbal_pan: [],
       gimbal_tilt: [],
     },
+    // Single motor - throttle only
+    motorMixerRules: [
+      { motorIndex: 0, throttle: 1.0, roll: 0, pitch: 0, yaw: 0 },
+    ],
   },
 
   tricopter: {
@@ -341,6 +370,13 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
       gimbal_pan: [],
       gimbal_tilt: [],
     },
+    // Y3 tricopter motor configuration (from iNav legacy TRI mixer)
+    // Note: Yaw is handled by servo, not motors (yaw=0 for all motors)
+    motorMixerRules: [
+      { motorIndex: 0, throttle: 1.0, roll: 0, pitch: 1.333, yaw: 0 },
+      { motorIndex: 1, throttle: 1.0, roll: -1.0, pitch: -0.667, yaw: 0 },
+      { motorIndex: 2, throttle: 1.0, roll: 1.0, pitch: -0.667, yaw: 0 },
+    ],
   },
 
   gimbal: {
@@ -367,6 +403,8 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
       gimbal_pan: [{ inputSource: SERVO_INPUT_SOURCE.RC_YAW, rate: 100 }],
       gimbal_tilt: [{ inputSource: SERVO_INPUT_SOURCE.RC_PITCH, rate: 100 }],
     },
+    // Gimbal has no motors - servos only
+    motorMixerRules: [],
   },
 };
 

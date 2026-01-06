@@ -158,15 +158,12 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
           msp2PlatformType = inavConfig.platformType;
           isMultirotor = inavConfig.platformType === 0; // 0 = MULTIROTOR
           msp2PlatformWorked = true;
-          const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
-          console.log('[ServoWizard] iNav platform:', platformNames[inavConfig.platformType] ?? 'UNKNOWN', '(MSP2 authoritative)');
         }
-      } catch (err) {
-        console.log('[ServoWizard] iNav MSP2 not available:', err);
+      } catch {
+        // MSP2 not available - will use legacy detection
       }
 
       // Read legacy mixer config for auto-detection of aircraft preset
-      // Only use legacy isMultirotor as FALLBACK if MSP2 didn't work
       try {
         const mixerConfig = await withTimeout(window.electronAPI.mspGetMixerConfig(), 2000);
         if (mixerConfig) {
@@ -174,21 +171,17 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
           // Only use legacy isMultirotor if MSP2 failed
           if (!msp2PlatformWorked && detectedMixerType !== null) {
             isMultirotor = mixerConfig.isMultirotor;
-            console.log('[ServoWizard] Using legacy mixer for platform detection');
           }
-          console.log('[ServoWizard] Mixer type:', detectedMixerType, 'isMultirotor:', isMultirotor);
         }
-      } catch (legacyErr) {
-        console.log('[ServoWizard] Legacy mixer config not available:', legacyErr);
+      } catch {
+        // Legacy mixer config not available
       }
 
       // For multirotors, check if SERVO_TILT feature is enabled (bit 5)
-      // Without this feature, gimbal servos won't work on quads
       if (isMultirotor) {
         try {
           const features = await withTimeout(window.electronAPI.mspGetFeatures(), 2000);
           const hasServoTilt = features !== null && (features & (1 << 5)) !== 0;
-          console.log('[ServoWizard] Features:', features, 'hasServoTilt:', hasServoTilt);
 
           if (!hasServoTilt) {
             set({
@@ -199,8 +192,8 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
             });
             return;
           }
-        } catch (err) {
-          console.log('[ServoWizard] Could not check features:', err);
+        } catch {
+          // Could not check features - proceed anyway
         }
       }
 
@@ -212,21 +205,15 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
           // Fetch servo config mode (CLI fallback status and valid ranges)
           let servoRangeLimits = { min: 500, max: 2500 }; // Default to modern iNav
           let usesCliFallback = false;
-          console.log('[ServoWizard] About to probe servo config mode...');
           try {
             const configMode = await window.electronAPI.mspGetServoConfigMode();
-            console.log('[ServoWizard] Probe result:', configMode);
             if (configMode) {
               servoRangeLimits = { min: configMode.minValue, max: configMode.maxValue };
               usesCliFallback = configMode.usesCli;
-              console.log('[ServoWizard] Servo config mode:', usesCliFallback ? 'CLI fallback' : 'MSP', 'range:', servoRangeLimits.min, '-', servoRangeLimits.max);
-            } else {
-              console.log('[ServoWizard] configMode is null/undefined');
             }
-          } catch (err) {
-            console.log('[ServoWizard] Could not get servo config mode:', err);
+          } catch {
+            // Could not probe servo config mode - use defaults
           }
-          console.log('[ServoWizard] Final limits:', servoRangeLimits, 'usesCli:', usesCliFallback);
 
           set({
             servoSupported: true,
@@ -490,18 +477,58 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
       // Try mixer type first
       let presetId: string | null = detectedMixerType !== null ? (mixerToPreset[detectedMixerType] ?? null) : null;
 
-      // FALLBACK: If no preset from mixer type, use MSP2 platformType
-      // On old iNav 2.0.0, mixer type may return wrong value but platformType is correct
+      // If no preset detected from mixer type, try reading smix via CLI to detect
+      // This is needed for legacy iNav 2.0.0 where MSP2 servo mixer is not supported
       if (!presetId && msp2PlatformType !== null) {
-        if (msp2PlatformType === 1) {
-          // platformType 1 = AIRPLANE → default to traditional
-          presetId = 'traditional';
-          console.log('[ServoWizard] Defaulting to traditional preset for AIRPLANE platform');
+        try {
+          const smixRules = await window.electronAPI.mspReadSmixCli();
+          if (smixRules && smixRules.length > 0) {
+            // Detect preset from smix rules pattern
+            const hasElevonMixing = smixRules.some(r => r.input === 0) && smixRules.some(r => r.input === 1);
+            const uniqueTargets = new Set(smixRules.map(r => r.target));
+            const targetCount = uniqueTargets.size;
+
+            // Flying Wing: 2 targets with roll AND pitch inputs on each
+            if (targetCount === 2 && hasElevonMixing) {
+              const targetInputs = new Map<number, Set<number>>();
+              for (const rule of smixRules) {
+                if (!targetInputs.has(rule.target)) {
+                  targetInputs.set(rule.target, new Set());
+                }
+                targetInputs.get(rule.target)!.add(rule.input);
+              }
+              const bothHaveRollAndPitch = Array.from(targetInputs.values()).every(
+                inputs => inputs.has(0) && inputs.has(1)
+              );
+              if (bothHaveRollAndPitch) {
+                presetId = 'flying_wing';
+              }
+            }
+
+            // V-Tail: 2 targets with pitch+yaw mixing
+            if (!presetId && targetCount >= 2) {
+              const hasVTailMixing = smixRules.some(r => r.input === 1) && smixRules.some(r => r.input === 2);
+              if (hasVTailMixing) {
+                const vtailTargets = smixRules.filter(r => r.input === 1 || r.input === 2);
+                const vtailTargetSet = new Set(vtailTargets.map(r => r.target));
+                if (vtailTargetSet.size === 2) {
+                  presetId = 'vtail';
+                }
+              }
+            }
+
+            // Traditional: separate servos for roll, pitch, yaw
+            if (!presetId && targetCount >= 3) {
+              presetId = 'traditional';
+            }
+          }
+        } catch {
+          // smix CLI read failed - user must select manually
         }
       }
 
       if (presetId) {
-        console.log('[ServoWizard] Auto-detected preset:', presetId, 'from mixer type:', detectedMixerType, 'platform:', msp2PlatformType);
+        console.log('[ServoWizard] Detected preset:', presetId);
 
         // Get the preset and create assignments
         const preset = getPreset(presetId);
@@ -536,7 +563,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
           });
         }
       } else {
-        console.log('[ServoWizard] Unknown mixer type:', detectedMixerType, 'platform:', msp2PlatformType, '- user must select manually');
+        // Unknown mixer type - user must select manually
       }
     } catch (err) {
       console.error('[ServoWizard] Failed to load from FC:', err);
@@ -545,10 +572,21 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
 
   // Save servo config to flight controller
   saveToFC: async () => {
-    const { assignments } = get();
+    const { assignments, selectedPreset } = get();
     set({ isSaving: true, saveError: null });
 
     try {
+      // Track if MSP2 servo mixer fails - we'll need CLI fallback
+      let msp2MixerFailed = false;
+
+      // Send motor mixer rules for legacy iNav boards
+      if (selectedPreset?.motorMixerRules && selectedPreset.motorMixerRules.length > 0) {
+        const mmixResult = await window.electronAPI.mspSetMotorMixerCli(selectedPreset.motorMixerRules);
+        if (!mmixResult) {
+          // mmix may not be needed on modern boards with built-in mixer presets
+        }
+      }
+
       // Apply each assignment's servo config
       for (let i = 0; i < assignments.length; i++) {
         const assignment = assignments[i];
@@ -568,7 +606,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         }
 
         // Set mixer rules for this servo (MSP2 - not supported on old iNav)
-        // Skip entirely if using CLI fallback - old iNav uses default mixer rules
+        // Track if MSP2 mixer works - if not, we'll need CLI fallback
         const { usesCliFallback: usingCli } = get();
         if (!usingCli && assignment.mixerRules.length > 0) {
           for (let r = 0; r < assignment.mixerRules.length; r++) {
@@ -587,35 +625,51 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
             );
 
             if (!mixerResult) {
-              // Don't throw - mixer rules via MSP2 may not be supported
-              console.log('[ServoWizard] Mixer rules skipped (MSP2 not supported)');
+              // MSP2 mixer not supported - will use CLI fallback below
+              msp2MixerFailed = true;
               break;
             }
           }
         }
       }
 
+      // Send smix rules via CLI when MSP2 mixer failed or using CLI fallback
+      const { usesCliFallback } = get();
+      if (usesCliFallback || msp2MixerFailed) {
+        // Build flattened list of all smix rules from all assignments
+        const smixRules: Array<{ servoIndex: number; inputSource: number; rate: number }> = [];
+        for (const assignment of assignments) {
+          for (const rule of assignment.mixerRules) {
+            smixRules.push({
+              servoIndex: assignment.servoIndex,
+              inputSource: rule.inputSource,
+              rate: assignment.reversed ? -rule.rate : rule.rate,
+            });
+          }
+        }
+
+        if (smixRules.length > 0) {
+          await window.electronAPI.mspSetServoMixerCli(smixRules);
+        }
+      }
+
       // Save to EEPROM - try MSP first, then CLI fallback
-      // If servo config used CLI (old iNav), we need CLI save which reboots
       let saveResult = false;
       try {
         saveResult = await window.electronAPI.mspSaveEeprom();
       } catch {
-        console.log('[ServoWizard] MSP save failed, trying CLI fallback...');
+        // MSP save failed - will try CLI
       }
 
       if (!saveResult) {
-        // Try CLI save (for old iNav where servo config used CLI)
-        // This will save and reboot the board
+        // CLI save (for old iNav) - saves and reboots
         const cliSaveResult = await window.electronAPI.mspSaveServoCli();
         if (!cliSaveResult) {
           throw new Error('Failed to save to EEPROM');
         }
-        console.log('[ServoWizard] Saved via CLI (board will reboot)');
       }
 
-      // Fetch updated servo config mode (CLI fallback may have been triggered)
-      // This updates the range limits for the UI
+      // Fetch updated servo config mode
       try {
         const configMode = await window.electronAPI.mspGetServoConfigMode();
         if (configMode) {
@@ -623,14 +677,12 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
             servoRangeLimits: { min: configMode.minValue, max: configMode.maxValue },
             usesCliFallback: configMode.usesCli,
           });
-          console.log('[ServoWizard] Updated config mode:', configMode.usesCli ? 'CLI' : 'MSP', 'range:', configMode.minValue, '-', configMode.maxValue);
         }
-      } catch (err) {
-        console.log('[ServoWizard] Could not update servo config mode:', err);
+      } catch {
+        // Could not update servo config mode
       }
 
       set({ isSaving: false });
-      console.log('[ServoWizard] Saved to FC successfully');
     } catch (err) {
       let message = err instanceof Error ? err.message : 'Failed to save';
 

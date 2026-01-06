@@ -322,11 +322,12 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - Navigation tab: RTH altitude, nav speeds, GPS config, landing settings
   - Beginner-friendly explanations: Header info boxes explain concepts in plain language
 
-  ### iNav Platform Type & Mixer Configuration - NEEDS REWORK
+  ### iNav Platform Type & Mixer Configuration - COMPLETE (2026-01-05)
 
-  **Status:** ⚠️ INCOMPLETE - UI designed wrong, assumes all boards work the same
+  **Status:** ✅ COMPLETE - Motor mixer (mmix) CLI support implemented
 
   **Key insight:** iNav uses `platformType` (not mixer type!) via `MSP2_INAV_SET_MIXER` (0x2011).
+  **Fixed:** Servo Wizard now sends both `platform_type` AND `mmix` rules to fully configure legacy boards.
 
   #### Platform Types (from iNav Configurator)
   ```
@@ -413,26 +414,74 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   });
   ```
 
-  #### UI Rework Required
+  #### Motor Mixer (mmix) CLI Implementation
 
-  **Current problem:** UI assumes all boards work the same way.
+  **Solution implemented:** Servo Wizard now sends complete mixer configuration including mmix rules.
 
-  **What needs to change:**
-  1. **Detect board capabilities FIRST** - probe what MSP commands work
-  2. **Don't assume** - read actual config from board, don't guess
-  3. **Legacy boards need full CLI config** - platform_type + mmix + smix rules
-  4. **Modern boards** - can use MSP2 commands
-  5. **Show actual board state** - not cached/assumed values
+  **How it works:**
+  1. User selects aircraft preset (Flying Wing, Traditional, V-Tail, etc.)
+  2. Preset includes `motorMixerRules[]` with mmix values from iNav wiki
+  3. `saveToFC()` calls `mspSetMotorMixerCli()` BEFORE servo config
+  4. CLI commands: `mmix reset` then `mmix <index> <throttle> <roll> <pitch> <yaw>` for each motor
+
+  #### Servo Mixer (smix) CLI Implementation
+
+  **Added:** Legacy boards also need smix rules for control surfaces to work!
+
+  **How it works:**
+  1. If board uses CLI fallback (`usesCliFallback = true`)
+  2. `saveToFC()` calls `mspSetServoMixerCli()` with all mixer rules
+  3. CLI commands: `smix reset` then `smix <index> <target> <input> <rate> <speed> <min> <max> <box>`
+  4. Rules are built from preset's `defaultRules` for each control surface
+
+  #### Preset Detection via CLI Reading
+
+  **Added:** On reconnection, wizard reads smix rules to detect current preset.
+
+  **How it works:**
+  1. `loadFromFC()` calls `mspReadSmixCli()`
+  2. CLI commands: `#` (enter CLI), `smix` (list rules), `exit` (don't save)
+  3. Regex parses output: `smix <index> <target> <input> <rate>...`
+  4. Pattern matching:
+     - Flying Wing: 2 targets, both have roll(0) AND pitch(1) inputs
+     - V-Tail: 2 targets with pitch(1) AND yaw(2) mixing
+     - Traditional: 3+ targets with separate roll/pitch/yaw servos
+
+  **CLI Command Sequence (Full Save):**
+  ```
+  #                                    # Enter CLI mode
+  mmix reset                           # Clear motor mixer
+  mmix 0 1.000 0.000 0.000 0.000      # Set motor 0 (throttle only for plane)
+  exit                                 # Exit CLI (mmix changes in RAM)
+  ... (MSP servo config commands) ...
+  #                                    # Re-enter CLI for smix
+  smix reset                           # Clear servo mixer
+  smix 0 0 0 100 0 0 100 0            # Left elevon roll
+  smix 1 0 1 100 0 0 100 0            # Left elevon pitch
+  smix 2 1 0 -100 0 0 100 0           # Right elevon roll (reversed)
+  smix 3 1 1 100 0 0 100 0            # Right elevon pitch
+  exit                                 # Exit CLI (smix changes in RAM)
+  ... (MSP EEPROM save or CLI save) ...
+  ```
 
   #### Implementation Files
   | File | Purpose |
   |------|---------|
-  | `packages/msp-ts/src/core/constants.ts` | MSP2.INAV_MIXER, INAV_SET_MIXER, INAV_PLATFORM_TYPE |
-  | `packages/msp-ts/src/messages/config.ts` | MSPInavMixerConfig interface, serializers |
-  | `main/msp/msp-handlers.ts` | getInavMixerConfig(), setInavPlatformType(), setPlatformViaCli() |
-  | `components/servo-wizard/ServoWizard.tsx` | "Configure as Airplane" button |
-  | `components/servo-wizard/presets/servo-presets.ts` | PLATFORM_TYPE constant, preset platformType values |
-  | `stores/servo-wizard-store.ts` | checkServoSupport(), selectAircraftType() |
+  | `servo-presets.ts` | `MotorMixerRule` interface, `motorMixerRules[]` in each preset |
+  | `msp-handlers.ts` | `setMotorMixerRulesViaCli()`, `setServoMixerRulesViaCli()`, `readSmixViaCli()`, `readMmixViaCli()` |
+  | `ipc-channels.ts` | `MSP_SET_MOTOR_MIXER_CLI`, `MSP_SET_SERVO_MIXER_CLI`, `MSP_READ_SMIX_CLI`, `MSP_READ_MMIX_CLI` |
+  | `preload.ts` | `mspSetMotorMixerCli()`, `mspSetServoMixerCli()`, `mspReadSmixCli()`, `mspReadMmixCli()` |
+  | `servo-wizard-store.ts` | `saveToFC()` calls mmix + smix, `loadFromFC()` detects preset from smix
+
+  #### Motor Mixer Presets (from iNav wiki)
+  | Preset | mmix Configuration |
+  |--------|-------------------|
+  | Traditional | `mmix 0 1.000 0.000 0.000 0.000` (single motor) |
+  | Flying Wing | `mmix 0 1.000 0.000 0.000 0.000` (single pusher) |
+  | V-Tail | `mmix 0 1.000 0.000 0.000 0.000` (single motor) |
+  | Delta | `mmix 0 1.000 0.000 0.000 0.000` (single motor) |
+  | Tricopter | Y3 config (3 motors, yaw via servo) |
+  | Gimbal | Empty (no motors) |
 
   #### BSOD Prevention in Platform Change
   - Config lock pauses telemetry during MSP2 commands
@@ -577,6 +626,67 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   |------|---------|
   | `main/msp/msp-handlers.ts` | `tuningCliModeActive`, `setPidViaCli()`, `setRcTuningViaCli()`, `setModeRangeViaCli()` |
   | `MspConfigView.tsx` | Preset/profile apply now merges with current PIDs |
+
+  ### CLI State Machine Refactor - PLANNED
+
+  **Status:** ⚠️ IN PROGRESS - Current CLI handling is fragile with scattered flags
+
+  **Problem:** The current CLI implementation has multiple issues:
+  1. Multiple scattered flags (`servoCliModeActive`, `tuningCliModeActive`) cause race conditions
+  2. MSP telemetry can leak into CLI responses if timing is wrong
+  3. Commands are sent with blind delays instead of waiting for `#` prompt
+  4. No proper response verification - commands may fail silently
+
+  **Planned Solution:** Create a proper CLI state machine:
+
+  ```typescript
+  // apps/desktop/src/main/msp/cli-state-machine.ts
+
+  type CliState = 'msp' | 'entering' | 'ready' | 'busy' | 'saving';
+
+  class CliStateMachine {
+    private state: CliState = 'msp';
+    private transport: Transport;
+    private responseBuffer = '';
+
+    // Enter CLI mode - blocks MSP, waits for '# ' prompt
+    async enter(): Promise<void>
+
+    // Send command, wait for '# ' prompt, return response
+    async send(cmd: string, timeout?: number): Promise<string>
+
+    // Save and wait for reboot (special handling)
+    async save(): Promise<void>
+
+    // Exit CLI without saving
+    async exit(): Promise<void>
+
+    // Check if in CLI mode (for guards)
+    get isActive(): boolean
+  }
+  ```
+
+  **Key improvements:**
+  1. **Single source of truth** - One `state` variable replaces all scattered flags
+  2. **Prompt-based flow** - Wait for `# ` after EACH command (like iNav Configurator)
+  3. **Response capture** - Return full response for verification
+  4. **Clean separation** - MSP handlers check `cli.isActive` before sending
+
+  **Usage pattern:**
+  ```typescript
+  const cli = getCliStateMachine();
+
+  await cli.enter();
+  await cli.send('smix reset');
+  await cli.send('smix 0 0 0 100 0 0 100 0');
+  await cli.send('smix 1 0 1 100 0 0 100 0');
+  await cli.save(); // Saves and handles reboot
+  ```
+
+  **Benefits:**
+  - Foundation for CLI Terminal tab (Epic 7)
+  - Reliable legacy board support
+  - Easier debugging with clear state transitions
 
   ### iNav-Specific TODO (P3)
 

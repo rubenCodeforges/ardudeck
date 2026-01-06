@@ -546,6 +546,28 @@ const api = {
   mspGetServoConfigMode: (): Promise<{ usesCli: boolean; minValue: number; maxValue: number }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE),
 
+  mspSetMotorMixerCli: (rules: Array<{
+    motorIndex: number;
+    throttle: number;
+    roll: number;
+    pitch: number;
+    yaw: number;
+  }>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_MOTOR_MIXER_CLI, rules),
+
+  mspSetServoMixerCli: (rules: Array<{
+    servoIndex: number;
+    inputSource: number;
+    rate: number;
+  }>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_MIXER_CLI, rules),
+
+  mspReadSmixCli: (): Promise<Array<{ index: number; target: number; input: number; rate: number }> | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_READ_SMIX_CLI),
+
+  mspReadMmixCli: (): Promise<Array<{ index: number; throttle: number; roll: number; pitch: number; yaw: number }> | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_READ_MMIX_CLI),
+
   // MSP Navigation Config (iNav)
   mspGetNavConfig: (): Promise<unknown> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_NAV_CONFIG),
