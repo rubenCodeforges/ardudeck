@@ -1,0 +1,412 @@
+/**
+ * Legacy Config Store
+ *
+ * Parses CLI dump output and provides structured data for legacy F3 boards.
+ * All configuration is done via CLI commands - no MSP write support.
+ *
+ * Parses:
+ * - PID values (set p_roll, i_roll, d_roll, etc.)
+ * - Rate values (set roll_rate, pitch_rate, yaw_rate, rc_expo, etc.)
+ * - Motor mixer (mmix 0 1.000 0.000 0.000 0.000)
+ * - Servo mixer (smix 0 3 0 100 0 0 100 0)
+ * - Servo config (servo 0 1000 2000 1500 100)
+ * - Aux modes (aux 0 0 0 1700 2100 0)
+ * - Features (feature GPS, feature -TELEMETRY)
+ */
+
+import { create } from 'zustand';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface LegacyPidConfig {
+  roll: { p: number; i: number; d: number; ff?: number };
+  pitch: { p: number; i: number; d: number; ff?: number };
+  yaw: { p: number; i: number; d: number; ff?: number };
+  // Fixed-wing PIDs
+  level?: { p: number; i: number; d: number };
+  altHold?: { p: number; i: number; d: number };
+  posHold?: { p: number; i: number; d: number };
+  navRate?: { p: number; i: number; d: number };
+}
+
+export interface LegacyRatesConfig {
+  rollRate: number;
+  pitchRate: number;
+  yawRate: number;
+  rcExpo: number;
+  rcYawExpo: number;
+  rcRate: number;
+  throttleMid: number;
+  throttleExpo: number;
+  tpaRate: number;
+  tpaBreakpoint: number;
+}
+
+export interface LegacyMotorMix {
+  index: number;
+  throttle: number;
+  roll: number;
+  pitch: number;
+  yaw: number;
+}
+
+export interface LegacyServoMix {
+  index: number;
+  targetChannel: number;
+  inputSource: number;
+  rate: number;
+  speed: number;
+  min: number;
+  max: number;
+  box: number;
+}
+
+export interface LegacyServoConfig {
+  index: number;
+  min: number;
+  max: number;
+  mid: number;
+  rate: number;
+}
+
+export interface LegacyAuxMode {
+  index: number;
+  modeId: number;
+  auxChannel: number;
+  rangeStart: number;
+  rangeEnd: number;
+  logic: number;
+}
+
+export interface LegacyConfigStore {
+  // State
+  isLoading: boolean;
+  error: string | null;
+  hasChanges: boolean;
+
+  // Raw dump output
+  rawDump: string;
+
+  // Parsed config
+  pid: LegacyPidConfig | null;
+  rates: LegacyRatesConfig | null;
+  motorMixer: LegacyMotorMix[];
+  servoMixer: LegacyServoMix[];
+  servoConfigs: LegacyServoConfig[];
+  auxModes: LegacyAuxMode[];
+  features: Set<string>;
+
+  // All set parameters (key=value map)
+  parameters: Map<string, string>;
+
+  // Actions
+  loadConfig: () => Promise<void>;
+  saveChanges: () => Promise<boolean>;
+
+  // Update actions (mark hasChanges)
+  updatePid: (pid: LegacyPidConfig) => void;
+  updateRates: (rates: LegacyRatesConfig) => void;
+  updateMotorMix: (index: number, mix: LegacyMotorMix) => void;
+  updateServoMix: (index: number, mix: LegacyServoMix) => void;
+  updateServoConfig: (index: number, config: LegacyServoConfig) => void;
+  updateAuxMode: (index: number, mode: LegacyAuxMode) => void;
+
+  // Reset
+  reset: () => void;
+}
+
+// =============================================================================
+// Parsers
+// =============================================================================
+
+function parseDump(dump: string): {
+  pid: LegacyPidConfig;
+  rates: LegacyRatesConfig;
+  motorMixer: LegacyMotorMix[];
+  servoMixer: LegacyServoMix[];
+  servoConfigs: LegacyServoConfig[];
+  auxModes: LegacyAuxMode[];
+  features: Set<string>;
+  parameters: Map<string, string>;
+} {
+  const lines = dump.split('\n');
+  const parameters = new Map<string, string>();
+  const motorMixer: LegacyMotorMix[] = [];
+  const servoMixer: LegacyServoMix[] = [];
+  const servoConfigs: LegacyServoConfig[] = [];
+  const auxModes: LegacyAuxMode[] = [];
+  const features = new Set<string>();
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Parse set commands: set param_name = value
+    const setMatch = trimmed.match(/^set\s+(\S+)\s*=\s*(.*)$/);
+    if (setMatch) {
+      const [, name, value] = setMatch;
+      parameters.set(name!, value!.trim());
+      continue;
+    }
+
+    // Parse mmix: mmix <index> <throttle> <roll> <pitch> <yaw>
+    const mmixMatch = trimmed.match(/^mmix\s+(\d+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)/);
+    if (mmixMatch) {
+      const [, idx, throttle, roll, pitch, yaw] = mmixMatch;
+      motorMixer.push({
+        index: parseInt(idx!),
+        throttle: parseFloat(throttle!),
+        roll: parseFloat(roll!),
+        pitch: parseFloat(pitch!),
+        yaw: parseFloat(yaw!),
+      });
+      continue;
+    }
+
+    // Parse smix: smix <index> <target> <input> <rate> <speed> <min> <max> <box>
+    const smixMatch = trimmed.match(/^smix\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d-]+)\s+(\d+)\s+([\d-]+)\s+([\d-]+)\s+(\d+)/);
+    if (smixMatch) {
+      const [, idx, target, input, rate, speed, min, max, box] = smixMatch;
+      servoMixer.push({
+        index: parseInt(idx!),
+        targetChannel: parseInt(target!),
+        inputSource: parseInt(input!),
+        rate: parseInt(rate!),
+        speed: parseInt(speed!),
+        min: parseInt(min!),
+        max: parseInt(max!),
+        box: parseInt(box!),
+      });
+      continue;
+    }
+
+    // Parse servo: servo <index> <min> <max> <mid> <rate>
+    const servoMatch = trimmed.match(/^servo\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d-]+)/);
+    if (servoMatch) {
+      const [, idx, min, max, mid, rate] = servoMatch;
+      servoConfigs.push({
+        index: parseInt(idx!),
+        min: parseInt(min!),
+        max: parseInt(max!),
+        mid: parseInt(mid!),
+        rate: parseInt(rate!),
+      });
+      continue;
+    }
+
+    // Parse aux: aux <index> <mode> <channel> <start> <end> <logic>
+    const auxMatch = trimmed.match(/^aux\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/);
+    if (auxMatch) {
+      const [, idx, mode, channel, start, end, logic] = auxMatch;
+      auxModes.push({
+        index: parseInt(idx!),
+        modeId: parseInt(mode!),
+        auxChannel: parseInt(channel!),
+        rangeStart: parseInt(start!),
+        rangeEnd: parseInt(end!),
+        logic: parseInt(logic!),
+      });
+      continue;
+    }
+
+    // Parse feature: feature GPS or feature -TELEMETRY
+    const featureMatch = trimmed.match(/^feature\s+(-?)(\S+)/);
+    if (featureMatch) {
+      const [, minus, name] = featureMatch;
+      if (minus === '-') {
+        features.delete(name!);
+      } else {
+        features.add(name!);
+      }
+      continue;
+    }
+  }
+
+  // Build PID config from parameters
+  const pid: LegacyPidConfig = {
+    roll: {
+      p: parseInt(parameters.get('p_roll') || '0'),
+      i: parseInt(parameters.get('i_roll') || '0'),
+      d: parseInt(parameters.get('d_roll') || '0'),
+      ff: parseInt(parameters.get('f_roll') || parameters.get('ff_roll') || '0'),
+    },
+    pitch: {
+      p: parseInt(parameters.get('p_pitch') || '0'),
+      i: parseInt(parameters.get('i_pitch') || '0'),
+      d: parseInt(parameters.get('d_pitch') || '0'),
+      ff: parseInt(parameters.get('f_pitch') || parameters.get('ff_pitch') || '0'),
+    },
+    yaw: {
+      p: parseInt(parameters.get('p_yaw') || '0'),
+      i: parseInt(parameters.get('i_yaw') || '0'),
+      d: parseInt(parameters.get('d_yaw') || '0'),
+      ff: parseInt(parameters.get('f_yaw') || parameters.get('ff_yaw') || '0'),
+    },
+    level: {
+      p: parseInt(parameters.get('p_level') || '0'),
+      i: parseInt(parameters.get('i_level') || '0'),
+      d: parseInt(parameters.get('d_level') || '0'),
+    },
+  };
+
+  // Build rates config from parameters
+  const rates: LegacyRatesConfig = {
+    rollRate: parseInt(parameters.get('roll_rate') || '0'),
+    pitchRate: parseInt(parameters.get('pitch_rate') || '0'),
+    yawRate: parseInt(parameters.get('yaw_rate') || '0'),
+    rcExpo: parseInt(parameters.get('rc_expo') || '0'),
+    rcYawExpo: parseInt(parameters.get('rc_yaw_expo') || '0'),
+    rcRate: parseInt(parameters.get('rc_rate') || '100'),
+    throttleMid: parseInt(parameters.get('thr_mid') || '50'),
+    throttleExpo: parseInt(parameters.get('thr_expo') || '0'),
+    tpaRate: parseInt(parameters.get('tpa_rate') || '0'),
+    tpaBreakpoint: parseInt(parameters.get('tpa_breakpoint') || '1500'),
+  };
+
+  return {
+    pid,
+    rates,
+    motorMixer,
+    servoMixer,
+    servoConfigs,
+    auxModes,
+    features,
+    parameters,
+  };
+}
+
+// =============================================================================
+// Store
+// =============================================================================
+
+const initialState = {
+  isLoading: false,
+  error: null as string | null,
+  hasChanges: false,
+  rawDump: '',
+  pid: null as LegacyPidConfig | null,
+  rates: null as LegacyRatesConfig | null,
+  motorMixer: [] as LegacyMotorMix[],
+  servoMixer: [] as LegacyServoMix[],
+  servoConfigs: [] as LegacyServoConfig[],
+  auxModes: [] as LegacyAuxMode[],
+  features: new Set<string>(),
+  parameters: new Map<string, string>(),
+};
+
+export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
+  ...initialState,
+
+  loadConfig: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Get dump via CLI
+      const dump = await window.electronAPI.cliGetDump();
+
+      // Parse the dump
+      const parsed = parseDump(dump);
+
+      set({
+        isLoading: false,
+        rawDump: dump,
+        pid: parsed.pid,
+        rates: parsed.rates,
+        motorMixer: parsed.motorMixer,
+        servoMixer: parsed.servoMixer,
+        servoConfigs: parsed.servoConfigs,
+        auxModes: parsed.auxModes,
+        features: parsed.features,
+        parameters: parsed.parameters,
+        hasChanges: false,
+      });
+    } catch (err) {
+      console.error('[LegacyConfigStore] Failed to load config:', err);
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : 'Failed to load config',
+      });
+    }
+  },
+
+  saveChanges: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Send save command (will reboot board)
+      await window.electronAPI.cliSendCommand('save');
+
+      // Clear changes flag
+      set({ isLoading: false, hasChanges: false });
+      return true;
+    } catch (err) {
+      console.error('[LegacyConfigStore] Failed to save:', err);
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : 'Failed to save',
+      });
+      return false;
+    }
+  },
+
+  updatePid: (pid) => {
+    set({ pid, hasChanges: true });
+  },
+
+  updateRates: (rates) => {
+    set({ rates, hasChanges: true });
+  },
+
+  updateMotorMix: (index, mix) => {
+    const { motorMixer } = get();
+    const updated = [...motorMixer];
+    const existing = updated.findIndex((m) => m.index === index);
+    if (existing >= 0) {
+      updated[existing] = mix;
+    } else {
+      updated.push(mix);
+    }
+    set({ motorMixer: updated, hasChanges: true });
+  },
+
+  updateServoMix: (index, mix) => {
+    const { servoMixer } = get();
+    const updated = [...servoMixer];
+    const existing = updated.findIndex((m) => m.index === index);
+    if (existing >= 0) {
+      updated[existing] = mix;
+    } else {
+      updated.push(mix);
+    }
+    set({ servoMixer: updated, hasChanges: true });
+  },
+
+  updateServoConfig: (index, config) => {
+    const { servoConfigs } = get();
+    const updated = [...servoConfigs];
+    const existing = updated.findIndex((s) => s.index === index);
+    if (existing >= 0) {
+      updated[existing] = config;
+    } else {
+      updated.push(config);
+    }
+    set({ servoConfigs: updated, hasChanges: true });
+  },
+
+  updateAuxMode: (index, mode) => {
+    const { auxModes } = get();
+    const updated = [...auxModes];
+    const existing = updated.findIndex((a) => a.index === index);
+    if (existing >= 0) {
+      updated[existing] = mode;
+    } else {
+      updated.push(mode);
+    }
+    set({ auxModes: updated, hasChanges: true });
+  },
+
+  reset: () => {
+    set(initialState);
+  },
+}));

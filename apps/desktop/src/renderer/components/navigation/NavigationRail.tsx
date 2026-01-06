@@ -1,4 +1,5 @@
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
+import { useConnectionStore } from '../../stores/connection-store';
 
 interface NavItem {
   id: ViewId;
@@ -56,6 +57,17 @@ const navItems: NavItem[] = [
   },
 ];
 
+// CLI nav item - only shown for MSP connections (Betaflight/iNav)
+const cliNavItem: NavItem = {
+  id: 'cli',
+  label: 'CLI Terminal',
+  icon: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  ),
+};
+
 // Future navigation items (disabled placeholders)
 const futureItems: Omit<NavItem, 'id'> & { id: string }[] = [
   {
@@ -76,6 +88,11 @@ interface NavigationRailProps {
 
 export function NavigationRail({ onViewChange }: NavigationRailProps) {
   const { currentView, setView } = useNavigationStore();
+  const { connectionState } = useConnectionStore();
+
+  // Show CLI nav item only for MSP (Betaflight/iNav) connections
+  const showCli = connectionState.isConnected && connectionState.protocol === 'msp';
+  const allNavItems = showCli ? [...navItems, cliNavItem] : navItems;
 
   const handleClick = (viewId: ViewId) => {
     if (onViewChange) {
@@ -88,7 +105,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
   return (
     <nav className="w-14 h-full bg-gray-900/50 border-r border-gray-800/50 flex flex-col items-center py-3 gap-1">
       {/* Active navigation items */}
-      {navItems.map((item) => (
+      {allNavItems.map((item) => (
         <button
           key={item.id}
           onClick={() => handleClick(item.id)}

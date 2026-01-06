@@ -12,6 +12,7 @@ import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { MspConfigView } from './MspConfigView';
 import MavlinkConfigView from '../mavlink-config/MavlinkConfigView';
+import { LegacyConfigView } from '../legacy-config';
 
 // Simple toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -219,7 +220,12 @@ export function ParametersView() {
     }
   }, [saveEdit, cancelEdit]);
 
-  // Show MSP config for Betaflight/iNav boards
+  // Show Legacy CLI config for F3 boards (iNav < 2.1, Betaflight < 4.0)
+  if (connectionState.isConnected && connectionState.protocol === 'msp' && connectionState.isLegacyBoard) {
+    return <LegacyConfigView />;
+  }
+
+  // Show MSP config for modern Betaflight/iNav boards
   if (connectionState.isConnected && connectionState.protocol === 'msp') {
     return <MspConfigView />;
   }

@@ -76,6 +76,47 @@ import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManife
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection } from './msp/index.js';
 
+// =============================================================================
+// Legacy Board Detection
+// =============================================================================
+
+/**
+ * Detect if an MSP board is a legacy board that only supports CLI config.
+ * Legacy boards don't support modern MSP write commands for PID/Rates/Servo.
+ *
+ * Legacy criteria:
+ * - iNav < 2.1.0 (F3 boards like SPRacing F3)
+ * - Betaflight < 4.0 (F3 boards)
+ *
+ * @param fcVariant - "INAV", "BTFL", "CLFL"
+ * @param fcVersion - "2.0.0", "4.5.1", etc.
+ * @returns true if the board is legacy and should use CLI-only config
+ */
+function isLegacyMspBoard(fcVariant: string, fcVersion: string): boolean {
+  if (!fcVariant || !fcVersion) return false;
+
+  const parts = fcVersion.split('.').map(Number);
+  if (parts.length < 2) return false;
+  const [major, minor] = parts;
+
+  // iNav < 2.1.0 → Legacy (F3 boards)
+  if (fcVariant === 'INAV') {
+    return major < 2 || (major === 2 && minor! < 1);
+  }
+
+  // Betaflight < 4.0 → Legacy (F3 boards)
+  if (fcVariant === 'BTFL') {
+    return major < 4;
+  }
+
+  // Cleanflight is generally legacy
+  if (fcVariant === 'CLFL') {
+    return true;
+  }
+
+  return false;
+}
+
 // Layout storage
 const layoutStore = new Store<LayoutStoreSchema>({
   name: 'layouts',
@@ -1258,7 +1299,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         const mspInfo = await tryMspDetection(currentTransport, mainWindow);
 
         if (mspInfo) {
-          sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}`, `Board: ${mspInfo.boardId}`);
+          const isLegacy = isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion);
+          sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}${isLegacy ? ' (Legacy - CLI only)' : ''}`, `Board: ${mspInfo.boardId}`);
 
           connectionState = {
             isConnected: true,
@@ -1271,6 +1313,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             apiVersion: mspInfo.apiVersion,
             autopilot: mspInfo.fcVariant,
             vehicleType: 'Multirotor',
+            isLegacyBoard: isLegacy,
             packetsReceived: connectionState.packetsReceived,
             packetsSent: connectionState.packetsSent,
           };
@@ -1317,7 +1360,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
           if (mspInfo) {
             // MSP detected! Update connection state
-            sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}`, `Board: ${mspInfo.boardId}`);
+            const isLegacy = isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion);
+            sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}${isLegacy ? ' (Legacy - CLI only)' : ''}`, `Board: ${mspInfo.boardId}`);
 
             connectionState = {
               isConnected: true,
@@ -1330,6 +1374,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               apiVersion: mspInfo.apiVersion,
               autopilot: mspInfo.fcVariant, // Show variant as autopilot
               vehicleType: 'Multirotor', // MSP boards are typically multirotors
+              isLegacyBoard: isLegacy,
               packetsReceived: connectionState.packetsReceived,
               packetsSent: connectionState.packetsSent,
             };

@@ -355,10 +355,11 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
     const platformName = platformNames[preset.platformType] ?? 'UNKNOWN';
 
     try {
-      console.log(`[ServoWizard] Setting platform to ${platformName} (${preset.platformType}) for ${preset.name}`);
+      console.log(`[ServoWizard] Setting platform to ${platformName} (${preset.platformType}) for ${preset.name}, mixerType=${preset.mixerType}`);
 
       // Use mspSetInavPlatformType - it has CLI fallback for old iNav built-in
-      const success = await window.electronAPI.mspSetInavPlatformType(preset.platformType);
+      // Pass mixerType for correct CLI mixer command (e.g., FLYING_WING vs AIRPLANE)
+      const success = await window.electronAPI.mspSetInavPlatformType(preset.platformType, preset.mixerType);
       if (success) {
         console.log(`[ServoWizard] Platform type set successfully`);
         // Update local state to reflect the change
@@ -500,43 +501,45 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         }
       }
 
-      if (presetId) {
+      // If no preset detected, default to 'traditional' airplane
+      if (!presetId) {
+        console.log('[ServoWizard] No preset auto-detected from mixer type:', detectedMixerType, 'platform:', msp2PlatformType, '- defaulting to traditional');
+        presetId = 'traditional';
+      } else {
         console.log('[ServoWizard] Auto-detected preset:', presetId, 'from mixer type:', detectedMixerType, 'platform:', msp2PlatformType);
+      }
 
-        // Get the preset and create assignments
-        const preset = getPreset(presetId);
-        if (preset) {
-          const defaultAssignments = getDefaultAssignments(presetId);
+      // Get the preset and create assignments
+      const preset = getPreset(presetId);
+      if (preset) {
+        const defaultAssignments = getDefaultAssignments(presetId);
 
-          // Apply actual FC values to assignments if we have them
-          if (configs && Array.isArray(configs)) {
-            for (const assignment of defaultAssignments) {
-              const fcConfig = configs[assignment.servoIndex] as { min?: number; max?: number; middle?: number } | undefined;
-              if (fcConfig) {
-                // Use FC values if they look valid (not all zeros or defaults)
-                if (fcConfig.min !== undefined && fcConfig.min > 0) {
-                  assignment.min = fcConfig.min;
-                }
-                if (fcConfig.max !== undefined && fcConfig.max > 0) {
-                  assignment.max = fcConfig.max;
-                }
-                if (fcConfig.middle !== undefined && fcConfig.middle > 0) {
-                  assignment.center = fcConfig.middle;
-                }
-                console.log(`[ServoWizard] Servo ${assignment.servoIndex} from FC: min=${assignment.min}, center=${assignment.center}, max=${assignment.max}`);
+        // Apply actual FC values to assignments if we have them
+        if (configs && Array.isArray(configs)) {
+          for (const assignment of defaultAssignments) {
+            const fcConfig = configs[assignment.servoIndex] as { min?: number; max?: number; middle?: number } | undefined;
+            if (fcConfig) {
+              // Use FC values if they look valid (not all zeros or defaults)
+              if (fcConfig.min !== undefined && fcConfig.min > 0) {
+                assignment.min = fcConfig.min;
               }
+              if (fcConfig.max !== undefined && fcConfig.max > 0) {
+                assignment.max = fcConfig.max;
+              }
+              if (fcConfig.middle !== undefined && fcConfig.middle > 0) {
+                assignment.center = fcConfig.middle;
+              }
+              console.log(`[ServoWizard] Servo ${assignment.servoIndex} from FC: min=${assignment.min}, center=${assignment.center}, max=${assignment.max}`);
             }
           }
-
-          set({
-            selectedPresetId: presetId,
-            selectedPreset: preset,
-            assignments: defaultAssignments,
-            originalAssignments: JSON.parse(JSON.stringify(defaultAssignments)),
-          });
         }
-      } else {
-        console.log('[ServoWizard] Unknown mixer type:', detectedMixerType, 'platform:', msp2PlatformType, '- user must select manually');
+
+        set({
+          selectedPresetId: presetId,
+          selectedPreset: preset,
+          assignments: defaultAssignments,
+          originalAssignments: JSON.parse(JSON.stringify(defaultAssignments)),
+        });
       }
     } catch (err) {
       console.error('[ServoWizard] Failed to load from FC:', err);

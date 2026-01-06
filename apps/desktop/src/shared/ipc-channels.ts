@@ -170,6 +170,14 @@ export const IPC_CHANNELS = {
   MSP_PROGRESS: 'msp:progress',
   MSP_ERROR: 'msp:error',
 
+  // CLI Terminal (iNav/Betaflight raw CLI access)
+  CLI_ENTER_MODE: 'cli:enter-mode',
+  CLI_EXIT_MODE: 'cli:exit-mode',
+  CLI_SEND_COMMAND: 'cli:send-command',
+  CLI_SEND_RAW: 'cli:send-raw',
+  CLI_DATA_RECEIVED: 'cli:data-received',
+  CLI_GET_DUMP: 'cli:get-dump',
+
   // Driver utilities
   DRIVER_OPEN_BUNDLED: 'driver:open-bundled',
 } as const;
@@ -209,6 +217,13 @@ export interface ConnectionState {
   fcVersion?: string; // "4.5.1"
   boardId?: string; // "SPRACINGH7"
   apiVersion?: string;
+  /**
+   * Legacy board detection - TRUE for boards that only support CLI config:
+   * - iNav < 2.1.0 (F3 boards like SPRacing F3)
+   * - Betaflight < 4.0 (F3 boards)
+   * When true, use LegacyConfigView instead of MspConfigView
+   */
+  isLegacyBoard?: boolean;
   // Stats
   packetsReceived: number;
   packetsSent: number;

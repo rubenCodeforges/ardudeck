@@ -116,6 +116,7 @@
   | 4. Mission          | Mission planning with waypoints, splines, terrain profile     | stores/mission-store.ts, MissionMapPanel.tsx      |
   | 4.5. Settings       | Vehicle profiles, weather widget, performance estimates       | stores/settings-store.ts, SettingsView.tsx        |
   | 4.7. Geofence/Rally | Geofence polygons/circles, rally points                       | stores/fence-store.ts, stores/rally-store.ts      |
+  | 8. CLI Terminal     | xterm.js terminal, autocomplete, legacy board GUI             | stores/cli-store.ts, components/cli/              |
 
   Key Features Implemented
 
@@ -123,6 +124,8 @@
   - Telemetry: Attitude, altitude, speed, battery, GPS with dockable panel layout
   - Parameters: Auto-load from FC, ~600 fallback descriptions, range/enum validation, flash write
   - MSP Config: Betaflight/iNav PID tuning with presets, rate curves, mode visualization, custom profile saving
+  - Legacy Boards: Full GUI for F3-era boards (iNav < 2.1, Betaflight < 4.0) via CLI commands
+  - CLI Terminal: xterm.js terminal with autocomplete, command history, parameter suggestions
   - Mission: Waypoint CRUD, spline curves, terrain-aware altitude profile, drag-to-edit (MAVLink/iNav only)
   - Geofencing: Inclusion/exclusion polygons and circles, return point
   - Rally Points: Emergency landing locations with full editing
@@ -135,7 +138,7 @@
   | 5. Firmware Flash | Flash ArduPilot/PX4/Betaflight firmware | - | ✅ Complete |
   | 6. Calibration | Compass, accelerometer, radio, ESC calibration wizards | P1 | Next up |
   | 7. OSD Configuration | OSD element editor for Betaflight/iNav | P0 | Planned |
-  | 8. CLI Terminal | Raw CLI access for power users | P0 | Planned |
+  | 8. CLI Terminal | Raw CLI access for power users | - | ✅ Complete |
   | 9. VTX Configuration | Video transmitter band/channel/power | P1 | Planned |
   | 10. MSP Failsafe | Betaflight/iNav failsafe config (extend SafetyTab) | P1 | Planned |
   | 11. GPS Rescue | Betaflight 4.6 GPS rescue/position hold config | P1 | Planned |
@@ -250,6 +253,8 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | stores/edit-mode-store.ts     | Mission/geofence/rally mode           |
   | stores/firmware-store.ts      | Firmware flash state, board detection |
   | stores/msp-telemetry-store.ts | MSP telemetry state (Betaflight/iNav) |
+  | stores/legacy-config-store.ts | Legacy board CLI config (F3 boards)   |
+  | stores/cli-store.ts           | CLI terminal state, history           |
 
   Shared Types
 
@@ -279,7 +284,11 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | components/parameters/MspConfigView.tsx       | Betaflight/iNav PID/Rates/Modes configuration           |
   | components/telemetry/TelemetryDashboard.tsx   | Dockable telemetry panels with protocol-aware filtering |
   | components/betaflight/BetaflightDashboard.tsx | MSP telemetry dashboard for Betaflight/iNav             |
+  | components/legacy-config/LegacyConfigView.tsx | Legacy F3 board configuration (CLI-powered GUI)         |
+  | components/cli/CliTerminal.tsx                | xterm.js CLI terminal with autocomplete                 |
+  | components/cli/CliView.tsx                    | Dedicated CLI sidebar view                              |
   | main/msp/msp-handlers.ts                      | MSP IPC handlers for telemetry and config               |
+  | main/cli/cli-handlers.ts                      | CLI IPC handlers for raw serial communication           |
 
   ---
   MSP Protocol Support (Betaflight/iNav)
@@ -293,7 +302,7 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - PID Tuning: Beginner-friendly presets (Beginner/Freestyle/Racing/Cinematic)
   - Rate Curves: Visual rate curve editor with presets
   - Modes Wizard: Step-by-step mode configuration with presets, live RC feedback ✅
-  - Servo Wizard: Fixed-wing servo setup with aircraft presets, platform type change ✅
+  - Servo Wizard: Fixed-wing servo setup with aircraft presets, platform type change (⚠️ HIDDEN - see below)
   - Platform Type Change: Convert multirotor↔airplane via MSP2 + CLI fallback ✅
   - Custom Profiles: Save/load custom PID tunes and rate profiles (localStorage)
   - Protocol-aware UI: Mission planning hidden for Betaflight (not supported)
@@ -315,12 +324,134 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | components/servo-wizard/presets/         | Aircraft presets (Traditional, Flying Wing, V-Tail, Delta)   |
   | stores/servo-wizard-store.ts             | Servo wizard state, platform detection                       |
 
-  iNav Enhancements
+  CLI Terminal Files
 
-  MspConfigView now includes iNav-specific features:
-  - Servo mixer tab: Configure servo outputs/mixing for fixed-wing (elevons, v-tail, flaperons)
-  - Navigation tab: RTH altitude, nav speeds, GPS config, landing settings
-  - Beginner-friendly explanations: Header info boxes explain concepts in plain language
+  | File                                     | Purpose                                                      |
+  |------------------------------------------|--------------------------------------------------------------|
+  | main/cli/cli-handlers.ts                 | CLI IPC handlers (cliEnterMode, cliSendCommand, cliExitMode) |
+  | components/cli/CliTerminal.tsx           | xterm.js terminal with ANSI support                          |
+  | components/cli/CliView.tsx               | Dedicated CLI sidebar view                                   |
+  | components/cli/CliAutocomplete.tsx       | Autocomplete popup with fuzzy matching                       |
+  | stores/cli-store.ts                      | CLI state, command history, suggestions                      |
+
+  ### Legacy Board Architecture - COMPLETE (2026-01-06)
+
+  **Status:** ✅ COMPLETE - Clean separation of legacy vs modern boards
+
+  **Philosophy:** "No board left behind" - Old F3-era boards get a **full GUI**, not just CLI access.
+
+  #### The Rule: Legacy Board → CLI Full Mode
+
+  ```
+  On MSP Connect → Detect Board Age → Route to Appropriate View
+
+  Legacy Board (iNav < 2.1, Betaflight < 4.0, Cleanflight)
+    → LegacyConfigView (Full GUI powered by CLI commands)
+
+  Modern Board (iNav 2.1+, Betaflight 4.0+)
+    → MspConfigView (MSP-based configuration)
+  ```
+
+  **NO FALLBACK SPAGHETTI:** We do NOT try MSP first then fall back to CLI. Detection happens at connect time and routing is immediate.
+
+  #### Detection Logic (ipc-handlers.ts)
+
+  ```typescript
+  function isLegacyMspBoard(fcVariant: string, fcVersion: string): boolean {
+    const [major, minor] = fcVersion.split('.').map(Number);
+    // iNav < 2.1.0 → Legacy
+    if (fcVariant === 'INAV') return major < 2 || (major === 2 && minor < 1);
+    // Betaflight < 4.0 → Legacy
+    if (fcVariant === 'BTFL') return major < 4;
+    // Cleanflight → Legacy
+    if (fcVariant === 'CLFL') return true;
+    return false;
+  }
+  ```
+
+  #### Legacy GUI Components
+
+  The legacy config view provides the **same GUI experience** as modern boards, but powered by CLI commands under the hood:
+
+  | Component | CLI Commands Used |
+  |-----------|-------------------|
+  | LegacyPidTab | `set p_roll = X`, `set i_roll = X`, etc. |
+  | LegacyRatesTab | `set rc_rate = X`, `set rc_expo = X`, etc. |
+  | LegacyMixerTab | `mmix <idx> <throttle> <roll> <pitch> <yaw>`, `smix` |
+  | LegacyServoTab | `servo <idx> <min> <max> <mid> <rate>` |
+  | LegacyModesTab | `aux <idx> <mode> <channel> <start> <end> <logic>` |
+
+  #### CLI Commands That Work on F3
+
+  Tested and verified on iNav 2.0.0 (SPRacing F3):
+  - `dump` - Get full config (parsed for autocomplete)
+  - `set <name> = <value>` - Set any parameter
+  - `mmix <idx> <t> <r> <p> <y>` - Motor mixer
+  - `smix <idx> ...` - Servo mixer
+  - `servo <idx> <min> <max> <mid> <rate>` - Servo endpoints
+  - `aux <idx> <mode> <ch> <start> <end> <logic>` - Flight modes
+  - `save` - Write to EEPROM and reboot
+
+  **Line endings:** Use `\n` only (NOT `\r\n` - causes parse errors!)
+
+  #### Implementation Files
+
+  | File | Purpose |
+  |------|---------|
+  | `shared/ipc-channels.ts` | `isLegacyBoard` field in ConnectionState |
+  | `main/ipc-handlers.ts` | `isLegacyMspBoard()` detection helper |
+  | `stores/legacy-config-store.ts` | Parses CLI dump, stores config state |
+  | `components/legacy-config/LegacyConfigView.tsx` | Main view with tabs |
+  | `components/legacy-config/LegacyPidTab.tsx` | PID sliders/inputs |
+  | `components/legacy-config/LegacyRatesTab.tsx` | Rate/expo config |
+  | `components/legacy-config/LegacyMixerTab.tsx` | Motor/servo mixer editor |
+  | `components/legacy-config/LegacyServoTab.tsx` | Servo endpoint tuning |
+  | `components/legacy-config/LegacyModesTab.tsx` | Flight mode assignment |
+  | `components/parameters/ParametersView.tsx` | Routes legacy vs modern |
+
+  #### Supported Legacy Boards
+
+  - SPRacing F3 / F3 EVO / F3 Mini / F3 Neo (iNav 2.0.0)
+  - Naze32 Rev6
+  - CC3D (with iNav)
+  - Flip32 F3
+  - Any F3-era board running iNav < 2.1 or Betaflight < 4.0
+
+  ---
+
+  iNav Config Tabs (MspConfigView)
+
+  The iNav configuration view now has separated tabs for clearer concept separation:
+  - **PID Tuning**: Flight response tuning with presets
+  - **Rates**: Stick sensitivity and response curves
+  - **Modes**: Flight mode switch assignments
+  - **Servo Tuning**: Endpoint calibration with visual position bars
+  - **Servo Mixer**: Control surface mixing rules (aileron, elevon, v-tail, etc.)
+  - **Motor Mixer**: Custom motor layouts (placeholder - coming soon)
+  - **Navigation**: RTH altitude, nav speeds, GPS config, landing settings
+  - **Sensors**: Hardware status
+
+  ### Servo Wizard Status - HIDDEN (2026-01-06)
+
+  **Current Status:** The Servo Wizard is temporarily hidden from the UI. The separate Servo Tuning and Servo Mixer tabs replace its functionality.
+
+  **Reason:** The wizard flow was unstable with various edge cases on different iNav versions. The separated tabs provide more reliable functionality.
+
+  **Future Plan:** After all separated concepts are stabilized, the wizard will return as a modal dialog for guided first-time setup.
+
+  **What still works:**
+  - Servo Tuning tab auto-defaults to "traditional" preset if no aircraft type detected
+  - Servo configs are read from FC and applied to tuning cards
+  - Servo Mixer tab provides full mixing rule configuration
+  - Platform type change still available via iNav Configurator CLI
+
+  **Implementation Files:**
+  | File | Purpose |
+  |------|---------|
+  | `components/parameters/ServoTuningTab.tsx` | Standalone servo tuning wrapper |
+  | `components/parameters/ServoMixerTab.tsx` | Servo mixer configuration |
+  | `components/parameters/MotorMixerTab.tsx` | Motor mixer placeholder |
+  | `stores/servo-wizard-store.ts` | Servo state (reused by ServoTuningTab) |
 
   ### iNav Platform Type Change - COMPLETE (2026-01-04)
 
@@ -375,7 +506,12 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   - Connection cleanup after board reboot
   - Transport guards prevent operations on closed connections
 
-  ### iNav CLI Servo Config Fallback - COMPLETE (2026-01-05)
+  ### iNav CLI Servo Config Fallback - ⚠️ DEPRECATED (2026-01-06)
+
+  **DEPRECATED:** This approach is replaced by the **Legacy Board Architecture** above. Legacy boards now use `LegacyConfigView` exclusively - no fallback logic needed.
+
+  <details>
+  <summary>Old documentation (kept for reference)</summary>
 
   **Problem solved:** Servo wizard now works on old iNav 2.0.0 boards where `MSP_SET_SERVO_CONFIGURATION` (212) is not supported.
 
@@ -435,7 +571,14 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | `shared/ipc-channels.ts` | `MSP_GET_SERVO_CONFIG_MODE` channel |
   | `main/preload.ts` | `mspGetServoConfigMode()` API |
 
-  ### MSP PID/Rates CLI Fallback - COMPLETE (2026-01-05)
+  </details>
+
+  ### MSP PID/Rates CLI Fallback - ⚠️ DEPRECATED (2026-01-06)
+
+  **DEPRECATED:** This approach is replaced by the **Legacy Board Architecture** above. Legacy boards now use `LegacyConfigView` with `LegacyPidTab` and `LegacyRatesTab` - no MSP-first-then-CLI fallback needed.
+
+  <details>
+  <summary>Old documentation (kept for reference)</summary>
 
   **Problem solved:** PID tuning now works on old iNav 2.0.0 boards where `MSP_SET_PID` (202) and `MSP_SET_RC_TUNING` (204) are not supported.
 
@@ -488,6 +631,8 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   |------|---------|
   | `main/msp/msp-handlers.ts` | `tuningCliModeActive`, `setPidViaCli()`, `setRcTuningViaCli()`, `setModeRangeViaCli()` |
   | `MspConfigView.tsx` | Preset/profile apply now merges with current PIDs |
+
+  </details>
 
   ### iNav-Specific TODO (P3)
 

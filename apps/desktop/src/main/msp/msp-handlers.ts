@@ -76,6 +76,7 @@ import {
   type MSPInavMixerConfig,
 } from '@ardudeck/msp-ts';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
+import { initCliHandlers, setCliTransport, setCliModeChangeCallback, cleanupCli, isCliModeActive } from '../cli/cli-handlers.js';
 
 // =============================================================================
 // State (managed by main ipc-handlers, not here)
@@ -131,6 +132,10 @@ let servoCliModeActive = false;
 // CLI tuning mode - when MSP_SET_PID/RC_TUNING not supported (legacy iNav)
 // When true, all tuning commands should use CLI instead of MSP
 let tuningCliModeActive = false;
+
+// Pending mixer type to set via CLI during saveEepromViaCli
+// On old iNav, MSP_SET_MIXER_CONFIG doesn't work - mixer must be set via CLI
+let pendingMixerType: number | null = null;
 
 // CLI response buffer for tuning commands
 let tuningCliResponse = '';
@@ -301,14 +306,8 @@ async function sendMspV2RequestWithPayload(command: number, payload: Uint8Array,
 }
 
 function handleMspResponse(command: number, payload: Uint8Array): void {
-  // Log raw response for debugging
-  if (payload.length > 0 && payload.length <= 64) {
-    console.log(`[MSP] Response cmd=${command} (${payload.length} bytes): ${Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
-  } else if (payload.length > 64) {
-    console.log(`[MSP] Response cmd=${command} (${payload.length} bytes): ${Array.from(payload.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' ')}...`);
-  } else {
-    console.log(`[MSP] Response cmd=${command} (empty/ACK)`);
-  }
+  // Debug logging disabled - uncomment for debugging
+  // console.log(`[MSP] Response cmd=${command} (${payload.length} bytes)`);
 
   const pending = pendingResponses.get(command);
   if (pending) {
@@ -356,10 +355,15 @@ export async function tryMspDetection(
   currentTransport = transport;
   mspParser = new MSPParser();
 
+  // Share transport with CLI handlers
+  setCliTransport(transport);
+
   sendLog('info', 'Trying MSP protocol detection...');
 
   // Setup data handler for MSP
   const dataHandler = (data: Uint8Array) => {
+    // Skip MSP parsing when in CLI mode - CLI handler processes raw text
+    if (isCliModeActive()) return;
     if (!mspParser) return;
     const packets = mspParser.parseSync(data);
     for (const packet of packets) {
@@ -616,6 +620,9 @@ export function cleanupMspConnection(): void {
   // Stop telemetry first
   stopMspTelemetry();
 
+  // Clean up CLI handlers
+  cleanupCli();
+
   // Clear pending responses
   for (const [, pending] of pendingResponses) {
     clearTimeout(pending.timeout);
@@ -631,6 +638,7 @@ export function cleanupMspConnection(): void {
   // Reset CLI fallback states
   servoCliModeActive = false;
   tuningCliModeActive = false;
+  pendingMixerType = null;
   usesCliServoFallback = false;
   servoConfigModeProbed = false;
   cliResponseListener = null;
@@ -1319,11 +1327,14 @@ async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean 
 /**
  * Set iNav platform type using the proper MSP2 command.
  * platformType: 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
+ * mixerType: Optional - specific mixer type for CLI fallback (e.g., 8=FLYING_WING, 14=AIRPLANE)
  *
  * For iNav 2.0.0 and older: MSP2 may not be supported, uses CLI fallback
+ * NOTE: For legacy iNav, we store the mixerType as pendingMixerType and apply it
+ * during saveEepromViaCli(), since the mixer must be set via CLI to persist.
  * BSOD Prevention: Uses conservative delays and withConfigLock.
  */
-async function setInavPlatformType(platformType: number): Promise<boolean> {
+async function setInavPlatformType(platformType: number, mixerType?: number): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
     console.log('[MSP] setInavPlatformType: transport not open');
@@ -1332,6 +1343,16 @@ async function setInavPlatformType(platformType: number): Promise<boolean> {
 
   const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
   const platformName = platformNames[platformType] ?? `UNKNOWN`;
+
+  // For legacy iNav, ALWAYS store the mixerType for CLI application later
+  // MSP2 only sets platformType, but the actual mixer must be set via CLI
+  if (isLegacyInav() && mixerType !== undefined) {
+    console.log(`[MSP] Legacy iNav detected - storing mixer ${mixerType} for CLI save`);
+    pendingMixerType = mixerType;
+    // Don't set platformType via MSP2 either - let CLI handle everything
+    sendLog('info', 'Legacy iNav', 'Mixer will be set when saving');
+    return true; // Success - mixer will be applied during save
+  }
 
   // Try MSP2 first (inside config lock)
   let msp2Success = false;
@@ -1401,7 +1422,25 @@ async function setInavPlatformType(platformType: number): Promise<boolean> {
   if (!msp2Success) {
     sendLog('info', 'MSP2 failed, trying CLI fallback...');
     console.log('[MSP] MSP2 failed, attempting CLI fallback for old iNav');
-    return await setPlatformViaCli(platformType);
+    return await setPlatformViaCli(platformType, mixerType);
+  }
+
+  // MSP2 platformType succeeded, but we ALSO need to set the mixer type!
+  // platformType (AIRPLANE) and mixer (FLYING_WING vs AIRPLANE) are DIFFERENT things
+  //
+  // IMPORTANT: On old iNav, MSP_SET_MIXER_CONFIG doesn't actually change the mixer.
+  // The mixer must be changed via CLI `mixer X` command and then saved.
+  // Since servo config will likely use CLI mode anyway, we store the pending mixer
+  // and apply it during saveEepromViaCli() in the same CLI session as the save.
+  if (mixerType !== undefined) {
+    const mixerTypeToName: Record<number, string> = {
+      0: 'TRI', 3: 'QUADX', 5: 'GIMBAL', 8: 'FLYING_WING', 14: 'AIRPLANE', 24: 'CUSTOM_AIRPLANE',
+    };
+    const mixerName = mixerTypeToName[mixerType] ?? `MIXER_${mixerType}`;
+
+    console.log(`[MSP] Storing pending mixer type: ${mixerType} (${mixerName})`);
+    pendingMixerType = mixerType;
+    sendLog('info', `Mixer ${mixerName} queued`, 'Will be applied when saving');
   }
 
   return true;
@@ -1413,9 +1452,12 @@ async function setInavPlatformType(platformType: number): Promise<boolean> {
  * For iNav 2.0.0 and older: Uses `mixer X` command directly
  * For newer iNav: Uses `set platform_type = X` then `save`
  *
+ * mixerType: Optional - specific mixer type (e.g., 8=FLYING_WING, 14=AIRPLANE)
+ *            If provided, uses the correct mixer name instead of platformType default.
+ *
  * BSOD Prevention: Conservative delays between commands.
  */
-async function setPlatformViaCli(platformType: number): Promise<boolean> {
+async function setPlatformViaCli(platformType: number, mixerType?: number): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) return false;
 
@@ -1423,9 +1465,19 @@ async function setPlatformViaCli(platformType: number): Promise<boolean> {
     const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
     const platformName = platformNames[platformType] ?? 'AIRPLANE';
 
-    // Map platform types to old iNav mixer names/numbers
-    // iNav 2.0.0 mixer values: 3=QUADX, 8=FLYING_WING, 14=AIRPLANE, etc.
-    const mixerMapping: Record<number, string> = {
+    // Map mixer TYPE numbers to iNav mixer command names
+    // iNav 2.0.0 mixer values: 0=TRI, 3=QUADX, 5=GIMBAL, 8=FLYING_WING, 14=AIRPLANE, 24=CUSTOM_AIRPLANE
+    const mixerTypeToName: Record<number, string> = {
+      0: 'TRI',
+      3: 'QUADX',
+      5: 'GIMBAL',
+      8: 'FLYING_WING',
+      14: 'AIRPLANE',
+      24: 'CUSTOM_AIRPLANE',
+    };
+
+    // Map platform types to default mixer names (fallback if mixerType not provided)
+    const platformToMixer: Record<number, string> = {
       0: 'QUADX',      // MULTIROTOR -> default quad
       1: 'AIRPLANE',   // AIRPLANE
       2: 'CUSTOM',     // HELICOPTER -> use custom
@@ -1433,9 +1485,15 @@ async function setPlatformViaCli(platformType: number): Promise<boolean> {
       4: 'QUADX',      // ROVER -> not really supported, default
       5: 'QUADX',      // BOAT -> not really supported, default
     };
-    const mixerName = mixerMapping[platformType] ?? 'AIRPLANE';
 
-    sendLog('info', `CLI: Changing to ${platformName}`, `Using mixer command for old iNav compatibility`);
+    // Use specific mixerType if provided, otherwise fall back to platform default
+    const mixerName = mixerType !== undefined
+      ? (mixerTypeToName[mixerType] ?? platformToMixer[platformType] ?? 'AIRPLANE')
+      : (platformToMixer[platformType] ?? 'AIRPLANE');
+
+    console.log(`[MSP] CLI: mixerType=${mixerType}, resolved mixer name: ${mixerName}`);
+
+    sendLog('info', `CLI: Setting mixer ${mixerName}`, `Platform: ${platformName}, using CLI for old iNav compatibility`);
 
     // BSOD Prevention: Stop telemetry during CLI commands
     stopMspTelemetry();
@@ -2189,6 +2247,42 @@ async function saveEepromViaCli(): Promise<boolean> {
       await new Promise(r => setTimeout(r, 1000));
     }
 
+    // Apply pending mixer type if set (for old iNav where MSP doesn't work)
+    if (pendingMixerType !== null) {
+      const mixerTypeToName: Record<number, string> = {
+        0: 'TRI', 3: 'QUADX', 5: 'GIMBAL', 8: 'FLYING_WING', 14: 'AIRPLANE', 24: 'CUSTOM_AIRPLANE',
+      };
+      const mixerName = mixerTypeToName[pendingMixerType] ?? `MIXER_${pendingMixerType}`;
+
+      console.log(`[MSP] CLI: Applying pending mixer ${mixerName} (${pendingMixerType})`);
+      sendLog('info', `CLI: Setting mixer ${mixerName}`);
+
+      // Remove CLI listeners that might be capturing our mixer command response
+      if (cliResponseListener && currentTransport) {
+        currentTransport.off('data', cliResponseListener);
+        cliResponseListener = null;
+      }
+      if (tuningCliListener && currentTransport) {
+        currentTransport.off('data', tuningCliListener);
+        tuningCliListener = null;
+      }
+
+      // Clear any buffered input and ensure clean CLI state
+      await currentTransport.write(new TextEncoder().encode('\n'));
+      await new Promise(r => setTimeout(r, 300));
+
+      // Send the mixer command
+      const mixerCmd = `mixer ${mixerName}\n`;
+      console.log(`[MSP] CLI: ${mixerCmd.trim()}`);
+      await currentTransport.write(new TextEncoder().encode(mixerCmd));
+
+      // Wait for iNav to process the mixer change (needs more time on old boards)
+      await new Promise(r => setTimeout(r, 1000));
+
+      console.log('[MSP] CLI: Mixer command sent, proceeding to save');
+      pendingMixerType = null; // Clear after applying
+    }
+
     // Wait a bit before save to ensure all commands are processed
     await new Promise(r => setTimeout(r, 500));
 
@@ -2208,9 +2302,18 @@ async function saveEepromViaCli(): Promise<boolean> {
     }
     tuningCliResponse = '';
 
+    // Clean up servo CLI listener
+    if (cliResponseListener && currentTransport) {
+      currentTransport.off('data', cliResponseListener);
+      cliResponseListener = null;
+    }
+
     // Clean up CLI mode flags - board is rebooting
     tuningCliModeActive = false;
-    // Note: servoCliModeActive is cleaned up by saveServoConfigViaCli
+    servoCliModeActive = false;
+
+    // Clean up connection state since board is rebooting
+    cleanupMspConnection();
 
     return true;
   } catch (error) {
@@ -2222,7 +2325,13 @@ async function saveEepromViaCli(): Promise<boolean> {
       currentTransport.off('data', tuningCliListener);
       tuningCliListener = null;
     }
+    if (cliResponseListener && currentTransport) {
+      currentTransport.off('data', cliResponseListener);
+      cliResponseListener = null;
+    }
     tuningCliModeActive = false;
+    servoCliModeActive = false;
+    pendingMixerType = null;
 
     return false;
   }
@@ -2277,6 +2386,20 @@ async function reboot(): Promise<boolean> {
 export function registerMspHandlers(window: BrowserWindow): void {
   mainWindow = window;
 
+  // Initialize CLI handlers
+  initCliHandlers(window);
+
+  // Set up CLI mode change callback to pause/resume telemetry
+  setCliModeChangeCallback((cliActive) => {
+    if (cliActive) {
+      console.log('[MSP] CLI mode active - pausing telemetry');
+      stopMspTelemetry();
+    } else {
+      console.log('[MSP] CLI mode exited - resuming telemetry');
+      startMspTelemetry();
+    }
+  });
+
   // Config handlers
   ipcMain.handle(IPC_CHANNELS.MSP_GET_PID, async () => getPid());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_PID, async (_event, pid: MSPPid) => setPid(pid));
@@ -2289,7 +2412,7 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MIXER_CONFIG, async (_event, mixerType: number) => setMixerConfig(mixerType));
   // iNav-specific mixer config (proper MSP2 commands)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_INAV_MIXER_CONFIG, async () => getInavMixerConfig());
-  ipcMain.handle(IPC_CHANNELS.MSP_SET_INAV_PLATFORM_TYPE, async (_event, platformType: number) => setInavPlatformType(platformType));
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_INAV_PLATFORM_TYPE, async (_event, platformType: number, mixerType?: number) => setInavPlatformType(platformType, mixerType));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_RC, async () => getRc());
 
   // Servo config handlers (iNav)

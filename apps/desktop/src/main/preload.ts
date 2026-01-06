@@ -518,8 +518,8 @@ const api = {
   } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_INAV_MIXER_CONFIG),
 
-  mspSetInavPlatformType: (platformType: number): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_INAV_PLATFORM_TYPE, platformType),
+  mspSetInavPlatformType: (platformType: number, mixerType?: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_INAV_PLATFORM_TYPE, platformType, mixerType),
 
   mspGetRc: (): Promise<{ channels: number[] } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC),
@@ -583,6 +583,31 @@ const api = {
     const handler = (_: unknown, data: MSPTelemetryData) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.MSP_TELEMETRY_UPDATE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MSP_TELEMETRY_UPDATE, handler);
+  },
+
+  // ============================================================================
+  // CLI Terminal (iNav/Betaflight raw CLI access)
+  // ============================================================================
+
+  cliEnterMode: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_ENTER_MODE),
+
+  cliExitMode: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_EXIT_MODE),
+
+  cliSendCommand: (command: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_SEND_COMMAND, command),
+
+  cliSendRaw: (data: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_SEND_RAW, data),
+
+  cliGetDump: (): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_GET_DUMP),
+
+  onCliData: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.CLI_DATA_RECEIVED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.CLI_DATA_RECEIVED, handler);
   },
 
   // Driver utilities

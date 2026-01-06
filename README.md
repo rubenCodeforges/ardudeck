@@ -27,6 +27,7 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
 - [Supported Vehicles](#supported-vehicles)
+- [Veteran Board Support](#️-veteran-board-support)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [Acknowledgments](#acknowledgments)
@@ -93,6 +94,13 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **Servo Wizard** - Fixed-wing servo setup with aircraft presets (Traditional, Flying Wing, V-Tail, Delta)
 - **Platform Type Change** - Convert multirotor to airplane with MSP2 + CLI fallback for iNav 2.0.0
 - **Custom Profiles** - Save/load custom PID tunes and rate profiles
+
+### CLI Terminal
+- **Full Terminal Emulation** - xterm.js with ANSI color support
+- **Command Autocomplete** - Tab completion for commands and parameters
+- **Parameter Suggestions** - Parsed from `dump` output for quick access
+- **Command History** - Up/down arrow navigation through previous commands
+- **Legacy Board Support** - Full configuration for F3-era boards via CLI
 
 ### Firmware Flash
 - **Multi-Protocol Detection** - Auto-detect boards via MAVLink, MSP, or STM32 bootloader
@@ -222,6 +230,51 @@ pnpm build
 
 ---
 
+## 🎖️ Veteran Board Support
+
+<p align="center">
+  <em>"No board left behind"</em>
+</p>
+
+Got an old **SPRacing F3**, **Naze32**, or other F3-era board collecting dust? **We've got you covered.**
+
+While other configurators have abandoned these classic boards, ArduDeck provides a **fully-featured graphical interface** - not just CLI access, but the **same modern UI experience** as newer boards:
+
+| Board Era | Firmware Support | Configuration |
+|-----------|------------------|---------------|
+| **F3 Boards** | iNav 2.0.0, Betaflight 3.5.7 | **Full GUI** (powered by CLI) |
+| **F4/F7/H7** | Latest iNav & Betaflight | Modern MSP Protocol |
+
+### Why We Care
+
+These boards were the **workhorses of the FPV revolution**. They flew millions of packs, survived countless crashes, and taught a generation of pilots how to tune PIDs. They deserve better than a drawer.
+
+### Full GUI for Legacy Boards
+
+No command-line typing required! ArduDeck automatically detects legacy boards and presents a **complete graphical interface**:
+
+- **PID Tuning Tab** - Sliders and inputs for P/I/D/FF, just like modern boards
+- **Rates Tab** - Visual rate configuration with expo curves
+- **Mixer Tab** - Graphical motor (`mmix`) and servo (`smix`) mixer editor
+- **Servo Tab** - Visual endpoint tuning with range indicators
+- **Modes Tab** - Point-and-click flight mode assignment
+- **CLI Terminal** - For power users who want raw access with autocomplete
+
+The GUI talks to your board via CLI commands under the hood - you get the **convenience of a modern interface** with the **compatibility of CLI**.
+
+### Supported Legacy Boards
+
+- SPRacing F3 / F3 EVO / F3 Mini / F3 Neo
+- Naze32 Rev6
+- CC3D (with iNav)
+- Flip32 F3
+- Seriously Pro Racing F3
+- ...and any other F3-era board running iNav < 2.1 or Betaflight < 4.0
+
+**Dust off those veterans and give them one more flight!** 🛩️
+
+---
+
 ## Roadmap
 
 ### Completed
@@ -233,11 +286,12 @@ pnpm build
 - Vehicle profiles with weather integration
 - Firmware flashing (ArduPilot, Betaflight, iNav)
 - Betaflight/iNav PID tuning and configuration
+- **CLI Terminal** with autocomplete and command history
+- **Legacy F3 board support** via full CLI configuration
 
 ### Coming Soon
 - Calibration wizards (compass, accelerometer, radio)
 - OSD configuration
-- CLI terminal
 - Auto-updater and crash reporting
 
 ---

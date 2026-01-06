@@ -13,7 +13,9 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
 import ModesWizard from '../modes/ModesWizard';
 import ModesAdvancedEditor from '../modes/ModesAdvancedEditor';
-import { ServoWizardInline } from '../servo-wizard';
+import ServoTuningTab from './ServoTuningTab';
+import ServoMixerTab from './ServoMixerTab';
+import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
 
 // Types
@@ -1146,7 +1148,7 @@ function ModesTabContent() {
   );
 }
 
-type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servos' | 'navigation';
+type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation';
 
 export function MspConfigView() {
   const { connectionState } = useConnectionStore();
@@ -1395,7 +1397,9 @@ export function MspConfigView() {
             { id: 'modes', label: 'Flight Modes', icon: '🎮', desc: 'Switch functions' },
             // iNav-specific tabs (before Sensors)
             ...(isInav ? [
-              { id: 'servos', label: 'Servo Setup', icon: '🛫', desc: 'Configure control surfaces' },
+              { id: 'servo-tuning', label: 'Servo Tuning', icon: '🎚️', desc: 'Endpoint calibration' },
+              { id: 'servo-mixer', label: 'Servo Mixer', icon: '🔀', desc: 'Control surface mixing' },
+              { id: 'motor-mixer', label: 'Motor Mixer', icon: '⚙️', desc: 'Motor output mixing' },
               { id: 'navigation', label: 'Navigation', icon: '🧭', desc: 'RTH & GPS settings' },
             ] : []),
             // Sensors always last
@@ -1513,9 +1517,19 @@ export function MspConfigView() {
           </div>
         )}
 
-        {/* Servo Setup Wizard (iNav only) */}
-        {activeTab === 'servos' && isInav && (
-          <ServoWizardInline />
+        {/* Servo Tuning Tab (iNav only) */}
+        {activeTab === 'servo-tuning' && isInav && (
+          <ServoTuningTab />
+        )}
+
+        {/* Servo Mixer Tab (iNav only) */}
+        {activeTab === 'servo-mixer' && isInav && (
+          <ServoMixerTab modified={modified} setModified={setModified} />
+        )}
+
+        {/* Motor Mixer Tab (iNav only) */}
+        {activeTab === 'motor-mixer' && isInav && (
+          <MotorMixerTab modified={modified} setModified={setModified} />
         )}
 
         {/* Navigation Tab (iNav only) */}
