@@ -17,6 +17,7 @@ import ServoTuningTab from './ServoTuningTab';
 import ServoMixerTab from './ServoMixerTab';
 import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
+import { DraggableSlider } from '../ui/DraggableSlider';
 
 // Types
 interface MSPPidCoefficients {
@@ -211,77 +212,6 @@ const MODE_INFO: Record<number, { name: string; icon: string; description: strin
   36: { name: 'PARALYZE', icon: '🔒', description: 'Lock FC', color: 'bg-red-500', beginner: 'Completely locks quad - use for transport' },
 };
 
-// Slider with beginner-friendly styling
-function TuningSlider({
-  label,
-  value,
-  onChange,
-  min = 0,
-  max = 255,
-  color = '#3B82F6',
-  hint,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min?: number;
-  max?: number;
-  color?: string;
-  hint?: string;
-}) {
-  const percentage = ((value - min) / (max - min)) * 100;
-
-  return (
-    <div>
-      <div className="flex items-start justify-between mb-2">
-        <div className="min-w-0">
-          <span className="text-sm font-medium text-gray-200">{label}</span>
-          {hint && (
-            <p className="text-xs text-gray-500 mt-0.5">{hint}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onChange(Math.max(min, value - 1))}
-            className="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm"
-          >
-            -
-          </button>
-          <input
-            type="number"
-            min={min}
-            max={max}
-            value={value}
-            onChange={(e) => onChange(Math.min(max, Math.max(min, parseInt(e.target.value) || 0)))}
-            className="w-14 px-2 py-1 text-center text-sm bg-gray-900 border border-gray-700 rounded text-white"
-          />
-          <button
-            onClick={() => onChange(Math.min(max, value + 1))}
-            className="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm"
-          >
-            +
-          </button>
-        </div>
-      </div>
-      <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden cursor-pointer"
-           onClick={(e) => {
-             const rect = e.currentTarget.getBoundingClientRect();
-             const x = e.clientX - rect.left;
-             const newValue = Math.round((x / rect.width) * (max - min) + min);
-             onChange(Math.min(max, Math.max(min, newValue)));
-           }}>
-        <div
-          className="absolute left-0 top-0 h-full rounded-full transition-all"
-          style={{ width: `${percentage}%`, backgroundColor: color }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border-2 transition-all"
-          style={{ left: `calc(${percentage}% - 8px)`, borderColor: color }}
-        />
-      </div>
-    </div>
-  );
-}
 
 // Rate curve visualization with better visuals
 function RateCurve({
@@ -538,7 +468,7 @@ function RatesTab({
             <div className="space-y-4">
               {/* Center Rate - hidden for legacy iNav < 2.3.0 (RC_RATE fixed at 100) */}
               {!isLegacyInav && (
-                <TuningSlider
+                <DraggableSlider
                   label="Center Rate"
                   value={rcTuning[rcRate] as number}
                   onChange={(v) => updateRcTuning(rcRate, v)}
@@ -546,7 +476,7 @@ function RatesTab({
                   hint="Sensitivity near center"
                 />
               )}
-              <TuningSlider
+              <DraggableSlider
                 label="Max Rate"
                 value={rcTuning[superRate] as number}
                 onChange={(v) => updateRcTuning(superRate, v)}
@@ -554,7 +484,7 @@ function RatesTab({
                 hint="Full stick speed"
                 max={isLegacyInav ? 1000 : 200}
               />
-              <TuningSlider
+              <DraggableSlider
                 label="Expo"
                 value={rcTuning[expo] as number}
                 onChange={(v) => updateRcTuning(expo, v)}
@@ -757,9 +687,9 @@ function PidTuningTab({
             </div>
           </div>
           <div className="space-y-5">
-            <TuningSlider label="P - Response" value={pid.roll.p} onChange={(v) => updatePid('roll', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
-            <TuningSlider label="I - Stability" value={pid.roll.i} onChange={(v) => updatePid('roll', 'i', v)} color="#10B981" hint="Higher = more stable" />
-            <TuningSlider label="D - Smoothness" value={pid.roll.d} onChange={(v) => updatePid('roll', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
+            <DraggableSlider label="P - Response" value={pid.roll.p} onChange={(v) => updatePid('roll', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
+            <DraggableSlider label="I - Stability" value={pid.roll.i} onChange={(v) => updatePid('roll', 'i', v)} color="#10B981" hint="Higher = more stable" />
+            <DraggableSlider label="D - Smoothness" value={pid.roll.d} onChange={(v) => updatePid('roll', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
           </div>
         </div>
 
@@ -773,9 +703,9 @@ function PidTuningTab({
             </div>
           </div>
           <div className="space-y-5">
-            <TuningSlider label="P - Response" value={pid.pitch.p} onChange={(v) => updatePid('pitch', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
-            <TuningSlider label="I - Stability" value={pid.pitch.i} onChange={(v) => updatePid('pitch', 'i', v)} color="#10B981" hint="Higher = more stable" />
-            <TuningSlider label="D - Smoothness" value={pid.pitch.d} onChange={(v) => updatePid('pitch', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
+            <DraggableSlider label="P - Response" value={pid.pitch.p} onChange={(v) => updatePid('pitch', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
+            <DraggableSlider label="I - Stability" value={pid.pitch.i} onChange={(v) => updatePid('pitch', 'i', v)} color="#10B981" hint="Higher = more stable" />
+            <DraggableSlider label="D - Smoothness" value={pid.pitch.d} onChange={(v) => updatePid('pitch', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
           </div>
         </div>
 
@@ -789,9 +719,9 @@ function PidTuningTab({
             </div>
           </div>
           <div className="space-y-5">
-            <TuningSlider label="P - Response" value={pid.yaw.p} onChange={(v) => updatePid('yaw', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
-            <TuningSlider label="I - Stability" value={pid.yaw.i} onChange={(v) => updatePid('yaw', 'i', v)} color="#10B981" hint="Higher = more stable" />
-            <TuningSlider label="D - Smoothness" value={pid.yaw.d} onChange={(v) => updatePid('yaw', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
+            <DraggableSlider label="P - Response" value={pid.yaw.p} onChange={(v) => updatePid('yaw', 'p', v)} color="#3B82F6" hint="Higher = snappier" />
+            <DraggableSlider label="I - Stability" value={pid.yaw.i} onChange={(v) => updatePid('yaw', 'i', v)} color="#10B981" hint="Higher = more stable" />
+            <DraggableSlider label="D - Smoothness" value={pid.yaw.d} onChange={(v) => updatePid('yaw', 'd', v)} color="#8B5CF6" hint="Higher = smoother" />
           </div>
         </div>
       </div>

@@ -287,8 +287,53 @@ Manual (5 bytes): manualRcExpo, manualRcYawExpo, manualRollRate, manualPitchRate
   | components/legacy-config/LegacyConfigView.tsx | Legacy F3 board configuration (CLI-powered GUI)         |
   | components/cli/CliTerminal.tsx                | xterm.js CLI terminal with autocomplete                 |
   | components/cli/CliView.tsx                    | Dedicated CLI sidebar view                              |
+  | components/ui/DraggableSlider.tsx             | Reusable slider with drag support (use for ALL sliders) |
   | main/msp/msp-handlers.ts                      | MSP IPC handlers for telemetry and config               |
   | main/cli/cli-handlers.ts                      | CLI IPC handlers for raw serial communication           |
+
+  ### UI Components - Sliders
+
+  **IMPORTANT:** Always use `DraggableSlider` or `CompactSlider` from `components/ui/DraggableSlider.tsx` for slider controls.
+
+  **DO NOT** create inline slider components with `onClick` on the track - they won't support dragging!
+
+  | Component | Use Case | Features |
+  |-----------|----------|----------|
+  | `DraggableSlider` | PID tuning, rates, general config | Label, hint, +/- buttons, number input, drag support |
+  | `CompactSlider` | Servo endpoints, space-constrained UIs | Smaller controls, drag support, visible thumb |
+
+  **Usage:**
+  ```tsx
+  import { DraggableSlider, CompactSlider } from '../ui/DraggableSlider';
+
+  // Full-featured slider
+  <DraggableSlider
+    label="P - Proportional"
+    hint="Responsiveness to stick input"
+    value={pid.roll.p}
+    onChange={(v) => handleChange('p', v)}
+    color="#EF4444"
+    min={0}
+    max={200}
+  />
+
+  // Compact slider for servo controls
+  <CompactSlider
+    label="Minimum"
+    value={servo.min}
+    onChange={(v) => handleChange({ ...servo, min: v })}
+    min={750}
+    max={2250}
+    step={10}
+    color={color}
+  />
+  ```
+
+  **Key features:**
+  - Pointer events for touch + mouse support
+  - Real-time value updates while dragging (not just on release)
+  - Visible thumb handle on all sliders
+  - `setPointerCapture()` for reliable drag behavior
 
   ---
   MSP Protocol Support (Betaflight/iNav)

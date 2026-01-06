@@ -6,69 +6,7 @@
  */
 
 import { useLegacyConfigStore, type LegacyServoConfig } from '../../stores/legacy-config-store';
-
-// Servo slider component
-function ServoSlider({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  color,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min: number;
-  max: number;
-  color: string;
-}) {
-  const percentage = ((value - min) / (max - min)) * 100;
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-zinc-400">{label}</span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onChange(Math.max(min, value - 10))}
-            className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs"
-          >
-            -
-          </button>
-          <input
-            type="number"
-            min={min}
-            max={max}
-            value={value}
-            onChange={(e) => onChange(Math.min(max, Math.max(min, parseInt(e.target.value) || min)))}
-            className="w-16 px-2 py-0.5 text-center text-sm bg-zinc-900 border border-zinc-700 rounded text-white"
-          />
-          <button
-            onClick={() => onChange(Math.min(max, value + 10))}
-            className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs"
-          >
-            +
-          </button>
-        </div>
-      </div>
-      <div
-        className="relative h-2 bg-zinc-800 rounded-full overflow-hidden cursor-pointer"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const newValue = Math.round((x / rect.width) * (max - min) + min);
-          onChange(Math.min(max, Math.max(min, newValue)));
-        }}
-      >
-        <div
-          className="absolute left-0 top-0 h-full rounded-full transition-all"
-          style={{ width: `${percentage}%`, backgroundColor: color }}
-        />
-      </div>
-    </div>
-  );
-}
+import { CompactSlider } from '../ui/DraggableSlider';
 
 export default function LegacyServoTab() {
   const { servoConfigs, updateServoConfig } = useLegacyConfigStore();
@@ -171,31 +109,34 @@ export default function LegacyServoTab() {
 
                 {/* Sliders */}
                 <div className="grid grid-cols-2 gap-4">
-                  <ServoSlider
+                  <CompactSlider
                     label="Minimum"
                     value={servo.min}
                     onChange={(v) => handleChange({ ...servo, min: v })}
                     min={750}
                     max={2250}
+                    step={10}
                     color={color}
                   />
-                  <ServoSlider
+                  <CompactSlider
                     label="Maximum"
                     value={servo.max}
                     onChange={(v) => handleChange({ ...servo, max: v })}
                     min={750}
                     max={2250}
+                    step={10}
                     color={color}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <ServoSlider
+                  <CompactSlider
                     label="Center"
                     value={servo.mid}
                     onChange={(v) => handleChange({ ...servo, mid: v })}
                     min={750}
                     max={2250}
+                    step={10}
                     color={color}
                   />
                   <div className="space-y-1">

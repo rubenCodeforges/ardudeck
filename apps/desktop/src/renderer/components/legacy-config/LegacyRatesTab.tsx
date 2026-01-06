@@ -7,6 +7,7 @@
 
 import { useState, useMemo } from 'react';
 import { useLegacyConfigStore } from '../../stores/legacy-config-store';
+import { DraggableSlider } from '../ui/DraggableSlider';
 
 // Rate Presets
 const RATE_PRESETS = {
@@ -54,83 +55,6 @@ function loadCustomProfiles(): Record<string, { name: string; data: typeof RATE_
 
 function saveCustomProfiles(profiles: Record<string, { name: string; data: typeof RATE_PRESETS.beginner.rates }>): void {
   localStorage.setItem(RATE_PROFILES_KEY, JSON.stringify(profiles));
-}
-
-// Tuning slider component
-function TuningSlider({
-  label,
-  value,
-  onChange,
-  min = 0,
-  max = 255,
-  color = '#3B82F6',
-  hint,
-  suffix,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min?: number;
-  max?: number;
-  color?: string;
-  hint?: string;
-  suffix?: string;
-}) {
-  const percentage = ((value - min) / (max - min)) * 100;
-
-  return (
-    <div>
-      <div className="flex items-start justify-between mb-2">
-        <div className="min-w-0">
-          <span className="text-sm font-medium text-gray-200">{label}</span>
-          {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onChange(Math.max(min, value - 1))}
-            className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm"
-          >
-            -
-          </button>
-          <div className="flex items-center">
-            <input
-              type="number"
-              min={min}
-              max={max}
-              value={value}
-              onChange={(e) => onChange(Math.min(max, Math.max(min, parseInt(e.target.value) || 0)))}
-              className="w-14 px-2 py-1 text-center text-sm bg-zinc-900 border border-zinc-700 rounded text-white"
-            />
-            {suffix && <span className="text-xs text-zinc-500 ml-1">{suffix}</span>}
-          </div>
-          <button
-            onClick={() => onChange(Math.min(max, value + 1))}
-            className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm"
-          >
-            +
-          </button>
-        </div>
-      </div>
-      <div
-        className="relative h-3 bg-zinc-800 rounded-full overflow-hidden cursor-pointer"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const newValue = Math.round((x / rect.width) * (max - min) + min);
-          onChange(Math.min(max, Math.max(min, newValue)));
-        }}
-      >
-        <div
-          className="absolute left-0 top-0 h-full rounded-full transition-all"
-          style={{ width: `${percentage}%`, backgroundColor: color }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border-2 transition-all"
-          style={{ left: `calc(${percentage}% - 8px)`, borderColor: color }}
-        />
-      </div>
-    </div>
-  );
 }
 
 // Rate curve visualization
@@ -401,23 +325,21 @@ export default function LegacyRatesTab() {
 
               {/* Sliders */}
               <div className="space-y-4">
-                <TuningSlider
+                <DraggableSlider
                   label="Rate"
                   hint="Maximum rotation speed"
                   value={rates[rateKey]}
                   onChange={(v) => handleChange(rateKey, v, `${axis}_rate`)}
                   color={axisColors[axis]}
                   max={180}
-                  suffix="°/s"
                 />
-                <TuningSlider
+                <DraggableSlider
                   label="Expo"
                   hint="Center stick sensitivity"
                   value={rates[expoKey]}
                   onChange={(v) => handleChange(expoKey, v, axis === 'yaw' ? 'rc_yaw_expo' : 'rc_expo')}
                   color={axisColors[axis]}
                   max={100}
-                  suffix="%"
                 />
               </div>
             </div>
@@ -429,7 +351,7 @@ export default function LegacyRatesTab() {
       <div className="bg-zinc-900/50 rounded-xl p-5 border border-zinc-800">
         <h3 className="text-lg font-semibold text-white mb-4">Global Settings</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <TuningSlider
+          <DraggableSlider
             label="RC Rate"
             hint="Overall stick sensitivity multiplier"
             value={rates.rcRate}
@@ -438,23 +360,21 @@ export default function LegacyRatesTab() {
             max={200}
           />
           <div className="grid grid-cols-2 gap-4">
-            <TuningSlider
+            <DraggableSlider
               label="Throttle Mid"
               hint="Hover point"
               value={rates.throttleMid}
               onChange={(v) => handleChange('throttleMid', v, 'thr_mid')}
               color="#F59E0B"
               max={100}
-              suffix="%"
             />
-            <TuningSlider
+            <DraggableSlider
               label="Throttle Expo"
               hint="Throttle curve"
               value={rates.throttleExpo}
               onChange={(v) => handleChange('throttleExpo', v, 'thr_expo')}
               color="#F59E0B"
               max={100}
-              suffix="%"
             />
           </div>
         </div>
@@ -470,16 +390,15 @@ export default function LegacyRatesTab() {
           Reduces PID strength at high throttle to prevent oscillations during fast flight.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <TuningSlider
+          <DraggableSlider
             label="TPA Rate"
             hint="How much to reduce PIDs at full throttle"
             value={rates.tpaRate}
             onChange={(v) => handleChange('tpaRate', v, 'tpa_rate')}
             color="#10B981"
             max={100}
-            suffix="%"
           />
-          <TuningSlider
+          <DraggableSlider
             label="TPA Breakpoint"
             hint="Throttle level where TPA starts"
             value={rates.tpaBreakpoint}

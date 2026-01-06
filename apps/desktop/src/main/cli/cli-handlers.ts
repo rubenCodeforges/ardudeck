@@ -137,6 +137,74 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Filter out MSP binary data from CLI output.
+ * MSP frames that arrive after CLI mode is entered (in-flight responses)
+ * should not be displayed as garbage text.
+ *
+ * MSP v1: $M< (response), $M> (request), $M! (error)
+ * MSP v2: $X< (response), $X> (request), $X! (error)
+ */
+function filterMspFromData(data: Uint8Array): Uint8Array {
+  if (data.length === 0) return data;
+
+  // Quick check: if no '$' (0x24) in data, it's pure CLI text
+  let hasDollar = false;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] === 0x24) {
+      hasDollar = true;
+      break;
+    }
+  }
+  if (!hasDollar) return data;
+
+  // Filter out MSP frames
+  const result: number[] = [];
+  let i = 0;
+
+  while (i < data.length) {
+    // Check for MSP v1/v2 header: $ followed by M or X
+    if (data[i] === 0x24 && i + 2 < data.length) {
+      const second = data[i + 1];
+      const third = data[i + 2];
+
+      // MSP v1: $M followed by <, >, or !
+      if (second === 0x4D && (third === 0x3C || third === 0x3E || third === 0x21)) {
+        // MSP v1 frame: $M + dir + len + cmd + payload + checksum
+        if (i + 4 < data.length) {
+          const payloadLen = data[i + 3] ?? 0;
+          const frameLen = 6 + payloadLen;
+          i += Math.min(frameLen, data.length - i);
+          continue;
+        } else {
+          // Incomplete frame, skip rest
+          break;
+        }
+      }
+
+      // MSP v2: $X followed by <, >, or !
+      if (second === 0x58 && (third === 0x3C || third === 0x3E || third === 0x21)) {
+        // MSP v2 frame: $X + dir + flag + cmd(2) + len(2) + payload + crc
+        if (i + 8 < data.length) {
+          const payloadLen = (data[i + 6] ?? 0) | ((data[i + 7] ?? 0) << 8);
+          const frameLen = 9 + payloadLen;
+          i += Math.min(frameLen, data.length - i);
+          continue;
+        } else {
+          // Incomplete frame, skip rest
+          break;
+        }
+      }
+    }
+
+    // Not MSP, keep this byte
+    result.push(data[i]!);
+    i++;
+  }
+
+  return new Uint8Array(result);
+}
+
 // =============================================================================
 // CLI Operations
 // =============================================================================
@@ -168,9 +236,13 @@ async function enterCliMode(): Promise<boolean> {
     await delay(100);
 
     // NOW set up data listener - MSP handler is already skipping
+    // Filter out any MSP frames that arrive (in-flight responses)
     cliDataListener = (data: Uint8Array) => {
-      const text = new TextDecoder().decode(data);
-      safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, text);
+      const filtered = filterMspFromData(data);
+      if (filtered.length > 0) {
+        const text = new TextDecoder().decode(filtered);
+        safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, text);
+      }
     };
     currentTransport.on('data', cliDataListener);
 
@@ -265,8 +337,11 @@ async function sendCliCommand(command: string): Promise<void> {
   if (!cliDataListener) {
     console.log('[CLI] Re-attaching data listener');
     cliDataListener = (data: Uint8Array) => {
-      const text = new TextDecoder().decode(data);
-      safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, text);
+      const filtered = filterMspFromData(data);
+      if (filtered.length > 0) {
+        const text = new TextDecoder().decode(filtered);
+        safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, text);
+      }
     };
     currentTransport.on('data', cliDataListener);
   }
@@ -362,8 +437,9 @@ async function getCliDump(): Promise<string> {
       currentTransport.on('data', cliDataListener);
     }
 
-    // Also send to renderer for display
-    safeSend(IPC_CHANNELS.CLI_DATA_RECEIVED, dumpOutput);
+    // NOTE: We intentionally do NOT send dump output to terminal here.
+    // This is a programmatic dump (for legacy config / autocomplete).
+    // If user types 'dump' manually in CLI, it goes through normal flow.
 
     console.log('[CLI] Dump returned:', dumpOutput.length, 'chars');
     return dumpOutput;

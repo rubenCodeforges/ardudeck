@@ -110,15 +110,28 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
 
     // Note: CLI data listener is set up globally in App.tsx
 
-    // Write welcome message
-    term.writeln('\x1b[1;36m╔════════════════════════════════════════════════════╗\x1b[0m');
-    term.writeln('\x1b[1;36m║\x1b[0m  \x1b[1;33mArduDeck CLI Terminal\x1b[0m                              \x1b[1;36m║\x1b[0m');
-    term.writeln('\x1b[1;36m╠════════════════════════════════════════════════════╣\x1b[0m');
-    term.writeln('\x1b[1;36m║\x1b[0m  Type \x1b[1;32mhelp\x1b[0m for available commands                   \x1b[1;36m║\x1b[0m');
-    term.writeln('\x1b[1;36m║\x1b[0m  Type \x1b[1;32mdump\x1b[0m to get full config (enables autocomplete) \x1b[1;36m║\x1b[0m');
-    term.writeln('\x1b[1;36m║\x1b[0m  Press \x1b[1;35mTab\x1b[0m for command completion                   \x1b[1;36m║\x1b[0m');
-    term.writeln('\x1b[1;36m║\x1b[0m  Press \x1b[1;35mUp/Down\x1b[0m for command history                 \x1b[1;36m║\x1b[0m');
-    term.writeln('\x1b[1;36m╚════════════════════════════════════════════════════╝\x1b[0m');
+    // Write welcome message - helper to pad lines to exact width
+    const C = '\x1b[1;36m'; // cyan
+    const Y = '\x1b[1;33m'; // yellow
+    const G = '\x1b[1;32m'; // green
+    const M = '\x1b[1;35m'; // magenta
+    const R = '\x1b[0m';    // reset
+
+    // Build each line with exact character counts, then pad
+    const W = 46; // content width between borders
+    const line = (text: string, visibleLen: number) => {
+      const padding = ' '.repeat(Math.max(0, W - visibleLen));
+      return `${C}║${R}${text}${padding}${C}║${R}`;
+    };
+
+    term.writeln(`${C}╔${'═'.repeat(W)}╗${R}`);
+    term.writeln(line(`  ${Y}ArduDeck CLI Terminal${R}`, 23));
+    term.writeln(`${C}╠${'═'.repeat(W)}╣${R}`);
+    term.writeln(line(`  Type ${G}help${R} for available commands`, 34));
+    term.writeln(line(`  Type ${G}dump${R} for full config (autocomplete)`, 42));
+    term.writeln(line(`  Press ${M}Tab${R} for command completion`, 34));
+    term.writeln(line(`  Press ${M}Up/Down${R} for command history`, 35));
+    term.writeln(`${C}╚${'═'.repeat(W)}╝${R}`);
     term.writeln('');
 
     // Restore previous session output (persists across view switches)
@@ -146,6 +159,21 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
         xtermRef.current.write(data);
       }
     });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Clear xterm when store output is cleared
+  useEffect(() => {
+    const unsubscribe = useCliStore.subscribe(
+      (state, prevState) => {
+        // If output was cleared (went from non-empty to empty)
+        if (prevState.output && !state.output && xtermRef.current) {
+          xtermRef.current.clear();
+          xtermRef.current.writeln('\x1b[90m--- Terminal cleared ---\x1b[0m');
+        }
+      }
+    );
 
     return () => unsubscribe();
   }, []);

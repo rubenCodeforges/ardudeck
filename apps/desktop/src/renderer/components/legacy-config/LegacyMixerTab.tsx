@@ -8,6 +8,10 @@
 import { useState } from 'react';
 import { useLegacyConfigStore, type LegacyMotorMix, type LegacyServoMix } from '../../stores/legacy-config-store';
 
+// Maximum mixer entries (iNav limits)
+const MAX_MOTOR_MIXERS = 8;
+const MAX_SERVO_MIXERS = 16;
+
 // Servo input sources for iNav
 const SERVO_SOURCES: Record<number, { label: string; color: string }> = {
   0: { label: 'Stabilized Roll', color: '#EF4444' },
@@ -51,8 +55,20 @@ function MixBar({ value, color, label }: { value: number; color: string; label: 
 }
 
 export default function LegacyMixerTab() {
-  const { motorMixer, servoMixer, updateMotorMix, updateServoMix } = useLegacyConfigStore();
+  const {
+    motorMixer,
+    servoMixer,
+    updateMotorMix,
+    updateServoMix,
+    addMotorMix,
+    removeMotorMix,
+    addServoMix,
+    removeServoMix,
+  } = useLegacyConfigStore();
   const [activeSection, setActiveSection] = useState<'motor' | 'servo'>('motor');
+
+  const canAddMotor = motorMixer.length < MAX_MOTOR_MIXERS;
+  const canAddServo = servoMixer.length < MAX_SERVO_MIXERS;
 
   const handleMotorMixChange = (mix: LegacyMotorMix) => {
     updateMotorMix(mix.index, mix);
@@ -84,30 +100,62 @@ export default function LegacyMixerTab() {
         </div>
       </div>
 
-      {/* Section Tabs */}
-      <div className="flex gap-2 p-1 bg-zinc-900 rounded-lg w-fit">
-        <button
-          onClick={() => setActiveSection('motor')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            activeSection === 'motor'
-              ? 'bg-blue-600 text-white shadow-lg'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <span className="mr-2">⚙️</span>
-          Motor Mixer ({motorMixer.length})
-        </button>
-        <button
-          onClick={() => setActiveSection('servo')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            activeSection === 'servo'
-              ? 'bg-blue-600 text-white shadow-lg'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <span className="mr-2">🔩</span>
-          Servo Mixer ({servoMixer.length})
-        </button>
+      {/* Section Tabs and Add Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 p-1 bg-zinc-900 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveSection('motor')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeSection === 'motor'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span className="mr-2">⚙️</span>
+            Motor Mixer ({motorMixer.length})
+          </button>
+          <button
+            onClick={() => setActiveSection('servo')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeSection === 'servo'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span className="mr-2">🔩</span>
+            Servo Mixer ({servoMixer.length})
+          </button>
+        </div>
+
+        {/* Add button */}
+        {activeSection === 'motor' && (
+          <button
+            onClick={() => addMotorMix()}
+            disabled={!canAddMotor}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              canAddMotor
+                ? 'bg-green-600 hover:bg-green-500 text-white'
+                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+            }`}
+          >
+            <span>+</span>
+            Add Motor ({motorMixer.length}/{MAX_MOTOR_MIXERS})
+          </button>
+        )}
+        {activeSection === 'servo' && (
+          <button
+            onClick={() => addServoMix()}
+            disabled={!canAddServo}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              canAddServo
+                ? 'bg-green-600 hover:bg-green-500 text-white'
+                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+            }`}
+          >
+            <span>+</span>
+            Add Servo Rule ({servoMixer.length}/{MAX_SERVO_MIXERS})
+          </button>
+        )}
       </div>
 
       {/* Motor Mixer */}
@@ -124,14 +172,25 @@ export default function LegacyMixerTab() {
               {motorMixer.map((mix) => (
                 <div key={mix.index} className="bg-zinc-900/50 rounded-xl border border-zinc-800 overflow-hidden">
                   {/* Header */}
-                  <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold">
-                      M{mix.index}
+                  <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold">
+                        M{mix.index}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-white">Motor {mix.index}</h3>
+                        <p className="text-xs text-zinc-400">Output channel</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-white">Motor {mix.index}</h3>
-                      <p className="text-xs text-zinc-400">Output channel</p>
-                    </div>
+                    <button
+                      onClick={() => removeMotorMix(mix.index)}
+                      className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      title="Remove motor mixer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
 
                   {/* Mix values */}
@@ -235,19 +294,42 @@ export default function LegacyMixerTab() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-500">Rate:</span>
-                        <span
-                          className={`font-mono text-sm ${mix.rate < 0 ? 'text-orange-400' : 'text-green-400'}`}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-zinc-500">Rate:</span>
+                          <span
+                            className={`font-mono text-sm ${mix.rate < 0 ? 'text-orange-400' : 'text-green-400'}`}
+                          >
+                            {mix.rate > 0 ? '+' : ''}{mix.rate}%
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeServoMix(mix.index)}
+                          className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Remove servo mixer rule"
                         >
-                          {mix.rate > 0 ? '+' : ''}{mix.rate}%
-                        </span>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
 
                     {/* Controls */}
                     <div className="p-5">
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                        <div>
+                          <label className="block text-xs text-zinc-500 mb-1.5">Target Servo</label>
+                          <select
+                            value={mix.targetChannel}
+                            onChange={(e) => handleServoMixChange({ ...mix, targetChannel: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 focus:outline-none"
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map((servo) => (
+                              <option key={servo} value={servo}>Servo {servo}</option>
+                            ))}
+                          </select>
+                        </div>
                         <div>
                           <label className="block text-xs text-zinc-500 mb-1.5">Input Source</label>
                           <select

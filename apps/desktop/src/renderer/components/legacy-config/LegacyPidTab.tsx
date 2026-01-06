@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { useLegacyConfigStore } from '../../stores/legacy-config-store';
+import { DraggableSlider } from '../ui/DraggableSlider';
 
 // PID Presets - same as modern boards
 const PID_PRESETS = {
@@ -70,78 +71,6 @@ function loadCustomProfiles(): Record<string, { name: string; data: typeof PID_P
 
 function saveCustomProfiles(profiles: Record<string, { name: string; data: typeof PID_PRESETS.beginner.pids }>): void {
   localStorage.setItem(PID_PROFILES_KEY, JSON.stringify(profiles));
-}
-
-// Tuning slider component
-function TuningSlider({
-  label,
-  value,
-  onChange,
-  min = 0,
-  max = 255,
-  color = '#3B82F6',
-  hint,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min?: number;
-  max?: number;
-  color?: string;
-  hint?: string;
-}) {
-  const percentage = ((value - min) / (max - min)) * 100;
-
-  return (
-    <div>
-      <div className="flex items-start justify-between mb-2">
-        <div className="min-w-0">
-          <span className="text-sm font-medium text-gray-200">{label}</span>
-          {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onChange(Math.max(min, value - 1))}
-            className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm"
-          >
-            -
-          </button>
-          <input
-            type="number"
-            min={min}
-            max={max}
-            value={value}
-            onChange={(e) => onChange(Math.min(max, Math.max(min, parseInt(e.target.value) || 0)))}
-            className="w-14 px-2 py-1 text-center text-sm bg-zinc-900 border border-zinc-700 rounded text-white"
-          />
-          <button
-            onClick={() => onChange(Math.min(max, value + 1))}
-            className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm"
-          >
-            +
-          </button>
-        </div>
-      </div>
-      <div
-        className="relative h-3 bg-zinc-800 rounded-full overflow-hidden cursor-pointer"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const newValue = Math.round((x / rect.width) * (max - min) + min);
-          onChange(Math.min(max, Math.max(min, newValue)));
-        }}
-      >
-        <div
-          className="absolute left-0 top-0 h-full rounded-full transition-all"
-          style={{ width: `${percentage}%`, backgroundColor: color }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border-2 transition-all"
-          style={{ left: `calc(${percentage}% - 8px)`, borderColor: color }}
-        />
-      </div>
-    </div>
-  );
 }
 
 export default function LegacyPidTab() {
@@ -356,7 +285,7 @@ export default function LegacyPidTab() {
               <h3 className="text-lg font-semibold text-white capitalize">{axis}</h3>
             </div>
             <div className="space-y-5">
-              <TuningSlider
+              <DraggableSlider
                 label="P - Proportional"
                 hint="Responsiveness to stick input"
                 value={pid[axis].p}
@@ -364,7 +293,7 @@ export default function LegacyPidTab() {
                 color={axisColors[axis]}
                 max={200}
               />
-              <TuningSlider
+              <DraggableSlider
                 label="I - Integral"
                 hint="Corrects drift over time"
                 value={pid[axis].i}
@@ -372,7 +301,7 @@ export default function LegacyPidTab() {
                 color={axisColors[axis]}
                 max={200}
               />
-              <TuningSlider
+              <DraggableSlider
                 label={isAirplane ? "FF - Feed Forward" : "D - Derivative"}
                 hint={isAirplane ? "Anticipates stick movement" : "Dampens overshoots"}
                 value={pid[axis].d}
@@ -382,7 +311,7 @@ export default function LegacyPidTab() {
               />
               {/* Only show separate FF slider for multirotors */}
               {!isAirplane && axis !== 'yaw' && (
-                <TuningSlider
+                <DraggableSlider
                   label="FF - Feed Forward"
                   hint="Anticipates stick movement"
                   value={pid[axis].ff || 0}
@@ -404,7 +333,7 @@ export default function LegacyPidTab() {
             <h3 className="text-lg font-semibold text-white">Level (Angle Mode)</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <TuningSlider
+            <DraggableSlider
               label="P - Strength"
               hint="How hard it self-levels"
               value={pid.level.p || 0}
@@ -416,7 +345,7 @@ export default function LegacyPidTab() {
               color="#A855F7"
               max={200}
             />
-            <TuningSlider
+            <DraggableSlider
               label="I - Integral"
               hint="Holds level over time"
               value={pid.level.i || 0}
@@ -428,7 +357,7 @@ export default function LegacyPidTab() {
               color="#A855F7"
               max={200}
             />
-            <TuningSlider
+            <DraggableSlider
               label="D - Damping"
               hint="Reduces oscillation"
               value={pid.level.d || 0}

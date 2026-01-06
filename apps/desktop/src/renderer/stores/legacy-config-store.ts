@@ -127,6 +127,12 @@ export interface LegacyConfigStore {
   updateServoConfig: (index: number, config: LegacyServoConfig) => void;
   updateAuxMode: (index: number, mode: LegacyAuxMode) => void;
 
+  // Add/remove actions for mixers
+  addMotorMix: () => LegacyMotorMix;
+  removeMotorMix: (index: number) => void;
+  addServoMix: () => LegacyServoMix;
+  removeServoMix: (index: number) => void;
+
   // Reboot/reconnect actions
   setRebootState: (state: RebootState, message?: string) => void;
   setRebootError: (error: string) => void;
@@ -503,6 +509,80 @@ export const useLegacyConfigStore = create<LegacyConfigStore>((set, get) => ({
       updated.push(mode);
     }
     set({ auxModes: updated, hasChanges: true });
+  },
+
+  // Add/remove actions for mixers
+  addMotorMix: () => {
+    const { motorMixer } = get();
+    // Find next available index (0-7 for typical motor mixer)
+    const usedIndices = new Set(motorMixer.map((m) => m.index));
+    let newIndex = 0;
+    while (usedIndices.has(newIndex) && newIndex < 8) {
+      newIndex++;
+    }
+    if (newIndex >= 8) {
+      console.warn('[LegacyConfigStore] Max motor mixer entries reached (8)');
+      newIndex = motorMixer.length; // Fallback to next sequential
+    }
+    const newMix: LegacyMotorMix = {
+      index: newIndex,
+      throttle: 1.0,
+      roll: 0,
+      pitch: 0,
+      yaw: 0,
+    };
+    set({ motorMixer: [...motorMixer, newMix], hasChanges: true });
+    // Send CLI command to create the entry
+    window.electronAPI.cliSendCommand(
+      `mmix ${newMix.index} ${newMix.throttle.toFixed(3)} ${newMix.roll.toFixed(3)} ${newMix.pitch.toFixed(3)} ${newMix.yaw.toFixed(3)}`
+    );
+    return newMix;
+  },
+
+  removeMotorMix: (index) => {
+    const { motorMixer } = get();
+    const updated = motorMixer.filter((m) => m.index !== index);
+    set({ motorMixer: updated, hasChanges: true });
+    // Reset the mixer entry to zeros (effectively removes it)
+    window.electronAPI.cliSendCommand(`mmix ${index} 0 0 0 0`);
+  },
+
+  addServoMix: () => {
+    const { servoMixer } = get();
+    // Find next available index (0-15 for typical servo mixer)
+    const usedIndices = new Set(servoMixer.map((m) => m.index));
+    let newIndex = 0;
+    while (usedIndices.has(newIndex) && newIndex < 16) {
+      newIndex++;
+    }
+    if (newIndex >= 16) {
+      console.warn('[LegacyConfigStore] Max servo mixer entries reached (16)');
+      newIndex = servoMixer.length;
+    }
+    const newMix: LegacyServoMix = {
+      index: newIndex,
+      targetChannel: 0, // Servo 0
+      inputSource: 0, // Stabilized Roll
+      rate: 100, // 100% mix
+      speed: 0, // No speed limit
+      min: 0, // No min limit
+      max: 100, // Full range
+      box: 0, // No aux condition
+    };
+    set({ servoMixer: [...servoMixer, newMix], hasChanges: true });
+    // Send CLI command to create the entry
+    window.electronAPI.cliSendCommand(
+      `smix ${newMix.index} ${newMix.targetChannel} ${newMix.inputSource} ${newMix.rate} ${newMix.speed} ${newMix.min} ${newMix.max} ${newMix.box}`
+    );
+    return newMix;
+  },
+
+  removeServoMix: (index) => {
+    const { servoMixer } = get();
+    const updated = servoMixer.filter((m) => m.index !== index);
+    set({ servoMixer: updated, hasChanges: true });
+    // Reset the mixer entry (set rate to 0 effectively disables it)
+    window.electronAPI.cliSendCommand(`smix ${index} 0 0 0 0 0 0 0`);
   },
 
   // Reboot/reconnect state actions
