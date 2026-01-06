@@ -475,6 +475,11 @@ export function startMspTelemetry(rateHz: number = 10): void {
       return;
     }
 
+    // Skip telemetry polling while CLI mode is active (servo/tuning CLI operations)
+    if (servoCliModeActive || tuningCliModeActive) {
+      return;
+    }
+
     // BSOD FIX: Skip if previous poll still running to prevent request stacking
     if (telemetryInProgress) {
       telemetrySkipCount++;
@@ -1333,8 +1338,9 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
  * Get mixer configuration (legacy, for non-iNav boards)
  */
 async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean } | null> {
-  // Guard: return null if not connected
+  // Guard: return null if not connected or CLI mode active
   if (!currentTransport?.isOpen) return null;
+  if (servoCliModeActive || tuningCliModeActive) return null; // Silently skip during CLI ops
 
   return withConfigLock(async () => {
     try {
@@ -1343,8 +1349,10 @@ async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean 
       const config = deserializeMixerConfig(payload);
       const isMultirotor = isMultirotorMixer(config.mixer);
 
-      console.log(`[MSP] Mixer config: type=${config.mixer} isMultirotor=${isMultirotor}`);
-      sendLog('info', `Mixer type: ${config.mixer}`, isMultirotor ? 'Multirotor mode' : 'Fixed-wing/plane mode');
+      console.log(`[MSP] Mixer config: type=${config.mixer} (legacy - may be stale on iNav 2.0.0+)`);
+      // NOTE: On iNav 2.0.0+, this legacy mixer type is STALE and doesn't reflect actual platform.
+      // MSP2 INAV_MIXER platformType is the authoritative source for platform detection.
+      // Don't log misleading "Multirotor/Fixed-wing mode" here - let the store handle platform detection.
 
       return {
         mixer: config.mixer,
@@ -2014,6 +2022,273 @@ async function setServoMixerRuleViaCli(index: number, rule: MSPServoMixerRule): 
 }
 
 // =============================================================================
+// Motor Mixer Configuration (Legacy iNav)
+// =============================================================================
+
+/**
+ * Set motor mixer rules via CLI for legacy iNav boards.
+ * Uses: mmix <index> <throttle> <roll> <pitch> <yaw>
+ *
+ * This is required for legacy iNav 2.0.0+ boards where setting platform_type
+ * alone does NOT configure the motor mixer. Without these rules, motors won't
+ * respond correctly to control inputs.
+ *
+ * @param rules Array of motor mixer rules to apply
+ * @returns true if successful, false otherwise
+ */
+async function setMotorMixerRulesViaCli(
+  rules: Array<{ motorIndex: number; throttle: number; roll: number; pitch: number; yaw: number }>
+): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  try {
+    console.log('[MSP] Setting motor mixer via CLI...');
+
+    // BSOD Prevention: Stop telemetry before CLI operations
+    stopMspTelemetry();
+
+    // Enter CLI mode
+    await currentTransport.write(new Uint8Array([0x23])); // '#'
+    await new Promise(r => setTimeout(r, 500)); // BSOD delay
+
+    // Reset existing mmix rules first
+    await currentTransport.write(new TextEncoder().encode('mmix reset\n'));
+    await new Promise(r => setTimeout(r, 200)); // BSOD delay
+
+    // Send each motor mixer rule
+    for (const rule of rules) {
+      // Format: mmix <index> <throttle> <roll> <pitch> <yaw>
+      const cmd = `mmix ${rule.motorIndex} ${rule.throttle.toFixed(3)} ${rule.roll.toFixed(3)} ${rule.pitch.toFixed(3)} ${rule.yaw.toFixed(3)}`;
+      await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
+      await new Promise(r => setTimeout(r, 200)); // BSOD delay between commands
+    }
+
+    // Exit CLI mode (without saving - save happens later)
+    await currentTransport.write(new TextEncoder().encode('exit\n'));
+    await new Promise(r => setTimeout(r, 300));
+
+    sendLog('info', 'Motor mixer rules set via CLI', `${rules.length} rules`);
+    return true;
+  } catch (error) {
+    console.error('[MSP] CLI motor mixer failed:', error);
+    sendLog('error', 'CLI motor mixer failed', error instanceof Error ? error.message : String(error));
+    return false;
+  }
+}
+
+/**
+ * Set servo mixer rules via CLI for legacy iNav boards.
+ * Uses: smix <index> <target> <input> <rate> <speed> <min> <max> <box>
+ *
+ * This is required for legacy iNav 2.0.0 boards where MSP2_SET_SERVO_MIXER is not supported.
+ * Without these rules, control surfaces won't respond correctly to stabilization.
+ *
+ * @param rules Array of servo mixer rules to apply
+ * @returns true if successful, false otherwise
+ */
+async function setServoMixerRulesViaCli(
+  rules: Array<{ servoIndex: number; inputSource: number; rate: number }>
+): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  try {
+    console.log('[MSP] Setting servo mixer via CLI...', rules.length, 'rules');
+
+    // BSOD Prevention: Stop telemetry before CLI operations
+    stopMspTelemetry();
+
+    // Enter CLI mode
+    await currentTransport.write(new Uint8Array([0x23])); // '#'
+    await new Promise(r => setTimeout(r, 500)); // BSOD delay
+
+    // Reset existing smix rules first
+    await currentTransport.write(new TextEncoder().encode('smix reset\n'));
+    await new Promise(r => setTimeout(r, 200)); // BSOD delay
+
+    // Send each servo mixer rule
+    // Format: smix <index> <target> <input> <rate> <speed> <min> <max> <box>
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      const cmd = `smix ${i} ${rule.servoIndex} ${rule.inputSource} ${rule.rate} 0 0 100 0`;
+      await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
+      await new Promise(r => setTimeout(r, 200)); // BSOD delay between commands
+    }
+
+    // DO NOT exit CLI mode - save needs to happen in CLI mode!
+    servoCliModeActive = true; // Mark that we're in CLI mode
+
+    sendLog('info', 'Servo mixer rules set via CLI', `${rules.length} rules`);
+    return true;
+  } catch (error) {
+    console.error('[MSP] CLI servo mixer failed:', error);
+    sendLog('error', 'CLI servo mixer failed', error instanceof Error ? error.message : String(error));
+    return false;
+  }
+}
+
+/**
+ * Read current smix (servo mixer) configuration via CLI.
+ * Returns parsed smix rules for preset detection.
+ *
+ * This is needed for legacy iNav 2.0.0 boards where MSP2 servo mixer is not supported.
+ */
+async function readSmixViaCli(): Promise<Array<{ index: number; target: number; input: number; rate: number }> | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  try {
+    console.log('[MSP] Reading smix via CLI...');
+
+    // CRITICAL: Stop telemetry and wait for in-flight MSP responses to finish
+    stopMspTelemetry();
+    await new Promise(r => setTimeout(r, 500)); // Wait for pending MSP responses
+
+    // NOW set CLI mode flag - after telemetry stopped, before entering CLI
+    servoCliModeActive = true;
+
+    // Set up response listener AFTER telemetry is stopped
+    let response = '';
+    const dataListener = (data: Uint8Array) => {
+      const chunk = new TextDecoder().decode(data);
+      response += chunk;
+    };
+    currentTransport.on('data', dataListener);
+
+    // Send multiple # characters to ensure CLI mode entry (handles timing issues)
+    // Some boards need the # after all MSP traffic has stopped
+    await currentTransport.write(new Uint8Array([0x23, 0x23, 0x23])); // '###'
+    await new Promise(r => setTimeout(r, 1000)); // Wait for CLI banner
+
+    // Check if we got CLI prompt (look for "CLI" or "#" in response)
+    const gotCliPrompt = response.includes('CLI') || response.includes('#');
+
+    if (!gotCliPrompt) {
+      // Try sending # again
+      await currentTransport.write(new Uint8Array([0x0D, 0x0A, 0x23])); // CR LF #
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    // Clear buffer and send smix command
+    response = '';
+    await currentTransport.write(new TextEncoder().encode('smix\n'));
+    await new Promise(r => setTimeout(r, 1500)); // Longer wait for all smix rules
+
+    // Remove listener before exit
+    currentTransport.removeListener('data', dataListener);
+
+    // Exit CLI without saving
+    await currentTransport.write(new TextEncoder().encode('exit\n'));
+    await new Promise(r => setTimeout(r, 300));
+
+    // Parse smix output - format: "smix <index> <target> <input> <rate> <speed> <min> <max> <box>"
+    const rules: Array<{ index: number; target: number; input: number; rate: number }> = [];
+    const lines = response.split(/[\r\n]+/);
+
+    for (const line of lines) {
+      // Match smix rules - handles both "smix 0 3 0 100 0 0 100 0" and "smix 0 3 0 100" formats
+      const match = line.match(/smix\s+(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)/);
+      if (match) {
+        rules.push({
+          index: parseInt(match[1]),
+          target: parseInt(match[2]),
+          input: parseInt(match[3]),
+          rate: parseInt(match[4]),
+        });
+      }
+    }
+
+    console.log('[MSP] CLI smix read:', rules.length, 'rules');
+    sendLog('info', 'CLI smix read', `${rules.length} rules found`);
+    return rules.length > 0 ? rules : null;
+  } catch (error) {
+    console.error('[MSP] CLI smix read failed:', error);
+    sendLog('error', 'CLI smix read failed', error instanceof Error ? error.message : String(error));
+    return null;
+  } finally {
+    // Always reset CLI mode flag
+    servoCliModeActive = false;
+  }
+}
+
+/**
+ * Read current mmix (motor mixer) configuration via CLI.
+ * Returns parsed mmix rules for verification.
+ */
+async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number; roll: number; pitch: number; yaw: number }> | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  try {
+    console.log('[MSP] Reading mmix via CLI...');
+
+    // CRITICAL: Stop telemetry and wait for in-flight MSP responses to finish
+    stopMspTelemetry();
+    await new Promise(r => setTimeout(r, 500)); // Wait for pending MSP responses
+
+    // NOW set CLI mode flag - after telemetry stopped, before entering CLI
+    servoCliModeActive = true;
+
+    // Set up response listener AFTER telemetry is stopped
+    let response = '';
+    const dataListener = (data: Uint8Array) => {
+      const chunk = new TextDecoder().decode(data);
+      response += chunk;
+    };
+    currentTransport.on('data', dataListener);
+
+    // Send multiple # characters to ensure CLI mode entry
+    await currentTransport.write(new Uint8Array([0x23, 0x23, 0x23])); // '###'
+    await new Promise(r => setTimeout(r, 1000)); // Wait for CLI banner
+
+    // Check if we got CLI prompt
+    const gotCliPrompt = response.includes('CLI') || response.includes('#');
+
+    if (!gotCliPrompt) {
+      await currentTransport.write(new Uint8Array([0x0D, 0x0A, 0x23])); // CR LF #
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    // Clear buffer and send mmix command
+    response = '';
+    await currentTransport.write(new TextEncoder().encode('mmix\n'));
+    await new Promise(r => setTimeout(r, 1500)); // Longer wait for all mmix rules
+
+    // Remove listener before exit
+    currentTransport.removeListener('data', dataListener);
+
+    // Exit CLI without saving
+    await currentTransport.write(new TextEncoder().encode('exit\n'));
+    await new Promise(r => setTimeout(r, 300));
+
+    // Parse mmix output - format: "mmix <index> <throttle> <roll> <pitch> <yaw>"
+    const rules: Array<{ index: number; throttle: number; roll: number; pitch: number; yaw: number }> = [];
+    const lines = response.split(/[\r\n]+/);
+
+    for (const line of lines) {
+      const match = line.match(/mmix\s+(\d+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)/);
+      if (match) {
+        rules.push({
+          index: parseInt(match[1]),
+          throttle: parseFloat(match[2]),
+          roll: parseFloat(match[3]),
+          pitch: parseFloat(match[4]),
+          yaw: parseFloat(match[5]),
+        });
+      }
+    }
+
+    console.log('[MSP] CLI mmix read:', rules.length, 'rules');
+    sendLog('info', 'CLI mmix read', `${rules.length} rules found`);
+    return rules.length > 0 ? rules : null;
+  } catch (error) {
+    console.error('[MSP] CLI mmix read failed:', error);
+    sendLog('error', 'CLI mmix read failed', error instanceof Error ? error.message : String(error));
+    return null;
+  } finally {
+    // Always reset CLI mode flag
+    servoCliModeActive = false;
+  }
+}
+
+// =============================================================================
 // Navigation Configuration (iNav)
 // =============================================================================
 
@@ -2456,6 +2731,10 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_MIXER, async () => getServoMixer());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER, async (_event, index: number, rule: MSPServoMixerRule) => setServoMixerRule(index, rule));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE, async () => probeServoConfigMode());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_MOTOR_MIXER_CLI, async (_event, rules: Array<{ motorIndex: number; throttle: number; roll: number; pitch: number; yaw: number }>) => setMotorMixerRulesViaCli(rules));
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER_CLI, async (_event, rules: Array<{ servoIndex: number; inputSource: number; rate: number }>) => setServoMixerRulesViaCli(rules));
+  ipcMain.handle(IPC_CHANNELS.MSP_READ_SMIX_CLI, async () => readSmixViaCli());
+  ipcMain.handle(IPC_CHANNELS.MSP_READ_MMIX_CLI, async () => readMmixViaCli());
 
   // Navigation config handlers (iNav)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_NAV_CONFIG, async () => getNavConfig());
@@ -2505,6 +2784,10 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MOTOR_MIXER_CLI);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER_CLI);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_READ_SMIX_CLI);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_READ_MMIX_CLI);
 
   // Navigation config handlers (iNav)
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_NAV_CONFIG);
