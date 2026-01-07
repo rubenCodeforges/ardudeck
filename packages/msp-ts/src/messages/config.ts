@@ -31,6 +31,42 @@ export interface MSPPid {
   vel?: MSPPidCoefficients;
 }
 
+/**
+ * iNav MSP2 PID coefficients with feedforward (FF)
+ * Used by MSP2_INAV_PID (0x2030) / MSP2_INAV_SET_PID (0x2031)
+ */
+export interface MSPInavPidCoefficients {
+  p: number;
+  i: number;
+  d: number;
+  ff: number;  // Feedforward
+}
+
+/**
+ * iNav MSP2 PID structure - ALL 11 PID controllers
+ * Different from legacy MSP_PID - has feedforward and different layout
+ *
+ * iNav has 11 PID controllers, each with 4 bytes (P, I, D, FF):
+ * 0: Roll, 1: Pitch, 2: Yaw, 3: Position Z, 4: Position XY,
+ * 5: Velocity XY, 6: Surface, 7: Level, 8: Heading Hold,
+ * 9: Velocity Z, 10: Nav Heading
+ *
+ * Total: 44 bytes (11 * 4)
+ */
+export interface MSPInavPid {
+  roll: MSPInavPidCoefficients;        // Index 0
+  pitch: MSPInavPidCoefficients;       // Index 1
+  yaw: MSPInavPidCoefficients;         // Index 2
+  posZ: MSPInavPidCoefficients;        // Index 3 - Position Z (altitude hold)
+  posXY: MSPInavPidCoefficients;       // Index 4 - Position XY (position hold)
+  velXY: MSPInavPidCoefficients;       // Index 5 - Velocity XY
+  surface: MSPInavPidCoefficients;     // Index 6 - Surface (sonar altitude)
+  level: MSPInavPidCoefficients;       // Index 7 - Level mode (angle/horizon)
+  heading: MSPInavPidCoefficients;     // Index 8 - Heading Hold
+  velZ: MSPInavPidCoefficients;        // Index 9 - Velocity Z (vertical speed)
+  navHeading: MSPInavPidCoefficients;  // Index 10 - Nav Heading
+}
+
 export interface MSPRcTuning {
   rcRate: number;           // RC rate (0-255, represents 0.01-2.55)
   rcExpo: number;           // RC expo (0-100)
@@ -1139,5 +1175,150 @@ export function inavRateProfileToRcTuning(profile: MSPInavRateProfile): MSPRcTun
     pitchRate: profile.pitchRate,
     yawRateLimit: 0,
     ratesType: 0,
+  };
+}
+
+// =============================================================================
+// iNav MSP2 PID (0x2030 / 0x2031)
+// =============================================================================
+
+/**
+ * Deserialize MSP2_INAV_PID (0x2030) response
+ *
+ * iNav uses 4 bytes per PID controller (P, I, D, FF).
+ * Total: 11 controllers * 4 bytes = 44 bytes
+ *
+ * Order: Roll, Pitch, Yaw, PosZ, PosXY, VelXY, Surface, Level, Heading, VelZ, NavHeading
+ */
+export function deserializeInavPid(payload: Uint8Array): MSPInavPid {
+  const reader = new PayloadReader(payload);
+
+  // Read 4-byte PID blocks (P, I, D, FF)
+  const readPid4 = (): MSPInavPidCoefficients => ({
+    p: reader.readU8(),
+    i: reader.readU8(),
+    d: reader.readU8(),
+    ff: reader.readU8(),
+  });
+
+  // Default coefficients for missing controllers
+  const defaultPid = (): MSPInavPidCoefficients => ({ p: 0, i: 0, d: 0, ff: 0 });
+
+  const pid: MSPInavPid = {
+    roll: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    pitch: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    yaw: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    posZ: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    posXY: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    velXY: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    surface: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    level: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    heading: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    velZ: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+    navHeading: reader.remaining() >= 4 ? readPid4() : defaultPid(),
+  };
+
+  return pid;
+}
+
+/**
+ * Serialize MSP2_INAV_SET_PID (0x2031) payload
+ *
+ * MUST send all 11 PID controllers (44 bytes total)!
+ * Sending fewer bytes causes iNav to reject the command as "not supported".
+ */
+export function serializeInavPid(pid: MSPInavPid): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  const writePid4 = (p: MSPInavPidCoefficients) => {
+    builder.writeU8(p.p);
+    builder.writeU8(p.i);
+    builder.writeU8(p.d);
+    builder.writeU8(p.ff);
+  };
+
+  // Default PID values for controllers we don't care about
+  const defaultPid: MSPInavPidCoefficients = { p: 0, i: 0, d: 0, ff: 0 };
+
+  // Write ALL 11 controllers in exact order (44 bytes total)
+  writePid4(pid.roll);                       // Index 0
+  writePid4(pid.pitch);                      // Index 1
+  writePid4(pid.yaw);                        // Index 2
+  writePid4(pid.posZ ?? defaultPid);         // Index 3 - Position Z
+  writePid4(pid.posXY ?? defaultPid);        // Index 4 - Position XY
+  writePid4(pid.velXY ?? defaultPid);        // Index 5 - Velocity XY
+  writePid4(pid.surface ?? defaultPid);      // Index 6 - Surface
+  writePid4(pid.level ?? defaultPid);        // Index 7 - Level
+  writePid4(pid.heading ?? defaultPid);      // Index 8 - Heading Hold
+  writePid4(pid.velZ ?? defaultPid);         // Index 9 - Velocity Z
+  writePid4(pid.navHeading ?? defaultPid);   // Index 10 - Nav Heading
+
+  return builder.build();
+}
+
+/**
+ * Convert legacy MSPPid to iNav MSP2 format (MSPInavPid)
+ * Sets FF to 0 since legacy format doesn't have it.
+ *
+ * IMPORTANT: This creates a partial MSPInavPid - caller MUST merge with
+ * current FC state to preserve nav/position PIDs before sending!
+ */
+export function pidToInavPid(pid: MSPPid): Partial<MSPInavPid> {
+  const toInav = (p: MSPPidCoefficients): MSPInavPidCoefficients => ({
+    p: p.p,
+    i: p.i,
+    d: p.d,
+    ff: 0, // Legacy format doesn't have FF
+  });
+
+  const toInav4 = (p?: MSPPidCoefficients): MSPInavPidCoefficients | undefined =>
+    p ? { p: p.p, i: p.i, d: p.d, ff: 0 } : undefined;
+
+  // Only return the flight PIDs that the user controls
+  // Other PIDs (posZ, posXY, velXY, etc.) should be preserved from FC state
+  return {
+    roll: toInav(pid.roll),
+    pitch: toInav(pid.pitch),
+    yaw: toInav(pid.yaw),
+    level: toInav4(pid.level),
+  };
+}
+
+/**
+ * Convert iNav MSP2 PID format to legacy MSPPid
+ * Drops the FF value since legacy format doesn't support it
+ */
+export function inavPidToPid(inavPid: MSPInavPid): MSPPid {
+  const toLegacy = (p: MSPInavPidCoefficients): MSPPidCoefficients => ({
+    p: p.p,
+    i: p.i,
+    d: p.d,
+  });
+
+  return {
+    roll: toLegacy(inavPid.roll),
+    pitch: toLegacy(inavPid.pitch),
+    yaw: toLegacy(inavPid.yaw),
+    level: toLegacy(inavPid.level),
+  };
+}
+
+/**
+ * Merge partial PID updates into full iNav PID structure
+ * Used when modifying only roll/pitch/yaw/level but need to send all 44 bytes
+ */
+export function mergeInavPid(current: MSPInavPid, updates: Partial<MSPInavPid>): MSPInavPid {
+  return {
+    roll: updates.roll ?? current.roll,
+    pitch: updates.pitch ?? current.pitch,
+    yaw: updates.yaw ?? current.yaw,
+    posZ: updates.posZ ?? current.posZ,
+    posXY: updates.posXY ?? current.posXY,
+    velXY: updates.velXY ?? current.velXY,
+    surface: updates.surface ?? current.surface,
+    level: updates.level ?? current.level,
+    heading: updates.heading ?? current.heading,
+    velZ: updates.velZ ?? current.velZ,
+    navHeading: updates.navHeading ?? current.navHeading,
   };
 }

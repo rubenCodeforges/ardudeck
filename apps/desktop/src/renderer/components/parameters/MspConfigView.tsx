@@ -276,12 +276,14 @@ function RatesTab({
   setRcTuning,
   setModified,
   isLegacyInav = false,
+  isInav = false,
 }: {
   rcTuning: MSPRcTuning;
   updateRcTuning: (field: keyof MSPRcTuning, value: number) => void;
   setRcTuning: (rates: MSPRcTuning) => void;
   setModified: (v: boolean) => void;
   isLegacyInav?: boolean;  // Legacy iNav < 2.3.0 has no per-axis RC rates
+  isInav?: boolean;  // iNav firmware (RC_RATE is fixed at 100)
 }) {
   const [customProfiles, setCustomProfiles] = useState<Record<string, { name: string; data: Partial<MSPRcTuning> }>>({});
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -466,8 +468,9 @@ function RatesTab({
               <span>{icon}</span> {axis}
             </h3>
             <div className="space-y-4">
-              {/* Center Rate - hidden for legacy iNav < 2.3.0 (RC_RATE fixed at 100) */}
-              {!isLegacyInav && (
+              {/* Center Rate - hidden for ALL iNav (RC_RATE is always fixed at 100 in iNav) */}
+              {/* Only show for Betaflight which supports configurable rcRate */}
+              {!isInav && (
                 <DraggableSlider
                   label="Center Rate"
                   value={rcTuning[rcRate] as number}
@@ -1383,6 +1386,7 @@ export function MspConfigView() {
             setRcTuning={setRcTuning}
             setModified={setModified}
             isLegacyInav={isLegacyInav}
+            isInav={isInav}
           />
         )}
 

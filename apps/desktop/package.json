@@ -60,7 +60,8 @@
     ],
     "asarUnpack": [
       "resources/bin/**/*",
-      "resources/firmware/**/*"
+      "resources/firmware/**/*",
+      "resources/sitl/**/*"
     ],
     "icon": "resources/icon",
     "win": {

@@ -1,5 +1,6 @@
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useSitlStore } from '../../stores/sitl-store';
 
 interface NavItem {
   id: ViewId;
@@ -68,6 +69,17 @@ const cliNavItem: NavItem = {
   ),
 };
 
+// SITL nav item - shown when disconnected (for simulation without hardware)
+const sitlNavItem: NavItem = {
+  id: 'sitl',
+  label: 'SITL Simulator',
+  icon: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  ),
+};
+
 // Future navigation items (disabled placeholders)
 const futureItems: Omit<NavItem, 'id'> & { id: string }[] = [
   {
@@ -89,10 +101,22 @@ interface NavigationRailProps {
 export function NavigationRail({ onViewChange }: NavigationRailProps) {
   const { currentView, setView } = useNavigationStore();
   const { connectionState } = useConnectionStore();
+  const { isRunning: sitlIsRunning } = useSitlStore();
 
   // Show CLI nav item only for MSP (Betaflight/iNav) connections
   const showCli = connectionState.isConnected && connectionState.protocol === 'msp';
-  const allNavItems = showCli ? [...navItems, cliNavItem] : navItems;
+
+  // Show SITL nav item when disconnected OR when SITL is running (so user can stop it)
+  const showSitl = !connectionState.isConnected || sitlIsRunning;
+
+  // Build the nav items list
+  let allNavItems = [...navItems];
+  if (showCli) {
+    allNavItems.push(cliNavItem);
+  }
+  if (showSitl) {
+    allNavItems.push(sitlNavItem);
+  }
 
   const handleClick = (viewId: ViewId) => {
     if (onViewChange) {

@@ -55,6 +55,13 @@ import {
   serializeInavRateProfile,
   rcTuningToInavRateProfile,
   inavRateProfileToRcTuning,
+  // iNav MSP2 PID (0x2030/0x2031 - required for iNav 9.0.0+!)
+  deserializeInavPid,
+  serializeInavPid,
+  inavPidToPid,
+  pidToInavPid,
+  mergeInavPid,
+  type MSPInavPid,
   // Servo Config
   deserializeServoConfigurations,
   serializeServoConfiguration,
@@ -114,6 +121,10 @@ let inavVersion = ''; // e.g., "2.0.0"
 // 0=multirotor, 1=airplane (fixed-wing)
 let currentPlatformType = 0;
 
+// Cache full iNav PID state for read-modify-write pattern
+// iNav requires ALL 11 PID controllers (44 bytes) when writing
+let cachedInavPid: MSPInavPid | null = null;
+
 // Check if iNav version is legacy (< 2.3.0) - different CLI params, no per-axis RC rates
 function isLegacyInav(): boolean {
   if (!isInavFirmware || !inavVersion) return false;
@@ -121,6 +132,17 @@ function isLegacyInav(): boolean {
   if (parts.length < 2) return false;
   const [major, minor] = parts;
   return major < 2 || (major === 2 && minor < 3);
+}
+
+// Check if iNav version requires MSP2 for PIDs (>= 7.0.0)
+// Legacy MSP_PID (112) was removed in iNav 7.0+
+function usesMsp2Pid(): boolean {
+  if (!isInavFirmware || !inavVersion) return false;
+  const parts = inavVersion.split('.').map(Number);
+  if (parts.length < 1) return false;
+  const [major] = parts;
+  // iNav 7.0+ requires MSP2_INAV_PID
+  return major >= 7;
 }
 
 // Request mutex - ensures only one MSP request is in-flight at a time
@@ -667,6 +689,9 @@ export function cleanupMspConnection(): void {
   inavVersion = '';
   currentPlatformType = 0;
 
+  // Clear cached PID state (used for read-modify-write pattern)
+  cachedInavPid = null;
+
   // Clear transport and parser
   mspParser = null;
   currentTransport = null;
@@ -685,6 +710,24 @@ async function getPid(): Promise<MSPPid | null> {
       // Increased timeout for slow F3 boards with old firmware (iNav 2.0.0)
       console.log('[MSP] Reading PIDs...');
       sendLog('info', 'Reading PIDs from FC...');
+
+      // iNav 7.0+ requires MSP2_INAV_PID (0x2030) - legacy MSP_PID was removed
+      if (usesMsp2Pid()) {
+        console.log('[MSP] Using MSP2_INAV_PID (0x2030) for modern iNav');
+        const payload = await sendMspV2Request(MSP2.INAV_PID, 2000);
+        console.log('[MSP] INAV_PID response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        const inavPid = deserializeInavPid(payload);
+        // Cache full iNav PID state for read-modify-write pattern
+        // iNav requires ALL 11 PID controllers (44 bytes) when writing
+        cachedInavPid = inavPid;
+        // Convert to legacy format for UI compatibility
+        const pid = inavPidToPid(inavPid);
+        console.log('[MSP] PIDs parsed (MSP2):', JSON.stringify(pid));
+        sendLog('info', `PIDs loaded: Roll P=${pid.roll.p} I=${pid.roll.i} D=${pid.roll.d}`);
+        return pid;
+      }
+
+      // Legacy MSP_PID for older firmwares
       const payload = await sendMspRequest(MSP.PID, 2000);
       console.log('[MSP] PID response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
       const pid = deserializePid(payload);
@@ -708,7 +751,45 @@ async function setPid(pid: MSPPid): Promise<boolean> {
     return false;
   }
 
-  // Try MSP first
+  // iNav 7.0+ requires MSP2_INAV_SET_PID (0x2031)
+  // IMPORTANT: iNav requires ALL 11 PID controllers (44 bytes) when writing
+  // We must read current PIDs, merge user changes, then write all 44 bytes
+  if (usesMsp2Pid()) {
+    return withConfigLock(async () => {
+      try {
+        // If we don't have cached PIDs, read them first
+        if (!cachedInavPid) {
+          console.log('[MSP] No cached PIDs, reading current values first...');
+          sendLog('info', 'Reading current PIDs before saving...');
+          const payload = await sendMspV2Request(MSP2.INAV_PID, 2000);
+          cachedInavPid = deserializeInavPid(payload);
+          console.log('[MSP] Cached PIDs from FC:', payload.length, 'bytes');
+        }
+
+        // Convert user's changes to partial iNav format (only roll, pitch, yaw, level)
+        const partialUpdates = pidToInavPid(pid);
+        // Merge user changes with full cached state to preserve navigation PIDs
+        const fullPid = mergeInavPid(cachedInavPid, partialUpdates);
+        // Update cache with merged values
+        cachedInavPid = fullPid;
+
+        const payload = serializeInavPid(fullPid);
+        console.log('[MSP] SET_INAV_PID payload:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        sendLog('info', `Sending PIDs via MSP2 (${payload.length} bytes)...`);
+        await sendMspV2RequestWithPayload(MSP2.INAV_SET_PID, payload, 2000);
+        console.log('[MSP] SET_INAV_PID success');
+        sendLog('info', 'PIDs sent to FC (MSP2)');
+        return true;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] SET_INAV_PID failed:', msg);
+        sendLog('error', 'Failed to set PIDs (MSP2)', msg);
+        return false;
+      }
+    });
+  }
+
+  // Try legacy MSP for older firmware
   const mspSuccess = await withConfigLock(async () => {
     try {
       const payload = serializePid(pid);

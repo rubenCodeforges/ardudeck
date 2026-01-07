@@ -185,6 +185,16 @@ export const IPC_CHANNELS = {
 
   // Driver utilities
   DRIVER_OPEN_BUNDLED: 'driver:open-bundled',
+
+  // SITL Simulator
+  SITL_START: 'sitl:start',
+  SITL_STOP: 'sitl:stop',
+  SITL_STATUS: 'sitl:status',
+  SITL_DELETE_EEPROM: 'sitl:delete-eeprom',
+  SITL_STDOUT: 'sitl:stdout',
+  SITL_STDERR: 'sitl:stderr',
+  SITL_ERROR: 'sitl:error',
+  SITL_EXIT: 'sitl:exit',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -466,4 +476,87 @@ export interface MSPModeRange {
   auxChannel: number;
   rangeStart: number;
   rangeEnd: number;
+}
+
+// =============================================================================
+// SITL Types (Software-In-The-Loop Simulation)
+// =============================================================================
+
+/**
+ * SITL configuration for starting the simulator
+ */
+export interface SitlConfig {
+  /** EEPROM filename for persistent config storage */
+  eepromFileName: string;
+  /** Simulator type: 'xp' (X-Plane) or 'rf' (RealFlight) - Phase 2 */
+  simulator?: 'xp' | 'rf';
+  /** Use IMU data from simulator - Phase 2 */
+  useImu?: boolean;
+  /** Simulator IP address - Phase 2 */
+  simIp?: string;
+  /** Simulator port - Phase 2 */
+  simPort?: number;
+  /** Channel mapping string (e.g., "M01-01,S01-02") - Phase 2 */
+  channelMap?: string;
+  /** Serial port for RX passthrough - Phase 2 */
+  serialPort?: string;
+  /** Serial baud rate - Phase 2 */
+  baudRate?: number;
+  /** Serial stop bits - Phase 2 */
+  stopBits?: 'One' | 'Two';
+  /** Serial parity - Phase 2 */
+  parity?: 'None' | 'Even' | 'Odd';
+  /** Serial UART number for RX - Phase 2 */
+  serialUart?: number;
+}
+
+/**
+ * SITL profile for saved configurations.
+ *
+ * A profile represents a complete SITL configuration including:
+ * - EEPROM file: Stores FC config (PIDs, rates, modes, etc.) - persists across restarts
+ * - Simulator settings (Phase 2): X-Plane/RealFlight integration
+ *
+ * Each profile gets its own EEPROM file, so you can have different configurations
+ * for testing (e.g., one for airplane testing, one for quad testing).
+ */
+export interface SitlProfile {
+  /** Profile name */
+  name: string;
+  /** Description explaining what this profile is for */
+  description?: string;
+  /** EEPROM filename (auto-generated from name) */
+  eepromFileName: string;
+  /** Is this a standard (non-deletable) profile */
+  isStandard?: boolean;
+  /** Simulator type - Phase 2 */
+  simulator?: 'xp' | 'rf';
+  /** Enable simulator integration - Phase 2 */
+  simEnabled?: boolean;
+  /** Simulator IP - Phase 2 */
+  simIp?: string;
+  /** Simulator port - Phase 2 */
+  simPort?: number;
+  /** Use IMU from simulator - Phase 2 */
+  useImu?: boolean;
+  /** Channel mapping - Phase 2 */
+  channelMap?: number[];
+}
+
+/**
+ * SITL process status
+ */
+export interface SitlStatus {
+  isRunning: boolean;
+  pid?: number;
+  /** Command line used to start (for debugging) */
+  command?: string;
+}
+
+/**
+ * SITL exit event data
+ */
+export interface SitlExitData {
+  code: number | null;
+  signal: string | null;
 }

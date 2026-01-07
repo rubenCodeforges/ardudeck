@@ -5,7 +5,7 @@
  * Provides raw CLI access for power users and legacy F3 board configuration.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useCliStore } from '../../stores/cli-store';
 import CliTerminal from './CliTerminal';
@@ -22,8 +22,23 @@ export default function CliView() {
     rebootMessage,
     rebootError,
     clearRebootState,
+    exitCliMode,
   } = useCliStore();
   const [isSaving, setIsSaving] = useState(false);
+
+  // Exit CLI mode when navigating away from this view
+  // This prevents the board from staying in CLI mode which breaks MSP commands
+  useEffect(() => {
+    return () => {
+      // Only exit if we're actually in CLI mode and connected
+      if (isCliMode && connectionState.isConnected) {
+        console.log('[CLI View] Navigating away, exiting CLI mode...');
+        exitCliMode().catch((err) => {
+          console.error('[CLI View] Failed to exit CLI mode on navigation:', err);
+        });
+      }
+    };
+  }, [isCliMode, connectionState.isConnected, exitCliMode]);
 
   const handleSaveOutput = async () => {
     if (!output) return;

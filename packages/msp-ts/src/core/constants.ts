@@ -272,6 +272,10 @@ export const MSP2 = {
   INAV_SET_PROGRAMMING_PID: 0x2027,
   INAV_PROGRAMMING_PID_STATUS: 0x2028,
 
+  // iNav specific - PID (0x2030-0x2031) - replaces legacy MSP_PID (112)
+  INAV_PID: 0x2030,
+  INAV_SET_PID: 0x2031,
+
   // iNav specific - Mixer (0x2010-0x201F)
   // NOTE: These are the ACTUAL iNav MSP2 codes from inav-configurator
   INAV_MIXER: 0x2010,

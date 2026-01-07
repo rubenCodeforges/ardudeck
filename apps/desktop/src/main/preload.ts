@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -638,6 +638,46 @@ const api = {
   // Driver utilities
   openBundledDriver: (driverName: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRIVER_OPEN_BUNDLED, driverName),
+
+  // ============================================================================
+  // SITL (Software-In-The-Loop Simulation)
+  // ============================================================================
+
+  sitlStart: (config: SitlConfig): Promise<{ success: boolean; command?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SITL_START, config),
+
+  sitlStop: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SITL_STOP),
+
+  sitlGetStatus: (): Promise<SitlStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SITL_STATUS),
+
+  sitlDeleteEeprom: (filename: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SITL_DELETE_EEPROM, filename),
+
+  onSitlStdout: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.SITL_STDOUT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.SITL_STDOUT, handler);
+  },
+
+  onSitlStderr: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.SITL_STDERR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.SITL_STDERR, handler);
+  },
+
+  onSitlError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.SITL_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.SITL_ERROR, handler);
+  },
+
+  onSitlExit: (callback: (data: SitlExitData) => void) => {
+    const handler = (_: unknown, data: SitlExitData) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.SITL_EXIT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.SITL_EXIT, handler);
+  },
 };
 
 // Expose to renderer

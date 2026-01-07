@@ -8,6 +8,7 @@ import { MissionPlanningView } from './components/mission';
 import { SettingsView } from './components/settings';
 import { FirmwareFlashView } from './components/firmware';
 import CliView from './components/cli/CliView';
+import SitlView from './components/sitl/SitlView';
 import { useConnectionStore } from './stores/connection-store';
 import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore, type ViewId } from './stores/navigation-store';
@@ -446,6 +447,9 @@ function App() {
       if (currentView === 'cli') {
         return <CliView />;
       }
+      if (currentView === 'sitl') {
+        return <SitlView />;
+      }
       // Default welcome screen for telemetry
       return (
         <div className="h-full flex items-center justify-center p-8">
@@ -522,6 +526,8 @@ function App() {
         return <FirmwareFlashView />;
       case 'cli':
         return <CliView />;
+      case 'sitl':
+        return <SitlView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;

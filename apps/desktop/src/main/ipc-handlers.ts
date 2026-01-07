@@ -75,6 +75,8 @@ import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive } from './msp/index.js';
+import { sitlProcess } from './sitl/sitl-process.js';
+import type { SitlConfig, SitlStatus } from '../shared/ipc-channels.js';
 
 // =============================================================================
 // Legacy Board Detection
@@ -3356,6 +3358,57 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: message };
     }
   });
+
+  // ============================================================================
+  // SITL (Software-In-The-Loop Simulation)
+  // ============================================================================
+
+  // Set main window for SITL process to forward output
+  sitlProcess.setMainWindow(mainWindow);
+
+  // Start SITL process
+  ipcMain.handle(IPC_CHANNELS.SITL_START, async (_event, config: SitlConfig): Promise<{ success: boolean; command?: string; error?: string }> => {
+    try {
+      console.log('[SITL] Starting with config:', config);
+      const command = await sitlProcess.start(config);
+      return { success: true, command };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[SITL] Failed to start:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Stop SITL process
+  ipcMain.handle(IPC_CHANNELS.SITL_STOP, async (): Promise<{ success: boolean }> => {
+    try {
+      console.log('[SITL] Stopping process');
+      sitlProcess.stop();
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[SITL] Failed to stop:', message);
+      return { success: false };
+    }
+  });
+
+  // Get SITL status
+  ipcMain.handle(IPC_CHANNELS.SITL_STATUS, async (): Promise<SitlStatus> => {
+    return {
+      isRunning: sitlProcess.isRunning,
+    };
+  });
+
+  // Delete SITL EEPROM file
+  ipcMain.handle(IPC_CHANNELS.SITL_DELETE_EEPROM, async (_event, filename: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await sitlProcess.deleteEeprom(filename);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
 }
 
 /**
@@ -3745,6 +3798,14 @@ function parseRallyFile(content: string): RallyItem[] {
  */
 export async function cleanupOnShutdown(): Promise<void> {
   console.log('[Shutdown] Starting cleanup...');
+
+  try {
+    // Stop SITL process if running
+    sitlProcess.stop();
+    console.log('[Shutdown] SITL process stopped');
+  } catch (err) {
+    console.warn('[Shutdown] Error stopping SITL:', err);
+  }
 
   try {
     // Full cleanup of MSP connection (stops telemetry AND clears transport)

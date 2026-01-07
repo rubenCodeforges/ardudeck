@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { useConnectionStore } from './connection-store';
 
 // =============================================================================
 // Types
@@ -564,3 +565,17 @@ export function cleanupCliDataListener(): void {
     cleanupListener = null;
   }
 }
+
+// =============================================================================
+// Connection state subscription - reset CLI on disconnect
+// =============================================================================
+
+// Subscribe to connection state changes and reset CLI when disconnected
+// This prevents stale CLI state from blocking reconnection
+useConnectionStore.subscribe((state, prevState) => {
+  // If we just disconnected, reset CLI state
+  if (prevState.connectionState.isConnected && !state.connectionState.isConnected) {
+    console.log('[CLI Store] Connection lost, resetting CLI state');
+    useCliStore.getState().reset();
+  }
+});
