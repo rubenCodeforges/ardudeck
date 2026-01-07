@@ -303,34 +303,8 @@ export function MissionPlanningView() {
   const isMspCleanflight = connectionState.protocol === 'msp' && connectionState.fcVariant === 'CLFL';
   const missionPlanningUnavailable = isMspBetaflight || isMspCleanflight;
 
-  // If not connected, show "Connect First" message
-  if (!connectionState.isConnected) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gray-950 p-8">
-        <div className="max-w-md text-center">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 border border-blue-500/30 flex items-center justify-center">
-            <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-white mb-2">Connect to a Vehicle</h1>
-          <p className="text-gray-400 text-sm">
-            Connect to a flight controller to plan missions, upload waypoints, and configure autonomous flight paths.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // If connected to Betaflight, show "Not Available" message
-  if (missionPlanningUnavailable) {
-    return (
-      <MissionNotAvailable
-        fcVariant={connectionState.fcVariant || 'Unknown'}
-        boardId={connectionState.boardId || 'Unknown Board'}
-      />
-    );
-  }
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
+  // React requires hooks to be called in the same order every render
 
   // Watch for success messages from store
   useEffect(() => {
@@ -404,6 +378,37 @@ export function MissionPlanningView() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  // EARLY RETURNS - After all hooks have been called
+
+  // If not connected, show "Connect First" message
+  if (!connectionState.isConnected) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-950 p-8">
+        <div className="max-w-md text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 border border-blue-500/30 flex items-center justify-center">
+            <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">Connect to a Vehicle</h1>
+          <p className="text-gray-400 text-sm">
+            Connect to a flight controller to plan missions, upload waypoints, and configure autonomous flight paths.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If connected to Betaflight, show "Not Available" message
+  if (missionPlanningUnavailable) {
+    return (
+      <MissionNotAvailable
+        fcVariant={connectionState.fcVariant || 'Unknown'}
+        boardId={connectionState.boardId || 'Unknown Board'}
+      />
+    );
+  }
 
   return (
     <div className="h-full flex flex-col relative">
