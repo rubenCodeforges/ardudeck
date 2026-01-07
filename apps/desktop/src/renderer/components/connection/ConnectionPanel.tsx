@@ -43,6 +43,20 @@ export function ConnectionPanel() {
     }
   }, [connectionMemory]);
 
+  // Get SITL switch flag
+  const { pendingSitlSwitch, setPendingSitlSwitch } = useSettingsStore();
+
+  // Respond to SITL starting - switch to TCP when flag is set
+  useEffect(() => {
+    if (pendingSitlSwitch && !connectionState.isConnected) {
+      setConnectionType('tcp');
+      setTcpHost('127.0.0.1');
+      setTcpPort(5760);
+      // Clear the flag
+      setPendingSitlSwitch(false);
+    }
+  }, [pendingSitlSwitch, connectionState.isConnected, setPendingSitlSwitch]);
+
   useEffect(() => {
     if (window.electronAPI) {
       refreshPorts();

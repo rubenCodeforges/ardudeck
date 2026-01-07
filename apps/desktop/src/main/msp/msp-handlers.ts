@@ -102,6 +102,15 @@ let telemetryInProgress = false;
 
 // Telemetry skip counter - reduce log spam
 let telemetrySkipCount = 0;
+
+// Skip SITL auto-configure after user manually changes platform
+let skipSitlAutoConfig = false;
+
+// Reset the skip flag (call when starting new SITL session)
+export function resetSitlAutoConfig(): void {
+  skipSitlAutoConfig = false;
+  console.log('[MSP] SITL auto-config reset - will auto-configure on next connect');
+}
 const TELEMETRY_SKIP_LOG_INTERVAL = 10; // Only log every N skips
 
 // Pending response handlers
@@ -691,6 +700,9 @@ export function cleanupMspConnection(): void {
 
   // Clear cached PID state (used for read-modify-write pattern)
   cachedInavPid = null;
+
+  // Clear settings cache (generic settings API)
+  clearSettingsCache();
 
   // Clear transport and parser
   mspParser = null;
@@ -1416,6 +1428,123 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
 }
 
 /**
+ * Auto-configure SITL platform type based on profile name.
+ * Called after MSP connect when SITL is detected.
+ *
+ * @param profileName - SITL profile name (e.g., "Airplane", "Quadcopter")
+ * @returns true if platform was changed, false if no change needed
+ */
+export async function autoConfigureSitlPlatform(profileName: string | null): Promise<boolean> {
+  // Skip if user manually changed platform (don't revert their change)
+  if (skipSitlAutoConfig) {
+    console.log('[MSP] SITL auto-config: skipped (user manually changed platform)');
+    return false;
+  }
+
+  if (!profileName) {
+    console.log('[MSP] SITL auto-config: no profile name');
+    return false;
+  }
+
+  console.log(`[MSP] SITL auto-config: checking platform for profile "${profileName}"`);
+
+  // Determine expected platform from profile name
+  const profileLower = profileName.toLowerCase();
+  let expectedPlatform: number | null = null;
+
+  if (profileLower.includes('airplane') || profileLower.includes('plane') || profileLower.includes('wing')) {
+    expectedPlatform = INAV_PLATFORM_TYPE.AIRPLANE;
+  } else if (profileLower.includes('quad') || profileLower.includes('copter') || profileLower.includes('multi')) {
+    expectedPlatform = INAV_PLATFORM_TYPE.MULTIROTOR;
+  } else if (profileLower.includes('tri')) {
+    expectedPlatform = INAV_PLATFORM_TYPE.TRICOPTER;
+  } else if (profileLower.includes('heli')) {
+    expectedPlatform = INAV_PLATFORM_TYPE.HELICOPTER;
+  }
+
+  if (expectedPlatform === null) {
+    console.log('[MSP] SITL auto-config: profile name does not indicate a specific platform');
+    return false;
+  }
+
+  // Get current platform
+  const mixerConfig = await getInavMixerConfig();
+  if (!mixerConfig) {
+    console.log('[MSP] SITL auto-config: could not read mixer config');
+    return false;
+  }
+
+  const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
+  console.log(`[MSP] SITL auto-config: current platform=${platformNames[mixerConfig.platformType]}, expected=${platformNames[expectedPlatform]}`);
+
+  if (mixerConfig.platformType === expectedPlatform) {
+    console.log('[MSP] SITL auto-config: platform already correct');
+    return false;
+  }
+
+  // Need to change platform
+  console.log(`[MSP] SITL auto-config: changing platform from ${platformNames[mixerConfig.platformType]} to ${platformNames[expectedPlatform]}`);
+  sendLog('info', `Auto-configuring SITL as ${platformNames[expectedPlatform]}`, `Profile: ${profileName}`);
+
+  // Pass isAutoConfig=true so the skip flag isn't set
+  const success = await setInavPlatformType(expectedPlatform, undefined, true);
+  if (success) {
+    // Save to EEPROM
+    await saveEeprom();
+    // Small delay to ensure EEPROM write completes before reboot
+    await new Promise(r => setTimeout(r, 200));
+    // Reboot to apply new platform type (MSP.EEPROM_WRITE only saves, doesn't reboot)
+    // Fire-and-forget - board reboots immediately and closes connection
+    reboot().catch(() => {
+      // Ignore errors - board reboots and connection closes, that's expected
+    });
+    sendLog('info', 'SITL platform configured', 'Board will reboot - reconnect in a few seconds');
+    return true;
+  }
+
+  console.error('[MSP] SITL auto-config: failed to set platform type');
+  return false;
+}
+
+/**
+ * Get the vehicle type string for display in connection panel.
+ * For iNav: MULTIROTOR, AIRPLANE, HELICOPTER, TRICOPTER
+ * For Betaflight: Multirotor, Fixed-wing (based on mixer type)
+ *
+ * @param fcVariant - "INAV", "BTFL", "CLFL"
+ * @returns Vehicle type string or null if not detected
+ */
+export async function getMspVehicleType(fcVariant: string): Promise<string | null> {
+  console.log(`[MSP] getMspVehicleType called for ${fcVariant}`);
+  if (!currentTransport?.isOpen) {
+    console.log('[MSP] getMspVehicleType: transport not open');
+    return null;
+  }
+
+  const INAV_PLATFORM_NAMES = ['Multirotor', 'Airplane', 'Helicopter', 'Tricopter', 'Rover', 'Boat'];
+
+  if (fcVariant === 'INAV') {
+    // iNav: use MSP2_INAV_MIXER for accurate platform type
+    const mixerConfig = await getInavMixerConfig();
+    if (mixerConfig) {
+      const name = INAV_PLATFORM_NAMES[mixerConfig.platformType] ?? 'Unknown';
+      console.log(`[MSP] Vehicle type for iNav: ${name} (platformType=${mixerConfig.platformType})`);
+      return name;
+    }
+  } else {
+    // Betaflight/Cleanflight: use legacy mixer config
+    const mixerConfig = await getMixerConfig();
+    if (mixerConfig) {
+      const name = mixerConfig.isMultirotor ? 'Multirotor' : 'Fixed-wing';
+      console.log(`[MSP] Vehicle type for ${fcVariant}: ${name} (mixer=${mixerConfig.mixer})`);
+      return name;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get mixer configuration (legacy, for non-iNav boards)
  */
 async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean } | null> {
@@ -1456,11 +1585,18 @@ async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean 
  * during saveEepromViaCli(), since the mixer must be set via CLI to persist.
  * BSOD Prevention: Uses conservative delays and withConfigLock.
  */
-async function setInavPlatformType(platformType: number, mixerType?: number): Promise<boolean> {
+export async function setInavPlatformType(platformType: number, mixerType?: number, isAutoConfig = false): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
     console.log('[MSP] setInavPlatformType: transport not open');
     return false;
+  }
+
+  // Skip SITL auto-config after USER manually changes platform (not auto-config)
+  // This prevents the auto-config from reverting user's manual change on reconnect
+  if (!isAutoConfig) {
+    skipSitlAutoConfig = true;
+    console.log('[MSP] setInavPlatformType: User initiated platform change, disabling auto-config');
   }
 
   const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
@@ -2572,7 +2708,7 @@ async function setGpsConfigViaCli(config: MSPGpsConfig): Promise<boolean> {
 // MSP Commands
 // =============================================================================
 
-async function saveEeprom(): Promise<boolean> {
+export async function saveEeprom(): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
     console.log('[MSP] saveEeprom: transport not open');
@@ -2675,6 +2811,19 @@ async function saveEepromViaCli(): Promise<boolean> {
     // Wait a bit before save to ensure all commands are processed
     await new Promise(r => setTimeout(r, 500));
 
+    // Schedule auto-reconnect before CLI save (which triggers reboot)
+    const scheduleReconnect = (globalThis as Record<string, unknown>).__ardudeck_scheduleReconnect as
+      ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
+
+    if (scheduleReconnect) {
+      scheduleReconnect({
+        reason: 'Saving configuration',
+        delayMs: 4000, // CLI save + reboot takes longer
+        timeoutMs: 6000,
+        maxAttempts: 12,
+      });
+    }
+
     // Send save command (this reboots the board)
     console.log('[MSP] CLI: save');
     await currentTransport.write(new TextEncoder().encode('save\n'));
@@ -2754,18 +2903,351 @@ async function calibrateMag(): Promise<boolean> {
   }
 }
 
-async function reboot(): Promise<boolean> {
+export async function reboot(autoReconnect = true): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) return false;
 
   try {
+    // Schedule auto-reconnect before sending reboot command
+    if (autoReconnect) {
+      const scheduleReconnect = (globalThis as Record<string, unknown>).__ardudeck_scheduleReconnect as
+        ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
+
+      if (scheduleReconnect) {
+        scheduleReconnect({
+          reason: 'Rebooting board',
+          delayMs: 3000, // Wait 3 seconds for board to reboot
+          timeoutMs: 5000,
+          maxAttempts: 10,
+        });
+      }
+    }
+
     await sendMspRequest(MSP.REBOOT, 1000);
     console.log('[MSP] Reboot command sent');
     return true;
   } catch {
-    // Reboot may not respond
+    // Reboot may not respond - that's expected
     return true;
   }
+}
+
+// =============================================================================
+// Generic Settings API (iNav MSP2 COMMON_SETTING)
+// Allows reading/writing any CLI setting via MSP without entering CLI mode
+// =============================================================================
+
+/**
+ * Setting metadata returned from MSP2_COMMON_SETTING_INFO
+ */
+interface SettingInfo {
+  name: string;
+  type: 'uint8_t' | 'int8_t' | 'uint16_t' | 'int16_t' | 'uint32_t' | 'float' | 'string';
+  mode: number;
+  min: number;
+  max: number;
+  index: number;
+  table?: string[]; // Lookup table for enum settings
+}
+
+/**
+ * Cache for setting metadata to avoid repeated lookups
+ */
+const settingsCache = new Map<string, SettingInfo>();
+
+/**
+ * Clear the settings cache (call on disconnect)
+ */
+function clearSettingsCache(): void {
+  settingsCache.clear();
+}
+
+/**
+ * Encode a setting name as null-terminated string for MSP request
+ */
+function encodeSettingName(name: string): Uint8Array {
+  const data = new Uint8Array(name.length + 1);
+  for (let i = 0; i < name.length; i++) {
+    data[i] = name.charCodeAt(i);
+  }
+  data[name.length] = 0; // Null terminator
+  return data;
+}
+
+/**
+ * Encode a setting reference by index for MSP request
+ */
+function encodeSettingIndex(index: number): Uint8Array {
+  const data = new Uint8Array(3);
+  data[0] = 0; // Use index mode
+  data[1] = index & 0xFF;
+  data[2] = (index >> 8) & 0xFF;
+  return data;
+}
+
+/**
+ * Get setting metadata (type, min, max, enum values)
+ * Uses MSP2_COMMON_SETTING_INFO (0x1007)
+ */
+async function getSettingInfo(name: string): Promise<SettingInfo | null> {
+  // Check cache first
+  const cached = settingsCache.get(name);
+  if (cached) return cached;
+
+  if (!currentTransport?.isOpen) return null;
+
+  const SETTING_TYPES: Record<number, SettingInfo['type']> = {
+    0: 'uint8_t',
+    1: 'int8_t',
+    2: 'uint16_t',
+    3: 'int16_t',
+    4: 'uint32_t',
+    5: 'float',
+    6: 'string',
+  };
+  const MODE_LOOKUP = 1 << 6; // 64
+
+  try {
+    const payload = encodeSettingName(name);
+    const response = await sendMspV2RequestWithPayload(MSP2.COMMON_SETTING_INFO, payload, 2000);
+
+    // Parse response
+    let offset = 0;
+
+    // Read name (null-terminated string) - discard
+    while (offset < response.length && response[offset] !== 0) offset++;
+    offset++; // Skip null terminator
+
+    // PG ID (uint16) - discard
+    offset += 2;
+
+    // Type (uint8)
+    const typeNum = response[offset++];
+    const type = SETTING_TYPES[typeNum];
+    if (!type) {
+      console.warn(`[MSP] Unknown setting type ${typeNum} for ${name}`);
+      return null;
+    }
+
+    // Section (uint8) - discard
+    offset++;
+
+    // Mode (uint8)
+    const mode = response[offset++];
+
+    // Min (int32)
+    const minView = new DataView(response.buffer, response.byteOffset + offset, 4);
+    const min = minView.getInt32(0, true);
+    offset += 4;
+
+    // Max (uint32)
+    const maxView = new DataView(response.buffer, response.byteOffset + offset, 4);
+    const max = maxView.getUint32(0, true);
+    offset += 4;
+
+    // Index (uint16)
+    const indexView = new DataView(response.buffer, response.byteOffset + offset, 2);
+    const index = indexView.getUint16(0, true);
+    offset += 2;
+
+    // Profile info (2 bytes) - discard
+    offset += 2;
+
+    // Lookup table for enum settings
+    let table: string[] | undefined;
+    if (mode === MODE_LOOKUP) {
+      table = [];
+      for (let i = min; i <= max; i++) {
+        let str = '';
+        while (offset < response.length && response[offset] !== 0) {
+          str += String.fromCharCode(response[offset++]);
+        }
+        offset++; // Skip null terminator
+        table.push(str);
+      }
+    }
+
+    const info: SettingInfo = { name, type, mode, min, max, index, table };
+    settingsCache.set(name, info);
+    return info;
+  } catch (error) {
+    console.error(`[MSP] getSettingInfo(${name}) failed:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get a CLI setting value by name
+ * Uses MSP2_COMMON_SETTING (0x1003)
+ */
+async function getSetting(name: string): Promise<{ value: string | number; info: SettingInfo } | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  const info = await getSettingInfo(name);
+  if (!info) return null;
+
+  try {
+    const payload = encodeSettingIndex(info.index);
+    const response = await sendMspV2RequestWithPayload(MSP2.COMMON_SETTING, payload, 2000);
+
+    let value: string | number;
+    const view = new DataView(response.buffer, response.byteOffset, response.length);
+
+    switch (info.type) {
+      case 'uint8_t':
+        value = view.getUint8(0);
+        break;
+      case 'int8_t':
+        value = view.getInt8(0);
+        break;
+      case 'uint16_t':
+        value = view.getUint16(0, true);
+        break;
+      case 'int16_t':
+        value = view.getInt16(0, true);
+        break;
+      case 'uint32_t':
+        value = view.getUint32(0, true);
+        break;
+      case 'float': {
+        const fi32 = view.getUint32(0, true);
+        const buf = new ArrayBuffer(4);
+        new Uint32Array(buf)[0] = fi32;
+        value = new Float32Array(buf)[0];
+        break;
+      }
+      case 'string': {
+        let str = '';
+        for (let i = 0; i < response.length && response[i] !== 0; i++) {
+          str += String.fromCharCode(response[i]);
+        }
+        value = str;
+        break;
+      }
+      default:
+        console.error(`[MSP] Unknown type ${info.type} for ${name}`);
+        return null;
+    }
+
+    // Convert numeric enum value to string if we have a lookup table
+    if (info.table && typeof value === 'number') {
+      const tableValue = info.table[value - info.min];
+      if (tableValue) {
+        return { value: tableValue, info };
+      }
+    }
+
+    return { value, info };
+  } catch (error) {
+    console.error(`[MSP] getSetting(${name}) failed:`, error);
+    return null;
+  }
+}
+
+/**
+ * Set a CLI setting value by name
+ * Uses MSP2_COMMON_SET_SETTING (0x1004)
+ */
+async function setSetting(name: string, value: string | number): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  const info = await getSettingInfo(name);
+  if (!info) {
+    console.error(`[MSP] setSetting: Unknown setting ${name}`);
+    return false;
+  }
+
+  try {
+    // Convert string enum value to numeric index if we have a lookup table
+    let numericValue = value;
+    if (info.table && typeof value === 'string') {
+      const idx = info.table.indexOf(value);
+      if (idx >= 0) {
+        numericValue = idx + info.min;
+      } else {
+        console.error(`[MSP] Invalid enum value "${value}" for ${name}. Valid: ${info.table.join(', ')}`);
+        return false;
+      }
+    }
+
+    // Build payload: index (3 bytes) + value
+    const indexPart = encodeSettingIndex(info.index);
+    let valuePart: Uint8Array;
+
+    switch (info.type) {
+      case 'uint8_t':
+      case 'int8_t':
+        valuePart = new Uint8Array(1);
+        valuePart[0] = Number(numericValue) & 0xFF;
+        break;
+      case 'uint16_t':
+      case 'int16_t':
+        valuePart = new Uint8Array(2);
+        valuePart[0] = Number(numericValue) & 0xFF;
+        valuePart[1] = (Number(numericValue) >> 8) & 0xFF;
+        break;
+      case 'uint32_t':
+        valuePart = new Uint8Array(4);
+        const uval = Number(numericValue);
+        valuePart[0] = uval & 0xFF;
+        valuePart[1] = (uval >> 8) & 0xFF;
+        valuePart[2] = (uval >> 16) & 0xFF;
+        valuePart[3] = (uval >> 24) & 0xFF;
+        break;
+      case 'float': {
+        const buf = new ArrayBuffer(4);
+        new Float32Array(buf)[0] = Number(numericValue);
+        valuePart = new Uint8Array(buf);
+        break;
+      }
+      case 'string': {
+        const strVal = String(value);
+        valuePart = new Uint8Array(strVal.length);
+        for (let i = 0; i < strVal.length; i++) {
+          valuePart[i] = strVal.charCodeAt(i);
+        }
+        break;
+      }
+      default:
+        console.error(`[MSP] Unknown type ${info.type} for ${name}`);
+        return false;
+    }
+
+    // Combine index and value
+    const payload = new Uint8Array(indexPart.length + valuePart.length);
+    payload.set(indexPart, 0);
+    payload.set(valuePart, indexPart.length);
+
+    await sendMspV2RequestWithPayload(MSP2.COMMON_SET_SETTING, payload, 2000);
+    console.log(`[MSP] Set ${name} = ${value}`);
+    return true;
+  } catch (error) {
+    console.error(`[MSP] setSetting(${name}, ${value}) failed:`, error);
+    return false;
+  }
+}
+
+/**
+ * Get multiple settings at once (convenience wrapper)
+ */
+async function getSettings(names: string[]): Promise<Record<string, string | number | null>> {
+  const result: Record<string, string | number | null> = {};
+  for (const name of names) {
+    const setting = await getSetting(name);
+    result[name] = setting?.value ?? null;
+  }
+  return result;
+}
+
+/**
+ * Set multiple settings at once (convenience wrapper)
+ */
+async function setSettings(settings: Record<string, string | number>): Promise<boolean> {
+  for (const [name, value] of Object.entries(settings)) {
+    const success = await setSetting(name, value);
+    if (!success) return false;
+  }
+  return true;
 }
 
 // =============================================================================
@@ -2823,6 +3305,12 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_GPS_CONFIG, async () => getGpsConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_GPS_CONFIG, async (_event, config: MSPGpsConfig) => setGpsConfig(config));
 
+  // Generic settings API (read/write any CLI setting via MSP)
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTING, async (_event, name: string) => getSetting(name));
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTING, async (_event, name: string, value: string | number) => setSetting(name, value));
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTINGS, async (_event, names: string[]) => getSettings(names));
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTINGS, async (_event, settings: Record<string, string | number>) => setSettings(settings));
+
   // Command handlers
   ipcMain.handle(IPC_CHANNELS.MSP_SAVE_EEPROM, async () => saveEeprom());
   ipcMain.handle(IPC_CHANNELS.MSP_CALIBRATE_ACC, async () => calibrateAcc());
@@ -2875,6 +3363,12 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_NAV_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_GPS_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_GPS_CONFIG);
+
+  // Generic settings API
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTING);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SETTING);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTINGS);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SETTINGS);
 
   // Command handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SAVE_EEPROM);

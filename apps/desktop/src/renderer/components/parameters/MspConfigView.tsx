@@ -1084,7 +1084,7 @@ function ModesTabContent() {
 type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation';
 
 export function MspConfigView() {
-  const { connectionState } = useConnectionStore();
+  const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
   const { gps, attitude } = useTelemetryStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
   const [loading, setLoading] = useState(true);
@@ -1111,6 +1111,87 @@ export function MspConfigView() {
   }), [attitude, gps, features]);
 
   const isInav = connectionState.fcVariant === 'INAV';
+
+  // Platform change state (iNav only)
+  const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  const [platformChangeState, setPlatformChangeState] = useState<'idle' | 'changing' | 'saving' | 'rebooting' | 'reconnecting' | 'error'>('idle');
+  const [platformChangeError, setPlatformChangeError] = useState<string | null>(null);
+  const [platformChangeTarget, setPlatformChangeTarget] = useState<string | null>(null);
+
+  // Platform options for iNav
+  const PLATFORM_OPTIONS = [
+    { value: 0, label: 'Multirotor' },
+    { value: 1, label: 'Airplane' },
+    { value: 2, label: 'Helicopter' },
+    { value: 3, label: 'Tricopter' },
+  ];
+
+  // Handle platform change with auto-reconnect
+  const handlePlatformChange = async (platformType: number) => {
+    const targetLabel = PLATFORM_OPTIONS.find(o => o.value === platformType)?.label || 'Unknown';
+
+    setShowPlatformDropdown(false);
+    setPlatformChangeTarget(targetLabel);
+    setPlatformChangeState('changing');
+    setPlatformChangeError(null);
+    setPlatformChangeInProgress(true);
+
+    try {
+      // 1. Set platform type
+      const success = await window.electronAPI?.mspSetInavPlatformType(platformType);
+      if (!success) throw new Error('Failed to change platform type');
+
+      // 2. Save to EEPROM
+      setPlatformChangeState('saving');
+      await window.electronAPI?.mspSaveEeprom();
+      await new Promise(r => setTimeout(r, 200));
+
+      // 3. Reboot
+      setPlatformChangeState('rebooting');
+      window.electronAPI?.mspReboot().catch(() => {});
+
+      // 4. Wait for reboot
+      await new Promise(r => setTimeout(r, 4000));
+
+      // 5. Auto-reconnect
+      setPlatformChangeState('reconnecting');
+      await window.electronAPI?.connect({ host: '127.0.0.1', tcpPort: 5760 });
+
+      // 6. Clear overlay - but keep platformChangeInProgress true!
+      // The useEffect below will clear it once we're connected
+      setPlatformChangeState('idle');
+      setPlatformChangeTarget(null);
+
+    } catch (err) {
+      console.error('Platform change error:', err);
+      setPlatformChangeState('error');
+      setPlatformChangeError(err instanceof Error ? err.message : 'Unknown error');
+    }
+  };
+
+  // Clear platformChangeInProgress ONLY when connected
+  useEffect(() => {
+    if (platformChangeInProgress && connectionState.isConnected) {
+      setPlatformChangeInProgress(false);
+    }
+  }, [connectionState.isConnected, platformChangeInProgress, setPlatformChangeInProgress]);
+
+  const clearPlatformChangeState = () => {
+    setPlatformChangeState('idle');
+    setPlatformChangeError(null);
+    setPlatformChangeTarget(null);
+    setPlatformChangeInProgress(false);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowPlatformDropdown(false);
+    if (showPlatformDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showPlatformDropdown]);
+
 
   // Check for legacy iNav (< 2.3.0) which has different CLI params and no per-axis RC rates
   const isLegacyInav = useMemo(() => {
@@ -1268,6 +1349,65 @@ export function MspConfigView() {
 
   return (
     <div className="h-full flex flex-col bg-gray-950">
+      {/* Platform Change Overlay */}
+      {platformChangeState !== 'idle' && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-8 max-w-md mx-4 shadow-2xl text-center">
+            {/* Icon based on state */}
+            {platformChangeState === 'error' ? (
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {/* Title */}
+            <h3 className="text-lg font-semibold text-white mb-2">
+              {platformChangeState === 'changing' && `Changing to ${platformChangeTarget}`}
+              {platformChangeState === 'saving' && 'Saving Configuration'}
+              {platformChangeState === 'rebooting' && 'Rebooting Board'}
+              {platformChangeState === 'reconnecting' && 'Reconnecting'}
+              {platformChangeState === 'error' && 'Change Failed'}
+            </h3>
+
+            {/* Message */}
+            <p className="text-sm text-zinc-400 mb-4">
+              {platformChangeState === 'changing' && 'Sending platform change command...'}
+              {platformChangeState === 'saving' && 'Writing to EEPROM...'}
+              {platformChangeState === 'rebooting' && 'Waiting for board to reboot...'}
+              {platformChangeState === 'reconnecting' && 'Connecting to board...'}
+              {platformChangeState === 'error' && (platformChangeError || 'An error occurred')}
+            </p>
+
+            {/* Progress indicator for non-terminal states */}
+            {(platformChangeState === 'changing' || platformChangeState === 'saving' || platformChangeState === 'rebooting' || platformChangeState === 'reconnecting') && (
+              <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+                <div className="flex gap-1">
+                  <div className={`w-2 h-2 rounded-full ${platformChangeState === 'changing' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${platformChangeState === 'saving' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${platformChangeState === 'rebooting' || platformChangeState === 'reconnecting' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
+                </div>
+              </div>
+            )}
+
+            {/* Dismiss button only for errors */}
+            {platformChangeState === 'error' && (
+              <button
+                onClick={clearPlatformChangeState}
+                className="mt-4 px-6 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm transition-colors"
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="shrink-0 px-6 py-4 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/90 to-gray-900/50">
         <div className="flex items-center justify-between">
@@ -1289,6 +1429,54 @@ export function MspConfigView() {
               </h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span className="text-blue-400">{connectionState.fcVersion}</span>
+                {connectionState.vehicleType && isInav && (
+                  <>
+                    <span>•</span>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowPlatformDropdown(!showPlatformDropdown);
+                        }}
+                        disabled={platformChangeState !== 'idle'}
+                        className="text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                        title="Click to change platform type"
+                      >
+                        {connectionState.vehicleType}
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {showPlatformDropdown && (
+                        <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 min-w-[140px]">
+                          {PLATFORM_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePlatformChange(opt.value);
+                              }}
+                              disabled={connectionState.vehicleType === opt.label}
+                              className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-700 first:rounded-t-lg last:rounded-b-lg ${
+                                connectionState.vehicleType === opt.label
+                                  ? 'text-emerald-400 bg-emerald-500/10'
+                                  : 'text-gray-300'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                {connectionState.vehicleType && !isInav && (
+                  <>
+                    <span>•</span>
+                    <span className="text-emerald-400">{connectionState.vehicleType}</span>
+                  </>
+                )}
                 <span>•</span>
                 <span>{connectionState.boardId}</span>
               </div>

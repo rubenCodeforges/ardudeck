@@ -120,6 +120,9 @@ export default function LegacyConfigView() {
           <div>
             <h1 className="text-lg font-semibold text-white">
               {connectionState.fcVariant} {connectionState.fcVersion}
+              {connectionState.vehicleType && (
+                <span className="ml-2 text-emerald-400">({connectionState.vehicleType})</span>
+              )}
             </h1>
             <p className="text-xs text-zinc-500">
               Configuration via CLI commands (F3 board)

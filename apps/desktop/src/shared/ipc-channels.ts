@@ -164,11 +164,20 @@ export const IPC_CHANNELS = {
   MSP_GET_GPS_CONFIG: 'msp:get-gps-config',
   MSP_SET_GPS_CONFIG: 'msp:set-gps-config',
 
+  // MSP Generic Settings API (read/write any CLI setting via MSP)
+  MSP_GET_SETTING: 'msp:get-setting',
+  MSP_SET_SETTING: 'msp:set-setting',
+  MSP_GET_SETTINGS: 'msp:get-settings',
+  MSP_SET_SETTINGS: 'msp:set-settings',
+
   // MSP Commands
   MSP_SAVE_EEPROM: 'msp:save-eeprom',
   MSP_CALIBRATE_ACC: 'msp:calibrate-acc',
   MSP_CALIBRATE_MAG: 'msp:calibrate-mag',
   MSP_REBOOT: 'msp:reboot',
+
+  // Reconnection control (for expected reboots)
+  RECONNECT_CANCEL: 'reconnect:cancel',
 
   // MSP Progress/Status
   MSP_PROGRESS: 'msp:progress',
@@ -240,6 +249,19 @@ export interface ConnectionState {
    * When true, use LegacyConfigView instead of MspConfigView
    */
   isLegacyBoard?: boolean;
+  /**
+   * SITL connection - TRUE when connected to SITL simulator.
+   * Used to disable firmware flashing UI.
+   */
+  isSitl?: boolean;
+  /**
+   * Auto-reconnect state - TRUE when reconnecting after expected reboot.
+   * During reconnection, stores are NOT reset and UI stays on current screen.
+   */
+  isReconnecting?: boolean;
+  reconnectReason?: string; // "Saving configuration", "Rebooting board"
+  reconnectAttempt?: number; // Current attempt (1-based)
+  reconnectMaxAttempts?: number; // Max attempts before giving up
   // Stats
   packetsReceived: number;
   packetsSent: number;

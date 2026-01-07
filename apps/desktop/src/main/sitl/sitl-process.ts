@@ -9,6 +9,8 @@ import { chmod } from 'node:fs/promises';
 import path from 'node:path';
 
 export interface SitlConfig {
+  /** Profile name (e.g., "Airplane", "Quadcopter") */
+  profileName?: string;
   /** EEPROM filename for persistent config storage */
   eepromFileName: string;
   /** Simulator type for Phase 2: 'xp' (X-Plane) or 'rf' (RealFlight) */
@@ -37,9 +39,14 @@ class SitlProcessManager {
   private process: ChildProcess | null = null;
   private _isRunning = false;
   private mainWindow: BrowserWindow | null = null;
+  private _currentProfileName: string | null = null;
 
   get isRunning(): boolean {
     return this._isRunning;
+  }
+
+  get currentProfileName(): string | null {
+    return this._currentProfileName;
   }
 
   setMainWindow(window: BrowserWindow): void {
@@ -97,6 +104,9 @@ class SitlProcessManager {
     }
 
     await this.ensureSitlDir();
+
+    // Store profile name for auto-configuration on connect
+    this._currentProfileName = config.profileName || null;
 
     const sitlPath = this.getSitlBinaryPath();
     const eepromPath = this.getEepromPath(config.eepromFileName);
@@ -222,6 +232,7 @@ class SitlProcessManager {
       }
       this.process = null;
       this._isRunning = false;
+      this._currentProfileName = null;
     }
   }
 

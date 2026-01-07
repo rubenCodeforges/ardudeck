@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSitlStore } from '../../stores/sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useSettingsStore } from '../../stores/settings-store';
 
 export default function SitlView() {
   const {
@@ -31,6 +32,7 @@ export default function SitlView() {
   } = useSitlStore();
 
   const { connectionState } = useConnectionStore();
+  const { setPendingSitlSwitch } = useSettingsStore();
   const outputRef = useRef<HTMLDivElement>(null);
   const [showNewProfile, setShowNewProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
@@ -43,6 +45,14 @@ export default function SitlView() {
     const cleanup = initListeners();
     return cleanup;
   }, [initListeners, checkStatus]);
+
+  // Switch connection panel to TCP when SITL starts
+  useEffect(() => {
+    if (isRunning) {
+      // Set flag to tell ConnectionPanel to switch to TCP
+      setPendingSitlSwitch(true);
+    }
+  }, [isRunning, setPendingSitlSwitch]);
 
   // Auto-scroll output to bottom
   useEffect(() => {
@@ -229,18 +239,10 @@ export default function SitlView() {
             <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <div className="flex-1 text-sm text-blue-300">
+            <div className="text-sm text-blue-300">
               <span className="font-medium">SITL is running!</span>{' '}
-              Connect via TCP to <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:5760</code> to configure.
+              Connect via TCP in the sidebar — <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:5760</code>
             </div>
-            <button
-              onClick={() => {
-                // This would ideally trigger connection - for now just hint
-              }}
-              className="px-3 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-colors"
-            >
-              Open Connection Panel
-            </button>
           </div>
         )}
 

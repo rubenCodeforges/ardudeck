@@ -109,8 +109,15 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
   // Show SITL nav item when disconnected OR when SITL is running (so user can stop it)
   const showSitl = !connectionState.isConnected || sitlIsRunning;
 
+  // Disable firmware when connected to SITL (can't flash a simulator)
+  const disableFirmware = connectionState.isSitl === true;
+
   // Build the nav items list
-  let allNavItems = [...navItems];
+  let allNavItems = navItems.map(item =>
+    item.id === 'firmware' && disableFirmware
+      ? { ...item, disabled: true, label: 'Firmware (SITL)' }
+      : item
+  );
   if (showCli) {
     allNavItems.push(cliNavItem);
   }
@@ -132,25 +139,28 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
       {allNavItems.map((item) => (
         <button
           key={item.id}
-          onClick={() => handleClick(item.id)}
+          onClick={() => !item.disabled && handleClick(item.id)}
+          disabled={item.disabled}
           className={`
             relative w-10 h-10 rounded-lg flex items-center justify-center
             transition-all duration-200 group
-            ${currentView === item.id
-              ? 'bg-blue-500/20 text-blue-400'
-              : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
+            ${item.disabled
+              ? 'text-gray-700 cursor-not-allowed'
+              : currentView === item.id
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
             }
           `}
           title={item.label}
         >
           {/* Active indicator */}
-          {currentView === item.id && (
+          {currentView === item.id && !item.disabled && (
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-r" />
           )}
           {item.icon}
 
           {/* Tooltip */}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+          <div className={`absolute left-full ml-2 px-2 py-1 bg-gray-800 text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 ${item.disabled ? 'text-gray-400' : 'text-gray-200'}`}>
             {item.label}
           </div>
         </button>

@@ -106,6 +106,10 @@ interface SettingsStore {
   _isInitialized: boolean;
   _isSaving: boolean;
 
+  // Non-persisted: SITL switch flag (set when SITL starts, cleared when ConnectionPanel reads it)
+  pendingSitlSwitch: boolean;
+  setPendingSitlSwitch: (value: boolean) => void;
+
   // Mission defaults
   missionDefaults: MissionDefaults;
 
@@ -320,6 +324,10 @@ export const useSettingsStore = create<SettingsStore>()(
   // Persistence state
   _isInitialized: false,
   _isSaving: false,
+
+  // Non-persisted: SITL switch flag
+  pendingSitlSwitch: false,
+  setPendingSitlSwitch: (value: boolean) => set({ pendingSitlSwitch: value }),
 
   // Initial state (will be replaced by loadSettings)
   missionDefaults: { ...DEFAULT_MISSION_DEFAULTS },

@@ -332,9 +332,12 @@ function App() {
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onConnectionState((state) => {
       setConnectionState(state);
-      // Reset telemetry, parameters, mission, fence, and rally when disconnected
-      // Reset all stores when disconnected
-      if (!state.isConnected && !state.isWaitingForHeartbeat) {
+      // Reset stores when disconnected, but NOT during:
+      // 1. platformChangeInProgress (board is rebooting for platform change)
+      // 2. isReconnecting (auto-reconnect in progress after expected reboot)
+      const { platformChangeInProgress } = useConnectionStore.getState();
+      const shouldSkipReset = platformChangeInProgress || state.isReconnecting;
+      if (!state.isConnected && !state.isWaitingForHeartbeat && !shouldSkipReset) {
         reset();
         resetParameters();
         resetMission();

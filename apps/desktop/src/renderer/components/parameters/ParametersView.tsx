@@ -44,7 +44,7 @@ function SortIndicator({ column, currentColumn, direction }: {
 }
 
 export function ParametersView() {
-  const { connectionState } = useConnectionStore();
+  const { connectionState, platformChangeInProgress } = useConnectionStore();
   const {
     parameters,
     isLoading,
@@ -226,7 +226,8 @@ export function ParametersView() {
   }
 
   // Show MSP config for modern Betaflight/iNav boards
-  if (connectionState.isConnected && connectionState.protocol === 'msp') {
+  // Keep showing during platform change (board reboots but we auto-reconnect)
+  if ((connectionState.isConnected && connectionState.protocol === 'msp') || platformChangeInProgress) {
     return <MspConfigView />;
   }
 
@@ -235,7 +236,7 @@ export function ParametersView() {
     return <MavlinkConfigView />;
   }
 
-  if (!connectionState.isConnected) {
+  if (!connectionState.isConnected && !platformChangeInProgress) {
     return (
       <div className="h-full flex items-center justify-center p-8">
         <div className="text-center max-w-md">

@@ -12,4 +12,7 @@ export {
   stopMspTelemetry,
   cleanupMspConnection,
   exitCliModeIfActive,
+  autoConfigureSitlPlatform,
+  getMspVehicleType,
+  resetSitlAutoConfig,
 } from './msp-handlers.js';

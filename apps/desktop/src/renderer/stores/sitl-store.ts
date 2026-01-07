@@ -125,6 +125,7 @@ export const useSitlStore = create<SitlStore>()(
 
         try {
           const config: SitlConfig = {
+            profileName: profile.name,
             eepromFileName: profile.eepromFileName,
             simulator: profile.simEnabled ? profile.simulator : undefined,
             simIp: profile.simIp,

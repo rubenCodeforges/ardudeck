@@ -74,7 +74,7 @@ import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
-import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive } from './msp/index.js';
+import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
 import type { SitlConfig, SitlStatus } from '../shared/ipc-channels.js';
 
@@ -194,6 +194,22 @@ function cleanupTransportListeners(): void {
   processingMavlink = false;
   pendingMavlinkData.length = 0;
 }
+
+// Auto-reconnect state for expected reboots (EEPROM save, CLI save, etc.)
+let pendingReconnect: {
+  reason: string;
+  portPath?: string; // For serial
+  host?: string; // For TCP
+  tcpPort?: number;
+  protocol: 'msp' | 'mavlink';
+  baudRate?: number;
+  startTime: number;
+  attempt: number;
+  maxAttempts: number;
+  timeoutMs: number;
+} | null = null;
+let reconnectTimer: NodeJS.Timeout | null = null;
+
 let logId = 0;
 let connectionState: ConnectionState = {
   isConnected: false,
@@ -1117,8 +1133,287 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     stopPortWatcher();
   });
 
+  // ==================== AUTO-RECONNECT LOGIC ====================
+  // Handles automatic reconnection after expected reboots (EEPROM save, CLI save, etc.)
+
+  /**
+   * Check if auto-reconnect is pending
+   */
+  const isReconnectPending = (): boolean => pendingReconnect !== null;
+
+  /**
+   * Cancel reconnection and return to disconnected state
+   */
+  const cancelReconnect = (reason: string): void => {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+
+    pendingReconnect = null;
+    connectionState = {
+      isConnected: false,
+      isReconnecting: false,
+      packetsReceived: 0,
+      packetsSent: 0,
+    };
+    sendConnectionState(mainWindow);
+    sendLog(mainWindow, 'warn', 'Reconnection cancelled', reason);
+  };
+
+  /**
+   * Attempt to reconnect to the board
+   */
+  const attemptReconnect = async (): Promise<void> => {
+    if (!pendingReconnect) return;
+
+    const now = Date.now();
+    const elapsed = now - pendingReconnect.startTime;
+
+    // Check timeout
+    if (elapsed > pendingReconnect.timeoutMs || pendingReconnect.attempt >= pendingReconnect.maxAttempts) {
+      cancelReconnect('Reconnection timed out - board may need manual reconnection');
+      return;
+    }
+
+    pendingReconnect.attempt++;
+    connectionState.reconnectAttempt = pendingReconnect.attempt;
+    sendConnectionState(mainWindow);
+
+    sendLog(mainWindow, 'info', `Reconnect attempt ${pendingReconnect.attempt}/${pendingReconnect.maxAttempts}`);
+    console.log(`[Reconnect] Attempting with: portPath=${pendingReconnect.portPath}, host=${pendingReconnect.host}`);
+
+    // Validate we have connection info
+    if (!pendingReconnect.portPath && !pendingReconnect.host) {
+      console.log('[Reconnect] No connection info available!');
+      cancelReconnect('No connection info available for reconnect');
+      return;
+    }
+
+    try {
+      if (pendingReconnect.portPath) {
+        // Serial reconnection - check if port is available
+        const ports = await listSerialPorts();
+        const portAvailable = ports.some(p => p.path === pendingReconnect!.portPath);
+
+        if (!portAvailable) {
+          sendLog(mainWindow, 'debug', 'Port not available yet, retrying in 500ms...');
+          reconnectTimer = setTimeout(() => attemptReconnect(), 500);
+          return;
+        }
+
+        // Port is back - attempt connection
+        const transport = new SerialTransport(pendingReconnect.portPath, {
+          baudRate: pendingReconnect.baudRate || 115200,
+        });
+
+        await transport.open();
+        currentTransport = transport;
+
+        // Re-detect MSP protocol
+        const mspInfo = await tryMspDetection(currentTransport, mainWindow);
+        if (mspInfo) {
+          const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
+
+          connectionState = {
+            isConnected: true,
+            isReconnecting: false,
+            protocol: 'msp',
+            transport: 'serial',
+            portPath: pendingReconnect.portPath,
+            fcVariant: mspInfo.fcVariant,
+            fcVersion: mspInfo.fcVersion,
+            boardId: mspInfo.boardId,
+            apiVersion: mspInfo.apiVersion,
+            autopilot: mspInfo.fcVariant,
+            vehicleType,
+            isLegacyBoard: isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion),
+            packetsReceived: 0,
+            packetsSent: 0,
+          };
+
+          // Setup transport handlers for the new connection
+          setupReconnectTransportHandlers(transport);
+
+          sendConnectionState(mainWindow);
+          sendLog(mainWindow, 'info', 'Reconnected successfully!', `${mspInfo.fcVariant} ${mspInfo.fcVersion}`);
+
+          pendingReconnect = null;
+          return;
+        }
+      } else if (pendingReconnect.host) {
+        // TCP reconnection (SITL)
+        const transport = new TcpTransport({
+          host: pendingReconnect.host,
+          port: pendingReconnect.tcpPort || 5760,
+        });
+
+        await transport.open();
+        currentTransport = transport;
+
+        const mspInfo = await tryMspDetection(currentTransport, mainWindow);
+        if (mspInfo) {
+          const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
+
+          connectionState = {
+            isConnected: true,
+            isReconnecting: false,
+            protocol: 'msp',
+            transport: 'tcp',
+            fcVariant: mspInfo.fcVariant,
+            fcVersion: mspInfo.fcVersion,
+            boardId: mspInfo.boardId,
+            apiVersion: mspInfo.apiVersion,
+            autopilot: mspInfo.fcVariant,
+            vehicleType,
+            isLegacyBoard: isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion),
+            isSitl: sitlProcess.isRunning,
+            packetsReceived: 0,
+            packetsSent: 0,
+          };
+
+          setupReconnectTransportHandlers(transport);
+
+          sendConnectionState(mainWindow);
+          sendLog(mainWindow, 'info', 'Reconnected successfully!', `${mspInfo.fcVariant} ${vehicleType}`);
+
+          pendingReconnect = null;
+          return;
+        }
+      }
+
+      // Protocol detection failed - close and retry
+      currentTransport?.close();
+      currentTransport = null;
+      reconnectTimer = setTimeout(() => attemptReconnect(), 500);
+
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.log(`[Reconnect] Attempt failed: ${errMsg}`);
+      sendLog(mainWindow, 'debug', 'Reconnect attempt failed', errMsg);
+      // Clean up any partially opened transport
+      if (currentTransport) {
+        try {
+          if (currentTransport.isOpen) {
+            currentTransport.close();
+          }
+        } catch {
+          // Ignore close errors
+        }
+      }
+      currentTransport = null;
+      reconnectTimer = setTimeout(() => attemptReconnect(), 500);
+    }
+  };
+
+  /**
+   * Setup transport handlers after successful reconnection
+   */
+  const setupReconnectTransportHandlers = (transport: Transport): void => {
+    // Clean up any existing handlers first
+    cleanupTransportListeners();
+
+    // Setup error handler
+    transportErrorHandler = (error: Error) => {
+      console.error('Transport error:', error);
+      sendLog(mainWindow, 'error', 'Transport error', error.message);
+      safeSend(mainWindow, 'connection:error', error.message);
+    };
+    transport.on('error', transportErrorHandler);
+
+    // Setup close handler (reuse same logic as initial connection)
+    transportCloseHandler = () => {
+      if (heartbeatTimeout) {
+        clearTimeout(heartbeatTimeout);
+        heartbeatTimeout = null;
+      }
+
+      // Check if this is an expected close (reboot in progress)
+      if (isReconnectPending()) {
+        sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
+        return; // Don't update state - reconnect logic handles it
+      }
+
+      // Unexpected close
+      connectionState.isConnected = false;
+      connectionState.isWaitingForHeartbeat = false;
+      sendLog(mainWindow, 'info', 'Connection closed');
+      sendConnectionState(mainWindow);
+    };
+    transport.on('close', transportCloseHandler);
+  };
+
+  /**
+   * Schedule auto-reconnect after an expected reboot operation.
+   * Call this BEFORE sending the reboot command.
+   */
+  const scheduleReconnect = (options: {
+    reason: string;
+    delayMs: number; // Wait time before first reconnect attempt (board reboot time)
+    timeoutMs?: number; // Total time to keep trying (default 5000ms)
+    maxAttempts?: number; // Max connection attempts (default 10)
+  }): void => {
+    const { reason, delayMs, timeoutMs = 5000, maxAttempts = 10 } = options;
+
+    // Cancel any existing reconnect
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+
+    // Store connection info for reconnection
+    // Note: transport is a descriptive string like "TCP 127.0.0.1:5760" or "/dev/ttyUSB0 @ 115200"
+    const isTcpConnection = connectionState.transport?.toLowerCase().startsWith('tcp') || connectionState.isSitl;
+    console.log(`[Reconnect] Capturing connection info: portPath=${connectionState.portPath}, transport=${connectionState.transport}, isTcp=${isTcpConnection}, isSitl=${connectionState.isSitl}`);
+    pendingReconnect = {
+      reason,
+      portPath: connectionState.portPath,
+      host: isTcpConnection ? '127.0.0.1' : undefined,
+      tcpPort: 5760,
+      protocol: connectionState.protocol || 'msp',
+      baudRate: 115200,
+      startTime: Date.now() + delayMs, // Start timing from after initial delay
+      attempt: 0,
+      maxAttempts,
+      timeoutMs,
+    };
+
+    // Update UI immediately
+    connectionState.isReconnecting = true;
+    connectionState.reconnectReason = reason;
+    connectionState.reconnectAttempt = 0;
+    connectionState.reconnectMaxAttempts = maxAttempts;
+    sendConnectionState(mainWindow);
+
+    sendLog(mainWindow, 'info', `Reconnect scheduled: ${reason}`, `Will attempt in ${delayMs}ms`);
+
+    // Schedule first attempt after delay
+    reconnectTimer = setTimeout(() => attemptReconnect(), delayMs);
+  };
+
+  // Export scheduleReconnect for use by MSP handlers
+  // We'll make it available via a global reference since MSP handlers are in separate file
+  (globalThis as Record<string, unknown>).__ardudeck_scheduleReconnect = scheduleReconnect;
+
+  // IPC handler to cancel reconnection (user requested)
+  ipcMain.handle(IPC_CHANNELS.RECONNECT_CANCEL, async (): Promise<void> => {
+    cancelReconnect('Cancelled by user');
+  });
+
+  // ==================== END AUTO-RECONNECT LOGIC ====================
+
   // Connect to a device
   ipcMain.handle(IPC_CHANNELS.COMMS_CONNECT, async (_, options: ConnectOptions): Promise<boolean> => {
+    // Cancel any pending auto-reconnect (user is manually connecting)
+    if (pendingReconnect) {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      pendingReconnect = null;
+      connectionState.isReconnecting = false;
+    }
+
     // Clear any existing heartbeat timeout
     if (heartbeatTimeout) {
       clearTimeout(heartbeatTimeout);
@@ -1269,6 +1564,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           clearTimeout(heartbeatTimeout);
           heartbeatTimeout = null;
         }
+
+        // Check if this is an expected close (reboot in progress)
+        if (isReconnectPending()) {
+          sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
+          return; // Don't update state - reconnect logic handles it
+        }
+
+        // Unexpected close
         connectionState.isConnected = false;
         connectionState.isWaitingForHeartbeat = false;
         sendLog(mainWindow, 'info', 'Connection closed');
@@ -1304,6 +1607,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           const isLegacy = isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion);
           sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}${isLegacy ? ' (Legacy - CLI only)' : ''}`, `Board: ${mspInfo.boardId}`);
 
+          // Get actual vehicle type from mixer config (not hardcoded)
+          const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
+
+          // Normalize tcpPort to number for comparisons
+          const tcpPortNum = typeof options.tcpPort === 'string' ? parseInt(options.tcpPort, 10) : options.tcpPort;
+          const isSitlConnection = sitlProcess.isRunning && options.host === '127.0.0.1' && tcpPortNum === 5760;
+
           connectionState = {
             isConnected: true,
             isWaitingForHeartbeat: false,
@@ -1315,12 +1625,77 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             boardId: mspInfo.boardId,
             apiVersion: mspInfo.apiVersion,
             autopilot: mspInfo.fcVariant,
-            vehicleType: 'Multirotor',
+            vehicleType,
             isLegacyBoard: isLegacy,
+            isSitl: isSitlConnection,
             packetsReceived: connectionState.packetsReceived,
             packetsSent: connectionState.packetsSent,
           };
           sendConnectionState(mainWindow);
+
+          // SITL auto-configure: if iNav SITL, configure platform based on profile name
+          console.log(`[SITL] Auto-config check: isRunning=${sitlProcess.isRunning}, host=${options.host}, port=${tcpPortNum}, isSitl=${isSitlConnection}, variant=${mspInfo.fcVariant}`);
+          if (isSitlConnection && mspInfo.fcVariant === 'INAV') {
+            const profileName = sitlProcess.currentProfileName;
+            console.log(`[SITL] Auto-config: profile name = "${profileName}"`);
+            const platformChanged = await autoConfigureSitlPlatform(profileName);
+            if (platformChanged) {
+              // Board will reboot - close current transport and auto-reconnect
+              sendLog(mainWindow, 'info', 'SITL platform changed, reconnecting...', `Changed to match profile: ${profileName}`);
+
+              // Small delay to ensure reboot command is sent before closing transport
+              await new Promise(resolve => setTimeout(resolve, 500));
+              currentTransport?.close();
+              currentTransport = null;
+              connectionState = { isConnected: false, isWaitingForHeartbeat: false };
+              sendConnectionState(mainWindow);
+
+              // Wait for SITL to reboot (typically ~3-4 seconds)
+              await new Promise(resolve => setTimeout(resolve, 4000));
+
+              // Auto-reconnect to SITL
+              sendLog(mainWindow, 'info', 'Reconnecting to SITL...');
+              try {
+                const tcpTransport = new TcpTransport({
+                  host: '127.0.0.1',
+                  port: 5760,
+                });
+                await tcpTransport.open();
+                currentTransport = tcpTransport;
+
+                // Re-detect MSP
+                const newMspInfo = await tryMspDetection(currentTransport, mainWindow);
+                if (newMspInfo) {
+                  const newVehicleType = await getMspVehicleType(newMspInfo.fcVariant) || 'Unknown';
+
+                  connectionState = {
+                    isConnected: true,
+                    isWaitingForHeartbeat: false,
+                    protocol: 'msp',
+                    transport: 'tcp',
+                    fcVariant: newMspInfo.fcVariant,
+                    fcVersion: newMspInfo.fcVersion,
+                    boardId: newMspInfo.boardId,
+                    apiVersion: newMspInfo.apiVersion,
+                    autopilot: newMspInfo.fcVariant,
+                    vehicleType: newVehicleType,
+                    isLegacyBoard: isLegacyMspBoard(newMspInfo.fcVariant, newMspInfo.fcVersion),
+                    isSitl: true,
+                    packetsReceived: 0,
+                    packetsSent: 0,
+                  };
+                  sendConnectionState(mainWindow);
+                  sendLog(mainWindow, 'info', `Reconnected: ${newMspInfo.fcVariant} ${newVehicleType}`, `Platform auto-configured to ${newVehicleType}`);
+                  return true;
+                }
+              } catch (reconnectErr) {
+                console.error('[SITL] Auto-reconnect failed:', reconnectErr);
+                sendLog(mainWindow, 'warn', 'Auto-reconnect failed', 'Please reconnect manually');
+              }
+              return true; // Still return success, platform was changed
+            }
+          }
+
           return true;
         } else {
           const errorMsg = 'Device did not respond to MSP protocol.';
@@ -1366,6 +1741,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             const isLegacy = isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion);
             sendLog(mainWindow, 'info', `Connected to ${mspInfo.fcVariant} ${mspInfo.fcVersion}${isLegacy ? ' (Legacy - CLI only)' : ''}`, `Board: ${mspInfo.boardId}`);
 
+            // Get actual vehicle type from mixer config (not hardcoded)
+            const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
+
             connectionState = {
               isConnected: true,
               isWaitingForHeartbeat: false,
@@ -1377,7 +1755,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               boardId: mspInfo.boardId,
               apiVersion: mspInfo.apiVersion,
               autopilot: mspInfo.fcVariant, // Show variant as autopilot
-              vehicleType: 'Multirotor', // MSP boards are typically multirotors
+              vehicleType,
               isLegacyBoard: isLegacy,
               packetsReceived: connectionState.packetsReceived,
               packetsSent: connectionState.packetsSent,
@@ -3370,6 +3748,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.SITL_START, async (_event, config: SitlConfig): Promise<{ success: boolean; command?: string; error?: string }> => {
     try {
       console.log('[SITL] Starting with config:', config);
+      // Reset auto-config flag for new SITL session
+      resetSitlAutoConfig();
       const command = await sitlProcess.start(config);
       return { success: true, command };
     } catch (error) {

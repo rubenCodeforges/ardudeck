@@ -6,12 +6,15 @@ interface ConnectionStore {
   connectionState: ConnectionState;
   isConnecting: boolean;
   error: string | null;
+  platformChangeInProgress: boolean; // Keep MspConfigView mounted during platform change
 
   // Actions
   setConnectionState: (state: ConnectionState) => void;
   setError: (error: string | null) => void;
+  setPlatformChangeInProgress: (inProgress: boolean) => void;
   connect: (options: ConnectOptions) => Promise<boolean>;
   disconnect: () => Promise<void>;
+  cancelReconnect: () => Promise<void>; // Cancel auto-reconnect during expected reboots
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -22,9 +25,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
   isConnecting: false,
   error: null,
+  platformChangeInProgress: false,
 
   setConnectionState: (state) => set({ connectionState: state }),
   setError: (error) => set({ error }),
+  setPlatformChangeInProgress: (inProgress) => set({ platformChangeInProgress: inProgress }),
 
   connect: async (options) => {
     set({ isConnecting: true, error: null });
@@ -45,5 +50,9 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   disconnect: async () => {
     await window.electronAPI.disconnect();
+  },
+
+  cancelReconnect: async () => {
+    await window.electronAPI.cancelReconnect();
   },
 }));

@@ -27,7 +27,6 @@ export default function ServoTuningView() {
     stopServoPolling,
     saveToFC,
     servoRangeLimits,
-    usesCliFallback,
   } = useServoWizardStore();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -121,15 +120,7 @@ export default function ServoTuningView() {
   return (
     <div className="flex flex-col h-full">
       {/* Live indicator bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800/30">
-        {/* CLI fallback warning */}
-        {usesCliFallback && (
-          <div className="flex items-center gap-2 text-xs text-amber-400">
-            <span>⚠️</span>
-            <span>Old iNav: range {servoRangeLimits.min}-{servoRangeLimits.max}µs</span>
-          </div>
-        )}
-        {!usesCliFallback && <div />}
+      <div className="flex items-center justify-end px-4 py-2 border-b border-zinc-800/30">
         <div className="flex items-center gap-1.5 text-xs text-zinc-500">
           <div className={`w-2 h-2 rounded-full ${isPollingServos ? 'bg-green-500 animate-pulse' : 'bg-zinc-600'}`} />
           Live

@@ -39,6 +39,10 @@ const api = {
   disconnect: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.COMMS_DISCONNECT),
 
+  // Cancel auto-reconnect (during expected reboots)
+  cancelReconnect: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RECONNECT_CANCEL),
+
   // Port watching for detecting new devices
   startPortWatch: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.COMMS_START_PORT_WATCH),
@@ -580,6 +584,19 @@ const api = {
 
   mspSetGpsConfig: (config: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_GPS_CONFIG, config),
+
+  // MSP Generic Settings API (read/write any CLI setting via MSP)
+  mspGetSetting: (name: string): Promise<{ value: string | number; info: unknown } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SETTING, name),
+
+  mspSetSetting: (name: string, value: string | number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SETTING, name, value),
+
+  mspGetSettings: (names: string[]): Promise<Record<string, string | number | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SETTINGS, names),
+
+  mspSetSettings: (settings: Record<string, string | number>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SETTINGS, settings),
 
   // MSP Commands
   mspSaveEeprom: (): Promise<boolean> =>

@@ -81,6 +81,23 @@ const DEFAULT_NAV_CONFIG: Partial<MSPNavConfig> = {
   emergencyDescentRate: 500,   // 5 m/s
 };
 
+// Extended waypoint settings (CLI parameters via MSP2 COMMON_SETTING)
+interface WaypointSettings {
+  nav_wp_load_on_boot: string; // ON/OFF
+  nav_wp_max_safe_distance: number; // 0-1500 (meters)
+  nav_wp_mission_restart: string; // START/RESUME/SWITCH
+  nav_mc_wp_slowdown: string; // ON/OFF (multicopter)
+  nav_fw_wp_turn_smoothing: string; // OFF/ON/ON-CUT (fixed-wing)
+}
+
+const DEFAULT_WP_SETTINGS: WaypointSettings = {
+  nav_wp_load_on_boot: 'OFF',
+  nav_wp_max_safe_distance: 100,
+  nav_wp_mission_restart: 'RESUME',
+  nav_mc_wp_slowdown: 'ON',
+  nav_fw_wp_turn_smoothing: 'OFF',
+};
+
 interface Props {
   modified: boolean;
   setModified: (v: boolean) => void;
@@ -89,6 +106,8 @@ interface Props {
 export default function NavigationTab({ modified, setModified }: Props) {
   const [navConfig, setNavConfig] = useState<Partial<MSPNavConfig>>(DEFAULT_NAV_CONFIG);
   const [gpsConfig, setGpsConfig] = useState<MSPGpsConfig | null>(null);
+  const [wpSettings, setWpSettings] = useState<WaypointSettings>(DEFAULT_WP_SETTINGS);
+  const [wpSettingsSupported, setWpSettingsSupported] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +124,36 @@ export default function NavigationTab({ modified, setModified }: Props) {
       const gps = await window.electronAPI.mspGetGpsConfig();
       if (gps) {
         setGpsConfig(gps as MSPGpsConfig);
+      }
+
+      // Load extended waypoint settings via generic settings API
+      try {
+        const wpSettingNames = [
+          'nav_wp_load_on_boot',
+          'nav_wp_max_safe_distance',
+          'nav_wp_mission_restart',
+          'nav_mc_wp_slowdown',
+          'nav_fw_wp_turn_smoothing',
+        ];
+        const settings = await window.electronAPI.mspGetSettings(wpSettingNames);
+
+        // Check if we got any valid settings back
+        const hasValidSettings = Object.values(settings).some(v => v !== null);
+        setWpSettingsSupported(hasValidSettings);
+
+        if (hasValidSettings) {
+          setWpSettings({
+            nav_wp_load_on_boot: String(settings.nav_wp_load_on_boot ?? 'OFF'),
+            nav_wp_max_safe_distance: Number(settings.nav_wp_max_safe_distance ?? 100),
+            nav_wp_mission_restart: String(settings.nav_wp_mission_restart ?? 'RESUME'),
+            nav_mc_wp_slowdown: String(settings.nav_mc_wp_slowdown ?? 'ON'),
+            nav_fw_wp_turn_smoothing: String(settings.nav_fw_wp_turn_smoothing ?? 'OFF'),
+          });
+          console.log('[Navigation] Loaded waypoint settings:', settings);
+        }
+      } catch (wpErr) {
+        console.log('[Navigation] Extended waypoint settings not available:', wpErr);
+        setWpSettingsSupported(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load navigation config');
@@ -131,6 +180,12 @@ export default function NavigationTab({ modified, setModified }: Props) {
     }
   };
 
+  // Update waypoint settings
+  const updateWpSettings = (updates: Partial<WaypointSettings>) => {
+    setWpSettings((prev) => ({ ...prev, ...updates }));
+    setModified(true);
+  };
+
   // Save all changes
   const saveAll = async () => {
     setError(null);
@@ -148,6 +203,21 @@ export default function NavigationTab({ modified, setModified }: Props) {
         if (!gpsSuccess) {
           setError('Failed to set GPS config');
           return;
+        }
+      }
+
+      // Save extended waypoint settings via generic settings API
+      if (wpSettingsSupported) {
+        console.log('[Navigation] Saving waypoint settings...');
+        const wpSuccess = await window.electronAPI.mspSetSettings({
+          nav_wp_load_on_boot: wpSettings.nav_wp_load_on_boot,
+          nav_wp_max_safe_distance: wpSettings.nav_wp_max_safe_distance,
+          nav_wp_mission_restart: wpSettings.nav_wp_mission_restart,
+          nav_mc_wp_slowdown: wpSettings.nav_mc_wp_slowdown,
+          nav_fw_wp_turn_smoothing: wpSettings.nav_fw_wp_turn_smoothing,
+        });
+        if (!wpSuccess) {
+          console.log('[Navigation] Some waypoint settings failed to save');
         }
       }
 
@@ -399,6 +469,79 @@ export default function NavigationTab({ modified, setModified }: Props) {
             <p className="text-[10px] text-zinc-600 mt-1">Minimum safe altitude for missions</p>
           </div>
         </div>
+
+        {/* Extended waypoint settings (via generic settings API) */}
+        {wpSettingsSupported && (
+          <>
+            <div className="border-t border-zinc-700/50 pt-4 mt-4">
+              <p className="text-xs text-zinc-500 mb-3">Advanced Mission Settings</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-zinc-400 block mb-1.5">Max Safe Distance (m)</label>
+                  <input
+                    type="number"
+                    value={wpSettings.nav_wp_max_safe_distance}
+                    onChange={(e) => updateWpSettings({ nav_wp_max_safe_distance: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+                    min={0}
+                    max={1500}
+                    step={10}
+                  />
+                  <p className="text-[10px] text-zinc-600 mt-1">Max distance from home (0 = disabled)</p>
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400 block mb-1.5">Mission Restart Mode</label>
+                  <select
+                    value={wpSettings.nav_wp_mission_restart}
+                    onChange={(e) => updateWpSettings({ nav_wp_mission_restart: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="START">Start from beginning</option>
+                    <option value="RESUME">Resume from last WP</option>
+                    <option value="SWITCH">Switch to next mission</option>
+                  </select>
+                  <p className="text-[10px] text-zinc-600 mt-1">What happens after RTH</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 mt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wpSettings.nav_wp_load_on_boot === 'ON'}
+                  onChange={(e) => updateWpSettings({ nav_wp_load_on_boot: e.target.checked ? 'ON' : 'OFF' })}
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-purple-500"
+                />
+                <span className="text-sm text-zinc-400">Load mission on boot</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wpSettings.nav_mc_wp_slowdown === 'ON'}
+                  onChange={(e) => updateWpSettings({ nav_mc_wp_slowdown: e.target.checked ? 'ON' : 'OFF' })}
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-purple-500"
+                />
+                <span className="text-sm text-zinc-400">Slowdown at waypoints (MC)</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <select
+                  value={wpSettings.nav_fw_wp_turn_smoothing}
+                  onChange={(e) => updateWpSettings({ nav_fw_wp_turn_smoothing: e.target.value })}
+                  className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="OFF">Off</option>
+                  <option value="ON">On</option>
+                  <option value="ON-CUT">On + Cut throttle</option>
+                </select>
+                <span className="text-sm text-zinc-400">Turn smoothing (FW)</span>
+              </label>
+            </div>
+          </>
+        )}
       </div>
 
       {/* GPS Configuration */}
