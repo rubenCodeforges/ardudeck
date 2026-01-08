@@ -55,6 +55,13 @@ export const MSP = {
   SET_NAME: 11,
 
   // -------------------------------------------------------------------------
+  // Waypoint/Navigation Commands (16-22)
+  // -------------------------------------------------------------------------
+  WP_MISSION_LOAD: 18,   // Load mission from NVRAM
+  WP_MISSION_SAVE: 19,   // Save mission to NVRAM
+  WP_GETINFO: 20,        // Get mission info (count, validity)
+
+  // -------------------------------------------------------------------------
   // Mixed Commands (20-99) - Configuration and Status
   // -------------------------------------------------------------------------
   FEATURE_CONFIG: 36,

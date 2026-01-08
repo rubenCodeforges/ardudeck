@@ -19,61 +19,30 @@ import LegacyRatesTab from './LegacyRatesTab';
 import LegacyMixerTab from './LegacyMixerTab';
 import LegacyServoTab from './LegacyServoTab';
 import LegacyModesTab from './LegacyModesTab';
+import {
+  Zap,
+  Gauge,
+  Shuffle,
+  SlidersHorizontal,
+  ToggleRight,
+  type LucideIcon,
+} from 'lucide-react';
 
 type TabId = 'pid' | 'rates' | 'mixer' | 'servo' | 'modes';
 
 interface TabConfig {
   id: TabId;
   label: string;
-  icon: React.ReactNode;
+  icon: LucideIcon;
+  color: string;
 }
 
 const TABS: TabConfig[] = [
-  {
-    id: 'pid',
-    label: 'PID',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'rates',
-    label: 'Rates',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'mixer',
-    label: 'Mixer',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-      </svg>
-    ),
-  },
-  {
-    id: 'servo',
-    label: 'Servo',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-      </svg>
-    ),
-  },
-  {
-    id: 'modes',
-    label: 'Modes',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-      </svg>
-    ),
-  },
+  { id: 'pid', label: 'PID', icon: Zap, color: 'text-blue-400' },
+  { id: 'rates', label: 'Rates', icon: Gauge, color: 'text-purple-400' },
+  { id: 'mixer', label: 'Mixer', icon: Shuffle, color: 'text-cyan-400' },
+  { id: 'servo', label: 'Servo', icon: SlidersHorizontal, color: 'text-orange-400' },
+  { id: 'modes', label: 'Modes', icon: ToggleRight, color: 'text-green-400' },
 ];
 
 export default function LegacyConfigView() {
@@ -292,20 +261,24 @@ export default function LegacyConfigView() {
       {hasConfigData && (
         <>
           <div className="flex items-center gap-1 px-4 pt-3 border-b border-zinc-800">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-zinc-800 text-white border-b-2 border-blue-500'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                    isActive
+                      ? 'bg-zinc-800 text-white border-b-2 border-blue-500'
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? tab.color : `${tab.color} opacity-50`}`} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Tab content */}

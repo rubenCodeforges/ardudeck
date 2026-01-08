@@ -1087,7 +1087,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     portWatchInterval = setInterval(async () => {
       // Safety: Don't poll if we're now connected
       if (currentTransport) {
-        console.log('[PortWatcher] Auto-stopping - connection established');
         stopPortWatcher();
         return;
       }

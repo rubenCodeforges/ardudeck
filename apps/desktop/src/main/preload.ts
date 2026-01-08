@@ -550,6 +550,13 @@ const api = {
   mspGetServoConfigMode: (): Promise<{ usesCli: boolean; minValue: number; maxValue: number }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE),
 
+  // MSP Motor Mixer (modern boards)
+  mspGetMotorMixer: (): Promise<Array<{ throttle: number; roll: number; pitch: number; yaw: number }> | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MOTOR_MIXER),
+
+  mspSetMotorMixer: (rules: Array<{ throttle: number; roll: number; pitch: number; yaw: number }>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_MOTOR_MIXER, rules),
+
   mspSetMotorMixerCli: (rules: Array<{
     motorIndex: number;
     throttle: number;
@@ -571,6 +578,58 @@ const api = {
 
   mspReadMmixCli: (): Promise<Array<{ index: number; throttle: number; roll: number; pitch: number; yaw: number }> | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_READ_MMIX_CLI),
+
+  // MSP Waypoint/Mission (iNav)
+  mspGetWaypoints: (): Promise<Array<{
+    wpNo: number;
+    action: number;
+    lat: number;
+    lon: number;
+    altitude: number;
+    p1: number;
+    p2: number;
+    p3: number;
+    flag: number;
+  }> | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_WAYPOINTS),
+
+  mspSetWaypoint: (wp: {
+    wpNo: number;
+    action: number;
+    lat: number;
+    lon: number;
+    altitude: number;
+    p1: number;
+    p2: number;
+    p3: number;
+    flag: number;
+  }): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_WAYPOINT, wp),
+
+  mspSaveWaypoints: (waypoints: Array<{
+    wpNo: number;
+    action: number;
+    lat: number;
+    lon: number;
+    altitude: number;
+    p1: number;
+    p2: number;
+    p3: number;
+    flag: number;
+  }>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SAVE_WAYPOINTS, waypoints),
+
+  mspClearWaypoints: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_CLEAR_WAYPOINTS),
+
+  mspGetMissionInfo: (): Promise<{
+    reserved: number;
+    navVersion: number;
+    waypointCount: number;
+    isValid: boolean;
+    waypointListMaximum: number;
+  } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MISSION_INFO),
 
   // MSP Navigation Config (iNav)
   mspGetNavConfig: (): Promise<unknown> =>

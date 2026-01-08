@@ -102,6 +102,16 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **Command History** - Up/down arrow navigation through previous commands
 - **Legacy Board Support** - Full configuration for F3-era boards via CLI
 
+### OSD Simulator
+- **Live Preview** - See exactly what appears in FPV goggles
+- **Demo Mode** - Adjust telemetry values with sliders for font development
+- **Live Mode** - Real-time display from connected flight controller
+- **MCM Font Support** - Full MAX7456/AT7456E font parsing
+- **8 Bundled Fonts** - Default, Bold, Clarity, Impact, Vision, and more
+- **PAL/NTSC** - Support for both video standards (30x16 / 30x13 grids)
+- **15 OSD Elements** - Altitude, speed, battery, GPS, artificial horizon, etc.
+- **Element Toggle** - Enable/disable individual OSD elements
+
 ### Firmware Flash
 - **Multi-Protocol Detection** - Auto-detect boards via MAVLink, MSP, or STM32 bootloader
 - **USB VID/PID Recognition** - 30+ known boards identified by USB IDs
@@ -288,10 +298,11 @@ The GUI talks to your board via CLI commands under the hood - you get the **conv
 - Betaflight/iNav PID tuning and configuration
 - **CLI Terminal** with autocomplete and command history
 - **Legacy F3 board support** via full CLI configuration
+- **OSD Simulator** with demo and live telemetry modes
 
 ### Coming Soon
+- OSD element editor and font designer
 - Calibration wizards (compass, accelerometer, radio)
-- OSD configuration
 - Auto-updater and crash reporting
 
 ---

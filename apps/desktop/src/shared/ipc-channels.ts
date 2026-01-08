@@ -153,10 +153,19 @@ export const IPC_CHANNELS = {
   MSP_GET_SERVO_MIXER: 'msp:get-servo-mixer',
   MSP_SET_SERVO_MIXER: 'msp:set-servo-mixer',
   MSP_GET_SERVO_CONFIG_MODE: 'msp:get-servo-config-mode', // Check if using CLI fallback + valid ranges
+  MSP_GET_MOTOR_MIXER: 'msp:get-motor-mixer', // MSP motor mixer (modern boards)
+  MSP_SET_MOTOR_MIXER: 'msp:set-motor-mixer', // MSP motor mixer (modern boards)
   MSP_SET_MOTOR_MIXER_CLI: 'msp:set-motor-mixer-cli', // CLI mmix for legacy iNav boards
   MSP_SET_SERVO_MIXER_CLI: 'msp:set-servo-mixer-cli', // CLI smix for legacy iNav boards
   MSP_READ_SMIX_CLI: 'msp:read-smix-cli', // Read smix via CLI for preset detection
   MSP_READ_MMIX_CLI: 'msp:read-mmix-cli', // Read mmix via CLI for verification
+
+  // MSP Waypoint/Mission (iNav)
+  MSP_GET_WAYPOINTS: 'msp:get-waypoints',       // Read all waypoints from FC
+  MSP_SET_WAYPOINT: 'msp:set-waypoint',         // Write single waypoint to FC
+  MSP_SAVE_WAYPOINTS: 'msp:save-waypoints',     // Save mission to EEPROM
+  MSP_CLEAR_WAYPOINTS: 'msp:clear-waypoints',   // Clear all waypoints
+  MSP_GET_MISSION_INFO: 'msp:get-mission-info', // Get mission info (count, validity)
 
   // MSP Navigation Settings (iNav)
   MSP_GET_NAV_CONFIG: 'msp:get-nav-config',

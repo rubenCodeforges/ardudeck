@@ -8,6 +8,7 @@
  */
 
 import { useFenceStore } from '../../stores/fence-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { FENCE_BREACH } from '../../../shared/fence-types';
 
 interface FenceListPanelProps {
@@ -33,6 +34,10 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
     removeCircle,
     clearReturnPoint,
   } = useFenceStore();
+
+  // Check if connected to MSP board (iNav/Betaflight)
+  const connectionState = useConnectionStore((state) => state.connectionState);
+  const isMspProtocol = connectionState?.protocol === 'msp';
 
   const inclusionPolygons = polygons.filter((p) => p.type === 'inclusion');
   const exclusionPolygons = polygons.filter((p) => p.type === 'exclusion');
@@ -73,6 +78,16 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
           </div>
         )}
       </div>
+
+      {/* MSP protocol warning - geofencing not supported */}
+      {isMspProtocol && (
+        <div className="m-2 p-2 bg-blue-500/20 border border-blue-500/50 rounded text-blue-300 text-xs flex items-center gap-2">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Geofencing is not supported on iNav/Betaflight boards. You can still plan fences and save to file for reference.</span>
+        </div>
+      )}
 
       {/* Error display */}
       {error && (

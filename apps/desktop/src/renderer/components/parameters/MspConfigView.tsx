@@ -5,11 +5,12 @@
  * Philosophy: "No PhD required" - accessible for beginners, powerful for experts
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import inavLogo from '../../assets/inav-logo.png';
 import betaflightLogo from '../../assets/betaflight-logo.svg';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useMspTelemetryStore } from '../../stores/msp-telemetry-store';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
 import ModesWizard from '../modes/ModesWizard';
 import ModesAdvancedEditor from '../modes/ModesAdvancedEditor';
@@ -18,6 +19,23 @@ import ServoMixerTab from './ServoMixerTab';
 import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
 import { DraggableSlider } from '../ui/DraggableSlider';
+import {
+  SlidersHorizontal,
+  Gauge,
+  Gamepad2,
+  Shuffle,
+  Cog,
+  Compass,
+  Radio,
+  ChevronDown,
+  Layers,
+  Egg,
+  Drama,
+  Zap,
+  Film,
+  RotateCcw,
+  type LucideIcon,
+} from 'lucide-react';
 
 // Types
 interface MSPPidCoefficients {
@@ -82,11 +100,19 @@ const DEFAULT_RATES: Partial<MSPRcTuning> = {
 
 // Rate Presets - common rate configurations
 // Note: rollPitchRate is legacy combined rate for old iNav - must match rollRate for compatibility
-const RATE_PRESETS = {
+const RATE_PRESETS: Record<string, {
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  iconColor: string;
+  color: string;
+  rates: Partial<MSPRcTuning>;
+}> = {
   beginner: {
     name: 'Beginner',
     description: 'Slow & predictable - great for learning',
-    icon: '🐣',
+    icon: Egg,
+    iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     rates: {
       rcRate: 80, rcExpo: 20, rollPitchRate: 40, rollRate: 40,
@@ -97,7 +123,8 @@ const RATE_PRESETS = {
   freestyle: {
     name: 'Freestyle',
     description: 'Balanced for tricks & flow',
-    icon: '🎭',
+    icon: Drama,
+    iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     rates: {
       rcRate: 100, rcExpo: 15, rollPitchRate: 70, rollRate: 70,
@@ -108,7 +135,8 @@ const RATE_PRESETS = {
   racing: {
     name: 'Racing',
     description: 'Fast & responsive for speed',
-    icon: '🏎️',
+    icon: Zap,
+    iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     rates: {
       rcRate: 120, rcExpo: 5, rollPitchRate: 80, rollRate: 80,
@@ -119,7 +147,8 @@ const RATE_PRESETS = {
   cinematic: {
     name: 'Cinematic',
     description: 'Ultra-smooth for filming',
-    icon: '🎬',
+    icon: Film,
+    iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     rates: {
       rcRate: 70, rcExpo: 40, rollPitchRate: 30, rollRate: 30,
@@ -149,11 +178,19 @@ function saveCustomProfiles<T>(key: string, profiles: Record<string, { name: str
 }
 
 // PID Presets - make tuning accessible
-const PID_PRESETS = {
+const PID_PRESETS: Record<string, {
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  iconColor: string;
+  color: string;
+  pids: { roll: MSPPidCoefficients; pitch: MSPPidCoefficients; yaw: MSPPidCoefficients };
+}> = {
   beginner: {
     name: 'Beginner',
     description: 'Smooth & forgiving - great for learning',
-    icon: '🐣',
+    icon: Egg,
+    iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     pids: {
       roll: { p: 35, i: 40, d: 20 },
@@ -164,7 +201,8 @@ const PID_PRESETS = {
   freestyle: {
     name: 'Freestyle',
     description: 'Responsive & smooth for tricks',
-    icon: '🎭',
+    icon: Drama,
+    iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     pids: {
       roll: { p: 45, i: 45, d: 28 },
@@ -175,7 +213,8 @@ const PID_PRESETS = {
   racing: {
     name: 'Racing',
     description: 'Snappy & precise for speed',
-    icon: '🏎️',
+    icon: Zap,
+    iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     pids: {
       roll: { p: 55, i: 50, d: 32 },
@@ -186,7 +225,8 @@ const PID_PRESETS = {
   cinematic: {
     name: 'Cinematic',
     description: 'Ultra-smooth for video',
-    icon: '🎬',
+    icon: Film,
+    iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     pids: {
       roll: { p: 30, i: 35, d: 18 },
@@ -369,23 +409,26 @@ function RatesTab({
           Pick a preset that matches your flying style, or create your own.
         </p>
         <div className="grid grid-cols-5 gap-3">
-          {Object.entries(RATE_PRESETS).map(([key, preset]) => (
-            <button
-              key={key}
-              onClick={() => applyPreset(key as keyof typeof RATE_PRESETS)}
-              className={`p-4 rounded-xl border bg-gradient-to-br ${preset.color} hover:scale-105 transition-all text-left`}
-            >
-              <div className="text-2xl mb-2">{preset.icon}</div>
-              <div className="font-medium text-white">{preset.name}</div>
-              <div className="text-xs text-gray-400">{preset.description}</div>
-            </button>
-          ))}
+          {Object.entries(RATE_PRESETS).map(([key, preset]) => {
+            const Icon = preset.icon;
+            return (
+              <button
+                key={key}
+                onClick={() => applyPreset(key)}
+                className={`p-4 rounded-xl border bg-gradient-to-br ${preset.color} hover:scale-105 transition-all text-left`}
+              >
+                <Icon className={`w-6 h-6 mb-2 ${preset.iconColor}`} />
+                <div className="font-medium text-white">{preset.name}</div>
+                <div className="text-xs text-gray-400">{preset.description}</div>
+              </button>
+            );
+          })}
           {/* Stock/Default preset */}
           <button
             onClick={resetToDefaults}
             className="p-4 rounded-xl border bg-gradient-to-br from-gray-600/20 to-gray-700/10 border-gray-600/30 hover:scale-105 transition-all text-left"
           >
-            <div className="text-2xl mb-2">🔄</div>
+            <RotateCcw className="w-6 h-6 mb-2 text-gray-400" />
             <div className="font-medium text-white">Stock</div>
             <div className="text-xs text-gray-400">Factory defaults</div>
           </button>
@@ -591,23 +634,26 @@ function PidTuningTab({
           Pick a preset that matches your flying style, or create your own.
         </p>
         <div className="grid grid-cols-5 gap-3">
-          {Object.entries(PID_PRESETS).map(([key, preset]) => (
-            <button
-              key={key}
-              onClick={() => applyPreset(key as keyof typeof PID_PRESETS)}
-              className={`p-4 rounded-xl border bg-gradient-to-br ${preset.color} hover:scale-105 transition-all text-left`}
-            >
-              <div className="text-2xl mb-2">{preset.icon}</div>
-              <div className="font-medium text-white">{preset.name}</div>
-              <div className="text-xs text-gray-400">{preset.description}</div>
-            </button>
-          ))}
+          {Object.entries(PID_PRESETS).map(([key, preset]) => {
+            const Icon = preset.icon;
+            return (
+              <button
+                key={key}
+                onClick={() => applyPreset(key)}
+                className={`p-4 rounded-xl border bg-gradient-to-br ${preset.color} hover:scale-105 transition-all text-left`}
+              >
+                <Icon className={`w-6 h-6 mb-2 ${preset.iconColor}`} />
+                <div className="font-medium text-white">{preset.name}</div>
+                <div className="text-xs text-gray-400">{preset.description}</div>
+              </button>
+            );
+          })}
           {/* Stock/Default preset */}
           <button
             onClick={resetToDefaults}
             className="p-4 rounded-xl border bg-gradient-to-br from-gray-600/20 to-gray-700/10 border-gray-600/30 hover:scale-105 transition-all text-left"
           >
-            <div className="text-2xl mb-2">🔄</div>
+            <RotateCcw className="w-6 h-6 mb-2 text-gray-400" />
             <div className="font-medium text-white">Stock</div>
             <div className="text-xs text-gray-400">Factory defaults</div>
           </button>
@@ -835,18 +881,35 @@ function ModeChannelIndicator({
   );
 }
 
-// Sensor status card
+// Enhanced Sensor card with live value display
 function SensorCard({
   name,
   available,
   icon,
   description,
+  liveValue,
+  unit,
 }: {
   name: string;
   available: boolean;
   icon: string;
   description: string;
+  liveValue?: string | number | null;
+  unit?: string;
 }) {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const prevValueRef = useRef(liveValue);
+
+  // Pulse animation when value changes
+  useEffect(() => {
+    if (liveValue !== prevValueRef.current && liveValue != null) {
+      setIsUpdating(true);
+      const timer = setTimeout(() => setIsUpdating(false), 300);
+      prevValueRef.current = liveValue;
+      return () => clearTimeout(timer);
+    }
+  }, [liveValue]);
+
   return (
     <div className={`p-4 rounded-xl border transition-all ${
       available
@@ -865,11 +928,53 @@ function SensorCard({
           </div>
           <div className="text-xs text-gray-500">{description}</div>
         </div>
+        {/* Live value display */}
+        {liveValue != null && available && (
+          <div className={`px-3 py-1.5 rounded-lg font-mono text-sm transition-all ${
+            isUpdating
+              ? 'bg-cyan-500/30 text-cyan-300 scale-105'
+              : 'bg-gray-800/50 text-gray-300'
+          }`}>
+            {typeof liveValue === 'number' ? liveValue.toFixed(1) : liveValue}
+            {unit && <span className="text-xs text-gray-500 ml-1">{unit}</span>}
+          </div>
+        )}
         <div className={`px-2 py-1 text-xs rounded-lg ${
           available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-500'
         }`}>
           {available ? 'OK' : 'N/A'}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Telemetry value card for displaying multiple live values
+function TelemetryCard({
+  title,
+  icon,
+  values,
+}: {
+  title: string;
+  icon: string;
+  values: Array<{ label: string; value: number | string; unit?: string }>;
+}) {
+  return (
+    <div className="p-4 rounded-xl border bg-gray-800/30 border-gray-700/30">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">{icon}</span>
+        <span className="font-medium text-gray-300">{title}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {values.map(({ label, value, unit }) => (
+          <div key={label} className="text-center">
+            <div className="text-lg font-mono text-cyan-400">
+              {typeof value === 'number' ? value.toFixed(1) : value}
+              {unit && <span className="text-xs text-gray-500 ml-1">{unit}</span>}
+            </div>
+            <div className="text-xs text-gray-500">{label}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1086,6 +1191,12 @@ type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
   const { gps, attitude } = useTelemetryStore();
+  // MSP telemetry for real-time sensor values
+  const mspAttitude = useMspTelemetryStore((s) => s.attitude);
+  const mspAltitude = useMspTelemetryStore((s) => s.altitude);
+  const mspGps = useMspTelemetryStore((s) => s.gps);
+  const mspAnalog = useMspTelemetryStore((s) => s.analog);
+  const { hasChanges: modesHaveChanges, saveToFC: saveModesToFC, isSaving: modesSaving } = useModesWizardStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1099,7 +1210,10 @@ export function MspConfigView() {
   const [rcTuning, setRcTuning] = useState<MSPRcTuning | null>(null);
   const [modes, setModes] = useState<MSPModeRange[]>([]);
   const [features, setFeatures] = useState<number>(0);
-  const [modified, setModified] = useState(false);
+  const [pidRatesModified, setPidRatesModified] = useState(false);
+
+  // Combined modified state: PIDs/rates OR modes have changes
+  const modified = pidRatesModified || modesHaveChanges();
 
   // Sensors
   const sensors = useMemo(() => ({
@@ -1114,6 +1228,7 @@ export function MspConfigView() {
 
   // Platform change state (iNav only)
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  const [showMixingDropdown, setShowMixingDropdown] = useState(false);
   const [platformChangeState, setPlatformChangeState] = useState<'idle' | 'changing' | 'saving' | 'rebooting' | 'reconnecting' | 'error'>('idle');
   const [platformChangeError, setPlatformChangeError] = useState<string | null>(null);
   const [platformChangeTarget, setPlatformChangeTarget] = useState<string | null>(null);
@@ -1183,14 +1298,17 @@ export function MspConfigView() {
     setPlatformChangeInProgress(false);
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setShowPlatformDropdown(false);
-    if (showPlatformDropdown) {
+    const handleClickOutside = () => {
+      setShowPlatformDropdown(false);
+      setShowMixingDropdown(false);
+    };
+    if (showPlatformDropdown || showMixingDropdown) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showPlatformDropdown]);
+  }, [showPlatformDropdown, showMixingDropdown]);
 
 
   // Check for legacy iNav (< 2.3.0) which has different CLI params and no per-axis RC rates
@@ -1244,7 +1362,7 @@ export function MspConfigView() {
       if (modesData) setModes(modesData as MSPModeRange[]);
       if (typeof featuresData === 'number') setFeatures(featuresData);
       console.log('[UI] loadConfig complete, setting modified=false');
-      setModified(false);
+      setPidRatesModified(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load config');
     } finally {
@@ -1258,16 +1376,16 @@ export function MspConfigView() {
     }
   }, [connectionState.isConnected, connectionState.protocol, loadConfig]);
 
-  // Single save function that saves everything (PIDs + Rates + EEPROM)
+  // Single save function that saves everything (PIDs + Rates + Modes + EEPROM)
   const saveAll = async () => {
     if (!modified) return;
     setSaving(true);
     setError(null);
-    console.log('[UI] saveAll: saving PIDs, Rates, and EEPROM');
+    console.log('[UI] saveAll: saving PIDs, Rates, Modes, and EEPROM');
 
     try {
-      // Save PIDs if available
-      if (pid) {
+      // Save PIDs if available and modified
+      if (pid && pidRatesModified) {
         console.log('[UI] Saving PIDs...');
         const pidSuccess = await window.electronAPI?.mspSetPid(pid);
         if (!pidSuccess) {
@@ -1276,8 +1394,8 @@ export function MspConfigView() {
         }
       }
 
-      // Save Rates if available
-      if (rcTuning) {
+      // Save Rates if available and modified
+      if (rcTuning && pidRatesModified) {
         console.log('[UI] Saving Rates...');
         const ratesSuccess = await window.electronAPI?.mspSetRcTuning(rcTuning);
         if (!ratesSuccess) {
@@ -1286,15 +1404,27 @@ export function MspConfigView() {
         }
       }
 
-      // Save to EEPROM
-      console.log('[UI] Saving to EEPROM...');
-      const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
-      if (!eepromSuccess) {
-        setError('Failed to save to EEPROM');
-        return;
+      // Save Modes if they have changes
+      if (modesHaveChanges()) {
+        console.log('[UI] Saving Modes...');
+        const modesSuccess = await saveModesToFC();
+        if (!modesSuccess) {
+          setError('Failed to save Modes');
+          return;
+        }
       }
 
-      setModified(false);
+      // Save to EEPROM (only if we saved PIDs/Rates - modes saveToFC handles its own EEPROM)
+      if (pidRatesModified) {
+        console.log('[UI] Saving to EEPROM...');
+        const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
+        if (!eepromSuccess) {
+          setError('Failed to save to EEPROM');
+          return;
+        }
+      }
+
+      setPidRatesModified(false);
       console.log('[UI] All settings saved successfully');
     } catch (err) {
       console.error('[UI] Save error:', err);
@@ -1309,7 +1439,7 @@ export function MspConfigView() {
     if (!pid) return;
     console.log(`[UI] updatePid: ${axis}.${field} = ${value}, setting modified=true`);
     setPid({ ...pid, [axis]: { ...pid[axis], [field]: value } });
-    setModified(true);
+    setPidRatesModified(true);
     console.log('[UI] modified state set to true');
   };
 
@@ -1333,7 +1463,7 @@ export function MspConfigView() {
     }
 
     setRcTuning({ ...rcTuning, ...updates });
-    setModified(true);
+    setPidRatesModified(true);
   };
 
   if (loading) {
@@ -1511,37 +1641,119 @@ export function MspConfigView() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mt-4 flex-wrap">
+        <div className="flex gap-1.5 mt-4 flex-wrap items-center">
+          {/* Main tabs */}
           {[
-            { id: 'tuning', label: 'PID Tuning', icon: '🎚️', desc: 'How your quad flies' },
-            { id: 'rates', label: 'Rates', icon: '📊', desc: 'How fast it turns' },
-            { id: 'modes', label: 'Flight Modes', icon: '🎮', desc: 'Switch functions' },
-            // iNav-specific tabs (before Sensors)
-            ...(isInav ? [
-              { id: 'servo-tuning', label: 'Servo Tuning', icon: '🎚️', desc: 'Endpoint calibration' },
-              { id: 'servo-mixer', label: 'Servo Mixer', icon: '🔀', desc: 'Control surface mixing' },
-              { id: 'motor-mixer', label: 'Motor Mixer', icon: '⚙️', desc: 'Motor output mixing' },
-              { id: 'navigation', label: 'Navigation', icon: '🧭', desc: 'RTH & GPS settings' },
-            ] : []),
-            // Sensors always last
-            { id: 'sensors', label: 'Sensors', icon: '📡', desc: 'Hardware status' },
-          ].map((tab) => (
+            { id: 'tuning', label: 'PID Tuning', icon: SlidersHorizontal, color: 'text-blue-400' },
+            { id: 'rates', label: 'Rates', icon: Gauge, color: 'text-purple-400' },
+            { id: 'modes', label: 'Modes', icon: Gamepad2, color: 'text-green-400' },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                  isActive
+                    ? 'bg-gray-800 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? tab.color : `${tab.color} opacity-50`}`} />
+                <span className="text-sm font-medium">{tab.label}</span>
+              </button>
+            );
+          })}
+
+          {/* Mixing dropdown (iNav only) */}
+          {isInav && (
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMixingDropdown(!showMixingDropdown);
+                }}
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                  ['servo-tuning', 'servo-mixer', 'motor-mixer'].includes(activeTab)
+                    ? 'bg-gray-800 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                }`}
+              >
+                <Layers className={`w-4 h-4 ${
+                  ['servo-tuning', 'servo-mixer', 'motor-mixer'].includes(activeTab)
+                    ? 'text-cyan-400'
+                    : 'text-cyan-400 opacity-50'
+                }`} />
+                <span className="text-sm font-medium">
+                  {activeTab === 'servo-tuning' ? 'Servo Tuning' :
+                   activeTab === 'servo-mixer' ? 'Servo Mixer' :
+                   activeTab === 'motor-mixer' ? 'Motor Mixer' : 'Mixing'}
+                </span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showMixingDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showMixingDropdown && (
+                <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1">
+                  {[
+                    { id: 'servo-tuning', label: 'Servo Tuning', icon: SlidersHorizontal, color: 'text-orange-400', desc: 'Endpoints' },
+                    { id: 'servo-mixer', label: 'Servo Mixer', icon: Shuffle, color: 'text-cyan-400', desc: 'Surfaces' },
+                    { id: 'motor-mixer', label: 'Motor Mixer', icon: Cog, color: 'text-rose-400', desc: 'Motors' },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTab(item.id as typeof activeTab);
+                          setShowMixingDropdown(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left flex items-center gap-3 hover:bg-zinc-700 transition-colors ${
+                          isActive ? 'bg-zinc-700/50' : ''
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${item.color}`} />
+                        <div className="flex-1">
+                          <div className={`text-sm ${isActive ? 'text-white' : 'text-gray-300'}`}>{item.label}</div>
+                          <div className="text-xs text-gray-500">{item.desc}</div>
+                        </div>
+                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation (iNav only) */}
+          {isInav && (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all ${
-                activeTab === tab.id
+              onClick={() => setActiveTab('navigation')}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                activeTab === 'navigation'
                   ? 'bg-gray-800 text-white shadow-lg'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
               }`}
             >
-              <span className="text-lg">{tab.icon}</span>
-              <div className="text-left">
-                <div className="text-sm font-medium">{tab.label}</div>
-                <div className="text-xs text-gray-500">{tab.desc}</div>
-              </div>
+              <Compass className={`w-4 h-4 ${activeTab === 'navigation' ? 'text-amber-400' : 'text-amber-400 opacity-50'}`} />
+              <span className="text-sm font-medium">Navigation</span>
             </button>
-          ))}
+          )}
+
+          {/* Sensors */}
+          <button
+            onClick={() => setActiveTab('sensors')}
+            className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'sensors'
+                ? 'bg-gray-800 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+            }`}
+          >
+            <Radio className={`w-4 h-4 ${activeTab === 'sensors' ? 'text-emerald-400' : 'text-emerald-400 opacity-50'}`} />
+            <span className="text-sm font-medium">Sensors</span>
+          </button>
         </div>
       </div>
 
@@ -1561,7 +1773,7 @@ export function MspConfigView() {
             pid={pid}
             setPid={setPid}
             updatePid={updatePid}
-            setModified={setModified}
+            setModified={setPidRatesModified}
           />
         )}
 
@@ -1572,7 +1784,7 @@ export function MspConfigView() {
             rcTuning={rcTuning}
             updateRcTuning={updateRcTuning}
             setRcTuning={setRcTuning}
-            setModified={setModified}
+            setModified={setPidRatesModified}
             isLegacyInav={isLegacyInav}
             isInav={isInav}
           />
@@ -1585,16 +1797,102 @@ export function MspConfigView() {
         {/* Sensors Tab */}
         {activeTab === 'sensors' && (
           <div className="max-w-full px-4 space-y-4">
+            {/* Sensor Status Cards */}
             <div className="grid grid-cols-2 gap-4">
-              <SensorCard name="Gyroscope" available={sensors.gyro} icon="🔄" description="Measures rotation speed - essential for flight" />
-              <SensorCard name="Accelerometer" available={sensors.acc} icon="📐" description="Measures tilt angle - needed for self-level" />
+              <SensorCard
+                name="Gyroscope"
+                available={sensors.gyro}
+                icon="🔄"
+                description="Measures rotation speed - essential for flight"
+              />
+              <SensorCard
+                name="Accelerometer"
+                available={sensors.acc}
+                icon="📐"
+                description="Measures tilt angle - needed for self-level"
+                liveValue={`${mspAttitude.roll.toFixed(0)}° / ${mspAttitude.pitch.toFixed(0)}°`}
+              />
               <SensorCard
                 name="GPS"
                 available={sensors.gps}
                 icon="🛰️"
-                description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
+                description={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
+                liveValue={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} sats` : undefined}
               />
-              <SensorCard name="Barometer" available={sensors.baro} icon="📊" description="Measures altitude via air pressure" />
+              <SensorCard
+                name="Barometer"
+                available={sensors.baro}
+                icon="📊"
+                description="Measures altitude via air pressure"
+                liveValue={sensors.baro ? mspAltitude.altitude : undefined}
+                unit="m"
+              />
+            </div>
+
+            {/* Live Telemetry Section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Live Telemetry</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Attitude Card */}
+                <TelemetryCard
+                  title="Attitude"
+                  icon="🎯"
+                  values={[
+                    { label: 'Roll', value: mspAttitude.roll, unit: '°' },
+                    { label: 'Pitch', value: mspAttitude.pitch, unit: '°' },
+                    { label: 'Yaw', value: mspAttitude.yaw, unit: '°' },
+                  ]}
+                />
+
+                {/* Altitude Card */}
+                <TelemetryCard
+                  title="Altitude"
+                  icon="📏"
+                  values={[
+                    { label: 'Alt', value: mspAltitude.altitude, unit: 'm' },
+                    { label: 'Vario', value: mspAltitude.vario, unit: 'm/s' },
+                    { label: 'Voltage', value: mspAnalog.voltage, unit: 'V' },
+                  ]}
+                />
+              </div>
+
+              {/* GPS Data Card (only if GPS available) */}
+              {sensors.gps && (
+                <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">🛰️</span>
+                    <span className="font-medium text-blue-300">GPS Position</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="text-center">
+                      <div className="text-lg font-mono text-cyan-400">
+                        {(mspGps?.lat || gps?.lat || 0).toFixed(6)}
+                      </div>
+                      <div className="text-xs text-gray-500">Latitude</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-mono text-cyan-400">
+                        {(mspGps?.lon || gps?.lon || 0).toFixed(6)}
+                      </div>
+                      <div className="text-xs text-gray-500">Longitude</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-mono text-cyan-400">
+                        {(mspGps?.alt || gps?.alt || 0).toFixed(1)}
+                        <span className="text-xs text-gray-500 ml-1">m</span>
+                      </div>
+                      <div className="text-xs text-gray-500">GPS Alt</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-mono text-cyan-400">
+                        {(mspGps?.speed || 0).toFixed(1)}
+                        <span className="text-xs text-gray-500 ml-1">m/s</span>
+                      </div>
+                      <div className="text-xs text-gray-500">Speed</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {!sensors.gps && (
@@ -1646,17 +1944,17 @@ export function MspConfigView() {
 
         {/* Servo Mixer Tab (iNav only) */}
         {activeTab === 'servo-mixer' && isInav && (
-          <ServoMixerTab modified={modified} setModified={setModified} />
+          <ServoMixerTab modified={modified} setModified={setPidRatesModified} />
         )}
 
         {/* Motor Mixer Tab (iNav only) */}
         {activeTab === 'motor-mixer' && isInav && (
-          <MotorMixerTab modified={modified} setModified={setModified} />
+          <MotorMixerTab modified={modified} setModified={setPidRatesModified} />
         )}
 
         {/* Navigation Tab (iNav only) */}
         {activeTab === 'navigation' && isInav && (
-          <NavigationTab modified={modified} setModified={setModified} />
+          <NavigationTab modified={modified} setModified={setPidRatesModified} />
         )}
       </div>
     </div>

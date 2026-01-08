@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { commandHasLocation, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { useIpLocation } from '../../utils/ip-geolocation';
 
@@ -337,6 +338,24 @@ function CenterOnGps() {
   return null;
 }
 
+// Center map on vehicle GPS when triggered
+function CenterOnVehicle({ trigger }: { trigger: number }) {
+  const map = useMap();
+  const lastTriggerRef = useRef(0);
+
+  useEffect(() => {
+    if (trigger === lastTriggerRef.current) return;
+    lastTriggerRef.current = trigger;
+
+    const gps = useTelemetryStore.getState().gps;
+    if (gps.fixType >= 2 && gps.lat !== 0 && gps.lon !== 0) {
+      map.setView([gps.lat, gps.lon], map.getZoom(), { animate: true, duration: 0.5 });
+    }
+  }, [trigger, map]);
+
+  return null;
+}
+
 // GPS warning component - checks GPS on mount
 function GpsWarning() {
   const [hasGps, setHasGps] = useState(false);
@@ -471,6 +490,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
   const [isAddingWaypoint, setIsAddingWaypoint] = useState(false);
   const [isSettingHome, setIsSettingHome] = useState(false);
   const [fitTrigger, setFitTrigger] = useState(0);
+  const [centerOnVehicleTrigger, setCenterOnVehicleTrigger] = useState(0);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   // IP geolocation fallback (used when no GPS or mission items)
@@ -492,6 +512,10 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
     updateWaypoint,
     setHomePosition,
   } = useMissionStore();
+
+  // Get connection state to check protocol type
+  const connectionState = useConnectionStore((state) => state.connectionState);
+  const isMspProtocol = connectionState?.protocol === 'msp';
 
   // Get active edit mode from toolbar
   const activeMode = useEditModeStore((state) => state.activeMode);
@@ -527,8 +551,9 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
       return;
     }
 
-    // Can't add waypoints without home position set
-    if (!homePosition) {
+    // For MAVLink boards, require home position to be set first
+    // For MSP boards (iNav/Betaflight), home is auto-set on arm + GPS lock, so allow waypoints without it
+    if (!isMspProtocol && !homePosition) {
       return;
     }
 
@@ -536,7 +561,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
     const lastWp = missionItems[missionItems.length - 1];
     const alt = lastWp?.altitude ?? 100;
     addWaypoint(lat, lng, alt);
-  }, [isSettingHome, homePosition, missionItems, setHomePosition, addWaypoint]);
+  }, [isSettingHome, homePosition, missionItems, setHomePosition, addWaypoint, isMspProtocol]);
 
   // Toggle set home mode
   const handleToggleSetHome = useCallback(() => {
@@ -616,6 +641,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
         <FitToBounds waypoints={waypoints} trigger={fitTrigger} />
         <FocusOnSelected waypoints={waypoints} selectedSeq={selectedSeq} />
         <CenterOnGps />
+        <CenterOnVehicle trigger={centerOnVehicleTrigger} />
 
         <TileLayer
           url={layer.url}
@@ -774,6 +800,19 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
                 Fit
               </button>
             )}
+
+            {/* Center on Vehicle button */}
+            <button
+              onClick={() => setCenterOnVehicleTrigger(t => t + 1)}
+              className="px-2.5 py-1.5 rounded text-xs font-medium bg-gray-800/90 text-gray-300 hover:bg-gray-700/90 transition-colors flex items-center gap-1.5"
+              title="Center map on vehicle GPS position"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Vehicle
+            </button>
 
             {/* Set Home button - hidden in readOnly mode */}
             {!readOnly && (

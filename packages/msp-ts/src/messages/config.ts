@@ -837,6 +837,58 @@ export function serializeServoMixerRule(index: number, rule: MSPServoMixerRule):
 }
 
 // =============================================================================
+// Motor Mixer Configuration
+// =============================================================================
+
+export interface MSPMotorMixerRule {
+  throttle: number;  // -1.0 to 1.0 (stored as -1000 to 1000 in MSP)
+  roll: number;      // -1.0 to 1.0
+  pitch: number;     // -1.0 to 1.0
+  yaw: number;       // -1.0 to 1.0
+}
+
+/**
+ * Deserialize MSP2_COMMON_MOTOR_MIXER response
+ * Each motor rule is 8 bytes: throttle(s16), roll(s16), pitch(s16), yaw(s16)
+ * Values are scaled by 1000 (-1000 to 1000 represents -1.0 to 1.0)
+ */
+export function deserializeMotorMixerRules(payload: Uint8Array): MSPMotorMixerRule[] {
+  const reader = new PayloadReader(payload);
+  const rules: MSPMotorMixerRule[] = [];
+
+  // Each motor rule is 8 bytes (4 × int16)
+  while (reader.remaining() >= 8) {
+    const throttle = reader.readS16() / 1000;
+    const roll = reader.readS16() / 1000;
+    const pitch = reader.readS16() / 1000;
+    const yaw = reader.readS16() / 1000;
+
+    // Skip entries with all zeros (unused motor slots)
+    if (throttle !== 0 || roll !== 0 || pitch !== 0 || yaw !== 0) {
+      rules.push({ throttle, roll, pitch, yaw });
+    }
+  }
+
+  return rules;
+}
+
+/**
+ * Serialize a single motor mixer rule for MSP2_COMMON_SET_MOTOR_MIXER
+ * Format: index(u8), throttle(s16), roll(s16), pitch(s16), yaw(s16) = 9 bytes
+ */
+export function serializeMotorMixerRule(index: number, rule: MSPMotorMixerRule): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(index);
+  builder.writeS16(Math.round(rule.throttle * 1000));
+  builder.writeS16(Math.round(rule.roll * 1000));
+  builder.writeS16(Math.round(rule.pitch * 1000));
+  builder.writeS16(Math.round(rule.yaw * 1000));
+
+  return builder.build();
+}
+
+// =============================================================================
 // iNav Navigation Settings
 // =============================================================================
 
@@ -1320,5 +1372,122 @@ export function mergeInavPid(current: MSPInavPid, updates: Partial<MSPInavPid>):
     heading: updates.heading ?? current.heading,
     velZ: updates.velZ ?? current.velZ,
     navHeading: updates.navHeading ?? current.navHeading,
+  };
+}
+
+// =============================================================================
+// iNav Waypoint/Mission Support (MSP_WP / MSP_SET_WP)
+// =============================================================================
+
+/**
+ * iNav Waypoint Action Types
+ * Used for navigation mission planning
+ */
+export const MSP_WP_ACTION = {
+  WAYPOINT: 1,        // Navigate to position
+  POSHOLD_UNLIM: 2,   // Hold position indefinitely (not supported)
+  POSHOLD_TIME: 3,    // Hold position for time (p1 = seconds)
+  RTH: 4,             // Return to home (p1 = land flag)
+  SET_POI: 5,         // Set point of interest
+  JUMP: 6,            // Jump to waypoint (p1 = target wp#, p2 = repeat count)
+  SET_HEAD: 7,        // Set heading (p1 = heading degrees)
+  LAND: 8,            // Land at position
+} as const;
+
+/**
+ * Waypoint flag values
+ */
+export const MSP_WP_FLAG = {
+  NORMAL: 0x00,       // Standard waypoint
+  LAST: 0xa5,         // Last waypoint in mission (165)
+  FLY_BY_HOME: 0x48,  // Fly-by-home active
+} as const;
+
+/**
+ * iNav Waypoint structure
+ * Matches the MSP_WP / MSP_SET_WP 21-byte payload
+ */
+export interface MSPWaypoint {
+  wpNo: number;       // Waypoint number (0-59, 0=home, 255=poshold)
+  action: number;     // Action type (see MSP_WP_ACTION)
+  lat: number;        // Latitude in degrees (stored as *1e7 in MSP)
+  lon: number;        // Longitude in degrees (stored as *1e7 in MSP)
+  altitude: number;   // Altitude in meters (stored as cm in MSP)
+  p1: number;         // Param 1 (speed cm/s for WAYPOINT, land flag for RTH)
+  p2: number;         // Param 2 (varies by action)
+  p3: number;         // Param 3 / bitfield
+  flag: number;       // 0x00=normal, 0xa5=last, 0x48=fly-by-home
+}
+
+/**
+ * iNav Mission Info from MSP_WP_GETINFO
+ */
+export interface MSPMissionInfo {
+  reserved: number;           // Reserved byte
+  navVersion: number;         // Navigation version
+  waypointCount: number;      // Number of waypoints in mission
+  isValid: boolean;           // Mission is valid
+  waypointListMaximum: number; // Maximum waypoints supported
+}
+
+/**
+ * Deserialize MSP_WP response (single waypoint)
+ * Response is 21 bytes for a single waypoint
+ */
+export function deserializeWaypoint(payload: Uint8Array): MSPWaypoint {
+  const reader = new PayloadReader(payload);
+
+  return {
+    wpNo: reader.readU8(),
+    action: reader.readU8(),
+    lat: reader.readS32() / 1e7,        // Convert from *1e7 to degrees
+    lon: reader.readS32() / 1e7,        // Convert from *1e7 to degrees
+    altitude: reader.readS32() / 100,   // Convert from cm to meters
+    p1: reader.readS16(),
+    p2: reader.readS16(),
+    p3: reader.readS16(),
+    flag: reader.readU8(),
+  };
+}
+
+/**
+ * Serialize MSP_SET_WP payload (single waypoint)
+ * Payload is 21 bytes
+ */
+export function serializeWaypoint(wp: MSPWaypoint): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(wp.wpNo);
+  builder.writeU8(wp.action);
+  builder.writeS32(Math.round(wp.lat * 1e7));    // Convert degrees to *1e7
+  builder.writeS32(Math.round(wp.lon * 1e7));    // Convert degrees to *1e7
+  builder.writeS32(Math.round(wp.altitude * 100)); // Convert meters to cm
+  builder.writeS16(wp.p1);
+  builder.writeS16(wp.p2);
+  builder.writeS16(wp.p3);
+  builder.writeU8(wp.flag);
+
+  return builder.build();
+}
+
+/**
+ * Deserialize MSP_WP_GETINFO response
+ * Returns mission metadata
+ *
+ * Byte order (from iNav configurator MSPHelper.js):
+ * - Byte 0: Reserved (waypoint capabilities)
+ * - Byte 1: Max waypoints supported
+ * - Byte 2: Valid mission flag (1 = valid)
+ * - Byte 3: Count of busy points (actual waypoint count!)
+ */
+export function deserializeMissionInfo(payload: Uint8Array): MSPMissionInfo {
+  const reader = new PayloadReader(payload);
+
+  return {
+    reserved: reader.readU8(),                    // Byte 0
+    waypointListMaximum: reader.readU8(),         // Byte 1 - max waypoints
+    isValid: reader.readU8() === 1,               // Byte 2 - valid mission flag
+    waypointCount: reader.readU8(),               // Byte 3 - actual waypoint count
+    navVersion: 0,                                // Not in this response
   };
 }

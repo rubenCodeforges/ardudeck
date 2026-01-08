@@ -84,6 +84,9 @@ interface ModesWizardState {
   loadFromFC: () => Promise<void>;
   saveToFC: () => Promise<boolean>;
 
+  // Computed - Check if modes have unsaved changes
+  hasChanges: () => boolean;
+
   // Actions - Transmitter Check
   setTransmitterConfirmed: (confirmed: boolean) => void;
   updateChannelDetected: (channelIndex: number, detected: boolean) => void;
@@ -313,6 +316,21 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         loadError: error instanceof Error ? error.message : 'Failed to load modes',
       });
     }
+  },
+
+  // Check if modes have unsaved changes (compare pending vs original)
+  hasChanges: () => {
+    const { pendingModes, originalModes } = get();
+    if (pendingModes.length !== originalModes.length) return true;
+    return pendingModes.some((pending, i) => {
+      const original = originalModes[i];
+      return (
+        pending.boxId !== original.boxId ||
+        pending.auxChannel !== original.auxChannel ||
+        pending.rangeStart !== original.rangeStart ||
+        pending.rangeEnd !== original.rangeEnd
+      );
+    });
   },
 
   saveToFC: async () => {

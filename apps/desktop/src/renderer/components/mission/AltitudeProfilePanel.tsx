@@ -441,8 +441,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
 
     const y = getChartY(e);
     const newAlt = yScaleInverse(y);
-    // Clamp altitude to reasonable range (0-1000m, can adjust)
-    const clampedAlt = Math.max(0, Math.min(1000, Math.round(newAlt)));
+    // Clamp altitude to reasonable range (0-10000m for high-altitude missions)
+    const clampedAlt = Math.max(0, Math.min(10000, Math.round(newAlt)));
     setDragAltitude(clampedAlt);
   }, [draggingSeq, getChartY, yScaleInverse]);
 

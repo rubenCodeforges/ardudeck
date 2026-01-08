@@ -10,6 +10,112 @@ import {
   MAV_FRAME,
 } from '../../shared/mission-types';
 import { useSettingsStore } from './settings-store';
+import { useConnectionStore } from './connection-store';
+
+// MSP Waypoint types (matching msp-ts)
+interface MSPWaypoint {
+  wpNo: number;
+  action: number;
+  lat: number;
+  lon: number;
+  altitude: number;
+  p1: number;
+  p2: number;
+  p3: number;
+  flag: number;
+}
+
+// MSP waypoint action types
+const MSP_WP_ACTION = {
+  WAYPOINT: 1,
+  POSHOLD_TIME: 3,
+  RTH: 4,
+  LAND: 8,
+} as const;
+
+/**
+ * Convert MissionItem to MSP Waypoint
+ * Handles command type mapping between MAVLink and MSP
+ */
+function missionItemToMspWaypoint(item: MissionItem, isLast: boolean): MSPWaypoint {
+  let action = MSP_WP_ACTION.WAYPOINT;
+  let p1 = 0; // Speed in cm/s (default: 0 = use nav_auto_speed)
+
+  // Map MAVLink command to MSP action
+  switch (item.command) {
+    case MAV_CMD.NAV_WAYPOINT:
+    case MAV_CMD.NAV_SPLINE_WAYPOINT:
+      action = MSP_WP_ACTION.WAYPOINT;
+      p1 = item.param1 > 0 ? Math.round(item.param1 * 100) : 0; // Speed m/s to cm/s
+      break;
+    case MAV_CMD.NAV_LOITER_TIME:
+      action = MSP_WP_ACTION.POSHOLD_TIME;
+      p1 = Math.round(item.param1); // Time in seconds
+      break;
+    case MAV_CMD.NAV_RETURN_TO_LAUNCH:
+      action = MSP_WP_ACTION.RTH;
+      p1 = item.param1 === 1 ? 1 : 0; // Land flag
+      break;
+    case MAV_CMD.NAV_LAND:
+      action = MSP_WP_ACTION.LAND;
+      break;
+    default:
+      action = MSP_WP_ACTION.WAYPOINT;
+  }
+
+  return {
+    wpNo: item.seq + 1, // MSP uses 1-based indexing
+    action,
+    lat: item.latitude,
+    lon: item.longitude,
+    altitude: item.altitude,
+    p1,
+    p2: 0,
+    p3: 0,
+    flag: isLast ? 0xa5 : 0x00, // 0xa5 = LAST flag
+  };
+}
+
+/**
+ * Convert MSP Waypoint to MissionItem
+ */
+function mspWaypointToMissionItem(wp: MSPWaypoint): MissionItem {
+  let command = MAV_CMD.NAV_WAYPOINT;
+  let param1 = 0;
+
+  switch (wp.action) {
+    case MSP_WP_ACTION.WAYPOINT:
+      command = MAV_CMD.NAV_WAYPOINT;
+      param1 = wp.p1 / 100; // Speed cm/s to m/s
+      break;
+    case MSP_WP_ACTION.POSHOLD_TIME:
+      command = MAV_CMD.NAV_LOITER_TIME;
+      param1 = wp.p1; // Time in seconds
+      break;
+    case MSP_WP_ACTION.RTH:
+      command = MAV_CMD.NAV_RETURN_TO_LAUNCH;
+      param1 = wp.p1; // Land flag
+      break;
+    case MSP_WP_ACTION.LAND:
+      command = MAV_CMD.NAV_LAND;
+      break;
+  }
+
+  return {
+    seq: wp.wpNo - 1, // Convert 1-based to 0-based
+    command,
+    frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
+    param1,
+    param2: 0,
+    param3: 0,
+    param4: 0,
+    latitude: wp.lat,
+    longitude: wp.lon,
+    altitude: wp.altitude,
+    autocontinue: true,
+    current: false,
+  };
+}
 
 // Home position (separate from waypoints, used as reference point)
 interface HomePosition {
@@ -98,10 +204,41 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   },
 
   // Actions - FC communication (will be wired to IPC)
+  // Automatically detects protocol (MAVLink vs MSP) and uses appropriate method
   fetchMission: async () => {
+    const { connectionState } = useConnectionStore.getState();
+    const isMsp = connectionState.protocol === 'msp';
+    const isInav = connectionState.fcVariant === 'INAV';
+
     // Set initial progress to track operation type
     set({ isLoading: true, error: null, progress: { total: 0, transferred: 0, operation: 'download' } });
+
     try {
+      // MSP path for iNav boards
+      if (isMsp && isInav) {
+        const waypoints = await window.electronAPI?.mspGetWaypoints();
+        if (waypoints === null) {
+          set({ error: 'Failed to download waypoints - MSP not supported', isLoading: false, progress: null });
+          return;
+        }
+        if (waypoints.length === 0) {
+          set({ missionItems: [], isLoading: false, progress: null, isDirty: false, lastSuccessMessage: 'No waypoints on FC' });
+          return;
+        }
+        // Convert MSP waypoints to MissionItems
+        const items = waypoints.map(wp => mspWaypointToMissionItem(wp));
+        set({
+          missionItems: items,
+          isLoading: false,
+          progress: null,
+          isDirty: false,
+          error: null,
+          lastSuccessMessage: `Downloaded ${items.length} waypoints from FC`,
+        });
+        return;
+      }
+
+      // MAVLink path for ArduPilot boards
       const result = await window.electronAPI?.downloadMission();
       if (!result?.success) {
         set({ error: result?.error || 'Failed to download mission', isLoading: false, progress: null });
@@ -114,6 +251,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
   uploadMission: async () => {
     const { missionItems } = get();
+    const { connectionState } = useConnectionStore.getState();
+    const isMsp = connectionState.protocol === 'msp';
+    const isInav = connectionState.fcVariant === 'INAV';
+
     if (missionItems.length === 0) {
       set({ error: 'No waypoints to upload' });
       return false;
@@ -121,7 +262,32 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
     // Set initial progress to track operation type
     set({ isLoading: true, error: null, progress: { total: missionItems.length, transferred: 0, operation: 'upload' } });
+
     try {
+      // MSP path for iNav boards
+      if (isMsp && isInav) {
+        // Convert MissionItems to MSP waypoints
+        const mspWaypoints = missionItems.map((item, i) =>
+          missionItemToMspWaypoint(item, i === missionItems.length - 1)
+        );
+
+        const success = await window.electronAPI?.mspSaveWaypoints(mspWaypoints);
+        if (success) {
+          set({
+            isLoading: false,
+            isDirty: false,
+            progress: null,
+            error: null,
+            lastSuccessMessage: `Uploaded ${missionItems.length} waypoints to FC`,
+          });
+          return true;
+        } else {
+          set({ error: 'Failed to upload waypoints', isLoading: false, progress: null });
+          return false;
+        }
+      }
+
+      // MAVLink path for ArduPilot boards
       const result = await window.electronAPI?.uploadMission(missionItems);
       if (result?.success) {
         // Don't set isLoading: false here - wait for MISSION_ACK via onMissionUploadComplete
@@ -137,8 +303,31 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   },
 
   clearMissionFromFC: async () => {
+    const { connectionState } = useConnectionStore.getState();
+    const isMsp = connectionState.protocol === 'msp';
+    const isInav = connectionState.fcVariant === 'INAV';
+
     set({ isLoading: true, error: null });
+
     try {
+      // MSP path for iNav boards
+      if (isMsp && isInav) {
+        const success = await window.electronAPI?.mspClearWaypoints();
+        if (success) {
+          set({
+            isLoading: false,
+            progress: null,
+            error: null,
+            lastSuccessMessage: 'Mission cleared from FC',
+          });
+          return true;
+        } else {
+          set({ error: 'Failed to clear waypoints', isLoading: false });
+          return false;
+        }
+      }
+
+      // MAVLink path for ArduPilot boards
       const result = await window.electronAPI?.clearMission();
       if (result?.success) {
         // Don't set isLoading: false here - wait for MISSION_ACK via onMissionClearComplete

@@ -6,6 +6,38 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { CompactSlider } from '../ui/DraggableSlider';
+import { useServoWizardStore } from '../../stores/servo-wizard-store';
+import {
+  Plane,
+  ArrowUpDown,
+  ArrowLeftRight,
+  TriangleAlert,
+  ChevronUp,
+  ChevronDown,
+  PlaneLanding,
+  Info,
+  type LucideIcon,
+} from 'lucide-react';
+
+// Platform type constants (from msp-ts)
+const PLATFORM_TYPE = {
+  MULTIROTOR: 0,
+  AIRPLANE: 1,
+  HELICOPTER: 2,
+  TRICOPTER: 3,
+  ROVER: 4,
+  BOAT: 5,
+} as const;
+
+const PLATFORM_NAMES: Record<number, string> = {
+  [PLATFORM_TYPE.MULTIROTOR]: 'Multirotor',
+  [PLATFORM_TYPE.AIRPLANE]: 'Airplane',
+  [PLATFORM_TYPE.HELICOPTER]: 'Helicopter',
+  [PLATFORM_TYPE.TRICOPTER]: 'Tricopter',
+  [PLATFORM_TYPE.ROVER]: 'Rover',
+  [PLATFORM_TYPE.BOAT]: 'Boat',
+};
 
 // Types matching msp-ts
 interface MSPServoConfig {
@@ -48,10 +80,19 @@ const SERVO_INPUT_SOURCE_NAMES: Record<number, string> = {
 };
 
 // Common fixed-wing servo presets
-const SERVO_PRESETS = {
+interface ServoPreset {
+  name: string;
+  icon: LucideIcon;
+  color: string;
+  description: string;
+  rules: { inputSource: number; rate: number }[];
+}
+
+const SERVO_PRESETS: Record<string, ServoPreset> = {
   aileron: {
     name: 'Aileron',
-    icon: '✈️',
+    icon: Plane,
+    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30',
     description: 'Standard aileron setup',
     rules: [
       { inputSource: 0, rate: 100 }, // Stabilized Roll
@@ -59,7 +100,8 @@ const SERVO_PRESETS = {
   },
   elevator: {
     name: 'Elevator',
-    icon: '↕️',
+    icon: ArrowUpDown,
+    color: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30',
     description: 'Standard elevator setup',
     rules: [
       { inputSource: 1, rate: 100 }, // Stabilized Pitch
@@ -67,15 +109,17 @@ const SERVO_PRESETS = {
   },
   rudder: {
     name: 'Rudder',
-    icon: '↔️',
+    icon: ArrowLeftRight,
+    color: 'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30',
     description: 'Standard rudder setup',
     rules: [
       { inputSource: 2, rate: 100 }, // Stabilized Yaw
     ],
   },
   elevon: {
-    name: 'Elevon (Left)',
-    icon: '🔺',
+    name: 'Elevon L',
+    icon: ChevronUp,
+    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30',
     description: 'Flying wing - left side',
     rules: [
       { inputSource: 0, rate: 100 },  // Roll
@@ -83,8 +127,9 @@ const SERVO_PRESETS = {
     ],
   },
   elevonRight: {
-    name: 'Elevon (Right)',
-    icon: '🔻',
+    name: 'Elevon R',
+    icon: ChevronDown,
+    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30',
     description: 'Flying wing - right side',
     rules: [
       { inputSource: 0, rate: -100 }, // Roll (inverted)
@@ -93,7 +138,8 @@ const SERVO_PRESETS = {
   },
   vtail: {
     name: 'V-Tail',
-    icon: 'V',
+    icon: TriangleAlert,
+    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30',
     description: 'V-tail mixer',
     rules: [
       { inputSource: 1, rate: 100 },  // Pitch
@@ -102,7 +148,8 @@ const SERVO_PRESETS = {
   },
   flaperon: {
     name: 'Flaperon',
-    icon: '🛬',
+    icon: PlaneLanding,
+    color: 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30',
     description: 'Aileron with flap function',
     rules: [
       { inputSource: 0, rate: 100 },  // Roll
@@ -124,6 +171,12 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [selectedServo, setSelectedServo] = useState<number>(0);
   const [pollingEnabled, setPollingEnabled] = useState(false);
+
+  // Get platform type from servo wizard store
+  const { msp2PlatformType } = useServoWizardStore();
+  const platformType = msp2PlatformType ?? PLATFORM_TYPE.AIRPLANE;
+  const isAirplanePlatform = platformType === PLATFORM_TYPE.AIRPLANE;
+  const platformName = PLATFORM_NAMES[platformType] ?? 'Unknown';
 
   // Load servo configuration
   const loadConfig = useCallback(async () => {
@@ -383,70 +436,65 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs text-zinc-400 block mb-1">Min (us)</label>
-                <input
-                  type="number"
-                  value={currentConfig.min}
-                  onChange={(e) => updateServoConfig(selectedServo, { min: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                  min={500}
-                  max={2250}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 block mb-1">Center (us)</label>
-                <input
-                  type="number"
-                  value={currentConfig.middle}
-                  onChange={(e) => updateServoConfig(selectedServo, { middle: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                  min={500}
-                  max={2250}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 block mb-1">Max (us)</label>
-                <input
-                  type="number"
-                  value={currentConfig.max}
-                  onChange={(e) => updateServoConfig(selectedServo, { max: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                  min={500}
-                  max={2250}
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              <CompactSlider
+                label="Min (μs)"
+                value={currentConfig.min}
+                onChange={(v) => updateServoConfig(selectedServo, { min: v })}
+                min={750}
+                max={2250}
+                step={10}
+                color="#3B82F6"
+              />
+              <CompactSlider
+                label="Max (μs)"
+                value={currentConfig.max}
+                onChange={(v) => updateServoConfig(selectedServo, { max: v })}
+                min={750}
+                max={2250}
+                step={10}
+                color="#3B82F6"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
+              <CompactSlider
+                label="Center (μs)"
+                value={currentConfig.middle}
+                onChange={(v) => updateServoConfig(selectedServo, { middle: v })}
+                min={750}
+                max={2250}
+                step={10}
+                color="#22C55E"
+              />
               <div>
-                <label className="text-xs text-zinc-400 block mb-1">Rate (%)</label>
-                <input
-                  type="number"
+                <CompactSlider
+                  label="Rate (%)"
                   value={currentConfig.rate}
-                  onChange={(e) => updateServoConfig(selectedServo, { rate: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+                  onChange={(v) => updateServoConfig(selectedServo, { rate: v })}
                   min={-125}
                   max={125}
+                  step={5}
+                  color="#A855F7"
                 />
-                <p className="text-[10px] text-zinc-600 mt-1">Negative = reversed</p>
+                <p className="text-[10px] text-zinc-500 mt-1">Negative = reversed</p>
               </div>
-              <div>
-                <label className="text-xs text-zinc-400 block mb-1">Forward Channel</label>
-                <select
-                  value={currentConfig.forwardFromChannel}
-                  onChange={(e) => updateServoConfig(selectedServo, { forwardFromChannel: Number(e.target.value) })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value={255}>Disabled</option>
-                  {[0, 1, 2, 3, 4, 5, 6, 7].map((ch) => (
-                    <option key={ch} value={ch}>
-                      AUX {ch + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-zinc-400 block mb-1">Forward Channel</label>
+              <select
+                value={currentConfig.forwardFromChannel}
+                onChange={(e) => updateServoConfig(selectedServo, { forwardFromChannel: Number(e.target.value) })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value={255}>Disabled</option>
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((ch) => (
+                  <option key={ch} value={ch}>
+                    AUX {ch + 1}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Live polling toggle */}
@@ -482,19 +530,36 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
               </button>
             </div>
 
-            {/* Presets */}
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(SERVO_PRESETS).map(([key, preset]) => (
-                <button
-                  key={key}
-                  onClick={() => applyPreset(key as keyof typeof SERVO_PRESETS)}
-                  className="px-3 py-1.5 text-xs bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 border border-blue-500/30"
-                  title={preset.description}
-                >
-                  {preset.icon} {preset.name}
-                </button>
-              ))}
-            </div>
+            {/* Platform warning for non-airplane setups */}
+            {!isAirplanePlatform && (
+              <div className="p-2 bg-amber-500/20 border border-amber-500/30 rounded-lg flex items-center gap-2 text-amber-400 text-xs">
+                <Info className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  Platform is <strong>{platformName}</strong>. These presets are for fixed-wing aircraft.
+                  Use manual rules below for {platformName.toLowerCase()} servo configuration.
+                </span>
+              </div>
+            )}
+
+            {/* Presets - Grid layout with colored cards (airplane-specific) */}
+            {isAirplanePlatform && (
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(SERVO_PRESETS).map(([key, preset]) => {
+                  const Icon = preset.icon;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => applyPreset(key as keyof typeof SERVO_PRESETS)}
+                      className={`px-3 py-2 text-xs rounded-lg border transition-all flex items-center gap-2 ${preset.color}`}
+                      title={preset.description}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-medium">{preset.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Rules list */}
             <div className="space-y-2">

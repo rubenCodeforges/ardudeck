@@ -41,12 +41,13 @@ pnpm dev              # Run dev mode
 | CLI Terminal | xterm.js terminal, autocomplete, save/reboot handling |
 | MSP Config | PID/Rates/Modes tuning, presets, servo mixer, navigation settings |
 | Legacy Boards | Full GUI for F3-era boards (iNav < 2.1, Betaflight < 4.0) via CLI |
+| OSD Simulator | MCM font parser, demo/live modes, 8 bundled fonts, PAL/NTSC support |
 
 ### 🔜 Planned (Priority Order)
 
 | Priority | Epic | Description |
 |----------|------|-------------|
-| P0 | OSD Configuration | OSD element editor for Betaflight/iNav |
+| P0 | OSD Editor | OSD element position editor and font designer |
 | P1 | Calibration | Compass, accelerometer, radio, ESC wizards |
 | P1 | VTX Configuration | Video transmitter band/channel/power |
 | P1 | MSP Failsafe | Extend SafetyTab for MSP failsafe config |
@@ -151,6 +152,7 @@ CLI fallback for old iNav: `set platform_type = AIRPLANE` or `mixer AIRPLANE`
 | `stores/legacy-config-store.ts` | Legacy board CLI config |
 | `stores/cli-store.ts` | CLI terminal state |
 | `stores/servo-wizard-store.ts` | Servo wizard state |
+| `stores/osd-store.ts` | OSD simulator state, demo values, element positions |
 
 ### Key Components
 
@@ -163,7 +165,18 @@ CLI fallback for old iNav: `set platform_type = AIRPLANE` or `mixer AIRPLANE`
 | `components/firmware/FirmwareFlashView.tsx` | Firmware flash UI |
 | `components/panels/AttitudePanel.tsx` | Attitude indicator |
 | `components/mission/MissionMapPanel.tsx` | Mission planning map |
+| `components/osd/OsdView.tsx` | OSD simulator main tab |
+| `components/osd/OsdCanvas.tsx` | Canvas-based OSD renderer |
 | `components/ui/DraggableSlider.tsx` | Reusable slider (use for ALL sliders) |
+
+### OSD System
+
+| File | Purpose |
+|------|---------|
+| `packages/msp-ts/src/osd/mcm-parser.ts` | MCM font file parser for MAX7456 |
+| `renderer/utils/osd/font-renderer.ts` | Font rendering and screen buffer |
+| `renderer/utils/osd/osd-symbols.ts` | 150+ OSD symbol constants |
+| `renderer/assets/osd-fonts/*.mcm` | 8 bundled iNav fonts |
 
 ### Shared Types
 

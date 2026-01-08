@@ -179,11 +179,21 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
   }, []);
 
   // Auto-enter CLI mode when connected to MSP board
+  // Also exit CLI mode when unmounting to prevent leaving board in CLI mode
   useEffect(() => {
     if (connectionState.isConnected && connectionState.protocol === 'msp' && !isCliMode && !isEntering) {
       enterCliMode();
     }
-  }, [connectionState.isConnected, connectionState.protocol, isCliMode, isEntering, enterCliMode]);
+
+    // Cleanup: exit CLI mode when leaving the CLI view
+    // This prevents the board from staying in CLI mode and blocking MSP communication
+    return () => {
+      if (isCliMode) {
+        console.log('[CliTerminal] Unmounting - exiting CLI mode');
+        exitCliMode();
+      }
+    };
+  }, [connectionState.isConnected, connectionState.protocol, isCliMode, isEntering, enterCliMode, exitCliMode]);
 
   // Clear current input line
   const clearCurrentLine = useCallback(() => {

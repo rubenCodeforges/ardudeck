@@ -53,6 +53,7 @@ function ModeButton({
 export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps) {
   const { connectionState } = useConnectionStore();
   const isConnected = connectionState.isConnected;
+  const isMspProtocol = connectionState?.protocol === 'msp';
 
   // Edit mode state
   const { activeMode, setActiveMode } = useEditModeStore();
@@ -97,6 +98,9 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
   const hasItems = activeMode === 'mission' ? missionHasItems :
                    activeMode === 'geofence' ? fenceHasItems :
                    rallyHasItems;
+
+  // MSP boards (iNav/Betaflight) don't support geofence or rally via protocol
+  const fcOpsDisabledForMsp = isMspProtocol && (activeMode === 'geofence' || activeMode === 'rally');
 
   // Collision warning dialog state (mission only)
   const [showCollisionWarning, setShowCollisionWarning] = useState(false);
@@ -240,13 +244,13 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       <div className="flex items-center gap-1">
         <button
           onClick={handleDownload}
-          disabled={!isConnected || isLoading}
+          disabled={!isConnected || isLoading || fcOpsDisabledForMsp}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-            isConnected && !isLoading
+            isConnected && !isLoading && !fcOpsDisabledForMsp
               ? 'bg-blue-600/80 hover:bg-blue-500/80 text-white'
               : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
           }`}
-          title={isConnected ? `Download ${getModeLabel()} from flight controller` : 'Connect to download'}
+          title={fcOpsDisabledForMsp ? `${getModeLabel()} not supported on iNav/Betaflight` : isConnected ? `Download ${getModeLabel()} from flight controller` : 'Connect to download'}
         >
           {isDownloading ? (
             <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -263,13 +267,13 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
         <button
           onClick={handleUpload}
-          disabled={!isConnected || isLoading || !hasItems}
+          disabled={!isConnected || isLoading || !hasItems || fcOpsDisabledForMsp}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-            isConnected && !isLoading && hasItems
+            isConnected && !isLoading && hasItems && !fcOpsDisabledForMsp
               ? 'bg-emerald-600/80 hover:bg-emerald-500/80 text-white'
               : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
           }`}
-          title={!isConnected ? 'Connect to upload' : !hasItems ? `Add ${getModeLabel()} first` : `Upload ${getModeLabel()} to flight controller`}
+          title={fcOpsDisabledForMsp ? `${getModeLabel()} not supported on iNav/Betaflight` : !isConnected ? 'Connect to upload' : !hasItems ? `Add ${getModeLabel()} first` : `Upload ${getModeLabel()} to flight controller`}
         >
           {isUploading ? (
             <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -286,13 +290,13 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
         <button
           onClick={handleClearFC}
-          disabled={!isConnected || isLoading}
+          disabled={!isConnected || isLoading || fcOpsDisabledForMsp}
           className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-            isConnected && !isLoading
+            isConnected && !isLoading && !fcOpsDisabledForMsp
               ? 'bg-red-600/80 hover:bg-red-500/80 text-white'
               : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
           }`}
-          title={isConnected ? `Clear ${getModeLabel()} from flight controller` : 'Connect to clear from FC'}
+          title={fcOpsDisabledForMsp ? `${getModeLabel()} not supported on iNav/Betaflight` : isConnected ? `Clear ${getModeLabel()} from flight controller` : 'Connect to clear from FC'}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

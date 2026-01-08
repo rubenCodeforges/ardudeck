@@ -14,3 +14,8 @@ declare module '*.svg' {
   const src: string;
   export default src;
 }
+
+declare module '*.mcm?raw' {
+  const content: string;
+  export default content;
+}

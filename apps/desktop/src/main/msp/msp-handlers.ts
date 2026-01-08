@@ -68,6 +68,18 @@ import {
   deserializeServoValues,
   deserializeServoMixerRules,
   serializeServoMixerRule,
+  // Motor Mixer Config
+  deserializeMotorMixerRules,
+  serializeMotorMixerRule,
+  type MSPMotorMixerRule,
+  // Waypoint/Mission
+  deserializeWaypoint,
+  serializeWaypoint,
+  deserializeMissionInfo,
+  MSP_WP_ACTION,
+  MSP_WP_FLAG,
+  type MSPWaypoint,
+  type MSPMissionInfo,
   // Navigation Config
   deserializeNavConfig,
   serializeNavConfig,
@@ -2280,9 +2292,8 @@ async function setMotorMixerRulesViaCli(
       await new Promise(r => setTimeout(r, 200)); // BSOD delay between commands
     }
 
-    // Exit CLI mode (without saving - save happens later)
-    await currentTransport.write(new TextEncoder().encode('exit\n'));
-    await new Promise(r => setTimeout(r, 300));
+    // NOTE: Do NOT send 'exit' here - it causes board reboot which disconnects.
+    // The 'save' command will handle saving to EEPROM and rebooting properly.
 
     sendLog('info', 'Motor mixer rules set via CLI', `${rules.length} rules`);
     return true;
@@ -2468,12 +2479,12 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
     await currentTransport.write(new TextEncoder().encode('mmix\n'));
     await new Promise(r => setTimeout(r, 1500)); // Longer wait for all mmix rules
 
-    // Remove listener before exit
+    // Remove listener
     currentTransport.removeListener('data', dataListener);
 
-    // Exit CLI without saving
-    await currentTransport.write(new TextEncoder().encode('exit\n'));
-    await new Promise(r => setTimeout(r, 300));
+    // NOTE: Do NOT send 'exit' here - it causes board reboot which disconnects.
+    // Leave CLI mode active. The connection handlers will clean up CLI mode properly
+    // when navigating away or disconnecting.
 
     // Parse mmix output - format: "mmix <index> <throttle> <roll> <pitch> <yaw>"
     const rules: Array<{ index: number; throttle: number; roll: number; pitch: number; yaw: number }> = [];
@@ -2503,6 +2514,309 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
     // Always reset CLI mode flag
     servoCliModeActive = false;
   }
+}
+
+// =============================================================================
+// Motor Mixer Configuration (MSP-based for modern boards)
+// =============================================================================
+
+/**
+ * Get motor mixer configuration via MSP2_COMMON_MOTOR_MIXER
+ * Modern boards support MSP, legacy boards fall back to CLI
+ */
+async function getMotorMixer(): Promise<MSPMotorMixerRule[] | null> {
+  if (!currentTransport?.isOpen || servoCliModeActive) return null;
+
+  return withConfigLock(async () => {
+    try {
+      // Try MSP2 COMMON_MOTOR_MIXER (0x1005)
+      const payload = await sendMspV2Request(MSP2.COMMON_MOTOR_MIXER, 1000);
+      const rules = deserializeMotorMixerRules(payload);
+      console.log('[MSP] Motor mixer loaded:', rules.length, 'motors');
+      sendLog('info', 'Motor mixer loaded via MSP', `${rules.length} motors`);
+      return rules;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('not supported') || msg.includes('timed out')) {
+        console.log('[MSP] Motor mixer MSP2 not supported - will use CLI fallback');
+        sendLog('info', 'Motor mixer MSP2 not available', 'Use CLI fallback');
+      } else {
+        console.warn('[MSP] Get Motor Mixer failed:', msg);
+      }
+      return null;
+    }
+  });
+}
+
+/**
+ * Set motor mixer rules via MSP2_COMMON_SET_MOTOR_MIXER (0x1006)
+ * Falls back to CLI for legacy boards
+ */
+async function setMotorMixer(rules: MSPMotorMixerRule[]): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  // Try MSP2 first
+  const mspSuccess = await withConfigLock(async () => {
+    try {
+      // Send each rule individually
+      for (let i = 0; i < rules.length; i++) {
+        const payload = serializeMotorMixerRule(i, rules[i]);
+        await sendMspV2RequestWithPayload(MSP2.COMMON_SET_MOTOR_MIXER, payload, 1000);
+        await new Promise(r => setTimeout(r, 50)); // Small delay between rules
+      }
+      sendLog('info', 'Motor mixer saved via MSP', `${rules.length} motors`);
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('not supported') || msg.includes('timed out')) {
+        sendLog('warn', 'MSP2 motor mixer not supported, trying CLI...');
+        return null; // Signal to try CLI fallback
+      }
+      sendLog('error', 'Failed to set motor mixer', msg);
+      return false;
+    }
+  });
+
+  if (mspSuccess !== null) {
+    return mspSuccess;
+  }
+
+  // CLI fallback
+  const cliRules = rules.map((r, i) => ({
+    motorIndex: i,
+    throttle: r.throttle,
+    roll: r.roll,
+    pitch: r.pitch,
+    yaw: r.yaw,
+  }));
+  return await setMotorMixerRulesViaCli(cliRules);
+}
+
+// =============================================================================
+// MSP Waypoint/Mission Support (iNav)
+// =============================================================================
+
+/**
+ * Get mission info (waypoint count, validity)
+ * Uses MSP_WP_GETINFO (20)
+ */
+async function getMissionInfo(): Promise<MSPMissionInfo | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  // Only iNav supports waypoints
+  if (!isInavFirmware) {
+    console.log('[MSP] Waypoints only supported on iNav');
+    return null;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.WP_GETINFO, 1000);
+      const info = deserializeMissionInfo(payload);
+      console.log('[MSP] Mission info:', info);
+      return info;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn('[MSP] Get mission info failed:', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Get all waypoints from FC
+ * Reads each waypoint sequentially using MSP_WP (118)
+ */
+async function getWaypoints(): Promise<MSPWaypoint[] | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  // Only iNav supports waypoints
+  if (!isInavFirmware) {
+    sendLog('warn', 'Waypoints only supported on iNav');
+    return null;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      // First get mission info to know how many waypoints
+      const infoPayload = await sendMspRequest(MSP.WP_GETINFO, 1000);
+      const info = deserializeMissionInfo(infoPayload);
+
+      if (info.waypointCount === 0) {
+        sendLog('info', 'No waypoints on FC');
+        return [];
+      }
+
+      const waypoints: MSPWaypoint[] = [];
+
+      // Read each waypoint
+      for (let i = 1; i <= info.waypointCount; i++) {
+        const requestPayload = new Uint8Array([i]);
+        const wpPayload = await sendMspRequestWithPayload(MSP.WP, requestPayload, 1000);
+        const wp = deserializeWaypoint(wpPayload);
+        waypoints.push(wp);
+        await new Promise(r => setTimeout(r, 20)); // Small delay between requests
+      }
+
+      sendLog('info', `Downloaded ${waypoints.length} waypoints from FC`);
+      return waypoints;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Get waypoints failed:', msg);
+      sendLog('error', 'Failed to download waypoints', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Set a single waypoint on FC
+ * Uses MSP_SET_WP (209)
+ */
+async function setWaypoint(wp: MSPWaypoint): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  if (!isInavFirmware) {
+    sendLog('warn', 'Waypoints only supported on iNav');
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeWaypoint(wp);
+      await sendMspRequestWithPayload(MSP.SET_WP, payload, 1000);
+      console.log(`[MSP] Waypoint ${wp.wpNo} written`);
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[MSP] Set waypoint ${wp.wpNo} failed:`, msg);
+      sendLog('error', `Failed to set waypoint ${wp.wpNo}`, msg);
+      return false;
+    }
+  });
+}
+
+/**
+ * Upload all waypoints to FC
+ * Writes each waypoint sequentially and saves to EEPROM
+ */
+async function uploadWaypoints(waypoints: MSPWaypoint[]): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  if (!isInavFirmware) {
+    sendLog('warn', 'Waypoints only supported on iNav');
+    return false;
+  }
+
+  if (waypoints.length === 0) {
+    sendLog('info', 'No waypoints to upload');
+    return true;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      sendLog('info', `Uploading ${waypoints.length} waypoints...`);
+
+      // Write each waypoint
+      for (let i = 0; i < waypoints.length; i++) {
+        const wp = waypoints[i];
+        // Set wpNo to 1-based index (iNav uses 1-based waypoint numbers)
+        const wpWithNo = { ...wp, wpNo: i + 1 };
+        // Set last flag on final waypoint
+        if (i === waypoints.length - 1) {
+          wpWithNo.flag = MSP_WP_FLAG.LAST;
+        } else {
+          wpWithNo.flag = MSP_WP_FLAG.NORMAL;
+        }
+
+        const payload = serializeWaypoint(wpWithNo);
+        await sendMspRequestWithPayload(MSP.SET_WP, payload, 1000);
+        console.log(`[MSP] Waypoint ${i + 1}/${waypoints.length} written`);
+        await new Promise(r => setTimeout(r, 50)); // Delay between writes
+      }
+
+      sendLog('info', `${waypoints.length} waypoints uploaded to FC`);
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Upload waypoints failed:', msg);
+      sendLog('error', 'Failed to upload waypoints', msg);
+      return false;
+    }
+  });
+}
+
+/**
+ * Save waypoints to NVRAM/EEPROM
+ * Uses MSP_WP_MISSION_SAVE (19)
+ * Payload: 1 byte - mission slot ID (0 = default mission)
+ */
+async function saveWaypoints(): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  if (!isInavFirmware) {
+    sendLog('warn', 'Waypoints only supported on iNav');
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      // MSP_WP_MISSION_SAVE requires 1 byte payload: mission slot ID (0 = default)
+      const payload = new Uint8Array([0]);
+      await sendMspRequestWithPayload(MSP.WP_MISSION_SAVE, payload, 3000);
+      sendLog('info', 'Mission saved to EEPROM');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Save waypoints failed:', msg);
+      sendLog('error', 'Failed to save mission to EEPROM', msg);
+      return false;
+    }
+  });
+}
+
+/**
+ * Clear all waypoints from FC
+ * Writes empty waypoints to clear the mission
+ */
+async function clearWaypoints(): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  if (!isInavFirmware) {
+    sendLog('warn', 'Waypoints only supported on iNav');
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      // Write a single "empty" waypoint with wpNo=1 and LAST flag
+      const emptyWp: MSPWaypoint = {
+        wpNo: 1,
+        action: MSP_WP_ACTION.RTH,
+        lat: 0,
+        lon: 0,
+        altitude: 0,
+        p1: 0,
+        p2: 0,
+        p3: 0,
+        flag: MSP_WP_FLAG.LAST,
+      };
+      const payload = serializeWaypoint(emptyWp);
+      await sendMspRequestWithPayload(MSP.SET_WP, payload, 1000);
+
+      // Save to clear from EEPROM (requires mission slot ID payload)
+      const savePayload = new Uint8Array([0]);
+      await sendMspRequestWithPayload(MSP.WP_MISSION_SAVE, savePayload, 3000);
+
+      sendLog('info', 'Mission cleared from FC');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Clear waypoints failed:', msg);
+      sendLog('error', 'Failed to clear mission', msg);
+      return false;
+    }
+  });
 }
 
 // =============================================================================
@@ -3294,10 +3608,24 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_MIXER, async () => getServoMixer());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER, async (_event, index: number, rule: MSPServoMixerRule) => setServoMixerRule(index, rule));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE, async () => probeServoConfigMode());
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_MOTOR_MIXER, async () => getMotorMixer());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_MOTOR_MIXER, async (_event, rules: MSPMotorMixerRule[]) => setMotorMixer(rules));
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MOTOR_MIXER_CLI, async (_event, rules: Array<{ motorIndex: number; throttle: number; roll: number; pitch: number; yaw: number }>) => setMotorMixerRulesViaCli(rules));
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER_CLI, async (_event, rules: Array<{ servoIndex: number; inputSource: number; rate: number }>) => setServoMixerRulesViaCli(rules));
   ipcMain.handle(IPC_CHANNELS.MSP_READ_SMIX_CLI, async () => readSmixViaCli());
   ipcMain.handle(IPC_CHANNELS.MSP_READ_MMIX_CLI, async () => readMmixViaCli());
+
+  // Waypoint/Mission handlers (iNav)
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_WAYPOINTS, async () => getWaypoints());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_WAYPOINT, async (_event, wp: MSPWaypoint) => setWaypoint(wp));
+  ipcMain.handle(IPC_CHANNELS.MSP_SAVE_WAYPOINTS, async (_event, waypoints: MSPWaypoint[]) => {
+    // Upload all waypoints then save to EEPROM
+    const uploaded = await uploadWaypoints(waypoints);
+    if (!uploaded) return false;
+    return await saveWaypoints();
+  });
+  ipcMain.handle(IPC_CHANNELS.MSP_CLEAR_WAYPOINTS, async () => clearWaypoints());
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_MISSION_INFO, async () => getMissionInfo());
 
   // Navigation config handlers (iNav)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_NAV_CONFIG, async () => getNavConfig());
@@ -3353,10 +3681,19 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_MOTOR_MIXER);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MOTOR_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MOTOR_MIXER_CLI);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER_CLI);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_READ_SMIX_CLI);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_READ_MMIX_CLI);
+
+  // Waypoint/Mission handlers (iNav)
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_WAYPOINTS);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_WAYPOINT);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SAVE_WAYPOINTS);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_CLEAR_WAYPOINTS);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_MISSION_INFO);
 
   // Navigation config handlers (iNav)
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_NAV_CONFIG);

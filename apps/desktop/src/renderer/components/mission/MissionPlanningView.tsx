@@ -291,7 +291,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
 export function MissionPlanningView() {
   const apiRef = useRef<DockviewApi | null>(null);
   const { connectionState } = useConnectionStore();
-  const { lastSuccessMessage, error, clearLastSuccessMessage } = useMissionStore();
+  const { lastSuccessMessage, error, clearLastSuccessMessage, missionItems, fetchMission, isLoading } = useMissionStore();
   const [toast, setToast] = useState<Toast | null>(null);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
 
@@ -343,6 +343,31 @@ export function MissionPlanningView() {
       disposable.dispose();
     };
   }, [layoutLoaded]);
+
+  // Auto-fetch mission from board when connected (if store is empty)
+  // Track previous connection state to detect new connections
+  const prevConnectedRef = useRef(false);
+  useEffect(() => {
+    const isConnected = connectionState.isConnected;
+    const wasConnected = prevConnectedRef.current;
+    prevConnectedRef.current = isConnected;
+
+    // Only fetch on new connection (transition from disconnected to connected)
+    // Don't fetch if we already have mission items (user might be working on something)
+    // Don't fetch if Betaflight/Cleanflight (no mission support)
+    const shouldFetch = isConnected && !wasConnected &&
+                        missionItems.length === 0 &&
+                        !isLoading &&
+                        !missionPlanningUnavailable;
+
+    if (shouldFetch) {
+      // Small delay to let connection stabilize
+      const timer = setTimeout(() => {
+        fetchMission();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [connectionState.isConnected, missionItems.length, isLoading, missionPlanningUnavailable, fetchMission]);
 
   const onReady = useCallback(async (event: DockviewReadyEvent) => {
     apiRef.current = event.api;

@@ -208,13 +208,11 @@ export const ModesAdvancedEditor: React.FC = () => {
     pendingModes,
     rcChannels,
     isLoading,
-    isSaving,
     saveError,
     addMode,
     removeMode,
     updateModeConfig,
     loadFromFC,
-    saveToFC,
     startRcPolling,
     stopRcPolling,
     resetToOriginal,
@@ -232,10 +230,6 @@ export const ModesAdvancedEditor: React.FC = () => {
 
   const getRcValue = (auxChannel: number) => rcChannels[auxChannel + 4] || 1500;
   const existingBoxIds = pendingModes.map((m) => m.boxId);
-
-  const handleSave = async () => {
-    await saveToFC();
-  };
 
   return (
     <div className="space-y-0">
@@ -270,25 +264,12 @@ export const ModesAdvancedEditor: React.FC = () => {
               </svg>
               {isLoading ? 'Loading...' : 'Reload'}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving || pendingModes.length === 0}
-              className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Save to FC
-                </>
-              )}
-            </button>
+            {/* Unsaved changes indicator - saves via main "Save All Changes" button */}
+            {pendingModes.length > 0 && (
+              <span className="text-xs text-zinc-500">
+                Use main Save button to save changes
+              </span>
+            )}
           </div>
         </div>
       </div>
