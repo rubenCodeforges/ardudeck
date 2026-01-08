@@ -157,7 +157,7 @@ export const useSitlStore = create<SitlStore>()(
 
       // Start SITL
       startSitl: async () => {
-        const { isRunning, isStarting, getCurrentProfile, appendOutput } = get();
+        const { isRunning, isStarting, getCurrentProfile, appendOutput, simulatorEnabled } = get();
 
         if (isRunning || isStarting) {
           return false;
@@ -173,11 +173,16 @@ export const useSitlStore = create<SitlStore>()(
         appendOutput(`\n--- Starting SITL with profile: ${profile.name} ---\n`);
 
         try {
+          // Use store's simulatorEnabled to determine if we should use X-Plane sim mode
+          const useSimulator = simulatorEnabled || profile.simEnabled;
+
           const config: SitlConfig = {
             eepromFileName: profile.eepromFileName,
-            simulator: profile.simEnabled ? profile.simulator : undefined,
-            simIp: profile.simIp,
-            simPort: profile.simPort,
+            simulator: useSimulator ? 'xp' : undefined,  // 'xp' for X-Plane protocol (used by bridge)
+            simIp: profile.simIp || '127.0.0.1',
+            // simPort is where SITL SENDS pwm/servo data TO (for control surface feedback)
+            // SITL receives sensor data on port 49000 (hardcoded in iNav SITL)
+            simPort: profile.simPort || 49000,
             useImu: profile.useImu,
           };
 
@@ -499,11 +504,7 @@ export const useSitlStore = create<SitlStore>()(
           return false;
         }
 
-        // Wait a moment for FlightGear to initialize
-        appendOutput('Waiting for FlightGear to initialize...\n');
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-
-        // Step 2: Start protocol bridge
+        // Step 2: Start protocol bridge (before FlightGear is fully ready)
         const bridgeSuccess = await startBridge();
         if (!bridgeSuccess) {
           // Clean up FlightGear
@@ -511,7 +512,13 @@ export const useSitlStore = create<SitlStore>()(
           return false;
         }
 
+        // Wait for FlightGear to fully initialize and start sending data
+        // This can take 15-30 seconds depending on scenery complexity
+        appendOutput('Waiting for FlightGear to initialize (this may take 15-30 seconds)...\n');
+        await new Promise((resolve) => setTimeout(resolve, 15000));
+
         // Step 3: Start SITL with X-Plane simulator mode
+        appendOutput('Starting iNav SITL...\n');
         const sitlSuccess = await startSitl();
         if (!sitlSuccess) {
           // Clean up

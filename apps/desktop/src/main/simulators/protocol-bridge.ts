@@ -1,12 +1,20 @@
 /**
  * Protocol Bridge
  *
- * Translates between FlightGear's generic UDP protocol and X-Plane's UDP protocol.
- * This allows iNav SITL (which expects X-Plane format) to work with FlightGear.
+ * Translates between FlightGear's generic UDP protocol and X-Plane's RREF protocol.
+ * This allows iNav SITL (which expects X-Plane RREF format) to work with FlightGear.
+ *
+ * X-Plane RREF Protocol:
+ * - SITL sends RREF registration requests to subscribe to datarefs
+ * - X-Plane (bridge) responds with RREF packets containing the requested values
+ * - SITL uses a client-side UDP pattern (ephemeral local port)
  *
  * Data flow:
- *   FlightGear (port 5505) → Bridge → iNav SITL (X-Plane format)
- *   iNav SITL (servo outputs) → Bridge → FlightGear (port 5506)
+ *   1. SITL sends RREF registration requests to bridge (port 49000)
+ *   2. Bridge stores the requested datarefs and discovers SITL's ephemeral port
+ *   3. FlightGear sends sensor data to bridge (port 5505)
+ *   4. Bridge converts to RREF responses and sends to SITL's ephemeral port
+ *   5. SITL processes the data and opens TCP port 5760 for MSP connection
  */
 
 import dgram from 'dgram';
@@ -51,34 +59,34 @@ interface FlightGearControlData {
   brakePark: number;        // 0 or 1
 }
 
-// X-Plane DATA packet indices used by iNav SITL
-const XPLANE_INDEX = {
-  SPEEDS: 3,        // Airspeed data
-  PITCH_ROLL_HEADING: 17,  // Attitude
-  LAT_LON_ALT: 20,  // Position
-  LOC_VEL_DIST: 21, // Location and velocity
-};
-
 // Default ports
 const DEFAULT_FG_OUT_PORT = 5505;    // FlightGear → Bridge
 const DEFAULT_FG_IN_PORT = 5506;     // Bridge → FlightGear
-const DEFAULT_SITL_SIM_PORT = 49000; // Bridge → iNav SITL (X-Plane format)
+// Bridge binds to 49000 to act as X-Plane server
+// SITL sends TO this port, and we reply to SITL's ephemeral port
+const DEFAULT_XPLANE_SERVER_PORT = 49000;
 
 export interface BridgeConfig {
   fgOutPort?: number;       // Port to receive from FlightGear
   fgInPort?: number;        // Port to send to FlightGear
-  sitlHost?: string;        // iNav SITL host
-  sitlSimPort?: number;     // iNav SITL simulator port
+  xplaneServerPort?: number; // Port to bind as X-Plane server (SITL sends here)
 }
 
 class ProtocolBridge {
   private fgReceiver: dgram.Socket | null = null;   // Receive from FlightGear
   private fgSender: dgram.Socket | null = null;     // Send to FlightGear
-  private sitlSender: dgram.Socket | null = null;   // Send to iNav SITL
+  private xplaneServer: dgram.Socket | null = null; // Act as X-Plane server (bind 49000)
 
-  private config: BridgeConfig = {};
+  private config: Required<BridgeConfig> = {
+    fgOutPort: DEFAULT_FG_OUT_PORT,
+    fgInPort: DEFAULT_FG_IN_PORT,
+    xplaneServerPort: DEFAULT_XPLANE_SERVER_PORT,
+  };
   private running = false;
   private lastFgData: FlightGearSensorData | null = null;
+
+  // SITL's address - discovered when we receive servo data from SITL
+  private sitlAddress: { host: string; port: number } | null = null;
 
   /**
    * Check if bridge is running
@@ -98,18 +106,20 @@ class ProtocolBridge {
     this.config = {
       fgOutPort: config.fgOutPort || DEFAULT_FG_OUT_PORT,
       fgInPort: config.fgInPort || DEFAULT_FG_IN_PORT,
-      sitlHost: config.sitlHost || '127.0.0.1',
-      sitlSimPort: config.sitlSimPort || DEFAULT_SITL_SIM_PORT,
+      xplaneServerPort: config.xplaneServerPort || DEFAULT_XPLANE_SERVER_PORT,
     };
 
     try {
       // Create UDP sockets
       this.fgReceiver = dgram.createSocket('udp4');
       this.fgSender = dgram.createSocket('udp4');
-      this.sitlSender = dgram.createSocket('udp4');
+      this.xplaneServer = dgram.createSocket('udp4');
 
-      // Set up FlightGear receiver
+      // Set up FlightGear receiver (port 5505)
       this.fgReceiver.on('message', (msg, rinfo) => {
+        if (!this.lastFgData) {
+          console.log(`[Bridge] First packet from FlightGear! ${msg.length} bytes from ${rinfo.address}:${rinfo.port}`);
+        }
         this.handleFlightGearData(msg);
       });
 
@@ -117,13 +127,37 @@ class ProtocolBridge {
         console.error('[Bridge] FlightGear receiver error:', err);
       });
 
-      // Bind to receive from FlightGear
+      // Set up X-Plane server (port 49000) - receives from SITL
+      this.xplaneServer.on('message', (msg, rinfo) => {
+        // Discover SITL's ephemeral port from incoming packets
+        // Only log once when first connected
+        if (!this.sitlAddress) {
+          console.log(`[Bridge] SITL connected from ${rinfo.address}:${rinfo.port}`);
+        }
+        this.sitlAddress = { host: rinfo.address, port: rinfo.port };
+        this.handleSitlData(msg);
+      });
+
+      this.xplaneServer.on('error', (err) => {
+        console.error('[Bridge] X-Plane server error:', err);
+      });
+
+      // Bind FlightGear receiver to port 5505
       await new Promise<void>((resolve, reject) => {
-        this.fgReceiver!.bind(this.config.fgOutPort, '127.0.0.1', () => {
+        this.fgReceiver!.bind(this.config.fgOutPort, '0.0.0.0', () => {
           console.log(`[Bridge] Listening for FlightGear on port ${this.config.fgOutPort}`);
           resolve();
         });
         this.fgReceiver!.once('error', reject);
+      });
+
+      // Bind X-Plane server to port 49000 (act as X-Plane)
+      await new Promise<void>((resolve, reject) => {
+        this.xplaneServer!.bind(this.config.xplaneServerPort, '0.0.0.0', () => {
+          console.log(`[Bridge] X-Plane server listening on port ${this.config.xplaneServerPort} (waiting for SITL)`);
+          resolve();
+        });
+        this.xplaneServer!.once('error', reject);
       });
 
       this.running = true;
@@ -142,6 +176,11 @@ class ProtocolBridge {
   async stop(): Promise<void> {
     console.log('[Bridge] Stopping...');
     this.running = false;
+    this.sitlAddress = null;
+    this.registeredDrefs.clear();
+    this.rrefPacketsReceived = 0;
+    this.packetsSent = 0;
+    this.lastFgData = null;
     await this.cleanup();
     console.log('[Bridge] Stopped');
   }
@@ -163,12 +202,12 @@ class ProtocolBridge {
     await Promise.all([
       closeSocket(this.fgReceiver),
       closeSocket(this.fgSender),
-      closeSocket(this.sitlSender),
+      closeSocket(this.xplaneServer),
     ]);
 
     this.fgReceiver = null;
     this.fgSender = null;
-    this.sitlSender = null;
+    this.xplaneServer = null;
   }
 
   /**
@@ -184,8 +223,63 @@ class ProtocolBridge {
     const data = this.parseFlightGearPacket(buffer);
     this.lastFgData = data;
 
-    // Convert to X-Plane format and send to SITL
+    // Convert to X-Plane format and send to SITL (if connected)
     this.sendToSitl(data);
+  }
+
+  // Track registered datarefs from SITL
+  private registeredDrefs: Map<number, string> = new Map();
+  private rrefPacketsReceived = 0;
+
+  /**
+   * Handle incoming SITL data (RREF registration requests or servo outputs)
+   */
+  private handleSitlData(buffer: Buffer): void {
+    if (buffer.length < 5) return;
+
+    const header = buffer.toString('ascii', 0, 4);
+
+    // RREF subscription request from SITL
+    if (header === 'RREF') {
+      this.handleRrefRequest(buffer);
+      return;
+    }
+
+    // DREF write command from SITL (setting values like joystick, throttle)
+    // Format: "DREF" + null + value(4 float) + dataref(500 bytes)
+    if (header === 'DREF') {
+      // SITL sends these to set control values - we can ignore them
+      // (they would go to X-Plane to move controls, but we don't need them)
+      return;
+    }
+
+    // Debug: log unknown packet types
+    console.log(`[Bridge] Unknown packet from SITL: header="${header}", len=${buffer.length}, hex=${buffer.subarray(0, Math.min(20, buffer.length)).toString('hex')}`);
+  }
+
+  /**
+   * Handle RREF subscription request from SITL
+   * X-Plane RREF format: "RREF\0" (5 bytes) + freq(4 bytes) + index(4 bytes) + dataref_path(400 bytes) = 413 bytes
+   */
+  private handleRrefRequest(buffer: Buffer): void {
+    if (buffer.length < 413) {
+      console.log(`[Bridge] Short RREF request: ${buffer.length} bytes`);
+      return;
+    }
+
+    // Format: "RREF" + null byte + freq(4) + index(4) + dataref(400)
+    // Offsets: 0-3="RREF", 4=null, 5-8=freq, 9-12=index, 13-412=dataref
+    const freq = buffer.readInt32LE(5);  // Frequency (Hz)
+    const index = buffer.readInt32LE(9); // Index SITL wants us to use when sending back
+    const datarefPath = buffer.toString('ascii', 13, 413).replace(/\0+$/, ''); // Null-terminated string
+
+    this.rrefPacketsReceived++;
+    if (this.rrefPacketsReceived <= 30) {
+      console.log(`[Bridge] RREF registration #${this.rrefPacketsReceived}: freq=${freq}Hz, index=${index}, dref="${datarefPath}"`);
+    }
+
+    // Store the registration
+    this.registeredDrefs.set(index, datarefPath);
   }
 
   /**
@@ -225,77 +319,128 @@ class ProtocolBridge {
     };
   }
 
-  /**
-   * Send data to iNav SITL in X-Plane format
-   */
-  private sendToSitl(data: FlightGearSensorData): void {
-    if (!this.sitlSender || !this.running) return;
+  private packetsSent = 0;
 
-    // iNav SITL expects X-Plane DATA packets
-    // Each packet: "DATA" (4 bytes) + index (4 bytes) + 8 floats (32 bytes) = 40 bytes
+  // Dataref name to FlightGear data mapping
+  private getDatarefValue(dataref: string, data: FlightGearSensorData): number | null {
+    // Map X-Plane datarefs to FlightGear data
+    // These are the datarefs iNav SITL typically requests
+    const mapping: Record<string, number> = {
+      // Position
+      'sim/flightmodel/position/latitude': data.latitude,
+      'sim/flightmodel/position/longitude': data.longitude,
+      'sim/flightmodel/position/elevation': data.altitudeMsl * 0.3048, // ft to meters
+      'sim/flightmodel/position/y_agl': data.altitudeAgl * 0.3048, // ft to meters
 
-    // Send attitude data (Index 17)
-    this.sendXPlaneDataPacket(XPLANE_INDEX.PITCH_ROLL_HEADING, [
-      data.pitch,           // pitch deg
-      data.roll,            // roll deg
-      data.heading,         // heading deg (true)
-      data.heading,         // heading deg (magnetic, approximation)
-      0, 0, 0, 0,           // unused
-    ]);
+      // Attitude
+      'sim/flightmodel/position/phi': data.roll,      // roll deg
+      'sim/flightmodel/position/theta': data.pitch,   // pitch deg
+      'sim/flightmodel/position/psi': data.heading,   // heading deg
+      'sim/flightmodel/position/true_psi': data.heading,
+      'sim/flightmodel/position/mag_psi': data.heading,
 
-    // Send position data (Index 20)
-    this.sendXPlaneDataPacket(XPLANE_INDEX.LAT_LON_ALT, [
-      data.latitude,        // lat deg
-      data.longitude,       // lon deg
-      data.altitudeMsl,     // alt MSL ft
-      data.altitudeAgl,     // alt AGL ft
-      0,                    // on runway
-      data.altitudeMsl,     // alt indicated
-      0,                    // lat south
-      0,                    // lon west
-    ]);
+      // Angular rates (deg/s to rad/s)
+      'sim/flightmodel/position/P': data.rollRate * Math.PI / 180,
+      'sim/flightmodel/position/Q': data.pitchRate * Math.PI / 180,
+      'sim/flightmodel/position/R': data.yawRate * Math.PI / 180,
 
-    // Send speed data (Index 3)
-    this.sendXPlaneDataPacket(XPLANE_INDEX.SPEEDS, [
-      data.airspeed,        // KIAS
-      data.airspeed,        // KEAS (approximation)
-      data.airspeed,        // KTAS (approximation)
-      data.groundspeed,     // KTGS
-      0, 0, 0, 0,           // unused
-    ]);
+      // Velocities
+      'sim/flightmodel/position/indicated_airspeed': data.airspeed * 0.514444, // kt to m/s
+      'sim/flightmodel/position/true_airspeed': data.airspeed * 0.514444,
+      'sim/flightmodel/position/groundspeed': data.groundspeed * 0.514444,
+      'sim/flightmodel/position/vh_ind_fpm': data.verticalSpeed * 60, // fps to fpm
+      'sim/flightmodel/position/vh_ind': data.verticalSpeed * 0.3048, // fps to m/s
 
-    // Send velocity data (Index 21)
-    this.sendXPlaneDataPacket(XPLANE_INDEX.LOC_VEL_DIST, [
-      0, 0, 0,              // x, y, z (local coords - not used)
-      data.uBody * 0.3048,  // vX m/s (convert fps)
-      data.vBody * 0.3048,  // vY m/s
-      data.wBody * 0.3048,  // vZ m/s
-      0, 0,                 // dist, unused
-    ]);
+      // Body velocities (fps to m/s)
+      'sim/flightmodel/position/local_vx': data.uBody * 0.3048,
+      'sim/flightmodel/position/local_vy': data.vBody * 0.3048,
+      'sim/flightmodel/position/local_vz': data.wBody * 0.3048,
+
+      // Accelerations (g to m/s²)
+      'sim/flightmodel/forces/g_axil': data.accelX * 9.81,
+      'sim/flightmodel/forces/g_side': data.accelY * 9.81,
+      'sim/flightmodel/forces/g_nrml': data.accelZ * 9.81,
+
+      // Flight path
+      'sim/flightmodel/position/hpath': data.heading, // horizontal flight path (same as heading for now)
+
+      // Environment
+      'sim/weather/temperature_ambient_c': data.temperature,
+      'sim/weather/barometer_sealevel_inhg': data.pressure,
+      'sim/weather/barometer_current_inhg': data.pressure, // current barometer (same as sea level for now)
+
+      // Simulation time
+      'sim/time/total_running_time_sec': data.simTime,
+
+      // Joystick/RC inputs (SITL needs these for control)
+      // Values: -1.0 to 1.0 for axes, 0 or 1 for has_joystick
+      'sim/joystick/has_joystick': 1, // Tell SITL a joystick is connected
+      'sim/joystick/joy_mapped_axis_value[1]': 0,   // Roll (centered)
+      'sim/joystick/joy_mapped_axis_value[2]': 0,   // Pitch (centered)
+      'sim/joystick/joy_mapped_axis_value[3]': 0,   // Yaw (centered)
+      'sim/joystick/joy_mapped_axis_value[57]': -1, // Throttle (minimum for safety)
+      'sim/joystick/joy_mapped_axis_value[58]': 0,  // Aux channel
+      'sim/joystick/joy_mapped_axis_value[59]': 0,  // Aux channel
+      'sim/joystick/joy_mapped_axis_value[60]': 0,  // Aux channel
+      'sim/joystick/joy_mapped_axis_value[61]': 0,  // Aux channel
+    };
+
+    return mapping[dataref] ?? null;
   }
 
   /**
-   * Build and send X-Plane DATA packet
+   * Send data to iNav SITL in X-Plane RREF format
+   * Sends to SITL's ephemeral port (discovered from incoming packets)
    */
-  private sendXPlaneDataPacket(index: number, values: number[]): void {
-    if (!this.sitlSender) return;
+  private sendToSitl(data: FlightGearSensorData): void {
+    if (!this.xplaneServer || !this.running) return;
 
-    // X-Plane DATA packet: "DATA" + 4-byte index + 8 floats
-    const buffer = Buffer.alloc(41); // "DATA\0" (5) + index (4) + 8 floats (32) = 41
-
-    // Header: "DATA\0"
-    buffer.write('DATA', 0);
-    buffer.writeUInt8(0, 4);
-
-    // Index (4 bytes)
-    buffer.writeInt32LE(index, 5);
-
-    // 8 float values
-    for (let i = 0; i < 8; i++) {
-      buffer.writeFloatLE(values[i] || 0, 9 + i * 4);
+    // Wait for SITL to connect and register datarefs
+    if (!this.sitlAddress || this.registeredDrefs.size === 0) {
+      return;
     }
 
-    this.sitlSender.send(buffer, this.config.sitlSimPort!, this.config.sitlHost!);
+    // Build RREF response packet with all registered datarefs
+    // Format: "RREF" + (index(4) + value(4))*
+    const values: Array<{ index: number; value: number }> = [];
+
+    for (const [index, dataref] of this.registeredDrefs) {
+      const value = this.getDatarefValue(dataref, data);
+      if (value !== null) {
+        values.push({ index, value });
+      }
+    }
+
+    this.packetsSent++;
+    if (this.packetsSent === 1) {
+      console.log(`[Bridge] Sending RREF to SITL at ${this.sitlAddress.host}:${this.sitlAddress.port}`);
+      console.log(`[Bridge] Registered ${this.registeredDrefs.size} datarefs, sending ${values.length} values:`);
+      for (const { index, value } of values) {
+        const dref = this.registeredDrefs.get(index);
+        console.log(`[Bridge]   index=${index}, dref="${dref}", value=${value}`);
+      }
+    }
+    if (this.packetsSent % 60 === 0) {
+      console.log(`[Bridge] Sending RREF packet #${this.packetsSent} with ${values.length} values`);
+    }
+
+    if (values.length === 0) return;
+
+    // Send RREF response
+    // iNav expects: "RREF" (4) + null (1) + pairs of (index 4 + float 4)
+    // iNav parses starting at byte 5, so we need the null byte
+    const buffer = Buffer.alloc(5 + values.length * 8);
+    buffer.write('RREF', 0);
+    buffer.writeUInt8(0, 4); // null byte after header
+
+    let offset = 5;
+    for (const { index, value } of values) {
+      buffer.writeInt32LE(index, offset);
+      buffer.writeFloatLE(value, offset + 4);
+      offset += 8;
+    }
+
+    this.xplaneServer.send(buffer, this.sitlAddress.port, this.sitlAddress.host);
   }
 
   /**
@@ -323,7 +468,7 @@ class ProtocolBridge {
     writeDouble(controls.gearDown);
     writeDouble(controls.brakePark);
 
-    this.fgSender.send(buffer, this.config.fgInPort!, '127.0.0.1');
+    this.fgSender.send(buffer, this.config.fgInPort, '127.0.0.1');
   }
 
   /**
@@ -331,6 +476,13 @@ class ProtocolBridge {
    */
   getLastData(): FlightGearSensorData | null {
     return this.lastFgData;
+  }
+
+  /**
+   * Check if SITL is connected
+   */
+  isSitlConnected(): boolean {
+    return this.sitlAddress !== null;
   }
 }
 

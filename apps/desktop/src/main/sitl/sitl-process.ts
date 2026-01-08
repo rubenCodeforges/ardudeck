@@ -170,31 +170,39 @@ class SitlProcessManager {
     const commandString = `${sitlPath} ${args.join(' ')}\n`;
 
     // Spawn options - cwd must be binary directory for SITL to work properly
-    const spawnOptions: { cwd: string; shell?: boolean } = {
+    // Explicitly set stdio to pipe to ensure we can capture output
+    const spawnOptions = {
       cwd: path.dirname(sitlPath),
+      stdio: ['pipe', 'pipe', 'pipe'] as const,
+      // Use shell on macOS and Linux for better compatibility with native binaries
+      shell: process.platform !== 'win32',
     };
-
-    // Use shell on Linux for better compatibility
-    if (process.platform === 'linux') {
-      spawnOptions.shell = true;
-    }
 
     console.log('[SITL] Spawning:', sitlPath);
     console.log('[SITL] Args:', args);
     console.log('[SITL] CWD:', spawnOptions.cwd);
+    console.log('[SITL] Shell:', spawnOptions.shell);
 
     try {
       this.process = spawn(sitlPath, args, spawnOptions);
       this._isRunning = true;
 
-      // Forward stdout to renderer
+      console.log('[SITL] Process spawned, PID:', this.process.pid);
+      console.log('[SITL] stdout exists:', !!this.process.stdout);
+      console.log('[SITL] stderr exists:', !!this.process.stderr);
+
+      // Forward stdout to renderer AND main process log
       this.process.stdout?.on('data', (data: Buffer) => {
-        this.sendToRenderer('sitl:stdout', data.toString());
+        const text = data.toString();
+        console.log('[SITL stdout]', text.trim());
+        this.sendToRenderer('sitl:stdout', text);
       });
 
-      // Forward stderr to renderer
+      // Forward stderr to renderer AND main process log
       this.process.stderr?.on('data', (data: Buffer) => {
-        this.sendToRenderer('sitl:stderr', data.toString());
+        const text = data.toString();
+        console.log('[SITL stderr]', text.trim());
+        this.sendToRenderer('sitl:stderr', text);
       });
 
       // Handle process errors

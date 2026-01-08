@@ -64,7 +64,8 @@ const XPLANE_PATHS = {
  * Get the executable path for FlightGear on macOS
  */
 function getFlightGearMacExecutable(appPath: string): string {
-  return join(appPath, 'Contents', 'MacOS', 'fgfs');
+  // macOS FlightGear uses 'FlightGear' as the executable name (not 'fgfs')
+  return join(appPath, 'Contents', 'MacOS', 'FlightGear');
 }
 
 /**
@@ -217,6 +218,19 @@ export function getFlightGearRoot(fgPath: string): string | null {
   const platform = process.platform;
 
   if (platform === 'darwin') {
+    // macOS FlightGear stores data in ~/Library/Application Support/FlightGear/
+    // The fgdata folder has version suffix like fgdata_2024_1
+    const supportDir = join(process.env.HOME || '', 'Library', 'Application Support', 'FlightGear');
+    try {
+      const fs = require('fs');
+      const entries = fs.readdirSync(supportDir);
+      const fgdata = entries.find((e: string) => e.startsWith('fgdata_'));
+      if (fgdata) {
+        return join(supportDir, fgdata);
+      }
+    } catch {
+      // Fall back to app bundle path
+    }
     return join(fgPath, 'Contents', 'Resources', 'data');
   } else if (platform === 'win32') {
     const fgDir = fgPath.replace(/\\bin\\fgfs\.exe$/i, '');

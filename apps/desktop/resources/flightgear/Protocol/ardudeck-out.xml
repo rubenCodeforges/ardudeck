@@ -12,7 +12,7 @@
   <generic>
     <output>
       <binary_mode>true</binary_mode>
-      <byte_order>little-endian</byte_order>
+      <byte_order>host</byte_order>
 
       <!-- Position (3 fields) -->
       <chunk>

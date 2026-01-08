@@ -7,6 +7,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
+import { copyFileSync, existsSync, mkdirSync } from 'fs';
 import { app } from 'electron';
 import { detectFlightGear, getFlightGearRoot } from './simulator-detector';
 
@@ -73,6 +74,45 @@ class FlightGearLauncher {
    */
   getConfig(): FlightGearConfig | null {
     return this.config;
+  }
+
+  /**
+   * Install ArduDeck protocol files to FlightGear's Protocol directory
+   */
+  private installProtocolFiles(fgRoot: string): void {
+    const protocolDir = join(fgRoot, 'Protocol');
+
+    // Ensure Protocol directory exists
+    if (!existsSync(protocolDir)) {
+      mkdirSync(protocolDir, { recursive: true });
+    }
+
+    // Get path to bundled protocol files
+    // In development: resources/flightgear/Protocol/
+    // In production: app.getAppPath()/resources/flightgear/Protocol/
+    const isDev = !app.isPackaged;
+    const resourcesPath = isDev
+      ? join(app.getAppPath(), 'resources', 'flightgear', 'Protocol')
+      : join(process.resourcesPath, 'flightgear', 'Protocol');
+
+    const files = ['ardudeck-out.xml', 'ardudeck-in.xml'];
+
+    for (const file of files) {
+      const srcPath = join(resourcesPath, file);
+      const destPath = join(protocolDir, file);
+
+      // Only copy if source exists and dest doesn't (or is older)
+      if (existsSync(srcPath)) {
+        try {
+          copyFileSync(srcPath, destPath);
+          console.log(`[FlightGear] Installed protocol file: ${file}`);
+        } catch (err) {
+          console.warn(`[FlightGear] Could not copy ${file}:`, err);
+        }
+      } else {
+        console.warn(`[FlightGear] Protocol file not found: ${srcPath}`);
+      }
+    }
   }
 
   /**
@@ -164,9 +204,8 @@ class FlightGearLauncher {
       return { success: false, error: 'Could not determine FlightGear data directory' };
     }
 
-    // Copy protocol files to FlightGear's Protocol directory
-    // (This would be done on first run or app setup)
-    // For now, we assume they're already in place
+    // Install our protocol files to FlightGear's data directory
+    this.installProtocolFiles(fgRoot);
 
     // Build arguments
     const args = this.buildArgs(config, fgRoot);

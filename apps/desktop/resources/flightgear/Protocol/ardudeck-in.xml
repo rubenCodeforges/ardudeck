@@ -13,7 +13,7 @@
   <generic>
     <input>
       <binary_mode>true</binary_mode>
-      <byte_order>little-endian</byte_order>
+      <byte_order>host</byte_order>
 
       <!-- Primary flight controls -->
       <chunk>
