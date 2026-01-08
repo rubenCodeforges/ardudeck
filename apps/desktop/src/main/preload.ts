@@ -754,6 +754,47 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.SITL_EXIT, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.SITL_EXIT, handler);
   },
+
+  // ============================================================================
+  // Visual Simulators (FlightGear, X-Plane integration)
+  // ============================================================================
+
+  simulatorDetect: (): Promise<Array<{
+    name: 'flightgear' | 'xplane';
+    installed: boolean;
+    path: string | null;
+    version: string | null;
+  }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_DETECT),
+
+  simulatorLaunchFlightGear: (config: {
+    aircraft?: string;
+    airport?: string;
+    runwayId?: string;
+    timeOfDay?: 'dawn' | 'morning' | 'noon' | 'afternoon' | 'dusk' | 'night';
+    weather?: 'clear' | 'cloudy' | 'rain';
+  }): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, config),
+
+  simulatorStopFlightGear: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_STOP_FG),
+
+  simulatorFlightGearStatus: (): Promise<{ running: boolean; pid?: number }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_FG_STATUS),
+
+  bridgeStart: (config?: {
+    fgOutPort?: number;
+    fgInPort?: number;
+    sitlHost?: string;
+    sitlSimPort?: number;
+  }): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BRIDGE_START, config),
+
+  bridgeStop: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BRIDGE_STOP),
+
+  bridgeStatus: (): Promise<{ running: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BRIDGE_STATUS),
 };
 
 // Expose to renderer

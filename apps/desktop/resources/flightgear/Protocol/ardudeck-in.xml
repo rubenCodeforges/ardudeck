@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!--
+  ArduDeck FlightGear Input Protocol
+
+  This protocol defines the control inputs FlightGear receives from ArduDeck's protocol bridge.
+  The bridge translates iNav SITL's servo outputs into this format.
+
+  Binary format: All values are IEEE 754 doubles (8 bytes each), little-endian
+  Control values are normalized: -1.0 to +1.0 for surfaces, 0.0 to 1.0 for throttle
+  Total packet size: 8 fields x 8 bytes = 64 bytes
+-->
+<PropertyList>
+  <generic>
+    <input>
+      <binary_mode>true</binary_mode>
+      <byte_order>little-endian</byte_order>
+
+      <!-- Primary flight controls -->
+      <chunk>
+        <name>aileron</name>
+        <type>double</type>
+        <node>/controls/flight/aileron</node>
+      </chunk>
+      <chunk>
+        <name>elevator</name>
+        <type>double</type>
+        <node>/controls/flight/elevator</node>
+      </chunk>
+      <chunk>
+        <name>rudder</name>
+        <type>double</type>
+        <node>/controls/flight/rudder</node>
+      </chunk>
+
+      <!-- Throttle (all engines) -->
+      <chunk>
+        <name>throttle</name>
+        <type>double</type>
+        <node>/controls/engines/engine/throttle</node>
+      </chunk>
+
+      <!-- Secondary controls -->
+      <chunk>
+        <name>flaps</name>
+        <type>double</type>
+        <node>/controls/flight/flaps</node>
+      </chunk>
+      <chunk>
+        <name>speedbrake</name>
+        <type>double</type>
+        <node>/controls/flight/speedbrake</node>
+      </chunk>
+
+      <!-- Landing gear -->
+      <chunk>
+        <name>gear-down</name>
+        <type>double</type>
+        <node>/controls/gear/gear-down</node>
+      </chunk>
+
+      <!-- Brakes -->
+      <chunk>
+        <name>brake-parking</name>
+        <type>double</type>
+        <node>/controls/gear/brake-parking</node>
+      </chunk>
+
+    </input>
+  </generic>
+</PropertyList>

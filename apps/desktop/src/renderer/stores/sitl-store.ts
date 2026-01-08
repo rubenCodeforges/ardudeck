@@ -13,6 +13,14 @@ import type { SitlProfile, SitlConfig } from '../../shared/ipc-channels.js';
 // Types
 // =============================================================================
 
+// Simulator info from detection
+export interface SimulatorInfo {
+  name: 'flightgear' | 'xplane';
+  installed: boolean;
+  path: string | null;
+  version: string | null;
+}
+
 export interface SitlStore {
   // Process State
   isRunning: boolean;
@@ -31,6 +39,22 @@ export interface SitlStore {
   // Errors
   lastError: string | null;
 
+  // Visual Simulator State (FlightGear / X-Plane)
+  detectedSimulators: SimulatorInfo[];
+  isFlightGearRunning: boolean;
+  isBridgeRunning: boolean;
+  isFlightGearStarting: boolean;
+  flightGearError: string | null;
+
+  // Simulator Config
+  simulatorEnabled: boolean;
+  flightGearConfig: {
+    aircraft: string;
+    airport: string;
+    timeOfDay: 'dawn' | 'morning' | 'noon' | 'afternoon' | 'dusk' | 'night';
+    weather: 'clear' | 'cloudy' | 'rain';
+  };
+
   // Actions
   startSitl: () => Promise<boolean>;
   stopSitl: () => Promise<boolean>;
@@ -42,6 +66,17 @@ export interface SitlStore {
   createProfile: (name: string, description?: string) => SitlProfile | null;
   deleteProfile: (name: string) => Promise<boolean>;
   getCurrentProfile: () => SitlProfile | null;
+
+  // Visual Simulator Actions
+  detectSimulators: () => Promise<void>;
+  setSimulatorEnabled: (enabled: boolean) => void;
+  setFlightGearConfig: (config: Partial<SitlStore['flightGearConfig']>) => void;
+  launchFlightGear: () => Promise<boolean>;
+  stopFlightGear: () => Promise<boolean>;
+  startBridge: () => Promise<boolean>;
+  stopBridge: () => Promise<boolean>;
+  launchWithSimulator: () => Promise<boolean>;
+  stopWithSimulator: () => Promise<boolean>;
 
   // Initialization
   initListeners: () => () => void;
@@ -106,6 +141,20 @@ export const useSitlStore = create<SitlStore>()(
       currentProfileName: STANDARD_PROFILES[0]?.name ?? null,
       lastError: null,
 
+      // Visual Simulator Initial State
+      detectedSimulators: [],
+      isFlightGearRunning: false,
+      isBridgeRunning: false,
+      isFlightGearStarting: false,
+      flightGearError: null,
+      simulatorEnabled: false,
+      flightGearConfig: {
+        aircraft: 'c172p',
+        airport: 'KSFO',
+        timeOfDay: 'noon',
+        weather: 'clear',
+      },
+
       // Start SITL
       startSitl: async () => {
         const { isRunning, isStarting, getCurrentProfile, appendOutput } = get();
@@ -125,7 +174,6 @@ export const useSitlStore = create<SitlStore>()(
 
         try {
           const config: SitlConfig = {
-            profileName: profile.name,
             eepromFileName: profile.eepromFileName,
             simulator: profile.simEnabled ? profile.simulator : undefined,
             simIp: profile.simIp,
@@ -289,6 +337,214 @@ export const useSitlStore = create<SitlStore>()(
         return profiles.find((p) => p.name === currentProfileName) ?? null;
       },
 
+      // =============================================================================
+      // Visual Simulator Actions
+      // =============================================================================
+
+      // Detect installed simulators
+      detectSimulators: async () => {
+        try {
+          const simulators = await window.electronAPI.simulatorDetect();
+          set({ detectedSimulators: simulators });
+        } catch (error) {
+          console.error('[SITL Store] Failed to detect simulators:', error);
+        }
+      },
+
+      // Enable/disable simulator integration
+      setSimulatorEnabled: (enabled: boolean) => {
+        set({ simulatorEnabled: enabled });
+      },
+
+      // Update FlightGear config
+      setFlightGearConfig: (config) => {
+        set((state) => ({
+          flightGearConfig: { ...state.flightGearConfig, ...config },
+        }));
+      },
+
+      // Launch FlightGear
+      launchFlightGear: async () => {
+        const { isFlightGearRunning, isFlightGearStarting, flightGearConfig, appendOutput } = get();
+
+        if (isFlightGearRunning || isFlightGearStarting) {
+          return false;
+        }
+
+        set({ isFlightGearStarting: true, flightGearError: null });
+        appendOutput('\n--- Launching FlightGear ---\n');
+
+        try {
+          const result = await window.electronAPI.simulatorLaunchFlightGear(flightGearConfig);
+
+          if (result.success) {
+            set({ isFlightGearRunning: true, isFlightGearStarting: false });
+            appendOutput(`FlightGear launched with aircraft: ${flightGearConfig.aircraft}, airport: ${flightGearConfig.airport}\n`);
+            return true;
+          } else {
+            set({ isFlightGearStarting: false, flightGearError: result.error ?? 'Failed to launch FlightGear' });
+            appendOutput(`FlightGear error: ${result.error}\n`, true);
+            return false;
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          set({ isFlightGearStarting: false, flightGearError: message });
+          appendOutput(`FlightGear error: ${message}\n`, true);
+          return false;
+        }
+      },
+
+      // Stop FlightGear
+      stopFlightGear: async () => {
+        const { isFlightGearRunning, appendOutput } = get();
+
+        if (!isFlightGearRunning) {
+          return false;
+        }
+
+        appendOutput('\n--- Stopping FlightGear ---\n');
+
+        try {
+          await window.electronAPI.simulatorStopFlightGear();
+          set({ isFlightGearRunning: false });
+          appendOutput('FlightGear stopped.\n');
+          return true;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          set({ flightGearError: message });
+          appendOutput(`FlightGear stop error: ${message}\n`, true);
+          return false;
+        }
+      },
+
+      // Start protocol bridge
+      startBridge: async () => {
+        const { isBridgeRunning, appendOutput } = get();
+
+        if (isBridgeRunning) {
+          return false;
+        }
+
+        appendOutput('Starting protocol bridge...\n');
+
+        try {
+          const result = await window.electronAPI.bridgeStart();
+
+          if (result.success) {
+            set({ isBridgeRunning: true });
+            appendOutput('Protocol bridge started (FlightGear <-> iNav SITL)\n');
+            return true;
+          } else {
+            appendOutput(`Bridge error: ${result.error}\n`, true);
+            return false;
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          appendOutput(`Bridge error: ${message}\n`, true);
+          return false;
+        }
+      },
+
+      // Stop protocol bridge
+      stopBridge: async () => {
+        const { isBridgeRunning, appendOutput } = get();
+
+        if (!isBridgeRunning) {
+          return false;
+        }
+
+        appendOutput('Stopping protocol bridge...\n');
+
+        try {
+          await window.electronAPI.bridgeStop();
+          set({ isBridgeRunning: false });
+          appendOutput('Protocol bridge stopped.\n');
+          return true;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          appendOutput(`Bridge stop error: ${message}\n`, true);
+          return false;
+        }
+      },
+
+      // Launch everything with simulator (one-click experience)
+      launchWithSimulator: async () => {
+        const {
+          simulatorEnabled,
+          detectedSimulators,
+          launchFlightGear,
+          startBridge,
+          startSitl,
+          appendOutput,
+        } = get();
+
+        // If simulator not enabled, just start SITL
+        if (!simulatorEnabled) {
+          return await startSitl();
+        }
+
+        // Check if FlightGear is installed
+        const flightGear = detectedSimulators.find((s) => s.name === 'flightgear');
+        if (!flightGear?.installed) {
+          set({ flightGearError: 'FlightGear is not installed' });
+          appendOutput('FlightGear is not installed. Please install it first.\n', true);
+          return false;
+        }
+
+        appendOutput('\n========== LAUNCHING SIMULATION ==========\n');
+
+        // Step 1: Launch FlightGear
+        const fgSuccess = await launchFlightGear();
+        if (!fgSuccess) {
+          return false;
+        }
+
+        // Wait a moment for FlightGear to initialize
+        appendOutput('Waiting for FlightGear to initialize...\n');
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Step 2: Start protocol bridge
+        const bridgeSuccess = await startBridge();
+        if (!bridgeSuccess) {
+          // Clean up FlightGear
+          await get().stopFlightGear();
+          return false;
+        }
+
+        // Step 3: Start SITL with X-Plane simulator mode
+        const sitlSuccess = await startSitl();
+        if (!sitlSuccess) {
+          // Clean up
+          await get().stopBridge();
+          await get().stopFlightGear();
+          return false;
+        }
+
+        appendOutput('========== SIMULATION READY ==========\n');
+        appendOutput('FlightGear is now controlled by iNav SITL.\n');
+        appendOutput('Connect ArduDeck to TCP 127.0.0.1:5760 to access telemetry.\n');
+
+        return true;
+      },
+
+      // Stop everything
+      stopWithSimulator: async () => {
+        const { stopSitl, stopBridge, stopFlightGear, simulatorEnabled, appendOutput } = get();
+
+        appendOutput('\n========== STOPPING SIMULATION ==========\n');
+
+        // Stop in reverse order
+        await stopSitl();
+
+        if (simulatorEnabled) {
+          await stopBridge();
+          await stopFlightGear();
+        }
+
+        appendOutput('========== SIMULATION STOPPED ==========\n');
+        return true;
+      },
+
       // Initialize IPC listeners
       initListeners: () => {
         const { appendOutput } = get();
@@ -331,8 +587,20 @@ export const useSitlStore = create<SitlStore>()(
       // Check SITL status (on mount)
       checkStatus: async () => {
         try {
-          const status = await window.electronAPI.sitlGetStatus();
-          set({ isRunning: status.isRunning });
+          // Check SITL process status
+          const sitlStatus = await window.electronAPI.sitlGetStatus();
+          set({ isRunning: sitlStatus.isRunning });
+
+          // Check FlightGear status
+          const fgStatus = await window.electronAPI.simulatorFlightGearStatus();
+          set({ isFlightGearRunning: fgStatus.running });
+
+          // Check bridge status
+          const bridgeStatus = await window.electronAPI.bridgeStatus();
+          set({ isBridgeRunning: bridgeStatus.running });
+
+          // Detect simulators
+          get().detectSimulators();
         } catch {
           // Ignore errors
         }
@@ -347,15 +615,21 @@ export const useSitlStore = create<SitlStore>()(
           lastCommand: null,
           output: [],
           lastError: null,
+          isFlightGearRunning: false,
+          isBridgeRunning: false,
+          isFlightGearStarting: false,
+          flightGearError: null,
         });
       },
     }),
     {
       name: 'sitl-storage',
-      // Only persist profiles and current selection
+      // Persist profiles, selection, and simulator config
       partialize: (state) => ({
         profiles: state.profiles,
         currentProfileName: state.currentProfileName,
+        simulatorEnabled: state.simulatorEnabled,
+        flightGearConfig: state.flightGearConfig,
       }),
     }
   )

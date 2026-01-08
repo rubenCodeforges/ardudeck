@@ -213,6 +213,15 @@ export const IPC_CHANNELS = {
   SITL_STDERR: 'sitl:stderr',
   SITL_ERROR: 'sitl:error',
   SITL_EXIT: 'sitl:exit',
+
+  // Visual Simulators (FlightGear, X-Plane)
+  SIMULATOR_DETECT: 'simulator:detect',
+  SIMULATOR_LAUNCH_FG: 'simulator:launch-fg',
+  SIMULATOR_STOP_FG: 'simulator:stop-fg',
+  SIMULATOR_FG_STATUS: 'simulator:fg-status',
+  BRIDGE_START: 'bridge:start',
+  BRIDGE_STOP: 'bridge:stop',
+  BRIDGE_STATUS: 'bridge:status',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<!--
+  ArduDeck FlightGear Output Protocol
+
+  This protocol defines the data FlightGear sends to ArduDeck's protocol bridge.
+  The bridge translates this into X-Plane format for iNav SITL.
+
+  Binary format: All values are IEEE 754 doubles (8 bytes each), little-endian
+  Total packet size: 22 fields x 8 bytes = 176 bytes
+-->
+<PropertyList>
+  <generic>
+    <output>
+      <binary_mode>true</binary_mode>
+      <byte_order>little-endian</byte_order>
+
+      <!-- Position (3 fields) -->
+      <chunk>
+        <name>latitude</name>
+        <type>double</type>
+        <node>/position/latitude-deg</node>
+      </chunk>
+      <chunk>
+        <name>longitude</name>
+        <type>double</type>
+        <node>/position/longitude-deg</node>
+      </chunk>
+      <chunk>
+        <name>altitude-msl-ft</name>
+        <type>double</type>
+        <node>/position/altitude-ft</node>
+      </chunk>
+
+      <!-- Altitude AGL -->
+      <chunk>
+        <name>altitude-agl-ft</name>
+        <type>double</type>
+        <node>/position/altitude-agl-ft</node>
+      </chunk>
+
+      <!-- Attitude (3 fields) -->
+      <chunk>
+        <name>roll-deg</name>
+        <type>double</type>
+        <node>/orientation/roll-deg</node>
+      </chunk>
+      <chunk>
+        <name>pitch-deg</name>
+        <type>double</type>
+        <node>/orientation/pitch-deg</node>
+      </chunk>
+      <chunk>
+        <name>heading-deg</name>
+        <type>double</type>
+        <node>/orientation/heading-deg</node>
+      </chunk>
+
+      <!-- Angular rates (3 fields) - deg/sec -->
+      <chunk>
+        <name>roll-rate</name>
+        <type>double</type>
+        <node>/orientation/roll-rate-degps</node>
+      </chunk>
+      <chunk>
+        <name>pitch-rate</name>
+        <type>double</type>
+        <node>/orientation/pitch-rate-degps</node>
+      </chunk>
+      <chunk>
+        <name>yaw-rate</name>
+        <type>double</type>
+        <node>/orientation/yaw-rate-degps</node>
+      </chunk>
+
+      <!-- Velocities -->
+      <chunk>
+        <name>airspeed-kt</name>
+        <type>double</type>
+        <node>/velocities/airspeed-kt</node>
+      </chunk>
+      <chunk>
+        <name>groundspeed-kt</name>
+        <type>double</type>
+        <node>/velocities/groundspeed-kt</node>
+      </chunk>
+      <chunk>
+        <name>vertical-speed-fps</name>
+        <type>double</type>
+        <node>/velocities/vertical-speed-fps</node>
+      </chunk>
+
+      <!-- Velocity components (body frame) -->
+      <chunk>
+        <name>uBody-fps</name>
+        <type>double</type>
+        <node>/velocities/uBody-fps</node>
+      </chunk>
+      <chunk>
+        <name>vBody-fps</name>
+        <type>double</type>
+        <node>/velocities/vBody-fps</node>
+      </chunk>
+      <chunk>
+        <name>wBody-fps</name>
+        <type>double</type>
+        <node>/velocities/wBody-fps</node>
+      </chunk>
+
+      <!-- Accelerations (body frame) - g -->
+      <chunk>
+        <name>accel-x-g</name>
+        <type>double</type>
+        <node>/accelerations/pilot/x-accel-fps_sec</node>
+        <factor>0.031081</factor><!-- Convert fps/s to g (1/32.174) -->
+      </chunk>
+      <chunk>
+        <name>accel-y-g</name>
+        <type>double</type>
+        <node>/accelerations/pilot/y-accel-fps_sec</node>
+        <factor>0.031081</factor>
+      </chunk>
+      <chunk>
+        <name>accel-z-g</name>
+        <type>double</type>
+        <node>/accelerities/pilot/z-accel-fps_sec</node>
+        <factor>0.031081</factor>
+      </chunk>
+
+      <!-- Environment -->
+      <chunk>
+        <name>temperature-degc</name>
+        <type>double</type>
+        <node>/environment/temperature-degc</node>
+      </chunk>
+      <chunk>
+        <name>pressure-inhg</name>
+        <type>double</type>
+        <node>/environment/pressure-inhg</node>
+      </chunk>
+
+      <!-- Simulation time -->
+      <chunk>
+        <name>sim-time-sec</name>
+        <type>double</type>
+        <node>/sim/time/elapsed-sec</node>
+      </chunk>
+
+    </output>
+  </generic>
+</PropertyList>

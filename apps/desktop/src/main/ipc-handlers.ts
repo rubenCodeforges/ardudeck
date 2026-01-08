@@ -76,6 +76,14 @@ import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManife
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
+import {
+  detectSimulators,
+  flightGearLauncher,
+  protocolBridge,
+  type SimulatorInfo,
+  type FlightGearConfig,
+  type BridgeConfig,
+} from './simulators/index.js';
 import type { SitlConfig, SitlStatus } from '../shared/ipc-channels.js';
 
 // =============================================================================
@@ -3787,6 +3795,78 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: message };
     }
+  });
+
+  // =============================================================================
+  // Simulator Handlers (FlightGear, X-Plane integration)
+  // =============================================================================
+
+  // Detect installed simulators
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_DETECT, async (): Promise<SimulatorInfo[]> => {
+    console.log('[Simulator] Detecting installed simulators...');
+    const simulators = await detectSimulators();
+    console.log('[Simulator] Found:', simulators.filter(s => s.installed).map(s => s.name).join(', ') || 'none');
+    return simulators;
+  });
+
+  // Launch FlightGear
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, async (_event, config: FlightGearConfig): Promise<{ success: boolean; error?: string }> => {
+    console.log('[Simulator] Launching FlightGear with config:', config);
+    try {
+      const result = await flightGearLauncher.launch(config);
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Simulator] Failed to launch FlightGear:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Stop FlightGear
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_STOP_FG, async (): Promise<{ success: boolean }> => {
+    console.log('[Simulator] Stopping FlightGear...');
+    try {
+      await flightGearLauncher.stop();
+      return { success: true };
+    } catch (error) {
+      console.error('[Simulator] Failed to stop FlightGear:', error);
+      return { success: false };
+    }
+  });
+
+  // Get FlightGear status
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_FG_STATUS, async (): Promise<{ running: boolean; pid?: number }> => {
+    return flightGearLauncher.getStatus();
+  });
+
+  // Start protocol bridge (FlightGear <-> X-Plane format for iNav SITL)
+  ipcMain.handle(IPC_CHANNELS.BRIDGE_START, async (_event, config?: BridgeConfig): Promise<{ success: boolean; error?: string }> => {
+    console.log('[Simulator] Starting protocol bridge...');
+    try {
+      const result = await protocolBridge.start(config);
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Simulator] Failed to start bridge:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Stop protocol bridge
+  ipcMain.handle(IPC_CHANNELS.BRIDGE_STOP, async (): Promise<{ success: boolean }> => {
+    console.log('[Simulator] Stopping protocol bridge...');
+    try {
+      await protocolBridge.stop();
+      return { success: true };
+    } catch (error) {
+      console.error('[Simulator] Failed to stop bridge:', error);
+      return { success: false };
+    }
+  });
+
+  // Get bridge status
+  ipcMain.handle(IPC_CHANNELS.BRIDGE_STATUS, async (): Promise<{ running: boolean }> => {
+    return { running: protocolBridge.isRunning() };
   });
 }
 

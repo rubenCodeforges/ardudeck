@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { useOsdStore, BUNDLED_FONT_NAMES, type OsdElementId, type DemoTelemetry } from '../../stores/osd-store';
+import { useOsdStore, BUNDLED_FONT_NAMES, type OsdElementId, type DemoTelemetry, type OsdMode } from '../../stores/osd-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { OsdPreview } from './OsdCanvas';
+import { OsdConfigurator } from './OsdConfigurator';
 import { DraggableSlider } from '../ui/DraggableSlider';
 
 /**
@@ -62,14 +63,18 @@ export function OsdView() {
   useEffect(() => {
     const isMsp = connectionState.protocol === 'msp' || !!connectionState.fcVariant;
     if (mode === 'live' && isMsp && connectionState.isConnected) {
-      // Start MSP telemetry polling (data goes to same telemetry store)
-      window.electronAPI?.mspStartTelemetry(10); // 10Hz
+      // Small delay to ensure connection is stable after reconnect
+      const startTimeout = setTimeout(() => {
+        // Start MSP telemetry polling (data goes to same telemetry store)
+        window.electronAPI?.mspStartTelemetry(10); // 10Hz
+      }, 100);
 
       return () => {
+        clearTimeout(startTimeout);
         window.electronAPI?.mspStopTelemetry();
       };
     }
-  }, [mode, connectionState.protocol, connectionState.fcVariant, connectionState.isConnected]);
+  }, [mode, connectionState]); // Use entire connectionState object to detect reconnects
 
   // Update OSD when telemetry changes in live mode
   useEffect(() => {
@@ -99,11 +104,12 @@ export function OsdView() {
             <label className="text-sm text-gray-400">Mode:</label>
             <select
               value={mode}
-              onChange={(e) => setMode(e.target.value as 'demo' | 'live')}
+              onChange={(e) => setMode(e.target.value as OsdMode)}
               className="bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600"
             >
               <option value="demo">Demo</option>
               <option value="live">Live</option>
+              <option value="edit">Edit Layout</option>
             </select>
           </div>
 
@@ -155,6 +161,23 @@ export function OsdView() {
       </div>
 
       {/* Main content */}
+      {mode === 'edit' ? (
+        /* Edit mode - show configurator */
+        <div className="flex-1 overflow-hidden">
+          {fontError && (
+            <div className="m-4 p-3 bg-red-900/50 border border-red-700 rounded text-red-300 text-sm">
+              {fontError}
+            </div>
+          )}
+          {isLoadingFont ? (
+            <div className="flex-1 flex items-center justify-center text-gray-400">Loading font...</div>
+          ) : !currentFont ? (
+            <div className="flex-1 flex items-center justify-center text-gray-400">No font loaded</div>
+          ) : (
+            <OsdConfigurator />
+          )}
+        </div>
+      ) : (
       <div className="flex flex-1 overflow-hidden">
         {/* OSD Preview */}
         <div className="flex-1 flex flex-col items-center justify-center p-4 bg-gray-900">
@@ -340,6 +363,16 @@ export function OsdView() {
                   max={3600}
                   unit="s"
                 />
+                {/* CCRP demo: Adjust heading to test steering cue, longitude to simulate approach */}
+                <DemoSlider
+                  label="Longitude"
+                  value={demoValues.longitude}
+                  onChange={(v) => updateDemoValue('longitude', v)}
+                  min={-122.43}
+                  max={-122.41}
+                  step={0.0001}
+                  unit="deg"
+                />
               </div>
             </div>
           )}
@@ -355,6 +388,7 @@ export function OsdView() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -388,7 +422,11 @@ function DemoSlider({
       max={max}
       step={step}
       showValue
-      valueFormatter={(v) => (step < 1 ? v.toFixed(1) : v.toString())}
+      valueFormatter={(v) => {
+        if (step && step < 0.001) return v.toFixed(4);
+        if (step && step < 1) return v.toFixed(1);
+        return v.toString();
+      }}
     />
   );
 }

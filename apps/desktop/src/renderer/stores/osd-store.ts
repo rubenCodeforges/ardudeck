@@ -9,6 +9,8 @@ import {
 } from '../utils/osd/font-renderer';
 import { SYM, numberToSymbols } from '../utils/osd/osd-symbols';
 import { useTelemetryStore } from './telemetry-store';
+import { calculateCcrp, type CcrpResult } from '../utils/ccrp-calculator';
+import { usePayloadStore } from './payload-store';
 
 // Import bundled fonts (Vite raw imports)
 import defaultFontMcm from '../assets/osd-fonts/default.mcm?raw';
@@ -51,6 +53,9 @@ export interface DemoTelemetry {
   distance: number; // meters from home
   latitude: number;
   longitude: number;
+  // CCRP target position
+  targetLat: number;
+  targetLon: number;
 }
 
 /** OSD element position */
@@ -76,10 +81,11 @@ export type OsdElementId =
   | 'pitch'
   | 'roll'
   | 'crosshairs'
-  | 'artificial_horizon';
+  | 'artificial_horizon'
+  | 'ccrp_indicator';
 
 /** Default element positions (PAL layout) */
-const DEFAULT_ELEMENT_POSITIONS: Record<OsdElementId, OsdElementPosition> = {
+export const DEFAULT_ELEMENT_POSITIONS: Record<OsdElementId, OsdElementPosition> = {
   altitude: { x: 1, y: 2, enabled: true },
   speed: { x: 1, y: 3, enabled: true },
   heading: { x: 14, y: 0, enabled: true },
@@ -94,14 +100,15 @@ const DEFAULT_ELEMENT_POSITIONS: Record<OsdElementId, OsdElementPosition> = {
   pitch: { x: 24, y: 4, enabled: true },
   roll: { x: 24, y: 5, enabled: true },
   crosshairs: { x: 14, y: 7, enabled: true },
-  artificial_horizon: { x: 10, y: 7, enabled: true },
+  artificial_horizon: { x: 14, y: 7, enabled: true },
+  ccrp_indicator: { x: 26, y: 3, enabled: false },
 };
 
 /** Default demo values */
 const DEFAULT_DEMO_VALUES: DemoTelemetry = {
   altitude: 120,
   speed: 15,
-  heading: 270,
+  heading: 270, // Flying west
   pitch: 5,
   roll: -3,
   batteryVoltage: 11.8,
@@ -114,9 +121,12 @@ const DEFAULT_DEMO_VALUES: DemoTelemetry = {
   distance: 350,
   latitude: 37.7749,
   longitude: -122.4194,
+  // CCRP target - 500m west of aircraft (at heading 270, aircraft is lined up)
+  targetLat: 37.7749,
+  targetLon: -122.4254, // ~500m west at this latitude
 };
 
-export type OsdMode = 'demo' | 'live';
+export type OsdMode = 'demo' | 'live' | 'edit';
 
 interface OsdStore {
   // Font state
@@ -302,6 +312,8 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
       // Live mode - use useTelemetryStore for ALL protocols
       // MSP data is also sent via TELEMETRY_UPDATE and converted to the same format
       const telemetry = useTelemetryStore.getState();
+      const lat = telemetry.gps.lat || telemetry.position.lat;
+      const lon = telemetry.gps.lon || telemetry.position.lon;
       values = {
         altitude: telemetry.vfrHud.alt || telemetry.position.relativeAlt,
         speed: telemetry.vfrHud.groundspeed,
@@ -316,8 +328,11 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         throttle: telemetry.vfrHud.throttle,
         flightTime: 0,
         distance: 0,
-        latitude: telemetry.gps.lat || telemetry.position.lat,
-        longitude: telemetry.gps.lon || telemetry.position.lon,
+        latitude: lat,
+        longitude: lon,
+        // TODO: Get target from mission store when available
+        targetLat: lat,
+        targetLon: lon,
       };
     }
 
@@ -371,6 +386,25 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         case 'coordinates':
           renderCoordinates(screenBuffer, pos.x, pos.y, values.latitude, values.longitude);
           break;
+        case 'ccrp_indicator': {
+          // Get payload config for descent rate
+          const payloadConfig = usePayloadStore.getState().config;
+
+          // Calculate CCRP with full position and heading
+          const ccrpResult = calculateCcrp({
+            aircraftLat: values.latitude,
+            aircraftLon: values.longitude,
+            aircraftAltAgl: values.altitude,
+            groundSpeed: values.speed,
+            heading: values.heading,
+            targetLat: values.targetLat,
+            targetLon: values.targetLon,
+            descentRateMs: payloadConfig.descentRateMs,
+          });
+
+          renderCcrpIndicator(screenBuffer, pos.x, pos.y, ccrpResult);
+          break;
+        }
       }
     }
 
@@ -467,18 +501,46 @@ function renderArtificialHorizon(
   pitch: number,
   roll: number
 ): void {
-  // Simplified horizon - just render 9 horizon bar characters
-  // In a real implementation, this would select different chars based on pitch/roll
+  const HORIZON_WIDTH = 9; // 9 columns wide
+  const CENTER_COL = 4; // Center column index
+  const CHAR_HEIGHT_PX = 18;
+  const PIXELS_PER_VARIANT = 2; // Each bar variant = 2px vertical shift
+  // Roll sensitivity: higher = less sensitive. At 3.0, need ~15° for 1 row offset at edge
+  const ROLL_SENSITIVITY = 3.0;
 
-  // Calculate pitch offset (each char represents ~5 degrees roughly)
-  const pitchOffset = Math.round(pitch / 10);
+  // Clamp roll to reasonable display range (beyond ±60° looks wrong)
+  const clampedRoll = Math.max(-60, Math.min(60, roll));
+  const rollRadians = clampedRoll * (Math.PI / 180);
 
-  // Render horizon bar (9 chars wide, centered)
-  for (let i = 0; i < 9; i++) {
-    const charX = x - 4 + i;
-    // SYM.AH_BAR9_0 + offset selects different horizon angle chars
-    const horizonChar = SYM.AH_BAR9_0 + 4; // Middle position (level)
-    buffer.setChar(charX, y - pitchOffset, horizonChar);
+  // Pitch offset in rows
+  const pitchRowOffset = Math.round(pitch / 10);
+
+  for (let i = 0; i < HORIZON_WIDTH; i++) {
+    const columnOffset = i - CENTER_COL; // -4 to +4
+    const charX = x - CENTER_COL + i;
+
+    // Calculate vertical pixel offset for this column due to roll
+    // tan(roll) gives slope, multiply by horizontal distance
+    // Negative sign: when banking LEFT (negative roll), LEFT side goes DOWN (higher row)
+    // Divided by ROLL_SENSITIVITY to reduce visual effect at small angles
+    const rollPixelOffset = (-columnOffset * Math.tan(rollRadians) * CHAR_HEIGHT_PX) / ROLL_SENSITIVITY;
+
+    // Split into row offset and sub-cell offset
+    const rollRowOffset = Math.floor(rollPixelOffset / CHAR_HEIGHT_PX);
+    const subCellPixels = rollPixelOffset - rollRowOffset * CHAR_HEIGHT_PX;
+
+    // Final row for this column
+    const finalRow = y - pitchRowOffset - rollRowOffset;
+
+    // Select bar variant (0-8) based on sub-cell offset
+    // subCellPixels ranges from -9 to +9, map to char index 0-8
+    const variantIndex = Math.max(0, Math.min(8, 4 - Math.round(subCellPixels / PIXELS_PER_VARIANT)));
+    const horizonChar = SYM.AH_BAR9_0 + variantIndex;
+
+    // Only draw if within screen bounds
+    if (finalRow >= 0 && finalRow < buffer.height) {
+      buffer.setChar(charX, finalRow, horizonChar);
+    }
   }
 }
 
@@ -491,7 +553,18 @@ function renderPitch(buffer: OsdScreenBuffer, x: number, y: number, pitch: numbe
 
 function renderRoll(buffer: OsdScreenBuffer, x: number, y: number, roll: number): void {
   const rollStr = Math.round(roll).toString().padStart(3, ' ');
-  buffer.setChar(x, y, SYM.ROLL_LEVEL);
+
+  // Dynamic symbol based on roll angle
+  let symbol: number;
+  if (roll < -10) {
+    symbol = SYM.ROLL_LEFT;
+  } else if (roll > 10) {
+    symbol = SYM.ROLL_RIGHT;
+  } else {
+    symbol = SYM.ROLL_LEVEL;
+  }
+
+  buffer.setChar(x, y, symbol);
   buffer.drawString(x + 1, y, rollStr);
   buffer.setChar(x + 4, y, SYM.DEGREES);
 }
@@ -512,4 +585,100 @@ function renderCoordinates(
   const lonStr = lon.toFixed(5);
   buffer.setChar(x, y + 1, SYM.LON);
   buffer.drawString(x + 1, y + 1, lonStr);
+}
+
+function renderCcrpIndicator(
+  buffer: OsdScreenBuffer,
+  x: number,
+  y: number,
+  ccrpResult: CcrpResult
+): void {
+  const GAUGE_HEIGHT = 5; // 5 characters tall for the gauge
+
+  if (!ccrpResult.valid) {
+    // No valid data - show dashes
+    buffer.drawString(x, y, '---');
+    buffer.drawString(x, y + 1, 'CCRP');
+    return;
+  }
+
+  // Row 0: Steering cue / status
+  if (ccrpResult.inRange) {
+    // Lined up AND in range - DROP NOW!
+    buffer.drawString(x - 1, y, 'DROP!');
+  } else if (ccrpResult.passed) {
+    buffer.drawString(x - 1, y, 'PASS');
+  } else if (!ccrpResult.isLinedUp) {
+    // Show steering direction
+    const error = ccrpResult.headingError;
+    if (error > 20) {
+      buffer.drawString(x - 1, y, '>>R'); // Hard right
+    } else if (error > 5) {
+      buffer.drawString(x - 1, y, ' >R'); // Soft right
+    } else if (error < -20) {
+      buffer.drawString(x - 1, y, 'L<<'); // Hard left
+    } else if (error < -5) {
+      buffer.drawString(x - 1, y, 'L< '); // Soft left
+    }
+  } else {
+    // Lined up but not in range yet - show checkmark or OK
+    buffer.drawString(x - 1, y, ' OK ');
+  }
+
+  // Draw vertical gauge frame
+  const gaugeStartY = y + 1;
+
+  // Calculate fill level (0 = empty at top, GAUGE_HEIGHT = full at bottom)
+  const fillLevel = Math.min(GAUGE_HEIGHT, Math.round(ccrpResult.releaseProgress * GAUGE_HEIGHT));
+
+  // Draw gauge segments
+  for (let i = 0; i < GAUGE_HEIGHT; i++) {
+    const rowY = gaugeStartY + i;
+    const isFilled = i < fillLevel;
+
+    // Left bracket
+    buffer.setChar(x, rowY, 0x7c); // |
+
+    // Fill or empty (different char when lined up vs not)
+    if (isFilled) {
+      if (ccrpResult.isLinedUp) {
+        buffer.setChar(x + 1, rowY, 0x23); // # (filled, lined up)
+      } else {
+        buffer.setChar(x + 1, rowY, 0x3d); // = (filled but NOT lined up)
+      }
+    } else {
+      buffer.setChar(x + 1, rowY, 0x2e); // . (empty)
+    }
+
+    // Right bracket
+    buffer.setChar(x + 2, rowY, 0x7c); // |
+  }
+
+  // Draw target marker at bottom
+  const targetY = gaugeStartY + GAUGE_HEIGHT;
+  buffer.setChar(x, targetY, 0x5b); // [
+  buffer.setChar(x + 1, targetY, 0x58); // X
+  buffer.setChar(x + 2, targetY, 0x5d); // ]
+
+  // Distance text below gauge
+  const distY = targetY + 1;
+  if (ccrpResult.distanceToRelease >= 0) {
+    const distStr = Math.round(ccrpResult.distanceToRelease).toString();
+    buffer.drawString(x, distY, distStr.padStart(3, ' ') + 'm');
+  } else {
+    // Already passed - show negative
+    const distStr = Math.round(Math.abs(ccrpResult.distanceToRelease)).toString();
+    buffer.drawString(x, distY, '-' + distStr.padStart(2, ' ') + 'm');
+  }
+
+  // Row below distance: Heading error in degrees (small text)
+  const hdgErrY = distY + 1;
+  const hdgErr = Math.round(ccrpResult.headingError);
+  if (hdgErr > 0) {
+    buffer.drawString(x, hdgErrY, `R${hdgErr}`.padStart(4, ' '));
+  } else if (hdgErr < 0) {
+    buffer.drawString(x, hdgErrY, `L${Math.abs(hdgErr)}`.padStart(4, ' '));
+  } else {
+    buffer.drawString(x, hdgErrY, '  0 ');
+  }
 }
