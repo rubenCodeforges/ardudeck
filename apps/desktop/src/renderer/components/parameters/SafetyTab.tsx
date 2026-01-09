@@ -263,6 +263,10 @@ export default function SafetyTab({ isInav }: Props) {
       await window.electronAPI.cliEnterMode();
       await new Promise((r) => setTimeout(r, 300));
 
+      // Set receiver_type
+      await window.electronAPI.cliSendCommand(`set receiver_type = ${armingSafety.receiverType}`);
+      await new Promise((r) => setTimeout(r, 100));
+
       // Set nav_extra_arming_safety
       await window.electronAPI.cliSendCommand(`set nav_extra_arming_safety = ${armingSafety.navExtraArmingSafety}`);
       await new Promise((r) => setTimeout(r, 100));
@@ -472,17 +476,43 @@ export default function SafetyTab({ isInav }: Props) {
           </div>
 
           <div className="space-y-4">
+            {/* Receiver Type */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                <Radio className="w-4 h-4 inline mr-1" />
+                Receiver Type
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {RECEIVER_TYPES.map(type => (
+                  <button
+                    key={type.value}
+                    onClick={() => updateArmingSafety('receiverType', type.value)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      armingSafety.receiverType === type.value
+                        ? type.value === 'SIM'
+                          ? 'bg-green-600/20 border-green-500 text-white'
+                          : 'bg-blue-600/20 border-blue-500 text-white'
+                        : 'bg-zinc-800/50 border-zinc-700 text-gray-400 hover:bg-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{type.label}</div>
+                    <div className="text-xs opacity-70 mt-0.5">{type.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Nav Extra Arming Safety */}
             <div>
               <label className="block text-sm text-gray-400 mb-2">Navigation Arming Safety</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {NAV_ARMING_SAFETY_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => updateArmingSafety('navExtraArmingSafety', opt.value)}
                     className={`p-3 rounded-lg border text-left transition-all ${
                       armingSafety.navExtraArmingSafety === opt.value
-                        ? opt.value === 'OFF'
+                        ? opt.value === 'ALLOW_BYPASS'
                           ? 'bg-amber-600/20 border-amber-500 text-white'
                           : 'bg-purple-600/20 border-purple-500 text-white'
                         : 'bg-zinc-800/50 border-zinc-700 text-gray-400 hover:bg-zinc-800 hover:text-white'

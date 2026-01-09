@@ -109,7 +109,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **MCM Font Support** - Full MAX7456/AT7456E font parsing
 - **8 Bundled Fonts** - Default, Bold, Clarity, Impact, Vision, and more
 - **PAL/NTSC** - Support for both video standards (30x16 / 30x13 grids)
-- **15 OSD Elements** - Altitude, speed, battery, GPS, artificial horizon, etc.
+- **15+ OSD Elements** - Altitude, speed, battery, GPS, artificial horizon, CCRP indicator, and more
+- **CCRP Indicator** - Continuously Computed Release Point for payload drops (shows predicted impact point)
 - **Element Toggle** - Enable/disable individual OSD elements
 
 ### Firmware Flash
@@ -128,6 +129,23 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **TCP Client** - Network connection to SITL or telemetry bridges
 - **UDP** - Listen mode for MAVProxy and other forwarders
 - **Auto-Detect** - Scan ports for MAVLink devices
+
+### SITL Simulator & FlightGear Bridge
+
+**What is this?** SITL (Software In The Loop) lets you run real flight controller firmware on your computer - no drone required! Perfect for:
+- **Learning** - Practice mission planning and configuration without risking a crash
+- **Testing** - Verify your settings work before uploading to real hardware
+- **Development** - Test new features without leaving your desk
+
+**How it works:**
+1. ArduDeck downloads and runs the actual iNav/Betaflight firmware as a desktop application
+2. The simulated flight controller behaves exactly like real hardware
+3. You can configure PIDs, modes, missions - everything works!
+4. Optionally connect to **FlightGear** (free flight simulator) to see your virtual aircraft fly
+
+**FlightGear Integration** - If you have [FlightGear](https://www.flightgear.org/) installed, ArduDeck automatically detects it and can bridge the simulator to your SITL session. Watch your configured aircraft respond to your mission in a realistic 3D environment!
+
+> **TL;DR**: Test your drone configuration on your computer before flying for real. Break things in simulation, not in the field!
 
 ---
 
