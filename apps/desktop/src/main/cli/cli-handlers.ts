@@ -5,8 +5,9 @@
  * Uses the same transport as MSP but bypasses the MSP protocol layer.
  */
 
-import { ipcMain, BrowserWindow, dialog } from 'electron';
-import { writeFile } from 'fs/promises';
+import { ipcMain, BrowserWindow, dialog, app } from 'electron';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 import type { Transport } from '@ardudeck/comms';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 
@@ -565,4 +566,94 @@ function registerIpcHandlers(): void {
       return false;
     }
   });
+
+  // Save CLI dump as parsed JSON to internal cli-params folder
+  ipcMain.handle(
+    IPC_CHANNELS.CLI_SAVE_OUTPUT_JSON,
+    async (
+      _,
+      data: {
+        rawDump: string;
+        fcVariant: string;
+        fcVersion: string;
+      }
+    ): Promise<boolean> => {
+      // Strip ANSI escape codes that terminals add
+      const stripAnsi = (str: string) => str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+      const cleanDump = stripAnsi(data.rawDump);
+
+      console.log('[CLI] Parsing dump, raw length:', data.rawDump.length, 'clean length:', cleanDump.length);
+
+      // Parse the dump to extract parameters
+      const parameters: Record<string, { value: string; section: string }> = {};
+      let currentSection = 'master';
+      let matchCount = 0;
+
+      const lines = cleanDump.split('\n');
+      console.log('[CLI] Total lines to parse:', lines.length);
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        // Track section changes
+        if (trimmed.startsWith('# profile')) {
+          currentSection = 'profile';
+        } else if (trimmed.startsWith('# battery_profile')) {
+          currentSection = 'battery_profile';
+        } else if (trimmed.startsWith('# master')) {
+          currentSection = 'master';
+        }
+
+        // Parse set commands - handle values with spaces like "SIM (SITL)"
+        const setMatch = trimmed.match(/^set\s+(\S+)\s*=\s*(.*)$/);
+        if (setMatch) {
+          const [, name, value] = setMatch;
+          parameters[name!] = {
+            value: value!.trim(),
+            section: currentSection,
+          };
+          matchCount++;
+        }
+      }
+
+      console.log('[CLI] Parsed', matchCount, 'parameters');
+
+      // Log sample of first few lines if no matches
+      if (matchCount === 0) {
+        console.log('[CLI] Sample lines from dump:');
+        lines.slice(0, 20).forEach((l, i) => console.log(`  ${i}: "${l.substring(0, 80)}"`));
+      }
+
+      // Build the JSON export
+      const exportData = {
+        variant: data.fcVariant || 'UNKNOWN',
+        version: data.fcVersion || 'UNKNOWN',
+        exportDate: new Date().toISOString(),
+        parameterCount: Object.keys(parameters).length,
+        parameters,
+      };
+
+      // Auto-save to cli-params folder (no dialog)
+      const filename = `${data.fcVariant?.toLowerCase() || 'fc'}-${data.fcVersion || 'unknown'}.json`;
+      const cliParamsDir = path.join(app.getAppPath(), 'src', 'shared', 'cli-params');
+
+      // Ensure directory exists
+      try {
+        await mkdir(cliParamsDir, { recursive: true });
+      } catch {
+        // Directory may already exist
+      }
+
+      const filePath = path.join(cliParamsDir, filename);
+
+      try {
+        await writeFile(filePath, JSON.stringify(exportData, null, 2), 'utf-8');
+        console.log(`[CLI] JSON export saved to: ${filePath} (${matchCount} params)`);
+        return true;
+      } catch (err) {
+        console.error('[CLI] Failed to save JSON:', err);
+        return false;
+      }
+    }
+  );
 }

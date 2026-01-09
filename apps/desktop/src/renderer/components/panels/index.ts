@@ -8,6 +8,7 @@ export { VelocityPanel } from './VelocityPanel';
 export { FlightModePanel } from './FlightModePanel';
 export { FlightControlPanel } from './FlightControlPanel';
 export { MapPanel } from './MapPanel';
+export { SitlStatusPanel } from './SitlStatusPanel';
 
 // Re-export mission panels for use in telemetry dashboard
 export { MissionMapPanel } from '../mission/MissionMapPanel';
@@ -27,6 +28,7 @@ export const PANEL_COMPONENTS = {
   flightMode: { component: 'FlightModePanel', title: 'Flight Mode' },
   flightControl: { component: 'FlightControlPanel', title: 'Flight Control' },
   map: { component: 'MapPanel', title: 'Map' },
+  sitlStatus: { component: 'SitlStatusPanel', title: 'SITL Status' },
   // Mission panels (for monitoring during flight)
   missionMap: { component: 'MissionMapPanel', title: 'Mission Map' },
   waypoints: { component: 'WaypointTablePanel', title: 'Waypoints' },

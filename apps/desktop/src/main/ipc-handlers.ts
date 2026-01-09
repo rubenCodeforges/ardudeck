@@ -80,9 +80,13 @@ import {
   detectSimulators,
   flightGearLauncher,
   protocolBridge,
+  setVirtualRC,
+  getVirtualRC,
+  resetVirtualRC,
   type SimulatorInfo,
   type FlightGearConfig,
   type BridgeConfig,
+  type VirtualRCState,
 } from './simulators/index.js';
 import type { SitlConfig, SitlStatus } from '../shared/ipc-channels.js';
 
@@ -3801,11 +3805,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Simulator Handlers (FlightGear, X-Plane integration)
   // =============================================================================
 
-  // Detect installed simulators
+  // Detect installed simulators (called frequently by UI, don't spam logs)
+  let lastSimulatorDetectLog = 0;
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_DETECT, async (): Promise<SimulatorInfo[]> => {
-    console.log('[Simulator] Detecting installed simulators...');
     const simulators = await detectSimulators();
-    console.log('[Simulator] Found:', simulators.filter(s => s.installed).map(s => s.name).join(', ') || 'none');
+    // Only log every 60 seconds
+    const now = Date.now();
+    if (now - lastSimulatorDetectLog > 60000) {
+      console.log('[Simulator] Detected:', simulators.filter(s => s.installed).map(s => s.name).join(', ') || 'none');
+      lastSimulatorDetectLog = now;
+    }
     return simulators;
   });
 
@@ -3867,6 +3876,25 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Get bridge status
   ipcMain.handle(IPC_CHANNELS.BRIDGE_STATUS, async (): Promise<{ running: boolean }> => {
     return { running: protocolBridge.isRunning() };
+  });
+
+  // =============================================================================
+  // Virtual RC Control (for SITL testing)
+  // =============================================================================
+
+  // Set virtual RC values
+  ipcMain.handle(IPC_CHANNELS.VIRTUAL_RC_SET, async (_, state: Partial<VirtualRCState>): Promise<void> => {
+    setVirtualRC(state);
+  });
+
+  // Get virtual RC values
+  ipcMain.handle(IPC_CHANNELS.VIRTUAL_RC_GET, async (): Promise<VirtualRCState> => {
+    return getVirtualRC();
+  });
+
+  // Reset virtual RC to defaults
+  ipcMain.handle(IPC_CHANNELS.VIRTUAL_RC_RESET, async (): Promise<void> => {
+    resetVirtualRC();
   });
 }
 

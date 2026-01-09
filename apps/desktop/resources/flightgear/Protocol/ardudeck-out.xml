@@ -122,7 +122,7 @@
       <chunk>
         <name>accel-z-g</name>
         <type>double</type>
-        <node>/accelerities/pilot/z-accel-fps_sec</node>
+        <node>/accelerations/pilot/z-accel-fps_sec</node>
         <factor>0.031081</factor>
       </chunk>
 

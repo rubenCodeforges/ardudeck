@@ -12,13 +12,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { Shield, AlertTriangle, RefreshCw, Lock, Zap, Save, Radio } from 'lucide-react';
+import { useConnectionStore } from '../../stores/connection-store';
 
 // Receiver types - includes SIM for SITL
+// NOTE: Values must match EXACTLY what iNav CLI expects (including spaces and parentheses!)
 const RECEIVER_TYPES = [
   { value: 'NONE', label: 'None', description: 'No receiver' },
   { value: 'SERIAL', label: 'Serial', description: 'Serial RX (SBUS, IBUS, CRSF, etc.)' },
   { value: 'MSP', label: 'MSP', description: 'Control via GCS/MSP' },
-  { value: 'SIM', label: 'SIM (SITL)', description: 'Simulated receiver for SITL testing' },
+  { value: 'SIM (SITL)', label: 'SIM (SITL)', description: 'Simulated receiver for SITL testing' },
 ];
 
 // Failsafe procedures (matches MSP values)
@@ -88,7 +90,11 @@ interface Props {
 }
 
 export default function SafetyTab({ isInav }: Props) {
-  // Failsafe config (via MSP)
+  // Check if connected to SITL (needs CLI for everything)
+  const connectionState = useConnectionStore((state) => state.connectionState);
+  const isSitl = connectionState?.isSitl ?? false;
+
+  // Failsafe config (via MSP, or CLI for SITL)
   const [failsafe, setFailsafe] = useState<FailsafeConfig>(DEFAULT_FAILSAFE);
   const [originalFailsafe, setOriginalFailsafe] = useState<FailsafeConfig>(DEFAULT_FAILSAFE);
 
@@ -104,6 +110,8 @@ export default function SafetyTab({ isInav }: Props) {
 
   // Arming safety apply state
   const [applyingArmingSafety, setApplyingArmingSafety] = useState(false);
+  const [showRebootConfirm, setShowRebootConfirm] = useState(false);
+  const [showFailsafeRebootConfirm, setShowFailsafeRebootConfirm] = useState(false);
 
   // Check if failsafe has been modified
   const failsafeChanged = JSON.stringify(failsafe) !== JSON.stringify(originalFailsafe);
@@ -141,14 +149,14 @@ export default function SafetyTab({ isInav }: Props) {
           const settings = await window.electronAPI.mspGetSettings([
             'receiver_type',
             'nav_extra_arming_safety',
-            'nav_gps_min_sats',
+            'gps_min_sats',
           ]);
 
           if (settings && settings['nav_extra_arming_safety'] !== null) {
             const safety: ArmingSafetyConfig = {
               receiverType: String(settings['receiver_type'] ?? 'SERIAL').toUpperCase(),
               navExtraArmingSafety: String(settings['nav_extra_arming_safety']).toUpperCase(),
-              navGpsMinSats: Number(settings['nav_gps_min_sats'] ?? 6),
+              navGpsMinSats: Number(settings['gps_min_sats'] ?? 6),
             };
             console.log('[SafetyTab] Loaded arming safety via MSP Settings:', safety);
             setArmingSafety(safety);
@@ -169,12 +177,13 @@ export default function SafetyTab({ isInav }: Props) {
             const dump = await window.electronAPI.cliGetDump();
 
             // Parse settings from dump
-            const receiverTypeMatch = dump.match(/set receiver_type\s*=\s*(\S+)/i);
+            // Note: receiver_type can have spaces like "SIM (SITL)", so capture to end of line
+            const receiverTypeMatch = dump.match(/set receiver_type\s*=\s*(.+?)$/im);
             const armingSafetyMatch = dump.match(/set nav_extra_arming_safety\s*=\s*(\S+)/i);
-            const minSatsMatch = dump.match(/set nav_gps_min_sats\s*=\s*(\d+)/i);
+            const minSatsMatch = dump.match(/set gps_min_sats\s*=\s*(\d+)/i);
 
             const safety: ArmingSafetyConfig = {
-              receiverType: receiverTypeMatch?.[1]?.toUpperCase() ?? 'SERIAL',
+              receiverType: receiverTypeMatch?.[1]?.trim().toUpperCase() ?? 'SERIAL',
               navExtraArmingSafety: armingSafetyMatch?.[1]?.toUpperCase() ?? 'ON',
               navGpsMinSats: minSatsMatch ? parseInt(minSatsMatch[1], 10) : 6,
             };
@@ -204,26 +213,87 @@ export default function SafetyTab({ isInav }: Props) {
     }
   }, [isInav]);
 
-  // Save failsafe config via MSP
+  // Save failsafe config via MSP (or CLI for SITL)
   const saveFailsafe = async () => {
+    // For SITL, show reboot confirmation since we'll use CLI save
+    if (isSitl) {
+      setShowFailsafeRebootConfirm(true);
+      return;
+    }
+
+    await doSaveFailsafe();
+  };
+
+  // Actually save failsafe settings
+  const doSaveFailsafe = async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const result = await window.electronAPI.mspSetFailsafeConfig(failsafe);
+      // For SITL, use CLI since MSP EEPROM write doesn't work reliably
+      if (isSitl) {
+        console.log('[SafetyTab] SITL detected, using CLI for failsafe...');
 
-      if (result) {
-        // Save to EEPROM
-        await window.electronAPI.mspSaveEeprom();
+        // Stop telemetry
+        await window.electronAPI.mspStopTelemetry();
+        await new Promise((r) => setTimeout(r, 200));
+
+        // Enter CLI
+        await window.electronAPI.cliEnterMode();
+        await new Promise((r) => setTimeout(r, 300));
+
+        // Set failsafe settings via CLI
+        await window.electronAPI.cliSendCommand(`set failsafe_delay = ${failsafe.failsafeDelay}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_off_delay = ${failsafe.failsafeOffDelay}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_throttle = ${failsafe.failsafeThrottle}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_throttle_low_delay = ${failsafe.failsafeThrottleLowDelay}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_procedure = ${['LAND', 'DROP', 'RTH', 'NONE'][failsafe.failsafeProcedure] ?? 'RTH'}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_recovery_delay = ${failsafe.failsafeRecoveryDelay}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_stick_threshold = ${failsafe.failsafeStickMotionThreshold}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_min_distance = ${failsafe.failsafeMinDistance}`);
+        await new Promise((r) => setTimeout(r, 100));
+        await window.electronAPI.cliSendCommand(`set failsafe_min_distance_procedure = ${['LAND', 'DROP', 'RTH', 'NONE'][failsafe.failsafeMinDistanceProcedure] ?? 'LAND'}`);
+        await new Promise((r) => setTimeout(r, 100));
+
+        // Save (causes reboot)
+        await window.electronAPI.cliSendCommand('save');
+
         setOriginalFailsafe({ ...failsafe });
-        setSuccess('Failsafe settings saved!');
+        setSuccess('Failsafe settings applied! Board is rebooting - please reconnect.');
+
+        // Wait then disconnect
+        await new Promise((r) => setTimeout(r, 3000));
+        await window.electronAPI.disconnect();
       } else {
-        setError('Failed to save failsafe settings');
+        // Normal MSP path for real hardware
+        const result = await window.electronAPI.mspSetFailsafeConfig(failsafe);
+
+        if (result) {
+          // Save to EEPROM
+          await window.electronAPI.mspSaveEeprom();
+          setOriginalFailsafe({ ...failsafe });
+          setSuccess('Failsafe settings saved!');
+        } else {
+          setError('Failed to save failsafe settings');
+        }
       }
     } catch (err) {
       console.error('[SafetyTab] Failed to save failsafe:', err);
       setError('Failed to save failsafe settings');
+      // Try to restart telemetry
+      try {
+        await window.electronAPI.mspStartTelemetry();
+      } catch {
+        // ignore
+      }
     } finally {
       setSaving(false);
     }
@@ -236,51 +306,63 @@ export default function SafetyTab({ isInav }: Props) {
     setSuccess(null);
 
     try {
-      // Try MSP Settings API first (works on modern iNav without CLI)
-      const mspResult = await window.electronAPI.mspSetSettings({
-        'receiver_type': armingSafety.receiverType,
-        'nav_extra_arming_safety': armingSafety.navExtraArmingSafety,
-        'nav_gps_min_sats': armingSafety.navGpsMinSats,
-      });
+      // For SITL, ALWAYS use CLI - MSP Settings API doesn't work on SITL
+      if (!isSitl) {
+        // Try MSP Settings API first (works on modern iNav without CLI)
+        const mspResult = await window.electronAPI.mspSetSettings({
+          'receiver_type': armingSafety.receiverType,
+          'nav_extra_arming_safety': armingSafety.navExtraArmingSafety,
+          'gps_min_sats': armingSafety.navGpsMinSats,
+        });
 
-      if (mspResult) {
-        // Save to EEPROM
-        await window.electronAPI.mspSaveEeprom();
-        setOriginalArmingSafety({ ...armingSafety });
-        setSuccess('Arming safety settings saved!');
-        setApplyingArmingSafety(false);
-        return;
+        if (mspResult) {
+          // Save to EEPROM
+          await window.electronAPI.mspSaveEeprom();
+          setOriginalArmingSafety({ ...armingSafety });
+          setSuccess('Arming safety settings saved!');
+          setApplyingArmingSafety(false);
+          return;
+        }
       }
 
-      // Fallback to CLI for older firmware or SITL
-      console.log('[SafetyTab] MSP Settings failed, falling back to CLI...');
+      // CLI for SITL or fallback for older firmware
+      console.log('[SafetyTab] Using CLI for arming safety settings (isSitl=' + isSitl + ')...');
+      console.log('[SafetyTab] Values to set:', {
+        receiver_type: armingSafety.receiverType,
+        nav_extra_arming_safety: armingSafety.navExtraArmingSafety,
+        gps_min_sats: armingSafety.navGpsMinSats,
+      });
 
       // Stop telemetry before CLI
       await window.electronAPI.mspStopTelemetry();
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 300));
 
       // Enter CLI mode
       await window.electronAPI.cliEnterMode();
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 500));
 
       // Set receiver_type
+      console.log('[SafetyTab] Setting receiver_type =', armingSafety.receiverType);
       await window.electronAPI.cliSendCommand(`set receiver_type = ${armingSafety.receiverType}`);
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 200));
 
       // Set nav_extra_arming_safety
+      console.log('[SafetyTab] Setting nav_extra_arming_safety =', armingSafety.navExtraArmingSafety);
       await window.electronAPI.cliSendCommand(`set nav_extra_arming_safety = ${armingSafety.navExtraArmingSafety}`);
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 200));
 
-      // Set nav_gps_min_sats
-      await window.electronAPI.cliSendCommand(`set nav_gps_min_sats = ${armingSafety.navGpsMinSats}`);
-      await new Promise((r) => setTimeout(r, 100));
+      // Set gps_min_sats
+      console.log('[SafetyTab] Setting gps_min_sats =', armingSafety.navGpsMinSats);
+      await window.electronAPI.cliSendCommand(`set gps_min_sats = ${armingSafety.navGpsMinSats}`);
+      await new Promise((r) => setTimeout(r, 200));
 
       // Save and reboot
+      console.log('[SafetyTab] Sending save command...');
       await window.electronAPI.cliSendCommand('save');
 
       // Update original config
       setOriginalArmingSafety({ ...armingSafety });
-      setSuccess('Arming safety settings applied! Board is rebooting...');
+      setSuccess('Settings applied! Board is rebooting - please reconnect when ready.');
 
       // Wait for reboot then disconnect
       await new Promise((r) => setTimeout(r, 3000));
@@ -340,12 +422,15 @@ export default function SafetyTab({ isInav }: Props) {
         </div>
       )}
 
-      {/* Failsafe Configuration (via MSP) */}
+      {/* Failsafe Configuration (via MSP, or CLI for SITL) */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-amber-400" />
             <h3 className="text-white font-medium">Failsafe Configuration</h3>
+            {isSitl && (
+              <span className="text-xs text-purple-400 bg-purple-500/20 px-2 py-0.5 rounded">SITL</span>
+            )}
           </div>
           {/* Save button for failsafe */}
           <button
@@ -358,7 +443,7 @@ export default function SafetyTab({ isInav }: Props) {
             }`}
           >
             <Save className={`w-4 h-4 ${saving ? 'animate-pulse' : ''}`} />
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? 'Saving...' : isSitl ? 'Save & Reboot' : 'Save'}
           </button>
         </div>
 
@@ -458,11 +543,11 @@ export default function SafetyTab({ isInav }: Props) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-purple-400" />
-              <h3 className="text-white font-medium">Arming Safety</h3>
+              <h3 className="text-white font-medium">Receiver & Arming</h3>
             </div>
             {/* Apply button for arming safety */}
             <button
-              onClick={applyArmingSafety}
+              onClick={() => setShowRebootConfirm(true)}
               disabled={applyingArmingSafety || !armingSafetyChanged}
               className={`px-4 py-1.5 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
                 armingSafetyChanged
@@ -489,7 +574,7 @@ export default function SafetyTab({ isInav }: Props) {
                     onClick={() => updateArmingSafety('receiverType', type.value)}
                     className={`p-3 rounded-lg border text-left transition-all ${
                       armingSafety.receiverType === type.value
-                        ? type.value === 'SIM'
+                        ? type.value === 'SIM (SITL)'
                           ? 'bg-green-600/20 border-green-500 text-white'
                           : 'bg-blue-600/20 border-blue-500 text-white'
                         : 'bg-zinc-800/50 border-zinc-700 text-gray-400 hover:bg-zinc-800 hover:text-white'
@@ -547,6 +632,88 @@ export default function SafetyTab({ isInav }: Props) {
               unit=""
               description="Minimum satellites required before arming (0 = no GPS required)"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Reboot Confirmation Dialog (Arming Safety) */}
+      {showRebootConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-500/20 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-medium text-white">Board Reboot Required</h3>
+            </div>
+
+            <p className="text-gray-300 mb-4">
+              Applying these settings will save to EEPROM and reboot the flight controller.
+            </p>
+
+            <p className="text-gray-400 text-sm mb-6">
+              You will be disconnected. After the reboot completes (~3 seconds),
+              simply reconnect to continue.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowRebootConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowRebootConfirm(false);
+                  applyArmingSafety();
+                }}
+                className="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors"
+              >
+                Apply & Reboot
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reboot Confirmation Dialog (Failsafe - SITL only) */}
+      {showFailsafeRebootConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-500/20 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-medium text-white">SITL Reboot Required</h3>
+            </div>
+
+            <p className="text-gray-300 mb-4">
+              Saving failsafe settings on SITL requires using CLI commands, which will reboot the simulator.
+            </p>
+
+            <p className="text-gray-400 text-sm mb-6">
+              You will be disconnected. After SITL restarts (~3 seconds),
+              reconnect via TCP to continue.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowFailsafeRebootConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowFailsafeRebootConfirm(false);
+                  doSaveFailsafe();
+                }}
+                className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+              >
+                Save & Reboot
+              </button>
+            </div>
           </div>
         </div>
       )}

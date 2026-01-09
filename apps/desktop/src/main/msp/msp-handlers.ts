@@ -99,7 +99,13 @@ import {
   type MSPGpsConfig,
   type MSPInavMixerConfig,
   type MSPFailsafeConfig,
+  // GPS injection for SITL
+  serializeSetRawGps,
+  serializeMsp2SensorGps,
+  type MSPSetRawGpsData,
+  type MSP2SensorGpsData,
 } from '@ardudeck/msp-ts';
+import { protocolBridge } from '../simulators/index.js';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import { initCliHandlers, setCliTransport, setCliModeChangeCallback, cleanupCli, isCliModeActive, exitCliModeIfActive } from '../cli/cli-handlers.js';
 
@@ -120,6 +126,15 @@ let telemetryInProgress = false;
 
 // Telemetry skip counter - reduce log spam
 let telemetrySkipCount = 0;
+
+// Last arming status to reduce log spam
+let lastArmingFlags: number | null = null;
+
+// GPS MSP sender for SITL (sends FlightGear position as MSP GPS data)
+let gpsSenderInterval: ReturnType<typeof setInterval> | null = null;
+let gpsSenderEnabled = false;
+let gpsSenderLoggedOnce = false;
+let gpsDebugCounter = 0;
 
 // Skip SITL auto-configure after user manually changes platform
 let skipSitlAutoConfig = false;
@@ -627,9 +642,13 @@ export function startMspTelemetry(rateHz: number = 10): void {
           ? getArmingDisabledReasons(status.armingDisableFlags, fcVariant)
           : [];
 
-        // Log arming issues if not armed
-        if (!armed) {
-          console.log(`[MSP] Arming status: armed=${armed}, flags=0x${status.armingDisableFlags?.toString(16) ?? '0'}, fcVariant=${fcVariant}, reasons=[${armingDisabledReasons.join(', ')}]`);
+        // Log arming issues only when flags change
+        if (!armed && status.armingDisableFlags !== lastArmingFlags) {
+          console.log(`[MSP] Arming status: armed=${armed}, flags=0x${status.armingDisableFlags?.toString(16) ?? '0'}, reasons=[${armingDisabledReasons.join(', ')}]`);
+          lastArmingFlags = status.armingDisableFlags ?? null;
+        } else if (armed && lastArmingFlags !== null) {
+          console.log('[MSP] Armed!');
+          lastArmingFlags = null;
         }
 
         safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
@@ -651,6 +670,11 @@ export function startMspTelemetry(rateHz: number = 10): void {
         const gpsPayload = await sendMspRequest(MSP.RAW_GPS, 300);
         const gps = deserializeRawGps(gpsPayload);
         const decimal = gpsToDecimalDegrees(gps);
+
+        // Debug: Log GPS data occasionally
+        if (gpsDebugCounter++ % 100 === 0) {
+          console.log(`[MSP GPS] fix=${gps.fixType}, sats=${gps.numSat}, lat=${decimal.latDeg.toFixed(6)}, lon=${decimal.lonDeg.toFixed(6)}, hdop=${gps.hdop}`);
+        }
 
         // Update groundspeed for vfrHud (GPS groundspeed is more accurate)
         groundSpeedMs = decimal.speedMs;
@@ -720,6 +744,79 @@ export function stopMspTelemetry(): void {
   telemetrySkipCount = 0;
 }
 
+// =============================================================================
+// GPS MSP Sender (for SITL with gps_provider=MSP)
+// =============================================================================
+
+/**
+ * Start sending GPS data from FlightGear bridge to SITL via MSP_SET_RAW_GPS.
+ * This allows SITL to receive GPS data when gps_provider=MSP.
+ */
+export function startGpsSender(): void {
+  if (gpsSenderInterval) {
+    console.log('[MSP GPS] GPS sender already running');
+    return;
+  }
+
+  console.log('[MSP GPS] Starting GPS sender (FlightGear → MSP via MSP2_SENSOR_GPS)');
+  gpsSenderEnabled = true;
+  gpsSenderLoggedOnce = false;
+
+  // Send GPS data at 10Hz (same rate as typical GPS)
+  gpsSenderInterval = setInterval(async () => {
+    if (!gpsSenderEnabled || !currentTransport || !mspParser) return;
+
+    // Get latest FlightGear data from bridge
+    const fgData = protocolBridge.getLastData();
+    if (!fgData) return;
+
+    // Convert FlightGear data to GPS format (MSP2_SENSOR_GPS)
+    const gpsData: MSP2SensorGpsData = {
+      instance: 0,  // Primary GPS
+      fixType: 3,   // 3D fix
+      numSat: 12,   // Simulated satellite count
+      lat: fgData.latitude,
+      lon: fgData.longitude,
+      alt: fgData.altitudeMsl * 0.3048,  // ft to meters
+      groundSpeed: fgData.groundspeed * 0.514444,  // kt to m/s
+      groundCourse: fgData.heading,  // degrees
+      velN: fgData.groundspeed * 0.514444 * Math.cos(fgData.heading * Math.PI / 180),
+      velE: fgData.groundspeed * 0.514444 * Math.sin(fgData.heading * Math.PI / 180),
+      velD: -fgData.verticalSpeed * 0.00508,  // fpm to m/s, inverted
+      hdop: 1.0,
+      vdop: 1.5,
+    };
+
+    // Send MSP2_SENSOR_GPS (0x1F03) - this is what iNav expects for gps_provider=MSP
+    try {
+      const payload = serializeMsp2SensorGps(gpsData);
+      const packet = buildMspV2RequestWithPayload(MSP2.SENSOR_GPS, payload);
+      await currentTransport.write(Buffer.from(packet));
+
+      // Log first packet to verify it's being sent
+      if (!gpsSenderLoggedOnce) {
+        console.log(`[MSP GPS] First packet sent: MSP2_SENSOR_GPS (0x1F03), payload ${payload.length} bytes`);
+        console.log(`[MSP GPS] Data: lat=${gpsData.lat.toFixed(6)}, lon=${gpsData.lon.toFixed(6)}, alt=${gpsData.alt.toFixed(1)}m, fix=${gpsData.fixType}, sats=${gpsData.numSat}`);
+        gpsSenderLoggedOnce = true;
+      }
+    } catch (err) {
+      console.error('[MSP GPS] Send error:', err);
+    }
+  }, 100);  // 10Hz
+}
+
+/**
+ * Stop GPS sender
+ */
+export function stopGpsSender(): void {
+  if (gpsSenderInterval) {
+    clearInterval(gpsSenderInterval);
+    gpsSenderInterval = null;
+    gpsSenderEnabled = false;
+    console.log('[MSP GPS] GPS sender stopped');
+  }
+}
+
 /**
  * Full cleanup of MSP connection state.
  * Call this on actual disconnect, NOT when just stopping telemetry.
@@ -727,6 +824,9 @@ export function stopMspTelemetry(): void {
 export function cleanupMspConnection(): void {
   // Stop telemetry first
   stopMspTelemetry();
+
+  // Stop GPS sender
+  stopGpsSender();
 
   // Clean up CLI handlers
   cleanupCli();
@@ -1287,23 +1387,17 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
 
   return withConfigLock(async () => {
     try {
-      console.log('[MSP] Reading MODE_RANGES...');
-      sendLog('info', 'Reading modes from FC...');
       const payload = await sendMspRequest(MSP.MODE_RANGES, 2000);
-      console.log('[MSP] MODE_RANGES response:', payload.length, 'bytes');
       const modes = deserializeModeRanges(payload);
-      // Log active modes (non-empty ranges)
       const activeModes = modes.filter(m => m.rangeEnd > m.rangeStart);
-      console.log('[MSP] Modes parsed:', modes.length, 'total,', activeModes.length, 'active');
-      activeModes.forEach((m, i) => console.log(`  [${i}] boxId=${m.boxId} aux=${m.auxChannel} range=${m.rangeStart}-${m.rangeEnd}`));
-      sendLog('info', `Modes loaded: ${activeModes.length} active`);
+      // Clear from unsupported if it worked
+      unsupportedCommands.delete(MSP.MODE_RANGES);
       return modes;
     } catch (error) {
-      // Only log once, don't spam console
+      // Only log once per session
       if (!unsupportedCommands.has(MSP.MODE_RANGES)) {
         unsupportedCommands.add(MSP.MODE_RANGES);
         console.log('[MSP] MODE_RANGES not available on this board');
-        sendLog('error', 'Mode ranges not available on this board');
       }
       return null;
     }
@@ -3850,6 +3944,16 @@ export function registerMspHandlers(window: BrowserWindow): void {
     stopMspTelemetry();
   });
 
+  // GPS MSP sender (for SITL with gps_provider=MSP)
+  ipcMain.handle(IPC_CHANNELS.MSP_START_GPS_SENDER, async () => {
+    startGpsSender();
+    return { success: true };
+  });
+  ipcMain.handle(IPC_CHANNELS.MSP_STOP_GPS_SENDER, async () => {
+    stopGpsSender();
+    return { success: true };
+  });
+
   console.log('[MSP] Command handlers registered');
 }
 
@@ -3921,6 +4025,10 @@ export function unregisterMspHandlers(): void {
   // Telemetry control handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_START_TELEMETRY);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_STOP_TELEMETRY);
+
+  // GPS sender handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_START_GPS_SENDER);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_STOP_GPS_SENDER);
 
   mainWindow = null;
   console.log('[MSP] Command handlers unregistered');

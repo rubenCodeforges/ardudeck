@@ -25,6 +25,8 @@ export default function CliView() {
     exitCliMode,
   } = useCliStore();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingJson, setIsSavingJson] = useState(false);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
 
   // Exit CLI mode when navigating away from this view
   // This prevents the board from staying in CLI mode which breaks MSP commands
@@ -52,6 +54,38 @@ export default function CliView() {
       await window.electronAPI.cliSaveOutput(output);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleExportJsonClick = () => {
+    if (!isCliMode) return;
+    setShowExportConfirm(true);
+  };
+
+  const handleExportJsonConfirm = async () => {
+    setShowExportConfirm(false);
+    setIsSavingJson(true);
+    try {
+      // Clear current output
+      clearOutput();
+
+      // Send dump command and wait for it to complete
+      await window.electronAPI.cliSendCommand('dump');
+
+      // Wait for dump to complete (dump is slow, ~3-5 seconds)
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // Get the fresh dump output
+      const dumpOutput = useCliStore.getState().output;
+
+      // Save as JSON
+      await window.electronAPI.cliSaveOutputJson({
+        rawDump: dumpOutput,
+        fcVariant: connectionState.fcVariant || 'UNKNOWN',
+        fcVersion: connectionState.fcVersion || 'UNKNOWN',
+      });
+    } finally {
+      setIsSavingJson(false);
     }
   };
 
@@ -88,7 +122,20 @@ export default function CliView() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? 'Saving...' : 'Save TXT'}
+          </button>
+
+          {/* Save as JSON - runs dump and parses */}
+          <button
+            onClick={handleExportJsonClick}
+            disabled={!isCliMode || isSavingJson}
+            className="px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            title="Run dump command and save parameters as JSON"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+            </svg>
+            {isSavingJson ? 'Dumping...' : 'Export JSON'}
           </button>
 
           {/* Clear terminal */}
@@ -222,6 +269,37 @@ export default function CliView() {
                 Dismiss
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Export JSON Confirmation Modal */}
+      {showExportConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-white text-center mb-2">Export Parameters</h3>
+            <p className="text-sm text-zinc-400 text-center mb-6">
+              This will clear the CLI terminal, run the <code className="px-1.5 py-0.5 bg-zinc-800 rounded text-amber-400">dump</code> command, and save all parameters as JSON.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExportConfirm(false)}
+                className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExportJsonConfirm}
+                className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Export
+              </button>
+            </div>
           </div>
         </div>
       )}

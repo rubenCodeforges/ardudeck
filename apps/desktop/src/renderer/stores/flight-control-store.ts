@@ -161,6 +161,14 @@ const DEFAULT_CHANNELS: number[] = [
 // RC override interval (send RC values every 100ms)
 const RC_OVERRIDE_INTERVAL_MS = 100;
 
+/**
+ * Convert PWM value (1000-2000) to normalized value (-1 to +1) for Virtual RC
+ * 1000 = -1, 1500 = 0, 2000 = +1
+ */
+function pwmToNormalized(pwm: number): number {
+  return (pwm - 1500) / 500;
+}
+
 export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
   // Initial state
   channels: [...DEFAULT_CHANNELS],
@@ -288,6 +296,21 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
 
     set({ channels: newChannels });
 
+    // Also set Virtual RC for SITL bridge
+    // Note: Virtual RC expects normalized values (-1 to +1), not PWM (1000-2000)
+    const auxKey = `aux${armMapping.auxChannel + 1}` as 'aux1' | 'aux2' | 'aux3' | 'aux4';
+    const normalizedThrottle = pwmToNormalized(1000); // -1
+    const normalizedAux = pwmToNormalized(midpoint);
+    try {
+      await window.electronAPI.virtualRCSet({
+        throttle: normalizedThrottle,
+        [auxKey]: normalizedAux,
+      });
+      console.log(`[FlightControl] Virtual RC set: throttle=${normalizedThrottle}, ${auxKey}=${normalizedAux}`);
+    } catch (e) {
+      // Virtual RC might not be available (not SITL)
+    }
+
     // Start override to send continuously
     get().startOverride();
 
@@ -321,6 +344,21 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     newChannels[2] = 1000;
 
     set({ channels: newChannels });
+
+    // Also set Virtual RC for SITL bridge
+    // Note: Virtual RC expects normalized values (-1 to +1), not PWM (1000-2000)
+    const auxKey = `aux${armMapping.auxChannel + 1}` as 'aux1' | 'aux2' | 'aux3' | 'aux4';
+    const normalizedThrottle = pwmToNormalized(1000); // -1
+    const normalizedAux = pwmToNormalized(lowValue);
+    try {
+      await window.electronAPI.virtualRCSet({
+        throttle: normalizedThrottle,
+        [auxKey]: normalizedAux,
+      });
+      console.log(`[FlightControl] Virtual RC set: throttle=${normalizedThrottle}, ${auxKey}=${normalizedAux}`);
+    } catch (e) {
+      // Virtual RC might not be available (not SITL)
+    }
 
     // Send the disarm command
     await window.electronAPI.mspSetRawRc(newChannels);

@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -481,6 +481,13 @@ const api = {
   mspStopTelemetry: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_STOP_TELEMETRY),
 
+  // GPS MSP sender (for SITL with gps_provider=MSP)
+  mspStartGpsSender: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_START_GPS_SENDER),
+
+  mspStopGpsSender: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_STOP_GPS_SENDER),
+
   // MSP Config
   mspGetPid: (): Promise<unknown> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_PID),
@@ -719,6 +726,12 @@ const api = {
   cliSaveOutput: (content: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLI_SAVE_OUTPUT, content),
 
+  cliSaveOutputJson: (data: {
+    rawDump: string;
+    fcVariant: string;
+    fcVersion: string;
+  }): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CLI_SAVE_OUTPUT_JSON, data),
+
   onCliData: (callback: (data: string) => void) => {
     const handler = (_: unknown, data: string) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.CLI_DATA_RECEIVED, handler);
@@ -809,6 +822,22 @@ const api = {
 
   bridgeStatus: (): Promise<{ running: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.BRIDGE_STATUS),
+
+  // =============================================================================
+  // Virtual RC Control (for SITL testing)
+  // =============================================================================
+
+  /** Set virtual RC channel values for SITL testing */
+  virtualRCSet: (state: Partial<VirtualRCState>): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIRTUAL_RC_SET, state),
+
+  /** Get current virtual RC values */
+  virtualRCGet: (): Promise<VirtualRCState> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIRTUAL_RC_GET),
+
+  /** Reset virtual RC to defaults */
+  virtualRCReset: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIRTUAL_RC_RESET),
 };
 
 // Expose to renderer

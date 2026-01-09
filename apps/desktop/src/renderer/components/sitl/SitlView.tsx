@@ -5,10 +5,11 @@
  * Allows starting/stopping the SITL process and managing profiles.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSitlStore } from '../../stores/sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
+import type { VirtualRCState } from '../../../shared/ipc-channels';
 
 // Aircraft options for FlightGear
 const AIRCRAFT_OPTIONS = [
@@ -68,6 +69,47 @@ export default function SitlView() {
   const [newProfileName, setNewProfileName] = useState('');
   const [newProfileDesc, setNewProfileDesc] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Virtual RC state for SIM receiver control
+  const [virtualRC, setVirtualRC] = useState<VirtualRCState>({
+    roll: 0,
+    pitch: 0,
+    yaw: 0,
+    throttle: -1,  // Minimum for safety
+    aux1: 0,
+    aux2: 0,
+    aux3: 0,
+    aux4: 0,
+  });
+
+  // GPS MSP sender state (for gps_provider=MSP)
+  const [gpsSenderEnabled, setGpsSenderEnabled] = useState(false);
+
+  // Load virtual RC state when bridge is running
+  useEffect(() => {
+    if (isBridgeRunning) {
+      window.electronAPI.virtualRCGet().then(setVirtualRC);
+    }
+  }, [isBridgeRunning]);
+
+  // Update virtual RC value
+  const updateVirtualRC = useCallback(async (key: keyof VirtualRCState, value: number) => {
+    const newState = { ...virtualRC, [key]: value };
+    setVirtualRC(newState);
+    await window.electronAPI.virtualRCSet({ [key]: value });
+  }, [virtualRC]);
+
+  // Reset virtual RC to defaults
+  const resetVirtualRC = useCallback(async () => {
+    await window.electronAPI.virtualRCReset();
+    const state = await window.electronAPI.virtualRCGet();
+    setVirtualRC(state);
+  }, []);
+
+  // Convert normalized value (-1 to +1) to PWM (1000-2000)
+  const normalizedToPWM = (value: number): number => {
+    return Math.round(1500 + (value * 500));
+  };
 
   // Initialize listeners and check status on mount
   useEffect(() => {
@@ -146,7 +188,7 @@ export default function SitlView() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden p-4 gap-4">
+      <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-4">
         {/* Profile selection card */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
           <div className="flex items-start gap-4">
@@ -437,6 +479,207 @@ export default function SitlView() {
             controlled by iNav SITL. Your missions, PIDs, and modes work just like on real hardware.
           </div>
         </div>
+
+        {/* Virtual RC Control - only show when bridge is running */}
+        {simulatorEnabled && isBridgeRunning && (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <h3 className="text-sm font-medium text-white">Virtual RC Control</h3>
+              </div>
+              <button
+                onClick={resetVirtualRC}
+                className="px-2 py-1 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="text-xs text-zinc-500 mb-3">
+              When using <code className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-400">receiver_type = SIM</code>,
+              control RC inputs here. Set AUX4 high to arm.
+            </div>
+
+            {/* Main sticks */}
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              {/* Throttle */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  Throttle <span className="text-zinc-600">{normalizedToPWM(virtualRC.throttle)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.throttle}
+                  onChange={(e) => updateVirtualRC('throttle', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+              </div>
+              {/* Roll */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  Roll <span className="text-zinc-600">{normalizedToPWM(virtualRC.roll)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.roll}
+                  onChange={(e) => updateVirtualRC('roll', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+              </div>
+              {/* Pitch */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  Pitch <span className="text-zinc-600">{normalizedToPWM(virtualRC.pitch)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.pitch}
+                  onChange={(e) => updateVirtualRC('pitch', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+              </div>
+              {/* Yaw */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  Yaw <span className="text-zinc-600">{normalizedToPWM(virtualRC.yaw)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.yaw}
+                  onChange={(e) => updateVirtualRC('yaw', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* AUX channels */}
+            <div className="grid grid-cols-4 gap-3 pt-3 border-t border-zinc-800">
+              {/* AUX1 */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  AUX1 <span className="text-zinc-600">{normalizedToPWM(virtualRC.aux1)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.aux1}
+                  onChange={(e) => updateVirtualRC('aux1', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
+              </div>
+              {/* AUX2 */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  AUX2 <span className="text-zinc-600">{normalizedToPWM(virtualRC.aux2)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.aux2}
+                  onChange={(e) => updateVirtualRC('aux2', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
+              </div>
+              {/* AUX3 */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  AUX3 <span className="text-zinc-600">{normalizedToPWM(virtualRC.aux3)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.aux3}
+                  onChange={(e) => updateVirtualRC('aux3', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
+              </div>
+              {/* AUX4 (ARM) - highlighted */}
+              <div>
+                <label className="block text-xs text-amber-400 font-medium mb-1">
+                  AUX4 (ARM) <span className="text-amber-500">{normalizedToPWM(virtualRC.aux4)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={virtualRC.aux4}
+                  onChange={(e) => updateVirtualRC('aux4', parseFloat(e.target.value))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Quick ARM button */}
+            <div className="mt-3 pt-3 border-t border-zinc-800">
+              <button
+                onClick={() => {
+                  // Set AUX4 to high (1900 PWM = 0.8 normalized)
+                  // Also set throttle to minimum for safety
+                  updateVirtualRC('throttle', -1);
+                  updateVirtualRC('aux4', 0.8);
+                }}
+                className="w-full py-2 text-sm font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
+              >
+                Set ARM (AUX4 High + Throttle Low)
+              </button>
+            </div>
+
+            {/* GPS MSP Sender toggle - for gps_provider=MSP */}
+            <div className="mt-3 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-medium text-zinc-300">GPS MSP Sender</div>
+                  <div className="text-xs text-zinc-500">
+                    Send FlightGear position via MSP (set <code className="px-1 bg-zinc-800 rounded">gps_provider = MSP</code>)
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (gpsSenderEnabled) {
+                      await window.electronAPI.mspStopGpsSender();
+                      setGpsSenderEnabled(false);
+                    } else {
+                      await window.electronAPI.mspStartGpsSender();
+                      setGpsSenderEnabled(true);
+                    }
+                  }}
+                  disabled={!connectionState.isConnected}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${
+                    gpsSenderEnabled ? 'bg-green-500' : 'bg-zinc-700'
+                  } ${!connectionState.isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      gpsSenderEnabled ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Connection hint */}
         {isRunning && !connectionState.isConnected && (

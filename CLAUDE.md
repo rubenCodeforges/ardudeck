@@ -1,7 +1,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 # ArduDeck - Mission Planner Modernization Project
-
+# ALWAYS PRIOTERIZE UI/UX !!! NEVER BUILD PROTOTYPES , HACKS , ETC. USER FLOW IS PRIO NUMBER ONE AT ALL TIME !!!!
 Modernizing ArduPilot's Mission Planner ground control station from legacy C#/.NET WinForms to a cross-platform solution using Electron (desktop) and Flutter (mobile).
 
 ## Project Structure

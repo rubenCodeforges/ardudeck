@@ -274,8 +274,17 @@ class ProtocolBridge {
     const datarefPath = buffer.toString('ascii', 13, 413).replace(/\0+$/, ''); // Null-terminated string
 
     this.rrefPacketsReceived++;
-    if (this.rrefPacketsReceived <= 30) {
-      console.log(`[Bridge] RREF registration #${this.rrefPacketsReceived}: freq=${freq}Hz, index=${index}, dref="${datarefPath}"`);
+
+    // Log all GPS-related datarefs and first 30 registrations
+    const isGpsRelated = datarefPath.includes('latitude') ||
+                         datarefPath.includes('longitude') ||
+                         datarefPath.includes('elevation') ||
+                         datarefPath.includes('groundspeed') ||
+                         datarefPath.includes('hpath');
+
+    if (this.rrefPacketsReceived <= 30 || isGpsRelated) {
+      const gpsTag = isGpsRelated ? ' [GPS]' : '';
+      console.log(`[Bridge] RREF registration #${this.rrefPacketsReceived}: freq=${freq}Hz, index=${index}, dref="${datarefPath}"${gpsTag}`);
     }
 
     // Store the registration
@@ -356,13 +365,21 @@ class ProtocolBridge {
       'sim/flightmodel/position/local_vy': data.vBody * 0.3048,
       'sim/flightmodel/position/local_vz': data.wBody * 0.3048,
 
-      // Accelerations (g to m/s²)
-      'sim/flightmodel/forces/g_axil': data.accelX * 9.81,
-      'sim/flightmodel/forces/g_side': data.accelY * 9.81,
-      'sim/flightmodel/forces/g_nrml': data.accelZ * 9.81,
+      // Accelerations in g units (X-Plane expects g, not m/s²!)
+      // Note: Z-axis sign flipped - iNav expects positive for "up" (lift),
+      // but FlightGear sends negative for upward acceleration
+      'sim/flightmodel/forces/g_axil': data.accelX,
+      'sim/flightmodel/forces/g_side': data.accelY,
+      'sim/flightmodel/forces/g_nrml': -data.accelZ,
 
       // Flight path
       'sim/flightmodel/position/hpath': data.heading, // horizontal flight path (same as heading for now)
+
+      // GPS status (fake GPS based on position data we have)
+      'sim/cockpit/radios/gps_has_fix': 1, // Tell SITL we have GPS fix
+      'sim/cockpit2/radios/indicators/gps_num_sats': 12, // Fake satellite count
+      'sim/cockpit/radios/gps_dme_dist_m': 0, // No DME distance
+      'sim/cockpit2/radios/indicators/gps_bearing_deg_mag': data.heading,
 
       // Environment
       'sim/weather/temperature_ambient_c': data.temperature,
@@ -372,17 +389,20 @@ class ProtocolBridge {
       // Simulation time
       'sim/time/total_running_time_sec': data.simTime,
 
-      // Joystick/RC inputs (SITL needs these for control)
-      // Values: -1.0 to 1.0 for axes, 0 or 1 for has_joystick
+      // Joystick/RC inputs - iNav SITL X-Plane interface
+      // iNav SITL requests specific indices - provide all commonly requested ones
+      // Values: -1.0 to 1.0 for axes
       'sim/joystick/has_joystick': 1, // Tell SITL a joystick is connected
-      'sim/joystick/joy_mapped_axis_value[1]': 0,   // Roll (centered)
-      'sim/joystick/joy_mapped_axis_value[2]': 0,   // Pitch (centered)
-      'sim/joystick/joy_mapped_axis_value[3]': 0,   // Yaw (centered)
-      'sim/joystick/joy_mapped_axis_value[57]': -1, // Throttle (minimum for safety)
-      'sim/joystick/joy_mapped_axis_value[58]': 0,  // Aux channel
-      'sim/joystick/joy_mapped_axis_value[59]': 0,  // Aux channel
-      'sim/joystick/joy_mapped_axis_value[60]': 0,  // Aux channel
-      'sim/joystick/joy_mapped_axis_value[61]': 0,  // Aux channel
+      // Standard axes (indices 1-3)
+      'sim/joystick/joy_mapped_axis_value[1]': virtualRCState.pitch,
+      'sim/joystick/joy_mapped_axis_value[2]': virtualRCState.yaw,
+      'sim/joystick/joy_mapped_axis_value[3]': virtualRCState.throttle,
+      // iNav requests indices 57-61 for AUX channels
+      'sim/joystick/joy_mapped_axis_value[57]': virtualRCState.roll,
+      'sim/joystick/joy_mapped_axis_value[58]': virtualRCState.aux1,
+      'sim/joystick/joy_mapped_axis_value[59]': virtualRCState.aux2,
+      'sim/joystick/joy_mapped_axis_value[60]': virtualRCState.aux3,
+      'sim/joystick/joy_mapped_axis_value[61]': virtualRCState.aux4,
     };
 
     return mapping[dataref] ?? null;
@@ -420,8 +440,22 @@ class ProtocolBridge {
         console.log(`[Bridge]   index=${index}, dref="${dref}", value=${value}`);
       }
     }
-    if (this.packetsSent % 60 === 0) {
-      console.log(`[Bridge] Sending RREF packet #${this.packetsSent} with ${values.length} values`);
+    // Log GPS values every 300 packets (~30 seconds at 10Hz) for debugging
+    if (this.packetsSent % 300 === 0) {
+      const gpsValues = values.filter(({ index }) => {
+        const dref = this.registeredDrefs.get(index);
+        return dref && (dref.includes('latitude') || dref.includes('longitude') ||
+                       dref.includes('elevation') || dref.includes('groundspeed') || dref.includes('hpath'));
+      });
+      if (gpsValues.length > 0) {
+        console.log(`[Bridge] GPS values (packet ${this.packetsSent}):`);
+        for (const { index, value } of gpsValues) {
+          const dref = this.registeredDrefs.get(index);
+          console.log(`[Bridge]   ${dref}: ${value}`);
+        }
+      } else {
+        console.log(`[Bridge] WARNING: No GPS datarefs registered! GPS will not work.`);
+      }
     }
 
     if (values.length === 0) return;
@@ -484,6 +518,72 @@ class ProtocolBridge {
   isSitlConnected(): boolean {
     return this.sitlAddress !== null;
   }
+}
+
+// =============================================================================
+// Virtual RC State
+// =============================================================================
+
+/**
+ * Virtual RC channel values for SITL testing.
+ * Values are -1.0 to +1.0 (maps to 1000-2000 PWM)
+ * -1 = 1000 PWM, 0 = 1500 PWM, +1 = 2000 PWM
+ */
+export interface VirtualRCState {
+  roll: number;      // -1 to +1
+  pitch: number;     // -1 to +1
+  yaw: number;       // -1 to +1
+  throttle: number;  // -1 to +1 (but typically 0-1 for safety)
+  aux1: number;      // -1 to +1
+  aux2: number;      // -1 to +1
+  aux3: number;      // -1 to +1
+  aux4: number;      // -1 to +1 (ARM switch is typically here)
+}
+
+// Default RC state (all centered except throttle at minimum)
+const defaultRCState: VirtualRCState = {
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
+  throttle: -1,  // Minimum for safety
+  aux1: 0,
+  aux2: 0,
+  aux3: 0,
+  aux4: 0,
+};
+
+// Global virtual RC state
+let virtualRCState: VirtualRCState = { ...defaultRCState };
+
+/**
+ * Set virtual RC channel values
+ * These will be sent to SITL via the bridge's joystick dataref mappings
+ */
+export function setVirtualRC(state: Partial<VirtualRCState>): void {
+  virtualRCState = { ...virtualRCState, ...state };
+  console.log('[Bridge] Virtual RC updated:', virtualRCState);
+}
+
+/**
+ * Get current virtual RC state
+ */
+export function getVirtualRC(): VirtualRCState {
+  return { ...virtualRCState };
+}
+
+/**
+ * Reset virtual RC to defaults
+ */
+export function resetVirtualRC(): void {
+  virtualRCState = { ...defaultRCState };
+  console.log('[Bridge] Virtual RC reset to defaults');
+}
+
+/**
+ * Convert normalized value (-1 to +1) to PWM (1000-2000)
+ */
+export function normalizedToPWM(value: number): number {
+  return Math.round(1500 + (value * 500));
 }
 
 // Singleton instance

@@ -123,6 +123,8 @@ export const IPC_CHANNELS = {
   MSP_TELEMETRY_UPDATE: 'msp:telemetry-update',
   MSP_START_TELEMETRY: 'msp:start-telemetry',
   MSP_STOP_TELEMETRY: 'msp:stop-telemetry',
+  MSP_START_GPS_SENDER: 'msp:start-gps-sender',
+  MSP_STOP_GPS_SENDER: 'msp:stop-gps-sender',
 
   // MSP Configuration
   MSP_GET_STATUS: 'msp:get-status',
@@ -208,6 +210,7 @@ export const IPC_CHANNELS = {
   CLI_DATA_RECEIVED: 'cli:data-received',
   CLI_GET_DUMP: 'cli:get-dump',
   CLI_SAVE_OUTPUT: 'cli:save-output',
+  CLI_SAVE_OUTPUT_JSON: 'cli:save-output-json',
 
   // Driver utilities
   DRIVER_OPEN_BUNDLED: 'driver:open-bundled',
@@ -230,6 +233,11 @@ export const IPC_CHANNELS = {
   BRIDGE_START: 'bridge:start',
   BRIDGE_STOP: 'bridge:stop',
   BRIDGE_STATUS: 'bridge:status',
+
+  // Virtual RC Control (for SITL testing)
+  VIRTUAL_RC_SET: 'virtual-rc:set',
+  VIRTUAL_RC_GET: 'virtual-rc:get',
+  VIRTUAL_RC_RESET: 'virtual-rc:reset',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -607,4 +615,20 @@ export interface SitlStatus {
 export interface SitlExitData {
   code: number | null;
   signal: string | null;
+}
+
+/**
+ * Virtual RC channel values for SITL testing.
+ * Values are -1.0 to +1.0 (maps to 1000-2000 PWM)
+ * -1 = 1000 PWM, 0 = 1500 PWM, +1 = 2000 PWM
+ */
+export interface VirtualRCState {
+  roll: number;      // -1 to +1
+  pitch: number;     // -1 to +1
+  yaw: number;       // -1 to +1
+  throttle: number;  // -1 to +1 (but typically 0-1 for safety)
+  aux1: number;      // -1 to +1
+  aux2: number;      // -1 to +1
+  aux3: number;      // -1 to +1
+  aux4: number;      // -1 to +1 (ARM switch is typically here)
 }

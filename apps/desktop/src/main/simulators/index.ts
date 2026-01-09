@@ -23,5 +23,10 @@ export {
 
 export {
   protocolBridge,
+  setVirtualRC,
+  getVirtualRC,
+  resetVirtualRC,
+  normalizedToPWM,
   type BridgeConfig,
+  type VirtualRCState,
 } from './protocol-bridge';

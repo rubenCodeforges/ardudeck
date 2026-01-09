@@ -5,7 +5,7 @@
  */
 
 import { MSP } from '../core/constants.js';
-import { PayloadReader } from '../core/msp-serializer.js';
+import { PayloadReader, PayloadBuilder } from '../core/msp-serializer.js';
 import type {
   MSPMessageInfo,
   MSPStatus,
@@ -317,6 +317,113 @@ export function deserializeRawGps(payload: Uint8Array): MSPRawGps {
 }
 
 /**
+ * GPS data for MSP_SET_RAW_GPS
+ */
+export interface MSPSetRawGpsData {
+  fixType: number;      // 0=no fix, 2=2D, 3=3D
+  numSat: number;       // Number of satellites
+  lat: number;          // Decimal degrees (will be converted to 1/10000000)
+  lon: number;          // Decimal degrees (will be converted to 1/10000000)
+  alt: number;          // Meters
+  groundSpeed: number;  // m/s (will be converted to cm/s)
+  groundCourse: number; // Degrees (will be converted to 0.1 degrees)
+  hdop?: number;        // HDOP * 100 (optional)
+}
+
+/**
+ * Serialize GPS data for MSP_SET_RAW_GPS (201)
+ *
+ * Used to inject GPS data into flight controller (e.g., for SITL with gps_provider=MSP)
+ */
+export function serializeSetRawGps(data: MSPSetRawGpsData): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  // Convert to MSP format
+  const lat = Math.round(data.lat * 10000000);   // Decimal degrees to 1/10000000
+  const lon = Math.round(data.lon * 10000000);   // Decimal degrees to 1/10000000
+  const alt = Math.round(data.alt);              // Meters (s16)
+  const groundSpeed = Math.round(data.groundSpeed * 100);  // m/s to cm/s
+  const groundCourse = Math.round(data.groundCourse * 10); // degrees to 0.1 degrees
+  const hdop = data.hdop ?? 100;                 // Default HDOP = 1.0
+
+  builder
+    .writeU8(data.fixType)
+    .writeU8(data.numSat)
+    .writeS32(lat)
+    .writeS32(lon)
+    .writeS16(alt)
+    .writeU16(groundSpeed)
+    .writeU16(groundCourse)
+    .writeU16(hdop);
+
+  return builder.build();
+}
+
+/**
+ * GPS data for MSP2_SENSOR_GPS (0x1F03)
+ * This is the format iNav expects for gps_provider = MSP
+ */
+export interface MSP2SensorGpsData {
+  instance?: number;     // GPS instance (0 = primary)
+  fixType: number;       // 0=no fix, 2=2D, 3=3D
+  numSat: number;        // Number of satellites
+  lat: number;           // Decimal degrees
+  lon: number;           // Decimal degrees
+  alt: number;           // Meters
+  groundSpeed: number;   // m/s
+  groundCourse: number;  // Degrees
+  velN?: number;         // North velocity m/s
+  velE?: number;         // East velocity m/s
+  velD?: number;         // Down velocity m/s
+  hdop?: number;         // HDOP (actual value, not *100)
+  vdop?: number;         // VDOP
+  hAcc?: number;         // Horizontal accuracy cm
+  vAcc?: number;         // Vertical accuracy cm
+}
+
+/**
+ * Serialize GPS data for MSP2_SENSOR_GPS (0x1F03)
+ *
+ * Used to inject GPS data into iNav with gps_provider=MSP
+ */
+export function serializeMsp2SensorGps(data: MSP2SensorGpsData): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  // Calculate GPS time (approximate - just use millis since start)
+  const now = Date.now();
+  const gpsWeek = Math.floor(now / (7 * 24 * 3600 * 1000)) % 65535;
+  const msTOW = now % (7 * 24 * 3600 * 1000);
+
+  // Convert to MSP format
+  const lat = Math.round(data.lat * 10000000);   // 1e-7 degrees
+  const lon = Math.round(data.lon * 10000000);   // 1e-7 degrees
+  const altCm = Math.round(data.alt * 100);      // cm
+  const groundSpeed = Math.round(data.groundSpeed * 100);  // cm/s
+  const groundCourse = Math.round(data.groundCourse * 100); // 0.01 degrees
+
+  builder
+    .writeU8(data.instance ?? 0)         // GPS instance
+    .writeU16(gpsWeek)                   // GPS week
+    .writeU32(msTOW)                     // Time of week (ms)
+    .writeU8(data.fixType)               // Fix type
+    .writeU8(data.numSat)                // Number of satellites
+    .writeS32(lon)                       // Longitude (note: lon before lat in MSP2)
+    .writeS32(lat)                       // Latitude
+    .writeS32(altCm)                     // Altitude in cm
+    .writeU16(data.hAcc ?? 100)          // Horizontal accuracy cm
+    .writeU16(data.vAcc ?? 150)          // Vertical accuracy cm
+    .writeS16(Math.round((data.velN ?? 0) * 100))  // North velocity cm/s
+    .writeS16(Math.round((data.velE ?? 0) * 100))  // East velocity cm/s
+    .writeS16(Math.round((data.velD ?? 0) * 100))  // Down velocity cm/s
+    .writeU16(groundSpeed)               // Ground speed cm/s
+    .writeS16(groundCourse)              // Ground course 0.01 deg
+    .writeU16(Math.round((data.hdop ?? 1.0) * 100))  // HDOP * 100
+    .writeU16(Math.round((data.vdop ?? 1.5) * 100)); // VDOP * 100
+
+  return builder.build();
+}
+
+/**
  * Deserialize MSP_COMP_GPS response
  *
  * Returns computed GPS values:
@@ -463,35 +570,35 @@ const BETAFLIGHT_ARMING_FLAGS: Record<number, string> = {
 
 /**
  * Arming disabled flags for iNav
- * These start at bit 6 (bits 0-5 are used for ARMED, WAS_EVER_ARMED, etc.)
- * Source: inav-configurator/js/gui.js
+ * Source: iNav armingFlags.h - bit positions match (1 << n)
  */
 const INAV_ARMING_FLAGS: Record<number, string> = {
-  6: 'Geozone',
-  7: 'Failsafe System',
-  8: 'Not Level',
-  9: 'Sensors Calibrating',
-  10: 'System Overloaded',
-  11: 'Navigation Unsafe',
-  12: 'Compass Not Calibrated',
-  13: 'Accelerometer Not Calibrated',
-  14: 'Arm Switch',
-  15: 'Hardware Failure',
-  16: 'Box Failsafe',
-  // 17 is BOXKILLSWITCH (commented out in iNav)
-  18: 'RC Link',
-  19: 'Throttle',
-  20: 'CLI',
-  21: 'CMS Menu',
-  22: 'OSD Menu',
-  23: 'Roll/Pitch Not Centered',
-  24: 'Servo Autotrim',
-  25: 'Out of Memory',
-  26: 'Invalid Setting',
-  27: 'PWM Output Error',
-  28: 'No Prearm',
-  29: 'DShot Beeper',
-  30: 'Landing Detected',
+  0: 'No Gyro',
+  1: 'Failsafe System',
+  2: 'Not Level',
+  3: 'Sensors Calibrating',
+  4: 'System Overloaded',
+  5: 'Navigation Unsafe',
+  6: 'Compass Not Calibrated',
+  7: 'Accelerometer Not Calibrated',
+  8: 'Arm Switch',
+  9: 'Hardware Failure',
+  10: 'Box Failsafe',
+  11: 'Box Kill Switch',
+  12: 'RC Link',
+  13: 'Throttle',
+  14: 'CLI',
+  15: 'CMS Menu',
+  16: 'OSD Menu',
+  17: 'Roll/Pitch Not Centered',
+  18: 'Servo Autotrim',
+  19: 'Out of Memory',
+  20: 'Invalid Setting',
+  21: 'PWM Output Error',
+  22: 'No Prearm',
+  23: 'DShot Beeper',
+  24: 'Landing Detected',
+  25: 'Geozone',
 };
 
 /**
