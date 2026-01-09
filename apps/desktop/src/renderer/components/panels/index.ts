@@ -6,6 +6,7 @@ export { GpsPanel } from './GpsPanel';
 export { PositionPanel } from './PositionPanel';
 export { VelocityPanel } from './VelocityPanel';
 export { FlightModePanel } from './FlightModePanel';
+export { FlightControlPanel } from './FlightControlPanel';
 export { MapPanel } from './MapPanel';
 
 // Re-export mission panels for use in telemetry dashboard
@@ -24,6 +25,7 @@ export const PANEL_COMPONENTS = {
   position: { component: 'PositionPanel', title: 'Position' },
   velocity: { component: 'VelocityPanel', title: 'Velocity' },
   flightMode: { component: 'FlightModePanel', title: 'Flight Mode' },
+  flightControl: { component: 'FlightControlPanel', title: 'Flight Control' },
   map: { component: 'MapPanel', title: 'Map' },
   // Mission panels (for monitoring during flight)
   missionMap: { component: 'MissionMapPanel', title: 'Mission Map' },

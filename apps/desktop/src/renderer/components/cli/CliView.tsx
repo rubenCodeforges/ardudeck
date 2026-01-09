@@ -28,17 +28,22 @@ export default function CliView() {
 
   // Exit CLI mode when navigating away from this view
   // This prevents the board from staying in CLI mode which breaks MSP commands
+  // NOTE: This is the ONLY cleanup for CLI mode - CliTerminal does NOT have cleanup
+  // to avoid race conditions that cause disconnections.
   useEffect(() => {
     return () => {
-      // Only exit if we're actually in CLI mode and connected
-      if (isCliMode && connectionState.isConnected) {
+      // Use getState() to get current values, not stale closure values
+      const cliState = useCliStore.getState();
+      const connState = useConnectionStore.getState();
+
+      if (cliState.isCliMode && connState.connectionState.isConnected) {
         console.log('[CLI View] Navigating away, exiting CLI mode...');
-        exitCliMode().catch((err) => {
+        cliState.exitCliMode().catch((err) => {
           console.error('[CLI View] Failed to exit CLI mode on navigation:', err);
         });
       }
     };
-  }, [isCliMode, connectionState.isConnected, exitCliMode]);
+  }, []); // Empty deps - cleanup always uses getState() for current values
 
   const handleSaveOutput = async () => {
     if (!output) return;

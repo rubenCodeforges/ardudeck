@@ -134,54 +134,134 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 ## Screenshots
 
 <p align="center">
-  <a href="docs/screenshots/dashboard_screeen_layout_Mission_Telemetery.png?raw=true">
-    <img src="docs/screenshots/dashboard_screeen_layout_Mission_Telemetery.png" alt="Mission + Telemetry" width="800"/>
+  <a href="docs/screenshots/mission_planning.png?raw=true">
+    <img src="docs/screenshots/mission_planning.png" alt="Mission Planning" width="800"/>
   </a>
   <br/>
-  <em>Mission planning with live telemetry - the complete picture</em>
+  <em>Mission planning with terrain-aware altitude profile and automatic elevation data</em>
 </p>
 
 <table>
   <tr>
     <td align="center">
-      <a href="docs/screenshots/dashboard_screeen_layout_default.png?raw=true">
-        <img src="docs/screenshots/dashboard_screeen_layout_default.png" alt="Telemetry Dashboard" width="400"/>
+      <a href="docs/screenshots/mission_telemetry_layout.png?raw=true">
+        <img src="docs/screenshots/mission_telemetry_layout.png" alt="Mission + Telemetry" width="400"/>
+      </a>
+      <br/><em>Mission + Telemetry Layout</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/telemetry_dashboard.png?raw=true">
+        <img src="docs/screenshots/telemetry_dashboard.png" alt="Telemetry Dashboard" width="400"/>
       </a>
       <br/><em>Telemetry Dashboard</em>
     </td>
+  </tr>
+  <tr>
     <td align="center">
-      <a href="docs/screenshots/mission_planner_screen.png?raw=true">
-        <img src="docs/screenshots/mission_planner_screen.png" alt="Mission Planning" width="400"/>
+      <a href="docs/screenshots/firmware_flash.png?raw=true">
+        <img src="docs/screenshots/firmware_flash.png" alt="Firmware Flash" width="400"/>
       </a>
-      <br/><em>Mission Planning</em>
+      <br/><em>Firmware Flash</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/settings_vehicle_profiles.png?raw=true">
+        <img src="docs/screenshots/settings_vehicle_profiles.png" alt="Settings & Profiles" width="400"/>
+      </a>
+      <br/><em>Vehicle Profiles & Weather</em>
+    </td>
+  </tr>
+</table>
+
+### Betaflight/iNav Configuration
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/msp_pid_tuning.png?raw=true">
+        <img src="docs/screenshots/msp_pid_tuning.png" alt="PID Tuning" width="400"/>
+      </a>
+      <br/><em>PID Tuning with Quick Presets</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/msp_rates.png?raw=true">
+        <img src="docs/screenshots/msp_rates.png" alt="Rates Configuration" width="400"/>
+      </a>
+      <br/><em>Rates & Expo Configuration</em>
     </td>
   </tr>
   <tr>
+    <td align="center">
+      <a href="docs/screenshots/msp_modes_simple.png?raw=true">
+        <img src="docs/screenshots/msp_modes_simple.png" alt="Flight Modes Simple" width="400"/>
+      </a>
+      <br/><em>Flight Modes - Simple View</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/msp_modes_wizard.png?raw=true">
+        <img src="docs/screenshots/msp_modes_wizard.png" alt="Modes Setup Wizard" width="400"/>
+      </a>
+      <br/><em>Modes Setup Wizard</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/msp_modes_advanced.png?raw=true">
+        <img src="docs/screenshots/msp_modes_advanced.png" alt="Flight Modes Advanced" width="400"/>
+      </a>
+      <br/><em>Flight Modes - Advanced View</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/msp_servo_tuning.png?raw=true">
+        <img src="docs/screenshots/msp_servo_tuning.png" alt="Servo Tuning" width="400"/>
+      </a>
+      <br/><em>Servo Tuning for Fixed Wing</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/msp_safety_failsafe.png?raw=true">
+        <img src="docs/screenshots/msp_safety_failsafe.png" alt="Safety & Failsafe" width="400"/>
+      </a>
+      <br/><em>Safety & Failsafe Configuration</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/msp_sensors.png?raw=true">
+        <img src="docs/screenshots/msp_sensors.png" alt="Sensors Status" width="400"/>
+      </a>
+      <br/><em>Sensors & Live Telemetry</em>
+    </td>
+  </tr>
+</table>
+
+### Additional Features
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/osd_simulator_demo.png?raw=true">
+        <img src="docs/screenshots/osd_simulator_demo.png" alt="OSD Simulator" width="400"/>
+      </a>
+      <br/><em>OSD Simulator - Demo Mode</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/cli_terminal.png?raw=true">
+        <img src="docs/screenshots/cli_terminal.png" alt="CLI Terminal" width="400"/>
+      </a>
+      <br/><em>CLI Terminal with Autocomplete</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/sitl_simulator.png?raw=true">
+        <img src="docs/screenshots/sitl_simulator.png" alt="SITL Simulator" width="400"/>
+      </a>
+      <br/><em>SITL Simulator with FlightGear</em>
+    </td>
     <td align="center">
       <a href="docs/screenshots/params_screen.png?raw=true">
         <img src="docs/screenshots/params_screen.png" alt="Parameter Management" width="400"/>
       </a>
       <br/><em>Parameter Management</em>
-    </td>
-    <td align="center">
-      <a href="docs/screenshots/settings_screen.png?raw=true">
-        <img src="docs/screenshots/settings_screen.png" alt="Settings" width="400"/>
-      </a>
-      <br/><em>Settings & Profiles</em>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="docs/screenshots/welcome_screen_not_connected.png?raw=true">
-        <img src="docs/screenshots/welcome_screen_not_connected.png" alt="Welcome Screen" width="400"/>
-      </a>
-      <br/><em>Connection Screen</em>
-    </td>
-    <td align="center">
-      <a href="docs/screenshots/dashboard_screeen_layout_1.png?raw=true">
-        <img src="docs/screenshots/dashboard_screeen_layout_1.png" alt="Custom Layout" width="400"/>
-      </a>
-      <br/><em>Custom Layout</em>
     </td>
   </tr>
 </table>

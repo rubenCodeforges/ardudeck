@@ -311,6 +311,51 @@ async function exitCliMode(): Promise<boolean> {
 }
 
 /**
+ * Exit CLI mode silently - for programmatic dumps
+ * Does NOT trigger the onCliModeChange callback to avoid race conditions
+ * with telemetry restart. The caller is responsible for any timing.
+ */
+async function exitCliModeSilent(): Promise<boolean> {
+  if (!currentTransport?.isOpen) {
+    cliModeActive = false;
+    // NO callback - silent exit
+    return true;
+  }
+
+  if (!cliModeActive) {
+    return true;
+  }
+
+  try {
+    // Send 'exit' command
+    await currentTransport.write(new TextEncoder().encode('exit\n'));
+
+    // Wait longer for FC to fully exit CLI mode
+    await delay(1000);
+
+    // Remove data listener
+    if (cliDataListener && currentTransport) {
+      currentTransport.off('data', cliDataListener);
+      cliDataListener = null;
+    }
+
+    cliModeActive = false;
+    // NO callback - telemetry will restart naturally or caller handles it
+
+    console.log('[CLI] Silent exit complete');
+    return true;
+  } catch {
+    // Force cleanup on error
+    if (cliDataListener && currentTransport) {
+      currentTransport.off('data', cliDataListener);
+      cliDataListener = null;
+    }
+    cliModeActive = false;
+    return false;
+  }
+}
+
+/**
  * Send a command to the CLI
  * Command should NOT include trailing newline - we add it
  */
@@ -437,6 +482,13 @@ async function getCliDump(): Promise<string> {
       currentTransport.on('data', cliDataListener);
     }
 
+    // Exit CLI mode if we entered it for this dump
+    // Use silent exit - don't trigger telemetry restart callback (causes race condition)
+    if (!wasInCliMode) {
+      console.log('[CLI] getCliDump: exiting CLI mode silently...');
+      await exitCliModeSilent();
+    }
+
     // NOTE: We intentionally do NOT send dump output to terminal here.
     // This is a programmatic dump (for legacy config / autocomplete).
     // If user types 'dump' manually in CLI, it goes through normal flow.
@@ -445,6 +497,14 @@ async function getCliDump(): Promise<string> {
     return dumpOutput;
   } catch (err) {
     console.error('[CLI] Failed to get dump:', err);
+    // Make sure to exit CLI mode on error too
+    if (!wasInCliMode && cliModeActive) {
+      try {
+        await exitCliMode();
+      } catch {
+        // Ignore exit errors
+      }
+    }
     throw err;
   }
 }

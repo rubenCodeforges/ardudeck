@@ -18,6 +18,7 @@ import ServoTuningTab from './ServoTuningTab';
 import ServoMixerTab from './ServoMixerTab';
 import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
+import SafetyTab from './SafetyTab';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import {
   SlidersHorizontal,
@@ -27,6 +28,7 @@ import {
   Cog,
   Compass,
   Radio,
+  Shield,
   ChevronDown,
   Layers,
   Egg,
@@ -1186,7 +1188,7 @@ function ModesTabContent() {
   );
 }
 
-type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation';
+type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'safety';
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
@@ -1742,6 +1744,19 @@ export function MspConfigView() {
             </button>
           )}
 
+          {/* Safety (Receiver/Failsafe) */}
+          <button
+            onClick={() => setActiveTab('safety')}
+            className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'safety'
+                ? 'bg-gray-800 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+            }`}
+          >
+            <Shield className={`w-4 h-4 ${activeTab === 'safety' ? 'text-red-400' : 'text-red-400 opacity-50'}`} />
+            <span className="text-sm font-medium">Safety</span>
+          </button>
+
           {/* Sensors */}
           <button
             onClick={() => setActiveTab('sensors')}
@@ -1955,6 +1970,11 @@ export function MspConfigView() {
         {/* Navigation Tab (iNav only) */}
         {activeTab === 'navigation' && isInav && (
           <NavigationTab modified={modified} setModified={setPidRatesModified} />
+        )}
+
+        {/* Safety Tab (Receiver/Failsafe) */}
+        {activeTab === 'safety' && (
+          <SafetyTab isInav={isInav} />
         )}
       </div>
     </div>

@@ -22,6 +22,7 @@ import {
   deserializeBoardInfo,
   deserializeApiVersion,
   deserializeStatus,
+  deserializeInavStatus,
   deserializeAttitude,
   deserializeAltitude,
   deserializeAnalog,
@@ -29,6 +30,7 @@ import {
   deserializeMotor,
   deserializeRawGps,
   isArmed,
+  getArmingDisabledReasons,
   attitudeToDegrees,
   altitudeToMeters,
   gpsToDecimalDegrees,
@@ -85,6 +87,9 @@ import {
   serializeNavConfig,
   deserializeGpsConfig,
   serializeGpsConfig,
+  // Failsafe Config
+  deserializeFailsafeConfig,
+  serializeFailsafeConfig,
   type MSPPid,
   type MSPRcTuning,
   type MSPModeRange,
@@ -93,6 +98,7 @@ import {
   type MSPNavConfig,
   type MSPGpsConfig,
   type MSPInavMixerConfig,
+  type MSPFailsafeConfig,
 } from '@ardudeck/msp-ts';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import { initCliHandlers, setCliTransport, setCliModeChangeCallback, cleanupCli, isCliModeActive, exitCliModeIfActive } from '../cli/cli-handlers.js';
@@ -238,7 +244,7 @@ async function sendMspRequest(command: number, timeout: number = 1000): Promise<
 
   // CRITICAL: Block ALL MSP requests while in CLI mode
   // CLI mode is raw serial - sending MSP packets will corrupt the CLI session
-  if (servoCliModeActive) {
+  if (servoCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -268,7 +274,7 @@ async function sendMspRequestWithPayload(command: number, payload: Uint8Array, t
   }
 
   // CRITICAL: Block ALL MSP requests while in CLI mode
-  if (servoCliModeActive) {
+  if (servoCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -301,7 +307,7 @@ async function sendMspV2Request(command: number, timeout: number = 1000): Promis
   }
 
   // CRITICAL: Block ALL MSP requests while in CLI mode
-  if (servoCliModeActive) {
+  if (servoCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -331,7 +337,7 @@ async function sendMspV2RequestWithPayload(command: number, payload: Uint8Array,
   }
 
   // CRITICAL: Block ALL MSP requests while in CLI mode
-  if (servoCliModeActive) {
+  if (servoCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -518,8 +524,8 @@ export function startMspTelemetry(rateHz: number = 10): void {
       return;
     }
 
-    // Skip telemetry polling while CLI mode is active (servo/tuning CLI operations)
-    if (servoCliModeActive || tuningCliModeActive) {
+    // Skip telemetry polling while CLI mode is active (servo/tuning CLI operations OR main CLI terminal)
+    if (servoCliModeActive || tuningCliModeActive || isCliModeActive()) {
       return;
     }
 
@@ -539,11 +545,16 @@ export function startMspTelemetry(rateHz: number = 10): void {
       // BSOD FIX: Add 10ms delay between commands to prevent burst traffic
       const interCommandDelay = () => new Promise(r => setTimeout(r, 10));
 
+      // Store values across requests for combined telemetry
+      let headingDeg = 0;
+      let groundSpeedMs = 0;
+
       // Get attitude
       try {
         const attitudePayload = await sendMspRequest(MSP.ATTITUDE, 300);
         const attitude = deserializeAttitude(attitudePayload);
         const degrees = attitudeToDegrees(attitude);
+        headingDeg = degrees.yawDeg; // Save heading for vfrHud
         safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
           type: 'attitude',
           data: {
@@ -559,7 +570,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
       await interCommandDelay();
 
-      // Get altitude
+      // Get altitude + send vfrHud with heading from attitude
       try {
         const altitudePayload = await sendMspRequest(MSP.ALTITUDE, 300);
         const altitude = deserializeAltitude(altitudePayload);
@@ -568,8 +579,8 @@ export function startMspTelemetry(rateHz: number = 10): void {
           type: 'vfrHud',
           data: {
             airspeed: 0,
-            groundspeed: 0,
-            heading: 0,
+            groundspeed: groundSpeedMs,
+            heading: headingDeg, // Use yaw from attitude as heading
             throttle: 0,
             alt: meters.altitudeM,
             climb: meters.varioMs,
@@ -596,10 +607,31 @@ export function startMspTelemetry(rateHz: number = 10): void {
       await interCommandDelay();
 
       // Get status for armed state
+      // iNav uses MSPV2_INAV_STATUS (0x2000), Betaflight uses MSP_STATUS_EX (150)
       try {
-        const statusPayload = await sendMspRequest(MSP.STATUS, 300);
-        const status = deserializeStatus(statusPayload);
+        let status;
+        const fcVariant = isInavFirmware ? 'INAV' : 'BTFL';
+
+        if (isInavFirmware) {
+          // Use iNav-specific status command (MSP2)
+          const statusPayload = await sendMspV2Request(MSP2.INAV_STATUS, 300);
+          status = deserializeInavStatus(statusPayload);
+        } else {
+          // Use Betaflight/legacy status command
+          const statusPayload = await sendMspRequest(MSP.STATUS_EX, 300);
+          status = deserializeStatus(statusPayload);
+        }
+
         const armed = isArmed(status.flightModeFlags);
+        const armingDisabledReasons = status.armingDisableFlags
+          ? getArmingDisabledReasons(status.armingDisableFlags, fcVariant)
+          : [];
+
+        // Log arming issues if not armed
+        if (!armed) {
+          console.log(`[MSP] Arming status: armed=${armed}, flags=0x${status.armingDisableFlags?.toString(16) ?? '0'}, fcVariant=${fcVariant}, reasons=[${armingDisabledReasons.join(', ')}]`);
+        }
+
         safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
           type: 'flight',
           data: {
@@ -607,6 +639,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
             modeNum: status.flightModeFlags,
             armed: armed,
             isFlying: armed,
+            armingDisabledReasons: armingDisabledReasons,
           },
         });
       } catch { /* ignore */ }
@@ -619,12 +652,15 @@ export function startMspTelemetry(rateHz: number = 10): void {
         const gps = deserializeRawGps(gpsPayload);
         const decimal = gpsToDecimalDegrees(gps);
 
+        // Update groundspeed for vfrHud (GPS groundspeed is more accurate)
+        groundSpeedMs = decimal.speedMs;
+
         safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
           type: 'gps',
           data: {
             fixType: gps.fixType,
             satellites: gps.numSat,
-            hdop: 0,
+            hdop: gps.hdop / 100, // Convert from 1/100 to actual HDOP
             lat: decimal.latDeg,
             lon: decimal.lonDeg,
             alt: decimal.altM,
@@ -641,6 +677,19 @@ export function startMspTelemetry(rateHz: number = 10): void {
             vx: 0,
             vy: 0,
             vz: 0,
+          },
+        });
+
+        // Send updated vfrHud with GPS groundspeed (more accurate than earlier send)
+        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
+          type: 'vfrHud',
+          data: {
+            airspeed: decimal.speedMs,
+            groundspeed: decimal.speedMs,
+            heading: headingDeg,
+            throttle: 0,
+            alt: decimal.altM,
+            climb: 0,
           },
         });
       } catch { /* ignore */ }
@@ -1861,6 +1910,97 @@ async function getRc(): Promise<{ channels: number[] } | null> {
 }
 
 // =============================================================================
+// RC Control (GCS arm/disarm, mode switching via simulated RC)
+// =============================================================================
+
+/**
+ * Send simulated RC channel values to the flight controller.
+ * This allows GCS to arm/disarm and switch modes by simulating RC input.
+ *
+ * @param channels Array of 8-16 channel values (1000-2000 PWM)
+ * @returns true if command sent successfully
+ *
+ * WARNING: This overrides real RC input! Use with caution.
+ * - Always keep throttle (channel 3) at minimum (1000) when arming
+ * - RC values must be sent continuously (every 100ms) or FC will revert to last RC input
+ */
+async function setRawRc(channels: number[]): Promise<boolean> {
+  // Guard: return false if not connected
+  if (!currentTransport?.isOpen) {
+    console.warn('[MSP] setRawRc: Not connected');
+    return false;
+  }
+
+  // Block if CLI mode active (either servo CLI, tuning CLI, or main CLI)
+  if (servoCliModeActive || tuningCliModeActive || isCliModeActive()) {
+    // Silently skip during CLI ops - this is called at 100ms intervals
+    return false;
+  }
+
+  try {
+    // Validate channel count (8-16 channels)
+    if (channels.length < 8 || channels.length > 16) {
+      console.error('[MSP] setRawRc: Invalid channel count. Expected 8-16, got:', channels.length);
+      return false;
+    }
+
+    // Clamp and validate channel values
+    const validatedChannels = channels.map((ch, i) => {
+      const clamped = Math.max(1000, Math.min(2000, Math.round(ch)));
+      if (ch < 1000 || ch > 2000) {
+        console.warn(`[MSP] setRawRc: Channel ${i} value ${ch} clamped to ${clamped}`);
+      }
+      return clamped;
+    });
+
+    // Build payload: each channel is 2 bytes (uint16 little-endian)
+    const payload = new Uint8Array(validatedChannels.length * 2);
+    const view = new DataView(payload.buffer);
+    validatedChannels.forEach((ch, i) => {
+      view.setUint16(i * 2, ch, true); // true = little-endian
+    });
+
+    // Build and send packet directly (fire-and-forget)
+    // SITL and some firmware don't respond to SET_RAW_RC - that's OK
+    // We send at 100ms intervals so a missed packet is fine
+    const packet = buildMspV1RequestWithPayload(MSP.SET_RAW_RC, payload);
+    await currentTransport.write(packet);
+
+    // Don't log every 100ms - too noisy
+    // console.log('[MSP] setRawRc: Sent', validatedChannels.length, 'channels');
+    return true;
+  } catch (error) {
+    console.error('[MSP] setRawRc failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Get currently active mode boxes as a bitmask.
+ * Each bit represents a mode (0=ARM, 1=ANGLE, 2=HORIZON, etc.)
+ *
+ * @returns Object with boxModes bitmask, or null if failed
+ */
+async function getActiveBoxes(): Promise<{ boxModes: number } | null> {
+  // Guard: return null if not connected
+  if (!currentTransport?.isOpen) return null;
+
+  try {
+    // MSP_ACTIVEBOXES returns currently active boxes as a bitmask
+    const payload = await sendMspRequest(MSP.BOXIDS, 200); // Use BOXIDS to get available boxes
+
+    // The status message contains flightModeFlags which shows active modes
+    const statusPayload = await sendMspRequest(MSP.STATUS, 200);
+    const status = deserializeStatus(statusPayload);
+
+    return { boxModes: status.flightModeFlags };
+  } catch (error) {
+    console.error('[MSP] getActiveBoxes failed:', error);
+    return null;
+  }
+}
+
+// =============================================================================
 // Servo Configuration (iNav)
 // =============================================================================
 
@@ -3019,6 +3159,55 @@ async function setGpsConfigViaCli(config: MSPGpsConfig): Promise<boolean> {
 }
 
 // =============================================================================
+// Failsafe Configuration
+// =============================================================================
+
+/**
+ * Get failsafe configuration via MSP_FAILSAFE_CONFIG (75)
+ */
+async function getFailsafeConfig(): Promise<MSPFailsafeConfig | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.FAILSAFE_CONFIG, 1000);
+      const config = deserializeFailsafeConfig(payload);
+      console.log('[MSP] Failsafe config:', config);
+      return config;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Get failsafe config failed:', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Set failsafe configuration via MSP_SET_FAILSAFE_CONFIG (76)
+ */
+async function setFailsafeConfig(config: MSPFailsafeConfig): Promise<boolean> {
+  if (!currentTransport?.isOpen) {
+    console.log('[MSP] setFailsafeConfig: transport not open');
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeFailsafeConfig(config);
+      console.log(`[MSP] SET_FAILSAFE_CONFIG (76) payload: ${payload.length} bytes`);
+      await sendMspRequestWithPayload(MSP.SET_FAILSAFE_CONFIG, payload, 2000);
+      sendLog('info', 'Failsafe config updated');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] SET_FAILSAFE_CONFIG failed:', msg);
+      sendLog('error', 'Failed to set failsafe config', msg);
+      return false;
+    }
+  });
+}
+
+// =============================================================================
 // MSP Commands
 // =============================================================================
 
@@ -3633,6 +3822,10 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_GPS_CONFIG, async () => getGpsConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_GPS_CONFIG, async (_event, config: MSPGpsConfig) => setGpsConfig(config));
 
+  // Failsafe configuration
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_FAILSAFE_CONFIG, async () => getFailsafeConfig());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_FAILSAFE_CONFIG, async (_event, config: MSPFailsafeConfig) => setFailsafeConfig(config));
+
   // Generic settings API (read/write any CLI setting via MSP)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTING, async (_event, name: string) => getSetting(name));
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTING, async (_event, name: string, value: string | number) => setSetting(name, value));
@@ -3644,6 +3837,10 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_CALIBRATE_ACC, async () => calibrateAcc());
   ipcMain.handle(IPC_CHANNELS.MSP_CALIBRATE_MAG, async () => calibrateMag());
   ipcMain.handle(IPC_CHANNELS.MSP_REBOOT, async () => reboot());
+
+  // RC Control handlers (GCS arm/disarm, mode switching)
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_RAW_RC, async (_event, channels: number[]) => setRawRc(channels));
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_ACTIVE_BOXES, async () => getActiveBoxes());
 
   // Telemetry control handlers
   ipcMain.handle(IPC_CHANNELS.MSP_START_TELEMETRY, async (_event, rateHz?: number) => {
@@ -3701,6 +3898,10 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_GPS_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_GPS_CONFIG);
 
+  // Failsafe config handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_FAILSAFE_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_FAILSAFE_CONFIG);
+
   // Generic settings API
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTING);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SETTING);
@@ -3712,6 +3913,10 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_CALIBRATE_ACC);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_CALIBRATE_MAG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_REBOOT);
+
+  // RC Control handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_RAW_RC);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_ACTIVE_BOXES);
 
   // Telemetry control handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_START_TELEMETRY);

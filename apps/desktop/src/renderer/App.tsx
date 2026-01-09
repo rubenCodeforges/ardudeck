@@ -20,6 +20,7 @@ import { useRallyStore } from './stores/rally-store';
 import { useLegacyConfigStore } from './stores/legacy-config-store';
 import { useCliStore, setupCliDataListener, cleanupCliDataListener } from './stores/cli-store';
 import { initializeSettings, useSettingsStore, type VehicleType } from './stores/settings-store';
+import { useFlightControlStore } from './stores/flight-control-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
 
@@ -206,6 +207,7 @@ function App() {
   } = useRallyStore();
   const { reset: resetLegacyConfig } = useLegacyConfigStore();
   const { reset: resetCli } = useCliStore();
+  const { clearModeMappings: resetFlightControl, stopOverride } = useFlightControlStore();
   const { vehicles, activeVehicleId, updateVehicle } = useSettingsStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -346,10 +348,12 @@ function App() {
         resetRally();
         resetLegacyConfig();
         resetCli();
+        stopOverride();
+        resetFlightControl();
       }
     });
     return unsubscribe;
-  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli]);
+  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl]);
 
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onTelemetryUpdate((update) => {

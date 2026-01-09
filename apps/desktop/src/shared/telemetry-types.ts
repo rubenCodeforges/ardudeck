@@ -50,6 +50,8 @@ export interface FlightState {
   modeNum: number;
   armed: boolean;
   isFlying: boolean;
+  /** Reasons why arming is disabled (from MSP_STATUS_EX) */
+  armingDisabledReasons?: string[];
 }
 
 export interface TelemetryState {

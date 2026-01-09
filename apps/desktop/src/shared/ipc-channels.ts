@@ -173,6 +173,10 @@ export const IPC_CHANNELS = {
   MSP_GET_GPS_CONFIG: 'msp:get-gps-config',
   MSP_SET_GPS_CONFIG: 'msp:set-gps-config',
 
+  // MSP Failsafe Configuration
+  MSP_GET_FAILSAFE_CONFIG: 'msp:get-failsafe-config',
+  MSP_SET_FAILSAFE_CONFIG: 'msp:set-failsafe-config',
+
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   MSP_GET_SETTING: 'msp:get-setting',
   MSP_SET_SETTING: 'msp:set-setting',
@@ -184,6 +188,10 @@ export const IPC_CHANNELS = {
   MSP_CALIBRATE_ACC: 'msp:calibrate-acc',
   MSP_CALIBRATE_MAG: 'msp:calibrate-mag',
   MSP_REBOOT: 'msp:reboot',
+
+  // MSP RC Control (GCS arm/disarm, mode switching)
+  MSP_SET_RAW_RC: 'msp:set-raw-rc',       // Send RC channel values to FC
+  MSP_GET_ACTIVE_BOXES: 'msp:get-active-boxes', // Get active mode boxes (bitmask)
 
   // Reconnection control (for expected reboots)
   RECONNECT_CANCEL: 'reconnect:cancel',

@@ -1,0 +1,526 @@
+/**
+ * Safety Tab - Failsafe and Arming Safety Configuration
+ *
+ * Provides a user-friendly interface for configuring:
+ * - Failsafe behavior (procedure, delays, throttle) via MSP
+ * - Arming safety settings (uses CLI for compatibility - isolated)
+ *
+ * IMPORTANT: Failsafe config uses MSP_FAILSAFE_CONFIG (75/76) to avoid
+ * the disconnect issues that CLI dump caused previously.
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { DraggableSlider } from '../ui/DraggableSlider';
+import { Shield, AlertTriangle, RefreshCw, Lock, Zap, Save, Radio } from 'lucide-react';
+
+// Receiver types - includes SIM for SITL
+const RECEIVER_TYPES = [
+  { value: 'NONE', label: 'None', description: 'No receiver' },
+  { value: 'SERIAL', label: 'Serial', description: 'Serial RX (SBUS, IBUS, CRSF, etc.)' },
+  { value: 'MSP', label: 'MSP', description: 'Control via GCS/MSP' },
+  { value: 'SIM', label: 'SIM (SITL)', description: 'Simulated receiver for SITL testing' },
+];
+
+// Failsafe procedures (matches MSP values)
+// 0=LAND, 1=DROP, 2=RTH, 3=NONE
+const FAILSAFE_PROCEDURES = [
+  { value: 0, label: 'Land', description: 'Attempt to land in place' },
+  { value: 1, label: 'Drop', description: 'Cut motors immediately (dangerous!)' },
+  { value: 2, label: 'RTH', description: 'Return to home position (recommended)' },
+  { value: 3, label: 'None', description: 'Do nothing (keep flying)' },
+];
+
+// Navigation arming safety options (iNav)
+// Note: iNav 9.0+ only supports ON and ALLOW_BYPASS (no OFF option)
+const NAV_ARMING_SAFETY_OPTIONS = [
+  { value: 'ON', label: 'On', description: 'Require GPS fix and safe conditions to arm' },
+  { value: 'ALLOW_BYPASS', label: 'Bypass', description: 'Can bypass safety checks (for SITL/testing)' },
+];
+
+// MSP Failsafe Config structure (matches msp-ts MSPFailsafeConfig)
+interface FailsafeConfig {
+  failsafeDelay: number;              // 0.1s units
+  failsafeOffDelay: number;           // 0.1s units
+  failsafeThrottle: number;           // 1000-2000
+  failsafeKillSwitch: number;         // 0=off, 1=on
+  failsafeThrottleLowDelay: number;   // 0.1s units
+  failsafeProcedure: number;          // 0=LAND, 1=DROP, 2=RTH, 3=NONE
+  failsafeRecoveryDelay: number;      // 0.1s units
+  failsafeFwRollAngle: number;        // 0.1 deg
+  failsafeFwPitchAngle: number;       // 0.1 deg
+  failsafeFwYawRate: number;          // deg/s
+  failsafeStickMotionThreshold: number; // threshold value
+  failsafeMinDistance: number;        // meters
+  failsafeMinDistanceProcedure: number; // 0=LAND, 1=DROP, 2=RTH, 3=NONE
+}
+
+// Arming safety config (separate from MSP, uses CLI)
+interface ArmingSafetyConfig {
+  receiverType: string;         // NONE, SERIAL, MSP, SIM
+  navExtraArmingSafety: string; // ON, ALLOW_BYPASS
+  navGpsMinSats: number;        // Minimum satellites for arming
+}
+
+const DEFAULT_FAILSAFE: FailsafeConfig = {
+  failsafeDelay: 5,
+  failsafeOffDelay: 10,
+  failsafeThrottle: 1000,
+  failsafeKillSwitch: 0,
+  failsafeThrottleLowDelay: 100,
+  failsafeProcedure: 2, // RTH
+  failsafeRecoveryDelay: 5,
+  failsafeFwRollAngle: 0,
+  failsafeFwPitchAngle: 0,
+  failsafeFwYawRate: 0,
+  failsafeStickMotionThreshold: 50,
+  failsafeMinDistance: 0,
+  failsafeMinDistanceProcedure: 0,
+};
+
+const DEFAULT_ARMING_SAFETY: ArmingSafetyConfig = {
+  receiverType: 'SERIAL',
+  navExtraArmingSafety: 'ON',
+  navGpsMinSats: 6,
+};
+
+interface Props {
+  isInav: boolean;
+}
+
+export default function SafetyTab({ isInav }: Props) {
+  // Failsafe config (via MSP)
+  const [failsafe, setFailsafe] = useState<FailsafeConfig>(DEFAULT_FAILSAFE);
+  const [originalFailsafe, setOriginalFailsafe] = useState<FailsafeConfig>(DEFAULT_FAILSAFE);
+
+  // Arming safety config (via CLI - separate)
+  const [armingSafety, setArmingSafety] = useState<ArmingSafetyConfig>(DEFAULT_ARMING_SAFETY);
+  const [originalArmingSafety, setOriginalArmingSafety] = useState<ArmingSafetyConfig>(DEFAULT_ARMING_SAFETY);
+
+  // Loading/error states
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Arming safety apply state
+  const [applyingArmingSafety, setApplyingArmingSafety] = useState(false);
+
+  // Check if failsafe has been modified
+  const failsafeChanged = JSON.stringify(failsafe) !== JSON.stringify(originalFailsafe);
+
+  // Check if arming safety has been modified
+  const armingSafetyChanged =
+    armingSafety.receiverType !== originalArmingSafety.receiverType ||
+    armingSafety.navExtraArmingSafety !== originalArmingSafety.navExtraArmingSafety ||
+    armingSafety.navGpsMinSats !== originalArmingSafety.navGpsMinSats;
+
+  // Load failsafe config via MSP (no CLI!)
+  const loadConfig = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Load failsafe config via MSP
+      const config = await window.electronAPI.mspGetFailsafeConfig() as FailsafeConfig | null;
+
+      if (config) {
+        console.log('[SafetyTab] Loaded failsafe config via MSP:', config);
+        setFailsafe(config);
+        setOriginalFailsafe(config);
+      } else {
+        console.warn('[SafetyTab] Failed to get failsafe config, using defaults');
+      }
+
+      // For arming safety, we use the MSP Settings API if available
+      // Falls back to CLI for SITL which doesn't support Settings API
+      if (isInav) {
+        let settingsLoaded = false;
+
+        // Try MSP Settings API first
+        try {
+          const settings = await window.electronAPI.mspGetSettings([
+            'receiver_type',
+            'nav_extra_arming_safety',
+            'nav_gps_min_sats',
+          ]);
+
+          if (settings && settings['nav_extra_arming_safety'] !== null) {
+            const safety: ArmingSafetyConfig = {
+              receiverType: String(settings['receiver_type'] ?? 'SERIAL').toUpperCase(),
+              navExtraArmingSafety: String(settings['nav_extra_arming_safety']).toUpperCase(),
+              navGpsMinSats: Number(settings['nav_gps_min_sats'] ?? 6),
+            };
+            console.log('[SafetyTab] Loaded arming safety via MSP Settings:', safety);
+            setArmingSafety(safety);
+            setOriginalArmingSafety(safety);
+            settingsLoaded = true;
+          }
+        } catch (settingsErr) {
+          console.warn('[SafetyTab] MSP Settings API failed, trying CLI fallback:', settingsErr);
+        }
+
+        // CLI fallback for SITL
+        if (!settingsLoaded) {
+          try {
+            // Quick CLI read - just get these two settings
+            await window.electronAPI.mspStopTelemetry();
+            await new Promise(r => setTimeout(r, 200));
+
+            const dump = await window.electronAPI.cliGetDump();
+
+            // Parse settings from dump
+            const receiverTypeMatch = dump.match(/set receiver_type\s*=\s*(\S+)/i);
+            const armingSafetyMatch = dump.match(/set nav_extra_arming_safety\s*=\s*(\S+)/i);
+            const minSatsMatch = dump.match(/set nav_gps_min_sats\s*=\s*(\d+)/i);
+
+            const safety: ArmingSafetyConfig = {
+              receiverType: receiverTypeMatch?.[1]?.toUpperCase() ?? 'SERIAL',
+              navExtraArmingSafety: armingSafetyMatch?.[1]?.toUpperCase() ?? 'ON',
+              navGpsMinSats: minSatsMatch ? parseInt(minSatsMatch[1], 10) : 6,
+            };
+            console.log('[SafetyTab] Loaded arming safety via CLI:', safety);
+            setArmingSafety(safety);
+            setOriginalArmingSafety(safety);
+
+            // Restart telemetry
+            await new Promise(r => setTimeout(r, 500));
+            await window.electronAPI.mspStartTelemetry();
+          } catch (cliErr) {
+            console.warn('[SafetyTab] CLI fallback failed, using defaults:', cliErr);
+            // Try to restart telemetry anyway
+            try {
+              await window.electronAPI.mspStartTelemetry();
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[SafetyTab] Failed to load config:', err);
+      setError('Failed to load failsafe configuration');
+    } finally {
+      setLoading(false);
+    }
+  }, [isInav]);
+
+  // Save failsafe config via MSP
+  const saveFailsafe = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await window.electronAPI.mspSetFailsafeConfig(failsafe);
+
+      if (result) {
+        // Save to EEPROM
+        await window.electronAPI.mspSaveEeprom();
+        setOriginalFailsafe({ ...failsafe });
+        setSuccess('Failsafe settings saved!');
+      } else {
+        setError('Failed to save failsafe settings');
+      }
+    } catch (err) {
+      console.error('[SafetyTab] Failed to save failsafe:', err);
+      setError('Failed to save failsafe settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Apply arming safety settings via CLI (isolated - only when user clicks button)
+  const applyArmingSafety = async () => {
+    setApplyingArmingSafety(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Try MSP Settings API first (works on modern iNav without CLI)
+      const mspResult = await window.electronAPI.mspSetSettings({
+        'receiver_type': armingSafety.receiverType,
+        'nav_extra_arming_safety': armingSafety.navExtraArmingSafety,
+        'nav_gps_min_sats': armingSafety.navGpsMinSats,
+      });
+
+      if (mspResult) {
+        // Save to EEPROM
+        await window.electronAPI.mspSaveEeprom();
+        setOriginalArmingSafety({ ...armingSafety });
+        setSuccess('Arming safety settings saved!');
+        setApplyingArmingSafety(false);
+        return;
+      }
+
+      // Fallback to CLI for older firmware or SITL
+      console.log('[SafetyTab] MSP Settings failed, falling back to CLI...');
+
+      // Stop telemetry before CLI
+      await window.electronAPI.mspStopTelemetry();
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Enter CLI mode
+      await window.electronAPI.cliEnterMode();
+      await new Promise((r) => setTimeout(r, 300));
+
+      // Set nav_extra_arming_safety
+      await window.electronAPI.cliSendCommand(`set nav_extra_arming_safety = ${armingSafety.navExtraArmingSafety}`);
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Set nav_gps_min_sats
+      await window.electronAPI.cliSendCommand(`set nav_gps_min_sats = ${armingSafety.navGpsMinSats}`);
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Save and reboot
+      await window.electronAPI.cliSendCommand('save');
+
+      // Update original config
+      setOriginalArmingSafety({ ...armingSafety });
+      setSuccess('Arming safety settings applied! Board is rebooting...');
+
+      // Wait for reboot then disconnect
+      await new Promise((r) => setTimeout(r, 3000));
+      await window.electronAPI.disconnect();
+    } catch (err) {
+      console.error('[SafetyTab] Failed to apply arming safety:', err);
+      setError('Failed to apply arming safety settings');
+      // Try to restart telemetry
+      try {
+        await window.electronAPI.mspStartTelemetry();
+      } catch {
+        // ignore
+      }
+    } finally {
+      setApplyingArmingSafety(false);
+    }
+  };
+
+  // Load on mount
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  // Update failsafe field
+  const updateFailsafe = (field: keyof FailsafeConfig, value: number) => {
+    setFailsafe(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Update arming safety field
+  const updateArmingSafety = (field: keyof ArmingSafetyConfig, value: string | number) => {
+    setArmingSafety(prev => ({ ...prev, [field]: value }));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-gray-400">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Loading safety configuration...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4">
+      {/* Error/Success messages */}
+      {error && (
+        <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm">
+          {success}
+        </div>
+      )}
+
+      {/* Failsafe Configuration (via MSP) */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-amber-400" />
+            <h3 className="text-white font-medium">Failsafe Configuration</h3>
+          </div>
+          {/* Save button for failsafe */}
+          <button
+            onClick={saveFailsafe}
+            disabled={saving || !failsafeChanged}
+            className={`px-4 py-1.5 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
+              failsafeChanged
+                ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+            }`}
+          >
+            <Save className={`w-4 h-4 ${saving ? 'animate-pulse' : ''}`} />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Failsafe Procedure */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Failsafe Procedure</label>
+            <div className="grid grid-cols-2 gap-2">
+              {FAILSAFE_PROCEDURES.map(proc => (
+                <button
+                  key={proc.value}
+                  onClick={() => updateFailsafe('failsafeProcedure', proc.value)}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    failsafe.failsafeProcedure === proc.value
+                      ? proc.value === 1
+                        ? 'bg-red-600/20 border-red-500 text-white'
+                        : proc.value === 2
+                          ? 'bg-green-600/20 border-green-500 text-white'
+                          : 'bg-amber-600/20 border-amber-500 text-white'
+                      : 'bg-zinc-800/50 border-zinc-700 text-gray-400 hover:bg-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <div className="font-medium text-sm">{proc.label}</div>
+                  <div className="text-xs opacity-70 mt-0.5">{proc.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Failsafe Delay */}
+          <DraggableSlider
+            label="Failsafe Delay"
+            value={failsafe.failsafeDelay}
+            onChange={(v) => updateFailsafe('failsafeDelay', v)}
+            min={0}
+            max={50}
+            step={1}
+            unit="×0.1s"
+            description="Time to wait before activating failsafe"
+          />
+
+          {/* Failsafe Off Delay */}
+          <DraggableSlider
+            label="Recovery Delay"
+            value={failsafe.failsafeOffDelay}
+            onChange={(v) => updateFailsafe('failsafeOffDelay', v)}
+            min={0}
+            max={200}
+            step={1}
+            unit="×0.1s"
+            description="Time to wait after signal recovery before resuming control"
+          />
+
+          {/* Failsafe Throttle (only for procedure that uses it) */}
+          <DraggableSlider
+            label="Failsafe Throttle"
+            value={failsafe.failsafeThrottle}
+            onChange={(v) => updateFailsafe('failsafeThrottle', v)}
+            min={1000}
+            max={2000}
+            step={10}
+            unit="µs"
+            description="Throttle value during land/set-throttle failsafe"
+          />
+
+          {/* Min Distance for RTH (iNav only) */}
+          {isInav && failsafe.failsafeProcedure === 2 && (
+            <DraggableSlider
+              label="Minimum Distance"
+              value={failsafe.failsafeMinDistance}
+              onChange={(v) => updateFailsafe('failsafeMinDistance', v)}
+              min={0}
+              max={1000}
+              step={10}
+              unit="m"
+              description="Minimum distance from home to trigger RTH (0 = always RTH)"
+            />
+          )}
+
+          {/* Stick Motion Threshold */}
+          <DraggableSlider
+            label="Stick Motion Threshold"
+            value={failsafe.failsafeStickMotionThreshold}
+            onChange={(v) => updateFailsafe('failsafeStickMotionThreshold', v)}
+            min={0}
+            max={500}
+            step={10}
+            unit=""
+            description="Stick movement required to cancel failsafe"
+          />
+        </div>
+      </div>
+
+      {/* Arming Safety Configuration (iNav only, uses CLI as fallback) */}
+      {isInav && (
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-purple-400" />
+              <h3 className="text-white font-medium">Arming Safety</h3>
+            </div>
+            {/* Apply button for arming safety */}
+            <button
+              onClick={applyArmingSafety}
+              disabled={applyingArmingSafety || !armingSafetyChanged}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
+                armingSafetyChanged
+                  ? 'bg-purple-600 hover:bg-purple-500 text-white'
+                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+              }`}
+            >
+              <Zap className={`w-4 h-4 ${applyingArmingSafety ? 'animate-pulse' : ''}`} />
+              {applyingArmingSafety ? 'Applying...' : 'Apply'}
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Nav Extra Arming Safety */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Navigation Arming Safety</label>
+              <div className="grid grid-cols-3 gap-2">
+                {NAV_ARMING_SAFETY_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateArmingSafety('navExtraArmingSafety', opt.value)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      armingSafety.navExtraArmingSafety === opt.value
+                        ? opt.value === 'OFF'
+                          ? 'bg-amber-600/20 border-amber-500 text-white'
+                          : 'bg-purple-600/20 border-purple-500 text-white'
+                        : 'bg-zinc-800/50 border-zinc-700 text-gray-400 hover:bg-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{opt.label}</div>
+                    <div className="text-xs opacity-70 mt-0.5">{opt.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Warning when ALLOW_BYPASS */}
+            {armingSafety.navExtraArmingSafety === 'ALLOW_BYPASS' && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-sm flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>Bypass Mode:</strong> You can bypass arming safety checks with stick commands.
+                  Useful for SITL testing or indoor flights without GPS.
+                </div>
+              </div>
+            )}
+
+            {/* Min GPS Satellites */}
+            <DraggableSlider
+              label="Minimum GPS Satellites"
+              value={armingSafety.navGpsMinSats}
+              onChange={(v) => updateArmingSafety('navGpsMinSats', v)}
+              min={0}
+              max={12}
+              step={1}
+              unit=""
+              description="Minimum satellites required before arming (0 = no GPS required)"
+            />
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

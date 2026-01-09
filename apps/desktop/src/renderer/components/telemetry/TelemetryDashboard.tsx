@@ -23,6 +23,7 @@ import {
   PositionPanel,
   VelocityPanel,
   FlightModePanel,
+  FlightControlPanel,
   MapPanel,
   // Mission panels (for monitoring during flight)
   MissionMapPanel,
@@ -48,6 +49,7 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   PositionPanel: () => <PanelWrapper component={PositionPanel} />,
   VelocityPanel: () => <PanelWrapper component={VelocityPanel} />,
   FlightModePanel: () => <PanelWrapper component={FlightModePanel} />,
+  FlightControlPanel: () => <PanelWrapper component={FlightControlPanel} />,
   MapPanel: () => <PanelWrapper component={MapPanel} />,
   // Mission panels (for monitoring during flight) - readOnly mode
   MissionMapPanel: () => <MissionMapPanel readOnly />,

@@ -1491,3 +1491,95 @@ export function deserializeMissionInfo(payload: Uint8Array): MSPMissionInfo {
     navVersion: 0,                                // Not in this response
   };
 }
+
+// =============================================================================
+// Failsafe Config (MSP_FAILSAFE_CONFIG / MSP_SET_FAILSAFE_CONFIG)
+// =============================================================================
+
+/**
+ * Failsafe configuration from MSP_FAILSAFE_CONFIG (75)
+ *
+ * Failsafe procedure values:
+ * - 0: LAND - Land in place
+ * - 1: DROP - Cut motors immediately
+ * - 2: RTH - Return to home
+ * - 3: NONE - Do nothing
+ */
+export interface MSPFailsafeConfig {
+  failsafeDelay: number;              // Delay before activating failsafe (0.1s units)
+  failsafeOffDelay: number;           // Delay before deactivating failsafe after recovery (0.1s units)
+  failsafeThrottle: number;           // Throttle value during failsafe (1000-2000)
+  failsafeKillSwitch: number;         // Kill switch mode (0=off, 1=on)
+  failsafeThrottleLowDelay: number;   // Delay for low throttle failsafe (0.1s units)
+  failsafeProcedure: number;          // Failsafe procedure (0=LAND, 1=DROP, 2=RTH, 3=NONE)
+  failsafeRecoveryDelay: number;      // Recovery delay (0.1s units)
+  failsafeFwRollAngle: number;        // Fixed-wing roll angle during failsafe (0.1 deg)
+  failsafeFwPitchAngle: number;       // Fixed-wing pitch angle during failsafe (0.1 deg)
+  failsafeFwYawRate: number;          // Fixed-wing yaw rate during failsafe (deg/s)
+  failsafeStickMotionThreshold: number; // Stick motion threshold to cancel failsafe
+  failsafeMinDistance: number;        // Minimum distance for RTH failsafe (meters)
+  failsafeMinDistanceProcedure: number; // Procedure when under min distance (0=LAND, 1=DROP, 2=RTH, 3=NONE)
+}
+
+/**
+ * Deserialize MSP_FAILSAFE_CONFIG response (20 bytes)
+ *
+ * Byte layout (from iNav Configurator MSPHelper.js):
+ * - Byte 0: failsafe_delay (U8)
+ * - Byte 1: failsafe_off_delay (U8)
+ * - Bytes 2-3: failsafe_throttle (U16 LE)
+ * - Byte 4: failsafe_kill_switch (U8)
+ * - Bytes 5-6: failsafe_throttle_low_delay (U16 LE)
+ * - Byte 7: failsafe_procedure (U8)
+ * - Byte 8: failsafe_recovery_delay (U8)
+ * - Bytes 9-10: failsafe_fw_roll_angle (U16 LE)
+ * - Bytes 11-12: failsafe_fw_pitch_angle (U16 LE)
+ * - Bytes 13-14: failsafe_fw_yaw_rate (U16 LE)
+ * - Bytes 15-16: failsafe_stick_motion_threshold (U16 LE)
+ * - Bytes 17-18: failsafe_min_distance (U16 LE)
+ * - Byte 19: failsafe_min_distance_procedure (U8)
+ */
+export function deserializeFailsafeConfig(payload: Uint8Array): MSPFailsafeConfig {
+  const reader = new PayloadReader(payload);
+
+  return {
+    failsafeDelay: reader.readU8(),
+    failsafeOffDelay: reader.readU8(),
+    failsafeThrottle: reader.readU16(),
+    failsafeKillSwitch: reader.readU8(),
+    failsafeThrottleLowDelay: reader.readU16(),
+    failsafeProcedure: reader.readU8(),
+    failsafeRecoveryDelay: reader.readU8(),
+    // Fixed-wing angles and rates are signed (can be negative)
+    failsafeFwRollAngle: reader.readS16(),
+    failsafeFwPitchAngle: reader.readS16(),
+    failsafeFwYawRate: reader.readS16(),
+    failsafeStickMotionThreshold: reader.readU16(),
+    failsafeMinDistance: reader.readU16(),
+    failsafeMinDistanceProcedure: reader.readU8(),
+  };
+}
+
+/**
+ * Serialize MSP_SET_FAILSAFE_CONFIG payload (20 bytes)
+ */
+export function serializeFailsafeConfig(config: MSPFailsafeConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(config.failsafeDelay);
+  builder.writeU8(config.failsafeOffDelay);
+  builder.writeU16(config.failsafeThrottle);
+  builder.writeU8(config.failsafeKillSwitch);
+  builder.writeU16(config.failsafeThrottleLowDelay);
+  builder.writeU8(config.failsafeProcedure);
+  builder.writeU8(config.failsafeRecoveryDelay);
+  // Fixed-wing angles and rates are signed (can be negative)
+  builder.writeS16(config.failsafeFwRollAngle);
+  builder.writeS16(config.failsafeFwPitchAngle);
+  builder.writeS16(config.failsafeFwYawRate);
+  builder.writeU16(config.failsafeStickMotionThreshold);
+  builder.writeU16(config.failsafeMinDistance);
+  builder.writeU8(config.failsafeMinDistanceProcedure);
+
+  return builder.build();
+}

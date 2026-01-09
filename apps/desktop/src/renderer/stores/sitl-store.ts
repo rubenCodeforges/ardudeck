@@ -26,6 +26,7 @@ export interface SitlStore {
   isRunning: boolean;
   isStarting: boolean;
   isStopping: boolean;
+  isStatusChecked: boolean; // True after initial status check completes
   lastCommand: string | null;
 
   // Output Log
@@ -134,6 +135,7 @@ export const useSitlStore = create<SitlStore>()(
       isRunning: false,
       isStarting: false,
       isStopping: false,
+      isStatusChecked: false,
       lastCommand: null,
       output: [],
       maxOutputLines: 1000,
@@ -610,6 +612,9 @@ export const useSitlStore = create<SitlStore>()(
           get().detectSimulators();
         } catch {
           // Ignore errors
+        } finally {
+          // Mark status as checked even if there were errors
+          set({ isStatusChecked: true });
         }
       },
 
@@ -619,6 +624,7 @@ export const useSitlStore = create<SitlStore>()(
           isRunning: false,
           isStarting: false,
           isStopping: false,
+          isStatusChecked: false,
           lastCommand: null,
           output: [],
           lastError: null,
@@ -631,11 +637,12 @@ export const useSitlStore = create<SitlStore>()(
     }),
     {
       name: 'sitl-storage',
-      // Persist profiles, selection, and simulator config
+      // Persist profiles, selection, and simulator config (NOT simulatorEnabled - should default off each session)
       partialize: (state) => ({
         profiles: state.profiles,
         currentProfileName: state.currentProfileName,
-        simulatorEnabled: state.simulatorEnabled,
+        // NOTE: simulatorEnabled is NOT persisted - user must explicitly enable FlightGear each session
+        // This prevents accidental launches when just wanting to test SITL
         flightGearConfig: state.flightGearConfig,
       }),
     }

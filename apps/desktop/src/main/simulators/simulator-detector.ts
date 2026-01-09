@@ -6,7 +6,6 @@
  */
 
 import { existsSync } from 'fs';
-import { execSync } from 'child_process';
 import { join } from 'path';
 
 export type SimulatorType = 'flightgear' | 'xplane' | 'realflight';
@@ -76,17 +75,29 @@ function getXPlaneMacExecutable(appPath: string): string {
 }
 
 /**
- * Try to get FlightGear version
+ * Try to get FlightGear version from plist (macOS) or path name
+ * NOTE: Do NOT run `fgfs --version` - on macOS it launches the full GUI!
  */
-function getFlightGearVersion(executablePath: string): string | null {
+function getFlightGearVersion(appPath: string): string | null {
+  const platform = process.platform;
+
   try {
-    const output = execSync(`"${executablePath}" --version`, {
-      timeout: 5000,
-      encoding: 'utf-8',
-    });
-    // Parse version from output like "FlightGear version: 2020.3.19"
-    const match = output.match(/version[:\s]+(\d+\.\d+\.?\d*)/i);
-    return match?.[1] ?? null;
+    if (platform === 'darwin') {
+      // Try to read version from Info.plist
+      const plistPath = join(appPath, 'Contents', 'Info.plist');
+      if (existsSync(plistPath)) {
+        const plistContent = require('fs').readFileSync(plistPath, 'utf-8');
+        // Look for CFBundleShortVersionString
+        const match = plistContent.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/);
+        return match?.[1] ?? null;
+      }
+    } else if (platform === 'win32') {
+      // Extract version from path like "FlightGear 2024" or "FlightGear 2020.3"
+      const match = appPath.match(/FlightGear\s*(\d+\.?\d*\.?\d*)/i);
+      return match?.[1] ?? null;
+    }
+    // Linux: Could parse dpkg/rpm but not critical
+    return null;
   } catch {
     return null;
   }
@@ -114,7 +125,8 @@ export async function detectFlightGear(): Promise<SimulatorInfo> {
         continue;
       }
 
-      const version = getFlightGearVersion(executable);
+      // Get version from plist or path (NOT by running the executable!)
+      const version = getFlightGearVersion(searchPath);
 
       return {
         name: 'flightgear',

@@ -81,6 +81,53 @@ export function deserializeStatus(payload: Uint8Array): MSPStatus {
 }
 
 /**
+ * Deserialize MSPV2_INAV_STATUS (0x2000) response
+ *
+ * iNav-specific status format with different field layout than MSP_STATUS_EX.
+ * Returns the same MSPStatus interface for compatibility.
+ *
+ * Format:
+ * - cycleTime: 2 bytes
+ * - i2cError: 2 bytes
+ * - activeSensors: 2 bytes
+ * - cpuload: 2 bytes
+ * - profile_byte: 1 byte (profile & battery_profile)
+ * - armingFlags: 4 bytes
+ * - mspBoxModeFlags: variable (8 bytes typical)
+ * - mixer_profile: last byte
+ */
+export function deserializeInavStatus(payload: Uint8Array): MSPStatus {
+  const reader = new PayloadReader(payload);
+
+  const cycleTime = reader.readU16();
+  const i2cError = reader.readU16();
+  const activeSensors = reader.readU16();
+  const averageSystemLoad = reader.readU16(); // cpuload in iNav
+  const profileByte = reader.readU8();
+  const currentPidProfile = profileByte & 0x0F;
+  const armingDisableFlags = reader.readU32();
+
+  // Read flight mode flags if available (variable length in iNav)
+  let flightModeFlags = 0;
+  if (reader.remaining() >= 4) {
+    flightModeFlags = reader.readU32();
+  }
+
+  return {
+    cycleTime,
+    i2cError,
+    activeSensors,
+    flightModeFlags,
+    currentPidProfile,
+    averageSystemLoad,
+    armingDisableFlagsCount: 32, // iNav uses full 32-bit flag
+    armingDisableFlags,
+    configStateFlags: 0,
+    cpuTemp: 0,
+  };
+}
+
+/**
  * Deserialize MSP_RAW_IMU response
  *
  * Returns raw sensor data from accelerometer, gyroscope, and magnetometer
@@ -382,42 +429,89 @@ export function isArmed(flightModeFlags: number): boolean {
 }
 
 /**
- * Get arming disabled reasons as string array
+ * Arming disabled flags for Betaflight/Cleanflight
+ * These start at bit 0
  */
-export function getArmingDisabledReasons(flags: number): string[] {
+const BETAFLIGHT_ARMING_FLAGS: Record<number, string> = {
+  0: 'No Gyro',
+  1: 'Failsafe',
+  2: 'RX Failsafe',
+  3: 'Bad RX Recovery',
+  4: 'Box Failsafe',
+  5: 'Runaway Takeoff',
+  6: 'Crash Detected',
+  7: 'Throttle',
+  8: 'Angle',
+  9: 'Boot Grace Time',
+  10: 'No Prearm',
+  11: 'Load',
+  12: 'Calibrating',
+  13: 'CLI',
+  14: 'CMS Menu',
+  15: 'BST',
+  16: 'MSP',
+  17: 'Paralyze',
+  18: 'GPS',
+  19: 'Rescue SW',
+  20: 'RPM Filter',
+  21: 'Reboot Required',
+  22: 'DShot Bitbang',
+  23: 'Acc Calibration',
+  24: 'Motor Protocol',
+  25: 'Arm Switch',
+};
+
+/**
+ * Arming disabled flags for iNav
+ * These start at bit 6 (bits 0-5 are used for ARMED, WAS_EVER_ARMED, etc.)
+ * Source: inav-configurator/js/gui.js
+ */
+const INAV_ARMING_FLAGS: Record<number, string> = {
+  6: 'Geozone',
+  7: 'Failsafe System',
+  8: 'Not Level',
+  9: 'Sensors Calibrating',
+  10: 'System Overloaded',
+  11: 'Navigation Unsafe',
+  12: 'Compass Not Calibrated',
+  13: 'Accelerometer Not Calibrated',
+  14: 'Arm Switch',
+  15: 'Hardware Failure',
+  16: 'Box Failsafe',
+  // 17 is BOXKILLSWITCH (commented out in iNav)
+  18: 'RC Link',
+  19: 'Throttle',
+  20: 'CLI',
+  21: 'CMS Menu',
+  22: 'OSD Menu',
+  23: 'Roll/Pitch Not Centered',
+  24: 'Servo Autotrim',
+  25: 'Out of Memory',
+  26: 'Invalid Setting',
+  27: 'PWM Output Error',
+  28: 'No Prearm',
+  29: 'DShot Beeper',
+  30: 'Landing Detected',
+};
+
+/**
+ * Get arming disabled reasons as string array
+ * @param flags - The armingDisableFlags bitmask from MSP_STATUS_EX
+ * @param fcVariant - Firmware variant: 'INAV', 'BTFL', 'CLFL', etc.
+ */
+export function getArmingDisabledReasons(flags: number, fcVariant: string = 'BTFL'): string[] {
   const reasons: string[] = [];
-  const flagNames: Record<number, string> = {
-    0: 'No Gyro',
-    1: 'Failsafe',
-    2: 'RX Failsafe',
-    3: 'Bad RX Recovery',
-    4: 'Box Failsafe',
-    5: 'Runaway Takeoff',
-    6: 'Crash Detected',
-    7: 'Throttle',
-    8: 'Angle',
-    9: 'Boot Grace Time',
-    10: 'No Prearm',
-    11: 'Load',
-    12: 'Calibrating',
-    13: 'CLI',
-    14: 'CMS Menu',
-    15: 'BST',
-    16: 'MSP',
-    17: 'Paralyze',
-    18: 'GPS',
-    19: 'Rescue SW',
-    20: 'RPM Filter',
-    21: 'Reboot Required',
-    22: 'DShot Bitbang',
-    23: 'Acc Calibration',
-    24: 'Motor Protocol',
-    25: 'Arm Switch',
-  };
+
+  // Select flag mapping based on firmware
+  const flagNames = fcVariant === 'INAV' ? INAV_ARMING_FLAGS : BETAFLIGHT_ARMING_FLAGS;
 
   for (let i = 0; i < 32; i++) {
     if ((flags & (1 << i)) !== 0) {
-      reasons.push(flagNames[i] ?? `Unknown (${i})`);
+      const flagName = flagNames[i];
+      if (flagName) {
+        reasons.push(flagName);
+      }
+      // Don't add "Unknown" for bits that are not arming flags (e.g., ARMED bit 2)
     }
   }
 

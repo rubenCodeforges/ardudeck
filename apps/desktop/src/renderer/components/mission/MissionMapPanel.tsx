@@ -215,6 +215,30 @@ function createHomeIcon(): L.DivIcon {
 // Memoized home icon
 const HOME_ICON = createHomeIcon();
 
+// Custom vehicle marker icon (arrow pointing in heading direction)
+function createVehicleIcon(heading: number, armed: boolean): L.DivIcon {
+  const fillColor = armed ? '#f97316' : '#22d3ee'; // Orange when armed, cyan when disarmed
+  const strokeColor = armed ? '#7c2d12' : '#0e7490'; // Dark orange / dark cyan outlines
+
+  return L.divIcon({
+    className: 'vehicle-marker',
+    html: `
+      <div style="transform: rotate(${heading}deg); width: 48px; height: 48px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+        <svg viewBox="0 0 24 24">
+          <!-- Dark outline for contrast -->
+          <path d="M12 2L4 20l8-4 8 4L12 2z" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+          <!-- White outline -->
+          <path d="M12 2L4 20l8-4 8 4L12 2z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+          <!-- Colored fill -->
+          <path d="M12 2L4 20l8-4 8 4L12 2z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+  });
+}
+
 // Map resize handler
 function MapResizeHandler() {
   const map = useMap();
@@ -517,6 +541,17 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
   const connectionState = useConnectionStore((state) => state.connectionState);
   const isMspProtocol = connectionState?.protocol === 'msp';
 
+  // Get telemetry for vehicle marker
+  const gps = useTelemetryStore((state) => state.gps);
+  const vfrHud = useTelemetryStore((state) => state.vfrHud);
+  const flight = useTelemetryStore((state) => state.flight);
+
+  // Compute vehicle position for marker
+  const hasValidGps = gps.fixType >= 2 && gps.lat !== 0 && gps.lon !== 0;
+  const vehiclePosition: [number, number] | null = hasValidGps
+    ? [gps.lat, gps.lon]
+    : null;
+
   // Get active edit mode from toolbar
   const activeMode = useEditModeStore((state) => state.activeMode);
 
@@ -722,6 +757,15 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
             readOnly={readOnly}
           />
         ))}
+
+        {/* Vehicle marker - show when GPS is valid */}
+        {vehiclePosition && (
+          <Marker
+            position={vehiclePosition}
+            icon={createVehicleIcon(vfrHud.heading, flight.armed)}
+            zIndexOffset={1000}
+          />
+        )}
 
         {/* Geofence overlays - always visible */}
         <FenceMapOverlay readOnly={readOnly} />

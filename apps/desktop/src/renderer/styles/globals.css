@@ -229,8 +229,27 @@ select,
 /* Vehicle and home markers */
 .vehicle-marker,
 .home-marker {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Ensure markers are visible above tiles */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-marker-icon {
+  z-index: 601 !important;
+}
+
+/* Vehicle marker specific styling */
+.vehicle-marker {
+  z-index: 1000 !important;
+  pointer-events: none;
+}
+
+.vehicle-marker svg {
+  overflow: visible;
 }
 
 /* Waypoint markers - ensure proper drag behavior */

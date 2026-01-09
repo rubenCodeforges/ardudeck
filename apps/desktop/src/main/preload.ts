@@ -528,6 +528,13 @@ const api = {
   mspGetRc: (): Promise<{ channels: number[] } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC),
 
+  // MSP RC Control (GCS arm/disarm, mode switching)
+  mspSetRawRc: (channels: number[]): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RAW_RC, channels),
+
+  mspGetActiveBoxes: (): Promise<{ boxModes: number } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_ACTIVE_BOXES),
+
   // MSP Servo Config (iNav)
   mspGetServoConfigs: (): Promise<unknown> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_CONFIGS),
@@ -643,6 +650,13 @@ const api = {
 
   mspSetGpsConfig: (config: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_GPS_CONFIG, config),
+
+  // MSP Failsafe Configuration
+  mspGetFailsafeConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FAILSAFE_CONFIG),
+
+  mspSetFailsafeConfig: (config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_FAILSAFE_CONFIG, config),
 
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   mspGetSetting: (name: string): Promise<{ value: string | number; info: unknown } | null> =>
