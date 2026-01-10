@@ -79,12 +79,14 @@ import { sitlProcess } from './sitl/sitl-process.js';
 import {
   detectSimulators,
   flightGearLauncher,
+  xplaneLauncher,
   protocolBridge,
   setVirtualRC,
   getVirtualRC,
   resetVirtualRC,
   type SimulatorInfo,
   type FlightGearConfig,
+  type XPlaneConfig,
   type BridgeConfig,
   type VirtualRCState,
 } from './simulators/index.js';
@@ -1300,8 +1302,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.log(`[Reconnect] Attempt failed: ${errMsg}`);
-      sendLog(mainWindow, 'debug', 'Reconnect attempt failed', errMsg);
+      // Only log every 5th attempt to reduce spam
+      if (pendingReconnect && pendingReconnect.attempt % 5 === 1) {
+        console.log(`[Reconnect] Attempt ${pendingReconnect.attempt} failed: ${errMsg}`);
+      }
       // Clean up any partially opened transport
       if (currentTransport) {
         try {
@@ -1324,10 +1328,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Clean up any existing handlers first
     cleanupTransportListeners();
 
-    // Setup error handler
+    // Setup error handler - don't spam during reconnect
     transportErrorHandler = (error: Error) => {
-      console.error('Transport error:', error);
-      sendLog(mainWindow, 'error', 'Transport error', error.message);
+      if (!isReconnectPending()) {
+        console.error('Transport error:', error);
+        sendLog(mainWindow, 'error', 'Transport error', error.message);
+      }
       safeSend(mainWindow, 'connection:error', error.message);
     };
     transport.on('error', transportErrorHandler);
@@ -1563,8 +1569,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // BSOD FIX: Store handler references for proper cleanup
       transportErrorHandler = (error: Error) => {
-        console.error('Transport error:', error);
-        sendLog(mainWindow, 'error', 'Transport error', error.message);
+        // Don't spam logs during reconnection attempts
+        if (!isReconnectPending()) {
+          console.error('Transport error:', error);
+          sendLog(mainWindow, 'error', 'Transport error', error.message);
+        }
         safeSend(mainWindow, 'connection:error', error.message);
       };
       currentTransport.on('error', transportErrorHandler);
@@ -3807,8 +3816,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Detect installed simulators (called frequently by UI, don't spam logs)
   let lastSimulatorDetectLog = 0;
-  ipcMain.handle(IPC_CHANNELS.SIMULATOR_DETECT, async (): Promise<SimulatorInfo[]> => {
-    const simulators = await detectSimulators();
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_DETECT, async (_event, customFlightGearPath?: string, customXPlanePath?: string): Promise<SimulatorInfo[]> => {
+    const simulators = await detectSimulators(customFlightGearPath, customXPlanePath);
     // Only log every 60 seconds
     const now = Date.now();
     if (now - lastSimulatorDetectLog > 60000) {
@@ -3818,11 +3827,68 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return simulators;
   });
 
-  // Launch FlightGear
-  ipcMain.handle(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, async (_event, config: FlightGearConfig): Promise<{ success: boolean; error?: string }> => {
-    console.log('[Simulator] Launching FlightGear with config:', config);
+  // Browse for FlightGear executable
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_BROWSE_FG, async (): Promise<{ success: boolean; path?: string; error?: string }> => {
     try {
-      const result = await flightGearLauncher.launch(config);
+      const platform = process.platform;
+      let filters: { name: string; extensions: string[] }[];
+      let title: string;
+
+      if (platform === 'win32') {
+        filters = [
+          { name: 'FlightGear Executable', extensions: ['exe'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select FlightGear Executable (fgfs.exe)';
+      } else if (platform === 'darwin') {
+        filters = [
+          { name: 'Applications', extensions: ['app'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select FlightGear Application';
+      } else {
+        filters = [
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select FlightGear Executable (fgfs)';
+      }
+
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title,
+        filters,
+        properties: platform === 'darwin' ? ['openFile', 'treatPackageAsDirectory'] : ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false };
+      }
+
+      const selectedPath = result.filePaths[0];
+      console.log('[Simulator] User selected FlightGear path:', selectedPath);
+
+      // Validate it looks like FlightGear
+      const lowerPath = selectedPath.toLowerCase();
+      const isValid = lowerPath.includes('flightgear') ||
+                      lowerPath.includes('fgfs') ||
+                      lowerPath.endsWith('.app');
+
+      if (!isValid) {
+        console.warn('[Simulator] Selected path does not appear to be FlightGear:', selectedPath);
+      }
+
+      return { success: true, path: selectedPath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Simulator] Browse for FlightGear failed:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Launch FlightGear
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, async (_event, config: FlightGearConfig, customPath?: string): Promise<{ success: boolean; error?: string }> => {
+    console.log('[Simulator] Launching FlightGear with config:', config, 'custom path:', customPath || 'auto-detect');
+    try {
+      const result = await flightGearLauncher.launch(config, customPath);
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -3846,6 +3912,83 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Get FlightGear status
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_FG_STATUS, async (): Promise<{ running: boolean; pid?: number }> => {
     return flightGearLauncher.getStatus();
+  });
+
+  // Browse for X-Plane executable
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_BROWSE_XP, async (): Promise<{ success: boolean; path?: string; error?: string }> => {
+    try {
+      const platform = process.platform;
+      let filters: { name: string; extensions: string[] }[];
+      let title: string;
+
+      if (platform === 'win32') {
+        filters = [
+          { name: 'X-Plane Executable', extensions: ['exe'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select X-Plane Executable (X-Plane.exe)';
+      } else if (platform === 'darwin') {
+        filters = [
+          { name: 'Applications', extensions: ['app'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select X-Plane Application';
+      } else {
+        filters = [
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select X-Plane Executable';
+      }
+
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title,
+        filters,
+        properties: platform === 'darwin' ? ['openFile', 'treatPackageAsDirectory'] : ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false };
+      }
+
+      const selectedPath = result.filePaths[0];
+      console.log('[Simulator] User selected X-Plane path:', selectedPath);
+
+      return { success: true, path: selectedPath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Simulator] Browse for X-Plane failed:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Launch X-Plane
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_LAUNCH_XP, async (_event, config: XPlaneConfig, customPath?: string): Promise<{ success: boolean; error?: string }> => {
+    console.log('[Simulator] Launching X-Plane with config:', config, 'custom path:', customPath || 'auto-detect');
+    try {
+      const result = await xplaneLauncher.launch(config, customPath);
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Simulator] Failed to launch X-Plane:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Stop X-Plane
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_STOP_XP, async (): Promise<{ success: boolean }> => {
+    console.log('[Simulator] Stopping X-Plane...');
+    try {
+      await xplaneLauncher.stop();
+      return { success: true };
+    } catch (error) {
+      console.error('[Simulator] Failed to stop X-Plane:', error);
+      return { success: false };
+    }
+  });
+
+  // Get X-Plane status
+  ipcMain.handle(IPC_CHANNELS.SIMULATOR_XP_STATUS, async (): Promise<{ running: boolean; pid?: number }> => {
+    return xplaneLauncher.getStatus();
   });
 
   // Start protocol bridge (FlightGear <-> X-Plane format for iNav SITL)

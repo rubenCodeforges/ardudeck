@@ -786,13 +786,16 @@ const api = {
   // Visual Simulators (FlightGear, X-Plane integration)
   // ============================================================================
 
-  simulatorDetect: (): Promise<Array<{
+  simulatorDetect: (customFlightGearPath?: string, customXPlanePath?: string): Promise<Array<{
     name: 'flightgear' | 'xplane';
     installed: boolean;
     path: string | null;
     version: string | null;
   }>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_DETECT),
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_DETECT, customFlightGearPath, customXPlanePath),
+
+  simulatorBrowseFlightGear: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_BROWSE_FG),
 
   simulatorLaunchFlightGear: (config: {
     aircraft?: string;
@@ -800,14 +803,32 @@ const api = {
     runwayId?: string;
     timeOfDay?: 'dawn' | 'morning' | 'noon' | 'afternoon' | 'dusk' | 'night';
     weather?: 'clear' | 'cloudy' | 'rain';
-  }): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, config),
+  }, customFlightGearPath?: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, config, customFlightGearPath),
 
   simulatorStopFlightGear: (): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_STOP_FG),
 
   simulatorFlightGearStatus: (): Promise<{ running: boolean; pid?: number }> =>
     ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_FG_STATUS),
+
+  // X-Plane
+  simulatorBrowseXPlane: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_BROWSE_XP),
+
+  simulatorLaunchXPlane: (config: {
+    sitlHost?: string;
+    dataOutPort?: number;
+    dataInPort?: number;
+    fullscreen?: boolean;
+  }, customXPlanePath?: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_LAUNCH_XP, config, customXPlanePath),
+
+  simulatorStopXPlane: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_STOP_XP),
+
+  simulatorXPlaneStatus: (): Promise<{ running: boolean; pid?: number }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SIMULATOR_XP_STATUS),
 
   bridgeStart: (config?: {
     fgOutPort?: number;

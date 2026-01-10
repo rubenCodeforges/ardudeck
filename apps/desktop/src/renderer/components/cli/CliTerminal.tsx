@@ -81,6 +81,8 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
       },
       scrollback: 5000,
       convertEol: true,
+      rightClickSelectsWord: true,
+      allowProposedApi: true, // For clipboard addon
     });
 
     const fitAddon = new FitAddon();
@@ -98,6 +100,29 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
     // Handle input
     term.onData((data) => {
       handleInput(data);
+    });
+
+    // Handle copy/paste with Ctrl+Shift+C/V (standard terminal shortcuts)
+    term.attachCustomKeyEventHandler((event) => {
+      // Ctrl+Shift+C - Copy selection
+      if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+        const selection = term.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection);
+        }
+        return false; // Prevent default handling
+      }
+      // Ctrl+Shift+V - Paste
+      if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+        navigator.clipboard.readText().then((text) => {
+          // Filter out newlines and special chars that could cause issues
+          const cleanText = text.replace(/[\r\n]/g, ' ');
+          inputBufferRef.current += cleanText;
+          term.write(cleanText);
+        });
+        return false;
+      }
+      return true; // Allow other keys to pass through
     });
 
     // Handle resize
@@ -386,6 +411,8 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
           <span>Tab: Complete</span>
           <span>|</span>
           <span>Up/Down: History</span>
+          <span>|</span>
+          <span>Ctrl+Shift+C: Copy</span>
           <span>|</span>
           <span>Ctrl+C: Abort</span>
         </div>

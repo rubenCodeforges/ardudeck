@@ -20,20 +20,49 @@ export interface SimulatorInfo {
 }
 
 // Platform-specific paths for FlightGear
+// Windows paths are generated dynamically to cover multiple versions and drives
 const FLIGHTGEAR_PATHS = {
   darwin: [
     '/Applications/FlightGear.app',
     `${process.env.HOME}/Applications/FlightGear.app`,
   ],
   win32: [
+    // FlightGear 2024.x and 2020.x LTS are the most common
+    // Check Program Files on C: and D: drives for various versions
+    'C:\\Program Files\\FlightGear 2024.1\\bin\\fgfs.exe',
     'C:\\Program Files\\FlightGear 2024\\bin\\fgfs.exe',
     'C:\\Program Files\\FlightGear 2020.3\\bin\\fgfs.exe',
+    'C:\\Program Files\\FlightGear 2020\\bin\\fgfs.exe',
+    'C:\\Program Files\\FlightGear\\bin\\fgfs.exe',
+    'C:\\Program Files (x86)\\FlightGear 2024.1\\bin\\fgfs.exe',
+    'C:\\Program Files (x86)\\FlightGear 2024\\bin\\fgfs.exe',
+    'C:\\Program Files (x86)\\FlightGear 2020.3\\bin\\fgfs.exe',
+    'C:\\Program Files (x86)\\FlightGear 2020\\bin\\fgfs.exe',
     'C:\\Program Files (x86)\\FlightGear\\bin\\fgfs.exe',
+    // D: drive installations (common for games/sims)
+    'D:\\Program Files\\FlightGear 2024.1\\bin\\fgfs.exe',
+    'D:\\Program Files\\FlightGear 2024\\bin\\fgfs.exe',
+    'D:\\Program Files\\FlightGear 2020.3\\bin\\fgfs.exe',
+    'D:\\Program Files\\FlightGear 2020\\bin\\fgfs.exe',
+    'D:\\Program Files\\FlightGear\\bin\\fgfs.exe',
+    'D:\\FlightGear 2024.1\\bin\\fgfs.exe',
+    'D:\\FlightGear 2024\\bin\\fgfs.exe',
+    'D:\\FlightGear 2020.3\\bin\\fgfs.exe',
+    'D:\\FlightGear\\bin\\fgfs.exe',
+    // Direct root installations
+    'C:\\FlightGear 2024.1\\bin\\fgfs.exe',
+    'C:\\FlightGear 2024\\bin\\fgfs.exe',
+    'C:\\FlightGear 2020.3\\bin\\fgfs.exe',
+    'C:\\FlightGear\\bin\\fgfs.exe',
   ],
   linux: [
     '/usr/bin/fgfs',
     '/usr/games/fgfs',
     '/usr/local/bin/fgfs',
+    // Flatpak and Snap installations
+    `${process.env.HOME}/.local/share/flatpak/exports/bin/org.flightgear.FlightGear`,
+    '/var/lib/flatpak/exports/bin/org.flightgear.FlightGear',
+    '/snap/bin/flightgear',
   ],
 };
 
@@ -105,9 +134,48 @@ function getFlightGearVersion(appPath: string): string | null {
 
 /**
  * Detect FlightGear installation
+ * @param customPath Optional user-specified path to FlightGear executable
  */
-export async function detectFlightGear(): Promise<SimulatorInfo> {
+export async function detectFlightGear(customPath?: string): Promise<SimulatorInfo> {
   const platform = process.platform as 'darwin' | 'win32' | 'linux';
+
+  // If custom path is provided, validate and use it
+  if (customPath && existsSync(customPath)) {
+    let installPath = customPath;
+
+    if (platform === 'win32') {
+      // e.g., C:\Program Files\FlightGear 2024\bin\fgfs.exe -> C:\Program Files\FlightGear 2024
+      installPath = customPath.replace(/\\bin\\fgfs\.exe$/i, '');
+    } else if (platform === 'darwin') {
+      // macOS: If user provides the .app path, get executable from it
+      if (customPath.endsWith('.app')) {
+        installPath = customPath;
+        const executable = getFlightGearMacExecutable(customPath);
+        if (existsSync(executable)) {
+          return {
+            name: 'flightgear',
+            displayName: 'FlightGear',
+            installed: true,
+            path: customPath,
+            version: getFlightGearVersion(customPath),
+            executable,
+          };
+        }
+      }
+    }
+
+    // Assume the custom path IS the executable
+    return {
+      name: 'flightgear',
+      displayName: 'FlightGear',
+      installed: true,
+      path: installPath,
+      version: getFlightGearVersion(installPath),
+      executable: customPath,
+    };
+  }
+
+  // Auto-detect from standard paths
   const searchPaths = FLIGHTGEAR_PATHS[platform] || [];
 
   for (const searchPath of searchPaths) {
@@ -151,9 +219,39 @@ export async function detectFlightGear(): Promise<SimulatorInfo> {
 
 /**
  * Detect X-Plane installation
+ * @param customPath Optional user-specified path to X-Plane executable
  */
-export async function detectXPlane(): Promise<SimulatorInfo> {
+export async function detectXPlane(customPath?: string): Promise<SimulatorInfo> {
   const platform = process.platform as 'darwin' | 'win32' | 'linux';
+
+  // If custom path is provided, validate and use it
+  if (customPath && existsSync(customPath)) {
+    let installPath = customPath;
+
+    if (platform === 'win32') {
+      // e.g., C:\X-Plane 12\X-Plane.exe -> C:\X-Plane 12
+      installPath = customPath.replace(/\\X-Plane\.exe$/i, '');
+    } else if (platform === 'darwin') {
+      // macOS: path could be the folder or the app
+      if (customPath.endsWith('.app')) {
+        installPath = customPath.replace(/\/X-Plane\.app$/, '');
+      }
+    }
+
+    // Determine version from path
+    const version = customPath.includes('12') ? '12' : customPath.includes('11') ? '11' : null;
+
+    return {
+      name: 'xplane',
+      displayName: 'X-Plane',
+      installed: true,
+      path: installPath,
+      version,
+      executable: customPath,
+    };
+  }
+
+  // Auto-detect from standard paths
   const searchPaths = XPLANE_PATHS[platform] || [];
 
   for (const searchPath of searchPaths) {
@@ -194,11 +292,13 @@ export async function detectXPlane(): Promise<SimulatorInfo> {
 
 /**
  * Detect all supported simulators
+ * @param customFlightGearPath Optional user-specified path to FlightGear executable
+ * @param customXPlanePath Optional user-specified path to X-Plane executable
  */
-export async function detectSimulators(): Promise<SimulatorInfo[]> {
+export async function detectSimulators(customFlightGearPath?: string, customXPlanePath?: string): Promise<SimulatorInfo[]> {
   const [flightGear, xplane] = await Promise.all([
-    detectFlightGear(),
-    detectXPlane(),
+    detectFlightGear(customFlightGearPath),
+    detectXPlane(customXPlanePath),
   ]);
 
   return [flightGear, xplane];

@@ -227,9 +227,14 @@ export const IPC_CHANNELS = {
 
   // Visual Simulators (FlightGear, X-Plane)
   SIMULATOR_DETECT: 'simulator:detect',
+  SIMULATOR_BROWSE_FG: 'simulator:browse-fg',
+  SIMULATOR_BROWSE_XP: 'simulator:browse-xp',
   SIMULATOR_LAUNCH_FG: 'simulator:launch-fg',
   SIMULATOR_STOP_FG: 'simulator:stop-fg',
   SIMULATOR_FG_STATUS: 'simulator:fg-status',
+  SIMULATOR_LAUNCH_XP: 'simulator:launch-xp',
+  SIMULATOR_STOP_XP: 'simulator:stop-xp',
+  SIMULATOR_XP_STATUS: 'simulator:xp-status',
   BRIDGE_START: 'bridge:start',
   BRIDGE_STOP: 'bridge:stop',
   BRIDGE_STATUS: 'bridge:status',

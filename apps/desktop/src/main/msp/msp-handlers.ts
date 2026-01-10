@@ -1383,21 +1383,30 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
 
 async function getModeRanges(): Promise<MSPModeRange[] | null> {
   // Guard: return null if not connected
-  if (!currentTransport?.isOpen) return null;
+  if (!currentTransport?.isOpen) {
+    console.log('[MSP] getModeRanges: transport not open');
+    return null;
+  }
 
   return withConfigLock(async () => {
     try {
+      console.log('[MSP] getModeRanges: requesting MSP.MODE_RANGES (command 34)...');
       const payload = await sendMspRequest(MSP.MODE_RANGES, 2000);
+      console.log('[MSP] getModeRanges: received payload, length:', payload?.length);
       const modes = deserializeModeRanges(payload);
       const activeModes = modes.filter(m => m.rangeEnd > m.rangeStart);
+      console.log('[MSP] getModeRanges: found', modes.length, 'total modes,', activeModes.length, 'active');
       // Clear from unsupported if it worked
       unsupportedCommands.delete(MSP.MODE_RANGES);
       return modes;
     } catch (error) {
-      // Only log once per session
+      // Log detailed error info
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] getModeRanges failed:', errorMsg);
+      // Only log "not available" once per session
       if (!unsupportedCommands.has(MSP.MODE_RANGES)) {
         unsupportedCommands.add(MSP.MODE_RANGES);
-        console.log('[MSP] MODE_RANGES not available on this board');
+        console.log('[MSP] MODE_RANGES not available on this board (will not retry)');
       }
       return null;
     }
@@ -2874,7 +2883,10 @@ async function getWaypoints(): Promise<MSPWaypoint[] | null> {
     try {
       // First get mission info to know how many waypoints
       const infoPayload = await sendMspRequest(MSP.WP_GETINFO, 1000);
+      console.log('[MSP] WP_GETINFO raw:', Array.from(infoPayload).map(b => b.toString(16).padStart(2, '0')).join(' '));
       const info = deserializeMissionInfo(infoPayload);
+      console.log('[MSP] Mission info:', JSON.stringify(info));
+      sendLog('info', `Mission info: ${info.waypointCount} waypoints, valid=${info.isValid}, max=${info.waypointListMaximum}`);
 
       if (info.waypointCount === 0) {
         sendLog('info', 'No waypoints on FC');

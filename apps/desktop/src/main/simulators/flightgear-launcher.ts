@@ -9,7 +9,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { copyFileSync, existsSync, mkdirSync } from 'fs';
 import { app } from 'electron';
-import { detectFlightGear, getFlightGearRoot } from './simulator-detector';
+import { detectFlightGear } from './simulator-detector';
 
 export interface FlightGearConfig {
   // Aircraft selection
@@ -77,10 +77,35 @@ class FlightGearLauncher {
   }
 
   /**
-   * Install ArduDeck protocol files to FlightGear's Protocol directory
+   * Get user-writable data directory for ArduDeck FlightGear files
+   * This avoids permission issues when FlightGear is installed in Program Files
    */
-  private installProtocolFiles(fgRoot: string): void {
-    const protocolDir = join(fgRoot, 'Protocol');
+  private getUserDataDir(): string {
+    const platform = process.platform;
+    let baseDir: string;
+
+    if (platform === 'win32') {
+      // Windows: Use AppData/Roaming
+      baseDir = process.env.APPDATA || join(process.env.USERPROFILE || '', 'AppData', 'Roaming');
+    } else if (platform === 'darwin') {
+      // macOS: Use ~/Library/Application Support
+      baseDir = join(process.env.HOME || '', 'Library', 'Application Support');
+    } else {
+      // Linux: Use ~/.local/share
+      baseDir = process.env.XDG_DATA_HOME || join(process.env.HOME || '', '.local', 'share');
+    }
+
+    return join(baseDir, 'ArduDeck', 'flightgear');
+  }
+
+  /**
+   * Install ArduDeck protocol files to a user-writable directory
+   * Returns the path to the data directory that should be added with --data
+   */
+  private installProtocolFiles(): string {
+    // Use user-writable directory to avoid permission issues on Windows
+    const userDataDir = this.getUserDataDir();
+    const protocolDir = join(userDataDir, 'Protocol');
 
     // Ensure Protocol directory exists
     if (!existsSync(protocolDir)) {
@@ -101,11 +126,10 @@ class FlightGearLauncher {
       const srcPath = join(resourcesPath, file);
       const destPath = join(protocolDir, file);
 
-      // Only copy if source exists and dest doesn't (or is older)
       if (existsSync(srcPath)) {
         try {
           copyFileSync(srcPath, destPath);
-          console.log(`[FlightGear] Installed protocol file: ${file}`);
+          console.log(`[FlightGear] Installed protocol file: ${file} to ${destPath}`);
         } catch (err) {
           console.warn(`[FlightGear] Could not copy ${file}:`, err);
         }
@@ -113,16 +137,25 @@ class FlightGearLauncher {
         console.warn(`[FlightGear] Protocol file not found: ${srcPath}`);
       }
     }
+
+    return userDataDir;
   }
 
   /**
    * Build command line arguments for FlightGear
+   * @param config FlightGear configuration
+   * @param userDataDir Path to user-writable data directory with our protocol files
    */
-  private buildArgs(config: FlightGearConfig, fgRoot: string): string[] {
+  private buildArgs(config: FlightGearConfig, userDataDir: string): string[] {
     const args: string[] = [];
 
-    // Set FG_ROOT
-    args.push(`--fg-root=${fgRoot}`);
+    // DON'T set --fg-root explicitly - let FlightGear use its defaults
+    // This preserves access to downloaded scenery/aircraft data in user directories
+
+    // Add user data directory as additional data path (for our protocol files)
+    // This allows FlightGear to find ardudeck-out.xml and ardudeck-in.xml
+    // without needing write access to Program Files
+    args.push(`--data=${userDataDir}`);
 
     // Aircraft
     args.push(`--aircraft=${config.aircraft}`);
@@ -186,41 +219,37 @@ class FlightGearLauncher {
 
   /**
    * Launch FlightGear
+   * @param config FlightGear configuration
+   * @param customPath Optional user-specified path to FlightGear executable
    */
-  async launch(config: FlightGearConfig): Promise<{ success: boolean; error?: string }> {
+  async launch(config: FlightGearConfig, customPath?: string): Promise<{ success: boolean; error?: string }> {
     // Check if already running
     if (this.isRunning()) {
       return { success: false, error: 'FlightGear is already running' };
     }
 
-    // Detect FlightGear installation
-    const fgInfo = await detectFlightGear();
+    // Detect FlightGear installation (use custom path if provided)
+    const fgInfo = await detectFlightGear(customPath);
     if (!fgInfo.installed || !fgInfo.executable || !fgInfo.path) {
-      return { success: false, error: 'FlightGear not found. Please install FlightGear first.' };
+      return { success: false, error: 'FlightGear not found. Please install FlightGear or set a custom path.' };
     }
 
-    const fgRoot = getFlightGearRoot(fgInfo.path);
-    if (!fgRoot) {
-      return { success: false, error: 'Could not determine FlightGear data directory' };
-    }
+    // Install our protocol files to a user-writable directory
+    // This returns the path that we'll add with --data option
+    const userDataDir = this.installProtocolFiles();
 
-    // Install our protocol files to FlightGear's data directory
-    this.installProtocolFiles(fgRoot);
-
-    // Build arguments
-    const args = this.buildArgs(config, fgRoot);
+    // Build arguments (includes --data pointing to our protocol files)
+    // We don't set --fg-root to let FlightGear use its defaults (preserves downloaded data)
+    const args = this.buildArgs(config, userDataDir);
 
     console.log('[FlightGear] Launching with args:', args.join(' '));
 
     try {
       // Spawn FlightGear process
+      // Don't override FG_ROOT env var - let FlightGear use its defaults
       this.process = spawn(fgInfo.executable, args, {
         detached: false,
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: {
-          ...process.env,
-          FG_ROOT: fgRoot,
-        },
       });
 
       this.config = config;

@@ -12,6 +12,43 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { PanelContainer } from './panel-utils';
 
 /**
+ * Toggle Switch Component
+ * A visual toggle switch that can be clicked to change state
+ */
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+  activeColor = 'bg-green-500',
+  inactiveColor = 'bg-zinc-600',
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  activeColor?: string;
+  inactiveColor?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-800 ${
+        checked ? activeColor : inactiveColor
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+          checked ? 'translate-x-6' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  );
+}
+
+/**
  * Auto-configure SITL for testing.
  * Sets up receiver, failsafe, and basic flight modes.
  */
@@ -47,7 +84,8 @@ async function configureSitlForTesting(): Promise<boolean> {
     await new Promise((r) => setTimeout(r, 100));
 
     // Configure NAV WP on AUX2 (1700-2100) - same channel, higher range
-    await window.electronAPI.cliSendCommand('aux 2 23 1 1700 2100 0');
+    // iNav permanent box ID for NAV WP is 28 (not 23!)
+    await window.electronAPI.cliSendCommand('aux 2 28 1 1700 2100 0');
     await new Promise((r) => setTimeout(r, 100));
 
     // Configure NAV RTH on AUX3 (1700-2100)
@@ -56,6 +94,13 @@ async function configureSitlForTesting(): Promise<boolean> {
 
     // Configure NAV POSHOLD on AUX4 (1700-2100)
     await window.electronAPI.cliSendCommand('aux 4 11 3 1700 2100 0');
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Disable "first WP too far" check for SITL testing
+    // In iNav, HOME is set by FC when armed with GPS lock - not by Mission Planner
+    // This setting controls max distance (cm) from HOME to first waypoint
+    // Setting to 0 disables the check entirely
+    await window.electronAPI.cliSendCommand('set nav_wp_max_safe_distance = 0');
     await new Promise((r) => setTimeout(r, 100));
 
     // Save settings
@@ -69,14 +114,14 @@ async function configureSitlForTesting(): Promise<boolean> {
   }
 }
 
-// Common flight modes to display as buttons
+// Common flight modes to display as buttons (iNav permanent box IDs)
 const COMMON_MODES = [
   { boxId: 1, name: 'ANGLE' },
   { boxId: 2, name: 'HORIZON' },
   { boxId: 11, name: 'POS HOLD' },
-  { boxId: 23, name: 'NAV WP' },
+  { boxId: 28, name: 'NAV WP' },   // iNav box ID 28
   { boxId: 10, name: 'RTH' },
-  { boxId: 40, name: 'CRUISE' },
+  { boxId: 45, name: 'CRUISE' },   // iNav box ID 45
 ];
 
 export function FlightControlPanel() {
@@ -85,6 +130,7 @@ export function FlightControlPanel() {
   const isConnected = connectionState?.isConnected ?? false;
   const protocol = connectionState?.protocol;
   const {
+    channels,
     modeMappings,
     modeMappingsLoaded,
     canArm,
@@ -92,12 +138,22 @@ export function FlightControlPanel() {
     arm,
     disarm,
     activateMode,
+    deactivateMode,
     loadModeRanges,
     stopOverride,
+    setChannel,
+    startOverride,
   } = useFlightControlStore();
 
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [configMessage, setConfigMessage] = useState<string | null>(null);
+
+  // Local state for ARM switch position - independent of telemetry
+  const [armSwitchOn, setArmSwitchOn] = useState(false);
+
+  // Local state for mode toggles - tracks which modes are switched ON
+  // Key is boxId, value is whether the switch is ON
+  const [modeToggles, setModeToggles] = useState<Record<number, boolean>>({});
 
   // Load mode ranges when connected to MSP
   useEffect(() => {
@@ -106,25 +162,55 @@ export function FlightControlPanel() {
     }
   }, [isConnected, protocol, modeMappingsLoaded, loadModeRanges]);
 
-  // Stop override when disconnecting
+  // Stop override and reset all switches when disconnecting
   useEffect(() => {
-    if (!isConnected && isOverrideActive) {
-      stopOverride();
+    if (!isConnected) {
+      if (isOverrideActive) {
+        stopOverride();
+      }
+      setArmSwitchOn(false);
+      setModeToggles({});
     }
   }, [isConnected, isOverrideActive, stopOverride]);
 
-  // Handle arm/disarm toggle
-  const handleArmToggle = async () => {
-    if (flight.armed) {
-      await disarm();
-    } else {
+  // Sync ARM switch with telemetry on initial connect (optional: comment out if you want full manual control)
+  useEffect(() => {
+    if (isConnected && flight.armed && !armSwitchOn) {
+      // If FC reports armed but our switch is off, sync it
+      setArmSwitchOn(true);
+    }
+  }, [isConnected, flight.armed]);
+
+  // Handle arm switch toggle
+  const handleArmSwitchToggle = async (newState: boolean) => {
+    setArmSwitchOn(newState);
+    if (newState) {
       await arm();
+    } else {
+      await disarm();
     }
   };
 
-  // Handle mode activation
-  const handleModeClick = async (boxId: number) => {
-    await activateMode(boxId);
+  // Handle mode toggle - modes work like switches, not momentary buttons
+  const handleModeToggle = async (boxId: number) => {
+    const isCurrentlyOn = modeToggles[boxId] ?? false;
+    const newState = !isCurrentlyOn;
+
+    console.log(`[FlightControl] Toggle mode ${boxId}: ${isCurrentlyOn} -> ${newState}`);
+
+    // Send to FC first, only update local state if successful
+    let success = false;
+    if (newState) {
+      success = await activateMode(boxId);
+    } else {
+      success = await deactivateMode(boxId);
+    }
+
+    if (success) {
+      setModeToggles((prev) => ({ ...prev, [boxId]: newState }));
+    } else {
+      console.error(`[FlightControl] Failed to ${newState ? 'activate' : 'deactivate'} mode ${boxId}`);
+    }
   };
 
   // Handle SITL auto-configuration
@@ -150,9 +236,14 @@ export function FlightControlPanel() {
     .filter((m) => m.auxChannel !== null)
     .filter((m, i, arr) => arr.findIndex((x) => x.boxId === m.boxId) === i);
 
-  // Check if a mode is currently active
-  const isModeActive = (modeName: string) => {
-    return flight.mode.toUpperCase().includes(modeName.toUpperCase());
+  // Check if a mode is active based on our channel state
+  // We check if the AUX channel value is within the mode's activation range
+  const isModeActiveByChannel = (boxId: number) => {
+    const mapping = modeMappings.find((m) => m.boxId === boxId);
+    if (!mapping || mapping.auxChannel === null) return false;
+    const channelIndex = mapping.auxChannel + 4;
+    const channelValue = channels[channelIndex] || 1000;
+    return channelValue >= mapping.rangeStart && channelValue <= mapping.rangeEnd;
   };
 
   // Not connected or not MSP
@@ -169,21 +260,37 @@ export function FlightControlPanel() {
   return (
     <PanelContainer>
       <div className="space-y-4">
-        {/* Arm/Disarm Button */}
-        <div>
-          <button
-            onClick={handleArmToggle}
-            disabled={!canArm}
-            className={`w-full py-3 rounded-lg font-bold text-lg transition-all ${
-              flight.armed
-                ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30'
-                : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30'
-            } ${!canArm ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {flight.armed ? 'DISARM' : 'ARM'}
-          </button>
+        {/* ARM Switch - Toggle Style */}
+        <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-bold text-sm">ARM Switch</div>
+              <div className="text-xs text-gray-400">
+                {armSwitchOn ? 'Switch ON' : 'Switch OFF'}
+              </div>
+            </div>
+            <ToggleSwitch
+              checked={armSwitchOn}
+              onChange={handleArmSwitchToggle}
+              disabled={!canArm}
+              activeColor="bg-red-500"
+              inactiveColor="bg-zinc-600"
+            />
+          </div>
+
+          {/* Status indicator showing actual armed state from telemetry */}
+          <div className="mt-2 flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${flight.armed ? 'bg-red-500 animate-pulse' : 'bg-gray-500'}`} />
+            <span className={`text-xs font-medium ${flight.armed ? 'text-red-400' : 'text-gray-400'}`}>
+              {flight.armed ? 'ARMED' : 'DISARMED'}
+            </span>
+            {armSwitchOn && !flight.armed && (
+              <span className="text-xs text-amber-400">(Arming blocked)</span>
+            )}
+          </div>
+
           {!canArm && modeMappingsLoaded && (
-            <div className="mt-2 space-y-2">
+            <div className="mt-3 space-y-2 border-t border-zinc-700 pt-3">
               <p className="text-amber-400 text-xs text-center">
                 ARM mode not configured
               </p>
@@ -239,37 +346,141 @@ export function FlightControlPanel() {
           </div>
         )}
 
+        {/* Throttle Control */}
+        <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white text-sm font-medium">Throttle</span>
+            <span className="text-zinc-400 text-sm font-mono">{channels[2]}us</span>
+          </div>
+          <input
+            type="range"
+            min={1000}
+            max={2000}
+            value={channels[2]}
+            onChange={(e) => {
+              const value = parseInt(e.target.value);
+              setChannel(2, value);
+              // Start override if not active
+              if (!isOverrideActive) {
+                startOverride();
+              }
+            }}
+            className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+          />
+          <div className="flex justify-between text-xs text-zinc-500 mt-1">
+            <span>1000 (idle)</span>
+            <span>2000 (full)</span>
+          </div>
+          {flight.armed && channels[2] > 1100 && (
+            <div className="mt-2 text-xs text-amber-400 text-center">
+              Throttle active while armed!
+            </div>
+          )}
+        </div>
+
+        {/* Roll/Pitch/Yaw Sticks (simplified) */}
+        <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+          <div className="text-white text-sm font-medium mb-2">Stick Inputs</div>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div>
+              <div className="text-zinc-500 mb-1">Roll</div>
+              <input
+                type="range"
+                min={1000}
+                max={2000}
+                value={channels[0]}
+                onChange={(e) => {
+                  setChannel(0, parseInt(e.target.value));
+                  if (!isOverrideActive) startOverride();
+                }}
+                className="w-full h-1.5 bg-zinc-700 rounded appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="text-zinc-400 text-center font-mono">{channels[0]}</div>
+            </div>
+            <div>
+              <div className="text-zinc-500 mb-1">Pitch</div>
+              <input
+                type="range"
+                min={1000}
+                max={2000}
+                value={channels[1]}
+                onChange={(e) => {
+                  setChannel(1, parseInt(e.target.value));
+                  if (!isOverrideActive) startOverride();
+                }}
+                className="w-full h-1.5 bg-zinc-700 rounded appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="text-zinc-400 text-center font-mono">{channels[1]}</div>
+            </div>
+            <div>
+              <div className="text-zinc-500 mb-1">Yaw</div>
+              <input
+                type="range"
+                min={1000}
+                max={2000}
+                value={channels[3]}
+                onChange={(e) => {
+                  setChannel(3, parseInt(e.target.value));
+                  if (!isOverrideActive) startOverride();
+                }}
+                className="w-full h-1.5 bg-zinc-700 rounded appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="text-zinc-400 text-center font-mono">{channels[3]}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setChannel(0, 1500);
+              setChannel(1, 1500);
+              setChannel(3, 1500);
+            }}
+            className="mt-2 w-full py-1 text-xs text-zinc-400 hover:text-white bg-zinc-700 hover:bg-zinc-600 rounded transition-colors"
+          >
+            Center Sticks
+          </button>
+        </div>
+
         {/* Flight Mode Display */}
         <div className="text-center">
           <span className="text-gray-500 text-xs">Current Mode</span>
           <div className="text-white font-bold text-lg">{flight.mode || 'Unknown'}</div>
         </div>
 
-        {/* Mode Buttons - Common modes first */}
+        {/* Mode Toggles - Common modes as toggle switches */}
         <div>
-          <div className="text-gray-500 text-xs mb-2">Flight Modes</div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="text-gray-500 text-xs mb-2">Flight Mode Switches</div>
+          <div className="space-y-2">
             {COMMON_MODES.map((mode) => {
               const mapping = modeMappings.find((m) => m.boxId === mode.boxId);
               const isConfigured = mapping && mapping.auxChannel !== null;
-              const isActive = isModeActive(mode.name);
+              const isSwitchOn = modeToggles[mode.boxId] ?? false;
+              const isActiveByChannel = isModeActiveByChannel(mode.boxId);
 
               return (
-                <button
+                <div
                   key={mode.boxId}
-                  onClick={() => handleModeClick(mode.boxId)}
-                  disabled={!isConfigured}
-                  className={`px-3 py-2 rounded text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                      : isConfigured
-                      ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200'
-                      : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                  className={`flex items-center justify-between p-2 rounded ${
+                    isConfigured ? 'bg-zinc-800/50' : 'bg-zinc-900/30 opacity-50'
                   }`}
-                  title={isConfigured ? `Activate ${mode.name}` : `${mode.name} not configured`}
                 >
-                  {mode.name}
-                </button>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        isActiveByChannel ? 'bg-green-500' : 'bg-gray-500'
+                      }`}
+                    />
+                    <span className={`text-sm ${isConfigured ? 'text-white' : 'text-gray-500'}`}>
+                      {mode.name}
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={isSwitchOn}
+                    onChange={() => handleModeToggle(mode.boxId)}
+                    disabled={!isConfigured}
+                    activeColor="bg-blue-500"
+                    inactiveColor="bg-zinc-600"
+                  />
+                </div>
               );
             })}
           </div>
@@ -285,21 +496,30 @@ export function FlightControlPanel() {
             <div className="text-gray-500 text-xs mb-2">
               Other Configured Modes ({additionalModes.length})
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="space-y-1">
               {additionalModes.map((mode) => {
-                  const isActive = isModeActive(mode.name);
+                  const isSwitchOn = modeToggles[mode.boxId] ?? false;
+                  const isActiveByChannel = isModeActiveByChannel(mode.boxId);
                   return (
-                    <button
+                    <div
                       key={mode.boxId}
-                      onClick={() => handleModeClick(mode.boxId)}
-                      className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                        isActive
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
-                      }`}
+                      className="flex items-center justify-between p-1.5 rounded bg-zinc-800/30"
                     >
-                      {mode.name}
-                    </button>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isActiveByChannel ? 'bg-green-500' : 'bg-gray-500'
+                          }`}
+                        />
+                        <span className="text-xs text-zinc-300">{mode.name}</span>
+                      </div>
+                      <ToggleSwitch
+                        checked={isSwitchOn}
+                        onChange={() => handleModeToggle(mode.boxId)}
+                        activeColor="bg-blue-500"
+                        inactiveColor="bg-zinc-600"
+                      />
+                    </div>
                   );
                 })}
             </div>

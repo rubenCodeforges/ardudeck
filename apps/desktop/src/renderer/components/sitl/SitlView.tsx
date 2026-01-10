@@ -50,16 +50,32 @@ export default function SitlView() {
     checkStatus,
     // Visual simulator state
     detectedSimulators,
+    selectedSimulator,
+    setSelectedSimulator,
+    // FlightGear
     isFlightGearRunning,
-    isBridgeRunning,
     isFlightGearStarting,
     flightGearError,
-    simulatorEnabled,
+    customFlightGearPath,
     flightGearConfig,
-    setSimulatorEnabled,
+    setCustomFlightGearPath,
+    browseFlightGear,
     setFlightGearConfig,
+    // X-Plane
+    isXPlaneRunning,
+    isXPlaneStarting,
+    xplaneError,
+    customXPlanePath,
+    setCustomXPlanePath,
+    browseXPlane,
+    // Bridge (FlightGear only)
+    isBridgeRunning,
+    // Combined
     launchWithSimulator,
     stopWithSimulator,
+    // Legacy compat
+    simulatorEnabled,
+    setSimulatorEnabled,
   } = useSitlStore();
 
   const { connectionState } = useConnectionStore();
@@ -317,171 +333,211 @@ export default function SitlView() {
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              {/* Airplane icon */}
               <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
               <h3 className="text-sm font-medium text-white">Visual Simulator</h3>
             </div>
 
-            {/* Enable toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs text-zinc-400">FlightGear</span>
-              <button
-                onClick={() => setSimulatorEnabled(!simulatorEnabled)}
-                disabled={isRunning}
-                className={`relative w-10 h-5 rounded-full transition-colors ${
-                  simulatorEnabled ? 'bg-blue-500' : 'bg-zinc-700'
-                } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                    simulatorEnabled ? 'translate-x-5' : ''
-                  }`}
-                />
-              </button>
-            </label>
+            {/* Simulator selection dropdown */}
+            <select
+              value={selectedSimulator}
+              onChange={(e) => setSelectedSimulator(e.target.value as 'flightgear' | 'xplane' | 'none')}
+              disabled={isRunning}
+              className="px-2 py-1 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
+            >
+              <option value="none">None</option>
+              <option value="xplane">X-Plane (Recommended)</option>
+              <option value="flightgear">FlightGear</option>
+            </select>
           </div>
 
-          {/* FlightGear detection status */}
-          {(() => {
-            const flightGear = detectedSimulators.find((s) => s.name === 'flightgear');
-            const isInstalled = flightGear?.installed ?? false;
+          {/* Simulator-specific content */}
+          {selectedSimulator !== 'none' && (
+            <>
+              {/* X-Plane Config */}
+              {selectedSimulator === 'xplane' && (() => {
+                const xplane = detectedSimulators.find((s) => s.name === 'xplane');
+                const isInstalled = xplane?.installed ?? false;
 
-            return (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      isInstalled ? 'bg-green-400' : 'bg-amber-400'
-                    }`}
-                  />
-                  <span className="text-xs text-zinc-400">
-                    {isInstalled ? (
-                      <>FlightGear detected{flightGear?.path ? ` at ${flightGear.path}` : ''}</>
-                    ) : (
-                      <>
-                        FlightGear not found.{' '}
-                        <a
-                          href="https://www.flightgear.org/download/"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 underline"
-                        >
-                          Download here
-                        </a>
-                      </>
+                return (
+                  <>
+                    {/* Detection status row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isInstalled ? 'bg-green-400' : 'bg-amber-400'}`} />
+                        <span className="text-xs text-zinc-400">
+                          {isInstalled ? (
+                            <>X-Plane detected{xplane?.version ? ` (v${xplane.version})` : ''}</>
+                          ) : (
+                            <>
+                              X-Plane not found.{' '}
+                              <a href="https://www.x-plane.com/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
+                                Get X-Plane
+                              </a>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={browseXPlane} disabled={isRunning} className="px-2 py-1 text-xs text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          Browse...
+                        </button>
+                        {customXPlanePath && (
+                          <button onClick={() => setCustomXPlanePath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {customXPlanePath && (
+                      <div className="mb-3 px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+                        <span className="text-blue-400">Custom path:</span>{' '}
+                        <span className="font-mono text-blue-200 break-all">{customXPlanePath}</span>
+                      </div>
                     )}
-                  </span>
+
+                    {/* X-Plane setup instructions */}
+                    <div className="p-3 bg-zinc-800/50 border border-zinc-700 rounded text-xs text-zinc-400 mb-3">
+                      <div className="font-medium text-zinc-300 mb-2">X-Plane Setup:</div>
+                      <ol className="list-decimal list-inside space-y-1">
+                        <li>Settings → Data Output → enable network output</li>
+                        <li>Send to: <span className="font-mono text-blue-300">127.0.0.1:49000</span></li>
+                        <li>Enable: Speeds, Pitch/Roll/Heading, Lat/Lon/Alt</li>
+                      </ol>
+                    </div>
+
+                    {/* Running status */}
+                    {(isXPlaneRunning || isXPlaneStarting) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-2 h-2 rounded-full ${isXPlaneRunning ? 'bg-green-400 animate-pulse' : 'bg-amber-400 animate-pulse'}`} />
+                        <span className="text-xs text-zinc-400">{isXPlaneStarting ? 'Starting X-Plane...' : 'X-Plane Running'}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* FlightGear Config */}
+              {selectedSimulator === 'flightgear' && (() => {
+                const flightGear = detectedSimulators.find((s) => s.name === 'flightgear');
+                const isInstalled = flightGear?.installed ?? false;
+
+                return (
+                  <>
+                    {/* Detection status row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isInstalled ? 'bg-green-400' : 'bg-amber-400'}`} />
+                        <span className="text-xs text-zinc-400">
+                          {isInstalled ? (
+                            <>FlightGear detected{flightGear?.path ? ` at ${flightGear.path}` : ''}</>
+                          ) : (
+                            <>
+                              FlightGear not found.{' '}
+                              <a href="https://www.flightgear.org/download/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
+                                Download here
+                              </a>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={browseFlightGear} disabled={isRunning} className="px-2 py-1 text-xs text-zinc-300 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          Browse...
+                        </button>
+                        {customFlightGearPath && (
+                          <button onClick={() => setCustomFlightGearPath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {customFlightGearPath && (
+                      <div className="mb-3 px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+                        <span className="text-blue-400">Custom path:</span>{' '}
+                        <span className="font-mono text-blue-200 break-all">{customFlightGearPath}</span>
+                      </div>
+                    )}
+
+                    {/* FlightGear config options */}
+                    {isInstalled && (
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800">
+                        <div>
+                          <label className="block text-xs text-zinc-500 mb-1">Aircraft</label>
+                          <select value={flightGearConfig.aircraft} onChange={(e) => setFlightGearConfig({ aircraft: e.target.value })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
+                            {AIRCRAFT_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-zinc-500 mb-1">Airport</label>
+                          <select value={flightGearConfig.airport} onChange={(e) => setFlightGearConfig({ airport: e.target.value })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
+                            {AIRPORT_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-zinc-500 mb-1">Time of Day</label>
+                          <select value={flightGearConfig.timeOfDay} onChange={(e) => setFlightGearConfig({ timeOfDay: e.target.value as typeof flightGearConfig.timeOfDay })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
+                            <option value="dawn">Dawn</option>
+                            <option value="morning">Morning</option>
+                            <option value="noon">Noon</option>
+                            <option value="afternoon">Afternoon</option>
+                            <option value="dusk">Dusk</option>
+                            <option value="night">Night</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-zinc-500 mb-1">Weather</label>
+                          <select value={flightGearConfig.weather} onChange={(e) => setFlightGearConfig({ weather: e.target.value as typeof flightGearConfig.weather })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
+                            <option value="clear">Clear</option>
+                            <option value="cloudy">Cloudy</option>
+                            <option value="rain">Rain</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Running status indicators */}
+                    {(isFlightGearRunning || isBridgeRunning) && (
+                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-800">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${isFlightGearRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`} />
+                          <span className="text-xs text-zinc-400">FlightGear</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${isBridgeRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`} />
+                          <span className="text-xs text-zinc-400">Bridge</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Error display */}
+              {(flightGearError || xplaneError) && (
+                <div className="mt-3 pt-3 border-t border-zinc-800 text-xs text-red-400">
+                  {flightGearError || xplaneError}
                 </div>
-
-                {/* Simulator config - only show when enabled and installed */}
-                {simulatorEnabled && isInstalled && (
-                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800">
-                    {/* Aircraft selection */}
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Aircraft</label>
-                      <select
-                        value={flightGearConfig.aircraft}
-                        onChange={(e) => setFlightGearConfig({ aircraft: e.target.value })}
-                        disabled={isRunning}
-                        className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
-                      >
-                        {AIRCRAFT_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Airport selection */}
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Airport</label>
-                      <select
-                        value={flightGearConfig.airport}
-                        onChange={(e) => setFlightGearConfig({ airport: e.target.value })}
-                        disabled={isRunning}
-                        className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
-                      >
-                        {AIRPORT_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Time of day */}
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Time of Day</label>
-                      <select
-                        value={flightGearConfig.timeOfDay}
-                        onChange={(e) => setFlightGearConfig({ timeOfDay: e.target.value as typeof flightGearConfig.timeOfDay })}
-                        disabled={isRunning}
-                        className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
-                      >
-                        <option value="dawn">Dawn</option>
-                        <option value="morning">Morning</option>
-                        <option value="noon">Noon</option>
-                        <option value="afternoon">Afternoon</option>
-                        <option value="dusk">Dusk</option>
-                        <option value="night">Night</option>
-                      </select>
-                    </div>
-
-                    {/* Weather */}
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Weather</label>
-                      <select
-                        value={flightGearConfig.weather}
-                        onChange={(e) => setFlightGearConfig({ weather: e.target.value as typeof flightGearConfig.weather })}
-                        disabled={isRunning}
-                        className="w-full px-2 py-1.5 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
-                      >
-                        <option value="clear">Clear</option>
-                        <option value="cloudy">Cloudy</option>
-                        <option value="rain">Rain</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Running status indicators */}
-                {simulatorEnabled && (isFlightGearRunning || isBridgeRunning) && (
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-800">
-                    {/* FlightGear status */}
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${isFlightGearRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`} />
-                      <span className="text-xs text-zinc-400">FlightGear</span>
-                    </div>
-                    {/* Bridge status */}
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${isBridgeRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`} />
-                      <span className="text-xs text-zinc-400">Protocol Bridge</span>
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-
-          {/* FlightGear error */}
-          {flightGearError && (
-            <div className="mt-3 pt-3 border-t border-zinc-800 text-xs text-red-400">
-              {flightGearError}
-            </div>
+              )}
+            </>
           )}
 
-          {/* What does this do? */}
+          {/* Help text */}
           <div className="mt-3 pt-3 border-t border-zinc-800 text-xs text-zinc-600">
-            <span className="text-zinc-500">What's this?</span> Enable visual simulation to fly in FlightGear
-            controlled by iNav SITL. Your missions, PIDs, and modes work just like on real hardware.
+            <span className="text-zinc-500">What's this?</span>{' '}
+            {selectedSimulator === 'xplane'
+              ? 'X-Plane connects directly to iNav SITL for realistic flight physics.'
+              : selectedSimulator === 'flightgear'
+              ? 'FlightGear provides free visual simulation via a protocol bridge.'
+              : 'Select a visual simulator to see your aircraft fly in 3D.'}
           </div>
         </div>
 
-        {/* Virtual RC Control - only show when bridge is running */}
-        {simulatorEnabled && isBridgeRunning && (
+        {/* Virtual RC Control - show when simulator is active */}
+        {selectedSimulator !== 'none' && (isXPlaneRunning || isBridgeRunning) && (
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">

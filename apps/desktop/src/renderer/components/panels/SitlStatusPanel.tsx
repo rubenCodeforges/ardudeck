@@ -8,6 +8,7 @@
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSitlStore } from '../../stores/sitl-store';
+import { useFlightControlStore } from '../../stores/flight-control-store';
 import { useEffect, useState } from 'react';
 import { PanelContainer } from './panel-utils';
 
@@ -58,6 +59,7 @@ export function SitlStatusPanel() {
   const { flight, position, attitude, battery } = useTelemetryStore();
   const { connectionState } = useConnectionStore();
   const { isRunning: sitlRunning, bridgeConnected } = useSitlStore();
+  const { channels: gcsChannels, isOverrideActive } = useFlightControlStore();
   const [rcChannels, setRcChannels] = useState<number[]>([1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]);
 
   // Derive sensor status from actual telemetry data
@@ -76,19 +78,24 @@ export function SitlStatusPanel() {
   useEffect(() => {
     if (!connectionState.isConnected || connectionState.protocol !== 'msp') return;
 
+    let pollPending = false;
     const fetchRcChannels = async () => {
+      if (pollPending) return;
+      pollPending = true;
       try {
-        const channels = await window.electronAPI.mspGetRcChannels?.();
-        if (channels && Array.isArray(channels)) {
-          setRcChannels(channels);
+        const result = await window.electronAPI.mspGetRc?.();
+        if (result?.channels && Array.isArray(result.channels)) {
+          setRcChannels(result.channels);
         }
       } catch {
         // RC channels might not be available
+      } finally {
+        pollPending = false;
       }
     };
 
     fetchRcChannels();
-    const interval = setInterval(fetchRcChannels, 500);
+    const interval = setInterval(fetchRcChannels, 200);
     return () => clearInterval(interval);
   }, [connectionState.isConnected, connectionState.protocol]);
 
@@ -242,19 +249,70 @@ export function SitlStatusPanel() {
           </div>
         </div>
 
-        {/* RC Channels */}
+        {/* RC Channels - GCS Sending vs FC Receiving */}
         <div>
-          <div className="text-xs text-zinc-500 mb-2">RC Channels</div>
-          <div className="space-y-1.5">
-            <RCChannelBar channel={0} value={rcChannels[0] || 1500} label="Roll" />
-            <RCChannelBar channel={1} value={rcChannels[1] || 1500} label="Pitch" />
-            <RCChannelBar channel={2} value={rcChannels[2] || 1000} label="Throt" />
-            <RCChannelBar channel={3} value={rcChannels[3] || 1500} label="Yaw" />
-            <RCChannelBar channel={4} value={rcChannels[4] || 1000} label="AUX1" />
-            <RCChannelBar channel={5} value={rcChannels[5] || 1000} label="AUX2" />
-            <RCChannelBar channel={6} value={rcChannels[6] || 1000} label="AUX3" />
-            <RCChannelBar channel={7} value={rcChannels[7] || 1000} label="AUX4" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-zinc-500">RC Channels</span>
+            {isOverrideActive && (
+              <span className="text-xs text-amber-400 animate-pulse">Override Active</span>
+            )}
           </div>
+
+          {/* Column headers */}
+          <div className="flex items-center gap-2 mb-1 text-xs text-zinc-600">
+            <span className="w-12"></span>
+            <span className="flex-1 text-center">FC Receives</span>
+            <span className="w-10"></span>
+            <span className="w-12 text-center">GCS</span>
+          </div>
+
+          <div className="space-y-1.5">
+            {[
+              { label: 'Roll', idx: 0 },
+              { label: 'Pitch', idx: 1 },
+              { label: 'Throt', idx: 2 },
+              { label: 'Yaw', idx: 3 },
+              { label: 'AUX1', idx: 4 },
+              { label: 'AUX2', idx: 5 },
+              { label: 'AUX3', idx: 6 },
+              { label: 'AUX4', idx: 7 },
+            ].map(({ label, idx }) => {
+              const fcValue = rcChannels[idx] || (idx === 2 ? 1000 : 1500);
+              const gcsValue = gcsChannels[idx] || (idx === 2 ? 1000 : 1500);
+              const mismatch = isOverrideActive && Math.abs(fcValue - gcsValue) > 50;
+
+              return (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className={`text-xs w-12 ${mismatch ? 'text-red-400' : 'text-zinc-500'}`}>
+                    {label}
+                  </span>
+                  <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        fcValue > 1800 ? 'bg-green-500' : fcValue < 1200 ? 'bg-red-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${Math.max(0, Math.min(100, ((fcValue - 1000) / 1000) * 100))}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs w-10 text-right ${mismatch ? 'text-red-400' : 'text-zinc-400'}`}>
+                    {fcValue}
+                  </span>
+                  <span className={`text-xs w-12 text-right font-mono ${
+                    isOverrideActive ? (mismatch ? 'text-red-400' : 'text-green-400') : 'text-zinc-600'
+                  }`}>
+                    {gcsValue}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Warning if mismatch detected */}
+          {isOverrideActive && rcChannels.some((fc, i) => Math.abs(fc - (gcsChannels[i] || 1000)) > 50) && (
+            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+              FC not receiving GCS values. Check: <code className="bg-zinc-800 px-1 rounded">set receiver_type = MSP</code>
+            </div>
+          )}
         </div>
 
         {/* Battery (even if fake) */}

@@ -180,7 +180,18 @@ class ProtocolBridge {
     this.registeredDrefs.clear();
     this.rrefPacketsReceived = 0;
     this.packetsSent = 0;
+    this.drefLogCount = 0;
     this.lastFgData = null;
+    this.pendingControls = {
+      aileron: 0,
+      elevator: 0,
+      rudder: 0,
+      throttle: 0,
+      flaps: 0,
+      speedbrake: 0,
+      gearDown: 0,
+      brakePark: 0,
+    };
     await this.cleanup();
     console.log('[Bridge] Stopped');
   }
@@ -231,6 +242,19 @@ class ProtocolBridge {
   private registeredDrefs: Map<number, string> = new Map();
   private rrefPacketsReceived = 0;
 
+  // Accumulated control values from DREF commands
+  private pendingControls: FlightGearControlData = {
+    aileron: 0,
+    elevator: 0,
+    rudder: 0,
+    throttle: 0,
+    flaps: 0,
+    speedbrake: 0,
+    gearDown: 0,
+    brakePark: 0,
+  };
+  private drefLogCount = 0;
+
   /**
    * Handle incoming SITL data (RREF registration requests or servo outputs)
    */
@@ -248,13 +272,87 @@ class ProtocolBridge {
     // DREF write command from SITL (setting values like joystick, throttle)
     // Format: "DREF" + null + value(4 float) + dataref(500 bytes)
     if (header === 'DREF') {
-      // SITL sends these to set control values - we can ignore them
-      // (they would go to X-Plane to move controls, but we don't need them)
+      this.handleDrefCommand(buffer);
       return;
     }
 
     // Debug: log unknown packet types
     console.log(`[Bridge] Unknown packet from SITL: header="${header}", len=${buffer.length}, hex=${buffer.subarray(0, Math.min(20, buffer.length)).toString('hex')}`);
+  }
+
+  /**
+   * Handle DREF write command from SITL (servo/throttle outputs)
+   * X-Plane DREF format: "DREF" (4) + null (1) + value(4 float) + dataref(500 bytes) = 509 bytes
+   */
+  private handleDrefCommand(buffer: Buffer): void {
+    if (buffer.length < 9) return; // Need at least header + value
+
+    // Parse value and dataref path
+    const value = buffer.readFloatLE(5);
+    const datarefPath = buffer.toString('ascii', 9, Math.min(buffer.length, 509)).replace(/\0+$/, '');
+
+    // Log first few DREF commands for debugging
+    if (this.drefLogCount < 30) {
+      console.log(`[Bridge] DREF: "${datarefPath}" = ${value.toFixed(4)}`);
+      this.drefLogCount++;
+      if (this.drefLogCount === 30) {
+        console.log(`[Bridge] (suppressing further DREF logs)`);
+      }
+    }
+
+    // Map X-Plane datarefs to FlightGear controls
+    // iNav SITL uses various datarefs for servo/motor outputs:
+    let controlUpdated = false;
+    const lowerPath = datarefPath.toLowerCase();
+
+    // Aileron/Roll
+    if (lowerPath.includes('yoke_roll') || lowerPath.includes('aileron') ||
+        lowerPath.includes('roll_ratio') || lowerPath.includes('servo_aileron')) {
+      this.pendingControls.aileron = value;
+      controlUpdated = true;
+    }
+    // Elevator/Pitch
+    else if (lowerPath.includes('yoke_pitch') || lowerPath.includes('elevator') ||
+             lowerPath.includes('pitch_ratio') || lowerPath.includes('servo_elevator')) {
+      this.pendingControls.elevator = value;
+      controlUpdated = true;
+    }
+    // Rudder/Yaw
+    else if (lowerPath.includes('yoke_heading') || lowerPath.includes('rudder') ||
+             lowerPath.includes('heading_ratio') || lowerPath.includes('yaw') ||
+             lowerPath.includes('servo_rudder')) {
+      this.pendingControls.rudder = value;
+      controlUpdated = true;
+    }
+    // Throttle/Engine
+    else if (lowerPath.includes('throttle') || lowerPath.includes('engn_thro') ||
+             lowerPath.includes('engine') || lowerPath.includes('motor') ||
+             lowerPath.includes('prop_') && lowerPath.includes('thro')) {
+      // Throttle is typically 0-1, not -1 to 1
+      this.pendingControls.throttle = Math.max(0, Math.min(1, value));
+      controlUpdated = true;
+    }
+    // Flaps
+    else if (lowerPath.includes('flap') && !lowerPath.includes('flaperon')) {
+      this.pendingControls.flaps = value;
+      controlUpdated = true;
+    }
+    // Speedbrake
+    else if (lowerPath.includes('speedbrake') || lowerPath.includes('speed_brake') ||
+             lowerPath.includes('spoiler')) {
+      this.pendingControls.speedbrake = value;
+      controlUpdated = true;
+    }
+    // Landing gear
+    else if (lowerPath.includes('gear') && lowerPath.includes('down')) {
+      this.pendingControls.gearDown = value > 0.5 ? 1 : 0;
+      controlUpdated = true;
+    }
+
+    // Send accumulated controls to FlightGear
+    if (controlUpdated) {
+      this.sendToFlightGear(this.pendingControls);
+    }
   }
 
   /**
@@ -275,16 +373,13 @@ class ProtocolBridge {
 
     this.rrefPacketsReceived++;
 
-    // Log all GPS-related datarefs and first 30 registrations
-    const isGpsRelated = datarefPath.includes('latitude') ||
-                         datarefPath.includes('longitude') ||
-                         datarefPath.includes('elevation') ||
-                         datarefPath.includes('groundspeed') ||
-                         datarefPath.includes('hpath');
+    // Only log if this is a NEW dataref registration (not a duplicate)
+    const isNewRegistration = !this.registeredDrefs.has(index) ||
+                              this.registeredDrefs.get(index) !== datarefPath;
 
-    if (this.rrefPacketsReceived <= 30 || isGpsRelated) {
-      const gpsTag = isGpsRelated ? ' [GPS]' : '';
-      console.log(`[Bridge] RREF registration #${this.rrefPacketsReceived}: freq=${freq}Hz, index=${index}, dref="${datarefPath}"${gpsTag}`);
+    // Log only first 30 unique registrations to avoid spam
+    if (isNewRegistration && this.registeredDrefs.size < 30) {
+      console.log(`[Bridge] RREF: index=${index}, dref="${datarefPath}"`);
     }
 
     // Store the registration
@@ -440,20 +535,13 @@ class ProtocolBridge {
         console.log(`[Bridge]   index=${index}, dref="${dref}", value=${value}`);
       }
     }
-    // Log GPS values every 300 packets (~30 seconds at 10Hz) for debugging
-    if (this.packetsSent % 300 === 0) {
+    // Only warn once if no GPS datarefs registered (check at packet 100)
+    if (this.packetsSent === 100) {
       const gpsValues = values.filter(({ index }) => {
         const dref = this.registeredDrefs.get(index);
-        return dref && (dref.includes('latitude') || dref.includes('longitude') ||
-                       dref.includes('elevation') || dref.includes('groundspeed') || dref.includes('hpath'));
+        return dref && (dref.includes('latitude') || dref.includes('longitude') || dref.includes('elevation'));
       });
-      if (gpsValues.length > 0) {
-        console.log(`[Bridge] GPS values (packet ${this.packetsSent}):`);
-        for (const { index, value } of gpsValues) {
-          const dref = this.registeredDrefs.get(index);
-          console.log(`[Bridge]   ${dref}: ${value}`);
-        }
-      } else {
+      if (gpsValues.length === 0) {
         console.log(`[Bridge] WARNING: No GPS datarefs registered! GPS will not work.`);
       }
     }
@@ -561,7 +649,7 @@ let virtualRCState: VirtualRCState = { ...defaultRCState };
  */
 export function setVirtualRC(state: Partial<VirtualRCState>): void {
   virtualRCState = { ...virtualRCState, ...state };
-  console.log('[Bridge] Virtual RC updated:', virtualRCState);
+  // Don't log - this is called at 100ms intervals from MSP_SET_RAW_RC
 }
 
 /**

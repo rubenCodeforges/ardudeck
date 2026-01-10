@@ -570,35 +570,35 @@ const BETAFLIGHT_ARMING_FLAGS: Record<number, string> = {
 
 /**
  * Arming disabled flags for iNav
- * Source: iNav armingFlags.h - bit positions match (1 << n)
+ * Source: iNav src/main/fc/runtime_config.h
+ * Bit positions match (1 << n) - note that bits 0-5 are used for other purposes
  */
 const INAV_ARMING_FLAGS: Record<number, string> = {
-  0: 'No Gyro',
-  1: 'Failsafe System',
-  2: 'Not Level',
-  3: 'Sensors Calibrating',
-  4: 'System Overloaded',
-  5: 'Navigation Unsafe',
-  6: 'Compass Not Calibrated',
-  7: 'Accelerometer Not Calibrated',
-  8: 'Arm Switch',
-  9: 'Hardware Failure',
-  10: 'Box Failsafe',
-  11: 'Box Kill Switch',
-  12: 'RC Link',
-  13: 'Throttle',
-  14: 'CLI',
-  15: 'CMS Menu',
-  16: 'OSD Menu',
-  17: 'Roll/Pitch Not Centered',
-  18: 'Servo Autotrim',
-  19: 'Out of Memory',
-  20: 'Invalid Setting',
-  21: 'PWM Output Error',
-  22: 'No Prearm',
-  23: 'DShot Beeper',
-  24: 'Landing Detected',
-  25: 'Geozone',
+  6: 'Geozone',
+  7: 'Failsafe',
+  8: 'Not Level',
+  9: 'Calibrating',
+  10: 'Overloaded',
+  11: 'Nav Unsafe',
+  12: 'Compass',
+  13: 'Accelerometer',
+  14: 'Arm Switch',
+  15: 'Hardware Fail',
+  16: 'Box Failsafe',
+  17: 'Kill Switch',
+  18: 'RC Link',
+  19: 'Throttle',
+  20: 'CLI',
+  21: 'CMS Menu',
+  22: 'OSD Menu',
+  23: 'Roll/Pitch',
+  24: 'Autotrim',
+  25: 'Out of Memory',
+  26: 'Bad Setting',
+  27: 'PWM Output',
+  28: 'No Prearm',
+  29: 'DShot Beeper',
+  30: 'Landed',
 };
 
 /**

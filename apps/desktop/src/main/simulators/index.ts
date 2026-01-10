@@ -22,6 +22,11 @@ export {
 } from './flightgear-launcher';
 
 export {
+  xplaneLauncher,
+  type XPlaneConfig,
+} from './xplane-launcher';
+
+export {
   protocolBridge,
   setVirtualRC,
   getVirtualRC,

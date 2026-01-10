@@ -7,28 +7,63 @@
 
 import type { MSPModeRange } from '@ardudeck/msp-ts';
 
-// Box IDs from Betaflight (MSP_FLIGHT_MODE)
+// iNav permanent box IDs (from fc_msp_box.c)
 export const BOX_ID = {
   ARM: 0,
   ANGLE: 1,
   HORIZON: 2,
-  MAG: 3,
-  HEADFREE: 4,
-  PASSTHRU: 5,
-  FAILSAFE: 6,
-  GPSRESCUE: 7,
-  ANTIGRAVITY: 8,
+  NAV_ALTHOLD: 3,
+  HEADING_HOLD: 5,
+  HEADFREE: 6,
+  HEADADJ: 7,
+  CAMSTAB: 8,
+  NAV_RTH: 10,
+  NAV_POSHOLD: 11,
+  MANUAL: 12,
   BEEPER: 13,
-  LEDLOW: 15,
-  OSD: 19,
+  LEDS_OFF: 15,
+  LIGHTS: 16,
+  OSD_OFF: 19,
+  TELEMETRY: 20,
+  AUTO_TUNE: 21,
   BLACKBOX: 26,
-  AIRMODE: 28,
-  ACROTRAINER: 29,
-  VTXPITMODE: 30,
-  PARALYZE: 36,
-  BEEPGPSCOUNT: 39,
-  VTXCONTROL: 40,
-  LAUNCHCONTROL: 41,
+  FAILSAFE: 27,
+  NAV_WP: 28,
+  AIRMODE: 29,
+  HOME_RESET: 30,
+  GCS_NAV: 31,
+  FPV_ANGLE_MIX: 32,
+  SURFACE: 33,
+  FLAPERON: 34,
+  TURN_ASSIST: 35,
+  NAV_LAUNCH: 36,
+  SERVO_AUTOTRIM: 37,
+  CAMERA_1: 39,
+  CAMERA_2: 40,
+  CAMERA_3: 41,
+  OSD_ALT_1: 42,
+  OSD_ALT_2: 43,
+  OSD_ALT_3: 44,
+  NAV_CRUISE: 45,
+  MC_BRAKING: 46,
+  USER1: 47,
+  USER2: 48,
+  LOITER_CHANGE: 49,
+  MSP_RC_OVERRIDE: 50,
+  PREARM: 51,
+  TURTLE: 52,
+  NAV_COURSE_HOLD: 53,
+  AUTO_LEVEL: 54,
+  WP_PLANNER: 55,
+  SOARING: 56,
+  USER3: 57,
+  USER4: 58,
+  MISSION_CHANGE: 59,
+  BEEPER_MUTE: 60,
+  MULTI_FUNC: 61,
+  MIXER_PROFILE_2: 62,
+  MIXER_TRANSITION: 63,
+  ANGLE_HOLD: 64,
 } as const;
 
 // Mode metadata with beginner-friendly descriptions
@@ -77,13 +112,63 @@ export const MODE_INFO: Record<
     beginner:
       'ADVANCED - Keeps full stick authority even at zero throttle. Essential for freestyle tricks and flips. Usually kept on all the time.',
   },
-  [BOX_ID.GPSRESCUE]: {
-    name: 'GPS RESCUE',
-    icon: '🛟',
+  [BOX_ID.NAV_ALTHOLD]: {
+    name: 'NAV ALTHOLD',
+    icon: '📏',
+    description: 'Hold altitude',
+    color: 'bg-teal-500',
+    beginner: 'Holds current altitude using barometer/GPS. Throttle controls climb/descent rate.',
+  },
+  [BOX_ID.NAV_RTH]: {
+    name: 'NAV RTH',
+    icon: '🏠',
     description: 'Return to home',
     color: 'bg-green-500',
-    beginner:
-      'EMERGENCY MODE - Activates GPS return-to-home. Your quad will fly back to where it took off. Requires GPS module! Great for when you lose orientation.',
+    beginner: 'Return To Home - Aircraft will climb to safe altitude and fly back to launch point. Essential safety feature!',
+    essential: true,
+  },
+  [BOX_ID.NAV_POSHOLD]: {
+    name: 'NAV POSHOLD',
+    icon: '📍',
+    description: 'Hold position',
+    color: 'bg-cyan-500',
+    beginner: 'GPS position hold - Aircraft will stay in place. Great for aerial photography or when you need to stop.',
+  },
+  [BOX_ID.NAV_WP]: {
+    name: 'NAV WP',
+    icon: '🗺️',
+    description: 'Waypoint mission',
+    color: 'bg-indigo-500',
+    beginner: 'Execute uploaded waypoint mission. Aircraft will fly to each waypoint automatically.',
+    essential: true,
+  },
+  [BOX_ID.NAV_CRUISE]: {
+    name: 'NAV CRUISE',
+    icon: '✈️',
+    description: 'Cruise control',
+    color: 'bg-sky-500',
+    beginner: 'Fixed-wing cruise mode - Maintains heading and altitude. Perfect for long-range flights.',
+  },
+  [BOX_ID.NAV_COURSE_HOLD]: {
+    name: 'COURSE HOLD',
+    icon: '🧭',
+    description: 'Hold course',
+    color: 'bg-violet-500',
+    beginner: 'Maintains current heading while allowing altitude control. Good for flying in a straight line.',
+  },
+  [BOX_ID.NAV_LAUNCH]: {
+    name: 'NAV LAUNCH',
+    icon: '🚀',
+    description: 'Auto launch',
+    color: 'bg-orange-500',
+    beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.',
+  },
+  [BOX_ID.GCS_NAV]: {
+    name: 'GCS NAV',
+    icon: '🎮',
+    description: 'Ground control',
+    color: 'bg-purple-500',
+    beginner: 'Allow ground control station to send navigation commands (fly-to-here, etc).',
   },
   [BOX_ID.BEEPER]: {
     name: 'BEEPER',
@@ -117,13 +202,61 @@ export const MODE_INFO: Record<
     beginner:
       'PIT MODE - Puts your video transmitter in low power mode. Required at races before takeoff to avoid interfering with other pilots.',
   },
-  [BOX_ID.ACROTRAINER]: {
-    name: 'ACRO TRAINER',
-    icon: '🎓',
-    description: 'Learning acro',
-    color: 'bg-pink-500',
-    beginner:
-      'LEARNING ACRO - Limits how fast the quad can rotate, making acro mode easier to learn. Great stepping stone from ANGLE to full ACRO.',
+  [BOX_ID.MANUAL]: {
+    name: 'MANUAL',
+    icon: '🕹️',
+    description: 'Direct control',
+    color: 'bg-rose-500',
+    beginner: 'Direct servo/motor control without stabilization. For experienced pilots only!',
+  },
+  [BOX_ID.FLAPERON]: {
+    name: 'FLAPERON',
+    icon: '🛬',
+    description: 'Flaps mode',
+    color: 'bg-amber-500',
+    beginner: 'Activates flaperons for slower landing approach. Ailerons droop down to act as flaps.',
+  },
+  [BOX_ID.TURN_ASSIST]: {
+    name: 'TURN ASSIST',
+    icon: '↪️',
+    description: 'Coordinated turns',
+    color: 'bg-lime-500',
+    beginner: 'Auto-coordinates rudder with ailerons for smooth turns. Great for fixed-wing beginners.',
+  },
+  [BOX_ID.HOME_RESET]: {
+    name: 'HOME RESET',
+    icon: '🔄',
+    description: 'Reset home position',
+    color: 'bg-red-400',
+    beginner: 'Sets current position as new home point. Use when you relocate during a session.',
+  },
+  [BOX_ID.WP_PLANNER]: {
+    name: 'WP PLANNER',
+    icon: '✏️',
+    description: 'Mission planner',
+    color: 'bg-fuchsia-500',
+    beginner: 'Enable in-flight waypoint planning via stick commands.',
+  },
+  [BOX_ID.HEADING_HOLD]: {
+    name: 'HEADING HOLD',
+    icon: '🧲',
+    description: 'Hold heading',
+    color: 'bg-emerald-500',
+    beginner: 'Maintains current magnetic heading. Useful for flying straight lines.',
+  },
+  [BOX_ID.PREARM]: {
+    name: 'PREARM',
+    icon: '🔐',
+    description: 'Pre-arm check',
+    color: 'bg-yellow-600',
+    beginner: 'Safety switch - must be enabled before arming. Prevents accidental arm.',
+  },
+  [BOX_ID.TURTLE]: {
+    name: 'TURTLE',
+    icon: '🐢',
+    description: 'Flip over',
+    color: 'bg-stone-500',
+    beginner: 'Flip crashed quad back over using motor spin. For multirotors only.',
   },
 };
 
@@ -200,17 +333,37 @@ export const PRESETS: Record<string, ModePreset> = {
     name: 'Cinematic',
     icon: '🎬',
     description: 'Ultra-smooth for filming',
-    tip: 'GPS Rescue brings your quad home if signal is lost (requires GPS module!). Perfect for long-range filming.',
+    tip: 'NAV RTH brings your aircraft home if signal is lost (requires GPS!). Perfect for long-range filming.',
     gradient: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     modes: [
       // ARM on AUX1 high
       { boxId: BOX_ID.ARM, auxChannel: 0, rangeStart: 1800, rangeEnd: 2100 },
       // ANGLE always on (smooth, stable shots)
       { boxId: BOX_ID.ANGLE, auxChannel: 0, rangeStart: 900, rangeEnd: 2100 },
-      // GPS RESCUE on AUX2 high
-      { boxId: BOX_ID.GPSRESCUE, auxChannel: 1, rangeStart: 1800, rangeEnd: 2100 },
+      // NAV RTH on AUX2 high
+      { boxId: BOX_ID.NAV_RTH, auxChannel: 1, rangeStart: 1800, rangeEnd: 2100 },
     ],
-    wizardModes: [BOX_ID.ARM, BOX_ID.ANGLE, BOX_ID.GPSRESCUE],
+    wizardModes: [BOX_ID.ARM, BOX_ID.ANGLE, BOX_ID.NAV_RTH],
+  },
+
+  fixedWing: {
+    id: 'fixedWing',
+    name: 'Fixed Wing',
+    icon: '✈️',
+    description: 'For airplanes with navigation',
+    tip: 'Complete setup for fixed-wing with launch assist, RTH, and waypoint navigation.',
+    gradient: 'from-sky-500/20 to-blue-500/10 border-sky-500/30',
+    modes: [
+      // ARM on AUX1 high
+      { boxId: BOX_ID.ARM, auxChannel: 0, rangeStart: 1800, rangeEnd: 2100 },
+      // NAV LAUNCH on AUX2 low (for auto-launch)
+      { boxId: BOX_ID.NAV_LAUNCH, auxChannel: 1, rangeStart: 900, rangeEnd: 1300 },
+      // NAV RTH on AUX2 mid
+      { boxId: BOX_ID.NAV_RTH, auxChannel: 1, rangeStart: 1300, rangeEnd: 1700 },
+      // NAV WP on AUX2 high (waypoint mission)
+      { boxId: BOX_ID.NAV_WP, auxChannel: 1, rangeStart: 1700, rangeEnd: 2100 },
+    ],
+    wizardModes: [BOX_ID.ARM, BOX_ID.NAV_LAUNCH, BOX_ID.NAV_RTH, BOX_ID.NAV_WP],
   },
 };
 
@@ -223,12 +376,20 @@ export const ALL_MODES = Object.entries(MODE_INFO).map(([boxId, info]) => ({
 // Essential modes that should always be visible
 export const ESSENTIAL_MODES = ALL_MODES.filter((m) => m.essential);
 
-// AUX channel names
+// AUX channel names (iNav/Betaflight support up to 12 AUX channels)
 export const AUX_CHANNELS = [
   { index: 0, name: 'AUX 1', description: 'Usually a 2-position switch' },
   { index: 1, name: 'AUX 2', description: 'Often a 3-position switch' },
   { index: 2, name: 'AUX 3', description: 'Additional switch' },
   { index: 3, name: 'AUX 4', description: 'Additional switch' },
+  { index: 4, name: 'AUX 5', description: 'Additional channel (knob/slider)' },
+  { index: 5, name: 'AUX 6', description: 'Additional channel (knob/slider)' },
+  { index: 6, name: 'AUX 7', description: 'Additional channel' },
+  { index: 7, name: 'AUX 8', description: 'Additional channel' },
+  { index: 8, name: 'AUX 9', description: 'Additional channel' },
+  { index: 9, name: 'AUX 10', description: 'Additional channel' },
+  { index: 10, name: 'AUX 11', description: 'Additional channel' },
+  { index: 11, name: 'AUX 12', description: 'Additional channel' },
 ] as const;
 
 // PWM range constants

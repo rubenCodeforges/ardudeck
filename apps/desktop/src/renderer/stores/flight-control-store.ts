@@ -38,7 +38,10 @@ export interface MSPModeRange {
   rangeEnd: number;
 }
 
-/** Flight mode names by box ID (iNav) */
+/**
+ * iNav Permanent Box IDs (from fc_msp_box.c)
+ * These are FIXED IDs that never change - not runtime indices!
+ */
 export const INAV_MODE_NAMES: Record<number, string> = {
   0: 'ARM',
   1: 'ANGLE',
@@ -52,48 +55,49 @@ export const INAV_MODE_NAMES: Record<number, string> = {
   11: 'NAV POSHOLD',
   12: 'MANUAL',
   13: 'BEEPER',
-  15: 'LEDLOW',
+  15: 'LEDS OFF',
   16: 'LIGHTS',
-  19: 'OSD DISABLE',
+  19: 'OSD OFF',
   20: 'TELEMETRY',
-  21: 'BLACKBOX',
-  22: 'FAILSAFE',
-  23: 'NAV WP',
-  24: 'AIRMODE',
-  25: 'HOMING RESET',
-  26: 'GCS NAV',
-  27: 'FPV ANGLE MIX',
-  28: 'SURFACE',
-  29: 'FLAPERON',
-  30: 'TURN ASSIST',
-  31: 'NAV LAUNCH',
-  32: 'SERVO AUTOTRIM',
-  33: 'AUTO TUNE',
-  34: 'CAMERA 1',
-  35: 'CAMERA 2',
-  36: 'CAMERA 3',
-  37: 'OSD ALT 1',
-  38: 'OSD ALT 2',
-  39: 'OSD ALT 3',
-  40: 'NAV CRUISE',
-  41: 'BRAKING',
-  42: 'USER 1',
-  43: 'USER 2',
-  44: 'USER 3',
-  45: 'USER 4',
-  46: 'LOITER CHANGE',
-  47: 'MSP RC OVERRIDE',
-  48: 'PREARM',
-  49: 'TURTLE',
-  50: 'NAV MISSION CHANGE',
-  51: 'BEEPER MUTE',
-  52: 'MULTI FUNCTION',
-  53: 'MIXER PROFILE 2',
-  54: 'MIXER TRANSITION',
-  55: 'ANGLE HOLD',
+  21: 'AUTO TUNE',
+  26: 'BLACKBOX',
+  27: 'FAILSAFE',
+  28: 'NAV WP',
+  29: 'AIR MODE',
+  30: 'HOME RESET',
+  31: 'GCS NAV',
+  32: 'FPV ANGLE MIX',
+  33: 'SURFACE',
+  34: 'FLAPERON',
+  35: 'TURN ASSIST',
+  36: 'NAV LAUNCH',
+  37: 'SERVO AUTOTRIM',
+  39: 'CAMERA 1',
+  40: 'CAMERA 2',
+  41: 'CAMERA 3',
+  42: 'OSD ALT 1',
+  43: 'OSD ALT 2',
+  44: 'OSD ALT 3',
+  45: 'NAV CRUISE',
+  46: 'MC BRAKING',
+  47: 'USER1',
+  48: 'USER2',
+  49: 'LOITER CHANGE',
+  50: 'MSP RC OVERRIDE',
+  51: 'PREARM',
+  52: 'TURTLE',
+  53: 'NAV COURSE HOLD',
+  54: 'AUTO LEVEL',
+  55: 'WP PLANNER',
   56: 'SOARING',
-  57: 'MC BRAKING',
-  58: 'LEDSTRIP INDICATOR',
+  57: 'USER3',
+  58: 'USER4',
+  59: 'MISSION CHANGE',
+  60: 'BEEPER MUTE',
+  61: 'MULTI FUNCTION',
+  62: 'MIXER PROFILE 2',
+  63: 'MIXER TRANSITION',
+  64: 'ANGLE HOLD',
 };
 
 // =============================================================================
@@ -136,6 +140,9 @@ interface FlightControlStore {
 
   // Load mode ranges from FC
   loadModeRanges: () => Promise<boolean>;
+
+  // Apply fallback SITL mode mappings
+  applySitlFallbackMappings: () => void;
 }
 
 // Default channel values: all centered (1500) except throttle at minimum (1000)
@@ -207,8 +214,9 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     }));
 
     // Check if ARM and NAV WP modes are configured
+    // iNav permanent box IDs: ARM=0, NAV WP=28
     const armMapping = mappings.find((m) => m.boxId === 0);
-    const navWpMapping = mappings.find((m) => m.boxId === 23);
+    const navWpMapping = mappings.find((m) => m.boxId === 28);
 
     set({
       modeMappings: mappings,
@@ -218,6 +226,10 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     });
 
     console.log('[FlightControl] Mode mappings loaded:', mappings.length, 'modes');
+    console.log('[FlightControl] All configured modes:');
+    mappings.forEach(m => {
+      console.log(`  - ${m.name} (boxId=${m.boxId}): AUX${m.auxChannel !== null ? m.auxChannel + 1 : 'NONE'}, range ${m.rangeStart}-${m.rangeEnd}`);
+    });
     console.log('[FlightControl] canArm:', armMapping !== undefined);
     console.log('[FlightControl] canNavWp:', navWpMapping !== undefined);
   },
@@ -371,11 +383,12 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
 
   // High-level: Activate a mode
   activateMode: async (boxId) => {
-    const { modeMappings, channels } = get();
+    const { modeMappings, channels, isOverrideActive } = get();
 
     const mapping = modeMappings.find((m) => m.boxId === boxId);
     if (!mapping || mapping.auxChannel === null) {
-      console.error(`[FlightControl] Cannot activate mode ${boxId}: not configured`);
+      console.error(`[FlightControl] Cannot activate mode ${boxId}: not configured on FC`);
+      console.log(`[FlightControl] Available modes:`, modeMappings.map(m => `${m.boxId}:${m.name}`).join(', '));
       return false;
     }
 
@@ -385,16 +398,24 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     // AUX channel index: auxChannel 0 = channel index 4 (AUX1)
     const channelIndex = mapping.auxChannel + 4;
 
-    console.log(`[FlightControl] Activating ${mapping.name}: Setting AUX${mapping.auxChannel + 1} (ch ${channelIndex}) to ${midpoint}`);
+    console.log(`[FlightControl] Activating ${mapping.name} (boxId=${boxId})`);
+    console.log(`[FlightControl]   Mapping: AUX${mapping.auxChannel + 1}, range ${mapping.rangeStart}-${mapping.rangeEnd}, midpoint=${midpoint}`);
+    console.log(`[FlightControl]   Current channels[${channelIndex}]=${channels[channelIndex]}, setting to ${midpoint}`);
 
     // Update channels
     const newChannels = [...channels];
     newChannels[channelIndex] = midpoint;
 
+    console.log(`[FlightControl]   New AUX values: AUX1=${newChannels[4]}, AUX2=${newChannels[5]}, AUX3=${newChannels[6]}, AUX4=${newChannels[7]}`);
+
     set({ channels: newChannels });
 
-    // Start override if not already active
-    if (!get().isOverrideActive) {
+    // Send immediately if override is already active, otherwise start override
+    if (isOverrideActive) {
+      console.log(`[FlightControl]   Override active, sending RC immediately`);
+      await window.electronAPI.mspSetRawRc(newChannels);
+    } else {
+      console.log(`[FlightControl]   Starting override`);
       get().startOverride();
     }
 
@@ -440,7 +461,9 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
       const ranges = await window.electronAPI.mspGetModeRanges();
 
       if (!ranges || !Array.isArray(ranges)) {
-        console.warn('[FlightControl] Failed to load mode ranges');
+        console.warn('[FlightControl] Failed to load mode ranges from FC');
+        // Apply SITL fallback if we're in SITL mode
+        get().applySitlFallbackMappings();
         return false;
       }
 
@@ -449,13 +472,45 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
         (r: MSPModeRange) => r.auxChannel !== 255 && r.auxChannel < 12
       );
 
+      if (configuredRanges.length === 0) {
+        console.warn('[FlightControl] No configured mode ranges found');
+        // Apply SITL fallback if we're in SITL mode
+        get().applySitlFallbackMappings();
+        return false;
+      }
+
       get().setModeMappings(configuredRanges);
 
       return true;
     } catch (error) {
       console.error('[FlightControl] Failed to load mode ranges:', error);
+      // Apply SITL fallback if we're in SITL mode
+      get().applySitlFallbackMappings();
       return false;
     }
+  },
+
+  // Apply fallback SITL mode mappings when MSP_MODE_RANGES fails
+  // These match what "Setup for SITL Testing" configures via CLI
+  applySitlFallbackMappings: () => {
+    console.log('[FlightControl] Applying SITL fallback mode mappings...');
+    // Default SITL configuration (from FlightControlPanel's configureSitlForTesting):
+    // aux 0 0 0 1700 2100 0 -> ARM on AUX1 (1700-2100)
+    // aux 1 1 1 1300 1700 0 -> ANGLE on AUX2 (1300-1700)
+    // aux 2 28 1 1700 2100 0 -> NAV WP on AUX2 (1700-2100)
+    // aux 3 10 2 1700 2100 0 -> NAV RTH on AUX3 (1700-2100)
+    // aux 4 11 3 1700 2100 0 -> NAV POSHOLD on AUX4 (1700-2100)
+    const sitlFallbackModes: MSPModeRange[] = [
+      { boxId: 0, auxChannel: 0, rangeStart: 1700, rangeEnd: 2100 },  // ARM on AUX1
+      { boxId: 1, auxChannel: 1, rangeStart: 1300, rangeEnd: 1700 },  // ANGLE on AUX2
+      { boxId: 28, auxChannel: 1, rangeStart: 1700, rangeEnd: 2100 }, // NAV WP on AUX2
+      { boxId: 10, auxChannel: 2, rangeStart: 1700, rangeEnd: 2100 }, // NAV RTH on AUX3
+      { boxId: 11, auxChannel: 3, rangeStart: 1700, rangeEnd: 2100 }, // NAV POSHOLD on AUX4
+    ];
+
+    get().setModeMappings(sitlFallbackModes);
+    console.log('[FlightControl] SITL fallback applied - using default mode mappings');
+    console.log('[FlightControl] NOTE: These assume you ran "Setup for SITL Testing" or configured modes via CLI');
   },
 }));
 
