@@ -132,6 +132,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ### SITL Simulator & FlightGear Bridge
 
+> **🚧 Coming Soon** - This feature is currently under development and temporarily disabled. The SITL simulator requires complex protocol bridging that is still being refined. Check back in a future release!
+
 **What is this?** SITL (Software In The Loop) lets you run real flight controller firmware on your computer - no drone required! Perfect for:
 - **Learning** - Practice mission planning and configuration without risking a crash
 - **Testing** - Verify your settings work before uploading to real hardware
@@ -399,6 +401,7 @@ The GUI talks to your board via CLI commands under the hood - you get the **conv
 - **OSD Simulator** with demo and live telemetry modes
 
 ### Coming Soon
+- **SITL Simulator** - Software-in-the-loop with FlightGear integration (temporarily disabled)
 - OSD element editor and font designer
 - Calibration wizards (compass, accelerometer, radio)
 - Auto-updater and crash reporting

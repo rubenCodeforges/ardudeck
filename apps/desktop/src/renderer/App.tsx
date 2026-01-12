@@ -8,8 +8,24 @@ import { MissionPlanningView } from './components/mission';
 import { SettingsView } from './components/settings';
 import { FirmwareFlashView } from './components/firmware';
 import CliView from './components/cli/CliView';
-import SitlView from './components/sitl/SitlView';
 import { OsdView } from './components/osd/OsdView';
+
+// SITL Simulator placeholder - feature temporarily disabled (WIP)
+function SitlComingSoon() {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-zinc-900">
+      <div className="text-center">
+        <div className="text-6xl mb-4">🚧</div>
+        <h2 className="text-2xl font-bold text-white mb-2">SITL Simulator</h2>
+        <p className="text-zinc-400 mb-4">Coming Soon</p>
+        <p className="text-zinc-500 text-sm max-w-md">
+          The SITL (Software In The Loop) simulator feature is currently under development.
+          Check back in a future release!
+        </p>
+      </div>
+    </div>
+  );
+}
 import { useConnectionStore } from './stores/connection-store';
 import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore, type ViewId } from './stores/navigation-store';
@@ -456,7 +472,7 @@ function App() {
         return <CliView />;
       }
       if (currentView === 'sitl') {
-        return <SitlView />;
+        return <SitlComingSoon />;
       }
       if (currentView === 'osd') {
         return <OsdView />;
@@ -538,7 +554,7 @@ function App() {
       case 'cli':
         return <CliView />;
       case 'sitl':
-        return <SitlView />;
+        return <SitlComingSoon />;
       case 'osd':
         return <OsdView />;
       case 'telemetry':

@@ -102,27 +102,51 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
       handleInput(data);
     });
 
-    // Handle copy/paste with Ctrl+Shift+C/V (standard terminal shortcuts)
+    // Handle copy/paste - make Ctrl+C/V work intuitively
+    // IMPORTANT: Only handle keydown, not keyup (event fires for both!)
     term.attachCustomKeyEventHandler((event) => {
-      // Ctrl+Shift+C - Copy selection
+      // Only process keydown events to prevent double-firing
+      if (event.type !== 'keydown') return true;
+
+      // Ctrl+C - Smart: copy if selection, interrupt if not
+      if (event.ctrlKey && !event.shiftKey && event.key === 'c') {
+        const selection = term.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection);
+          term.clearSelection();
+          return false; // Handled - don't send ^C
+        }
+        // No selection - let it pass through to send ^C interrupt
+        return true;
+      }
+      // Ctrl+Shift+C - Always copy
       if (event.ctrlKey && event.shiftKey && event.key === 'C') {
         const selection = term.getSelection();
         if (selection) {
           navigator.clipboard.writeText(selection);
+          term.clearSelection();
         }
-        return false; // Prevent default handling
+        return false;
       }
-      // Ctrl+Shift+V - Paste
-      if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+      // Ctrl+V - Paste
+      if (event.ctrlKey && !event.shiftKey && event.key === 'v') {
         navigator.clipboard.readText().then((text) => {
-          // Filter out newlines and special chars that could cause issues
           const cleanText = text.replace(/[\r\n]/g, ' ');
           inputBufferRef.current += cleanText;
           term.write(cleanText);
         });
         return false;
       }
-      return true; // Allow other keys to pass through
+      // Ctrl+Shift+V - Also paste
+      if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+        navigator.clipboard.readText().then((text) => {
+          const cleanText = text.replace(/[\r\n]/g, ' ');
+          inputBufferRef.current += cleanText;
+          term.write(cleanText);
+        });
+        return false;
+      }
+      return true;
     });
 
     // Handle resize
@@ -412,9 +436,9 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
           <span>|</span>
           <span>Up/Down: History</span>
           <span>|</span>
-          <span>Ctrl+Shift+C: Copy</span>
+          <span>Ctrl+C: Copy/Abort</span>
           <span>|</span>
-          <span>Ctrl+C: Abort</span>
+          <span>Ctrl+V: Paste</span>
         </div>
       </div>
     </div>

@@ -162,6 +162,18 @@ export function FlightControlPanel() {
     }
   }, [isConnected, protocol, modeMappingsLoaded, loadModeRanges]);
 
+  // Auto-start RC override when MSP is FULLY connected (fcVariant populated)
+  // This establishes RC link with FC BEFORE user tries to arm
+  // Sends default values (all centered, throttle low, switches off)
+  // We wait for fcVariant to ensure MSP handshake is complete and transport is ready
+  const fcVariant = connectionState?.fcVariant;
+  useEffect(() => {
+    if (isConnected && protocol === 'msp' && fcVariant && !isOverrideActive) {
+      console.log(`[FlightControl UI] MSP ready (${fcVariant}), auto-starting RC override`);
+      startOverride();
+    }
+  }, [isConnected, protocol, fcVariant, isOverrideActive, startOverride]);
+
   // Stop override and reset all switches when disconnecting
   useEffect(() => {
     if (!isConnected) {
@@ -183,22 +195,31 @@ export function FlightControlPanel() {
 
   // Handle arm switch toggle
   const handleArmSwitchToggle = async (newState: boolean) => {
+    console.log('[FlightControl UI] ARM toggle clicked, newState:', newState);
     setArmSwitchOn(newState);
     if (newState) {
+      console.log('[FlightControl UI] Calling arm()...');
       await arm();
+      console.log('[FlightControl UI] arm() returned');
     } else {
+      console.log('[FlightControl UI] Calling disarm()...');
       await disarm();
+      console.log('[FlightControl UI] disarm() returned');
     }
   };
 
   // Handle mode toggle - modes work like switches, not momentary buttons
+  // Uses optimistic update for responsive UI (same pattern as ARM toggle)
   const handleModeToggle = async (boxId: number) => {
     const isCurrentlyOn = modeToggles[boxId] ?? false;
     const newState = !isCurrentlyOn;
 
-    console.log(`[FlightControl] Toggle mode ${boxId}: ${isCurrentlyOn} -> ${newState}`);
+    console.log(`[FlightControl UI] Mode toggle ${boxId}: ${isCurrentlyOn} -> ${newState}`);
 
-    // Send to FC first, only update local state if successful
+    // OPTIMISTIC UPDATE: Update UI immediately for responsiveness
+    setModeToggles((prev) => ({ ...prev, [boxId]: newState }));
+
+    // Send to FC
     let success = false;
     if (newState) {
       success = await activateMode(boxId);
@@ -206,10 +227,10 @@ export function FlightControlPanel() {
       success = await deactivateMode(boxId);
     }
 
-    if (success) {
-      setModeToggles((prev) => ({ ...prev, [boxId]: newState }));
-    } else {
-      console.error(`[FlightControl] Failed to ${newState ? 'activate' : 'deactivate'} mode ${boxId}`);
+    if (!success) {
+      console.error(`[FlightControl UI] Failed to ${newState ? 'activate' : 'deactivate'} mode ${boxId}, reverting toggle`);
+      // Revert on failure
+      setModeToggles((prev) => ({ ...prev, [boxId]: isCurrentlyOn }));
     }
   };
 
@@ -346,7 +367,7 @@ export function FlightControlPanel() {
           </div>
         )}
 
-        {/* Throttle Control */}
+        {/* Throttle Control - channel index 2 */}
         <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-white text-sm font-medium">Throttle</span>
@@ -430,9 +451,9 @@ export function FlightControlPanel() {
           </div>
           <button
             onClick={() => {
-              setChannel(0, 1500);
-              setChannel(1, 1500);
-              setChannel(3, 1500);
+              setChannel(0, 1500); // Roll
+              setChannel(1, 1500); // Pitch
+              setChannel(3, 1500); // Yaw
             }}
             className="mt-2 w-full py-1 text-xs text-zinc-400 hover:text-white bg-zinc-700 hover:bg-zinc-600 rounded transition-colors"
           >

@@ -60,6 +60,7 @@ export function SitlStatusPanel() {
   const { connectionState } = useConnectionStore();
   const { isRunning: sitlRunning, bridgeConnected } = useSitlStore();
   const { channels: gcsChannels, isOverrideActive } = useFlightControlStore();
+  // Channel order: RPTY (Roll, Pitch, Throttle, Yaw)
   const [rcChannels, setRcChannels] = useState<number[]>([1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]);
 
   // Derive sensor status from actual telemetry data
@@ -267,6 +268,7 @@ export function SitlStatusPanel() {
           </div>
 
           <div className="space-y-1.5">
+            {/* RPTY order: Roll=0, Pitch=1, Throttle=2, Yaw=3 */}
             {[
               { label: 'Roll', idx: 0 },
               { label: 'Pitch', idx: 1 },

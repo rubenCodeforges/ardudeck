@@ -181,6 +181,7 @@ class ProtocolBridge {
     this.rrefPacketsReceived = 0;
     this.packetsSent = 0;
     this.drefLogCount = 0;
+    this.fgControlsSent = 0;
     this.lastFgData = null;
     this.pendingControls = {
       aileron: 0,
@@ -269,8 +270,9 @@ class ProtocolBridge {
       return;
     }
 
-    // DREF write command from SITL (setting values like joystick, throttle)
+    // DREF write command from SITL (servo/motor outputs to X-Plane)
     // Format: "DREF" + null + value(4 float) + dataref(500 bytes)
+    // iNav SITL sends: throttle_ratio_all, yoke_roll_ratio, yoke_pitch_ratio, yoke_heading_ratio
     if (header === 'DREF') {
       this.handleDrefCommand(buffer);
       return;
@@ -565,6 +567,9 @@ class ProtocolBridge {
     this.xplaneServer.send(buffer, this.sitlAddress.port, this.sitlAddress.host);
   }
 
+  // Track sent controls for logging
+  private fgControlsSent = 0;
+
   /**
    * Send control data to FlightGear
    * Called when iNav SITL sends servo outputs
@@ -589,6 +594,12 @@ class ProtocolBridge {
     writeDouble(controls.speedbrake);
     writeDouble(controls.gearDown);
     writeDouble(controls.brakePark);
+
+    // Log first few packets and then every 100th to confirm data flow
+    this.fgControlsSent++;
+    if (this.fgControlsSent <= 5 || this.fgControlsSent % 100 === 0) {
+      console.log(`[Bridge] Sending to FlightGear port ${this.config.fgInPort}: thr=${controls.throttle.toFixed(3)}, ail=${controls.aileron.toFixed(3)}, ele=${controls.elevator.toFixed(3)}, rud=${controls.rudder.toFixed(3)}`);
+    }
 
     this.fgSender.send(buffer, this.config.fgInPort, '127.0.0.1');
   }

@@ -46,7 +46,7 @@ export function ConnectionPanel() {
   // Get SITL switch flag
   const { pendingSitlSwitch, setPendingSitlSwitch } = useSettingsStore();
 
-  // Respond to SITL starting - switch to TCP when flag is set
+  // Respond to SITL starting - switch to TCP and auto-connect with retry
   useEffect(() => {
     if (pendingSitlSwitch && !connectionState.isConnected) {
       setConnectionType('tcp');
@@ -54,8 +54,45 @@ export function ConnectionPanel() {
       setTcpPort(5760);
       // Clear the flag
       setPendingSitlSwitch(false);
+
+      // Auto-connect with retry - SITL may take a moment to start TCP server
+      const autoConnectWithRetry = async () => {
+        const maxRetries = 10;
+        const retryDelayMs = 1000;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          console.log(`[ConnectionPanel] SITL auto-connect attempt ${attempt}/${maxRetries}...`);
+
+          // Wait before trying (SITL needs time to start TCP server)
+          await new Promise(r => setTimeout(r, retryDelayMs));
+
+          // Check if we're already connected (user may have connected manually)
+          if (useConnectionStore.getState().connectionState.isConnected) {
+            console.log('[ConnectionPanel] Already connected, stopping auto-connect');
+            return;
+          }
+
+          const success = await connect({ type: 'tcp', host: '127.0.0.1', tcpPort: 5760 });
+          if (success) {
+            console.log('[ConnectionPanel] SITL auto-connect successful!');
+            updateConnectionMemory({
+              lastTcpHost: '127.0.0.1',
+              lastTcpPort: 5760,
+              lastConnectionType: 'tcp',
+            });
+            return;
+          }
+
+          console.log(`[ConnectionPanel] SITL auto-connect attempt ${attempt} failed, retrying...`);
+        }
+
+        console.warn('[ConnectionPanel] SITL auto-connect failed after all retries');
+        setError('Could not connect to SITL. Try connecting manually.');
+      };
+
+      autoConnectWithRetry();
     }
-  }, [pendingSitlSwitch, connectionState.isConnected, setPendingSitlSwitch]);
+  }, [pendingSitlSwitch, connectionState.isConnected, setPendingSitlSwitch, connect, updateConnectionMemory, setError]);
 
   useEffect(() => {
     if (window.electronAPI) {

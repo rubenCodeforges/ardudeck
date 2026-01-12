@@ -127,6 +127,9 @@ let telemetryInProgress = false;
 // Telemetry skip counter - reduce log spam
 let telemetrySkipCount = 0;
 
+// Debug counter for setRawRc logging
+let setRawRcCounter = 0;
+
 // Last arming status to reduce log spam
 let lastArmingFlags: number | null = null;
 
@@ -2028,15 +2031,23 @@ async function getRc(): Promise<{ channels: number[] } | null> {
  * - RC values must be sent continuously (every 100ms) or FC will revert to last RC input
  */
 async function setRawRc(channels: number[]): Promise<boolean> {
+  // Debug: increment counter at function entry
+  setRawRcCounter++;
+  const shouldLog = setRawRcCounter % 50 === 1;
+
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.warn('[MSP] setRawRc: Not connected');
+    if (shouldLog) {
+      console.warn('[MSP] setRawRc: Transport not open, skipping');
+    }
     return false;
   }
 
   // Block if CLI mode active (either servo CLI, tuning CLI, or main CLI)
   if (servoCliModeActive || tuningCliModeActive || isCliModeActive()) {
-    // Silently skip during CLI ops - this is called at 100ms intervals
+    if (shouldLog) {
+      console.log('[MSP] setRawRc: CLI mode active, skipping');
+    }
     return false;
   }
 
@@ -2063,14 +2074,15 @@ async function setRawRc(channels: number[]): Promise<boolean> {
       view.setUint16(i * 2, ch, true); // true = little-endian
     });
 
-    // Build and send packet directly (fire-and-forget)
-    // SITL and some firmware don't respond to SET_RAW_RC - that's OK
-    // We send at 100ms intervals so a missed packet is fine
+    // Build and send packet - TRUE fire-and-forget (no await!)
+    // SET_RAW_RC doesn't need a response, and awaiting causes 5+ second delays
     const packet = buildMspV1RequestWithPayload(MSP.SET_RAW_RC, payload);
-    await currentTransport.write(packet);
+    currentTransport.write(packet).catch(() => {}); // Fire and forget
 
-    // Don't log every 100ms - too noisy
-    // console.log('[MSP] setRawRc: Sent', validatedChannels.length, 'channels');
+    // Debug: log every 50th call to confirm RC is being sent
+    if (shouldLog) {
+      console.log(`[MSP] setRawRc SENT: ch0-3=${validatedChannels.slice(0,4).join(',')}, ch4-7=${validatedChannels.slice(4,8).join(',')}`);
+    }
     return true;
   } catch (error) {
     console.error('[MSP] setRawRc failed:', error);

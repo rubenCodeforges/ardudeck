@@ -43,6 +43,12 @@ pnpm dev              # Run dev mode
 | Legacy Boards | Full GUI for F3-era boards (iNav < 2.1, Betaflight < 4.0) via CLI |
 | OSD Simulator | MCM font parser, demo/live modes, 8 bundled fonts, PAL/NTSC support |
 
+### 🚧 Disabled (Work In Progress)
+
+| Epic | Status | Notes |
+|------|--------|-------|
+| SITL Simulator | Disabled | iNav SITL + FlightGear integration temporarily disabled. Complex protocol bridging issues need resolution. UI shows "Coming Soon". |
+
 ### 🔜 Planned (Priority Order)
 
 | Priority | Epic | Description |
@@ -235,6 +241,308 @@ Key delays: Reconnection 500ms, post-flash 4000ms, EEPROM save 1000ms.
 |-------|------------|
 | Modes don't fetch | Use CLI terminal: `aux <idx> <mode> <ch> <start> <end> <logic>` |
 | Can't add modes/mixers | Use CLI: `aux`, `mmix`, `smix` commands |
+
+---
+
+## iNav SITL + FlightGear Configuration
+
+Complete setup guide for iNav Software-In-The-Loop simulation with FlightGear.
+
+### Architecture Overview
+
+```
+┌─────────────┐     TCP:5760      ┌─────────────┐
+│  ArduDeck   │◄──────────────────►│  iNav SITL  │
+│   (GCS)     │   MSP Protocol    │             │
+└─────────────┘                   └──────┬──────┘
+       │                                 │
+       │ UDP:5506                        │ UDP:49000
+       │ (Controls)                      │ (X-Plane RREF/DREF)
+       │                                 │
+       ▼                                 ▼
+┌─────────────────────────────────────────────────┐
+│              Protocol Bridge                     │
+│  - Receives sensor data from FlightGear (5505)  │
+│  - Converts to X-Plane RREF format for SITL     │
+│  - Receives DREF servo outputs from SITL        │
+│  - Forwards controls to FlightGear (5506)       │
+└─────────────────────────────────────────────────┘
+       │                                 ▲
+       │ UDP:5506                        │ UDP:5505
+       │ (Controls)                      │ (Sensors)
+       ▼                                 │
+┌─────────────────────────────────────────────────┐
+│                  FlightGear                      │
+│  - Provides flight dynamics simulation          │
+│  - Sends sensor data (GPS, attitude, airspeed)  │
+│  - Receives control inputs (throttle, surfaces) │
+└─────────────────────────────────────────────────┘
+```
+
+### Step 1: Platform Type (CLI or UI)
+
+**Via MspConfigView UI:** Click platform dropdown in header → Select "Airplane"
+
+**Via CLI:**
+```bash
+# Check current platform
+get platform_type
+
+# Set platform (0=Multi, 1=Airplane, 2=Heli, 3=Tricopter, 4=Rover, 5=Boat)
+set platform_type = AIRPLANE
+save
+```
+
+### Step 2: Receiver Configuration
+
+**CRITICAL:** iNav SITL must receive RC via MSP, not real receiver.
+
+```bash
+# Set receiver to MSP (receives RC from ArduDeck via MSP_SET_RAW_RC)
+set receiver_type = MSP
+
+# RC channel range (default is fine)
+set rx_min_usec = 885
+set rx_max_usec = 2115
+
+save
+```
+
+### Step 3: Servo Mixer Configuration
+
+**IMPORTANT:** Without servo mixer rules, FC outputs 0 for all controls!
+
+**Check current config:**
+```bash
+smix
+```
+
+**Servo Mixer Command Format:**
+```
+smix <rule_index> <servo_index> <input_source> <rate> <speed> <condition>
+```
+
+**Input Sources:**
+| ID | Source | Description |
+|----|--------|-------------|
+| 0 | Stabilized Roll | Roll after PID processing |
+| 1 | Stabilized Pitch | Pitch after PID processing |
+| 2 | Stabilized Yaw | Yaw after PID processing |
+| 3 | Stabilized Throttle | Throttle after processing |
+| 8 | RC Roll | Raw RC roll input |
+| 9 | RC Pitch | Raw RC pitch input |
+| 10 | RC Yaw | Raw RC yaw input |
+| 11 | RC Throttle | Raw RC throttle input |
+
+#### Flying Wing (Elevons)
+```bash
+smix reset
+
+# Left elevon (Servo 3): Roll + Pitch
+smix 0 3 0 100 0 0    # Roll at 100%
+smix 1 3 1 100 0 0    # Pitch at 100%
+
+# Right elevon (Servo 4): Roll (reversed) + Pitch
+smix 2 4 0 -100 0 0   # Roll at -100% (reversed)
+smix 3 4 1 100 0 0    # Pitch at 100%
+
+save
+```
+
+#### Conventional Airplane (Aileron/Elevator/Rudder)
+```bash
+smix reset
+
+# Ailerons (Servo 3): Roll
+smix 0 3 0 100 0 0    # Roll at 100%
+
+# Elevator (Servo 4): Pitch
+smix 1 4 1 100 0 0    # Pitch at 100%
+
+# Rudder (Servo 5): Yaw
+smix 2 5 2 100 0 0    # Yaw at 100%
+
+save
+```
+
+#### V-Tail
+```bash
+smix reset
+
+# Left V-tail (Servo 4): Pitch + Yaw
+smix 0 4 1 100 0 0    # Pitch at 100%
+smix 1 4 2 -100 0 0   # Yaw at -100%
+
+# Right V-tail (Servo 5): Pitch + Yaw (reversed)
+smix 2 5 1 100 0 0    # Pitch at 100%
+smix 3 5 2 100 0 0    # Yaw at 100%
+
+# Ailerons (Servo 3): Roll
+smix 4 3 0 100 0 0    # Roll at 100%
+
+save
+```
+
+### Step 4: Motor Mixer Configuration
+
+**Check current config:**
+```bash
+mmix
+```
+
+**For single motor airplane:**
+```bash
+mmix reset
+mmix 0 1.0 0.0 0.0 0.0   # Motor 0: full throttle, no roll/pitch/yaw mixing
+save
+```
+
+**Motor Mixer Format:**
+```
+mmix <index> <throttle> <roll> <pitch> <yaw>
+```
+Values: -1.0 to 1.0 (0.0 = no mix, 1.0 = full positive, -1.0 = full negative)
+
+### Step 5: Servo Configuration
+
+**Check servo endpoints:**
+```bash
+servo
+```
+
+**Set servo parameters:**
+```bash
+# Format: servo <index> <min> <max> <middle> <rate>
+servo 3 1000 2000 1500 100   # Servo 3: full range, centered, 100% rate
+servo 4 1000 2000 1500 100   # Servo 4
+servo 5 1000 2000 1500 100   # Servo 5
+
+save
+```
+
+### Step 6: Flight Mode Configuration
+
+**Configure AUX channel modes:**
+```bash
+# Format: aux <slot> <box_id> <aux_channel> <range_start> <range_end> <logic>
+
+# ARM on AUX1 (channel 4), high position (1700-2100)
+aux 0 0 0 1700 2100 0
+
+# ANGLE mode on AUX2, mid position (1300-1700)
+aux 1 1 1 1300 1700 0
+
+# NAV WP on AUX2, high position (1700-2100)
+aux 2 28 1 1700 2100 0
+
+# NAV RTH on AUX3, high position
+aux 3 10 2 1700 2100 0
+
+# NAV POSHOLD on AUX4, high position
+aux 4 11 3 1700 2100 0
+
+save
+```
+
+**Common Box IDs (iNav):**
+| ID | Mode |
+|----|------|
+| 0 | ARM |
+| 1 | ANGLE |
+| 2 | HORIZON |
+| 10 | NAV RTH |
+| 11 | NAV POSHOLD |
+| 28 | NAV WP |
+| 45 | NAV CRUISE |
+
+### Step 7: Failsafe Configuration (SITL-friendly)
+
+```bash
+# Lenient failsafe for SITL testing
+set failsafe_procedure = DROP
+set failsafe_delay = 10
+set failsafe_off_delay = 5
+set failsafe_throttle = 1000
+
+# Disable first waypoint distance check (HOME set by FC, not GCS)
+set nav_wp_max_safe_distance = 0
+
+save
+```
+
+### Step 8: GPS Configuration (for navigation)
+
+```bash
+# GPS is injected via MSP from FlightGear sensor data
+set gps_provider = UBLOX
+set gps_sbas_mode = AUTO
+
+save
+```
+
+### Complete SITL Setup Script
+
+Copy-paste this entire block into CLI for a Flying Wing:
+```bash
+# Platform
+set platform_type = AIRPLANE
+
+# Receiver (MSP from ArduDeck)
+set receiver_type = MSP
+set rx_min_usec = 885
+set rx_max_usec = 2115
+
+# Servo mixer (Flying Wing)
+smix reset
+smix 0 3 0 100 0 0
+smix 1 3 1 100 0 0
+smix 2 4 0 -100 0 0
+smix 3 4 1 100 0 0
+
+# Motor mixer (single motor)
+mmix reset
+mmix 0 1.0 0.0 0.0 0.0
+
+# Servo config
+servo 3 1000 2000 1500 100
+servo 4 1000 2000 1500 100
+
+# Flight modes
+aux 0 0 0 1700 2100 0
+aux 1 1 1 1300 1700 0
+aux 2 28 1 1700 2100 0
+aux 3 10 2 1700 2100 0
+aux 4 11 3 1700 2100 0
+
+# Failsafe (lenient for SITL)
+set failsafe_procedure = DROP
+set failsafe_delay = 10
+set nav_wp_max_safe_distance = 0
+
+save
+```
+
+### Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| RC Link arming block | receiver_type not MSP | `set receiver_type = MSP` then `save` |
+| Arm Switch block | Arm switch already ON at startup | Toggle OFF then ON (2-step arm) |
+| Throttle/servos = 0 | No servo mixer rules | Configure `smix` rules |
+| No motor output | No motor mixer rules | Configure `mmix` rules |
+| Failsafe triggered | RC frames stopped | Check MSP_SET_RAW_RC is sending continuously |
+| GPS not working | GPS not injected | ArduDeck injects via MSP2_SENSOR_GPS |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `main/simulators/protocol-bridge.ts` | X-Plane ↔ FlightGear protocol translation |
+| `main/simulators/flightgear-launcher.ts` | FlightGear process management |
+| `main/simulators/sitl-launcher.ts` | iNav SITL process management |
+| `resources/flightgear/Protocol/ardudeck-in.xml` | FlightGear control input protocol |
+| `resources/flightgear/Protocol/ardudeck-out.xml` | FlightGear sensor output protocol |
+| `stores/flight-control-store.ts` | RC override, arm/disarm, mode switching |
 
 ---
 

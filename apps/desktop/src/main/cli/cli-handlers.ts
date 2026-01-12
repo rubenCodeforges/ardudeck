@@ -38,6 +38,7 @@ export function initCliHandlers(window: BrowserWindow): void {
 
 /**
  * Set the transport for CLI communication (called from MSP handlers)
+ * IMPORTANT: Always resets CLI mode state to ensure clean connection
  */
 export function setCliTransport(transport: Transport | null): void {
   // Cleanup old listener if transport changes
@@ -47,8 +48,10 @@ export function setCliTransport(transport: Transport | null): void {
   }
   currentTransport = transport;
 
-  // If we had CLI mode active and transport changed, reset state
-  if (!transport && cliModeActive) {
+  // ALWAYS reset CLI mode state when transport changes (new connection or disconnect)
+  // This fixes the "CLI mode stuck" bug where exit command breaks reconnection
+  if (cliModeActive) {
+    console.log('[CLI] Resetting CLI mode state for new connection');
     cliModeActive = false;
     onCliModeChange?.(false);
   }
@@ -368,7 +371,11 @@ async function sendCliCommand(command: string): Promise<void> {
     throw new Error('Transport not connected');
   }
 
-  if (!cliModeActive) {
+  // Check if this is an exit command - need to clean up our state
+  const trimmedCommand = command.trim().toLowerCase();
+  const isExitCommand = trimmedCommand === 'exit' || trimmedCommand === 'quit';
+
+  if (!cliModeActive && !isExitCommand) {
     console.log('[CLI] Not in CLI mode, auto-entering...');
     // Auto-enter CLI mode if not already in it
     const entered = await enterCliMode();
@@ -380,7 +387,7 @@ async function sendCliCommand(command: string): Promise<void> {
   }
 
   // Verify listener is still attached (defensive)
-  if (!cliDataListener) {
+  if (!cliDataListener && !isExitCommand) {
     console.log('[CLI] Re-attaching data listener');
     cliDataListener = (data: Uint8Array) => {
       const filtered = filterMspFromData(data);
@@ -395,6 +402,22 @@ async function sendCliCommand(command: string): Promise<void> {
   // Send command with newline (NOT \r\n - causes parse errors!)
   await currentTransport.write(new TextEncoder().encode(command + '\n'));
   console.log('[CLI] Command sent');
+
+  // If exit command, clean up our state after a short delay
+  if (isExitCommand && cliModeActive) {
+    console.log('[CLI] Exit command detected, cleaning up CLI state...');
+    await delay(300); // Give FC time to process exit
+
+    // Remove data listener
+    if (cliDataListener && currentTransport) {
+      currentTransport.off('data', cliDataListener);
+      cliDataListener = null;
+    }
+
+    cliModeActive = false;
+    onCliModeChange?.(false);
+    console.log('[CLI] CLI state cleaned up after user exit command');
+  }
 }
 
 /**

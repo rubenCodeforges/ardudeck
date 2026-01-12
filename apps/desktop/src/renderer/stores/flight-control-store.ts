@@ -146,11 +146,12 @@ interface FlightControlStore {
 }
 
 // Default channel values: all centered (1500) except throttle at minimum (1000)
+// Standard RC order: RPTY (Roll, Pitch, Throttle, Yaw)
 const DEFAULT_CHANNELS: number[] = [
-  1500, // Roll
-  1500, // Pitch
-  1000, // Throttle (MUST be low for arming!)
-  1500, // Yaw
+  1500, // Roll     (index 0)
+  1500, // Pitch    (index 1)
+  1000, // Throttle (index 2) - MUST be low for arming!
+  1500, // Yaw      (index 3)
   1000, // AUX1
   1000, // AUX2
   1000, // AUX3
@@ -165,8 +166,9 @@ const DEFAULT_CHANNELS: number[] = [
   1000, // AUX12
 ];
 
-// RC override interval (send RC values every 100ms)
-const RC_OVERRIDE_INTERVAL_MS = 100;
+// RC override interval - send RC values every 50ms for stability
+// iNav default RC timeout is ~250ms, so 50ms gives us 5x margin
+const RC_OVERRIDE_INTERVAL_MS = 50;
 
 /**
  * Convert PWM value (1000-2000) to normalized value (-1 to +1) for Virtual RC
@@ -247,18 +249,33 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
 
   // Start RC override (sends RC values continuously)
   startOverride: () => {
-    const { isOverrideActive, overrideInterval, channels } = get();
-    if (isOverrideActive) return;
+    const { isOverrideActive, channels } = get();
+    if (isOverrideActive) {
+      console.log('[FlightControl] RC override already active, skipping start');
+      return;
+    }
 
-    console.log('[FlightControl] Starting RC override');
+    console.log('[FlightControl] Starting RC override with channels:', channels.slice(0, 8).join(','));
 
     // Send RC values immediately
-    window.electronAPI.mspSetRawRc(channels);
+    window.electronAPI.mspSetRawRc(channels).catch(() => {});
 
-    // Start interval to keep sending
+    // Track interval calls for debugging
+    let intervalCallCount = 0;
+    let errorCount = 0;
+
+    // Start interval to keep sending - fire and forget, no await!
     const interval = setInterval(() => {
+      intervalCallCount++;
       const currentChannels = get().channels;
-      window.electronAPI.mspSetRawRc(currentChannels);
+
+      // Log every 100th call (every 5 seconds at 50ms interval)
+      if (intervalCallCount % 100 === 0) {
+        console.log(`[FlightControl] RC interval #${intervalCallCount}, ch: ${currentChannels.slice(0, 8).join(',')}`);
+      }
+
+      // Fire and forget - don't await, don't block
+      window.electronAPI.mspSetRawRc(currentChannels).catch(() => {});
     }, RC_OVERRIDE_INTERVAL_MS);
 
     set({
@@ -281,8 +298,9 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
   },
 
   // High-level: ARM
+  // iNav requires: arm switch OFF first, then toggle ON to arm
   arm: async () => {
-    const { canArm, modeMappings, channels } = get();
+    const { canArm, modeMappings, channels, isOverrideActive } = get();
     if (!canArm) {
       console.error('[FlightControl] Cannot arm: ARM mode not configured');
       return false;
@@ -291,25 +309,36 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     const armMapping = modeMappings.find((m) => m.boxId === 0);
     if (!armMapping || armMapping.auxChannel === null) return false;
 
-    // Calculate midpoint of the activation range
-    const midpoint = Math.round((armMapping.rangeStart + armMapping.rangeEnd) / 2);
-
     // AUX channel index: auxChannel 0 = channel index 4 (AUX1)
     const channelIndex = armMapping.auxChannel + 4;
 
-    console.log(`[FlightControl] Arming: Setting AUX${armMapping.auxChannel + 1} (ch ${channelIndex}) to ${midpoint}`);
+    // Step 1: Ensure arm switch is OFF first (required by iNav safety check)
+    const lowValue = Math.max(1000, armMapping.rangeStart - 100);
+    const disarmedChannels = [...channels];
+    disarmedChannels[channelIndex] = lowValue;
+    disarmedChannels[2] = 1000; // Throttle low (index 2)
 
-    // Update channels
-    const newChannels = [...channels];
-    newChannels[channelIndex] = midpoint;
+    console.log(`[FlightControl] Arming step 1: Setting AUX${armMapping.auxChannel + 1} OFF (${lowValue}) first`);
+    set({ channels: disarmedChannels });
 
-    // Ensure throttle is low!
-    newChannels[2] = 1000;
+    // Start override if not already active
+    if (!isOverrideActive) {
+      get().startOverride();
+    }
 
-    set({ channels: newChannels });
+    // Send disarmed state and wait for FC to register it
+    await window.electronAPI.mspSetRawRc(disarmedChannels);
+    await new Promise(r => setTimeout(r, 300)); // Wait 300ms for FC to see switch OFF
+
+    // Step 2: Now toggle arm switch ON
+    const midpoint = Math.round((armMapping.rangeStart + armMapping.rangeEnd) / 2);
+    const armedChannels = [...disarmedChannels];
+    armedChannels[channelIndex] = midpoint;
+
+    console.log(`[FlightControl] Arming step 2: Toggling AUX${armMapping.auxChannel + 1} ON (${midpoint})`);
+    set({ channels: armedChannels });
 
     // Also set Virtual RC for SITL bridge
-    // Note: Virtual RC expects normalized values (-1 to +1), not PWM (1000-2000)
     const auxKey = `aux${armMapping.auxChannel + 1}` as 'aux1' | 'aux2' | 'aux3' | 'aux4';
     const normalizedThrottle = pwmToNormalized(1000); // -1
     const normalizedAux = pwmToNormalized(midpoint);
@@ -322,9 +351,6 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     } catch (e) {
       // Virtual RC might not be available (not SITL)
     }
-
-    // Start override to send continuously
-    get().startOverride();
 
     return true;
   },
@@ -352,7 +378,7 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
     const newChannels = [...channels];
     newChannels[channelIndex] = lowValue;
 
-    // Ensure throttle is low!
+    // Ensure throttle is low! (index 2)
     newChannels[2] = 1000;
 
     set({ channels: newChannels });
