@@ -859,6 +859,50 @@ const api = {
   /** Reset virtual RC to defaults */
   virtualRCReset: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.VIRTUAL_RC_RESET),
+
+  // =============================================================================
+  // Bug Report / Logging
+  // =============================================================================
+
+  /** Collect logs from the last N hours */
+  reportCollectLogs: (hours?: number): Promise<unknown[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REPORT_COLLECT_LOGS, hours),
+
+  /** Get system info for bug report */
+  reportGetSystemInfo: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REPORT_GET_SYSTEM_INFO),
+
+  /** Get encryption configuration info */
+  reportGetEncryptionInfo: (): Promise<{ isPlaceholderKey: boolean; keyVersion: number; formatVersion: number }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REPORT_GET_ENCRYPTION_INFO),
+
+  /** Collect MSP board dump (enters CLI mode, board will reboot) */
+  reportCollectMspDump: (): Promise<{ success: boolean; dump?: unknown; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REPORT_COLLECT_MSP_DUMP),
+
+  /** Collect MAVLink board dump (uses cached parameter data) */
+  reportCollectMavlinkDump: (): Promise<{ success: boolean; dump?: unknown; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REPORT_COLLECT_MAVLINK_DUMP),
+
+  /** Save encrypted bug report to file */
+  reportSave: (
+    userDescription: string,
+    boardDump: unknown | null,
+    logHours?: number
+  ): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REPORT_SAVE, userDescription, boardDump, logHours),
+
+  /** Listen for report progress updates */
+  onReportProgress: (callback: (progress: { stage: string; message: string }) => void) => {
+    const handler = (_: unknown, progress: { stage: string; message: string }) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.REPORT_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.REPORT_PROGRESS, handler);
+  },
+
+  /** Send log entry from renderer to main process */
+  logEntry: (level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string): void => {
+    ipcRenderer.invoke('log:entry', level, message, details);
+  },
 };
 
 // Expose to renderer

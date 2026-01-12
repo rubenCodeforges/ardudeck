@@ -243,6 +243,16 @@ export const IPC_CHANNELS = {
   VIRTUAL_RC_SET: 'virtual-rc:set',
   VIRTUAL_RC_GET: 'virtual-rc:get',
   VIRTUAL_RC_RESET: 'virtual-rc:reset',
+
+  // Bug Report / Logging
+  REPORT_COLLECT_LOGS: 'report:collect-logs',
+  REPORT_COLLECT_MSP_DUMP: 'report:collect-msp-dump',
+  REPORT_COLLECT_MAVLINK_DUMP: 'report:collect-mavlink-dump',
+  REPORT_GET_SYSTEM_INFO: 'report:get-system-info',
+  REPORT_CREATE: 'report:create',
+  REPORT_SAVE: 'report:save',
+  REPORT_PROGRESS: 'report:progress',
+  REPORT_GET_ENCRYPTION_INFO: 'report:get-encryption-info',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

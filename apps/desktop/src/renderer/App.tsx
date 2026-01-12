@@ -9,6 +9,7 @@ import { SettingsView } from './components/settings';
 import { FirmwareFlashView } from './components/firmware';
 import CliView from './components/cli/CliView';
 import { OsdView } from './components/osd/OsdView';
+import ReportBugView from './components/report/ReportBugView';
 
 // SITL Simulator placeholder - feature temporarily disabled (WIP)
 function SitlComingSoon() {
@@ -477,6 +478,9 @@ function App() {
       if (currentView === 'osd') {
         return <OsdView />;
       }
+      if (currentView === 'report') {
+        return <ReportBugView />;
+      }
       // Default welcome screen for telemetry
       return (
         <div className="h-full flex items-center justify-center p-8">
@@ -557,6 +561,8 @@ function App() {
         return <SitlComingSoon />;
       case 'osd':
         return <OsdView />;
+      case 'report':
+        return <ReportBugView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;

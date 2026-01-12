@@ -205,7 +205,6 @@ export async function flashWithAvrdude(
     // Verbose output for better progress tracking
     args.push('-v');
 
-    console.log(`Running: ${avrdudePath} ${args.join(' ')}`);
 
     const proc = spawn(avrdudePath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -222,7 +221,6 @@ export async function flashWithAvrdude(
         const trimmed = line.trim();
         if (!trimmed) continue;
 
-        console.log('[avrdude]', trimmed);
 
         // Check for progress
         const progressInfo = parseAvrdudeProgress(trimmed);

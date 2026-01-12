@@ -50,7 +50,6 @@ function sendProgress(window: BrowserWindow | null, progress: FlashProgress): vo
  */
 let logId = Date.now(); // Use timestamp base to avoid duplicate keys across sessions
 function sendLog(window: BrowserWindow | null, level: 'info' | 'warn' | 'error', message: string): void {
-  console.log(`[STM32-Serial] ${message}`);
   if (window && !window.isDestroyed()) {
     window.webContents.send(IPC_CHANNELS.CONSOLE_LOG, {
       id: ++logId,

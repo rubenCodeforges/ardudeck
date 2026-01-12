@@ -131,7 +131,6 @@ async function fetchArduPilotManifest(): Promise<any> {
 
   return new Promise((resolve, reject) => {
     const url = FIRMWARE_SERVERS.ardupilot.manifest;
-    console.log('Fetching ArduPilot manifest...');
 
     https.get(url, (res) => {
       if (res.statusCode !== 200) {
@@ -149,7 +148,6 @@ async function fetchArduPilotManifest(): Promise<any> {
             fetchedAt: Date.now(),
             boards: new Map(),
           };
-          console.log('Manifest fetched successfully');
           resolve(manifest);
         } catch (e) {
           reject(e);
@@ -584,7 +582,6 @@ function getLegacyAvrVersions(vehicleType: FirmwareVehicleType, boardId: string)
 
   // Point to bundled local file
   const localPath = getLegacyFirmwarePath(boardId, filename);
-  console.log(`[manifest-fetcher] Legacy firmware path: ${localPath}`);
 
   const fwVersions: FirmwareVersion[] = [{
     version,
@@ -613,7 +610,6 @@ export async function getArduPilotVersions(
 ): Promise<VersionGroup[]> {
   // Handle legacy AVR boards separately - they're not in the manifest
   if (LEGACY_AVR_BOARDS.includes(boardId)) {
-    console.log(`[manifest-fetcher] ${boardId} is a legacy AVR board, using hardcoded versions`);
     return getLegacyAvrVersions(vehicleType, boardId);
   }
 
@@ -624,7 +620,6 @@ export async function getArduPilotVersions(
     const manifest = await fetchArduPilotManifest();
     const entries = manifest.firmware || [];
 
-    console.log(`[manifest-fetcher] Searching for ${firmwareType}/${boardId} in ${entries.length} entries...`);
 
     // Filter entries for this board and vehicle type
     const versionMap = new Map<string, FirmwareVersion[]>();
@@ -680,11 +675,9 @@ export async function getArduPilotVersions(
       }))
       .sort((a, b) => compareVersions(b.major, a.major));
 
-    console.log(`[manifest-fetcher] Found ${groups.length} version groups for ${boardId}`);
 
     // If no versions found, use fallback
     if (groups.length === 0) {
-      console.log(`[manifest-fetcher] No versions in manifest for ${boardId}, using fallback`);
       return getFallbackVersionGroups(vehicleType, boardId);
     }
 

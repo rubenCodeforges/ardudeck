@@ -117,7 +117,6 @@ app.on('before-quit', async (event) => {
 
 // Also handle SIGINT/SIGTERM for graceful shutdown in dev mode
 process.on('SIGINT', async () => {
-  console.log('[App] SIGINT received, cleaning up...');
   try {
     await cleanupOnShutdown();
   } catch (err) {
@@ -127,7 +126,6 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
-  console.log('[App] SIGTERM received, cleaning up...');
   try {
     await cleanupOnShutdown();
   } catch (err) {

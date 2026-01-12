@@ -118,7 +118,6 @@ class ProtocolBridge {
       // Set up FlightGear receiver (port 5505)
       this.fgReceiver.on('message', (msg, rinfo) => {
         if (!this.lastFgData) {
-          console.log(`[Bridge] First packet from FlightGear! ${msg.length} bytes from ${rinfo.address}:${rinfo.port}`);
         }
         this.handleFlightGearData(msg);
       });
@@ -132,7 +131,6 @@ class ProtocolBridge {
         // Discover SITL's ephemeral port from incoming packets
         // Only log once when first connected
         if (!this.sitlAddress) {
-          console.log(`[Bridge] SITL connected from ${rinfo.address}:${rinfo.port}`);
         }
         this.sitlAddress = { host: rinfo.address, port: rinfo.port };
         this.handleSitlData(msg);
@@ -145,7 +143,6 @@ class ProtocolBridge {
       // Bind FlightGear receiver to port 5505
       await new Promise<void>((resolve, reject) => {
         this.fgReceiver!.bind(this.config.fgOutPort, '0.0.0.0', () => {
-          console.log(`[Bridge] Listening for FlightGear on port ${this.config.fgOutPort}`);
           resolve();
         });
         this.fgReceiver!.once('error', reject);
@@ -154,14 +151,12 @@ class ProtocolBridge {
       // Bind X-Plane server to port 49000 (act as X-Plane)
       await new Promise<void>((resolve, reject) => {
         this.xplaneServer!.bind(this.config.xplaneServerPort, '0.0.0.0', () => {
-          console.log(`[Bridge] X-Plane server listening on port ${this.config.xplaneServerPort} (waiting for SITL)`);
           resolve();
         });
         this.xplaneServer!.once('error', reject);
       });
 
       this.running = true;
-      console.log('[Bridge] Protocol bridge started');
       return { success: true };
     } catch (err) {
       await this.cleanup();
@@ -174,7 +169,6 @@ class ProtocolBridge {
    * Stop the protocol bridge
    */
   async stop(): Promise<void> {
-    console.log('[Bridge] Stopping...');
     this.running = false;
     this.sitlAddress = null;
     this.registeredDrefs.clear();
@@ -194,7 +188,6 @@ class ProtocolBridge {
       brakePark: 0,
     };
     await this.cleanup();
-    console.log('[Bridge] Stopped');
   }
 
   /**
@@ -279,7 +272,6 @@ class ProtocolBridge {
     }
 
     // Debug: log unknown packet types
-    console.log(`[Bridge] Unknown packet from SITL: header="${header}", len=${buffer.length}, hex=${buffer.subarray(0, Math.min(20, buffer.length)).toString('hex')}`);
   }
 
   /**
@@ -295,10 +287,8 @@ class ProtocolBridge {
 
     // Log first few DREF commands for debugging
     if (this.drefLogCount < 30) {
-      console.log(`[Bridge] DREF: "${datarefPath}" = ${value.toFixed(4)}`);
       this.drefLogCount++;
       if (this.drefLogCount === 30) {
-        console.log(`[Bridge] (suppressing further DREF logs)`);
       }
     }
 
@@ -363,7 +353,6 @@ class ProtocolBridge {
    */
   private handleRrefRequest(buffer: Buffer): void {
     if (buffer.length < 413) {
-      console.log(`[Bridge] Short RREF request: ${buffer.length} bytes`);
       return;
     }
 
@@ -381,7 +370,6 @@ class ProtocolBridge {
 
     // Log only first 30 unique registrations to avoid spam
     if (isNewRegistration && this.registeredDrefs.size < 30) {
-      console.log(`[Bridge] RREF: index=${index}, dref="${datarefPath}"`);
     }
 
     // Store the registration
@@ -530,11 +518,8 @@ class ProtocolBridge {
 
     this.packetsSent++;
     if (this.packetsSent === 1) {
-      console.log(`[Bridge] Sending RREF to SITL at ${this.sitlAddress.host}:${this.sitlAddress.port}`);
-      console.log(`[Bridge] Registered ${this.registeredDrefs.size} datarefs, sending ${values.length} values:`);
       for (const { index, value } of values) {
         const dref = this.registeredDrefs.get(index);
-        console.log(`[Bridge]   index=${index}, dref="${dref}", value=${value}`);
       }
     }
     // Only warn once if no GPS datarefs registered (check at packet 100)
@@ -544,7 +529,6 @@ class ProtocolBridge {
         return dref && (dref.includes('latitude') || dref.includes('longitude') || dref.includes('elevation'));
       });
       if (gpsValues.length === 0) {
-        console.log(`[Bridge] WARNING: No GPS datarefs registered! GPS will not work.`);
       }
     }
 
@@ -598,7 +582,6 @@ class ProtocolBridge {
     // Log first few packets and then every 100th to confirm data flow
     this.fgControlsSent++;
     if (this.fgControlsSent <= 5 || this.fgControlsSent % 100 === 0) {
-      console.log(`[Bridge] Sending to FlightGear port ${this.config.fgInPort}: thr=${controls.throttle.toFixed(3)}, ail=${controls.aileron.toFixed(3)}, ele=${controls.elevator.toFixed(3)}, rud=${controls.rudder.toFixed(3)}`);
     }
 
     this.fgSender.send(buffer, this.config.fgInPort, '127.0.0.1');
@@ -675,7 +658,6 @@ export function getVirtualRC(): VirtualRCState {
  */
 export function resetVirtualRC(): void {
   virtualRCState = { ...defaultRCState };
-  console.log('[Bridge] Virtual RC reset to defaults');
 }
 
 /**

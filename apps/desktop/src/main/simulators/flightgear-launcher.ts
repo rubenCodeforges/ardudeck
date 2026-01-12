@@ -129,7 +129,6 @@ class FlightGearLauncher {
       if (existsSync(srcPath)) {
         try {
           copyFileSync(srcPath, destPath);
-          console.log(`[FlightGear] Installed protocol file: ${file} to ${destPath}`);
         } catch (err) {
           console.warn(`[FlightGear] Could not copy ${file}:`, err);
         }
@@ -242,7 +241,6 @@ class FlightGearLauncher {
     // We don't set --fg-root to let FlightGear use its defaults (preserves downloaded data)
     const args = this.buildArgs(config, userDataDir);
 
-    console.log('[FlightGear] Launching with args:', args.join(' '));
 
     try {
       // Spawn FlightGear process
@@ -258,7 +256,6 @@ class FlightGearLauncher {
       this.process.stdout?.on('data', (data: Buffer) => {
         const output = data.toString().trim();
         if (output) {
-          console.log('[FlightGear]', output);
         }
       });
 
@@ -272,7 +269,6 @@ class FlightGearLauncher {
 
       // Handle process exit
       this.process.on('exit', (code, signal) => {
-        console.log(`[FlightGear] Process exited with code ${code}, signal ${signal}`);
         this.process = null;
         this.config = null;
       });
@@ -300,7 +296,6 @@ class FlightGearLauncher {
       return;
     }
 
-    console.log('[FlightGear] Stopping...');
 
     // Try graceful shutdown first
     this.process.kill('SIGTERM');
@@ -310,7 +305,6 @@ class FlightGearLauncher {
       const timeout = setTimeout(() => {
         // Force kill if still running
         if (this.process && !this.process.killed) {
-          console.log('[FlightGear] Force killing...');
           this.process.kill('SIGKILL');
         }
         resolve();
@@ -329,7 +323,6 @@ class FlightGearLauncher {
 
     this.process = null;
     this.config = null;
-    console.log('[FlightGear] Stopped');
   }
 
   /**

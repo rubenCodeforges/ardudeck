@@ -77,6 +77,22 @@ import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmwa
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
 import {
+  initUnifiedLogger,
+  shutdownLogger,
+  collectLogs,
+  collectSystemInfo,
+  createReportPayload,
+  createMspBoardDump,
+  createMavlinkBoardDump,
+  saveEncryptedReport,
+  getEncryptionInfo,
+  type FileLogEntry,
+  type BoardDump,
+  type BoardDumpMsp,
+  type BoardDumpMavlink,
+  type SystemInfo,
+} from './logging/index.js';
+import {
   detectSimulators,
   flightGearLauncher,
   xplaneLauncher,
@@ -1074,14 +1090,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       clearInterval(portWatchInterval);
       portWatchInterval = null;
       portWatchErrorCount = 0;
-      console.log('[PortWatcher] Stopped');
     }
   };
 
   ipcMain.handle(IPC_CHANNELS.COMMS_START_PORT_WATCH, async (): Promise<void> => {
     // Don't start if already connected - no need to watch for new ports
     if (currentTransport) {
-      console.log('[PortWatcher] Skipping - already connected');
       return;
     }
 
@@ -1116,12 +1130,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         const removedPorts = lastKnownPorts.filter(p => !currentPaths.includes(p));
 
         if (newPorts.length > 0) {
-          console.log('[PortWatcher] New ports detected:', newPorts.map(p => p.path));
           safeSend(mainWindow, IPC_CHANNELS.COMMS_NEW_PORT, { newPorts, removedPorts: [] });
         }
 
         if (removedPorts.length > 0) {
-          console.log('[PortWatcher] Ports removed:', removedPorts);
           safeSend(mainWindow, IPC_CHANNELS.COMMS_NEW_PORT, { newPorts: [], removedPorts });
         }
 
@@ -1138,8 +1150,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
       }
     }, PORT_WATCH_INTERVAL);
-
-    console.log('[PortWatcher] Started (interval: 5s, auto-stops when connected)');
   });
 
   ipcMain.handle(IPC_CHANNELS.COMMS_STOP_PORT_WATCH, async (): Promise<void> => {
@@ -1194,11 +1204,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     sendConnectionState(mainWindow);
 
     sendLog(mainWindow, 'info', `Reconnect attempt ${pendingReconnect.attempt}/${pendingReconnect.maxAttempts}`);
-    console.log(`[Reconnect] Attempting with: portPath=${pendingReconnect.portPath}, host=${pendingReconnect.host}`);
 
     // Validate we have connection info
     if (!pendingReconnect.portPath && !pendingReconnect.host) {
-      console.log('[Reconnect] No connection info available!');
       cancelReconnect('No connection info available for reconnect');
       return;
     }
@@ -1301,11 +1309,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       reconnectTimer = setTimeout(() => attemptReconnect(), 500);
 
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      // Only log every 5th attempt to reduce spam
-      if (pendingReconnect && pendingReconnect.attempt % 5 === 1) {
-        console.log(`[Reconnect] Attempt ${pendingReconnect.attempt} failed: ${errMsg}`);
-      }
       // Clean up any partially opened transport
       if (currentTransport) {
         try {
@@ -1381,7 +1384,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Store connection info for reconnection
     // Note: transport is a descriptive string like "TCP 127.0.0.1:5760" or "/dev/ttyUSB0 @ 115200"
     const isTcpConnection = connectionState.transport?.toLowerCase().startsWith('tcp') || connectionState.isSitl;
-    console.log(`[Reconnect] Capturing connection info: portPath=${connectionState.portPath}, transport=${connectionState.transport}, isTcp=${isTcpConnection}, isSitl=${connectionState.isSitl}`);
     pendingReconnect = {
       reason,
       portPath: connectionState.portPath,
@@ -1654,10 +1656,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           sendConnectionState(mainWindow);
 
           // SITL auto-configure: if iNav SITL, configure platform based on profile name
-          console.log(`[SITL] Auto-config check: isRunning=${sitlProcess.isRunning}, host=${options.host}, port=${tcpPortNum}, isSitl=${isSitlConnection}, variant=${mspInfo.fcVariant}`);
           if (isSitlConnection && mspInfo.fcVariant === 'INAV') {
             const profileName = sitlProcess.currentProfileName;
-            console.log(`[SITL] Auto-config: profile name = "${profileName}"`);
             const platformChanged = await autoConfigureSitlPlatform(profileName);
             if (platformChanged) {
               // Board will reboot - close current transport and auto-reconnect
@@ -1810,23 +1810,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Disconnect
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
-    console.log('[Disconnect] Starting disconnect...');
-
     try {
       // Exit CLI mode first (sends 'exit' command to leave board in MSP mode)
       // This prevents board staying in CLI mode after disconnect
       // NOTE: exitCliModeIfActive has internal timeout, won't block forever
       await exitCliModeIfActive();
-      console.log('[Disconnect] CLI mode exited');
 
       // Full cleanup of MSP connection (stops telemetry AND clears transport)
       cleanupMspConnection();
-      console.log('[Disconnect] MSP connection cleaned up');
 
       // BSOD FIX: Clean up all event listeners BEFORE closing transport
       // This prevents orphaned handlers that accumulate on reconnect cycles
       cleanupTransportListeners();
-      console.log('[Disconnect] Transport listeners cleaned up');
 
       // Clear heartbeat timeout to prevent reconnection attempts
       if (heartbeatTimeout) {
@@ -1846,9 +1841,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             );
 
             await Promise.race([closePromise, timeoutPromise]);
-            console.log('[Disconnect] Transport closed');
-          } else {
-            console.log('[Disconnect] Transport already closed');
           }
         } catch (closeErr) {
           // Transport may already be closed or in bad state - force cleanup
@@ -1876,7 +1868,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         packetsSent: 0,
       };
       sendConnectionState(mainWindow);
-      console.log('[Disconnect] Disconnect complete, state reset');
     }
   });
 
@@ -3736,8 +3727,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       const driverPath = join(resourcesPath, driverName);
 
-      console.log('Opening bundled driver:', driverPath);
-
       // Check if file exists
       if (!existsSync(driverPath)) {
         console.error('Driver file not found:', driverPath);
@@ -3767,7 +3756,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Start SITL process
   ipcMain.handle(IPC_CHANNELS.SITL_START, async (_event, config: SitlConfig): Promise<{ success: boolean; command?: string; error?: string }> => {
     try {
-      console.log('[SITL] Starting with config:', config);
       // Reset auto-config flag for new SITL session
       resetSitlAutoConfig();
       const command = await sitlProcess.start(config);
@@ -3782,7 +3770,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Stop SITL process
   ipcMain.handle(IPC_CHANNELS.SITL_STOP, async (): Promise<{ success: boolean }> => {
     try {
-      console.log('[SITL] Stopping process');
       sitlProcess.stop();
       return { success: true };
     } catch (error) {
@@ -3814,17 +3801,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Simulator Handlers (FlightGear, X-Plane integration)
   // =============================================================================
 
-  // Detect installed simulators (called frequently by UI, don't spam logs)
-  let lastSimulatorDetectLog = 0;
+  // Detect installed simulators
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_DETECT, async (_event, customFlightGearPath?: string, customXPlanePath?: string): Promise<SimulatorInfo[]> => {
-    const simulators = await detectSimulators(customFlightGearPath, customXPlanePath);
-    // Only log every 60 seconds
-    const now = Date.now();
-    if (now - lastSimulatorDetectLog > 60000) {
-      console.log('[Simulator] Detected:', simulators.filter(s => s.installed).map(s => s.name).join(', ') || 'none');
-      lastSimulatorDetectLog = now;
-    }
-    return simulators;
+    return detectSimulators(customFlightGearPath, customXPlanePath);
   });
 
   // Browse for FlightGear executable
@@ -3864,18 +3843,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
 
       const selectedPath = result.filePaths[0];
-      console.log('[Simulator] User selected FlightGear path:', selectedPath);
-
-      // Validate it looks like FlightGear
-      const lowerPath = selectedPath.toLowerCase();
-      const isValid = lowerPath.includes('flightgear') ||
-                      lowerPath.includes('fgfs') ||
-                      lowerPath.endsWith('.app');
-
-      if (!isValid) {
-        console.warn('[Simulator] Selected path does not appear to be FlightGear:', selectedPath);
-      }
-
       return { success: true, path: selectedPath };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -3886,7 +3853,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Launch FlightGear
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_LAUNCH_FG, async (_event, config: FlightGearConfig, customPath?: string): Promise<{ success: boolean; error?: string }> => {
-    console.log('[Simulator] Launching FlightGear with config:', config, 'custom path:', customPath || 'auto-detect');
     try {
       const result = await flightGearLauncher.launch(config, customPath);
       return result;
@@ -3899,7 +3865,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Stop FlightGear
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_STOP_FG, async (): Promise<{ success: boolean }> => {
-    console.log('[Simulator] Stopping FlightGear...');
     try {
       await flightGearLauncher.stop();
       return { success: true };
@@ -3951,7 +3916,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
 
       const selectedPath = result.filePaths[0];
-      console.log('[Simulator] User selected X-Plane path:', selectedPath);
 
       return { success: true, path: selectedPath };
     } catch (error) {
@@ -3963,7 +3927,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Launch X-Plane
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_LAUNCH_XP, async (_event, config: XPlaneConfig, customPath?: string): Promise<{ success: boolean; error?: string }> => {
-    console.log('[Simulator] Launching X-Plane with config:', config, 'custom path:', customPath || 'auto-detect');
     try {
       const result = await xplaneLauncher.launch(config, customPath);
       return result;
@@ -3976,7 +3939,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Stop X-Plane
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_STOP_XP, async (): Promise<{ success: boolean }> => {
-    console.log('[Simulator] Stopping X-Plane...');
     try {
       await xplaneLauncher.stop();
       return { success: true };
@@ -3993,7 +3955,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Start protocol bridge (FlightGear <-> X-Plane format for iNav SITL)
   ipcMain.handle(IPC_CHANNELS.BRIDGE_START, async (_event, config?: BridgeConfig): Promise<{ success: boolean; error?: string }> => {
-    console.log('[Simulator] Starting protocol bridge...');
     try {
       const result = await protocolBridge.start(config);
       return result;
@@ -4006,7 +3967,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Stop protocol bridge
   ipcMain.handle(IPC_CHANNELS.BRIDGE_STOP, async (): Promise<{ success: boolean }> => {
-    console.log('[Simulator] Stopping protocol bridge...');
     try {
       await protocolBridge.stop();
       return { success: true };
@@ -4038,6 +3998,159 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Reset virtual RC to defaults
   ipcMain.handle(IPC_CHANNELS.VIRTUAL_RC_RESET, async (): Promise<void> => {
     resetVirtualRC();
+  });
+
+  // =============================================================================
+  // Bug Report / Logging
+  // =============================================================================
+
+  // Initialize unified logger
+  initUnifiedLogger(mainWindow);
+
+  // Collect logs from JSONL files
+  ipcMain.handle(IPC_CHANNELS.REPORT_COLLECT_LOGS, async (_event, hours = 24): Promise<FileLogEntry[]> => {
+    return collectLogs(hours);
+  });
+
+  // Get system info
+  ipcMain.handle(IPC_CHANNELS.REPORT_GET_SYSTEM_INFO, async (): Promise<SystemInfo> => {
+    return collectSystemInfo();
+  });
+
+  // Get encryption info
+  ipcMain.handle(IPC_CHANNELS.REPORT_GET_ENCRYPTION_INFO, async (): Promise<{ isPlaceholderKey: boolean; keyVersion: number; formatVersion: number }> => {
+    return getEncryptionInfo();
+  });
+
+  // Collect MSP board dump (CLI commands: status, dump all, diff all)
+  ipcMain.handle(IPC_CHANNELS.REPORT_COLLECT_MSP_DUMP, async (): Promise<{ success: boolean; dump?: BoardDumpMsp; error?: string }> => {
+    try {
+      // Get connection state
+      if (!connectionState.isConnected || connectionState.protocol !== 'msp') {
+        return { success: false, error: 'Not connected to MSP board' };
+      }
+
+      // Notify progress
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_enter', message: 'Entering CLI mode...' });
+
+      // Enter CLI mode and collect data via the CLI dump function
+      const { enterCliMode, sendCliCommand, exitCliMode, getCliDump } = await import('./cli/cli-handlers.js');
+
+      await enterCliMode();
+
+      // Collect status
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'status', message: 'Collecting status...' });
+      let statusOutput = '';
+      await sendCliCommand('status');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get dump all
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'dump', message: 'Collecting dump all...' });
+      const dumpResult = await getCliDump(false); // false = dump all (not diff)
+
+      // Get diff all
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'diff', message: 'Collecting diff all...' });
+      const diffResult = await getCliDump(true); // true = diff
+
+      // Exit CLI (will reboot board)
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_exit', message: 'Exiting CLI mode (board will reboot)...' });
+      await exitCliMode();
+
+      const dump = createMspBoardDump(
+        statusOutput,
+        dumpResult?.dump || '',
+        diffResult?.dump || '',
+        connectionState.fcVariant || 'Unknown',
+        connectionState.fcVersion || 'Unknown',
+        connectionState.boardId || 'Unknown'
+      );
+
+      return { success: true, dump };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Collect MAVLink board dump (from cached parameter/telemetry data)
+  ipcMain.handle(IPC_CHANNELS.REPORT_COLLECT_MAVLINK_DUMP, async (): Promise<{ success: boolean; dump?: BoardDumpMavlink; error?: string }> => {
+    try {
+      if (!connectionState.isConnected || connectionState.protocol !== 'mavlink') {
+        return { success: false, error: 'Not connected to MAVLink board' };
+      }
+
+      // For MAVLink, we use cached data from parameter store (sent via renderer)
+      // The actual parameter data needs to be passed from renderer since it's stored there
+      // Return a template - renderer will fill in the parameters
+      return {
+        success: true,
+        dump: {
+          type: 'mavlink',
+          parameters: {}, // Will be filled by renderer from parameter store
+          sys_status: {
+            sensors_present: 0,
+            sensors_enabled: 0,
+            sensors_health: 0,
+            load: 0,
+            voltage_battery: 0,
+            current_battery: 0,
+            errors_count1: 0,
+          },
+          heartbeat: {
+            autopilot: 0,
+            type: 0,
+            base_mode: 0,
+            custom_mode: 0,
+          },
+          fc_variant: connectionState.autopilot || 'Unknown',
+          fc_version: 'Unknown',
+        },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Create and save encrypted report
+  ipcMain.handle(IPC_CHANNELS.REPORT_SAVE, async (
+    _event,
+    userDescription: string,
+    boardDump: BoardDump | null,
+    logHours = 24
+  ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    try {
+      // Show save dialog
+      const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Bug Report',
+        defaultPath: `ardudeck-report-${Date.now()}.deckreport`,
+        filters: [{ name: 'DeckReport Files', extensions: ['deckreport'] }],
+      });
+
+      if (canceled || !filePath) {
+        return { success: false, error: 'Save canceled' };
+      }
+
+      // Notify progress
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'collecting', message: 'Collecting logs...' });
+
+      // Create payload
+      const payload = await createReportPayload(userDescription, boardDump, logHours);
+
+      // Notify progress
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'encrypting', message: 'Encrypting report...' });
+
+      // Encrypt and save
+      saveEncryptedReport(payload, filePath);
+
+      sendLog(mainWindow, 'info', 'Bug report saved', filePath);
+
+      return { success: true, filePath };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to save bug report', message);
+      return { success: false, error: message };
+    }
   });
 }
 
@@ -4427,12 +4540,16 @@ function parseRallyFile(content: string): RallyItem[] {
  * causing issues on next connection or potential BSOD.
  */
 export async function cleanupOnShutdown(): Promise<void> {
-  console.log('[Shutdown] Starting cleanup...');
+  try {
+    // Shutdown unified logger (flushes remaining logs)
+    shutdownLogger();
+  } catch (err) {
+    console.warn('[Shutdown] Error shutting down logger:', err);
+  }
 
   try {
     // Stop SITL process if running
     sitlProcess.stop();
-    console.log('[Shutdown] SITL process stopped');
   } catch (err) {
     console.warn('[Shutdown] Error stopping SITL:', err);
   }
@@ -4440,7 +4557,6 @@ export async function cleanupOnShutdown(): Promise<void> {
   try {
     // Full cleanup of MSP connection (stops telemetry AND clears transport)
     cleanupMspConnection();
-    console.log('[Shutdown] MSP connection cleaned up');
   } catch (err) {
     console.warn('[Shutdown] Error cleaning up MSP:', err);
   }
@@ -4448,7 +4564,6 @@ export async function cleanupOnShutdown(): Promise<void> {
   try {
     // Clean up transport listeners
     cleanupTransportListeners();
-    console.log('[Shutdown] Transport listeners cleaned up');
   } catch (err) {
     console.warn('[Shutdown] Error cleaning transport listeners:', err);
   }
@@ -4457,7 +4572,6 @@ export async function cleanupOnShutdown(): Promise<void> {
     // Close transport if open
     if (currentTransport?.isOpen) {
       await currentTransport.close();
-      console.log('[Shutdown] Transport closed');
     }
   } catch (err) {
     console.warn('[Shutdown] Error closing transport:', err);
@@ -4472,6 +4586,4 @@ export async function cleanupOnShutdown(): Promise<void> {
   // Reset state
   currentTransport = null;
   mavlinkParser = null;
-
-  console.log('[Shutdown] Cleanup complete');
 }

@@ -276,13 +276,11 @@ export async function rebootToBootloader(
   const rebootTypeName = useFlashBootloader ? 'FLASH bootloader' : 'ROM bootloader (DFU)';
 
   try {
-    console.log(`[MSP] Rebooting ${port} into ${rebootTypeName}...`);
     transport = new SerialTransport(port, { baudRate });
     await transport.open();
 
     // Send MSP_SET_REBOOT with specified bootloader type
     const rebootPacket = buildMspRequestWithPayload(MSP_SET_REBOOT, [rebootType]);
-    console.log(`[MSP] Sending MSP_SET_REBOOT with type ${rebootType}`);
     await transport.write(rebootPacket);
 
     // Give it a moment to process
@@ -292,7 +290,6 @@ export async function rebootToBootloader(
     await transport.close();
     transport = null;
 
-    console.log(`[MSP] Reboot command sent, waiting for board to enter ${rebootTypeName}...`);
 
     // Wait for board to reboot - typically takes 1-3 seconds
     await new Promise(resolve => setTimeout(resolve, 2000));

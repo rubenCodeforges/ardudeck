@@ -378,10 +378,8 @@ export const useSettingsStore = create<SettingsStore>()(
 
   // Persistence actions
   loadSettings: async () => {
-    console.log('[Settings] loadSettings called, electronAPI available:', !!window.electronAPI);
     try {
       const settings = await window.electronAPI?.getSettings();
-      console.log('[Settings] Raw settings from IPC:', settings);
       if (settings) {
         set({
           missionDefaults: settings.missionDefaults || { ...DEFAULT_MISSION_DEFAULTS },
@@ -391,10 +389,8 @@ export const useSettingsStore = create<SettingsStore>()(
           connectionMemory: settings.connectionMemory || { ...DEFAULT_CONNECTION_MEMORY },
           _isInitialized: true,
         });
-        console.log('[Settings] Loaded from disk:', settings.vehicles?.length || 0, 'vehicles');
       } else {
         set({ _isInitialized: true });
-        console.log('[Settings] No saved settings (null response), using defaults');
       }
     } catch (error) {
       console.error('[Settings] Failed to load:', error);
@@ -404,7 +400,6 @@ export const useSettingsStore = create<SettingsStore>()(
 
   _saveSettings: async () => {
     const state = get();
-    console.log('[Settings] _saveSettings called, initialized:', state._isInitialized, 'saving:', state._isSaving);
     if (!state._isInitialized || state._isSaving) return;
 
     set({ _isSaving: true });
@@ -416,9 +411,7 @@ export const useSettingsStore = create<SettingsStore>()(
         flightStats: state.flightStats,
         connectionMemory: state.connectionMemory,
       };
-      console.log('[Settings] Saving payload:', payload.vehicles?.length, 'vehicles');
       await window.electronAPI?.saveSettings(payload);
-      console.log('[Settings] Saved to disk successfully');
     } catch (error) {
       console.error('[Settings] Failed to save:', error);
     } finally {

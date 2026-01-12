@@ -15,6 +15,8 @@
   <strong>A modern, cross-platform ground control station for ArduPilot, Betaflight, and iNav.</strong>
 </p>
 
+> **ALPHA SOFTWARE** - ArduDeck is under active development. Features may be incomplete, unstable, or change without notice. **Use at your own risk** and always have a backup configuration tool available. We appreciate early testers - please [report bugs](#bug-reporting) to help improve the project!
+
 ArduDeck is a next-generation ground control station built with Electron, React, and TypeScript. It provides real-time telemetry, parameter management, PID tuning, and mission planning for drones and vehicles running ArduPilot, Betaflight, or iNav firmware.
 
 > **One app for all your flight controllers** - Cross-platform (Windows, macOS, Linux), modern UI, supports both MAVLink and MSP protocols.
@@ -28,6 +30,7 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - [Quick Start](#quick-start)
 - [Supported Vehicles](#supported-vehicles)
 - [Veteran Board Support](#️-veteran-board-support)
+- [Bug Reporting](#bug-reporting)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [Acknowledgments](#acknowledgments)
@@ -382,6 +385,45 @@ The GUI talks to your board via CLI commands under the hood - you get the **conv
 - ...and any other F3-era board running iNav < 2.1 or Betaflight < 4.0
 
 **Dust off those veterans and give them one more flight!** 🛩️
+
+---
+
+## Bug Reporting
+
+Found a bug? We want to hear about it! ArduDeck includes a built-in bug reporting tool that makes it easy to share diagnostic information with the development team.
+
+<p align="center">
+  <a href="docs/screenshots/bug-report-screen.png?raw=true">
+    <img src="docs/screenshots/bug-report-screen.png" alt="Bug Report Screen" width="600"/>
+  </a>
+  <br/>
+  <em>Built-in bug reporting with automatic log collection</em>
+</p>
+
+### How to Report a Bug
+
+1. **Open the Bug Report screen** - Click the bug icon in the sidebar or go to **Help > Report Bug**
+2. **Describe the issue** - Tell us what happened and what you expected
+3. **Choose what to include:**
+   - **App logs** - Recent application logs (always recommended)
+   - **Board dump** - Flight controller configuration (requires connected board, will trigger reboot)
+4. **Review the data** - See exactly what will be collected before sending
+5. **Generate report** - Creates an encrypted `.deckreport` file
+6. **Send to developers** - Share the file via GitHub issue or email
+
+### What Gets Collected
+
+| Data | Description | Privacy |
+|------|-------------|---------|
+| **App logs** | Recent application logs (errors, warnings, debug info) | Paths sanitized, no personal data |
+| **System info** | OS, version, architecture | Anonymous |
+| **Board dump** | Flight controller settings via CLI `dump` command | Your FC configuration |
+
+### Privacy & Security
+
+- **You control what's shared** - Choose what to include, preview before sending
+- **Encrypted reports** - Only the ArduDeck dev team can decrypt `.deckreport` files
+- **No automatic uploads** - You decide when and how to share the file
 
 ---
 

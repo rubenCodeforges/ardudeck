@@ -178,30 +178,21 @@ class SitlProcessManager {
       shell: process.platform !== 'win32',
     };
 
-    console.log('[SITL] Spawning:', sitlPath);
-    console.log('[SITL] Args:', args);
-    console.log('[SITL] CWD:', spawnOptions.cwd);
-    console.log('[SITL] Shell:', spawnOptions.shell);
 
     try {
       this.process = spawn(sitlPath, args, spawnOptions);
       this._isRunning = true;
 
-      console.log('[SITL] Process spawned, PID:', this.process.pid);
-      console.log('[SITL] stdout exists:', !!this.process.stdout);
-      console.log('[SITL] stderr exists:', !!this.process.stderr);
 
       // Forward stdout to renderer AND main process log
       this.process.stdout?.on('data', (data: Buffer) => {
         const text = data.toString();
-        console.log('[SITL stdout]', text.trim());
         this.sendToRenderer('sitl:stdout', text);
       });
 
       // Forward stderr to renderer AND main process log
       this.process.stderr?.on('data', (data: Buffer) => {
         const text = data.toString();
-        console.log('[SITL stderr]', text.trim());
         this.sendToRenderer('sitl:stderr', text);
       });
 
@@ -214,7 +205,6 @@ class SitlProcessManager {
 
       // Handle process exit
       this.process.on('exit', (code: number | null, signal: string | null) => {
-        console.log(`SITL process exited with code ${code}, signal ${signal}`);
         this._isRunning = false;
         this.process = null;
         this.sendToRenderer('sitl:exit', { code, signal });

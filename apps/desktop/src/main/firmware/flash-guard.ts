@@ -23,7 +23,6 @@ export function acquireFlashLock(type: 'serial' | 'dfu'): boolean {
   isFlashing = true;
   flashStartTime = Date.now();
   flashType = type;
-  console.log(`[FlashGuard] Acquired flash lock for ${type} operation`);
   return true;
 }
 
@@ -33,7 +32,6 @@ export function acquireFlashLock(type: 'serial' | 'dfu'): boolean {
 export function releaseFlashLock(): void {
   if (isFlashing && flashStartTime) {
     const duration = Date.now() - flashStartTime;
-    console.log(`[FlashGuard] Released flash lock after ${(duration / 1000).toFixed(1)}s`);
   }
   isFlashing = false;
   flashStartTime = null;

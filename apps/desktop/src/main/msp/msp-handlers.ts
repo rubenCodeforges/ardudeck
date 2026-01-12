@@ -137,7 +137,6 @@ let lastArmingFlags: number | null = null;
 let gpsSenderInterval: ReturnType<typeof setInterval> | null = null;
 let gpsSenderEnabled = false;
 let gpsSenderLoggedOnce = false;
-let gpsDebugCounter = 0;
 
 // Skip SITL auto-configure after user manually changes platform
 let skipSitlAutoConfig = false;
@@ -145,9 +144,7 @@ let skipSitlAutoConfig = false;
 // Reset the skip flag (call when starting new SITL session)
 export function resetSitlAutoConfig(): void {
   skipSitlAutoConfig = false;
-  console.log('[MSP] SITL auto-config reset - will auto-configure on next connect');
 }
-const TELEMETRY_SKIP_LOG_INTERVAL = 10; // Only log every N skips
 
 // Pending response handlers
 const pendingResponses = new Map<
@@ -381,7 +378,6 @@ async function sendMspV2RequestWithPayload(command: number, payload: Uint8Array,
 
 function handleMspResponse(command: number, payload: Uint8Array): void {
   // Debug logging disabled - uncomment for debugging
-  // console.log(`[MSP] Response cmd=${command} (${payload.length} bytes)`);
 
   const pending = pendingResponses.get(command);
   if (pending) {
@@ -455,10 +451,9 @@ export async function tryMspDetection(
           pendingResponses.delete(packet.command);
           pending.reject(new Error(`MSP command ${packet.command} not supported by this board`));
         }
-        // Only log unsupported commands once to avoid spam
+        // Track unsupported commands (only log once to avoid spam)
         if (!unsupportedCommands.has(packet.command)) {
           unsupportedCommands.add(packet.command);
-          console.log(`[MSP] Command ${packet.command} not supported by this board`);
         }
       }
     }
@@ -500,8 +495,6 @@ export async function tryMspDetection(
     // Track firmware type for protocol decisions
     isInavFirmware = fcVariant === 'INAV';
     inavVersion = isInavFirmware ? fcVersion : '';
-    const legacy = isLegacyInav();
-    console.log(`[MSP] Firmware: ${fcVariant} ${fcVersion}, isInavFirmware=${isInavFirmware}, isLegacyInav=${legacy}`);
 
     return {
       fcVariant,
@@ -645,12 +638,10 @@ export function startMspTelemetry(rateHz: number = 10): void {
           ? getArmingDisabledReasons(status.armingDisableFlags, fcVariant)
           : [];
 
-        // Log arming issues only when flags change
+        // Track arming flag changes
         if (!armed && status.armingDisableFlags !== lastArmingFlags) {
-          console.log(`[MSP] Arming status: armed=${armed}, flags=0x${status.armingDisableFlags?.toString(16) ?? '0'}, reasons=[${armingDisabledReasons.join(', ')}]`);
           lastArmingFlags = status.armingDisableFlags ?? null;
         } else if (armed && lastArmingFlags !== null) {
-          console.log('[MSP] Armed!');
           lastArmingFlags = null;
         }
 
@@ -673,11 +664,6 @@ export function startMspTelemetry(rateHz: number = 10): void {
         const gpsPayload = await sendMspRequest(MSP.RAW_GPS, 300);
         const gps = deserializeRawGps(gpsPayload);
         const decimal = gpsToDecimalDegrees(gps);
-
-        // Debug: Log GPS data occasionally
-        if (gpsDebugCounter++ % 100 === 0) {
-          console.log(`[MSP GPS] fix=${gps.fixType}, sats=${gps.numSat}, lat=${decimal.latDeg.toFixed(6)}, lon=${decimal.lonDeg.toFixed(6)}, hdop=${gps.hdop}`);
-        }
 
         // Update groundspeed for vfrHud (GPS groundspeed is more accurate)
         groundSpeedMs = decimal.speedMs;
@@ -757,11 +743,9 @@ export function stopMspTelemetry(): void {
  */
 export function startGpsSender(): void {
   if (gpsSenderInterval) {
-    console.log('[MSP GPS] GPS sender already running');
     return;
   }
 
-  console.log('[MSP GPS] Starting GPS sender (FlightGear → MSP via MSP2_SENSOR_GPS)');
   gpsSenderEnabled = true;
   gpsSenderLoggedOnce = false;
 
@@ -796,12 +780,7 @@ export function startGpsSender(): void {
       const packet = buildMspV2RequestWithPayload(MSP2.SENSOR_GPS, payload);
       await currentTransport.write(Buffer.from(packet));
 
-      // Log first packet to verify it's being sent
-      if (!gpsSenderLoggedOnce) {
-        console.log(`[MSP GPS] First packet sent: MSP2_SENSOR_GPS (0x1F03), payload ${payload.length} bytes`);
-        console.log(`[MSP GPS] Data: lat=${gpsData.lat.toFixed(6)}, lon=${gpsData.lon.toFixed(6)}, alt=${gpsData.alt.toFixed(1)}m, fix=${gpsData.fixType}, sats=${gpsData.numSat}`);
-        gpsSenderLoggedOnce = true;
-      }
+      gpsSenderLoggedOnce = true;
     } catch (err) {
       console.error('[MSP GPS] Send error:', err);
     }
@@ -816,7 +795,6 @@ export function stopGpsSender(): void {
     clearInterval(gpsSenderInterval);
     gpsSenderInterval = null;
     gpsSenderEnabled = false;
-    console.log('[MSP GPS] GPS sender stopped');
   }
 }
 
@@ -884,30 +862,24 @@ async function getPid(): Promise<MSPPid | null> {
   return withConfigLock(async () => {
     try {
       // Increased timeout for slow F3 boards with old firmware (iNav 2.0.0)
-      console.log('[MSP] Reading PIDs...');
       sendLog('info', 'Reading PIDs from FC...');
 
       // iNav 7.0+ requires MSP2_INAV_PID (0x2030) - legacy MSP_PID was removed
       if (usesMsp2Pid()) {
-        console.log('[MSP] Using MSP2_INAV_PID (0x2030) for modern iNav');
         const payload = await sendMspV2Request(MSP2.INAV_PID, 2000);
-        console.log('[MSP] INAV_PID response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
         const inavPid = deserializeInavPid(payload);
         // Cache full iNav PID state for read-modify-write pattern
         // iNav requires ALL 11 PID controllers (44 bytes) when writing
         cachedInavPid = inavPid;
         // Convert to legacy format for UI compatibility
         const pid = inavPidToPid(inavPid);
-        console.log('[MSP] PIDs parsed (MSP2):', JSON.stringify(pid));
         sendLog('info', `PIDs loaded: Roll P=${pid.roll.p} I=${pid.roll.i} D=${pid.roll.d}`);
         return pid;
       }
 
       // Legacy MSP_PID for older firmwares
       const payload = await sendMspRequest(MSP.PID, 2000);
-      console.log('[MSP] PID response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
       const pid = deserializePid(payload);
-      console.log('[MSP] PIDs parsed:', JSON.stringify(pid));
       sendLog('info', `PIDs loaded: Roll P=${pid.roll.p} I=${pid.roll.i} D=${pid.roll.d}`);
       return pid;
     } catch (error) {
@@ -922,7 +894,6 @@ async function getPid(): Promise<MSPPid | null> {
 async function setPid(pid: MSPPid): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setPid: transport not open');
     sendLog('error', 'Cannot set PIDs - not connected');
     return false;
   }
@@ -935,11 +906,9 @@ async function setPid(pid: MSPPid): Promise<boolean> {
       try {
         // If we don't have cached PIDs, read them first
         if (!cachedInavPid) {
-          console.log('[MSP] No cached PIDs, reading current values first...');
           sendLog('info', 'Reading current PIDs before saving...');
           const payload = await sendMspV2Request(MSP2.INAV_PID, 2000);
           cachedInavPid = deserializeInavPid(payload);
-          console.log('[MSP] Cached PIDs from FC:', payload.length, 'bytes');
         }
 
         // Convert user's changes to partial iNav format (only roll, pitch, yaw, level)
@@ -950,10 +919,8 @@ async function setPid(pid: MSPPid): Promise<boolean> {
         cachedInavPid = fullPid;
 
         const payload = serializeInavPid(fullPid);
-        console.log('[MSP] SET_INAV_PID payload:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
         sendLog('info', `Sending PIDs via MSP2 (${payload.length} bytes)...`);
         await sendMspV2RequestWithPayload(MSP2.INAV_SET_PID, payload, 2000);
-        console.log('[MSP] SET_INAV_PID success');
         sendLog('info', 'PIDs sent to FC (MSP2)');
         return true;
       } catch (error) {
@@ -969,10 +936,8 @@ async function setPid(pid: MSPPid): Promise<boolean> {
   const mspSuccess = await withConfigLock(async () => {
     try {
       const payload = serializePid(pid);
-      console.log('[MSP] SET_PID payload:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
       sendLog('info', `Sending PIDs (${payload.length} bytes)...`);
       await sendMspRequestWithPayload(MSP.SET_PID, payload, 2000);
-      console.log('[MSP] SET_PID success');
       sendLog('info', 'PIDs sent to FC');
       return true;
     } catch (error) {
@@ -1033,7 +998,6 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
       };
       currentTransport.on('data', tuningCliListener);
 
-      console.log('[MSP] Entering CLI mode for tuning...');
       sendLog('info', 'CLI mode', 'Entering CLI for legacy tuning');
 
       // Send '#' to enter CLI mode
@@ -1042,7 +1006,6 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
 
       // Validate CLI entry
       if (tuningCliResponse.includes('CLI') || tuningCliResponse.includes('#')) {
-        console.log('[MSP] CLI mode confirmed');
       } else {
         console.warn('[MSP] CLI mode entry not confirmed, response:', tuningCliResponse.slice(0, 100));
       }
@@ -1055,7 +1018,6 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
     // Fixed-wing uses 'ff' (feedforward) for the third term, multirotor uses 'd' (derivative)
     const dTerm = isFixedWing ? 'ff' : 'd';
 
-    console.log(`[MSP] Setting PIDs for ${isFixedWing ? 'fixed-wing' : 'multirotor'} (prefix=${prefix}, dTerm=${dTerm})`);
 
     const commands = [
       `set ${prefix}_p_roll = ${pid.roll.p}`,
@@ -1071,7 +1033,6 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
 
     for (const cmd of commands) {
       tuningCliResponse = ''; // Clear before each command
-      console.log(`[MSP] CLI: ${cmd}`);
       await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
       await new Promise(r => setTimeout(r, 300)); // Wait longer for response
 
@@ -1098,27 +1059,20 @@ async function getRcTuning(): Promise<MSPRcTuning | null> {
   return withConfigLock(async () => {
     // Try iNav MSP2 RATE_PROFILE first (0x2007) - this is what iNav configurator uses!
     try {
-      console.log('[MSP] Trying INAV_RATE_PROFILE (0x2007)...');
       const payload = await sendMspV2Request(MSP2.INAV_RATE_PROFILE, 2000);
-      console.log('[MSP] INAV_RATE_PROFILE response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
       const inavProfile = deserializeInavRateProfile(payload);
-      console.log('[MSP] INAV_RATE_PROFILE parsed:', JSON.stringify(inavProfile));
       const rcTuning = inavRateProfileToRcTuning(inavProfile);
-      console.log('[MSP] Converted to RC_TUNING:', JSON.stringify(rcTuning));
       sendLog('info', `Rates loaded (iNav): roll=${rcTuning.rollRate} pitch=${rcTuning.pitchRate} yaw=${rcTuning.yawRate}`);
       return rcTuning;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.log('[MSP] INAV_RATE_PROFILE failed:', msg, '- trying MSP_RC_TUNING...');
     }
 
     // Fall back to standard MSP_RC_TUNING (111)
     // Use iNav-specific deserializer if connected to iNav (rates need *10)
     try {
-      console.log(`[MSP] Reading RC_TUNING (111) for ${isInavFirmware ? 'iNav' : 'Betaflight'}...`);
       sendLog('info', 'Reading rates from FC...');
       const payload = await sendMspRequest(MSP.RC_TUNING, 2000);
-      console.log('[MSP] RC_TUNING response:', payload.length, 'bytes:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
 
       // iNav and Betaflight have different formats for MSP_RC_TUNING
       // iNav: 11 bytes, rates stored as /10
@@ -1127,7 +1081,6 @@ async function getRcTuning(): Promise<MSPRcTuning | null> {
         ? deserializeRcTuningInav(payload)
         : deserializeRcTuning(payload);
 
-      console.log('[MSP] RC_TUNING parsed:', JSON.stringify(rcTuning));
       sendLog('info', `Rates loaded: roll=${rcTuning.rollRate} pitch=${rcTuning.pitchRate} yaw=${rcTuning.yawRate}`);
       return rcTuning;
     } catch (error) {
@@ -1142,14 +1095,12 @@ async function getRcTuning(): Promise<MSPRcTuning | null> {
 async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setRcTuning: transport not open');
     sendLog('error', 'Cannot set rates - not connected');
     return false;
   }
 
   // If already in CLI mode (from PID fallback), use CLI directly
   if (tuningCliModeActive) {
-    console.log('[MSP] Already in CLI mode, using CLI for rates');
     return await setRcTuningViaCli(rcTuning);
   }
 
@@ -1162,17 +1113,8 @@ async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
         const inavProfile = rcTuningToInavRateProfile(rcTuning);
         const payload = serializeInavRateProfile(inavProfile);
 
-        console.log('[MSP] INAV_SET_RATE_PROFILE (0x2008) payload:', payload.length, 'bytes');
-        console.log('[MSP] Payload hex:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
-        console.log('[MSP] iNav profile: rollRate=%d (raw=%d), pitchRate=%d (raw=%d), yawRate=%d (raw=%d), rcExpo=%d',
-          inavProfile.rollRate, inavProfile.rollRate / 10,
-          inavProfile.pitchRate, inavProfile.pitchRate / 10,
-          inavProfile.yawRate, inavProfile.yawRate / 10,
-          inavProfile.rcExpo);
-
         sendLog('info', `Sending rates via MSP2 0x2008 (${payload.length} bytes)...`);
         await sendMspV2RequestWithPayload(MSP2.INAV_SET_RATE_PROFILE, payload, 2000);
-        console.log('[MSP] INAV_SET_RATE_PROFILE success');
         sendLog('info', 'Rates sent to FC (iNav MSP2)');
         return true;
       } catch (error) {
@@ -1192,7 +1134,6 @@ async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
     }
 
     // Fall back to MSP_SET_RC_TUNING (204) for older iNav
-    console.log('[MSP] Falling back to MSP_SET_RC_TUNING (204) for iNav...');
   }
 
   // For Betaflight (or iNav MSP2 fallback): use MSP_SET_RC_TUNING (204)
@@ -1202,12 +1143,9 @@ async function setRcTuning(rcTuning: MSPRcTuning): Promise<boolean> {
         ? serializeRcTuningInav(rcTuning)
         : serializeRcTuning(rcTuning);
 
-      console.log(`[MSP] SET_RC_TUNING (${isInavFirmware ? 'iNav' : 'Betaflight'}) payload:`, payload.length, 'bytes');
-      console.log('[MSP] Payload hex:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
 
       sendLog('info', `Sending rates via MSP 204 (${payload.length} bytes)...`);
       await sendMspRequestWithPayload(MSP.SET_RC_TUNING, payload, 2000);
-      console.log('[MSP] SET_RC_TUNING success');
       sendLog('info', 'Rates sent to FC');
       return true;
     } catch (error) {
@@ -1261,7 +1199,6 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
       };
       currentTransport.on('data', tuningCliListener);
 
-      console.log('[MSP] Entering CLI mode for tuning...');
       sendLog('info', 'CLI mode', 'Entering CLI for legacy tuning');
 
       await currentTransport.write(new Uint8Array([0x23])); // '#'
@@ -1316,8 +1253,6 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
       { cmd: `set fw_p_pitch = ${pitchRateStored}`, name: 'fw_p_pitch' },
     ];
 
-    console.log(`[MSP] CLI rates: roll=${rollRateStored} (${rollRateDegSec}°/s), pitch=${pitchRateStored} (${pitchRateDegSec}°/s), yaw=${yawRateStored} (${yawRateDegSec}°/s)`);
-    console.log(`[MSP] CLI rcTuning input: rollRate=${rcTuning.rollRate}, pitchRate=${rcTuning.pitchRate}, rollPitchRate=${rcTuning.rollPitchRate}`);
 
     // Track which critical commands failed so we can try alternatives
     let rollRateFailed = false;
@@ -1325,14 +1260,12 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
 
     for (const { cmd, critical } of commands) {
       tuningCliResponse = '';
-      console.log(`[MSP] CLI: ${cmd}`);
       await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
       await new Promise(r => setTimeout(r, 300));
 
       // Log response for debugging
       const response = tuningCliResponse.trim();
       if (response && !response.endsWith('#')) {
-        console.log(`[MSP] CLI response: ${response.split('\n')[0]}`);
       }
       const failed = tuningCliResponse.includes('Invalid') || tuningCliResponse.includes('error');
       if (failed) {
@@ -1345,7 +1278,6 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
 
     // If roll/pitch rate commands failed, try alternatives
     if (rollRateFailed || pitchRateFailed) {
-      console.log('[MSP] Primary rate commands failed, trying alternatives...');
       sendLog('info', 'Trying alternative CLI commands...');
 
       for (const { cmd, name } of altRateCommands) {
@@ -1354,19 +1286,16 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
         if (!pitchRateFailed && cmd.includes('pitch')) continue;
 
         tuningCliResponse = '';
-        console.log(`[MSP] CLI alt (${name}): ${cmd}`);
         await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
         await new Promise(r => setTimeout(r, 300));
 
         const response = tuningCliResponse.trim();
         const failed = tuningCliResponse.includes('Invalid') || tuningCliResponse.includes('error');
         if (!failed) {
-          console.log(`[MSP] CLI alt SUCCESS: ${name}`);
           sendLog('info', `Alternative worked: ${name}`);
           if (cmd.includes('roll')) rollRateFailed = false;
           if (cmd.includes('pitch')) pitchRateFailed = false;
         } else {
-          console.log(`[MSP] CLI alt failed: ${name} - ${response.split('\n')[0]}`);
         }
       }
     }
@@ -1387,18 +1316,14 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
 async function getModeRanges(): Promise<MSPModeRange[] | null> {
   // Guard: return null if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] getModeRanges: transport not open');
     return null;
   }
 
   return withConfigLock(async () => {
     try {
-      console.log('[MSP] getModeRanges: requesting MSP.MODE_RANGES (command 34)...');
       const payload = await sendMspRequest(MSP.MODE_RANGES, 2000);
-      console.log('[MSP] getModeRanges: received payload, length:', payload?.length);
       const modes = deserializeModeRanges(payload);
       const activeModes = modes.filter(m => m.rangeEnd > m.rangeStart);
-      console.log('[MSP] getModeRanges: found', modes.length, 'total modes,', activeModes.length, 'active');
       // Clear from unsupported if it worked
       unsupportedCommands.delete(MSP.MODE_RANGES);
       return modes;
@@ -1409,7 +1334,6 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
       // Only log "not available" once per session
       if (!unsupportedCommands.has(MSP.MODE_RANGES)) {
         unsupportedCommands.add(MSP.MODE_RANGES);
-        console.log('[MSP] MODE_RANGES not available on this board (will not retry)');
       }
       return null;
     }
@@ -1419,14 +1343,12 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
 async function setModeRange(index: number, mode: MSPModeRange): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setModeRange: transport not open');
     sendLog('error', 'Cannot set mode - not connected');
     return false;
   }
 
   // If already in CLI mode (from PID/Rates fallback), use CLI directly
   if (tuningCliModeActive) {
-    console.log('[MSP] Already in CLI mode, using CLI for mode range');
     return await setModeRangeViaCli(index, mode);
   }
 
@@ -1436,8 +1358,6 @@ async function setModeRange(index: number, mode: MSPModeRange): Promise<boolean>
       const payload = serializeModeRange(index, mode);
       // Only log non-empty ranges to reduce noise
       if (mode.rangeEnd > mode.rangeStart) {
-        console.log(`[MSP] SET_MODE_RANGE[${index}]: boxId=${mode.boxId} aux=${mode.auxChannel} range=${mode.rangeStart}-${mode.rangeEnd}`);
-        console.log('[MSP] SET_MODE_RANGE payload:', Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' '));
         sendLog('info', `Setting mode ${index}: boxId=${mode.boxId} aux=${mode.auxChannel} range=${mode.rangeStart}-${mode.rangeEnd}`);
       }
       await sendMspRequestWithPayload(MSP.SET_MODE_RANGE, payload, 2000);
@@ -1477,7 +1397,6 @@ async function setModeRangeViaCli(index: number, mode: MSPModeRange): Promise<bo
       tuningCliModeActive = true;
       stopMspTelemetry();
 
-      console.log('[MSP] Entering CLI mode for tuning...');
       sendLog('info', 'CLI mode', 'Entering CLI for legacy tuning');
 
       await currentTransport.write(new Uint8Array([0x23])); // '#'
@@ -1491,7 +1410,6 @@ async function setModeRangeViaCli(index: number, mode: MSPModeRange): Promise<bo
     const endStep = Math.round((mode.rangeEnd - 900) / 25);
     const cmd = `aux ${index} ${mode.boxId} ${mode.auxChannel} ${startStep} ${endStep} 0`;
 
-    console.log(`[MSP] CLI: ${cmd}`);
     await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
     await new Promise(r => setTimeout(r, 100));
 
@@ -1515,7 +1433,6 @@ async function getFeatures(): Promise<number | null> {
       // Only log once, don't spam console
       if (!unsupportedCommands.has(MSP.FEATURE_CONFIG)) {
         unsupportedCommands.add(MSP.FEATURE_CONFIG);
-        console.log('[MSP] Feature config not available on this board');
       }
       return null;
     }
@@ -1545,7 +1462,6 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
 
       const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
       const platformName = platformNames[config.platformType] ?? `UNKNOWN(${config.platformType})`;
-      console.log(`[MSP] iNav Mixer config: platformType=${config.platformType} (${platformName}), mixerPreset=${config.appliedMixerPreset}`);
       sendLog('info', `Platform: ${platformName}`, `Mixer: ${config.appliedMixerPreset}, Servos: ${config.numberOfServos}`);
 
       return config;
@@ -1553,7 +1469,6 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
       // MSP2 failed - try legacy MSP_MIXER_CONFIG for old iNav
       const msg = msp2Error instanceof Error ? msp2Error.message : String(msp2Error);
       if (msg.includes('not supported')) {
-        console.log('[MSP] MSP2 mixer config not supported, trying legacy MSP...');
       } else {
         console.warn('[MSP] MSP2 mixer config failed:', msg);
       }
@@ -1572,7 +1487,6 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
         currentPlatformType = platformType;
 
         const platformNames = ['MULTIROTOR', 'AIRPLANE'];
-        console.log(`[MSP] Legacy mixer: type=${legacyConfig.mixer}, platformType=${platformType} (${platformNames[platformType]})`);
         sendLog('info', `Platform: ${platformNames[platformType]} (legacy)`, `Mixer type: ${legacyConfig.mixer}`);
 
         // Return a partial config with the mixer type as appliedMixerPreset
@@ -1604,16 +1518,13 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
 export async function autoConfigureSitlPlatform(profileName: string | null): Promise<boolean> {
   // Skip if user manually changed platform (don't revert their change)
   if (skipSitlAutoConfig) {
-    console.log('[MSP] SITL auto-config: skipped (user manually changed platform)');
     return false;
   }
 
   if (!profileName) {
-    console.log('[MSP] SITL auto-config: no profile name');
     return false;
   }
 
-  console.log(`[MSP] SITL auto-config: checking platform for profile "${profileName}"`);
 
   // Determine expected platform from profile name
   const profileLower = profileName.toLowerCase();
@@ -1630,27 +1541,22 @@ export async function autoConfigureSitlPlatform(profileName: string | null): Pro
   }
 
   if (expectedPlatform === null) {
-    console.log('[MSP] SITL auto-config: profile name does not indicate a specific platform');
     return false;
   }
 
   // Get current platform
   const mixerConfig = await getInavMixerConfig();
   if (!mixerConfig) {
-    console.log('[MSP] SITL auto-config: could not read mixer config');
     return false;
   }
 
   const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
-  console.log(`[MSP] SITL auto-config: current platform=${platformNames[mixerConfig.platformType]}, expected=${platformNames[expectedPlatform]}`);
 
   if (mixerConfig.platformType === expectedPlatform) {
-    console.log('[MSP] SITL auto-config: platform already correct');
     return false;
   }
 
   // Need to change platform
-  console.log(`[MSP] SITL auto-config: changing platform from ${platformNames[mixerConfig.platformType]} to ${platformNames[expectedPlatform]}`);
   sendLog('info', `Auto-configuring SITL as ${platformNames[expectedPlatform]}`, `Profile: ${profileName}`);
 
   // Pass isAutoConfig=true so the skip flag isn't set
@@ -1682,9 +1588,7 @@ export async function autoConfigureSitlPlatform(profileName: string | null): Pro
  * @returns Vehicle type string or null if not detected
  */
 export async function getMspVehicleType(fcVariant: string): Promise<string | null> {
-  console.log(`[MSP] getMspVehicleType called for ${fcVariant}`);
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] getMspVehicleType: transport not open');
     return null;
   }
 
@@ -1695,7 +1599,6 @@ export async function getMspVehicleType(fcVariant: string): Promise<string | nul
     const mixerConfig = await getInavMixerConfig();
     if (mixerConfig) {
       const name = INAV_PLATFORM_NAMES[mixerConfig.platformType] ?? 'Unknown';
-      console.log(`[MSP] Vehicle type for iNav: ${name} (platformType=${mixerConfig.platformType})`);
       return name;
     }
   } else {
@@ -1703,7 +1606,6 @@ export async function getMspVehicleType(fcVariant: string): Promise<string | nul
     const mixerConfig = await getMixerConfig();
     if (mixerConfig) {
       const name = mixerConfig.isMultirotor ? 'Multirotor' : 'Fixed-wing';
-      console.log(`[MSP] Vehicle type for ${fcVariant}: ${name} (mixer=${mixerConfig.mixer})`);
       return name;
     }
   }
@@ -1726,7 +1628,6 @@ async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean 
       const config = deserializeMixerConfig(payload);
       const isMultirotor = isMultirotorMixer(config.mixer);
 
-      console.log(`[MSP] Mixer config: type=${config.mixer} (legacy - may be stale on iNav 2.0.0+)`);
       // NOTE: On iNav 2.0.0+, this legacy mixer type is STALE and doesn't reflect actual platform.
       // MSP2 INAV_MIXER platformType is the authoritative source for platform detection.
       // Don't log misleading "Multirotor/Fixed-wing mode" here - let the store handle platform detection.
@@ -1755,7 +1656,6 @@ async function getMixerConfig(): Promise<{ mixer: number; isMultirotor: boolean 
 export async function setInavPlatformType(platformType: number, mixerType?: number, isAutoConfig = false): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setInavPlatformType: transport not open');
     return false;
   }
 
@@ -1763,7 +1663,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
   // This prevents the auto-config from reverting user's manual change on reconnect
   if (!isAutoConfig) {
     skipSitlAutoConfig = true;
-    console.log('[MSP] setInavPlatformType: User initiated platform change, disabling auto-config');
   }
 
   const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
@@ -1772,7 +1671,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
   // For legacy iNav, ALWAYS store the mixerType for CLI application later
   // MSP2 only sets platformType, but the actual mixer must be set via CLI
   if (isLegacyInav() && mixerType !== undefined) {
-    console.log(`[MSP] Legacy iNav detected - storing mixer ${mixerType} for CLI save`);
     pendingMixerType = mixerType;
     // Don't set platformType via MSP2 either - let CLI handle everything
     sendLog('info', 'Legacy iNav', 'Mixer will be set when saving');
@@ -1790,7 +1688,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
       try {
         const payload = await sendMspV2Request(MSP2.INAV_MIXER, 2000);
         currentConfig = deserializeInavMixerConfig(payload);
-        console.log(`[MSP] Current platform: ${currentConfig.platformType}`);
       } catch (readErr) {
         console.warn('[MSP] Could not read current iNav mixer config:', readErr);
         return false; // Will trigger CLI fallback below
@@ -1808,7 +1705,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
 
       try {
         const payload = serializeInavMixerConfig(newConfig);
-        console.log(`[MSP] Sending MSP2_INAV_SET_MIXER (0x2011) with platformType=${platformType}`);
         await sendMspV2RequestWithPayload(MSP2.INAV_SET_MIXER, payload, 2000);
       } catch (writeErr) {
         console.warn('[MSP] MSP2 write failed:', writeErr);
@@ -1822,7 +1718,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
       try {
         const verifyPayload = await sendMspV2Request(MSP2.INAV_MIXER, 2000);
         const verified = deserializeInavMixerConfig(verifyPayload);
-        console.log(`[MSP] Platform after change: ${verified.platformType} (expected: ${platformType})`);
 
         if (verified.platformType !== platformType) {
           sendLog('warn', 'MSP2 write did not change platform',
@@ -1846,7 +1741,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
   // If MSP2 failed, try CLI fallback (outside config lock)
   if (!msp2Success) {
     sendLog('info', 'MSP2 failed, trying CLI fallback...');
-    console.log('[MSP] MSP2 failed, attempting CLI fallback for old iNav');
     return await setPlatformViaCli(platformType, mixerType);
   }
 
@@ -1863,7 +1757,6 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
     };
     const mixerName = mixerTypeToName[mixerType] ?? `MIXER_${mixerType}`;
 
-    console.log(`[MSP] Storing pending mixer type: ${mixerType} (${mixerName})`);
     pendingMixerType = mixerType;
     sendLog('info', `Mixer ${mixerName} queued`, 'Will be applied when saving');
   }
@@ -1916,7 +1809,6 @@ async function setPlatformViaCli(platformType: number, mixerType?: number): Prom
       ? (mixerTypeToName[mixerType] ?? platformToMixer[platformType] ?? 'AIRPLANE')
       : (platformToMixer[platformType] ?? 'AIRPLANE');
 
-    console.log(`[MSP] CLI: mixerType=${mixerType}, resolved mixer name: ${mixerName}`);
 
     sendLog('info', `CLI: Setting mixer ${mixerName}`, `Platform: ${platformName}, using CLI for old iNav compatibility`);
 
@@ -1924,7 +1816,6 @@ async function setPlatformViaCli(platformType: number, mixerType?: number): Prom
     stopMspTelemetry();
 
     // Enter CLI mode by sending '#'
-    console.log('[MSP] Entering CLI mode...');
     await currentTransport.write(new Uint8Array([0x23])); // '#'
 
     // BSOD Prevention: Wait for CLI to activate
@@ -1932,19 +1823,16 @@ async function setPlatformViaCli(platformType: number, mixerType?: number): Prom
 
     // First try the new command (for iNav 2.5+)
     const cmd1 = `set platform_type = ${platformName}\n`;
-    console.log(`[MSP] CLI: ${cmd1.trim()}`);
     await currentTransport.write(new TextEncoder().encode(cmd1));
     await new Promise(r => setTimeout(r, 200));
 
     // Also try the old mixer command (for iNav 2.0.0)
     // This won't hurt on newer versions and is needed for old versions
     const cmd2 = `mixer ${mixerName}\n`;
-    console.log(`[MSP] CLI: ${cmd2.trim()}`);
     await currentTransport.write(new TextEncoder().encode(cmd2));
     await new Promise(r => setTimeout(r, 200));
 
     // Send save command (this reboots the board)
-    console.log('[MSP] CLI: save');
     await currentTransport.write(new TextEncoder().encode('save\n'));
 
     sendLog('info', 'CLI commands sent', 'Board will reboot. Reconnect to verify.');
@@ -2046,7 +1934,6 @@ async function setRawRc(channels: number[]): Promise<boolean> {
   // Block if CLI mode active (either servo CLI, tuning CLI, or main CLI)
   if (servoCliModeActive || tuningCliModeActive || isCliModeActive()) {
     if (shouldLog) {
-      console.log('[MSP] setRawRc: CLI mode active, skipping');
     }
     return false;
   }
@@ -2081,7 +1968,6 @@ async function setRawRc(channels: number[]): Promise<boolean> {
 
     // Debug: log every 50th call to confirm RC is being sent
     if (shouldLog) {
-      console.log(`[MSP] setRawRc SENT: ch0-3=${validatedChannels.slice(0,4).join(',')}, ch4-7=${validatedChannels.slice(4,8).join(',')}`);
     }
     return true;
   } catch (error) {
@@ -2128,18 +2014,14 @@ async function getServoConfigs(): Promise<MSPServoConfig[] | null> {
       const payload = await sendMspRequest(MSP.SERVO_CONFIGURATIONS, 1000);
 
       // Log RAW bytes for debugging
-      console.log(`[MSP] RAW servo payload (${payload.length} bytes): ${Array.from(payload.slice(0, 56)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
       if (payload.length > 56) {
-        console.log(`[MSP] RAW servo payload continued: ${Array.from(payload.slice(56)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
       }
 
       const configs = deserializeServoConfigurations(payload);
 
       // Log what we read from FC
       if (configs) {
-        console.log('[MSP] READ servo configs from FC:');
         configs.forEach((c, i) => {
-          console.log(`  Servo ${i}: min=${c.min} mid=${c.middle} max=${c.max} rate=${c.rate}`);
         });
         sendLog('info', 'Read servo configs', `${configs.length} servos`);
       }
@@ -2186,27 +2068,22 @@ function getServoConfigMode(): { usesCli: boolean; minValue: number; maxValue: n
  * Sets usesCliServoFallback flag based on result
  */
 async function probeServoConfigMode(): Promise<{ usesCli: boolean; minValue: number; maxValue: number }> {
-  console.log('[MSP] probeServoConfigMode called, transport open:', currentTransport?.isOpen, 'already probed:', servoConfigModeProbed);
 
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] Transport not open, returning default mode');
     return getServoConfigMode();
   }
 
   // Only probe once per connection
   if (servoConfigModeProbed) {
-    console.log('[MSP] Already probed, returning cached result');
     return getServoConfigMode();
   }
 
   servoConfigModeProbed = true;
-  console.log('[MSP] Probing servo config mode...');
 
   try {
     // Read current servo configs
     const configs = await getServoConfigs();
     if (!configs || configs.length === 0) {
-      console.log('[MSP] No servo configs available');
       return getServoConfigMode();
     }
 
@@ -2224,26 +2101,21 @@ async function probeServoConfigMode(): Promise<{ usesCli: boolean; minValue: num
     });
 
     await sendMspRequestWithPayload(MSP.SET_SERVO_CONFIGURATION, payload, 2000);
-    console.log('[MSP] MSP_SET_SERVO_CONFIGURATION supported - using MSP mode');
     usesCliServoFallback = false;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.log('[MSP] Servo config probe failed:', msg);
 
     // Detect CLI fallback needed: "not supported", command number, or timeout
     // Old iNav may not respond at all (timeout) or return error
     if (msg.includes('not supported') || msg.includes('212') || msg.includes('timed out') || msg.includes('timeout')) {
-      console.log('[MSP] MSP_SET_SERVO_CONFIGURATION not supported - will use CLI fallback');
       usesCliServoFallback = true;
     } else {
       // Other errors - assume CLI fallback to be safe
-      console.log('[MSP] Unknown error, assuming CLI fallback needed');
       usesCliServoFallback = true;
     }
   }
 
   const result = getServoConfigMode();
-  console.log('[MSP] Servo config mode result:', result);
   return result;
 }
 
@@ -2294,7 +2166,6 @@ async function setServoConfigViaCli(index: number, config: MSPServoConfig): Prom
       await currentTransport.write(new TextEncoder().encode('servo\n'));
       await new Promise(r => setTimeout(r, 500));
       const servoOutput = cliResponse.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-      console.log('[MSP] Board servo config:\n' + servoOutput);
       sendLog('info', 'CLI servo config', servoOutput.split('\n').slice(1, 5).join(', '));
     }
 
@@ -2313,7 +2184,6 @@ async function setServoConfigViaCli(index: number, config: MSPServoConfig): Prom
 
     // Log board response for advanced users
     if (response && !response.endsWith('#')) {
-      console.log(`[MSP] Board response: ${response}`);
     }
 
     // Check for parse error (usually means value out of range)
@@ -2338,7 +2208,6 @@ async function saveServoConfigViaCli(): Promise<boolean> {
 
   // If not in CLI mode, nothing to save via CLI
   if (!servoCliModeActive) {
-    console.log('[MSP] Not in CLI mode, skipping CLI save');
     return true;
   }
 
@@ -2348,7 +2217,6 @@ async function saveServoConfigViaCli(): Promise<boolean> {
 
     // Send save command (this reboots the board)
     // Use \n (newline) - iNav configurator uses this (cli.js line 506)
-    console.log('[MSP] CLI: save');
     await currentTransport.write(new TextEncoder().encode('save\n'));
 
     sendLog('info', 'Servo config saved via CLI', 'Board will reboot');
@@ -2399,7 +2267,6 @@ async function setServoConfig(index: number, config: MSPServoConfig): Promise<bo
 
       // If MSP 212 not supported, try CLI fallback
       if (msg.includes('not supported')) {
-        console.log('[MSP] MSP 212 not supported, trying CLI fallback...');
         return await setServoConfigViaCli(index, config);
       }
 
@@ -2439,7 +2306,6 @@ async function getServoMixer(): Promise<MSPServoMixerRule[] | null> {
       // MSP2 servo mixer not supported on old iNav - this is expected
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes('not supported') || msg.includes('CLI mode')) {
-        console.log('[MSP] Servo mixer MSP2 not supported (old iNav) - skipping');
       } else {
         console.warn('[MSP] Get Servo Mixer failed:', msg);
       }
@@ -2486,7 +2352,6 @@ async function setServoMixerRuleViaCli(index: number, rule: MSPServoMixerRule): 
   if (!currentTransport?.isOpen) return false;
 
   try {
-    console.log('[MSP] Using CLI fallback for servo mixer rule...');
 
     stopMspTelemetry();
     await currentTransport.write(new Uint8Array([0x23])); // '#'
@@ -2494,7 +2359,6 @@ async function setServoMixerRuleViaCli(index: number, rule: MSPServoMixerRule): 
 
     // smix <index> <target> <input> <rate> <speed> <min> <max> <box>
     const cmd = `smix ${index} ${rule.targetChannel} ${rule.inputSource} ${rule.rate} ${rule.speed || 0} ${rule.min || 0} ${rule.max || 100} ${rule.box || 0}`;
-    console.log(`[MSP] CLI: ${cmd}`);
     await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
     await new Promise(r => setTimeout(r, 100));
 
@@ -2526,7 +2390,6 @@ async function setMotorMixerRulesViaCli(
   if (!currentTransport?.isOpen) return false;
 
   try {
-    console.log('[MSP] Setting motor mixer via CLI...');
 
     // BSOD Prevention: Stop telemetry before CLI operations
     stopMspTelemetry();
@@ -2575,7 +2438,6 @@ async function setServoMixerRulesViaCli(
   if (!currentTransport?.isOpen) return false;
 
   try {
-    console.log('[MSP] Setting servo mixer via CLI...', rules.length, 'rules');
 
     // BSOD Prevention: Stop telemetry before CLI operations
     stopMspTelemetry();
@@ -2619,7 +2481,6 @@ async function readSmixViaCli(): Promise<Array<{ index: number; target: number; 
   if (!currentTransport?.isOpen) return null;
 
   try {
-    console.log('[MSP] Reading smix via CLI...');
 
     // CRITICAL: Stop telemetry and wait for in-flight MSP responses to finish
     stopMspTelemetry();
@@ -2679,7 +2540,6 @@ async function readSmixViaCli(): Promise<Array<{ index: number; target: number; 
       }
     }
 
-    console.log('[MSP] CLI smix read:', rules.length, 'rules');
     sendLog('info', 'CLI smix read', `${rules.length} rules found`);
     return rules.length > 0 ? rules : null;
   } catch (error) {
@@ -2700,7 +2560,6 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
   if (!currentTransport?.isOpen) return null;
 
   try {
-    console.log('[MSP] Reading mmix via CLI...');
 
     // CRITICAL: Stop telemetry and wait for in-flight MSP responses to finish
     stopMspTelemetry();
@@ -2758,7 +2617,6 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
       }
     }
 
-    console.log('[MSP] CLI mmix read:', rules.length, 'rules');
     sendLog('info', 'CLI mmix read', `${rules.length} rules found`);
     return rules.length > 0 ? rules : null;
   } catch (error) {
@@ -2787,13 +2645,11 @@ async function getMotorMixer(): Promise<MSPMotorMixerRule[] | null> {
       // Try MSP2 COMMON_MOTOR_MIXER (0x1005)
       const payload = await sendMspV2Request(MSP2.COMMON_MOTOR_MIXER, 1000);
       const rules = deserializeMotorMixerRules(payload);
-      console.log('[MSP] Motor mixer loaded:', rules.length, 'motors');
       sendLog('info', 'Motor mixer loaded via MSP', `${rules.length} motors`);
       return rules;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes('not supported') || msg.includes('timed out')) {
-        console.log('[MSP] Motor mixer MSP2 not supported - will use CLI fallback');
         sendLog('info', 'Motor mixer MSP2 not available', 'Use CLI fallback');
       } else {
         console.warn('[MSP] Get Motor Mixer failed:', msg);
@@ -2860,7 +2716,6 @@ async function getMissionInfo(): Promise<MSPMissionInfo | null> {
 
   // Only iNav supports waypoints
   if (!isInavFirmware) {
-    console.log('[MSP] Waypoints only supported on iNav');
     return null;
   }
 
@@ -2868,7 +2723,6 @@ async function getMissionInfo(): Promise<MSPMissionInfo | null> {
     try {
       const payload = await sendMspRequest(MSP.WP_GETINFO, 1000);
       const info = deserializeMissionInfo(payload);
-      console.log('[MSP] Mission info:', info);
       return info;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -2895,9 +2749,7 @@ async function getWaypoints(): Promise<MSPWaypoint[] | null> {
     try {
       // First get mission info to know how many waypoints
       const infoPayload = await sendMspRequest(MSP.WP_GETINFO, 1000);
-      console.log('[MSP] WP_GETINFO raw:', Array.from(infoPayload).map(b => b.toString(16).padStart(2, '0')).join(' '));
       const info = deserializeMissionInfo(infoPayload);
-      console.log('[MSP] Mission info:', JSON.stringify(info));
       sendLog('info', `Mission info: ${info.waypointCount} waypoints, valid=${info.isValid}, max=${info.waypointListMaximum}`);
 
       if (info.waypointCount === 0) {
@@ -2943,7 +2795,6 @@ async function setWaypoint(wp: MSPWaypoint): Promise<boolean> {
     try {
       const payload = serializeWaypoint(wp);
       await sendMspRequestWithPayload(MSP.SET_WP, payload, 1000);
-      console.log(`[MSP] Waypoint ${wp.wpNo} written`);
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -2989,7 +2840,6 @@ async function uploadWaypoints(waypoints: MSPWaypoint[]): Promise<boolean> {
 
         const payload = serializeWaypoint(wpWithNo);
         await sendMspRequestWithPayload(MSP.SET_WP, payload, 1000);
-        console.log(`[MSP] Waypoint ${i + 1}/${waypoints.length} written`);
         await new Promise(r => setTimeout(r, 50)); // Delay between writes
       }
 
@@ -3094,7 +2944,6 @@ async function getNavConfig(): Promise<Partial<MSPNavConfig> | null> {
       } catch {
         // Fall back to legacy MSP command
         // Note: Some older firmware may not support MSP2
-        console.log('[MSP] Falling back to legacy nav config');
         return null;
       }
     } catch (error) {
@@ -3107,7 +2956,6 @@ async function getNavConfig(): Promise<Partial<MSPNavConfig> | null> {
 async function setNavConfig(config: Partial<MSPNavConfig>): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setNavConfig: transport not open');
     return false;
   }
 
@@ -3115,7 +2963,6 @@ async function setNavConfig(config: Partial<MSPNavConfig>): Promise<boolean> {
   const mspSuccess = await withConfigLock(async () => {
     try {
       const payload = serializeNavConfig(config);
-      console.log(`[MSP] SET_NAV_CONFIG (MSP2 0x2017) payload: ${payload.length} bytes`);
       await sendMspV2RequestWithPayload(MSP2.INAV_SET_RTH_AND_LAND_CONFIG, payload, 2000);
       sendLog('info', 'Navigation config updated');
       return true;
@@ -3146,7 +2993,6 @@ async function setNavConfigViaCli(config: Partial<MSPNavConfig>): Promise<boolea
   if (!currentTransport?.isOpen) return false;
 
   try {
-    console.log('[MSP] Using CLI fallback for nav config...');
     sendLog('info', 'CLI fallback', 'Setting nav config via CLI');
 
     stopMspTelemetry();
@@ -3177,7 +3023,6 @@ async function setNavConfigViaCli(config: Partial<MSPNavConfig>): Promise<boolea
     }
 
     for (const cmd of commands) {
-      console.log(`[MSP] CLI: ${cmd}`);
       await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
       await new Promise(r => setTimeout(r, 100));
     }
@@ -3207,7 +3052,6 @@ async function getGpsConfig(): Promise<MSPGpsConfig | null> {
 async function setGpsConfig(config: MSPGpsConfig): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setGpsConfig: transport not open');
     return false;
   }
 
@@ -3215,7 +3059,6 @@ async function setGpsConfig(config: MSPGpsConfig): Promise<boolean> {
   const mspSuccess = await withConfigLock(async () => {
     try {
       const payload = serializeGpsConfig(config);
-      console.log(`[MSP] SET_GPS_CONFIG (223) payload: ${payload.length} bytes`);
       await sendMspRequestWithPayload(MSP.SET_GPS_CONFIG, payload, 2000);
       sendLog('info', 'GPS config updated');
       return true;
@@ -3246,7 +3089,6 @@ async function setGpsConfigViaCli(config: MSPGpsConfig): Promise<boolean> {
   if (!currentTransport?.isOpen) return false;
 
   try {
-    console.log('[MSP] Using CLI fallback for GPS config...');
     sendLog('info', 'CLI fallback', 'Setting GPS config via CLI');
 
     stopMspTelemetry();
@@ -3264,7 +3106,6 @@ async function setGpsConfigViaCli(config: MSPGpsConfig): Promise<boolean> {
     ];
 
     for (const cmd of commands) {
-      console.log(`[MSP] CLI: ${cmd}`);
       await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
       await new Promise(r => setTimeout(r, 100));
     }
@@ -3290,7 +3131,6 @@ async function getFailsafeConfig(): Promise<MSPFailsafeConfig | null> {
     try {
       const payload = await sendMspRequest(MSP.FAILSAFE_CONFIG, 1000);
       const config = deserializeFailsafeConfig(payload);
-      console.log('[MSP] Failsafe config:', config);
       return config;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -3305,14 +3145,12 @@ async function getFailsafeConfig(): Promise<MSPFailsafeConfig | null> {
  */
 async function setFailsafeConfig(config: MSPFailsafeConfig): Promise<boolean> {
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] setFailsafeConfig: transport not open');
     return false;
   }
 
   return withConfigLock(async () => {
     try {
       const payload = serializeFailsafeConfig(config);
-      console.log(`[MSP] SET_FAILSAFE_CONFIG (76) payload: ${payload.length} bytes`);
       await sendMspRequestWithPayload(MSP.SET_FAILSAFE_CONFIG, payload, 2000);
       sendLog('info', 'Failsafe config updated');
       return true;
@@ -3332,14 +3170,12 @@ async function setFailsafeConfig(config: MSPFailsafeConfig): Promise<boolean> {
 export async function saveEeprom(): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
-    console.log('[MSP] saveEeprom: transport not open');
     sendLog('error', 'Cannot save to EEPROM - not connected');
     return false;
   }
 
   // If we're in CLI mode (servo or tuning), MSP won't work - use CLI save
   if (servoCliModeActive || tuningCliModeActive) {
-    console.log('[MSP] In CLI mode, using CLI save');
     sendLog('info', 'In CLI mode, will use CLI save');
     return await saveEepromViaCli();
   }
@@ -3347,10 +3183,8 @@ export async function saveEeprom(): Promise<boolean> {
   // Try MSP first
   const mspSuccess = await withConfigLock(async () => {
     try {
-      console.log('[MSP] EEPROM_WRITE (250) - saving...');
       sendLog('info', 'Saving to EEPROM...');
       await sendMspRequest(MSP.EEPROM_WRITE, 5000);
-      console.log('[MSP] EEPROM_WRITE success');
       sendLog('info', 'Settings saved to EEPROM');
       return true;
     } catch (error) {
@@ -3381,7 +3215,6 @@ async function saveEepromViaCli(): Promise<boolean> {
   if (!currentTransport?.isOpen) return false;
 
   try {
-    console.log('[MSP] Using CLI fallback for EEPROM save...');
     sendLog('info', 'CLI fallback', 'Saving via CLI (board will reboot)');
 
     // Stop telemetry during CLI
@@ -3400,7 +3233,6 @@ async function saveEepromViaCli(): Promise<boolean> {
       };
       const mixerName = mixerTypeToName[pendingMixerType] ?? `MIXER_${pendingMixerType}`;
 
-      console.log(`[MSP] CLI: Applying pending mixer ${mixerName} (${pendingMixerType})`);
       sendLog('info', `CLI: Setting mixer ${mixerName}`);
 
       // Remove CLI listeners that might be capturing our mixer command response
@@ -3419,13 +3251,11 @@ async function saveEepromViaCli(): Promise<boolean> {
 
       // Send the mixer command
       const mixerCmd = `mixer ${mixerName}\n`;
-      console.log(`[MSP] CLI: ${mixerCmd.trim()}`);
       await currentTransport.write(new TextEncoder().encode(mixerCmd));
 
       // Wait for iNav to process the mixer change (needs more time on old boards)
       await new Promise(r => setTimeout(r, 1000));
 
-      console.log('[MSP] CLI: Mixer command sent, proceeding to save');
       pendingMixerType = null; // Clear after applying
     }
 
@@ -3446,7 +3276,6 @@ async function saveEepromViaCli(): Promise<boolean> {
     }
 
     // Send save command (this reboots the board)
-    console.log('[MSP] CLI: save');
     await currentTransport.write(new TextEncoder().encode('save\n'));
 
     sendLog('info', 'Settings saved via CLI', 'Board will reboot');
@@ -3502,7 +3331,6 @@ async function calibrateAcc(): Promise<boolean> {
 
   try {
     await sendMspRequest(MSP.ACC_CALIBRATION, 5000);
-    console.log('[MSP] ACC calibration started');
     return true;
   } catch (error) {
     console.error('[MSP] ACC calibration failed:', error);
@@ -3516,7 +3344,6 @@ async function calibrateMag(): Promise<boolean> {
 
   try {
     await sendMspRequest(MSP.MAG_CALIBRATION, 5000);
-    console.log('[MSP] MAG calibration started');
     return true;
   } catch (error) {
     console.error('[MSP] MAG calibration failed:', error);
@@ -3545,7 +3372,6 @@ export async function reboot(autoReconnect = true): Promise<boolean> {
     }
 
     await sendMspRequest(MSP.REBOOT, 1000);
-    console.log('[MSP] Reboot command sent');
     return true;
   } catch {
     // Reboot may not respond - that's expected
@@ -3840,7 +3666,6 @@ async function setSetting(name: string, value: string | number): Promise<boolean
     payload.set(valuePart, indexPart.length);
 
     await sendMspV2RequestWithPayload(MSP2.COMMON_SET_SETTING, payload, 2000);
-    console.log(`[MSP] Set ${name} = ${value}`);
     return true;
   } catch (error) {
     console.error(`[MSP] setSetting(${name}, ${value}) failed:`, error);
@@ -3884,10 +3709,8 @@ export function registerMspHandlers(window: BrowserWindow): void {
   // Set up CLI mode change callback to pause/resume telemetry
   setCliModeChangeCallback((cliActive) => {
     if (cliActive) {
-      console.log('[MSP] CLI mode active - pausing telemetry');
       stopMspTelemetry();
     } else {
-      console.log('[MSP] CLI mode exited - resuming telemetry');
       startMspTelemetry();
     }
   });
@@ -3978,7 +3801,6 @@ export function registerMspHandlers(window: BrowserWindow): void {
     return { success: true };
   });
 
-  console.log('[MSP] Command handlers registered');
 }
 
 export function unregisterMspHandlers(): void {
@@ -4055,5 +3877,4 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_STOP_GPS_SENDER);
 
   mainWindow = null;
-  console.log('[MSP] Command handlers unregistered');
 }

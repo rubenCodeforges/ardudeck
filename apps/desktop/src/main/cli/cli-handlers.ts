@@ -51,7 +51,6 @@ export function setCliTransport(transport: Transport | null): void {
   // ALWAYS reset CLI mode state when transport changes (new connection or disconnect)
   // This fixes the "CLI mode stuck" bug where exit command breaks reconnection
   if (cliModeActive) {
-    console.log('[CLI] Resetting CLI mode state for new connection');
     cliModeActive = false;
     onCliModeChange?.(false);
   }
@@ -77,7 +76,6 @@ export function isCliModeActive(): boolean {
  */
 export async function exitCliModeIfActive(): Promise<void> {
   if (cliModeActive && currentTransport?.isOpen) {
-    console.log('[CLI] Exiting CLI mode before disconnect...');
     try {
       // Use timeout to prevent hanging - if write takes > 1 second, skip it
       const writePromise = currentTransport.write(new TextEncoder().encode('exit\n'));
@@ -87,7 +85,6 @@ export async function exitCliModeIfActive(): Promise<void> {
 
       await Promise.race([writePromise, timeoutPromise]);
       await delay(300);
-      console.log('[CLI] Sent exit command');
     } catch (err) {
       console.warn('[CLI] Failed to send exit command (continuing with disconnect):', err);
       // Don't block disconnect on CLI exit failure
@@ -104,21 +101,18 @@ export async function exitCliModeIfActive(): Promise<void> {
   cliDataListener = null;
   cliModeActive = false;
   onCliModeChange?.(false);
-  console.log('[CLI] CLI state cleaned up');
 }
 
 /**
  * Clean up CLI state (called on disconnect)
  */
 export function cleanupCli(): void {
-  console.log('[CLI] cleanupCli: resetting CLI state');
   if (cliDataListener && currentTransport) {
     currentTransport.off('data', cliDataListener);
   }
   cliDataListener = null;
   cliModeActive = false;
   currentTransport = null;
-  console.log('[CLI] cleanupCli: done');
 }
 
 // =============================================================================
@@ -217,21 +211,15 @@ function filterMspFromData(data: Uint8Array): Uint8Array {
  * Enter CLI mode by sending '#' character
  */
 async function enterCliMode(): Promise<boolean> {
-  console.log('[CLI] enterCliMode: transport open?', currentTransport?.isOpen, 'already active?', cliModeActive);
-
   if (!currentTransport?.isOpen) {
-    console.log('[CLI] enterCliMode: no transport, returning false');
     return false;
   }
 
   if (cliModeActive) {
-    console.log('[CLI] enterCliMode: already active, returning true');
     return true;
   }
 
   try {
-    console.log('[CLI] enterCliMode: activating CLI mode...');
-
     // CRITICAL: Set CLI mode active FIRST to stop MSP handler from processing data
     cliModeActive = true;
     onCliModeChange?.(true);
@@ -256,7 +244,6 @@ async function enterCliMode(): Promise<boolean> {
     // Wait for CLI prompt
     await delay(500);
 
-    console.log('[CLI] enterCliMode: success');
     return true;
   } catch (err) {
     console.error('[CLI] enterCliMode: error', err);
@@ -346,7 +333,6 @@ async function exitCliModeSilent(): Promise<boolean> {
     cliModeActive = false;
     // NO callback - telemetry will restart naturally or caller handles it
 
-    console.log('[CLI] Silent exit complete');
     return true;
   } catch {
     // Force cleanup on error
@@ -364,10 +350,7 @@ async function exitCliModeSilent(): Promise<boolean> {
  * Command should NOT include trailing newline - we add it
  */
 async function sendCliCommand(command: string): Promise<void> {
-  console.log('[CLI] sendCliCommand:', command);
-
   if (!currentTransport?.isOpen) {
-    console.error('[CLI] Transport not connected, cannot send command');
     throw new Error('Transport not connected');
   }
 
@@ -376,19 +359,15 @@ async function sendCliCommand(command: string): Promise<void> {
   const isExitCommand = trimmedCommand === 'exit' || trimmedCommand === 'quit';
 
   if (!cliModeActive && !isExitCommand) {
-    console.log('[CLI] Not in CLI mode, auto-entering...');
     // Auto-enter CLI mode if not already in it
     const entered = await enterCliMode();
     if (!entered) {
-      console.error('[CLI] Failed to auto-enter CLI mode');
       throw new Error('Failed to enter CLI mode');
     }
-    console.log('[CLI] Auto-entered CLI mode successfully');
   }
 
   // Verify listener is still attached (defensive)
   if (!cliDataListener && !isExitCommand) {
-    console.log('[CLI] Re-attaching data listener');
     cliDataListener = (data: Uint8Array) => {
       const filtered = filterMspFromData(data);
       if (filtered.length > 0) {
@@ -401,11 +380,9 @@ async function sendCliCommand(command: string): Promise<void> {
 
   // Send command with newline (NOT \r\n - causes parse errors!)
   await currentTransport.write(new TextEncoder().encode(command + '\n'));
-  console.log('[CLI] Command sent');
 
   // If exit command, clean up our state after a short delay
   if (isExitCommand && cliModeActive) {
-    console.log('[CLI] Exit command detected, cleaning up CLI state...');
     await delay(300); // Give FC time to process exit
 
     // Remove data listener
@@ -416,7 +393,6 @@ async function sendCliCommand(command: string): Promise<void> {
 
     cliModeActive = false;
     onCliModeChange?.(false);
-    console.log('[CLI] CLI state cleaned up after user exit command');
   }
 }
 
@@ -454,13 +430,10 @@ async function getCliDump(): Promise<string> {
   try {
     // Enter CLI mode if not already
     if (!wasInCliMode) {
-      console.log('[CLI] getCliDump: entering CLI mode...');
       const entered = await enterCliMode();
       if (!entered) {
         throw new Error('Failed to enter CLI mode');
       }
-    } else {
-      console.log('[CLI] getCliDump: already in CLI mode');
     }
 
     // Accumulate dump output
@@ -478,7 +451,6 @@ async function getCliDump(): Promise<string> {
     currentTransport.on('data', dumpListener);
 
     // Send dump command
-    console.log('[CLI] Sending dump command...');
     await currentTransport.write(new TextEncoder().encode('dump\n'));
 
     // Wait for dump to complete with dynamic timeout
@@ -491,13 +463,8 @@ async function getCliDump(): Promise<string> {
       await delay(200);
       // If no data received for idleTimeout, dump is complete
       if (Date.now() - lastDataTime > idleTimeout && dumpOutput.length > 0) {
-        console.log('[CLI] Dump complete (idle timeout), received', dumpOutput.length, 'chars');
         break;
       }
-    }
-
-    if (Date.now() - startTime >= maxWait) {
-      console.log('[CLI] Dump reached max wait time, received', dumpOutput.length, 'chars');
     }
 
     // Restore normal listener
@@ -509,7 +476,6 @@ async function getCliDump(): Promise<string> {
     // Exit CLI mode if we entered it for this dump
     // Use silent exit - don't trigger telemetry restart callback (causes race condition)
     if (!wasInCliMode) {
-      console.log('[CLI] getCliDump: exiting CLI mode silently...');
       await exitCliModeSilent();
     }
 
@@ -517,7 +483,6 @@ async function getCliDump(): Promise<string> {
     // This is a programmatic dump (for legacy config / autocomplete).
     // If user types 'dump' manually in CLI, it goes through normal flow.
 
-    console.log('[CLI] Dump returned:', dumpOutput.length, 'chars');
     return dumpOutput;
   } catch (err) {
     console.error('[CLI] Failed to get dump:', err);
@@ -582,7 +547,6 @@ function registerIpcHandlers(): void {
 
     try {
       await writeFile(result.filePath, content, 'utf-8');
-      console.log('[CLI] Output saved to:', result.filePath);
       return true;
     } catch (err) {
       console.error('[CLI] Failed to save output:', err);
@@ -605,15 +569,12 @@ function registerIpcHandlers(): void {
       const stripAnsi = (str: string) => str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
       const cleanDump = stripAnsi(data.rawDump);
 
-      console.log('[CLI] Parsing dump, raw length:', data.rawDump.length, 'clean length:', cleanDump.length);
-
       // Parse the dump to extract parameters
       const parameters: Record<string, { value: string; section: string }> = {};
       let currentSection = 'master';
       let matchCount = 0;
 
       const lines = cleanDump.split('\n');
-      console.log('[CLI] Total lines to parse:', lines.length);
 
       for (const line of lines) {
         const trimmed = line.trim();
@@ -637,14 +598,6 @@ function registerIpcHandlers(): void {
           };
           matchCount++;
         }
-      }
-
-      console.log('[CLI] Parsed', matchCount, 'parameters');
-
-      // Log sample of first few lines if no matches
-      if (matchCount === 0) {
-        console.log('[CLI] Sample lines from dump:');
-        lines.slice(0, 20).forEach((l, i) => console.log(`  ${i}: "${l.substring(0, 80)}"`));
       }
 
       // Build the JSON export
@@ -671,7 +624,6 @@ function registerIpcHandlers(): void {
 
       try {
         await writeFile(filePath, JSON.stringify(exportData, null, 2), 'utf-8');
-        console.log(`[CLI] JSON export saved to: ${filePath} (${matchCount} params)`);
         return true;
       } catch (err) {
         console.error('[CLI] Failed to save JSON:', err);

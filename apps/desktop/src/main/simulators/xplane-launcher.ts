@@ -90,10 +90,6 @@ class XPlaneLauncher {
     // or rely on user to configure via UI
 
     // For now, log instructions for manual setup
-    console.log('[X-Plane] Network configuration:');
-    console.log(`  - Enable UDP data output to ${config.sitlHost || '127.0.0.1'}:${config.dataOutPort || 49000}`);
-    console.log(`  - Enable UDP data input from port ${config.dataInPort || 49001}`);
-    console.log('  - Enable data refs: speeds, attitudes, position');
   }
 
   /**
@@ -144,8 +140,6 @@ class XPlaneLauncher {
     // Build arguments
     const args = this.buildArgs(config);
 
-    console.log('[X-Plane] Launching:', xpInfo.executable);
-    console.log('[X-Plane] Args:', args.join(' '));
 
     try {
       // Spawn X-Plane process
@@ -161,7 +155,6 @@ class XPlaneLauncher {
       this.process.stdout?.on('data', (data: Buffer) => {
         const output = data.toString().trim();
         if (output) {
-          console.log('[X-Plane]', output);
         }
       });
 
@@ -175,7 +168,6 @@ class XPlaneLauncher {
 
       // Handle process exit
       this.process.on('exit', (code, signal) => {
-        console.log(`[X-Plane] Process exited with code ${code}, signal ${signal}`);
         this.process = null;
         this.config = null;
       });
@@ -203,7 +195,6 @@ class XPlaneLauncher {
       return;
     }
 
-    console.log('[X-Plane] Stopping...');
 
     // Try graceful shutdown first
     this.process.kill('SIGTERM');
@@ -213,7 +204,6 @@ class XPlaneLauncher {
       const timeout = setTimeout(() => {
         // Force kill if still running
         if (this.process && !this.process.killed) {
-          console.log('[X-Plane] Force killing...');
           this.process.kill('SIGKILL');
         }
         resolve();
@@ -232,7 +222,6 @@ class XPlaneLauncher {
 
     this.process = null;
     this.config = null;
-    console.log('[X-Plane] Stopped');
   }
 
   /**

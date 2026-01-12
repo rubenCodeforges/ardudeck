@@ -183,6 +183,30 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Report Bug button */}
+      <button
+        onClick={() => handleClick('report')}
+        className={`
+          relative w-10 h-10 rounded-lg flex items-center justify-center
+          transition-all duration-200 group mb-2
+          ${currentView === 'report'
+            ? 'bg-red-500/20 text-red-400'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
+          }
+        `}
+        title="Report a Bug"
+      >
+        {currentView === 'report' && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-400 rounded-r" />
+        )}
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+          Report a Bug
+        </div>
+      </button>
+
       {/* ArduDeck logo/branding at bottom */}
       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-gray-700/30 flex items-center justify-center" title="ArduDeck">
         <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
