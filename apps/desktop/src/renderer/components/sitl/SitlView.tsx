@@ -339,17 +339,22 @@ export default function SitlView() {
               <h3 className="text-sm font-medium text-white">Visual Simulator</h3>
             </div>
 
-            {/* Simulator selection dropdown */}
-            <select
-              value={selectedSimulator}
-              onChange={(e) => setSelectedSimulator(e.target.value as 'flightgear' | 'xplane' | 'none')}
-              disabled={isRunning}
-              className="px-2 py-1 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
-            >
-              <option value="none">None</option>
-              <option value="xplane">X-Plane (Recommended)</option>
-              <option value="flightgear">FlightGear</option>
-            </select>
+            {/* Simulator selection dropdown - temporarily disabled */}
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded">
+                Coming Soon
+              </span>
+              <select
+                value="none"
+                onChange={(e) => setSelectedSimulator(e.target.value as 'flightgear' | 'xplane' | 'none')}
+                disabled={true}
+                className="px-2 py-1 text-xs bg-zinc-800 text-white border border-zinc-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="none">None</option>
+                <option value="xplane">X-Plane (Recommended)</option>
+                <option value="flightgear">FlightGear</option>
+              </select>
+            </div>
           </div>
 
           {/* Simulator-specific content */}
