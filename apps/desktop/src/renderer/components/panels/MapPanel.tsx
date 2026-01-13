@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useMissionStore } from '../../stores/mission-store';
+import { commandHasLocation, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { AttitudeIndicator } from './AttitudePanel';
 import { useIpLocation } from '../../utils/ip-geolocation';
+
+// Geofence and Rally overlays (read-only in telemetry view)
+import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
+import { RallyMapOverlay } from '../rally/RallyMapOverlay';
 
 // Map layer definitions
 const MAP_LAYERS = {
@@ -73,6 +79,182 @@ function calculateDestination(lat: number, lon: number, bearing: number, distanc
 
   return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
 }
+
+// =====================================================
+// MISSION WAYPOINT RENDERING (read-only in telemetry)
+// =====================================================
+
+// Build the complete mission path with curves for spline waypoints
+function buildMissionPath(waypoints: MissionItem[]): {
+  positions: [number, number][];
+  isSpline: boolean[];
+} {
+  if (waypoints.length < 2) {
+    return {
+      positions: waypoints.map(wp => [wp.latitude, wp.longitude] as [number, number]),
+      isSpline: waypoints.map(wp => wp.command === MAV_CMD.NAV_SPLINE_WAYPOINT)
+    };
+  }
+
+  const positions: [number, number][] = [];
+  const isSpline: boolean[] = [];
+
+  // Add first point
+  positions.push([waypoints[0].latitude, waypoints[0].longitude]);
+  isSpline.push(waypoints[0].command === MAV_CMD.NAV_SPLINE_WAYPOINT);
+
+  // For each segment between waypoints
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const curr = waypoints[i];
+    const next = waypoints[i + 1];
+    const currIsSpline = curr.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
+    const nextIsSpline = next.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
+
+    // If either endpoint is a spline, draw a curve
+    if (currIsSpline || nextIsSpline) {
+      // Get control points (previous and next waypoints for curve direction)
+      const prev = i > 0 ? waypoints[i - 1] : curr;
+      const after = i < waypoints.length - 2 ? waypoints[i + 2] : next;
+
+      const p0: [number, number] = [prev.latitude, prev.longitude];
+      const p1: [number, number] = [curr.latitude, curr.longitude];
+      const p2: [number, number] = [next.latitude, next.longitude];
+      const p3: [number, number] = [after.latitude, after.longitude];
+
+      // Interpolate curve using Catmull-Rom
+      const segments = 15;
+      for (let t = 1 / segments; t <= 1; t += 1 / segments) {
+        const t2 = t * t;
+        const t3 = t2 * t;
+
+        const lat = 0.5 * (
+          (2 * p1[0]) +
+          (-p0[0] + p2[0]) * t +
+          (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+          (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3
+        );
+
+        const lng = 0.5 * (
+          (2 * p1[1]) +
+          (-p0[1] + p2[1]) * t +
+          (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+          (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3
+        );
+
+        positions.push([lat, lng]);
+        isSpline.push(true);
+      }
+    }
+
+    // Add the next waypoint
+    positions.push([next.latitude, next.longitude]);
+    isSpline.push(nextIsSpline);
+  }
+
+  return { positions, isSpline };
+}
+
+// Get color based on command type
+function getCommandColor(cmd: number): string {
+  switch (cmd) {
+    case MAV_CMD.NAV_TAKEOFF:
+      return '#22c55e'; // Green - takeoff
+    case MAV_CMD.NAV_LAND:
+      return '#ef4444'; // Red - land
+    case MAV_CMD.NAV_RETURN_TO_LAUNCH:
+      return '#f97316'; // Orange - RTL
+    case MAV_CMD.NAV_LOITER_UNLIM:
+    case MAV_CMD.NAV_LOITER_TIME:
+    case MAV_CMD.NAV_LOITER_TURNS:
+      return '#a855f7'; // Purple - loiter
+    case MAV_CMD.NAV_SPLINE_WAYPOINT:
+      return '#06b6d4'; // Cyan - spline
+    default:
+      return '#3b82f6'; // Blue - regular waypoint
+  }
+}
+
+// Get icon shape based on command type
+function getCommandShape(cmd: number): string {
+  switch (cmd) {
+    case MAV_CMD.NAV_TAKEOFF:
+      return '▲'; // Triangle up
+    case MAV_CMD.NAV_LAND:
+      return '▼'; // Triangle down
+    case MAV_CMD.NAV_RETURN_TO_LAUNCH:
+      return '⌂'; // Home
+    case MAV_CMD.NAV_LOITER_UNLIM:
+    case MAV_CMD.NAV_LOITER_TIME:
+    case MAV_CMD.NAV_LOITER_TURNS:
+      return '○'; // Circle for loiter
+    default:
+      return ''; // Just number for regular waypoints
+  }
+}
+
+// Create waypoint marker icon (read-only display)
+function createWaypointIcon(wp: MissionItem, isCurrent: boolean): L.DivIcon {
+  const baseColor = getCommandColor(wp.command);
+  const bgColor = isCurrent ? '#f59e0b' : baseColor;
+  const size = isCurrent ? 28 : 24;
+  const shape = getCommandShape(wp.command);
+  const displayText = shape || (wp.seq + 1).toString();
+  const borderColor = isCurrent ? '#fbbf24' : 'rgba(255,255,255,0.8)';
+  const borderWidth = isCurrent ? 3 : 2;
+
+  return L.divIcon({
+    className: 'waypoint-marker',
+    html: `
+      <div style="
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 50%;
+        background: ${bgColor};
+        border: ${borderWidth}px solid ${borderColor};
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: ${shape ? 12 : 10}px;
+        font-weight: bold;
+        color: white;
+      ">${displayText}</div>
+    `,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+// Mission home marker icon
+function createMissionHomeIcon(): L.DivIcon {
+  return L.divIcon({
+    className: 'mission-home-marker',
+    html: `
+      <div style="
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      ">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#10b981" stroke="white" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+}
+
+// Memoized mission home icon
+const MISSION_HOME_ICON = createMissionHomeIcon();
+
+// =====================================================
+// END MISSION WAYPOINT RENDERING
+// =====================================================
 
 // Custom vehicle marker icon (arrow pointing in heading direction)
 function createVehicleIcon(heading: number, armed: boolean): L.DivIcon {
@@ -339,9 +521,22 @@ export function MapPanel() {
   const [showHeadingLine, setShowHeadingLine] = useState(true);
   const [showCompass, setShowCompass] = useState(true);
   const [showAttitude, setShowAttitude] = useState(true);
+  const [showMission, setShowMission] = useState(true); // Show mission overlays by default
   const [headingLineLength, setHeadingLineLength] = useState(100); // meters
   const lastUpdateRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Mission store (read-only display)
+  const { missionItems, homePosition: missionHome, currentSeq } = useMissionStore();
+
+  // Filter to only items with locations
+  const waypoints = useMemo(() =>
+    missionItems.filter(item => commandHasLocation(item.command)),
+    [missionItems]
+  );
+
+  // Build mission path for rendering
+  const missionPath = useMemo(() => buildMissionPath(waypoints), [waypoints]);
 
   // IP geolocation fallback (used when GPS not available)
   const [ipLocation] = useIpLocation();
@@ -470,6 +665,17 @@ export function MapPanel() {
           title="Set home to current position"
         >
           Set Home
+        </button>
+        <button
+          onClick={() => setShowMission(!showMission)}
+          className={`px-2 py-1 text-xs rounded shadow-lg transition-colors ${
+            showMission
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700/90'
+          }`}
+          title="Toggle mission overlays (waypoints, geofence, rally)"
+        >
+          Mission
         </button>
       </div>
 
@@ -607,6 +813,73 @@ export function MapPanel() {
         {homePosition && (
           <Marker position={homePosition} icon={homeIcon} />
         )}
+
+        {/* ======= MISSION OVERLAYS (read-only) ======= */}
+        {showMission && (
+          <>
+            {/* Mission path - single polyline with curves through spline waypoints */}
+            {missionPath.positions.length > 1 && (
+              <Polyline
+                positions={missionPath.positions}
+                pathOptions={{
+                  color: '#3b82f6',
+                  weight: 3,
+                  opacity: 0.8,
+                }}
+              />
+            )}
+
+            {/* Loiter radius circles - param3 is radius for all loiter commands */}
+            {waypoints
+              .filter(wp =>
+                (wp.command === MAV_CMD.NAV_LOITER_UNLIM ||
+                 wp.command === MAV_CMD.NAV_LOITER_TIME ||
+                 wp.command === MAV_CMD.NAV_LOITER_TURNS) &&
+                wp.param3 > 0
+              )
+              .map((wp) => (
+                <Circle
+                  key={`loiter-${wp.seq}`}
+                  center={[wp.latitude, wp.longitude]}
+                  radius={Math.abs(wp.param3)}
+                  pathOptions={{
+                    color: '#a855f7',
+                    weight: 2,
+                    opacity: 0.6,
+                    fill: true,
+                    fillColor: '#a855f7',
+                    fillOpacity: 0.1,
+                    dashArray: '5, 5',
+                  }}
+                />
+              ))}
+
+            {/* Mission home marker */}
+            {missionHome && (
+              <Marker
+                position={[missionHome.lat, missionHome.lon]}
+                icon={MISSION_HOME_ICON}
+                zIndexOffset={-1000}
+              />
+            )}
+
+            {/* Waypoint markers (read-only) */}
+            {waypoints.map((wp) => (
+              <Marker
+                key={wp.seq}
+                position={[wp.latitude, wp.longitude]}
+                icon={createWaypointIcon(wp, wp.seq === currentSeq)}
+              />
+            ))}
+
+            {/* Geofence overlays (read-only) */}
+            <FenceMapOverlay readOnly />
+
+            {/* Rally point overlays (read-only) */}
+            <RallyMapOverlay readOnly />
+          </>
+        )}
+        {/* ======= END MISSION OVERLAYS ======= */}
 
         {/* Vehicle marker - always show */}
         <Marker

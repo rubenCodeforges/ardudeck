@@ -10,7 +10,7 @@ export { FlightControlPanel } from './FlightControlPanel';
 export { MapPanel } from './MapPanel';
 
 // Re-export mission panels for use in telemetry dashboard
-export { MissionMapPanel } from '../mission/MissionMapPanel';
+// Note: MissionMapPanel not exported here - mission data now integrated into MapPanel
 export { WaypointTablePanel } from '../mission/WaypointTablePanel';
 export { AltitudeProfilePanel } from '../mission/AltitudeProfilePanel';
 
@@ -26,9 +26,9 @@ export const PANEL_COMPONENTS = {
   velocity: { component: 'VelocityPanel', title: 'Velocity' },
   flightMode: { component: 'FlightModePanel', title: 'Flight Mode' },
   flightControl: { component: 'FlightControlPanel', title: 'Flight Control' },
-  map: { component: 'MapPanel', title: 'Map' },
+  map: { component: 'MapPanel', title: 'Map' }, // Unified map with mission overlays
   // Mission panels (for monitoring during flight)
-  missionMap: { component: 'MissionMapPanel', title: 'Mission Map' },
+  // Note: missionMap removed - mission data now integrated into unified MapPanel
   waypoints: { component: 'WaypointTablePanel', title: 'Waypoints' },
   altitudeProfile: { component: 'AltitudeProfilePanel', title: 'Altitude Profile' },
 } as const;

@@ -25,8 +25,7 @@ import {
   FlightModePanel,
   FlightControlPanel,
   MapPanel,
-  // Mission panels (for monitoring during flight)
-  MissionMapPanel,
+  // Mission panels (for monitoring during flight) - MissionMapPanel removed (merged into MapPanel)
   WaypointTablePanel,
   AltitudeProfilePanel,
   PANEL_COMPONENTS,
@@ -50,9 +49,9 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   VelocityPanel: () => <PanelWrapper component={VelocityPanel} />,
   FlightModePanel: () => <PanelWrapper component={FlightModePanel} />,
   FlightControlPanel: () => <PanelWrapper component={FlightControlPanel} />,
-  MapPanel: () => <PanelWrapper component={MapPanel} />,
+  MapPanel: () => <PanelWrapper component={MapPanel} />, // Now includes mission overlays
   // Mission panels (for monitoring during flight) - readOnly mode
-  MissionMapPanel: () => <MissionMapPanel readOnly />,
+  // Note: MissionMapPanel removed - mission data now integrated into MapPanel
   WaypointTablePanel: () => <WaypointTablePanel readOnly />,
   AltitudeProfilePanel: () => <AltitudeProfilePanel readOnly />,
 };
@@ -134,7 +133,7 @@ const PILOT_VIEW_LAYOUT: SerializedDockview = {
   activeGroup: '1',
 };
 
-// Mission Telemetry preset - Mission Map left, Waypoints/Battery top-right, AltProfile/Attitude bottom-right
+// Mission Telemetry preset - Map (with mission overlays) left, Waypoints/Battery top-right, AltProfile/Attitude bottom-right
 const MISSION_TELEMETRY_LAYOUT: SerializedDockview = {
   grid: {
     root: {
@@ -142,7 +141,7 @@ const MISSION_TELEMETRY_LAYOUT: SerializedDockview = {
       data: [
         {
           type: 'leaf',
-          data: { views: ['missionMap'], activeView: 'missionMap', id: '1' },
+          data: { views: ['map'], activeView: 'map', id: '1' },
           size: 807,
         },
         {
@@ -175,7 +174,7 @@ const MISSION_TELEMETRY_LAYOUT: SerializedDockview = {
     orientation: 'HORIZONTAL',
   },
   panels: {
-    missionMap: { id: 'missionMap', contentComponent: 'MissionMapPanel', title: 'Mission Map' },
+    map: { id: 'map', contentComponent: 'MapPanel', title: 'Map' }, // Uses unified MapPanel with mission overlays
     altitudeProfile: { id: 'altitudeProfile', contentComponent: 'AltitudeProfilePanel', title: 'Altitude Profile' },
     waypoints: { id: 'waypoints', contentComponent: 'WaypointTablePanel', title: 'Waypoints' },
     battery: { id: 'battery', contentComponent: 'BatteryPanel', title: 'Battery' },
@@ -422,7 +421,8 @@ function LayoutToolbar({
 }
 
 // Mission-related panel IDs that require mission planning support
-const MISSION_PANEL_IDS = ['missionMap', 'waypoints', 'altitudeProfile'];
+// Note: missionMap removed - now integrated into unified MapPanel
+const MISSION_PANEL_IDS = ['waypoints', 'altitudeProfile'];
 
 // Add panel dropdown
 function AddPanelDropdown({ onAddPanel, supportsMissionPlanning }: { onAddPanel: (id: string, component: string, title: string) => void; supportsMissionPlanning: boolean }) {
