@@ -363,9 +363,9 @@ export function OsdView() {
                   max={3600}
                   unit="s"
                 />
-                {/* CCRP demo: Adjust heading to test steering cue, longitude to simulate approach */}
+                {/* CCRP demo: Adjust heading to test steering cue, approach distance to simulate approach */}
                 <DemoSlider
-                  label="Longitude"
+                  label="Approach Distance"
                   value={demoValues.longitude}
                   onChange={(v) => updateDemoValue('longitude', v)}
                   min={-122.43}

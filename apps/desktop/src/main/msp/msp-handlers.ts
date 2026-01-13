@@ -126,6 +126,7 @@ let telemetryInProgress = false;
 
 // Telemetry skip counter - reduce log spam
 let telemetrySkipCount = 0;
+const TELEMETRY_SKIP_LOG_INTERVAL = 100; // Only log every N skips
 
 // Debug counter for setRawRc logging
 let setRawRcCounter = 0;

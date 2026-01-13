@@ -127,13 +127,13 @@ Uses demo values from `osd-store.ts`:
    - `L<<` appears when heading > 290° (need to turn left)
 
 3. **Test approach**:
-   - Adjust **Longitude** slider toward -122.4254 (target position)
+   - Adjust **Approach Distance** slider toward -122.4254 (target position)
    - Gauge fills as you get closer
    - At release point, `DROP!` appears (if lined up)
 
 4. **Test lineup requirement**:
    - Set heading to 290° (off by 20°)
-   - Approach target with longitude slider
+   - Approach target with Approach Distance slider
    - Gauge fills with `=` instead of `#`
    - `DROP!` never appears until you correct heading
 

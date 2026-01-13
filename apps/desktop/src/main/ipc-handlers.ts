@@ -4046,11 +4046,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // Get dump all
       safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'dump', message: 'Collecting dump all...' });
-      const dumpResult = await getCliDump(false); // false = dump all (not diff)
+      const dumpOutput = await getCliDump(false); // false = dump all (not diff)
 
       // Get diff all
       safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'diff', message: 'Collecting diff all...' });
-      const diffResult = await getCliDump(true); // true = diff
+      const diffOutput = await getCliDump(true); // true = diff
 
       // Exit CLI (will reboot board)
       safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_exit', message: 'Exiting CLI mode (board will reboot)...' });
@@ -4058,8 +4058,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       const dump = createMspBoardDump(
         statusOutput,
-        dumpResult?.dump || '',
-        diffResult?.dump || '',
+        dumpOutput || '',
+        diffOutput || '',
         connectionState.fcVariant || 'Unknown',
         connectionState.fcVersion || 'Unknown',
         connectionState.boardId || 'Unknown'

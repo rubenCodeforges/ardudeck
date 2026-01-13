@@ -210,7 +210,7 @@ function filterMspFromData(data: Uint8Array): Uint8Array {
 /**
  * Enter CLI mode by sending '#' character
  */
-async function enterCliMode(): Promise<boolean> {
+export async function enterCliMode(): Promise<boolean> {
   if (!currentTransport?.isOpen) {
     return false;
   }
@@ -261,7 +261,7 @@ async function enterCliMode(): Promise<boolean> {
 /**
  * Exit CLI mode by sending 'exit' command
  */
-async function exitCliMode(): Promise<boolean> {
+export async function exitCliMode(): Promise<boolean> {
   if (!currentTransport?.isOpen) {
     cliModeActive = false;
     onCliModeChange?.(false);
@@ -349,7 +349,7 @@ async function exitCliModeSilent(): Promise<boolean> {
  * Send a command to the CLI
  * Command should NOT include trailing newline - we add it
  */
-async function sendCliCommand(command: string): Promise<void> {
+export async function sendCliCommand(command: string): Promise<void> {
   if (!currentTransport?.isOpen) {
     throw new Error('Transport not connected');
   }
@@ -417,10 +417,11 @@ async function sendCliRaw(data: string): Promise<void> {
 }
 
 /**
- * Get full config dump for autocomplete
- * Returns the accumulated output from 'dump' command
+ * Get full config dump for autocomplete or bug reports
+ * Returns the accumulated output from 'dump' or 'diff' command
+ * @param diff - If true, use 'diff all' command instead of 'dump'
  */
-async function getCliDump(): Promise<string> {
+export async function getCliDump(diff = false): Promise<string> {
   if (!currentTransport?.isOpen) {
     throw new Error('Transport not connected');
   }
@@ -450,8 +451,9 @@ async function getCliDump(): Promise<string> {
     }
     currentTransport.on('data', dumpListener);
 
-    // Send dump command
-    await currentTransport.write(new TextEncoder().encode('dump\n'));
+    // Send dump or diff command
+    const command = diff ? 'diff all\n' : 'dump\n';
+    await currentTransport.write(new TextEncoder().encode(command));
 
     // Wait for dump to complete with dynamic timeout
     // Keep waiting as long as data is still coming in
