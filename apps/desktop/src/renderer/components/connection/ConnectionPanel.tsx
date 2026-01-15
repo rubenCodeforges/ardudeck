@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
+import { useSitlStore } from '../../stores/sitl-store';
 import type { SerialPortInfo } from '@ardudeck/comms';
 import { DriverAssistant } from './DriverAssistant';
 
@@ -45,6 +46,25 @@ export function ConnectionPanel() {
 
   // Get SITL switch flag
   const { pendingSitlSwitch, setPendingSitlSwitch } = useSettingsStore();
+
+  // SITL state for quick-start button
+  const { isRunning: sitlIsRunning, isStarting: sitlIsStarting, startSitl, checkStatus: checkSitlStatus, initListeners: initSitlListeners } = useSitlStore();
+
+  // Initialize SITL listeners and check status on mount
+  useEffect(() => {
+    checkSitlStatus();
+    const cleanup = initSitlListeners();
+    return cleanup;
+  }, [checkSitlStatus, initSitlListeners]);
+
+  // Handle SITL quick-start (start SITL + trigger auto-connect)
+  const handleSitlQuickStart = async () => {
+    const success = await startSitl();
+    if (success) {
+      // Trigger the existing auto-connect mechanism
+      setPendingSitlSwitch(true);
+    }
+  };
 
   // Respond to SITL starting - switch to TCP and auto-connect with retry
   useEffect(() => {
@@ -219,6 +239,49 @@ export function ConnectionPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {/* SITL Quick Start - only show when not connected */}
+        {!connectionState.isConnected && !connectionState.isWaitingForHeartbeat && (
+          <button
+            onClick={sitlIsRunning
+              ? () => connect({ type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' })
+              : handleSitlQuickStart
+            }
+            disabled={sitlIsStarting || isConnecting}
+            className="w-full p-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 hover:border-purple-500/60 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-600/30 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="text-sm font-medium text-white">SITL Simulator</div>
+                  <div className="text-xs text-gray-400">
+                    {sitlIsStarting ? 'Starting...' : sitlIsRunning ? 'Running on TCP :5760' : 'Launch virtual flight controller'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {sitlIsRunning && (
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+                {sitlIsStarting ? (
+                  <svg className="w-5 h-5 text-purple-300 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          </button>
+        )}
+
         {/* Connection type tabs */}
         <div className="tab-group">
           {(['serial', 'tcp', 'udp'] as const).map((type) => (

@@ -11,6 +11,42 @@ import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Handle uncaught exceptions gracefully - especially network errors
+// ECONNRESET happens when SITL is killed while connected
+process.on('uncaughtException', (error: Error) => {
+  // Network errors are expected when SITL/connection is killed
+  const isNetworkError = error.message.includes('ECONNRESET') ||
+    error.message.includes('ECONNREFUSED') ||
+    error.message.includes('EPIPE') ||
+    error.message.includes('ETIMEDOUT');
+
+  if (isNetworkError) {
+    console.warn('[Main] Network error (expected during disconnect):', error.message);
+    return; // Don't crash
+  }
+
+  // Log other uncaught exceptions but don't crash
+  console.error('[Main] Uncaught exception:', error);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+
+  // Network errors are expected
+  const isNetworkError = message.includes('ECONNRESET') ||
+    message.includes('ECONNREFUSED') ||
+    message.includes('EPIPE') ||
+    message.includes('ETIMEDOUT');
+
+  if (isNetworkError) {
+    console.warn('[Main] Network rejection (expected during disconnect):', message);
+    return;
+  }
+
+  console.error('[Main] Unhandled rejection:', reason);
+});
+
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Set app name early to ensure consistent userData path in dev mode

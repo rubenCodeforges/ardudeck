@@ -8,6 +8,7 @@
 import { useState, useCallback } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
+import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { MspConfigView } from './MspConfigView';
@@ -45,6 +46,10 @@ function SortIndicator({ column, currentColumn, direction }: {
 
 export function ParametersView() {
   const { connectionState, platformChangeInProgress } = useConnectionStore();
+  const { isOpen: quickSetupOpen, isApplying: quickSetupApplying } = useQuickSetupStore();
+
+  // Keep view mounted during any operation that causes temporary disconnection
+  const keepViewMounted = platformChangeInProgress || quickSetupOpen || quickSetupApplying;
   const {
     parameters,
     isLoading,
@@ -226,8 +231,8 @@ export function ParametersView() {
   }
 
   // Show MSP config for modern Betaflight/iNav boards
-  // Keep showing during platform change (board reboots but we auto-reconnect)
-  if ((connectionState.isConnected && connectionState.protocol === 'msp') || platformChangeInProgress) {
+  // Keep showing during any operation that causes temp disconnection (platform change, quick setup, etc.)
+  if ((connectionState.isConnected && connectionState.protocol === 'msp') || keepViewMounted) {
     return <MspConfigView />;
   }
 
@@ -236,7 +241,7 @@ export function ParametersView() {
     return <MavlinkConfigView />;
   }
 
-  if (!connectionState.isConnected && !platformChangeInProgress) {
+  if (!connectionState.isConnected && !keepViewMounted) {
     return (
       <div className="h-full flex items-center justify-center p-8">
         <div className="text-center max-w-md">

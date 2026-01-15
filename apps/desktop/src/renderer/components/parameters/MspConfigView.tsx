@@ -12,7 +12,9 @@ import betaflightLogo from '../../assets/betaflight-logo.svg';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useMspTelemetryStore } from '../../stores/msp-telemetry-store';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
+import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import ModesWizard from '../modes/ModesWizard';
+import QuickSetupWizard from '../quick-setup/QuickSetupWizard';
 import ModesAdvancedEditor from '../modes/ModesAdvancedEditor';
 import ServoTuningTab from './ServoTuningTab';
 import ServoMixerTab from './ServoMixerTab';
@@ -36,6 +38,7 @@ import {
   Zap,
   Film,
   RotateCcw,
+  Rocket,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -404,41 +407,20 @@ function RatesTab({
         </div>
       </div>
 
-      {/* Presets - same pattern as PIDs */}
-      <div className="bg-gradient-to-r from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/30 p-5">
-        <h3 className="text-lg font-medium text-white mb-2">Quick Presets</h3>
-        <p className="text-sm text-gray-400 mb-4">
-          Pick a preset that matches your flying style, or create your own.
-        </p>
-        <div className="grid grid-cols-5 gap-3">
-          {Object.entries(RATE_PRESETS).map(([key, preset]) => {
-            const Icon = preset.icon;
-            return (
-              <button
-                key={key}
-                onClick={() => applyPreset(key)}
-                className={`p-4 rounded-xl border bg-gradient-to-br ${preset.color} hover:scale-105 transition-all text-left`}
-              >
-                <Icon className={`w-6 h-6 mb-2 ${preset.iconColor}`} />
-                <div className="font-medium text-white">{preset.name}</div>
-                <div className="text-xs text-gray-400">{preset.description}</div>
-              </button>
-            );
-          })}
-          {/* Stock/Default preset */}
-          <button
-            onClick={resetToDefaults}
-            className="p-4 rounded-xl border bg-gradient-to-br from-gray-600/20 to-gray-700/10 border-gray-600/30 hover:scale-105 transition-all text-left"
-          >
-            <RotateCcw className="w-6 h-6 mb-2 text-gray-400" />
-            <div className="font-medium text-white">Stock</div>
-            <div className="text-xs text-gray-400">Factory defaults</div>
-          </button>
-        </div>
-
-        {/* My Presets - always visible */}
-        <div className="mt-4 pt-4 border-t border-gray-700/30">
-          <h4 className="text-sm font-medium text-gray-400 mb-2">My Presets</h4>
+      {/* My Custom Profiles */}
+      <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-medium text-gray-400">My Profiles</h4>
+            <button
+              onClick={resetToDefaults}
+              className="px-2 py-1 text-xs rounded bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
+              title="Reset to factory defaults"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2 items-center">
             {Object.entries(customProfiles).map(([id, profile]) => (
               <div key={id} className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
@@ -456,7 +438,6 @@ function RatesTab({
                 </button>
               </div>
             ))}
-            {/* Add preset button/input */}
             {showSaveDialog ? (
               <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
                 <input
@@ -489,15 +470,12 @@ function RatesTab({
               <button
                 onClick={() => setShowSaveDialog(true)}
                 className="px-3 py-1.5 text-sm rounded-lg bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
-                title="Save current settings as a preset"
+                title="Save current settings as a profile"
               >
-                <span>+</span> Add Current
+                <span>+</span> Save
               </button>
             )}
           </div>
-          {Object.keys(customProfiles).length === 0 && !showSaveDialog && (
-            <p className="text-xs text-gray-600 mt-2">No custom presets yet</p>
-          )}
         </div>
       </div>
 
@@ -629,41 +607,20 @@ function PidTuningTab({
 
   return (
     <div className="max-w-full px-4 space-y-6">
-      {/* Presets - beginner friendly */}
-      <div className="bg-gradient-to-r from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/30 p-5">
-        <h3 className="text-lg font-medium text-white mb-2">Quick Presets</h3>
-        <p className="text-sm text-gray-400 mb-4">
-          Pick a preset that matches your flying style, or create your own.
-        </p>
-        <div className="grid grid-cols-5 gap-3">
-          {Object.entries(PID_PRESETS).map(([key, preset]) => {
-            const Icon = preset.icon;
-            return (
-              <button
-                key={key}
-                onClick={() => applyPreset(key)}
-                className={`p-4 rounded-xl border bg-gradient-to-br ${preset.color} hover:scale-105 transition-all text-left`}
-              >
-                <Icon className={`w-6 h-6 mb-2 ${preset.iconColor}`} />
-                <div className="font-medium text-white">{preset.name}</div>
-                <div className="text-xs text-gray-400">{preset.description}</div>
-              </button>
-            );
-          })}
-          {/* Stock/Default preset */}
-          <button
-            onClick={resetToDefaults}
-            className="p-4 rounded-xl border bg-gradient-to-br from-gray-600/20 to-gray-700/10 border-gray-600/30 hover:scale-105 transition-all text-left"
-          >
-            <RotateCcw className="w-6 h-6 mb-2 text-gray-400" />
-            <div className="font-medium text-white">Stock</div>
-            <div className="text-xs text-gray-400">Factory defaults</div>
-          </button>
-        </div>
-
-        {/* My Presets - always visible */}
-        <div className="mt-4 pt-4 border-t border-gray-700/30">
-          <h4 className="text-sm font-medium text-gray-400 mb-2">My Presets</h4>
+      {/* My Custom Profiles */}
+      <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-medium text-gray-400">My Profiles</h4>
+            <button
+              onClick={resetToDefaults}
+              className="px-2 py-1 text-xs rounded bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
+              title="Reset to factory defaults"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2 items-center">
             {Object.entries(customProfiles).map(([id, profile]) => (
               <div key={id} className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
@@ -681,7 +638,6 @@ function PidTuningTab({
                 </button>
               </div>
             ))}
-            {/* Add preset button/input */}
             {showSaveDialog ? (
               <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg overflow-hidden">
                 <input
@@ -714,15 +670,12 @@ function PidTuningTab({
               <button
                 onClick={() => setShowSaveDialog(true)}
                 className="px-3 py-1.5 text-sm rounded-lg bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1"
-                title="Save current settings as a preset"
+                title="Save current settings as a profile"
               >
-                <span>+</span> Add Current
+                <span>+</span> Save
               </button>
             )}
           </div>
-          {Object.keys(customProfiles).length === 0 && !showSaveDialog && (
-            <p className="text-xs text-gray-600 mt-2">No custom presets yet</p>
-          )}
         </div>
       </div>
 
@@ -1199,6 +1152,7 @@ export function MspConfigView() {
   const mspGps = useMspTelemetryStore((s) => s.gps);
   const mspAnalog = useMspTelemetryStore((s) => s.analog);
   const { hasChanges: modesHaveChanges, saveToFC: saveModesToFC, isSaving: modesSaving } = useModesWizardStore();
+  const { openWizard: openQuickSetup } = useQuickSetupStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1272,7 +1226,7 @@ export function MspConfigView() {
 
       // 5. Auto-reconnect
       setPlatformChangeState('reconnecting');
-      await window.electronAPI?.connect({ host: '127.0.0.1', tcpPort: 5760 });
+      await window.electronAPI?.connect({ type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' });
 
       // 6. Clear overlay - but keep platformChangeInProgress true!
       // The useEffect below will clear it once we're connected
@@ -1616,6 +1570,15 @@ export function MspConfigView() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Quick Setup Button */}
+            <button
+              onClick={() => openQuickSetup('msp', connectionState.fcVariant || undefined, connectionState.fcVersion || undefined)}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all"
+            >
+              <Rocket className="w-4 h-4" />
+              Quick Setup
+            </button>
+
             {modified && (
               <span className="px-3 py-1 text-sm rounded-lg bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
                 Unsaved
@@ -1977,6 +1940,9 @@ export function MspConfigView() {
           <SafetyTab isInav={isInav} />
         )}
       </div>
+
+      {/* Quick Setup Wizard Modal */}
+      <QuickSetupWizard />
     </div>
   );
 }

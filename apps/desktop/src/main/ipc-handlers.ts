@@ -1264,6 +1264,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
       } else if (pendingReconnect.host) {
         // TCP reconnection (SITL)
+        // Check if this was a SITL connection and SITL is no longer running
+        if (pendingReconnect.host === '127.0.0.1' && pendingReconnect.tcpPort === 5760 && !sitlProcess.isRunning) {
+          cancelReconnect('SITL is no longer running - reconnection cancelled');
+          return;
+        }
+
         const transport = new TcpTransport({
           host: pendingReconnect.host,
           port: pendingReconnect.tcpPort || 5760,
@@ -1477,6 +1483,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           });
           transportName = `UDP :${options.udpPort ?? 14550}`;
           break;
+        default:
+          throw new Error(`Invalid connection type: ${options.type ?? 'undefined'}. Must be 'serial', 'tcp', or 'udp'.`);
+      }
+
+      // Defensive check - should never happen after the switch, but prevents null access
+      if (!currentTransport) {
+        throw new Error('Failed to create transport - this should not happen');
       }
 
       sendLog(mainWindow, 'info', `Opening ${transportName}...`);

@@ -268,6 +268,11 @@ async function sendMspRequest(command: number, timeout: number = 1000): Promise<
   const release = await acquireMutex();
 
   try {
+    // Re-check transport after mutex acquisition (could have been closed while waiting)
+    if (!currentTransport || !currentTransport.isOpen) {
+      throw new Error('MSP transport closed while waiting');
+    }
+
     const packet = buildMspV1Request(command);
     await currentTransport.write(packet);
 
@@ -298,6 +303,11 @@ async function sendMspRequestWithPayload(command: number, payload: Uint8Array, t
   const release = await acquireMutex();
 
   try {
+    // Re-check transport after mutex acquisition (could have been closed while waiting)
+    if (!currentTransport || !currentTransport.isOpen) {
+      throw new Error('MSP transport closed while waiting');
+    }
+
     const packet = buildMspV1RequestWithPayload(command, payload);
     await currentTransport.write(packet);
 
@@ -331,6 +341,11 @@ async function sendMspV2Request(command: number, timeout: number = 1000): Promis
   const release = await acquireMutex();
 
   try {
+    // Re-check transport after mutex acquisition (could have been closed while waiting)
+    if (!currentTransport || !currentTransport.isOpen) {
+      throw new Error('MSP transport closed while waiting');
+    }
+
     const packet = buildMspV2Request(command);
     await currentTransport.write(packet);
 
@@ -361,6 +376,11 @@ async function sendMspV2RequestWithPayload(command: number, payload: Uint8Array,
   const release = await acquireMutex();
 
   try {
+    // Re-check transport after mutex acquisition (could have been closed while waiting)
+    if (!currentTransport || !currentTransport.isOpen) {
+      throw new Error('MSP transport closed while waiting');
+    }
+
     const packet = buildMspV2RequestWithPayload(command, payload);
     await currentTransport.write(packet);
 
