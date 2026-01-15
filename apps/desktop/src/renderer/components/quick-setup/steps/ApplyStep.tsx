@@ -14,6 +14,10 @@ import {
   ArrowLeft,
   Rocket,
   RefreshCw,
+  AlertTriangle,
+  Plane,
+  RotateCcw,
+  Wifi,
 } from 'lucide-react';
 
 // Task status icon component
@@ -42,6 +46,11 @@ export const ApplyStep: React.FC = () => {
     applyPreset,
     prevStep,
     closeWizard,
+    platformMismatch,
+    platformChangeState,
+    platformChangeError,
+    changePlatform,
+    dismissPlatformMismatch,
   } = useQuickSetupStore();
 
   // Track if we've already started applying
@@ -75,6 +84,172 @@ export const ApplyStep: React.FC = () => {
     applyProgress.total > 0
       ? Math.round((applyProgress.current / applyProgress.total) * 100)
       : 0;
+
+  // Platform mismatch dialog
+  if (platformMismatch) {
+    const isPlatformChanging = platformChangeState !== 'idle' && platformChangeState !== 'error';
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-amber-500/20">
+            {platformChangeState === 'disconnected' ? (
+              <Wifi className="w-8 h-8 text-amber-400" />
+            ) : platformChangeState === 'rebooting' ? (
+              <RotateCcw className="w-8 h-8 text-amber-400 animate-spin" />
+            ) : platformChangeState === 'error' ? (
+              <XCircle className="w-8 h-8 text-red-400" />
+            ) : isPlatformChanging ? (
+              <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            ) : (
+              <AlertTriangle className="w-8 h-8 text-amber-400" />
+            )}
+          </div>
+          <h2 className="text-xl font-semibold text-zinc-100">
+            {platformChangeState === 'error'
+              ? 'Platform Change Failed'
+              : platformChangeState === 'disconnected'
+              ? 'Reconnecting...'
+              : platformChangeState === 'rebooting'
+              ? 'Rebooting Flight Controller...'
+              : platformChangeState === 'saving'
+              ? 'Saving Configuration...'
+              : platformChangeState === 'changing'
+              ? 'Changing Platform...'
+              : 'Platform Mismatch'}
+          </h2>
+          <p className="text-sm text-zinc-400 mt-2 max-w-md mx-auto">
+            {platformChangeState === 'error'
+              ? platformChangeError || 'An error occurred while changing the platform.'
+              : platformChangeState === 'disconnected'
+              ? 'Board is rebooting. Attempting to reconnect automatically...'
+              : platformChangeState === 'rebooting'
+              ? 'Waiting for the flight controller to reboot...'
+              : isPlatformChanging
+              ? 'Please wait while the platform type is being changed...'
+              : `The selected preset requires "${platformMismatch.requiredName}" platform, but your board is currently set to "${platformMismatch.currentName}".`}
+          </p>
+        </div>
+
+        {/* Platform comparison */}
+        {platformChangeState === 'idle' && (
+          <div className="p-4 bg-zinc-800/50 rounded-xl">
+            <div className="flex items-center justify-center gap-8">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-zinc-700/50 flex items-center justify-center mx-auto mb-2">
+                  <Plane className="w-6 h-6 text-zinc-400" />
+                </div>
+                <p className="text-xs text-zinc-500">Current</p>
+                <p className="text-sm font-medium text-zinc-300">{platformMismatch.currentName}</p>
+              </div>
+              <div className="text-2xl text-zinc-600">→</div>
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-2">
+                  <Plane className="w-6 h-6 text-amber-400" />
+                </div>
+                <p className="text-xs text-zinc-500">Required</p>
+                <p className="text-sm font-medium text-amber-300">{platformMismatch.requiredName}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Progress indicator during platform change */}
+        {isPlatformChanging && (
+          <div className="p-4 bg-zinc-800/50 rounded-xl">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+              <span className="text-sm text-zinc-300">
+                {platformChangeState === 'changing' && 'Setting platform type...'}
+                {platformChangeState === 'saving' && 'Saving to EEPROM...'}
+                {platformChangeState === 'rebooting' && 'Rebooting flight controller...'}
+                {platformChangeState === 'disconnected' && 'Waiting for reconnection...'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {platformChangeState === 'error' && platformChangeError && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-red-200 text-sm">Error Details</h4>
+                <p className="text-xs text-red-100/70 mt-1">{platformChangeError}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info box */}
+        {platformChangeState === 'idle' && (
+          <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-blue-200 text-sm">What happens when you change platform?</h4>
+                <ul className="text-xs text-blue-100/70 mt-1 space-y-1 list-disc list-inside">
+                  <li>The platform type will be changed on your flight controller</li>
+                  <li>Configuration will be saved to EEPROM</li>
+                  <li>The board will reboot automatically</li>
+                  <li>We'll reconnect and continue applying your preset</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation buttons */}
+        <div className="flex items-center justify-between pt-4 border-t border-zinc-700">
+          {platformChangeState === 'error' ? (
+            <>
+              <button
+                onClick={dismissPlatformMismatch}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                onClick={changePlatform}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-500 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
+            </>
+          ) : isPlatformChanging ? (
+            <>
+              <div /> {/* Spacer */}
+              <div className="flex items-center gap-2 text-sm text-zinc-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Please wait...
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={dismissPlatformMismatch}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                onClick={changePlatform}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-500 transition-colors"
+              >
+                <Plane className="w-4 h-4" />
+                Change Platform
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

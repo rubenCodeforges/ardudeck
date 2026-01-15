@@ -49,6 +49,10 @@ interface QuickSetupState {
   fcVariant: string | null; // 'INAV', 'BTFL', etc.
   fcVersion: string | null;
 
+  // Current platform from FC (fetched when wizard opens)
+  currentPlatform: number | null;
+  currentPlatformName: string | null;
+
   // Wizard navigation
   currentStep: QuickSetupStep;
   selectedVehicle: VehicleType;
@@ -67,12 +71,22 @@ interface QuickSetupState {
   applyError: string | null;
   applySuccess: boolean;
 
+  // Platform mismatch state
+  platformMismatch: {
+    currentPlatform: number;
+    currentName: string;
+    requiredPlatform: number;
+    requiredName: string;
+  } | null;
+  platformChangeState: 'idle' | 'changing' | 'saving' | 'rebooting' | 'disconnected' | 'error';
+  platformChangeError: string | null;
+
   // Loading state
   isLoading: boolean;
   loadError: string | null;
 
   // Actions - Wizard
-  openWizard: (boardType: BoardType, fcVariant?: string, fcVersion?: string) => void;
+  openWizard: (boardType: BoardType, fcVariant?: string, fcVersion?: string) => Promise<void>;
   closeWizard: () => void;
   reset: () => void;
 
@@ -93,6 +107,10 @@ interface QuickSetupState {
 
   // Actions - Apply
   applyPreset: () => Promise<boolean>;
+
+  // Actions - Platform Change
+  changePlatform: () => Promise<void>;
+  dismissPlatformMismatch: () => void;
 
   // Computed
   getPresetSummary: () => ReturnType<typeof getPresetSummary> | null;
@@ -121,6 +139,9 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
   fcVariant: null,
   fcVersion: null,
 
+  currentPlatform: null,
+  currentPlatformName: null,
+
   currentStep: 'welcome',
   selectedVehicle: null,
   selectedPreset: null,
@@ -136,6 +157,10 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
   applyError: null,
   applySuccess: false,
 
+  platformMismatch: null,
+  platformChangeState: 'idle',
+  platformChangeError: null,
+
   isLoading: false,
   loadError: null,
 
@@ -143,12 +168,31 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
   // Wizard Actions
   // ============================================================================
 
-  openWizard: (boardType, fcVariant, fcVersion) => {
+  openWizard: async (boardType, fcVariant, fcVersion) => {
+    const platformNames = ['Multirotor', 'Airplane', 'Helicopter', 'Tricopter', 'Rover', 'Boat'];
+
+    // Fetch current platform from FC
+    let currentPlatform: number | null = null;
+    let currentPlatformName: string | null = null;
+
+    try {
+      const mixer = await window.electronAPI?.mspGetInavMixerConfig();
+      if (mixer) {
+        currentPlatform = mixer.platformType;
+        currentPlatformName = platformNames[mixer.platformType] ?? 'Unknown';
+        console.log(`[QuickSetup] Current platform: ${currentPlatformName} (${currentPlatform})`);
+      }
+    } catch (err) {
+      console.warn('[QuickSetup] Failed to fetch current platform:', err);
+    }
+
     set({
       isOpen: true,
       boardType,
       fcVariant: fcVariant || null,
       fcVersion: fcVersion || null,
+      currentPlatform,
+      currentPlatformName,
       currentStep: 'welcome',
       selectedVehicle: null,
       selectedPreset: null,
@@ -157,6 +201,9 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
       applyError: null,
       applySuccess: false,
       applyProgress: DEFAULT_PROGRESS,
+      platformMismatch: null,
+      platformChangeState: 'idle',
+      platformChangeError: null,
     });
   },
 
@@ -223,7 +270,27 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
 
   selectPreset: (presetId) => {
     const preset = QUICK_SETUP_PRESETS[presetId];
-    if (preset) {
+    if (!preset) return;
+
+    const { currentPlatform, currentPlatformName } = get();
+    const platformNames = ['Multirotor', 'Airplane', 'Helicopter', 'Tricopter', 'Rover', 'Boat'];
+
+    // Check platform mismatch immediately
+    if (currentPlatform !== null && preset.aircraft.platformType !== currentPlatform) {
+      const requiredName = platformNames[preset.aircraft.platformType] ?? 'Unknown';
+      console.log(`[QuickSetup] Platform mismatch: FC is ${currentPlatformName}, preset needs ${requiredName}`);
+
+      set({
+        selectedPreset: preset,
+        platformMismatch: {
+          currentPlatform,
+          currentName: currentPlatformName ?? 'Unknown',
+          requiredPlatform: preset.aircraft.platformType,
+          requiredName,
+        },
+      });
+    } else {
+      // No mismatch, just select the preset
       set({ selectedPreset: preset });
     }
   },
@@ -345,6 +412,89 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
         return false;
     }
   },
+
+  // ============================================================================
+  // Platform Change Actions
+  // ============================================================================
+
+  changePlatform: async () => {
+    const { platformMismatch } = get();
+    if (!platformMismatch) return;
+
+    set({ platformChangeState: 'changing', platformChangeError: null });
+    useConnectionStore.getState().setPlatformChangeInProgress(true);
+
+    try {
+      // 1. Set platform type via MSP
+      const success = await window.electronAPI?.mspSetInavPlatformType(platformMismatch.requiredPlatform);
+      if (!success) throw new Error('Failed to change platform type');
+
+      // 2. Save to EEPROM
+      set({ platformChangeState: 'saving' });
+      await window.electronAPI?.mspSaveEeprom();
+      await new Promise((r) => setTimeout(r, 200));
+
+      // 3. Reboot - this will disconnect us
+      set({ platformChangeState: 'rebooting' });
+      window.electronAPI?.mspReboot().catch(() => {});
+
+      // 4. Show disconnected state - user will need to reconnect
+      // Wait a moment for the board to start rebooting
+      await new Promise((r) => setTimeout(r, 1000));
+      set({ platformChangeState: 'disconnected' });
+
+      // 5. Auto-reconnect using the stored connection info
+      const reconnected = await reconnectWithRetry({
+        maxAttempts: 5,
+        attemptDelayMs: 2000,
+        initialDelayMs: 4000,
+        onAttempt: (attempt, maxAttempts) => {
+          console.log(`[QuickSetup] Reconnect attempt ${attempt}/${maxAttempts}`);
+        },
+      });
+
+      if (reconnected) {
+        // Successfully reconnected - update platform state
+        console.log('[QuickSetup] Reconnected after platform change, updating platform state');
+        const platformNames = ['Multirotor', 'Airplane', 'Helicopter', 'Tricopter', 'Rover', 'Boat'];
+
+        set({
+          // Update current platform to the new platform
+          currentPlatform: platformMismatch.requiredPlatform,
+          currentPlatformName: platformNames[platformMismatch.requiredPlatform] ?? 'Unknown',
+          // Clear mismatch state
+          platformMismatch: null,
+          platformChangeState: 'idle',
+          platformChangeError: null,
+        });
+        useConnectionStore.getState().setPlatformChangeInProgress(false);
+        // Flow continues in the UI component which will call nextStep()
+      } else {
+        // Failed to reconnect - show error
+        set({
+          platformChangeState: 'error',
+          platformChangeError: 'Failed to reconnect after platform change. Please reconnect manually and try again.',
+        });
+        useConnectionStore.getState().setPlatformChangeInProgress(false);
+      }
+    } catch (err) {
+      console.error('[QuickSetup] Platform change error:', err);
+      set({
+        platformChangeState: 'error',
+        platformChangeError: err instanceof Error ? err.message : 'Unknown error during platform change',
+      });
+      useConnectionStore.getState().setPlatformChangeInProgress(false);
+    }
+  },
+
+  dismissPlatformMismatch: () => {
+    set({
+      platformMismatch: null,
+      platformChangeState: 'idle',
+      platformChangeError: null,
+    });
+    useConnectionStore.getState().setPlatformChangeInProgress(false);
+  },
 }));
 
 // ============================================================================
@@ -354,6 +504,9 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
 /**
  * Attempts to reconnect to the board with retries and timeout.
  * Returns true if reconnected, false if timed out.
+ *
+ * Uses the stored connection info from the connection state to reconnect
+ * with the same method (serial/TCP) as the original connection.
  */
 async function reconnectWithRetry(options: {
   maxAttempts?: number;
@@ -367,6 +520,52 @@ async function reconnectWithRetry(options: {
     initialDelayMs = 5000, // 5 seconds - older boards can take longer to boot
     onAttempt,
   } = options;
+
+  // Get the current connection state BEFORE waiting (to capture connection info)
+  const prevState = useConnectionStore.getState().connectionState;
+
+  // Determine connection type from the previous connection
+  // Priority: 1) isSitl flag, 2) portPath (serial), 3) parse transport string
+  let connectOptions: { type: 'serial' | 'tcp'; port?: string; host?: string; tcpPort?: number; protocol?: 'msp' };
+
+  if (prevState.isSitl) {
+    // SITL connection - use TCP to localhost
+    connectOptions = { type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' };
+    console.log('[QuickSetup] Will reconnect via TCP (SITL)');
+  } else if (prevState.portPath) {
+    // Serial connection - use stored port path
+    connectOptions = { type: 'serial', port: prevState.portPath, protocol: 'msp' };
+    console.log(`[QuickSetup] Will reconnect via serial: ${prevState.portPath}`);
+  } else if (prevState.transport) {
+    // Parse transport string as fallback
+    // Format: "TCP 127.0.0.1:5760" or "/dev/ttyUSB0 @ 115200"
+    if (prevState.transport.toLowerCase().startsWith('tcp')) {
+      const match = prevState.transport.match(/TCP\s+([^:]+):(\d+)/i);
+      if (match) {
+        connectOptions = { type: 'tcp', host: match[1], tcpPort: parseInt(match[2], 10), protocol: 'msp' };
+        console.log(`[QuickSetup] Will reconnect via TCP: ${match[1]}:${match[2]}`);
+      } else {
+        // Default TCP
+        connectOptions = { type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' };
+        console.log('[QuickSetup] Will reconnect via TCP (default)');
+      }
+    } else {
+      // Assume serial - extract port from transport string like "/dev/ttyUSB0 @ 115200"
+      const port = prevState.transport.split('@')[0]?.trim();
+      if (port) {
+        connectOptions = { type: 'serial', port, protocol: 'msp' };
+        console.log(`[QuickSetup] Will reconnect via serial: ${port}`);
+      } else {
+        // Last resort - try TCP
+        connectOptions = { type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' };
+        console.log('[QuickSetup] Will reconnect via TCP (fallback)');
+      }
+    }
+  } else {
+    // No connection info available - default to TCP (likely SITL dev environment)
+    connectOptions = { type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' };
+    console.log('[QuickSetup] Will reconnect via TCP (no previous connection info)');
+  }
 
   // Initial delay for board to reboot
   console.log(`[QuickSetup] Waiting ${initialDelayMs}ms for board to reboot...`);
@@ -383,18 +582,19 @@ async function reconnectWithRetry(options: {
       return true;
     }
 
-    // Try to connect
+    // Try to connect with the determined options
     try {
-      // For SITL, use TCP connection
-      await window.electronAPI?.connect({ host: '127.0.0.1', tcpPort: 5760 });
+      await window.electronAPI?.connect(connectOptions);
 
       // Wait a bit and check connection
       await new Promise((r) => setTimeout(r, 500));
       const newState = useConnectionStore.getState().connectionState;
       if (newState.isConnected) {
         console.log('[QuickSetup] Reconnected successfully!');
-        // Wait for MSP to be ready
-        await new Promise((r) => setTimeout(r, 500));
+        // Wait for board to fully initialize after platform change
+        // Older F3 boards need more time to stabilize
+        console.log('[QuickSetup] Waiting for board to stabilize...');
+        await new Promise((r) => setTimeout(r, 2000));
         return true;
       }
     } catch (err) {
@@ -426,7 +626,7 @@ async function applyPresetViaMsp(
 
   const tasks = [
     { name: 'Exiting CLI mode', status: 'pending' as const },
-    { name: 'Setting platform type', status: 'pending' as const },
+    { name: 'Checking platform', status: 'pending' as const },
     { name: 'Setting PIDs', status: 'pending' as const },
     { name: 'Setting Rates', status: 'pending' as const },
     ...(hasServoMixer ? [{ name: 'Configuring servo mixer', status: 'pending' as const }] : []),
@@ -467,6 +667,12 @@ async function applyPresetViaMsp(
   };
 
   try {
+    // CRITICAL: Check connection FIRST before doing anything
+    const connState = useConnectionStore.getState().connectionState;
+    if (!connState.isConnected) {
+      throw new Error('Not connected to flight controller. Please connect first.');
+    }
+
     // 0. Exit CLI mode if active (prevents "MSP blocked - CLI mode active" errors)
     updateTask('in_progress');
     try {
@@ -480,7 +686,7 @@ async function applyPresetViaMsp(
       if (!testRead) {
         // Still blocked, try exiting again with longer wait
         console.warn('[QuickSetup] MSP still blocked after CLI exit, retrying...');
-        await window.electronAPI?.cliSend('exit\n');
+        await window.electronAPI?.cliSendRaw('exit\n');
         await new Promise((r) => setTimeout(r, 1000));
       }
     } catch {
@@ -490,88 +696,26 @@ async function applyPresetViaMsp(
     updateTask('completed');
     nextTask();
 
-    // 1. Set Platform Type (Multirotor/Airplane/etc.)
-    // Check if platform change is needed - this causes a reboot!
+    // 1. Check Platform Type compatibility
+    // If platform doesn't match, show dialog to let user change it
     updateTask('in_progress');
-    try {
-      const currentMixer = await window.electronAPI?.mspGetInavMixerConfig();
-      const currentPlatform = currentMixer?.platformType ?? -1;
+    const currentMixer = await window.electronAPI?.mspGetInavMixerConfig();
+    if (currentMixer && currentMixer.platformType !== preset.aircraft.platformType) {
+      const platformNames = ['Multirotor', 'Airplane', 'Helicopter', 'Tricopter', 'Rover', 'Boat'];
+      const currentName = platformNames[currentMixer.platformType] ?? 'Unknown';
+      const requiredName = platformNames[preset.aircraft.platformType] ?? 'Unknown';
 
-      if (currentPlatform !== preset.aircraft.platformType) {
-        const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
-        const targetPlatformName = platformNames[preset.aircraft.platformType] ?? 'MULTIROTOR';
-        console.log(`[QuickSetup] Platform change needed: ${currentPlatform} -> ${preset.aircraft.platformType} (${targetPlatformName})`);
-
-        // Set flag to keep MspConfigView mounted during reboot
-        useConnectionStore.getState().setPlatformChangeInProgress(true);
-
-        // Try MSP2 first (modern iNav)
-        let platformSuccess = await window.electronAPI?.mspSetInavPlatformType(
-          preset.aircraft.platformType
-        );
-
-        if (platformSuccess) {
-          // MSP2 succeeded - save + reboot
-          console.log('[QuickSetup] MSP2 platform set succeeded, saving...');
-          await window.electronAPI?.mspSaveEeprom();
-          await new Promise((r) => setTimeout(r, 200));
-
-          // Explicitly reboot (required for platform change to take effect!)
-          console.log('[QuickSetup] Rebooting board...');
-          window.electronAPI?.mspReboot().catch(() => {});
-        } else {
-          // MSP2 failed - use CLI fallback (works on SITL and older iNav)
-          console.warn('[QuickSetup] MSP2 platform set failed, using CLI fallback');
-          try {
-            await window.electronAPI?.cliSend(`set platform_type = ${targetPlatformName}\n`);
-            await new Promise((r) => setTimeout(r, 100));
-            // CLI 'save' command triggers reboot automatically
-            await window.electronAPI?.cliSend('save\n');
-            console.log('[QuickSetup] Platform changed via CLI (save triggers reboot)');
-            platformSuccess = true; // CLI succeeded
-          } catch (cliErr) {
-            console.error('[QuickSetup] CLI platform change failed:', cliErr);
-            // Clear flag since we failed completely
-            useConnectionStore.getState().setPlatformChangeInProgress(false);
-            throw new Error('Failed to change platform type via MSP2 and CLI');
-          }
-        }
-
-        // Auto-reconnect with retries
-        const reconnected = await reconnectWithRetry({
-          maxAttempts: 5,
-          attemptDelayMs: 2000,
-          initialDelayMs: 3000,
-          onAttempt: (attempt, max) => {
-            // Update task name to show reconnection progress
-            const newTasks = [...tasks];
-            newTasks[taskIndex] = {
-              ...newTasks[taskIndex],
-              name: `Reconnecting (${attempt}/${max})...`,
-            };
-            set({
-              applyProgress: {
-                current: taskIndex,
-                total: tasks.length,
-                currentTask: `Reconnecting (${attempt}/${max})...`,
-                tasks: newTasks,
-              },
-            });
-          },
-        });
-
-        if (!reconnected) {
-          useConnectionStore.getState().setPlatformChangeInProgress(false);
-          throw new Error('Board did not reconnect after platform change. Please reconnect manually and try again.');
-        }
-      } else {
-        console.log('[QuickSetup] Platform already matches, skipping change');
-      }
-    } catch (err) {
-      console.warn('[QuickSetup] Platform check/change failed:', err);
-      // Clear the flag if we set it but failed
-      useConnectionStore.getState().setPlatformChangeInProgress(false);
-      // Continue anyway - platform might already be correct
+      // Set platform mismatch state - UI will show dialog
+      set({
+        isApplying: false,
+        platformMismatch: {
+          currentPlatform: currentMixer.platformType,
+          currentName,
+          requiredPlatform: preset.aircraft.platformType,
+          requiredName,
+        },
+      });
+      return false; // Stop applying, user needs to change platform first
     }
     updateTask('completed');
     nextTask();
@@ -640,6 +784,16 @@ async function applyPresetViaMsp(
       nextTask();
     }
 
+    // Reset CLI flags before failsafe - servo/motor operations may have entered CLI mode
+    console.log('[QuickSetup] Resetting CLI mode flags before failsafe...');
+    try {
+      await window.electronAPI?.cliExitMode();
+      await window.electronAPI?.cliResetAllFlags();
+      await new Promise((r) => setTimeout(r, 300));
+    } catch {
+      // Ignore errors
+    }
+
     // 6. Failsafe Configuration
     // Try MSP first with read+merge, fallback to CLI if that fails
     updateTask('in_progress');
@@ -693,6 +847,10 @@ async function applyPresetViaMsp(
     if (!failsafeSet) {
       console.log('[QuickSetup] Trying CLI fallback for failsafe...');
       try {
+        // Enter CLI mode first
+        await window.electronAPI?.cliEnterMode();
+        await new Promise((r) => setTimeout(r, 500));
+
         const procedureName = preset.failsafe.procedure; // 'RTH', 'LAND', or 'DROP'
         const commands = [
           `set failsafe_procedure = ${procedureName}`,
@@ -701,7 +859,7 @@ async function applyPresetViaMsp(
           `set failsafe_throttle = ${preset.failsafe.throttleLow}`,
         ];
         for (const cmd of commands) {
-          await window.electronAPI?.cliSend(cmd + '\n');
+          await window.electronAPI?.cliSendRaw(cmd + '\n');
           await new Promise((r) => setTimeout(r, 50));
         }
         console.log('[QuickSetup] Failsafe set via CLI');
@@ -717,7 +875,20 @@ async function applyPresetViaMsp(
     updateTask('completed');
     nextTask();
 
+    // CRITICAL: Reset ALL CLI mode flags before mode operations
+    // Previous operations (servo mixer, motor mixer, failsafe) may have entered CLI mode.
+    // Reset ALL flags (both cli-handlers and msp-handlers) to ensure MSP operations work.
+    console.log('[QuickSetup] Resetting CLI mode flags before mode operations...');
+    try {
+      await window.electronAPI?.cliExitMode();
+      await window.electronAPI?.cliResetAllFlags();
+      await new Promise((r) => setTimeout(r, 500));
+    } catch {
+      // Ignore errors - flags should still be reset
+    }
+
     // 7. Clear old modes
+    // Add small delay between operations to prevent MSP command pileup
     updateTask('in_progress');
     for (let i = 0; i < 20; i++) {
       const success = await window.electronAPI?.mspSetModeRange(i, {
@@ -726,18 +897,33 @@ async function applyPresetViaMsp(
         rangeStart: 900,
         rangeEnd: 900,
       });
-      if (!success) throw new Error(`Failed to clear mode slot ${i}`);
+      if (!success) {
+        console.warn(`[QuickSetup] Failed to clear mode slot ${i}, continuing...`);
+        // Don't throw - continue clearing other slots
+      }
+      // Small delay between MSP commands to prevent serial buffer overflow
+      await new Promise((r) => setTimeout(r, 50));
     }
     updateTask('completed');
     nextTask();
 
     // 8. Set new modes
+    // Add small delay between operations to prevent MSP command pileup
     updateTask('in_progress');
+    let modesSetCount = 0;
     for (let i = 0; i < preset.modes.length; i++) {
       const mode = preset.modes[i];
       const success = await window.electronAPI?.mspSetModeRange(i, mode);
-      if (!success) throw new Error(`Failed to set mode ${i}`);
+      if (!success) {
+        console.warn(`[QuickSetup] Failed to set mode ${i}, continuing...`);
+        // Don't throw - continue setting other modes
+      } else {
+        modesSetCount++;
+      }
+      // Small delay between MSP commands to prevent serial buffer overflow
+      await new Promise((r) => setTimeout(r, 50));
     }
+    console.log(`[QuickSetup] Set ${modesSetCount}/${preset.modes.length} modes`);
     updateTask('completed');
     nextTask();
 
@@ -811,9 +997,14 @@ async function applyPresetViaCli(
   try {
     // 1. Send CLI commands
     updateTask(0, 'in_progress');
+
+    // Enter CLI mode first
+    await window.electronAPI?.cliEnterMode();
+    await new Promise((r) => setTimeout(r, 500));
+
     for (const cmd of commands) {
       console.log(`[QuickSetup CLI] Sending: ${cmd}`);
-      await window.electronAPI?.cliSend(cmd + '\n');
+      await window.electronAPI?.cliSendRaw(cmd + '\n');
       // Small delay between commands to let FC process
       await new Promise((r) => setTimeout(r, 50));
     }
@@ -821,7 +1012,7 @@ async function applyPresetViaCli(
 
     // 2. Save configuration
     updateTask(1, 'in_progress');
-    await window.electronAPI?.cliSend('save\n');
+    await window.electronAPI?.cliSendRaw('save\n');
     // Wait for save to complete (FC reboots)
     await new Promise((r) => setTimeout(r, 2000));
     updateTask(1, 'completed');

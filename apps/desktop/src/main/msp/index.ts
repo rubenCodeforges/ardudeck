@@ -15,4 +15,5 @@ export {
   autoConfigureSitlPlatform,
   getMspVehicleType,
   resetSitlAutoConfig,
+  resetMspCliFlags,
 } from './msp-handlers.js';

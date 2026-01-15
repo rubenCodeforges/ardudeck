@@ -229,6 +229,13 @@ export async function enterCliMode(): Promise<boolean> {
 
     // NOW set up data listener - MSP handler is already skipping
     // Filter out any MSP frames that arrive (in-flight responses)
+    // Re-check transport in case it was closed during the delay above
+    if (!currentTransport?.isOpen) {
+      cliModeActive = false;
+      onCliModeChange?.(false);
+      return false;
+    }
+
     cliDataListener = (data: Uint8Array) => {
       const filtered = filterMspFromData(data);
       if (filtered.length > 0) {
@@ -259,7 +266,9 @@ export async function enterCliMode(): Promise<boolean> {
 }
 
 /**
- * Exit CLI mode by sending 'exit' command
+ * Exit CLI mode by sending 'exit' command.
+ * ALWAYS sends exit and triggers callback to reset ALL CLI flags (including MSP-side flags).
+ * This ensures the board returns to MSP mode even if internal flags are out of sync.
  */
 export async function exitCliMode(): Promise<boolean> {
   if (!currentTransport?.isOpen) {
@@ -268,12 +277,10 @@ export async function exitCliMode(): Promise<boolean> {
     return true;
   }
 
-  if (!cliModeActive) {
-    return true;
-  }
-
   try {
-    // Send 'exit' command
+    // ALWAYS send 'exit' command to ensure board exits CLI mode
+    // The board might be in CLI mode even if our cliModeActive flag is false
+    // (e.g., servo/motor CLI operations set different flags)
     await currentTransport.write(new TextEncoder().encode('exit\n'));
 
     // Wait for exit to complete
@@ -286,6 +293,7 @@ export async function exitCliMode(): Promise<boolean> {
     }
 
     cliModeActive = false;
+    // ALWAYS trigger callback to reset MSP-side CLI flags too
     onCliModeChange?.(false);
 
     return true;
@@ -367,7 +375,8 @@ export async function sendCliCommand(command: string): Promise<void> {
   }
 
   // Verify listener is still attached (defensive)
-  if (!cliDataListener && !isExitCommand) {
+  // Also re-check transport in case it was closed during enterCliMode()
+  if (!cliDataListener && !isExitCommand && currentTransport?.isOpen) {
     cliDataListener = (data: Uint8Array) => {
       const filtered = filterMspFromData(data);
       if (filtered.length > 0) {
@@ -446,7 +455,11 @@ export async function getCliDump(diff = false): Promise<string> {
     };
 
     // Temporarily replace the data listener to capture dump
-    if (cliDataListener && currentTransport) {
+    // Re-check transport in case it was closed during enterCliMode()
+    if (!currentTransport?.isOpen) {
+      throw new Error('Transport closed during CLI setup');
+    }
+    if (cliDataListener) {
       currentTransport.off('data', cliDataListener);
     }
     currentTransport.on('data', dumpListener);
@@ -469,10 +482,12 @@ export async function getCliDump(diff = false): Promise<string> {
       }
     }
 
-    // Restore normal listener
-    currentTransport.off('data', dumpListener);
-    if (cliDataListener) {
-      currentTransport.on('data', cliDataListener);
+    // Restore normal listener (check transport still valid after delay loop)
+    if (currentTransport?.isOpen) {
+      currentTransport.off('data', dumpListener);
+      if (cliDataListener) {
+        currentTransport.on('data', cliDataListener);
+      }
     }
 
     // Exit CLI mode if we entered it for this dump

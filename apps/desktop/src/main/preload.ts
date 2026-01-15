@@ -714,6 +714,9 @@ const api = {
   cliExitMode: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLI_EXIT_MODE),
 
+  cliResetAllFlags: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLI_RESET_ALL_FLAGS),
+
   cliSendCommand: (command: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLI_SEND_COMMAND, command),
 

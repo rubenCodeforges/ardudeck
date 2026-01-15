@@ -211,6 +211,7 @@ export const IPC_CHANNELS = {
   CLI_GET_DUMP: 'cli:get-dump',
   CLI_SAVE_OUTPUT: 'cli:save-output',
   CLI_SAVE_OUTPUT_JSON: 'cli:save-output-json',
+  CLI_RESET_ALL_FLAGS: 'cli:reset-all-flags', // Reset ALL CLI mode flags (both cli-handlers and msp-handlers)
 
   // Driver utilities
   DRIVER_OPEN_BUNDLED: 'driver:open-bundled',

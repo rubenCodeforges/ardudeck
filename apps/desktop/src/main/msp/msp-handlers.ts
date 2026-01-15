@@ -253,6 +253,17 @@ function sendLog(level: 'info' | 'warn' | 'error', message: string, details?: st
   });
 }
 
+/**
+ * Reset all MSP CLI mode flags.
+ * Call this to ensure MSP operations aren't blocked by stale CLI mode flags.
+ * This resets: servoCliModeActive, tuningCliModeActive
+ */
+export function resetMspCliFlags(): void {
+  console.log('[MSP] Resetting all CLI mode flags');
+  servoCliModeActive = false;
+  tuningCliModeActive = false;
+}
+
 async function sendMspRequest(command: number, timeout: number = 1000): Promise<Uint8Array> {
   if (!currentTransport || !currentTransport.isOpen) {
     throw new Error('MSP transport not connected');
@@ -1011,6 +1022,13 @@ async function setPidViaCli(pid: MSPPid): Promise<boolean> {
       // Wait for any in-flight data to settle
       await new Promise(r => setTimeout(r, 100));
 
+      // Re-check transport in case it was closed during the delay
+      if (!currentTransport?.isOpen) {
+        tuningCliModeActive = false;
+        startMspTelemetry();
+        return false;
+      }
+
       // Add listener to capture CLI responses
       tuningCliResponse = '';
       tuningCliListener = (data: Uint8Array) => {
@@ -1213,6 +1231,13 @@ async function setRcTuningViaCli(rcTuning: MSPRcTuning): Promise<boolean> {
 
       await new Promise(r => setTimeout(r, 100));
 
+      // Re-check transport in case it was closed during the delay
+      if (!currentTransport?.isOpen) {
+        tuningCliModeActive = false;
+        startMspTelemetry();
+        return false;
+      }
+
       // Add listener
       tuningCliResponse = '';
       tuningCliListener = (data: Uint8Array) => {
@@ -1386,8 +1411,9 @@ async function setModeRange(index: number, mode: MSPModeRange): Promise<boolean>
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(`[MSP] SET_MODE_RANGE[${index}] failed:`, msg);
-      if (msg.includes('not supported')) {
-        sendLog('warn', 'MSP SET_MODE_RANGE not supported, trying CLI...');
+      // Try CLI fallback on common failure modes
+      if (msg.includes('not supported') || msg.includes('timed out') || msg.includes('timeout')) {
+        sendLog('warn', `MSP SET_MODE_RANGE failed (${msg}), trying CLI...`);
         return null; // Signal to try CLI fallback
       }
       sendLog('error', `Failed to set mode ${index}`, msg);
@@ -1422,6 +1448,13 @@ async function setModeRangeViaCli(index: number, mode: MSPModeRange): Promise<bo
 
       await currentTransport.write(new Uint8Array([0x23])); // '#'
       await new Promise(r => setTimeout(r, 500));
+
+      // Re-check transport in case it was closed during the delay
+      if (!currentTransport?.isOpen) {
+        tuningCliModeActive = false;
+        startMspTelemetry();
+        return false;
+      }
     }
 
     // iNav CLI aux command: aux <index> <boxId> <channel> <start> <end> <logic>
@@ -2165,6 +2198,14 @@ async function setServoConfigViaCli(index: number, config: MSPServoConfig): Prom
       // Wait for any in-flight data to settle
       await new Promise(r => setTimeout(r, 100));
 
+      // Re-check transport in case it was closed during the delay
+      if (!currentTransport?.isOpen) {
+        servoCliModeActive = false;
+        usesCliServoFallback = false;
+        startMspTelemetry();
+        return false;
+      }
+
       // Add persistent listener to capture CLI responses
       cliResponse = '';
       cliResponseListener = (data: Uint8Array) => {
@@ -2507,6 +2548,12 @@ async function readSmixViaCli(): Promise<Array<{ index: number; target: number; 
     stopMspTelemetry();
     await new Promise(r => setTimeout(r, 500)); // Wait for pending MSP responses
 
+    // Re-check transport in case it was closed during the delay
+    if (!currentTransport?.isOpen) {
+      startMspTelemetry();
+      return null;
+    }
+
     // NOW set CLI mode flag - after telemetry stopped, before entering CLI
     servoCliModeActive = true;
 
@@ -2585,6 +2632,12 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
     // CRITICAL: Stop telemetry and wait for in-flight MSP responses to finish
     stopMspTelemetry();
     await new Promise(r => setTimeout(r, 500)); // Wait for pending MSP responses
+
+    // Re-check transport in case it was closed during the delay
+    if (!currentTransport?.isOpen) {
+      startMspTelemetry();
+      return null;
+    }
 
     // NOW set CLI mode flag - after telemetry stopped, before entering CLI
     servoCliModeActive = true;
@@ -3727,11 +3780,15 @@ export function registerMspHandlers(window: BrowserWindow): void {
   // Initialize CLI handlers
   initCliHandlers(window);
 
-  // Set up CLI mode change callback to pause/resume telemetry
+  // Set up CLI mode change callback to pause/resume telemetry and reset CLI flags
   setCliModeChangeCallback((cliActive) => {
     if (cliActive) {
       stopMspTelemetry();
     } else {
+      // CRITICAL: Reset ALL CLI mode flags when CLI mode is exited
+      // This ensures MSP operations aren't blocked by stale flags
+      servoCliModeActive = false;
+      tuningCliModeActive = false;
       startMspTelemetry();
     }
   });
@@ -3799,6 +3856,12 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_CALIBRATE_ACC, async () => calibrateAcc());
   ipcMain.handle(IPC_CHANNELS.MSP_CALIBRATE_MAG, async () => calibrateMag());
   ipcMain.handle(IPC_CHANNELS.MSP_REBOOT, async () => reboot());
+
+  // CLI flag reset - resets all MSP CLI mode flags to unblock MSP operations
+  ipcMain.handle(IPC_CHANNELS.CLI_RESET_ALL_FLAGS, async () => {
+    resetMspCliFlags();
+    return true;
+  });
 
   // RC Control handlers (GCS arm/disarm, mode switching)
   ipcMain.handle(IPC_CHANNELS.MSP_SET_RAW_RC, async (_event, channels: number[]) => setRawRc(channels));
@@ -3884,6 +3947,7 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_CALIBRATE_ACC);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_CALIBRATE_MAG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_REBOOT);
+  ipcMain.removeHandler(IPC_CHANNELS.CLI_RESET_ALL_FLAGS);
 
   // RC Control handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_RAW_RC);
