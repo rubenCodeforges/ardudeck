@@ -1,43 +1,22 @@
 /**
  * ServoMixerTab
  *
- * iNav Servo Mixer configuration for fixed-wing aircraft.
- * Configure servo outputs, mixer rules, and control surface assignments.
+ * Servo Mixer configuration - tell the flight controller what each servo controls.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { CompactSlider } from '../ui/DraggableSlider';
 import { useServoWizardStore } from '../../stores/servo-wizard-store';
 import {
-  Plane,
-  ArrowUpDown,
-  ArrowLeftRight,
-  TriangleAlert,
-  ChevronUp,
+  Settings,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Save,
   ChevronDown,
-  PlaneLanding,
-  Info,
-  type LucideIcon,
+  ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
-
-// Platform type constants (from msp-ts)
-const PLATFORM_TYPE = {
-  MULTIROTOR: 0,
-  AIRPLANE: 1,
-  HELICOPTER: 2,
-  TRICOPTER: 3,
-  ROVER: 4,
-  BOAT: 5,
-} as const;
-
-const PLATFORM_NAMES: Record<number, string> = {
-  [PLATFORM_TYPE.MULTIROTOR]: 'Multirotor',
-  [PLATFORM_TYPE.AIRPLANE]: 'Airplane',
-  [PLATFORM_TYPE.HELICOPTER]: 'Helicopter',
-  [PLATFORM_TYPE.TRICOPTER]: 'Tricopter',
-  [PLATFORM_TYPE.ROVER]: 'Rover',
-  [PLATFORM_TYPE.BOAT]: 'Boat',
-};
 
 // Types matching msp-ts
 interface MSPServoConfig {
@@ -59,104 +38,141 @@ interface MSPServoMixerRule {
   box: number;
 }
 
-const SERVO_INPUT_SOURCE_NAMES: Record<number, string> = {
-  0: 'Stabilized Roll',
-  1: 'Stabilized Pitch',
-  2: 'Stabilized Yaw',
-  3: 'Stabilized Throttle',
-  4: 'RC Roll',
-  5: 'RC Pitch',
-  6: 'RC Yaw',
-  7: 'RC Throttle',
+// Human-readable input source names
+const INPUT_SOURCE_NAMES: Record<number, string> = {
+  0: 'Roll',
+  1: 'Pitch',
+  2: 'Yaw',
+  3: 'Throttle',
+  4: 'RC Roll (raw)',
+  5: 'RC Pitch (raw)',
+  6: 'RC Yaw (raw)',
+  7: 'RC Throttle (raw)',
   8: 'AUX 1',
   9: 'AUX 2',
   10: 'AUX 3',
   11: 'AUX 4',
   12: 'Gimbal Pitch',
   13: 'Gimbal Roll',
-  14: 'Flaperon',
+  14: 'Flap input',
   15: 'Headtracker',
-  16: 'Manual RC',
 };
 
-// Common fixed-wing servo presets
-interface ServoPreset {
+// Servo function presets - what the servo is connected to
+interface ServoFunction {
+  id: string;
   name: string;
-  icon: LucideIcon;
-  color: string;
   description: string;
+  color: string; // gradient + border classes
+  activeColor: string; // when selected
   rules: { inputSource: number; rate: number }[];
 }
 
-const SERVO_PRESETS: Record<string, ServoPreset> = {
-  aileron: {
+const SERVO_FUNCTIONS: ServoFunction[] = [
+  {
+    id: 'aileron',
     name: 'Aileron',
-    icon: Plane,
-    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30',
-    description: 'Standard aileron setup',
-    rules: [
-      { inputSource: 0, rate: 100 }, // Stabilized Roll
-    ],
+    description: 'Responds to Roll',
+    color: 'bg-gradient-to-br from-blue-500/25 to-blue-600/15 border-blue-500/40 hover:border-blue-400/60',
+    activeColor: 'bg-gradient-to-br from-blue-500/40 to-blue-600/30 border-blue-400 text-blue-200',
+    rules: [{ inputSource: 0, rate: 100 }],
   },
-  elevator: {
+  {
+    id: 'elevator',
     name: 'Elevator',
-    icon: ArrowUpDown,
-    color: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30',
-    description: 'Standard elevator setup',
-    rules: [
-      { inputSource: 1, rate: 100 }, // Stabilized Pitch
-    ],
+    description: 'Responds to Pitch',
+    color: 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/15 border-emerald-500/40 hover:border-emerald-400/60',
+    activeColor: 'bg-gradient-to-br from-emerald-500/40 to-emerald-600/30 border-emerald-400 text-emerald-200',
+    rules: [{ inputSource: 1, rate: 100 }],
   },
-  rudder: {
+  {
+    id: 'rudder',
     name: 'Rudder',
-    icon: ArrowLeftRight,
-    color: 'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30',
-    description: 'Standard rudder setup',
+    description: 'Responds to Yaw',
+    color: 'bg-gradient-to-br from-purple-500/25 to-purple-600/15 border-purple-500/40 hover:border-purple-400/60',
+    activeColor: 'bg-gradient-to-br from-purple-500/40 to-purple-600/30 border-purple-400 text-purple-200',
+    rules: [{ inputSource: 2, rate: 100 }],
+  },
+  {
+    id: 'elevon_l',
+    name: 'Elevon (Left)',
+    description: 'Roll + Pitch combined',
+    color: 'bg-gradient-to-br from-cyan-500/25 to-cyan-600/15 border-cyan-500/40 hover:border-cyan-400/60',
+    activeColor: 'bg-gradient-to-br from-cyan-500/40 to-cyan-600/30 border-cyan-400 text-cyan-200',
     rules: [
-      { inputSource: 2, rate: 100 }, // Stabilized Yaw
+      { inputSource: 0, rate: 100 },
+      { inputSource: 1, rate: 100 },
     ],
   },
-  elevon: {
-    name: 'Elevon L',
-    icon: ChevronUp,
-    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30',
-    description: 'Flying wing - left side',
+  {
+    id: 'elevon_r',
+    name: 'Elevon (Right)',
+    description: 'Roll (rev) + Pitch',
+    color: 'bg-gradient-to-br from-cyan-500/25 to-cyan-600/15 border-cyan-500/40 hover:border-cyan-400/60',
+    activeColor: 'bg-gradient-to-br from-cyan-500/40 to-cyan-600/30 border-cyan-400 text-cyan-200',
     rules: [
-      { inputSource: 0, rate: 100 },  // Roll
-      { inputSource: 1, rate: 100 },  // Pitch
+      { inputSource: 0, rate: -100 },
+      { inputSource: 1, rate: 100 },
     ],
   },
-  elevonRight: {
-    name: 'Elevon R',
-    icon: ChevronDown,
-    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30',
-    description: 'Flying wing - right side',
+  {
+    id: 'vtail_l',
+    name: 'V-Tail (Left)',
+    description: 'Pitch + Yaw mixed',
+    color: 'bg-gradient-to-br from-amber-500/25 to-amber-600/15 border-amber-500/40 hover:border-amber-400/60',
+    activeColor: 'bg-gradient-to-br from-amber-500/40 to-amber-600/30 border-amber-400 text-amber-200',
     rules: [
-      { inputSource: 0, rate: -100 }, // Roll (inverted)
-      { inputSource: 1, rate: 100 },  // Pitch
+      { inputSource: 1, rate: 100 },
+      { inputSource: 2, rate: -50 },
     ],
   },
-  vtail: {
-    name: 'V-Tail',
-    icon: TriangleAlert,
-    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30',
-    description: 'V-tail mixer',
+  {
+    id: 'vtail_r',
+    name: 'V-Tail (Right)',
+    description: 'Pitch + Yaw (rev)',
+    color: 'bg-gradient-to-br from-amber-500/25 to-amber-600/15 border-amber-500/40 hover:border-amber-400/60',
+    activeColor: 'bg-gradient-to-br from-amber-500/40 to-amber-600/30 border-amber-400 text-amber-200',
     rules: [
-      { inputSource: 1, rate: 100 },  // Pitch
-      { inputSource: 2, rate: 50 },   // Yaw
+      { inputSource: 1, rate: 100 },
+      { inputSource: 2, rate: 50 },
     ],
   },
-  flaperon: {
+  {
+    id: 'flaperon',
     name: 'Flaperon',
-    icon: PlaneLanding,
-    color: 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30',
-    description: 'Aileron with flap function',
+    description: 'Aileron + flap input',
+    color: 'bg-gradient-to-br from-rose-500/25 to-rose-600/15 border-rose-500/40 hover:border-rose-400/60',
+    activeColor: 'bg-gradient-to-br from-rose-500/40 to-rose-600/30 border-rose-400 text-rose-200',
     rules: [
-      { inputSource: 0, rate: 100 },  // Roll
-      { inputSource: 14, rate: 50 },  // Flaperon input
+      { inputSource: 0, rate: 100 },
+      { inputSource: 14, rate: 50 },
     ],
   },
-};
+  {
+    id: 'gimbal_pan',
+    name: 'Gimbal Pan',
+    description: 'Camera left/right',
+    color: 'bg-gradient-to-br from-indigo-500/25 to-indigo-600/15 border-indigo-500/40 hover:border-indigo-400/60',
+    activeColor: 'bg-gradient-to-br from-indigo-500/40 to-indigo-600/30 border-indigo-400 text-indigo-200',
+    rules: [{ inputSource: 13, rate: 100 }],
+  },
+  {
+    id: 'gimbal_tilt',
+    name: 'Gimbal Tilt',
+    description: 'Camera up/down',
+    color: 'bg-gradient-to-br from-indigo-500/25 to-indigo-600/15 border-indigo-500/40 hover:border-indigo-400/60',
+    activeColor: 'bg-gradient-to-br from-indigo-500/40 to-indigo-600/30 border-indigo-400 text-indigo-200',
+    rules: [{ inputSource: 12, rate: 100 }],
+  },
+  {
+    id: 'aux_control',
+    name: 'AUX Channel',
+    description: 'Direct AUX 1 control',
+    color: 'bg-gradient-to-br from-slate-400/25 to-slate-500/15 border-slate-400/40 hover:border-slate-300/60',
+    activeColor: 'bg-gradient-to-br from-slate-400/40 to-slate-500/30 border-slate-300 text-slate-200',
+    rules: [{ inputSource: 8, rate: 100 }],
+  },
+];
 
 interface Props {
   modified: boolean;
@@ -171,12 +187,10 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [selectedServo, setSelectedServo] = useState<number>(0);
   const [pollingEnabled, setPollingEnabled] = useState(false);
+  const [showAllServos, setShowAllServos] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Get platform type from servo wizard store
   const { msp2PlatformType } = useServoWizardStore();
-  const platformType = msp2PlatformType ?? PLATFORM_TYPE.AIRPLANE;
-  const isAirplanePlatform = platformType === PLATFORM_TYPE.AIRPLANE;
-  const platformName = PLATFORM_NAMES[platformType] ?? 'Unknown';
 
   // Load servo configuration
   const loadConfig = useCallback(async () => {
@@ -184,19 +198,13 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     setError(null);
     try {
       const configs = await window.electronAPI.mspGetServoConfigs();
-      if (configs) {
-        setServoConfigs(configs as MSPServoConfig[]);
-      }
+      if (configs) setServoConfigs(configs as MSPServoConfig[]);
 
       const mixer = await window.electronAPI.mspGetServoMixer();
-      if (mixer) {
-        setMixerRules(mixer as MSPServoMixerRule[]);
-      }
+      if (mixer) setMixerRules(mixer as MSPServoMixerRule[]);
 
       const values = await window.electronAPI.mspGetServoValues();
-      if (values) {
-        setServoValues(values);
-      }
+      if (values) setServoValues(values);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load servo config');
     } finally {
@@ -204,29 +212,24 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     }
   }, []);
 
-  // Poll servo values for live feedback
-  useEffect(() => {
-    if (!pollingEnabled) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const values = await window.electronAPI.mspGetServoValues();
-        if (values) {
-          setServoValues(values);
-        }
-      } catch {
-        // Silently ignore polling errors
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [pollingEnabled]);
-
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
 
-  // Update servo config
+  // Poll servo values
+  useEffect(() => {
+    if (!pollingEnabled) return;
+    const interval = setInterval(async () => {
+      try {
+        const values = await window.electronAPI.mspGetServoValues();
+        if (values) setServoValues(values);
+      } catch {
+        /* ignore */
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [pollingEnabled]);
+
   const updateServoConfig = (index: number, updates: Partial<MSPServoConfig>) => {
     setServoConfigs((prev) => {
       const next = [...prev];
@@ -236,7 +239,6 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     setModified(true);
   };
 
-  // Update mixer rule
   const updateMixerRule = (index: number, updates: Partial<MSPServoMixerRule>) => {
     setMixerRules((prev) => {
       const next = [...prev];
@@ -246,36 +248,22 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     setModified(true);
   };
 
-  // Add new mixer rule
   const addMixerRule = (servoIndex: number) => {
     setMixerRules((prev) => [
       ...prev,
-      {
-        targetChannel: servoIndex,
-        inputSource: 0,
-        rate: 100,
-        speed: 0,
-        min: 0,
-        max: 0,
-        box: 0,
-      },
+      { targetChannel: servoIndex, inputSource: 0, rate: 100, speed: 0, min: 0, max: 0, box: 0 },
     ]);
     setModified(true);
   };
 
-  // Remove mixer rule
   const removeMixerRule = (index: number) => {
     setMixerRules((prev) => prev.filter((_, i) => i !== index));
     setModified(true);
   };
 
-  // Save all changes
   const saveAll = async () => {
     setError(null);
     try {
-      console.log('[ServoMixer] Saving servo configs...');
-
-      // Save servo configs
       for (let i = 0; i < servoConfigs.length; i++) {
         const success = await window.electronAPI.mspSetServoConfig(i, servoConfigs[i]);
         if (!success) {
@@ -284,39 +272,24 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
         }
       }
 
-      // Save mixer rules (may fail on old iNav - that's OK)
-      console.log('[ServoMixer] Saving mixer rules...');
       for (let i = 0; i < mixerRules.length; i++) {
-        const success = await window.electronAPI.mspSetServoMixer(i, mixerRules[i]);
-        if (!success) {
-          console.log(`[ServoMixer] Mixer rule ${i} save skipped (may not be supported)`);
-          // Don't fail - old iNav doesn't support MSP2 mixer commands
-        }
+        await window.electronAPI.mspSetServoMixer(i, mixerRules[i]);
       }
 
-      // Save to EEPROM
-      console.log('[ServoMixer] Saving to EEPROM...');
       const eepromSuccess = await window.electronAPI.mspSaveEeprom();
       if (!eepromSuccess) {
-        setError('Servo config sent but EEPROM save failed');
+        setError('Config sent but EEPROM save failed');
         return;
       }
-
-      console.log('[ServoMixer] Saved successfully');
       setModified(false);
     } catch (err) {
-      console.error('[ServoMixer] Save error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save');
     }
   };
 
-  // Apply preset to selected servo
-  const applyPreset = (preset: keyof typeof SERVO_PRESETS) => {
-    const p = SERVO_PRESETS[preset];
-    // Remove existing rules for this servo
+  const applyFunction = (func: ServoFunction) => {
     const existingRules = mixerRules.filter((r) => r.targetChannel !== selectedServo);
-    // Add new rules from preset
-    const newRules = p.rules.map((rule) => ({
+    const newRules = func.rules.map((rule) => ({
       targetChannel: selectedServo,
       inputSource: rule.inputSource,
       rate: rule.rate,
@@ -329,11 +302,73 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     setModified(true);
   };
 
-  // Get rules for a specific servo
+  const clearServoRules = () => {
+    setMixerRules((prev) => prev.filter((r) => r.targetChannel !== selectedServo));
+    setModified(true);
+  };
+
   const getRulesForServo = (servoIndex: number) => {
-    return mixerRules
+    const maxServo = servoConfigs.length - 1;
+    const maxInputSource = Object.keys(INPUT_SOURCE_NAMES).length - 1; // 15 (Headtracker)
+
+    // First filter valid rules
+    const validRules = mixerRules
       .map((rule, idx) => ({ ...rule, originalIndex: idx }))
-      .filter((r) => r.targetChannel === servoIndex);
+      .filter((r) =>
+        r.targetChannel === servoIndex &&
+        r.targetChannel >= 0 &&
+        r.targetChannel <= maxServo &&
+        r.inputSource >= 0 &&
+        r.inputSource <= maxInputSource && // Filter out garbage data (255, etc.)
+        r.rate !== 0 // Zero rate = no effect, likely garbage
+      );
+
+    // Deduplicate: keep only first rule per unique (inputSource, rate sign) combo
+    // Multiple identical rules = garbage EEPROM data
+    const seen = new Set<string>();
+    return validRules.filter((r) => {
+      const key = `${r.inputSource}:${r.rate < 0 ? 'neg' : 'pos'}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const getServosWithRules = () => {
+    // Filter out invalid servo indices (255 = unassigned, or >= actual servo count)
+    // Also filter out rules with invalid inputSource or zero rate
+    const maxServo = servoConfigs.length - 1;
+    const maxInputSource = Object.keys(INPUT_SOURCE_NAMES).length - 1;
+    const validRules = mixerRules.filter(
+      (r) =>
+        r.targetChannel >= 0 &&
+        r.targetChannel <= maxServo &&
+        r.inputSource >= 0 &&
+        r.inputSource <= maxInputSource &&
+        r.rate !== 0
+    );
+    return [...new Set(validRules.map((r) => r.targetChannel))].sort((a, b) => a - b);
+  };
+
+  // Describe what a servo does based on its rules
+  const describeServoFunction = (servoIndex: number): string => {
+    const rules = getRulesForServo(servoIndex);
+    if (rules.length === 0) return 'Not configured';
+
+    const inputs = rules.map((r) => {
+      const name = INPUT_SOURCE_NAMES[r.inputSource] || `Input ${r.inputSource}`;
+      if (r.rate < 0) return `${name} (rev)`;
+      return name;
+    });
+
+    return inputs.join(' + ');
+  };
+
+  const getVisibleServos = () => {
+    if (showAllServos) return servoConfigs.map((_, idx) => idx);
+    const withRules = getServosWithRules();
+    const base = [0, 1, 2, 3];
+    return [...new Set([...base, ...withRules])].sort((a, b) => a - b);
   };
 
   if (loading) {
@@ -341,7 +376,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mb-2 mx-auto" />
-          <p className="text-gray-400">Loading servo configuration...</p>
+          <p className="text-zinc-400">Loading servo configuration...</p>
         </div>
       </div>
     );
@@ -349,127 +384,205 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
 
   const currentConfig = servoConfigs[selectedServo];
   const currentRules = getRulesForServo(selectedServo);
+  const visibleServos = getVisibleServos();
+  const hasHiddenServos = servoConfigs.length > visibleServos.length;
+  const servosWithRules = getServosWithRules();
 
   return (
-    <div className="space-y-6">
-      {/* Header Info */}
-      <div className="bg-blue-500/10 rounded-xl border border-blue-500/30 p-4 flex items-start gap-4">
-        <span className="text-2xl">🛫</span>
-        <div>
-          <p className="text-blue-400 font-medium">Servo Mixer (iNav) — Fixed-Wing Only</p>
-          <p className="text-sm text-zinc-400 mt-1">
-            Configure how your servos respond to flight controller commands.
-            <strong className="text-zinc-300"> Click a preset button</strong> (Aileron, Elevator, etc.) to quickly set up common control surfaces.
-          </p>
-          <div className="mt-2 text-xs text-zinc-500 space-y-1">
-            <p><span className="text-blue-400">✈️ Aileron</span> — Wing surfaces that roll the plane left/right</p>
-            <p><span className="text-blue-400">↕️ Elevator</span> — Tail surface that pitches nose up/down</p>
-            <p><span className="text-blue-400">↔️ Rudder</span> — Tail surface that yaws left/right</p>
-            <p><span className="text-blue-400">🔺🔻 Elevons</span> — Flying wing combo (roll + pitch on same surface)</p>
-            <p><span className="text-blue-400">V V-Tail</span> — Combined elevator/rudder for V-tail planes</p>
-          </div>
-        </div>
+    <div className="space-y-4">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-medium text-zinc-100">Servo Mixer</h2>
+        <p className="text-sm text-zinc-500">
+          Tell the flight controller what each servo is connected to
+        </p>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-xl">⚠️</span>
-          <p className="text-sm text-red-400">{error}</p>
-          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <p className="text-sm text-red-400 flex-1">{error}</p>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
             ×
           </button>
         </div>
       )}
 
       {/* Servo Selector */}
-      <div className="flex gap-2">
-        {servoConfigs.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setSelectedServo(idx)}
-            className={`px-4 py-2 rounded-lg transition-all ${
-              selectedServo === idx
-                ? 'bg-blue-500/20 border border-blue-500/50 text-blue-400'
-                : 'bg-zinc-800/50 border border-zinc-700 text-zinc-400 hover:border-zinc-600'
-            }`}
-          >
-            <div className="text-sm font-medium">Servo {idx}</div>
-            <div className="text-xs text-zinc-500">{servoValues[idx] || 1500} us</div>
-          </button>
-        ))}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-zinc-500 uppercase tracking-wide">Select Servo</span>
+          {servoConfigs.length > 4 && (
+            <button
+              onClick={() => setShowAllServos(!showAllServos)}
+              className={`text-xs flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+                showAllServos
+                  ? 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+              }`}
+            >
+              {showAllServos ? (
+                <>
+                  <ChevronDown className="w-3 h-3" />
+                  Hide unused
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="w-3 h-3" />
+                  Show all {servoConfigs.length}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {visibleServos.map((idx) => {
+            const hasRules = servosWithRules.includes(idx);
+            const description = describeServoFunction(idx);
+            return (
+              <button
+                key={idx}
+                onClick={() => setSelectedServo(idx)}
+                className={`relative px-3 py-2 rounded-lg transition-all text-left min-w-[80px] ${
+                  selectedServo === idx
+                    ? 'bg-blue-500/20 border border-blue-500/50 text-blue-400'
+                    : hasRules
+                      ? 'bg-zinc-800 border border-zinc-600 text-zinc-300 hover:border-zinc-500'
+                      : 'bg-zinc-800/50 border border-zinc-700/50 text-zinc-500 hover:border-zinc-600'
+                }`}
+              >
+                <div className="text-xs font-medium">Servo {idx}</div>
+                <div className="text-[10px] opacity-70 truncate max-w-[100px]">{description}</div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {currentConfig && (
-        <div className="grid grid-cols-2 gap-6">
-          {/* Servo Settings */}
-          <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <span className="text-xl">⚙️</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left: What is this servo? */}
+          <div className="bg-gradient-to-br from-blue-500/10 to-indigo-600/5 rounded-xl border border-blue-500/20 p-4 space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-blue-200">
+                What is Servo {selectedServo} connected to?
+              </h3>
+              <p className="text-xs text-blue-300/60 mt-0.5">
+                Select the control surface or function this servo controls
+              </p>
+            </div>
+
+            {/* Function buttons */}
+            <div className="grid grid-cols-3 gap-2">
+              {SERVO_FUNCTIONS.map((func) => {
+                // Check if this function matches current rules
+                const isActive =
+                  currentRules.length === func.rules.length &&
+                  func.rules.every((fr) =>
+                    currentRules.some((cr) => cr.inputSource === fr.inputSource && cr.rate === fr.rate)
+                  );
+
+                return (
+                  <button
+                    key={func.id}
+                    onClick={() => applyFunction(func)}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      isActive ? func.activeColor : `${func.color} text-zinc-300`
+                    }`}
+                  >
+                    <div className="text-xs font-medium">{func.name}</div>
+                    <div className="text-[10px] opacity-60 mt-0.5">{func.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Clear button */}
+            {currentRules.length > 0 && (
+              <button
+                onClick={clearServoRules}
+                className="w-full py-2 text-xs text-blue-300/50 hover:text-blue-200 hover:bg-blue-500/10 rounded transition-colors"
+              >
+                Clear - this servo does nothing
+              </button>
+            )}
+
+            {/* Current configuration summary */}
+            {currentRules.length > 0 && (
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-xs text-blue-300/60">Current configuration:</p>
+                <p className="text-sm text-blue-100 mt-1">
+                  Servo {selectedServo} responds to <strong className="text-blue-200">{describeServoFunction(selectedServo)}</strong>
+                </p>
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-white">Servo {selectedServo} Settings</h3>
-                <p className="text-xs text-zinc-500">PWM output limits</p>
+            )}
+          </div>
+
+          {/* Right: Servo limits + Advanced */}
+          <div className="space-y-4">
+            {/* Servo Limits */}
+            <div className="bg-gradient-to-br from-emerald-500/10 to-teal-600/5 rounded-xl border border-emerald-500/20 p-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-emerald-200">Servo Limits</h3>
+                  <p className="text-xs text-emerald-300/60">Adjust travel range if needed</p>
+                </div>
               </div>
-            </div>
 
-            {/* PWM Visualization */}
-            <div className="relative h-8 bg-zinc-800 rounded-lg overflow-hidden">
-              <div
-                className="absolute h-full bg-blue-500/30"
-                style={{
-                  left: `${((currentConfig.min - 750) / 1500) * 100}%`,
-                  width: `${((currentConfig.max - currentConfig.min) / 1500) * 100}%`,
-                }}
-              />
-              <div
-                className="absolute w-1 h-full bg-blue-400"
-                style={{
-                  left: `${((servoValues[selectedServo] || currentConfig.middle - 750) / 1500) * 100}%`,
-                }}
-              />
-              <div
-                className="absolute w-0.5 h-full bg-green-400"
-                style={{
-                  left: `${((currentConfig.middle - 750) / 1500) * 100}%`,
-                }}
-              />
-            </div>
+              {/* PWM Visualization */}
+              <div className="relative h-5 bg-zinc-800 rounded overflow-hidden">
+                <div
+                  className="absolute h-full bg-blue-500/30"
+                  style={{
+                    left: `${((currentConfig.min - 750) / 1500) * 100}%`,
+                    width: `${((currentConfig.max - currentConfig.min) / 1500) * 100}%`,
+                  }}
+                />
+                <div
+                  className="absolute w-0.5 h-full bg-blue-400"
+                  style={{
+                    left: `${(((servoValues[selectedServo] || currentConfig.middle) - 750) / 1500) * 100}%`,
+                  }}
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <CompactSlider
-                label="Min (μs)"
-                value={currentConfig.min}
-                onChange={(v) => updateServoConfig(selectedServo, { min: v })}
-                min={750}
-                max={2250}
-                step={10}
-                color="#3B82F6"
-              />
-              <CompactSlider
-                label="Max (μs)"
-                value={currentConfig.max}
-                onChange={(v) => updateServoConfig(selectedServo, { max: v })}
-                min={750}
-                max={2250}
-                step={10}
-                color="#3B82F6"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <CompactSlider
-                label="Center (μs)"
-                value={currentConfig.middle}
-                onChange={(v) => updateServoConfig(selectedServo, { middle: v })}
-                min={750}
-                max={2250}
-                step={10}
-                color="#22C55E"
-              />
-              <div>
+              <div className="grid grid-cols-2 gap-3">
                 <CompactSlider
-                  label="Rate (%)"
+                  label="Min"
+                  value={currentConfig.min}
+                  onChange={(v) => updateServoConfig(selectedServo, { min: v })}
+                  min={750}
+                  max={2250}
+                  step={10}
+                  color="#3B82F6"
+                />
+                <CompactSlider
+                  label="Max"
+                  value={currentConfig.max}
+                  onChange={(v) => updateServoConfig(selectedServo, { max: v })}
+                  min={750}
+                  max={2250}
+                  step={10}
+                  color="#3B82F6"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <CompactSlider
+                  label="Center"
+                  value={currentConfig.middle}
+                  onChange={(v) => updateServoConfig(selectedServo, { middle: v })}
+                  min={750}
+                  max={2250}
+                  step={10}
+                  color="#22C55E"
+                />
+                <CompactSlider
+                  label="Rate %"
                   value={currentConfig.rate}
                   onChange={(v) => updateServoConfig(selectedServo, { rate: v })}
                   min={-125}
@@ -477,136 +590,91 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                   step={5}
                   color="#A855F7"
                 />
-                <p className="text-[10px] text-zinc-500 mt-1">Negative = reversed</p>
               </div>
-            </div>
 
-            <div>
-              <label className="text-xs text-zinc-400 block mb-1">Forward Channel</label>
-              <select
-                value={currentConfig.forwardFromChannel}
-                onChange={(e) => updateServoConfig(selectedServo, { forwardFromChannel: Number(e.target.value) })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value={255}>Disabled</option>
-                {[0, 1, 2, 3, 4, 5, 6, 7].map((ch) => (
-                  <option key={ch} value={ch}>
-                    AUX {ch + 1}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Live polling toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pollingEnabled}
-                onChange={(e) => setPollingEnabled(e.target.checked)}
-                className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500/50"
-              />
-              <span className="text-sm text-zinc-400">Live servo position</span>
-            </label>
-          </div>
-
-          {/* Mixer Rules */}
-          <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <span className="text-xl">🎛️</span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-white">Quick Setup Presets</h3>
-                  <p className="text-xs text-zinc-500">Click a button to configure this servo</p>
-                </div>
-              </div>
-              <button
-                onClick={() => addMixerRule(selectedServo)}
-                className="px-3 py-1.5 text-xs bg-zinc-700 text-zinc-400 rounded-lg hover:bg-zinc-600 hover:text-zinc-300"
-                title="Advanced: manually add a mixer rule"
-              >
-                + Add Rule
-              </button>
-            </div>
-
-            {/* Platform warning for non-airplane setups */}
-            {!isAirplanePlatform && (
-              <div className="p-2 bg-amber-500/20 border border-amber-500/30 rounded-lg flex items-center gap-2 text-amber-400 text-xs">
-                <Info className="w-4 h-4 flex-shrink-0" />
-                <span>
-                  Platform is <strong>{platformName}</strong>. These presets are for fixed-wing aircraft.
-                  Use manual rules below for {platformName.toLowerCase()} servo configuration.
+              <div className="flex items-center justify-between pt-2 border-t border-emerald-500/20">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pollingEnabled}
+                    onChange={(e) => setPollingEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded border-emerald-500/40 bg-emerald-900/30 text-emerald-500"
+                  />
+                  <span className="text-xs text-emerald-300/60">Live position</span>
+                </label>
+                <span className="text-xs text-emerald-300/50 font-mono">
+                  {servoValues[selectedServo] || 1500} µs
                 </span>
               </div>
-            )}
+            </div>
 
-            {/* Presets - Grid layout with colored cards (airplane-specific) */}
-            {isAirplanePlatform && (
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(SERVO_PRESETS).map(([key, preset]) => {
-                  const Icon = preset.icon;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => applyPreset(key as keyof typeof SERVO_PRESETS)}
-                      className={`px-3 py-2 text-xs rounded-lg border transition-all flex items-center gap-2 ${preset.color}`}
-                      title={preset.description}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium">{preset.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {/* Advanced: Custom rules */}
+            <div className="bg-gradient-to-br from-purple-500/10 to-violet-600/5 rounded-xl border border-purple-500/20">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full p-3 flex items-center justify-between text-left"
+              >
+                <span className="text-xs text-purple-300/70">Advanced: Custom mixing rules</span>
+                {showAdvanced ? (
+                  <ChevronDown className="w-4 h-4 text-purple-400/60" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-purple-400/60" />
+                )}
+              </button>
 
-            {/* Rules list */}
-            <div className="space-y-2">
-              {currentRules.length === 0 ? (
-                <div className="text-center py-4 text-zinc-500 text-sm">
-                  No mixer rules for this servo
-                </div>
-              ) : (
-                currentRules.map((rule) => (
-                  <div
-                    key={rule.originalIndex}
-                    className="bg-zinc-800/50 rounded-lg p-3 flex items-center gap-3"
-                  >
-                    <select
-                      value={rule.inputSource}
-                      onChange={(e) =>
-                        updateMixerRule(rule.originalIndex, { inputSource: Number(e.target.value) })
-                      }
-                      className="flex-1 px-2 py-1.5 bg-zinc-700 border border-zinc-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
-                    >
-                      {Object.entries(SERVO_INPUT_SOURCE_NAMES).map(([val, name]) => (
-                        <option key={val} value={val}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        value={rule.rate}
-                        onChange={(e) =>
-                          updateMixerRule(rule.originalIndex, { rate: Number(e.target.value) })
-                        }
-                        className="w-full px-2 py-1.5 bg-zinc-700 border border-zinc-600 rounded text-sm text-white text-center focus:outline-none focus:border-blue-500"
-                        min={-125}
-                        max={125}
-                      />
-                      <p className="text-[9px] text-zinc-500 text-center">Rate %</p>
-                    </div>
+              {showAdvanced && (
+                <div className="p-4 pt-0 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-purple-300/50">
+                      For complex setups. Most users don't need this.
+                    </p>
                     <button
-                      onClick={() => removeMixerRule(rule.originalIndex)}
-                      className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded"
+                      onClick={() => addMixerRule(selectedServo)}
+                      className="p-1 text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/10 rounded"
                     >
-                      🗑️
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
-                ))
+
+                  {currentRules.length === 0 ? (
+                    <p className="text-xs text-purple-300/50 text-center py-2">No rules</p>
+                  ) : (
+                    currentRules.map((rule) => (
+                      <div key={rule.originalIndex} className="flex items-center gap-2">
+                        <select
+                          value={rule.inputSource}
+                          onChange={(e) =>
+                            updateMixerRule(rule.originalIndex, { inputSource: Number(e.target.value) })
+                          }
+                          className="flex-1 px-2 py-1.5 bg-purple-900/30 border border-purple-500/30 rounded text-xs text-purple-200"
+                        >
+                          {Object.entries(INPUT_SOURCE_NAMES).map(([val, name]) => (
+                            <option key={val} value={val}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          value={rule.rate}
+                          onChange={(e) =>
+                            updateMixerRule(rule.originalIndex, { rate: Number(e.target.value) })
+                          }
+                          className="w-16 px-2 py-1.5 bg-purple-900/30 border border-purple-500/30 rounded text-xs text-purple-200 text-center"
+                          min={-125}
+                          max={125}
+                        />
+                        <span className="text-[10px] text-purple-300/50">%</span>
+                        <button
+                          onClick={() => removeMixerRule(rule.originalIndex)}
+                          className="p-1 text-purple-400/50 hover:text-red-400 rounded"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -614,23 +682,25 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       )}
 
       {/* Action buttons */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-between items-center pt-2">
         <button
           onClick={loadConfig}
-          className="px-4 py-2 text-sm bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700"
+          className="flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
         >
+          <RefreshCw className="w-3.5 h-3.5" />
           Refresh
         </button>
         <button
           onClick={saveAll}
           disabled={!modified}
-          className={`px-4 py-2 text-sm rounded-lg ${
+          className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${
             modified
-              ? 'bg-blue-500 text-white hover:bg-blue-400'
+              ? 'bg-blue-600 text-white hover:bg-blue-500'
               : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
           }`}
         >
-          Save Servo Config
+          <Save className="w-4 h-4" />
+          Save
         </button>
       </div>
     </div>

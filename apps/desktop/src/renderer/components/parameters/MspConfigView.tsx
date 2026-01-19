@@ -39,6 +39,38 @@ import {
   Film,
   RotateCcw,
   Rocket,
+  Power,
+  Square,
+  Sunrise,
+  ArrowUpFromLine,
+  Navigation,
+  Move3d,
+  RotateCw,
+  Camera,
+  Home,
+  MapPin,
+  Joystick,
+  Volume2,
+  Lightbulb,
+  Flashlight,
+  Monitor,
+  Satellite,
+  Settings2,
+  Package,
+  ShieldAlert,
+  Map,
+  Wind,
+  Lock,
+  PlaneTakeoff,
+  Scissors,
+  Plane,
+  OctagonX,
+  KeyRound,
+  Turtle,
+  Waypoints,
+  CloudSun,
+  Wand2,
+  HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -242,19 +274,42 @@ const PID_PRESETS: Record<string, {
 };
 
 // Mode definitions with beginner-friendly explanations
-const MODE_INFO: Record<number, { name: string; icon: string; description: string; color: string; beginner: string }> = {
-  0: { name: 'ARM', icon: '⚡', description: 'Enable motors', color: 'bg-red-500', beginner: 'SAFETY SWITCH - Arms/disarms your quad. Always have this on a switch!' },
-  1: { name: 'ANGLE', icon: '📐', description: 'Self-level', color: 'bg-blue-500', beginner: 'BEGINNER MODE - Quad stays level automatically. Best for learning!' },
-  2: { name: 'HORIZON', icon: '🌅', description: 'Hybrid mode', color: 'bg-cyan-500', beginner: 'TRAINING MODE - Self-levels at center, allows flips at full stick' },
-  3: { name: 'MAG', icon: '🧭', description: 'Heading hold', color: 'bg-purple-500', beginner: 'Holds compass direction - useful for FPV orientation' },
-  5: { name: 'PASSTHRU', icon: '➡️', description: 'Direct control', color: 'bg-gray-500', beginner: 'Bypasses flight controller for fixed-wing' },
-  6: { name: 'FAILSAFE', icon: '🛡️', description: 'Emergency', color: 'bg-orange-500', beginner: 'EMERGENCY MODE - Activates if signal lost' },
-  7: { name: 'GPS RESCUE', icon: '🛰️', description: 'Return home', color: 'bg-green-500', beginner: 'Automatically flies back to home position (needs GPS)' },
-  13: { name: 'BEEPER', icon: '🔊', description: 'Find quad', color: 'bg-yellow-500', beginner: 'Makes your quad beep - great for finding it in grass!' },
-  19: { name: 'OSD DISABLE', icon: '📺', description: 'Hide OSD', color: 'bg-gray-500', beginner: 'Turns off on-screen display' },
-  26: { name: 'BLACKBOX', icon: '📦', description: 'Logging', color: 'bg-pink-500', beginner: 'Records flight data for tuning analysis' },
-  28: { name: 'AIRMODE', icon: '💨', description: 'Full control', color: 'bg-cyan-500', beginner: 'Keeps PID active at zero throttle - enables better flips' },
-  36: { name: 'PARALYZE', icon: '🔒', description: 'Lock FC', color: 'bg-red-500', beginner: 'Completely locks quad - use for transport' },
+// iNav permanent box IDs (from fc_msp_box.c) - must match mode-presets.ts BOX_ID
+const MODE_INFO: Record<number, { name: string; icon: LucideIcon; description: string; color: string; beginner: string }> = {
+  0: { name: 'ARM', icon: Power, description: 'Enable motors', color: 'bg-red-500', beginner: 'SAFETY SWITCH - Arms/disarms your aircraft. Always have this on a switch!' },
+  1: { name: 'ANGLE', icon: Square, description: 'Self-level', color: 'bg-blue-500', beginner: 'BEGINNER MODE - Aircraft stays level automatically. Best for learning!' },
+  2: { name: 'HORIZON', icon: Sunrise, description: 'Hybrid mode', color: 'bg-cyan-500', beginner: 'TRAINING MODE - Self-levels at center, allows flips at full stick' },
+  3: { name: 'NAV ALTHOLD', icon: ArrowUpFromLine, description: 'Hold altitude', color: 'bg-teal-500', beginner: 'Holds current altitude using barometer/GPS. Throttle controls climb/descent rate.' },
+  5: { name: 'HEADING HOLD', icon: Navigation, description: 'Hold heading', color: 'bg-emerald-500', beginner: 'Maintains current magnetic heading. Useful for flying straight lines.' },
+  6: { name: 'HEADFREE', icon: Move3d, description: 'Headless mode', color: 'bg-purple-500', beginner: 'Stick directions are relative to pilot, not aircraft - useful for beginners' },
+  7: { name: 'HEADADJ', icon: RotateCw, description: 'Head adjust', color: 'bg-gray-500', beginner: 'Resets headfree reference direction' },
+  8: { name: 'CAMSTAB', icon: Camera, description: 'Camera stabilization', color: 'bg-indigo-500', beginner: 'Stabilizes camera servo output' },
+  10: { name: 'NAV RTH', icon: Home, description: 'Return to home', color: 'bg-green-500', beginner: 'Return To Home - Aircraft will climb to safe altitude and fly back to launch point. Essential safety feature!' },
+  11: { name: 'NAV POSHOLD', icon: MapPin, description: 'Hold position', color: 'bg-cyan-500', beginner: 'GPS position hold - Aircraft will stay in place. Great for aerial photography or when you need to stop.' },
+  12: { name: 'MANUAL', icon: Joystick, description: 'Direct control', color: 'bg-rose-500', beginner: 'Direct servo/motor control without stabilization. For experienced pilots only!' },
+  13: { name: 'BEEPER', icon: Volume2, description: 'Find aircraft', color: 'bg-yellow-500', beginner: 'Makes your aircraft beep - great for finding it in grass!' },
+  15: { name: 'LEDS OFF', icon: Lightbulb, description: 'Disable LEDs', color: 'bg-gray-500', beginner: 'Turns off LED strip' },
+  16: { name: 'LIGHTS', icon: Flashlight, description: 'Navigation lights', color: 'bg-amber-500', beginner: 'Turns on navigation lights' },
+  19: { name: 'OSD OFF', icon: Monitor, description: 'Hide OSD', color: 'bg-gray-500', beginner: 'Turns off on-screen display' },
+  20: { name: 'TELEMETRY', icon: Satellite, description: 'Telemetry output', color: 'bg-blue-500', beginner: 'Enables telemetry transmission' },
+  21: { name: 'AUTO TUNE', icon: Settings2, description: 'PID autotune', color: 'bg-violet-500', beginner: 'Automatically tunes PID values during flight' },
+  26: { name: 'BLACKBOX', icon: Package, description: 'Flight logging', color: 'bg-pink-500', beginner: 'Records flight data for tuning analysis' },
+  27: { name: 'FAILSAFE', icon: ShieldAlert, description: 'Emergency', color: 'bg-orange-500', beginner: 'EMERGENCY MODE - Triggers failsafe behavior. Normally activated automatically when signal is lost.' },
+  28: { name: 'NAV WP', icon: Map, description: 'Waypoint mission', color: 'bg-indigo-500', beginner: 'Execute uploaded waypoint mission. Aircraft will fly to each waypoint automatically.' },
+  29: { name: 'AIRMODE', icon: Wind, description: 'Full control at zero throttle', color: 'bg-cyan-500', beginner: 'Keeps full stick authority even at zero throttle. Essential for freestyle tricks and flips.' },
+  30: { name: 'HOME RESET', icon: RotateCcw, description: 'Reset home position', color: 'bg-red-400', beginner: 'Sets current position as new home point. Use when you relocate during a session.' },
+  31: { name: 'GCS NAV', icon: Gamepad2, description: 'Ground control', color: 'bg-purple-500', beginner: 'Allow ground control station to send navigation commands (fly-to-here, etc).' },
+  34: { name: 'FLAPERON', icon: PlaneTakeoff, description: 'Flaps mode', color: 'bg-amber-500', beginner: 'Activates flaperons for slower landing approach. Ailerons droop down to act as flaps.' },
+  35: { name: 'TURN ASSIST', icon: RotateCw, description: 'Coordinated turns', color: 'bg-lime-500', beginner: 'Auto-coordinates rudder with ailerons for smooth turns. Great for fixed-wing beginners.' },
+  36: { name: 'NAV LAUNCH', icon: Rocket, description: 'Auto launch', color: 'bg-orange-500', beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.' },
+  37: { name: 'SERVO AUTOTRIM', icon: Scissors, description: 'Auto trim servos', color: 'bg-gray-500', beginner: 'Automatically adjusts servo trim during flight' },
+  45: { name: 'NAV CRUISE', icon: Plane, description: 'Cruise control', color: 'bg-sky-500', beginner: 'Fixed-wing cruise mode - Maintains heading and altitude. Perfect for long-range flights.' },
+  46: { name: 'MC BRAKING', icon: OctagonX, description: 'Multirotor braking', color: 'bg-red-500', beginner: 'Aggressive braking when releasing sticks on multirotor' },
+  51: { name: 'PREARM', icon: KeyRound, description: 'Pre-arm check', color: 'bg-yellow-600', beginner: 'Safety switch - must be enabled before arming. Prevents accidental arm.' },
+  52: { name: 'TURTLE', icon: Turtle, description: 'Flip over', color: 'bg-stone-500', beginner: 'Flip crashed aircraft back over using motor spin. For multirotors only.' },
+  53: { name: 'COURSE HOLD', icon: Compass, description: 'Hold course', color: 'bg-violet-500', beginner: 'Maintains current heading while allowing altitude control. Good for flying in a straight line.' },
+  55: { name: 'WP PLANNER', icon: Waypoints, description: 'Mission planner', color: 'bg-fuchsia-500', beginner: 'Enable in-flight waypoint planning via stick commands.' },
+  56: { name: 'SOARING', icon: CloudSun, description: 'Thermal soaring', color: 'bg-sky-400', beginner: 'Enables thermal detection and circling for gliders' },
 };
 
 
@@ -767,11 +822,12 @@ function ModeChannelIndicator({
 }) {
   const info = MODE_INFO[mode.boxId] || {
     name: `Mode ${mode.boxId}`,
-    icon: '❓',
+    icon: HelpCircle,
     description: 'Unknown',
     color: 'bg-gray-500',
     beginner: 'Unknown mode',
   };
+  const IconComponent = info.icon;
 
   // Calculate positions
   const rangeStart = ((mode.rangeStart - 900) / 1200) * 100;
@@ -786,8 +842,8 @@ function ModeChannelIndicator({
         : 'bg-gray-800/30 border-gray-700/30'
     }`}>
       <div className="flex items-center gap-3 mb-3">
-        <div className={`w-10 h-10 rounded-lg ${info.color} flex items-center justify-center text-xl`}>
-          {info.icon}
+        <div className={`w-10 h-10 rounded-lg ${info.color}/20 flex items-center justify-center`}>
+          <IconComponent className={`w-5 h-5 ${info.color.replace('bg-', 'text-')}`} />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -952,6 +1008,7 @@ function ModesTabContent() {
     lastSaveSuccess,
   } = useModesWizardStore();
 
+  const { connectionState } = useConnectionStore();
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   // Load modes and start RC polling on mount
@@ -973,14 +1030,10 @@ function ModesTabContent() {
   const getRcValue = (auxChannel: number) => rcChannels[auxChannel + 4] || 1500;
 
   // Mode info for display
-  const MODE_DISPLAY: Record<number, { name: string; icon: string; color: string }> = {
-    0: { name: 'ARM', icon: '⚡', color: 'bg-red-500' },
-    1: { name: 'ANGLE', icon: '📐', color: 'bg-blue-500' },
-    2: { name: 'HORIZON', icon: '🌅', color: 'bg-purple-500' },
-    7: { name: 'GPS RESCUE', icon: '🛟', color: 'bg-green-500' },
-    13: { name: 'BEEPER', icon: '🔊', color: 'bg-yellow-500' },
-    28: { name: 'AIRMODE', icon: '🌀', color: 'bg-cyan-500' },
-  };
+  // Use MODE_INFO for consistency - derive simplified display from it
+  const MODE_DISPLAY: Record<number, { name: string; Icon: LucideIcon; color: string }> = Object.fromEntries(
+    Object.entries(MODE_INFO).map(([id, info]) => [id, { name: info.name, Icon: info.icon, color: info.color }])
+  );
 
   const AUX_NAMES = ['AUX 1', 'AUX 2', 'AUX 3', 'AUX 4'];
 
@@ -998,12 +1051,14 @@ function ModesTabContent() {
 
       {/* Header with view toggle */}
       <div className="flex items-center justify-between">
-        <div className="bg-purple-500/10 rounded-xl border border-purple-500/30 p-4 flex items-center gap-4 flex-1 mr-4">
-          <span className="text-2xl">🎮</span>
+        <div className="bg-gradient-to-br from-purple-500/15 to-fuchsia-600/10 rounded-xl border border-purple-500/30 p-4 flex items-center gap-4 flex-1 mr-4">
+          <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+            <Radio className="w-6 h-6 text-purple-400" />
+          </div>
           <div>
-            <p className="text-purple-400 font-medium">Flight Modes</p>
-            <p className="text-sm text-gray-400">
-              Configure how your quad responds to switch positions on your transmitter.
+            <p className="text-purple-300 font-medium">Flight Modes</p>
+            <p className="text-sm text-purple-200/60">
+              Configure how your {connectionState.vehicleType?.toLowerCase() || 'aircraft'} responds to switch positions on your transmitter.
             </p>
           </div>
         </div>
@@ -1046,8 +1101,10 @@ function ModesTabContent() {
             </div>
           ) : originalModes.length === 0 ? (
             /* No modes configured - show wizard prompt */
-            <div className="text-center py-12 bg-zinc-800/30 rounded-xl border border-zinc-700/50">
-              <span className="text-5xl mb-4 block">🎮</span>
+            <div className="text-center py-12 bg-gradient-to-br from-zinc-800/50 to-zinc-900/30 rounded-xl border border-zinc-700/50">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                <Radio className="w-8 h-8 text-purple-400" />
+              </div>
               <h3 className="text-lg font-medium text-zinc-300 mb-2">No Modes Configured</h3>
               <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
                 Your flight controller doesn't have any modes set up yet.
@@ -1057,59 +1114,127 @@ function ModesTabContent() {
                 onClick={openWizard}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
               >
-                <span>🧙</span>
+                <Wand2 className="w-4 h-4" />
                 Start Setup Wizard
               </button>
             </div>
           ) : (
             /* Show existing modes */
             <div className="space-y-4">
+              {/* Helper tip for newbies */}
+              <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <HelpCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-200/80">
+                  <strong>How this works:</strong> Each mode is triggered by a switch on your transmitter.
+                  Move your switches to see which modes activate. The bar shows where your switch needs to be.
+                </p>
+              </div>
+
               {/* Mode cards */}
               <div className="grid gap-3">
                 {originalModes.map((mode, idx) => {
+                  const modeInfo = MODE_INFO[mode.boxId];
                   const info = MODE_DISPLAY[mode.boxId] || {
                     name: `Mode ${mode.boxId}`,
-                    icon: '❓',
+                    Icon: HelpCircle,
                     color: 'bg-zinc-500'
                   };
+                  const IconComponent = info.Icon;
                   const rcValue = getRcValue(mode.auxChannel);
                   const isActive = rcValue >= mode.rangeStart && rcValue <= mode.rangeEnd;
+
+                  // Calculate position percentages for the visual bar (900-2100 range)
+                  const rangeMin = 900;
+                  const rangeMax = 2100;
+                  const totalRange = rangeMax - rangeMin;
+                  const activeStartPercent = ((mode.rangeStart - rangeMin) / totalRange) * 100;
+                  const activeWidthPercent = ((mode.rangeEnd - mode.rangeStart) / totalRange) * 100;
+                  const currentPercent = ((rcValue - rangeMin) / totalRange) * 100;
+
+                  // Friendly switch names
+                  const switchNames = ['Switch A', 'Switch B', 'Switch C', 'Switch D', 'Switch E', 'Switch F', 'Switch G', 'Switch H'];
+                  const switchName = switchNames[mode.auxChannel] || `Switch ${mode.auxChannel + 1}`;
+
+                  // Convert PWM range to friendly position description
+                  const getPositionName = (pwm: number) => {
+                    if (pwm <= 1100) return 'Low';
+                    if (pwm <= 1400) return 'Low-Mid';
+                    if (pwm <= 1600) return 'Mid';
+                    if (pwm <= 1800) return 'Mid-High';
+                    return 'High';
+                  };
+                  const startPos = getPositionName(mode.rangeStart);
+                  const endPos = getPositionName(mode.rangeEnd);
+                  const positionDescription = startPos === endPos
+                    ? `${startPos} position`
+                    : `${startPos} to ${endPos}`;
 
                   return (
                     <div
                       key={idx}
                       className={`p-4 rounded-xl border transition-all ${
                         isActive
-                          ? 'bg-zinc-800/80 border-green-500/50 shadow-lg shadow-green-500/10'
-                          : 'bg-zinc-800/50 border-zinc-700/50'
+                          ? 'bg-gradient-to-r from-green-500/10 to-transparent border-green-500/50 shadow-lg shadow-green-500/10'
+                          : 'bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600/50'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      {/* Top row: Icon, Name, Status */}
+                      <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-lg ${info.color}/20 flex items-center justify-center`}>
-                            <span className="text-xl">{info.icon}</span>
+                            <IconComponent className={`w-5 h-5 ${info.color.replace('bg-', 'text-')}`} />
                           </div>
                           <div>
                             <div className="font-medium text-zinc-100">{info.name}</div>
-                            <div className="text-xs text-zinc-500">
-                              {AUX_NAMES[mode.auxChannel] || `AUX ${mode.auxChannel + 1}`} · {mode.rangeStart}-{mode.rangeEnd}
+                            <div className="text-xs text-zinc-400">
+                              {modeInfo?.beginner || modeInfo?.description || 'Flight mode'}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-xs text-zinc-500">Current</div>
-                            <div className="font-mono text-sm text-yellow-400">{rcValue}</div>
+                        {isActive ? (
+                          <span className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded-full animate-pulse">
+                            ACTIVE
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 text-xs bg-zinc-700/50 text-zinc-500 rounded-full">
+                            INACTIVE
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Visual range bar */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-zinc-500">
+                          <span>{switchName}</span>
+                          <span className={isActive ? 'text-green-400' : 'text-zinc-400'}>
+                            Position: {rcValue < 1300 ? 'Low' : rcValue < 1700 ? 'Mid' : 'High'}
+                          </span>
+                        </div>
+                        <div className="relative h-4 bg-zinc-700/50 rounded-full overflow-hidden">
+                          {/* Active zone highlight */}
+                          <div
+                            className={`absolute top-0 bottom-0 rounded-full ${isActive ? 'bg-green-500/40' : 'bg-blue-500/20'}`}
+                            style={{
+                              left: `${activeStartPercent}%`,
+                              width: `${activeWidthPercent}%`
+                            }}
+                          />
+                          {/* Current position marker */}
+                          <div
+                            className={`absolute top-0 bottom-0 w-1.5 rounded-full transition-all ${
+                              isActive ? 'bg-green-400 shadow-lg shadow-green-400/50' : 'bg-yellow-400'
+                            }`}
+                            style={{ left: `calc(${currentPercent}% - 3px)` }}
+                          />
+                          {/* Low/Mid/High labels */}
+                          <div className="absolute inset-0 flex items-center justify-between px-2 text-[10px] text-zinc-500 pointer-events-none">
+                            <span>Low</span>
+                            <span>Mid</span>
+                            <span>High</span>
                           </div>
-                          {isActive ? (
-                            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full animate-pulse">
-                              ACTIVE
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs bg-zinc-700/50 text-zinc-500 rounded-full">
-                              INACTIVE
-                            </span>
-                          )}
+                        </div>
+                        <div className="text-[10px] text-zinc-600 text-center">
+                          Activates when {switchName} is in {positionDescription}
                         </div>
                       </div>
                     </div>
@@ -1123,7 +1248,7 @@ function ModesTabContent() {
                   onClick={openWizard}
                   className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-lg text-sm transition-colors flex items-center gap-2"
                 >
-                  <span>🧙</span>
+                  <Wand2 className="w-4 h-4" />
                   Reconfigure with Wizard
                 </button>
               </div>

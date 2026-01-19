@@ -11,6 +11,7 @@ import { MODE_INFO, AUX_CHANNELS, ALL_MODES } from './presets/mode-presets';
 import ModeCard from './shared/ModeCard';
 import RangeSlider from './shared/RangeSlider';
 import AuxChannelPicker from './shared/AuxChannelPicker';
+import { Plus, RotateCcw, RefreshCw, X, Radio, HelpCircle } from 'lucide-react';
 
 interface AddModeModalProps {
   isOpen: boolean;
@@ -45,9 +46,7 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-zinc-200 rounded"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -71,29 +70,32 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
             </div>
           ) : (
             <div className="space-y-1">
-              {filteredModes.map((mode) => (
-                <button
-                  key={mode.boxId}
-                  onClick={() => {
-                    onAdd(mode.boxId);
-                    onClose();
-                  }}
-                  className="w-full px-3 py-3 text-left hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-3"
-                >
-                  <div className={`w-8 h-8 rounded-lg ${mode.color}/20 flex items-center justify-center`}>
-                    <span className="text-lg">{mode.icon}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-zinc-200">{mode.name}</div>
-                    <div className="text-xs text-zinc-500">{mode.description}</div>
-                  </div>
-                  {mode.essential && (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
-                      ESSENTIAL
-                    </span>
-                  )}
-                </button>
-              ))}
+              {filteredModes.map((mode) => {
+                const IconComponent = mode.icon;
+                return (
+                  <button
+                    key={mode.boxId}
+                    onClick={() => {
+                      onAdd(mode.boxId);
+                      onClose();
+                    }}
+                    className="w-full px-3 py-3 text-left hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-3"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${mode.color}/20 flex items-center justify-center`}>
+                      <IconComponent className={`w-4 h-4 ${mode.color.replace('bg-', 'text-')}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-zinc-200">{mode.name}</div>
+                      <div className="text-xs text-zinc-500">{mode.description}</div>
+                    </div>
+                    {mode.essential && (
+                      <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
+                        ESSENTIAL
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -132,6 +134,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
   if (!isOpen || !mode) return null;
 
   const info = MODE_INFO[mode.boxId];
+  const IconComponent = info?.icon || HelpCircle;
   const rcValue = rcChannels[auxChannel + 4] || 1500;
 
   return (
@@ -139,17 +142,17 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
       <div className="bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{info?.icon || '❓'}</span>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg ${info?.color || 'bg-zinc-500'}/20 flex items-center justify-center`}>
+              <IconComponent className={`w-4 h-4 ${(info?.color || 'bg-zinc-500').replace('bg-', 'text-')}`} />
+            </div>
             <h3 className="font-semibold text-zinc-100">{info?.name || `Mode ${mode.boxId}`}</h3>
           </div>
           <button
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-zinc-200 rounded"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -241,15 +244,14 @@ export const ModesAdvancedEditor: React.FC = () => {
               onClick={() => setShowAddModal(true)}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+              <Plus className="w-4 h-4" />
               Add Mode
             </button>
             <button
               onClick={resetToOriginal}
-              className="px-3 py-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50 text-sm rounded-lg transition-colors"
+              className="px-3 py-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50 text-sm rounded-lg transition-colors flex items-center gap-1.5"
             >
+              <RotateCcw className="w-3.5 h-3.5" />
               Reset
             </button>
           </div>
@@ -259,9 +261,7 @@ export const ModesAdvancedEditor: React.FC = () => {
               disabled={isLoading}
               className="px-3 py-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50 text-sm rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               {isLoading ? 'Loading...' : 'Reload'}
             </button>
             {/* Unsaved changes indicator - saves via main "Save All Changes" button */}
@@ -291,15 +291,18 @@ export const ModesAdvancedEditor: React.FC = () => {
           </div>
         ) : pendingModes.length === 0 ? (
           <div className="text-center py-8">
-            <span className="text-4xl mb-4 block">🎮</span>
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
+              <Radio className="w-8 h-8 text-purple-400" />
+            </div>
             <h3 className="text-lg font-medium text-zinc-300 mb-2">No modes configured</h3>
             <p className="text-sm text-zinc-500 max-w-md mx-auto mb-4">
-              Add modes to control how your quad responds to switch positions.
+              Add modes to control how your aircraft responds to switch positions.
             </p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm flex items-center gap-2 mx-auto"
             >
+              <Plus className="w-4 h-4" />
               Add Your First Mode
             </button>
           </div>

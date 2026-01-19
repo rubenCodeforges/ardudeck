@@ -68,17 +68,28 @@ export const ConfigReviewStep: React.FC = () => {
     `Yaw Rate: ${selectedPreset.rates.yawRate}`,
   ];
 
-  // Mode names lookup
+  // Mode names lookup (iNav permanent box IDs)
   const modeNames: Record<number, string> = {
     0: 'ARM',
     1: 'ANGLE',
     2: 'HORIZON',
+    3: 'NAV ALTHOLD',
+    5: 'HEADING HOLD',
     10: 'NAV RTH',
     11: 'NAV POSHOLD',
+    12: 'MANUAL',
     13: 'BEEPER',
+    27: 'FAILSAFE',
     28: 'NAV WP',
     29: 'AIRMODE',
+    30: 'HOME RESET',
+    31: 'GCS NAV',
+    35: 'TURN ASSIST',
     36: 'NAV LAUNCH',
+    45: 'NAV CRUISE',
+    51: 'PREARM',
+    52: 'TURTLE',
+    53: 'COURSE HOLD',
   };
 
   const modeItems = selectedPreset.modes.map((mode) => {

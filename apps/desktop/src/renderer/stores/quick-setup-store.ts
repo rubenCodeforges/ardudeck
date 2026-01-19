@@ -468,7 +468,15 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
           platformChangeError: null,
         });
         useConnectionStore.getState().setPlatformChangeInProgress(false);
-        // Flow continues in the UI component which will call nextStep()
+
+        // CRITICAL: Continue applying the preset after platform change
+        // The applyPreset() function was interrupted when platform mismatch was detected.
+        // Now that platform is changed, we must call it again to complete the setup.
+        console.log('[QuickSetup] Platform change complete, continuing with preset application');
+        // Small delay to let UI update before starting apply process
+        await new Promise((r) => setTimeout(r, 500));
+        // Call applyPreset to continue the setup
+        get().applyPreset();
       } else {
         // Failed to reconnect - show error
         set({
@@ -621,15 +629,18 @@ async function applyPresetViaMsp(
   _get: () => QuickSetupState
 ): Promise<boolean> {
   // Determine if we need servo/motor mixer tasks
-  const hasServoMixer = preset.aircraft.servoMixerRules.length > 0;
+  // ALWAYS reset servo mixer to clear garbage data, even if preset has no rules
+  const hasServoMixerRules = preset.aircraft.servoMixerRules.length > 0;
   const hasMotorMixer = preset.aircraft.motorMixerRules.length > 0;
+  const isFixedWing = preset.category === 'fixed_wing';
 
   const tasks = [
     { name: 'Exiting CLI mode', status: 'pending' as const },
     { name: 'Checking platform', status: 'pending' as const },
     { name: 'Setting PIDs', status: 'pending' as const },
     { name: 'Setting Rates', status: 'pending' as const },
-    ...(hasServoMixer ? [{ name: 'Configuring servo mixer', status: 'pending' as const }] : []),
+    // Always include servo mixer task - either to configure or to reset
+    { name: isFixedWing ? 'Configuring servo mixer' : 'Clearing servo mixer', status: 'pending' as const },
     ...(hasMotorMixer ? [{ name: 'Configuring motor mixer', status: 'pending' as const }] : []),
     { name: 'Setting failsafe', status: 'pending' as const },
     { name: 'Clearing old modes', status: 'pending' as const },
@@ -738,154 +749,150 @@ async function applyPresetViaMsp(
     updateTask('completed');
     nextTask();
 
-    // 4. Servo Mixer (if applicable - fixed wing)
-    if (hasServoMixer) {
-      updateTask('in_progress');
-      const servoRules = preset.aircraft.servoMixerRules.map((rule) => ({
-        servoIndex: rule.servoIndex,
-        inputSource: rule.inputSource,
-        rate: rule.rate,
-      }));
-      const servoSuccess = await window.electronAPI?.mspSetServoMixerCli(servoRules);
-      if (!servoSuccess) {
-        console.warn('[QuickSetup] Servo mixer via CLI failed, trying MSP fallback');
-        // Fallback: try individual servo mixer rules
-        for (let i = 0; i < servoRules.length; i++) {
-          await window.electronAPI?.mspSetServoMixer(i, servoRules[i]);
-        }
+    // 4. Servo Mixer - ALWAYS reset to clear garbage data, then set new rules if fixed wing
+    updateTask('in_progress');
+
+    // CRITICAL: Reset ALL servo mixer rules first to clear garbage data
+    // iNav supports up to 64 servo mixer rules, but we'll clear the first 16 which covers most use cases
+    console.log('[QuickSetup] Clearing existing servo mixer rules...');
+    for (let i = 0; i < 16; i++) {
+      try {
+        await window.electronAPI?.mspSetServoMixer(i, {
+          targetChannel: 0,
+          inputSource: 0,
+          rate: 0, // Zero rate = disabled rule
+          speed: 0,
+          min: 0,
+          max: 0,
+          box: 0,
+        });
+        await new Promise((r) => setTimeout(r, 30)); // Small delay between commands
+      } catch {
+        // Ignore errors - some boards may have fewer rule slots
       }
-      updateTask('completed');
-      nextTask();
     }
+
+    // Set new rules from the preset (if any - fixed wing presets have rules)
+    if (hasServoMixerRules) {
+      console.log(`[QuickSetup] Setting ${preset.aircraft.servoMixerRules.length} servo mixer rules...`);
+      for (let i = 0; i < preset.aircraft.servoMixerRules.length; i++) {
+        const rule = preset.aircraft.servoMixerRules[i];
+        const mspRule = {
+          targetChannel: rule.servoIndex,
+          inputSource: rule.inputSource,
+          rate: rule.rate,
+          speed: 0,
+          min: 0,
+          max: 0,
+          box: 0, // Always active (no aux switch condition)
+        };
+        console.log(`[QuickSetup] Servo rule ${i}: servo=${mspRule.targetChannel}, input=${mspRule.inputSource}, rate=${mspRule.rate}`);
+        const success = await window.electronAPI?.mspSetServoMixer(i, mspRule);
+        if (!success) {
+          console.warn(`[QuickSetup] Failed to set servo mixer rule ${i}`);
+        }
+        await new Promise((r) => setTimeout(r, 30)); // Small delay between commands
+      }
+    } else {
+      console.log('[QuickSetup] No servo mixer rules to set (multirotor preset)');
+    }
+
+    updateTask('completed');
+    nextTask();
 
     // 5. Motor Mixer (if applicable)
     if (hasMotorMixer) {
       updateTask('in_progress');
+
+      // Build motor mixer rules array (indexed by motor number)
       const motorRules = preset.aircraft.motorMixerRules.map((rule) => ({
-        motorIndex: rule.motorIndex,
         throttle: rule.throttle,
         roll: rule.roll,
         pitch: rule.pitch,
         yaw: rule.yaw,
       }));
-      const motorSuccess = await window.electronAPI?.mspSetMotorMixerCli(motorRules);
+
+      console.log(`[QuickSetup] Setting ${motorRules.length} motor mixer rules...`);
+      const motorSuccess = await window.electronAPI?.mspSetMotorMixer(motorRules);
       if (!motorSuccess) {
-        console.warn('[QuickSetup] Motor mixer via CLI failed, trying MSP fallback');
-        // Fallback: try MSP motor mixer
-        const mspRules = motorRules.map((r) => ({
-          throttle: r.throttle,
-          roll: r.roll,
-          pitch: r.pitch,
-          yaw: r.yaw,
-        }));
-        await window.electronAPI?.mspSetMotorMixer(mspRules);
+        console.warn('[QuickSetup] Motor mixer MSP failed, skipping (will use defaults)');
+        // Don't try CLI fallback - it causes disconnection issues
       }
+
       updateTask('completed');
       nextTask();
     }
 
-    // Reset CLI flags before failsafe - servo/motor operations may have entered CLI mode
-    console.log('[QuickSetup] Resetting CLI mode flags before failsafe...');
-    try {
-      await window.electronAPI?.cliExitMode();
-      await window.electronAPI?.cliResetAllFlags();
-      await new Promise((r) => setTimeout(r, 300));
-    } catch {
-      // Ignore errors
-    }
-
-    // 6. Failsafe Configuration
-    // Try MSP first with read+merge, fallback to CLI if that fails
+    // 6. Failsafe Configuration - MSP only, skip CLI to avoid disconnection issues
     updateTask('in_progress');
     let failsafeSet = false;
-    try {
-      // Small delay to ensure connection is stable after previous operations
-      await new Promise((r) => setTimeout(r, 300));
 
-      // Try to read current config first
-      const currentFailsafe = await window.electronAPI?.mspGetFailsafeConfig();
-
-      // Prepare the config - use current values as base, or sensible defaults
-      const procedureValue = preset.failsafe.procedure === 'RTH' ? 2 : preset.failsafe.procedure === 'LAND' ? 0 : 1;
-      const failsafeConfig = {
-        // Base values - either from current config or safe defaults
-        failsafeDelay: currentFailsafe?.failsafeDelay ?? 10, // 1 second
-        failsafeOffDelay: currentFailsafe?.failsafeOffDelay ?? 20, // 2 seconds
-        failsafeThrottle: currentFailsafe?.failsafeThrottle ?? 1000,
-        failsafeKillSwitch: currentFailsafe?.failsafeKillSwitch ?? 0,
-        failsafeThrottleLowDelay: currentFailsafe?.failsafeThrottleLowDelay ?? 100, // 10 seconds
-        failsafeProcedure: procedureValue,
-        failsafeRecoveryDelay: currentFailsafe?.failsafeRecoveryDelay ?? 10,
-        failsafeFwRollAngle: currentFailsafe?.failsafeFwRollAngle ?? 0,
-        failsafeFwPitchAngle: currentFailsafe?.failsafeFwPitchAngle ?? 50, // 5 deg nose down
-        failsafeFwYawRate: currentFailsafe?.failsafeFwYawRate ?? 0,
-        failsafeStickMotionThreshold: currentFailsafe?.failsafeStickMotionThreshold ?? 50,
-        failsafeMinDistance: currentFailsafe?.failsafeMinDistance ?? 0,
-        failsafeMinDistanceProcedure: currentFailsafe?.failsafeMinDistanceProcedure ?? 0,
-        // Override with preset values
-        ...(preset.failsafe.delay !== undefined && { failsafeDelay: preset.failsafe.delay * 10 }),
-        ...(preset.failsafe.offDelay !== undefined && { failsafeOffDelay: preset.failsafe.offDelay * 10 }),
-        ...(preset.failsafe.throttleLow !== undefined && { failsafeThrottle: preset.failsafe.throttleLow }),
-      };
-
-      if (currentFailsafe) {
-        console.log('[QuickSetup] Read current failsafe config, merging preset values');
-      } else {
-        console.log('[QuickSetup] Could not read failsafe config, using defaults');
-      }
-
-      const failsafeSuccess = await window.electronAPI?.mspSetFailsafeConfig(failsafeConfig);
-      if (failsafeSuccess) {
-        console.log('[QuickSetup] Failsafe config set via MSP');
-        failsafeSet = true;
-      }
-    } catch (err) {
-      console.warn('[QuickSetup] MSP failsafe failed:', err);
-    }
-
-    // CLI fallback if MSP failed
-    if (!failsafeSet) {
-      console.log('[QuickSetup] Trying CLI fallback for failsafe...');
+    // Check connection before failsafe
+    const connBeforeFailsafe = useConnectionStore.getState().connectionState;
+    if (!connBeforeFailsafe.isConnected) {
+      console.warn('[QuickSetup] Connection lost before failsafe, skipping...');
+    } else {
       try {
-        // Enter CLI mode first
-        await window.electronAPI?.cliEnterMode();
-        await new Promise((r) => setTimeout(r, 500));
+        // Small delay to ensure connection is stable
+        await new Promise((r) => setTimeout(r, 200));
 
-        const procedureName = preset.failsafe.procedure; // 'RTH', 'LAND', or 'DROP'
-        const commands = [
-          `set failsafe_procedure = ${procedureName}`,
-          `set failsafe_delay = ${preset.failsafe.delay * 10}`,
-          `set failsafe_off_delay = ${preset.failsafe.offDelay * 10}`,
-          `set failsafe_throttle = ${preset.failsafe.throttleLow}`,
-        ];
-        for (const cmd of commands) {
-          await window.electronAPI?.cliSendRaw(cmd + '\n');
-          await new Promise((r) => setTimeout(r, 50));
+        // Try to read current config first
+        const currentFailsafe = await window.electronAPI?.mspGetFailsafeConfig();
+
+        // Prepare the config - use current values as base, or sensible defaults
+        const procedureValue = preset.failsafe.procedure === 'RTH' ? 2 : preset.failsafe.procedure === 'LAND' ? 0 : 1;
+        const failsafeConfig = {
+          // Base values - either from current config or safe defaults
+          failsafeDelay: currentFailsafe?.failsafeDelay ?? 10,
+          failsafeOffDelay: currentFailsafe?.failsafeOffDelay ?? 20,
+          failsafeThrottle: currentFailsafe?.failsafeThrottle ?? 1000,
+          failsafeKillSwitch: currentFailsafe?.failsafeKillSwitch ?? 0,
+          failsafeThrottleLowDelay: currentFailsafe?.failsafeThrottleLowDelay ?? 100,
+          failsafeProcedure: procedureValue,
+          failsafeRecoveryDelay: currentFailsafe?.failsafeRecoveryDelay ?? 10,
+          failsafeFwRollAngle: currentFailsafe?.failsafeFwRollAngle ?? 0,
+          failsafeFwPitchAngle: currentFailsafe?.failsafeFwPitchAngle ?? 50,
+          failsafeFwYawRate: currentFailsafe?.failsafeFwYawRate ?? 0,
+          failsafeStickMotionThreshold: currentFailsafe?.failsafeStickMotionThreshold ?? 50,
+          failsafeMinDistance: currentFailsafe?.failsafeMinDistance ?? 0,
+          failsafeMinDistanceProcedure: currentFailsafe?.failsafeMinDistanceProcedure ?? 0,
+          // Override with preset values
+          ...(preset.failsafe.delay !== undefined && { failsafeDelay: preset.failsafe.delay * 10 }),
+          ...(preset.failsafe.offDelay !== undefined && { failsafeOffDelay: preset.failsafe.offDelay * 10 }),
+          ...(preset.failsafe.throttleLow !== undefined && { failsafeThrottle: preset.failsafe.throttleLow }),
+        };
+
+        if (currentFailsafe) {
+          console.log('[QuickSetup] Read current failsafe config, merging preset values');
+        } else {
+          console.log('[QuickSetup] Could not read failsafe config, using defaults');
         }
-        console.log('[QuickSetup] Failsafe set via CLI');
-        failsafeSet = true;
-      } catch (cliErr) {
-        console.warn('[QuickSetup] CLI failsafe also failed:', cliErr);
+
+        const failsafeSuccess = await window.electronAPI?.mspSetFailsafeConfig(failsafeConfig);
+        if (failsafeSuccess) {
+          console.log('[QuickSetup] Failsafe config set via MSP');
+          failsafeSet = true;
+        }
+      } catch (err) {
+        console.warn('[QuickSetup] MSP failsafe failed:', err);
       }
     }
 
     if (!failsafeSet) {
-      console.warn('[QuickSetup] Could not set failsafe config (both MSP and CLI failed), continuing anyway');
+      console.warn('[QuickSetup] Could not set failsafe config, continuing anyway (user can configure manually)');
     }
     updateTask('completed');
     nextTask();
 
-    // CRITICAL: Reset ALL CLI mode flags before mode operations
-    // Previous operations (servo mixer, motor mixer, failsafe) may have entered CLI mode.
-    // Reset ALL flags (both cli-handlers and msp-handlers) to ensure MSP operations work.
-    console.log('[QuickSetup] Resetting CLI mode flags before mode operations...');
-    try {
-      await window.electronAPI?.cliExitMode();
-      await window.electronAPI?.cliResetAllFlags();
-      await new Promise((r) => setTimeout(r, 500));
-    } catch {
-      // Ignore errors - flags should still be reset
+    // Check connection before modes - if lost, try to continue anyway
+    const connBeforeModes = useConnectionStore.getState().connectionState;
+    if (!connBeforeModes.isConnected) {
+      console.warn('[QuickSetup] Connection lost before mode configuration');
+      throw new Error('Connection lost during setup. Please reconnect and try again.');
     }
+
+    // Small delay to ensure stable connection
+    await new Promise((r) => setTimeout(r, 200));
 
     // 7. Clear old modes
     // Add small delay between operations to prevent MSP command pileup
@@ -968,7 +975,8 @@ async function applyPresetViaCli(
 
   const tasks = [
     { name: 'Sending CLI commands', status: 'pending' as const },
-    { name: 'Saving configuration', status: 'pending' as const },
+    { name: 'Saving & rebooting', status: 'pending' as const },
+    { name: 'Reconnecting', status: 'pending' as const },
   ];
 
   set({
@@ -1010,12 +1018,35 @@ async function applyPresetViaCli(
     }
     updateTask(0, 'completed');
 
-    // 2. Save configuration
+    // 2. Save configuration (causes reboot)
     updateTask(1, 'in_progress');
+    console.log('[QuickSetup CLI] Sending save command (will reboot)...');
     await window.electronAPI?.cliSendRaw('save\n');
-    // Wait for save to complete (FC reboots)
-    await new Promise((r) => setTimeout(r, 2000));
+    // Wait for save to complete and board to start rebooting
+    await new Promise((r) => setTimeout(r, 1000));
     updateTask(1, 'completed');
+
+    // 3. Try to reconnect after reboot
+    updateTask(2, 'in_progress');
+    console.log('[QuickSetup CLI] Board is rebooting, attempting reconnect...');
+
+    const reconnected = await reconnectWithRetry({
+      maxAttempts: 5,
+      attemptDelayMs: 2000,
+      initialDelayMs: 3000, // Legacy boards may need more time
+      onAttempt: (attempt, maxAttempts) => {
+        console.log(`[QuickSetup CLI] Reconnect attempt ${attempt}/${maxAttempts}`);
+      },
+    });
+
+    if (reconnected) {
+      console.log('[QuickSetup CLI] Reconnected successfully!');
+      updateTask(2, 'completed');
+    } else {
+      // Even if reconnect fails, the config was saved - just warn the user
+      console.warn('[QuickSetup CLI] Could not reconnect automatically, but config was saved');
+      updateTask(2, 'completed'); // Mark as completed anyway - config IS saved
+    }
 
     set({
       isApplying: false,
@@ -1025,6 +1056,7 @@ async function applyPresetViaCli(
     return true;
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'CLI apply failed';
+    console.error('[QuickSetup CLI] Error:', msg);
     set({
       isApplying: false,
       applyError: msg,

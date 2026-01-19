@@ -6,6 +6,8 @@
  */
 
 import React from 'react';
+import { MoveHorizontal, MoveVertical, ArrowUp, RotateCw, ToggleRight, Radio } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface TransmitterVisualizerProps {
   rcChannels: number[];
@@ -14,16 +16,16 @@ interface TransmitterVisualizerProps {
 }
 
 // Channel names and descriptions
-const CHANNEL_INFO = [
-  { name: 'Roll', icon: '↔️', description: 'Left stick horizontal' },
-  { name: 'Pitch', icon: '↕️', description: 'Left stick vertical' },
-  { name: 'Throttle', icon: '⬆️', description: 'Right stick vertical' },
-  { name: 'Yaw', icon: '🔄', description: 'Right stick horizontal' },
-  { name: 'AUX 1', icon: '🔘', description: 'Switch (usually ARM)' },
-  { name: 'AUX 2', icon: '🔘', description: 'Switch or 3-pos' },
-  { name: 'AUX 3', icon: '🔘', description: 'Additional switch' },
-  { name: 'AUX 4', icon: '🔘', description: 'Additional switch' },
-] as const;
+const CHANNEL_INFO: { name: string; Icon: LucideIcon; description: string }[] = [
+  { name: 'Roll', Icon: MoveHorizontal, description: 'Left stick horizontal' },
+  { name: 'Pitch', Icon: MoveVertical, description: 'Left stick vertical' },
+  { name: 'Throttle', Icon: ArrowUp, description: 'Right stick vertical' },
+  { name: 'Yaw', Icon: RotateCw, description: 'Right stick horizontal' },
+  { name: 'AUX 1', Icon: ToggleRight, description: 'Switch (usually ARM)' },
+  { name: 'AUX 2', Icon: ToggleRight, description: 'Switch or 3-pos' },
+  { name: 'AUX 3', Icon: ToggleRight, description: 'Additional switch' },
+  { name: 'AUX 4', Icon: ToggleRight, description: 'Additional switch' },
+];
 
 export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
   rcChannels,
@@ -39,9 +41,10 @@ export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
         const value = rcChannels[index] || 1500;
         const info = CHANNEL_INFO[index] || {
           name: `CH ${index + 1}`,
-          icon: '📡',
+          Icon: Radio,
           description: '',
         };
+        const IconComponent = info.Icon;
         const isDetected = channelsDetected[index] || false;
         const isStick = index < 4;
 
@@ -62,8 +65,8 @@ export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
             <div className="flex items-center gap-3">
               {/* Channel label */}
               <div className={`${compact ? 'w-16' : 'w-20'} flex-shrink-0`}>
-                <div className="flex items-center gap-1">
-                  <span className={compact ? 'text-xs' : 'text-sm'}>{info.icon}</span>
+                <div className="flex items-center gap-1.5">
+                  <IconComponent className={`${compact ? 'w-3 h-3' : 'w-4 h-4'} ${isDetected ? 'text-green-400' : 'text-zinc-500'}`} />
                   <span
                     className={`${compact ? 'text-xs' : 'text-sm'} font-medium ${
                       isDetected ? 'text-green-400' : 'text-zinc-300'

@@ -6,6 +6,13 @@
  */
 
 import type { MSPModeRange } from '@ardudeck/msp-ts';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Power, Square, Sunrise, Wind, ArrowUpFromLine, Home, MapPin, Map, Plane, Compass,
+  Rocket, Gamepad2, Volume2, ShieldAlert, Package, Satellite, Joystick, PlaneTakeoff,
+  RotateCw, RotateCcw, Waypoints, Navigation, KeyRound, Turtle, HelpCircle, Radio,
+  Baby, Sparkles, Trophy, Video
+} from 'lucide-react';
 
 // iNav permanent box IDs (from fc_msp_box.c)
 export const BOX_ID = {
@@ -71,7 +78,7 @@ export const MODE_INFO: Record<
   number,
   {
     name: string;
-    icon: string;
+    icon: LucideIcon;
     description: string;
     color: string;
     beginner: string;
@@ -80,25 +87,25 @@ export const MODE_INFO: Record<
 > = {
   [BOX_ID.ARM]: {
     name: 'ARM',
-    icon: '⚡',
+    icon: Power,
     description: 'Enable motors',
     color: 'bg-red-500',
     beginner:
-      'SAFETY SWITCH - Arms/disarms your quad motors. ALWAYS put this on a dedicated switch! When armed, propellers can spin at any moment.',
+      'SAFETY SWITCH - Arms/disarms your aircraft. ALWAYS put this on a dedicated switch! When armed, propellers can spin at any moment.',
     essential: true,
   },
   [BOX_ID.ANGLE]: {
     name: 'ANGLE',
-    icon: '📐',
+    icon: Square,
     description: 'Self-level',
     color: 'bg-blue-500',
     beginner:
-      'BEGINNER MODE - Your quad will automatically level itself when you release the sticks. Maximum tilt angle is limited. Perfect for learning to fly!',
+      'BEGINNER MODE - Your aircraft will automatically level itself when you release the sticks. Maximum tilt angle is limited. Perfect for learning to fly!',
     essential: true,
   },
   [BOX_ID.HORIZON]: {
     name: 'HORIZON',
-    icon: '🌅',
+    icon: Sunrise,
     description: 'Self-level + acro',
     color: 'bg-purple-500',
     beginner:
@@ -106,7 +113,7 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.AIRMODE]: {
     name: 'AIRMODE',
-    icon: '🌀',
+    icon: Wind,
     description: 'Full control at zero throttle',
     color: 'bg-cyan-500',
     beginner:
@@ -114,14 +121,14 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.NAV_ALTHOLD]: {
     name: 'NAV ALTHOLD',
-    icon: '📏',
+    icon: ArrowUpFromLine,
     description: 'Hold altitude',
     color: 'bg-teal-500',
     beginner: 'Holds current altitude using barometer/GPS. Throttle controls climb/descent rate.',
   },
   [BOX_ID.NAV_RTH]: {
     name: 'NAV RTH',
-    icon: '🏠',
+    icon: Home,
     description: 'Return to home',
     color: 'bg-green-500',
     beginner: 'Return To Home - Aircraft will climb to safe altitude and fly back to launch point. Essential safety feature!',
@@ -129,14 +136,14 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.NAV_POSHOLD]: {
     name: 'NAV POSHOLD',
-    icon: '📍',
+    icon: MapPin,
     description: 'Hold position',
     color: 'bg-cyan-500',
     beginner: 'GPS position hold - Aircraft will stay in place. Great for aerial photography or when you need to stop.',
   },
   [BOX_ID.NAV_WP]: {
     name: 'NAV WP',
-    icon: '🗺️',
+    icon: Map,
     description: 'Waypoint mission',
     color: 'bg-indigo-500',
     beginner: 'Execute uploaded waypoint mission. Aircraft will fly to each waypoint automatically.',
@@ -144,43 +151,43 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.NAV_CRUISE]: {
     name: 'NAV CRUISE',
-    icon: '✈️',
+    icon: Plane,
     description: 'Cruise control',
     color: 'bg-sky-500',
     beginner: 'Fixed-wing cruise mode - Maintains heading and altitude. Perfect for long-range flights.',
   },
   [BOX_ID.NAV_COURSE_HOLD]: {
     name: 'COURSE HOLD',
-    icon: '🧭',
+    icon: Compass,
     description: 'Hold course',
     color: 'bg-violet-500',
     beginner: 'Maintains current heading while allowing altitude control. Good for flying in a straight line.',
   },
   [BOX_ID.NAV_LAUNCH]: {
     name: 'NAV LAUNCH',
-    icon: '🚀',
+    icon: Rocket,
     description: 'Auto launch',
     color: 'bg-orange-500',
     beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.',
   },
   [BOX_ID.GCS_NAV]: {
     name: 'GCS NAV',
-    icon: '🎮',
+    icon: Gamepad2,
     description: 'Ground control',
     color: 'bg-purple-500',
     beginner: 'Allow ground control station to send navigation commands (fly-to-here, etc).',
   },
   [BOX_ID.BEEPER]: {
     name: 'BEEPER',
-    icon: '🔊',
-    description: 'Find my quad',
+    icon: Volume2,
+    description: 'Find aircraft',
     color: 'bg-yellow-500',
     beginner:
-      'FINDER - Makes your quad beep loudly to help you find it after a crash. Very useful when your quad lands in tall grass!',
+      'FINDER - Makes your aircraft beep loudly to help you find it after a crash. Very useful when it lands in tall grass!',
   },
   [BOX_ID.FAILSAFE]: {
     name: 'FAILSAFE',
-    icon: '🚨',
+    icon: ShieldAlert,
     description: 'Emergency landing',
     color: 'bg-orange-500',
     beginner:
@@ -188,7 +195,7 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.BLACKBOX]: {
     name: 'BLACKBOX',
-    icon: '📦',
+    icon: Package,
     description: 'Flight logging',
     color: 'bg-gray-500',
     beginner:
@@ -196,7 +203,7 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.VTXPITMODE]: {
     name: 'VTX PIT',
-    icon: '📡',
+    icon: Satellite,
     description: 'Low power video',
     color: 'bg-indigo-500',
     beginner:
@@ -204,59 +211,59 @@ export const MODE_INFO: Record<
   },
   [BOX_ID.MANUAL]: {
     name: 'MANUAL',
-    icon: '🕹️',
+    icon: Joystick,
     description: 'Direct control',
     color: 'bg-rose-500',
     beginner: 'Direct servo/motor control without stabilization. For experienced pilots only!',
   },
   [BOX_ID.FLAPERON]: {
     name: 'FLAPERON',
-    icon: '🛬',
+    icon: PlaneTakeoff,
     description: 'Flaps mode',
     color: 'bg-amber-500',
     beginner: 'Activates flaperons for slower landing approach. Ailerons droop down to act as flaps.',
   },
   [BOX_ID.TURN_ASSIST]: {
     name: 'TURN ASSIST',
-    icon: '↪️',
+    icon: RotateCw,
     description: 'Coordinated turns',
     color: 'bg-lime-500',
     beginner: 'Auto-coordinates rudder with ailerons for smooth turns. Great for fixed-wing beginners.',
   },
   [BOX_ID.HOME_RESET]: {
     name: 'HOME RESET',
-    icon: '🔄',
+    icon: RotateCcw,
     description: 'Reset home position',
     color: 'bg-red-400',
     beginner: 'Sets current position as new home point. Use when you relocate during a session.',
   },
   [BOX_ID.WP_PLANNER]: {
     name: 'WP PLANNER',
-    icon: '✏️',
+    icon: Waypoints,
     description: 'Mission planner',
     color: 'bg-fuchsia-500',
     beginner: 'Enable in-flight waypoint planning via stick commands.',
   },
   [BOX_ID.HEADING_HOLD]: {
     name: 'HEADING HOLD',
-    icon: '🧲',
+    icon: Navigation,
     description: 'Hold heading',
     color: 'bg-emerald-500',
     beginner: 'Maintains current magnetic heading. Useful for flying straight lines.',
   },
   [BOX_ID.PREARM]: {
     name: 'PREARM',
-    icon: '🔐',
+    icon: KeyRound,
     description: 'Pre-arm check',
     color: 'bg-yellow-600',
     beginner: 'Safety switch - must be enabled before arming. Prevents accidental arm.',
   },
   [BOX_ID.TURTLE]: {
     name: 'TURTLE',
-    icon: '🐢',
+    icon: Turtle,
     description: 'Flip over',
     color: 'bg-stone-500',
-    beginner: 'Flip crashed quad back over using motor spin. For multirotors only.',
+    beginner: 'Flip crashed aircraft back over using motor spin. For multirotors only.',
   },
 };
 
@@ -277,9 +284,9 @@ export const PRESETS: Record<string, ModePreset> = {
   beginner: {
     id: 'beginner',
     name: 'Beginner',
-    icon: '🐣',
+    icon: 'baby',
     description: 'Safe & simple - great for learning',
-    tip: 'Your quad will always stay level. Perfect for learning to hover and basic movements!',
+    tip: 'Your aircraft will always stay level. Perfect for learning to hover and basic movements!',
     gradient: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     modes: [
       // ARM on AUX1 high (1800-2100)
@@ -293,7 +300,7 @@ export const PRESETS: Record<string, ModePreset> = {
   freestyle: {
     id: 'freestyle',
     name: 'Freestyle',
-    icon: '🎭',
+    icon: 'sparkles',
     description: 'Balanced for tricks & flow',
     tip: 'Three-position switch on AUX2 gives you ANGLE/HORIZON/ACRO. Flip a switch to change your flying style!',
     gradient: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
@@ -313,9 +320,9 @@ export const PRESETS: Record<string, ModePreset> = {
   racing: {
     id: 'racing',
     name: 'Racing',
-    icon: '🏎️',
+    icon: 'trophy',
     description: 'Fast & responsive for speed',
-    tip: 'Pure ACRO mode for maximum control. Beeper on AUX3 helps find your quad after a crash!',
+    tip: 'Pure ACRO mode for maximum control. Beeper on AUX3 helps find your aircraft after a crash!',
     gradient: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     modes: [
       // ARM on AUX1 high
@@ -331,7 +338,7 @@ export const PRESETS: Record<string, ModePreset> = {
   cinematic: {
     id: 'cinematic',
     name: 'Cinematic',
-    icon: '🎬',
+    icon: 'video',
     description: 'Ultra-smooth for filming',
     tip: 'NAV RTH brings your aircraft home if signal is lost (requires GPS!). Perfect for long-range filming.',
     gradient: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
@@ -349,7 +356,7 @@ export const PRESETS: Record<string, ModePreset> = {
   fixedWing: {
     id: 'fixedWing',
     name: 'Fixed Wing',
-    icon: '✈️',
+    icon: 'plane',
     description: 'For airplanes with navigation',
     tip: 'Complete setup for fixed-wing with launch assist, RTH, and waypoint navigation.',
     gradient: 'from-sky-500/20 to-blue-500/10 border-sky-500/30',
@@ -365,6 +372,15 @@ export const PRESETS: Record<string, ModePreset> = {
     ],
     wizardModes: [BOX_ID.ARM, BOX_ID.NAV_LAUNCH, BOX_ID.NAV_RTH, BOX_ID.NAV_WP],
   },
+};
+
+// Preset icon mapping (string key -> Lucide component)
+export const PRESET_ICONS: Record<string, LucideIcon> = {
+  baby: Baby,
+  sparkles: Sparkles,
+  trophy: Trophy,
+  video: Video,
+  plane: Plane,
 };
 
 // All available modes for advanced editor

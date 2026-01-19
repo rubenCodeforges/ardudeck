@@ -66,6 +66,25 @@ export function ConnectionPanel() {
     }
   };
 
+  // Handle connecting to already-running SITL
+  const handleSitlConnect = async () => {
+    setError(null);
+    try {
+      const success = await connect({ type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' });
+      if (success) {
+        updateConnectionMemory({
+          lastTcpHost: '127.0.0.1',
+          lastTcpPort: 5760,
+          lastConnectionType: 'tcp',
+        });
+      } else {
+        setError('Could not connect to SITL. Make sure it is running on TCP port 5760.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to connect to SITL');
+    }
+  };
+
   // Respond to SITL starting - switch to TCP and auto-connect with retry
   useEffect(() => {
     if (pendingSitlSwitch && !connectionState.isConnected) {
@@ -242,10 +261,7 @@ export function ConnectionPanel() {
         {/* SITL Quick Start - only show when not connected */}
         {!connectionState.isConnected && !connectionState.isWaitingForHeartbeat && (
           <button
-            onClick={sitlIsRunning
-              ? () => connect({ type: 'tcp', host: '127.0.0.1', tcpPort: 5760, protocol: 'msp' })
-              : handleSitlQuickStart
-            }
+            onClick={sitlIsRunning ? handleSitlConnect : handleSitlQuickStart}
             disabled={sitlIsStarting || isConnecting}
             className="w-full p-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 hover:border-purple-500/60 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >

@@ -6,8 +6,9 @@
  */
 
 import React from 'react';
-import { PRESETS, type ModePreset } from '../presets/mode-presets';
+import { PRESETS, PRESET_ICONS, type ModePreset } from '../presets/mode-presets';
 import { useModesWizardStore } from '../../../stores/modes-wizard-store';
+import { Radio, Settings, Lightbulb, ChevronRight, HelpCircle } from 'lucide-react';
 
 interface PresetCardProps {
   preset: ModePreset;
@@ -15,6 +16,8 @@ interface PresetCardProps {
 }
 
 const PresetCard: React.FC<PresetCardProps> = ({ preset, onSelect }) => {
+  const IconComponent = PRESET_ICONS[preset.icon] || HelpCircle;
+
   return (
     <button
       onClick={onSelect}
@@ -22,7 +25,9 @@ const PresetCard: React.FC<PresetCardProps> = ({ preset, onSelect }) => {
     >
       <div className="flex items-start gap-4">
         {/* Large icon */}
-        <div className="text-4xl">{preset.icon}</div>
+        <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+          <IconComponent className="w-6 h-6 text-white" />
+        </div>
 
         {/* Content */}
         <div className="flex-1">
@@ -43,24 +48,15 @@ const PresetCard: React.FC<PresetCardProps> = ({ preset, onSelect }) => {
         </div>
 
         {/* Arrow */}
-        <svg
-          className="w-5 h-5 text-zinc-400 mt-1"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+        <ChevronRight className="w-5 h-5 text-zinc-400 mt-1" />
       </div>
 
       {/* Tip */}
       <div className="mt-4 pt-3 border-t border-white/10">
-        <p className="text-xs text-zinc-500 italic">💡 {preset.tip}</p>
+        <p className="text-xs text-zinc-500 italic flex items-center gap-1.5">
+          <Lightbulb className="w-3.5 h-3.5" />
+          {preset.tip}
+        </p>
       </div>
     </button>
   );
@@ -84,7 +80,7 @@ export const WelcomeStep: React.FC = () => {
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-4">
-          <span className="text-3xl">🎮</span>
+          <Radio className="w-8 h-8 text-purple-400" />
         </div>
         <h2 className="text-xl font-semibold text-zinc-100">Choose Your Flying Style</h2>
         <p className="text-sm text-zinc-400 mt-2 max-w-md mx-auto">
@@ -111,37 +107,27 @@ export const WelcomeStep: React.FC = () => {
           className="w-full p-4 rounded-xl border border-zinc-600 bg-zinc-800/50 hover:bg-zinc-700/50 transition-colors text-left flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="text-2xl">⚙️</div>
+            <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center">
+              <Settings className="w-5 h-5 text-zinc-400" />
+            </div>
             <div>
               <h3 className="font-medium text-zinc-200">Manual Setup</h3>
               <p className="text-xs text-zinc-500">Configure modes one by one (advanced)</p>
             </div>
           </div>
-          <svg
-            className="w-5 h-5 text-zinc-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
         </button>
       </div>
 
       {/* Info note */}
       <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
         <div className="flex items-start gap-3">
-          <span className="text-xl">💡</span>
+          <Lightbulb className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div>
             <h4 className="font-medium text-amber-200 text-sm">New to FPV?</h4>
             <p className="text-xs text-amber-100/70 mt-1">
               Start with the <strong>Beginner</strong> preset. It enables ANGLE mode which
-              keeps your quad level automatically - perfect for learning!
+              keeps your aircraft level automatically - perfect for learning!
             </p>
           </div>
         </div>

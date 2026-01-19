@@ -358,17 +358,37 @@ export const ApplyStep: React.FC = () => {
 
       {/* Success message */}
       {applySuccess && (
-        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-green-200 text-sm">What's Next?</h4>
-              <p className="text-xs text-green-100/70 mt-1">
-                Your configuration has been saved to EEPROM. You can fine-tune individual
-                settings in the dedicated tabs, or test your setup now.
-              </p>
+        <div className="space-y-3">
+          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-green-200 text-sm">Configuration Applied!</h4>
+                <p className="text-xs text-green-100/70 mt-1">
+                  Your configuration has been saved to EEPROM. You can fine-tune individual
+                  settings in the dedicated tabs, or test your setup now.
+                </p>
+              </div>
             </div>
           </div>
+
+          {/* Servo verification reminder - only show if servo mixer was configured */}
+          {selectedPreset?.aircraft?.servoMixerRules?.length > 0 && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-amber-200 text-sm">Verify Your Servo Setup</h4>
+                  <ul className="text-xs text-amber-100/70 mt-1 space-y-1 list-disc list-inside">
+                    <li>Check the <strong>Servo Mixer</strong> tab and verify servos are connected to the correct FC outputs</li>
+                    <li>Test servo directions - control surfaces should move correctly when you move the sticks</li>
+                    <li>Verify motor output is connected and spins in the correct direction</li>
+                    <li>Always test in a safe environment before flying</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

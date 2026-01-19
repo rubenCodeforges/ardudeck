@@ -885,18 +885,29 @@ export function getPresetSummary(preset: QuickSetupPreset): {
   };
 }
 
-// Mode name lookup (subset of common modes)
+// Mode name lookup (iNav permanent box IDs)
 function getModeName(boxId: number): string {
   const names: Record<number, string> = {
     [BOX_ID.ARM]: 'ARM',
     [BOX_ID.ANGLE]: 'ANGLE',
     [BOX_ID.HORIZON]: 'HORIZON',
-    [BOX_ID.AIRMODE]: 'AIRMODE',
+    [BOX_ID.NAV_ALTHOLD]: 'NAV ALTHOLD',
+    [BOX_ID.HEADING_HOLD]: 'HEADING HOLD',
     [BOX_ID.NAV_RTH]: 'NAV RTH',
     [BOX_ID.NAV_POSHOLD]: 'NAV POSHOLD',
-    [BOX_ID.NAV_WP]: 'NAV WP',
-    [BOX_ID.NAV_LAUNCH]: 'NAV LAUNCH',
+    [BOX_ID.MANUAL]: 'MANUAL',
     [BOX_ID.BEEPER]: 'BEEPER',
+    [BOX_ID.FAILSAFE]: 'FAILSAFE',
+    [BOX_ID.NAV_WP]: 'NAV WP',
+    [BOX_ID.AIRMODE]: 'AIRMODE',
+    [BOX_ID.HOME_RESET]: 'HOME RESET',
+    [BOX_ID.GCS_NAV]: 'GCS NAV',
+    [BOX_ID.TURN_ASSIST]: 'TURN ASSIST',
+    [BOX_ID.NAV_LAUNCH]: 'NAV LAUNCH',
+    [BOX_ID.NAV_CRUISE]: 'NAV CRUISE',
+    [BOX_ID.PREARM]: 'PREARM',
+    [BOX_ID.TURTLE]: 'TURTLE',
+    [BOX_ID.NAV_COURSE_HOLD]: 'COURSE HOLD',
   };
   return names[boxId] || `Mode ${boxId}`;
 }

@@ -8,6 +8,7 @@
 import React, { useEffect } from 'react';
 import { useModesWizardStore } from '../../../stores/modes-wizard-store';
 import TransmitterVisualizer from '../shared/TransmitterVisualizer';
+import { Satellite, CheckCircle2, Clock, AlertTriangle, Square, CheckSquare } from 'lucide-react';
 
 export const TransmitterCheckStep: React.FC = () => {
   const {
@@ -43,7 +44,7 @@ export const TransmitterCheckStep: React.FC = () => {
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/20 mb-4">
-          <span className="text-3xl">📡</span>
+          <Satellite className="w-8 h-8 text-blue-400" />
         </div>
         <h2 className="text-xl font-semibold text-zinc-100">Check Your Transmitter</h2>
         <p className="text-sm text-zinc-400 mt-2 max-w-md mx-auto">
@@ -61,7 +62,11 @@ export const TransmitterCheckStep: React.FC = () => {
         }`}
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{hasMinimumChannels ? '✅' : '⏳'}</span>
+          {hasMinimumChannels ? (
+            <CheckCircle2 className="w-6 h-6 text-green-400 shrink-0" />
+          ) : (
+            <Clock className="w-6 h-6 text-yellow-400 shrink-0 animate-pulse" />
+          )}
           <div>
             <h3
               className={`font-medium ${
@@ -94,19 +99,35 @@ export const TransmitterCheckStep: React.FC = () => {
         <h4 className="text-sm font-medium text-zinc-300 mb-3">Quick Check:</h4>
         <ul className="space-y-2">
           <li className="flex items-center gap-2 text-sm text-zinc-400">
-            <span className={channelsDetected[0] || channelsDetected[1] ? '✅' : '⬜'} />
+            {channelsDetected[0] || channelsDetected[1] ? (
+              <CheckSquare className="w-4 h-4 text-green-400" />
+            ) : (
+              <Square className="w-4 h-4 text-zinc-600" />
+            )}
             <span>Move left stick up/down and left/right</span>
           </li>
           <li className="flex items-center gap-2 text-sm text-zinc-400">
-            <span className={channelsDetected[2] || channelsDetected[3] ? '✅' : '⬜'} />
+            {channelsDetected[2] || channelsDetected[3] ? (
+              <CheckSquare className="w-4 h-4 text-green-400" />
+            ) : (
+              <Square className="w-4 h-4 text-zinc-600" />
+            )}
             <span>Move right stick up/down and left/right</span>
           </li>
           <li className="flex items-center gap-2 text-sm text-zinc-400">
-            <span className={channelsDetected[4] ? '✅' : '⬜'} />
+            {channelsDetected[4] ? (
+              <CheckSquare className="w-4 h-4 text-green-400" />
+            ) : (
+              <Square className="w-4 h-4 text-zinc-600" />
+            )}
             <span>Flip your ARM switch (usually AUX1)</span>
           </li>
           <li className="flex items-center gap-2 text-sm text-zinc-400">
-            <span className={channelsDetected[5] ? '✅' : '⬜'} />
+            {channelsDetected[5] ? (
+              <CheckSquare className="w-4 h-4 text-green-400" />
+            ) : (
+              <Square className="w-4 h-4 text-zinc-600" />
+            )}
             <span>Move any other switches you plan to use</span>
           </li>
         </ul>
@@ -146,13 +167,13 @@ export const TransmitterCheckStep: React.FC = () => {
       {!hasMinimumChannels && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
           <div className="flex items-start gap-3">
-            <span className="text-xl">⚠️</span>
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="font-medium text-red-300 text-sm">No channels detected?</h4>
               <ul className="text-xs text-red-200/70 mt-2 space-y-1 list-disc list-inside">
                 <li>Make sure your transmitter is turned on and bound to your receiver</li>
                 <li>Check that the receiver is connected to your flight controller</li>
-                <li>Verify the correct receiver protocol is set in Betaflight</li>
+                <li>Verify the correct receiver protocol is set in the configurator</li>
                 <li>Try unplugging and reconnecting your flight controller</li>
               </ul>
             </div>

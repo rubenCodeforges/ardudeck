@@ -7,8 +7,9 @@
 
 import React from 'react';
 import { useModesWizardStore } from '../../../stores/modes-wizard-store';
-import { MODE_INFO, AUX_CHANNELS } from '../presets/mode-presets';
+import { MODE_INFO, AUX_CHANNELS, PRESET_ICONS } from '../presets/mode-presets';
 import ModeCard from '../shared/ModeCard';
+import { ClipboardList, AlertTriangle, XCircle, CheckCircle2, Lightbulb, HelpCircle } from 'lucide-react';
 
 export const ReviewStep: React.FC = () => {
   const {
@@ -52,7 +53,7 @@ export const ReviewStep: React.FC = () => {
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4">
-          <span className="text-3xl">📋</span>
+          <ClipboardList className="w-8 h-8 text-green-400" />
         </div>
         <h2 className="text-xl font-semibold text-zinc-100">Review Your Configuration</h2>
         <p className="text-sm text-zinc-400 mt-2 max-w-md mx-auto">
@@ -63,17 +64,22 @@ export const ReviewStep: React.FC = () => {
       </div>
 
       {/* Preset info */}
-      {selectedPreset && (
-        <div className={`p-4 rounded-xl border bg-gradient-to-br ${selectedPreset.gradient}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{selectedPreset.icon}</span>
-            <div>
-              <h3 className="font-medium text-zinc-100">{selectedPreset.name} Preset</h3>
-              <p className="text-xs text-zinc-400 mt-0.5">{selectedPreset.tip}</p>
+      {selectedPreset && (() => {
+        const PresetIcon = PRESET_ICONS[selectedPreset.icon] || HelpCircle;
+        return (
+          <div className={`p-4 rounded-xl border bg-gradient-to-br ${selectedPreset.gradient}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                <PresetIcon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-medium text-zinc-100">{selectedPreset.name} Preset</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">{selectedPreset.tip}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Mode cards */}
       <div className="space-y-3">
@@ -104,6 +110,7 @@ export const ReviewStep: React.FC = () => {
           <tbody className="divide-y divide-zinc-800">
             {pendingModes.map((mode, index) => {
               const info = MODE_INFO[mode.boxId];
+              const IconComponent = info?.icon || HelpCircle;
               const aux = AUX_CHANNELS[mode.auxChannel];
               const rcValue = getRcValue(mode.auxChannel);
               const isActive = rcValue >= mode.rangeStart && rcValue <= mode.rangeEnd;
@@ -112,7 +119,7 @@ export const ReviewStep: React.FC = () => {
                 <tr key={index} className="bg-zinc-900/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span>{info?.icon || '❓'}</span>
+                      <IconComponent className={`w-4 h-4 ${(info?.color || 'bg-zinc-500').replace('bg-', 'text-')}`} />
                       <span className="text-zinc-200">{info?.name || `Mode ${mode.boxId}`}</span>
                     </div>
                   </td>
@@ -141,11 +148,11 @@ export const ReviewStep: React.FC = () => {
       {!pendingModes.some((m) => m.boxId === 0) && (
         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
           <div className="flex items-start gap-3">
-            <span className="text-xl">⚠️</span>
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="font-medium text-red-300">ARM mode is not configured!</h4>
               <p className="text-xs text-red-200/70 mt-1">
-                Without ARM mode, you won&apos;t be able to arm your quad. Go back and add ARM to a switch.
+                Without ARM mode, you won&apos;t be able to arm your aircraft. Go back and add ARM to a switch.
               </p>
             </div>
           </div>
@@ -156,7 +163,7 @@ export const ReviewStep: React.FC = () => {
       {saveError && (
         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
           <div className="flex items-start gap-3">
-            <span className="text-xl">❌</span>
+            <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="font-medium text-red-300">Failed to save</h4>
               <p className="text-xs text-red-200/70 mt-1">{saveError}</p>
@@ -169,7 +176,7 @@ export const ReviewStep: React.FC = () => {
       {isSaving === false && !saveError && hasChanges === false && (
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl animate-pulse">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">✅</span>
+            <CheckCircle2 className="w-6 h-6 text-green-400 shrink-0" />
             <div>
               <h4 className="font-medium text-green-300">Configuration saved!</h4>
               <p className="text-xs text-green-200/70">
@@ -183,7 +190,7 @@ export const ReviewStep: React.FC = () => {
       {/* Important note */}
       <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
         <div className="flex items-start gap-3">
-          <span className="text-xl">💡</span>
+          <Lightbulb className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div>
             <h4 className="font-medium text-amber-200 text-sm">Before you fly:</h4>
             <ul className="text-xs text-amber-100/70 mt-2 space-y-1 list-disc list-inside">

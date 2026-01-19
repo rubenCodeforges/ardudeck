@@ -11,6 +11,7 @@ import { MODE_INFO, AUX_CHANNELS } from '../presets/mode-presets';
 import AuxChannelPicker from '../shared/AuxChannelPicker';
 import RangeSlider from '../shared/RangeSlider';
 import RcChannelBar from '../shared/RcChannelBar';
+import { CheckCircle2, Lightbulb, HelpCircle } from 'lucide-react';
 
 export const ModeConfigStep: React.FC = () => {
   const {
@@ -73,11 +74,16 @@ export const ModeConfigStep: React.FC = () => {
 
       {/* Mode header */}
       <div className="text-center">
-        <div
-          className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${modeInfo.color}/20 mb-4`}
-        >
-          <span className="text-3xl">{modeInfo.icon}</span>
-        </div>
+        {(() => {
+          const IconComponent = modeInfo.icon || HelpCircle;
+          return (
+            <div
+              className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${modeInfo.color}/20 mb-4`}
+            >
+              <IconComponent className={`w-8 h-8 ${modeInfo.color.replace('bg-', 'text-')}`} />
+            </div>
+          );
+        })()}
         <h2 className="text-xl font-semibold text-zinc-100">{modeInfo.name}</h2>
         <p className="text-sm text-zinc-400 mt-1">{modeInfo.description}</p>
         {modeInfo.essential && (
@@ -144,7 +150,7 @@ export const ModeConfigStep: React.FC = () => {
       {isActive ? (
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl animate-pulse">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">✅</span>
+            <CheckCircle2 className="w-6 h-6 text-green-400 shrink-0" />
             <div>
               <h4 className="font-medium text-green-300">{modeInfo.name} is ACTIVE!</h4>
               <p className="text-xs text-green-200/70">
@@ -156,7 +162,7 @@ export const ModeConfigStep: React.FC = () => {
       ) : (
         <div className="p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-xl">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">💡</span>
+            <Lightbulb className="w-6 h-6 text-amber-400 shrink-0" />
             <div>
               <h4 className="font-medium text-zinc-300">Try it now!</h4>
               <p className="text-xs text-zinc-500">

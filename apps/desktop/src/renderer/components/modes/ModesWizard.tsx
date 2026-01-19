@@ -11,6 +11,8 @@ import WelcomeStep from './steps/WelcomeStep';
 import TransmitterCheckStep from './steps/TransmitterCheckStep';
 import ModeConfigStep from './steps/ModeConfigStep';
 import ReviewStep from './steps/ReviewStep';
+import { Radio, Satellite, Settings, Save, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface ModesWizardProps {
   isOpen: boolean;
@@ -18,12 +20,12 @@ interface ModesWizardProps {
 }
 
 // Step info for progress display
-const STEPS = [
-  { id: 'welcome', label: 'Style', icon: '🎮' },
-  { id: 'transmitter', label: 'Check', icon: '📡' },
-  { id: 'mode-config', label: 'Configure', icon: '⚙️' },
-  { id: 'review', label: 'Save', icon: '💾' },
-] as const;
+const STEPS: { id: string; label: string; Icon: LucideIcon }[] = [
+  { id: 'welcome', label: 'Style', Icon: Radio },
+  { id: 'transmitter', label: 'Check', Icon: Satellite },
+  { id: 'mode-config', label: 'Configure', Icon: Settings },
+  { id: 'review', label: 'Save', Icon: Save },
+];
 
 export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => {
   const {
@@ -70,7 +72,7 @@ export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => 
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <span className="text-xl">🎮</span>
+              <Radio className="w-5 h-5 text-purple-400" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-zinc-100">Modes Setup Wizard</h2>
@@ -81,14 +83,7 @@ export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => 
             onClick={handleClose}
             className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -122,7 +117,7 @@ export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => 
                           />
                         </svg>
                       ) : (
-                        <span>{step.icon}</span>
+                        <step.Icon className="w-4 h-4" />
                       )}
                     </div>
                     <span
