@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useOsdStore } from '../../stores/osd-store';
 import {
   OSD_CHAR_WIDTH,
@@ -13,8 +13,9 @@ interface OsdCanvasProps {
 
 /**
  * OSD Canvas - renders the OSD screen buffer using the loaded font
+ * Memoized to prevent unnecessary re-renders
  */
-export function OsdCanvas({ className = '' }: OsdCanvasProps) {
+export const OsdCanvas = React.memo(function OsdCanvas({ className = '' }: OsdCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const currentFont = useOsdStore((s) => s.currentFont);
@@ -132,12 +133,13 @@ export function OsdCanvas({ className = '' }: OsdCanvasProps) {
       }}
     />
   );
-}
+});
 
 /**
  * OSD Preview with aspect ratio container and optional CRT effect
+ * Memoized to prevent unnecessary re-renders
  */
-export function OsdPreview({
+export const OsdPreview = React.memo(function OsdPreview({
   className = '',
   showCrtEffect = false,
 }: {
@@ -181,4 +183,4 @@ export function OsdPreview({
       </div>
     </div>
   );
-}
+});

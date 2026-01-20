@@ -1,8 +1,12 @@
+import React from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
-export function FlightModePanel() {
-  const { flight, vfrHud, battery } = useTelemetryStore();
+export const FlightModePanel = React.memo(function FlightModePanel() {
+  // Use selective subscriptions to prevent re-renders on unrelated telemetry updates
+  const flight = useTelemetryStore((s) => s.flight);
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const battery = useTelemetryStore((s) => s.battery);
 
   const batteryColor = battery.remaining > 30 ? 'text-emerald-400' : battery.remaining > 15 ? 'text-yellow-400' : 'text-red-400';
 
@@ -36,4 +40,4 @@ export function FlightModePanel() {
       </div>
     </PanelContainer>
   );
-}
+});

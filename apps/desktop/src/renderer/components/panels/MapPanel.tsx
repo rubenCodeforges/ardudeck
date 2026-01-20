@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -512,8 +512,13 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(2)}km`;
 }
 
-export function MapPanel() {
-  const { gps, position, vfrHud, flight, attitude } = useTelemetryStore();
+export const MapPanel = React.memo(function MapPanel() {
+  // Use selective subscriptions to prevent re-renders on unrelated telemetry updates
+  const gps = useTelemetryStore((s) => s.gps);
+  const position = useTelemetryStore((s) => s.position);
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const flight = useTelemetryStore((s) => s.flight);
+  const attitude = useTelemetryStore((s) => s.attitude);
   const [followVehicle, setFollowVehicle] = useState(true);
   const [trail, setTrail] = useState<[number, number][]>([]);
   const [homePosition, setHomePosition] = useState<[number, number] | null>(null);
@@ -570,6 +575,7 @@ export function MapPanel() {
   }, [vehiclePosition, homePosition]);
 
   // Update trail with position history (only when GPS is valid)
+  // Reduced trail limit from 500 to 100 points (~50 seconds at 2Hz) for better performance
   useEffect(() => {
     if (gpsPosition && hasValidGps) {
       const now = Date.now();
@@ -577,18 +583,17 @@ export function MapPanel() {
         lastUpdateRef.current = now;
         setTrail(prev => {
           const newTrail = [...prev, gpsPosition];
-          if (newTrail.length > 500) {
-            return newTrail.slice(-500);
+          if (newTrail.length > 100) {
+            return newTrail.slice(-100);
           }
           return newTrail;
         });
 
-        if (!homePosition) {
-          setHomePosition(gpsPosition);
-        }
+        // Set home on first valid GPS fix
+        setHomePosition(prev => prev ?? gpsPosition);
       }
     }
-  }, [gpsPosition, hasValidGps, homePosition]);
+  }, [gpsPosition, hasValidGps]); // Removed homePosition from deps - it's only read, not a condition
 
   const clearTrail = useCallback(() => {
     setTrail([]);
@@ -889,4 +894,4 @@ export function MapPanel() {
       </MapContainer>
     </div>
   );
-}
+});

@@ -20,6 +20,16 @@ type TelemetryUpdate =
   | { type: 'battery'; data: BatteryData }
   | { type: 'vfrHud'; data: VfrHudData }
   | { type: 'flight'; data: FlightState };
+
+/** Batched telemetry update - reduces IPC overhead from 6 messages to 1 */
+interface TelemetryBatch {
+  attitude?: AttitudeData;
+  position?: PositionData;
+  gps?: GpsData;
+  battery?: BatteryData;
+  vfrHud?: VfrHudData;
+  flight?: FlightState;
+}
 import type { SerialPortInfo, ScanResult } from '@ardudeck/comms';
 
 /**
@@ -95,6 +105,13 @@ const api = {
     const handler = (_: unknown, update: TelemetryUpdate) => callback(update);
     ipcRenderer.on(IPC_CHANNELS.TELEMETRY_UPDATE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.TELEMETRY_UPDATE, handler);
+  },
+
+  // Batched telemetry update - single IPC message instead of 6 for better performance
+  onTelemetryBatch: (callback: (batch: TelemetryBatch) => void) => {
+    const handler = (_: unknown, batch: TelemetryBatch) => callback(batch);
+    ipcRenderer.on(IPC_CHANNELS.TELEMETRY_BATCH, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.TELEMETRY_BATCH, handler);
   },
 
   // Layout management

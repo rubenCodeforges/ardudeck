@@ -1,8 +1,9 @@
+import React, { useMemo } from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, formatNumber } from './panel-utils';
 
-// Exported for reuse in MapPanel
-export function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: number; pitch: number; heading: number; size?: number }) {
+// Exported for reuse in MapPanel - memoized to prevent unnecessary re-renders
+export const AttitudeIndicator = React.memo(function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: number; pitch: number; heading: number; size?: number }) {
   // Clamp pitch but allow more range for display
   const clampedPitch = Math.max(-60, Math.min(60, pitch));
 
@@ -13,42 +14,44 @@ export function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: 
   // Increase pitch sensitivity - move horizon by 40% of inner size at max pitch
   const pitchOffset = (clampedPitch / 60) * (innerSize * 0.4);
 
-  // Compass tick marks
-  const compassTicks = [];
+  // Compass tick marks - memoized since only scale affects geometry, heading only affects rotation
   const directions = ['N', 'E', 'S', 'W'];
-  for (let i = 0; i < 360; i += 10) {
-    const isMajor = i % 30 === 0;
-    const isCardinal = i % 90 === 0;
-    const angle = i - heading;
-    const tickLength = (isCardinal ? 10 : isMajor ? 6 : 3) * scale;
-    const tickStart = 18 * scale; // Push ticks inward to make room for letters
+  const compassTicks = useMemo(() => {
+    const ticks = [];
+    for (let i = 0; i < 360; i += 10) {
+      const isMajor = i % 30 === 0;
+      const isCardinal = i % 90 === 0;
+      const tickLength = (isCardinal ? 10 : isMajor ? 6 : 3) * scale;
+      const tickStart = 18 * scale;
 
-    compassTicks.push(
-      <g key={i} transform={`rotate(${angle} ${size/2} ${size/2})`}>
-        <line
-          x1={size/2}
-          y1={tickStart}
-          x2={size/2}
-          y2={tickStart + tickLength}
-          stroke={isCardinal ? '#fff' : isMajor ? '#9ca3af' : '#4b5563'}
-          strokeWidth={isCardinal ? 2 : 1}
-        />
-        {isCardinal && (
-          <text
-            x={size/2}
-            y={13 * scale}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="#fff"
-            fontSize={10 * scale}
-            fontWeight="600"
-          >
-            {directions[i / 90]}
-          </text>
-        )}
-      </g>
-    );
-  }
+      ticks.push(
+        <g key={i} transform={`rotate(${i - heading} ${size/2} ${size/2})`}>
+          <line
+            x1={size/2}
+            y1={tickStart}
+            x2={size/2}
+            y2={tickStart + tickLength}
+            stroke={isCardinal ? '#fff' : isMajor ? '#9ca3af' : '#4b5563'}
+            strokeWidth={isCardinal ? 2 : 1}
+          />
+          {isCardinal && (
+            <text
+              x={size/2}
+              y={13 * scale}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#fff"
+              fontSize={10 * scale}
+              fontWeight="600"
+            >
+              {directions[i / 90]}
+            </text>
+          )}
+        </g>
+      );
+    }
+    return ticks;
+  }, [size, scale, heading]);
 
   // Aircraft symbol dimensions
   const aircraftDotSize = 12 * scale;
@@ -156,10 +159,12 @@ export function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: 
       </svg>
     </div>
   );
-}
+});
 
-export function AttitudePanel() {
-  const { attitude, vfrHud } = useTelemetryStore();
+export const AttitudePanel = React.memo(function AttitudePanel() {
+  // Use selective subscriptions to prevent re-renders on unrelated telemetry updates
+  const attitude = useTelemetryStore((s) => s.attitude);
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
 
   return (
     <PanelContainer className="flex flex-col items-center justify-center">
@@ -186,4 +191,4 @@ export function AttitudePanel() {
       </div>
     </PanelContainer>
   );
-}
+});

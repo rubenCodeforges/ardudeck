@@ -166,9 +166,10 @@ const DEFAULT_CHANNELS: number[] = [
   1000, // AUX12
 ];
 
-// RC override interval - send RC values every 50ms for stability
-// iNav default RC timeout is ~250ms, so 50ms gives us 5x margin
-const RC_OVERRIDE_INTERVAL_MS = 50;
+// RC override interval - send RC values every 100ms for stability
+// iNav default RC timeout is ~250ms, so 100ms gives us 2.5x margin
+// (Changed from 50ms to reduce CPU load - 10Hz is sufficient for RC control)
+const RC_OVERRIDE_INTERVAL_MS = 100;
 
 /**
  * Convert PWM value (1000-2000) to normalized value (-1 to +1) for Virtual RC
@@ -269,8 +270,8 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
       intervalCallCount++;
       const currentChannels = get().channels;
 
-      // Log every 100th call (every 5 seconds at 50ms interval)
-      if (intervalCallCount % 100 === 0) {
+      // Log every 300th call (every 30 seconds at 100ms interval) - reduced logging frequency
+      if (intervalCallCount % 300 === 0) {
         console.log(`[FlightControl] RC interval #${intervalCallCount}, ch: ${currentChannels.slice(0, 8).join(',')}`);
       }
 

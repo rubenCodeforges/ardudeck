@@ -172,7 +172,7 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
 
 function App() {
   const { connectionState, setConnectionState } = useConnectionStore();
-  const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, reset } = useTelemetryStore();
+  const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, updateBatch, reset } = useTelemetryStore();
   const { currentView, setView } = useNavigationStore();
   const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata } = useParameterStore();
   const {
@@ -356,6 +356,15 @@ function App() {
     return unsubscribe;
   }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl]);
 
+  // Batched telemetry handler (preferred - single IPC message, single store update)
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onTelemetryBatch((batch) => {
+      updateBatch(batch);
+    });
+    return unsubscribe;
+  }, [updateBatch]);
+
+  // Legacy individual telemetry handler (for MAVLink or fallback)
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onTelemetryUpdate((update) => {
       switch (update.type) {

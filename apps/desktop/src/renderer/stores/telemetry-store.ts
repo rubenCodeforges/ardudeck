@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 import type { TelemetryState, AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../../shared/telemetry-types';
 
+/** Batch telemetry update - all fields optional */
+export interface TelemetryBatch {
+  attitude?: AttitudeData;
+  position?: PositionData;
+  gps?: GpsData;
+  battery?: BatteryData;
+  vfrHud?: VfrHudData;
+  flight?: FlightState;
+}
+
 interface TelemetryStore extends TelemetryState {
   updateAttitude: (data: AttitudeData) => void;
   updatePosition: (data: PositionData) => void;
@@ -8,6 +18,8 @@ interface TelemetryStore extends TelemetryState {
   updateBattery: (data: BatteryData) => void;
   updateVfrHud: (data: VfrHudData) => void;
   updateFlight: (data: FlightState) => void;
+  /** Batch update - updates multiple telemetry fields in a single store mutation */
+  updateBatch: (batch: TelemetryBatch) => void;
   reset: () => void;
 }
 
@@ -36,5 +48,40 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
   updateBattery: (data) => set({ battery: data, lastBattery: Date.now() }),
   updateVfrHud: (data) => set({ vfrHud: data, lastVfrHud: Date.now() }),
   updateFlight: (data) => set({ flight: data, lastHeartbeat: Date.now() }),
+
+  // Batch update - updates all provided fields in a single store mutation
+  // This reduces re-renders from 6 per telemetry cycle to 1
+  updateBatch: (batch) => {
+    const now = Date.now();
+    const updates: Partial<TelemetryState> = {};
+
+    if (batch.attitude) {
+      updates.attitude = batch.attitude;
+      updates.lastAttitude = now;
+    }
+    if (batch.position) {
+      updates.position = batch.position;
+      updates.lastPosition = now;
+    }
+    if (batch.gps) {
+      updates.gps = batch.gps;
+      updates.lastGps = now;
+    }
+    if (batch.battery) {
+      updates.battery = batch.battery;
+      updates.lastBattery = now;
+    }
+    if (batch.vfrHud) {
+      updates.vfrHud = batch.vfrHud;
+      updates.lastVfrHud = now;
+    }
+    if (batch.flight) {
+      updates.flight = batch.flight;
+      updates.lastHeartbeat = now;
+    }
+
+    set(updates);
+  },
+
   reset: () => set(initialState),
 }));

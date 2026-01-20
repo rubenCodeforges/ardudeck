@@ -588,9 +588,21 @@ export function startMspTelemetry(rateHz: number = 10): void {
       // BSOD FIX: Add 10ms delay between commands to prevent burst traffic
       const interCommandDelay = () => new Promise(r => setTimeout(r, 10));
 
+      // PERFORMANCE: Collect all telemetry data first, send single batched IPC at the end
+      // This reduces IPC overhead from 6+ messages to 1 per telemetry cycle
+      const batch: {
+        attitude?: { roll: number; pitch: number; yaw: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number };
+        vfrHud?: { airspeed: number; groundspeed: number; heading: number; throttle: number; alt: number; climb: number };
+        battery?: { voltage: number; current: number; remaining: number };
+        flight?: { mode: string; modeNum: number; armed: boolean; isFlying: boolean; armingDisabledReasons?: string[] };
+        gps?: { fixType: number; satellites: number; hdop: number; lat: number; lon: number; alt: number };
+        position?: { lat: number; lon: number; alt: number; relativeAlt: number; vx: number; vy: number; vz: number };
+      } = {};
+
       // Store values across requests for combined telemetry
       let headingDeg = 0;
-      let groundSpeedMs = 0;
+      let altitudeM = 0;
+      let varioMs = 0;
 
       // Get attitude
       try {
@@ -598,37 +610,25 @@ export function startMspTelemetry(rateHz: number = 10): void {
         const attitude = deserializeAttitude(attitudePayload);
         const degrees = attitudeToDegrees(attitude);
         headingDeg = degrees.yawDeg; // Save heading for vfrHud
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'attitude',
-          data: {
-            roll: degrees.rollDeg,
-            pitch: degrees.pitchDeg,
-            yaw: degrees.yawDeg,
-            rollSpeed: 0,
-            pitchSpeed: 0,
-            yawSpeed: 0,
-          },
-        });
+        batch.attitude = {
+          roll: degrees.rollDeg,
+          pitch: degrees.pitchDeg,
+          yaw: degrees.yawDeg,
+          rollSpeed: 0,
+          pitchSpeed: 0,
+          yawSpeed: 0,
+        };
       } catch { /* ignore */ }
 
       await interCommandDelay();
 
-      // Get altitude + send vfrHud with heading from attitude
+      // Get altitude
       try {
         const altitudePayload = await sendMspRequest(MSP.ALTITUDE, 300);
         const altitude = deserializeAltitude(altitudePayload);
         const meters = altitudeToMeters(altitude);
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'vfrHud',
-          data: {
-            airspeed: 0,
-            groundspeed: groundSpeedMs,
-            heading: headingDeg, // Use yaw from attitude as heading
-            throttle: 0,
-            alt: meters.altitudeM,
-            climb: meters.varioMs,
-          },
-        });
+        altitudeM = meters.altitudeM;
+        varioMs = meters.varioMs;
       } catch { /* ignore */ }
 
       await interCommandDelay();
@@ -637,14 +637,11 @@ export function startMspTelemetry(rateHz: number = 10): void {
       try {
         const analogPayload = await sendMspRequest(MSP.ANALOG, 300);
         const analog = deserializeAnalog(analogPayload);
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'battery',
-          data: {
-            voltage: analog.voltage / 10, // Convert to volts
-            current: analog.current / 100, // Convert to amps
-            remaining: -1, // Not available in MSP
-          },
-        });
+        batch.battery = {
+          voltage: analog.voltage / 10, // Convert to volts
+          current: analog.current / 100, // Convert to amps
+          remaining: -1, // Not available in MSP
+        };
       } catch { /* ignore */ }
 
       await interCommandDelay();
@@ -677,16 +674,13 @@ export function startMspTelemetry(rateHz: number = 10): void {
           lastArmingFlags = null;
         }
 
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'flight',
-          data: {
-            mode: armed ? 'Armed' : 'Disarmed',
-            modeNum: status.flightModeFlags,
-            armed: armed,
-            isFlying: armed,
-            armingDisabledReasons: armingDisabledReasons,
-          },
-        });
+        batch.flight = {
+          mode: armed ? 'Armed' : 'Disarmed',
+          modeNum: status.flightModeFlags,
+          armed: armed,
+          isFlying: armed,
+          armingDisabledReasons: armingDisabledReasons,
+        };
       } catch { /* ignore */ }
 
       await interCommandDelay();
@@ -697,47 +691,49 @@ export function startMspTelemetry(rateHz: number = 10): void {
         const gps = deserializeRawGps(gpsPayload);
         const decimal = gpsToDecimalDegrees(gps);
 
-        // Update groundspeed for vfrHud (GPS groundspeed is more accurate)
-        groundSpeedMs = decimal.speedMs;
+        batch.gps = {
+          fixType: gps.fixType,
+          satellites: gps.numSat,
+          hdop: gps.hdop / 100, // Convert from 1/100 to actual HDOP
+          lat: decimal.latDeg,
+          lon: decimal.lonDeg,
+          alt: decimal.altM,
+        };
 
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'gps',
-          data: {
-            fixType: gps.fixType,
-            satellites: gps.numSat,
-            hdop: gps.hdop / 100, // Convert from 1/100 to actual HDOP
-            lat: decimal.latDeg,
-            lon: decimal.lonDeg,
-            alt: decimal.altM,
-          },
-        });
+        batch.position = {
+          lat: decimal.latDeg,
+          lon: decimal.lonDeg,
+          alt: decimal.altM,
+          relativeAlt: decimal.altM,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+        };
 
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'position',
-          data: {
-            lat: decimal.latDeg,
-            lon: decimal.lonDeg,
-            alt: decimal.altM,
-            relativeAlt: decimal.altM,
-            vx: 0,
-            vy: 0,
-            vz: 0,
-          },
-        });
+        // Use GPS data for vfrHud (more accurate)
+        batch.vfrHud = {
+          airspeed: decimal.speedMs,
+          groundspeed: decimal.speedMs,
+          heading: headingDeg,
+          throttle: 0,
+          alt: decimal.altM,
+          climb: varioMs,
+        };
+      } catch {
+        // If GPS fails, use altitude-only vfrHud
+        batch.vfrHud = {
+          airspeed: 0,
+          groundspeed: 0,
+          heading: headingDeg,
+          throttle: 0,
+          alt: altitudeM,
+          climb: varioMs,
+        };
+      }
 
-        // Send updated vfrHud with GPS groundspeed (more accurate than earlier send)
-        safeSend(IPC_CHANNELS.TELEMETRY_UPDATE, {
-          type: 'vfrHud',
-          data: {
-            airspeed: decimal.speedMs,
-            groundspeed: decimal.speedMs,
-            heading: headingDeg,
-            throttle: 0,
-            alt: decimal.altM,
-            climb: 0,
-          },
-        });
-      } catch { /* ignore */ }
+      // PERFORMANCE: Send single batched telemetry update instead of 6+ separate messages
+      // This reduces IPC overhead and React re-renders significantly
+      safeSend(IPC_CHANNELS.TELEMETRY_BATCH, batch);
     } catch (error) {
       // Only log once per error type to avoid spam
       console.error('[MSP] Telemetry poll error:', error);
@@ -2452,28 +2448,52 @@ async function setMotorMixerRulesViaCli(
   if (!currentTransport?.isOpen) return false;
 
   try {
-
     // BSOD Prevention: Stop telemetry before CLI operations
     stopMspTelemetry();
+    await new Promise(r => setTimeout(r, 500)); // Wait for pending MSP to finish
 
-    // Enter CLI mode
-    await currentTransport.write(new Uint8Array([0x23])); // '#'
-    await new Promise(r => setTimeout(r, 500)); // BSOD delay
+    // Set up response listener to verify CLI entry
+    let response = '';
+    const dataListener = (data: Uint8Array) => {
+      response += new TextDecoder().decode(data);
+    };
+    currentTransport.on('data', dataListener);
+
+    // Enter CLI mode with multiple # characters (like read function does)
+    await currentTransport.write(new Uint8Array([0x23, 0x23, 0x23])); // '###'
+    await new Promise(r => setTimeout(r, 1000)); // Wait for CLI banner
+
+    // Check if we got CLI prompt
+    const gotCliPrompt = response.includes('CLI') || response.includes('#');
+    if (!gotCliPrompt) {
+      // Try again with CR LF #
+      await currentTransport.write(new Uint8Array([0x0D, 0x0A, 0x23])); // CR LF #
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    // Clear response buffer
+    response = '';
 
     // Reset existing mmix rules first
     await currentTransport.write(new TextEncoder().encode('mmix reset\n'));
-    await new Promise(r => setTimeout(r, 200)); // BSOD delay
+    await new Promise(r => setTimeout(r, 300)); // Wait for reset to complete
 
     // Send each motor mixer rule
     for (const rule of rules) {
       // Format: mmix <index> <throttle> <roll> <pitch> <yaw>
       const cmd = `mmix ${rule.motorIndex} ${rule.throttle.toFixed(3)} ${rule.roll.toFixed(3)} ${rule.pitch.toFixed(3)} ${rule.yaw.toFixed(3)}`;
+      console.log(`[MSP] Sending: ${cmd}`);
       await currentTransport.write(new TextEncoder().encode(cmd + '\n'));
-      await new Promise(r => setTimeout(r, 200)); // BSOD delay between commands
+      await new Promise(r => setTimeout(r, 300)); // Wait for command to be processed
     }
 
-    // NOTE: Do NOT send 'exit' here - it causes board reboot which disconnects.
-    // The 'save' command will handle saving to EEPROM and rebooting properly.
+    // Remove listener
+    currentTransport.removeListener('data', dataListener);
+
+    // Exit CLI mode properly so subsequent MSP commands work
+    // 'exit' does NOT reboot - only 'save' reboots
+    await currentTransport.write(new TextEncoder().encode('exit\n'));
+    await new Promise(r => setTimeout(r, 500)); // Wait for CLI to exit
 
     sendLog('info', 'Motor mixer rules set via CLI', `${rules.length} rules`);
     return true;
@@ -2481,6 +2501,9 @@ async function setMotorMixerRulesViaCli(
     console.error('[MSP] CLI motor mixer failed:', error);
     sendLog('error', 'CLI motor mixer failed', error instanceof Error ? error.message : String(error));
     return false;
+  } finally {
+    // Always restart telemetry after CLI operations
+    startMspTelemetry();
   }
 }
 
@@ -2670,9 +2693,9 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
     // Remove listener
     currentTransport.removeListener('data', dataListener);
 
-    // NOTE: Do NOT send 'exit' here - it causes board reboot which disconnects.
-    // Leave CLI mode active. The connection handlers will clean up CLI mode properly
-    // when navigating away or disconnecting.
+    // Exit CLI mode properly - 'exit' does NOT reboot (only 'save' reboots)
+    await currentTransport.write(new TextEncoder().encode('exit\n'));
+    await new Promise(r => setTimeout(r, 500));
 
     // Parse mmix output - format: "mmix <index> <throttle> <roll> <pitch> <yaw>"
     const rules: Array<{ index: number; throttle: number; roll: number; pitch: number; yaw: number }> = [];
@@ -2698,75 +2721,69 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
     sendLog('error', 'CLI mmix read failed', error instanceof Error ? error.message : String(error));
     return null;
   } finally {
-    // Always reset CLI mode flag
+    // Always reset CLI mode flag and restart telemetry
     servoCliModeActive = false;
+    startMspTelemetry();
   }
 }
 
 // =============================================================================
-// Motor Mixer Configuration (MSP-based for modern boards)
+// Motor Mixer Configuration
 // =============================================================================
 
 /**
  * Get motor mixer configuration via MSP2_COMMON_MOTOR_MIXER
- * Modern boards support MSP, legacy boards fall back to CLI
+ * Falls back to CLI if MSP fails
  */
 async function getMotorMixer(): Promise<MSPMotorMixerRule[] | null> {
   if (!currentTransport?.isOpen || servoCliModeActive) return null;
 
-  return withConfigLock(async () => {
+  // Try MSP first
+  const mspResult = await withConfigLock(async () => {
     try {
-      // Try MSP2 COMMON_MOTOR_MIXER (0x1005)
       const payload = await sendMspV2Request(MSP2.COMMON_MOTOR_MIXER, 1000);
       const rules = deserializeMotorMixerRules(payload);
-      sendLog('info', 'Motor mixer loaded via MSP', `${rules.length} motors`);
-      return rules;
+      if (rules.length > 0) {
+        sendLog('info', 'Motor mixer loaded via MSP', `${rules.length} motors`);
+        return rules;
+      }
+      return null;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes('not supported') || msg.includes('timed out')) {
-        sendLog('info', 'Motor mixer MSP2 not available', 'Use CLI fallback');
-      } else {
-        console.warn('[MSP] Get Motor Mixer failed:', msg);
+        return null; // Try CLI fallback
       }
+      console.warn('[MSP] Get Motor Mixer failed:', msg);
       return null;
     }
   });
+
+  if (mspResult) return mspResult;
+
+  // CLI fallback
+  const cliResult = await readMmixViaCli();
+  if (cliResult && cliResult.length > 0) {
+    sendLog('info', 'Motor mixer loaded via CLI', `${cliResult.length} motors`);
+    return cliResult.map(r => ({
+      throttle: r.throttle,
+      roll: r.roll,
+      pitch: r.pitch,
+      yaw: r.yaw,
+    }));
+  }
+
+  return null;
 }
 
 /**
- * Set motor mixer rules via MSP2_COMMON_SET_MOTOR_MIXER (0x1006)
- * Falls back to CLI for legacy boards
+ * Set motor mixer rules via CLI
+ * NOTE: MSP2_COMMON_SET_MOTOR_MIXER (0x1006) doesn't work correctly with iNav,
+ * causing corrupted values. Always use CLI which is proven reliable.
  */
 async function setMotorMixer(rules: MSPMotorMixerRule[]): Promise<boolean> {
   if (!currentTransport?.isOpen) return false;
 
-  // Try MSP2 first
-  const mspSuccess = await withConfigLock(async () => {
-    try {
-      // Send each rule individually
-      for (let i = 0; i < rules.length; i++) {
-        const payload = serializeMotorMixerRule(i, rules[i]);
-        await sendMspV2RequestWithPayload(MSP2.COMMON_SET_MOTOR_MIXER, payload, 1000);
-        await new Promise(r => setTimeout(r, 50)); // Small delay between rules
-      }
-      sendLog('info', 'Motor mixer saved via MSP', `${rules.length} motors`);
-      return true;
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('not supported') || msg.includes('timed out')) {
-        sendLog('warn', 'MSP2 motor mixer not supported, trying CLI...');
-        return null; // Signal to try CLI fallback
-      }
-      sendLog('error', 'Failed to set motor mixer', msg);
-      return false;
-    }
-  });
-
-  if (mspSuccess !== null) {
-    return mspSuccess;
-  }
-
-  // CLI fallback
+  // Always use CLI - MSP motor mixer commands cause data corruption in iNav
   const cliRules = rules.map((r, i) => ({
     motorIndex: i,
     throttle: r.throttle,
@@ -2774,6 +2791,8 @@ async function setMotorMixer(rules: MSPMotorMixerRule[]): Promise<boolean> {
     pitch: r.pitch,
     yaw: r.yaw,
   }));
+
+  sendLog('info', 'Setting motor mixer via CLI', `${rules.length} motors`);
   return await setMotorMixerRulesViaCli(cliRules);
 }
 

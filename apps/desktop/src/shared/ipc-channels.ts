@@ -24,6 +24,7 @@ export const IPC_CHANNELS = {
 
   // Telemetry
   TELEMETRY_UPDATE: 'telemetry:update',
+  TELEMETRY_BATCH: 'telemetry:batch', // Batched telemetry update for performance
 
   // Layout management
   LAYOUT_GET_ALL: 'layout:get-all',
