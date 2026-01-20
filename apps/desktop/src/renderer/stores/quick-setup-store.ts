@@ -749,31 +749,13 @@ async function applyPresetViaMsp(
     updateTask('completed');
     nextTask();
 
-    // 4. Servo Mixer - ALWAYS reset to clear garbage data, then set new rules if fixed wing
+    // 4. Servo Mixer - Only for fixed-wing (multirotors don't use servo mixer)
     updateTask('in_progress');
 
-    // CRITICAL: Reset ALL servo mixer rules first to clear garbage data
-    // iNav supports up to 64 servo mixer rules, but we'll clear the first 16 which covers most use cases
-    console.log('[QuickSetup] Clearing existing servo mixer rules...');
-    for (let i = 0; i < 16; i++) {
-      try {
-        await window.electronAPI?.mspSetServoMixer(i, {
-          targetChannel: 0,
-          inputSource: 0,
-          rate: 0, // Zero rate = disabled rule
-          speed: 0,
-          min: 0,
-          max: 0,
-          box: 0,
-        });
-        await new Promise((r) => setTimeout(r, 30)); // Small delay between commands
-      } catch {
-        // Ignore errors - some boards may have fewer rule slots
-      }
-    }
-
-    // Set new rules from the preset (if any - fixed wing presets have rules)
-    if (hasServoMixerRules) {
+    if (isFixedWing && hasServoMixerRules) {
+      // Set servo mixer rules for fixed-wing
+      // No need to clear all slots - just overwrite what we need
+      // iNav treats rate=0 as disabled, so unused slots stay disabled
       console.log(`[QuickSetup] Setting ${preset.aircraft.servoMixerRules.length} servo mixer rules...`);
       for (let i = 0; i < preset.aircraft.servoMixerRules.length; i++) {
         const rule = preset.aircraft.servoMixerRules[i];
@@ -791,10 +773,9 @@ async function applyPresetViaMsp(
         if (!success) {
           console.warn(`[QuickSetup] Failed to set servo mixer rule ${i}`);
         }
-        await new Promise((r) => setTimeout(r, 30)); // Small delay between commands
       }
-    } else {
-      console.log('[QuickSetup] No servo mixer rules to set (multirotor preset)');
+    } else if (!isFixedWing) {
+      console.log('[QuickSetup] Skipping servo mixer (multirotor - not needed)');
     }
 
     updateTask('completed');

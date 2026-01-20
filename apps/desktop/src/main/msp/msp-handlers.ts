@@ -2376,30 +2376,19 @@ async function setServoMixerRule(index: number, rule: MSPServoMixerRule): Promis
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) return false;
 
-  // Try MSP2 first
-  const mspSuccess = await withConfigLock(async () => {
+  // Use MSP2 only - no CLI fallback for modern boards
+  return await withConfigLock(async () => {
     try {
       const payload = serializeServoMixerRule(index, rule);
-      await sendMspV2RequestWithPayload(MSP2.INAV_SET_SERVO_MIXER, payload, 1000);
+      await sendMspV2RequestWithPayload(MSP2.INAV_SET_SERVO_MIXER, payload, 500);
       sendLog('info', `Servo mixer rule ${index} updated`);
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('not supported') || msg.includes('timed out')) {
-        sendLog('warn', 'MSP2 servo mixer not supported, trying CLI...');
-        return null; // Signal to try CLI fallback
-      }
-      sendLog('error', 'Failed to set servo mixer rule', msg);
+      sendLog('error', `Failed to set servo mixer rule ${index}`, msg);
       return false;
     }
   });
-
-  if (mspSuccess !== null) {
-    return mspSuccess;
-  }
-
-  // CLI fallback
-  return await setServoMixerRuleViaCli(index, rule);
 }
 
 /**
@@ -2733,67 +2722,78 @@ async function readMmixViaCli(): Promise<Array<{ index: number; throttle: number
 
 /**
  * Get motor mixer configuration via MSP2_COMMON_MOTOR_MIXER
- * Falls back to CLI if MSP fails
+ *
+ * IMPORTANT: Like iNav Configurator, we use numberOfMotors from MSP2_INAV_MIXER
+ * to limit how many motors we read. This prevents garbage data from being shown.
+ *
+ * NOTE: No CLI fallback for reading - CLI mode disrupts MSP communication.
+ * Modern boards (iNav 2.5+) support MSP2_COMMON_MOTOR_MIXER.
  */
 async function getMotorMixer(): Promise<MSPMotorMixerRule[] | null> {
   if (!currentTransport?.isOpen || servoCliModeActive) return null;
 
-  // Try MSP first
-  const mspResult = await withConfigLock(async () => {
+  // First, get the actual motor count from mixer config (like iNav Configurator does)
+  const mixerConfig = await getInavMixerConfig();
+  const expectedMotorCount = mixerConfig?.numberOfMotors ?? 0;
+
+  // If no motors configured, return empty array (not null - null means error)
+  if (expectedMotorCount === 0) {
+    sendLog('info', 'Motor mixer: 0 motors configured');
+    return [];
+  }
+
+  // Use MSP only - no CLI fallback for reading (disrupts connection)
+  return withConfigLock(async () => {
     try {
       const payload = await sendMspV2Request(MSP2.COMMON_MOTOR_MIXER, 1000);
       const rules = deserializeMotorMixerRules(payload);
-      if (rules.length > 0) {
-        sendLog('info', 'Motor mixer loaded via MSP', `${rules.length} motors`);
-        return rules;
-      }
-      return null;
+
+      // CRITICAL: Limit to expected motor count (prevents garbage data)
+      const limitedRules = rules.slice(0, expectedMotorCount);
+
+      sendLog('info', 'Motor mixer loaded via MSP', `${limitedRules.length} motors (expected ${expectedMotorCount})`);
+      return limitedRules;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('not supported') || msg.includes('timed out')) {
-        return null; // Try CLI fallback
-      }
       console.warn('[MSP] Get Motor Mixer failed:', msg);
-      return null;
+      return [];
     }
   });
-
-  if (mspResult) return mspResult;
-
-  // CLI fallback
-  const cliResult = await readMmixViaCli();
-  if (cliResult && cliResult.length > 0) {
-    sendLog('info', 'Motor mixer loaded via CLI', `${cliResult.length} motors`);
-    return cliResult.map(r => ({
-      throttle: r.throttle,
-      roll: r.roll,
-      pitch: r.pitch,
-      yaw: r.yaw,
-    }));
-  }
-
-  return null;
 }
 
 /**
- * Set motor mixer rules via CLI
- * NOTE: MSP2_COMMON_SET_MOTOR_MIXER (0x1006) doesn't work correctly with iNav,
- * causing corrupted values. Always use CLI which is proven reliable.
+ * Set motor mixer rules via MSP2_COMMON_SET_MOTOR_MIXER (0x1006)
+ *
+ * Like iNav Configurator, we send each motor rule individually.
+ * The encoding was fixed to use (value+2)*1000 which matches iNav Configurator.
  */
 async function setMotorMixer(rules: MSPMotorMixerRule[]): Promise<boolean> {
   if (!currentTransport?.isOpen) return false;
 
-  // Always use CLI - MSP motor mixer commands cause data corruption in iNav
-  const cliRules = rules.map((r, i) => ({
-    motorIndex: i,
-    throttle: r.throttle,
-    roll: r.roll,
-    pitch: r.pitch,
-    yaw: r.yaw,
-  }));
+  if (rules.length === 0) {
+    sendLog('info', 'Motor mixer: no rules to set');
+    return true;
+  }
 
-  sendLog('info', 'Setting motor mixer via CLI', `${rules.length} motors`);
-  return await setMotorMixerRulesViaCli(cliRules);
+  sendLog('info', 'Setting motor mixer via MSP', `${rules.length} motors`);
+
+  // Send each motor rule individually (like iNav Configurator)
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i];
+    const payload = serializeMotorMixerRule(i, rule);
+
+    try {
+      await sendMspV2RequestWithPayload(MSP2.COMMON_SET_MOTOR_MIXER, payload, 1000);
+      sendLog('info', `Motor ${i} set`, `T=${rule.throttle} R=${rule.roll} P=${rule.pitch} Y=${rule.yaw}`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[MSP] Failed to set motor ${i}:`, msg);
+      return false;
+    }
+  }
+
+  sendLog('info', 'Motor mixer rules set via MSP', `${rules.length} motors`);
+  return true;
 }
 
 // =============================================================================

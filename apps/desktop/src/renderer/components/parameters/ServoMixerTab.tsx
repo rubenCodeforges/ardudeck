@@ -367,8 +367,10 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
   const getVisibleServos = () => {
     if (showAllServos) return servoConfigs.map((_, idx) => idx);
     const withRules = getServosWithRules();
-    const base = [0, 1, 2, 3];
-    return [...new Set([...base, ...withRules])].sort((a, b) => a - b);
+    // Only show servos that have rules configured
+    // If no rules at all, show first 4 as fallback for initial setup
+    if (withRules.length === 0) return [0, 1, 2, 3];
+    return withRules;
   };
 
   if (loading) {

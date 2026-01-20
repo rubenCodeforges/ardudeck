@@ -106,22 +106,22 @@ const SINGLE_MOTOR: MotorMixerRule[] = [
 
 // Flying wing elevon mixer
 const FLYING_WING_SERVOS = [
-  // Left elevon (servo 3): roll + pitch
-  { servoIndex: 3, inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: 100 },
-  { servoIndex: 3, inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH, rate: 100 },
-  // Right elevon (servo 4): -roll + pitch
-  { servoIndex: 4, inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: -100 },
-  { servoIndex: 4, inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH, rate: 100 },
+  // Left elevon (servo 0): roll + pitch
+  { servoIndex: 0, inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: 100 },
+  { servoIndex: 0, inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH, rate: 100 },
+  // Right elevon (servo 1): -roll + pitch
+  { servoIndex: 1, inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: -100 },
+  { servoIndex: 1, inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH, rate: 100 },
 ];
 
 // Traditional airplane mixer
 const TRADITIONAL_AIRPLANE_SERVOS = [
-  // Ailerons (servo 3): roll
-  { servoIndex: 3, inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: 100 },
-  // Elevator (servo 4): pitch
-  { servoIndex: 4, inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH, rate: 100 },
-  // Rudder (servo 5): yaw
-  { servoIndex: 5, inputSource: SERVO_INPUT_SOURCE.STABILIZED_YAW, rate: 100 },
+  // Ailerons (servo 0): roll
+  { servoIndex: 0, inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, rate: 100 },
+  // Elevator (servo 1): pitch
+  { servoIndex: 1, inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH, rate: 100 },
+  // Rudder (servo 2): yaw
+  { servoIndex: 2, inputSource: SERVO_INPUT_SOURCE.STABILIZED_YAW, rate: 100 },
 ];
 
 // ============================================================================
@@ -179,7 +179,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.MULTIROTOR,
       servoMixerRules: [],
-      motorMixerRules: QUAD_X_MOTORS,
+      motorMixerRules: QUAD_X_MOTORS, // Quad X motor layout
     },
   },
 
@@ -237,7 +237,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.MULTIROTOR,
       servoMixerRules: [],
-      motorMixerRules: QUAD_X_MOTORS,
+      motorMixerRules: QUAD_X_MOTORS, // Quad X motor layout
     },
   },
 
@@ -293,7 +293,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.MULTIROTOR,
       servoMixerRules: [],
-      motorMixerRules: QUAD_X_MOTORS,
+      motorMixerRules: QUAD_X_MOTORS, // Quad X motor layout
     },
   },
 
@@ -351,7 +351,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.MULTIROTOR,
       servoMixerRules: [],
-      motorMixerRules: QUAD_X_MOTORS,
+      motorMixerRules: QUAD_X_MOTORS, // Quad X motor layout
     },
   },
 
@@ -409,7 +409,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: FLYING_WING_SERVOS,
-      motorMixerRules: SINGLE_MOTOR,
+      motorMixerRules: [], // Firmware handles motor config for fixed-wing
     },
   },
 
@@ -467,7 +467,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: TRADITIONAL_AIRPLANE_SERVOS,
-      motorMixerRules: SINGLE_MOTOR,
+      motorMixerRules: [], // Firmware handles motor config for fixed-wing
     },
   },
 
@@ -525,7 +525,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: TRADITIONAL_AIRPLANE_SERVOS,
-      motorMixerRules: SINGLE_MOTOR,
+      motorMixerRules: [], // Firmware handles motor config for fixed-wing
     },
   },
 
@@ -583,7 +583,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: FLYING_WING_SERVOS,
-      motorMixerRules: SINGLE_MOTOR,
+      motorMixerRules: [], // Firmware handles motor config for fixed-wing
     },
   },
 
@@ -643,7 +643,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: FLYING_WING_SERVOS,
-      motorMixerRules: SINGLE_MOTOR,
+      motorMixerRules: [], // Firmware handles motor config for fixed-wing
     },
   },
 
@@ -703,7 +703,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.MULTIROTOR,
       servoMixerRules: [],
-      motorMixerRules: QUAD_X_MOTORS,
+      motorMixerRules: QUAD_X_MOTORS, // Quad X motor layout
     },
   },
 };

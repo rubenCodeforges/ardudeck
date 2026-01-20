@@ -1277,7 +1277,7 @@ export function MspConfigView() {
   const mspGps = useMspTelemetryStore((s) => s.gps);
   const mspAnalog = useMspTelemetryStore((s) => s.analog);
   const { hasChanges: modesHaveChanges, saveToFC: saveModesToFC, isSaving: modesSaving } = useModesWizardStore();
-  const { openWizard: openQuickSetup } = useQuickSetupStore();
+  const { openWizard: openQuickSetup, isOpen: quickSetupOpen, applySuccess: quickSetupSuccess } = useQuickSetupStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1456,6 +1456,21 @@ export function MspConfigView() {
       loadConfig();
     }
   }, [connectionState.isConnected, connectionState.protocol, loadConfig]);
+
+  // Track previous Quick Setup open state to detect when it closes
+  const prevQuickSetupOpenRef = useRef(quickSetupOpen);
+
+  // Refresh config after Quick Setup wizard closes successfully
+  useEffect(() => {
+    // Only reload when wizard transitions from open (true) to closed (false) with success
+    const wasOpen = prevQuickSetupOpenRef.current;
+    prevQuickSetupOpenRef.current = quickSetupOpen;
+
+    if (wasOpen && !quickSetupOpen && quickSetupSuccess) {
+      console.log('[MspConfigView] Quick Setup completed successfully, refreshing config...');
+      loadConfig();
+    }
+  }, [quickSetupOpen, quickSetupSuccess, loadConfig]);
 
   // Single save function that saves everything (PIDs + Rates + Modes + EEPROM)
   const saveAll = async () => {

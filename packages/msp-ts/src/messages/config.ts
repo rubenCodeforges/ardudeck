@@ -702,11 +702,11 @@ export interface MSPServoConfig {
 export interface MSPServoMixerRule {
   targetChannel: number;    // Servo output index (0-7)
   inputSource: number;      // Input source (see SERVO_INPUT_SOURCE)
-  rate: number;             // Mix rate (-125 to +125, percentage)
+  rate: number;             // Mix rate as S16 (-2000 to +2000, typically -500 to +500)
   speed: number;            // Speed limiting (0 = none, 1-255 = slower)
-  min: number;              // Min output override (-100 to 0, 0 = no limit)
-  max: number;              // Max output override (0 to 100, 0 = no limit)
-  box: number;              // Activation mode box ID (0 = always active)
+  min: number;              // CLI ONLY - Not in MSP protocol, kept for CLI fallback
+  max: number;              // CLI ONLY - Not in MSP protocol, kept for CLI fallback
+  box: number;              // Condition ID / box (-1 = always active)
 }
 
 // Servo input sources (for mixer rules)
@@ -838,21 +838,28 @@ export function deserializeServoValues(payload: Uint8Array): number[] {
 
 /**
  * Deserialize iNav servo mixer rules
+ *
+ * iNav format (6 bytes per rule):
+ *   - targetChannel: U8
+ *   - inputSource: U8
+ *   - rate: S16 (little-endian) - range -2000 to +2000, but typically -500 to +500
+ *   - speed: U8
+ *   - conditionId: S8 (box/condition, -1 = always active)
  */
 export function deserializeServoMixerRules(payload: Uint8Array): MSPServoMixerRule[] {
   const reader = new PayloadReader(payload);
   const rules: MSPServoMixerRule[] = [];
 
-  // Each rule is 7 bytes in iNav
-  while (reader.remaining() >= 7) {
+  // Each rule is 6 bytes in iNav (NOT 7!)
+  while (reader.remaining() >= 6) {
     rules.push({
       targetChannel: reader.readU8(),
       inputSource: reader.readU8(),
-      rate: reader.readS8(),
+      rate: reader.readS16(), // S16, not S8!
       speed: reader.readU8(),
-      min: reader.readS8(),
-      max: reader.readS8(),
-      box: reader.readU8(),
+      min: 0,  // Not in MSP, kept for CLI compatibility
+      max: 0,  // Not in MSP, kept for CLI compatibility
+      box: reader.readS8(),
     });
   }
 
@@ -861,6 +868,14 @@ export function deserializeServoMixerRules(payload: Uint8Array): MSPServoMixerRu
 
 /**
  * Serialize a single iNav servo mixer rule
+ *
+ * iNav SET format (7 bytes):
+ *   - index: U8 (rule index)
+ *   - targetChannel: U8
+ *   - inputSource: U8
+ *   - rate: S16 (little-endian)
+ *   - speed: U8
+ *   - conditionId: S8 (box/condition, -1 = always active)
  */
 export function serializeServoMixerRule(index: number, rule: MSPServoMixerRule): Uint8Array {
   const builder = new PayloadBuilder();
@@ -868,11 +883,9 @@ export function serializeServoMixerRule(index: number, rule: MSPServoMixerRule):
   builder.writeU8(index);
   builder.writeU8(rule.targetChannel);
   builder.writeU8(rule.inputSource);
-  builder.writeS8(rule.rate);
+  builder.writeS16(rule.rate);  // S16, not S8!
   builder.writeU8(rule.speed);
-  builder.writeS8(rule.min);
-  builder.writeS8(rule.max);
-  builder.writeU8(rule.box);
+  builder.writeS8(rule.box);    // conditionId/box, NOT min/max
 
   return builder.build();
 }
@@ -882,30 +895,46 @@ export function serializeServoMixerRule(index: number, rule: MSPServoMixerRule):
 // =============================================================================
 
 export interface MSPMotorMixerRule {
-  throttle: number;  // -1.0 to 1.0 (stored as -1000 to 1000 in MSP)
-  roll: number;      // -1.0 to 1.0
-  pitch: number;     // -1.0 to 1.0
-  yaw: number;       // -1.0 to 1.0
+  throttle: number;  // -2.0 to 2.0 (stored as (value+2)*1000 in MSP, so 0-4000)
+  roll: number;      // -2.0 to 2.0
+  pitch: number;     // -2.0 to 2.0
+  yaw: number;       // -2.0 to 2.0
 }
 
 /**
  * Deserialize MSP2_COMMON_MOTOR_MIXER response
- * Each motor rule is 8 bytes: throttle(s16), roll(s16), pitch(s16), yaw(s16)
- * Values are scaled by 1000 (-1000 to 1000 represents -1.0 to 1.0)
+ *
+ * iNav encoding: Each motor rule is 8 bytes (4 × uint16)
+ * Values use +2 offset then *1000: mspValue = (value + 2) * 1000
+ * So value = (mspValue / 1000) - 2
+ *
+ * Examples:
+ *   throttle=1.0  → MSP=3000
+ *   roll=-1.0     → MSP=1000
+ *   roll=1.0      → MSP=3000
  */
 export function deserializeMotorMixerRules(payload: Uint8Array): MSPMotorMixerRule[] {
   const reader = new PayloadReader(payload);
   const rules: MSPMotorMixerRule[] = [];
 
-  // Each motor rule is 8 bytes (4 × int16)
-  while (reader.remaining() >= 8) {
-    const throttle = reader.readS16() / 1000;
-    const roll = reader.readS16() / 1000;
-    const pitch = reader.readS16() / 1000;
-    const yaw = reader.readS16() / 1000;
+  // Maximum reasonable number of motors (prevents garbage data issues)
+  const MAX_MOTORS = 12;
 
-    // Skip entries with all zeros (unused motor slots)
-    if (throttle !== 0 || roll !== 0 || pitch !== 0 || yaw !== 0) {
+  // Each motor rule is 8 bytes (4 × uint16)
+  while (reader.remaining() >= 8 && rules.length < MAX_MOTORS) {
+    // iNav encoding: (value + 2) * 1000, so we reverse it
+    const throttle = reader.readU16() / 1000 - 2;
+    const roll = reader.readU16() / 1000 - 2;
+    const pitch = reader.readU16() / 1000 - 2;
+    const yaw = reader.readU16() / 1000 - 2;
+
+    // Validate entry - real motors must have:
+    // 1. Positive throttle (motors need throttle > 0)
+    // 2. Values within valid range (-2.0 to 2.0)
+    const isValidThrottle = throttle > 0 && throttle <= 2.0;
+    const isValidRange = Math.abs(roll) <= 2.0 && Math.abs(pitch) <= 2.0 && Math.abs(yaw) <= 2.0;
+
+    if (isValidThrottle && isValidRange) {
       rules.push({ throttle, roll, pitch, yaw });
     }
   }
@@ -915,16 +944,24 @@ export function deserializeMotorMixerRules(payload: Uint8Array): MSPMotorMixerRu
 
 /**
  * Serialize a single motor mixer rule for MSP2_COMMON_SET_MOTOR_MIXER
- * Format: index(u8), throttle(s16), roll(s16), pitch(s16), yaw(s16) = 9 bytes
+ *
+ * iNav encoding: mspValue = (value + 2) * 1000
+ * Format: index(u8), throttle(u16), roll(u16), pitch(u16), yaw(u16) = 9 bytes
+ *
+ * Examples:
+ *   throttle=1.0  → MSP=3000
+ *   roll=-1.0     → MSP=1000
+ *   roll=1.0      → MSP=3000
  */
 export function serializeMotorMixerRule(index: number, rule: MSPMotorMixerRule): Uint8Array {
   const builder = new PayloadBuilder();
 
   builder.writeU8(index);
-  builder.writeS16(Math.round(rule.throttle * 1000));
-  builder.writeS16(Math.round(rule.roll * 1000));
-  builder.writeS16(Math.round(rule.pitch * 1000));
-  builder.writeS16(Math.round(rule.yaw * 1000));
+  // iNav encoding: (value + 2) * 1000
+  builder.writeU16(Math.round((rule.throttle + 2) * 1000));
+  builder.writeU16(Math.round((rule.roll + 2) * 1000));
+  builder.writeU16(Math.round((rule.pitch + 2) * 1000));
+  builder.writeU16(Math.round((rule.yaw + 2) * 1000));
 
   return builder.build();
 }
