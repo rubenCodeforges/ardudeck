@@ -83,6 +83,7 @@ export const MODE_INFO: Record<
     color: string;
     beginner: string;
     essential?: boolean;
+    configureTab?: string; // Tab ID to configure this mode's settings
   }
 > = {
   [BOX_ID.ARM]: {
@@ -169,6 +170,7 @@ export const MODE_INFO: Record<
     description: 'Auto launch',
     color: 'bg-orange-500',
     beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.',
+    configureTab: 'auto-launch',
   },
   [BOX_ID.GCS_NAV]: {
     name: 'GCS NAV',

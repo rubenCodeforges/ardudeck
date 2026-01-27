@@ -21,6 +21,7 @@ import ServoMixerTab from './ServoMixerTab';
 import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
 import SafetyTab from './SafetyTab';
+import AutoLaunchTab from './AutoLaunchTab';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import {
   SlidersHorizontal,
@@ -275,7 +276,7 @@ const PID_PRESETS: Record<string, {
 
 // Mode definitions with beginner-friendly explanations
 // iNav permanent box IDs (from fc_msp_box.c) - must match mode-presets.ts BOX_ID
-const MODE_INFO: Record<number, { name: string; icon: LucideIcon; description: string; color: string; beginner: string }> = {
+const MODE_INFO: Record<number, { name: string; icon: LucideIcon; description: string; color: string; beginner: string; configureTab?: string }> = {
   0: { name: 'ARM', icon: Power, description: 'Enable motors', color: 'bg-red-500', beginner: 'SAFETY SWITCH - Arms/disarms your aircraft. Always have this on a switch!' },
   1: { name: 'ANGLE', icon: Square, description: 'Self-level', color: 'bg-blue-500', beginner: 'BEGINNER MODE - Aircraft stays level automatically. Best for learning!' },
   2: { name: 'HORIZON', icon: Sunrise, description: 'Hybrid mode', color: 'bg-cyan-500', beginner: 'TRAINING MODE - Self-levels at center, allows flips at full stick' },
@@ -301,7 +302,7 @@ const MODE_INFO: Record<number, { name: string; icon: LucideIcon; description: s
   31: { name: 'GCS NAV', icon: Gamepad2, description: 'Ground control', color: 'bg-purple-500', beginner: 'Allow ground control station to send navigation commands (fly-to-here, etc).' },
   34: { name: 'FLAPERON', icon: PlaneTakeoff, description: 'Flaps mode', color: 'bg-amber-500', beginner: 'Activates flaperons for slower landing approach. Ailerons droop down to act as flaps.' },
   35: { name: 'TURN ASSIST', icon: RotateCw, description: 'Coordinated turns', color: 'bg-lime-500', beginner: 'Auto-coordinates rudder with ailerons for smooth turns. Great for fixed-wing beginners.' },
-  36: { name: 'NAV LAUNCH', icon: Rocket, description: 'Auto launch', color: 'bg-orange-500', beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.' },
+  36: { name: 'NAV LAUNCH', icon: Rocket, description: 'Auto launch', color: 'bg-orange-500', beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.', configureTab: 'auto-launch' },
   37: { name: 'SERVO AUTOTRIM', icon: Scissors, description: 'Auto trim servos', color: 'bg-gray-500', beginner: 'Automatically adjusts servo trim during flight' },
   45: { name: 'NAV CRUISE', icon: Plane, description: 'Cruise control', color: 'bg-sky-500', beginner: 'Fixed-wing cruise mode - Maintains heading and altitude. Perfect for long-range flights.' },
   46: { name: 'MC BRAKING', icon: OctagonX, description: 'Multirotor braking', color: 'bg-red-500', beginner: 'Aggressive braking when releasing sticks on multirotor' },
@@ -992,7 +993,7 @@ function TelemetryCard({
 }
 
 // Modes Tab Content - Uses the new modes wizard and advanced editor
-function ModesTabContent() {
+function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string) => void }) {
   const {
     isWizardOpen,
     viewMode,
@@ -1191,15 +1192,28 @@ function ModesTabContent() {
                             </div>
                           </div>
                         </div>
-                        {isActive ? (
-                          <span className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded-full animate-pulse">
-                            ACTIVE
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 text-xs bg-zinc-700/50 text-zinc-500 rounded-full">
-                            INACTIVE
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {/* Configure button for modes with settings */}
+                          {modeInfo?.configureTab && onNavigateToTab && (
+                            <button
+                              onClick={() => onNavigateToTab(modeInfo.configureTab!)}
+                              className="px-2 py-1 text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded-lg transition-colors flex items-center gap-1"
+                              title={`Configure ${info.name} settings`}
+                            >
+                              <Settings2 className="w-3 h-3" />
+                              Configure
+                            </button>
+                          )}
+                          {isActive ? (
+                            <span className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded-full animate-pulse">
+                              ACTIVE
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 text-xs bg-zinc-700/50 text-zinc-500 rounded-full">
+                              INACTIVE
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Visual range bar */}
@@ -1266,7 +1280,7 @@ function ModesTabContent() {
   );
 }
 
-type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'safety';
+type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'auto-launch' | 'safety';
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
@@ -1292,6 +1306,7 @@ export function MspConfigView() {
   const [modes, setModes] = useState<MSPModeRange[]>([]);
   const [features, setFeatures] = useState<number>(0);
   const [pidRatesModified, setPidRatesModified] = useState(false);
+  const [currentPlatformType, setCurrentPlatformType] = useState<number>(0); // 0=multirotor, 1=airplane
 
   // Combined modified state: PIDs/rates OR modes have changes
   const modified = pidRatesModified || modesHaveChanges();
@@ -1413,11 +1428,12 @@ export function MspConfigView() {
     setLoading(true);
     setError(null);
     try {
-      const [pidData, rcData, modesData, featuresData] = await Promise.all([
+      const [pidData, rcData, modesData, featuresData, mixerConfig] = await Promise.all([
         window.electronAPI?.mspGetPid(),
         window.electronAPI?.mspGetRcTuning(),
         window.electronAPI?.mspGetModeRanges(),
         window.electronAPI?.mspGetFeatures(),
+        window.electronAPI?.mspGetInavMixerConfig?.(),
       ]);
       if (pidData) setPid(pidData as MSPPid);
       if (rcData) {
@@ -1442,6 +1458,10 @@ export function MspConfigView() {
       }
       if (modesData) setModes(modesData as MSPModeRange[]);
       if (typeof featuresData === 'number') setFeatures(featuresData);
+      if (mixerConfig && typeof mixerConfig.platformType === 'number') {
+        setCurrentPlatformType(mixerConfig.platformType);
+        console.log('[UI] Platform type:', mixerConfig.platformType === 1 ? 'Airplane' : 'Other');
+      }
       console.log('[UI] loadConfig complete, setting modified=false');
       setPidRatesModified(false);
     } catch (err) {
@@ -1847,6 +1867,21 @@ export function MspConfigView() {
             </button>
           )}
 
+          {/* Auto Launch (iNav Airplane only) */}
+          {isInav && currentPlatformType === 1 && (
+            <button
+              onClick={() => setActiveTab('auto-launch')}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                activeTab === 'auto-launch'
+                  ? 'bg-gray-800 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+              }`}
+            >
+              <PlaneTakeoff className={`w-4 h-4 ${activeTab === 'auto-launch' ? 'text-orange-400' : 'text-orange-400 opacity-50'}`} />
+              <span className="text-sm font-medium">Auto Launch</span>
+            </button>
+          )}
+
           {/* Safety (Receiver/Failsafe) */}
           <button
             onClick={() => setActiveTab('safety')}
@@ -1910,7 +1945,7 @@ export function MspConfigView() {
 
 
         {/* Modes Tab */}
-        {activeTab === 'modes' && <ModesTabContent />}
+        {activeTab === 'modes' && <ModesTabContent onNavigateToTab={(tabId) => setActiveTab(tabId as TabId)} />}
 
         {/* Sensors Tab */}
         {activeTab === 'sensors' && (
@@ -2073,6 +2108,11 @@ export function MspConfigView() {
         {/* Navigation Tab (iNav only) */}
         {activeTab === 'navigation' && isInav && (
           <NavigationTab modified={modified} setModified={setPidRatesModified} />
+        )}
+
+        {/* Auto Launch Tab (iNav Airplane only) */}
+        {activeTab === 'auto-launch' && isInav && currentPlatformType === 1 && (
+          <AutoLaunchTab modified={modified} setModified={setPidRatesModified} />
         )}
 
         {/* Safety Tab (Receiver/Failsafe) */}

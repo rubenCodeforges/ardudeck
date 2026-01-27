@@ -12,13 +12,14 @@ import React from 'react';
 import type { MSPModeRange } from '@ardudeck/msp-ts';
 import { MODE_INFO, AUX_CHANNELS } from '../presets/mode-presets';
 import RcChannelBar from './RcChannelBar';
-import { HelpCircle, Pencil, Trash2 } from 'lucide-react';
+import { HelpCircle, Pencil, Trash2, Settings2 } from 'lucide-react';
 
 interface ModeCardProps {
   mode: MSPModeRange;
   rcValue: number;
   onEdit?: () => void;
   onDelete?: () => void;
+  onConfigure?: (tabId: string) => void; // Navigate to configure tab
   expanded?: boolean;
   showDescription?: boolean;
   readOnly?: boolean;
@@ -29,6 +30,7 @@ export const ModeCard: React.FC<ModeCardProps> = ({
   rcValue,
   onEdit,
   onDelete,
+  onConfigure,
   expanded = false,
   showDescription = true,
   readOnly = false,
@@ -83,6 +85,18 @@ export const ModeCard: React.FC<ModeCardProps> = ({
           <div className="px-2 py-1 bg-zinc-700 rounded text-xs text-zinc-300">
             {auxChannel?.name || `AUX ${mode.auxChannel + 1}`}
           </div>
+
+          {/* Configure button (for modes with configurable settings) */}
+          {modeInfo?.configureTab && onConfigure && (
+            <button
+              onClick={() => onConfigure(modeInfo.configureTab!)}
+              className="px-2 py-1 text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded-lg transition-colors flex items-center gap-1"
+              title={`Configure ${info.name} settings`}
+            >
+              <Settings2 className="w-3 h-3" />
+              Configure
+            </button>
+          )}
 
           {!readOnly && (
             <>
