@@ -409,7 +409,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: FLYING_WING_SERVOS,
-      motorMixerRules: [], // Firmware handles motor config for fixed-wing
+      motorMixerRules: SINGLE_MOTOR,
     },
   },
 
@@ -467,7 +467,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: TRADITIONAL_AIRPLANE_SERVOS,
-      motorMixerRules: [], // Firmware handles motor config for fixed-wing
+      motorMixerRules: SINGLE_MOTOR,
     },
   },
 
@@ -525,7 +525,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: TRADITIONAL_AIRPLANE_SERVOS,
-      motorMixerRules: [], // Firmware handles motor config for fixed-wing
+      motorMixerRules: SINGLE_MOTOR,
     },
   },
 
@@ -583,7 +583,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: FLYING_WING_SERVOS,
-      motorMixerRules: [], // Firmware handles motor config for fixed-wing
+      motorMixerRules: SINGLE_MOTOR,
     },
   },
 
@@ -643,7 +643,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
     aircraft: {
       platformType: PLATFORM_TYPE.AIRPLANE,
       servoMixerRules: FLYING_WING_SERVOS,
-      motorMixerRules: [], // Firmware handles motor config for fixed-wing
+      motorMixerRules: SINGLE_MOTOR,
     },
   },
 

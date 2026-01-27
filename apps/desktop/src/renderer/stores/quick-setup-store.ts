@@ -781,19 +781,33 @@ async function applyPresetViaMsp(
     updateTask('completed');
     nextTask();
 
-    // 5. Motor Mixer (if applicable)
+    // 5. Motor Mixer - ALWAYS configure (even with 1 motor, we must clear old quad config)
     if (hasMotorMixer) {
       updateTask('in_progress');
 
       // Build motor mixer rules array (indexed by motor number)
-      const motorRules = preset.aircraft.motorMixerRules.map((rule) => ({
-        throttle: rule.throttle,
-        roll: rule.roll,
-        pitch: rule.pitch,
-        yaw: rule.yaw,
-      }));
+      // CRITICAL: Pad to 8 motors with zeros to disable unused motor slots!
+      // Without this, switching from quad (4 motors) to airplane (1 motor) leaves
+      // motors 1-3 with their old quad mixing values.
+      const MAX_MOTORS = 8;
+      const motorRules: Array<{ throttle: number; roll: number; pitch: number; yaw: number }> = [];
 
-      console.log(`[QuickSetup] Setting ${motorRules.length} motor mixer rules...`);
+      for (let i = 0; i < MAX_MOTORS; i++) {
+        const presetRule = preset.aircraft.motorMixerRules.find(r => r.motorIndex === i);
+        if (presetRule) {
+          motorRules.push({
+            throttle: presetRule.throttle,
+            roll: presetRule.roll,
+            pitch: presetRule.pitch,
+            yaw: presetRule.yaw,
+          });
+        } else {
+          // Disable unused motor slots by setting throttle=0
+          motorRules.push({ throttle: 0, roll: 0, pitch: 0, yaw: 0 });
+        }
+      }
+
+      console.log(`[QuickSetup] Setting ${preset.aircraft.motorMixerRules.length} active motors, disabling ${MAX_MOTORS - preset.aircraft.motorMixerRules.length} unused slots...`);
       const motorSuccess = await window.electronAPI?.mspSetMotorMixer(motorRules);
       if (!motorSuccess) {
         console.warn('[QuickSetup] Motor mixer MSP failed, skipping (will use defaults)');

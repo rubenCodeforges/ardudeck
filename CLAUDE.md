@@ -14,8 +14,66 @@ Modernizing ArduPilot's Mission Planner ground control station from legacy C#/.N
 | Comms Library | `/packages/comms/` | TypeScript (Serial/TCP/UDP) |
 | STM32 DFU Library | `/packages/stm32-dfu/` | TypeScript (USB DFU) |
 | Legacy Reference | `/MissionPlanner/` | C# .NET WinForms (read-only) |
+| **iNav Configurator** | `/inav-configurator/` | **REFERENCE IMPLEMENTATION for all MSP operations** |
 
-**Reference:** [BlueRobotics Cockpit](https://github.com/bluerobotics/cockpit) - MAVLink TypeScript patterns.
+**References:**
+- [BlueRobotics Cockpit](https://github.com/bluerobotics/cockpit) - MAVLink TypeScript patterns
+- **iNav Configurator (LOCAL)** - MSP protocol reference (see below)
+
+---
+
+## ⚠️ CRITICAL: iNav Configurator Reference
+
+**ALWAYS check `/inav-configurator/` FIRST before implementing ANY MSP functionality!**
+
+iNav Configurator is the working reference implementation. We are making it more user-friendly, NOT reinventing the wheel.
+
+### Key Files to Reference
+
+| What | iNav Configurator File |
+|------|------------------------|
+| MSP command codes | `js/msp/MSPCodes.js` |
+| MSP serialization/deserialization | `js/msp/MSPHelper.js` (largest file - all MSP logic) |
+| Motor mixer | `js/motorMixRule.js`, `js/motorMixerRuleCollection.js` |
+| Servo mixer | `js/servoMixRule.js`, `js/servoMixerRuleCollection.js` |
+| FC state model | `js/fc.js` |
+| Mixer tab logic | `tabs/mixer.js` |
+
+### MSP Encoding Patterns (from iNav Configurator)
+
+**Motor Mixer values:** `mspValue = (value + 2) * 1000` (NOT `value * 1000`)
+- throttle=1.0 → MSP=3000
+- roll=-1.0 → MSP=1000
+
+**Always verify byte order and encoding against iNav Configurator before implementing!**
+
+### Other Reference Implementations (clone when needed)
+
+| Protocol | Reference | Repo |
+|----------|-----------|------|
+| iNav MSP | iNav Configurator | **LOCAL: `/inav-configurator/`** |
+| Betaflight MSP | Betaflight Configurator | `https://github.com/betaflight/betaflight-configurator` |
+| ArduPilot MAVLink | Mission Planner | `https://github.com/ArduPilot/MissionPlanner` |
+
+**When working on Betaflight or MAVLink features, clone the reference repo first if not present.**
+
+### Debugging MSP Issues - DO NOT ADD FALLBACKS BLINDLY
+
+When MSP operations fail, **STOP and investigate** before adding CLI fallbacks:
+
+1. **Check iNav Configurator first** - How do they do it? What function? What encoding?
+2. **Compare byte-by-byte** - Is our payload structure identical?
+3. **Verify function signatures** - Are we using the right function? (e.g., `sendMspV2RequestWithPayload` vs `sendMspV2Request`)
+4. **Check error messages** - "not supported" often means wrong payload, not missing feature
+5. **Log the actual bytes** - Compare with what iNav Configurator sends
+
+**CLI fallbacks are a LAST RESORT, not a first response to errors.**
+
+Common mistakes to avoid:
+- Using `sendMspV2Request` (no payload) instead of `sendMspV2RequestWithPayload`
+- Wrong encoding: `value * 1000` vs `(value + 2) * 1000`
+- Wrong byte order: U16 vs S16, little-endian vs big-endian
+- Missing fields in payload structure
 
 ## Build Commands
 
