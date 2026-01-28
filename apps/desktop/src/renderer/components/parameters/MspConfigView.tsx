@@ -22,6 +22,9 @@ import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
 import SafetyTab from './SafetyTab';
 import AutoLaunchTab from './AutoLaunchTab';
+// GpsRescueTab removed - GPS Rescue is now integrated into SafetyTab
+import FilterConfigTab from './FilterConfigTab';
+import VtxConfigTab from './VtxConfigTab';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import {
   SlidersHorizontal,
@@ -72,6 +75,7 @@ import {
   CloudSun,
   Wand2,
   HelpCircle,
+  Waves,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -314,39 +318,103 @@ const MODE_INFO: Record<number, { name: string; icon: LucideIcon; description: s
 };
 
 
+// Betaflight Rate Types - different curve algorithms
+const RATE_TYPES = [
+  { value: 0, label: 'Betaflight', description: 'Classic exponential + super rate' },
+  { value: 1, label: 'Raceflight', description: 'Polynomial curves for racing' },
+  { value: 2, label: 'KISS', description: 'Linear rate response' },
+  { value: 3, label: 'Actual', description: 'Precise deg/s control (popular)' },
+  { value: 4, label: 'Quick', description: 'Rapid response curves' },
+];
+
+// Calculate rate based on rate type (matches Betaflight calculations)
+function calculateRate(stick: number, rcRate: number, superRate: number, expo: number, ratesType: number): number {
+  const absStick = Math.abs(stick);
+
+  switch (ratesType) {
+    case 0: // Betaflight
+      const rcRateFactor = rcRate / 100;
+      const superRateFactor = superRate / 100;
+      const expoFactor = expo / 100;
+      const expoValue = stick * Math.pow(absStick, 3) * expoFactor + stick * (1 - expoFactor);
+      return rcRateFactor * (1 + absStick * superRateFactor * 0.01) * expoValue * 200;
+
+    case 1: // Raceflight
+      const rcCommandf = ((1 + 0.01 * expo * (stick * stick - 1.0)) * stick);
+      return ((1 + 0.01 * superRate * rcCommandf * rcCommandf) * rcCommandf) * rcRate;
+
+    case 2: // KISS
+      const kissExpof = (expo / 100) * Math.pow(absStick, 3) * stick + stick * (1 - expo / 100);
+      return (kissExpof * (rcRate / 10 + (rcRate / 10) * absStick * superRate / 100)) * 10;
+
+    case 3: // Actual
+      // Actual rates: center sensitivity (rcRate), max rate (superRate), expo
+      const expof = absStick * (Math.pow(stick, 5) * expo / 100 + stick * (1 - expo / 100));
+      const centerSensitivity = rcRate * 10; // degrees/sec at center
+      const maxRate = superRate * 10; // degrees/sec at full stick
+      return (maxRate - centerSensitivity) * absStick + centerSensitivity;
+
+    case 4: // Quick
+      const rcRateQuick = rcRate * 2 / 10;
+      const maxRateQuick = rcRateQuick + (rcRateQuick * superRate / 100 * absStick);
+      const expoValueQuick = absStick * (Math.pow(stick, 5) * expo / 100 + stick * (1 - expo / 100));
+      return maxRateQuick * expoValueQuick * 10;
+
+    default:
+      return stick * rcRate;
+  }
+}
+
+// Calculate max rate for display
+function calculateMaxRate(rcRate: number, superRate: number, ratesType: number): number {
+  switch (ratesType) {
+    case 0: // Betaflight
+      return Math.round((rcRate / 100) * (1 + superRate / 100) * 200 * 1.8);
+    case 1: // Raceflight
+      return Math.round((1 + superRate / 100) * rcRate);
+    case 2: // KISS
+      return Math.round((rcRate / 10 + (rcRate / 10) * superRate / 100) * 10);
+    case 3: // Actual
+      return superRate * 10; // Max rate directly in deg/s
+    case 4: // Quick
+      return Math.round((rcRate * 2 / 10 * (1 + superRate / 100)) * 10);
+    default:
+      return rcRate;
+  }
+}
+
 // Rate curve visualization with better visuals
 function RateCurve({
   rcRate,
   superRate,
   expo,
   color,
+  ratesType = 0,
 }: {
   rcRate: number;
   superRate: number;
   expo: number;
   color: string;
+  ratesType?: number;
 }) {
   const points = useMemo(() => {
     const pts: string[] = [];
     for (let i = 0; i <= 100; i += 2) {
       const stick = i / 100;
-      const rcRateFactor = rcRate / 100;
-      const superRateFactor = superRate / 100;
-      const expoFactor = expo / 100;
-      const expoValue = stick * Math.pow(Math.abs(stick), 3) * expoFactor + stick * (1 - expoFactor);
-      const rate = rcRateFactor * (1 + Math.abs(expoValue) * superRateFactor * 0.01) * expoValue;
+      const rate = calculateRate(stick, rcRate, superRate, expo, ratesType);
       const x = 5 + (i / 100) * 90;
-      const y = 95 - Math.min(rate * 100, 90);
+      // Normalize the rate for display (cap at 90% height)
+      const maxRate = calculateMaxRate(rcRate, superRate, ratesType);
+      const normalizedRate = maxRate > 0 ? (rate / maxRate) * 90 : 0;
+      const y = 95 - Math.min(normalizedRate, 90);
       pts.push(`${x},${y}`);
     }
     return pts.join(' ');
-  }, [rcRate, superRate, expo]);
+  }, [rcRate, superRate, expo, ratesType]);
 
   const maxRate = useMemo(() => {
-    const rcRateFactor = rcRate / 100;
-    const superRateFactor = superRate / 100;
-    return Math.round(rcRateFactor * (1 + superRateFactor) * 200 * 1.8);
-  }, [rcRate, superRate]);
+    return calculateMaxRate(rcRate, superRate, ratesType);
+  }, [rcRate, superRate, ratesType]);
 
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 border border-gray-800">
@@ -462,6 +530,38 @@ function RatesTab({
           <p className="text-sm text-gray-400">Rates control how fast your quad spins when you move the sticks. Higher = faster rotation.</p>
         </div>
       </div>
+
+      {/* Rate Type Selector (Betaflight only) */}
+      {!isInav && (
+        <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/5 rounded-xl border border-orange-500/30 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                <Gauge className="w-5 h-5 text-orange-400" />
+              </div>
+              <div>
+                <p className="text-orange-300 font-medium">Rate Profile Type</p>
+                <p className="text-xs text-gray-500">
+                  {RATE_TYPES.find(t => t.value === rcTuning.ratesType)?.description || 'Select curve algorithm'}
+                </p>
+              </div>
+            </div>
+            <select
+              value={rcTuning.ratesType}
+              onChange={(e) => {
+                updateRcTuning('ratesType', parseInt(e.target.value, 10));
+              }}
+              className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500 cursor-pointer"
+            >
+              {RATE_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* My Custom Profiles */}
       <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-4">
@@ -581,6 +681,7 @@ function RatesTab({
                 superRate={rcTuning[superRate] as number}
                 expo={rcTuning[expo] as number}
                 color={color}
+                ratesType={rcTuning.ratesType}
               />
             </div>
           </div>
@@ -1280,7 +1381,7 @@ function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string
   );
 }
 
-type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'auto-launch' | 'safety';
+type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'auto-launch' | 'safety' | 'filters' | 'vtx';
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
@@ -1882,6 +1983,47 @@ export function MspConfigView() {
             </button>
           )}
 
+          {/* Filters (Betaflight only) */}
+          {!isInav && (
+            <button
+              onClick={() => setActiveTab('filters')}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                activeTab === 'filters'
+                  ? 'bg-gray-800 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+              }`}
+            >
+              <Waves className={`w-4 h-4 ${activeTab === 'filters' ? 'text-purple-400' : 'text-purple-400 opacity-50'}`} />
+              <span className="text-sm font-medium">Filters</span>
+            </button>
+          )}
+
+          {/* VTX Config */}
+          <button
+            onClick={() => setActiveTab('vtx')}
+            className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'vtx'
+                ? 'bg-gray-800 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+            }`}
+          >
+            <Radio className={`w-4 h-4 ${activeTab === 'vtx' ? 'text-pink-400' : 'text-pink-400 opacity-50'}`} />
+            <span className="text-sm font-medium">VTX</span>
+          </button>
+
+          {/* Launch Control (Betaflight only) - Coming Soon */}
+          {!isInav && (
+            <button
+              disabled
+              title="Coming Soon - Launch Control for race starts"
+              className="px-3 py-2 rounded-lg flex items-center gap-2 text-gray-600 cursor-not-allowed opacity-50"
+            >
+              <Rocket className="w-4 h-4 text-cyan-400 opacity-50" />
+              <span className="text-sm font-medium">Launch Control</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-500">Soon</span>
+            </button>
+          )}
+
           {/* Safety (Receiver/Failsafe) */}
           <button
             onClick={() => setActiveTab('safety')}
@@ -2113,6 +2255,16 @@ export function MspConfigView() {
         {/* Auto Launch Tab (iNav Airplane only) */}
         {activeTab === 'auto-launch' && isInav && currentPlatformType === 1 && (
           <AutoLaunchTab modified={modified} setModified={setPidRatesModified} />
+        )}
+
+        {/* Filter Config Tab (Betaflight only) */}
+        {activeTab === 'filters' && !isInav && (
+          <FilterConfigTab modified={modified} setModified={setPidRatesModified} />
+        )}
+
+        {/* VTX Config Tab */}
+        {activeTab === 'vtx' && (
+          <VtxConfigTab modified={modified} setModified={setPidRatesModified} />
         )}
 
         {/* Safety Tab (Receiver/Failsafe) */}

@@ -682,6 +682,33 @@ const api = {
   mspSetFailsafeConfig: (config: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_FAILSAFE_CONFIG, config),
 
+  // MSP GPS Rescue Configuration (Betaflight)
+  mspGetGpsRescue: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_GPS_RESCUE),
+
+  mspSetGpsRescue: (config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_GPS_RESCUE, config),
+
+  mspGetGpsRescuePids: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_GPS_RESCUE_PIDS),
+
+  mspSetGpsRescuePids: (pids: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_GPS_RESCUE_PIDS, pids),
+
+  // MSP Filter Configuration (Betaflight)
+  mspGetFilterConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FILTER_CONFIG),
+
+  mspSetFilterConfig: (config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_FILTER_CONFIG, config),
+
+  // MSP VTX Configuration
+  mspGetVtxConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_VTX_CONFIG),
+
+  mspSetVtxConfig: (config: unknown): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_VTX_CONFIG, config),
+
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   mspGetSetting: (name: string): Promise<{ value: string | number; info: unknown } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SETTING, name),

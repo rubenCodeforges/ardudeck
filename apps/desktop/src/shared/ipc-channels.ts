@@ -180,6 +180,20 @@ export const IPC_CHANNELS = {
   MSP_GET_FAILSAFE_CONFIG: 'msp:get-failsafe-config',
   MSP_SET_FAILSAFE_CONFIG: 'msp:set-failsafe-config',
 
+  // MSP GPS Rescue Configuration (Betaflight)
+  MSP_GET_GPS_RESCUE: 'msp:get-gps-rescue',
+  MSP_SET_GPS_RESCUE: 'msp:set-gps-rescue',
+  MSP_GET_GPS_RESCUE_PIDS: 'msp:get-gps-rescue-pids',
+  MSP_SET_GPS_RESCUE_PIDS: 'msp:set-gps-rescue-pids',
+
+  // MSP Filter Configuration (Betaflight)
+  MSP_GET_FILTER_CONFIG: 'msp:get-filter-config',
+  MSP_SET_FILTER_CONFIG: 'msp:set-filter-config',
+
+  // MSP VTX Configuration
+  MSP_GET_VTX_CONFIG: 'msp:get-vtx-config',
+  MSP_SET_VTX_CONFIG: 'msp:set-vtx-config',
+
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   MSP_GET_SETTING: 'msp:get-setting',
   MSP_SET_SETTING: 'msp:set-setting',

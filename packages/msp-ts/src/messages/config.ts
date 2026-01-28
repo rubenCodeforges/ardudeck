@@ -1661,3 +1661,451 @@ export function serializeFailsafeConfig(config: MSPFailsafeConfig): Uint8Array {
 
   return builder.build();
 }
+
+// =============================================================================
+// Betaflight GPS Rescue Configuration (MSP_GPS_RESCUE / MSP_SET_GPS_RESCUE)
+// =============================================================================
+
+/**
+ * Betaflight GPS Rescue configuration
+ * MSP command 135 (read) / 225 (write)
+ *
+ * GPS Rescue is Betaflight's RTH (Return to Home) feature.
+ * When activated, the quad will climb to altitude and fly back to home.
+ */
+export interface MSPGpsRescueConfig {
+  // Angle settings (in decidegrees, /10 for degrees)
+  angle: number;                   // Max tilt angle during rescue (decidegrees)
+  initialAltitudeM: number;        // Rescue altitude (meters)
+  descentDistanceM: number;        // Start descent at this distance from home (meters)
+  rescueGroundspeed: number;       // Return speed (cm/s)
+  throttleMin: number;             // Minimum throttle (1000-2000)
+  throttleMax: number;             // Maximum throttle (1000-2000)
+  throttleHover: number;           // Hover throttle (1000-2000)
+  sanityChecks: number;            // Sanity check flags
+  minSats: number;                 // Minimum satellites required
+  // Ascend/descend rates (cm/s)
+  ascendRate: number;              // Climb rate (cm/s)
+  descendRate: number;             // Descent rate (cm/s)
+  allowArmingWithoutFix: number;   // Allow arming without GPS fix (0/1)
+  altitudeMode: number;            // 0=MAX_ALT, 1=FIXED_ALT, 2=CURRENT_ALT
+  // Version 2+ fields (Betaflight 4.3+)
+  minRescueDth: number;            // Minimum distance to activate (meters)
+  targetLandingAltitudeM: number;  // Landing altitude (meters)
+}
+
+/**
+ * Betaflight GPS Rescue PIDs
+ * MSP command 136 (read) / 226 (write)
+ */
+export interface MSPGpsRescuePids {
+  throttleP: number;
+  throttleI: number;
+  throttleD: number;
+  velP: number;
+  velI: number;
+  velD: number;
+  yawP: number;
+}
+
+// GPS Rescue altitude modes
+export const GPS_RESCUE_ALTITUDE_MODE = {
+  MAX_ALT: 0,     // Use maximum of current and rescue altitude
+  FIXED_ALT: 1,   // Always use rescue altitude
+  CURRENT_ALT: 2, // Use current altitude
+} as const;
+
+// GPS Rescue sanity check flags
+export const GPS_RESCUE_SANITY_CHECKS = {
+  NONE: 0,
+  FLYAWAY: 1,
+  ALL: 2,
+} as const;
+
+/**
+ * Deserialize MSP_GPS_RESCUE response
+ */
+export function deserializeGpsRescueConfig(payload: Uint8Array): MSPGpsRescueConfig {
+  const reader = new PayloadReader(payload);
+
+  const config: MSPGpsRescueConfig = {
+    angle: reader.readU16(),
+    initialAltitudeM: reader.readU16(),
+    descentDistanceM: reader.readU16(),
+    rescueGroundspeed: reader.readU16(),
+    throttleMin: reader.readU16(),
+    throttleMax: reader.readU16(),
+    throttleHover: reader.readU16(),
+    sanityChecks: reader.readU8(),
+    minSats: reader.readU8(),
+    ascendRate: reader.readU16(),
+    descendRate: reader.readU16(),
+    allowArmingWithoutFix: reader.readU8(),
+    altitudeMode: reader.readU8(),
+    minRescueDth: reader.remaining() >= 2 ? reader.readU16() : 30,
+    targetLandingAltitudeM: reader.remaining() >= 2 ? reader.readU16() : 5,
+  };
+
+  return config;
+}
+
+/**
+ * Serialize MSP_SET_GPS_RESCUE payload
+ */
+export function serializeGpsRescueConfig(config: MSPGpsRescueConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU16(config.angle);
+  builder.writeU16(config.initialAltitudeM);
+  builder.writeU16(config.descentDistanceM);
+  builder.writeU16(config.rescueGroundspeed);
+  builder.writeU16(config.throttleMin);
+  builder.writeU16(config.throttleMax);
+  builder.writeU16(config.throttleHover);
+  builder.writeU8(config.sanityChecks);
+  builder.writeU8(config.minSats);
+  builder.writeU16(config.ascendRate);
+  builder.writeU16(config.descendRate);
+  builder.writeU8(config.allowArmingWithoutFix);
+  builder.writeU8(config.altitudeMode);
+  builder.writeU16(config.minRescueDth);
+  builder.writeU16(config.targetLandingAltitudeM);
+
+  return builder.build();
+}
+
+/**
+ * Deserialize MSP_GPS_RESCUE_PIDS response
+ */
+export function deserializeGpsRescuePids(payload: Uint8Array): MSPGpsRescuePids {
+  const reader = new PayloadReader(payload);
+
+  return {
+    throttleP: reader.readU16(),
+    throttleI: reader.readU16(),
+    throttleD: reader.readU16(),
+    velP: reader.readU16(),
+    velI: reader.readU16(),
+    velD: reader.readU16(),
+    yawP: reader.readU16(),
+  };
+}
+
+/**
+ * Serialize MSP_SET_GPS_RESCUE_PIDS payload
+ */
+export function serializeGpsRescuePids(pids: MSPGpsRescuePids): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU16(pids.throttleP);
+  builder.writeU16(pids.throttleI);
+  builder.writeU16(pids.throttleD);
+  builder.writeU16(pids.velP);
+  builder.writeU16(pids.velI);
+  builder.writeU16(pids.velD);
+  builder.writeU16(pids.yawP);
+
+  return builder.build();
+}
+
+// =============================================================================
+// Betaflight Filter Configuration (MSP_FILTER_CONFIG / MSP_SET_FILTER_CONFIG)
+// =============================================================================
+
+/**
+ * Betaflight Filter Configuration
+ * MSP command 92 (read) / 93 (write)
+ */
+export interface MSPFilterConfig {
+  // Gyro lowpass filters
+  gyroLowpassHz: number;           // Gyro lowpass 1 cutoff
+  dTermLowpassHz: number;          // D-term lowpass 1 cutoff
+  yawLowpassHz: number;            // Yaw lowpass cutoff
+  // Gyro notch filter
+  gyroNotchHz: number;             // Gyro notch center freq
+  gyroNotchCutoff: number;         // Gyro notch cutoff
+  // D-term notch filter
+  dTermNotchHz: number;            // D-term notch center freq
+  dTermNotchCutoff: number;        // D-term notch cutoff
+  // Second gyro notch (Betaflight 3.4+)
+  gyroNotch2Hz: number;            // Second gyro notch center
+  gyroNotch2Cutoff: number;        // Second gyro notch cutoff
+  // Filter types (Betaflight 4.0+)
+  gyroLowpassType: number;         // 0=PT1, 1=BIQUAD, 2=PT2, 3=PT3
+  gyroLowpass2Hz: number;          // Second gyro lowpass cutoff
+  gyroLowpass2Type: number;        // Second gyro lowpass type
+  dTermLowpass2Hz: number;         // Second D-term lowpass cutoff
+  dTermLowpassType: number;        // D-term lowpass type
+  dTermLowpass2Type: number;       // Second D-term lowpass type
+  // Dynamic notch (Betaflight 4.1+)
+  dynNotchRange: number;           // Dynamic notch range
+  dynNotchWidthPercent: number;    // Dynamic notch width percent
+  dynNotchQ: number;               // Dynamic notch Q factor
+  dynNotchMinHz: number;           // Dynamic notch minimum freq
+  dynNotchMaxHz: number;           // Dynamic notch maximum freq
+  dynNotchCount: number;           // Number of dynamic notches
+  // ABG (Alpha Beta Gamma) filter
+  abgAlpha: number;                // ABG alpha
+  abgBoost: number;                // ABG boost
+  abgHalfLife: number;             // ABG half life
+}
+
+// Filter types
+export const FILTER_TYPE = {
+  PT1: 0,
+  BIQUAD: 1,
+  PT2: 2,
+  PT3: 3,
+} as const;
+
+/**
+ * Deserialize MSP_FILTER_CONFIG response
+ */
+export function deserializeFilterConfig(payload: Uint8Array): MSPFilterConfig {
+  const reader = new PayloadReader(payload);
+
+  const config: MSPFilterConfig = {
+    gyroLowpassHz: reader.readU8(),
+    dTermLowpassHz: reader.readU16(),
+    yawLowpassHz: reader.readU16(),
+    gyroNotchHz: reader.readU16(),
+    gyroNotchCutoff: reader.readU16(),
+    dTermNotchHz: reader.readU16(),
+    dTermNotchCutoff: reader.readU16(),
+    gyroNotch2Hz: reader.readU16(),
+    gyroNotch2Cutoff: reader.readU16(),
+    gyroLowpassType: reader.remaining() >= 1 ? reader.readU8() : 0,
+    gyroLowpass2Hz: reader.remaining() >= 1 ? reader.readU8() : 0,
+    gyroLowpass2Type: reader.remaining() >= 1 ? reader.readU8() : 0,
+    dTermLowpass2Hz: reader.remaining() >= 2 ? reader.readU16() : 0,
+    dTermLowpassType: reader.remaining() >= 1 ? reader.readU8() : 0,
+    dTermLowpass2Type: reader.remaining() >= 1 ? reader.readU8() : 0,
+    dynNotchRange: reader.remaining() >= 1 ? reader.readU8() : 0,
+    dynNotchWidthPercent: reader.remaining() >= 1 ? reader.readU8() : 0,
+    dynNotchQ: reader.remaining() >= 2 ? reader.readU16() : 0,
+    dynNotchMinHz: reader.remaining() >= 2 ? reader.readU16() : 0,
+    dynNotchMaxHz: reader.remaining() >= 2 ? reader.readU16() : 0,
+    dynNotchCount: reader.remaining() >= 1 ? reader.readU8() : 0,
+    abgAlpha: reader.remaining() >= 2 ? reader.readU16() : 0,
+    abgBoost: reader.remaining() >= 2 ? reader.readU16() : 0,
+    abgHalfLife: reader.remaining() >= 1 ? reader.readU8() : 0,
+  };
+
+  return config;
+}
+
+/**
+ * Serialize MSP_SET_FILTER_CONFIG payload
+ */
+export function serializeFilterConfig(config: MSPFilterConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(config.gyroLowpassHz);
+  builder.writeU16(config.dTermLowpassHz);
+  builder.writeU16(config.yawLowpassHz);
+  builder.writeU16(config.gyroNotchHz);
+  builder.writeU16(config.gyroNotchCutoff);
+  builder.writeU16(config.dTermNotchHz);
+  builder.writeU16(config.dTermNotchCutoff);
+  builder.writeU16(config.gyroNotch2Hz);
+  builder.writeU16(config.gyroNotch2Cutoff);
+  builder.writeU8(config.gyroLowpassType);
+  builder.writeU8(config.gyroLowpass2Hz);
+  builder.writeU8(config.gyroLowpass2Type);
+  builder.writeU16(config.dTermLowpass2Hz);
+  builder.writeU8(config.dTermLowpassType);
+  builder.writeU8(config.dTermLowpass2Type);
+  builder.writeU8(config.dynNotchRange);
+  builder.writeU8(config.dynNotchWidthPercent);
+  builder.writeU16(config.dynNotchQ);
+  builder.writeU16(config.dynNotchMinHz);
+  builder.writeU16(config.dynNotchMaxHz);
+  builder.writeU8(config.dynNotchCount);
+  builder.writeU16(config.abgAlpha);
+  builder.writeU16(config.abgBoost);
+  builder.writeU8(config.abgHalfLife);
+
+  return builder.build();
+}
+
+// =============================================================================
+// VTX Configuration (MSP_VTX_CONFIG / MSP_SET_VTX_CONFIG)
+// =============================================================================
+
+// VTX device types
+export const VTX_TYPE = {
+  UNKNOWN: 0,
+  TRAMP: 1,
+  SMARTAUDIO: 2,
+  RTC6705: 3,
+  MSP: 4,      // MSP-based VTX (HDZero, etc.)
+} as const;
+
+export const VTX_TYPE_NAMES: Record<number, string> = {
+  0: 'Unknown',
+  1: 'Tramp',
+  2: 'SmartAudio',
+  3: 'RTC6705',
+  4: 'MSP',
+};
+
+// VTX bands
+export const VTX_BAND = {
+  BOSCAM_A: 1,
+  BOSCAM_B: 2,
+  BOSCAM_E: 3,
+  FATSHARK: 4,
+  RACEBAND: 5,
+} as const;
+
+export const VTX_BAND_NAMES: Record<number, string> = {
+  1: 'A (Boscam)',
+  2: 'B (Boscam)',
+  3: 'E (Boscam)',
+  4: 'F (Fatshark)',
+  5: 'R (Raceband)',
+};
+
+// Standard VTX frequency table (MHz)
+export const VTX_FREQUENCY_TABLE: Record<number, Record<number, number>> = {
+  // Band A (Boscam A)
+  1: { 1: 5865, 2: 5845, 3: 5825, 4: 5805, 5: 5785, 6: 5765, 7: 5745, 8: 5725 },
+  // Band B (Boscam B)
+  2: { 1: 5733, 2: 5752, 3: 5771, 4: 5790, 5: 5809, 6: 5828, 7: 5847, 8: 5866 },
+  // Band E (Boscam E)
+  3: { 1: 5705, 2: 5685, 3: 5665, 4: 5645, 5: 5885, 6: 5905, 7: 5925, 8: 5945 },
+  // Band F (Fatshark)
+  4: { 1: 5740, 2: 5760, 3: 5780, 4: 5800, 5: 5820, 6: 5840, 7: 5860, 8: 5880 },
+  // Band R (Raceband)
+  5: { 1: 5658, 2: 5695, 3: 5732, 4: 5769, 5: 5806, 6: 5843, 7: 5880, 8: 5917 },
+};
+
+// Low power disarm modes
+export const VTX_LOW_POWER_DISARM = {
+  OFF: 0,
+  ON: 1,
+  UNTIL_FIRST_ARM: 2,
+} as const;
+
+export const VTX_LOW_POWER_DISARM_NAMES: Record<number, string> = {
+  0: 'Off',
+  1: 'On',
+  2: 'Until First Arm',
+};
+
+/**
+ * VTX Configuration
+ */
+export interface MSPVtxConfig {
+  vtxType: number;              // VTX device type (0=Unknown, 1=Tramp, 2=SmartAudio, etc.)
+  band: number;                 // Band (1-5)
+  channel: number;              // Channel (1-8)
+  power: number;                // Power level index (0-based)
+  pitMode: boolean;             // Pit mode enabled
+  frequency: number;            // Frequency in MHz (calculated from band/channel or custom)
+  deviceReady: boolean;         // VTX device is ready
+  lowPowerDisarm: number;       // Low power disarm mode (0=Off, 1=On, 2=Until First Arm)
+  pitModeFrequency: number;     // Pit mode frequency (API 1.42+)
+  vtxTableAvailable: boolean;   // VTX table is configured
+  vtxTableBands: number;        // Number of bands in VTX table
+  vtxTableChannels: number;     // Number of channels per band
+  vtxTablePowerLevels: number;  // Number of power levels in VTX table
+}
+
+/**
+ * Deserialize MSP_VTX_CONFIG response
+ *
+ * Byte structure:
+ * - 0: vtxType (U8)
+ * - 1: band (U8)
+ * - 2: channel (U8)
+ * - 3: power (U8)
+ * - 4: pitMode (U8, 0/1)
+ * - 5-6: frequency (U16 LE)
+ * - 7: deviceReady (U8, 0/1)
+ * - 8: lowPowerDisarm (U8)
+ * - 9-10: pitModeFrequency (U16 LE) - API 1.42+
+ * - 11: vtxTableAvailable (U8, 0/1)
+ * - 12: vtxTableBands (U8)
+ * - 13: vtxTableChannels (U8)
+ * - 14: vtxTablePowerLevels (U8)
+ */
+export function deserializeVtxConfig(payload: Uint8Array): MSPVtxConfig {
+  const reader = new PayloadReader(payload);
+
+  const config: MSPVtxConfig = {
+    vtxType: reader.readU8(),
+    band: reader.readU8(),
+    channel: reader.readU8(),
+    power: reader.readU8(),
+    pitMode: reader.readU8() !== 0,
+    frequency: reader.readU16(),
+    deviceReady: reader.remaining() >= 1 ? reader.readU8() !== 0 : false,
+    lowPowerDisarm: reader.remaining() >= 1 ? reader.readU8() : 0,
+    pitModeFrequency: reader.remaining() >= 2 ? reader.readU16() : 0,
+    vtxTableAvailable: reader.remaining() >= 1 ? reader.readU8() !== 0 : false,
+    vtxTableBands: reader.remaining() >= 1 ? reader.readU8() : 0,
+    vtxTableChannels: reader.remaining() >= 1 ? reader.readU8() : 0,
+    vtxTablePowerLevels: reader.remaining() >= 1 ? reader.readU8() : 0,
+  };
+
+  return config;
+}
+
+/**
+ * Serialize MSP_SET_VTX_CONFIG payload
+ *
+ * Betaflight 4.x format:
+ * - 0-1: frequency (U16 LE) - if ≤63, packed band/channel; else MHz
+ * - 2: power (U8)
+ * - 3: pitMode (U8, 0/1)
+ * - 4: lowPowerDisarm (U8)
+ * - 5-6: pitModeFrequency (U16 LE)
+ * - 7: band (U8) - newer versions
+ * - 8: channel (U8) - newer versions
+ * - 9-10: frequency (U16 LE) - newer versions, actual freq
+ * - 11: bandCount (U8) - VTX table info
+ * - 12: channelCount (U8)
+ * - 13: powerCount (U8)
+ * - 14: clearVtxTable (U8)
+ */
+export function serializeVtxConfig(config: Partial<MSPVtxConfig>): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  // Use frequency directly if > 0, otherwise calculate from band/channel
+  let frequency = config.frequency || 0;
+  if (frequency === 0 && config.band && config.channel) {
+    // Look up frequency from table
+    const bandTable = VTX_FREQUENCY_TABLE[config.band];
+    if (bandTable && bandTable[config.channel]) {
+      frequency = bandTable[config.channel];
+    }
+  }
+
+  // Betaflight 4.x extended format
+  builder.writeU16(frequency);                           // frequency or packed band/channel
+  builder.writeU8(config.power ?? 0);                    // power level
+  builder.writeU8(config.pitMode ? 1 : 0);               // pit mode
+  builder.writeU8(config.lowPowerDisarm ?? 0);           // low power disarm
+  builder.writeU16(config.pitModeFrequency ?? 0);        // pit mode frequency
+  builder.writeU8(config.band ?? 0);                     // band
+  builder.writeU8(config.channel ?? 0);                  // channel
+  builder.writeU16(frequency);                           // frequency (again, for newer FW)
+  builder.writeU8(config.vtxTableBands ?? 0);            // VTX table bands count
+  builder.writeU8(config.vtxTableChannels ?? 0);         // VTX table channels count
+  builder.writeU8(config.vtxTablePowerLevels ?? 0);      // VTX table power levels count
+  builder.writeU8(0);                                    // clear VTX table (0 = don't clear)
+
+  return builder.build();
+}
+
+/**
+ * Get frequency for a band/channel combination
+ */
+export function getVtxFrequency(band: number, channel: number): number {
+  const bandTable = VTX_FREQUENCY_TABLE[band];
+  if (bandTable && bandTable[channel]) {
+    return bandTable[channel];
+  }
+  return 0;
+}

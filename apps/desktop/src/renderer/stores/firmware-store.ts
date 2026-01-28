@@ -67,6 +67,7 @@ interface FirmwareStore {
   boardsError: string | null;
   boardSearchQuery: string;
   pendingBoardMatch: string | null; // Betaflight board ID to match after fetching iNav boards
+  unmatchedBoardWarning: string | null; // Shows warning when no exact iNav match found for Betaflight board
 
   // Version selection
   versionGroups: VersionGroup[];
@@ -123,6 +124,7 @@ interface FirmwareStore {
   autoSetSource: (source: FirmwareSource) => void; // Auto-detect sets source without marking explicit
   setBoardSearchQuery: (query: string) => void;
   setPendingBoardMatch: (boardId: string | null) => void;
+  clearUnmatchedBoardWarning: () => void;
   setSelectedBoard: (board: BoardInfo | null) => void;
   setSelectedVersionGroup: (group: VersionGroup | null) => void;
   setSelectedVersion: (version: FirmwareVersion | null) => void;
@@ -195,6 +197,7 @@ const initialState = {
   boardsError: null,
   boardSearchQuery: '',
   pendingBoardMatch: null,
+  unmatchedBoardWarning: null,
 
   // Version selection
   versionGroups: [],
@@ -501,6 +504,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
 
   setBoardSearchQuery: (query) => set({ boardSearchQuery: query }),
   setPendingBoardMatch: (boardId) => set({ pendingBoardMatch: boardId }),
+  clearUnmatchedBoardWarning: () => set({ unmatchedBoardWarning: null }),
 
   setSelectedBoard: (board) => {
     set({
@@ -508,6 +512,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       selectedVersionGroup: null,
       selectedVersion: null,
       versionGroups: [],
+      unmatchedBoardWarning: null, // Clear warning when user explicitly selects a board
     });
     // Fetch versions for the selected board
     if (board) {
@@ -562,13 +567,17 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
           const matchingBoard = findMatchingInavBoard(pendingBoardMatch, result.boards);
           if (matchingBoard) {
             console.log(`[FirmwareStore] Auto-selected iNav board "${matchingBoard.name}" for Betaflight "${pendingBoardMatch}"`);
-            set({ selectedBoard: matchingBoard, pendingBoardMatch: null });
+            set({ selectedBoard: matchingBoard, pendingBoardMatch: null, unmatchedBoardWarning: null });
             // Fetch versions for the matched board
             get().fetchVersions();
           } else {
             console.log(`[FirmwareStore] No iNav board found for Betaflight "${pendingBoardMatch}"`);
-            // Clear pending match and set search query so user can find manually
-            set({ pendingBoardMatch: null, boardSearchQuery: pendingBoardMatch });
+            // Clear pending match, set search query so user can find manually, and show warning
+            set({
+              pendingBoardMatch: null,
+              boardSearchQuery: pendingBoardMatch,
+              unmatchedBoardWarning: pendingBoardMatch,
+            });
           }
         }
       } else {

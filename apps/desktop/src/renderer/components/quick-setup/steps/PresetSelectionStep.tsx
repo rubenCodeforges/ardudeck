@@ -7,8 +7,11 @@
 
 import React from 'react';
 import { useQuickSetupStore } from '../../../stores/quick-setup-store';
+import { useNavigationStore } from '../../../stores/navigation-store';
+import { useFirmwareStore } from '../../../stores/firmware-store';
 import type { VehicleType } from '../../../stores/quick-setup-store';
 import { QUICK_SETUP_PRESETS, type QuickSetupPreset } from '../presets/quick-setup-presets';
+import { BOX_ID } from '../../modes/presets/mode-presets';
 import {
   Rocket,
   Sparkles,
@@ -21,7 +24,28 @@ import {
   RefreshCw,
   Wifi,
   RotateCcw,
+  Info,
+  Download,
 } from 'lucide-react';
+
+// iNav-only modes that don't exist in Betaflight
+const INAV_ONLY_MODES = [
+  BOX_ID.NAV_LAUNCH,
+  BOX_ID.NAV_RTH,
+  BOX_ID.NAV_POSHOLD,
+  BOX_ID.NAV_WP,
+  BOX_ID.NAV_CRUISE,
+  BOX_ID.NAV_ALTHOLD,
+  BOX_ID.NAV_COURSE_HOLD,
+  BOX_ID.GCS_NAV,
+];
+
+/**
+ * Check if a preset uses any iNav-only modes
+ */
+function usesInavOnlyModes(preset: QuickSetupPreset): boolean {
+  return preset.modes.some((mode) => INAV_ONLY_MODES.includes(mode.boxId));
+}
 
 // ============================================================================
 // Vehicle Type Card
@@ -168,6 +192,7 @@ export const PresetSelectionStep: React.FC = () => {
     selectPreset,
     nextStep,
     boardType,
+    fcVariant,
     selectedVehicle,
     currentPlatformName,
     platformMismatch,
@@ -176,7 +201,21 @@ export const PresetSelectionStep: React.FC = () => {
     changePlatform,
     dismissPlatformMismatch,
     selectedPreset,
+    closeWizard,
   } = useQuickSetupStore();
+
+  const { setView } = useNavigationStore();
+  const { setSelectedSource } = useFirmwareStore();
+
+  // Check if running Betaflight (not iNav)
+  const isBetaflight = fcVariant === 'BTFL';
+
+  // Navigate to firmware flash with iNav preselected
+  const handleFlashInav = () => {
+    closeWizard();
+    setSelectedSource('inav');
+    setView('firmware');
+  };
 
   const handleSelectVehicle = (vehicle: VehicleType) => {
     selectVehicle(vehicle);
@@ -208,13 +247,19 @@ export const PresetSelectionStep: React.FC = () => {
     }
   };
 
-  // Get presets by category
-  const multirotorPresets = Object.values(QUICK_SETUP_PRESETS).filter(
-    (p) => p.category === 'multirotor'
-  );
-  const fixedWingPresets = Object.values(QUICK_SETUP_PRESETS).filter(
-    (p) => p.category === 'fixed_wing'
-  );
+  // Get presets by category, filtering for Betaflight compatibility
+  const multirotorPresets = Object.values(QUICK_SETUP_PRESETS).filter((p) => {
+    if (p.category !== 'multirotor') return false;
+    // For Betaflight: filter out presets that use iNav-only navigation modes
+    if (isBetaflight && usesInavOnlyModes(p)) return false;
+    return true;
+  });
+
+  // Betaflight fixed-wing support is experimental and doesn't have navigation modes
+  // Only show fixed-wing presets for iNav
+  const fixedWingPresets = isBetaflight
+    ? [] // No fixed-wing presets for Betaflight
+    : Object.values(QUICK_SETUP_PRESETS).filter((p) => p.category === 'fixed_wing');
 
   // ============================================================================
   // Render: Platform Mismatch Dialog
@@ -435,15 +480,56 @@ export const PresetSelectionStep: React.FC = () => {
             onSelect={() => handleSelectVehicle('multirotor')}
           />
 
-          <VehicleCard
-            type="fixed_wing"
-            icon={<Plane className="w-12 h-12 text-amber-400" />}
-            title="Fixed Wing"
-            description="Airplanes, flying wings, gliders, and other fixed-wing aircraft"
-            presetCount={fixedWingPresets.length}
-            gradient="from-amber-500/10 to-orange-500/10 border-amber-500/30 hover:border-amber-400/50"
-            onSelect={() => handleSelectVehicle('fixed_wing')}
-          />
+          {isBetaflight ? (
+            // Betaflight fixed-wing warning
+            <div className="w-full p-6 rounded-xl border border-zinc-700 bg-zinc-800/50">
+              <div className="flex items-center gap-5">
+                <div className="text-5xl opacity-50">
+                  <Plane className="w-12 h-12 text-zinc-500" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-zinc-400">Fixed Wing</h3>
+                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 rounded-full text-amber-300">
+                      iNav Recommended
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Betaflight's fixed-wing support is experimental and lacks navigation features.
+                  </p>
+                  <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-amber-200/80">
+                          For airplanes, flying wings, and gliders, we recommend{' '}
+                          <strong className="text-amber-300">iNav firmware</strong> which provides
+                          full navigation, auto-launch, waypoints, and return-to-home.
+                        </p>
+                        <button
+                          onClick={handleFlashInav}
+                          className="mt-2 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg flex items-center gap-1.5 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Flash iNav Firmware
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <VehicleCard
+              type="fixed_wing"
+              icon={<Plane className="w-12 h-12 text-amber-400" />}
+              title="Fixed Wing"
+              description="Airplanes, flying wings, gliders, and other fixed-wing aircraft"
+              presetCount={fixedWingPresets.length}
+              gradient="from-amber-500/10 to-orange-500/10 border-amber-500/30 hover:border-amber-400/50"
+              onSelect={() => handleSelectVehicle('fixed_wing')}
+            />
+          )}
         </div>
 
         {/* Info box */}
@@ -456,6 +542,12 @@ export const PresetSelectionStep: React.FC = () => {
                 Each preset applies a complete, tested configuration including PIDs, rates, flight
                 modes, and failsafe settings. You can always fine-tune later.
               </p>
+              {isBetaflight && (
+                <p className="text-xs text-amber-200/70 mt-2">
+                  <strong>Note:</strong> Navigation presets (GPS position hold, waypoints, RTH) are
+                  only available for iNav. Configure GPS Rescue separately in the GPS Rescue tab.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -543,6 +635,23 @@ export const PresetSelectionStep: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Betaflight GPS Rescue note */}
+      {isBetaflight && selectedVehicle === 'multirotor' && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-amber-200 text-sm">GPS Return Home</h4>
+              <p className="text-xs text-amber-100/70 mt-1">
+                Betaflight uses <strong>GPS Rescue</strong> instead of iNav's navigation modes.
+                After applying a preset, configure GPS Rescue in the <strong>GPS Rescue tab</strong>{' '}
+                for emergency return-to-home functionality.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

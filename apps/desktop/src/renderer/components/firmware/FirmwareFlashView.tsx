@@ -262,6 +262,21 @@ function BootloaderChecklist({
         </label>
       </div>
 
+      {/* Recovery reassurance */}
+      <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+        <div className="flex items-start gap-2">
+          <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <div>
+            <p className="text-xs text-blue-200/80">
+              <strong className="text-blue-300">Recovery is always possible!</strong> If the new firmware doesn't work,
+              put the board back in bootloader mode (boot pads/button) and flash again. You can always return to any firmware.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <button
         onClick={onReady}
         disabled={!canFlash || !allChecked}
@@ -433,6 +448,9 @@ export function FirmwareFlashView() {
     postFlashError,
     startPostFlashConfig,
     resetPostFlashState,
+    // Board matching warning
+    unmatchedBoardWarning,
+    clearUnmatchedBoardWarning,
   } = store;
 
   // Get connection state to auto-detect board when connected
@@ -854,6 +872,57 @@ export function FirmwareFlashView() {
                 )
               )}
             </div>
+
+            {/* Firmware change warning */}
+            {(selectedSource === 'inav' || selectedSource === 'betaflight') && (
+              <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs text-amber-200/80">
+                      <strong className="text-amber-300">Settings will be reset!</strong> Switching firmware
+                      (e.g., Betaflight → iNav) erases all configuration. You'll need to set up PIDs, modes,
+                      and receivers again. Save your current settings first if needed.
+                    </p>
+                    <p className="text-xs text-amber-200/60 mt-1">
+                      <strong>Recovery:</strong> If issues occur, put the board in bootloader mode and flash again.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Board pinout mismatch warning - only for iNav when no exact match found */}
+            {selectedSource === 'inav' && unmatchedBoardWarning && (
+              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs text-red-200/90">
+                      <strong className="text-red-300">No exact iNav target found for "{unmatchedBoardWarning}"</strong>
+                    </p>
+                    <p className="text-xs text-red-200/70 mt-1">
+                      If you select a different board target, the <strong>pin assignments may not match</strong> your
+                      hardware. Motors, servos, and sensors could be on different pins. Check the iNav wiki for
+                      your specific board before flashing.
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-2">
+                      If your exact board is available with the same name, the pinout will be identical.
+                    </p>
+                    <button
+                      onClick={clearUnmatchedBoardWarning}
+                      className="mt-2 text-xs text-zinc-500 hover:text-zinc-300 underline"
+                    >
+                      Dismiss warning
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Version Selection */}

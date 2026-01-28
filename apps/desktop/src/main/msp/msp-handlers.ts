@@ -90,6 +90,18 @@ import {
   // Failsafe Config
   deserializeFailsafeConfig,
   serializeFailsafeConfig,
+  // GPS Rescue Config (Betaflight)
+  deserializeGpsRescueConfig,
+  serializeGpsRescueConfig,
+  deserializeGpsRescuePids,
+  serializeGpsRescuePids,
+  // Filter Config (Betaflight)
+  deserializeFilterConfig,
+  serializeFilterConfig,
+  // VTX Config
+  deserializeVtxConfig,
+  serializeVtxConfig,
+  type MSPVtxConfig,
   type MSPPid,
   type MSPRcTuning,
   type MSPModeRange,
@@ -98,6 +110,9 @@ import {
   type MSPNavConfig,
   type MSPGpsConfig,
   type MSPInavMixerConfig,
+  type MSPGpsRescueConfig,
+  type MSPGpsRescuePids,
+  type MSPFilterConfig,
   type MSPFailsafeConfig,
   // GPS injection for SITL
   serializeSetRawGps,
@@ -519,7 +534,9 @@ export async function tryMspDetection(
     try {
       const boardPayload = await sendMspRequest(MSP.BOARD_INFO, 1000);
       const board = deserializeBoardInfo(boardPayload);
-      boardId = board.boardId;
+      // Prefer full target name, then board name, fall back to 4-char ID
+      boardId = board.targetName || board.boardName || board.boardId;
+      sendLog('info', `MSP BOARD_INFO: id=${board.boardId}, target=${board.targetName}, name=${board.boardName}`);
     } catch { /* ignore */ }
 
     sendLog('info', `MSP detected: ${fcVariant} ${fcVersion}`, `Board: ${boardId}`);
@@ -3257,6 +3274,188 @@ async function setFailsafeConfig(config: MSPFailsafeConfig): Promise<boolean> {
 }
 
 // =============================================================================
+// GPS Rescue Configuration (Betaflight)
+// =============================================================================
+
+/**
+ * Get GPS Rescue configuration via MSP_GPS_RESCUE (135)
+ */
+async function getGpsRescueConfig(): Promise<MSPGpsRescueConfig | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.GPS_RESCUE, 1000);
+      const config = deserializeGpsRescueConfig(payload);
+      return config;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Get GPS Rescue config failed:', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Set GPS Rescue configuration via MSP_SET_GPS_RESCUE (225)
+ */
+async function setGpsRescueConfig(config: MSPGpsRescueConfig): Promise<boolean> {
+  if (!currentTransport?.isOpen) {
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeGpsRescueConfig(config);
+      await sendMspRequestWithPayload(MSP.SET_GPS_RESCUE, payload, 2000);
+      sendLog('info', 'GPS Rescue config updated');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] SET_GPS_RESCUE failed:', msg);
+      sendLog('error', 'Failed to set GPS Rescue config', msg);
+      return false;
+    }
+  });
+}
+
+/**
+ * Get GPS Rescue PIDs via MSP_GPS_RESCUE_PIDS (136)
+ */
+async function getGpsRescuePids(): Promise<MSPGpsRescuePids | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.GPS_RESCUE_PIDS, 1000);
+      const pids = deserializeGpsRescuePids(payload);
+      return pids;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Get GPS Rescue PIDs failed:', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Set GPS Rescue PIDs via MSP_SET_GPS_RESCUE_PIDS (226)
+ */
+async function setGpsRescuePids(pids: MSPGpsRescuePids): Promise<boolean> {
+  if (!currentTransport?.isOpen) {
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeGpsRescuePids(pids);
+      await sendMspRequestWithPayload(MSP.SET_GPS_RESCUE_PIDS, payload, 2000);
+      sendLog('info', 'GPS Rescue PIDs updated');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] SET_GPS_RESCUE_PIDS failed:', msg);
+      sendLog('error', 'Failed to set GPS Rescue PIDs', msg);
+      return false;
+    }
+  });
+}
+
+// =============================================================================
+// Filter Configuration (Betaflight)
+// =============================================================================
+
+/**
+ * Get filter configuration via MSP_FILTER_CONFIG (92)
+ */
+async function getFilterConfig(): Promise<MSPFilterConfig | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.FILTER_CONFIG, 1000);
+      const config = deserializeFilterConfig(payload);
+      return config;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] Get filter config failed:', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Set filter configuration via MSP_SET_FILTER_CONFIG (93)
+ */
+async function setFilterConfig(config: MSPFilterConfig): Promise<boolean> {
+  if (!currentTransport?.isOpen) {
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeFilterConfig(config);
+      await sendMspRequestWithPayload(MSP.SET_FILTER_CONFIG, payload, 2000);
+      sendLog('info', 'Filter config updated');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] SET_FILTER_CONFIG failed:', msg);
+      sendLog('error', 'Failed to set filter config', msg);
+      return false;
+    }
+  });
+}
+
+// =============================================================================
+// VTX Configuration (MSP_VTX_CONFIG / MSP_SET_VTX_CONFIG)
+// =============================================================================
+
+/**
+ * Get VTX configuration via MSP_VTX_CONFIG (88)
+ */
+async function getVtxConfig(): Promise<MSPVtxConfig | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const response = await sendMspRequest(MSP.VTX_CONFIG, 2000);
+      const config = deserializeVtxConfig(response);
+      console.log('[MSP] VTX_CONFIG:', config);
+      return config;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] VTX_CONFIG failed:', msg);
+      sendLog('error', 'Failed to get VTX config', msg);
+      return null;
+    }
+  });
+}
+
+/**
+ * Set VTX configuration via MSP_SET_VTX_CONFIG (89)
+ */
+async function setVtxConfig(config: Partial<MSPVtxConfig>): Promise<boolean> {
+  if (!currentTransport?.isOpen) {
+    return false;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeVtxConfig(config);
+      await sendMspRequestWithPayload(MSP.SET_VTX_CONFIG, payload, 2000);
+      sendLog('info', 'VTX config updated');
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] SET_VTX_CONFIG failed:', msg);
+      sendLog('error', 'Failed to set VTX config', msg);
+      return false;
+    }
+  });
+}
+
+// =============================================================================
 // MSP Commands
 // =============================================================================
 
@@ -3864,6 +4063,20 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_FAILSAFE_CONFIG, async () => getFailsafeConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_FAILSAFE_CONFIG, async (_event, config: MSPFailsafeConfig) => setFailsafeConfig(config));
 
+  // GPS Rescue configuration (Betaflight)
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_GPS_RESCUE, async () => getGpsRescueConfig());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_GPS_RESCUE, async (_event, config: MSPGpsRescueConfig) => setGpsRescueConfig(config));
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_GPS_RESCUE_PIDS, async () => getGpsRescuePids());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_GPS_RESCUE_PIDS, async (_event, pids: MSPGpsRescuePids) => setGpsRescuePids(pids));
+
+  // Filter configuration (Betaflight)
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_FILTER_CONFIG, async () => getFilterConfig());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_FILTER_CONFIG, async (_event, config: MSPFilterConfig) => setFilterConfig(config));
+
+  // VTX configuration
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_VTX_CONFIG, async () => getVtxConfig());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_VTX_CONFIG, async (_event, config: Partial<MSPVtxConfig>) => setVtxConfig(config));
+
   // Generic settings API (read/write any CLI setting via MSP)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTING, async (_event, name: string) => getSetting(name));
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTING, async (_event, name: string, value: string | number) => setSetting(name, value));
@@ -3954,6 +4167,18 @@ export function unregisterMspHandlers(): void {
   // Failsafe config handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_FAILSAFE_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_FAILSAFE_CONFIG);
+
+  // GPS Rescue config handlers (Betaflight)
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_GPS_RESCUE);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_GPS_RESCUE);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_GPS_RESCUE_PIDS);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_GPS_RESCUE_PIDS);
+
+  // Filter config handlers (Betaflight)
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_FILTER_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_FILTER_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_VTX_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_VTX_CONFIG);
 
   // Generic settings API
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTING);
