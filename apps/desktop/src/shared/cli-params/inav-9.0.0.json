@@ -1,7 +1,7 @@
 {
   "variant": "INAV",
   "version": "9.0.0",
-  "exportDate": "2026-01-09T11:49:34.247Z",
+  "exportDate": "2026-01-29T10:10:46.191Z",
   "parameterCount": 634,
   "parameters": {
     "looptime": {
@@ -57,7 +57,7 @@
       "section": "master"
     },
     "ins_gravity_cmss": {
-      "value": "-64.076",
+      "value": "966.287",
       "section": "master"
     },
     "vbat_adc_channel": {
@@ -221,7 +221,7 @@
       "section": "master"
     },
     "receiver_type": {
-      "value": "SIM (SITL)",
+      "value": "MSP",
       "section": "master"
     },
     "min_check": {
@@ -329,7 +329,7 @@
       "section": "master"
     },
     "failsafe_delay": {
-      "value": "5",
+      "value": "50",
       "section": "master"
     },
     "failsafe_recovery_delay": {
@@ -337,7 +337,7 @@
       "section": "master"
     },
     "failsafe_off_delay": {
-      "value": "200",
+      "value": "44",
       "section": "master"
     },
     "failsafe_throttle_low_delay": {
@@ -537,7 +537,7 @@
       "section": "master"
     },
     "gps_provider": {
-      "value": "UBLOX",
+      "value": "FAKE",
       "section": "master"
     },
     "gps_sbas_mode": {
@@ -1881,43 +1881,43 @@
       "section": "master"
     },
     "mc_p_pitch": {
-      "value": "40",
+      "value": "38",
       "section": "master"
     },
     "mc_i_pitch": {
-      "value": "30",
+      "value": "42",
       "section": "master"
     },
     "mc_d_pitch": {
-      "value": "23",
+      "value": "22",
       "section": "master"
     },
     "mc_cd_pitch": {
-      "value": "60",
+      "value": "0",
       "section": "master"
     },
     "mc_p_roll": {
-      "value": "40",
+      "value": "35",
       "section": "master"
     },
     "mc_i_roll": {
-      "value": "30",
+      "value": "40",
       "section": "master"
     },
     "mc_d_roll": {
-      "value": "23",
+      "value": "20",
       "section": "master"
     },
     "mc_cd_roll": {
-      "value": "60",
+      "value": "0",
       "section": "master"
     },
     "mc_p_yaw": {
-      "value": "85",
+      "value": "45",
       "section": "master"
     },
     "mc_i_yaw": {
-      "value": "45",
+      "value": "50",
       "section": "master"
     },
     "mc_d_yaw": {
@@ -1925,7 +1925,7 @@
       "section": "master"
     },
     "mc_cd_yaw": {
-      "value": "60",
+      "value": "0",
       "section": "master"
     },
     "mc_p_level": {
@@ -1933,7 +1933,7 @@
       "section": "master"
     },
     "mc_i_level": {
-      "value": "15",
+      "value": "5",
       "section": "master"
     },
     "mc_d_level": {
@@ -1941,43 +1941,43 @@
       "section": "master"
     },
     "fw_p_pitch": {
-      "value": "5",
+      "value": "20",
       "section": "master"
     },
     "fw_i_pitch": {
-      "value": "7",
+      "value": "30",
       "section": "master"
     },
     "fw_d_pitch": {
-      "value": "0",
+      "value": "15",
       "section": "master"
     },
     "fw_ff_pitch": {
-      "value": "50",
-      "section": "master"
-    },
-    "fw_p_roll": {
-      "value": "5",
-      "section": "master"
-    },
-    "fw_i_roll": {
-      "value": "7",
-      "section": "master"
-    },
-    "fw_d_roll": {
       "value": "0",
       "section": "master"
     },
+    "fw_p_roll": {
+      "value": "20",
+      "section": "master"
+    },
+    "fw_i_roll": {
+      "value": "30",
+      "section": "master"
+    },
+    "fw_d_roll": {
+      "value": "15",
+      "section": "master"
+    },
     "fw_ff_roll": {
-      "value": "50",
+      "value": "0",
       "section": "master"
     },
     "fw_p_yaw": {
-      "value": "6",
+      "value": "50",
       "section": "master"
     },
     "fw_i_yaw": {
-      "value": "10",
+      "value": "45",
       "section": "master"
     },
     "fw_d_yaw": {
@@ -1985,7 +1985,7 @@
       "section": "master"
     },
     "fw_ff_yaw": {
-      "value": "60",
+      "value": "0",
       "section": "master"
     },
     "fw_p_level": {
@@ -2057,39 +2057,39 @@
       "section": "master"
     },
     "nav_mc_pos_z_p": {
-      "value": "50",
+      "value": "30",
       "section": "master"
     },
     "nav_mc_vel_z_p": {
-      "value": "100",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_vel_z_i": {
-      "value": "50",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_vel_z_d": {
-      "value": "10",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_pos_xy_p": {
-      "value": "65",
+      "value": "75",
       "section": "master"
     },
     "nav_mc_vel_xy_p": {
-      "value": "40",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_vel_xy_i": {
-      "value": "15",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_vel_xy_d": {
-      "value": "100",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_vel_xy_ff": {
-      "value": "40",
+      "value": "0",
       "section": "master"
     },
     "nav_mc_heading_p": {
@@ -2245,7 +2245,7 @@
       "section": "master"
     },
     "thr_mid": {
-      "value": "50",
+      "value": "0",
       "section": "master"
     },
     "thr_expo": {
@@ -2261,7 +2261,7 @@
       "section": "master"
     },
     "tpa_breakpoint": {
-      "value": "1500",
+      "value": "0",
       "section": "master"
     },
     "tpa_pitch_compensation": {
@@ -2277,7 +2277,7 @@
       "section": "master"
     },
     "rc_expo": {
-      "value": "70",
+      "value": "30",
       "section": "master"
     },
     "rc_yaw_expo": {
@@ -2285,35 +2285,35 @@
       "section": "master"
     },
     "roll_rate": {
-      "value": "20",
+      "value": "5",
       "section": "master"
     },
     "pitch_rate": {
-      "value": "20",
+      "value": "5",
       "section": "master"
     },
     "yaw_rate": {
-      "value": "20",
+      "value": "5",
       "section": "master"
     },
     "manual_rc_expo": {
-      "value": "35",
+      "value": "0",
       "section": "master"
     },
     "manual_rc_yaw_expo": {
-      "value": "20",
+      "value": "0",
       "section": "master"
     },
     "manual_roll_rate": {
-      "value": "100",
+      "value": "4",
       "section": "master"
     },
     "manual_pitch_rate": {
-      "value": "100",
+      "value": "4",
       "section": "master"
     },
     "manual_yaw_rate": {
-      "value": "100",
+      "value": "1",
       "section": "master"
     },
     "fpv_mix_degrees": {
@@ -2477,7 +2477,7 @@
       "section": "battery_profile"
     },
     "failsafe_throttle": {
-      "value": "1000",
+      "value": "1200",
       "section": "battery_profile"
     },
     "nav_mc_hover_thr": {

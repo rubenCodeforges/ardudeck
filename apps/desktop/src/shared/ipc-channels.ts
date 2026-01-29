@@ -269,6 +269,16 @@ export const IPC_CHANNELS = {
   REPORT_SAVE: 'report:save',
   REPORT_PROGRESS: 'report:progress',
   REPORT_GET_ENCRYPTION_INFO: 'report:get-encryption-info',
+
+  // Calibration
+  CALIBRATION_GET_SENSOR_CONFIG: 'calibration:get-sensor-config',
+  CALIBRATION_GET_DATA: 'calibration:get-data',
+  CALIBRATION_SET_DATA: 'calibration:set-data',
+  CALIBRATION_START: 'calibration:start',
+  CALIBRATION_CONFIRM_POSITION: 'calibration:confirm-position',
+  CALIBRATION_CANCEL: 'calibration:cancel',
+  CALIBRATION_PROGRESS: 'calibration:progress', // Event from main
+  CALIBRATION_COMPLETE: 'calibration:complete', // Event from main
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

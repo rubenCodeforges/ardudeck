@@ -3643,6 +3643,10 @@ async function calibrateMag(): Promise<boolean> {
   }
 }
 
+// Exported versions for use by calibration-handlers
+export const calibrateAccFromHandler = calibrateAcc;
+export const calibrateMagFromHandler = calibrateMag;
+
 export async function reboot(autoReconnect = true): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) return false;

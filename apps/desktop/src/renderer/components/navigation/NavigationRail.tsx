@@ -87,19 +87,19 @@ const cliNavItem: NavItem = {
   ),
 };
 
+// Calibration nav item - shown for connected devices
+const calibrationNavItem: NavItem = {
+  id: 'calibration',
+  label: 'Calibration',
+  icon: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  ),
+};
+
 // Future navigation items (disabled placeholders)
-const futureItems: (Omit<NavItem, 'id'> & { id: string })[] = [
-  {
-    id: 'calibration',
-    label: 'Calibration (Coming Soon)',
-    disabled: true,
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
-];
+const futureItems: (Omit<NavItem, 'id'> & { id: string })[] = [];
 
 interface NavigationRailProps {
   onViewChange?: (viewId: ViewId) => void;
@@ -112,8 +112,15 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
   // Show CLI nav item only for MSP (Betaflight/iNav) connections
   const showCli = connectionState.isConnected && connectionState.protocol === 'msp';
 
-  // Build the nav items list
+  // Show Calibration when connected
+  const showCalibration = connectionState.isConnected;
+
+  // Build the nav items list - insert calibration after parameters (index 1)
   const allNavItems = [...navItems];
+  if (showCalibration) {
+    // Insert after parameters (which is at index 1)
+    allNavItems.splice(2, 0, calibrationNavItem);
+  }
   if (showCli) {
     allNavItems.push(cliNavItem);
   }

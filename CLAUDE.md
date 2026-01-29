@@ -47,15 +47,15 @@ iNav Configurator is the working reference implementation. We are making it more
 
 **Always verify byte order and encoding against iNav Configurator before implementing!**
 
-### Other Reference Implementations (clone when needed)
+### Other Reference Implementations (ALL LOCAL)
 
-| Protocol | Reference | Repo |
-|----------|-----------|------|
+| Protocol | Reference | Location |
+|----------|-----------|----------|
 | iNav MSP | iNav Configurator | **LOCAL: `/inav-configurator/`** |
-| Betaflight MSP | Betaflight Configurator | `https://github.com/betaflight/betaflight-configurator` |
-| ArduPilot MAVLink | Mission Planner | `https://github.com/ArduPilot/MissionPlanner` |
+| Betaflight MSP | Betaflight Configurator | **LOCAL: `/betaflight-configurator/`** |
+| ArduPilot MAVLink | Mission Planner | **LOCAL: `/MissionPlanner-ref/`** |
 
-**When working on Betaflight or MAVLink features, clone the reference repo first if not present.**
+**All reference implementations are available locally. Check them BEFORE implementing protocol features.**
 
 ### Debugging MSP Issues - DO NOT ADD FALLBACKS BLINDLY
 
@@ -100,6 +100,7 @@ pnpm dev              # Run dev mode
 | MSP Config | PID/Rates/Modes tuning, presets, servo mixer, navigation settings |
 | Legacy Boards | Full GUI for F3-era boards (iNav < 2.1, Betaflight < 4.0) via CLI |
 | OSD Simulator | MCM font parser, demo/live modes, 8 bundled fonts, PAL/NTSC support |
+| Calibration | Accelerometer (level), compass calibration with status detection from arming flags |
 
 ### 🚧 Disabled (Work In Progress)
 
@@ -112,7 +113,6 @@ pnpm dev              # Run dev mode
 | Priority | Epic | Description |
 |----------|------|-------------|
 | P0 | OSD Editor | OSD element position editor and font designer |
-| P1 | Calibration | Compass, accelerometer, radio, ESC wizards |
 | P1 | VTX Configuration | Video transmitter band/channel/power |
 | P1 | MSP Failsafe | Extend SafetyTab for MSP failsafe config |
 | P1 | GPS Rescue | Betaflight 4.6 GPS rescue/position hold |
@@ -217,6 +217,7 @@ CLI fallback for old iNav: `set platform_type = AIRPLANE` or `mixer AIRPLANE`
 | `stores/cli-store.ts` | CLI terminal state |
 | `stores/servo-wizard-store.ts` | Servo wizard state |
 | `stores/osd-store.ts` | OSD simulator state, demo values, element positions |
+| `stores/calibration-store.ts` | Calibration wizard state, sensor config |
 
 ### Key Components
 
@@ -231,6 +232,7 @@ CLI fallback for old iNav: `set platform_type = AIRPLANE` or `mixer AIRPLANE`
 | `components/mission/MissionMapPanel.tsx` | Mission planning map |
 | `components/osd/OsdView.tsx` | OSD simulator main tab |
 | `components/osd/OsdCanvas.tsx` | Canvas-based OSD renderer |
+| `components/calibration/CalibrationView.tsx` | Calibration wizard main view |
 | `components/ui/DraggableSlider.tsx` | Reusable slider (use for ALL sliders) |
 
 ### OSD System

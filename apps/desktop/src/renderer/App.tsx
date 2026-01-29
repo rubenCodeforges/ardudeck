@@ -11,7 +11,9 @@ import CliView from './components/cli/CliView';
 import { OsdView } from './components/osd/OsdView';
 import ReportBugView from './components/report/ReportBugView';
 import SitlView from './components/sitl/SitlView';
+import { CalibrationView } from './components/calibration/CalibrationView';
 import { useConnectionStore } from './stores/connection-store';
+import { useCalibrationStore } from './stores/calibration-store';
 import { useTelemetryStore } from './stores/telemetry-store';
 import { useNavigationStore, type ViewId } from './stores/navigation-store';
 import { useParameterStore } from './stores/parameter-store';
@@ -210,6 +212,11 @@ function App() {
   const { reset: resetCli } = useCliStore();
   const { clearModeMappings: resetFlightControl, stopOverride } = useFlightControlStore();
   const { vehicles, activeVehicleId, updateVehicle } = useSettingsStore();
+  const {
+    reset: resetCalibration,
+    handleProgressUpdate: handleCalibrationProgressUpdate,
+    handleCalibrationComplete,
+  } = useCalibrationStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Mismatch dialog state
@@ -351,10 +358,11 @@ function App() {
         resetCli();
         stopOverride();
         resetFlightControl();
+        resetCalibration();
       }
     });
     return unsubscribe;
-  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl]);
+  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl, resetCalibration]);
 
   // Batched telemetry handler (preferred - single IPC message, single store update)
   useEffect(() => {
@@ -448,6 +456,28 @@ function App() {
       unsubClearComplete?.();
     };
   }, [setRallyItems, updateRallyProgress, setRallyError, setRallyUploadComplete, setRallyClearComplete]);
+
+  // Calibration events
+  useEffect(() => {
+    const unsubProgress = window.electronAPI?.onCalibrationProgress?.((event) => {
+      handleCalibrationProgressUpdate(
+        event.progress,
+        event.statusText,
+        event.currentPosition,
+        event.positionStatus,
+        event.countdown,
+        event.compassProgress
+      );
+    });
+    const unsubComplete = window.electronAPI?.onCalibrationComplete?.((event) => {
+      handleCalibrationComplete(event.success, event.data, event.error);
+    });
+
+    return () => {
+      unsubProgress?.();
+      unsubComplete?.();
+    };
+  }, [handleCalibrationProgressUpdate, handleCalibrationComplete]);
 
   // Render the appropriate view based on navigation
   const renderMainContent = () => {
@@ -556,6 +586,8 @@ function App() {
         return <OsdView />;
       case 'report':
         return <ReportBugView />;
+      case 'calibration':
+        return <CalibrationView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;
@@ -608,6 +640,7 @@ function App() {
           onDismissSession={handleDismissSession}
         />
       )}
+
     </AppShell>
   );
 }

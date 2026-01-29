@@ -75,6 +75,7 @@ import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
+import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
 import {
   initUnifiedLogger,
@@ -3726,6 +3727,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Register MSP handlers for Betaflight/iNav/Cleanflight support
   registerMspHandlers(mainWindow);
+
+  // Register Calibration handlers
+  initCalibrationHandlers(mainWindow);
 
   // ============================================================================
   // Driver utilities

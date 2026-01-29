@@ -12,6 +12,7 @@ import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareVersion, FlashProgress, FlashResult, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FlashOptions } from '../shared/firmware-types.js';
+import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEvent } from '../shared/calibration-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -944,6 +945,78 @@ const api = {
     const handler = (_: unknown, progress: { stage: string; message: string }) => callback(progress);
     ipcRenderer.on(IPC_CHANNELS.REPORT_PROGRESS, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.REPORT_PROGRESS, handler);
+  },
+
+  // =============================================================================
+  // Calibration
+  // =============================================================================
+
+  /** Get sensor configuration (which sensors are available) */
+  calibrationGetSensorConfig: (): Promise<{
+    hasAccel: boolean;
+    hasGyro: boolean;
+    hasCompass: boolean;
+    hasBarometer: boolean;
+    hasGps: boolean;
+    hasOpflow: boolean;
+    hasPitot: boolean;
+  } | null> => ipcRenderer.invoke(IPC_CHANNELS.CALIBRATION_GET_SENSOR_CONFIG),
+
+  /** Get current calibration data */
+  calibrationGetData: (): Promise<{
+    accZero?: { x: number; y: number; z: number };
+    accGain?: { x: number; y: number; z: number };
+    magZero?: { x: number; y: number; z: number };
+    magGain?: { x: number; y: number; z: number };
+    opflowScale?: number;
+  } | null> => ipcRenderer.invoke(IPC_CHANNELS.CALIBRATION_GET_DATA),
+
+  /** Set calibration data */
+  calibrationSetData: (data: {
+    accZero?: { x: number; y: number; z: number };
+    accGain?: { x: number; y: number; z: number };
+    magZero?: { x: number; y: number; z: number };
+    magGain?: { x: number; y: number; z: number };
+    opflowScale?: number;
+  }): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CALIBRATION_SET_DATA, data),
+
+  /** Start calibration */
+  calibrationStart: (options: {
+    type: 'accel-level' | 'accel-6point' | 'compass' | 'gyro' | 'opflow';
+    position?: number;
+  }): Promise<{
+    success: boolean;
+    error?: string;
+    data?: {
+      accZero?: { x: number; y: number; z: number };
+      accGain?: { x: number; y: number; z: number };
+      magZero?: { x: number; y: number; z: number };
+      magGain?: { x: number; y: number; z: number };
+      opflowScale?: number;
+    };
+  }> => ipcRenderer.invoke(IPC_CHANNELS.CALIBRATION_START, options),
+
+  /** Confirm position for 6-point calibration */
+  calibrationConfirmPosition: (position: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CALIBRATION_CONFIRM_POSITION, position),
+
+  /** Cancel active calibration */
+  calibrationCancel: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CALIBRATION_CANCEL),
+
+  /** Listen for calibration progress updates */
+  onCalibrationProgress: (callback: (progress: CalibrationProgressEvent) => void) => {
+    const handler = (_: unknown, progress: unknown) => callback(progress as CalibrationProgressEvent);
+    ipcRenderer.on(IPC_CHANNELS.CALIBRATION_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.CALIBRATION_PROGRESS, handler);
+  },
+
+  /** Listen for calibration complete events */
+  onCalibrationComplete: (callback: (result: CalibrationCompleteEvent) => void) => {
+    const handler = (_: unknown, result: unknown) => callback(result as CalibrationCompleteEvent);
+    ipcRenderer.on(IPC_CHANNELS.CALIBRATION_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.CALIBRATION_COMPLETE, handler);
   },
 
   /** Send log entry from renderer to main process */

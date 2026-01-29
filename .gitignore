@@ -69,8 +69,10 @@ temp/
 # Legacy Mission Planner (reference repo, not part of this project)
 MissionPlanner/
 
-# iNav Configurator (reference repo)
+# Reference implementations (not part of this project)
 inav-configurator/
+betaflight-configurator/
+MissionPlanner-ref/
 
 # Firmware files (downloaded on-demand from ArduPilot servers)
 # Note: Don't ignore apps/desktop/src/main/firmware/ (source code)
