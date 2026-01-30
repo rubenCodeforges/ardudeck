@@ -63,6 +63,21 @@ function sendProgress(window: BrowserWindow | null, progress: FlashProgress): vo
 }
 
 /**
+ * Check if a path is a local file path (not a URL)
+ */
+function isLocalFilePath(pathOrUrl: string): boolean {
+  // Local paths start with / (Unix) or drive letter (Windows)
+  if (pathOrUrl.startsWith('/') || /^[a-zA-Z]:\\/.test(pathOrUrl)) {
+    return true;
+  }
+  // Also check if it's a file:// URL
+  if (pathOrUrl.startsWith('file://')) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Download firmware file with progress
  */
 export async function downloadFirmware(
@@ -72,6 +87,26 @@ export async function downloadFirmware(
 ): Promise<string> {
   // Ensure cache directory exists
   await fs.promises.mkdir(FIRMWARE_CACHE_DIR, { recursive: true });
+
+  // Handle local file paths (for bundled legacy firmware)
+  if (isLocalFilePath(version.downloadUrl)) {
+    const localPath = version.downloadUrl.replace('file://', '');
+
+    // Check if the bundled file exists
+    try {
+      await fs.promises.access(localPath, fs.constants.R_OK);
+      sendProgress(window, {
+        state: 'downloading',
+        progress: 100,
+        message: 'Using bundled legacy firmware',
+        bytesWritten: 0,
+        totalBytes: 0,
+      });
+      return localPath;
+    } catch {
+      throw new Error(`Bundled firmware not found: ${localPath}`);
+    }
+  }
 
   const cachePath = getFirmwareCachePath(version);
 

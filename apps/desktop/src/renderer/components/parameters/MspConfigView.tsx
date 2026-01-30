@@ -76,6 +76,12 @@ import {
   Wand2,
   HelpCircle,
   Waves,
+  MoveHorizontal,
+  MoveVertical,
+  RefreshCw,
+  Info,
+  Ruler,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -327,6 +333,49 @@ const RATE_TYPES = [
   { value: 4, label: 'Quick', description: 'Rapid response curves' },
 ];
 
+// Quick Preset Selector Component
+function PresetSelector<T extends Record<string, { name: string; description: string; icon: LucideIcon; iconColor: string; color: string }>>({
+  presets,
+  onApply,
+  label = 'Quick Presets',
+}: {
+  presets: T;
+  onApply: (key: keyof T) => void;
+  label?: string;
+}) {
+  return (
+    <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/5 rounded-xl border border-indigo-500/20 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+            <Wand2 className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div>
+            <p className="text-indigo-300 font-medium">{label}</p>
+            <p className="text-xs text-gray-500">Click to apply a tuning style</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {Object.entries(presets).map(([key, preset]) => {
+            const IconComponent = preset.icon;
+            return (
+              <button
+                key={key}
+                onClick={() => onApply(key as keyof T)}
+                className={`group flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-br ${preset.color} border hover:scale-105 transition-all duration-150`}
+                title={preset.description}
+              >
+                <IconComponent className={`w-4 h-4 ${preset.iconColor}`} />
+                <span className="text-sm text-gray-200 group-hover:text-white">{preset.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Calculate rate based on rate type (matches Betaflight calculations)
 function calculateRate(stick: number, rcRate: number, superRate: number, expo: number, ratesType: number): number {
   const absStick = Math.abs(stick);
@@ -524,12 +573,21 @@ function RatesTab({
     <div className="max-w-full px-4 space-y-6">
       {/* Info card */}
       <div className="bg-blue-500/10 rounded-xl border border-blue-500/30 p-4 flex items-center gap-4">
-        <span className="text-2xl">💡</span>
+        <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+          <Info className="w-5 h-5 text-blue-400" />
+        </div>
         <div>
           <p className="text-blue-400 font-medium">What are rates?</p>
           <p className="text-sm text-gray-400">Rates control how fast your quad spins when you move the sticks. Higher = faster rotation.</p>
         </div>
       </div>
+
+      {/* Quick Presets */}
+      <PresetSelector
+        presets={RATE_PRESETS}
+        onApply={(key) => applyPreset(key as keyof typeof RATE_PRESETS)}
+        label="Quick Presets"
+      />
 
       {/* Rate Type Selector (Betaflight only) */}
       {!isInav && (
@@ -638,13 +696,13 @@ function RatesTab({
       {/* Rate sliders */}
       <div className="grid grid-cols-3 gap-5">
         {[
-          { axis: 'Roll', icon: '↔️', color: '#3B82F6', rcRate: 'rcRate' as const, superRate: 'rollRate' as const, expo: 'rcExpo' as const },
-          { axis: 'Pitch', icon: '↕️', color: '#10B981', rcRate: 'rcPitchRate' as const, superRate: 'pitchRate' as const, expo: 'rcPitchExpo' as const },
-          { axis: 'Yaw', icon: '🔄', color: '#F97316', rcRate: 'rcYawRate' as const, superRate: 'yawRate' as const, expo: 'rcYawExpo' as const },
-        ].map(({ axis, icon, color, rcRate, superRate, expo }) => (
+          { axis: 'Roll', Icon: MoveHorizontal, color: '#3B82F6', rcRate: 'rcRate' as const, superRate: 'rollRate' as const, expo: 'rcExpo' as const },
+          { axis: 'Pitch', Icon: MoveVertical, color: '#10B981', rcRate: 'rcPitchRate' as const, superRate: 'pitchRate' as const, expo: 'rcPitchExpo' as const },
+          { axis: 'Yaw', Icon: RefreshCw, color: '#F97316', rcRate: 'rcYawRate' as const, superRate: 'yawRate' as const, expo: 'rcYawExpo' as const },
+        ].map(({ axis, Icon, color, rcRate, superRate, expo }) => (
           <div key={axis} className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
             <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-              <span>{icon}</span> {axis}
+              <Icon className="w-5 h-5" style={{ color }} /> {axis}
             </h3>
             <div className="space-y-4">
               {/* Center Rate - hidden for ALL iNav (RC_RATE is always fixed at 100 in iNav) */}
@@ -764,6 +822,13 @@ function PidTuningTab({
 
   return (
     <div className="max-w-full px-4 space-y-6">
+      {/* Quick Presets */}
+      <PresetSelector
+        presets={PID_PRESETS}
+        onApply={(key) => applyPreset(key as keyof typeof PID_PRESETS)}
+        label="Quick Presets"
+      />
+
       {/* My Custom Profiles */}
       <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-4">
         <div className="flex items-center justify-between">
@@ -841,7 +906,9 @@ function PidTuningTab({
         {/* Roll */}
         <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl border border-blue-500/20 p-5">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-xl">↔️</div>
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <MoveHorizontal className="w-5 h-5 text-blue-400" />
+            </div>
             <div>
               <h3 className="text-lg font-medium text-white">Roll</h3>
               <p className="text-xs text-gray-500">Left/right tilt</p>
@@ -857,7 +924,9 @@ function PidTuningTab({
         {/* Pitch */}
         <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 rounded-xl border border-emerald-500/20 p-5">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-xl">↕️</div>
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <MoveVertical className="w-5 h-5 text-emerald-400" />
+            </div>
             <div>
               <h3 className="text-lg font-medium text-white">Pitch</h3>
               <p className="text-xs text-gray-500">Forward/back tilt</p>
@@ -873,7 +942,9 @@ function PidTuningTab({
         {/* Yaw */}
         <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border border-orange-500/20 p-5">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-xl">🔄</div>
+            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <RefreshCw className="w-5 h-5 text-orange-400" />
+            </div>
             <div>
               <h3 className="text-lg font-medium text-white">Yaw</h3>
               <p className="text-xs text-gray-500">Rotation</p>
@@ -890,7 +961,7 @@ function PidTuningTab({
       {/* Help card */}
       <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
         <h4 className="font-medium text-gray-300 mb-3 flex items-center gap-2">
-          <span>💡</span> What do these numbers mean?
+          <Lightbulb className="w-4 h-4 text-yellow-400" /> What do these numbers mean?
         </h4>
         <div className="grid grid-cols-3 gap-6 text-sm">
           <div>
@@ -998,14 +1069,14 @@ function ModeChannelIndicator({
 function SensorCard({
   name,
   available,
-  icon,
+  Icon,
   description,
   liveValue,
   unit,
 }: {
   name: string;
   available: boolean;
-  icon: string;
+  Icon: LucideIcon;
   description: string;
   liveValue?: string | number | null;
   unit?: string;
@@ -1030,10 +1101,10 @@ function SensorCard({
         : 'bg-gray-800/30 border-gray-700/30'
     }`}>
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
           available ? 'bg-emerald-500/20' : 'bg-gray-800'
         }`}>
-          {icon}
+          <Icon className={`w-5 h-5 ${available ? 'text-emerald-400' : 'text-gray-500'}`} />
         </div>
         <div className="flex-1">
           <div className={`font-medium ${available ? 'text-emerald-400' : 'text-gray-400'}`}>
@@ -2055,7 +2126,7 @@ export function MspConfigView() {
       {/* Error */}
       {error && (
         <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30 text-red-400 text-sm flex items-center gap-2">
-          <span>⚠️</span> {error}
+          <AlertTriangle className="w-4 h-4" /> {error}
           <button onClick={() => setError(null)} className="ml-auto hover:text-red-300">×</button>
         </div>
       )}
@@ -2097,27 +2168,27 @@ export function MspConfigView() {
               <SensorCard
                 name="Gyroscope"
                 available={sensors.gyro}
-                icon="🔄"
+                Icon={RefreshCw}
                 description="Measures rotation speed - essential for flight"
               />
               <SensorCard
                 name="Accelerometer"
                 available={sensors.acc}
-                icon="📐"
+                Icon={Ruler}
                 description="Measures tilt angle - needed for self-level"
                 liveValue={`${mspAttitude.roll.toFixed(0)}° / ${mspAttitude.pitch.toFixed(0)}°`}
               />
               <SensorCard
                 name="GPS"
                 available={sensors.gps}
-                icon="🛰️"
+                Icon={Satellite}
                 description={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
                 liveValue={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} sats` : undefined}
               />
               <SensorCard
                 name="Barometer"
                 available={sensors.baro}
-                icon="📊"
+                Icon={Gauge}
                 description="Measures altitude via air pressure"
                 liveValue={sensors.baro ? mspAltitude.altitude : undefined}
                 unit="m"
@@ -2155,7 +2226,7 @@ export function MspConfigView() {
               {sensors.gps && (
                 <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">🛰️</span>
+                    <Satellite className="w-5 h-5 text-blue-400" />
                     <span className="font-medium text-blue-300">GPS Position</span>
                   </div>
                   <div className="grid grid-cols-4 gap-3">
@@ -2193,7 +2264,7 @@ export function MspConfigView() {
             {!sensors.gps && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">⚠️</span>
+                  <AlertTriangle className="w-6 h-6 text-yellow-400" />
                   <div>
                     <h4 className="font-medium text-yellow-400">GPS Not Connected</h4>
                     <p className="text-sm text-gray-400">

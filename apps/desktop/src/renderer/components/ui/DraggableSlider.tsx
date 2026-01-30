@@ -37,6 +37,8 @@ export interface DraggableSliderProps {
   height?: number;
   /** Show thumb handle */
   showThumb?: boolean;
+  /** Disabled state - grays out and prevents interaction */
+  disabled?: boolean;
 }
 
 export function DraggableSlider({
@@ -51,11 +53,15 @@ export function DraggableSlider({
   showControls = true,
   height = 12,
   showThumb = true,
+  disabled = false,
 }: DraggableSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
   const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+
+  // Muted color for disabled state
+  const effectiveColor = disabled ? '#52525b' : color;
 
   const calculateValue = useCallback(
     (clientX: number): number => {
@@ -71,6 +77,7 @@ export function DraggableSlider({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if (disabled) return;
       e.preventDefault();
       isDragging.current = true;
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -79,18 +86,18 @@ export function DraggableSlider({
         onChange(newValue);
       }
     },
-    [calculateValue, onChange, value]
+    [calculateValue, onChange, value, disabled]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!isDragging.current) return;
+      if (disabled || !isDragging.current) return;
       const newValue = calculateValue(e.clientX);
       if (newValue !== value) {
         onChange(newValue);
       }
     },
-    [calculateValue, onChange, value]
+    [calculateValue, onChange, value, disabled]
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -99,29 +106,32 @@ export function DraggableSlider({
   }, []);
 
   const handleIncrement = useCallback(() => {
+    if (disabled) return;
     onChange(Math.min(max, value + step));
-  }, [max, onChange, step, value]);
+  }, [max, onChange, step, value, disabled]);
 
   const handleDecrement = useCallback(() => {
+    if (disabled) return;
     onChange(Math.max(min, value - step));
-  }, [min, onChange, step, value]);
+  }, [min, onChange, step, value, disabled]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disabled) return;
       const newValue = parseInt(e.target.value) || min;
       onChange(Math.max(min, Math.min(max, newValue)));
     },
-    [max, min, onChange]
+    [max, min, onChange, disabled]
   );
 
   return (
-    <div>
+    <div className={disabled ? 'opacity-60' : ''}>
       {/* Label and controls row */}
       {(label || showControls) && (
         <div className="flex items-start justify-between mb-2">
           {label && (
             <div className="min-w-0">
-              <span className="text-sm font-medium text-gray-200">{label}</span>
+              <span className={`text-sm font-medium ${disabled ? 'text-gray-400' : 'text-gray-200'}`}>{label}</span>
               {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
             </div>
           )}
@@ -129,7 +139,12 @@ export function DraggableSlider({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleDecrement}
-                className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm flex items-center justify-center"
+                disabled={disabled}
+                className={`w-6 h-6 rounded text-sm flex items-center justify-center ${
+                  disabled
+                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
+                }`}
               >
                 -
               </button>
@@ -139,11 +154,21 @@ export function DraggableSlider({
                 max={max}
                 value={value}
                 onChange={handleInputChange}
-                className="w-14 px-2 py-1 text-center text-sm bg-zinc-900 border border-zinc-700 rounded text-white"
+                disabled={disabled}
+                className={`w-14 px-2 py-1 text-center text-sm border rounded ${
+                  disabled
+                    ? 'bg-zinc-900 border-zinc-800 text-zinc-500 cursor-not-allowed'
+                    : 'bg-zinc-900 border-zinc-700 text-white'
+                }`}
               />
               <button
                 onClick={handleIncrement}
-                className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm flex items-center justify-center"
+                disabled={disabled}
+                className={`w-6 h-6 rounded text-sm flex items-center justify-center ${
+                  disabled
+                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
+                }`}
               >
                 +
               </button>
@@ -155,7 +180,9 @@ export function DraggableSlider({
       {/* Slider track */}
       <div
         ref={trackRef}
-        className="relative bg-zinc-800 rounded-full cursor-pointer touch-none select-none"
+        className={`relative bg-zinc-800 rounded-full touch-none select-none ${
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+        }`}
         style={{ height }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -165,18 +192,20 @@ export function DraggableSlider({
         {/* Progress fill */}
         <div
           className="absolute left-0 top-0 h-full rounded-full pointer-events-none"
-          style={{ width: `${percentage}%`, backgroundColor: color }}
+          style={{ width: `${percentage}%`, backgroundColor: effectiveColor }}
         />
 
         {/* Thumb handle */}
         {showThumb && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg border-2 pointer-events-none"
+            className={`absolute top-1/2 -translate-y-1/2 rounded-full shadow-lg border-2 pointer-events-none ${
+              disabled ? 'bg-zinc-400' : 'bg-white'
+            }`}
             style={{
               width: height + 4,
               height: height + 4,
               left: `calc(${percentage}% - ${(height + 4) / 2}px)`,
-              borderColor: color,
+              borderColor: effectiveColor,
             }}
           />
         )}

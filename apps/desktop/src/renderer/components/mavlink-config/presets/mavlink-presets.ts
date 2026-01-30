@@ -8,37 +8,7 @@
  * - Safety configurations
  */
 
-// =============================================================================
-// ArduCopter Flight Modes
-// =============================================================================
-
-export const COPTER_MODES: Record<number, { name: string; description: string; icon: string; safe: boolean }> = {
-  0: { name: 'Stabilize', description: 'Manual flight with self-leveling', icon: '✋', safe: true },
-  1: { name: 'Acro', description: 'Full manual control, no self-leveling', icon: '🎮', safe: false },
-  2: { name: 'AltHold', description: 'Altitude hold with manual position', icon: '📏', safe: true },
-  3: { name: 'Auto', description: 'Follow mission waypoints', icon: '🗺️', safe: true },
-  4: { name: 'Guided', description: 'Fly to GCS-commanded points', icon: '📍', safe: true },
-  5: { name: 'Loiter', description: 'Hold position and altitude', icon: '🔒', safe: true },
-  6: { name: 'RTL', description: 'Return to launch point', icon: '🏠', safe: true },
-  7: { name: 'Circle', description: 'Circle around a point', icon: '⭕', safe: true },
-  9: { name: 'Land', description: 'Automatic landing', icon: '🛬', safe: true },
-  11: { name: 'Drift', description: 'Like Stabilize but with drift', icon: '💨', safe: false },
-  13: { name: 'Sport', description: 'Stabilize with higher rates', icon: '🏃', safe: false },
-  14: { name: 'Flip', description: 'Automatic flip maneuver', icon: '🔄', safe: false },
-  15: { name: 'AutoTune', description: 'Automatic PID tuning', icon: '🔧', safe: true },
-  16: { name: 'PosHold', description: 'Position hold like Loiter', icon: '📌', safe: true },
-  17: { name: 'Brake', description: 'Stop immediately', icon: '🛑', safe: true },
-  18: { name: 'Throw', description: 'Throw to start', icon: '🤾', safe: false },
-  19: { name: 'Avoid_ADSB', description: 'Avoid other aircraft', icon: '✈️', safe: true },
-  20: { name: 'Guided_NoGPS', description: 'Guided without GPS', icon: '📡', safe: false },
-  21: { name: 'Smart_RTL', description: 'Return via original path', icon: '↩️', safe: true },
-  22: { name: 'FlowHold', description: 'Position hold with optical flow', icon: '👁️', safe: true },
-  23: { name: 'Follow', description: 'Follow another vehicle', icon: '🚶', safe: true },
-  24: { name: 'ZigZag', description: 'Zigzag survey pattern', icon: '〰️', safe: true },
-  25: { name: 'SystemID', description: 'System identification', icon: '📊', safe: false },
-  26: { name: 'Heli_Autorotate', description: 'Heli autorotation', icon: '🚁', safe: false },
-  27: { name: 'Auto RTL', description: 'RTL then Auto continue', icon: '🔁', safe: true },
-};
+import { Egg, Drama, Zap, Film, type LucideIcon } from 'lucide-react';
 
 // =============================================================================
 // Flight Mode Presets
@@ -47,8 +17,6 @@ export const COPTER_MODES: Record<number, { name: string; description: string; i
 export interface FlightModePreset {
   name: string;
   description: string;
-  icon: string;
-  color: string;
   modes: number[]; // FLTMODE1-6 values
 }
 
@@ -56,29 +24,21 @@ export const FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
   beginner: {
     name: 'Beginner Safe',
     description: 'Safe modes only - Stabilize, AltHold, Loiter, RTL',
-    icon: '🛡️',
-    color: 'from-green-500/20 to-emerald-500/10',
     modes: [0, 2, 5, 6, 9, 6], // Stabilize, AltHold, Loiter, RTL, Land, RTL
   },
   intermediate: {
     name: 'Intermediate',
     description: 'Add Auto and PosHold for missions',
-    icon: '📈',
-    color: 'from-blue-500/20 to-cyan-500/10',
     modes: [0, 2, 5, 3, 16, 6], // Stabilize, AltHold, Loiter, Auto, PosHold, RTL
   },
   advanced: {
     name: 'Advanced',
     description: 'Full control with Acro and Sport modes',
-    icon: '🎯',
-    color: 'from-purple-500/20 to-pink-500/10',
     modes: [0, 1, 13, 5, 3, 6], // Stabilize, Acro, Sport, Loiter, Auto, RTL
   },
   mapping: {
     name: 'Mapping/Survey',
     description: 'Optimized for aerial mapping missions',
-    icon: '🗺️',
-    color: 'from-amber-500/20 to-orange-500/10',
     modes: [5, 3, 24, 6, 9, 21], // Loiter, Auto, ZigZag, RTL, Land, SmartRTL
   },
 };
@@ -90,8 +50,6 @@ export const FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
 export interface SkillPreset {
   name: string;
   description: string;
-  icon: string;
-  color: string;
   params: Record<string, number>;
 }
 
@@ -99,8 +57,6 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
   beginner: {
     name: 'Beginner',
     description: 'Soft, forgiving response. Great for learning.',
-    icon: '🛡️',
-    color: 'from-green-500/20 to-emerald-500/10',
     params: {
       // Slower rates
       'ACRO_RP_RATE': 90,
@@ -118,8 +74,6 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
   intermediate: {
     name: 'Intermediate',
     description: 'Balanced response for general flying.',
-    icon: '📈',
-    color: 'from-blue-500/20 to-cyan-500/10',
     params: {
       'ACRO_RP_RATE': 180,
       'ACRO_Y_RATE': 90,
@@ -133,8 +87,6 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
   expert: {
     name: 'Expert',
     description: 'Aggressive response for experienced pilots.',
-    icon: '🎯',
-    color: 'from-red-500/20 to-orange-500/10',
     params: {
       'ACRO_RP_RATE': 360,
       'ACRO_Y_RATE': 180,
@@ -154,8 +106,6 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
 export interface MissionPreset {
   name: string;
   description: string;
-  icon: string;
-  color: string;
   params: Record<string, number>;
 }
 
@@ -163,8 +113,6 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   mapping: {
     name: 'Mapping/Survey',
     description: 'Slow, stable flight for aerial mapping and photogrammetry.',
-    icon: '🗺️',
-    color: 'from-amber-500/20 to-orange-500/10',
     params: {
       'WPNAV_SPEED': 500, // 5 m/s - slow for photos
       'WPNAV_ACCEL': 100,
@@ -176,8 +124,6 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   surveillance: {
     name: 'Surveillance',
     description: 'Moderate speed, good stability for video.',
-    icon: '👁️',
-    color: 'from-purple-500/20 to-pink-500/10',
     params: {
       'WPNAV_SPEED': 800, // 8 m/s
       'WPNAV_ACCEL': 150,
@@ -189,8 +135,6 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   sport: {
     name: 'Sport',
     description: 'Fast, responsive flight for fun flying.',
-    icon: '🏃',
-    color: 'from-blue-500/20 to-cyan-500/10',
     params: {
       'WPNAV_SPEED': 1500, // 15 m/s
       'WPNAV_ACCEL': 400,
@@ -202,8 +146,6 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   cinema: {
     name: 'Cinematic',
     description: 'Ultra-smooth movements for professional video.',
-    icon: '🎬',
-    color: 'from-rose-500/20 to-red-500/10',
     params: {
       'WPNAV_SPEED': 300, // 3 m/s - very slow
       'WPNAV_ACCEL': 50, // Very gentle acceleration
@@ -222,8 +164,6 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
 export interface SafetyPreset {
   name: string;
   description: string;
-  icon: string;
-  color: string;
   params: Record<string, number>;
 }
 
@@ -231,8 +171,6 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   maximum: {
     name: 'Maximum Safety',
     description: 'All safety features enabled. Recommended for beginners.',
-    icon: '🛡️',
-    color: 'from-green-500/20 to-emerald-500/10',
     params: {
       'FS_THR_ENABLE': 1, // RTL on throttle failsafe
       'FS_GCS_ENABLE': 1, // RTL on GCS failsafe
@@ -245,8 +183,6 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   balanced: {
     name: 'Balanced',
     description: 'Essential safety features without being restrictive.',
-    icon: '⚖️',
-    color: 'from-blue-500/20 to-cyan-500/10',
     params: {
       'FS_THR_ENABLE': 1,
       'FS_GCS_ENABLE': 0, // No GCS failsafe
@@ -259,8 +195,6 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   minimal: {
     name: 'Minimal',
     description: 'Only critical safety features. For experienced pilots.',
-    icon: '⚡',
-    color: 'from-orange-500/20 to-red-500/10',
     params: {
       'FS_THR_ENABLE': 1, // Keep throttle failsafe
       'FS_GCS_ENABLE': 0,
@@ -343,27 +277,6 @@ export const BATTERY_MONITORS: Record<number, { name: string; description: strin
 // =============================================================================
 
 /**
- * Get a safe default flight mode preset for beginners
- */
-export function getDefaultFlightModes(): number[] {
-  return FLIGHT_MODE_PRESETS.beginner.modes;
-}
-
-/**
- * Check if a mode is considered safe for beginners
- */
-export function isModeSafe(modeNum: number): boolean {
-  return COPTER_MODES[modeNum]?.safe ?? false;
-}
-
-/**
- * Get mode info by number
- */
-export function getModeInfo(modeNum: number) {
-  return COPTER_MODES[modeNum] ?? { name: 'Unknown', description: 'Unknown mode', icon: '❓', safe: false };
-}
-
-/**
  * Calculate LiPo cell voltages
  */
 export function getLiPoVoltages(cells: number) {
@@ -376,3 +289,216 @@ export function getLiPoVoltages(cells: number) {
     min: cells * 3.0,
   };
 }
+
+// =============================================================================
+// PID Tuning Presets (ArduPilot)
+// =============================================================================
+
+export interface PidPreset {
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  iconColor: string;
+  color: string;
+  params: {
+    // Roll PIDs
+    ATC_RAT_RLL_P: number;
+    ATC_RAT_RLL_I: number;
+    ATC_RAT_RLL_D: number;
+    ATC_RAT_RLL_FF: number;
+    // Pitch PIDs
+    ATC_RAT_PIT_P: number;
+    ATC_RAT_PIT_I: number;
+    ATC_RAT_PIT_D: number;
+    ATC_RAT_PIT_FF: number;
+    // Yaw PIDs
+    ATC_RAT_YAW_P: number;
+    ATC_RAT_YAW_I: number;
+    ATC_RAT_YAW_D: number;
+    ATC_RAT_YAW_FF: number;
+  };
+}
+
+export const PID_PRESETS: Record<string, PidPreset> = {
+  beginner: {
+    name: 'Beginner',
+    description: 'Smooth & forgiving - great for learning',
+    icon: Egg,
+    iconColor: 'text-green-400',
+    color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
+    params: {
+      ATC_RAT_RLL_P: 0.08,
+      ATC_RAT_RLL_I: 0.08,
+      ATC_RAT_RLL_D: 0.003,
+      ATC_RAT_RLL_FF: 0,
+      ATC_RAT_PIT_P: 0.08,
+      ATC_RAT_PIT_I: 0.08,
+      ATC_RAT_PIT_D: 0.003,
+      ATC_RAT_PIT_FF: 0,
+      ATC_RAT_YAW_P: 0.15,
+      ATC_RAT_YAW_I: 0.015,
+      ATC_RAT_YAW_D: 0,
+      ATC_RAT_YAW_FF: 0,
+    },
+  },
+  freestyle: {
+    name: 'Freestyle',
+    description: 'Responsive & smooth for tricks',
+    icon: Drama,
+    iconColor: 'text-purple-400',
+    color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
+    params: {
+      ATC_RAT_RLL_P: 0.135,
+      ATC_RAT_RLL_I: 0.135,
+      ATC_RAT_RLL_D: 0.0036,
+      ATC_RAT_RLL_FF: 0,
+      ATC_RAT_PIT_P: 0.135,
+      ATC_RAT_PIT_I: 0.135,
+      ATC_RAT_PIT_D: 0.0036,
+      ATC_RAT_PIT_FF: 0,
+      ATC_RAT_YAW_P: 0.2,
+      ATC_RAT_YAW_I: 0.02,
+      ATC_RAT_YAW_D: 0,
+      ATC_RAT_YAW_FF: 0,
+    },
+  },
+  racing: {
+    name: 'Racing',
+    description: 'Snappy & precise for speed',
+    icon: Zap,
+    iconColor: 'text-red-400',
+    color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
+    params: {
+      ATC_RAT_RLL_P: 0.18,
+      ATC_RAT_RLL_I: 0.18,
+      ATC_RAT_RLL_D: 0.004,
+      ATC_RAT_RLL_FF: 0,
+      ATC_RAT_PIT_P: 0.18,
+      ATC_RAT_PIT_I: 0.18,
+      ATC_RAT_PIT_D: 0.004,
+      ATC_RAT_PIT_FF: 0,
+      ATC_RAT_YAW_P: 0.25,
+      ATC_RAT_YAW_I: 0.025,
+      ATC_RAT_YAW_D: 0,
+      ATC_RAT_YAW_FF: 0,
+    },
+  },
+  cinematic: {
+    name: 'Cinematic',
+    description: 'Ultra-smooth for video',
+    icon: Film,
+    iconColor: 'text-blue-400',
+    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
+    params: {
+      ATC_RAT_RLL_P: 0.06,
+      ATC_RAT_RLL_I: 0.06,
+      ATC_RAT_RLL_D: 0.002,
+      ATC_RAT_RLL_FF: 0,
+      ATC_RAT_PIT_P: 0.06,
+      ATC_RAT_PIT_I: 0.06,
+      ATC_RAT_PIT_D: 0.002,
+      ATC_RAT_PIT_FF: 0,
+      ATC_RAT_YAW_P: 0.12,
+      ATC_RAT_YAW_I: 0.012,
+      ATC_RAT_YAW_D: 0,
+      ATC_RAT_YAW_FF: 0,
+    },
+  },
+};
+
+// Default ArduPilot PIDs for reset
+export const DEFAULT_ARDUPILOT_PIDS = {
+  ATC_RAT_RLL_P: 0.135,
+  ATC_RAT_RLL_I: 0.135,
+  ATC_RAT_RLL_D: 0.0036,
+  ATC_RAT_RLL_FF: 0,
+  ATC_RAT_PIT_P: 0.135,
+  ATC_RAT_PIT_I: 0.135,
+  ATC_RAT_PIT_D: 0.0036,
+  ATC_RAT_PIT_FF: 0,
+  ATC_RAT_YAW_P: 0.18,
+  ATC_RAT_YAW_I: 0.018,
+  ATC_RAT_YAW_D: 0,
+  ATC_RAT_YAW_FF: 0,
+};
+
+// =============================================================================
+// Rate Presets (ArduPilot)
+// =============================================================================
+
+export interface RatePreset {
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  iconColor: string;
+  color: string;
+  params: {
+    ACRO_RP_RATE: number;  // Roll/Pitch rate in deg/s
+    ACRO_Y_RATE: number;   // Yaw rate in deg/s
+    ACRO_RP_EXPO: number;  // Roll/Pitch expo (0-1)
+    ACRO_Y_EXPO: number;   // Yaw expo (0-1)
+  };
+}
+
+export const RATE_PRESETS: Record<string, RatePreset> = {
+  beginner: {
+    name: 'Beginner',
+    description: 'Slow & predictable - great for learning',
+    icon: Egg,
+    iconColor: 'text-green-400',
+    color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
+    params: {
+      ACRO_RP_RATE: 90,
+      ACRO_Y_RATE: 45,
+      ACRO_RP_EXPO: 0.3,
+      ACRO_Y_EXPO: 0.2,
+    },
+  },
+  freestyle: {
+    name: 'Freestyle',
+    description: 'Balanced for tricks & flow',
+    icon: Drama,
+    iconColor: 'text-purple-400',
+    color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
+    params: {
+      ACRO_RP_RATE: 180,
+      ACRO_Y_RATE: 90,
+      ACRO_RP_EXPO: 0.2,
+      ACRO_Y_EXPO: 0.15,
+    },
+  },
+  racing: {
+    name: 'Racing',
+    description: 'Fast & responsive for speed',
+    icon: Zap,
+    iconColor: 'text-red-400',
+    color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
+    params: {
+      ACRO_RP_RATE: 360,
+      ACRO_Y_RATE: 180,
+      ACRO_RP_EXPO: 0.1,
+      ACRO_Y_EXPO: 0.1,
+    },
+  },
+  cinematic: {
+    name: 'Cinematic',
+    description: 'Ultra-smooth for filming',
+    icon: Film,
+    iconColor: 'text-blue-400',
+    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
+    params: {
+      ACRO_RP_RATE: 60,
+      ACRO_Y_RATE: 30,
+      ACRO_RP_EXPO: 0.4,
+      ACRO_Y_EXPO: 0.3,
+    },
+  },
+};
+
+// Default ArduPilot rates for reset
+export const DEFAULT_ARDUPILOT_RATES = {
+  ACRO_RP_RATE: 180,
+  ACRO_Y_RATE: 90,
+  ACRO_RP_EXPO: 0,
+  ACRO_Y_EXPO: 0,
+};

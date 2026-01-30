@@ -2,6 +2,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # ArduDeck - Mission Planner Modernization Project
 # ALWAYS PRIOTERIZE UI/UX !!! NEVER BUILD PROTOTYPES , HACKS , ETC. USER FLOW IS PRIO NUMBER ONE AT ALL TIME !!!!
+
+## UI Style Rules
+- **NO EMOJIS** - Use SVG icons or icon fonts (Lucide, etc.) instead of emojis everywhere in the UI
+- Keep interfaces clean and professional
+
 Modernizing ArduPilot's Mission Planner ground control station from legacy C#/.NET WinForms to a cross-platform solution using Electron (desktop) and Flutter (mobile).
 
 ## Project Structure

@@ -77,6 +77,7 @@ import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmwa
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
+import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
 import {
   initUnifiedLogger,
   shutdownLogger,
@@ -107,7 +108,7 @@ import {
   type BridgeConfig,
   type VirtualRCState,
 } from './simulators/index.js';
-import type { SitlConfig, SitlStatus } from '../shared/ipc-channels.js';
+import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo } from '../shared/ipc-channels.js';
 
 // =============================================================================
 // Legacy Board Detection
@@ -1522,9 +1523,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 // Detect MAVLink version from packet format
                 detectedMavlinkVersion = packet.isMavlink2 ? 2 : 1;
 
-                // Parse heartbeat payload: type(1), autopilot(1), base_mode(1), custom_mode(4), system_status(1), mavlink_version(1)
-                const vehicleType = packet.payload[0];
-                const autopilotType = packet.payload[1];
+                // MAVLink v2 reorders payload by size (largest first):
+                // custom_mode(4) at offset 0, type(1) at offset 4, autopilot(1) at offset 5
+                // Note: ArduPilot uses v2 byte order even with v1 packet framing
+                const vehicleType = packet.payload[4];
+                const autopilotType = packet.payload[5];
 
                 // First heartbeat - connection confirmed!
                 if (connectionState.isWaitingForHeartbeat) {
@@ -3812,6 +3815,86 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: message };
     }
+  });
+
+  // =============================================================================
+  // ArduPilot SITL Handlers
+  // =============================================================================
+
+  // Set main window for ArduPilot SITL process
+  ardupilotSitlProcess.setMainWindow(mainWindow);
+  ardupilotSitlDownloader.setMainWindow(mainWindow);
+
+  // Start ArduPilot SITL process
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_START, async (_event, config: ArduPilotSitlConfig): Promise<{ success: boolean; command?: string; error?: string }> => {
+    return ardupilotSitlProcess.start(config);
+  });
+
+  // Stop ArduPilot SITL process
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_STOP, async (): Promise<{ success: boolean }> => {
+    try {
+      ardupilotSitlProcess.stop();
+      ardupilotRcSender.stop();
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[ArduPilot SITL] Failed to stop:', message);
+      return { success: false };
+    }
+  });
+
+  // Get ArduPilot SITL status
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_STATUS, async (): Promise<ArduPilotSitlStatus> => {
+    return ardupilotSitlProcess.getStatus();
+  });
+
+  // Download ArduPilot SITL binary
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD, async (
+    _event,
+    vehicleType: ArduPilotVehicleType,
+    releaseTrack: ArduPilotReleaseTrack
+  ): Promise<{ success: boolean; path?: string; error?: string }> => {
+    // Download Cygwin DLLs first on Windows
+    if (process.platform === 'win32') {
+      const cygwinResult = await ardupilotSitlDownloader.downloadCygwin();
+      if (!cygwinResult.success) {
+        return { success: false, error: `Failed to download Cygwin DLLs: ${cygwinResult.error}` };
+      }
+    }
+
+    return ardupilotSitlDownloader.download(vehicleType, releaseTrack);
+  });
+
+  // Check if ArduPilot SITL binary exists
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_BINARY, async (
+    _event,
+    vehicleType: ArduPilotVehicleType,
+    releaseTrack: ArduPilotReleaseTrack
+  ): Promise<ArduPilotSitlBinaryInfo> => {
+    return ardupilotSitlDownloader.checkBinary(vehicleType, releaseTrack);
+  });
+
+  // Check if platform supports ArduPilot SITL
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_PLATFORM, async (): Promise<{ supported: boolean; useDocker: boolean; error?: string }> => {
+    return ardupilotSitlProcess.isPlatformSupported();
+  });
+
+  // ArduPilot SITL RC control - send RC values
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_RC_SEND, async (_event, state: Partial<VirtualRCState>): Promise<void> => {
+    ardupilotRcSender.setState(state);
+    ardupilotRcSender.sendOnce();
+  });
+
+  // Start ArduPilot RC sender (continuous 50Hz)
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_RC_START, async (): Promise<{ success: boolean }> => {
+    ardupilotRcSender.start();
+    return { success: true };
+  });
+
+  // Stop ArduPilot RC sender
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_RC_STOP, async (): Promise<{ success: boolean }> => {
+    ardupilotRcSender.stop();
+    return { success: true };
   });
 
   // =============================================================================

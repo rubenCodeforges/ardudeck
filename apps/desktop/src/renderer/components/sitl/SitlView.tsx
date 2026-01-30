@@ -2,14 +2,18 @@
  * SITL View
  *
  * Main view for SITL (Software-In-The-Loop) simulation.
- * Allows starting/stopping the SITL process and managing profiles.
+ * Supports both iNav SITL (MSP) and ArduPilot SITL (MAVLink).
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSitlStore } from '../../stores/sitl-store';
+import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
+import ArduPilotSitlTab from './ArduPilotSitlTab';
 import type { VirtualRCState } from '../../../shared/ipc-channels';
+
+type SitlTab = 'inav' | 'ardupilot';
 
 // Aircraft options for FlightGear
 const AIRCRAFT_OPTIONS = [
@@ -80,7 +84,9 @@ export default function SitlView() {
 
   const { connectionState } = useConnectionStore();
   const { setPendingSitlSwitch } = useSettingsStore();
+  const ardupilotSitlStore = useArduPilotSitlStore();
   const outputRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<SitlTab>('inav');
   const [showNewProfile, setShowNewProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
   const [newProfileDesc, setNewProfileDesc] = useState('');
@@ -169,6 +175,10 @@ export default function SitlView() {
   const currentProfile = getCurrentProfile();
   const canDelete = currentProfile && !currentProfile.isStandard;
 
+  // Determine if any SITL is running
+  const anyRunning = isRunning || ardupilotSitlStore.isRunning;
+  const activeRunningTab = isRunning ? 'inav' : ardupilotSitlStore.isRunning ? 'ardupilot' : null;
+
   return (
     <div className="h-full flex flex-col bg-zinc-950">
       {/* Header */}
@@ -183,28 +193,64 @@ export default function SitlView() {
           <div>
             <h1 className="text-lg font-semibold text-white">SITL Simulator</h1>
             <p className="text-xs text-zinc-500">
-              Test iNav without hardware - runs the real flight controller firmware
+              Test flight controller firmware without hardware
             </p>
           </div>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('inav')}
+            disabled={ardupilotSitlStore.isRunning}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'inav'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={ardupilotSitlStore.isRunning ? 'Stop ArduPilot SITL first' : undefined}
+          >
+            iNav (MSP)
+          </button>
+          <button
+            onClick={() => setActiveTab('ardupilot')}
+            disabled={isRunning}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'ardupilot'
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={isRunning ? 'Stop iNav SITL first' : undefined}
+          >
+            ArduPilot (MAVLink)
+          </button>
         </div>
 
         {/* Status indicator */}
         <div className="flex items-center gap-3">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-            isRunning
+            anyRunning
               ? 'bg-green-500/10 text-green-400 border border-green-500/30'
               : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
           }`}>
             <div className={`w-2 h-2 rounded-full ${
-              isRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'
+              anyRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'
             }`} />
-            {isRunning ? 'Running' : 'Stopped'}
+            {anyRunning
+              ? `${activeRunningTab === 'inav' ? 'iNav' : 'ArduPilot'} Running`
+              : 'Stopped'}
           </div>
         </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-4">
+        {/* ArduPilot SITL Tab */}
+        {activeTab === 'ardupilot' && <ArduPilotSitlTab />}
+
+        {/* iNav SITL Tab */}
+        {activeTab === 'inav' && (
+          <>
         {/* Profile selection card */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
           <div className="flex items-start gap-4">
@@ -822,6 +868,8 @@ export default function SitlView() {
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* New Profile Modal */}

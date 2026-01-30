@@ -134,24 +134,67 @@ async function enumerateUsbDevices(): Promise<UsbDevice[]> {
 }
 
 /**
- * Find serial port for a USB device (Windows)
+ * Find serial port for a USB device
  */
 async function findSerialPortForDevice(vid: string, pid: string): Promise<string | undefined> {
-  if (process.platform !== 'win32') {
-    return undefined;
-  }
+  const platform = process.platform;
 
   try {
-    const { stdout } = await execAsync(
-      `wmic path Win32_SerialPort where "PNPDeviceID like '%VID_${vid.toUpperCase()}&PID_${pid.toUpperCase()}%'" get DeviceID /format:list`,
-      { timeout: 3000 }
-    );
+    if (platform === 'win32') {
+      const { stdout } = await execAsync(
+        `wmic path Win32_SerialPort where "PNPDeviceID like '%VID_${vid.toUpperCase()}&PID_${pid.toUpperCase()}%'" get DeviceID /format:list`,
+        { timeout: 3000 }
+      );
 
-    const match = stdout.match(/DeviceID=(COM\d+)/i);
-    return match?.[1];
+      const match = stdout.match(/DeviceID=(COM\d+)/i);
+      return match?.[1];
+    } else if (platform === 'darwin') {
+      // On macOS, scan /dev for tty.usbmodem* and tty.usbserial* devices
+      // and try to match via ioreg USB info
+      try {
+        // Get list of USB serial devices
+        const { stdout: lsOutput } = await execAsync('ls /dev/tty.usb* 2>/dev/null || true', { timeout: 3000 });
+        const devices = lsOutput.split('\n').filter(d => d.trim());
+
+        if (devices.length === 0) return undefined;
+
+        // If there's only one device, return it
+        if (devices.length === 1) return devices[0];
+
+        // Try to match via ioreg - look for VID/PID
+        const { stdout: ioregOutput } = await execAsync(
+          `ioreg -r -c IOUSBHostDevice -l | grep -A20 "idVendor.*${parseInt(vid, 16)}" | grep -A10 "idProduct.*${parseInt(pid, 16)}" | grep "IOCalloutDevice" | head -1`,
+          { timeout: 5000 }
+        );
+
+        const match = ioregOutput.match(/"IOCalloutDevice"\s*=\s*"([^"]+)"/);
+        if (match) return match[1];
+
+        // Fallback: return first device if ioreg doesn't find a match
+        return devices[0];
+      } catch {
+        // If ioreg fails, try to find any USB serial device
+        try {
+          const { stdout } = await execAsync('ls /dev/tty.usb* 2>/dev/null | head -1', { timeout: 2000 });
+          return stdout.trim() || undefined;
+        } catch {
+          return undefined;
+        }
+      }
+    } else if (platform === 'linux') {
+      // On Linux, check /dev/ttyACM* and /dev/ttyUSB*
+      try {
+        const { stdout } = await execAsync('ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null | head -1', { timeout: 2000 });
+        return stdout.trim() || undefined;
+      } catch {
+        return undefined;
+      }
+    }
   } catch {
     return undefined;
   }
+
+  return undefined;
 }
 
 /**

@@ -206,9 +206,10 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
   setParameter: async (paramId, value) => {
     const param = get().parameters.get(paramId);
-    if (!param) return false;
+    // Use existing type if known, otherwise default to REAL32 (9) for ArduPilot
+    const paramType = param?.type ?? 9;
 
-    const result = await window.electronAPI?.setParameter(paramId, value, param.type);
+    const result = await window.electronAPI?.setParameter(paramId, value, paramType);
 
     if (!result?.success) {
       set({ error: result?.error ?? 'Failed to set parameter' });
@@ -224,6 +225,17 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
           ...existing,
           value,
           isModified: existing.originalValue !== value,
+        });
+      } else {
+        // Parameter wasn't in cache - add it now
+        params.set(paramId, {
+          id: paramId,
+          value,
+          type: paramType,
+          index: -1,
+          originalValue: value,
+          isModified: true,
+          isReadOnly: false,
         });
       }
       return { parameters: params };

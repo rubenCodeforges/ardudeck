@@ -663,12 +663,19 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
 
   // Flash operations
   startFlash: async () => {
-    const { selectedSource, selectedVersion, customFirmwarePath, detectedBoard } = get();
+    const { selectedSource, selectedVersion, customFirmwarePath, detectedBoard, selectedPort } = get();
 
     if (!detectedBoard) {
       set({ flashError: 'No board connected. Click Connect first.' });
       return;
     }
+
+    // For AVR boards (avrdude), ensure port is set from selectedPort if not auto-detected
+    // This is needed on macOS where USB detection doesn't capture serial ports
+    const boardWithPort: DetectedBoard = {
+      ...detectedBoard,
+      port: detectedBoard.port || selectedPort || undefined,
+    };
 
     let firmwarePath: string | undefined;
 
@@ -717,7 +724,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
     try {
       const { noRebootSequence, fullChipErase } = get();
       const options = { noRebootSequence, fullChipErase };
-      const result = await window.electronAPI?.flashFirmware?.(firmwarePath, detectedBoard, options);
+      const result = await window.electronAPI?.flashFirmware?.(firmwarePath, boardWithPort, options);
       if (!result?.success) {
         set({
           flashState: 'error',

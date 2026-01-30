@@ -3,10 +3,22 @@
  *
  * Battery monitor configuration with visual helpers.
  * Makes it easy to set up voltage/current sensing.
+ * Uses Lucide icons (no emojis) and DraggableSliders.
  */
 
 import React, { useMemo } from 'react';
+import {
+  Battery,
+  BarChart3,
+  Zap,
+  Plug,
+  AlertTriangle,
+  Wrench,
+  Save,
+} from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { DraggableSlider } from '../ui/DraggableSlider';
+import { InfoCard } from '../ui/InfoCard';
 import { BATTERY_MONITORS, getLiPoVoltages } from './presets/mavlink-presets';
 
 const BatteryTab: React.FC = () => {
@@ -60,23 +72,17 @@ const BatteryTab: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Help Card */}
-      <div className="bg-blue-500/10 rounded-xl border border-blue-500/30 p-4 flex items-start gap-4">
-        <span className="text-2xl">🔋</span>
-        <div>
-          <p className="text-blue-400 font-medium">Battery Monitoring</p>
-          <p className="text-sm text-zinc-400 mt-1">
-            Configure your battery monitor to track voltage, current, and remaining capacity.
-            Accurate monitoring is essential for safe flying.
-          </p>
-        </div>
-      </div>
+      <InfoCard title="Battery Monitoring" variant="info">
+        Configure your battery monitor to track voltage, current, and remaining capacity.
+        Accurate monitoring is essential for safe flying.
+      </InfoCard>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Monitor Type Card */}
         <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <span className="text-xl">📊</span>
+              <BarChart3 className="w-5 h-5 text-blue-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">Monitor Type</h3>
@@ -103,7 +109,8 @@ const BatteryTab: React.FC = () => {
           </div>
 
           {batteryValues.battMonitor === 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <p className="text-xs text-amber-400">
                 Battery monitoring disabled. You won't see voltage or remaining capacity!
               </p>
@@ -115,7 +122,7 @@ const BatteryTab: React.FC = () => {
         <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-              <span className="text-xl">⚡</span>
+              <Zap className="w-5 h-5 text-green-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">Battery Capacity</h3>
@@ -123,19 +130,16 @@ const BatteryTab: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Capacity (mAh)</label>
-            <input
-              type="number"
-              value={batteryValues.battCapacity}
-              onChange={(e) => setParameter('BATT_CAPACITY', Number(e.target.value))}
-              className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={100}
-              min={0}
-              max={50000}
-              placeholder="e.g. 5000"
-            />
-          </div>
+          <DraggableSlider
+            label="Capacity (mAh)"
+            value={batteryValues.battCapacity}
+            onChange={(v) => setParameter('BATT_CAPACITY', v)}
+            min={0}
+            max={20000}
+            step={100}
+            color="#22C55E"
+            hint="Match your battery pack capacity"
+          />
 
           {/* Common capacity presets */}
           <div className="flex flex-wrap gap-2">
@@ -161,7 +165,7 @@ const BatteryTab: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <span className="text-xl">🔌</span>
+              <Plug className="w-5 h-5 text-amber-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">LiPo Cell Count</h3>
@@ -222,7 +226,7 @@ const BatteryTab: React.FC = () => {
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-            <span className="text-xl">⚠️</span>
+            <AlertTriangle className="w-5 h-5 text-red-400" />
           </div>
           <div>
             <h3 className="text-sm font-medium text-white">Voltage Thresholds</h3>
@@ -230,45 +234,39 @@ const BatteryTab: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Minimum Arm (V)</label>
-            <input
-              type="number"
-              value={batteryValues.battArmVolt}
-              onChange={(e) => setParameter('BATT_ARM_VOLT', Number(e.target.value))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={0.1}
-              min={0}
-            />
-            <p className="text-[10px] text-zinc-600 mt-1">Won't arm below this</p>
-          </div>
+        <div className="space-y-4">
+          <DraggableSlider
+            label="Minimum Arm Voltage (V)"
+            value={Math.round(batteryValues.battArmVolt * 10)}
+            onChange={(v) => setParameter('BATT_ARM_VOLT', v / 10)}
+            min={0}
+            max={260}
+            step={1}
+            color="#3B82F6"
+            hint="Won't arm below this voltage"
+          />
 
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Low Warning (V)</label>
-            <input
-              type="number"
-              value={batteryValues.battLowVolt}
-              onChange={(e) => setParameter('BATT_LOW_VOLT', Number(e.target.value))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={0.1}
-              min={0}
-            />
-            <p className="text-[10px] text-zinc-600 mt-1">Warning alert</p>
-          </div>
+          <DraggableSlider
+            label="Low Warning Voltage (V)"
+            value={Math.round(batteryValues.battLowVolt * 10)}
+            onChange={(v) => setParameter('BATT_LOW_VOLT', v / 10)}
+            min={0}
+            max={260}
+            step={1}
+            color="#F59E0B"
+            hint="Warning alert triggers here"
+          />
 
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Critical (V)</label>
-            <input
-              type="number"
-              value={batteryValues.battCrtVolt}
-              onChange={(e) => setParameter('BATT_CRT_VOLT', Number(e.target.value))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={0.1}
-              min={0}
-            />
-            <p className="text-[10px] text-zinc-600 mt-1">Failsafe triggers</p>
-          </div>
+          <DraggableSlider
+            label="Critical Voltage (V)"
+            value={Math.round(batteryValues.battCrtVolt * 10)}
+            onChange={(v) => setParameter('BATT_CRT_VOLT', v / 10)}
+            min={0}
+            max={260}
+            step={1}
+            color="#EF4444"
+            hint="Failsafe triggers here"
+          />
         </div>
 
         {/* Visual voltage bar */}
@@ -298,7 +296,7 @@ const BatteryTab: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <span className="text-xl">🔧</span>
+              <Wrench className="w-5 h-5 text-purple-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">Calibration</h3>
@@ -308,39 +306,39 @@ const BatteryTab: React.FC = () => {
           <span className="px-2 py-0.5 text-[10px] bg-zinc-700/50 text-zinc-400 rounded">Advanced</span>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Voltage Multiplier</label>
-            <input
-              type="number"
-              value={batteryValues.battVoltMult}
-              onChange={(e) => setParameter('BATT_VOLT_MULT', Number(e.target.value))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={0.01}
-            />
-          </div>
+        <div className="space-y-4">
+          <DraggableSlider
+            label="Voltage Multiplier"
+            value={Math.round(batteryValues.battVoltMult * 100)}
+            onChange={(v) => setParameter('BATT_VOLT_MULT', v / 100)}
+            min={500}
+            max={2000}
+            step={1}
+            color="#8B5CF6"
+            hint="Adjusts voltage reading accuracy"
+          />
 
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Amps Per Volt</label>
-            <input
-              type="number"
-              value={batteryValues.battAmpPervlt}
-              onChange={(e) => setParameter('BATT_AMP_PERVLT', Number(e.target.value))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={0.1}
-            />
-          </div>
+          <DraggableSlider
+            label="Amps Per Volt"
+            value={Math.round(batteryValues.battAmpPervlt * 10)}
+            onChange={(v) => setParameter('BATT_AMP_PERVLT', v / 10)}
+            min={0}
+            max={500}
+            step={1}
+            color="#8B5CF6"
+            hint="Current sensor calibration"
+          />
 
-          <div>
-            <label className="text-xs text-zinc-400 block mb-1.5">Current Offset</label>
-            <input
-              type="number"
-              value={batteryValues.battAmpOffset}
-              onChange={(e) => setParameter('BATT_AMP_OFFSET', Number(e.target.value))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              step={0.01}
-            />
-          </div>
+          <DraggableSlider
+            label="Current Offset"
+            value={Math.round(batteryValues.battAmpOffset * 100)}
+            onChange={(v) => setParameter('BATT_AMP_OFFSET', v / 100)}
+            min={-100}
+            max={100}
+            step={1}
+            color="#8B5CF6"
+            hint="Zero-point adjustment"
+          />
         </div>
 
         <div className="bg-zinc-800/50 rounded-lg p-3">
@@ -355,7 +353,7 @@ const BatteryTab: React.FC = () => {
       {/* Save Reminder */}
       {modified > 0 && (
         <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-center gap-3">
-          <span className="text-xl">💾</span>
+          <Save className="w-5 h-5 text-amber-400" />
           <p className="text-sm text-amber-400">
             You have unsaved changes. Click <span className="font-medium">"Write to Flash"</span> in the header to save.
           </p>

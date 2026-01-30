@@ -92,21 +92,39 @@ const MAP_LAYERS = {
     name: 'Street',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
   },
   satellite: {
     name: 'Satellite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri',
+    maxZoom: 18,
+  },
+  // Google Maps satellite - higher zoom for detailed ground views (rovers)
+  googleSat: {
+    name: 'Google Sat',
+    url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    attribution: '&copy; Google',
+    maxZoom: 21,
+  },
+  // Google Maps hybrid - satellite with road labels (great for rovers)
+  googleHybrid: {
+    name: 'Hybrid',
+    url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    attribution: '&copy; Google',
+    maxZoom: 21,
   },
   terrain: {
     name: 'Terrain',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenTopoMap',
+    maxZoom: 17,
   },
   dark: {
     name: 'Dark',
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     attribution: '&copy; CartoDB',
+    maxZoom: 20,
   },
 };
 
@@ -114,7 +132,8 @@ type LayerKey = keyof typeof MAP_LAYERS;
 
 // Default center fallback (London) - will be overridden by IP geolocation
 const FALLBACK_CENTER: [number, number] = [51.505, -0.09];
-const DEFAULT_ZOOM = 15;
+const DEFAULT_ZOOM_AIRCRAFT = 15;
+const DEFAULT_ZOOM_ROVER = 18; // Rovers need higher zoom for street-level detail
 
 // Get color based on command type
 function getCommandColor(cmd: number): string {
@@ -258,6 +277,17 @@ function MapResizeHandler() {
       observer.disconnect();
     };
   }, [map]);
+
+  return null;
+}
+
+// Update map maxZoom when layer changes (MapContainer maxZoom is immutable after mount)
+function MaxZoomUpdater({ maxZoom }: { maxZoom: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setMaxZoom(maxZoom);
+  }, [map, maxZoom]);
 
   return null;
 }
@@ -510,12 +540,30 @@ interface ContextMenuState {
 }
 
 export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
-  const [activeLayer, setActiveLayer] = useState<LayerKey>('osm');
+  // Get connection state to check protocol type and vehicle type
+  const connectionState = useConnectionStore((state) => state.connectionState);
+  const isMspProtocol = connectionState?.protocol === 'msp';
+
+  // Detect Rover (MAV_TYPE 10 = Ground Rover, 11 = Surface Boat)
+  const isRover = connectionState?.mavType === 10 || connectionState?.mavType === 11;
+
+  // Set defaults based on vehicle type - Rovers need higher zoom and hybrid map
+  const defaultLayer: LayerKey = isRover ? 'googleHybrid' : 'osm';
+  const defaultZoom = isRover ? DEFAULT_ZOOM_ROVER : DEFAULT_ZOOM_AIRCRAFT;
+
+  const [activeLayer, setActiveLayer] = useState<LayerKey>(defaultLayer);
   const [isAddingWaypoint, setIsAddingWaypoint] = useState(false);
   const [isSettingHome, setIsSettingHome] = useState(false);
   const [fitTrigger, setFitTrigger] = useState(0);
   const [centerOnVehicleTrigger, setCenterOnVehicleTrigger] = useState(0);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // Update layer when vehicle type changes (e.g., connecting to a Rover)
+  useEffect(() => {
+    if (isRover && activeLayer === 'osm') {
+      setActiveLayer('googleHybrid');
+    }
+  }, [isRover, activeLayer]);
 
   // IP geolocation fallback (used when no GPS or mission items)
   const [ipLocation] = useIpLocation();
@@ -536,10 +584,6 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
     updateWaypoint,
     setHomePosition,
   } = useMissionStore();
-
-  // Get connection state to check protocol type
-  const connectionState = useConnectionStore((state) => state.connectionState);
-  const isMspProtocol = connectionState?.protocol === 'msp';
 
   // Get telemetry for vehicle marker
   const gps = useTelemetryStore((state) => state.gps);
@@ -661,11 +705,13 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
     <div className="h-full w-full relative">
       <MapContainer
         center={defaultCenter}
-        zoom={DEFAULT_ZOOM}
+        zoom={defaultZoom}
+        maxZoom={layer.maxZoom}
         className="h-full w-full"
         zoomControl={false}
       >
         <MapResizeHandler />
+        <MaxZoomUpdater maxZoom={layer.maxZoom} />
         <MapClickHandler
           onMapClick={handleMapClick}
           isAddMode={isAddingWaypoint}
@@ -681,6 +727,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
         <TileLayer
           url={layer.url}
           attribution={layer.attribution}
+          maxZoom={layer.maxZoom}
         />
 
         {/* Mission path - single polyline with curves through spline waypoints */}

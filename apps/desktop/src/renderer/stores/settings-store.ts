@@ -99,6 +99,11 @@ export interface ConnectionMemory {
 }
 
 /**
+ * Default SITL type for quick-start button
+ */
+export type DefaultSitlType = 'inav' | 'ardupilot';
+
+/**
  * App-level settings store
  */
 interface SettingsStore {
@@ -122,6 +127,9 @@ interface SettingsStore {
 
   // Connection memory
   connectionMemory: ConnectionMemory;
+
+  // SITL preferences
+  defaultSitlType: DefaultSitlType;
 
   // Computed
   getActiveVehicle: () => VehicleProfile | null;
@@ -149,6 +157,9 @@ interface SettingsStore {
 
   // Actions - Connection memory
   updateConnectionMemory: (updates: Partial<ConnectionMemory>) => void;
+
+  // Actions - SITL preferences
+  setDefaultSitlType: (type: DefaultSitlType) => void;
 
   // Reset
   resetToDefaults: () => void;
@@ -335,6 +346,7 @@ export const useSettingsStore = create<SettingsStore>()(
   activeVehicleId: 'default',
   flightStats: { ...DEFAULT_FLIGHT_STATS },
   connectionMemory: { ...DEFAULT_CONNECTION_MEMORY },
+  defaultSitlType: 'inav',
 
   // Computed
   getActiveVehicle: () => {
@@ -387,6 +399,7 @@ export const useSettingsStore = create<SettingsStore>()(
           activeVehicleId: settings.activeVehicleId || settings.vehicles?.[0]?.id || 'default',
           flightStats: settings.flightStats || { ...DEFAULT_FLIGHT_STATS },
           connectionMemory: settings.connectionMemory || { ...DEFAULT_CONNECTION_MEMORY },
+          defaultSitlType: (settings as Record<string, unknown>).defaultSitlType as DefaultSitlType || 'inav',
           _isInitialized: true,
         });
       } else {
@@ -410,6 +423,7 @@ export const useSettingsStore = create<SettingsStore>()(
         activeVehicleId: state.activeVehicleId,
         flightStats: state.flightStats,
         connectionMemory: state.connectionMemory,
+        defaultSitlType: state.defaultSitlType,
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -507,6 +521,11 @@ export const useSettingsStore = create<SettingsStore>()(
     }));
   },
 
+  // Actions - SITL preferences
+  setDefaultSitlType: (type) => {
+    set({ defaultSitlType: type });
+  },
+
   // Reset
   resetToDefaults: () => {
     set({
@@ -515,6 +534,7 @@ export const useSettingsStore = create<SettingsStore>()(
       activeVehicleId: 'default',
       flightStats: { ...DEFAULT_FLIGHT_STATS },
       connectionMemory: { ...DEFAULT_CONNECTION_MEMORY },
+      defaultSitlType: 'inav',
     });
   },
 })));
@@ -535,6 +555,7 @@ useSettingsStore.subscribe(
     activeVehicleId: state.activeVehicleId,
     flightStats: state.flightStats,
     connectionMemory: state.connectionMemory,
+    defaultSitlType: state.defaultSitlType,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -545,7 +566,8 @@ useSettingsStore.subscribe(
         curr.vehicles !== prev.vehicles ||
         curr.activeVehicleId !== prev.activeVehicleId ||
         curr.flightStats !== prev.flightStats ||
-        curr.connectionMemory !== prev.connectionMemory
+        curr.connectionMemory !== prev.connectionMemory ||
+        curr.defaultSitlType !== prev.defaultSitlType
       ) {
         debouncedSave();
       }

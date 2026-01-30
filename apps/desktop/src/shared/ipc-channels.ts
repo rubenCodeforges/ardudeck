@@ -231,7 +231,7 @@ export const IPC_CHANNELS = {
   // Driver utilities
   DRIVER_OPEN_BUNDLED: 'driver:open-bundled',
 
-  // SITL Simulator
+  // SITL Simulator (iNav)
   SITL_START: 'sitl:start',
   SITL_STOP: 'sitl:stop',
   SITL_STATUS: 'sitl:status',
@@ -240,6 +240,22 @@ export const IPC_CHANNELS = {
   SITL_STDERR: 'sitl:stderr',
   SITL_ERROR: 'sitl:error',
   SITL_EXIT: 'sitl:exit',
+
+  // ArduPilot SITL
+  ARDUPILOT_SITL_START: 'ardupilot-sitl:start',
+  ARDUPILOT_SITL_STOP: 'ardupilot-sitl:stop',
+  ARDUPILOT_SITL_STATUS: 'ardupilot-sitl:status',
+  ARDUPILOT_SITL_DOWNLOAD: 'ardupilot-sitl:download',
+  ARDUPILOT_SITL_DOWNLOAD_PROGRESS: 'ardupilot-sitl:download-progress',
+  ARDUPILOT_SITL_CHECK_BINARY: 'ardupilot-sitl:check-binary',
+  ARDUPILOT_SITL_CHECK_PLATFORM: 'ardupilot-sitl:check-platform',
+  ARDUPILOT_SITL_STDOUT: 'ardupilot-sitl:stdout',
+  ARDUPILOT_SITL_STDERR: 'ardupilot-sitl:stderr',
+  ARDUPILOT_SITL_ERROR: 'ardupilot-sitl:error',
+  ARDUPILOT_SITL_EXIT: 'ardupilot-sitl:exit',
+  ARDUPILOT_SITL_RC_SEND: 'ardupilot-sitl:rc-send',
+  ARDUPILOT_SITL_RC_START: 'ardupilot-sitl:rc-start',
+  ARDUPILOT_SITL_RC_STOP: 'ardupilot-sitl:rc-stop',
 
   // Visual Simulators (FlightGear, X-Plane)
   SIMULATOR_DETECT: 'simulator:detect',
@@ -672,4 +688,99 @@ export interface VirtualRCState {
   aux2: number;      // -1 to +1
   aux3: number;      // -1 to +1
   aux4: number;      // -1 to +1 (ARM switch is typically here)
+}
+
+// =============================================================================
+// ArduPilot SITL Types
+// =============================================================================
+
+/**
+ * ArduPilot vehicle types
+ */
+export type ArduPilotVehicleType = 'copter' | 'plane' | 'rover' | 'sub';
+
+/**
+ * ArduPilot release tracks
+ */
+export type ArduPilotReleaseTrack = 'stable' | 'beta' | 'dev';
+
+/**
+ * ArduPilot SITL simulator type
+ */
+export type ArduPilotSimulatorType = 'jsbsim' | 'xplane' | 'none';
+
+/**
+ * ArduPilot SITL configuration
+ */
+export interface ArduPilotSitlConfig {
+  /** Vehicle type (copter, plane, rover, sub) */
+  vehicleType: ArduPilotVehicleType;
+  /** Model/frame type (e.g., 'quad', '+', 'plane', 'quadplane') */
+  model?: string;
+  /** Release track (stable, beta, dev) */
+  releaseTrack: ArduPilotReleaseTrack;
+  /** Home location */
+  homeLocation: {
+    lat: number;
+    lng: number;
+    alt: number;
+    heading: number;
+  };
+  /** Simulation speedup (1 = real-time, 2 = 2x, etc.) */
+  speedup?: number;
+  /** Wipe EEPROM on start */
+  wipeOnStart?: boolean;
+  /** Simulator type for physics */
+  simulator?: ArduPilotSimulatorType;
+  /** Simulator address (for X-Plane) */
+  simAddress?: string;
+  /** Default parameter file path */
+  defaultsFile?: string;
+}
+
+/**
+ * ArduPilot SITL process status
+ */
+export interface ArduPilotSitlStatus {
+  isRunning: boolean;
+  pid?: number;
+  /** Command line used to start */
+  command?: string;
+  /** Vehicle type of running instance */
+  vehicleType?: ArduPilotVehicleType;
+  /** Port number SITL is listening on */
+  tcpPort?: number;
+}
+
+/**
+ * ArduPilot SITL exit data
+ */
+export interface ArduPilotSitlExitData {
+  code: number | null;
+  signal: string | null;
+}
+
+/**
+ * ArduPilot SITL download progress
+ */
+export interface ArduPilotSitlDownloadProgress {
+  vehicleType: ArduPilotVehicleType;
+  releaseTrack: ArduPilotReleaseTrack;
+  progress: number;  // 0-100
+  bytesDownloaded: number;
+  totalBytes: number;
+  status: 'downloading' | 'extracting' | 'complete' | 'error';
+  error?: string;
+}
+
+/**
+ * ArduPilot SITL binary info
+ */
+export interface ArduPilotSitlBinaryInfo {
+  vehicleType: ArduPilotVehicleType;
+  releaseTrack: ArduPilotReleaseTrack;
+  exists: boolean;
+  path?: string;
+  version?: string;
+  downloadedAt?: string;
 }

@@ -2,21 +2,64 @@
  * SafetyTab
  *
  * Configures failsafes, arming checks, and geofence settings.
- * Beginner-friendly cards instead of raw parameter editing.
+ * Beginner-friendly cards with proper icons (no emojis).
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
+import {
+  Shield,
+  Scale,
+  Zap,
+  Radio,
+  Monitor,
+  Battery,
+  Fence,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Save,
+  Lightbulb,
+} from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { DraggableSlider } from '../ui/DraggableSlider';
+import { InfoCard } from '../ui/InfoCard';
+import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import {
   SAFETY_PRESETS,
-  FAILSAFE_ACTIONS,
-  ARMING_CHECKS,
   FENCE_TYPES,
   type SafetyPreset,
 } from './presets/mavlink-presets';
 
+// Convert safety presets to PresetSelector format
+const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
+  maximum: {
+    name: 'Maximum',
+    description: SAFETY_PRESETS.maximum.description,
+    icon: Shield,
+    iconColor: 'text-green-400',
+    color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
+  },
+  balanced: {
+    name: 'Balanced',
+    description: SAFETY_PRESETS.balanced.description,
+    icon: Scale,
+    iconColor: 'text-blue-400',
+    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
+  },
+  minimal: {
+    name: 'Minimal',
+    description: SAFETY_PRESETS.minimal.description,
+    icon: Zap,
+    iconColor: 'text-orange-400',
+    color: 'from-orange-500/20 to-red-500/10 border-orange-500/30',
+  },
+};
+
 const SafetyTab: React.FC = () => {
-  const { parameters, setParameter, modifiedCount } = useParameterStore();
+  const { parameters, setParameter, modifiedCount, fetchParameters, isLoading } = useParameterStore();
+
+  // Check if parameters are loaded
+  const hasParameters = parameters.size > 0;
 
   // Get current safety values
   const safetyValues = useMemo(() => ({
@@ -40,64 +83,54 @@ const SafetyTab: React.FC = () => {
   }), [parameters]);
 
   // Apply preset
-  const applyPreset = (preset: SafetyPreset) => {
-    Object.entries(preset.params).forEach(([param, value]) => {
-      setParameter(param, value);
-    });
-  };
-
-  // Check if current config matches a preset
-  const matchesPreset = (preset: SafetyPreset): boolean => {
-    return Object.entries(preset.params).every(
-      ([param, value]) => parameters.get(param)?.value === value
-    );
-  };
+  const applyPreset = useCallback(async (presetKey: string) => {
+    const preset = SAFETY_PRESETS[presetKey];
+    if (preset) {
+      for (const [param, value] of Object.entries(preset.params)) {
+        await setParameter(param, value);
+      }
+    }
+  }, [setParameter]);
 
   const modified = modifiedCount();
 
   return (
     <div className="p-6 space-y-6">
-      {/* Help Card */}
-      <div className="bg-blue-500/10 rounded-xl border border-blue-500/30 p-4 flex items-start gap-4">
-        <span className="text-2xl">🛡️</span>
-        <div>
-          <p className="text-blue-400 font-medium">Safety Features</p>
-          <p className="text-sm text-zinc-400 mt-1">
-            Configure what happens when things go wrong. Failsafes can save your aircraft
-            from flyaways and crashes. Beginners should use Maximum Safety preset.
-          </p>
+      {/* Parameters not loaded warning */}
+      {!hasParameters && (
+        <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <Lightbulb className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
+              <p className="text-xs text-gray-500">Fetch parameters from the FC to use presets</p>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchParameters()}
+            disabled={isLoading}
+            className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {isLoading ? 'Loading...' : 'Fetch Parameters'}
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Help Card */}
+      <InfoCard title="Safety Features" variant="info">
+        Configure what happens when things go wrong. Failsafes can save your aircraft
+        from flyaways and crashes. Beginners should use the Maximum Safety preset.
+      </InfoCard>
 
       {/* Safety Presets */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-zinc-300">Safety Presets</h3>
-          <span className="text-xs text-zinc-500">Click to apply all settings</span>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {Object.entries(SAFETY_PRESETS).map(([key, preset]) => {
-            const isActive = matchesPreset(preset);
-            return (
-              <button
-                key={key}
-                onClick={() => applyPreset(preset)}
-                className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
-                  isActive
-                    ? 'bg-gradient-to-br border-blue-500/50 shadow-lg shadow-blue-500/20 ' + preset.color
-                    : 'bg-gradient-to-br border-zinc-700/50 hover:border-zinc-600 ' + preset.color
-                }`}
-              >
-                <div className="text-2xl mb-2">{preset.icon}</div>
-                <div className={`font-medium ${isActive ? 'text-blue-300' : 'text-white'}`}>
-                  {preset.name}
-                </div>
-                <div className="text-xs text-zinc-400 mt-1">{preset.description}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <PresetSelector
+        presets={PRESET_SELECTOR_PRESETS}
+        onApply={applyPreset}
+        label="Safety Presets"
+        hint="Click to apply all settings"
+      />
 
       {/* Failsafe Settings Grid */}
       <div className="grid grid-cols-2 gap-4">
@@ -105,7 +138,7 @@ const SafetyTab: React.FC = () => {
         <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-              <span className="text-xl">📡</span>
+              <Radio className="w-5 h-5 text-red-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">RC Signal Lost</h3>
@@ -130,25 +163,16 @@ const SafetyTab: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label className="text-xs text-zinc-400 block mb-1.5">
-                Trigger PWM Threshold
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={safetyValues.fsThrValue}
-                  onChange={(e) => setParameter('FS_THR_VALUE', Number(e.target.value))}
-                  className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                  min={900}
-                  max={1100}
-                />
-                <span className="text-xs text-zinc-500">PWM</span>
-              </div>
-              <p className="text-[10px] text-zinc-600 mt-1">
-                Failsafe triggers when throttle drops below this value
-              </p>
-            </div>
+            <DraggableSlider
+              label="Trigger PWM Threshold"
+              value={safetyValues.fsThrValue}
+              onChange={(v) => setParameter('FS_THR_VALUE', v)}
+              min={900}
+              max={1100}
+              step={5}
+              color="#EF4444"
+              hint="Failsafe triggers when throttle drops below this value"
+            />
           </div>
         </div>
 
@@ -156,7 +180,7 @@ const SafetyTab: React.FC = () => {
         <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <span className="text-xl">💻</span>
+              <Monitor className="w-5 h-5 text-purple-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">GCS Connection Lost</h3>
@@ -192,7 +216,7 @@ const SafetyTab: React.FC = () => {
         <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <span className="text-xl">🔋</span>
+              <Battery className="w-5 h-5 text-amber-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">Low Battery</h3>
@@ -214,33 +238,27 @@ const SafetyTab: React.FC = () => {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-zinc-400 block mb-1.5">Low Voltage (V)</label>
-                <input
-                  type="number"
-                  value={safetyValues.fsBattVoltage}
-                  onChange={(e) => setParameter('FS_BATT_VOLTAGE', Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                  step={0.1}
-                  min={0}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 block mb-1.5">Low mAh Used</label>
-                <input
-                  type="number"
-                  value={safetyValues.fsBattMah}
-                  onChange={(e) => setParameter('FS_BATT_MAH', Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                  step={100}
-                  min={0}
-                />
-              </div>
-            </div>
-            <p className="text-[10px] text-zinc-600">
-              Set to 0 to use only voltage or only mAh consumed
-            </p>
+            <DraggableSlider
+              label="Low Voltage (V)"
+              value={Math.round(safetyValues.fsBattVoltage * 10)}
+              onChange={(v) => setParameter('FS_BATT_VOLTAGE', v / 10)}
+              min={0}
+              max={260}
+              step={1}
+              color="#F59E0B"
+              hint="Trigger when voltage drops below this"
+            />
+
+            <DraggableSlider
+              label="Low mAh Used"
+              value={safetyValues.fsBattMah}
+              onChange={(v) => setParameter('FS_BATT_MAH', v)}
+              min={0}
+              max={10000}
+              step={100}
+              color="#F59E0B"
+              hint="Trigger when mAh consumed exceeds this"
+            />
           </div>
         </div>
 
@@ -249,7 +267,7 @@ const SafetyTab: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <span className="text-xl">🚧</span>
+                <Fence className="w-5 h-5 text-blue-400" />
               </div>
               <div>
                 <h3 className="text-sm font-medium text-white">Geofence</h3>
@@ -287,30 +305,25 @@ const SafetyTab: React.FC = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1.5">Max Altitude (m)</label>
-                  <input
-                    type="number"
-                    value={safetyValues.fenceAltMax}
-                    onChange={(e) => setParameter('FENCE_ALT_MAX', Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                    min={10}
-                    max={1000}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1.5">Max Radius (m)</label>
-                  <input
-                    type="number"
-                    value={safetyValues.fenceRadius}
-                    onChange={(e) => setParameter('FENCE_RADIUS', Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-                    min={30}
-                    max={10000}
-                  />
-                </div>
-              </div>
+              <DraggableSlider
+                label="Max Altitude (m)"
+                value={safetyValues.fenceAltMax}
+                onChange={(v) => setParameter('FENCE_ALT_MAX', v)}
+                min={10}
+                max={1000}
+                step={10}
+                color="#3B82F6"
+              />
+
+              <DraggableSlider
+                label="Max Radius (m)"
+                value={safetyValues.fenceRadius}
+                onChange={(v) => setParameter('FENCE_RADIUS', v)}
+                min={30}
+                max={10000}
+                step={50}
+                color="#3B82F6"
+              />
 
               <div>
                 <label className="text-xs text-zinc-400 block mb-1.5">Breach Action</label>
@@ -343,7 +356,7 @@ const SafetyTab: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-              <span className="text-xl">✅</span>
+              <CheckCircle className="w-5 h-5 text-green-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">Arming Checks</h3>
@@ -365,7 +378,8 @@ const SafetyTab: React.FC = () => {
         </div>
 
         {safetyValues.armingCheck === 0 && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-red-400 shrink-0" />
             <p className="text-xs text-red-400">
               <span className="font-medium">Warning:</span> Disabling arming checks is dangerous!
               Your aircraft could arm with faulty sensors or no GPS lock.
@@ -374,31 +388,42 @@ const SafetyTab: React.FC = () => {
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          {Object.entries(ARMING_CHECKS)
-            .filter(([num]) => Number(num) !== 1) // Skip "All" entry
-            .slice(0, 10)
-            .map(([num, check]) => {
-              const checkNum = Number(num);
-              const isEnabled = safetyValues.armingCheck === 1 || (safetyValues.armingCheck & checkNum) !== 0;
-              return (
-                <div
-                  key={num}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
-                    isEnabled ? 'bg-green-500/10 text-green-400' : 'bg-zinc-800/50 text-zinc-500'
-                  }`}
-                >
-                  <span>{isEnabled ? '✓' : '○'}</span>
-                  <span>{check.name}</span>
-                </div>
-              );
-            })}
+          {[
+            { name: 'Barometer', bit: 2 },
+            { name: 'Compass', bit: 4 },
+            { name: 'GPS Lock', bit: 8 },
+            { name: 'INS (Gyro/Accel)', bit: 16 },
+            { name: 'Parameters', bit: 32 },
+            { name: 'RC Channels', bit: 64 },
+            { name: 'Board Voltage', bit: 128 },
+            { name: 'Battery Level', bit: 256 },
+            { name: 'Logging', bit: 1024 },
+            { name: 'Safety Switch', bit: 2048 },
+          ].map((check) => {
+            const isEnabled = safetyValues.armingCheck === 1 || (safetyValues.armingCheck & check.bit) !== 0;
+            return (
+              <div
+                key={check.name}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
+                  isEnabled ? 'bg-green-500/10 text-green-400' : 'bg-zinc-800/50 text-zinc-500'
+                }`}
+              >
+                {isEnabled ? (
+                  <CheckCircle className="w-3 h-3" />
+                ) : (
+                  <XCircle className="w-3 h-3" />
+                )}
+                <span>{check.name}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Save Reminder */}
       {modified > 0 && (
         <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-center gap-3">
-          <span className="text-xl">💾</span>
+          <Save className="w-5 h-5 text-amber-400" />
           <p className="text-sm text-amber-400">
             You have unsaved changes. Click <span className="font-medium">"Write to Flash"</span> in the header to save.
           </p>

@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -828,6 +828,67 @@ const api = {
     const handler = (_: unknown, data: SitlExitData) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.SITL_EXIT, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.SITL_EXIT, handler);
+  },
+
+  // ============================================================================
+  // ArduPilot SITL (MAVLink-based)
+  // ============================================================================
+
+  ardupilotSitlStart: (config: ArduPilotSitlConfig): Promise<{ success: boolean; command?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_START, config),
+
+  ardupilotSitlStop: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_STOP),
+
+  ardupilotSitlGetStatus: (): Promise<ArduPilotSitlStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_STATUS),
+
+  ardupilotSitlDownload: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD, vehicleType, releaseTrack),
+
+  ardupilotSitlCheckBinary: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_BINARY, vehicleType, releaseTrack),
+
+  ardupilotSitlCheckPlatform: (): Promise<{ supported: boolean; useDocker: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_PLATFORM),
+
+  ardupilotSitlRcSend: (state: Partial<VirtualRCState>): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_RC_SEND, state),
+
+  ardupilotSitlRcStart: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_RC_START),
+
+  ardupilotSitlRcStop: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_RC_STOP),
+
+  onArdupilotSitlStdout: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.ARDUPILOT_SITL_STDOUT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.ARDUPILOT_SITL_STDOUT, handler);
+  },
+
+  onArdupilotSitlStderr: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.ARDUPILOT_SITL_STDERR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.ARDUPILOT_SITL_STDERR, handler);
+  },
+
+  onArdupilotSitlError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.ARDUPILOT_SITL_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.ARDUPILOT_SITL_ERROR, handler);
+  },
+
+  onArdupilotSitlExit: (callback: (data: ArduPilotSitlExitData) => void) => {
+    const handler = (_: unknown, data: ArduPilotSitlExitData) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.ARDUPILOT_SITL_EXIT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.ARDUPILOT_SITL_EXIT, handler);
+  },
+
+  onArdupilotSitlDownloadProgress: (callback: (progress: ArduPilotSitlDownloadProgress) => void) => {
+    const handler = (_: unknown, progress: ArduPilotSitlDownloadProgress) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD_PROGRESS, handler);
   },
 
   // ============================================================================
