@@ -318,7 +318,8 @@ function App() {
     }
   }, [connectionState.isConnected, connectionState.protocol, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
 
-  // MSP telemetry: only run when on telemetry view (saves CPU/serial when on config screens)
+  // MSP telemetry: only run when on telemetry view
+  // Parameters view handles its own telemetry via MspConfigView (sensors tab only)
   useEffect(() => {
     if (connectionState.isConnected && connectionState.protocol === 'msp') {
       if (currentView === 'telemetry') {
@@ -326,7 +327,8 @@ function App() {
         window.electronAPI.mspStartTelemetry(10);
         console.log('[App] MSP telemetry started (telemetry view active)');
       } else {
-        // Stop telemetry when on other views (parameters, mission, etc.)
+        // Stop telemetry when on other views
+        // Note: Parameters/Sensors tab handles its own telemetry in MspConfigView
         window.electronAPI.mspStopTelemetry();
         console.log('[App] MSP telemetry stopped (switched to', currentView, 'view)');
       }

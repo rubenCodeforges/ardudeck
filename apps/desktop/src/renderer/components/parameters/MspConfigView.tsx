@@ -10,7 +10,6 @@ import { useConnectionStore } from '../../stores/connection-store';
 import inavLogo from '../../assets/inav-logo.png';
 import betaflightLogo from '../../assets/betaflight-logo.svg';
 import { useTelemetryStore } from '../../stores/telemetry-store';
-import { useMspTelemetryStore } from '../../stores/msp-telemetry-store';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
 import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import ModesWizard from '../modes/ModesWizard';
@@ -1456,12 +1455,8 @@ type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
-  const { gps, attitude, flight } = useTelemetryStore();
-  // MSP telemetry for real-time sensor values
-  const mspAttitude = useMspTelemetryStore((s) => s.attitude);
-  const mspAltitude = useMspTelemetryStore((s) => s.altitude);
-  const mspGps = useMspTelemetryStore((s) => s.gps);
-  const mspAnalog = useMspTelemetryStore((s) => s.analog);
+  // Use same telemetry store as OSD (populated by MSP polling via TELEMETRY_BATCH)
+  const { gps, attitude, flight, vfrHud, battery } = useTelemetryStore();
   const { hasChanges: modesHaveChanges, saveToFC: saveModesToFC, isSaving: modesSaving } = useModesWizardStore();
   const { openWizard: openQuickSetup, isOpen: quickSetupOpen, applySuccess: quickSetupSuccess } = useQuickSetupStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
@@ -1479,18 +1474,20 @@ export function MspConfigView() {
   const [features, setFeatures] = useState<number>(0);
   const [pidRatesModified, setPidRatesModified] = useState(false);
   const [currentPlatformType, setCurrentPlatformType] = useState<number>(0); // 0=multirotor, 1=airplane
+  const [configActiveSensors, setConfigActiveSensors] = useState<number>(0); // Fetched once on config load
 
   // Combined modified state: PIDs/rates OR modes have changes
   const modified = pidRatesModified || modesHaveChanges();
 
-  // Sensors - use activeSensors from MSP_STATUS (bit0=ACC, bit1=BARO, bit2=MAG, bit3=GPS)
-  const activeSensors = flight?.activeSensors ?? 0;
+  // Sensors - use activeSensors from config load or telemetry
+  // Betaflight/iNav sensor flags: bit0=GYRO, bit1=ACC, bit2=BARO, bit3=MAG, bit4=RANGEFINDER, bit5=GPS
+  const activeSensors = configActiveSensors || flight?.activeSensors || 0;
   const sensors = useMemo(() => ({
-    acc: (activeSensors & (1 << 0)) !== 0 || attitude !== null,
-    gyro: true, // Always present
-    mag: (activeSensors & (1 << 2)) !== 0,
-    baro: (activeSensors & (1 << 1)) !== 0,
-    gps: (activeSensors & (1 << 3)) !== 0 || (gps !== null && gps.satellites > 0),
+    gyro: (activeSensors & (1 << 0)) !== 0 || true, // bit 0, always present
+    acc: (activeSensors & (1 << 1)) !== 0 || attitude !== null, // bit 1
+    baro: (activeSensors & (1 << 2)) !== 0, // bit 2
+    mag: (activeSensors & (1 << 3)) !== 0, // bit 3
+    gps: (activeSensors & (1 << 5)) !== 0 || (gps !== null && gps.satellites > 0), // bit 5
   }), [activeSensors, attitude, gps]);
 
   const isInav = connectionState.fcVariant === 'INAV';
@@ -1579,6 +1576,23 @@ export function MspConfigView() {
     }
   }, [showPlatformDropdown, showMixingDropdown]);
 
+  // Start MSP telemetry polling when Sensors tab is active
+  // Same pattern as OsdView - start on tab enter, stop on tab leave
+  useEffect(() => {
+    if (activeTab === 'sensors' && connectionState.isConnected) {
+      // Small delay to ensure connection is stable
+      const startTimeout = setTimeout(() => {
+        console.log('[UI] Starting MSP telemetry for Sensors tab');
+        window.electronAPI?.mspStartTelemetry(10); // 10Hz
+      }, 100);
+
+      return () => {
+        clearTimeout(startTimeout);
+        console.log('[UI] Stopping MSP telemetry (leaving Sensors tab)');
+        window.electronAPI?.mspStopTelemetry();
+      };
+    }
+  }, [activeTab, connectionState.isConnected]);
 
   // Check for legacy iNav (< 2.3.0) which has different CLI params and no per-axis RC rates
   const isLegacyInav = useMemo(() => {
@@ -1595,18 +1609,28 @@ export function MspConfigView() {
   // Some boards don't have servo outputs in multirotor mode
   const hasServoFeature = (features & (1 << 5)) !== 0;
 
+  // Track if a load is already in progress (prevent duplicate calls from StrictMode or rapid triggers)
+  const loadInProgressRef = useRef(false);
+
   // Load config
   const loadConfig = useCallback(async () => {
+    // Prevent duplicate concurrent calls
+    if (loadInProgressRef.current) {
+      console.log('[UI] loadConfig skipped - already in progress');
+      return;
+    }
+    loadInProgressRef.current = true;
     console.log('[UI] loadConfig called - this will reset modified state!');
     setLoading(true);
     setError(null);
     try {
-      const [pidData, rcData, modesData, featuresData, mixerConfig] = await Promise.all([
+      const [pidData, rcData, modesData, featuresData, mixerConfig, statusData] = await Promise.all([
         window.electronAPI?.mspGetPid(),
         window.electronAPI?.mspGetRcTuning(),
         window.electronAPI?.mspGetModeRanges(),
         window.electronAPI?.mspGetFeatures(),
         window.electronAPI?.mspGetInavMixerConfig?.(),
+        window.electronAPI?.mspGetStatus?.(),
       ]);
       if (pidData) setPid(pidData as MSPPid);
       if (rcData) {
@@ -1635,12 +1659,17 @@ export function MspConfigView() {
         setCurrentPlatformType(mixerConfig.platformType);
         console.log('[UI] Platform type:', mixerConfig.platformType === 1 ? 'Airplane' : 'Other');
       }
+      if (statusData) {
+        setConfigActiveSensors(statusData.activeSensors);
+        console.log('[UI] Active sensors:', statusData.activeSensors.toString(2).padStart(8, '0'));
+      }
       console.log('[UI] loadConfig complete, setting modified=false');
       setPidRatesModified(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load config');
     } finally {
       setLoading(false);
+      loadInProgressRef.current = false;
     }
   }, []);
 
@@ -2177,21 +2206,21 @@ export function MspConfigView() {
                 available={sensors.acc}
                 Icon={Ruler}
                 description="Measures tilt angle - needed for self-level"
-                liveValue={`${mspAttitude.roll.toFixed(0)}° / ${mspAttitude.pitch.toFixed(0)}°`}
+                liveValue={`${(attitude?.roll ?? 0).toFixed(0)}° / ${(attitude?.pitch ?? 0).toFixed(0)}°`}
               />
               <SensorCard
                 name="GPS"
                 available={sensors.gps}
                 Icon={Satellite}
-                description={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
-                liveValue={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} sats` : undefined}
+                description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
+                liveValue={sensors.gps ? `${gps?.satellites || 0} sats` : undefined}
               />
               <SensorCard
                 name="Barometer"
                 available={sensors.baro}
                 Icon={Gauge}
                 description="Measures altitude via air pressure"
-                liveValue={sensors.baro ? mspAltitude.altitude : undefined}
+                liveValue={sensors.baro ? (vfrHud?.alt ?? 0) : undefined}
                 unit="m"
               />
             </div>
@@ -2205,9 +2234,9 @@ export function MspConfigView() {
                   title="Attitude"
                   icon="🎯"
                   values={[
-                    { label: 'Roll', value: mspAttitude.roll, unit: '°' },
-                    { label: 'Pitch', value: mspAttitude.pitch, unit: '°' },
-                    { label: 'Yaw', value: mspAttitude.yaw, unit: '°' },
+                    { label: 'Roll', value: attitude?.roll ?? 0, unit: '°' },
+                    { label: 'Pitch', value: attitude?.pitch ?? 0, unit: '°' },
+                    { label: 'Yaw', value: attitude?.yaw ?? 0, unit: '°' },
                   ]}
                 />
 
@@ -2216,9 +2245,9 @@ export function MspConfigView() {
                   title="Altitude"
                   icon="📏"
                   values={[
-                    { label: 'Alt', value: mspAltitude.altitude, unit: 'm' },
-                    { label: 'Vario', value: mspAltitude.vario, unit: 'm/s' },
-                    { label: 'Voltage', value: mspAnalog.voltage, unit: 'V' },
+                    { label: 'Alt', value: vfrHud?.alt ?? 0, unit: 'm' },
+                    { label: 'Vario', value: vfrHud?.climb ?? 0, unit: 'm/s' },
+                    { label: 'Voltage', value: battery?.voltage ?? 0, unit: 'V' },
                   ]}
                 />
               </div>
@@ -2233,26 +2262,26 @@ export function MspConfigView() {
                   <div className="grid grid-cols-4 gap-3">
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.lat || gps?.lat || 0).toFixed(6)}
+                        {(gps?.lat || 0).toFixed(6)}
                       </div>
                       <div className="text-xs text-gray-500">Latitude</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.lon || gps?.lon || 0).toFixed(6)}
+                        {(gps?.lon || 0).toFixed(6)}
                       </div>
                       <div className="text-xs text-gray-500">Longitude</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.alt || gps?.alt || 0).toFixed(1)}
+                        {(gps?.alt || 0).toFixed(1)}
                         <span className="text-xs text-gray-500 ml-1">m</span>
                       </div>
                       <div className="text-xs text-gray-500">GPS Alt</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.speed || 0).toFixed(1)}
+                        {(vfrHud?.groundspeed || 0).toFixed(1)}
                         <span className="text-xs text-gray-500 ml-1">m/s</span>
                       </div>
                       <div className="text-xs text-gray-500">Speed</div>

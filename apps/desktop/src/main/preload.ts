@@ -534,6 +534,9 @@ const api = {
   mspGetFeatures: (): Promise<number | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
 
+  mspGetStatus: (): Promise<{ activeSensors: number; armingFlags: number; flightModeFlags: number } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_STATUS),
+
   mspGetMixerConfig: (): Promise<{ mixer: number; isMultirotor: boolean } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MIXER_CONFIG),
 

@@ -143,6 +143,8 @@ let currentTransport: Transport | null = null;
 
 // BSOD FIX: Prevent overlapping telemetry polls that can stack up
 let telemetryInProgress = false;
+let telemetryLastStartTime = 0;
+const TELEMETRY_STUCK_TIMEOUT = 5000; // 5 seconds - auto-reset if stuck longer
 
 // Telemetry skip counter - reduce log spam
 let telemetrySkipCount = 0;
@@ -595,16 +597,26 @@ export function startMspTelemetry(rateHz: number = 10): void {
     }
 
     // BSOD FIX: Skip if previous poll still running to prevent request stacking
+    // BUT auto-reset if stuck for too long (prevents permanent blocking)
     if (telemetryInProgress) {
-      telemetrySkipCount++;
-      // Only log every N skips to reduce console spam
-      if (telemetrySkipCount % TELEMETRY_SKIP_LOG_INTERVAL === 1) {
-        console.warn(`[MSP] Skipping telemetry poll - previous still in progress (skipped ${telemetrySkipCount} times)`);
+      const stuckTime = Date.now() - telemetryLastStartTime;
+      if (stuckTime > TELEMETRY_STUCK_TIMEOUT) {
+        console.warn(`[MSP] Force-resetting stuck telemetry (stuck for ${stuckTime}ms)`);
+        telemetryInProgress = false;
+        telemetrySkipCount = 0;
+        // Fall through to start new poll
+      } else {
+        telemetrySkipCount++;
+        // Only log every N skips to reduce console spam
+        if (telemetrySkipCount % TELEMETRY_SKIP_LOG_INTERVAL === 1) {
+          console.warn(`[MSP] Skipping telemetry poll - previous still in progress (skipped ${telemetrySkipCount} times)`);
+        }
+        return;
       }
-      return;
     }
 
     telemetryInProgress = true;
+    telemetryLastStartTime = Date.now();
 
     try {
       // BSOD FIX: Add 10ms delay between commands to prevent burst traffic
@@ -829,6 +841,7 @@ export function stopMspTelemetry(): void {
   // Reset telemetry-specific state
   telemetryInProgress = false;
   telemetrySkipCount = 0;
+  telemetryLastStartTime = 0;
 }
 
 // =============================================================================
@@ -1433,7 +1446,9 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
 
   return withConfigLock(async () => {
     try {
-      const payload = await sendMspRequest(MSP.MODE_RANGES, 2000);
+      // Shorter timeout for Betaflight (faster responses)
+      const timeout = isInavFirmware ? 2000 : 500;
+      const payload = await sendMspRequest(MSP.MODE_RANGES, timeout);
       const modes = deserializeModeRanges(payload);
       const activeModes = modes.filter(m => m.rangeEnd > m.rangeStart);
       // Clear from unsupported if it worked
@@ -1614,11 +1629,51 @@ async function getFeatures(): Promise<number | null> {
 }
 
 /**
+ * Get FC status including active sensors bitmask.
+ * Returns { activeSensors, armingFlags, flightModeFlags } or null on error.
+ *
+ * Uses MSP_STATUS (101) for Betaflight - simpler and more reliable.
+ * Uses MSP2_INAV_STATUS for iNav.
+ */
+async function getStatus(): Promise<{ activeSensors: number; armingFlags: number; flightModeFlags: number } | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      // Use appropriate status command based on firmware
+      if (isInavFirmware) {
+        const payload = await sendMspV2Request(MSP2.INAV_STATUS, 1000);
+        const status = deserializeInavStatus(payload);
+        return {
+          activeSensors: status.activeSensors,
+          armingFlags: status.armingDisableFlags,
+          flightModeFlags: status.flightModeFlags,
+        };
+      } else {
+        // Use simpler MSP_STATUS (101) for Betaflight - faster and more reliable
+        // MSP_STATUS has: cycleTime(u16), i2cErrors(u16), sensors(u16), flightModeFlags(u32), profile(u8)
+        const payload = await sendMspRequest(MSP.STATUS, 500);
+        const status = deserializeStatus(payload);
+        return {
+          activeSensors: status.activeSensors,
+          armingFlags: status.armingDisableFlags || 0,
+          flightModeFlags: status.flightModeFlags,
+        };
+      }
+    } catch (error) {
+      console.error('[MSP] getStatus failed:', error);
+      return null;
+    }
+  });
+}
+
+/**
  * Get iNav mixer configuration using the proper MSP2 command.
  * This is the CORRECT way to detect platform type on iNav boards.
  *
  * Returns platformType: 0=multirotor, 1=airplane, 2=helicopter, 3=tricopter
  *
+ * For Betaflight, uses legacy MSP_MIXER_CONFIG directly (no MSP2).
  * Falls back to legacy MSP_MIXER_CONFIG for old iNav 2.0.0.
  */
 async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
@@ -1626,7 +1681,36 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
   if (!currentTransport?.isOpen) return null;
 
   return withConfigLock(async () => {
-    // Try MSP2 first (iNav 2.5+)
+    // For Betaflight, skip MSP2 and use legacy MSP_MIXER_CONFIG directly
+    if (!isInavFirmware) {
+      try {
+        const payload = await sendMspRequest(MSP.MIXER_CONFIG, 500);
+        const legacyConfig = deserializeMixerConfig(payload);
+
+        const isMultirotor = isMultirotorMixer(legacyConfig.mixer);
+        const platformType = isMultirotor ? 0 : 1;
+        currentPlatformType = platformType;
+
+        const platformNames = ['MULTIROTOR', 'AIRPLANE'];
+        sendLog('info', `Platform: ${platformNames[platformType]}`, `Mixer type: ${legacyConfig.mixer}`);
+
+        return {
+          yawMotorDirection: 1,
+          yawJumpPreventionLimit: 200,
+          motorStopOnLow: 0,
+          platformType,
+          hasFlaps: 0,
+          appliedMixerPreset: legacyConfig.mixer,
+          numberOfMotors: 0,
+          numberOfServos: 0,
+        };
+      } catch (err) {
+        console.error('[MSP] Betaflight mixer config failed:', err);
+        return null;
+      }
+    }
+
+    // iNav: Try MSP2 first (iNav 2.5+)
     try {
       const payload = await sendMspV2Request(MSP2.INAV_MIXER, 2000);
       const config = deserializeInavMixerConfig(payload);
@@ -1642,8 +1726,7 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
     } catch (msp2Error) {
       // MSP2 failed - try legacy MSP_MIXER_CONFIG for old iNav
       const msg = msp2Error instanceof Error ? msp2Error.message : String(msp2Error);
-      if (msg.includes('not supported')) {
-      } else {
+      if (!msg.includes('not supported')) {
         console.warn('[MSP] MSP2 mixer config failed:', msg);
       }
 
@@ -4132,6 +4215,7 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_BOX_NAMES, async () => getBoxNames());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_BOX_IDS, async () => getBoxIds());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_FEATURES, async () => getFeatures());
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_STATUS, async () => getStatus());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_MIXER_CONFIG, async () => getMixerConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MIXER_CONFIG, async (_event, mixerType: number) => setMixerConfig(mixerType));
   // iNav-specific mixer config (proper MSP2 commands)
@@ -4243,6 +4327,7 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_MODE_RANGES);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MODE_RANGE);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_FEATURES);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_STATUS);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_MIXER_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MIXER_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_INAV_MIXER_CONFIG);
