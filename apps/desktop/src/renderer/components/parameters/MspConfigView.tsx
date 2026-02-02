@@ -1064,7 +1064,7 @@ function ModeChannelIndicator({
   );
 }
 
-// Enhanced Sensor card with live value display
+// Enhanced Sensor card with live value display and optional toggle
 function SensorCard({
   name,
   available,
@@ -1072,6 +1072,10 @@ function SensorCard({
   description,
   liveValue,
   unit,
+  canToggle,
+  isEnabled,
+  onToggle,
+  toggleSaving,
 }: {
   name: string;
   available: boolean;
@@ -1079,53 +1083,69 @@ function SensorCard({
   description: string;
   liveValue?: string | number | null;
   unit?: string;
+  canToggle?: boolean;
+  isEnabled?: boolean;
+  onToggle?: (enabled: boolean) => void;
+  toggleSaving?: boolean;
 }) {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const prevValueRef = useRef(liveValue);
-
-  // Pulse animation when value changes
-  useEffect(() => {
-    if (liveValue !== prevValueRef.current && liveValue != null) {
-      setIsUpdating(true);
-      const timer = setTimeout(() => setIsUpdating(false), 300);
-      prevValueRef.current = liveValue;
-      return () => clearTimeout(timer);
-    }
-  }, [liveValue]);
+  // Determine the effective state for clearer display
+  const featureEnabled = canToggle ? isEnabled : undefined;
+  const hardwareDetected = available;
 
   return (
     <div className={`p-4 rounded-xl border transition-all ${
-      available
+      hardwareDetected
         ? 'bg-emerald-500/10 border-emerald-500/30'
-        : 'bg-gray-800/30 border-gray-700/30'
+        : featureEnabled
+          ? 'bg-yellow-500/10 border-yellow-500/30' // Feature ON but no hardware
+          : 'bg-gray-800/30 border-gray-700/30'
     }`}>
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-          available ? 'bg-emerald-500/20' : 'bg-gray-800'
+          hardwareDetected ? 'bg-emerald-500/20' : featureEnabled ? 'bg-yellow-500/20' : 'bg-gray-800'
         }`}>
-          <Icon className={`w-5 h-5 ${available ? 'text-emerald-400' : 'text-gray-500'}`} />
+          <Icon className={`w-5 h-5 ${hardwareDetected ? 'text-emerald-400' : featureEnabled ? 'text-yellow-400' : 'text-gray-500'}`} />
         </div>
         <div className="flex-1">
-          <div className={`font-medium ${available ? 'text-emerald-400' : 'text-gray-400'}`}>
+          <div className={`font-medium ${hardwareDetected ? 'text-emerald-400' : featureEnabled ? 'text-yellow-400' : 'text-gray-400'}`}>
             {name}
           </div>
-          <div className="text-xs text-gray-500">{description}</div>
+          <div className="text-xs text-gray-500">
+            {!hardwareDetected && featureEnabled
+              ? 'Feature enabled but hardware not detected'
+              : description}
+          </div>
         </div>
         {/* Live value display */}
-        {liveValue != null && available && (
-          <div className={`px-3 py-1.5 rounded-lg font-mono text-sm transition-all ${
-            isUpdating
-              ? 'bg-cyan-500/30 text-cyan-300 scale-105'
-              : 'bg-gray-800/50 text-gray-300'
-          }`}>
+        {liveValue != null && hardwareDetected && (
+          <div className="px-3 py-1.5 rounded-lg font-mono text-sm bg-gray-800/50 text-gray-300">
             {typeof liveValue === 'number' ? liveValue.toFixed(1) : liveValue}
             {unit && <span className="text-xs text-gray-500 ml-1">{unit}</span>}
           </div>
         )}
+        {/* Feature toggle switch */}
+        {canToggle && onToggle && (
+          <button
+            onClick={() => onToggle(!isEnabled)}
+            disabled={toggleSaving}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              toggleSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            } ${isEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
+            title={isEnabled ? `Disable ${name} feature` : `Enable ${name} feature`}
+          >
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+              isEnabled ? 'translate-x-5' : 'translate-x-0'
+            }`} />
+          </button>
+        )}
         <div className={`px-2 py-1 text-xs rounded-lg ${
-          available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-500'
+          hardwareDetected
+            ? 'bg-emerald-500/20 text-emerald-400'
+            : featureEnabled
+              ? 'bg-yellow-500/20 text-yellow-400'
+              : 'bg-gray-800 text-gray-500'
         }`}>
-          {available ? 'OK' : 'N/A'}
+          {hardwareDetected ? 'OK' : featureEnabled ? 'ON' : 'OFF'}
         </div>
       </div>
     </div>
@@ -1472,23 +1492,33 @@ export function MspConfigView() {
   const [rcTuning, setRcTuning] = useState<MSPRcTuning | null>(null);
   const [modes, setModes] = useState<MSPModeRange[]>([]);
   const [features, setFeatures] = useState<number>(0);
+  const [featureSaving, setFeatureSaving] = useState(false); // Saving feature toggle
   const [pidRatesModified, setPidRatesModified] = useState(false);
   const [currentPlatformType, setCurrentPlatformType] = useState<number>(0); // 0=multirotor, 1=airplane
   const [configActiveSensors, setConfigActiveSensors] = useState<number>(0); // Fetched once on config load
+
+  // Feature bit constants (from MSP_FEATURE_CONFIG)
+  const FEATURE_GPS = 7;      // GPS feature enable
+  const FEATURE_SONAR = 9;    // Rangefinder/Sonar feature enable
+  const FEATURE_TELEMETRY = 10;
+  const FEATURE_LED_STRIP = 16;
+  const FEATURE_OSD = 18;
 
   // Combined modified state: PIDs/rates OR modes have changes
   const modified = pidRatesModified || modesHaveChanges();
 
   // Sensors - use activeSensors from config load or telemetry
-  // Betaflight/iNav sensor flags: bit0=GYRO, bit1=ACC, bit2=BARO, bit3=MAG, bit4=RANGEFINDER, bit5=GPS
+  // Betaflight sensor flags (from sensor_helpers.js):
+  // bit 0: ACC, bit 1: BARO, bit 2: MAG, bit 3: GPS, bit 4: SONAR, bit 5: GYRO
   const activeSensors = configActiveSensors || flight?.activeSensors || 0;
   const sensors = useMemo(() => ({
-    gyro: (activeSensors & (1 << 0)) !== 0 || true, // bit 0, always present
-    acc: (activeSensors & (1 << 1)) !== 0 || attitude !== null, // bit 1
-    baro: (activeSensors & (1 << 2)) !== 0, // bit 2
-    mag: (activeSensors & (1 << 3)) !== 0, // bit 3
-    gps: (activeSensors & (1 << 5)) !== 0 || (gps !== null && gps.satellites > 0), // bit 5
-  }), [activeSensors, attitude, gps]);
+    acc: (activeSensors & (1 << 0)) !== 0,   // bit 0
+    baro: (activeSensors & (1 << 1)) !== 0,  // bit 1
+    mag: (activeSensors & (1 << 2)) !== 0,   // bit 2
+    gps: (activeSensors & (1 << 3)) !== 0,   // bit 3
+    sonar: (activeSensors & (1 << 4)) !== 0, // bit 4
+    gyro: (activeSensors & (1 << 5)) !== 0,  // bit 5
+  }), [activeSensors]);
 
   const isInav = connectionState.fcVariant === 'INAV';
 
@@ -1564,6 +1594,93 @@ export function MspConfigView() {
     setPlatformChangeInProgress(false);
   };
 
+  /**
+   * Toggle a hardware sensor via CLI setting (baro_hardware, mag_hardware, etc.)
+   * These are not feature flags - they control hardware enablement.
+   * Uses CLI commands for Betaflight (MSP2 settings are iNav-only).
+   */
+  const handleHardwareSensorToggle = async (settingName: string, enabled: boolean) => {
+    setFeatureSaving(true);
+    try {
+      const value = enabled ? 'AUTO' : 'NONE';
+      console.log(`[UI] Setting ${settingName} to ${value}`);
+
+      // Try MSP2 settings first (iNav), fall back to CLI (Betaflight)
+      let success = await window.electronAPI?.mspSetSetting(settingName, value);
+
+      if (!success) {
+        // MSP2 settings failed - use CLI command for Betaflight
+        console.log(`[UI] MSP2 settings not supported, using CLI for ${settingName}`);
+        const cliCommand = `set ${settingName} = ${value}`;
+        await window.electronAPI?.cliSendCommand(cliCommand);
+        await new Promise(r => setTimeout(r, 100));
+        // Save via CLI - this triggers FC reboot in Betaflight
+        await window.electronAPI?.cliSendCommand('save');
+        console.log(`[UI] ${settingName} set to ${value} via CLI - FC will reboot`);
+        setError(`${settingName} set to ${value}. FC is rebooting...`);
+        success = true;
+      } else {
+        // MSP2 worked - save to EEPROM
+        await window.electronAPI?.mspSaveEeprom();
+        console.log(`[UI] ${settingName} set to ${value} - reboot required`);
+        setError(`${settingName} changed to ${value}. Reboot FC to apply.`);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Hardware toggle error: ${errorMsg}`);
+      console.error('[UI] Hardware sensor toggle error:', err);
+    } finally {
+      setFeatureSaving(false);
+    }
+  };
+
+  /**
+   * Toggle a feature bit in the feature bitmask.
+   * Updates locally and saves to EEPROM immediately.
+   */
+  const handleFeatureToggle = async (bit: number, enabled: boolean) => {
+    setFeatureSaving(true);
+    try {
+      // If features is 0, try to reload first to avoid wiping out all features
+      let currentFeatures = features;
+      if (currentFeatures === 0) {
+        console.log('[UI] Features is 0, reloading before toggle...');
+        const reloaded = await window.electronAPI?.mspGetFeatures();
+        if (typeof reloaded === 'number') {
+          currentFeatures = reloaded;
+          setFeatures(reloaded);
+          console.log('[UI] Reloaded features:', reloaded.toString(2).padStart(32, '0'));
+        } else {
+          setError('Failed to load features - cannot toggle');
+          return;
+        }
+      }
+
+      const newFeatures = enabled
+        ? currentFeatures | (1 << bit)      // Enable: set bit
+        : currentFeatures & ~(1 << bit);    // Disable: clear bit
+
+      console.log(`[UI] Toggling feature bit ${bit} to ${enabled}, features: ${currentFeatures.toString(2)} -> ${newFeatures.toString(2)}`);
+
+      const success = await window.electronAPI?.mspSetFeatures(newFeatures);
+      if (success) {
+        setFeatures(newFeatures);
+        // Save to EEPROM
+        await window.electronAPI?.mspSaveEeprom();
+        console.log(`[UI] Feature bit ${bit} ${enabled ? 'enabled' : 'disabled'} and saved`);
+      } else {
+        setError('Failed to set features');
+        console.error('[UI] Failed to set features');
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Feature toggle error: ${errorMsg}`);
+      console.error('[UI] Feature toggle error:', err);
+    } finally {
+      setFeatureSaving(false);
+    }
+  };
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
@@ -1624,10 +1741,15 @@ export function MspConfigView() {
     setLoading(true);
     setError(null);
     try {
-      const [pidData, rcData, modesData, featuresData, mixerConfig, statusData] = await Promise.all([
+      // First batch: essential config (PID, rates, modes)
+      const [pidData, rcData, modesData] = await Promise.all([
         window.electronAPI?.mspGetPid(),
         window.electronAPI?.mspGetRcTuning(),
         window.electronAPI?.mspGetModeRanges(),
+      ]);
+
+      // Second batch: features and status (separate to avoid MSP overload)
+      const [featuresData, mixerConfig, statusData] = await Promise.all([
         window.electronAPI?.mspGetFeatures(),
         window.electronAPI?.mspGetInavMixerConfig?.(),
         window.electronAPI?.mspGetStatus?.(),
@@ -1654,7 +1776,13 @@ export function MspConfigView() {
         setRcTuning(rc);
       }
       if (modesData) setModes(modesData as MSPModeRange[]);
-      if (typeof featuresData === 'number') setFeatures(featuresData);
+      if (typeof featuresData === 'number') {
+        setFeatures(featuresData);
+        console.log('[UI] Features loaded:', featuresData, 'binary:', featuresData.toString(2).padStart(32, '0'));
+        console.log('[UI] GPS feature (bit 7):', (featuresData & (1 << 7)) !== 0 ? 'ENABLED' : 'DISABLED');
+      } else {
+        console.warn('[UI] Features not loaded - featuresData is:', featuresData);
+      }
       if (mixerConfig && typeof mixerConfig.platformType === 'number') {
         setCurrentPlatformType(mixerConfig.platformType);
         console.log('[UI] Platform type:', mixerConfig.platformType === 1 ? 'Airplane' : 'Other');
@@ -2212,8 +2340,12 @@ export function MspConfigView() {
                 name="GPS"
                 available={sensors.gps}
                 Icon={Satellite}
-                description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
+                description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Feature disabled or not connected'}
                 liveValue={sensors.gps ? `${gps?.satellites || 0} sats` : undefined}
+                canToggle={true}
+                isEnabled={(features & (1 << FEATURE_GPS)) !== 0}
+                onToggle={(enabled) => handleFeatureToggle(FEATURE_GPS, enabled)}
+                toggleSaving={featureSaving}
               />
               <SensorCard
                 name="Barometer"
@@ -2222,6 +2354,31 @@ export function MspConfigView() {
                 description="Measures altitude via air pressure"
                 liveValue={sensors.baro ? (vfrHud?.alt ?? 0) : undefined}
                 unit="m"
+                canToggle={true}
+                isEnabled={sensors.baro}
+                onToggle={(enabled) => handleHardwareSensorToggle('baro_hardware', enabled)}
+                toggleSaving={featureSaving}
+              />
+              <SensorCard
+                name="Magnetometer"
+                available={sensors.mag}
+                Icon={Compass}
+                description="Measures heading - needed for GPS navigation"
+                liveValue={sensors.mag ? `${(attitude?.yaw ?? 0).toFixed(0)}°` : undefined}
+                canToggle={true}
+                isEnabled={sensors.mag}
+                onToggle={(enabled) => handleHardwareSensorToggle('mag_hardware', enabled)}
+                toggleSaving={featureSaving}
+              />
+              <SensorCard
+                name="Rangefinder"
+                available={sensors.sonar}
+                Icon={Ruler}
+                description="Measures distance to ground - for precise landings"
+                canToggle={true}
+                isEnabled={(features & (1 << FEATURE_SONAR)) !== 0}
+                onToggle={(enabled) => handleFeatureToggle(FEATURE_SONAR, enabled)}
+                toggleSaving={featureSaving}
               />
             </div>
 

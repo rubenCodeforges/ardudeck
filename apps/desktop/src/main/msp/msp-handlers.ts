@@ -32,8 +32,7 @@ import {
   deserializeBatteryState,
   deserializeBoxNames,
   deserializeBoxIds,
-  buildBoxMapping,
-  type BoxMapping,
+  // buildBoxMapping removed - was unused dead code
   isArmed,
   getArmingDisabledReasons,
   attitudeToDegrees,
@@ -49,6 +48,7 @@ import {
   deserializeModeRanges,
   serializeModeRange,
   deserializeFeatureConfig,
+  serializeFeatureConfig,
   deserializeMixerConfig,
   serializeMixerConfig,
   isMultirotorMixer,
@@ -148,6 +148,7 @@ const TELEMETRY_STUCK_TIMEOUT = 5000; // 5 seconds - auto-reset if stuck longer
 
 // Telemetry skip counter - reduce log spam
 let telemetrySkipCount = 0;
+let telemetryPollCount = 0; // Successful poll counter for debug logging
 const TELEMETRY_SKIP_LOG_INTERVAL = 100; // Only log every N skips
 
 // Debug counter for setRawRc logging
@@ -617,6 +618,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
     telemetryInProgress = true;
     telemetryLastStartTime = Date.now();
+    telemetryPollCount++;
 
     try {
       // BSOD FIX: Add 10ms delay between commands to prevent burst traffic
@@ -663,7 +665,15 @@ export function startMspTelemetry(rateHz: number = 10): void {
         const meters = altitudeToMeters(altitude);
         altitudeM = meters.altitudeM;
         varioMs = meters.varioMs;
-      } catch { /* ignore */ }
+        // Debug: log altitude every 50 polls
+        if (telemetryPollCount % 50 === 0) {
+          console.log('[MSP] Altitude raw:', altitude, 'meters:', meters);
+        }
+      } catch (err) {
+        if (telemetryPollCount % 50 === 0) {
+          console.warn('[MSP] Altitude fetch failed:', err);
+        }
+      }
 
       await interCommandDelay();
 
@@ -747,7 +757,22 @@ export function startMspTelemetry(rateHz: number = 10): void {
           armingDisabledReasons: armingDisabledReasons,
           activeSensors: status.activeSensors,
         };
-      } catch { /* ignore */ }
+
+        // Debug: log sensors every 50 polls
+        if (telemetryPollCount % 50 === 0) {
+          console.log('[MSP] Status - activeSensors:', status.activeSensors?.toString(2).padStart(8, '0'),
+            '(ACC:', !!(status.activeSensors & 1),
+            'BARO:', !!(status.activeSensors & 2),
+            'MAG:', !!(status.activeSensors & 4),
+            'GPS:', !!(status.activeSensors & 8),
+            'SONAR:', !!(status.activeSensors & 16),
+            'GYRO:', !!(status.activeSensors & 32), ')');
+        }
+      } catch (err) {
+        if (telemetryPollCount % 50 === 0) {
+          console.warn('[MSP] Status fetch failed:', err);
+        }
+      }
 
       await interCommandDelay();
 
@@ -792,13 +817,13 @@ export function startMspTelemetry(rateHz: number = 10): void {
           vz: 0,
         };
 
-        // Use GPS data for vfrHud (more accurate)
+        // Use GPS data for vfrHud, but prefer baro altitude
         batch.vfrHud = {
           airspeed: decimal.speedMs,
           groundspeed: decimal.speedMs,
           heading: headingDeg,
           throttle: throttlePercent,
-          alt: decimal.altM,
+          alt: altitudeM,  // Always use baro altitude
           climb: varioMs,
         };
       } catch {
@@ -1509,18 +1534,6 @@ async function getBoxIds(): Promise<number[] | null> {
   });
 }
 
-/**
- * Get combined box mapping (names + IDs)
- * Returns array of BoxMapping objects for easy lookup
- */
-async function getBoxMapping(): Promise<BoxMapping[] | null> {
-  const [names, ids] = await Promise.all([getBoxNames(), getBoxIds()]);
-  if (!names || !ids) {
-    return null;
-  }
-  return buildBoxMapping(names, ids);
-}
-
 async function setModeRange(index: number, mode: MSPModeRange): Promise<boolean> {
   // Guard: return false if not connected
   if (!currentTransport?.isOpen) {
@@ -1617,13 +1630,43 @@ async function getFeatures(): Promise<number | null> {
     try {
       const payload = await sendMspRequest(MSP.FEATURE_CONFIG, 1000);
       const config = deserializeFeatureConfig(payload);
+      console.log('[MSP] getFeatures:', config.features, 'binary:', config.features.toString(2).padStart(32, '0'));
       return config.features;
     } catch (error) {
-      // Only log once, don't spam console
-      if (!unsupportedCommands.has(MSP.FEATURE_CONFIG)) {
-        unsupportedCommands.add(MSP.FEATURE_CONFIG);
-      }
+      // Always log the error for features since it's critical for toggle functionality
+      console.error('[MSP] getFeatures failed:', error);
       return null;
+    }
+  });
+}
+
+/**
+ * Set feature flags bitmask.
+ * Used to enable/disable features like GPS, SONAR, TELEMETRY, LED_STRIP, OSD, etc.
+ *
+ * Feature bits (common ones):
+ * - Bit 7: GPS
+ * - Bit 9: SONAR/RANGEFINDER
+ * - Bit 10: TELEMETRY
+ * - Bit 16: LED_STRIP
+ * - Bit 18: OSD
+ * - Bit 22: AIRMODE
+ *
+ * @param features - The complete feature bitmask to set
+ * @returns true if successful, false on error
+ */
+async function setFeatures(features: number): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  return withConfigLock(async () => {
+    try {
+      const payload = serializeFeatureConfig({ features });
+      await sendMspRequestWithPayload(MSP.SET_FEATURE_CONFIG, payload, 1000);
+      console.log('[MSP] setFeatures:', features.toString(2).padStart(32, '0'));
+      return true;
+    } catch (error) {
+      console.error('[MSP] setFeatures failed:', error);
+      return false;
     }
   });
 }
@@ -4215,6 +4258,7 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_BOX_NAMES, async () => getBoxNames());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_BOX_IDS, async () => getBoxIds());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_FEATURES, async () => getFeatures());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_FEATURES, async (_event, features: number) => setFeatures(features));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_STATUS, async () => getStatus());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_MIXER_CONFIG, async () => getMixerConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MIXER_CONFIG, async (_event, mixerType: number) => setMixerConfig(mixerType));

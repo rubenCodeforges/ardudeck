@@ -141,6 +141,7 @@ export const IPC_CHANNELS = {
   MSP_GET_MODE_RANGES: 'msp:get-mode-ranges',
   MSP_SET_MODE_RANGE: 'msp:set-mode-range',
   MSP_GET_FEATURES: 'msp:get-features',
+  MSP_SET_FEATURES: 'msp:set-features',
   MSP_GET_MIXER_CONFIG: 'msp:get-mixer-config',
   MSP_SET_MIXER_CONFIG: 'msp:set-mixer-config',
   // iNav-specific mixer config (proper MSP2 commands for platform type)

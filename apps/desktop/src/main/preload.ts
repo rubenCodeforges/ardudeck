@@ -534,6 +534,9 @@ const api = {
   mspGetFeatures: (): Promise<number | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
 
+  mspSetFeatures: (features: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_FEATURES, features),
+
   mspGetStatus: (): Promise<{ activeSensors: number; armingFlags: number; flightModeFlags: number } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_STATUS),
 
