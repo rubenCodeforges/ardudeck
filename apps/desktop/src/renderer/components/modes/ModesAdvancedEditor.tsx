@@ -110,6 +110,7 @@ interface EditModeModalProps {
   mode: { boxId: number; auxChannel: number; rangeStart: number; rangeEnd: number } | null;
   rcChannels: number[];
   onSave: (auxChannel: number, rangeStart: number, rangeEnd: number) => void;
+  dynamicName?: string;
 }
 
 const EditModeModal: React.FC<EditModeModalProps> = ({
@@ -118,6 +119,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
   mode,
   rcChannels,
   onSave,
+  dynamicName,
 }) => {
   const [auxChannel, setAuxChannel] = useState(0);
   const [rangeStart, setRangeStart] = useState(1800);
@@ -136,6 +138,8 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
   const info = MODE_INFO[mode.boxId];
   const IconComponent = info?.icon || HelpCircle;
   const rcValue = rcChannels[auxChannel + 4] || 1500;
+  // Use dynamic name from FC if provided, fallback to preset name or boxId
+  const displayName = dynamicName || info?.name || `Mode ${mode.boxId}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -146,7 +150,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
             <div className={`w-8 h-8 rounded-lg ${info?.color || 'bg-zinc-500'}/20 flex items-center justify-center`}>
               <IconComponent className={`w-4 h-4 ${(info?.color || 'bg-zinc-500').replace('bg-', 'text-')}`} />
             </div>
-            <h3 className="font-semibold text-zinc-100">{info?.name || `Mode ${mode.boxId}`}</h3>
+            <h3 className="font-semibold text-zinc-100">{displayName}</h3>
           </div>
           <button
             onClick={onClose}
@@ -219,6 +223,7 @@ export const ModesAdvancedEditor: React.FC = () => {
     startRcPolling,
     stopRcPolling,
     resetToOriginal,
+    boxNameMapping,
   } = useModesWizardStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -317,6 +322,7 @@ export const ModesAdvancedEditor: React.FC = () => {
                 onDelete={() => removeMode(index)}
                 expanded={false}
                 showDescription={false}
+                dynamicName={boxNameMapping[mode.boxId]}
               />
             ))}
           </div>
@@ -341,6 +347,7 @@ export const ModesAdvancedEditor: React.FC = () => {
             updateModeConfig(editingIndex, { auxChannel, rangeStart, rangeEnd });
           }
         }}
+        dynamicName={editingIndex !== null ? boxNameMapping[pendingModes[editingIndex]?.boxId] : undefined}
       />
     </div>
   );

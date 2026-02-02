@@ -381,9 +381,19 @@ export function OsdView() {
           {mode === 'live' && (
             <div className="flex-1 p-3">
               <h3 className="text-sm font-medium text-white mb-3">Live Telemetry</h3>
-              <p className="text-xs text-gray-400">
-                Connect to a flight controller to see live OSD data.
-              </p>
+              {connectionState.isConnected ? (
+                <div className="space-y-2 text-xs">
+                  <p className="text-green-400">
+                    Connected to {connectionState.fcVariant || connectionState.autopilot || 'FC'}
+                    {connectionState.fcVersion && ` ${connectionState.fcVersion}`}
+                  </p>
+                  <p className="text-gray-400">Receiving live OSD data</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Connect to a flight controller to see live OSD data.
+                </p>
+              )}
             </div>
           )}
         </div>

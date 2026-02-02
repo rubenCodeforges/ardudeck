@@ -19,6 +19,14 @@ export type WizardStep =
 // View mode
 export type ViewMode = 'wizard' | 'advanced';
 
+/**
+ * Dynamic box name mapping from FC
+ * Maps permanent box ID to name
+ */
+export interface BoxNameMapping {
+  [boxId: number]: string;
+}
+
 interface ModesWizardState {
   // View mode
   viewMode: ViewMode;
@@ -37,6 +45,9 @@ interface ModesWizardState {
 
   // Original modes from FC (for comparison/reset)
   originalModes: MSPModeRange[];
+
+  // Dynamic box names from FC (maps boxId to name)
+  boxNameMapping: BoxNameMapping;
 
   // Live RC channel values (polled from FC)
   rcChannels: number[];
@@ -93,6 +104,9 @@ interface ModesWizardState {
 
   // Actions - Reset
   reset: () => void;
+
+  // Helper - Get mode name by boxId (uses dynamic mapping, falls back to boxId)
+  getModeName: (boxId: number) => string;
 }
 
 // Step order for navigation
@@ -111,6 +125,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
 
   pendingModes: [],
   originalModes: [],
+  boxNameMapping: {},
 
   rcChannels: Array(16).fill(1500),
   isPollingRc: false,
@@ -296,7 +311,22 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
   loadFromFC: async () => {
     set({ isLoading: true, loadError: null });
     try {
-      const modes = await window.electronAPI?.mspGetModeRanges();
+      // Fetch modes and box names in parallel
+      const [modes, boxNames, boxIds] = await Promise.all([
+        window.electronAPI?.mspGetModeRanges(),
+        window.electronAPI?.mspGetBoxNames(),
+        window.electronAPI?.mspGetBoxIds(),
+      ]);
+
+      // Build box name mapping from boxIds -> boxNames
+      const boxNameMapping: BoxNameMapping = {};
+      if (boxNames && boxIds) {
+        const count = Math.min(boxNames.length, boxIds.length);
+        for (let i = 0; i < count; i++) {
+          boxNameMapping[boxIds[i]] = boxNames[i];
+        }
+      }
+
       if (modes) {
         // Filter out empty modes (rangeStart === rangeEnd)
         const validModes = (modes as MSPModeRange[]).filter(
@@ -305,10 +335,11 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         set({
           originalModes: validModes,
           pendingModes: [...validModes],
+          boxNameMapping,
           isLoading: false,
         });
       } else {
-        set({ isLoading: false, loadError: 'Failed to load modes from FC' });
+        set({ isLoading: false, loadError: 'Failed to load modes from FC', boxNameMapping });
       }
     } catch (error) {
       set({
@@ -412,6 +443,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
       currentModeIndex: 0,
       pendingModes: [],
       originalModes: [],
+      boxNameMapping: {},
       rcChannels: Array(16).fill(1500),
       isPollingRc: false,
       rcPollInterval: null,
@@ -424,6 +456,12 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
       channelsDetected: Array(8).fill(false),
     });
   },
+
+  // Helper - Get mode name by boxId (uses dynamic mapping from FC)
+  getModeName: (boxId: number) => {
+    const { boxNameMapping } = get();
+    return boxNameMapping[boxId] || `Mode ${boxId}`;
+  },
 }));
 
 // Selector hooks for common state slices
@@ -431,3 +469,5 @@ export const useCurrentPreset = () => useModesWizardStore((s) => s.selectedPrese
 export const useRcChannels = () => useModesWizardStore((s) => s.rcChannels);
 export const usePendingModes = () => useModesWizardStore((s) => s.pendingModes);
 export const useIsWizardOpen = () => useModesWizardStore((s) => s.isWizardOpen);
+export const useBoxNameMapping = () => useModesWizardStore((s) => s.boxNameMapping);
+export const useGetModeName = () => useModesWizardStore((s) => s.getModeName);

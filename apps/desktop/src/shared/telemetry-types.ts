@@ -52,6 +52,8 @@ export interface FlightState {
   isFlying: boolean;
   /** Reasons why arming is disabled (from MSP_STATUS_EX) */
   armingDisabledReasons?: string[];
+  /** Active sensors bitmask from MSP_STATUS (bit0=ACC, bit1=BARO, bit2=MAG, bit3=GPS) */
+  activeSensors?: number;
 }
 
 export interface TelemetryState {

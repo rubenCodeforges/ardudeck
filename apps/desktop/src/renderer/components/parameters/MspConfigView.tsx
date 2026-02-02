@@ -1456,7 +1456,7 @@ type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
-  const { gps, attitude } = useTelemetryStore();
+  const { gps, attitude, flight } = useTelemetryStore();
   // MSP telemetry for real-time sensor values
   const mspAttitude = useMspTelemetryStore((s) => s.attitude);
   const mspAltitude = useMspTelemetryStore((s) => s.altitude);
@@ -1483,14 +1483,15 @@ export function MspConfigView() {
   // Combined modified state: PIDs/rates OR modes have changes
   const modified = pidRatesModified || modesHaveChanges();
 
-  // Sensors
+  // Sensors - use activeSensors from MSP_STATUS (bit0=ACC, bit1=BARO, bit2=MAG, bit3=GPS)
+  const activeSensors = flight?.activeSensors ?? 0;
   const sensors = useMemo(() => ({
-    acc: attitude !== null,
-    gyro: true,
-    mag: (features & (1 << 0)) !== 0,
-    baro: (features & (1 << 1)) !== 0,
-    gps: gps !== null && gps.satellites > 0,
-  }), [attitude, gps, features]);
+    acc: (activeSensors & (1 << 0)) !== 0 || attitude !== null,
+    gyro: true, // Always present
+    mag: (activeSensors & (1 << 2)) !== 0,
+    baro: (activeSensors & (1 << 1)) !== 0,
+    gps: (activeSensors & (1 << 3)) !== 0 || (gps !== null && gps.satellites > 0),
+  }), [activeSensors, attitude, gps]);
 
   const isInav = connectionState.fcVariant === 'INAV';
 

@@ -626,6 +626,84 @@ export function getArmingDisabledReasons(flags: number, fcVariant: string = 'BTF
 }
 
 // =============================================================================
+// Box Names and IDs (for dynamic mode mapping)
+// =============================================================================
+
+/**
+ * Deserialize MSP_BOXNAMES response
+ *
+ * Returns an array of mode names in slot order.
+ * Format is semicolon-delimited string: "ARM;ANGLE;HORIZON;..."
+ */
+export function deserializeBoxNames(payload: Uint8Array): string[] {
+  const names: string[] = [];
+  let buffer = '';
+
+  for (let i = 0; i < payload.length; i++) {
+    const char = payload[i];
+    if (char === 0x3b) { // semicolon delimiter
+      if (buffer.length > 0) {
+        names.push(buffer);
+      }
+      buffer = '';
+    } else if (char !== 0) { // Skip null bytes
+      buffer += String.fromCharCode(char);
+    }
+  }
+
+  // Handle last name (if no trailing semicolon)
+  if (buffer.length > 0) {
+    names.push(buffer);
+  }
+
+  return names;
+}
+
+/**
+ * Deserialize MSP_BOXIDS response
+ *
+ * Returns an array of permanent box IDs in slot order.
+ * Each byte is the permanent ID for the mode in that slot.
+ */
+export function deserializeBoxIds(payload: Uint8Array): number[] {
+  const ids: number[] = [];
+  for (let i = 0; i < payload.length; i++) {
+    ids.push(payload[i]);
+  }
+  return ids;
+}
+
+/**
+ * Box mapping - maps slot index to permanent box ID and name
+ */
+export interface BoxMapping {
+  /** Slot index (used in MSP_MODE_RANGES auxChannel) */
+  slot: number;
+  /** Permanent box ID */
+  permanentId: number;
+  /** Mode name (e.g., "ARM", "ANGLE", "HORIZON") */
+  name: string;
+}
+
+/**
+ * Build a box mapping from BOXNAMES and BOXIDS responses
+ */
+export function buildBoxMapping(names: string[], ids: number[]): BoxMapping[] {
+  const mapping: BoxMapping[] = [];
+  const count = Math.min(names.length, ids.length);
+
+  for (let i = 0; i < count; i++) {
+    mapping.push({
+      slot: i,
+      permanentId: ids[i],
+      name: names[i],
+    });
+  }
+
+  return mapping;
+}
+
+// =============================================================================
 // Message Info Registry
 // =============================================================================
 

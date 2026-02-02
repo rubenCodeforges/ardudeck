@@ -29,6 +29,11 @@ import {
   deserializeRc,
   deserializeMotor,
   deserializeRawGps,
+  deserializeBatteryState,
+  deserializeBoxNames,
+  deserializeBoxIds,
+  buildBoxMapping,
+  type BoxMapping,
   isArmed,
   getArmingDisabledReasons,
   attitudeToDegrees,
@@ -611,7 +616,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
         attitude?: { roll: number; pitch: number; yaw: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number };
         vfrHud?: { airspeed: number; groundspeed: number; heading: number; throttle: number; alt: number; climb: number };
         battery?: { voltage: number; current: number; remaining: number };
-        flight?: { mode: string; modeNum: number; armed: boolean; isFlying: boolean; armingDisabledReasons?: string[] };
+        flight?: { mode: string; modeNum: number; armed: boolean; isFlying: boolean; armingDisabledReasons?: string[]; activeSensors?: number };
         gps?: { fixType: number; satellites: number; hdop: number; lat: number; lon: number; alt: number };
         position?: { lat: number; lon: number; alt: number; relativeAlt: number; vx: number; vy: number; vz: number };
       } = {};
@@ -651,15 +656,46 @@ export function startMspTelemetry(rateHz: number = 10): void {
       await interCommandDelay();
 
       // Get battery/analog
+      let batteryVoltage = 0;
+      let batteryCurrent = 0;
       try {
         const analogPayload = await sendMspRequest(MSP.ANALOG, 300);
         const analog = deserializeAnalog(analogPayload);
-        batch.battery = {
-          voltage: analog.voltage / 10, // Convert to volts
-          current: analog.current / 100, // Convert to amps
-          remaining: -1, // Not available in MSP
-        };
+        batteryVoltage = analog.voltage; // Already in volts from deserializeAnalog()
+        batteryCurrent = analog.current; // Already in amps from deserializeAnalog()
       } catch { /* ignore */ }
+
+      await interCommandDelay();
+
+      // Get battery state for cell count and percentage calculation
+      let batteryPercentage = -1;
+      try {
+        const batteryPayload = await sendMspRequest(MSP.BATTERY_STATE, 300);
+        const batteryState = deserializeBatteryState(batteryPayload);
+
+        // Use MSP_BATTERY_STATE voltage if available (higher resolution)
+        if (batteryState.voltage > 0) {
+          batteryVoltage = batteryState.voltage;
+        }
+
+        // Calculate percentage based on cell count
+        if (batteryState.cellCount > 0 && batteryVoltage > 0) {
+          const voltagePerCell = batteryVoltage / batteryState.cellCount;
+          // 3.3V = 0%, 4.2V = 100% per cell
+          const minV = 3.3;
+          const maxV = 4.2;
+          batteryPercentage = Math.round(Math.max(0, Math.min(100,
+            ((voltagePerCell - minV) / (maxV - minV)) * 100
+          )));
+        }
+      } catch { /* ignore */ }
+
+      // Set battery data
+      batch.battery = {
+        voltage: batteryVoltage,
+        current: batteryCurrent,
+        remaining: batteryPercentage,
+      };
 
       await interCommandDelay();
 
@@ -697,7 +733,24 @@ export function startMspTelemetry(rateHz: number = 10): void {
           armed: armed,
           isFlying: armed,
           armingDisabledReasons: armingDisabledReasons,
+          activeSensors: status.activeSensors,
         };
+      } catch { /* ignore */ }
+
+      await interCommandDelay();
+
+      // Get RC channels for throttle display
+      let throttlePercent = 0;
+      try {
+        const rcPayload = await sendMspRequest(MSP.RC, 300);
+        const rc = deserializeRc(rcPayload);
+        // Channel 3 is throttle (0-indexed: channels[2])
+        if (rc.channels.length > 2) {
+          // Convert 1000-2000 PWM to 0-100%
+          throttlePercent = Math.round(Math.max(0, Math.min(100,
+            ((rc.channels[2] - 1000) / 1000) * 100
+          )));
+        }
       } catch { /* ignore */ }
 
       await interCommandDelay();
@@ -732,7 +785,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
           airspeed: decimal.speedMs,
           groundspeed: decimal.speedMs,
           heading: headingDeg,
-          throttle: 0,
+          throttle: throttlePercent,
           alt: decimal.altM,
           climb: varioMs,
         };
@@ -742,7 +795,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
           airspeed: 0,
           groundspeed: 0,
           heading: headingDeg,
-          throttle: 0,
+          throttle: throttlePercent,
           alt: altitudeM,
           climb: varioMs,
         };
@@ -1397,6 +1450,60 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
       return null;
     }
   });
+}
+
+/**
+ * Get mode box names from FC (MSP_BOXNAMES)
+ * Returns array of mode names in slot order
+ */
+async function getBoxNames(): Promise<string[] | null> {
+  if (!currentTransport?.isOpen) {
+    return null;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.BOXNAMES, 2000);
+      const names = deserializeBoxNames(payload);
+      return names;
+    } catch (error) {
+      console.error('[MSP] getBoxNames failed:', error);
+      return null;
+    }
+  });
+}
+
+/**
+ * Get mode box IDs from FC (MSP_BOXIDS)
+ * Returns array of permanent box IDs in slot order
+ */
+async function getBoxIds(): Promise<number[] | null> {
+  if (!currentTransport?.isOpen) {
+    return null;
+  }
+
+  return withConfigLock(async () => {
+    try {
+      const payload = await sendMspRequest(MSP.BOXIDS, 2000);
+      const ids = deserializeBoxIds(payload);
+      return ids;
+    } catch (error) {
+      console.error('[MSP] getBoxIds failed:', error);
+      return null;
+    }
+  });
+}
+
+/**
+ * Get combined box mapping (names + IDs)
+ * Returns array of BoxMapping objects for easy lookup
+ */
+async function getBoxMapping(): Promise<BoxMapping[] | null> {
+  const [names, ids] = await Promise.all([getBoxNames(), getBoxIds()]);
+  if (!names || !ids) {
+    return null;
+  }
+  return buildBoxMapping(names, ids);
 }
 
 async function setModeRange(index: number, mode: MSPModeRange): Promise<boolean> {
@@ -4022,6 +4129,8 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_SET_RC_TUNING, async (_event, rcTuning: MSPRcTuning) => setRcTuning(rcTuning));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_MODE_RANGES, async () => getModeRanges());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MODE_RANGE, async (_event, index: number, mode: MSPModeRange) => setModeRange(index, mode));
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_BOX_NAMES, async () => getBoxNames());
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_BOX_IDS, async () => getBoxIds());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_FEATURES, async () => getFeatures());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_MIXER_CONFIG, async () => getMixerConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MIXER_CONFIG, async (_event, mixerType: number) => setMixerConfig(mixerType));

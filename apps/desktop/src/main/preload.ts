@@ -525,6 +525,12 @@ const api = {
   mspSetModeRange: (index: number, mode: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_MODE_RANGE, index, mode),
 
+  mspGetBoxNames: (): Promise<string[] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_BOX_NAMES),
+
+  mspGetBoxIds: (): Promise<number[] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_BOX_IDS),
+
   mspGetFeatures: (): Promise<number | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
 

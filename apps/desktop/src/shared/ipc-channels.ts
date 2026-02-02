@@ -209,6 +209,8 @@ export const IPC_CHANNELS = {
   // MSP RC Control (GCS arm/disarm, mode switching)
   MSP_SET_RAW_RC: 'msp:set-raw-rc',       // Send RC channel values to FC
   MSP_GET_ACTIVE_BOXES: 'msp:get-active-boxes', // Get active mode boxes (bitmask)
+  MSP_GET_BOX_NAMES: 'msp:get-box-names',       // Get mode names (dynamic, from FC)
+  MSP_GET_BOX_IDS: 'msp:get-box-ids',           // Get permanent box IDs (dynamic, from FC)
 
   // Reconnection control (for expected reboots)
   RECONNECT_CANCEL: 'reconnect:cancel',
