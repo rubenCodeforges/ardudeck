@@ -2,12 +2,13 @@
  * OSD Element Overlay
  *
  * Renders a draggable overlay box for an OSD element.
- * Shows element bounds and enables drag-to-reposition.
+ * Uses CSS transform for GPU-composited positioning (no ghost trails).
  */
 
 import { useOsdDrag } from '../../hooks/useOsdDrag';
-import type { OsdElementId, OsdElementPosition } from '../../stores/osd-store';
-import type { ElementSize } from '../../utils/osd/element-sizes';
+import type { OsdElementId } from '../../stores/osd-store';
+import type { OsdElementPosition } from '../../stores/osd-store';
+import type { ElementSize } from '../../utils/osd/element-registry';
 import type { VideoType } from '../../utils/osd/font-renderer';
 
 interface Props {
@@ -25,9 +26,6 @@ interface Props {
 const CHAR_WIDTH = 12;
 const CHAR_HEIGHT = 18;
 
-/**
- * Format element ID to display name
- */
 function formatElementName(id: OsdElementId): string {
   return id
     .split('_')
@@ -61,27 +59,28 @@ export function OsdElementOverlay({
     onPositionChange,
   });
 
-  // Don't render disabled elements
   if (!position.enabled) return null;
 
   const width = size.width * charWidth;
   const height = size.height * charHeight;
-  const left = position.x * charWidth;
-  const top = position.y * charHeight;
+  const tx = position.x * charWidth;
+  const ty = position.y * charHeight;
 
   return (
     <div
       className={`
-        absolute cursor-move border transition-colors
+        absolute cursor-move border
         ${isSelected ? 'border-blue-500 bg-blue-500/20' : 'border-transparent hover:border-blue-400/50'}
         ${isDragging ? 'opacity-70 z-50' : 'z-10'}
       `}
       style={{
-        left,
-        top,
+        transform: `translate(${tx}px, ${ty}px)`,
         width,
         height,
+        top: 0,
+        left: 0,
         pointerEvents: 'auto',
+        willChange: isDragging ? 'transform' : 'auto',
       }}
       onClick={(e) => {
         e.stopPropagation();
@@ -91,7 +90,6 @@ export function OsdElementOverlay({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      {/* Element label */}
       {(showLabels || isSelected) && (
         <span
           className={`
@@ -103,7 +101,6 @@ export function OsdElementOverlay({
         </span>
       )}
 
-      {/* Position indicator on selected */}
       {isSelected && (
         <span className="absolute -bottom-4 left-0 text-[10px] text-gray-400">
           [{position.x}, {position.y}]

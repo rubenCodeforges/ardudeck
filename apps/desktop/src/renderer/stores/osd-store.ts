@@ -7,10 +7,24 @@ import {
   OSD_COLS,
   getOsdRows,
 } from '../utils/osd/font-renderer';
-import { SYM, numberToSymbols } from '../utils/osd/osd-symbols';
 import { useTelemetryStore } from './telemetry-store';
-import { calculateCcrp, type CcrpResult } from '../utils/ccrp-calculator';
+import { calculateCcrp } from '../utils/ccrp-calculator';
 import { usePayloadStore } from './payload-store';
+import {
+  type OsdElementId,
+  buildDefaultPositions,
+  buildBfIndexMap,
+  ELEMENT_REGISTRY,
+} from '../utils/osd/element-registry';
+import {
+  type DemoTelemetry,
+  DEFAULT_DEMO_VALUES,
+  renderElement,
+} from '../utils/osd/element-renderers';
+
+// Re-export types used by consumers
+export type { OsdElementId } from '../utils/osd/element-registry';
+export type { DemoTelemetry } from '../utils/osd/element-renderers';
 
 // Import bundled fonts (Vite raw imports)
 import defaultFontMcm from '../assets/osd-fonts/default.mcm?raw';
@@ -36,28 +50,6 @@ export const BUNDLED_FONTS: Record<string, string> = {
 
 export const BUNDLED_FONT_NAMES = Object.keys(BUNDLED_FONTS);
 
-/** Demo telemetry values for standalone mode */
-export interface DemoTelemetry {
-  altitude: number; // meters
-  speed: number; // m/s
-  heading: number; // degrees 0-359
-  pitch: number; // degrees
-  roll: number; // degrees
-  batteryVoltage: number; // volts
-  batteryCurrent: number; // amps
-  batteryPercent: number; // 0-100
-  gpsSats: number;
-  rssi: number; // 0-100
-  throttle: number; // 0-100
-  flightTime: number; // seconds
-  distance: number; // meters from home
-  latitude: number;
-  longitude: number;
-  // CCRP target position
-  targetLat: number;
-  targetLon: number;
-}
-
 /** OSD element position */
 export interface OsdElementPosition {
   x: number;
@@ -65,66 +57,9 @@ export interface OsdElementPosition {
   enabled: boolean;
 }
 
-/** Available OSD elements */
-export type OsdElementId =
-  | 'altitude'
-  | 'speed'
-  | 'heading'
-  | 'battery_voltage'
-  | 'battery_percent'
-  | 'gps_sats'
-  | 'rssi'
-  | 'throttle'
-  | 'flight_time'
-  | 'distance'
-  | 'coordinates'
-  | 'pitch'
-  | 'roll'
-  | 'crosshairs'
-  | 'artificial_horizon'
-  | 'ccrp_indicator';
-
-/** Default element positions (PAL layout) */
-export const DEFAULT_ELEMENT_POSITIONS: Record<OsdElementId, OsdElementPosition> = {
-  altitude: { x: 1, y: 2, enabled: true },
-  speed: { x: 1, y: 3, enabled: true },
-  heading: { x: 14, y: 0, enabled: true },
-  battery_voltage: { x: 1, y: 0, enabled: true },
-  battery_percent: { x: 24, y: 0, enabled: true },
-  gps_sats: { x: 24, y: 1, enabled: true },
-  rssi: { x: 1, y: 1, enabled: true },
-  throttle: { x: 1, y: 12, enabled: true },
-  flight_time: { x: 24, y: 12, enabled: true },
-  distance: { x: 1, y: 4, enabled: true },
-  coordinates: { x: 1, y: 14, enabled: true },
-  pitch: { x: 24, y: 4, enabled: true },
-  roll: { x: 24, y: 5, enabled: true },
-  crosshairs: { x: 14, y: 7, enabled: true },
-  artificial_horizon: { x: 14, y: 7, enabled: true },
-  ccrp_indicator: { x: 26, y: 3, enabled: false },
-};
-
-/** Default demo values */
-const DEFAULT_DEMO_VALUES: DemoTelemetry = {
-  altitude: 120,
-  speed: 15,
-  heading: 270, // Flying west
-  pitch: 5,
-  roll: -3,
-  batteryVoltage: 11.8,
-  batteryCurrent: 8.5,
-  batteryPercent: 75,
-  gpsSats: 12,
-  rssi: 85,
-  throttle: 45,
-  flightTime: 185,
-  distance: 350,
-  latitude: 37.7749,
-  longitude: -122.4194,
-  // CCRP target - 500m west of aircraft (at heading 270, aircraft is lined up)
-  targetLat: 37.7749,
-  targetLon: -122.4254, // ~500m west at this latitude
-};
+/** Default element positions built from registry */
+export const DEFAULT_ELEMENT_POSITIONS: Record<OsdElementId, OsdElementPosition> =
+  buildDefaultPositions() as Record<OsdElementId, OsdElementPosition>;
 
 export type OsdMode = 'demo' | 'live' | 'edit';
 
@@ -152,7 +87,7 @@ interface OsdStore {
 
   // Screen buffer
   screenBuffer: OsdScreenBuffer;
-  renderVersion: number; // Incremented to force re-renders
+  renderVersion: number;
 
   // Actions
   loadBundledFont: (name: string) => Promise<void>;
@@ -209,7 +144,6 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         currentFontName: name,
         isLoadingFont: false,
       });
-      // Update screen buffer with new font
       get().updateScreenBuffer();
     } catch (err) {
       set({
@@ -301,7 +235,6 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
 
   loadPositionsFromFc: async () => {
     try {
-      // Fetch OSD config from flight controller
       const config = await window.api.mspGetOsdConfig() as {
         flags: number;
         videoSystem: number;
@@ -317,40 +250,9 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
 
       console.log('[OSD] Loaded', config.elements.length, 'element positions from FC');
 
-      // Map Betaflight element indices to our element IDs
-      // Based on Betaflight's DISPLAY_FIELDS array order
-      const BF_INDEX_MAP: Record<number, OsdElementId> = {
-        0: 'rssi',                  // RSSI_VALUE
-        1: 'battery_voltage',       // MAIN_BATT_VOLTAGE
-        2: 'crosshairs',           // CROSSHAIRS
-        3: 'artificial_horizon',   // ARTIFICIAL_HORIZON
-        // 4: HORIZON_SIDEBARS (not supported)
-        // 5: TIMER_1 (maps to flight_time)
-        // 6: TIMER_2
-        // 7: FLYMODE
-        // 8: CRAFT_NAME
-        9: 'throttle',             // THROTTLE_POSITION
-        // 10: VTX_CHANNEL
-        // 11: CURRENT_DRAW
-        // 12: MAH_DRAWN
-        13: 'speed',               // GPS_SPEED
-        14: 'gps_sats',            // GPS_SATS
-        15: 'altitude',            // ALTITUDE
-        // 16-20: PID displays
-        // 21: WARNINGS
-        // 22: AVG_CELL_VOLTAGE
-        // 23: GPS_LON
-        // 24: GPS_LAT
-        26: 'pitch',               // PITCH_ANGLE
-        27: 'roll',                // ROLL_ANGLE
-        // 28: MAIN_BATT_USAGE
-        // 29: DISARMED
-        // 30: HOME_DIR
-        31: 'distance',            // HOME_DIST
-        32: 'heading',             // NUMERICAL_HEADING
-      };
+      // Build BF index map from registry
+      const BF_INDEX_MAP = buildBfIndexMap();
 
-      // Apply positions from FC to our element positions
       const newPositions = { ...get().elementPositions };
       let updatedCount = 0;
 
@@ -383,16 +285,14 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
   updateScreenBuffer: () => {
     const { screenBuffer, elementPositions, demoValues, mode } = get();
 
-    // Clear buffer
     screenBuffer.clear();
 
     // Get telemetry values (demo or live)
     let values: DemoTelemetry;
-    if (mode === 'demo') {
+    if (mode === 'demo' || mode === 'edit') {
       values = demoValues;
     } else {
-      // Live mode - use useTelemetryStore for ALL protocols
-      // MSP data is also sent via TELEMETRY_UPDATE and converted to the same format
+      // Live mode - use telemetry store (map ALL fields, use 0 for unavailable)
       const telemetry = useTelemetryStore.getState();
       const lat = telemetry.gps.lat || telemetry.position.lat;
       const lon = telemetry.gps.lon || telemetry.position.lon;
@@ -408,369 +308,64 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         gpsSats: telemetry.gps.satellites,
         rssi: 0,
         throttle: telemetry.vfrHud.throttle,
-        flightTime: 0,
-        distance: 0,
         latitude: lat,
         longitude: lon,
-        // TODO: Get target from mission store when available
         targetLat: lat,
         targetLon: lon,
+        // Fields now mapped from telemetry (were using demo defaults)
+        isArmed: telemetry.flight.armed,
+        flightMode: telemetry.flight.mode,
+        craftName: '',
+        vario: telemetry.vfrHud.climb,
+        airspeed: telemetry.vfrHud.airspeed,
+        gpsHdop: telemetry.gps.hdop,
+        mslAltitude: telemetry.vfrHud.alt,
+        cellVoltage: telemetry.battery.cellVoltage ?? 0,
+        cellCount: telemetry.battery.cellCount ?? 0,
+        mahDrawn: telemetry.battery.mahDrawn ?? 0,
+        powerWatts: telemetry.battery.voltage * telemetry.battery.current,
+        // Fields not available from basic MSP telemetry
+        baroTemp: 0,
+        imuTemp: 0,
+        escTemp: 0,
+        gForce: 0,
+        escRpm: 0,
+        windSpeed: 0,
+        windDirection: 0,
+        windVertical: 0,
+        homeDirection: 0,
+        rssiDbm: 0,
+        maxSpeed: 0,
+        flightTime: 0,
+        onTime: 0,
+        distance: 0,
       };
     }
 
-    // Render each enabled element
+    // Render each enabled element using the extracted renderers
     for (const [id, pos] of Object.entries(elementPositions) as [OsdElementId, OsdElementPosition][]) {
       if (!pos.enabled) continue;
 
-      switch (id) {
-        case 'altitude':
-          renderAltitude(screenBuffer, pos.x, pos.y, values.altitude);
-          break;
-        case 'speed':
-          renderSpeed(screenBuffer, pos.x, pos.y, values.speed);
-          break;
-        case 'heading':
-          renderHeading(screenBuffer, pos.x, pos.y, values.heading);
-          break;
-        case 'battery_voltage':
-          renderBatteryVoltage(screenBuffer, pos.x, pos.y, values.batteryVoltage);
-          break;
-        case 'battery_percent':
-          renderBatteryPercent(screenBuffer, pos.x, pos.y, values.batteryPercent);
-          break;
-        case 'gps_sats':
-          renderGpsSats(screenBuffer, pos.x, pos.y, values.gpsSats);
-          break;
-        case 'rssi':
-          renderRssi(screenBuffer, pos.x, pos.y, values.rssi);
-          break;
-        case 'throttle':
-          renderThrottle(screenBuffer, pos.x, pos.y, values.throttle);
-          break;
-        case 'flight_time':
-          renderFlightTime(screenBuffer, pos.x, pos.y, values.flightTime);
-          break;
-        case 'distance':
-          renderDistance(screenBuffer, pos.x, pos.y, values.distance);
-          break;
-        case 'crosshairs':
-          renderCrosshairs(screenBuffer, pos.x, pos.y);
-          break;
-        case 'artificial_horizon':
-          renderArtificialHorizon(screenBuffer, pos.x, pos.y, values.pitch, values.roll);
-          break;
-        case 'pitch':
-          renderPitch(screenBuffer, pos.x, pos.y, values.pitch);
-          break;
-        case 'roll':
-          renderRoll(screenBuffer, pos.x, pos.y, values.roll);
-          break;
-        case 'coordinates':
-          renderCoordinates(screenBuffer, pos.x, pos.y, values.latitude, values.longitude);
-          break;
-        case 'ccrp_indicator': {
-          // Get payload config for descent rate
-          const payloadConfig = usePayloadStore.getState().config;
-
-          // Calculate CCRP with full position and heading
-          const ccrpResult = calculateCcrp({
-            aircraftLat: values.latitude,
-            aircraftLon: values.longitude,
-            aircraftAltAgl: values.altitude,
-            groundSpeed: values.speed,
-            heading: values.heading,
-            targetLat: values.targetLat,
-            targetLon: values.targetLon,
-            descentRateMs: payloadConfig.descentRateMs,
-          });
-
-          renderCcrpIndicator(screenBuffer, pos.x, pos.y, ccrpResult);
-          break;
-        }
+      if (id === 'ccrp_indicator') {
+        // CCRP needs special calculation
+        const payloadConfig = usePayloadStore.getState().config;
+        const ccrpResult = calculateCcrp({
+          aircraftLat: values.latitude,
+          aircraftLon: values.longitude,
+          aircraftAltAgl: values.altitude,
+          groundSpeed: values.speed,
+          heading: values.heading,
+          targetLat: values.targetLat,
+          targetLon: values.targetLon,
+          descentRateMs: payloadConfig.descentRateMs,
+        });
+        renderElement(screenBuffer, id, pos.x, pos.y, values, ccrpResult);
+      } else {
+        renderElement(screenBuffer, id, pos.x, pos.y, values);
       }
     }
 
-    // Force re-render by incrementing version
+    // Force re-render
     set((state) => ({ renderVersion: state.renderVersion + 1 }));
   },
 }));
-
-// =============================================================================
-// Element Renderers
-// =============================================================================
-
-function renderAltitude(buffer: OsdScreenBuffer, x: number, y: number, altitude: number): void {
-  const altStr = Math.round(altitude).toString().padStart(4, ' ');
-  buffer.setChar(x, y, SYM.ALT_M);
-  buffer.drawString(x + 1, y, altStr);
-  buffer.setChar(x + 5, y, SYM.M);
-}
-
-function renderSpeed(buffer: OsdScreenBuffer, x: number, y: number, speed: number): void {
-  const speedKmh = Math.round(speed * 3.6); // m/s to km/h
-  const speedStr = speedKmh.toString().padStart(3, ' ');
-  buffer.drawString(x, y, speedStr);
-  buffer.setChar(x + 3, y, SYM.KMH);
-}
-
-function renderHeading(buffer: OsdScreenBuffer, x: number, y: number, heading: number): void {
-  const hdgStr = Math.round(heading).toString().padStart(3, '0');
-  buffer.setChar(x, y, SYM.HEADING);
-  buffer.drawString(x + 1, y, hdgStr);
-  buffer.setChar(x + 4, y, SYM.DEGREES);
-}
-
-function renderBatteryVoltage(buffer: OsdScreenBuffer, x: number, y: number, voltage: number): void {
-  const voltStr = voltage.toFixed(1).padStart(4, ' ');
-  buffer.setChar(x, y, SYM.BATT);
-  buffer.drawString(x + 1, y, voltStr);
-  buffer.setChar(x + 5, y, SYM.VOLT);
-}
-
-function renderBatteryPercent(buffer: OsdScreenBuffer, x: number, y: number, percent: number): void {
-  const pctStr = Math.round(percent).toString().padStart(3, ' ');
-  buffer.setChar(x, y, SYM.BATT);
-  buffer.drawString(x + 1, y, pctStr);
-  buffer.setChar(x + 4, y, 0x25); // % character
-}
-
-function renderGpsSats(buffer: OsdScreenBuffer, x: number, y: number, sats: number): void {
-  buffer.setChar(x, y, SYM.GPS_SAT1);
-  buffer.setChar(x + 1, y, SYM.GPS_SAT2);
-  const satStr = sats.toString().padStart(2, ' ');
-  buffer.drawString(x + 2, y, satStr);
-}
-
-function renderRssi(buffer: OsdScreenBuffer, x: number, y: number, rssi: number): void {
-  buffer.setChar(x, y, SYM.RSSI);
-  const rssiStr = Math.round(rssi).toString().padStart(3, ' ');
-  buffer.drawString(x + 1, y, rssiStr);
-}
-
-function renderThrottle(buffer: OsdScreenBuffer, x: number, y: number, throttle: number): void {
-  buffer.setChar(x, y, SYM.THR);
-  const thrStr = Math.round(throttle).toString().padStart(3, ' ');
-  buffer.drawString(x + 1, y, thrStr);
-  buffer.setChar(x + 4, y, 0x25); // %
-}
-
-function renderFlightTime(buffer: OsdScreenBuffer, x: number, y: number, seconds: number): void {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  buffer.setChar(x, y, SYM.FLY_M);
-  buffer.drawString(x + 1, y, timeStr);
-}
-
-function renderDistance(buffer: OsdScreenBuffer, x: number, y: number, distance: number): void {
-  buffer.setChar(x, y, SYM.HOME);
-  const distStr = Math.round(distance).toString().padStart(4, ' ');
-  buffer.drawString(x + 1, y, distStr);
-  buffer.setChar(x + 5, y, SYM.M);
-}
-
-function renderCrosshairs(buffer: OsdScreenBuffer, x: number, y: number): void {
-  // Simple 3-char crosshairs
-  buffer.setChar(x - 1, y, SYM.AH_CENTER_LINE);
-  buffer.setChar(x, y, SYM.AH_AIRCRAFT2);
-  buffer.setChar(x + 1, y, SYM.AH_CENTER_LINE_RIGHT);
-}
-
-function renderArtificialHorizon(
-  buffer: OsdScreenBuffer,
-  x: number,
-  y: number,
-  pitch: number,
-  roll: number
-): void {
-  const HORIZON_WIDTH = 9; // 9 columns wide
-  const CENTER_COL = 4; // Center column index
-  const CHAR_HEIGHT_PX = 18;
-  // Roll sensitivity: higher = less sensitive. At 3.0, need ~15° for 1 row offset at edge
-  const ROLL_SENSITIVITY = 3.0;
-  // Number of variant positions within a character cell (9 variants = 0-8)
-  const NUM_VARIANTS = 9;
-
-  // Clamp roll to reasonable display range (beyond ±60° looks wrong)
-  const clampedRoll = Math.max(-60, Math.min(60, roll));
-  const rollRadians = clampedRoll * (Math.PI / 180);
-
-  // Pitch offset in rows (positive pitch = nose up = horizon moves down = negative row offset)
-  const pitchRowOffset = Math.round(pitch / 10);
-
-  for (let i = 0; i < HORIZON_WIDTH; i++) {
-    const columnOffset = i - CENTER_COL; // -4 to +4
-    const charX = x - CENTER_COL + i;
-
-    // Calculate vertical pixel offset for this column due to roll
-    // tan(roll) gives slope, multiply by horizontal distance
-    // Negative sign: when banking LEFT (negative roll), LEFT side goes DOWN (higher row)
-    // Divided by ROLL_SENSITIVITY to reduce visual effect at small angles
-    const rollPixelOffset = (-columnOffset * Math.tan(rollRadians) * CHAR_HEIGHT_PX) / ROLL_SENSITIVITY;
-
-    // Calculate which row this column's horizon line falls on
-    // Use Math.round instead of Math.floor to get nearest row, reducing discontinuities
-    const rollRowOffset = Math.round(rollPixelOffset / CHAR_HEIGHT_PX);
-
-    // Calculate position within the character cell (0 = top, 1 = bottom)
-    // This gives us a value from 0 to 1 representing where in the cell the line is
-    const normalizedOffset = (rollPixelOffset / CHAR_HEIGHT_PX) - rollRowOffset + 0.5;
-
-    // Final row for this column
-    const finalRow = y - pitchRowOffset - rollRowOffset;
-
-    // Select bar variant based on normalized position within cell
-    // normalizedOffset is roughly 0-1, map to variant 0-8
-    // Variant 0 = bar at bottom, Variant 8 = bar at top
-    // So we invert: when normalizedOffset is high (top of cell), use low variant (bar at bottom)
-    // This ensures visual continuity: as line moves up, bar appears higher in cell
-    const variantIndex = Math.max(0, Math.min(NUM_VARIANTS - 1,
-      Math.round((1 - normalizedOffset) * (NUM_VARIANTS - 1))
-    ));
-    const horizonChar = SYM.AH_BAR9_0 + variantIndex;
-
-    // Only draw if within screen bounds
-    if (finalRow >= 0 && finalRow < buffer.height) {
-      buffer.setChar(charX, finalRow, horizonChar);
-    }
-  }
-}
-
-function renderPitch(buffer: OsdScreenBuffer, x: number, y: number, pitch: number): void {
-  const pitchStr = Math.round(pitch).toString().padStart(3, ' ');
-  buffer.setChar(x, y, SYM.PITCH_UP);
-  buffer.drawString(x + 1, y, pitchStr);
-  buffer.setChar(x + 4, y, SYM.DEGREES);
-}
-
-function renderRoll(buffer: OsdScreenBuffer, x: number, y: number, roll: number): void {
-  const rollStr = Math.round(roll).toString().padStart(3, ' ');
-
-  // Dynamic symbol based on roll angle
-  let symbol: number;
-  if (roll < -10) {
-    symbol = SYM.ROLL_LEFT;
-  } else if (roll > 10) {
-    symbol = SYM.ROLL_RIGHT;
-  } else {
-    symbol = SYM.ROLL_LEVEL;
-  }
-
-  buffer.setChar(x, y, symbol);
-  buffer.drawString(x + 1, y, rollStr);
-  buffer.setChar(x + 4, y, SYM.DEGREES);
-}
-
-function renderCoordinates(
-  buffer: OsdScreenBuffer,
-  x: number,
-  y: number,
-  lat: number,
-  lon: number
-): void {
-  // Latitude line
-  const latStr = lat.toFixed(5);
-  buffer.setChar(x, y, SYM.LAT);
-  buffer.drawString(x + 1, y, latStr);
-
-  // Longitude line (below latitude)
-  const lonStr = lon.toFixed(5);
-  buffer.setChar(x, y + 1, SYM.LON);
-  buffer.drawString(x + 1, y + 1, lonStr);
-}
-
-function renderCcrpIndicator(
-  buffer: OsdScreenBuffer,
-  x: number,
-  y: number,
-  ccrpResult: CcrpResult
-): void {
-  const GAUGE_HEIGHT = 5; // 5 characters tall for the gauge
-
-  if (!ccrpResult.valid) {
-    // No valid data - show dashes
-    buffer.drawString(x, y, '---');
-    buffer.drawString(x, y + 1, 'CCRP');
-    return;
-  }
-
-  // Row 0: Steering cue / status
-  if (ccrpResult.inRange) {
-    // Lined up AND in range - DROP NOW!
-    buffer.drawString(x - 1, y, 'DROP!');
-  } else if (ccrpResult.passed) {
-    buffer.drawString(x - 1, y, 'PASS');
-  } else if (!ccrpResult.isLinedUp) {
-    // Show steering direction
-    const error = ccrpResult.headingError;
-    if (error > 20) {
-      buffer.drawString(x - 1, y, '>>R'); // Hard right
-    } else if (error > 5) {
-      buffer.drawString(x - 1, y, ' >R'); // Soft right
-    } else if (error < -20) {
-      buffer.drawString(x - 1, y, 'L<<'); // Hard left
-    } else if (error < -5) {
-      buffer.drawString(x - 1, y, 'L< '); // Soft left
-    }
-  } else {
-    // Lined up but not in range yet - show checkmark or OK
-    buffer.drawString(x - 1, y, ' OK ');
-  }
-
-  // Draw vertical gauge frame
-  const gaugeStartY = y + 1;
-
-  // Calculate fill level (0 = empty at top, GAUGE_HEIGHT = full at bottom)
-  const fillLevel = Math.min(GAUGE_HEIGHT, Math.round(ccrpResult.releaseProgress * GAUGE_HEIGHT));
-
-  // Draw gauge segments
-  for (let i = 0; i < GAUGE_HEIGHT; i++) {
-    const rowY = gaugeStartY + i;
-    const isFilled = i < fillLevel;
-
-    // Left bracket
-    buffer.setChar(x, rowY, 0x7c); // |
-
-    // Fill or empty (different char when lined up vs not)
-    if (isFilled) {
-      if (ccrpResult.isLinedUp) {
-        buffer.setChar(x + 1, rowY, 0x23); // # (filled, lined up)
-      } else {
-        buffer.setChar(x + 1, rowY, 0x3d); // = (filled but NOT lined up)
-      }
-    } else {
-      buffer.setChar(x + 1, rowY, 0x2e); // . (empty)
-    }
-
-    // Right bracket
-    buffer.setChar(x + 2, rowY, 0x7c); // |
-  }
-
-  // Draw target marker at bottom
-  const targetY = gaugeStartY + GAUGE_HEIGHT;
-  buffer.setChar(x, targetY, 0x5b); // [
-  buffer.setChar(x + 1, targetY, 0x58); // X
-  buffer.setChar(x + 2, targetY, 0x5d); // ]
-
-  // Distance text below gauge
-  const distY = targetY + 1;
-  if (ccrpResult.distanceToRelease >= 0) {
-    const distStr = Math.round(ccrpResult.distanceToRelease).toString();
-    buffer.drawString(x, distY, distStr.padStart(3, ' ') + 'm');
-  } else {
-    // Already passed - show negative
-    const distStr = Math.round(Math.abs(ccrpResult.distanceToRelease)).toString();
-    buffer.drawString(x, distY, '-' + distStr.padStart(2, ' ') + 'm');
-  }
-
-  // Row below distance: Heading error in degrees (small text)
-  const hdgErrY = distY + 1;
-  const hdgErr = Math.round(ccrpResult.headingError);
-  if (hdgErr > 0) {
-    buffer.drawString(x, hdgErrY, `R${hdgErr}`.padStart(4, ' '));
-  } else if (hdgErr < 0) {
-    buffer.drawString(x, hdgErrY, `L${Math.abs(hdgErr)}`.padStart(4, ' '));
-  } else {
-    buffer.drawString(x, hdgErrY, '  0 ');
-  }
-}

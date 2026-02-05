@@ -67,7 +67,8 @@ export const OsdCanvas = React.memo(function OsdCanvas({ className = '' }: OsdCa
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear with background color
+    // Fully clear canvas first (required when background is semi-transparent)
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
@@ -94,13 +95,14 @@ export const OsdCanvas = React.memo(function OsdCanvas({ className = '' }: OsdCa
       }
     }
 
-    // Draw characters
+    // Draw characters (skip empty/blank cells to prevent ghost pixels)
     if (charCanvases.size > 0) {
       for (let y = 0; y < screenBuffer.height; y++) {
         for (let x = 0; x < screenBuffer.width; x++) {
           const charIndex = screenBuffer.getChar(x, y);
-          const charCanvas = charCanvases.get(charIndex);
+          if (charIndex === 0x20 || charIndex === 0) continue;
 
+          const charCanvas = charCanvases.get(charIndex);
           if (charCanvas) {
             ctx.drawImage(
               charCanvas,

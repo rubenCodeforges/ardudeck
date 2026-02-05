@@ -320,14 +320,15 @@ function App() {
 
   // MSP telemetry: only run when on telemetry view
   // Parameters view handles its own telemetry via MspConfigView (sensors tab only)
+  // OSD view manages its own telemetry start/stop based on demo/live mode
   useEffect(() => {
     if (connectionState.isConnected && connectionState.protocol === 'msp') {
       if (currentView === 'telemetry') {
         // Start telemetry when viewing telemetry dashboard
         window.electronAPI.mspStartTelemetry(10);
         console.log('[App] MSP telemetry started (telemetry view active)');
-      } else {
-        // Stop telemetry when on other views
+      } else if (currentView !== 'osd') {
+        // Stop telemetry when on other views (OSD manages its own)
         // Note: Parameters/Sensors tab handles its own telemetry in MspConfigView
         window.electronAPI.mspStopTelemetry();
         console.log('[App] MSP telemetry stopped (switched to', currentView, 'view)');

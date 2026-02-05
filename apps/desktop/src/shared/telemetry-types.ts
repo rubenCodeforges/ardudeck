@@ -34,6 +34,9 @@ export interface BatteryData {
   voltage: number;   // volts
   current: number;   // amps
   remaining: number; // percent 0-100
+  cellCount?: number;    // number of cells detected
+  cellVoltage?: number;  // average voltage per cell
+  mahDrawn?: number;     // milliamp-hours consumed
 }
 
 export interface VfrHudData {

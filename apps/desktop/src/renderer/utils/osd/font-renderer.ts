@@ -138,10 +138,16 @@ export class OsdScreenBuffer {
     return this.buffer[y * this.width + x];
   }
 
-  /** Draw a string starting at position (ASCII only for now) */
+  /** Draw a string starting at position.
+   *  Auto-converts to uppercase because MCM fonts don't have lowercase —
+   *  positions 0x61-0x7A contain OSD symbols, not letters. */
   drawString(x: number, y: number, str: string): void {
     for (let i = 0; i < str.length; i++) {
-      const charCode = str.charCodeAt(i);
+      let charCode = str.charCodeAt(i);
+      // Convert lowercase a-z to uppercase A-Z (MCM fonts have no lowercase)
+      if (charCode >= 0x61 && charCode <= 0x7a) {
+        charCode -= 0x20;
+      }
       this.setChar(x + i, y, charCode);
     }
   }

@@ -182,11 +182,17 @@ let setRawRcCounter = 0;
 // Dedicated RC poll state (separate from main telemetry poll)
 let rcPollInterval: ReturnType<typeof setInterval> | null = null;
 let lastKnownThrottlePercent = 0;  // Persists across poll failures
-let lastSentThrottlePercent = 0;   // Tracks what WE sent via SET_RAW_RC
+let lastSentThrottlePercent: number | null = null;   // Tracks what WE sent via SET_RAW_RC (null = never sent)
 let rcPollActive = false;          // Skip-if-busy dedup (like BF's request dedup)
 
 // Last arming status to reduce log spam
 let lastArmingFlags: number | null = null;
+
+// Cached box names for flight mode decoding (fetched once at telemetry start)
+let cachedBoxNames: string[] = [];
+
+// Generation counter to cancel deferred telemetry start if stop/restart was called
+let telemetryGeneration = 0;
 
 // GPS MSP sender for SITL (sends FlightGear position as MSP GPS data)
 let gpsSenderInterval: ReturnType<typeof setInterval> | null = null;
@@ -633,6 +639,21 @@ export async function tryMspDetection(
 }
 
 /**
+ * Decode the primary active flight mode from flightModeFlags bitmask.
+ * Uses cachedBoxNames (fetched at telemetry start) to map bit positions to names.
+ * Returns the first active non-ARM mode, or 'ACRO' if none active.
+ */
+function decodeActiveFlightMode(flags: number, boxNames: string[]): string {
+  for (let i = 0; i < boxNames.length && i < 32; i++) {
+    if ((flags & (1 << i)) !== 0) {
+      const name = boxNames[i];
+      if (name && name !== 'ARM') return name;
+    }
+  }
+  return 'ACRO';
+}
+
+/**
  * Start MSP telemetry polling and convert to standard telemetry format.
  * This sends data via TELEMETRY_UPDATE - same channel as MAVLink.
  */
@@ -645,14 +666,47 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
   sendLog('info', `MSP telemetry started at ${rateHz}Hz`);
 
-  // Fetch RX channel mapping once at start (for correct throttle reading)
-  // Do this async, don't block telemetry start
-  fetchRxMap().catch((err) => {
-    console.warn('[MSP] Failed to fetch RX_MAP, using default AETR:', err);
-  });
+  // Increment generation so any in-flight async fetch from a previous call aborts
+  const gen = ++telemetryGeneration;
+
+  // Fetch RX_MAP and BOXNAMES BEFORE starting the telemetry interval.
+  // These one-shot requests must complete first to avoid mutex contention
+  // with the telemetry poll (which makes 6+ back-to-back MSP requests).
+  (async () => {
+    try {
+      await fetchRxMap();
+    } catch (err) {
+      console.warn('[MSP] Failed to fetch RX_MAP, using default AETR:', err);
+    }
+
+    // Abort if telemetry was stopped or restarted while we were fetching
+    if (gen !== telemetryGeneration) return;
+
+    try {
+      const boxPayload = await sendMspRequest(MSP.BOXNAMES, 1000);
+      cachedBoxNames = deserializeBoxNames(boxPayload);
+      console.log('[MSP] Cached', cachedBoxNames.length, 'box names:', cachedBoxNames.slice(0, 10).join(', '));
+    } catch {
+      cachedBoxNames = [];
+      console.warn('[MSP] Failed to fetch BOXNAMES for mode decoding');
+    }
+
+    // Abort if telemetry was stopped or restarted while we were fetching
+    if (gen !== telemetryGeneration) return;
+
+    // Start telemetry interval only AFTER one-shot fetches complete
+    startTelemetryInterval(intervalMs);
+  })();
 
   // Start dedicated RC poll for throttle display (independent of main telemetry)
   startRcPoll(10);
+}
+
+function startTelemetryInterval(intervalMs: number): void {
+  // Don't start if telemetry was stopped while we were fetching
+  if (telemetryInterval) {
+    clearInterval(telemetryInterval);
+  }
 
   telemetryInterval = setInterval(async () => {
     if (!currentTransport?.isOpen) {
@@ -701,7 +755,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
       const batch: {
         attitude?: { roll: number; pitch: number; yaw: number; rollSpeed: number; pitchSpeed: number; yawSpeed: number };
         vfrHud?: { airspeed: number; groundspeed: number; heading: number; throttle: number; alt: number; climb: number };
-        battery?: { voltage: number; current: number; remaining: number };
+        battery?: { voltage: number; current: number; remaining: number; cellCount?: number; cellVoltage?: number; mahDrawn?: number };
         flight?: { mode: string; modeNum: number; armed: boolean; isFlying: boolean; armingDisabledReasons?: string[]; activeSensors?: number };
         gps?: { fixType: number; satellites: number; hdop: number; lat: number; lon: number; alt: number };
         position?: { lat: number; lon: number; alt: number; relativeAlt: number; vx: number; vy: number; vz: number };
@@ -763,6 +817,9 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
       // Get battery state for cell count and percentage calculation
       let batteryPercentage = -1;
+      let batteryCellCount = 0;
+      let batteryCellVoltage = 0;
+      let batteryMahDrawn = 0;
       try {
         const batteryPayload = await sendMspRequest(MSP.BATTERY_STATE, 300);
         const batteryState = deserializeBatteryState(batteryPayload);
@@ -772,14 +829,17 @@ export function startMspTelemetry(rateHz: number = 10): void {
           batteryVoltage = batteryState.voltage;
         }
 
+        batteryCellCount = batteryState.cellCount;
+        batteryMahDrawn = batteryState.mAhDrawn;
+
         // Calculate percentage based on cell count
         if (batteryState.cellCount > 0 && batteryVoltage > 0) {
-          const voltagePerCell = batteryVoltage / batteryState.cellCount;
+          batteryCellVoltage = batteryVoltage / batteryState.cellCount;
           // 3.3V = 0%, 4.2V = 100% per cell
           const minV = 3.3;
           const maxV = 4.2;
           batteryPercentage = Math.round(Math.max(0, Math.min(100,
-            ((voltagePerCell - minV) / (maxV - minV)) * 100
+            ((batteryCellVoltage - minV) / (maxV - minV)) * 100
           )));
         }
       } catch { /* ignore */ }
@@ -789,6 +849,9 @@ export function startMspTelemetry(rateHz: number = 10): void {
         voltage: batteryVoltage,
         current: batteryCurrent,
         remaining: batteryPercentage,
+        cellCount: batteryCellCount,
+        cellVoltage: batteryCellVoltage,
+        mahDrawn: batteryMahDrawn,
       };
 
       await interCommandDelay();
@@ -822,7 +885,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
         }
 
         batch.flight = {
-          mode: armed ? 'Armed' : 'Disarmed',
+          mode: decodeActiveFlightMode(status.flightModeFlags, cachedBoxNames),
           modeNum: status.flightModeFlags,
           armed: armed,
           isFlying: armed,
@@ -830,7 +893,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
           activeSensors: status.activeSensors,
         };
 
-        // Debug: log sensors every 50 polls
+        // Debug: log sensors and flight mode every 50 polls
         if (telemetryPollCount % 50 === 0) {
           console.log('[MSP] Status - activeSensors:', status.activeSensors?.toString(2).padStart(8, '0'),
             '(ACC:', !!(status.activeSensors & 1),
@@ -839,6 +902,11 @@ export function startMspTelemetry(rateHz: number = 10): void {
             'GPS:', !!(status.activeSensors & 8),
             'SONAR:', !!(status.activeSensors & 16),
             'GYRO:', !!(status.activeSensors & 32), ')');
+          console.log('[MSP] Flight - flags:', status.flightModeFlags,
+            'binary:', status.flightModeFlags?.toString(2).padStart(16, '0'),
+            'mode:', batch.flight?.mode,
+            'armed:', batch.flight?.armed,
+            'boxNames:', cachedBoxNames.length, cachedBoxNames.length > 0 ? cachedBoxNames.slice(0, 8).join(',') : '(empty)');
         }
       } catch (err) {
         if (telemetryPollCount % 50 === 0) {
@@ -849,7 +917,9 @@ export function startMspTelemetry(rateHz: number = 10): void {
       // Throttle: use value from dedicated RC poll (or sent RC as immediate feedback)
       // lastSentThrottlePercent provides instant feedback when WE send SET_RAW_RC (OSD test mode)
       // lastKnownThrottlePercent provides FC-read value from dedicated RC poll (real TX)
-      const throttlePercent = lastSentThrottlePercent || lastKnownThrottlePercent;
+      const throttlePercent = lastSentThrottlePercent !== null
+        ? lastSentThrottlePercent
+        : lastKnownThrottlePercent;
 
       await interCommandDelay();
 
@@ -918,6 +988,9 @@ export function startMspTelemetry(rateHz: number = 10): void {
  * Call cleanupMspConnection() on actual disconnect to clear everything.
  */
 export function stopMspTelemetry(): void {
+  // Increment generation to cancel any in-flight deferred start
+  telemetryGeneration++;
+
   if (telemetryInterval) {
     clearInterval(telemetryInterval);
     telemetryInterval = null;
@@ -1074,7 +1147,10 @@ export function cleanupMspConnection(): void {
   // Stop dedicated RC poll and reset throttle state
   stopRcPoll();
   lastKnownThrottlePercent = 0;
-  lastSentThrottlePercent = 0;
+  lastSentThrottlePercent = null;
+
+  // Reset cached box names
+  cachedBoxNames = [];
 
   // Reset mutex, config lock, and RC poll state
   requestMutex = Promise.resolve();
@@ -1608,7 +1684,7 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
       const activeModes = modes.filter(m => m.rangeEnd > m.rangeStart);
       // Clear from unsupported if it worked
       unsupportedCommands.delete(MSP.MODE_RANGES);
-      return modes;
+      return activeModes;
     } catch (error) {
       // Silently return null if CLI mode is active (expected behavior)
       if (!isCliModeBlockedError(error)) {
@@ -2456,7 +2532,7 @@ async function setRawRc(channels: number[]): Promise<boolean> {
 
     if (shouldLog) {
       console.log('[MSP] setRawRc #' + setRawRcCounter,
-        'ch:', validatedChannels.slice(0, 4).join(','));
+        'ch:', validatedChannels.slice(0, 8).join(','));
     }
     return true;
   } catch (error) {
