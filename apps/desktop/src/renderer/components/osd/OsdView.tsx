@@ -1,10 +1,29 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useOsdStore, BUNDLED_FONT_NAMES, type OsdElementId, type DemoTelemetry, type OsdMode } from '../../stores/osd-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { OsdPreview } from './OsdCanvas';
 import { OsdConfigurator } from './OsdConfigurator';
 import { DraggableSlider } from '../ui/DraggableSlider';
+
+/** RC channel values state */
+interface RcChannelValues {
+  roll: number;      // Channel 1: 1000-2000
+  pitch: number;     // Channel 2: 1000-2000
+  throttle: number;  // Channel 3: 1000-2000
+  yaw: number;       // Channel 4: 1000-2000
+  aux1: number;      // Channel 5
+  aux2: number;      // Channel 6
+}
+
+const DEFAULT_RC_VALUES: RcChannelValues = {
+  roll: 1500,
+  pitch: 1500,
+  throttle: 1000,
+  yaw: 1500,
+  aux1: 1000,
+  aux2: 1000,
+};
 
 /**
  * OSD Simulator View - Main tab component
@@ -51,6 +70,70 @@ export function OsdView() {
 
   // Get connection info
   const connectionState = useConnectionStore((s) => s.connectionState);
+
+  // RC Control state
+  const [rcValues, setRcValues] = useState<RcChannelValues>(DEFAULT_RC_VALUES);
+  const [rcEnabled, setRcEnabled] = useState(false);
+  const rcSendInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Send RC values to FC
+  const sendRcValues = useCallback(async (values: RcChannelValues) => {
+    if (!connectionState.isConnected || !rcEnabled) return;
+
+    try {
+      // Build 8-channel array (standard minimum for most FCs)
+      const channels = [
+        values.roll,
+        values.pitch,
+        values.throttle,
+        values.yaw,
+        values.aux1,
+        values.aux2,
+        1000, // AUX3
+        1000, // AUX4
+      ];
+      await window.electronAPI?.mspSetRawRc?.(channels);
+    } catch (err) {
+      console.error('[RC Control] Failed to send RC:', err);
+    }
+  }, [connectionState.isConnected, rcEnabled]);
+
+  // Update RC value and send immediately
+  const updateRcValue = useCallback((key: keyof RcChannelValues, value: number) => {
+    setRcValues(prev => {
+      const newValues = { ...prev, [key]: value };
+      // Send immediately on change
+      sendRcValues(newValues);
+      return newValues;
+    });
+  }, [sendRcValues]);
+
+  // Start/stop continuous RC sending
+  useEffect(() => {
+    if (rcEnabled && connectionState.isConnected) {
+      // Send RC values at 20Hz (50ms) - matches Betaflight Configurator's rate
+      rcSendInterval.current = setInterval(() => {
+        sendRcValues(rcValues);
+      }, 50);
+
+      return () => {
+        if (rcSendInterval.current) {
+          clearInterval(rcSendInterval.current);
+          rcSendInterval.current = null;
+        }
+      };
+    } else {
+      if (rcSendInterval.current) {
+        clearInterval(rcSendInterval.current);
+        rcSendInterval.current = null;
+      }
+    }
+  }, [rcEnabled, connectionState.isConnected, rcValues, sendRcValues]);
+
+  // Reset RC to center/idle
+  const resetRcValues = useCallback(() => {
+    setRcValues(DEFAULT_RC_VALUES);
+  }, []);
 
   // Subscribe to telemetry changes (same store for both MAVLink and MSP)
   const attitude = useTelemetryStore((s) => s.attitude);
@@ -377,12 +460,12 @@ export function OsdView() {
             </div>
           )}
 
-          {/* Live mode info */}
+          {/* Live mode info and RC Control */}
           {mode === 'live' && (
-            <div className="flex-1 p-3">
+            <div className="flex-1 p-3 overflow-y-auto">
               <h3 className="text-sm font-medium text-white mb-3">Live Telemetry</h3>
               {connectionState.isConnected ? (
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2 text-xs mb-4">
                   <p className="text-green-400">
                     Connected to {connectionState.fcVariant || connectionState.autopilot || 'FC'}
                     {connectionState.fcVersion && ` ${connectionState.fcVersion}`}
@@ -390,9 +473,106 @@ export function OsdView() {
                   <p className="text-gray-400">Receiving live OSD data</p>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 mb-4">
                   Connect to a flight controller to see live OSD data.
                 </p>
+              )}
+
+              {/* RC Control Section */}
+              {connectionState.isConnected && (
+                <div className="border-t border-gray-700 pt-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-white">RC Control</h3>
+                    <button
+                      onClick={resetRcValues}
+                      className="text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  {/* Info note */}
+                  <p className="mb-3 text-[10px] text-gray-500">
+                    Sends MSP_SET_RAW_RC at 20Hz. For iNav, set receiver_type to MSP in{' '}
+                    <span className="text-blue-400">Parameters → Safety</span> tab.
+                  </p>
+
+                  {/* RC Enable Toggle */}
+                  <label className="flex items-center gap-2 mb-3 text-xs text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={rcEnabled}
+                      onChange={(e) => setRcEnabled(e.target.checked)}
+                      className="rounded-sm bg-gray-700 border-gray-600"
+                    />
+                    <span>Send RC Values</span>
+                    {rcEnabled && <span className="text-green-400 text-[10px]">(20Hz)</span>}
+                  </label>
+
+                  {/* RC Sliders */}
+                  <div className="space-y-2">
+                    <RcSlider
+                      label="Roll"
+                      value={rcValues.roll}
+                      onChange={(v) => updateRcValue('roll', v)}
+                      centerValue={1500}
+                    />
+                    <RcSlider
+                      label="Pitch"
+                      value={rcValues.pitch}
+                      onChange={(v) => updateRcValue('pitch', v)}
+                      centerValue={1500}
+                    />
+                    <RcSlider
+                      label="Throttle"
+                      value={rcValues.throttle}
+                      onChange={(v) => updateRcValue('throttle', v)}
+                      centerValue={1000}
+                      isThrottle
+                    />
+                    <RcSlider
+                      label="Yaw"
+                      value={rcValues.yaw}
+                      onChange={(v) => updateRcValue('yaw', v)}
+                      centerValue={1500}
+                    />
+
+                    {/* AUX Channels */}
+                    <div className="border-t border-gray-700 pt-2 mt-2">
+                      <p className="text-[10px] text-gray-500 mb-2">AUX Channels</p>
+                      <RcSlider
+                        label="AUX1"
+                        value={rcValues.aux1}
+                        onChange={(v) => updateRcValue('aux1', v)}
+                        centerValue={1500}
+                        isAux
+                      />
+                      <RcSlider
+                        label="AUX2"
+                        value={rcValues.aux2}
+                        onChange={(v) => updateRcValue('aux2', v)}
+                        centerValue={1500}
+                        isAux
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick presets */}
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => updateRcValue('aux1', 2000)}
+                      className="flex-1 px-2 py-1 text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+                    >
+                      AUX1 High
+                    </button>
+                    <button
+                      onClick={() => updateRcValue('aux1', 1000)}
+                      className="flex-1 px-2 py-1 text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+                    >
+                      AUX1 Low
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -449,4 +629,84 @@ function formatElementName(id: OsdElementId): string {
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * RC Channel Slider with visual feedback
+ */
+function RcSlider({
+  label,
+  value,
+  onChange,
+  centerValue = 1500,
+  isThrottle = false,
+  isAux = false,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  centerValue?: number;
+  isThrottle?: boolean;
+  isAux?: boolean;
+}) {
+  const min = 1000;
+  const max = 2000;
+  const range = max - min;
+  const percentage = ((value - min) / range) * 100;
+
+  // Color based on position
+  const getBarColor = () => {
+    if (isThrottle) {
+      // Throttle: green gradient based on value
+      const intensity = percentage / 100;
+      return `rgba(34, 197, 94, ${0.3 + intensity * 0.7})`;
+    }
+    if (isAux) {
+      // AUX: blue when high, gray when low
+      return value > 1500 ? 'rgba(59, 130, 246, 0.6)' : 'rgba(107, 114, 128, 0.4)';
+    }
+    // Stick channels: show deviation from center
+    const deviation = Math.abs(value - centerValue);
+    if (deviation < 50) return 'rgba(107, 114, 128, 0.4)';
+    return value > centerValue ? 'rgba(59, 130, 246, 0.6)' : 'rgba(249, 115, 22, 0.6)';
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] text-gray-400 w-12 shrink-0">{label}</span>
+      <div className="flex-1 relative">
+        <div className="h-4 bg-gray-800 rounded overflow-hidden relative">
+          {/* Center line for stick channels */}
+          {!isThrottle && (
+            <div
+              className="absolute top-0 bottom-0 w-px bg-gray-600"
+              style={{ left: '50%' }}
+            />
+          )}
+          {/* Value bar */}
+          <div
+            className="absolute top-0 bottom-0 transition-all duration-75"
+            style={{
+              left: isThrottle ? 0 : '50%',
+              width: isThrottle
+                ? `${percentage}%`
+                : `${Math.abs(percentage - 50)}%`,
+              transform: !isThrottle && value < centerValue ? 'translateX(-100%)' : undefined,
+              backgroundColor: getBarColor(),
+            }}
+          />
+          {/* Slider input */}
+          <input
+            type="range"
+            min={min}
+            max={max}
+            value={value}
+            onChange={(e) => onChange(parseInt(e.target.value))}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </div>
+      </div>
+      <span className="text-[10px] text-gray-400 w-10 text-right font-mono">{value}</span>
+    </div>
+  );
 }

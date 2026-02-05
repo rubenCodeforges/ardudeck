@@ -722,6 +722,16 @@ const api = {
   mspSetVtxConfig: (config: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_VTX_CONFIG, config),
 
+  // MSP OSD Configuration
+  mspGetOsdConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_OSD_CONFIG),
+
+  // MSP RX Configuration
+  mspGetRxConfig: (): Promise<{ serialrxProvider: number; serialrxProviderName: string } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RX_CONFIG),
+  mspSetRxConfig: (newProvider: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RX_CONFIG, newProvider),
+
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   mspGetSetting: (name: string): Promise<{ value: string | number; info: unknown } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SETTING, name),

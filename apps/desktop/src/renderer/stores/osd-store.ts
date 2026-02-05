@@ -168,6 +168,7 @@ interface OsdStore {
   setElementPosition: (id: OsdElementId, position: Partial<OsdElementPosition>) => void;
   toggleElement: (id: OsdElementId) => void;
   resetElementPositions: () => void;
+  loadPositionsFromFc: () => Promise<boolean>;
   updateScreenBuffer: () => void;
 }
 
@@ -296,6 +297,87 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
   resetElementPositions: () => {
     set({ elementPositions: { ...DEFAULT_ELEMENT_POSITIONS } });
     get().updateScreenBuffer();
+  },
+
+  loadPositionsFromFc: async () => {
+    try {
+      // Fetch OSD config from flight controller
+      const config = await window.api.mspGetOsdConfig() as {
+        flags: number;
+        videoSystem: number;
+        unitMode: number;
+        elements: { index: number; x: number; y: number; visible: boolean }[];
+        elementCount: number;
+      } | null;
+
+      if (!config || config.elements.length === 0) {
+        console.log('[OSD] No OSD config returned from FC');
+        return false;
+      }
+
+      console.log('[OSD] Loaded', config.elements.length, 'element positions from FC');
+
+      // Map Betaflight element indices to our element IDs
+      // Based on Betaflight's DISPLAY_FIELDS array order
+      const BF_INDEX_MAP: Record<number, OsdElementId> = {
+        0: 'rssi',                  // RSSI_VALUE
+        1: 'battery_voltage',       // MAIN_BATT_VOLTAGE
+        2: 'crosshairs',           // CROSSHAIRS
+        3: 'artificial_horizon',   // ARTIFICIAL_HORIZON
+        // 4: HORIZON_SIDEBARS (not supported)
+        // 5: TIMER_1 (maps to flight_time)
+        // 6: TIMER_2
+        // 7: FLYMODE
+        // 8: CRAFT_NAME
+        9: 'throttle',             // THROTTLE_POSITION
+        // 10: VTX_CHANNEL
+        // 11: CURRENT_DRAW
+        // 12: MAH_DRAWN
+        13: 'speed',               // GPS_SPEED
+        14: 'gps_sats',            // GPS_SATS
+        15: 'altitude',            // ALTITUDE
+        // 16-20: PID displays
+        // 21: WARNINGS
+        // 22: AVG_CELL_VOLTAGE
+        // 23: GPS_LON
+        // 24: GPS_LAT
+        26: 'pitch',               // PITCH_ANGLE
+        27: 'roll',                // ROLL_ANGLE
+        // 28: MAIN_BATT_USAGE
+        // 29: DISARMED
+        // 30: HOME_DIR
+        31: 'distance',            // HOME_DIST
+        32: 'heading',             // NUMERICAL_HEADING
+      };
+
+      // Apply positions from FC to our element positions
+      const newPositions = { ...get().elementPositions };
+      let updatedCount = 0;
+
+      for (const element of config.elements) {
+        const ourId = BF_INDEX_MAP[element.index];
+        if (ourId && newPositions[ourId]) {
+          newPositions[ourId] = {
+            x: element.x,
+            y: element.y,
+            enabled: element.visible,
+          };
+          updatedCount++;
+          console.log(`[OSD] Element ${ourId}: (${element.x}, ${element.y}) ${element.visible ? 'visible' : 'hidden'}`);
+        }
+      }
+
+      if (updatedCount > 0) {
+        set({ elementPositions: newPositions });
+        get().updateScreenBuffer();
+        console.log('[OSD] Updated', updatedCount, 'element positions from FC');
+      }
+
+      return updatedCount > 0;
+    } catch (err) {
+      console.error('[OSD] Failed to load positions from FC:', err);
+      return false;
+    }
   },
 
   updateScreenBuffer: () => {
@@ -504,15 +586,16 @@ function renderArtificialHorizon(
   const HORIZON_WIDTH = 9; // 9 columns wide
   const CENTER_COL = 4; // Center column index
   const CHAR_HEIGHT_PX = 18;
-  const PIXELS_PER_VARIANT = 2; // Each bar variant = 2px vertical shift
   // Roll sensitivity: higher = less sensitive. At 3.0, need ~15° for 1 row offset at edge
   const ROLL_SENSITIVITY = 3.0;
+  // Number of variant positions within a character cell (9 variants = 0-8)
+  const NUM_VARIANTS = 9;
 
   // Clamp roll to reasonable display range (beyond ±60° looks wrong)
   const clampedRoll = Math.max(-60, Math.min(60, roll));
   const rollRadians = clampedRoll * (Math.PI / 180);
 
-  // Pitch offset in rows
+  // Pitch offset in rows (positive pitch = nose up = horizon moves down = negative row offset)
   const pitchRowOffset = Math.round(pitch / 10);
 
   for (let i = 0; i < HORIZON_WIDTH; i++) {
@@ -525,16 +608,25 @@ function renderArtificialHorizon(
     // Divided by ROLL_SENSITIVITY to reduce visual effect at small angles
     const rollPixelOffset = (-columnOffset * Math.tan(rollRadians) * CHAR_HEIGHT_PX) / ROLL_SENSITIVITY;
 
-    // Split into row offset and sub-cell offset
-    const rollRowOffset = Math.floor(rollPixelOffset / CHAR_HEIGHT_PX);
-    const subCellPixels = rollPixelOffset - rollRowOffset * CHAR_HEIGHT_PX;
+    // Calculate which row this column's horizon line falls on
+    // Use Math.round instead of Math.floor to get nearest row, reducing discontinuities
+    const rollRowOffset = Math.round(rollPixelOffset / CHAR_HEIGHT_PX);
+
+    // Calculate position within the character cell (0 = top, 1 = bottom)
+    // This gives us a value from 0 to 1 representing where in the cell the line is
+    const normalizedOffset = (rollPixelOffset / CHAR_HEIGHT_PX) - rollRowOffset + 0.5;
 
     // Final row for this column
     const finalRow = y - pitchRowOffset - rollRowOffset;
 
-    // Select bar variant (0-8) based on sub-cell offset
-    // subCellPixels ranges from -9 to +9, map to char index 0-8
-    const variantIndex = Math.max(0, Math.min(8, 4 - Math.round(subCellPixels / PIXELS_PER_VARIANT)));
+    // Select bar variant based on normalized position within cell
+    // normalizedOffset is roughly 0-1, map to variant 0-8
+    // Variant 0 = bar at bottom, Variant 8 = bar at top
+    // So we invert: when normalizedOffset is high (top of cell), use low variant (bar at bottom)
+    // This ensures visual continuity: as line moves up, bar appears higher in cell
+    const variantIndex = Math.max(0, Math.min(NUM_VARIANTS - 1,
+      Math.round((1 - normalizedOffset) * (NUM_VARIANTS - 1))
+    ));
     const horizonChar = SYM.AH_BAR9_0 + variantIndex;
 
     // Only draw if within screen bounds

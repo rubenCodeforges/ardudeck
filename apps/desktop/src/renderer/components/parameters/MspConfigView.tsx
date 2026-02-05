@@ -19,7 +19,7 @@ import ServoTuningTab from './ServoTuningTab';
 import ServoMixerTab from './ServoMixerTab';
 import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
-import SafetyTab from './SafetyTab';
+import SafetyTab, { type SafetyTabHandle } from './SafetyTab';
 import AutoLaunchTab from './AutoLaunchTab';
 // GpsRescueTab removed - GPS Rescue is now integrated into SafetyTab
 import FilterConfigTab from './FilterConfigTab';
@@ -1494,6 +1494,8 @@ export function MspConfigView() {
   const [features, setFeatures] = useState<number>(0);
   const [featureSaving, setFeatureSaving] = useState(false); // Saving feature toggle
   const [pidRatesModified, setPidRatesModified] = useState(false);
+  const [safetyModified, setSafetyModified] = useState(false);
+  const safetyRef = useRef<SafetyTabHandle>(null);
   const [currentPlatformType, setCurrentPlatformType] = useState<number>(0); // 0=multirotor, 1=airplane
   const [configActiveSensors, setConfigActiveSensors] = useState<number>(0); // Fetched once on config load
 
@@ -1504,8 +1506,8 @@ export function MspConfigView() {
   const FEATURE_LED_STRIP = 16;
   const FEATURE_OSD = 18;
 
-  // Combined modified state: PIDs/rates OR modes have changes
-  const modified = pidRatesModified || modesHaveChanges();
+  // Combined modified state: PIDs/rates OR modes OR safety have changes
+  const modified = pidRatesModified || modesHaveChanges() || safetyModified;
 
   // Sensors - use activeSensors from config load or telemetry
   // Betaflight sensor flags (from sensor_helpers.js):
@@ -1665,6 +1667,8 @@ export function MspConfigView() {
       const success = await window.electronAPI?.mspSetFeatures(newFeatures);
       if (success) {
         setFeatures(newFeatures);
+        // Delay before EEPROM save (Betaflight needs 100ms to process settings)
+        await new Promise(r => setTimeout(r, 100));
         // Save to EEPROM
         await window.electronAPI?.mspSaveEeprom();
         console.log(`[UI] Feature bit ${bit} ${enabled ? 'enabled' : 'disabled'} and saved`);
@@ -1822,12 +1826,12 @@ export function MspConfigView() {
     }
   }, [quickSetupOpen, quickSetupSuccess, loadConfig]);
 
-  // Single save function that saves everything (PIDs + Rates + Modes + EEPROM)
+  // Single save function that saves everything (PIDs + Rates + Modes + Safety + EEPROM)
   const saveAll = async () => {
     if (!modified) return;
     setSaving(true);
     setError(null);
-    console.log('[UI] saveAll: saving PIDs, Rates, Modes, and EEPROM');
+    console.log('[UI] saveAll: saving PIDs, Rates, Modes, Safety, and EEPROM');
 
     try {
       // Save PIDs if available and modified
@@ -1860,8 +1864,18 @@ export function MspConfigView() {
         }
       }
 
-      // Save to EEPROM (only if we saved PIDs/Rates - modes saveToFC handles its own EEPROM)
-      if (pidRatesModified) {
+      // Save Safety settings if modified
+      if (safetyModified && safetyRef.current) {
+        console.log('[UI] Saving Safety...');
+        const safetySuccess = await safetyRef.current.save();
+        if (!safetySuccess) {
+          setError('Failed to save Safety settings');
+          return;
+        }
+      }
+
+      // Save to EEPROM once (modes saveToFC handles its own EEPROM)
+      if (pidRatesModified || safetyModified) {
         console.log('[UI] Saving to EEPROM...');
         const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
         if (!eepromSuccess) {
@@ -1871,6 +1885,7 @@ export function MspConfigView() {
       }
 
       setPidRatesModified(false);
+      setSafetyModified(false);
       console.log('[UI] All settings saved successfully');
     } catch (err) {
       console.error('[UI] Save error:', err);
@@ -2527,7 +2542,7 @@ export function MspConfigView() {
 
         {/* Safety Tab (Receiver/Failsafe) */}
         {activeTab === 'safety' && (
-          <SafetyTab isInav={isInav} />
+          <SafetyTab ref={safetyRef} isInav={isInav} setModified={setSafetyModified} />
         )}
       </div>
 

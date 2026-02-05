@@ -27,6 +27,7 @@ import {
   deserializeAltitude,
   deserializeAnalog,
   deserializeRc,
+  deserializeRxMap,
   deserializeMotor,
   deserializeRawGps,
   deserializeBatteryState,
@@ -107,6 +108,16 @@ import {
   deserializeVtxConfig,
   serializeVtxConfig,
   type MSPVtxConfig,
+  // OSD Config
+  deserializeOsdConfig,
+  BF_OSD_ELEMENT_INDEX,
+  type OsdConfigData,
+  // RX Config
+  deserializeRxConfig,
+  serializeRxConfig,
+  SERIALRX_PROVIDER,
+  SERIALRX_PROVIDER_NAMES,
+  type MSPRxConfig,
   type MSPPid,
   type MSPRcTuning,
   type MSPModeRange,
@@ -133,6 +144,20 @@ import { initCliHandlers, setCliTransport, setCliModeChangeCallback, cleanupCli,
 export { exitCliModeIfActive };
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Check if an error is due to CLI mode being active.
+ * This is expected behavior (not an error) - MSP requests are blocked while CLI is active.
+ * Used to suppress error logging for expected conditions.
+ */
+function isCliModeBlockedError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes('CLI mode active');
+}
+
+// =============================================================================
 // State (managed by main ipc-handlers, not here)
 // =============================================================================
 
@@ -153,6 +178,12 @@ const TELEMETRY_SKIP_LOG_INTERVAL = 100; // Only log every N skips
 
 // Debug counter for setRawRc logging
 let setRawRcCounter = 0;
+
+// Dedicated RC poll state (separate from main telemetry poll)
+let rcPollInterval: ReturnType<typeof setInterval> | null = null;
+let lastKnownThrottlePercent = 0;  // Persists across poll failures
+let lastSentThrottlePercent = 0;   // Tracks what WE sent via SET_RAW_RC
+let rcPollActive = false;          // Skip-if-busy dedup (like BF's request dedup)
 
 // Last arming status to reduce log spam
 let lastArmingFlags: number | null = null;
@@ -190,6 +221,11 @@ let currentPlatformType = 0;
 // Cache full iNav PID state for read-modify-write pattern
 // iNav requires ALL 11 PID controllers (44 bytes) when writing
 let cachedInavPid: MSPInavPid | null = null;
+
+// Cache RX channel mapping for correct throttle reading
+// Index 3 = throttle function, value = channel position
+// Default: AETR order where throttle is at channels[2]
+let cachedRxMap: number[] = [0, 1, 2, 3, 4, 5, 6, 7]; // Default AETR
 
 // Check if iNav version is legacy (< 2.3.0) - different CLI params, no per-axis RC rates
 function isLegacyInav(): boolean {
@@ -285,6 +321,33 @@ export function resetMspCliFlags(): void {
   console.log('[MSP] Resetting all CLI mode flags');
   servoCliModeActive = false;
   tuningCliModeActive = false;
+}
+
+/**
+ * Fetch RX channel mapping from flight controller.
+ * This tells us which channel position corresponds to each stick function.
+ * Cached in cachedRxMap for reference (e.g., Safety tab display).
+ * Note: SET_RAW_RC does NOT need rxMap reordering - the FC applies rxMap internally.
+ */
+async function fetchRxMap(): Promise<void> {
+  if (!currentTransport || !currentTransport.isOpen) {
+    return; // No connection, will use default
+  }
+
+  try {
+    const payload = await sendMspRequest(MSP.RX_MAP, 500);
+    const rxMapData = deserializeRxMap(payload);
+    if (rxMapData.rxMap.length >= 4) {
+      cachedRxMap = rxMapData.rxMap;
+      // rxMap format: [A_pos, E_pos, R_pos, T_pos] - AERT function order
+      // Values indicate which physical channel each function reads from
+      console.log('[MSP] RX_MAP loaded:', cachedRxMap.slice(0, 4).join(','),
+        '(AERT: Roll/Pitch/Yaw/Throttle → physical channel)');
+    }
+  } catch (err) {
+    // Keep default AETR mapping
+    console.warn('[MSP] RX_MAP fetch failed, using default AETR:', err);
+  }
 }
 
 async function sendMspRequest(command: number, timeout: number = 1000): Promise<Uint8Array> {
@@ -582,6 +645,15 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
   sendLog('info', `MSP telemetry started at ${rateHz}Hz`);
 
+  // Fetch RX channel mapping once at start (for correct throttle reading)
+  // Do this async, don't block telemetry start
+  fetchRxMap().catch((err) => {
+    console.warn('[MSP] Failed to fetch RX_MAP, using default AETR:', err);
+  });
+
+  // Start dedicated RC poll for throttle display (independent of main telemetry)
+  startRcPoll(10);
+
   telemetryInterval = setInterval(async () => {
     if (!currentTransport?.isOpen) {
       return;
@@ -774,21 +846,10 @@ export function startMspTelemetry(rateHz: number = 10): void {
         }
       }
 
-      await interCommandDelay();
-
-      // Get RC channels for throttle display
-      let throttlePercent = 0;
-      try {
-        const rcPayload = await sendMspRequest(MSP.RC, 300);
-        const rc = deserializeRc(rcPayload);
-        // Channel 3 is throttle (0-indexed: channels[2])
-        if (rc.channels.length > 2) {
-          // Convert 1000-2000 PWM to 0-100%
-          throttlePercent = Math.round(Math.max(0, Math.min(100,
-            ((rc.channels[2] - 1000) / 1000) * 100
-          )));
-        }
-      } catch { /* ignore */ }
+      // Throttle: use value from dedicated RC poll (or sent RC as immediate feedback)
+      // lastSentThrottlePercent provides instant feedback when WE send SET_RAW_RC (OSD test mode)
+      // lastKnownThrottlePercent provides FC-read value from dedicated RC poll (real TX)
+      const throttlePercent = lastSentThrottlePercent || lastKnownThrottlePercent;
 
       await interCommandDelay();
 
@@ -863,10 +924,65 @@ export function stopMspTelemetry(): void {
     sendLog('info', 'MSP telemetry stopped');
   }
 
+  // Stop dedicated RC poll
+  stopRcPoll();
+
   // Reset telemetry-specific state
   telemetryInProgress = false;
   telemetrySkipCount = 0;
   telemetryLastStartTime = 0;
+}
+
+// =============================================================================
+// Dedicated RC Channel Polling
+// =============================================================================
+
+/**
+ * Start dedicated RC channel polling for throttle display.
+ * Runs as a separate lightweight interval, matching BF Configurator's pattern
+ * of dedicated "receiver_pull" polling independent of main telemetry.
+ * Works with both real TX (reads RC from FC) and MSP receiver (we send RC).
+ */
+function startRcPoll(rateHz: number = 10): void {
+  if (rcPollInterval) {
+    clearInterval(rcPollInterval);
+  }
+
+  const intervalMs = Math.round(1000 / rateHz);
+
+  rcPollInterval = setInterval(async () => {
+    if (!currentTransport?.isOpen) return;
+    if (configLockCount > 0) return;
+    if (servoCliModeActive || tuningCliModeActive || isCliModeActive()) return;
+
+    // Skip if previous RC poll still running (dedup like BF Configurator)
+    if (rcPollActive) return;
+    rcPollActive = true;
+
+    try {
+      const rcPayload = await sendMspRequest(MSP.RC, 200);
+      const rc = deserializeRc(rcPayload);
+      const THROTTLE_CHANNEL = 3;
+      const throttleRaw = rc.channels[THROTTLE_CHANNEL];
+      if (rc.channels.length > THROTTLE_CHANNEL && throttleRaw !== undefined) {
+        lastKnownThrottlePercent = Math.round(Math.max(0, Math.min(100,
+          ((throttleRaw - 1000) / 1000) * 100
+        )));
+      }
+    } catch {
+      // Silent fail - lastKnownThrottlePercent retains previous value
+    } finally {
+      rcPollActive = false;
+    }
+  }, intervalMs);
+}
+
+function stopRcPoll(): void {
+  if (rcPollInterval) {
+    clearInterval(rcPollInterval);
+    rcPollInterval = null;
+  }
+  rcPollActive = false;
 }
 
 // =============================================================================
@@ -955,6 +1071,11 @@ export function cleanupMspConnection(): void {
   pendingResponses.clear();
   unsupportedCommands.clear();
 
+  // Stop dedicated RC poll and reset throttle state
+  stopRcPoll();
+  lastKnownThrottlePercent = 0;
+  lastSentThrottlePercent = 0;
+
   // Reset mutex, config lock, and RC poll state
   requestMutex = Promise.resolve();
   configLockCount = 0;
@@ -978,6 +1099,9 @@ export function cleanupMspConnection(): void {
 
   // Clear cached PID state (used for read-modify-write pattern)
   cachedInavPid = null;
+
+  // Reset RX channel mapping to default AETR
+  cachedRxMap = [0, 1, 2, 3, 4, 5, 6, 7];
 
   // Clear settings cache (generic settings API)
   clearSettingsCache();
@@ -1019,9 +1143,12 @@ async function getPid(): Promise<MSPPid | null> {
       sendLog('info', `PIDs loaded: Roll P=${pid.roll.p} I=${pid.roll.i} D=${pid.roll.d}`);
       return pid;
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.error('[MSP] Get PID failed:', msg);
-      sendLog('error', 'Get PID failed', msg);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] Get PID failed:', msg);
+        sendLog('error', 'Get PID failed', msg);
+      }
       return null;
     }
   });
@@ -1227,9 +1354,12 @@ async function getRcTuning(): Promise<MSPRcTuning | null> {
       sendLog('info', `Rates loaded: roll=${rcTuning.rollRate} pitch=${rcTuning.pitchRate} yaw=${rcTuning.yawRate}`);
       return rcTuning;
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.error('[MSP] Get RC_TUNING failed:', msg);
-      sendLog('error', 'Get rates failed', msg);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] Get RC_TUNING failed:', msg);
+        sendLog('error', 'Get rates failed', msg);
+      }
       return null;
     }
   });
@@ -1480,12 +1610,14 @@ async function getModeRanges(): Promise<MSPModeRange[] | null> {
       unsupportedCommands.delete(MSP.MODE_RANGES);
       return modes;
     } catch (error) {
-      // Log detailed error info
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('[MSP] getModeRanges failed:', errorMsg);
-      // Only log "not available" once per session
-      if (!unsupportedCommands.has(MSP.MODE_RANGES)) {
-        unsupportedCommands.add(MSP.MODE_RANGES);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] getModeRanges failed:', errorMsg);
+        // Only log "not available" once per session
+        if (!unsupportedCommands.has(MSP.MODE_RANGES)) {
+          unsupportedCommands.add(MSP.MODE_RANGES);
+        }
       }
       return null;
     }
@@ -1507,7 +1639,10 @@ async function getBoxNames(): Promise<string[] | null> {
       const names = deserializeBoxNames(payload);
       return names;
     } catch (error) {
-      console.error('[MSP] getBoxNames failed:', error);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        console.error('[MSP] getBoxNames failed:', error);
+      }
       return null;
     }
   });
@@ -1528,7 +1663,10 @@ async function getBoxIds(): Promise<number[] | null> {
       const ids = deserializeBoxIds(payload);
       return ids;
     } catch (error) {
-      console.error('[MSP] getBoxIds failed:', error);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        console.error('[MSP] getBoxIds failed:', error);
+      }
       return null;
     }
   });
@@ -1633,8 +1771,10 @@ async function getFeatures(): Promise<number | null> {
       console.log('[MSP] getFeatures:', config.features, 'binary:', config.features.toString(2).padStart(32, '0'));
       return config.features;
     } catch (error) {
-      // Always log the error for features since it's critical for toggle functionality
-      console.error('[MSP] getFeatures failed:', error);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        console.error('[MSP] getFeatures failed:', error);
+      }
       return null;
     }
   });
@@ -1662,7 +1802,16 @@ async function setFeatures(features: number): Promise<boolean> {
     try {
       const payload = serializeFeatureConfig({ features });
       await sendMspRequestWithPayload(MSP.SET_FEATURE_CONFIG, payload, 1000);
-      console.log('[MSP] setFeatures:', features.toString(2).padStart(32, '0'));
+
+      // Verify write by reading back
+      await new Promise(r => setTimeout(r, 50));
+      const verifyPayload = await sendMspRequest(MSP.FEATURE_CONFIG, 1000);
+      const verified = deserializeFeatureConfig(verifyPayload);
+
+      if (verified.features !== features) {
+        console.error('[MSP] setFeatures failed: wrote', features, 'but read back', verified.features);
+        return false;
+      }
       return true;
     } catch (error) {
       console.error('[MSP] setFeatures failed:', error);
@@ -1704,7 +1853,10 @@ async function getStatus(): Promise<{ activeSensors: number; armingFlags: number
         };
       }
     } catch (error) {
-      console.error('[MSP] getStatus failed:', error);
+      // Silently return null if CLI mode is active (expected behavior)
+      if (!isCliModeBlockedError(error)) {
+        console.error('[MSP] getStatus failed:', error);
+      }
       return null;
     }
   });
@@ -1748,7 +1900,10 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
           numberOfServos: 0,
         };
       } catch (err) {
-        console.error('[MSP] Betaflight mixer config failed:', err);
+        // Silently return null if CLI mode is active (expected behavior)
+        if (!isCliModeBlockedError(err)) {
+          console.error('[MSP] Betaflight mixer config failed:', err);
+        }
         return null;
       }
     }
@@ -1767,6 +1922,11 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
 
       return config;
     } catch (msp2Error) {
+      // Silently return null if CLI mode is active (expected behavior)
+      if (isCliModeBlockedError(msp2Error)) {
+        return null;
+      }
+
       // MSP2 failed - try legacy MSP_MIXER_CONFIG for old iNav
       const msg = msp2Error instanceof Error ? msp2Error.message : String(msp2Error);
       if (!msg.includes('not supported')) {
@@ -1801,7 +1961,10 @@ async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
           numberOfServos: 0,
         } as MSPInavMixerConfig;
       } catch (legacyError) {
-        console.error('[MSP] Legacy mixer config also failed:', legacyError);
+        // Silently return null if CLI mode is active (expected behavior)
+        if (!isCliModeBlockedError(legacyError)) {
+          console.error('[MSP] Legacy mixer config also failed:', legacyError);
+        }
         return null;
       }
     }
@@ -2215,7 +2378,8 @@ async function getRc(): Promise<{ channels: number[] } | null> {
  * @returns true if command sent successfully
  *
  * WARNING: This overrides real RC input! Use with caution.
- * - Always keep throttle (channel 3) at minimum (1000) when arming
+ * - Channels: [Roll=0, Pitch=1, Throttle=2, Yaw=3, AUX1=4, ...]
+ * - Always keep throttle (channel 2) at minimum (1000) when arming
  * - RC values must be sent continuously (every 100ms) or FC will revert to last RC input
  */
 async function setRawRc(channels: number[]): Promise<boolean> {
@@ -2234,6 +2398,7 @@ async function setRawRc(channels: number[]): Promise<boolean> {
   // Block if CLI mode active (either servo CLI, tuning CLI, or main CLI)
   if (servoCliModeActive || tuningCliModeActive || isCliModeActive()) {
     if (shouldLog) {
+      console.warn('[MSP] setRawRc: CLI mode active, skipping');
     }
     return false;
   }
@@ -2254,6 +2419,20 @@ async function setRawRc(channels: number[]): Promise<boolean> {
       return clamped;
     });
 
+    // Track sent throttle for immediate OSD feedback
+    // Index 2 = throttle in SET_RAW_RC AETR order
+    const sentThrottle = validatedChannels[2] ?? 1000;
+    lastSentThrottlePercent = Math.round(Math.max(0, Math.min(100,
+      ((sentThrottle - 1000) / 1000) * 100
+    )));
+
+    // NO rxMap reordering needed for SET_RAW_RC.
+    // Betaflight/iNav receive MSP_SET_RAW_RC channels directly into rcData[]
+    // without applying rxMap. rxMap only applies to physical RX protocols.
+    // Input order matches what the FC expects:
+    //   [Roll=0, Pitch=1, Throttle=2, Yaw=3, AUX1=4, ...]
+    // This matches Betaflight Configurator's behavior (receiver_msp.js).
+
     // Build payload: each channel is 2 bytes (uint16 little-endian)
     const payload = new Uint8Array(validatedChannels.length * 2);
     const view = new DataView(payload.buffer);
@@ -2261,17 +2440,29 @@ async function setRawRc(channels: number[]): Promise<boolean> {
       view.setUint16(i * 2, ch, true); // true = little-endian
     });
 
-    // Build and send packet - TRUE fire-and-forget (no await!)
-    // SET_RAW_RC doesn't need a response, and awaiting causes 5+ second delays
-    const packet = buildMspV1RequestWithPayload(MSP.SET_RAW_RC, payload);
-    currentTransport.write(packet).catch(() => {}); // Fire and forget
+    // Acquire mutex to serialize with telemetry traffic.
+    // Without this, fire-and-forget writes interleave with request-response
+    // pairs on the serial port, causing the FC to miss packets.
+    const release = await acquireMutex();
+    try {
+      if (!currentTransport?.isOpen) return false;
+      const packet = buildMspV1RequestWithPayload(MSP.SET_RAW_RC, payload);
+      await currentTransport.write(packet);
+    } finally {
+      // Release immediately - we don't need to wait for the FC's ack response.
+      // The ack will arrive and be silently discarded by handleMspResponse.
+      release();
+    }
 
-    // Debug: log every 50th call to confirm RC is being sent
     if (shouldLog) {
+      console.log('[MSP] setRawRc #' + setRawRcCounter,
+        'ch:', validatedChannels.slice(0, 4).join(','));
     }
     return true;
   } catch (error) {
-    console.error('[MSP] setRawRc failed:', error);
+    if (shouldLog) {
+      console.error('[MSP] setRawRc failed:', error);
+    }
     return false;
   }
 }
@@ -3689,6 +3880,106 @@ async function setVtxConfig(config: Partial<MSPVtxConfig>): Promise<boolean> {
 }
 
 // =============================================================================
+// OSD Configuration (MSP_OSD_CONFIG)
+// =============================================================================
+
+/**
+ * Get OSD configuration including element positions via MSP_OSD_CONFIG (84)
+ *
+ * Returns element positions from the flight controller that can be used
+ * to position OSD elements to match what's configured in Betaflight.
+ */
+async function getOsdConfig(): Promise<OsdConfigData | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const response = await sendMspRequest(MSP.OSD_CONFIG, 2000);
+      const config = deserializeOsdConfig(response);
+      console.log('[MSP] OSD_CONFIG:', {
+        flags: config.flags,
+        videoSystem: config.videoSystem,
+        elementCount: config.elements.length,
+      });
+      return config;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (!msg.includes('not supported')) {
+        console.error('[MSP] OSD_CONFIG failed:', msg);
+      }
+      return null;
+    }
+  });
+}
+
+// =============================================================================
+// RX Config
+// =============================================================================
+
+/**
+ * Get RX (receiver) configuration from FC
+ * Uses MSP_RX_CONFIG (44) - works without disrupting telemetry
+ */
+async function getRxConfig(): Promise<MSPRxConfig | null> {
+  if (!currentTransport?.isOpen) return null;
+
+  return withConfigLock(async () => {
+    try {
+      const response = await sendMspRequest(MSP.RX_CONFIG, 2000);
+      const config = deserializeRxConfig(response);
+      console.log('[MSP] RX_CONFIG:', {
+        serialrxProvider: config.serialrxProvider,
+        serialrxProviderName: config.serialrxProviderName,
+        payloadLength: config.rawPayload.length,
+      });
+      return config;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (!msg.includes('not supported')) {
+        console.error('[MSP] RX_CONFIG failed:', msg);
+      }
+      return null;
+    }
+  });
+}
+
+/**
+ * Set RX (receiver) configuration on FC
+ * Uses read-modify-write pattern via MSP_SET_RX_CONFIG (45)
+ * Only modifies serialrx_provider, preserves all other fields
+ */
+async function setRxConfig(newProvider: number): Promise<boolean> {
+  if (!currentTransport?.isOpen) return false;
+
+  return withConfigLock(async () => {
+    try {
+      // Step 1: Read current config to get full payload
+      const response = await sendMspRequest(MSP.RX_CONFIG, 2000);
+      const currentConfig = deserializeRxConfig(response);
+      console.log('[MSP] RX_CONFIG read for modify:', {
+        currentProvider: currentConfig.serialrxProviderName,
+        newProvider: SERIALRX_PROVIDER_NAMES[newProvider] ?? newProvider,
+        payloadLength: currentConfig.rawPayload.length,
+      });
+
+      // Step 2: Modify serialrx_provider (byte 0) in the raw payload
+      const newPayload = serializeRxConfig(currentConfig.rawPayload, newProvider);
+
+      // Step 3: Write back via MSP_SET_RX_CONFIG (45)
+      await sendMspRequestWithPayload(MSP.SET_RX_CONFIG, newPayload, 2000);
+      console.log('[MSP] SET_RX_CONFIG sent successfully');
+
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[MSP] SET_RX_CONFIG failed:', msg);
+      sendLog('error', 'Failed to set RX config', msg);
+      return false;
+    }
+  });
+}
+
+// =============================================================================
 // MSP Commands
 // =============================================================================
 
@@ -4318,6 +4609,13 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_VTX_CONFIG, async () => getVtxConfig());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_VTX_CONFIG, async (_event, config: Partial<MSPVtxConfig>) => setVtxConfig(config));
 
+  // OSD configuration
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_OSD_CONFIG, async () => getOsdConfig());
+
+  // RX configuration
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_RX_CONFIG, async () => getRxConfig());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_RX_CONFIG, async (_event, newProvider: number) => setRxConfig(newProvider));
+
   // Generic settings API (read/write any CLI setting via MSP)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTING, async (_event, name: string) => getSetting(name));
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTING, async (_event, name: string, value: string | number) => setSetting(name, value));
@@ -4421,6 +4719,13 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_FILTER_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_VTX_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_VTX_CONFIG);
+
+  // OSD config handler
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_OSD_CONFIG);
+
+  // RX config handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_RX_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_RX_CONFIG);
 
   // Generic settings API
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTING);

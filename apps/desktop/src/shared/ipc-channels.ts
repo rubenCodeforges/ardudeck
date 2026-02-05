@@ -195,6 +195,13 @@ export const IPC_CHANNELS = {
   MSP_GET_VTX_CONFIG: 'msp:get-vtx-config',
   MSP_SET_VTX_CONFIG: 'msp:set-vtx-config',
 
+  // MSP OSD Configuration
+  MSP_GET_OSD_CONFIG: 'msp:get-osd-config',
+
+  // MSP RX Configuration
+  MSP_GET_RX_CONFIG: 'msp:get-rx-config',
+  MSP_SET_RX_CONFIG: 'msp:set-rx-config',
+
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   MSP_GET_SETTING: 'msp:get-setting',
   MSP_SET_SETTING: 'msp:set-setting',

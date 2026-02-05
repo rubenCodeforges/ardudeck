@@ -9,7 +9,7 @@
  * Clean, modern UI with collapsible sections.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import {
   Shield,
@@ -17,7 +17,6 @@ import {
   RefreshCw,
   Lock,
   Zap,
-  Save,
   Radio,
   Home,
   ChevronDown,
@@ -44,12 +43,39 @@ const FAILSAFE_PROCEDURES = [
   { value: 3, label: 'None', icon: '🚫', description: 'Keep flying', color: 'gray' },
 ] as const;
 
-// Receiver types
+// Receiver types (iNav)
 const RECEIVER_TYPES = [
   { value: 'NONE', label: 'None', icon: '🚫' },
   { value: 'SERIAL', label: 'Serial', icon: '📡' },
   { value: 'MSP', label: 'MSP', icon: '💻' },
   { value: 'SIM (SITL)', label: 'SITL', icon: '🎮' },
+] as const;
+
+// Betaflight receiver providers (serialrx_provider) - numeric values match FC encoding
+const BF_RECEIVER_PROVIDERS = [
+  { value: 0, label: 'Spektrum 1024', description: 'Spektrum DSM2 1024' },
+  { value: 1, label: 'Spektrum 2048', description: 'Spektrum DSM2/DSMX 2048' },
+  { value: 2, label: 'SBUS', description: 'FrSky SBUS/F.Port' },
+  { value: 3, label: 'SUMD', description: 'Graupner SUMD' },
+  { value: 4, label: 'SUMH', description: 'Graupner SUMH' },
+  { value: 5, label: 'XBus Mode B', description: 'JR XBus Mode B' },
+  { value: 6, label: 'XBus RJ01', description: 'JR XBus RJ01' },
+  { value: 7, label: 'IBUS', description: 'FlySky IBUS' },
+  { value: 8, label: 'Jeti ExBus', description: 'Jeti ExBus' },
+  { value: 9, label: 'CRSF', description: 'TBS Crossfire/ELRS' },
+  { value: 10, label: 'SRXL', description: 'Spektrum SRXL' },
+  { value: 12, label: 'F.Port', description: 'FrSky F.Port' },
+  { value: 13, label: 'SRXL2', description: 'Spektrum SRXL2' },
+  { value: 14, label: 'Ghost', description: 'ImmersionRC Ghost' },
+  { value: 15, label: 'MSP', description: 'MSP (for SITL/testing)' },
+] as const;
+
+// Quick select buttons (most common protocols)
+const BF_QUICK_SELECT = [
+  { value: 9, label: 'CRSF' },
+  { value: 2, label: 'SBUS' },
+  { value: 7, label: 'IBUS' },
+  { value: 15, label: 'MSP' },
 ] as const;
 
 // GPS Rescue altitude modes
@@ -87,6 +113,10 @@ interface ArmingSafetyConfig {
   receiverType: string;
   navExtraArmingSafety: string;
   navGpsMinSats: number;
+}
+
+interface BfReceiverConfig {
+  serialrxProvider: number;
 }
 
 interface GpsRescueConfig {
@@ -138,6 +168,10 @@ const DEFAULT_ARMING: ArmingSafetyConfig = {
   receiverType: 'SERIAL',
   navExtraArmingSafety: 'ON',
   navGpsMinSats: 6,
+};
+
+const DEFAULT_BF_RECEIVER: BfReceiverConfig = {
+  serialrxProvider: 9, // CRSF
 };
 
 const DEFAULT_GPS_RESCUE: GpsRescueConfig = {
@@ -217,11 +251,17 @@ function Section({ title, icon, color, defaultOpen = false, badge, badgeColor, c
 // Main Component
 // ============================================================================
 
-interface Props {
-  isInav: boolean;
+export interface SafetyTabHandle {
+  save(): Promise<boolean>;
+  hasChanges: boolean;
 }
 
-export default function SafetyTab({ isInav }: Props) {
+interface Props {
+  isInav: boolean;
+  setModified: (modified: boolean) => void;
+}
+
+const SafetyTab = forwardRef<SafetyTabHandle, Props>(function SafetyTab({ isInav, setModified }, ref) {
   // Connection state
   const connectionState = useConnectionStore((state) => state.connectionState);
   const isSitl = connectionState?.isSitl ?? false;
@@ -233,6 +273,10 @@ export default function SafetyTab({ isInav }: Props) {
   // Arming safety state (iNav)
   const [arming, setArming] = useState<ArmingSafetyConfig>(DEFAULT_ARMING);
   const [originalArming, setOriginalArming] = useState<ArmingSafetyConfig>(DEFAULT_ARMING);
+
+  // Receiver state (Betaflight)
+  const [bfReceiver, setBfReceiver] = useState<BfReceiverConfig>(DEFAULT_BF_RECEIVER);
+  const [originalBfReceiver, setOriginalBfReceiver] = useState<BfReceiverConfig>(DEFAULT_BF_RECEIVER);
 
   // GPS Rescue state (Betaflight)
   const [gpsRescue, setGpsRescue] = useState<GpsRescueConfig>(DEFAULT_GPS_RESCUE);
@@ -246,15 +290,19 @@ export default function SafetyTab({ isInav }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showRebootConfirm, setShowRebootConfirm] = useState(false);
-  const [rebootTarget, setRebootTarget] = useState<'arming' | 'failsafe' | null>(null);
 
   // Check for changes
   const failsafeChanged = JSON.stringify(failsafe) !== JSON.stringify(originalFailsafe);
   const armingChanged = JSON.stringify(arming) !== JSON.stringify(originalArming);
+  const bfReceiverChanged = JSON.stringify(bfReceiver) !== JSON.stringify(originalBfReceiver);
   const gpsRescueChanged = JSON.stringify(gpsRescue) !== JSON.stringify(originalGpsRescue);
   const gpsPidsChanged = JSON.stringify(gpsPids) !== JSON.stringify(originalGpsPids);
-  const hasChanges = failsafeChanged || armingChanged || gpsRescueChanged || gpsPidsChanged;
+  const hasChanges = failsafeChanged || armingChanged || bfReceiverChanged || gpsRescueChanged || gpsPidsChanged;
+
+  // Propagate change state to parent
+  useEffect(() => {
+    setModified(hasChanges);
+  }, [hasChanges, setModified]);
 
   // Load all configuration
   const loadConfig = useCallback(async () => {
@@ -269,7 +317,7 @@ export default function SafetyTab({ isInav }: Props) {
         setOriginalFailsafe(failsafeConfig);
       }
 
-      // Load GPS Rescue for Betaflight
+      // Load GPS Rescue and Receiver config for Betaflight
       if (!isInav) {
         const [rescueConfig, rescuePids] = await Promise.all([
           window.electronAPI.mspGetGpsRescue() as Promise<GpsRescueConfig | null>,
@@ -283,6 +331,17 @@ export default function SafetyTab({ isInav }: Props) {
         if (rescuePids) {
           setGpsPids(rescuePids);
           setOriginalGpsPids(rescuePids);
+        }
+
+        // Load Betaflight receiver config via MSP_RX_CONFIG (no CLI disruption!)
+        try {
+          const rxConfig = await window.electronAPI.mspGetRxConfig();
+          if (rxConfig) {
+            setBfReceiver({ serialrxProvider: rxConfig.serialrxProvider });
+            setOriginalBfReceiver({ serialrxProvider: rxConfig.serialrxProvider });
+          }
+        } catch {
+          // Ignore - use defaults
         }
       }
 
@@ -344,19 +403,9 @@ export default function SafetyTab({ isInav }: Props) {
     }
   }, [isInav, isSitl]);
 
-  // Save all changes
-  const saveAll = async () => {
-    // Check if reboot is needed (arming changes on SITL, or failsafe on SITL)
-    if (isSitl && (armingChanged || failsafeChanged)) {
-      setRebootTarget(armingChanged ? 'arming' : 'failsafe');
-      setShowRebootConfirm(true);
-      return;
-    }
-
-    await doSave();
-  };
-
-  const doSave = async () => {
+  // Save all safety changes via MSP (called by parent via ref)
+  // Parent handles EEPROM save after all tabs are saved
+  const save = useCallback(async (): Promise<boolean> => {
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -365,7 +414,7 @@ export default function SafetyTab({ isInav }: Props) {
       // Save failsafe
       if (failsafeChanged) {
         if (isSitl) {
-          // CLI path for SITL
+          // CLI path for SITL (CLI 'save' persists + reboots)
           await window.electronAPI.mspStopTelemetry();
           await new Promise(r => setTimeout(r, 200));
           await window.electronAPI.cliEnterMode();
@@ -382,10 +431,7 @@ export default function SafetyTab({ isInav }: Props) {
           await window.electronAPI.cliSendCommand('save');
 
           setOriginalFailsafe({ ...failsafe });
-          setSuccess('Settings saved! Board is rebooting...');
-          await new Promise(r => setTimeout(r, 3000));
-          await window.electronAPI.disconnect();
-          return;
+          return true;
         } else {
           const result = await window.electronAPI.mspSetFailsafeConfig(failsafe);
           if (!result) throw new Error('Failed to save failsafe');
@@ -403,6 +449,12 @@ export default function SafetyTab({ isInav }: Props) {
         if (!result) throw new Error('Failed to save GPS Rescue PIDs');
       }
 
+      // Save Betaflight receiver config via MSP
+      if (!isInav && bfReceiverChanged) {
+        const result = await window.electronAPI.mspSetRxConfig(bfReceiver.serialrxProvider);
+        if (!result) throw new Error('Failed to save RX config via MSP');
+      }
+
       // Save arming safety (iNav)
       if (isInav && armingChanged) {
         if (!isSitl) {
@@ -413,7 +465,7 @@ export default function SafetyTab({ isInav }: Props) {
           });
           if (!result) throw new Error('Failed to save arming settings');
         } else {
-          // CLI path for SITL arming settings
+          // CLI path for SITL arming settings (CLI 'save' persists + reboots)
           await window.electronAPI.mspStopTelemetry();
           await new Promise(r => setTimeout(r, 200));
           await window.electronAPI.cliEnterMode();
@@ -428,31 +480,33 @@ export default function SafetyTab({ isInav }: Props) {
           await window.electronAPI.cliSendCommand('save');
 
           setOriginalArming({ ...arming });
-          setSuccess('Settings saved! Board is rebooting...');
-          await new Promise(r => setTimeout(r, 3000));
-          await window.electronAPI.disconnect();
-          return;
+          return true;
         }
       }
-
-      // Save to EEPROM
-      await window.electronAPI.mspSaveEeprom();
 
       // Update originals
       setOriginalFailsafe({ ...failsafe });
       setOriginalGpsRescue({ ...gpsRescue });
       setOriginalGpsPids({ ...gpsPids });
       setOriginalArming({ ...arming });
+      setOriginalBfReceiver({ ...bfReceiver });
 
-      setSuccess('All safety settings saved!');
+      return true;
     } catch (err) {
       console.error('[SafetyTab] Save failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to save settings');
       try { await window.electronAPI.mspStartTelemetry(); } catch { /* ignore */ }
+      return false;
     } finally {
       setSaving(false);
     }
-  };
+  }, [failsafeChanged, failsafe, isSitl, isInav, gpsRescueChanged, gpsRescue, gpsPidsChanged, gpsPids, bfReceiverChanged, bfReceiver, armingChanged, arming]);
+
+  // Expose save + hasChanges to parent via ref
+  useImperativeHandle(ref, () => ({
+    save,
+    get hasChanges() { return hasChanges; },
+  }), [save, hasChanges]);
 
   // Load on mount
   useEffect(() => {
@@ -480,40 +534,6 @@ export default function SafetyTab({ isInav }: Props) {
 
   return (
     <div className="space-y-4 p-4 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-red-500/20 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-amber-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-zinc-100">Safety & Failsafe</h2>
-            <p className="text-sm text-zinc-500">Configure emergency behaviors and arming safety</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadConfig}
-            disabled={loading}
-            className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={saveAll}
-            disabled={saving || !hasChanges}
-            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all ${
-              hasChanges
-                ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-            }`}
-          >
-            <Save className={`w-4 h-4 ${saving ? 'animate-pulse' : ''}`} />
-            {saving ? 'Saving...' : 'Save All'}
-          </button>
-        </div>
-      </div>
-
       {/* Messages */}
       {error && (
         <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
@@ -965,6 +985,83 @@ export default function SafetyTab({ isInav }: Props) {
         </Section>
       )}
 
+      {/* Receiver Section (Betaflight) */}
+      {!isInav && (
+        <Section
+          title="Receiver Configuration"
+          icon={<Radio className="w-5 h-5 text-purple-400" />}
+          color="purple"
+          defaultOpen={false}
+          badge={bfReceiverChanged ? 'Modified' : undefined}
+          badgeColor="purple"
+        >
+          <div className="mt-4 space-y-6">
+            {/* Info Banner */}
+            <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-200/80">
+                Select your receiver protocol. Choose <strong>MSP</strong> to receive RC input via MSP
+                (useful for SITL testing or simulators).
+              </p>
+            </div>
+
+            {/* Receiver Provider - Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-3">Serial Receiver Provider</label>
+              <select
+                value={bfReceiver.serialrxProvider}
+                onChange={(e) => setBfReceiver({ serialrxProvider: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+              >
+                {BF_RECEIVER_PROVIDERS.map((provider) => (
+                  <option key={provider.value} value={provider.value}>
+                    {provider.label} - {provider.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quick Select Buttons */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-3">Quick Select</label>
+              <div className="grid grid-cols-4 gap-2">
+                {BF_QUICK_SELECT.map((qs) => {
+                  const isSelected = bfReceiver.serialrxProvider === qs.value;
+                  const info = BF_RECEIVER_PROVIDERS.find(p => p.value === qs.value);
+                  return (
+                    <button
+                      key={qs.value}
+                      onClick={() => setBfReceiver({ serialrxProvider: qs.value })}
+                      className={`p-3 rounded-xl border-2 transition-all text-center ${
+                        isSelected
+                          ? 'bg-purple-500/20 border-purple-500 text-white'
+                          : 'bg-zinc-800/30 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800/50 hover:border-zinc-600'
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{qs.label}</div>
+                      {info && <div className="text-xs opacity-60 mt-0.5 truncate">{info.description}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* MSP Mode Warning */}
+            {bfReceiver.serialrxProvider === 15 && (
+              <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-200/80">
+                  <strong>MSP Receiver Mode:</strong> RC signals will be received via MSP protocol instead of a
+                  physical receiver. Use this for SITL testing or software control. Your physical receiver will
+                  not work in this mode.
+                </p>
+              </div>
+            )}
+
+          </div>
+        </Section>
+      )}
+
       {/* iNav Navigation Note */}
       {isInav && (
         <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
@@ -979,43 +1076,8 @@ export default function SafetyTab({ isInav }: Props) {
         </div>
       )}
 
-      {/* Reboot Confirmation Dialog */}
-      {showRebootConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-amber-500/20 rounded-full">
-                <AlertTriangle className="w-6 h-6 text-amber-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Reboot Required</h3>
-            </div>
-            <p className="text-zinc-300 mb-4">
-              Saving {rebootTarget === 'arming' ? 'receiver/arming' : 'failsafe'} settings on SITL requires
-              a reboot.
-            </p>
-            <p className="text-zinc-400 text-sm mb-6">
-              You'll be disconnected. Reconnect after ~3 seconds when SITL restarts.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowRebootConfirm(false)}
-                className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowRebootConfirm(false);
-                  doSave();
-                }}
-                className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
-              >
-                Save & Reboot
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
+});
+
+export default SafetyTab;

@@ -14,6 +14,7 @@ import type {
   MSPAltitude,
   MSPAnalog,
   MSPRc,
+  MSPRxMap,
   MSPMotor,
   MSPServo,
   MSPRawGps,
@@ -242,6 +243,37 @@ export function deserializeRc(payload: Uint8Array): MSPRc {
   }
 
   return { channels };
+}
+
+/**
+ * Deserialize MSP_RX_MAP response
+ *
+ * Returns the RC channel mapping that tells us which channel position
+ * corresponds to which stick function.
+ *
+ * The rxMap array indices represent functions:
+ *   0 = Aileron (Roll)
+ *   1 = Elevator (Pitch)
+ *   2 = Rudder (Yaw)
+ *   3 = Throttle
+ *   4-7 = AUX1-AUX4
+ *
+ * The values are the channel positions (0-7).
+ *
+ * Example: TAER order would be rxMap = [1, 2, 3, 0, 4, 5, 6, 7]
+ *   - rxMap[0] = 1 means Aileron is at channel position 1
+ *   - rxMap[3] = 0 means Throttle is at channel position 0
+ *
+ * So to get throttle value: rc.channels[rxMap[3]]
+ */
+export function deserializeRxMap(payload: Uint8Array): MSPRxMap {
+  const rxMap: number[] = [];
+
+  for (let i = 0; i < payload.length; i++) {
+    rxMap.push(payload[i]);
+  }
+
+  return { rxMap };
 }
 
 /**
@@ -749,6 +781,13 @@ export const TELEMETRY_MESSAGES: MSPMessageInfo[] = [
     minLength: 2,
     maxLength: 64,
     deserialize: deserializeRc,
+  },
+  {
+    command: MSP.RX_MAP,
+    name: 'RX_MAP',
+    minLength: 4,
+    maxLength: 8,
+    deserialize: deserializeRxMap,
   },
   {
     command: MSP.MOTOR,

@@ -2109,3 +2109,259 @@ export function getVtxFrequency(band: number, channel: number): number {
   }
   return 0;
 }
+
+// =============================================================================
+// OSD Configuration
+// =============================================================================
+
+/**
+ * OSD element position as read from MSP_OSD_CONFIG
+ * Position is packed as U16: ttpp vbyy yyyx xxxx
+ * - x: bits 0-4 (5 bits) + bit 10 for HD (6 bits total)
+ * - y: bits 5-9 (5 bits)
+ * - v: bit 11 = visible flag
+ * - b: bit 12 = blink flag (unused)
+ * - pp: bits 13-14 = profile (unused for reading)
+ * - tt: bits 15-16 = variant type (unused for basic reading)
+ */
+export interface OsdElementPosition {
+  /** Element index in Betaflight's DISPLAY_FIELDS order */
+  index: number;
+  /** X position (0-29 for SD, 0-59 for HD) */
+  x: number;
+  /** Y position (0-15 for PAL, 0-12 for NTSC) */
+  y: number;
+  /** Whether element is visible (in current profile) */
+  visible: boolean;
+  /** Raw packed value for debugging */
+  rawValue: number;
+}
+
+/**
+ * OSD configuration from MSP_OSD_CONFIG (84)
+ */
+export interface OsdConfigData {
+  /** OSD flags (bit 0 = OSD feature enabled) */
+  flags: number;
+  /** Video system: 0=Auto, 1=PAL, 2=NTSC, 3=HD */
+  videoSystem: number;
+  /** Units: 0=Imperial, 1=Metric */
+  unitMode: number;
+  /** Element positions array */
+  elements: OsdElementPosition[];
+  /** Number of elements actually returned by FC */
+  elementCount: number;
+}
+
+/**
+ * Betaflight OSD element indices (DISPLAY_FIELDS order)
+ * These are the indices in the MSP_OSD_CONFIG element array.
+ * Order MUST match Betaflight's osd.js DISPLAY_FIELDS array.
+ */
+export const BF_OSD_ELEMENT_INDEX = {
+  RSSI_VALUE: 0,
+  MAIN_BATT_VOLTAGE: 1,
+  CROSSHAIRS: 2,
+  ARTIFICIAL_HORIZON: 3,
+  HORIZON_SIDEBARS: 4,
+  TIMER_1: 5,
+  TIMER_2: 6,
+  FLYMODE: 7,
+  CRAFT_NAME: 8,
+  THROTTLE_POSITION: 9,
+  VTX_CHANNEL: 10,
+  CURRENT_DRAW: 11,
+  MAH_DRAWN: 12,
+  GPS_SPEED: 13,
+  GPS_SATS: 14,
+  ALTITUDE: 15,
+  PID_ROLL: 16,
+  PID_PITCH: 17,
+  PID_YAW: 18,
+  POWER: 19,
+  PID_RATE_PROFILE: 20,
+  WARNINGS: 21,
+  AVG_CELL_VOLTAGE: 22,
+  GPS_LON: 23,
+  GPS_LAT: 24,
+  DEBUG: 25,
+  PITCH_ANGLE: 26,
+  ROLL_ANGLE: 27,
+  MAIN_BATT_USAGE: 28,
+  DISARMED: 29,
+  HOME_DIR: 30,
+  HOME_DIST: 31,
+  NUMERICAL_HEADING: 32,
+  NUMERICAL_VARIO: 33,
+  COMPASS_BAR: 34,
+  // ... more elements exist in newer firmware
+} as const;
+
+/**
+ * Decode OSD element position from packed U16 value
+ *
+ * Format: ttpp vbyy yyyx xxxx
+ * - x: bits 0-4 (5 bits) + ((bits >> 5) & 0x20) for bit 10 HD extension
+ * - y: bits 5-9 (5 bits)
+ * - v: bit 11 = visible flag (0x0800)
+ */
+export function decodeOsdPosition(packed: number): { x: number; y: number; visible: boolean } {
+  // x position: bits 0-4 + HD extension from bit 10
+  const x = ((packed >> 5) & 0x20) | (packed & 0x1f);
+  // y position: bits 5-9
+  const y = (packed >> 5) & 0x1f;
+  // visible: bit 11 (0x0800)
+  const visible = (packed & 0x0800) !== 0;
+  return { x, y, visible };
+}
+
+/**
+ * Deserialize MSP_OSD_CONFIG response
+ *
+ * This reads OSD configuration including element positions from the flight controller.
+ * The format is complex and varies by firmware version.
+ */
+export function deserializeOsdConfig(payload: Uint8Array): OsdConfigData {
+  const reader = new PayloadReader(payload);
+
+  // Read flags first
+  const flags = reader.readU8();
+
+  // Default result
+  const result: OsdConfigData = {
+    flags,
+    videoSystem: 0,
+    unitMode: 0,
+    elements: [],
+    elementCount: 0,
+  };
+
+  // If flags is 0 or no more data, OSD is not configured
+  if (flags === 0 || reader.remaining() < 1) {
+    return result;
+  }
+
+  // Video system
+  result.videoSystem = reader.readU8();
+
+  // If OSD feature is enabled (bit 0 of flags)
+  if ((flags & 0x01) !== 0 && reader.remaining() >= 6) {
+    // Unit mode
+    result.unitMode = reader.readU8();
+
+    // Alarms (skip)
+    reader.readU8();  // rssi alarm
+    reader.readU16(); // capacity alarm
+
+    // Skip obsolete byte, read element count
+    reader.readU8();  // obsolete
+    result.elementCount = reader.readU8();
+
+    // Skip altitude alarm
+    if (reader.remaining() >= 2) {
+      reader.readU16(); // alt alarm
+    }
+  }
+
+  // Read element positions
+  // If elementCount wasn't set, read all remaining U16 values
+  const expectedElements = result.elementCount || Math.floor(reader.remaining() / 2);
+  let index = 0;
+
+  while (reader.remaining() >= 2 && index < expectedElements) {
+    const rawValue = reader.readU16();
+    const decoded = decodeOsdPosition(rawValue);
+
+    result.elements.push({
+      index,
+      x: decoded.x,
+      y: decoded.y,
+      visible: decoded.visible,
+      rawValue,
+    });
+
+    index++;
+  }
+
+  return result;
+}
+
+// =============================================================================
+// RX Config (MSP_RX_CONFIG)
+// =============================================================================
+
+/**
+ * Betaflight serialrx_provider values
+ */
+export const SERIALRX_PROVIDER = {
+  SPEK1024: 0,
+  SPEK2048: 1,
+  SBUS: 2,
+  SUMD: 3,
+  SUMH: 4,
+  XBUS_MODE_B: 5,
+  XBUS_MODE_B_RJ01: 6,
+  IBUS: 7,
+  JETIEXBUS: 8,
+  CRSF: 9,
+  SRXL: 10,
+  TARGET_CUSTOM: 11,
+  FPORT: 12,
+  SRXL2: 13,
+  GHST: 14,
+  MSP: 15,
+} as const;
+
+/**
+ * Reverse map: number to string
+ */
+export const SERIALRX_PROVIDER_NAMES: Record<number, string> = {
+  0: 'SPEK1024',
+  1: 'SPEK2048',
+  2: 'SBUS',
+  3: 'SUMD',
+  4: 'SUMH',
+  5: 'XBUS_MODE_B',
+  6: 'XBUS_MODE_B_RJ01',
+  7: 'IBUS',
+  8: 'JETIEXBUS',
+  9: 'CRSF',
+  10: 'SRXL',
+  11: 'TARGET_CUSTOM',
+  12: 'FPORT',
+  13: 'SRXL2',
+  14: 'GHST',
+  15: 'MSP',
+};
+
+export interface MSPRxConfig {
+  serialrxProvider: number;
+  serialrxProviderName: string;
+  /** Raw payload bytes - needed for read-modify-write via MSP_SET_RX_CONFIG */
+  rawPayload: Uint8Array;
+}
+
+/**
+ * Deserialize MSP_RX_CONFIG (44) response
+ * Keeps the raw payload for read-modify-write pattern
+ */
+export function deserializeRxConfig(payload: Uint8Array): MSPRxConfig {
+  const serialrxProvider = payload.length > 0 ? payload[0]! : 0;
+
+  return {
+    serialrxProvider,
+    serialrxProviderName: SERIALRX_PROVIDER_NAMES[serialrxProvider] ?? 'UNKNOWN',
+    rawPayload: new Uint8Array(payload),
+  };
+}
+
+/**
+ * Serialize MSP_SET_RX_CONFIG (45) payload
+ * Uses the read-modify-write pattern: takes the original raw payload
+ * and replaces byte 0 (serialrx_provider) with the new value
+ */
+export function serializeRxConfig(originalPayload: Uint8Array, newSerialrxProvider: number): Uint8Array {
+  const payload = new Uint8Array(originalPayload);
+  payload[0] = newSerialrxProvider;
+  return payload;
+}
