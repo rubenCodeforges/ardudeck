@@ -56,11 +56,13 @@ export async function getBoxNames(): Promise<string[] | null> {
 
   return withConfigLock(async () => {
     try {
-      const payload = await sendMspRequest(MSP.BOXNAMES, 2000);
+      // Use MSPv2: BOXNAMES response can exceed 255 bytes (MSPv1 max) on modern boards
+      const payload = await sendMspV2Request(MSP.BOXNAMES, 2000);
       return deserializeBoxNames(payload);
     } catch (error) {
       if (!isCliModeBlockedError(error)) {
-        console.error('[MSP] getBoxNames failed:', error);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] getBoxNames failed:', msg);
       }
       return null;
     }
@@ -72,11 +74,13 @@ export async function getBoxIds(): Promise<number[] | null> {
 
   return withConfigLock(async () => {
     try {
-      const payload = await sendMspRequest(MSP.BOXIDS, 2000);
+      // Use MSPv2: BOXIDS response can be large on modern boards
+      const payload = await sendMspV2Request(MSP.BOXIDS, 2000);
       return deserializeBoxIds(payload);
     } catch (error) {
       if (!isCliModeBlockedError(error)) {
-        console.error('[MSP] getBoxIds failed:', error);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[MSP] getBoxIds failed:', msg);
       }
       return null;
     }

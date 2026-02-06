@@ -41,6 +41,7 @@ export function deserializeStatus(payload: Uint8Array): MSPStatus {
   const currentPidProfile = reader.readU8();
 
   // Extended status fields (if present)
+  // Ref: betaflight-configurator/src/js/msp/MSPHelper.js MSP_STATUS_EX handler
   let averageSystemLoad = 0;
   let armingDisableFlagsCount = 0;
   let armingDisableFlags = 0;
@@ -49,6 +50,20 @@ export function deserializeStatus(payload: Uint8Array): MSPStatus {
 
   if (reader.remaining() >= 2) {
     averageSystemLoad = reader.readU16();
+  }
+
+  // numProfiles (U8) + rateProfile (U8)
+  if (reader.remaining() >= 2) {
+    reader.readU8(); // numProfiles - not used
+    reader.readU8(); // rateProfile - not used
+  }
+
+  // Extended mode flags: byteCount (U8) followed by byteCount bytes
+  if (reader.remaining() >= 1) {
+    const byteCount = reader.readU8();
+    for (let i = 0; i < byteCount && reader.remaining() >= 1; i++) {
+      reader.readU8(); // extended mode flag bytes - skipped (same as BF configurator)
+    }
   }
 
   if (reader.remaining() >= 1) {

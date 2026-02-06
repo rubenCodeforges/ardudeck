@@ -35,7 +35,14 @@ import { sendMspRequest, sendMspV2Request, acquireMutex, fetchRxMap } from './ms
 /**
  * Decode the primary active flight mode from flightModeFlags bitmask.
  */
+let boxNamesWarnCount = 0;
 function decodeActiveFlightMode(flags: number, boxNames: string[]): string {
+  if (boxNames.length === 0 && flags > 1) {
+    // flags > 1 means bits beyond ARM are set, but we can't decode without boxNames
+    if (boxNamesWarnCount++ % 50 === 0) {
+      console.warn('[MSP] Cannot decode flight mode - boxNames empty, flags:', flags.toString(2));
+    }
+  }
   for (let i = 0; i < boxNames.length && i < 32; i++) {
     if ((flags & (1 << i)) !== 0) {
       const name = boxNames[i];
@@ -64,13 +71,26 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
     if (gen !== ctx.telemetryGeneration) return;
 
-    try {
-      const boxPayload = await sendMspRequest(MSP.BOXNAMES, 1000);
-      ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
-      console.log('[MSP] Cached', ctx.cachedBoxNames.length, 'box names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
-    } catch {
-      ctx.cachedBoxNames = [];
-      console.warn('[MSP] Failed to fetch BOXNAMES for mode decoding');
+    // Fetch BOXNAMES with retry - critical for flight mode decoding
+    // Use MSPv2 framing: BOXNAMES response can exceed 255 bytes (MSPv1 max) on modern boards
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const boxPayload = attempt <= 2
+          ? await sendMspV2Request(MSP.BOXNAMES, 2000)
+          : await sendMspRequest(MSP.BOXNAMES, 2000); // v1 fallback on attempt 3
+        ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
+        console.log('[MSP] Cached', ctx.cachedBoxNames.length, 'box names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+        break;
+      } catch (err) {
+        ctx.cachedBoxNames = [];
+        const msg = err instanceof Error ? err.message : String(err);
+        if (attempt < 3) {
+          console.warn(`[MSP] BOXNAMES fetch attempt ${attempt} failed (${msg}), retrying in 500ms...`);
+          await new Promise(r => setTimeout(r, 500));
+        } else {
+          console.warn('[MSP] Failed to fetch BOXNAMES after 3 attempts - flight modes will show ACRO');
+        }
+      }
     }
 
     if (gen !== ctx.telemetryGeneration) return;
@@ -108,6 +128,19 @@ function startTelemetryInterval(intervalMs: number): void {
     ctx.telemetryInProgress = true;
     ctx.telemetryLastStartTime = Date.now();
     ctx.telemetryPollCount++;
+
+    // Periodic BOXNAMES re-fetch if still empty (every ~5s at 10Hz)
+    if (ctx.cachedBoxNames.length === 0 && ctx.telemetryPollCount % 50 === 0) {
+      try {
+        const boxPayload = await sendMspV2Request(MSP.BOXNAMES, 2000);
+        ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
+        if (ctx.cachedBoxNames.length > 0) {
+          console.log('[MSP] BOXNAMES re-fetch succeeded:', ctx.cachedBoxNames.length, 'names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+        }
+      } catch {
+        // Silent - will retry next cycle
+      }
+    }
 
     try {
       const interCommandDelay = () => new Promise(r => setTimeout(r, 10));
