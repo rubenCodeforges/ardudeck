@@ -27,23 +27,29 @@ interface FilterConfig {
   gyroNotch2Hz: number;
   gyroNotch2Cutoff: number;
   // Filter types
+  dTermLowpassType: number;
+  gyroHardwareLpf: number;
   gyroLowpassType: number;
   gyroLowpass2Hz: number;
   gyroLowpass2Type: number;
   dTermLowpass2Hz: number;
-  dTermLowpassType: number;
   dTermLowpass2Type: number;
+  // Dynamic lowpass
+  gyroLowpassDynMinHz: number;
+  gyroLowpassDynMaxHz: number;
+  dTermLowpassDynMinHz: number;
+  dTermLowpassDynMaxHz: number;
   // Dynamic notch
   dynNotchRange: number;
   dynNotchWidthPercent: number;
   dynNotchQ: number;
   dynNotchMinHz: number;
+  // RPM notch
+  gyroRpmNotchHarmonics: number;
+  gyroRpmNotchMinHz: number;
   dynNotchMaxHz: number;
+  dynLpfCurveExpo: number;
   dynNotchCount: number;
-  // ABG filter
-  abgAlpha: number;
-  abgBoost: number;
-  abgHalfLife: number;
 }
 
 // Default values
@@ -57,21 +63,26 @@ const DEFAULT_CONFIG: FilterConfig = {
   dTermNotchCutoff: 0,
   gyroNotch2Hz: 0,
   gyroNotch2Cutoff: 0,
+  dTermLowpassType: 0,
+  gyroHardwareLpf: 0,
   gyroLowpassType: 0,
   gyroLowpass2Hz: 0,
   gyroLowpass2Type: 0,
   dTermLowpass2Hz: 0,
-  dTermLowpassType: 0,
   dTermLowpass2Type: 0,
+  gyroLowpassDynMinHz: 0,
+  gyroLowpassDynMaxHz: 0,
+  dTermLowpassDynMinHz: 0,
+  dTermLowpassDynMaxHz: 0,
   dynNotchRange: 0,
   dynNotchWidthPercent: 8,
   dynNotchQ: 350,
   dynNotchMinHz: 100,
+  gyroRpmNotchHarmonics: 3,
+  gyroRpmNotchMinHz: 100,
   dynNotchMaxHz: 350,
+  dynLpfCurveExpo: 0,
   dynNotchCount: 3,
-  abgAlpha: 0,
-  abgBoost: 275,
-  abgHalfLife: 20,
 };
 
 // Filter type options
@@ -403,7 +414,7 @@ export default function FilterConfigTab({ setModified }: Props) {
           <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-gray-400" />
             <h3 className="text-white font-medium">Advanced Settings</h3>
-            <span className="text-xs text-gray-500">(Notch Filters & ABG)</span>
+            <span className="text-xs text-gray-500">(Notch Filters, RPM Filter & Dynamic Lowpass)</span>
           </div>
           <svg
             className={`w-5 h-5 text-gray-400 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
@@ -462,7 +473,7 @@ export default function FilterConfigTab({ setModified }: Props) {
                 />
               </div>
 
-              {/* D-Term Notch & ABG */}
+              {/* D-Term Notch & RPM Filter */}
               <div className="space-y-4">
                 <h4 className="text-sm font-medium text-orange-400">D-Term Notch</h4>
                 <DraggableSlider
@@ -484,34 +495,84 @@ export default function FilterConfigTab({ setModified }: Props) {
                   step={5}
                   color="#FB923C"
                 />
-                <h4 className="text-sm font-medium text-green-400 mt-4">ABG Filter</h4>
+                <h4 className="text-sm font-medium text-green-400 mt-4">RPM Notch Filter</h4>
                 <DraggableSlider
-                  label="Alpha"
-                  value={config.abgAlpha}
-                  onChange={(v) => updateConfig('abgAlpha', v)}
+                  label="Harmonics"
+                  value={config.gyroRpmNotchHarmonics}
+                  onChange={(v) => updateConfig('gyroRpmNotchHarmonics', v)}
                   min={0}
-                  max={1000}
-                  step={10}
+                  max={3}
+                  step={1}
                   color="#22C55E"
+                  hint="Number of harmonics (0 = off)"
+                />
+                <DraggableSlider
+                  label="Min Frequency (Hz)"
+                  value={config.gyroRpmNotchMinHz}
+                  onChange={(v) => updateConfig('gyroRpmNotchMinHz', v)}
+                  min={50}
+                  max={255}
+                  step={5}
+                  color="#4ADE80"
+                  hint="Minimum frequency for RPM filter"
+                />
+              </div>
+            </div>
+
+            {/* Dynamic Lowpass Section */}
+            <div className="grid grid-cols-2 gap-6 mt-6">
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-teal-400">Gyro Dynamic Lowpass</h4>
+                <DraggableSlider
+                  label="Min Frequency (Hz)"
+                  value={config.gyroLowpassDynMinHz}
+                  onChange={(v) => updateConfig('gyroLowpassDynMinHz', v)}
+                  min={0}
+                  max={500}
+                  step={5}
+                  color="#2DD4BF"
                   hint="0 = disabled"
                 />
                 <DraggableSlider
-                  label="Boost"
-                  value={config.abgBoost}
-                  onChange={(v) => updateConfig('abgBoost', v)}
+                  label="Max Frequency (Hz)"
+                  value={config.gyroLowpassDynMaxHz}
+                  onChange={(v) => updateConfig('gyroLowpassDynMaxHz', v)}
                   min={0}
                   max={1000}
                   step={10}
-                  color="#4ADE80"
+                  color="#5EEAD4"
+                />
+              </div>
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-teal-400">D-Term Dynamic Lowpass</h4>
+                <DraggableSlider
+                  label="Min Frequency (Hz)"
+                  value={config.dTermLowpassDynMinHz}
+                  onChange={(v) => updateConfig('dTermLowpassDynMinHz', v)}
+                  min={0}
+                  max={500}
+                  step={5}
+                  color="#14B8A6"
+                  hint="0 = disabled"
                 />
                 <DraggableSlider
-                  label="Half Life"
-                  value={config.abgHalfLife}
-                  onChange={(v) => updateConfig('abgHalfLife', v)}
+                  label="Max Frequency (Hz)"
+                  value={config.dTermLowpassDynMaxHz}
+                  onChange={(v) => updateConfig('dTermLowpassDynMaxHz', v)}
                   min={0}
-                  max={100}
+                  max={1000}
+                  step={10}
+                  color="#2DD4BF"
+                />
+                <DraggableSlider
+                  label="LPF Curve Expo"
+                  value={config.dynLpfCurveExpo}
+                  onChange={(v) => updateConfig('dynLpfCurveExpo', v)}
+                  min={0}
+                  max={10}
                   step={1}
-                  color="#86EFAC"
+                  color="#99F6E4"
+                  hint="Dynamic lowpass curve exponent"
                 />
               </div>
             </div>

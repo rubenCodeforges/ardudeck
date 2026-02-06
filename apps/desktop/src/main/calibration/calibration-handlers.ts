@@ -195,7 +195,7 @@ async function calibrateAccelLevel(): Promise<CalibrationResult> {
     // We need to call it via a different mechanism since we're in main process
 
     // Import the calibration function from msp-handlers
-    const { calibrateAccFromHandler } = await import('../msp/msp-handlers.js');
+    const { calibrateAccFromHandler } = await import('../msp/msp-commands.js');
     const result = await calibrateAccFromHandler();
 
     sendProgress({
@@ -252,7 +252,7 @@ async function calibrateCompass(): Promise<CalibrationResult> {
 
   try {
     // Send the MSP calibration command
-    const { calibrateMagFromHandler } = await import('../msp/msp-handlers.js');
+    const { calibrateMagFromHandler } = await import('../msp/msp-commands.js');
     const result = await calibrateMagFromHandler();
 
     if (!result) {

@@ -70,8 +70,10 @@ export interface MSPInavPid {
 export interface MSPRcTuning {
   rcRate: number;           // RC rate (0-255, represents 0.01-2.55)
   rcExpo: number;           // RC expo (0-100)
-  rollPitchRate: number;    // Legacy: combined roll/pitch rate
-  yawRate: number;          // Yaw rate
+  rollPitchRate: number;    // Legacy: combined roll/pitch rate (= rollRate for compat)
+  rollRate: number;         // Roll rate (BF byte 2)
+  pitchRate: number;        // Pitch rate (BF byte 3)
+  yawRate: number;          // Yaw rate (BF byte 4)
   dynThrPID: number;        // Dynamic throttle PID
   throttleMid: number;      // Throttle mid position
   throttleExpo: number;     // Throttle expo
@@ -80,9 +82,11 @@ export interface MSPRcTuning {
   rcYawRate: number;        // RC yaw rate
   rcPitchRate: number;      // RC pitch rate
   rcPitchExpo: number;      // RC pitch expo
-  rollRate: number;         // Roll super rate
-  pitchRate: number;        // Pitch super rate
-  yawRateLimit: number;     // Yaw rate limit (Betaflight 4.x)
+  throttleLimitType: number;   // Throttle limit type (BF 4.x)
+  throttleLimitPercent: number; // Throttle limit percent (BF 4.x)
+  rollRateLimit: number;    // Roll rate limit (BF 4.x)
+  pitchRateLimit: number;   // Pitch rate limit (BF 4.x)
+  yawRateLimit: number;     // Yaw rate limit (BF 4.x)
   ratesType: number;        // Rates type (0=Betaflight, 1=Raceflight, 2=Kiss, 3=Actual, 4=Quick)
 }
 
@@ -91,6 +95,8 @@ export interface MSPModeRange {
   auxChannel: number;   // AUX channel (0=AUX1, 1=AUX2, etc.)
   rangeStart: number;   // Start of range (900-2100, in steps of 25)
   rangeEnd: number;     // End of range (900-2100, in steps of 25)
+  modeLogic?: number;   // 0=OR (default), 1=AND — BF MODE_RANGES_EXTRA
+  linkedTo?: number;    // Box ID to link to (0=none) — BF MODE_RANGES_EXTRA
 }
 
 export interface MSPFeatureConfig {
@@ -184,33 +190,61 @@ export function serializePid(pid: MSPPid): Uint8Array {
 }
 
 /**
- * Deserialize MSP_RC_TUNING response
+ * Deserialize MSP_RC_TUNING response (Betaflight 4.x byte layout)
  *
- * Returns rate/expo settings
+ * BF wire format:
+ * [0] rcRate, [1] rcExpo, [2] rollRate, [3] pitchRate, [4] yawRate,
+ * [5] dynThrPID, [6] throttleMid, [7] throttleExpo, [8-9] tpaBreakpoint,
+ * [10] rcYawExpo, [11] rcYawRate, [12] rcPitchRate, [13] rcPitchExpo,
+ * [14] throttleLimitType, [15] throttleLimitPercent,
+ * [16-17] rollRateLimit, [18-19] pitchRateLimit, [20-21] yawRateLimit,
+ * [22] ratesType
  */
 export function deserializeRcTuning(payload: Uint8Array): MSPRcTuning {
   const reader = new PayloadReader(payload);
 
-  const rcTuning: MSPRcTuning = {
-    rcRate: reader.readU8(),
-    rcExpo: reader.readU8(),
-    rollPitchRate: reader.readU8(),
-    yawRate: reader.readU8(),
-    dynThrPID: reader.readU8(),
-    throttleMid: reader.readU8(),
-    throttleExpo: reader.readU8(),
-    tpaBreakpoint: reader.remaining() >= 2 ? reader.readU16() : 1500,
-    rcYawExpo: reader.remaining() >= 1 ? reader.readU8() : 0,
-    rcYawRate: reader.remaining() >= 1 ? reader.readU8() : 0,
-    rcPitchRate: reader.remaining() >= 1 ? reader.readU8() : 0,
-    rcPitchExpo: reader.remaining() >= 1 ? reader.readU8() : 0,
-    rollRate: reader.remaining() >= 1 ? reader.readU8() : 0,
-    pitchRate: reader.remaining() >= 1 ? reader.readU8() : 0,
-    yawRateLimit: reader.remaining() >= 2 ? reader.readU16() : 0,
-    ratesType: reader.remaining() >= 1 ? reader.readU8() : 0,
-  };
+  const rcRate = reader.readU8();          // 0
+  const rcExpo = reader.readU8();          // 1
+  const rollRate = reader.readU8();        // 2
+  const pitchRate = reader.readU8();       // 3
+  const yawRate = reader.readU8();         // 4
+  const dynThrPID = reader.readU8();       // 5
+  const throttleMid = reader.readU8();     // 6
+  const throttleExpo = reader.readU8();    // 7
+  const tpaBreakpoint = reader.remaining() >= 2 ? reader.readU16() : 1500; // 8-9
+  const rcYawExpo = reader.remaining() >= 1 ? reader.readU8() : 0;         // 10
+  const rcYawRate = reader.remaining() >= 1 ? reader.readU8() : 0;         // 11
+  const rcPitchRate = reader.remaining() >= 1 ? reader.readU8() : 0;       // 12
+  const rcPitchExpo = reader.remaining() >= 1 ? reader.readU8() : 0;       // 13
+  const throttleLimitType = reader.remaining() >= 1 ? reader.readU8() : 0;        // 14
+  const throttleLimitPercent = reader.remaining() >= 1 ? reader.readU8() : 100;   // 15
+  const rollRateLimit = reader.remaining() >= 2 ? reader.readU16() : 1998;        // 16-17
+  const pitchRateLimit = reader.remaining() >= 2 ? reader.readU16() : 1998;       // 18-19
+  const yawRateLimit = reader.remaining() >= 2 ? reader.readU16() : 1998;         // 20-21
+  const ratesType = reader.remaining() >= 1 ? reader.readU8() : 0;                // 22
 
-  return rcTuning;
+  return {
+    rcRate,
+    rcExpo,
+    rollPitchRate: rollRate, // Legacy compat: set to rollRate
+    rollRate,
+    pitchRate,
+    yawRate,
+    dynThrPID,
+    throttleMid,
+    throttleExpo,
+    tpaBreakpoint,
+    rcYawExpo,
+    rcYawRate,
+    rcPitchRate,
+    rcPitchExpo,
+    throttleLimitType,
+    throttleLimitPercent,
+    rollRateLimit,
+    pitchRateLimit,
+    yawRateLimit,
+    ratesType,
+  };
 }
 
 /**
@@ -252,6 +286,8 @@ export function deserializeRcTuningInav(payload: Uint8Array): MSPRcTuning {
     rcRate: 100, // Fixed for iNav
     rcExpo,
     rollPitchRate: rollRate, // Legacy: use roll rate
+    rollRate,
+    pitchRate,
     yawRate,
     dynThrPID,
     throttleMid,
@@ -263,35 +299,43 @@ export function deserializeRcTuningInav(payload: Uint8Array): MSPRcTuning {
     rcPitchRate: 100,
     // iNav uses same rcExpo for both Roll AND Pitch (shared expo)
     rcPitchExpo: rcExpo,
-    rollRate,
-    pitchRate,
-    yawRateLimit: 0,
+    // Not applicable to iNav - safe defaults
+    throttleLimitType: 0,
+    throttleLimitPercent: 100,
+    rollRateLimit: 1998,
+    pitchRateLimit: 1998,
+    yawRateLimit: 1998,
     ratesType: 0,
   };
 }
 
 /**
- * Serialize MSP_SET_RC_TUNING payload
+ * Serialize MSP_SET_RC_TUNING payload (Betaflight 4.x byte layout)
+ *
+ * Must match deserializeRcTuning byte order exactly.
  */
 export function serializeRcTuning(rcTuning: MSPRcTuning): Uint8Array {
   const builder = new PayloadBuilder();
 
-  builder.writeU8(rcTuning.rcRate);
-  builder.writeU8(rcTuning.rcExpo);
-  builder.writeU8(rcTuning.rollPitchRate);
-  builder.writeU8(rcTuning.yawRate);
-  builder.writeU8(rcTuning.dynThrPID);
-  builder.writeU8(rcTuning.throttleMid);
-  builder.writeU8(rcTuning.throttleExpo);
-  builder.writeU16(rcTuning.tpaBreakpoint);
-  builder.writeU8(rcTuning.rcYawExpo);
-  builder.writeU8(rcTuning.rcYawRate);
-  builder.writeU8(rcTuning.rcPitchRate);
-  builder.writeU8(rcTuning.rcPitchExpo);
-  builder.writeU8(rcTuning.rollRate);
-  builder.writeU8(rcTuning.pitchRate);
-  builder.writeU16(rcTuning.yawRateLimit);
-  builder.writeU8(rcTuning.ratesType);
+  builder.writeU8(rcTuning.rcRate);                        // 0
+  builder.writeU8(rcTuning.rcExpo);                        // 1
+  builder.writeU8(rcTuning.rollRate);                      // 2
+  builder.writeU8(rcTuning.pitchRate);                     // 3
+  builder.writeU8(rcTuning.yawRate);                       // 4
+  builder.writeU8(rcTuning.dynThrPID);                     // 5
+  builder.writeU8(rcTuning.throttleMid);                   // 6
+  builder.writeU8(rcTuning.throttleExpo);                  // 7
+  builder.writeU16(rcTuning.tpaBreakpoint);                // 8-9
+  builder.writeU8(rcTuning.rcYawExpo);                     // 10
+  builder.writeU8(rcTuning.rcYawRate);                     // 11
+  builder.writeU8(rcTuning.rcPitchRate);                   // 12
+  builder.writeU8(rcTuning.rcPitchExpo);                   // 13
+  builder.writeU8(rcTuning.throttleLimitType || 0);        // 14
+  builder.writeU8(rcTuning.throttleLimitPercent || 100);   // 15
+  builder.writeU16(rcTuning.rollRateLimit || 1998);        // 16-17
+  builder.writeU16(rcTuning.pitchRateLimit || 1998);       // 18-19
+  builder.writeU16(rcTuning.yawRateLimit || 1998);         // 20-21
+  builder.writeU8(rcTuning.ratesType);                     // 22
 
   return builder.build();
 }
@@ -390,6 +434,8 @@ export function serializeModeRange(index: number, mode: MSPModeRange): Uint8Arra
   builder.writeU8(mode.auxChannel);
   builder.writeU8(Math.round((mode.rangeStart - 900) / 25));
   builder.writeU8(Math.round((mode.rangeEnd - 900) / 25));
+  builder.writeU8(mode.modeLogic ?? 0);
+  builder.writeU8(mode.linkedTo ?? 0);
 
   return builder.build();
 }
@@ -763,15 +809,16 @@ export function deserializeServoConfigurations(payload: Uint8Array): MSPServoCon
   const servos: MSPServoConfig[] = [];
 
   // Detect format based on payload size
-  // Old Betaflight/iNav: 14 bytes per servo (min, max, mid, rate, 2 padding, forward, reversed)
-  // New iNav MSP2: 7 bytes per servo (min, max, mid, rate) - but we use MSP_SERVO_CONFIGURATIONS (120)
-  // 112 bytes = 8 servos × 14 bytes (Betaflight/old iNav format)
-  const bytesPerServo = payload.length % 14 === 0 ? 14 : (payload.length % 7 === 0 ? 7 : 14);
+  // iNav: 7 bytes per servo (min, max, mid, rate)
+  // Betaflight: 12 bytes per servo (min, max, mid, rate, forward, reversed)
+  // Legacy: 14 bytes per servo (min, max, mid, rate, 2 padding, forward, reversed)
+  // Check % 7 first: 84 bytes (12 servos × 7) is also divisible by 12, so iNav must win
+  const bytesPerServo = payload.length % 7 === 0 ? 7 : (payload.length % 12 === 0 ? 12 : 14);
 
   console.log(`[MSP] Servo format detection: ${payload.length} bytes, using ${bytesPerServo}-byte format`);
 
   if (bytesPerServo === 7) {
-    // New iNav MSP2 format: 7 bytes per servo
+    // iNav format: 7 bytes per servo
     while (reader.remaining() >= 7) {
       servos.push({
         min: reader.readU16(),
@@ -782,8 +829,19 @@ export function deserializeServoConfigurations(payload: Uint8Array): MSPServoCon
         reversedSources: 0,
       });
     }
+  } else if (bytesPerServo === 12) {
+    // Betaflight format: 12 bytes per servo (no padding)
+    while (reader.remaining() >= 12) {
+      const min = reader.readU16();
+      const max = reader.readU16();
+      const middle = reader.readU16();
+      const rate = reader.readS8();
+      const forwardFromChannel = reader.readU8();
+      const reversedSources = reader.readU32();
+      servos.push({ min, max, middle, rate, forwardFromChannel, reversedSources });
+    }
   } else {
-    // Betaflight/old iNav format: 14 bytes per servo
+    // Legacy 14-byte format: 14 bytes per servo (with 2 padding bytes)
     while (reader.remaining() >= 14) {
       const min = reader.readU16();
       const max = reader.readU16();
@@ -1290,6 +1348,8 @@ export function inavRateProfileToRcTuning(profile: MSPInavRateProfile): MSPRcTun
     rcExpo: profile.rcExpo,
     // For legacy compatibility, use rollRate for rollPitchRate
     rollPitchRate: profile.rollRate,
+    rollRate: profile.rollRate,
+    pitchRate: profile.pitchRate,
     yawRate: profile.yawRate,
     dynThrPID: profile.dynThrPID,
     throttleMid: profile.throttleMid,
@@ -1301,9 +1361,12 @@ export function inavRateProfileToRcTuning(profile: MSPInavRateProfile): MSPRcTun
     // iNav uses same rcExpo for both Roll AND Pitch (shared expo)
     rcPitchRate: 100,
     rcPitchExpo: profile.rcExpo, // Same as roll expo!
-    rollRate: profile.rollRate,
-    pitchRate: profile.pitchRate,
-    yawRateLimit: 0,
+    // Not applicable to iNav - safe defaults
+    throttleLimitType: 0,
+    throttleLimitPercent: 100,
+    rollRateLimit: 1998,
+    pitchRateLimit: 1998,
+    yawRateLimit: 1998,
     ratesType: 0,
   };
 }
@@ -1621,20 +1684,21 @@ export function deserializeFailsafeConfig(payload: Uint8Array): MSPFailsafeConfi
   const reader = new PayloadReader(payload);
 
   return {
+    // First 8 bytes — shared BF/iNav
     failsafeDelay: reader.readU8(),
     failsafeOffDelay: reader.readU8(),
     failsafeThrottle: reader.readU16(),
     failsafeKillSwitch: reader.readU8(),
     failsafeThrottleLowDelay: reader.readU16(),
     failsafeProcedure: reader.readU8(),
-    failsafeRecoveryDelay: reader.readU8(),
-    // Fixed-wing angles and rates are signed (can be negative)
-    failsafeFwRollAngle: reader.readS16(),
-    failsafeFwPitchAngle: reader.readS16(),
-    failsafeFwYawRate: reader.readS16(),
-    failsafeStickMotionThreshold: reader.readU16(),
-    failsafeMinDistance: reader.readU16(),
-    failsafeMinDistanceProcedure: reader.readU8(),
+    // Bytes 8-19 — iNav only (BF sends only 8 bytes)
+    failsafeRecoveryDelay: reader.remaining() >= 1 ? reader.readU8() : 0,
+    failsafeFwRollAngle: reader.remaining() >= 2 ? reader.readS16() : 0,
+    failsafeFwPitchAngle: reader.remaining() >= 2 ? reader.readS16() : 0,
+    failsafeFwYawRate: reader.remaining() >= 2 ? reader.readS16() : 0,
+    failsafeStickMotionThreshold: reader.remaining() >= 2 ? reader.readU16() : 50,
+    failsafeMinDistance: reader.remaining() >= 2 ? reader.readU16() : 0,
+    failsafeMinDistanceProcedure: reader.remaining() >= 1 ? reader.readU8() : 0,
   };
 }
 
@@ -1818,7 +1882,7 @@ export function serializeGpsRescuePids(pids: MSPGpsRescuePids): Uint8Array {
  */
 export interface MSPFilterConfig {
   // Gyro lowpass filters
-  gyroLowpassHz: number;           // Gyro lowpass 1 cutoff
+  gyroLowpassHz: number;           // Gyro lowpass 1 cutoff (U16 from byte 20-21, overwrites byte 0)
   dTermLowpassHz: number;          // D-term lowpass 1 cutoff
   yawLowpassHz: number;            // Yaw lowpass cutoff
   // Gyro notch filter
@@ -1831,23 +1895,29 @@ export interface MSPFilterConfig {
   gyroNotch2Hz: number;            // Second gyro notch center
   gyroNotch2Cutoff: number;        // Second gyro notch cutoff
   // Filter types (Betaflight 4.0+)
-  gyroLowpassType: number;         // 0=PT1, 1=BIQUAD, 2=PT2, 3=PT3
+  dTermLowpassType: number;        // D-term lowpass type (byte 17)
+  gyroHardwareLpf: number;         // Gyro hardware LPF (byte 18)
+  gyroLowpassType: number;         // 0=PT1, 1=BIQUAD, 2=PT2, 3=PT3 (byte 24)
   gyroLowpass2Hz: number;          // Second gyro lowpass cutoff
   gyroLowpass2Type: number;        // Second gyro lowpass type
   dTermLowpass2Hz: number;         // Second D-term lowpass cutoff
-  dTermLowpassType: number;        // D-term lowpass type
   dTermLowpass2Type: number;       // Second D-term lowpass type
+  // Dynamic lowpass (Betaflight 4.1+)
+  gyroLowpassDynMinHz: number;     // Gyro dynamic lowpass min freq
+  gyroLowpassDynMaxHz: number;     // Gyro dynamic lowpass max freq
+  dTermLowpassDynMinHz: number;    // D-term dynamic lowpass min freq
+  dTermLowpassDynMaxHz: number;    // D-term dynamic lowpass max freq
   // Dynamic notch (Betaflight 4.1+)
   dynNotchRange: number;           // Dynamic notch range
   dynNotchWidthPercent: number;    // Dynamic notch width percent
   dynNotchQ: number;               // Dynamic notch Q factor
   dynNotchMinHz: number;           // Dynamic notch minimum freq
+  // RPM notch filter
+  gyroRpmNotchHarmonics: number;   // RPM notch harmonics count
+  gyroRpmNotchMinHz: number;       // RPM notch minimum freq
   dynNotchMaxHz: number;           // Dynamic notch maximum freq
+  dynLpfCurveExpo: number;         // Dynamic LPF curve expo
   dynNotchCount: number;           // Number of dynamic notches
-  // ABG (Alpha Beta Gamma) filter
-  abgAlpha: number;                // ABG alpha
-  abgBoost: number;                // ABG boost
-  abgHalfLife: number;             // ABG half life
 }
 
 // Filter types
@@ -1859,71 +1929,153 @@ export const FILTER_TYPE = {
 } as const;
 
 /**
- * Deserialize MSP_FILTER_CONFIG response
+ * Deserialize MSP_FILTER_CONFIG response (Betaflight 4.x byte layout)
+ *
+ * BF wire format:
+ * [0] gyroLowpassHz(U8), [1-2] dTermLowpassHz(U16), [3-4] yawLowpassHz(U16),
+ * [5-6] gyroNotchHz(U16), [7-8] gyroNotchCutoff(U16),
+ * [9-10] dTermNotchHz(U16), [11-12] dTermNotchCutoff(U16),
+ * [13-14] gyroNotch2Hz(U16), [15-16] gyroNotch2Cutoff(U16),
+ * [17] dTermLowpassType(U8), [18] gyroHardwareLpf(U8), [19] skip(U8),
+ * [20-21] gyroLowpassHz(U16, overwrites byte 0), [22-23] gyroLowpass2Hz(U16),
+ * [24] gyroLowpassType(U8), [25] gyroLowpass2Type(U8),
+ * [26-27] dTermLowpass2Hz(U16), [28] dTermLowpass2Type(U8),
+ * [29-30] gyroLowpassDynMinHz(U16), [31-32] gyroLowpassDynMaxHz(U16),
+ * [33-34] dTermLowpassDynMinHz(U16), [35-36] dTermLowpassDynMaxHz(U16),
+ * [37] dynNotchRange(U8), [38] dynNotchWidthPercent(U8),
+ * [39-40] dynNotchQ(U16), [41-42] dynNotchMinHz(U16),
+ * [43] gyroRpmNotchHarmonics(U8), [44] gyroRpmNotchMinHz(U8),
+ * [45-46] dynNotchMaxHz(U16), [47] dynLpfCurveExpo(U8), [48] dynNotchCount(U8)
  */
 export function deserializeFilterConfig(payload: Uint8Array): MSPFilterConfig {
   const reader = new PayloadReader(payload);
 
-  const config: MSPFilterConfig = {
-    gyroLowpassHz: reader.readU8(),
-    dTermLowpassHz: reader.readU16(),
-    yawLowpassHz: reader.readU16(),
-    gyroNotchHz: reader.readU16(),
-    gyroNotchCutoff: reader.readU16(),
-    dTermNotchHz: reader.readU16(),
-    dTermNotchCutoff: reader.readU16(),
-    gyroNotch2Hz: reader.readU16(),
-    gyroNotch2Cutoff: reader.readU16(),
-    gyroLowpassType: reader.remaining() >= 1 ? reader.readU8() : 0,
-    gyroLowpass2Hz: reader.remaining() >= 1 ? reader.readU8() : 0,
-    gyroLowpass2Type: reader.remaining() >= 1 ? reader.readU8() : 0,
-    dTermLowpass2Hz: reader.remaining() >= 2 ? reader.readU16() : 0,
-    dTermLowpassType: reader.remaining() >= 1 ? reader.readU8() : 0,
-    dTermLowpass2Type: reader.remaining() >= 1 ? reader.readU8() : 0,
-    dynNotchRange: reader.remaining() >= 1 ? reader.readU8() : 0,
-    dynNotchWidthPercent: reader.remaining() >= 1 ? reader.readU8() : 0,
-    dynNotchQ: reader.remaining() >= 2 ? reader.readU16() : 0,
-    dynNotchMinHz: reader.remaining() >= 2 ? reader.readU16() : 0,
-    dynNotchMaxHz: reader.remaining() >= 2 ? reader.readU16() : 0,
-    dynNotchCount: reader.remaining() >= 1 ? reader.readU8() : 0,
-    abgAlpha: reader.remaining() >= 2 ? reader.readU16() : 0,
-    abgBoost: reader.remaining() >= 2 ? reader.readU16() : 0,
-    abgHalfLife: reader.remaining() >= 1 ? reader.readU8() : 0,
-  };
+  // Bytes 0-16: core filter settings (always present)
+  let gyroLowpassHz: number = reader.readU8();       // 0 (initial U8, may be overwritten)
+  const dTermLowpassHz = reader.readU16();            // 1-2
+  const yawLowpassHz = reader.readU16();              // 3-4
+  const gyroNotchHz = reader.readU16();               // 5-6
+  const gyroNotchCutoff = reader.readU16();           // 7-8
+  const dTermNotchHz = reader.readU16();              // 9-10
+  const dTermNotchCutoff = reader.readU16();          // 11-12
+  const gyroNotch2Hz = reader.readU16();              // 13-14
+  const gyroNotch2Cutoff = reader.readU16();          // 15-16
 
-  return config;
+  // Byte 17+: extended fields (BF 4.0+)
+  const dTermLowpassType = reader.remaining() >= 1 ? reader.readU8() : 0;       // 17
+  const gyroHardwareLpf = reader.remaining() >= 1 ? reader.readU8() : 0;        // 18
+  if (reader.remaining() >= 1) reader.readU8(); // 19: skip unused byte (gyro_32khz_hardware_lpf)
+
+  // Bytes 20-21: U16 gyroLowpassHz overwrites the U8 from byte 0
+  if (reader.remaining() >= 2) gyroLowpassHz = reader.readU16();                // 20-21
+  const gyroLowpass2Hz = reader.remaining() >= 2 ? reader.readU16() : 0;        // 22-23
+  const gyroLowpassType = reader.remaining() >= 1 ? reader.readU8() : 0;        // 24
+  const gyroLowpass2Type = reader.remaining() >= 1 ? reader.readU8() : 0;       // 25
+  const dTermLowpass2Hz = reader.remaining() >= 2 ? reader.readU16() : 0;       // 26-27
+  const dTermLowpass2Type = reader.remaining() >= 1 ? reader.readU8() : 0;      // 28
+
+  // Dynamic lowpass (BF 4.1+)
+  const gyroLowpassDynMinHz = reader.remaining() >= 2 ? reader.readU16() : 0;   // 29-30
+  const gyroLowpassDynMaxHz = reader.remaining() >= 2 ? reader.readU16() : 0;   // 31-32
+  const dTermLowpassDynMinHz = reader.remaining() >= 2 ? reader.readU16() : 0;  // 33-34
+  const dTermLowpassDynMaxHz = reader.remaining() >= 2 ? reader.readU16() : 0;  // 35-36
+
+  // Dynamic notch
+  const dynNotchRange = reader.remaining() >= 1 ? reader.readU8() : 0;          // 37
+  const dynNotchWidthPercent = reader.remaining() >= 1 ? reader.readU8() : 0;   // 38
+  const dynNotchQ = reader.remaining() >= 2 ? reader.readU16() : 0;             // 39-40
+  const dynNotchMinHz = reader.remaining() >= 2 ? reader.readU16() : 0;         // 41-42
+
+  // RPM notch
+  const gyroRpmNotchHarmonics = reader.remaining() >= 1 ? reader.readU8() : 0;  // 43
+  const gyroRpmNotchMinHz = reader.remaining() >= 1 ? reader.readU8() : 0;      // 44
+
+  const dynNotchMaxHz = reader.remaining() >= 2 ? reader.readU16() : 0;         // 45-46
+  const dynLpfCurveExpo = reader.remaining() >= 1 ? reader.readU8() : 0;        // 47
+  const dynNotchCount = reader.remaining() >= 1 ? reader.readU8() : 0;          // 48
+
+  return {
+    gyroLowpassHz,
+    dTermLowpassHz,
+    yawLowpassHz,
+    gyroNotchHz,
+    gyroNotchCutoff,
+    dTermNotchHz,
+    dTermNotchCutoff,
+    gyroNotch2Hz,
+    gyroNotch2Cutoff,
+    dTermLowpassType,
+    gyroHardwareLpf,
+    gyroLowpassType,
+    gyroLowpass2Hz,
+    gyroLowpass2Type,
+    dTermLowpass2Hz,
+    dTermLowpass2Type,
+    gyroLowpassDynMinHz,
+    gyroLowpassDynMaxHz,
+    dTermLowpassDynMinHz,
+    dTermLowpassDynMaxHz,
+    dynNotchRange,
+    dynNotchWidthPercent,
+    dynNotchQ,
+    dynNotchMinHz,
+    gyroRpmNotchHarmonics,
+    gyroRpmNotchMinHz,
+    dynNotchMaxHz,
+    dynLpfCurveExpo,
+    dynNotchCount,
+  };
 }
 
 /**
- * Serialize MSP_SET_FILTER_CONFIG payload
+ * Serialize MSP_SET_FILTER_CONFIG payload (Betaflight 4.x byte layout)
+ *
+ * Must match deserializeFilterConfig byte order exactly.
  */
 export function serializeFilterConfig(config: MSPFilterConfig): Uint8Array {
   const builder = new PayloadBuilder();
 
-  builder.writeU8(config.gyroLowpassHz);
-  builder.writeU16(config.dTermLowpassHz);
-  builder.writeU16(config.yawLowpassHz);
-  builder.writeU16(config.gyroNotchHz);
-  builder.writeU16(config.gyroNotchCutoff);
-  builder.writeU16(config.dTermNotchHz);
-  builder.writeU16(config.dTermNotchCutoff);
-  builder.writeU16(config.gyroNotch2Hz);
-  builder.writeU16(config.gyroNotch2Cutoff);
-  builder.writeU8(config.gyroLowpassType);
-  builder.writeU8(config.gyroLowpass2Hz);
-  builder.writeU8(config.gyroLowpass2Type);
-  builder.writeU16(config.dTermLowpass2Hz);
-  builder.writeU8(config.dTermLowpassType);
-  builder.writeU8(config.dTermLowpass2Type);
-  builder.writeU8(config.dynNotchRange);
-  builder.writeU8(config.dynNotchWidthPercent);
-  builder.writeU16(config.dynNotchQ);
-  builder.writeU16(config.dynNotchMinHz);
-  builder.writeU16(config.dynNotchMaxHz);
-  builder.writeU8(config.dynNotchCount);
-  builder.writeU16(config.abgAlpha);
-  builder.writeU16(config.abgBoost);
-  builder.writeU8(config.abgHalfLife);
+  // Bytes 0-16: core filter settings
+  builder.writeU8(config.gyroLowpassHz);              // 0 (legacy U8, will be overwritten by U16 at 20-21)
+  builder.writeU16(config.dTermLowpassHz);             // 1-2
+  builder.writeU16(config.yawLowpassHz);               // 3-4
+  builder.writeU16(config.gyroNotchHz);                // 5-6
+  builder.writeU16(config.gyroNotchCutoff);            // 7-8
+  builder.writeU16(config.dTermNotchHz);               // 9-10
+  builder.writeU16(config.dTermNotchCutoff);           // 11-12
+  builder.writeU16(config.gyroNotch2Hz);               // 13-14
+  builder.writeU16(config.gyroNotch2Cutoff);           // 15-16
+
+  // Byte 17+: extended fields
+  builder.writeU8(config.dTermLowpassType);            // 17
+  builder.writeU8(config.gyroHardwareLpf || 0);        // 18
+  builder.writeU8(0);                                  // 19: unused (gyro_32khz_hardware_lpf)
+  builder.writeU16(config.gyroLowpassHz);              // 20-21 (U16 overwrite)
+  builder.writeU16(config.gyroLowpass2Hz);             // 22-23
+  builder.writeU8(config.gyroLowpassType);             // 24
+  builder.writeU8(config.gyroLowpass2Type);            // 25
+  builder.writeU16(config.dTermLowpass2Hz);            // 26-27
+  builder.writeU8(config.dTermLowpass2Type);           // 28
+
+  // Dynamic lowpass
+  builder.writeU16(config.gyroLowpassDynMinHz || 0);   // 29-30
+  builder.writeU16(config.gyroLowpassDynMaxHz || 0);   // 31-32
+  builder.writeU16(config.dTermLowpassDynMinHz || 0);  // 33-34
+  builder.writeU16(config.dTermLowpassDynMaxHz || 0);  // 35-36
+
+  // Dynamic notch
+  builder.writeU8(config.dynNotchRange || 0);          // 37
+  builder.writeU8(config.dynNotchWidthPercent);        // 38
+  builder.writeU16(config.dynNotchQ);                  // 39-40
+  builder.writeU16(config.dynNotchMinHz);              // 41-42
+
+  // RPM notch
+  builder.writeU8(config.gyroRpmNotchHarmonics || 0);  // 43
+  builder.writeU8(config.gyroRpmNotchMinHz || 0);      // 44
+
+  builder.writeU16(config.dynNotchMaxHz);              // 45-46
+  builder.writeU8(config.dynLpfCurveExpo || 0);        // 47
+  builder.writeU8(config.dynNotchCount);               // 48
 
   return builder.build();
 }

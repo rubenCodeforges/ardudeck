@@ -143,6 +143,11 @@ const DEFAULT_RATES: Partial<MSPRcTuning> = {
   rollRate: 70,
   pitchRate: 70,
   yawRate: 70,
+  throttleLimitType: 0,
+  throttleLimitPercent: 100,
+  rollRateLimit: 1998,
+  pitchRateLimit: 1998,
+  yawRateLimit: 1998,
 };
 
 // Rate Presets - common rate configurations
@@ -375,60 +380,214 @@ function PresetSelector<T extends Record<string, { name: string; description: st
   );
 }
 
-// Calculate rate based on rate type (matches Betaflight calculations)
+/**
+ * Calculate rate (deg/s) at a given stick position.
+ * Formulas match Betaflight Configurator's RateCurve.js exactly.
+ *
+ * ArduDeck stores raw U8 values (0-255). BF Configurator stores decimals (divided by 100).
+ * Each rate type scales these differently before applying the formula.
+ *
+ * @param stick - Stick position 0..1 (positive half only)
+ * @param rcRate - Raw U8 RC rate value from FC
+ * @param superRate - Raw U8 rate value from FC
+ * @param expo - Raw U8 expo value from FC
+ * @param ratesType - 0=Betaflight, 1=Raceflight, 2=KISS, 3=Actual, 4=Quick
+ */
 function calculateRate(stick: number, rcRate: number, superRate: number, expo: number, ratesType: number): number {
   const absStick = Math.abs(stick);
 
   switch (ratesType) {
-    case 0: // Betaflight
-      const rcRateFactor = rcRate / 100;
-      const superRateFactor = superRate / 100;
-      const expoFactor = expo / 100;
-      const expoValue = stick * Math.pow(absStick, 3) * expoFactor + stick * (1 - expoFactor);
-      return rcRateFactor * (1 + absStick * superRateFactor * 0.01) * expoValue * 200;
+    case 0: { // Betaflight — from getBetaflightRates()
+      let rcRateF = rcRate / 100;
+      if (rcRateF > 2) rcRateF += (rcRateF - 2) * 14.54;
+      const rateF = superRate / 100;
+      const expoF = expo / 100;
 
-    case 1: // Raceflight
-      const rcCommandf = ((1 + 0.01 * expo * (stick * stick - 1.0)) * stick);
-      return ((1 + 0.01 * superRate * rcCommandf * rcCommandf) * rcCommandf) * rcRate;
+      let rcCommandf = stick;
+      if (expoF > 0) {
+        rcCommandf = stick * Math.pow(absStick, 3) * expoF + stick * (1 - expoF);
+      }
+      let angleRate = 200 * rcRateF * rcCommandf;
+      if (rateF > 0) {
+        angleRate *= 1 / Math.max(0.01, 1 - absStick * rateF);
+      }
+      return angleRate;
+    }
 
-    case 2: // KISS
-      const kissExpof = (expo / 100) * Math.pow(absStick, 3) * stick + stick * (1 - expo / 100);
-      return (kissExpof * (rcRate / 10 + (rcRate / 10) * absStick * superRate / 100)) * 10;
+    case 1: { // Raceflight — from getRaceflightRates()
+      // BF scales: rate*100, rcRate*1000, expo*100
+      const rateF = superRate;     // ArduDeck raw 40 = BF 0.40*100
+      const rcRateF = rcRate * 10; // ArduDeck raw 80 = BF 0.80*1000
+      const expoF = expo;          // ArduDeck raw 20 = BF 0.20*100
 
-    case 3: // Actual
-      // Actual rates: center sensitivity (rcRate), max rate (superRate), expo
-      const expof = absStick * (Math.pow(stick, 5) * expo / 100 + stick * (1 - expo / 100));
-      const centerSensitivity = rcRate * 10; // degrees/sec at center
-      const maxRate = superRate * 10; // degrees/sec at full stick
-      return (maxRate - centerSensitivity) * absStick + centerSensitivity;
+      let angularVel = (1 + 0.01 * expoF * (stick * stick - 1.0)) * stick;
+      angularVel = angularVel * (rcRateF + Math.abs(angularVel) * rcRateF * rateF * 0.01);
+      return angularVel;
+    }
 
-    case 4: // Quick
-      const rcRateQuick = rcRate * 2 / 10;
-      const maxRateQuick = rcRateQuick + (rcRateQuick * superRate / 100 * absStick);
-      const expoValueQuick = absStick * (Math.pow(stick, 5) * expo / 100 + stick * (1 - expo / 100));
-      return maxRateQuick * expoValueQuick * 10;
+    case 2: { // KISS — from getKISSRates()
+      // BF uses raw decimals (divided by 100)
+      const rateF = superRate / 100;
+      const rcRateF = rcRate / 100;
+      const expoF = expo / 100;
+
+      const kissRpy = 1 - absStick * rateF;
+      const kissTempCurve = stick * stick;
+      const rcCmd = (stick * kissTempCurve * expoF + stick * (1 - expoF)) * (rcRateF / 10);
+      return 2000.0 * (1.0 / kissRpy) * rcCmd;
+    }
+
+    case 3: { // Actual — from getActualRates()
+      // BF scales: rate*1000, rcRate*1000 (both are deg/s)
+      const maxRate = superRate * 10;   // ArduDeck raw 40 → 400 deg/s
+      const centerRate = rcRate * 10;   // ArduDeck raw 80 → 800 deg/s
+      const expoF = expo / 100;
+
+      const expof = absStick * (Math.pow(stick, 5) * expoF + stick * (1 - expoF));
+      const angularVel = Math.max(0, maxRate - centerRate);
+      return stick * centerRate + angularVel * expof;
+    }
+
+    case 4: { // Quick — from getQuickRates()
+      // BF scales: rate*1000 only
+      const rateF = superRate * 10;            // ArduDeck raw 40 → 400 deg/s
+      let rcRateF = (rcRate / 100) * 200;      // ArduDeck raw 80 → 160 deg/s
+      const expoF = expo / 100;
+      const rateClamped = Math.max(rateF, rcRateF);
+
+      const superExpoConfig = (rateClamped / rcRateF - 1) / (rateClamped / rcRateF);
+      const curve = Math.pow(absStick, 3) * expoF + absStick * (1 - expoF);
+      const angularVel = 1.0 / (1.0 - curve * superExpoConfig);
+      return stick * rcRateF * angularVel;
+    }
 
     default:
       return stick * rcRate;
   }
 }
 
-// Calculate max rate for display
+/**
+ * Calculate max rate at full stick deflection.
+ * Expo doesn't affect max rate at full stick for any rate type.
+ */
 function calculateMaxRate(rcRate: number, superRate: number, ratesType: number): number {
-  switch (ratesType) {
-    case 0: // Betaflight
-      return Math.round((rcRate / 100) * (1 + superRate / 100) * 200 * 1.8);
-    case 1: // Raceflight
-      return Math.round((1 + superRate / 100) * rcRate);
-    case 2: // KISS
-      return Math.round((rcRate / 10 + (rcRate / 10) * superRate / 100) * 10);
-    case 3: // Actual
-      return superRate * 10; // Max rate directly in deg/s
-    case 4: // Quick
-      return Math.round((rcRate * 2 / 10 * (1 + superRate / 100)) * 10);
-    default:
-      return rcRate;
-  }
+  return Math.round(Math.abs(calculateRate(1, rcRate, superRate, 0, ratesType)));
+}
+
+// Combined rates preview graph - centered at 0 like Betaflight Configurator
+function CombinedRatesCurve({ rcTuning }: { rcTuning: MSPRcTuning }) {
+  const axes = useMemo(() => [
+    { label: 'Roll', color: '#3B82F6', rcRate: rcTuning.rcRate, superRate: rcTuning.rollRate, expo: rcTuning.rcExpo },
+    { label: 'Pitch', color: '#10B981', rcRate: rcTuning.rcPitchRate, superRate: rcTuning.pitchRate, expo: rcTuning.rcPitchExpo },
+    { label: 'Yaw', color: '#F97316', rcRate: rcTuning.rcYawRate, superRate: rcTuning.yawRate, expo: rcTuning.rcYawExpo },
+  ], [rcTuning]);
+
+  // Graph layout constants
+  const gLeft = 60, gRight = 590, gTop = 20, gBottom = 280;
+  const gW = gRight - gLeft, gH = gBottom - gTop;
+  const gCx = gLeft + gW / 2, gCy = gTop + gH / 2;
+
+  // Calculate the global max rate across all axes for shared Y-axis
+  const globalMax = useMemo(() => {
+    let max = 0;
+    for (const ax of axes) {
+      for (let i = 0; i <= 100; i += 2) {
+        const rate = Math.abs(calculateRate(i / 100, ax.rcRate, ax.superRate, ax.expo, rcTuning.ratesType));
+        if (rate > max) max = rate;
+      }
+    }
+    return Math.max(Math.ceil(max / 50) * 50, 100);
+  }, [axes, rcTuning.ratesType]);
+
+  // Map stick (-1..+1) to x, rate (-max..+max) to y
+  const stickToX = (s: number) => gCx + (s / 1) * (gW / 2);
+  const rateToY = (r: number) => gCy - (r / globalMax) * (gH / 2);
+
+  // Generate full-range points for each axis (stick from -1 to +1)
+  const curves = useMemo(() => {
+    return axes.map(ax => {
+      const pts: string[] = [];
+      for (let i = -100; i <= 100; i += 2) {
+        const stick = i / 100;
+        const rate = calculateRate(stick, ax.rcRate, ax.superRate, ax.expo, rcTuning.ratesType);
+        pts.push(`${stickToX(stick)},${rateToY(rate)}`);
+      }
+      return { ...ax, points: pts.join(' '), maxRate: Math.round(Math.abs(calculateRate(1, ax.rcRate, ax.superRate, ax.expo, rcTuning.ratesType))) };
+    });
+  }, [axes, globalMax, rcTuning.ratesType]);
+
+  // Y-axis tick marks (symmetric: -max to +max)
+  const yTicks = useMemo(() => {
+    const step = globalMax <= 200 ? 50 : globalMax <= 500 ? 100 : globalMax <= 1000 ? 200 : 500;
+    const ticks: number[] = [0];
+    for (let v = step; v <= globalMax; v += step) {
+      ticks.push(v);
+      ticks.push(-v);
+    }
+    return ticks;
+  }, [globalMax]);
+
+  return (
+    <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-gray-400">Rates Preview</h3>
+        <div className="flex items-center gap-4">
+          {curves.map(c => (
+            <div key={c.label} className="flex items-center gap-1.5">
+              <div className="w-3 h-0.5 rounded" style={{ backgroundColor: c.color }} />
+              <span className="text-xs text-gray-400">{c.label}</span>
+              <span className="text-xs font-medium" style={{ color: c.color }}>{c.maxRate}°/s</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <svg viewBox="0 0 620 310" className="w-full" style={{ height: 280 }}>
+        {/* Background */}
+        <rect x={gLeft} y={gTop} width={gW} height={gH} fill="#111827" rx="4" />
+
+        {/* Y grid lines & labels */}
+        {yTicks.map(v => {
+          const y = rateToY(v);
+          return (
+            <g key={`y-${v}`}>
+              <line x1={gLeft} y1={y} x2={gRight} y2={y} stroke={v === 0 ? '#374151' : '#1F2937'} strokeWidth={v === 0 ? '1' : '0.5'} />
+              <text x={gLeft - 5} y={y + 3} fill="#6B7280" fontSize="9" textAnchor="end">{v}</text>
+            </g>
+          );
+        })}
+
+        {/* X grid lines & labels */}
+        {[-100, -50, 0, 50, 100].map(pct => {
+          const x = stickToX(pct / 100);
+          return (
+            <g key={`x-${pct}`}>
+              <line x1={x} y1={gTop} x2={x} y2={gBottom} stroke={pct === 0 ? '#374151' : '#1F2937'} strokeWidth={pct === 0 ? '1' : '0.5'} />
+              <text x={x} y={gBottom + 14} fill="#6B7280" fontSize="9" textAnchor="middle">{pct}%</text>
+            </g>
+          );
+        })}
+
+        {/* Axis labels */}
+        <text x={gLeft - 35} y={gCy} fill="#6B7280" fontSize="10" textAnchor="middle" transform={`rotate(-90, ${gLeft - 35}, ${gCy})`}>deg/s</text>
+
+        {/* Curves */}
+        {curves.map(c => (
+          <polyline key={c.label} fill="none" stroke={c.color} strokeWidth="2" points={c.points} strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+
+        {/* Max rate markers at full stick (right edge) */}
+        {curves.map(c => {
+          const y = rateToY(c.maxRate);
+          return (
+            <g key={`marker-${c.label}`}>
+              <circle cx={gRight} cy={y} r="3" fill={c.color} />
+              <text x={gRight + 6} y={y + 3} fill={c.color} fontSize="9" fontWeight="600">{c.maxRate}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 // Rate curve visualization with better visuals
@@ -744,6 +903,9 @@ function RatesTab({
           </div>
         ))}
       </div>
+
+      {/* Combined Rates Preview Graph */}
+      <CombinedRatesCurve rcTuning={rcTuning} />
 
     </div>
   );
