@@ -7,8 +7,6 @@ on:
       - 'v*'
   pull_request:
     branches: [master, main]
-  release:
-    types: [created]
   workflow_dispatch:
 
 permissions:
@@ -164,7 +162,7 @@ jobs:
   release:
     needs: [build-linux, build-mac-arm64, build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     steps:
