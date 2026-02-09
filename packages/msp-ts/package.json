@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "lint": "eslint src --ext .ts",
+
     "test": "vitest run",
     "clean": "rm -rf dist"
   },

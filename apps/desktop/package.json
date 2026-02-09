@@ -2,7 +2,10 @@
   "name": "@ardudeck/desktop",
   "version": "0.1.0",
   "description": "ArduDeck - Desktop Application",
-  "author": "rubenCodeforges",
+  "author": {
+    "name": "rubenCodeforges",
+    "email": "ruben@codeforges.com"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/rubenCodeforges/ardudeck.git"
