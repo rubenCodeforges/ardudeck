@@ -340,14 +340,14 @@ export const ModesAdvancedEditor: React.FC = () => {
       <EditModeModal
         isOpen={editingIndex !== null}
         onClose={() => setEditingIndex(null)}
-        mode={editingIndex !== null ? pendingModes[editingIndex] : null}
+        mode={editingIndex !== null ? pendingModes[editingIndex] ?? null : null}
         rcChannels={rcChannels}
         onSave={(auxChannel, rangeStart, rangeEnd) => {
           if (editingIndex !== null) {
             updateModeConfig(editingIndex, { auxChannel, rangeStart, rangeEnd });
           }
         }}
-        dynamicName={editingIndex !== null ? boxNameMapping[pendingModes[editingIndex]?.boxId] : undefined}
+        dynamicName={editingIndex !== null && pendingModes[editingIndex] ? boxNameMapping[pendingModes[editingIndex]!.boxId] : undefined}
       />
     </div>
   );

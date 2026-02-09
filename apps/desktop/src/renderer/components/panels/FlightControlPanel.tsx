@@ -619,7 +619,7 @@ export function FlightControlPanel() {
           {/* Left stick (Throttle/Yaw) */}
           <div className="flex gap-4">
             <ThrottleGauge
-              value={channels[2]}
+              value={channels[2]!}
               onChange={(v) => {
                 setChannel(2, v);
                 if (!isOverrideActive) startOverride();
@@ -629,8 +629,8 @@ export function FlightControlPanel() {
 
           {/* Right stick (Roll/Pitch) */}
           <JoystickControl
-            x={channels[0]}
-            y={channels[1]}
+            x={channels[0]!}
+            y={channels[1]!}
             onChangeX={(v) => {
               setChannel(0, v);
               if (!isOverrideActive) startOverride();

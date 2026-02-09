@@ -793,10 +793,10 @@ function TipsSection({ vehicle }: { vehicle: VehicleProfile | null }) {
 
   if (vehicle) {
     // Performance tips
-    if (vehicle.avgPowerDraw > 500) {
+    if ((vehicle._avgPowerDraw ?? 0) > 500) {
       tips.push({ type: 'info', message: 'High power draw - consider larger battery for longer flights' });
     }
-    if (vehicle.cruiseSpeed > 15 && vehicle.type === 'copter') {
+    if ((vehicle._cruiseSpeed ?? 0) > 15 && vehicle.type === 'copter') {
       tips.push({ type: 'info', message: 'High cruise speed reduces efficiency on multirotors' });
     }
     if (vehicle.batteryCapacity < 3000 && vehicle.weight > 2000) {

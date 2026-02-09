@@ -159,7 +159,7 @@ export function BoardPicker({
       case 'Enter':
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < visibleBoards.length) {
-          handleSelectBoard(visibleBoards[highlightedIndex]);
+          handleSelectBoard(visibleBoards[highlightedIndex]!);
         }
         break;
     }

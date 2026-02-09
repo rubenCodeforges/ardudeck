@@ -95,20 +95,20 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
       const wp = waypoints[i];
 
       if (i > 0) {
-        const prev = waypoints[i - 1];
+        const prev = waypoints[i - 1]!;
         const segmentDist = haversineDistance(
           prev.latitude,
           prev.longitude,
-          wp.latitude,
-          wp.longitude
+          wp!.latitude,
+          wp!.longitude
         );
         cumulativeDistance += segmentDist;
       }
 
       points.push({
-        wp,
+        wp: wp!,
         distance: cumulativeDistance,
-        altitude: wp.altitude,
+        altitude: wp!.altitude,
       });
     }
 
@@ -290,8 +290,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
       })
       .join(' ');
 
-    const lastX = xScale(profileData[profileData.length - 1].distance);
-    const firstX = xScale(profileData[0].distance);
+    const lastX = xScale(profileData[profileData.length - 1]!.distance);
+    const firstX = xScale(profileData[0]!.distance);
     const bottomY = chartHeight;
 
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
@@ -309,8 +309,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
       })
       .join(' ');
 
-    const lastX = xScale(terrainData[terrainData.length - 1].distance);
-    const firstX = xScale(terrainData[0].distance);
+    const lastX = xScale(terrainData[terrainData.length - 1]!.distance);
+    const firstX = xScale(terrainData[0]!.distance);
     const bottomY = chartHeight;
 
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
@@ -332,18 +332,18 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
   // Helper to get terrain elevation at a distance (interpolated)
   const getTerrainAtDistance = useCallback((dist: number): number => {
     if (terrainData.length === 0) return 0;
-    if (dist <= terrainData[0].distance) return terrainData[0].elevation;
-    if (dist >= terrainData[terrainData.length - 1].distance) {
-      return terrainData[terrainData.length - 1].elevation;
+    if (dist <= terrainData[0]!.distance) return terrainData[0]!.elevation;
+    if (dist >= terrainData[terrainData.length - 1]!.distance) {
+      return terrainData[terrainData.length - 1]!.elevation;
     }
 
     for (let j = 0; j < terrainData.length - 1; j++) {
-      if (terrainData[j].distance <= dist && terrainData[j + 1].distance >= dist) {
-        const t = (dist - terrainData[j].distance) / (terrainData[j + 1].distance - terrainData[j].distance);
-        return terrainData[j].elevation + t * (terrainData[j + 1].elevation - terrainData[j].elevation);
+      if (terrainData[j]!.distance <= dist && terrainData[j + 1]!.distance >= dist) {
+        const t = (dist - terrainData[j]!.distance) / (terrainData[j + 1]!.distance - terrainData[j]!.distance);
+        return terrainData[j]!.elevation + t * (terrainData[j + 1]!.elevation - terrainData[j]!.elevation);
       }
     }
-    return terrainData[terrainData.length - 1].elevation;
+    return terrainData[terrainData.length - 1]!.elevation;
   }, [terrainData]);
 
   // Check for collision segments (where flight path intersects terrain)
@@ -355,8 +355,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
 
     // Check each flight path segment against terrain with fine sampling
     for (let i = 0; i < profileData.length - 1; i++) {
-      const p1 = profileData[i];
-      const p2 = profileData[i + 1];
+      const p1 = profileData[i]!;
+      const p2 = profileData[i + 1]!;
       const alt1 = getDisplayAltitude(p1);
       const alt2 = getDisplayAltitude(p2);
       const dist1 = p1.distance;

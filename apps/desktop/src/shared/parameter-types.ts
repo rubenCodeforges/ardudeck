@@ -1167,7 +1167,7 @@ export function generateFallbackDescription(paramId: string): string {
       'DZ': 'deadzone',
       'OPTION': 'option/function',
     };
-    const meaning = suffixMeanings[suffix] || suffix.toLowerCase();
+    const meaning = suffixMeanings[suffix!] || suffix!.toLowerCase();
     return `RC channel ${channel} ${meaning}`;
   }
 
@@ -1182,7 +1182,7 @@ export function generateFallbackDescription(paramId: string): string {
       'REVERSED': 'reversed output',
       'FUNCTION': 'output function assignment',
     };
-    const meaning = suffixMeanings[suffix] || suffix.toLowerCase();
+    const meaning = suffixMeanings[suffix!] || suffix!.toLowerCase();
     return `Servo output ${channel} ${meaning}`;
   }
 

@@ -16,7 +16,7 @@ interface Props {
 export default function GimbalDiagram({
   highlightSurface,
   onSurfaceClick,
-  servoLabels = {},
+  servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
   const getDeflection = (surface: ControlSurface): number => {

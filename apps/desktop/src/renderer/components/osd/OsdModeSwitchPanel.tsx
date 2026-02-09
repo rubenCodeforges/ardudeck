@@ -88,8 +88,8 @@ function ModeButton({
   // Determine if mode is currently active based on channel value
   const isActive =
     mapping.auxChannel !== null &&
-    channels[mapping.auxChannel + 4] >= mapping.rangeStart &&
-    channels[mapping.auxChannel + 4] <= mapping.rangeEnd;
+    (channels[mapping.auxChannel + 4] ?? 0) >= mapping.rangeStart &&
+    (channels[mapping.auxChannel + 4] ?? 0) <= mapping.rangeEnd;
 
   const isArm = mapping.boxId === 0;
 

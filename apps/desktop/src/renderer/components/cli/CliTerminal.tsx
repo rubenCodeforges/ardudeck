@@ -209,7 +209,7 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
       }
     });
 
-    return () => unsubscribe();
+    return () => { unsubscribe(); };
   }, []);
 
   // Clear xterm when store output is cleared

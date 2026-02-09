@@ -378,12 +378,12 @@ const SafetyTab = forwardRef<SafetyTabHandle, Props>(function SafetyTab({ isInav
               setArming({
                 receiverType: receiverMatch?.[1]?.trim().toUpperCase() ?? 'SERIAL',
                 navExtraArmingSafety: armingMatch?.[1]?.toUpperCase() ?? 'ON',
-                navGpsMinSats: satsMatch ? parseInt(satsMatch[1], 10) : 6,
+                navGpsMinSats: satsMatch ? parseInt(satsMatch[1]!, 10) : 6,
               });
               setOriginalArming({
                 receiverType: receiverMatch?.[1]?.trim().toUpperCase() ?? 'SERIAL',
                 navExtraArmingSafety: armingMatch?.[1]?.toUpperCase() ?? 'ON',
-                navGpsMinSats: satsMatch ? parseInt(satsMatch[1], 10) : 6,
+                navGpsMinSats: satsMatch ? parseInt(satsMatch[1]!, 10) : 6,
               });
 
               await new Promise(r => setTimeout(r, 500));

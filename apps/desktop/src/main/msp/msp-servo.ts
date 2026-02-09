@@ -110,7 +110,7 @@ export async function probeServoConfigMode(): Promise<{ usesCli: boolean; minVal
     }
 
     // Get first servo config
-    const servo0 = configs[0];
+    const servo0 = configs[0]!;
 
     // Try to write it back unchanged via MSP
     const payload = serializeServoConfiguration(0, {
@@ -256,7 +256,7 @@ export async function saveServoConfigViaCli(): Promise<boolean> {
 
     // Clean up CLI listener
     if (ctx.cliResponseListener && ctx.currentTransport) {
-      ctx.currentTransport.off('data', ctx.cliResponseListener);
+      ctx.currentTransport.off('data', ctx.cliResponseListener as (...args: unknown[]) => void);
       ctx.cliResponseListener = null;
     }
 
@@ -269,7 +269,7 @@ export async function saveServoConfigViaCli(): Promise<boolean> {
     console.error('[MSP] CLI save failed:', error);
     // Clean up CLI listener on error too
     if (ctx.cliResponseListener && ctx.currentTransport) {
-      ctx.currentTransport.off('data', ctx.cliResponseListener);
+      ctx.currentTransport.off('data', ctx.cliResponseListener as (...args: unknown[]) => void);
       ctx.cliResponseListener = null;
     }
     ctx.servoCliModeActive = false;

@@ -339,7 +339,7 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
 
     // Detect significant movement
     for (let i = 0; i < Math.min(channels.length, 8); i++) {
-      const delta = Math.abs(channels[i] - 1500);
+      const delta = Math.abs(channels[i]! - 1500);
       if (delta > 100) {
         newDetected[i] = true;
       }
@@ -550,7 +550,7 @@ async function reconnectWithRetry(options: {
     if (prevState.transport.toLowerCase().startsWith('tcp')) {
       const match = prevState.transport.match(/TCP\s+([^:]+):(\d+)/i);
       if (match) {
-        connectOptions = { type: 'tcp', host: match[1], tcpPort: parseInt(match[2], 10), protocol: 'msp' };
+        connectOptions = { type: 'tcp', host: match[1]!, tcpPort: parseInt(match[2]!, 10), protocol: 'msp' };
         console.log(`[QuickSetup] Will reconnect via TCP: ${match[1]}:${match[2]}`);
       } else {
         // Default TCP
@@ -634,18 +634,17 @@ async function applyPresetViaMsp(
   const hasMotorMixer = preset.aircraft.motorMixerRules.length > 0;
   const isFixedWing = preset.category === 'fixed_wing';
 
-  const tasks = [
-    { name: 'Exiting CLI mode', status: 'pending' as const },
-    { name: 'Checking platform', status: 'pending' as const },
-    { name: 'Setting PIDs', status: 'pending' as const },
-    { name: 'Setting Rates', status: 'pending' as const },
-    // Always include servo mixer task - either to configure or to reset
-    { name: isFixedWing ? 'Configuring servo mixer' : 'Clearing servo mixer', status: 'pending' as const },
+  const tasks: Array<{ name: string; status: 'pending' | 'in_progress' | 'completed' | 'error'; error?: string }> = [
+    { name: 'Exiting CLI mode', status: 'pending' },
+    { name: 'Checking platform', status: 'pending' },
+    { name: 'Setting PIDs', status: 'pending' },
+    { name: 'Setting Rates', status: 'pending' },
+    { name: isFixedWing ? 'Configuring servo mixer' : 'Clearing servo mixer', status: 'pending' },
     ...(hasMotorMixer ? [{ name: 'Configuring motor mixer', status: 'pending' as const }] : []),
-    { name: 'Setting failsafe', status: 'pending' as const },
-    { name: 'Clearing old modes', status: 'pending' as const },
-    { name: 'Setting flight modes', status: 'pending' as const },
-    { name: 'Saving to EEPROM', status: 'pending' as const },
+    { name: 'Setting failsafe', status: 'pending' },
+    { name: 'Clearing old modes', status: 'pending' },
+    { name: 'Setting flight modes', status: 'pending' },
+    { name: 'Saving to EEPROM', status: 'pending' },
   ];
 
   set({
@@ -661,13 +660,13 @@ async function applyPresetViaMsp(
 
   const updateTask = (status: 'in_progress' | 'completed' | 'error', error?: string) => {
     const newTasks = [...tasks];
-    newTasks[taskIndex] = { ...newTasks[taskIndex], status, error };
-    tasks[taskIndex] = newTasks[taskIndex];
+    newTasks[taskIndex] = { ...newTasks[taskIndex]!, status, error };
+    tasks[taskIndex] = newTasks[taskIndex]!;
     set({
       applyProgress: {
         current: taskIndex + (status === 'completed' ? 1 : 0),
         total: tasks.length,
-        currentTask: newTasks[taskIndex].name,
+        currentTask: newTasks[taskIndex]!.name,
         tasks: newTasks,
       },
     });
@@ -693,7 +692,7 @@ async function applyPresetViaMsp(
       await new Promise((r) => setTimeout(r, 500));
 
       // Verify MSP is working by doing a simple read
-      const testRead = await window.electronAPI?.mspGetFcVariant();
+      const testRead = await window.electronAPI?.mspGetStatus();
       if (!testRead) {
         // Still blocked, try exiting again with longer wait
         console.warn('[QuickSetup] MSP still blocked after CLI exit, retrying...');
@@ -758,7 +757,7 @@ async function applyPresetViaMsp(
       // iNav treats rate=0 as disabled, so unused slots stay disabled
       console.log(`[QuickSetup] Setting ${preset.aircraft.servoMixerRules.length} servo mixer rules...`);
       for (let i = 0; i < preset.aircraft.servoMixerRules.length; i++) {
-        const rule = preset.aircraft.servoMixerRules[i];
+        const rule = preset.aircraft.servoMixerRules[i]!;
         const mspRule = {
           targetChannel: rule.servoIndex,
           inputSource: rule.inputSource,
@@ -832,7 +831,7 @@ async function applyPresetViaMsp(
         await new Promise((r) => setTimeout(r, 200));
 
         // Try to read current config first
-        const currentFailsafe = await window.electronAPI?.mspGetFailsafeConfig();
+        const currentFailsafe = await window.electronAPI?.mspGetFailsafeConfig() as Record<string, number> | null | undefined;
 
         // Prepare the config - use current values as base, or sensible defaults
         const procedureValue = preset.failsafe.procedure === 'RTH' ? 2 : preset.failsafe.procedure === 'LAND' ? 0 : 1;
@@ -968,10 +967,10 @@ async function applyPresetViaCli(
 ): Promise<boolean> {
   const commands = generateCliCommands(preset);
 
-  const tasks = [
-    { name: 'Sending CLI commands', status: 'pending' as const },
-    { name: 'Saving & rebooting', status: 'pending' as const },
-    { name: 'Reconnecting', status: 'pending' as const },
+  const tasks: Array<{ name: string; status: 'pending' | 'in_progress' | 'completed' | 'error'; error?: string }> = [
+    { name: 'Sending CLI commands', status: 'pending' },
+    { name: 'Saving & rebooting', status: 'pending' },
+    { name: 'Reconnecting', status: 'pending' },
   ];
 
   set({
@@ -985,13 +984,13 @@ async function applyPresetViaCli(
 
   const updateTask = (index: number, status: 'in_progress' | 'completed' | 'error', error?: string) => {
     const newTasks = [...tasks];
-    newTasks[index] = { ...newTasks[index], status, error };
-    tasks[index] = newTasks[index];
+    newTasks[index] = { ...newTasks[index]!, status, error };
+    tasks[index] = newTasks[index]!;
     set({
       applyProgress: {
         current: index + (status === 'completed' ? 1 : 0),
         total: tasks.length,
-        currentTask: newTasks[index].name,
+        currentTask: newTasks[index]!.name,
         tasks: newTasks,
       },
     });

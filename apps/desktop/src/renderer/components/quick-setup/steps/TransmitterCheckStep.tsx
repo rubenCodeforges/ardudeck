@@ -149,7 +149,7 @@ export const TransmitterCheckStep: React.FC = () => {
               key={index}
               channelIndex={index}
               value={value}
-              detected={channelsDetected[index]}
+              detected={channelsDetected[index] ?? false}
             />
           ))}
         </div>

@@ -109,13 +109,13 @@ export default function ServoReviewStep() {
                     <span className="font-mono text-blue-400">S{assignment.servoIndex}</span>
                   </td>
                   <td className="px-4 py-3 text-zinc-400">
-                    {defaultRule ? getInputName(defaultRule.inputSource) : '-'}
+                    {defaultRule?.[0] ? getInputName(defaultRule[0].inputSource) : '-'}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`font-mono ${
                       assignment.reversed ? 'text-yellow-400' : 'text-zinc-300'
                     }`}>
-                      {assignment.reversed ? '-' : ''}{assignment.rate || 100}%
+                      {assignment.reversed ? '-' : ''}{(assignment as any).rate || 100}%
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -142,14 +142,14 @@ export default function ServoReviewStep() {
             if (!defaultRule) return null;
 
             const rate = assignment.reversed
-              ? -(assignment.rate || 100)
-              : (assignment.rate || 100);
+              ? -((assignment as any).rate || 100)
+              : ((assignment as any).rate || 100);
 
             return (
               <div key={assignment.surface}>
                 <span className="text-zinc-400">Servo {assignment.servoIndex}</span>
                 <span className="text-zinc-600"> → </span>
-                <span className="text-blue-400">{getInputName(defaultRule.inputSource)}</span>
+                <span className="text-blue-400">{getInputName(defaultRule[0]!.inputSource)}</span>
                 <span className="text-zinc-600"> @ </span>
                 <span className={rate < 0 ? 'text-yellow-400' : 'text-green-400'}>
                   {rate}%

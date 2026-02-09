@@ -54,8 +54,8 @@ export const AuxChannelPicker: React.FC<AuxChannelPickerProps> = ({
       >
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-medium text-zinc-200">{selectedChannel.name}</div>
-            <div className="text-xs text-zinc-500">{selectedChannel.description}</div>
+            <div className="font-medium text-zinc-200">{selectedChannel!.name}</div>
+            <div className="text-xs text-zinc-500">{selectedChannel!.description}</div>
           </div>
           <div className="flex items-center gap-3">
             {/* Live RC value */}

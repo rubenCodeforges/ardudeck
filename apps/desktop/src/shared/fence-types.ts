@@ -236,8 +236,8 @@ export function buildFenceItems(
         param2: 0,
         param3: 0,
         param4: 0,
-        latitude: vertex.lat,
-        longitude: vertex.lon,
+        latitude: vertex!.lat,
+        longitude: vertex!.lon,
         altitude: 0,
       });
     }

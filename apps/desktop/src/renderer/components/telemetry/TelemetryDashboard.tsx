@@ -5,6 +5,7 @@ import {
   IDockviewPanelProps,
   DockviewApi,
   SerializedDockview,
+  Orientation,
 } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
 
@@ -119,7 +120,7 @@ const PILOT_VIEW_LAYOUT: SerializedDockview = {
     },
     width: 1000,
     height: 900,
-    orientation: 'HORIZONTAL',
+    orientation: Orientation.HORIZONTAL,
   },
   panels: {
     map: { id: 'map', contentComponent: 'MapPanel', title: 'Map' },
@@ -171,7 +172,7 @@ const MISSION_TELEMETRY_LAYOUT: SerializedDockview = {
     },
     width: 1614,
     height: 722,
-    orientation: 'HORIZONTAL',
+    orientation: Orientation.HORIZONTAL,
   },
   panels: {
     map: { id: 'map', contentComponent: 'MapPanel', title: 'Map' }, // Uses unified MapPanel with mission overlays
@@ -219,7 +220,7 @@ const ALL_PANELS_LAYOUT: SerializedDockview = {
     },
     width: 1000,
     height: 900,
-    orientation: 'HORIZONTAL',
+    orientation: Orientation.HORIZONTAL,
   },
   panels: {
     map: { id: 'map', contentComponent: 'MapPanel', title: 'Map' },
@@ -247,7 +248,7 @@ function createDefaultLayout(api: DockviewApi): void {
   });
 
   // Left group - Attitude and flight data
-  const leftGroup = api.addGroup({ direction: 'left', size: 220 });
+  const leftGroup = api.addGroup({ direction: 'left', initialWidth: 220 });
   api.addPanel({
     id: 'attitude',
     component: 'AttitudePanel',
@@ -268,7 +269,7 @@ function createDefaultLayout(api: DockviewApi): void {
   });
 
   // Right group - System status
-  const rightGroup = api.addGroup({ direction: 'right', size: 180 });
+  const rightGroup = api.addGroup({ direction: 'right', initialWidth: 180 });
   api.addPanel({
     id: 'battery',
     component: 'BatteryPanel',

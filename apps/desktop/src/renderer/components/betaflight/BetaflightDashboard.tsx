@@ -47,7 +47,7 @@ export function BetaflightDashboard() {
       if (result.success && result.ports) {
         setPorts(result.ports);
         if (result.ports.length > 0 && !selectedPort) {
-          setSelectedPort(result.ports[0].path);
+          setSelectedPort(result.ports[0]!.path);
         }
       }
     } catch (e) {

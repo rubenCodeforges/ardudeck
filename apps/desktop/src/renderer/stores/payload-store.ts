@@ -32,9 +32,9 @@ interface PayloadStore {
 
 export const usePayloadStore = create<PayloadStore>((set) => ({
   config: {
-    name: DEFAULT_PAYLOAD_CONFIG.name,
-    weightKg: DEFAULT_PAYLOAD_CONFIG.weightKg,
-    descentRateMs: DEFAULT_PAYLOAD_CONFIG.descentRateMs,
+    name: DEFAULT_PAYLOAD_CONFIG!.name,
+    weightKg: DEFAULT_PAYLOAD_CONFIG!.weightKg,
+    descentRateMs: DEFAULT_PAYLOAD_CONFIG!.descentRateMs,
   },
 
   presets: PAYLOAD_PRESETS,
@@ -60,9 +60,9 @@ export const usePayloadStore = create<PayloadStore>((set) => ({
   reset: () =>
     set({
       config: {
-        name: DEFAULT_PAYLOAD_CONFIG.name,
-        weightKg: DEFAULT_PAYLOAD_CONFIG.weightKg,
-        descentRateMs: DEFAULT_PAYLOAD_CONFIG.descentRateMs,
+        name: DEFAULT_PAYLOAD_CONFIG!.name,
+        weightKg: DEFAULT_PAYLOAD_CONFIG!.weightKg,
+        descentRateMs: DEFAULT_PAYLOAD_CONFIG!.descentRateMs,
       },
     }),
 }));

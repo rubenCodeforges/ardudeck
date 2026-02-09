@@ -39,13 +39,13 @@ export default function ServoEndpointsStep() {
 
     // Get the target value
     const targetValue =
-      position === 'min' ? assignment.min :
-      position === 'max' ? assignment.max :
-      assignment.center;
+      position === 'min' ? assignment!.min :
+      position === 'max' ? assignment!.max :
+      assignment!.center;
 
     // TODO: Send MSP command to move servo to target position
     // For now, just show visual feedback
-    console.log(`Testing servo ${assignment.servoIndex} at ${position}: ${targetValue}µs`);
+    console.log(`Testing servo ${assignment!.servoIndex} at ${position}: ${targetValue}µs`);
 
     // Clear testing state after 2 seconds
     setTimeout(() => setTestingServo(null), 2000);
@@ -160,12 +160,12 @@ export default function ServoEndpointsStep() {
                     type="range"
                     min={0}
                     max={125}
-                    value={assignment.rate || 100}
-                    onChange={(e) => updateAssignment(index, { rate: Number(e.target.value) })}
+                    value={(assignment as any).rate || 100}
+                    onChange={(e) => updateAssignment(index, { rate: Number(e.target.value) } as any)}
                     className="flex-1 h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer"
                   />
                   <span className="text-sm font-mono text-zinc-300 w-12 text-right">
-                    {assignment.rate || 100}%
+                    {(assignment as any).rate || 100}%
                   </span>
                 </div>
                 <p className="text-xs text-zinc-600 mt-1">

@@ -64,8 +64,8 @@ function parseMspResponse(buffer: Uint8Array): { command: number; payload: Uint8
 
   if (headerIdx === -1) return null;
 
-  const length = buffer[headerIdx + 3];
-  const command = buffer[headerIdx + 4];
+  const length = buffer[headerIdx + 3]!;
+  const command = buffer[headerIdx + 4]!;
 
   if (headerIdx + 5 + length >= buffer.length) return null;
 

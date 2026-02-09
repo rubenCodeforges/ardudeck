@@ -98,7 +98,7 @@ export class MspContext {
     const parts = this.inavVersion.split('.').map(Number);
     if (parts.length < 2) return false;
     const [major, minor] = parts;
-    return major < 2 || (major === 2 && minor < 3);
+    return major! < 2 || (major! === 2 && minor! < 3);
   }
 
   /** Check if iNav version requires MSP2 for PIDs (>= 7.0.0) */
@@ -107,7 +107,7 @@ export class MspContext {
     const parts = this.inavVersion.split('.').map(Number);
     if (parts.length < 1) return false;
     const [major] = parts;
-    return major >= 7;
+    return major! >= 7;
   }
 
   /** Safe IPC send that won't throw if window is destroyed */

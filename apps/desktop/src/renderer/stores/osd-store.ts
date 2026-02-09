@@ -235,7 +235,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
 
   loadPositionsFromFc: async () => {
     try {
-      const config = await window.api.mspGetOsdConfig() as {
+      const config = await window.electronAPI.mspGetOsdConfig() as {
         flags: number;
         videoSystem: number;
         unitMode: number;

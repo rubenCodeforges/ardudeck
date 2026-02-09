@@ -100,21 +100,21 @@ function buildMissionPath(waypoints: MissionItem[]): {
   const isSpline: boolean[] = [];
 
   // Add first point
-  positions.push([waypoints[0].latitude, waypoints[0].longitude]);
-  isSpline.push(waypoints[0].command === MAV_CMD.NAV_SPLINE_WAYPOINT);
+  positions.push([waypoints[0]!.latitude, waypoints[0]!.longitude]);
+  isSpline.push(waypoints[0]!.command === MAV_CMD.NAV_SPLINE_WAYPOINT);
 
   // For each segment between waypoints
   for (let i = 0; i < waypoints.length - 1; i++) {
-    const curr = waypoints[i];
-    const next = waypoints[i + 1];
+    const curr = waypoints[i]!;
+    const next = waypoints[i + 1]!;
     const currIsSpline = curr.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
     const nextIsSpline = next.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
 
     // If either endpoint is a spline, draw a curve
     if (currIsSpline || nextIsSpline) {
       // Get control points (previous and next waypoints for curve direction)
-      const prev = i > 0 ? waypoints[i - 1] : curr;
-      const after = i < waypoints.length - 2 ? waypoints[i + 2] : next;
+      const prev = i > 0 ? waypoints[i - 1]! : curr;
+      const after = i < waypoints.length - 2 ? waypoints[i + 2]! : next;
 
       const p0: [number, number] = [prev.latitude, prev.longitude];
       const p1: [number, number] = [curr.latitude, curr.longitude];

@@ -86,7 +86,7 @@ export const COMMAND_DESCRIPTIONS: Record<number, string> = {
 };
 
 // Commands that have location (lat/lon/alt)
-export const COMMANDS_WITH_LOCATION = new Set([
+export const COMMANDS_WITH_LOCATION: Set<number> = new Set([
   MAV_CMD.NAV_WAYPOINT,
   MAV_CMD.NAV_LOITER_UNLIM,
   MAV_CMD.NAV_LOITER_TURNS,
@@ -268,7 +268,7 @@ export function calculateMissionDistance(items: MissionItem[]): number {
   for (let i = 1; i < locItems.length; i++) {
     const prev = locItems[i - 1];
     const curr = locItems[i];
-    total += calculateDistance(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+    total += calculateDistance(prev!.latitude, prev!.longitude, curr!.latitude, curr!.longitude);
   }
 
   return total;

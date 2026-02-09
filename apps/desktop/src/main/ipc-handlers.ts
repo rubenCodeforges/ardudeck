@@ -68,7 +68,7 @@ import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-t
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES } from '../shared/telemetry-types.js';
-import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
+import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
 import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
@@ -131,11 +131,12 @@ function isLegacyMspBoard(fcVariant: string, fcVersion: string): boolean {
 
   const parts = fcVersion.split('.').map(Number);
   if (parts.length < 2) return false;
-  const [major, minor] = parts;
+  const major = parts[0]!;
+  const minor = parts[1]!;
 
   // iNav < 2.1.0 → Legacy (F3 boards)
   if (fcVariant === 'INAV') {
-    return major < 2 || (major === 2 && minor! < 1);
+    return major < 2 || (major === 2 && minor < 1);
   }
 
   // Betaflight < 4.0 → Legacy (F3 boards)
@@ -211,13 +212,13 @@ const pendingMavlinkData: Uint8Array[] = [];
 function cleanupTransportListeners(): void {
   if (currentTransport) {
     if (mavlinkDataHandler) {
-      currentTransport.removeListener('data', mavlinkDataHandler);
+      currentTransport.off('data', mavlinkDataHandler as (...args: unknown[]) => void);
     }
     if (transportErrorHandler) {
-      currentTransport.removeListener('error', transportErrorHandler);
+      currentTransport.off('error', transportErrorHandler as (...args: unknown[]) => void);
     }
     if (transportCloseHandler) {
-      currentTransport.removeListener('close', transportCloseHandler);
+      currentTransport.off('close', transportCloseHandler as (...args: unknown[]) => void);
     }
   }
   mavlinkDataHandler = null;
@@ -392,30 +393,30 @@ function sendLog(mainWindow: BrowserWindow, level: ConsoleLogEntry['level'], mes
 
 // Helper functions to read values from MAVLink payload (little-endian)
 function readInt16(payload: Uint8Array, offset: number): number {
-  const val = payload[offset] | (payload[offset + 1] << 8);
+  const val = payload[offset]! | (payload[offset + 1]! << 8);
   return val > 0x7FFF ? val - 0x10000 : val;
 }
 
 function readUint16(payload: Uint8Array, offset: number): number {
-  return payload[offset] | (payload[offset + 1] << 8);
+  return payload[offset]! | (payload[offset + 1]! << 8);
 }
 
 function readInt32(payload: Uint8Array, offset: number): number {
-  const val = payload[offset] | (payload[offset + 1] << 8) | (payload[offset + 2] << 16) | (payload[offset + 3] << 24);
+  const val = payload[offset]! | (payload[offset + 1]! << 8) | (payload[offset + 2]! << 16) | (payload[offset + 3]! << 24);
   return val;
 }
 
 function readUint32(payload: Uint8Array, offset: number): number {
-  return (payload[offset] | (payload[offset + 1] << 8) | (payload[offset + 2] << 16) | (payload[offset + 3] << 24)) >>> 0;
+  return (payload[offset]! | (payload[offset + 1]! << 8) | (payload[offset + 2]! << 16) | (payload[offset + 3]! << 24)) >>> 0;
 }
 
 function readFloat(payload: Uint8Array, offset: number): number {
   const buffer = new ArrayBuffer(4);
   const view = new DataView(buffer);
-  view.setUint8(0, payload[offset]);
-  view.setUint8(1, payload[offset + 1]);
-  view.setUint8(2, payload[offset + 2]);
-  view.setUint8(3, payload[offset + 3]);
+  view.setUint8(0, payload[offset]!);
+  view.setUint8(1, payload[offset + 1]!);
+  view.setUint8(2, payload[offset + 2]!);
+  view.setUint8(3, payload[offset + 3]!);
   return view.getFloat32(0, true); // little-endian
 }
 
@@ -469,9 +470,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_HEARTBEAT: {
       // MAVLink wire order: custom_mode(4), type(1), autopilot(1), base_mode(1), system_status(1), mavlink_version(1)
       const customMode = readUint32(payload, 0);
-      const vehicleType = payload[4];
-      const autopilotType = payload[5];
-      const baseMode = payload[6];
+      const vehicleType = payload[4]!;
+      const autopilotType = payload[5]!;
+      const baseMode = payload[6]!;
 
       currentVehicleType = vehicleType;
       const armed = (baseMode & 0x80) !== 0; // MAV_MODE_FLAG_SAFETY_ARMED
@@ -500,7 +501,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Payload offset for battery: voltage_battery at offset 14 (uint16 mV), current_battery at 16 (int16 cA), battery_remaining at 30 (int8 %)
       const voltage = readUint16(payload, 14) / 1000; // mV to V
       const current = readInt16(payload, 16) / 100;   // cA to A
-      const remaining = payload[30] === 255 ? -1 : payload[30]; // -1 if unknown
+      const remaining = payload[30] === 255 ? -1 : payload[30]!; // -1 if unknown
 
       const battery: BatteryData = { voltage, current, remaining };
       safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'battery', data: battery });
@@ -513,8 +514,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const lon = readInt32(payload, 12) / 1e7;
       const alt = readInt32(payload, 16) / 1000; // mm to m
       const hdop = readUint16(payload, 20) / 100; // eph = hdop * 100
-      const fixType = payload[28];
-      const satellites = payload[29];
+      const fixType = payload[28]!;
+      const satellites = payload[29]!;
 
       const gps: GpsData = { fixType, satellites, hdop, lat, lon, alt };
       safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'gps', data: gps });
@@ -630,8 +631,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         // Detection: If bytes 2-3 are our GCS IDs (255, 190) or count at offset 2 is unreasonable,
         // assume v2 byte order (count at offset 0)
         let count: number;
-        const countAtOffset0 = payload[0] | (payload[1] << 8);
-        const countAtOffset2 = payload[2] | (payload[3] << 8);
+        const countAtOffset0 = payload[0]! | (payload[1]! << 8);
+        const countAtOffset2 = payload[2]! | (payload[3]! << 8);
 
         // Check if bytes 2-3 look like GCS IDs (255, 190) - indicates v2 order
         const looksLikeV2Order = (payload[2] === 0xFF && payload[3] === 0xBE) ||
@@ -678,7 +679,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           const msg = deserializeMissionItemInt(payload);
           item = {
             seq: msg.seq,
-            frame: msg.frame,
+            frame: msg.frame as MavFrame,
             command: msg.command,
             current: msg.current === 1,
             autocontinue: msg.autocontinue === 1,
@@ -695,7 +696,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           const msg = deserializeMissionItem(payload);
           item = {
             seq: msg.seq,
-            frame: msg.frame,
+            frame: msg.frame as MavFrame,
             command: msg.command,
             current: msg.current === 1,
             autocontinue: msg.autocontinue === 1,
@@ -774,8 +775,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         // v1 order: target_system(1), target_component(1), seq(2) - seq at offset 2
         // v2 order: seq(2), target_system(1), target_component(1), [mission_type(1)] - seq at offset 0
         let seq: number;
-        const seqAtOffset0 = payload[0] | (payload[1] << 8);
-        const seqAtOffset2 = payload[2] | (payload[3] << 8);
+        const seqAtOffset0 = payload[0]! | (payload[1]! << 8);
+        const seqAtOffset2 = payload[2]! | (payload[3]! << 8);
 
         // Check if bytes 2-3 look like GCS IDs (255, 190) - indicates v2 order
         const looksLikeV2Order = (payload[2] === 0xFF && payload[3] === 0xBE) ||
@@ -793,7 +794,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         sendLog(mainWindow, 'debug', `FC requesting mission item ${seq} (msg ${msgid}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`);
 
         if (seq < missionUploadState.items.length) {
-          sendMissionItem(mainWindow, missionUploadState.items[seq]);
+          sendMissionItem(mainWindow, missionUploadState.items[seq]!);
           missionUploadState.currentSeq = seq;
 
           // Send progress
@@ -825,7 +826,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         // MAVLink v1: 3 bytes (target_system, target_component, type)
         // MAVLink v2: 4 bytes (adds mission_type)
         // type is at byte offset 2
-        const ackType = payload.length >= 3 ? payload[2] : 0;
+        const ackType = payload.length >= 3 ? payload[2]! : 0;
 
         if (ackType === MAV_MISSION_RESULT.ACCEPTED) {
           if (missionUploadState) {
@@ -875,7 +876,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Handle both MAVLink v1 (2 bytes) and v2 (6 bytes) formats
       let seq: number;
       if (payload.length >= 2) {
-        seq = payload[0] | (payload[1] << 8); // Little-endian uint16
+        seq = payload[0]! | (payload[1]! << 8); // Little-endian uint16
         safeSend(mainWindow, IPC_CHANNELS.MISSION_CURRENT, seq);
       }
       break;
@@ -885,7 +886,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // FC reached a waypoint
       try {
         if (payload.length >= 2) {
-          const seq = payload[0] | (payload[1] << 8);
+          const seq = payload[0]! | (payload[1]! << 8);
           safeSend(mainWindow, IPC_CHANNELS.MISSION_REACHED, seq);
           sendLog(mainWindow, 'info', `Reached waypoint ${seq}`);
         }
@@ -903,8 +904,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           const status: FenceStatus = {
             breachTime: readUint32(payload, 0),
             breachCount: readUint16(payload, 4),
-            breachStatus: payload[6],
-            breachType: payload[7],
+            breachStatus: payload[6]!,
+            breachType: payload[7]!,
           };
           safeSend(mainWindow, IPC_CHANNELS.FENCE_STATUS, status);
         }
@@ -1526,8 +1527,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 // MAVLink v2 reorders payload by size (largest first):
                 // custom_mode(4) at offset 0, type(1) at offset 4, autopilot(1) at offset 5
                 // Note: ArduPilot uses v2 byte order even with v1 packet framing
-                const vehicleType = packet.payload[4];
-                const autopilotType = packet.payload[5];
+                const vehicleType = packet.payload[4]!;
+                const autopilotType = packet.payload[5]!;
 
                 // First heartbeat - connection confirmed!
                 if (connectionState.isWaitingForHeartbeat) {
@@ -1684,7 +1685,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               await new Promise(resolve => setTimeout(resolve, 500));
               currentTransport?.close();
               currentTransport = null;
-              connectionState = { isConnected: false, isWaitingForHeartbeat: false };
+              connectionState = { isConnected: false, isWaitingForHeartbeat: false, packetsReceived: 0, packetsSent: 0 };
               sendConnectionState(mainWindow);
 
               // Wait for SITL to reboot (typically ~3-4 seconds)
@@ -1763,7 +1764,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           // IMPORTANT: Remove MAVLink handler before trying MSP
           // BSOD FIX: Use stored handler reference and clear it
           if (mavlinkDataHandler) {
-            currentTransport.removeListener('data', mavlinkDataHandler);
+            currentTransport.off('data', mavlinkDataHandler as (...args: unknown[]) => void);
             mavlinkDataHandler = null;
           }
           mavlinkParser = null;
@@ -1865,7 +1866,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
           // Try to remove all listeners to prevent further issues
           try {
-            transport.removeAllListeners();
+            (transport as unknown as { removeAllListeners(): void }).removeAllListeners();
           } catch {
             // Ignore
           }
@@ -2172,7 +2173,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
-      const filePath = result.filePaths[0];
+      const filePath = result.filePaths[0]!;
       const fs = await import('fs/promises');
       const content = await fs.readFile(filePath, 'utf-8');
 
@@ -2192,8 +2193,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
 
         if (parts.length >= 2) {
-          const id = parts[0].trim();
-          const value = parseFloat(parts[1].trim());
+          const id = parts[0]!.trim();
+          const value = parseFloat(parts[1]!.trim());
 
           if (id && !isNaN(value)) {
             params.push({ id, value });
@@ -2486,7 +2487,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
-      const filePath = result.filePaths[0];
+      const filePath = result.filePaths[0]!;
       const fs = await import('fs/promises');
       const path = await import('path');
       const content = await fs.readFile(filePath, 'utf-8');
@@ -2710,7 +2711,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
-      const filePath = result.filePaths[0];
+      const filePath = result.filePaths[0]!;
       const fs = await import('fs/promises');
       const content = await fs.readFile(filePath, 'utf-8');
       const items = parseFenceFile(content);
@@ -2924,7 +2925,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
-      const filePath = result.filePaths[0];
+      const filePath = result.filePaths[0]!;
       const fs = await import('fs/promises');
       const content = await fs.readFile(filePath, 'utf-8');
       const items = parseRallyFile(content);
@@ -3179,7 +3180,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
-      const filePath = result.filePaths[0];
+      const filePath = result.filePaths[0]!;
       sendLog(mainWindow, 'info', `Selected firmware file: ${filePath}`);
 
       // Copy to cache directory
@@ -3339,7 +3340,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       transport = new SerialTransport(port, { baudRate });
       await transport.open();
 
-      const parser = new MAVLinkParser();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parser: any = new MAVLinkParser();
       let targetSystem = 1;
       let targetComponent = 1;
       let mavlinkVersion: 1 | 2 = 1;
@@ -3354,7 +3356,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
         dataHandler = (data: Uint8Array) => {
           parser.feed(data);
-          let packet;
+          let packet: any;
           while ((packet = parser.parseNext()) !== null) {
             if (packet.msgId === 0) { // HEARTBEAT
               const payload = packet.payload;
@@ -3402,8 +3404,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       });
 
       const packet = mavlinkVersion === 2
-        ? serializeV2(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA)
-        : serializeV1(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA);
+        ? serializeV2(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190, sequence: 0 })
+        : serializeV1(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190, sequence: 0 });
 
       await transport.write(packet);
       sendLog(mainWindow, 'debug', 'Sent MAV_CMD_REQUEST_MESSAGE for AUTOPILOT_VERSION');
@@ -3546,12 +3548,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     port: string
   ): Promise<{
     success: boolean;
-    protocol?: 'mavlink' | 'msp' | 'dfu' | 'usb';
+    protocol?: 'mavlink' | 'msp' | 'dfu' | 'usb' | 'bootloader';
     boardName?: string;
     boardId?: string;
     firmware?: string;
     firmwareVersion?: string;
     mcuType?: string;
+    inBootloader?: boolean;
     error?: string;
   }> => {
     sendLog(mainWindow, 'info', `Auto-detecting board on ${port}...`);
@@ -3575,7 +3578,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const transport = new SerialTransport(port, { baudRate: 115200 });
       await transport.open();
 
-      const parser = new MAVLinkParser();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parser: any = new MAVLinkParser();
       let gotHeartbeat = false;
 
       // Quick heartbeat check (1.5s timeout)
@@ -3616,8 +3620,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         });
 
         const packet = heartbeatResult.mavVersion === 2
-          ? serializeV2(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA)
-          : serializeV1(cmdPayload, COMMAND_LONG_ID, 255, 190, 0, COMMAND_LONG_CRC_EXTRA);
+          ? serializeV2(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190, sequence: 0 })
+          : serializeV1(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190, sequence: 0 });
 
         await transport.write(packet);
 
@@ -3976,7 +3980,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Get FlightGear status
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_FG_STATUS, async (): Promise<{ running: boolean; pid?: number }> => {
-    return flightGearLauncher.getStatus();
+    const status = flightGearLauncher.getStatus();
+    return { running: status.running, pid: status.pid ?? undefined };
   });
 
   // Browse for X-Plane executable
@@ -4050,7 +4055,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Get X-Plane status
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_XP_STATUS, async (): Promise<{ running: boolean; pid?: number }> => {
-    return xplaneLauncher.getStatus();
+    const status = xplaneLauncher.getStatus();
+    return { running: status.running, pid: status.pid ?? undefined };
   });
 
   // Start protocol bridge (FlightGear <-> X-Plane format for iNav SITL)
@@ -4277,13 +4283,14 @@ function parseParameterXml(xml: string): ParameterMetadataStore {
 
   let match;
   while ((match = paramRegex.exec(xml)) !== null) {
-    const [, attrString, content] = match;
+    const attrString = match[1]!;
+    const content = match[2]!;
 
     // Parse attributes
     const attrs: Record<string, string> = {};
     let attrMatch;
     while ((attrMatch = attrRegex.exec(attrString)) !== null) {
-      attrs[attrMatch[1]] = attrMatch[2];
+      attrs[attrMatch[1]!] = attrMatch[2]!;
     }
 
     // Extract param name - strip vehicle prefix (e.g., "ArduPlane:PARAM" -> "PARAM")
@@ -4304,7 +4311,8 @@ function parseParameterXml(xml: string): ParameterMetadataStore {
     // Parse field elements
     let fieldMatch;
     while ((fieldMatch = fieldRegex.exec(content)) !== null) {
-      const [, fieldName, fieldValue] = fieldMatch;
+      const fieldName = fieldMatch[1]!;
+      const fieldValue = fieldMatch[2]!;
       const value = fieldValue.trim();
 
       switch (fieldName) {
@@ -4312,8 +4320,8 @@ function parseParameterXml(xml: string): ParameterMetadataStore {
           const parts = value.split(/\s+/);
           if (parts.length >= 2) {
             param.range = {
-              min: parseFloat(parts[0]),
-              max: parseFloat(parts[1]),
+              min: parseFloat(parts[0]!),
+              max: parseFloat(parts[1]!),
             };
           }
           break;
@@ -4334,14 +4342,14 @@ function parseParameterXml(xml: string): ParameterMetadataStore {
     let valueMatch;
     while ((valueMatch = valueRegex.exec(content)) !== null) {
       if (!param.values) param.values = {};
-      param.values[parseInt(valueMatch[1], 10)] = valueMatch[2].trim();
+      param.values[parseInt(valueMatch[1]!, 10)] = valueMatch[2]!.trim();
     }
 
     // Parse <bitmask> element
     let bitMatch;
     while ((bitMatch = bitRegex.exec(content)) !== null) {
       if (!param.bitmask) param.bitmask = {};
-      param.bitmask[parseInt(bitMatch[1], 10)] = bitMatch[2].trim();
+      param.bitmask[parseInt(bitMatch[1]!, 10)] = bitMatch[2]!.trim();
     }
 
     metadata[paramName] = param;
@@ -4404,17 +4412,17 @@ function parseWaypointsFile(content: string): MissionItem[] {
     if (parts.length < 12) continue;
 
     const item: MissionItem = {
-      seq: parseInt(parts[0], 10),
+      seq: parseInt(parts[0]!, 10),
       current: parts[1] === '1',
-      frame: parseInt(parts[2], 10),
-      command: parseInt(parts[3], 10),
-      param1: parseFloat(parts[4]),
-      param2: parseFloat(parts[5]),
-      param3: parseFloat(parts[6]),
-      param4: parseFloat(parts[7]),
-      latitude: parseFloat(parts[8]),
-      longitude: parseFloat(parts[9]),
-      altitude: parseFloat(parts[10]),
+      frame: parseInt(parts[2]!, 10) as MavFrame,
+      command: parseInt(parts[3]!, 10),
+      param1: parseFloat(parts[4]!),
+      param2: parseFloat(parts[5]!),
+      param3: parseFloat(parts[6]!),
+      param4: parseFloat(parts[7]!),
+      latitude: parseFloat(parts[8]!),
+      longitude: parseFloat(parts[9]!),
+      altitude: parseFloat(parts[10]!),
       autocontinue: parts[11] === '1',
     };
 
@@ -4448,7 +4456,7 @@ function formatQgcPlan(items: MissionItem[]): string {
         params: [item.param1, item.param2, item.param3, item.param4, item.latitude, item.longitude, item.altitude],
         type: 'SimpleItem',
       })),
-      plannedHomePosition: items.length > 0 ? [items[0].latitude, items[0].longitude, items[0].altitude] : [0, 0, 0],
+      plannedHomePosition: items.length > 0 ? [items[0]!.latitude, items[0]!.longitude, items[0]!.altitude] : [0, 0, 0],
       vehicleType: 2,
       version: 2,
     },
@@ -4548,16 +4556,16 @@ function parseFenceFile(content: string): FenceItem[] {
     if (parts.length < 10) continue;
 
     const item: FenceItem = {
-      seq: parseInt(parts[0], 10),
-      command: parseInt(parts[1], 10),
-      frame: parseInt(parts[2], 10),
-      param1: parseFloat(parts[3]),
-      param2: parseFloat(parts[4]),
-      param3: parseFloat(parts[5]),
-      param4: parseFloat(parts[6]),
-      latitude: parseFloat(parts[7]),
-      longitude: parseFloat(parts[8]),
-      altitude: parseFloat(parts[9]),
+      seq: parseInt(parts[0]!, 10),
+      command: parseInt(parts[1]!, 10),
+      frame: parseInt(parts[2]!, 10),
+      param1: parseFloat(parts[3]!),
+      param2: parseFloat(parts[4]!),
+      param3: parseFloat(parts[5]!),
+      param4: parseFloat(parts[6]!),
+      latitude: parseFloat(parts[7]!),
+      longitude: parseFloat(parts[8]!),
+      altitude: parseFloat(parts[9]!),
     };
 
     items.push(item);
@@ -4615,16 +4623,16 @@ function parseRallyFile(content: string): RallyItem[] {
     if (parts.length < 10) continue;
 
     const item: RallyItem = {
-      seq: parseInt(parts[0], 10),
-      command: parseInt(parts[1], 10),
-      frame: parseInt(parts[2], 10),
-      param1: parseFloat(parts[3]),
-      param2: parseFloat(parts[4]),
-      param3: parseFloat(parts[5]),
-      param4: parseFloat(parts[6]),
-      latitude: parseFloat(parts[7]),
-      longitude: parseFloat(parts[8]),
-      altitude: parseFloat(parts[9]),
+      seq: parseInt(parts[0]!, 10),
+      command: parseInt(parts[1]!, 10),
+      frame: parseInt(parts[2]!, 10),
+      param1: parseFloat(parts[3]!),
+      param2: parseFloat(parts[4]!),
+      param3: parseFloat(parts[5]!),
+      param4: parseFloat(parts[6]!),
+      latitude: parseFloat(parts[7]!),
+      longitude: parseFloat(parts[8]!),
+      altitude: parseFloat(parts[9]!),
     };
 
     items.push(item);

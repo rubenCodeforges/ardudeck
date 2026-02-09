@@ -135,7 +135,7 @@ export class OsdScreenBuffer {
   /** Get character at position */
   getChar(x: number, y: number): number {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0x20;
-    return this.buffer[y * this.width + x];
+    return this.buffer[y * this.width + x]!;
   }
 
   /** Draw a string starting at position.
@@ -155,7 +155,7 @@ export class OsdScreenBuffer {
   /** Draw a string using symbol mapping */
   drawSymbols(x: number, y: number, symbols: number[]): void {
     for (let i = 0; i < symbols.length; i++) {
-      this.setChar(x + i, y, symbols[i]);
+      this.setChar(x + i, y, symbols[i]!);
     }
   }
 

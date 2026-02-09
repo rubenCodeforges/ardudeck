@@ -312,7 +312,7 @@ class STM32SerialBootloader {
 
     if (buffer.length === 0) return null;
 
-    const numBytes = buffer[0];
+    const numBytes = buffer[0]!;
     const expectedLength = numBytes + 2; // length + version + commands + ACK
 
     // Read remaining bytes
@@ -326,7 +326,7 @@ class STM32SerialBootloader {
     }
 
     if (buffer.length >= 2) {
-      const version = buffer[1];
+      const version = buffer[1]!;
       const commands = buffer.slice(2, 2 + numBytes - 1);
       return { version, commands };
     }
@@ -358,7 +358,7 @@ class STM32SerialBootloader {
 
     if (buffer.length >= 3) {
       // buffer[0] is length (usually 1), buffer[1] and buffer[2] are chip ID
-      const chipId = (buffer[1] << 8) | buffer[2];
+      const chipId = (buffer[1]! << 8) | buffer[2]!;
       return chipId;
     }
 
@@ -520,7 +520,7 @@ class STM32SerialBootloader {
  */
 function isHexFile(content: string): boolean {
   const lines = content.split(/\r?\n/).filter(l => l.trim());
-  return lines.length > 0 && lines[0].startsWith(':');
+  return lines.length > 0 && lines[0]!.startsWith(':');
 }
 
 /**
@@ -541,8 +541,8 @@ function parseHexFile(content: string): FirmwareImage {
       bytes.push(parseInt(line.substr(i, 2), 16));
     }
 
-    const byteCount = bytes[0];
-    const address = (bytes[1] << 8) | bytes[2];
+    const byteCount = bytes[0]!;
+    const address = (bytes[1]! << 8) | bytes[2]!;
     const recordType = bytes[3];
     const data = bytes.slice(4, 4 + byteCount);
 
@@ -560,10 +560,10 @@ function parseHexFile(content: string): FirmwareImage {
         if (currentSegment) segments.push(currentSegment);
         break;
       case 0x02: // Extended segment address
-        extendedAddress = ((data[0] << 8) | data[1]) << 4;
+        extendedAddress = ((data[0]! << 8) | data[1]!) << 4;
         break;
       case 0x04: // Extended linear address
-        extendedAddress = ((data[0] << 8) | data[1]) << 16;
+        extendedAddress = ((data[0]! << 8) | data[1]!) << 16;
         break;
     }
   }

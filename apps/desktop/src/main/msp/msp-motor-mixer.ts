@@ -66,8 +66,7 @@ export async function setMotorMixerRulesViaCli(
       await new Promise(r => setTimeout(r, 300));
     }
 
-    // Remove listener
-    ctx.currentTransport.removeListener('data', dataListener);
+    ctx.currentTransport.off('data', dataListener as (...args: unknown[]) => void);
 
     // Exit CLI mode properly - 'exit' does NOT reboot
     await ctx.currentTransport.write(new TextEncoder().encode('exit\n'));
@@ -108,7 +107,7 @@ export async function setServoMixerRulesViaCli(
     // Send each servo mixer rule
     for (let i = 0; i < rules.length; i++) {
       const rule = rules[i];
-      const cmd = `smix ${i} ${rule.servoIndex} ${rule.inputSource} ${rule.rate} 0 0 100 0`;
+      const cmd = `smix ${i} ${rule!.servoIndex} ${rule!.inputSource} ${rule!.rate} 0 0 100 0`;
       await ctx.currentTransport.write(new TextEncoder().encode(cmd + '\n'));
       await new Promise(r => setTimeout(r, 200));
     }
@@ -164,7 +163,7 @@ export async function readSmixViaCli(): Promise<Array<{ index: number; target: n
     await ctx.currentTransport.write(new TextEncoder().encode('smix\n'));
     await new Promise(r => setTimeout(r, 1500));
 
-    ctx.currentTransport.removeListener('data', dataListener);
+    ctx.currentTransport.off('data', dataListener as (...args: unknown[]) => void);
 
     // Exit CLI without saving
     await ctx.currentTransport.write(new TextEncoder().encode('exit\n'));
@@ -178,10 +177,10 @@ export async function readSmixViaCli(): Promise<Array<{ index: number; target: n
       const match = line.match(/smix\s+(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)/);
       if (match) {
         rules.push({
-          index: parseInt(match[1]),
-          target: parseInt(match[2]),
-          input: parseInt(match[3]),
-          rate: parseInt(match[4]),
+          index: parseInt(match[1]!),
+          target: parseInt(match[2]!),
+          input: parseInt(match[3]!),
+          rate: parseInt(match[4]!),
         });
       }
     }
@@ -235,7 +234,7 @@ export async function readMmixViaCli(): Promise<Array<{ index: number; throttle:
     await ctx.currentTransport.write(new TextEncoder().encode('mmix\n'));
     await new Promise(r => setTimeout(r, 1500));
 
-    ctx.currentTransport.removeListener('data', dataListener);
+    ctx.currentTransport.off('data', dataListener as (...args: unknown[]) => void);
 
     await ctx.currentTransport.write(new TextEncoder().encode('exit\n'));
     await new Promise(r => setTimeout(r, 500));
@@ -248,11 +247,11 @@ export async function readMmixViaCli(): Promise<Array<{ index: number; throttle:
       const match = line.match(/mmix\s+(\d+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)/);
       if (match) {
         rules.push({
-          index: parseInt(match[1]),
-          throttle: parseFloat(match[2]),
-          roll: parseFloat(match[3]),
-          pitch: parseFloat(match[4]),
-          yaw: parseFloat(match[5]),
+          index: parseInt(match[1]!),
+          throttle: parseFloat(match[2]!),
+          roll: parseFloat(match[3]!),
+          pitch: parseFloat(match[4]!),
+          yaw: parseFloat(match[5]!),
         });
       }
     }
@@ -317,11 +316,11 @@ export async function setMotorMixer(rules: MSPMotorMixerRule[]): Promise<boolean
 
   for (let i = 0; i < rules.length; i++) {
     const rule = rules[i];
-    const payload = serializeMotorMixerRule(i, rule);
+    const payload = serializeMotorMixerRule(i, rule!);
 
     try {
       await sendMspV2RequestWithPayload(MSP2.COMMON_SET_MOTOR_MIXER, payload, 1000);
-      ctx.sendLog('info', `Motor ${i} set`, `T=${rule.throttle} R=${rule.roll} P=${rule.pitch} Y=${rule.yaw}`);
+      ctx.sendLog('info', `Motor ${i} set`, `T=${rule!.throttle} R=${rule!.roll} P=${rule!.pitch} Y=${rule!.yaw}`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(`[MSP] Failed to set motor ${i}:`, msg);

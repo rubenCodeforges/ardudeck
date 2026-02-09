@@ -35,21 +35,21 @@ import {
 const SKILL_PRESET_OPTIONS: Record<string, Preset> = {
   beginner: {
     name: 'Beginner',
-    description: SKILL_PRESETS.beginner.description,
+    description: SKILL_PRESETS.beginner!.description,
     icon: Shield,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
   },
   intermediate: {
     name: 'Intermediate',
-    description: SKILL_PRESETS.intermediate.description,
+    description: SKILL_PRESETS.intermediate!.description,
     icon: TrendingUp,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
   },
   expert: {
     name: 'Expert',
-    description: SKILL_PRESETS.expert.description,
+    description: SKILL_PRESETS.expert!.description,
     icon: Target,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
@@ -60,28 +60,28 @@ const SKILL_PRESET_OPTIONS: Record<string, Preset> = {
 const MISSION_PRESET_OPTIONS: Record<string, Preset> = {
   mapping: {
     name: 'Mapping',
-    description: MISSION_PRESETS.mapping.description,
+    description: MISSION_PRESETS.mapping!.description,
     icon: Map,
     iconColor: 'text-amber-400',
     color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
   },
   surveillance: {
     name: 'Surveillance',
-    description: MISSION_PRESETS.surveillance.description,
+    description: MISSION_PRESETS.surveillance!.description,
     icon: Eye,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-pink-500/10 border-purple-500/30',
   },
   sport: {
     name: 'Sport',
-    description: MISSION_PRESETS.sport.description,
+    description: MISSION_PRESETS.sport!.description,
     icon: Zap,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
   },
   cinema: {
     name: 'Cinematic',
-    description: MISSION_PRESETS.cinema.description,
+    description: MISSION_PRESETS.cinema!.description,
     icon: Film,
     iconColor: 'text-rose-400',
     color: 'from-rose-500/20 to-red-500/10 border-rose-500/30',

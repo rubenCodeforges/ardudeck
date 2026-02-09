@@ -11,7 +11,7 @@ import { BootPadWizard } from './BootPadWizard';
  */
 function getSuggestedBoards(mcuType: string): BoardInfo[] {
   const suggested: BoardInfo[] = [];
-  const mcuFamily = mcuType.replace('STM32', '').split('/')[0]; // e.g., "F405" from "STM32F405/407"
+  const mcuFamily = mcuType.replace('STM32', '').split('/')[0]!; // e.g., "F405" from "STM32F405/407"
 
   for (const [key, board] of Object.entries(KNOWN_BOARDS)) {
     if (board.mcuType?.includes(mcuFamily) && !board.inBootloader && board.boardId !== 'unknown') {
@@ -521,7 +521,7 @@ export function FirmwareFlashView() {
     const availableTypes = getAvailableVehicleTypes(selectedSource);
     if (!availableTypes.includes(selectedVehicleType)) {
       // Current type not supported, select the first available type
-      setSelectedVehicleType(availableTypes[0]);
+      setSelectedVehicleType(availableTypes[0]!);
     }
   }, [selectedSource, selectedVehicleType, setSelectedVehicleType]);
 

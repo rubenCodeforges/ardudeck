@@ -39,6 +39,10 @@ export interface DraggableSliderProps {
   showThumb?: boolean;
   /** Disabled state - grays out and prevents interaction */
   disabled?: boolean;
+  /** Unit label (informational, not rendered by slider) */
+  unit?: string;
+  /** Custom value formatter */
+  formatValue?: (value: number) => string;
 }
 
 export function DraggableSlider({

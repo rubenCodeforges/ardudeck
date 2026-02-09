@@ -255,7 +255,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
         return;
       }
 
-      let board = usbResult.boards[0];
+      let board = usbResult.boards[0]!;
       const port = board.port;
 
       // If we have a COM port, try comprehensive auto-detection (MAVLink → MSP → STM32)
@@ -272,8 +272,8 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
               boardId: autoResult.boardId || autoResult.boardName?.toLowerCase() || board.boardId,
               detectionMethod: autoResult.protocol as any,
               mcuType: autoResult.mcuType || board.mcuType,
-              detectedMcu: autoResult.mcuType || board.detectedMcu,  // For SuggestedBoards component
-              inBootloader: autoResult.inBootloader || board.inBootloader,
+              detectedMcu: autoResult.mcuType || board.detectedMcu,
+              inBootloader: (autoResult as any).inBootloader || board.inBootloader,
               currentFirmware: autoResult.firmware ? `${autoResult.firmware} v${autoResult.firmwareVersion || ''}` : board.currentFirmware,
             };
           }
@@ -567,7 +567,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
           const matchingBoard = findMatchingInavBoard(pendingBoardMatch, result.boards);
           if (matchingBoard) {
             console.log(`[FirmwareStore] Auto-selected iNav board "${matchingBoard.name}" for Betaflight "${pendingBoardMatch}"`);
-            set({ selectedBoard: matchingBoard, pendingBoardMatch: null, unmatchedBoardWarning: null });
+            set({ selectedBoard: { ...matchingBoard, category: '' }, pendingBoardMatch: null, unmatchedBoardWarning: null });
             // Fetch versions for the matched board
             get().fetchVersions();
           } else {

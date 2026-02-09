@@ -107,13 +107,13 @@ export function OsdLivePanel() {
                 </div>
 
                 <div className="space-y-2">
-                  <RcBar label="Roll" value={channels[0]} onChange={(v) => setChannel(0, v)} />
-                  <RcBar label="Pitch" value={channels[1]} onChange={(v) => setChannel(1, v)} />
-                  <RcBar label="Thr" value={channels[2]} onChange={(v) => setChannel(2, v)} isThrottle />
-                  <RcBar label="Yaw" value={channels[3]} onChange={(v) => setChannel(3, v)} />
+                  <RcBar label="Roll" value={channels[0] ?? 1500} onChange={(v) => setChannel(0, v)} />
+                  <RcBar label="Pitch" value={channels[1] ?? 1500} onChange={(v) => setChannel(1, v)} />
+                  <RcBar label="Thr" value={channels[2] ?? 1000} onChange={(v) => setChannel(2, v)} isThrottle />
+                  <RcBar label="Yaw" value={channels[3] ?? 1500} onChange={(v) => setChannel(3, v)} />
                   <div className="border-t border-gray-800 pt-1.5 mt-1.5">
-                    <RcBar label="AUX1" value={channels[4]} onChange={(v) => setChannel(4, v)} />
-                    <RcBar label="AUX2" value={channels[5]} onChange={(v) => setChannel(5, v)} />
+                    <RcBar label="AUX1" value={channels[4] ?? 1000} onChange={(v) => setChannel(4, v)} />
+                    <RcBar label="AUX2" value={channels[5] ?? 1000} onChange={(v) => setChannel(5, v)} />
                   </div>
                 </div>
               </div>

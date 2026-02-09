@@ -142,7 +142,7 @@ export default function LegacyPidTab() {
     const id = `custom_${Date.now()}`;
     const newProfiles = {
       ...customProfiles,
-      [id]: { name: newProfileName, data: { roll: pid.roll, pitch: pid.pitch, yaw: pid.yaw } },
+      [id]: { name: newProfileName, data: { roll: { ...pid.roll, ff: pid.roll.ff ?? 0 }, pitch: { ...pid.pitch, ff: pid.pitch.ff ?? 0 }, yaw: { ...pid.yaw, ff: pid.yaw.ff ?? 0 } } },
     };
     setCustomProfiles(newProfiles);
     saveCustomProfiles(newProfiles);

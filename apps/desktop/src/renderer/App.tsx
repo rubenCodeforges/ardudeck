@@ -364,7 +364,7 @@ function App() {
         resetCalibration();
       }
     });
-    return unsubscribe;
+    return () => { unsubscribe?.(); };
   }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl, resetCalibration]);
 
   // Batched telemetry handler (preferred - single IPC message, single store update)
@@ -372,7 +372,7 @@ function App() {
     const unsubscribe = window.electronAPI?.onTelemetryBatch((batch) => {
       updateBatch(batch);
     });
-    return unsubscribe;
+    return () => { unsubscribe?.(); };
   }, [updateBatch]);
 
   // Legacy individual telemetry handler (for MAVLink or fallback)
@@ -387,7 +387,7 @@ function App() {
         case 'flight': updateFlight(update.data); break;
       }
     });
-    return unsubscribe;
+    return () => { unsubscribe?.(); };
   }, [updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight]);
 
   // Parameter events

@@ -88,7 +88,9 @@ function TelemetryValue({
 }
 
 const SensorsTab: React.FC = () => {
-  const { attitude, gps, battery, vfrHud, sysStatus, heartbeat } = useTelemetryStore();
+  const { attitude, gps, battery, vfrHud } = useTelemetryStore();
+  const sysStatus = null as { onboardControlSensorsHealth: number; onboardControlSensorsEnabled: number } | null;
+  const heartbeat = null as { autopilot?: string } | null;
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   // Track last update time

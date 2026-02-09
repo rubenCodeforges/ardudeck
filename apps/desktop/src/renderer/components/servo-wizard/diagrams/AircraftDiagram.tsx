@@ -27,7 +27,7 @@ export default function AircraftDiagram({
   presetId,
   highlightSurface,
   onSurfaceClick,
-  servoLabels = {},
+  servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
   const commonProps = {

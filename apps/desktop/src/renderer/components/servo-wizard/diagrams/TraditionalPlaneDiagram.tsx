@@ -17,7 +17,7 @@ interface Props {
 export default function TraditionalPlaneDiagram({
   highlightSurface,
   onSurfaceClick,
-  servoLabels = {},
+  servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
   const getDeflection = (surface: ControlSurface): number => {

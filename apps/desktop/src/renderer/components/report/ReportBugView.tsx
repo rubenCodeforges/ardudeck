@@ -54,7 +54,7 @@ export default function ReportBugView() {
     const cleanup = window.electronAPI.onReportProgress((p) => {
       setProgress(p);
     });
-    return cleanup;
+    return () => { cleanup(); };
   }, []);
 
   const handleGenerateReport = async () => {

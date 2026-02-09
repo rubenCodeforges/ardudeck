@@ -179,7 +179,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
           {/* Closing line (preview) */}
           {positions.length >= 2 && (
             <Polyline
-              positions={[positions[positions.length - 1], positions[0]]}
+              positions={[positions[positions.length - 1]!, positions[0]!]}
               pathOptions={{
                 color: isInclusion ? COLORS.inclusion.stroke : COLORS.exclusion.stroke,
                 weight: 1,
@@ -212,7 +212,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
         // Just center point
         return (
           <Circle
-            center={positions[0]}
+            center={positions[0]!}
             radius={10}
             pathOptions={{
               color: isInclusion ? COLORS.inclusion.stroke : COLORS.exclusion.stroke,
@@ -224,8 +224,8 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
         );
       }
       // Show circle preview
-      const center = positions[0];
-      const edge = positions[1];
+      const center = positions[0]!;
+      const edge = positions[1]!;
       const radius = calculateDistance(center[0], center[1], edge[0], edge[1]);
       return (
         <Circle

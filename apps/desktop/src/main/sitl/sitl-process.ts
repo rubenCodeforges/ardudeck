@@ -173,7 +173,7 @@ class SitlProcessManager {
     // Explicitly set stdio to pipe to ensure we can capture output
     const spawnOptions = {
       cwd: path.dirname(sitlPath),
-      stdio: ['pipe', 'pipe', 'pipe'] as const,
+      stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
       // Use shell on macOS and Linux for better compatibility with native binaries
       shell: process.platform !== 'win32',
     };
@@ -185,26 +185,26 @@ class SitlProcessManager {
 
 
       // Forward stdout to renderer AND main process log
-      this.process.stdout?.on('data', (data: Buffer) => {
+      this.process!.stdout?.on('data', (data: Buffer) => {
         const text = data.toString();
         this.sendToRenderer('sitl:stdout', text);
       });
 
       // Forward stderr to renderer AND main process log
-      this.process.stderr?.on('data', (data: Buffer) => {
+      this.process!.stderr?.on('data', (data: Buffer) => {
         const text = data.toString();
         this.sendToRenderer('sitl:stderr', text);
       });
 
       // Handle process errors
-      this.process.on('error', (error: Error) => {
+      this.process!.on('error', (error: Error) => {
         console.error('SITL process error:', error);
         this._isRunning = false;
         this.sendToRenderer('sitl:error', error.message);
       });
 
       // Handle process exit
-      this.process.on('exit', (code: number | null, signal: string | null) => {
+      this.process!.on('exit', (code: number | null, signal: string | null) => {
         this._isRunning = false;
         this.process = null;
         this.sendToRenderer('sitl:exit', { code, signal });

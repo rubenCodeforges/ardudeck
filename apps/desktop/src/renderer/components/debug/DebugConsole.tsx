@@ -43,7 +43,7 @@ export function DebugConsole() {
     const unsubscribe = window.electronAPI?.onConsoleLog((entry) => {
       useConsoleStore.getState().addLog(entry);
     });
-    return unsubscribe;
+    return () => { unsubscribe?.(); };
   }, []);
 
   const filteredLogs = filter === 'all'

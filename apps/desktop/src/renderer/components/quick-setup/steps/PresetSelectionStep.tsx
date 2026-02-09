@@ -44,7 +44,7 @@ const INAV_ONLY_MODES = [
  * Check if a preset uses any iNav-only modes
  */
 function usesInavOnlyModes(preset: QuickSetupPreset): boolean {
-  return preset.modes.some((mode) => INAV_ONLY_MODES.includes(mode.boxId));
+  return preset.modes.some((mode) => (INAV_ONLY_MODES as readonly number[]).includes(mode.boxId));
 }
 
 // ============================================================================

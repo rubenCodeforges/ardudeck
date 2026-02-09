@@ -34,21 +34,21 @@ import {
 const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
   maximum: {
     name: 'Maximum',
-    description: SAFETY_PRESETS.maximum.description,
+    description: SAFETY_PRESETS.maximum!.description,
     icon: Shield,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
   },
   balanced: {
     name: 'Balanced',
-    description: SAFETY_PRESETS.balanced.description,
+    description: SAFETY_PRESETS.balanced!.description,
     icon: Scale,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
   },
   minimal: {
     name: 'Minimal',
-    description: SAFETY_PRESETS.minimal.description,
+    description: SAFETY_PRESETS.minimal!.description,
     icon: Zap,
     iconColor: 'text-orange-400',
     color: 'from-orange-500/20 to-red-500/10 border-orange-500/30',

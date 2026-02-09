@@ -97,8 +97,8 @@ export async function getElevations(
       const elevations: number[] = data.elevation ?? [];
 
       elevations.forEach((elevation, j) => {
-        const originalIndex = batchIndices[j];
-        const point = batch[j];
+        const originalIndex = batchIndices[j]!;
+        const point = batch[j]!;
 
         if (elevation !== null && elevation !== undefined) {
           results[originalIndex] = elevation;
@@ -132,13 +132,13 @@ export function interpolatePathPoints(
   for (let i = 0; i < waypoints.length - 1; i++) {
     const start = waypoints[i];
     const end = waypoints[i + 1];
-    const segmentDist = haversineDistance(start.lat, start.lon, end.lat, end.lon);
-    segments.push({ start, end, distance: segmentDist });
+    const segmentDist = haversineDistance(start!.lat, start!.lon, end!.lat, end!.lon);
+    segments.push({ start: start!, end: end!, distance: segmentDist });
     totalDistance += segmentDist;
   }
 
   if (totalDistance === 0) {
-    return [{ ...waypoints[0], distance: 0 }];
+    return [{ ...waypoints[0]!, distance: 0 }];
   }
 
   // Generate evenly spaced sample points
@@ -179,7 +179,7 @@ function getPointAtDistance(
   }
 
   // Return last point if beyond path
-  const lastSegment = segments[segments.length - 1];
+  const lastSegment = segments[segments.length - 1]!;
   return { lat: lastSegment.end.lat, lon: lastSegment.end.lon };
 }
 

@@ -603,10 +603,10 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
             const IconComponent = preset.icon;
             const isSelected = motors.length === preset.motors.length &&
               motors.every((m, i) =>
-                Math.abs(m.throttle - preset.motors[i].throttle) < 0.01 &&
-                Math.abs(m.roll - preset.motors[i].roll) < 0.01 &&
-                Math.abs(m.pitch - preset.motors[i].pitch) < 0.01 &&
-                Math.abs(m.yaw - preset.motors[i].yaw) < 0.01
+                Math.abs(m.throttle - preset.motors[i]!.throttle) < 0.01 &&
+                Math.abs(m.roll - preset.motors[i]!.roll) < 0.01 &&
+                Math.abs(m.pitch - preset.motors[i]!.pitch) < 0.01 &&
+                Math.abs(m.yaw - preset.motors[i]!.yaw) < 0.01
               );
 
             return (
@@ -735,10 +735,10 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                     {Object.entries(MOTOR_PRESETS).find(([, p]) =>
                       p.motors.length === motors.length &&
                       motors.every((m, i) =>
-                        Math.abs(m.throttle - p.motors[i].throttle) < 0.01 &&
-                        Math.abs(m.roll - p.motors[i].roll) < 0.01 &&
-                        Math.abs(m.pitch - p.motors[i].pitch) < 0.01 &&
-                        Math.abs(m.yaw - p.motors[i].yaw) < 0.01
+                        Math.abs(m.throttle - p.motors[i]!.throttle) < 0.01 &&
+                        Math.abs(m.roll - p.motors[i]!.roll) < 0.01 &&
+                        Math.abs(m.pitch - p.motors[i]!.pitch) < 0.01 &&
+                        Math.abs(m.yaw - p.motors[i]!.yaw) < 0.01
                       )
                     )?.[1]?.name || 'Custom configuration'}
                   </p>
@@ -850,7 +850,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           min={0}
                           max={1000}
                           step={10}
-                          formatValue={(v) => (v / 1000).toFixed(2)}
+                          formatValue={(v: number) => (v / 1000).toFixed(2)}
                         />
                         <CompactSlider
                           label="Roll"
@@ -859,7 +859,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           min={0}
                           max={1000}
                           step={10}
-                          formatValue={(v) => ((v / 500) - 1).toFixed(2)}
+                          formatValue={(v: number) => ((v / 500) - 1).toFixed(2)}
                         />
                         <CompactSlider
                           label="Pitch"
@@ -868,7 +868,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           min={0}
                           max={1000}
                           step={10}
-                          formatValue={(v) => ((v / 500) - 1).toFixed(2)}
+                          formatValue={(v: number) => ((v / 500) - 1).toFixed(2)}
                         />
                         <CompactSlider
                           label="Yaw"
@@ -877,7 +877,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           min={0}
                           max={1000}
                           step={10}
-                          formatValue={(v) => ((v / 500) - 1).toFixed(2)}
+                          formatValue={(v: number) => ((v / 500) - 1).toFixed(2)}
                         />
                       </div>
                     </div>

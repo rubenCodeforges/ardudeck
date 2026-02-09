@@ -284,7 +284,7 @@ class ArduPilotSitlProcessManager {
       const spawnOptions = {
         cwd: path.dirname(binaryPath),
         env,
-        stdio: ['pipe', 'pipe', 'pipe'] as const,
+        stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
         shell: process.platform === 'win32',
       };
 
@@ -292,26 +292,26 @@ class ArduPilotSitlProcessManager {
       this._isRunning = true;
 
       // Forward stdout to renderer
-      this.process.stdout?.on('data', (data: Buffer) => {
+      this.process!.stdout?.on('data', (data: Buffer) => {
         const text = data.toString();
         this.sendToRenderer(IPC_CHANNELS.ARDUPILOT_SITL_STDOUT, text);
       });
 
       // Forward stderr to renderer
-      this.process.stderr?.on('data', (data: Buffer) => {
+      this.process!.stderr?.on('data', (data: Buffer) => {
         const text = data.toString();
         this.sendToRenderer(IPC_CHANNELS.ARDUPILOT_SITL_STDERR, text);
       });
 
       // Handle process errors
-      this.process.on('error', (error: Error) => {
+      this.process!.on('error', (error: Error) => {
         console.error('ArduPilot SITL process error:', error);
         this._isRunning = false;
         this.sendToRenderer(IPC_CHANNELS.ARDUPILOT_SITL_ERROR, error.message);
       });
 
       // Handle process exit
-      this.process.on('exit', (code: number | null, signal: string | null) => {
+      this.process!.on('exit', (code: number | null, signal: string | null) => {
         this._isRunning = false;
         this.process = null;
         this._currentConfig = null;

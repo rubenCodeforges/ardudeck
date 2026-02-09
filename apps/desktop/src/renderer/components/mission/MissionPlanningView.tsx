@@ -48,7 +48,7 @@ function createDefaultLayout(api: DockviewApi): void {
   });
 
   // Right group - Waypoint Table
-  const rightGroup = api.addGroup({ direction: 'right', size: 400 });
+  const rightGroup = api.addGroup({ direction: 'right', initialWidth: 400 });
   api.addPanel({
     id: 'waypointTable',
     component: 'WaypointTablePanel',
@@ -59,7 +59,7 @@ function createDefaultLayout(api: DockviewApi): void {
   // Bottom group - Altitude Profile (below the map)
   const bottomGroup = api.addGroup({
     direction: 'below',
-    size: 180,
+    initialHeight: 180,
     referenceGroup: mainGroup,
   });
   api.addPanel({

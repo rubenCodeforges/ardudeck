@@ -298,7 +298,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
 
     // Detect if channels have significant movement (for transmitter check)
     for (let i = 0; i < Math.min(channels.length, 8); i++) {
-      const delta = Math.abs(channels[i] - 1500);
+      const delta = Math.abs(channels[i]! - 1500);
       if (delta > 100) {
         newDetected[i] = true;
       }
@@ -323,7 +323,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
       if (boxNames && boxIds) {
         const count = Math.min(boxNames.length, boxIds.length);
         for (let i = 0; i < count; i++) {
-          boxNameMapping[boxIds[i]] = boxNames[i];
+          boxNameMapping[boxIds[i]!] = boxNames[i]!;
         }
       }
 
@@ -354,7 +354,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
     const { pendingModes, originalModes } = get();
     if (pendingModes.length !== originalModes.length) return true;
     return pendingModes.some((pending, i) => {
-      const original = originalModes[i];
+      const original = originalModes[i]!;
       return (
         pending.boxId !== original.boxId ||
         pending.auxChannel !== original.auxChannel ||
@@ -387,7 +387,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
 
       // Set new modes
       for (let i = 0; i < pendingModes.length; i++) {
-        const mode = pendingModes[i];
+        const mode = pendingModes[i]!;
         console.log(`[ModesWizard] Setting mode ${i}: boxId=${mode.boxId} aux=${mode.auxChannel} range=${mode.rangeStart}-${mode.rangeEnd}`);
         const success = await window.electronAPI?.mspSetModeRange(i, mode);
         if (!success) {

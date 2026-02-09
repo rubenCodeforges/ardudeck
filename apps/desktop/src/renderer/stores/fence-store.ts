@@ -325,13 +325,13 @@ export const useFenceStore = create<FenceStore>((set, get) => ({
         const center = drawingVertices[0];
         const edge = drawingVertices[1];
         // Calculate radius from center to edge point
-        const radius = calculateDistance(center.lat, center.lon, edge.lat, edge.lon);
-        addCircle(type, center, radius);
+        const radius = calculateDistance(center!.lat, center!.lon, edge!.lat, edge!.lon);
+        addCircle(type, center!, radius);
       }
     } else if (drawMode === 'return-point') {
       if (drawingVertices.length >= 1) {
         const point = drawingVertices[0];
-        setReturnPoint(point.lat, point.lon, 100); // Default 100m altitude
+        setReturnPoint(point!.lat, point!.lon, 100); // Default 100m altitude
       }
     }
 
@@ -352,8 +352,8 @@ export const useFenceStore = create<FenceStore>((set, get) => ({
     const { polygons, circles, returnPoint } = parseFenceItems(items);
 
     // Update next IDs to avoid conflicts
-    nextPolygonId = Math.max(nextPolygonId, ...polygons.map(p => parseInt(p.id.split('-')[1]) + 1 || 1));
-    nextCircleId = Math.max(nextCircleId, ...circles.map(c => parseInt(c.id.split('-')[1]) + 1 || 1));
+    nextPolygonId = Math.max(nextPolygonId, ...polygons.map(p => parseInt(p.id.split('-')[1]!) + 1 || 1));
+    nextCircleId = Math.max(nextCircleId, ...circles.map(c => parseInt(c.id.split('-')[1]!) + 1 || 1));
 
     set({
       fenceItems: items,
@@ -371,8 +371,8 @@ export const useFenceStore = create<FenceStore>((set, get) => ({
   setFenceItemsFromFile: (items) => {
     const { polygons, circles, returnPoint } = parseFenceItems(items);
 
-    nextPolygonId = Math.max(nextPolygonId, ...polygons.map(p => parseInt(p.id.split('-')[1]) + 1 || 1));
-    nextCircleId = Math.max(nextCircleId, ...circles.map(c => parseInt(c.id.split('-')[1]) + 1 || 1));
+    nextPolygonId = Math.max(nextPolygonId, ...polygons.map(p => parseInt(p.id.split('-')[1]!) + 1 || 1));
+    nextCircleId = Math.max(nextCircleId, ...circles.map(c => parseInt(c.id.split('-')[1]!) + 1 || 1));
 
     set({
       fenceItems: items,

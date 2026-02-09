@@ -117,7 +117,7 @@ export async function tryMspDetection(
   } catch (error) {
     // Not MSP
     ctx.sendLog('info', 'MSP detection failed', error instanceof Error ? error.message : 'No response');
-    transport.removeListener('data', dataHandler);
+    transport.off('data', dataHandler as (...args: unknown[]) => void);
     ctx.mspParser = null;
     ctx.currentTransport = null;
     return null;

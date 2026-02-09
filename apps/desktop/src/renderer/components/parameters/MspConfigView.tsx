@@ -114,6 +114,10 @@ interface MSPRcTuning {
   pitchRate: number;
   yawRateLimit: number;
   ratesType: number;
+  throttleLimitType?: number;
+  throttleLimitPercent?: number;
+  rollRateLimit?: number;
+  pitchRateLimit?: number;
 }
 
 interface MSPModeRange {
@@ -672,7 +676,7 @@ function RatesTab({
 
   // Apply a rate preset
   const applyPreset = (presetKey: keyof typeof RATE_PRESETS) => {
-    const preset = RATE_PRESETS[presetKey];
+    const preset = RATE_PRESETS[presetKey]!;
     setRcTuning({ ...rcTuning, ...preset.rates });
     setModified(true);
   };
@@ -934,7 +938,7 @@ function PidTuningTab({
 
   // Apply a PID preset (merge with current to preserve altHold, posHold, etc.)
   const applyPreset = (presetKey: keyof typeof PID_PRESETS) => {
-    const preset = PID_PRESETS[presetKey];
+    const preset = PID_PRESETS[presetKey]!;
     // IMPORTANT: Merge with current pid to preserve optional PIDs (altHold, posHold, level, mag, etc.)
     // Without this, MSP_SET_PID sends 9 bytes instead of 30, causing the command to fail
     setPid({ ...pid, ...preset.pids });
@@ -1885,7 +1889,7 @@ export function MspConfigView() {
     if (parts.length < 2) return false;
     const [major, minor] = parts;
     // iNav < 2.3.0 is considered legacy
-    return major < 2 || (major === 2 && minor < 3);
+    return major! < 2 || (major === 2 && minor! < 3);
   }, [isInav, connectionState.fcVersion]);
 
   // Check if board has SERVO_TILT feature enabled (bit 5)

@@ -56,9 +56,11 @@ function RCChannelBar({ channel, value, label }: { channel: number; value: numbe
 }
 
 export function SitlStatusPanel() {
-  const { flight, position, attitude, battery } = useTelemetryStore();
+  const { flight, position, gps, attitude, battery } = useTelemetryStore();
   const { connectionState } = useConnectionStore();
-  const { isRunning: sitlRunning, bridgeConnected } = useSitlStore();
+  const sitlStore = useSitlStore();
+  const sitlRunning = sitlStore.isRunning;
+  const bridgeConnected = (sitlStore as unknown as Record<string, unknown>).bridgeConnected as boolean | undefined;
   const { channels: gcsChannels, isOverrideActive } = useFlightControlStore();
   // Channel order: RPTY (Roll, Pitch, Throttle, Yaw)
   const [rcChannels, setRcChannels] = useState<number[]>([1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]);
@@ -72,7 +74,7 @@ export function SitlStatusPanel() {
     mag: attitude.yaw !== 0 ? 'FAKE' : 'NONE',
     baro: position.alt !== 0 ? 'FAKE' : 'NONE',
     // GPS status derived from actual telemetry
-    gps: position.fixType >= 3 ? '3D' : position.fixType >= 2 ? '2D' : position.satellites > 0 ? 'ACQ' : 'NONE',
+    gps: gps.fixType >= 3 ? '3D' : gps.fixType >= 2 ? '2D' : gps.satellites > 0 ? 'ACQ' : 'NONE',
   };
 
   // Poll RC channels if available
@@ -190,20 +192,20 @@ export function SitlStatusPanel() {
             <span className="text-xs text-zinc-500">GPS</span>
             <span
               className={`text-xs ${
-                position.fixType >= 3 ? 'text-green-400' : 'text-amber-400'
+                gps.fixType >= 3 ? 'text-green-400' : 'text-amber-400'
               }`}
             >
-              {position.fixType >= 3 ? '3D Fix' : position.fixType === 2 ? '2D Fix' : 'No Fix'}
+              {gps.fixType >= 3 ? '3D Fix' : gps.fixType === 2 ? '2D Fix' : 'No Fix'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <span className="text-zinc-500">Sats: </span>
-              <span className="text-white">{position.satellites}</span>
+              <span className="text-white">{gps.satellites}</span>
             </div>
             <div>
               <span className="text-zinc-500">HDOP: </span>
-              <span className="text-white">{(position.hdop / 100).toFixed(1)}</span>
+              <span className="text-white">{(gps.hdop / 100).toFixed(1)}</span>
             </div>
             <div>
               <span className="text-zinc-500">Lat: </span>
@@ -245,7 +247,7 @@ export function SitlStatusPanel() {
             </div>
             <div>
               <span className="text-zinc-500">AGL: </span>
-              <span className="text-white">{position.altAgl?.toFixed(1) || '0.0'}m</span>
+              <span className="text-white">{(position as unknown as Record<string, number>).altAgl?.toFixed(1) || '0.0'}m</span>
             </div>
           </div>
         </div>
@@ -334,7 +336,7 @@ export function SitlStatusPanel() {
 
         {/* System Info */}
         <div className="text-xs text-zinc-600 border-t border-zinc-800 pt-2">
-          <div>System Load: {flight.cpuLoad || 0}%</div>
+          <div>System Load: {(flight as unknown as Record<string, number>).cpuLoad || 0}%</div>
         </div>
       </div>
     </PanelContainer>

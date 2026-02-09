@@ -89,7 +89,7 @@ export async function getSettingInfo(name: string): Promise<SettingInfo | null> 
     offset += 2;
 
     // Type (uint8)
-    const typeNum = response[offset++];
+    const typeNum = response[offset++]!;
     const type = SETTING_TYPES[typeNum];
     if (!type) {
       console.warn(`[MSP] Unknown setting type ${typeNum} for ${name}`);
@@ -100,7 +100,7 @@ export async function getSettingInfo(name: string): Promise<SettingInfo | null> 
     offset++;
 
     // Mode (uint8)
-    const mode = response[offset++];
+    const mode = response[offset++]!;
 
     // Min (int32)
     const minView = new DataView(response.buffer, response.byteOffset + offset, 4);
@@ -127,7 +127,7 @@ export async function getSettingInfo(name: string): Promise<SettingInfo | null> 
       for (let i = min; i <= max; i++) {
         let str = '';
         while (offset < response.length && response[offset] !== 0) {
-          str += String.fromCharCode(response[offset++]);
+          str += String.fromCharCode(response[offset++]!);
         }
         offset++; // Skip null terminator
         table.push(str);
@@ -180,13 +180,13 @@ export async function getSetting(name: string): Promise<{ value: string | number
         const fi32 = view.getUint32(0, true);
         const buf = new ArrayBuffer(4);
         new Uint32Array(buf)[0] = fi32;
-        value = new Float32Array(buf)[0];
+        value = new Float32Array(buf)[0]!;
         break;
       }
       case 'string': {
         let str = '';
         for (let i = 0; i < response.length && response[i] !== 0; i++) {
-          str += String.fromCharCode(response[i]);
+          str += String.fromCharCode(response[i]!);
         }
         value = str;
         break;

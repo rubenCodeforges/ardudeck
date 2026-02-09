@@ -71,6 +71,7 @@ export const BOX_ID = {
   MIXER_PROFILE_2: 62,
   MIXER_TRANSITION: 63,
   ANGLE_HOLD: 64,
+  VTXPITMODE: 65,
 } as const;
 
 // Mode metadata with beginner-friendly descriptions

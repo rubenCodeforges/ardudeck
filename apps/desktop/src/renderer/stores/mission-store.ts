@@ -38,7 +38,7 @@ const MSP_WP_ACTION = {
  * Handles command type mapping between MAVLink and MSP
  */
 function missionItemToMspWaypoint(item: MissionItem, isLast: boolean): MSPWaypoint {
-  let action = MSP_WP_ACTION.WAYPOINT;
+  let action: number = MSP_WP_ACTION.WAYPOINT;
   let p1 = 0; // Speed in cm/s (default: 0 = use nav_auto_speed)
 
   // Map MAVLink command to MSP action
@@ -80,7 +80,7 @@ function missionItemToMspWaypoint(item: MissionItem, isLast: boolean): MSPWaypoi
  * Convert MSP Waypoint to MissionItem
  */
 function mspWaypointToMissionItem(wp: MSPWaypoint): MissionItem {
-  let command = MAV_CMD.NAV_WAYPOINT;
+  let command: number = MAV_CMD.NAV_WAYPOINT;
   let param1 = 0;
 
   switch (wp.action) {
@@ -436,7 +436,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     const { missionItems } = get();
     const items = [...missionItems];
     const [moved] = items.splice(fromSeq, 1);
-    items.splice(toSeq, 0, moved);
+    items.splice(toSeq, 0, moved!);
 
     // Renumber all items
     const renumbered = items.map((item, index) => ({ ...item, seq: index }));

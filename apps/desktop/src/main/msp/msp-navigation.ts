@@ -147,8 +147,8 @@ export async function uploadWaypoints(waypoints: MSPWaypoint[]): Promise<boolean
       ctx.sendLog('info', `Uploading ${waypoints.length} waypoints...`);
 
       for (let i = 0; i < waypoints.length; i++) {
-        const wp = waypoints[i];
-        const wpWithNo = { ...wp, wpNo: i + 1 };
+        const wp = waypoints[i]!;
+        const wpWithNo: MSPWaypoint = { ...wp, wpNo: i + 1 };
         if (i === waypoints.length - 1) {
           wpWithNo.flag = MSP_WP_FLAG.LAST;
         } else {
@@ -306,9 +306,9 @@ async function setNavConfigViaCli(config: Partial<MSPNavConfig>): Promise<boolea
     if (config.rthAltitude !== undefined) {
       commands.push(`set nav_rth_altitude = ${config.rthAltitude}`);
     }
-    if (config.rthAllowLanding !== undefined) {
+    if ((config as Record<string, unknown>).rthAllowLanding !== undefined) {
       const landingModes = ['NEVER', 'ALWAYS', 'FS_ONLY'];
-      commands.push(`set nav_rth_allow_landing = ${landingModes[config.rthAllowLanding] || 'ALWAYS'}`);
+      commands.push(`set nav_rth_allow_landing = ${landingModes[(config as Record<string, unknown>).rthAllowLanding as number] || 'ALWAYS'}`);
     }
     if (config.landDescendRate !== undefined) {
       commands.push(`set nav_land_descend_rate = ${config.landDescendRate}`);
@@ -319,8 +319,8 @@ async function setNavConfigViaCli(config: Partial<MSPNavConfig>): Promise<boolea
     if (config.landSlowdownMaxAlt !== undefined) {
       commands.push(`set nav_land_slowdown_maxalt = ${config.landSlowdownMaxAlt}`);
     }
-    if (config.emergencyDescendRate !== undefined) {
-      commands.push(`set nav_emerg_landing_speed = ${config.emergencyDescendRate}`);
+    if (config.emergencyDescentRate !== undefined) {
+      commands.push(`set nav_emerg_landing_speed = ${config.emergencyDescentRate}`);
     }
 
     for (const cmd of commands) {

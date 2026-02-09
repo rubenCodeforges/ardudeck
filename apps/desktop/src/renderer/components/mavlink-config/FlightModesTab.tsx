@@ -40,7 +40,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
-import { useTelemetryStore } from '../../stores/telemetry-store';
+
 import { InfoCard } from '../ui/InfoCard';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import {
@@ -115,28 +115,28 @@ const ROVER_MODES: Record<number, { name: string; description: string; icon: Rea
 const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
   beginner: {
     name: 'Beginner',
-    description: FLIGHT_MODE_PRESETS.beginner.description,
+    description: FLIGHT_MODE_PRESETS.beginner!.description,
     icon: Shield,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
   },
   intermediate: {
     name: 'Intermediate',
-    description: FLIGHT_MODE_PRESETS.intermediate.description,
+    description: FLIGHT_MODE_PRESETS.intermediate!.description,
     icon: TrendingUp,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
   },
   advanced: {
     name: 'Advanced',
-    description: FLIGHT_MODE_PRESETS.advanced.description,
+    description: FLIGHT_MODE_PRESETS.advanced!.description,
     icon: Settings,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-pink-500/10 border-purple-500/30',
   },
   mapping: {
     name: 'Mapping',
-    description: FLIGHT_MODE_PRESETS.mapping.description,
+    description: FLIGHT_MODE_PRESETS.mapping!.description,
     icon: Map,
     iconColor: 'text-amber-400',
     color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
@@ -154,7 +154,7 @@ interface FlightModesTabProps {
 
 const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
   const { parameters, setParameter, modifiedCount } = useParameterStore();
-  const { rcChannels } = useTelemetryStore();
+  const rcChannels = null as number[] | null;
   const [liveRcValue, setLiveRcValue] = useState<number>(1500);
   const [advancedMode, setAdvancedMode] = useState<boolean>(false);
   const [showRcBar, setShowRcBar] = useState<boolean>(false);
@@ -263,7 +263,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
           <div className="flex-1 space-y-2">
             {SWITCH_POSITIONS.map((pos, idx) => {
               const isPositionActive = activeSlot !== null && pos.slots.includes(activeSlot);
-              const primarySlot = pos.slots[idx === 2 ? 1 : 0]; // Use slot 6 for High, slot 1 for Low, slot 3 for Mid
+              const primarySlot = pos.slots[idx === 2 ? 1 : 0]!;
               const modeInfo = getModeInfo(flightModes[primarySlot - 1] ?? 0, isRover);
               const IconComponent = modeInfo.icon;
 
@@ -324,7 +324,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
               <span className="text-lg font-mono text-cyan-400">{liveRcValue}</span>
               {activeSlot && (
                 <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-xs">
-                  {getModeInfo(flightModes[activeSlot - 1], isRover).name}
+                  {getModeInfo(flightModes[activeSlot - 1] ?? 0, isRover).name}
                 </span>
               )}
             </div>

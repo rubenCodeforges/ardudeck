@@ -73,12 +73,12 @@ export default function ServoTuningView() {
     const assignment = assignments[index];
     // TODO: Implement servo override command
     // For now, log what we would send
-    const value = position === 'min' ? assignment.min : position === 'max' ? assignment.max : assignment.center;
-    console.log(`[ServoTuning] Test servo ${assignment.servoIndex} to ${position}: ${value}µs`);
+    const value = position === 'min' ? assignment!.min : position === 'max' ? assignment!.max : assignment!.center;
+    console.log(`[ServoTuning] Test servo ${assignment!.servoIndex} to ${position}: ${value}µs`);
   };
 
   // Generate servo labels for the diagram
-  const servoLabels: Record<ControlSurface, string> = {};
+  const servoLabels = {} as Record<ControlSurface, string>;
   assignments.forEach((a, i) => {
     servoLabels[a.surface] = `S${a.servoIndex}`;
   });

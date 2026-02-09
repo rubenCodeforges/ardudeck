@@ -3,6 +3,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # ArduDeck - Mission Planner Modernization Project
 # ALWAYS PRIOTERIZE UI/UX !!! NEVER BUILD PROTOTYPES , HACKS , ETC. USER FLOW IS PRIO NUMBER ONE AT ALL TIME !!!!
 
+## TypeScript & ESLint Rules - MUST FOLLOW
+
+All code MUST pass `npx tsc --noEmit` and `npx eslint` without errors.
+
+**tsconfig.base.json strict settings:**
+- `strict: true`, `strictNullChecks: true`, `noUncheckedIndexedAccess: true`, `noImplicitAny: true`
+- `noUncheckedIndexedAccess` means ALL array/object index access returns `T | undefined` — you MUST handle this with `!` (when guaranteed safe) or guard checks
+- Example: `arr[0]` is `T | undefined`, use `arr[0]!` if you checked length, or `if (arr[0]) { ... }`
+- After `.find()`, `.at()`, bracket access — always handle the `undefined` case
+
+**ESLint rules (eslint.config.js):**
+- `@typescript-eslint/no-unused-vars: 'off'` — unused vars are allowed
+- `@typescript-eslint/no-explicit-any: 'off'` — `any` is allowed when needed
+- `@typescript-eslint/no-require-imports: 'off'`
+
+**When writing new code:**
+- Never ignore possible `undefined` from indexed access — TypeScript will catch it
+- Use non-null assertion `!` only when you are certain the value exists
+- Prefer type narrowing (`if` checks, `?? defaultValue`) over blind `!`
+- For event handler callbacks typed as `(...args: unknown[]) => void`, cast appropriately
+
 ## UI Style Rules
 - **NO EMOJIS** - Use SVG icons or icon fonts (Lucide, etc.) instead of emojis everywhere in the UI
 - Keep interfaces clean and professional

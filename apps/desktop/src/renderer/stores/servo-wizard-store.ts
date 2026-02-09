@@ -554,7 +554,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
     try {
       // Apply each assignment's servo config
       for (let i = 0; i < assignments.length; i++) {
-        const assignment = assignments[i];
+        const assignment = assignments[i]!;
 
         // Set servo PWM config - check return value!
         const configResult = await window.electronAPI.mspSetServoConfig(assignment.servoIndex, {
@@ -575,7 +575,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         const { usesCliFallback: usingCli } = get();
         if (!usingCli && assignment.mixerRules.length > 0) {
           for (let r = 0; r < assignment.mixerRules.length; r++) {
-            const rule = assignment.mixerRules[r];
+            const rule = assignment.mixerRules[r]!;
             const mixerResult = await window.electronAPI.mspSetServoMixer(
               assignment.servoIndex * 2 + r,
               {

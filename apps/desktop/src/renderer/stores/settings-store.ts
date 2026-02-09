@@ -399,7 +399,7 @@ export const useSettingsStore = create<SettingsStore>()(
           activeVehicleId: settings.activeVehicleId || settings.vehicles?.[0]?.id || 'default',
           flightStats: settings.flightStats || { ...DEFAULT_FLIGHT_STATS },
           connectionMemory: settings.connectionMemory || { ...DEFAULT_CONNECTION_MEMORY },
-          defaultSitlType: (settings as Record<string, unknown>).defaultSitlType as DefaultSitlType || 'inav',
+          defaultSitlType: (settings as unknown as Record<string, unknown>).defaultSitlType as DefaultSitlType || 'inav',
           _isInitialized: true,
         });
       } else {
