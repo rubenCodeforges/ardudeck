@@ -11,6 +11,7 @@
  */
 
 import { create } from 'zustand';
+import { useConnectionStore } from './connection-store';
 
 // =============================================================================
 // Types
@@ -100,6 +101,57 @@ export const INAV_MODE_NAMES: Record<number, string> = {
   64: 'ANGLE HOLD',
 };
 
+/**
+ * Betaflight Permanent Box IDs (from VirtualFC.js / boxes.c)
+ */
+export const BTFL_MODE_NAMES: Record<number, string> = {
+  0: 'ARM',
+  1: 'ANGLE',
+  2: 'HORIZON',
+  3: 'ANTI GRAVITY',
+  4: 'MAG',
+  5: 'HEADFREE',
+  6: 'HEADADJ',
+  7: 'CAMSTAB',
+  8: 'PASSTHRU',
+  9: 'BEEPER',
+  10: 'LED LOW',
+  11: 'CALIB',
+  12: 'OSD DISABLE',
+  13: 'TELEMETRY',
+  14: 'SERVO1',
+  15: 'SERVO2',
+  16: 'SERVO3',
+  17: 'BLACKBOX',
+  18: 'FAILSAFE',
+  19: 'AIR MODE',
+  20: '3D DISABLE',
+  21: 'FPV ANGLE MIX',
+  22: 'BLACKBOX ERASE',
+  23: 'CAMERA 1',
+  24: 'CAMERA 2',
+  25: 'CAMERA 3',
+  26: 'FLIP OVER AFTER CRASH',
+  27: 'PREARM',
+  28: 'BEEP GPS SAT COUNT',
+  29: 'VTX PIT MODE',
+  30: 'USER1',
+  31: 'USER2',
+  32: 'USER3',
+  33: 'USER4',
+  34: 'PID AUDIO',
+  35: 'PARALYZE',
+  36: 'GPS RESCUE',
+  37: 'ACRO TRAINER',
+  38: 'VTX CONTROL DISABLE',
+  39: 'LAUNCH CONTROL',
+  40: 'MSP OVERRIDE',
+  41: 'STICK CMD DISABLE',
+  42: 'BEEPER MUTE',
+  43: 'READY',
+  44: 'LAP TIMER RESET',
+};
+
 // =============================================================================
 // Store
 // =============================================================================
@@ -125,7 +177,7 @@ interface FlightControlStore {
   setChannels: (channels: number[]) => void;
 
   // Mode mappings
-  setModeMappings: (ranges: MSPModeRange[]) => void;
+  setModeMappings: (ranges: MSPModeRange[], fcVariant?: string) => void;
   clearModeMappings: () => void;
 
   // RC Override
@@ -207,17 +259,23 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
   },
 
   // Set mode mappings from MSP_MODE_RANGES response
-  setModeMappings: (ranges) => {
-    const mappings: ModeMapping[] = ranges.map((range) => ({
+  setModeMappings: (ranges, fcVariant?: string) => {
+    // Filter out unconfigured slots (rangeEnd <= rangeStart means empty)
+    const activeRanges = ranges.filter((r) => r.rangeEnd > r.rangeStart);
+
+    // Pick name map based on FC firmware variant
+    const nameMap = fcVariant === 'BTFL' ? BTFL_MODE_NAMES : INAV_MODE_NAMES;
+
+    const mappings: ModeMapping[] = activeRanges.map((range) => ({
       boxId: range.boxId,
-      name: INAV_MODE_NAMES[range.boxId] || `Mode ${range.boxId}`,
+      name: nameMap[range.boxId] || `Mode ${range.boxId}`,
       auxChannel: range.auxChannel,
       rangeStart: range.rangeStart,
       rangeEnd: range.rangeEnd,
     }));
 
     // Check if ARM and NAV WP modes are configured
-    // iNav permanent box IDs: ARM=0, NAV WP=28
+    // Permanent box IDs: ARM=0, NAV WP=28 (iNav)
     const armMapping = mappings.find((m) => m.boxId === 0);
     const navWpMapping = mappings.find((m) => m.boxId === 28);
 
@@ -228,13 +286,10 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
       canNavWp: navWpMapping !== undefined && navWpMapping.auxChannel !== null,
     });
 
-    console.log('[FlightControl] Mode mappings loaded:', mappings.length, 'modes');
-    console.log('[FlightControl] All configured modes:');
+    console.log('[FlightControl] Mode mappings loaded:', mappings.length, 'configured modes (from', ranges.length, 'total)');
     mappings.forEach(m => {
       console.log(`  - ${m.name} (boxId=${m.boxId}): AUX${m.auxChannel !== null ? m.auxChannel + 1 : 'NONE'}, range ${m.rangeStart}-${m.rangeEnd}`);
     });
-    console.log('[FlightControl] canArm:', armMapping !== undefined);
-    console.log('[FlightControl] canNavWp:', navWpMapping !== undefined);
   },
 
   // Clear mode mappings (on disconnect) - also resets channels
@@ -506,7 +561,9 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
         return false;
       }
 
-      get().setModeMappings(configuredRanges);
+      // Pass FC variant for correct mode name lookup
+      const fcVariant = useConnectionStore.getState().connectionState.fcVariant || undefined;
+      get().setModeMappings(configuredRanges, fcVariant);
 
       return true;
     } catch (error) {
@@ -542,6 +599,7 @@ export const useFlightControlStore = create<FlightControlStore>((set, get) => ({
 }));
 
 // Export helper to get mode name by box ID
-export function getModeName(boxId: number): string {
-  return INAV_MODE_NAMES[boxId] || `Mode ${boxId}`;
+export function getModeName(boxId: number, fcVariant?: string): string {
+  const nameMap = fcVariant === 'BTFL' ? BTFL_MODE_NAMES : INAV_MODE_NAMES;
+  return nameMap[boxId] || `Mode ${boxId}`;
 }

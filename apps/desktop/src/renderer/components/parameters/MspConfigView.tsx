@@ -10,7 +10,6 @@ import { useConnectionStore } from '../../stores/connection-store';
 import inavLogo from '../../assets/inav-logo.png';
 import betaflightLogo from '../../assets/betaflight-logo.svg';
 import { useTelemetryStore } from '../../stores/telemetry-store';
-import { useMspTelemetryStore } from '../../stores/msp-telemetry-store';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
 import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import ModesWizard from '../modes/ModesWizard';
@@ -20,7 +19,7 @@ import ServoTuningTab from './ServoTuningTab';
 import ServoMixerTab from './ServoMixerTab';
 import MotorMixerTab from './MotorMixerTab';
 import NavigationTab from './NavigationTab';
-import SafetyTab from './SafetyTab';
+import SafetyTab, { type SafetyTabHandle } from './SafetyTab';
 import AutoLaunchTab from './AutoLaunchTab';
 // GpsRescueTab removed - GPS Rescue is now integrated into SafetyTab
 import FilterConfigTab from './FilterConfigTab';
@@ -144,6 +143,11 @@ const DEFAULT_RATES: Partial<MSPRcTuning> = {
   rollRate: 70,
   pitchRate: 70,
   yawRate: 70,
+  throttleLimitType: 0,
+  throttleLimitPercent: 100,
+  rollRateLimit: 1998,
+  pitchRateLimit: 1998,
+  yawRateLimit: 1998,
 };
 
 // Rate Presets - common rate configurations
@@ -376,60 +380,214 @@ function PresetSelector<T extends Record<string, { name: string; description: st
   );
 }
 
-// Calculate rate based on rate type (matches Betaflight calculations)
+/**
+ * Calculate rate (deg/s) at a given stick position.
+ * Formulas match Betaflight Configurator's RateCurve.js exactly.
+ *
+ * ArduDeck stores raw U8 values (0-255). BF Configurator stores decimals (divided by 100).
+ * Each rate type scales these differently before applying the formula.
+ *
+ * @param stick - Stick position 0..1 (positive half only)
+ * @param rcRate - Raw U8 RC rate value from FC
+ * @param superRate - Raw U8 rate value from FC
+ * @param expo - Raw U8 expo value from FC
+ * @param ratesType - 0=Betaflight, 1=Raceflight, 2=KISS, 3=Actual, 4=Quick
+ */
 function calculateRate(stick: number, rcRate: number, superRate: number, expo: number, ratesType: number): number {
   const absStick = Math.abs(stick);
 
   switch (ratesType) {
-    case 0: // Betaflight
-      const rcRateFactor = rcRate / 100;
-      const superRateFactor = superRate / 100;
-      const expoFactor = expo / 100;
-      const expoValue = stick * Math.pow(absStick, 3) * expoFactor + stick * (1 - expoFactor);
-      return rcRateFactor * (1 + absStick * superRateFactor * 0.01) * expoValue * 200;
+    case 0: { // Betaflight — from getBetaflightRates()
+      let rcRateF = rcRate / 100;
+      if (rcRateF > 2) rcRateF += (rcRateF - 2) * 14.54;
+      const rateF = superRate / 100;
+      const expoF = expo / 100;
 
-    case 1: // Raceflight
-      const rcCommandf = ((1 + 0.01 * expo * (stick * stick - 1.0)) * stick);
-      return ((1 + 0.01 * superRate * rcCommandf * rcCommandf) * rcCommandf) * rcRate;
+      let rcCommandf = stick;
+      if (expoF > 0) {
+        rcCommandf = stick * Math.pow(absStick, 3) * expoF + stick * (1 - expoF);
+      }
+      let angleRate = 200 * rcRateF * rcCommandf;
+      if (rateF > 0) {
+        angleRate *= 1 / Math.max(0.01, 1 - absStick * rateF);
+      }
+      return angleRate;
+    }
 
-    case 2: // KISS
-      const kissExpof = (expo / 100) * Math.pow(absStick, 3) * stick + stick * (1 - expo / 100);
-      return (kissExpof * (rcRate / 10 + (rcRate / 10) * absStick * superRate / 100)) * 10;
+    case 1: { // Raceflight — from getRaceflightRates()
+      // BF scales: rate*100, rcRate*1000, expo*100
+      const rateF = superRate;     // ArduDeck raw 40 = BF 0.40*100
+      const rcRateF = rcRate * 10; // ArduDeck raw 80 = BF 0.80*1000
+      const expoF = expo;          // ArduDeck raw 20 = BF 0.20*100
 
-    case 3: // Actual
-      // Actual rates: center sensitivity (rcRate), max rate (superRate), expo
-      const expof = absStick * (Math.pow(stick, 5) * expo / 100 + stick * (1 - expo / 100));
-      const centerSensitivity = rcRate * 10; // degrees/sec at center
-      const maxRate = superRate * 10; // degrees/sec at full stick
-      return (maxRate - centerSensitivity) * absStick + centerSensitivity;
+      let angularVel = (1 + 0.01 * expoF * (stick * stick - 1.0)) * stick;
+      angularVel = angularVel * (rcRateF + Math.abs(angularVel) * rcRateF * rateF * 0.01);
+      return angularVel;
+    }
 
-    case 4: // Quick
-      const rcRateQuick = rcRate * 2 / 10;
-      const maxRateQuick = rcRateQuick + (rcRateQuick * superRate / 100 * absStick);
-      const expoValueQuick = absStick * (Math.pow(stick, 5) * expo / 100 + stick * (1 - expo / 100));
-      return maxRateQuick * expoValueQuick * 10;
+    case 2: { // KISS — from getKISSRates()
+      // BF uses raw decimals (divided by 100)
+      const rateF = superRate / 100;
+      const rcRateF = rcRate / 100;
+      const expoF = expo / 100;
+
+      const kissRpy = 1 - absStick * rateF;
+      const kissTempCurve = stick * stick;
+      const rcCmd = (stick * kissTempCurve * expoF + stick * (1 - expoF)) * (rcRateF / 10);
+      return 2000.0 * (1.0 / kissRpy) * rcCmd;
+    }
+
+    case 3: { // Actual — from getActualRates()
+      // BF scales: rate*1000, rcRate*1000 (both are deg/s)
+      const maxRate = superRate * 10;   // ArduDeck raw 40 → 400 deg/s
+      const centerRate = rcRate * 10;   // ArduDeck raw 80 → 800 deg/s
+      const expoF = expo / 100;
+
+      const expof = absStick * (Math.pow(stick, 5) * expoF + stick * (1 - expoF));
+      const angularVel = Math.max(0, maxRate - centerRate);
+      return stick * centerRate + angularVel * expof;
+    }
+
+    case 4: { // Quick — from getQuickRates()
+      // BF scales: rate*1000 only
+      const rateF = superRate * 10;            // ArduDeck raw 40 → 400 deg/s
+      let rcRateF = (rcRate / 100) * 200;      // ArduDeck raw 80 → 160 deg/s
+      const expoF = expo / 100;
+      const rateClamped = Math.max(rateF, rcRateF);
+
+      const superExpoConfig = (rateClamped / rcRateF - 1) / (rateClamped / rcRateF);
+      const curve = Math.pow(absStick, 3) * expoF + absStick * (1 - expoF);
+      const angularVel = 1.0 / (1.0 - curve * superExpoConfig);
+      return stick * rcRateF * angularVel;
+    }
 
     default:
       return stick * rcRate;
   }
 }
 
-// Calculate max rate for display
+/**
+ * Calculate max rate at full stick deflection.
+ * Expo doesn't affect max rate at full stick for any rate type.
+ */
 function calculateMaxRate(rcRate: number, superRate: number, ratesType: number): number {
-  switch (ratesType) {
-    case 0: // Betaflight
-      return Math.round((rcRate / 100) * (1 + superRate / 100) * 200 * 1.8);
-    case 1: // Raceflight
-      return Math.round((1 + superRate / 100) * rcRate);
-    case 2: // KISS
-      return Math.round((rcRate / 10 + (rcRate / 10) * superRate / 100) * 10);
-    case 3: // Actual
-      return superRate * 10; // Max rate directly in deg/s
-    case 4: // Quick
-      return Math.round((rcRate * 2 / 10 * (1 + superRate / 100)) * 10);
-    default:
-      return rcRate;
-  }
+  return Math.round(Math.abs(calculateRate(1, rcRate, superRate, 0, ratesType)));
+}
+
+// Combined rates preview graph - centered at 0 like Betaflight Configurator
+function CombinedRatesCurve({ rcTuning }: { rcTuning: MSPRcTuning }) {
+  const axes = useMemo(() => [
+    { label: 'Roll', color: '#3B82F6', rcRate: rcTuning.rcRate, superRate: rcTuning.rollRate, expo: rcTuning.rcExpo },
+    { label: 'Pitch', color: '#10B981', rcRate: rcTuning.rcPitchRate, superRate: rcTuning.pitchRate, expo: rcTuning.rcPitchExpo },
+    { label: 'Yaw', color: '#F97316', rcRate: rcTuning.rcYawRate, superRate: rcTuning.yawRate, expo: rcTuning.rcYawExpo },
+  ], [rcTuning]);
+
+  // Graph layout constants
+  const gLeft = 60, gRight = 590, gTop = 20, gBottom = 280;
+  const gW = gRight - gLeft, gH = gBottom - gTop;
+  const gCx = gLeft + gW / 2, gCy = gTop + gH / 2;
+
+  // Calculate the global max rate across all axes for shared Y-axis
+  const globalMax = useMemo(() => {
+    let max = 0;
+    for (const ax of axes) {
+      for (let i = 0; i <= 100; i += 2) {
+        const rate = Math.abs(calculateRate(i / 100, ax.rcRate, ax.superRate, ax.expo, rcTuning.ratesType));
+        if (rate > max) max = rate;
+      }
+    }
+    return Math.max(Math.ceil(max / 50) * 50, 100);
+  }, [axes, rcTuning.ratesType]);
+
+  // Map stick (-1..+1) to x, rate (-max..+max) to y
+  const stickToX = (s: number) => gCx + (s / 1) * (gW / 2);
+  const rateToY = (r: number) => gCy - (r / globalMax) * (gH / 2);
+
+  // Generate full-range points for each axis (stick from -1 to +1)
+  const curves = useMemo(() => {
+    return axes.map(ax => {
+      const pts: string[] = [];
+      for (let i = -100; i <= 100; i += 2) {
+        const stick = i / 100;
+        const rate = calculateRate(stick, ax.rcRate, ax.superRate, ax.expo, rcTuning.ratesType);
+        pts.push(`${stickToX(stick)},${rateToY(rate)}`);
+      }
+      return { ...ax, points: pts.join(' '), maxRate: Math.round(Math.abs(calculateRate(1, ax.rcRate, ax.superRate, ax.expo, rcTuning.ratesType))) };
+    });
+  }, [axes, globalMax, rcTuning.ratesType]);
+
+  // Y-axis tick marks (symmetric: -max to +max)
+  const yTicks = useMemo(() => {
+    const step = globalMax <= 200 ? 50 : globalMax <= 500 ? 100 : globalMax <= 1000 ? 200 : 500;
+    const ticks: number[] = [0];
+    for (let v = step; v <= globalMax; v += step) {
+      ticks.push(v);
+      ticks.push(-v);
+    }
+    return ticks;
+  }, [globalMax]);
+
+  return (
+    <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-gray-400">Rates Preview</h3>
+        <div className="flex items-center gap-4">
+          {curves.map(c => (
+            <div key={c.label} className="flex items-center gap-1.5">
+              <div className="w-3 h-0.5 rounded" style={{ backgroundColor: c.color }} />
+              <span className="text-xs text-gray-400">{c.label}</span>
+              <span className="text-xs font-medium" style={{ color: c.color }}>{c.maxRate}°/s</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <svg viewBox="0 0 620 310" className="w-full" style={{ height: 280 }}>
+        {/* Background */}
+        <rect x={gLeft} y={gTop} width={gW} height={gH} fill="#111827" rx="4" />
+
+        {/* Y grid lines & labels */}
+        {yTicks.map(v => {
+          const y = rateToY(v);
+          return (
+            <g key={`y-${v}`}>
+              <line x1={gLeft} y1={y} x2={gRight} y2={y} stroke={v === 0 ? '#374151' : '#1F2937'} strokeWidth={v === 0 ? '1' : '0.5'} />
+              <text x={gLeft - 5} y={y + 3} fill="#6B7280" fontSize="9" textAnchor="end">{v}</text>
+            </g>
+          );
+        })}
+
+        {/* X grid lines & labels */}
+        {[-100, -50, 0, 50, 100].map(pct => {
+          const x = stickToX(pct / 100);
+          return (
+            <g key={`x-${pct}`}>
+              <line x1={x} y1={gTop} x2={x} y2={gBottom} stroke={pct === 0 ? '#374151' : '#1F2937'} strokeWidth={pct === 0 ? '1' : '0.5'} />
+              <text x={x} y={gBottom + 14} fill="#6B7280" fontSize="9" textAnchor="middle">{pct}%</text>
+            </g>
+          );
+        })}
+
+        {/* Axis labels */}
+        <text x={gLeft - 35} y={gCy} fill="#6B7280" fontSize="10" textAnchor="middle" transform={`rotate(-90, ${gLeft - 35}, ${gCy})`}>deg/s</text>
+
+        {/* Curves */}
+        {curves.map(c => (
+          <polyline key={c.label} fill="none" stroke={c.color} strokeWidth="2" points={c.points} strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+
+        {/* Max rate markers at full stick (right edge) */}
+        {curves.map(c => {
+          const y = rateToY(c.maxRate);
+          return (
+            <g key={`marker-${c.label}`}>
+              <circle cx={gRight} cy={y} r="3" fill={c.color} />
+              <text x={gRight + 6} y={y + 3} fill={c.color} fontSize="9" fontWeight="600">{c.maxRate}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 // Rate curve visualization with better visuals
@@ -745,6 +903,9 @@ function RatesTab({
           </div>
         ))}
       </div>
+
+      {/* Combined Rates Preview Graph */}
+      <CombinedRatesCurve rcTuning={rcTuning} />
 
     </div>
   );
@@ -1065,7 +1226,7 @@ function ModeChannelIndicator({
   );
 }
 
-// Enhanced Sensor card with live value display
+// Enhanced Sensor card with live value display and optional toggle
 function SensorCard({
   name,
   available,
@@ -1073,6 +1234,10 @@ function SensorCard({
   description,
   liveValue,
   unit,
+  canToggle,
+  isEnabled,
+  onToggle,
+  toggleSaving,
 }: {
   name: string;
   available: boolean;
@@ -1080,53 +1245,69 @@ function SensorCard({
   description: string;
   liveValue?: string | number | null;
   unit?: string;
+  canToggle?: boolean;
+  isEnabled?: boolean;
+  onToggle?: (enabled: boolean) => void;
+  toggleSaving?: boolean;
 }) {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const prevValueRef = useRef(liveValue);
-
-  // Pulse animation when value changes
-  useEffect(() => {
-    if (liveValue !== prevValueRef.current && liveValue != null) {
-      setIsUpdating(true);
-      const timer = setTimeout(() => setIsUpdating(false), 300);
-      prevValueRef.current = liveValue;
-      return () => clearTimeout(timer);
-    }
-  }, [liveValue]);
+  // Determine the effective state for clearer display
+  const featureEnabled = canToggle ? isEnabled : undefined;
+  const hardwareDetected = available;
 
   return (
     <div className={`p-4 rounded-xl border transition-all ${
-      available
+      hardwareDetected
         ? 'bg-emerald-500/10 border-emerald-500/30'
-        : 'bg-gray-800/30 border-gray-700/30'
+        : featureEnabled
+          ? 'bg-yellow-500/10 border-yellow-500/30' // Feature ON but no hardware
+          : 'bg-gray-800/30 border-gray-700/30'
     }`}>
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-          available ? 'bg-emerald-500/20' : 'bg-gray-800'
+          hardwareDetected ? 'bg-emerald-500/20' : featureEnabled ? 'bg-yellow-500/20' : 'bg-gray-800'
         }`}>
-          <Icon className={`w-5 h-5 ${available ? 'text-emerald-400' : 'text-gray-500'}`} />
+          <Icon className={`w-5 h-5 ${hardwareDetected ? 'text-emerald-400' : featureEnabled ? 'text-yellow-400' : 'text-gray-500'}`} />
         </div>
         <div className="flex-1">
-          <div className={`font-medium ${available ? 'text-emerald-400' : 'text-gray-400'}`}>
+          <div className={`font-medium ${hardwareDetected ? 'text-emerald-400' : featureEnabled ? 'text-yellow-400' : 'text-gray-400'}`}>
             {name}
           </div>
-          <div className="text-xs text-gray-500">{description}</div>
+          <div className="text-xs text-gray-500">
+            {!hardwareDetected && featureEnabled
+              ? 'Feature enabled but hardware not detected'
+              : description}
+          </div>
         </div>
         {/* Live value display */}
-        {liveValue != null && available && (
-          <div className={`px-3 py-1.5 rounded-lg font-mono text-sm transition-all ${
-            isUpdating
-              ? 'bg-cyan-500/30 text-cyan-300 scale-105'
-              : 'bg-gray-800/50 text-gray-300'
-          }`}>
+        {liveValue != null && hardwareDetected && (
+          <div className="px-3 py-1.5 rounded-lg font-mono text-sm bg-gray-800/50 text-gray-300">
             {typeof liveValue === 'number' ? liveValue.toFixed(1) : liveValue}
             {unit && <span className="text-xs text-gray-500 ml-1">{unit}</span>}
           </div>
         )}
+        {/* Feature toggle switch */}
+        {canToggle && onToggle && (
+          <button
+            onClick={() => onToggle(!isEnabled)}
+            disabled={toggleSaving}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              toggleSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            } ${isEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
+            title={isEnabled ? `Disable ${name} feature` : `Enable ${name} feature`}
+          >
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+              isEnabled ? 'translate-x-5' : 'translate-x-0'
+            }`} />
+          </button>
+        )}
         <div className={`px-2 py-1 text-xs rounded-lg ${
-          available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-500'
+          hardwareDetected
+            ? 'bg-emerald-500/20 text-emerald-400'
+            : featureEnabled
+              ? 'bg-yellow-500/20 text-yellow-400'
+              : 'bg-gray-800 text-gray-500'
         }`}>
-          {available ? 'OK' : 'N/A'}
+          {hardwareDetected ? 'OK' : featureEnabled ? 'ON' : 'OFF'}
         </div>
       </div>
     </div>
@@ -1456,12 +1637,8 @@ type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
-  const { gps, attitude } = useTelemetryStore();
-  // MSP telemetry for real-time sensor values
-  const mspAttitude = useMspTelemetryStore((s) => s.attitude);
-  const mspAltitude = useMspTelemetryStore((s) => s.altitude);
-  const mspGps = useMspTelemetryStore((s) => s.gps);
-  const mspAnalog = useMspTelemetryStore((s) => s.analog);
+  // Use same telemetry store as OSD (populated by MSP polling via TELEMETRY_BATCH)
+  const { gps, attitude, flight, vfrHud, battery } = useTelemetryStore();
   const { hasChanges: modesHaveChanges, saveToFC: saveModesToFC, isSaving: modesSaving } = useModesWizardStore();
   const { openWizard: openQuickSetup, isOpen: quickSetupOpen, applySuccess: quickSetupSuccess } = useQuickSetupStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
@@ -1477,20 +1654,35 @@ export function MspConfigView() {
   const [rcTuning, setRcTuning] = useState<MSPRcTuning | null>(null);
   const [modes, setModes] = useState<MSPModeRange[]>([]);
   const [features, setFeatures] = useState<number>(0);
+  const [featureSaving, setFeatureSaving] = useState(false); // Saving feature toggle
   const [pidRatesModified, setPidRatesModified] = useState(false);
+  const [safetyModified, setSafetyModified] = useState(false);
+  const safetyRef = useRef<SafetyTabHandle>(null);
   const [currentPlatformType, setCurrentPlatformType] = useState<number>(0); // 0=multirotor, 1=airplane
+  const [configActiveSensors, setConfigActiveSensors] = useState<number>(0); // Fetched once on config load
 
-  // Combined modified state: PIDs/rates OR modes have changes
-  const modified = pidRatesModified || modesHaveChanges();
+  // Feature bit constants (from MSP_FEATURE_CONFIG)
+  const FEATURE_GPS = 7;      // GPS feature enable
+  const FEATURE_SONAR = 9;    // Rangefinder/Sonar feature enable
+  const FEATURE_TELEMETRY = 10;
+  const FEATURE_LED_STRIP = 16;
+  const FEATURE_OSD = 18;
 
-  // Sensors
+  // Combined modified state: PIDs/rates OR modes OR safety have changes
+  const modified = pidRatesModified || modesHaveChanges() || safetyModified;
+
+  // Sensors - use activeSensors from config load or telemetry
+  // Betaflight sensor flags (from sensor_helpers.js):
+  // bit 0: ACC, bit 1: BARO, bit 2: MAG, bit 3: GPS, bit 4: SONAR, bit 5: GYRO
+  const activeSensors = configActiveSensors || flight?.activeSensors || 0;
   const sensors = useMemo(() => ({
-    acc: attitude !== null,
-    gyro: true,
-    mag: (features & (1 << 0)) !== 0,
-    baro: (features & (1 << 1)) !== 0,
-    gps: gps !== null && gps.satellites > 0,
-  }), [attitude, gps, features]);
+    acc: (activeSensors & (1 << 0)) !== 0,   // bit 0
+    baro: (activeSensors & (1 << 1)) !== 0,  // bit 1
+    mag: (activeSensors & (1 << 2)) !== 0,   // bit 2
+    gps: (activeSensors & (1 << 3)) !== 0,   // bit 3
+    sonar: (activeSensors & (1 << 4)) !== 0, // bit 4
+    gyro: (activeSensors & (1 << 5)) !== 0,  // bit 5
+  }), [activeSensors]);
 
   const isInav = connectionState.fcVariant === 'INAV';
 
@@ -1566,6 +1758,95 @@ export function MspConfigView() {
     setPlatformChangeInProgress(false);
   };
 
+  /**
+   * Toggle a hardware sensor via CLI setting (baro_hardware, mag_hardware, etc.)
+   * These are not feature flags - they control hardware enablement.
+   * Uses CLI commands for Betaflight (MSP2 settings are iNav-only).
+   */
+  const handleHardwareSensorToggle = async (settingName: string, enabled: boolean) => {
+    setFeatureSaving(true);
+    try {
+      const value = enabled ? 'AUTO' : 'NONE';
+      console.log(`[UI] Setting ${settingName} to ${value}`);
+
+      // Try MSP2 settings first (iNav), fall back to CLI (Betaflight)
+      let success = await window.electronAPI?.mspSetSetting(settingName, value);
+
+      if (!success) {
+        // MSP2 settings failed - use CLI command for Betaflight
+        console.log(`[UI] MSP2 settings not supported, using CLI for ${settingName}`);
+        const cliCommand = `set ${settingName} = ${value}`;
+        await window.electronAPI?.cliSendCommand(cliCommand);
+        await new Promise(r => setTimeout(r, 100));
+        // Save via CLI - this triggers FC reboot in Betaflight
+        await window.electronAPI?.cliSendCommand('save');
+        console.log(`[UI] ${settingName} set to ${value} via CLI - FC will reboot`);
+        setError(`${settingName} set to ${value}. FC is rebooting...`);
+        success = true;
+      } else {
+        // MSP2 worked - save to EEPROM
+        await window.electronAPI?.mspSaveEeprom();
+        console.log(`[UI] ${settingName} set to ${value} - reboot required`);
+        setError(`${settingName} changed to ${value}. Reboot FC to apply.`);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Hardware toggle error: ${errorMsg}`);
+      console.error('[UI] Hardware sensor toggle error:', err);
+    } finally {
+      setFeatureSaving(false);
+    }
+  };
+
+  /**
+   * Toggle a feature bit in the feature bitmask.
+   * Updates locally and saves to EEPROM immediately.
+   */
+  const handleFeatureToggle = async (bit: number, enabled: boolean) => {
+    setFeatureSaving(true);
+    try {
+      // If features is 0, try to reload first to avoid wiping out all features
+      let currentFeatures = features;
+      if (currentFeatures === 0) {
+        console.log('[UI] Features is 0, reloading before toggle...');
+        const reloaded = await window.electronAPI?.mspGetFeatures();
+        if (typeof reloaded === 'number') {
+          currentFeatures = reloaded;
+          setFeatures(reloaded);
+          console.log('[UI] Reloaded features:', reloaded.toString(2).padStart(32, '0'));
+        } else {
+          setError('Failed to load features - cannot toggle');
+          return;
+        }
+      }
+
+      const newFeatures = enabled
+        ? currentFeatures | (1 << bit)      // Enable: set bit
+        : currentFeatures & ~(1 << bit);    // Disable: clear bit
+
+      console.log(`[UI] Toggling feature bit ${bit} to ${enabled}, features: ${currentFeatures.toString(2)} -> ${newFeatures.toString(2)}`);
+
+      const success = await window.electronAPI?.mspSetFeatures(newFeatures);
+      if (success) {
+        setFeatures(newFeatures);
+        // Delay before EEPROM save (Betaflight needs 100ms to process settings)
+        await new Promise(r => setTimeout(r, 100));
+        // Save to EEPROM
+        await window.electronAPI?.mspSaveEeprom();
+        console.log(`[UI] Feature bit ${bit} ${enabled ? 'enabled' : 'disabled'} and saved`);
+      } else {
+        setError('Failed to set features');
+        console.error('[UI] Failed to set features');
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Feature toggle error: ${errorMsg}`);
+      console.error('[UI] Feature toggle error:', err);
+    } finally {
+      setFeatureSaving(false);
+    }
+  };
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
@@ -1578,6 +1859,23 @@ export function MspConfigView() {
     }
   }, [showPlatformDropdown, showMixingDropdown]);
 
+  // Start MSP telemetry polling when Sensors tab is active
+  // Same pattern as OsdView - start on tab enter, stop on tab leave
+  useEffect(() => {
+    if (activeTab === 'sensors' && connectionState.isConnected) {
+      // Small delay to ensure connection is stable
+      const startTimeout = setTimeout(() => {
+        console.log('[UI] Starting MSP telemetry for Sensors tab');
+        window.electronAPI?.mspStartTelemetry(10); // 10Hz
+      }, 100);
+
+      return () => {
+        clearTimeout(startTimeout);
+        console.log('[UI] Stopping MSP telemetry (leaving Sensors tab)');
+        window.electronAPI?.mspStopTelemetry();
+      };
+    }
+  }, [activeTab, connectionState.isConnected]);
 
   // Check for legacy iNav (< 2.3.0) which has different CLI params and no per-axis RC rates
   const isLegacyInav = useMemo(() => {
@@ -1594,18 +1892,33 @@ export function MspConfigView() {
   // Some boards don't have servo outputs in multirotor mode
   const hasServoFeature = (features & (1 << 5)) !== 0;
 
+  // Track if a load is already in progress (prevent duplicate calls from StrictMode or rapid triggers)
+  const loadInProgressRef = useRef(false);
+
   // Load config
   const loadConfig = useCallback(async () => {
+    // Prevent duplicate concurrent calls
+    if (loadInProgressRef.current) {
+      console.log('[UI] loadConfig skipped - already in progress');
+      return;
+    }
+    loadInProgressRef.current = true;
     console.log('[UI] loadConfig called - this will reset modified state!');
     setLoading(true);
     setError(null);
     try {
-      const [pidData, rcData, modesData, featuresData, mixerConfig] = await Promise.all([
+      // First batch: essential config (PID, rates, modes)
+      const [pidData, rcData, modesData] = await Promise.all([
         window.electronAPI?.mspGetPid(),
         window.electronAPI?.mspGetRcTuning(),
         window.electronAPI?.mspGetModeRanges(),
+      ]);
+
+      // Second batch: features and status (separate to avoid MSP overload)
+      const [featuresData, mixerConfig, statusData] = await Promise.all([
         window.electronAPI?.mspGetFeatures(),
         window.electronAPI?.mspGetInavMixerConfig?.(),
+        window.electronAPI?.mspGetStatus?.(),
       ]);
       if (pidData) setPid(pidData as MSPPid);
       if (rcData) {
@@ -1629,10 +1942,20 @@ export function MspConfigView() {
         setRcTuning(rc);
       }
       if (modesData) setModes(modesData as MSPModeRange[]);
-      if (typeof featuresData === 'number') setFeatures(featuresData);
+      if (typeof featuresData === 'number') {
+        setFeatures(featuresData);
+        console.log('[UI] Features loaded:', featuresData, 'binary:', featuresData.toString(2).padStart(32, '0'));
+        console.log('[UI] GPS feature (bit 7):', (featuresData & (1 << 7)) !== 0 ? 'ENABLED' : 'DISABLED');
+      } else {
+        console.warn('[UI] Features not loaded - featuresData is:', featuresData);
+      }
       if (mixerConfig && typeof mixerConfig.platformType === 'number') {
         setCurrentPlatformType(mixerConfig.platformType);
         console.log('[UI] Platform type:', mixerConfig.platformType === 1 ? 'Airplane' : 'Other');
+      }
+      if (statusData) {
+        setConfigActiveSensors(statusData.activeSensors);
+        console.log('[UI] Active sensors:', statusData.activeSensors.toString(2).padStart(8, '0'));
       }
       console.log('[UI] loadConfig complete, setting modified=false');
       setPidRatesModified(false);
@@ -1640,6 +1963,7 @@ export function MspConfigView() {
       setError(err instanceof Error ? err.message : 'Failed to load config');
     } finally {
       setLoading(false);
+      loadInProgressRef.current = false;
     }
   }, []);
 
@@ -1664,12 +1988,12 @@ export function MspConfigView() {
     }
   }, [quickSetupOpen, quickSetupSuccess, loadConfig]);
 
-  // Single save function that saves everything (PIDs + Rates + Modes + EEPROM)
+  // Single save function that saves everything (PIDs + Rates + Modes + Safety + EEPROM)
   const saveAll = async () => {
     if (!modified) return;
     setSaving(true);
     setError(null);
-    console.log('[UI] saveAll: saving PIDs, Rates, Modes, and EEPROM');
+    console.log('[UI] saveAll: saving PIDs, Rates, Modes, Safety, and EEPROM');
 
     try {
       // Save PIDs if available and modified
@@ -1702,8 +2026,18 @@ export function MspConfigView() {
         }
       }
 
-      // Save to EEPROM (only if we saved PIDs/Rates - modes saveToFC handles its own EEPROM)
-      if (pidRatesModified) {
+      // Save Safety settings if modified
+      if (safetyModified && safetyRef.current) {
+        console.log('[UI] Saving Safety...');
+        const safetySuccess = await safetyRef.current.save();
+        if (!safetySuccess) {
+          setError('Failed to save Safety settings');
+          return;
+        }
+      }
+
+      // Save to EEPROM once (modes saveToFC handles its own EEPROM)
+      if (pidRatesModified || safetyModified) {
         console.log('[UI] Saving to EEPROM...');
         const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
         if (!eepromSuccess) {
@@ -1713,6 +2047,7 @@ export function MspConfigView() {
       }
 
       setPidRatesModified(false);
+      setSafetyModified(false);
       console.log('[UI] All settings saved successfully');
     } catch (err) {
       console.error('[UI] Save error:', err);
@@ -2176,22 +2511,51 @@ export function MspConfigView() {
                 available={sensors.acc}
                 Icon={Ruler}
                 description="Measures tilt angle - needed for self-level"
-                liveValue={`${mspAttitude.roll.toFixed(0)}° / ${mspAttitude.pitch.toFixed(0)}°`}
+                liveValue={`${(attitude?.roll ?? 0).toFixed(0)}° / ${(attitude?.pitch ?? 0).toFixed(0)}°`}
               />
               <SensorCard
                 name="GPS"
                 available={sensors.gps}
                 Icon={Satellite}
-                description={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} satellites locked` : 'Not connected - needed for GPS Rescue'}
-                liveValue={sensors.gps ? `${mspGps?.satellites || gps?.satellites || 0} sats` : undefined}
+                description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Feature disabled or not connected'}
+                liveValue={sensors.gps ? `${gps?.satellites || 0} sats` : undefined}
+                canToggle={true}
+                isEnabled={(features & (1 << FEATURE_GPS)) !== 0}
+                onToggle={(enabled) => handleFeatureToggle(FEATURE_GPS, enabled)}
+                toggleSaving={featureSaving}
               />
               <SensorCard
                 name="Barometer"
                 available={sensors.baro}
                 Icon={Gauge}
                 description="Measures altitude via air pressure"
-                liveValue={sensors.baro ? mspAltitude.altitude : undefined}
+                liveValue={sensors.baro ? (vfrHud?.alt ?? 0) : undefined}
                 unit="m"
+                canToggle={true}
+                isEnabled={sensors.baro}
+                onToggle={(enabled) => handleHardwareSensorToggle('baro_hardware', enabled)}
+                toggleSaving={featureSaving}
+              />
+              <SensorCard
+                name="Magnetometer"
+                available={sensors.mag}
+                Icon={Compass}
+                description="Measures heading - needed for GPS navigation"
+                liveValue={sensors.mag ? `${(attitude?.yaw ?? 0).toFixed(0)}°` : undefined}
+                canToggle={true}
+                isEnabled={sensors.mag}
+                onToggle={(enabled) => handleHardwareSensorToggle('mag_hardware', enabled)}
+                toggleSaving={featureSaving}
+              />
+              <SensorCard
+                name="Rangefinder"
+                available={sensors.sonar}
+                Icon={Ruler}
+                description="Measures distance to ground - for precise landings"
+                canToggle={true}
+                isEnabled={(features & (1 << FEATURE_SONAR)) !== 0}
+                onToggle={(enabled) => handleFeatureToggle(FEATURE_SONAR, enabled)}
+                toggleSaving={featureSaving}
               />
             </div>
 
@@ -2204,9 +2568,9 @@ export function MspConfigView() {
                   title="Attitude"
                   icon="🎯"
                   values={[
-                    { label: 'Roll', value: mspAttitude.roll, unit: '°' },
-                    { label: 'Pitch', value: mspAttitude.pitch, unit: '°' },
-                    { label: 'Yaw', value: mspAttitude.yaw, unit: '°' },
+                    { label: 'Roll', value: attitude?.roll ?? 0, unit: '°' },
+                    { label: 'Pitch', value: attitude?.pitch ?? 0, unit: '°' },
+                    { label: 'Yaw', value: attitude?.yaw ?? 0, unit: '°' },
                   ]}
                 />
 
@@ -2215,9 +2579,9 @@ export function MspConfigView() {
                   title="Altitude"
                   icon="📏"
                   values={[
-                    { label: 'Alt', value: mspAltitude.altitude, unit: 'm' },
-                    { label: 'Vario', value: mspAltitude.vario, unit: 'm/s' },
-                    { label: 'Voltage', value: mspAnalog.voltage, unit: 'V' },
+                    { label: 'Alt', value: vfrHud?.alt ?? 0, unit: 'm' },
+                    { label: 'Vario', value: vfrHud?.climb ?? 0, unit: 'm/s' },
+                    { label: 'Voltage', value: battery?.voltage ?? 0, unit: 'V' },
                   ]}
                 />
               </div>
@@ -2232,26 +2596,26 @@ export function MspConfigView() {
                   <div className="grid grid-cols-4 gap-3">
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.lat || gps?.lat || 0).toFixed(6)}
+                        {(gps?.lat || 0).toFixed(6)}
                       </div>
                       <div className="text-xs text-gray-500">Latitude</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.lon || gps?.lon || 0).toFixed(6)}
+                        {(gps?.lon || 0).toFixed(6)}
                       </div>
                       <div className="text-xs text-gray-500">Longitude</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.alt || gps?.alt || 0).toFixed(1)}
+                        {(gps?.alt || 0).toFixed(1)}
                         <span className="text-xs text-gray-500 ml-1">m</span>
                       </div>
                       <div className="text-xs text-gray-500">GPS Alt</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-mono text-cyan-400">
-                        {(mspGps?.speed || 0).toFixed(1)}
+                        {(vfrHud?.groundspeed || 0).toFixed(1)}
                         <span className="text-xs text-gray-500 ml-1">m/s</span>
                       </div>
                       <div className="text-xs text-gray-500">Speed</div>
@@ -2340,7 +2704,7 @@ export function MspConfigView() {
 
         {/* Safety Tab (Receiver/Failsafe) */}
         {activeTab === 'safety' && (
-          <SafetyTab isInav={isInav} />
+          <SafetyTab ref={safetyRef} isInav={isInav} setModified={setSafetyModified} />
         )}
       </div>
 

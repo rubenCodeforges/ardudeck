@@ -34,6 +34,9 @@ export interface BatteryData {
   voltage: number;   // volts
   current: number;   // amps
   remaining: number; // percent 0-100
+  cellCount?: number;    // number of cells detected
+  cellVoltage?: number;  // average voltage per cell
+  mahDrawn?: number;     // milliamp-hours consumed
 }
 
 export interface VfrHudData {
@@ -52,6 +55,8 @@ export interface FlightState {
   isFlying: boolean;
   /** Reasons why arming is disabled (from MSP_STATUS_EX) */
   armingDisabledReasons?: string[];
+  /** Active sensors bitmask from MSP_STATUS (bit0=ACC, bit1=BARO, bit2=MAG, bit3=GPS, bit4=SONAR, bit5=GYRO) */
+  activeSensors?: number;
 }
 
 export interface TelemetryState {

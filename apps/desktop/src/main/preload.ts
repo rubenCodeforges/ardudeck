@@ -525,8 +525,20 @@ const api = {
   mspSetModeRange: (index: number, mode: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_MODE_RANGE, index, mode),
 
+  mspGetBoxNames: (): Promise<string[] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_BOX_NAMES),
+
+  mspGetBoxIds: (): Promise<number[] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_BOX_IDS),
+
   mspGetFeatures: (): Promise<number | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_FEATURES),
+
+  mspSetFeatures: (features: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_FEATURES, features),
+
+  mspGetStatus: (): Promise<{ activeSensors: number; armingFlags: number; flightModeFlags: number } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_STATUS),
 
   mspGetMixerConfig: (): Promise<{ mixer: number; isMultirotor: boolean } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_MIXER_CONFIG),
@@ -709,6 +721,16 @@ const api = {
 
   mspSetVtxConfig: (config: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_VTX_CONFIG, config),
+
+  // MSP OSD Configuration
+  mspGetOsdConfig: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_OSD_CONFIG),
+
+  // MSP RX Configuration
+  mspGetRxConfig: (): Promise<{ serialrxProvider: number; serialrxProviderName: string } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RX_CONFIG),
+  mspSetRxConfig: (newProvider: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RX_CONFIG, newProvider),
 
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   mspGetSetting: (name: string): Promise<{ value: string | number; info: unknown } | null> =>

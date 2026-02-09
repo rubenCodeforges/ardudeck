@@ -141,6 +141,7 @@ export const IPC_CHANNELS = {
   MSP_GET_MODE_RANGES: 'msp:get-mode-ranges',
   MSP_SET_MODE_RANGE: 'msp:set-mode-range',
   MSP_GET_FEATURES: 'msp:get-features',
+  MSP_SET_FEATURES: 'msp:set-features',
   MSP_GET_MIXER_CONFIG: 'msp:get-mixer-config',
   MSP_SET_MIXER_CONFIG: 'msp:set-mixer-config',
   // iNav-specific mixer config (proper MSP2 commands for platform type)
@@ -194,6 +195,13 @@ export const IPC_CHANNELS = {
   MSP_GET_VTX_CONFIG: 'msp:get-vtx-config',
   MSP_SET_VTX_CONFIG: 'msp:set-vtx-config',
 
+  // MSP OSD Configuration
+  MSP_GET_OSD_CONFIG: 'msp:get-osd-config',
+
+  // MSP RX Configuration
+  MSP_GET_RX_CONFIG: 'msp:get-rx-config',
+  MSP_SET_RX_CONFIG: 'msp:set-rx-config',
+
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   MSP_GET_SETTING: 'msp:get-setting',
   MSP_SET_SETTING: 'msp:set-setting',
@@ -209,6 +217,8 @@ export const IPC_CHANNELS = {
   // MSP RC Control (GCS arm/disarm, mode switching)
   MSP_SET_RAW_RC: 'msp:set-raw-rc',       // Send RC channel values to FC
   MSP_GET_ACTIVE_BOXES: 'msp:get-active-boxes', // Get active mode boxes (bitmask)
+  MSP_GET_BOX_NAMES: 'msp:get-box-names',       // Get mode names (dynamic, from FC)
+  MSP_GET_BOX_IDS: 'msp:get-box-ids',           // Get permanent box IDs (dynamic, from FC)
 
   // Reconnection control (for expected reboots)
   RECONNECT_CANCEL: 'reconnect:cancel',

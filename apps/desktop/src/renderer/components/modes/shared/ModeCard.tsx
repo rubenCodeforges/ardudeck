@@ -23,6 +23,8 @@ interface ModeCardProps {
   expanded?: boolean;
   showDescription?: boolean;
   readOnly?: boolean;
+  /** Dynamic mode name from FC (overrides hardcoded name when provided) */
+  dynamicName?: string;
 }
 
 export const ModeCard: React.FC<ModeCardProps> = ({
@@ -34,6 +36,7 @@ export const ModeCard: React.FC<ModeCardProps> = ({
   expanded = false,
   showDescription = true,
   readOnly = false,
+  dynamicName,
 }) => {
   const modeInfo = MODE_INFO[mode.boxId];
   const info = modeInfo || {
@@ -43,6 +46,8 @@ export const ModeCard: React.FC<ModeCardProps> = ({
     color: 'bg-zinc-500',
     beginner: '',
   };
+  // Use dynamic name from FC if provided (for Betaflight compatibility)
+  const displayName = dynamicName || info.name;
   const IconComponent = info.icon;
 
   const auxChannel = AUX_CHANNELS[mode.auxChannel];
@@ -69,7 +74,7 @@ export const ModeCard: React.FC<ModeCardProps> = ({
           {/* Name and description */}
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-zinc-100">{info.name}</h3>
+              <h3 className="font-semibold text-zinc-100">{displayName}</h3>
               {info.essential && (
                 <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
                   ESSENTIAL
@@ -91,7 +96,7 @@ export const ModeCard: React.FC<ModeCardProps> = ({
             <button
               onClick={() => onConfigure(modeInfo.configureTab!)}
               className="px-2 py-1 text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded-lg transition-colors flex items-center gap-1"
-              title={`Configure ${info.name} settings`}
+              title={`Configure ${displayName} settings`}
             >
               <Settings2 className="w-3 h-3" />
               Configure

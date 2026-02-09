@@ -258,6 +258,23 @@ export interface MSPRc {
 }
 
 /**
+ * MSP_RX_MAP response (RC channel mapping)
+ * Maps stick functions to channel positions.
+ * Standard order: AETR (Aileron=0, Elevator=1, Throttle=2, Rudder=3)
+ */
+export interface MSPRxMap {
+  /**
+   * Channel map: index = function (A/E/R/T/AUX...), value = channel position
+   * - rxMap[0] = Aileron (Roll) channel position
+   * - rxMap[1] = Elevator (Pitch) channel position
+   * - rxMap[2] = Rudder (Yaw) channel position
+   * - rxMap[3] = Throttle channel position
+   * - rxMap[4-7] = AUX channels
+   */
+  rxMap: number[];
+}
+
+/**
  * MSP_MOTOR response
  */
 export interface MSPMotor {

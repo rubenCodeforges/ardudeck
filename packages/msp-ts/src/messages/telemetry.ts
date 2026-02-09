@@ -14,6 +14,7 @@ import type {
   MSPAltitude,
   MSPAnalog,
   MSPRc,
+  MSPRxMap,
   MSPMotor,
   MSPServo,
   MSPRawGps,
@@ -40,6 +41,7 @@ export function deserializeStatus(payload: Uint8Array): MSPStatus {
   const currentPidProfile = reader.readU8();
 
   // Extended status fields (if present)
+  // Ref: betaflight-configurator/src/js/msp/MSPHelper.js MSP_STATUS_EX handler
   let averageSystemLoad = 0;
   let armingDisableFlagsCount = 0;
   let armingDisableFlags = 0;
@@ -48,6 +50,20 @@ export function deserializeStatus(payload: Uint8Array): MSPStatus {
 
   if (reader.remaining() >= 2) {
     averageSystemLoad = reader.readU16();
+  }
+
+  // numProfiles (U8) + rateProfile (U8)
+  if (reader.remaining() >= 2) {
+    reader.readU8(); // numProfiles - not used
+    reader.readU8(); // rateProfile - not used
+  }
+
+  // Extended mode flags: byteCount (U8) followed by byteCount bytes
+  if (reader.remaining() >= 1) {
+    const byteCount = reader.readU8();
+    for (let i = 0; i < byteCount && reader.remaining() >= 1; i++) {
+      reader.readU8(); // extended mode flag bytes - skipped (same as BF configurator)
+    }
   }
 
   if (reader.remaining() >= 1) {
@@ -242,6 +258,37 @@ export function deserializeRc(payload: Uint8Array): MSPRc {
   }
 
   return { channels };
+}
+
+/**
+ * Deserialize MSP_RX_MAP response
+ *
+ * Returns the RC channel mapping that tells us which channel position
+ * corresponds to which stick function.
+ *
+ * The rxMap array indices represent functions:
+ *   0 = Aileron (Roll)
+ *   1 = Elevator (Pitch)
+ *   2 = Rudder (Yaw)
+ *   3 = Throttle
+ *   4-7 = AUX1-AUX4
+ *
+ * The values are the channel positions (0-7).
+ *
+ * Example: TAER order would be rxMap = [1, 2, 3, 0, 4, 5, 6, 7]
+ *   - rxMap[0] = 1 means Aileron is at channel position 1
+ *   - rxMap[3] = 0 means Throttle is at channel position 0
+ *
+ * So to get throttle value: rc.channels[rxMap[3]]
+ */
+export function deserializeRxMap(payload: Uint8Array): MSPRxMap {
+  const rxMap: number[] = [];
+
+  for (let i = 0; i < payload.length; i++) {
+    rxMap.push(payload[i]);
+  }
+
+  return { rxMap };
 }
 
 /**
@@ -626,6 +673,84 @@ export function getArmingDisabledReasons(flags: number, fcVariant: string = 'BTF
 }
 
 // =============================================================================
+// Box Names and IDs (for dynamic mode mapping)
+// =============================================================================
+
+/**
+ * Deserialize MSP_BOXNAMES response
+ *
+ * Returns an array of mode names in slot order.
+ * Format is semicolon-delimited string: "ARM;ANGLE;HORIZON;..."
+ */
+export function deserializeBoxNames(payload: Uint8Array): string[] {
+  const names: string[] = [];
+  let buffer = '';
+
+  for (let i = 0; i < payload.length; i++) {
+    const char = payload[i];
+    if (char === 0x3b) { // semicolon delimiter
+      if (buffer.length > 0) {
+        names.push(buffer);
+      }
+      buffer = '';
+    } else if (char !== 0) { // Skip null bytes
+      buffer += String.fromCharCode(char);
+    }
+  }
+
+  // Handle last name (if no trailing semicolon)
+  if (buffer.length > 0) {
+    names.push(buffer);
+  }
+
+  return names;
+}
+
+/**
+ * Deserialize MSP_BOXIDS response
+ *
+ * Returns an array of permanent box IDs in slot order.
+ * Each byte is the permanent ID for the mode in that slot.
+ */
+export function deserializeBoxIds(payload: Uint8Array): number[] {
+  const ids: number[] = [];
+  for (let i = 0; i < payload.length; i++) {
+    ids.push(payload[i]);
+  }
+  return ids;
+}
+
+/**
+ * Box mapping - maps slot index to permanent box ID and name
+ */
+export interface BoxMapping {
+  /** Slot index (used in MSP_MODE_RANGES auxChannel) */
+  slot: number;
+  /** Permanent box ID */
+  permanentId: number;
+  /** Mode name (e.g., "ARM", "ANGLE", "HORIZON") */
+  name: string;
+}
+
+/**
+ * Build a box mapping from BOXNAMES and BOXIDS responses
+ */
+export function buildBoxMapping(names: string[], ids: number[]): BoxMapping[] {
+  const mapping: BoxMapping[] = [];
+  const count = Math.min(names.length, ids.length);
+
+  for (let i = 0; i < count; i++) {
+    mapping.push({
+      slot: i,
+      permanentId: ids[i],
+      name: names[i],
+    });
+  }
+
+  return mapping;
+}
+
+// =============================================================================
 // Message Info Registry
 // =============================================================================
 
@@ -671,6 +796,13 @@ export const TELEMETRY_MESSAGES: MSPMessageInfo[] = [
     minLength: 2,
     maxLength: 64,
     deserialize: deserializeRc,
+  },
+  {
+    command: MSP.RX_MAP,
+    name: 'RX_MAP',
+    minLength: 4,
+    maxLength: 8,
+    deserialize: deserializeRxMap,
   },
   {
     command: MSP.MOTOR,
