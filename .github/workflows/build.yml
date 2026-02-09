@@ -116,56 +116,6 @@ jobs:
           name: ${{ env.BUILD_NAME }}-zip
           path: apps/desktop/release/*.zip
 
-  build-mac-x64:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup environment
-        run: |
-          VERSION=$(node -p "require('./apps/desktop/package.json').version")
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "BUILD_NAME=ArduDeck-${VERSION}-mac-x64" >> $GITHUB_ENV
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      # Workaround for node-gyp issues on macOS
-      - name: Install Python setuptools
-        run: python3 -m pip install --break-system-packages setuptools || python3 -m pip install setuptools
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build packages
-        run: pnpm build
-
-      - name: Rebuild native modules for Electron
-        working-directory: apps/desktop
-        run: npx electron-rebuild
-
-      - name: Build macOS x64
-        working-directory: apps/desktop
-        run: pnpm package --mac --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload macOS x64 dmg
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.BUILD_NAME }}-dmg
-          path: apps/desktop/release/*.dmg
-
-      - name: Upload macOS x64 zip
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.BUILD_NAME }}-zip
-          path: apps/desktop/release/*.zip
-
   build-windows:
     runs-on: windows-latest
     steps:
@@ -215,7 +165,7 @@ jobs:
 
   # Create GitHub release when a tag is pushed
   release:
-    needs: [build-linux, build-mac-arm64, build-mac-x64, build-windows]
+    needs: [build-linux, build-mac-arm64, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
     permissions:
