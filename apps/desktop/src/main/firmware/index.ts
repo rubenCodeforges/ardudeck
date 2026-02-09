@@ -22,7 +22,7 @@ export {
   clearFirmwareCache,
   copyCustomFirmware,
 } from './firmware-downloader.js';
-export { flashWithDfu, getDfuUtilPath, isDfuUtilAvailable, listDfuDevices } from './dfu-flasher.js';
+export { flashWithDfu, isDfuUtilAvailable, listDfuDevices } from './dfu-flasher.js';
 export { flashWithAvrdude, getAvrdudePath, isAvrdudeAvailable } from './avr-flasher.js';
 export { flashWithSerialBootloader } from './stm32-serial-flasher.js';
 export {

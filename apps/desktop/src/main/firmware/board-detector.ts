@@ -34,8 +34,8 @@ function parseWindowsDevices(output: string): UsbDevice[] {
     const pidMatch = line.match(/PID_([0-9A-Fa-f]{4})/i);
 
     if (vidMatch && pidMatch) {
-      const vid = vidMatch[1].toLowerCase();
-      const pid = pidMatch[1].toLowerCase();
+      const vid = vidMatch[1]!.toLowerCase();
+      const pid = pidMatch[1]!.toLowerCase();
 
       // Try to extract COM port
       const comMatch = line.match(/\((COM\d+)\)/);
@@ -64,9 +64,9 @@ function parseLinuxDevices(output: string): UsbDevice[] {
     const match = line.match(/ID\s+([0-9a-f]{4}):([0-9a-f]{4})\s+(.+)/i);
     if (match) {
       devices.push({
-        vid: match[1].toLowerCase(),
-        pid: match[2].toLowerCase(),
-        description: match[3].trim(),
+        vid: match[1]!.toLowerCase(),
+        pid: match[2]!.toLowerCase(),
+        description: match[3]!.trim(),
       });
     }
   }
@@ -90,8 +90,8 @@ function parseMacDevices(output: string): UsbDevice[] {
 
     if (vidMatch && pidMatch) {
       devices.push({
-        vid: vidMatch[1].toLowerCase(),
-        pid: pidMatch[1].toLowerCase(),
+        vid: vidMatch[1]!.toLowerCase(),
+        pid: pidMatch[1]!.toLowerCase(),
         description: nameMatch?.[1]?.trim(),
       });
     }

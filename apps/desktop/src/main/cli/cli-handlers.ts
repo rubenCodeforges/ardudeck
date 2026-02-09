@@ -43,7 +43,7 @@ export function initCliHandlers(window: BrowserWindow): void {
 export function setCliTransport(transport: Transport | null): void {
   // Cleanup old listener if transport changes
   if (cliDataListener && currentTransport) {
-    currentTransport.off('data', cliDataListener);
+    currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
     cliDataListener = null;
   }
   currentTransport = transport;
@@ -93,7 +93,7 @@ export async function exitCliModeIfActive(): Promise<void> {
   // Reset state regardless - ALWAYS clean up even if write failed
   if (cliDataListener && currentTransport) {
     try {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
     } catch {
       // Ignore errors removing listener
     }
@@ -108,7 +108,7 @@ export async function exitCliModeIfActive(): Promise<void> {
  */
 export function cleanupCli(): void {
   if (cliDataListener && currentTransport) {
-    currentTransport.off('data', cliDataListener);
+    currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
   }
   cliDataListener = null;
   cliModeActive = false;
@@ -256,7 +256,7 @@ export async function enterCliMode(): Promise<boolean> {
     console.error('[CLI] enterCliMode: error', err);
     // Cleanup on error
     if (cliDataListener && currentTransport) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
       cliDataListener = null;
     }
     cliModeActive = false;
@@ -288,7 +288,7 @@ export async function exitCliMode(): Promise<boolean> {
 
     // Remove data listener
     if (cliDataListener && currentTransport) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
       cliDataListener = null;
     }
 
@@ -300,7 +300,7 @@ export async function exitCliMode(): Promise<boolean> {
   } catch {
     // Force cleanup on error
     if (cliDataListener && currentTransport) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
       cliDataListener = null;
     }
     cliModeActive = false;
@@ -334,7 +334,7 @@ async function exitCliModeSilent(): Promise<boolean> {
 
     // Remove data listener
     if (cliDataListener && currentTransport) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
       cliDataListener = null;
     }
 
@@ -345,7 +345,7 @@ async function exitCliModeSilent(): Promise<boolean> {
   } catch {
     // Force cleanup on error
     if (cliDataListener && currentTransport) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
       cliDataListener = null;
     }
     cliModeActive = false;
@@ -396,7 +396,7 @@ export async function sendCliCommand(command: string): Promise<void> {
 
     // Remove data listener
     if (cliDataListener && currentTransport) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
       cliDataListener = null;
     }
 
@@ -460,7 +460,7 @@ export async function getCliDump(diff = false): Promise<string> {
       throw new Error('Transport closed during CLI setup');
     }
     if (cliDataListener) {
-      currentTransport.off('data', cliDataListener);
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
     }
     currentTransport.on('data', dumpListener);
 
@@ -484,7 +484,7 @@ export async function getCliDump(diff = false): Promise<string> {
 
     // Restore normal listener (check transport still valid after delay loop)
     if (currentTransport?.isOpen) {
-      currentTransport.off('data', dumpListener);
+      currentTransport.off('data', dumpListener as (...args: unknown[]) => void);
       if (cliDataListener) {
         currentTransport.on('data', cliDataListener);
       }

@@ -60,6 +60,7 @@
   "build": {
     "appId": "com.ardudeck.desktop",
     "productName": "ArduDeck",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },

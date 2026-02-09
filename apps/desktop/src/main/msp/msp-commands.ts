@@ -76,11 +76,11 @@ export async function saveEepromViaCli(): Promise<boolean> {
       ctx.sendLog('info', `CLI: Setting mixer ${mixerName}`);
 
       if (ctx.cliResponseListener && ctx.currentTransport) {
-        ctx.currentTransport.off('data', ctx.cliResponseListener);
+        ctx.currentTransport.off('data', ctx.cliResponseListener as (...args: unknown[]) => void);
         ctx.cliResponseListener = null;
       }
       if (ctx.tuningCliListener && ctx.currentTransport) {
-        ctx.currentTransport.off('data', ctx.tuningCliListener);
+        ctx.currentTransport.off('data', ctx.tuningCliListener as (...args: unknown[]) => void);
         ctx.tuningCliListener = null;
       }
 
@@ -115,13 +115,13 @@ export async function saveEepromViaCli(): Promise<boolean> {
     await new Promise(r => setTimeout(r, 2000));
 
     if (ctx.tuningCliListener && ctx.currentTransport) {
-      ctx.currentTransport.off('data', ctx.tuningCliListener);
+      ctx.currentTransport.off('data', ctx.tuningCliListener as (...args: unknown[]) => void);
       ctx.tuningCliListener = null;
     }
     ctx.tuningCliResponse = '';
 
     if (ctx.cliResponseListener && ctx.currentTransport) {
-      ctx.currentTransport.off('data', ctx.cliResponseListener);
+      ctx.currentTransport.off('data', ctx.cliResponseListener as (...args: unknown[]) => void);
       ctx.cliResponseListener = null;
     }
 
@@ -136,11 +136,11 @@ export async function saveEepromViaCli(): Promise<boolean> {
     ctx.sendLog('error', 'CLI save failed', error instanceof Error ? error.message : String(error));
 
     if (ctx.tuningCliListener && ctx.currentTransport) {
-      ctx.currentTransport.off('data', ctx.tuningCliListener);
+      ctx.currentTransport.off('data', ctx.tuningCliListener as (...args: unknown[]) => void);
       ctx.tuningCliListener = null;
     }
     if (ctx.cliResponseListener && ctx.currentTransport) {
-      ctx.currentTransport.off('data', ctx.cliResponseListener);
+      ctx.currentTransport.off('data', ctx.cliResponseListener as (...args: unknown[]) => void);
       ctx.cliResponseListener = null;
     }
     ctx.tuningCliModeActive = false;

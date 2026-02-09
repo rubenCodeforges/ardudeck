@@ -44,6 +44,10 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      - name: Rebuild native modules for Electron
+        working-directory: apps/desktop
+        run: npx electron-rebuild
+
       - name: Build Linux x64
         working-directory: apps/desktop
         run: pnpm package --linux
@@ -89,6 +93,10 @@ jobs:
 
       - name: Build packages
         run: pnpm build
+
+      - name: Rebuild native modules for Electron
+        working-directory: apps/desktop
+        run: npx electron-rebuild
 
       - name: Build macOS arm64
         working-directory: apps/desktop
@@ -136,6 +144,10 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      - name: Rebuild native modules for Electron
+        working-directory: apps/desktop
+        run: npx electron-rebuild
+
       - name: Build macOS x64
         working-directory: apps/desktop
         run: pnpm package --mac --x64
@@ -178,6 +190,10 @@ jobs:
 
       - name: Build packages
         run: pnpm build
+
+      - name: Rebuild native modules for Electron
+        working-directory: apps/desktop
+        run: npx electron-rebuild
 
       - name: Build Windows x64
         working-directory: apps/desktop

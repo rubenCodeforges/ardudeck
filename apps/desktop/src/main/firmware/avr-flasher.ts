@@ -129,8 +129,8 @@ function parseAvrdudeProgress(line: string): { progress: number; stage: string }
   const match = line.match(/(\w+)\s+\|\s*[#\s]*\|\s+(\d+)%/);
   if (match) {
     return {
-      stage: match[1].toLowerCase(),
-      progress: parseInt(match[2], 10),
+      stage: match[1]!.toLowerCase(),
+      progress: parseInt(match[2]!, 10),
     };
   }
 
@@ -139,7 +139,7 @@ function parseAvrdudeProgress(line: string): { progress: number; stage: string }
   if (simpleMatch) {
     return {
       stage: 'flashing',
-      progress: parseInt(simpleMatch[1], 10),
+      progress: parseInt(simpleMatch[1]!, 10),
     };
   }
 
