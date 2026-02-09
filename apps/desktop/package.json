@@ -2,6 +2,11 @@
   "name": "@ardudeck/desktop",
   "version": "0.1.0",
   "description": "ArduDeck - Desktop Application",
+  "author": "rubenCodeforges",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rubenCodeforges/ardudeck.git"
+  },
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {
