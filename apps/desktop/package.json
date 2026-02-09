@@ -87,8 +87,10 @@
         "zip"
       ]
     },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "linux": {
       "icon": "resources/icon.png",
+      "category": "Utility",
       "target": [
         "AppImage",
         "deb"

@@ -199,7 +199,7 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Write incoming CLI data to terminal
   useEffect(() => {
