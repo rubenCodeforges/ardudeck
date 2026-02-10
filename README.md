@@ -96,7 +96,31 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **Modes Wizard** - Step-by-step mode configuration with live RC feedback
 - **Servo Wizard** - Fixed-wing servo setup with aircraft presets (Traditional, Flying Wing, V-Tail, Delta)
 - **Platform Type Change** - Convert multirotor to airplane with MSP2 + CLI fallback for iNav 2.0.0
+- **VTX Configuration** - Video transmitter band, channel, and power settings
+- **Filter Tuning** - Gyro and D-term filter configuration
 - **Custom Profiles** - Save/load custom PID tunes and rate profiles
+
+### ArduPilot Configuration
+- **PID Tuning** - ArduPilot PID controller tuning with presets
+- **Rate Profiles** - Rate curve editor with visualization
+- **Flight Modes** - 6-mode channel assignment for ArduPilot
+- **Safety & Failsafe** - Failsafe actions, geofence behavior, RTL settings
+- **Battery Monitor** - Voltage/current sensor calibration
+- **Sensor Status** - Compass, GPS, barometer, and IMU health
+- **Rover/Boat Tuning** - Dedicated tuning parameters for ground and marine vehicles
+
+### Quick Setup Wizard
+- **One-Click Configuration** - PIDs, rates, modes, mixers, failsafe in one flow
+- **Preset Library** - Common setups for popular frame types
+- **Live TX Verification** - Real-time transmitter channel check before applying
+- **Config Review** - Preview all changes before writing to board
+- **Legacy Board Support** - Works with both modern MSP and legacy CLI boards
+
+### Calibration
+- **Accelerometer Calibration** - Level calibration with position diagrams
+- **Compass Calibration** - Live progress tracking with fitness indicators
+- **Status Detection** - Arming flag-based sensor status detection
+- **Step-by-Step Wizard** - Countdown timers, position guides, and result cards
 
 ### CLI Terminal
 - **Full Terminal Emulation** - xterm.js with ANSI color support
@@ -135,7 +159,7 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ### SITL Simulator & FlightGear Bridge
 
-> **🚧 Coming Soon** - This feature is currently under development and temporarily disabled. The SITL simulator requires complex protocol bridging that is still being refined. Check back in a future release!
+> **Temporarily Disabled** - Both iNav and ArduPilot SITL integration are under development and temporarily disabled. The SITL simulator requires complex protocol bridging that is still being refined. Check back in a future release!
 
 **What is this?** SITL (Software In The Loop) lets you run real flight controller firmware on your computer - no drone required! Perfect for:
 - **Learning** - Practice mission planning and configuration without risking a crash
@@ -295,8 +319,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ### Prerequisites
 
-- **Node.js** 18 or higher
-- **pnpm** 8 or higher
+- **Node.js** 20 or higher
+- **pnpm** 9 or higher
 
 ### Installation
 
@@ -320,10 +344,12 @@ pnpm dev
 ```bash
 # Build all packages
 pnpm build
-
-# Package for distribution (coming soon)
-# pnpm package
 ```
+
+Releases are built via GitHub Actions and produce installers for:
+- **Linux** - AppImage, .deb
+- **macOS** - DMG
+- **Windows** - NSIS installer, portable .exe
 
 ---
 
@@ -441,11 +467,14 @@ Found a bug? We want to hear about it! ArduDeck includes a built-in bug reportin
 - **CLI Terminal** with autocomplete and command history
 - **Legacy F3 board support** via full CLI configuration
 - **OSD Simulator** with demo and live telemetry modes
+- **Calibration wizards** - Accelerometer and compass calibration with step-by-step wizard
+- **Quick Setup Wizard** with preset library for common frame types
+- **VTX and filter configuration** for Betaflight/iNav
+- **ArduPilot configuration UI** - PID tuning, rate profiles, flight modes, safety, battery monitor, sensors
 
 ### Coming Soon
-- **SITL Simulator** - Software-in-the-loop with FlightGear integration (temporarily disabled)
+- **SITL Simulator** - iNav and ArduPilot software-in-the-loop with FlightGear integration (temporarily disabled)
 - OSD element editor and font designer
-- Calibration wizards (compass, accelerometer, radio)
 - Auto-updater and crash reporting
 
 ---
