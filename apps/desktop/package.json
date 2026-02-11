@@ -1,6 +1,6 @@
 {
   "name": "@ardudeck/desktop",
-  "version": "0.0.2-alpha",
+  "version": "0.0.1-alpha",
   "description": "ArduDeck - Desktop Application",
   "author": {
     "name": "rubenCodeforges",
@@ -47,7 +47,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "electron": "^28.1.3",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^26.7.0",
     "electron-vite": "^2.0.0",
     "jimp": "0.22.12",
     "png2icons": "^2.0.1",
