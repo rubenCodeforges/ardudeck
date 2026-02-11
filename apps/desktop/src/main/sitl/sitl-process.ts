@@ -174,8 +174,7 @@ class SitlProcessManager {
     const spawnOptions = {
       cwd: path.dirname(sitlPath),
       stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
-      // Use shell on macOS and Linux for better compatibility with native binaries
-      shell: process.platform !== 'win32',
+      env: { ...process.env, PATH: '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin' },
     };
 
 
