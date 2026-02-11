@@ -4,6 +4,7 @@ import type { AppUpdateInfo, AppUpdateStatus } from '../../shared/ipc-channels';
 interface UpdateState {
   currentVersion: string | null;
   status: AppUpdateStatus;
+  canAutoUpdate: boolean;
   latestVersion?: string;
   releaseUrl?: string;
   releaseName?: string;
@@ -18,15 +19,17 @@ interface UpdateState {
   checkForUpdate: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
   installUpdate: () => Promise<void>;
+  openReleaseUrl: () => void;
   dismiss: () => void;
 }
 
-export const useUpdateStore = create<UpdateState>((set) => {
+export const useUpdateStore = create<UpdateState>((set, get) => {
   // Subscribe to push notifications from main process
   if (typeof window !== 'undefined' && window.electronAPI?.onUpdateStatus) {
     window.electronAPI.onUpdateStatus((info: AppUpdateInfo) => {
       set((prev) => ({
         status: info.status,
+        canAutoUpdate: info.canAutoUpdate,
         currentVersion: info.currentVersion || prev.currentVersion,
         latestVersion: info.latestVersion ?? prev.latestVersion,
         releaseUrl: info.releaseUrl ?? prev.releaseUrl,
@@ -46,6 +49,7 @@ export const useUpdateStore = create<UpdateState>((set) => {
   return {
     currentVersion: null,
     status: 'idle',
+    canAutoUpdate: true,
     downloadProgress: 0,
     bytesDownloaded: 0,
     totalBytes: 0,
@@ -71,6 +75,13 @@ export const useUpdateStore = create<UpdateState>((set) => {
     installUpdate: async () => {
       if (!window.electronAPI?.installUpdate) return;
       await window.electronAPI.installUpdate();
+    },
+
+    openReleaseUrl: () => {
+      const { releaseUrl } = get();
+      if (releaseUrl && window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(releaseUrl);
+      }
     },
 
     dismiss: () => set({ dismissed: true }),

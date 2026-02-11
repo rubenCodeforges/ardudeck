@@ -9,6 +9,7 @@ function formatBytes(bytes: number): string {
 export function UpdateBanner() {
   const {
     status,
+    canAutoUpdate,
     latestVersion,
     releaseName,
     downloadProgress,
@@ -18,6 +19,7 @@ export function UpdateBanner() {
     dismiss,
     downloadUpdate,
     installUpdate,
+    openReleaseUrl,
   } = useUpdateStore();
 
   // Only show for actionable states, and respect dismiss
@@ -27,7 +29,7 @@ export function UpdateBanner() {
   const versionLabel = latestVersion ? `v${latestVersion}` : 'new version';
   const nameLabel = releaseName && releaseName !== `v${latestVersion}` ? ` — ${releaseName}` : '';
 
-  // Available state (blue)
+  // Available state (blue) — shows for both signed and unsigned apps
   if (status === 'available') {
     return (
       <div className="bg-gradient-to-r from-blue-900/40 to-indigo-900/30 border-b border-blue-500/30 px-6 py-2.5 flex items-center gap-3 shrink-0">
@@ -37,12 +39,24 @@ export function UpdateBanner() {
         <span className="text-sm text-gray-300 flex-1">
           <span className="font-medium text-blue-300">ArduDeck {versionLabel}</span> is available{nameLabel}
         </span>
-        <button
-          onClick={() => downloadUpdate()}
-          className="px-3 py-1 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          Download
-        </button>
+        {canAutoUpdate ? (
+          <button
+            onClick={() => downloadUpdate()}
+            className="px-3 py-1 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            Download
+          </button>
+        ) : (
+          <button
+            onClick={openReleaseUrl}
+            className="px-3 py-1 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            View Release
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </button>
+        )}
         <button
           onClick={dismiss}
           className="p-1 text-gray-400 hover:text-white transition-colors"
@@ -56,7 +70,7 @@ export function UpdateBanner() {
     );
   }
 
-  // Downloading state (blue with progress)
+  // Downloading state (blue with progress) — only for signed apps
   if (status === 'downloading') {
     const progress = Math.round(downloadProgress);
     const bytesLabel = totalBytes > 0
@@ -86,7 +100,7 @@ export function UpdateBanner() {
     );
   }
 
-  // Downloaded state (green)
+  // Downloaded state (green) — only for signed apps
   return (
     <div className="bg-gradient-to-r from-emerald-900/40 to-green-900/30 border-b border-emerald-500/30 px-6 py-2.5 flex items-center gap-3 shrink-0">
       <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

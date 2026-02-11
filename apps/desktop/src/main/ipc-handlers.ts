@@ -4280,6 +4280,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     installUpdate();
   });
 
+  ipcMain.handle(IPC_CHANNELS.APP_OPEN_EXTERNAL, (_event, url: string): void => {
+    if (typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://'))) {
+      shell.openExternal(url);
+    }
+  });
+
   // Initialize auto-updater (handles auto-check on its own schedule)
   initAutoUpdater(mainWindow);
 }

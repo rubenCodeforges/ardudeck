@@ -4,20 +4,41 @@
  * Uses electron-updater for real in-app auto-updates:
  * check -> download with progress -> restart to install.
  *
+ * On macOS, if the app is not code-signed, falls back to
+ * opening the release page in the browser instead of downloading.
+ *
  * All state changes are pushed to the renderer via APP_UPDATE_STATUS.
  */
 
 import { app, BrowserWindow } from 'electron';
+import { execFile } from 'node:child_process';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 import { IPC_CHANNELS, type AppUpdateInfo } from '../shared/ipc-channels.js';
 
 let mainWindow: BrowserWindow | null = null;
+let canAutoUpdate = true;
+
+/**
+ * Check if the app is code-signed on macOS.
+ * Returns true if signed (auto-update will work), false if unsigned.
+ */
+function checkMacCodeSigning(): Promise<boolean> {
+  if (process.platform !== 'darwin') return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const appPath = app.getPath('exe').replace(/\/Contents\/MacOS\/.*$/, '');
+    execFile('codesign', ['--verify', '--deep', '--strict', appPath], (error) => {
+      resolve(!error);
+    });
+  });
+}
 
 function sendStatus(info: Partial<AppUpdateInfo>) {
   const payload: AppUpdateInfo = {
     status: 'idle',
     currentVersion: app.getVersion(),
+    canAutoUpdate,
     ...info,
   };
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -28,12 +49,18 @@ function sendStatus(info: Partial<AppUpdateInfo>) {
 /**
  * Initialize auto-updater. Must be called once after mainWindow is created.
  */
-export function initAutoUpdater(win: BrowserWindow): void {
+export async function initAutoUpdater(win: BrowserWindow): Promise<void> {
   mainWindow = win;
 
   // Don't run in dev mode - electron-updater throws without a packaged app
   if (!app.isPackaged) {
     return;
+  }
+
+  // Check code signing on macOS
+  canAutoUpdate = await checkMacCodeSigning();
+  if (!canAutoUpdate) {
+    console.log('[Updater] App is not code-signed, auto-download disabled (will open release page instead)');
   }
 
   autoUpdater.autoDownload = false;
@@ -107,7 +134,7 @@ export function checkForUpdates(): void {
  * Start downloading the available update.
  */
 export function downloadUpdate(): void {
-  if (!app.isPackaged) return;
+  if (!app.isPackaged || !canAutoUpdate) return;
   autoUpdater.downloadUpdate().catch(() => {
     // Error already handled by 'error' event
   });
@@ -117,6 +144,6 @@ export function downloadUpdate(): void {
  * Quit and install the downloaded update.
  */
 export function installUpdate(): void {
-  if (!app.isPackaged) return;
+  if (!app.isPackaged || !canAutoUpdate) return;
   autoUpdater.quitAndInstall();
 }

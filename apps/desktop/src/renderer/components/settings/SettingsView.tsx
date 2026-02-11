@@ -1300,6 +1300,7 @@ function AboutSection() {
   const {
     currentVersion,
     status,
+    canAutoUpdate,
     latestVersion,
     publishedAt,
     downloadProgress,
@@ -1309,6 +1310,7 @@ function AboutSection() {
     checkForUpdate,
     downloadUpdate,
     installUpdate,
+    openReleaseUrl,
   } = useUpdateStore();
 
   const isChecking = status === 'checking';
@@ -1363,12 +1365,24 @@ function AboutSection() {
               </span>
             )}
 
-            {status === 'available' && (
+            {status === 'available' && canAutoUpdate && (
               <button
                 onClick={() => downloadUpdate()}
                 className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
               >
                 Download v{latestVersion}
+              </button>
+            )}
+
+            {status === 'available' && !canAutoUpdate && (
+              <button
+                onClick={openReleaseUrl}
+                className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                View Release v{latestVersion}
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
               </button>
             )}
 

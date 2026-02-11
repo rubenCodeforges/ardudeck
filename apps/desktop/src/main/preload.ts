@@ -1118,6 +1118,9 @@ const api = {
   installUpdate: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.APP_INSTALL_UPDATE),
 
+  openExternal: (url: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_OPEN_EXTERNAL, url),
+
   onUpdateStatus: (callback: (info: AppUpdateInfo) => void) => {
     const handler = (_: unknown, info: AppUpdateInfo) => callback(info);
     ipcRenderer.on(IPC_CHANNELS.APP_UPDATE_STATUS, handler);

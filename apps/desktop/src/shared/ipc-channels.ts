@@ -312,6 +312,7 @@ export const IPC_CHANNELS = {
   APP_DOWNLOAD_UPDATE: 'app:download-update',
   APP_INSTALL_UPDATE: 'app:install-update',
   APP_UPDATE_STATUS: 'app:update-status',
+  APP_OPEN_EXTERNAL: 'app:open-external',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -818,6 +819,7 @@ export type AppUpdateStatus =
 export interface AppUpdateInfo {
   status: AppUpdateStatus;
   currentVersion: string;
+  canAutoUpdate: boolean;
   latestVersion?: string;
   releaseUrl?: string;
   releaseName?: string;
