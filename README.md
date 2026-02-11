@@ -351,6 +351,8 @@ Releases are built via GitHub Actions and produce installers for:
 - **macOS** - DMG
 - **Windows** - NSIS installer, portable .exe
 
+> **Note on code signing:** ArduDeck binaries are currently unsigned. On macOS, you may see a Gatekeeper warning — right-click the app and select "Open", or run `xattr -cr /Applications/ArduDeck.app` in Terminal. On Windows, SmartScreen may show a warning — click "More info" then "Run anyway". We plan to obtain code signing certificates once the project reaches a meaningful user base to justify the cost.
+
 ---
 
 ## Supported Vehicles
