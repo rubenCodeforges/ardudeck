@@ -4,6 +4,11 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to upload artifacts to (e.g. v0.0.2-alpha). Leave empty for build-only.'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -175,14 +180,22 @@ jobs:
             apps/desktop/release/*.yml
             apps/desktop/release/*.blockmap
 
-  # Upload artifacts to the release that triggered this workflow
+  # Upload artifacts to a release
   release:
     needs: [build-linux, build-mac-arm64, build-windows]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || inputs.release_tag != ''
     permissions:
       contents: write
     steps:
+      - name: Determine release tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "TAG=${{ inputs.release_tag }}" >> $GITHUB_ENV
+          fi
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -195,7 +208,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
+          gh release upload "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --clobber \
             artifacts/**/*.AppImage \
