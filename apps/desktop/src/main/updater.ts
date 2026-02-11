@@ -8,7 +8,8 @@
  */
 
 import { app, BrowserWindow } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import pkg from 'electron-updater';
+const { autoUpdater } = pkg;
 import { IPC_CHANNELS, type AppUpdateInfo } from '../shared/ipc-channels.js';
 
 let mainWindow: BrowserWindow | null = null;

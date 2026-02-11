@@ -475,7 +475,6 @@ Found a bug? We want to hear about it! ArduDeck includes a built-in bug reportin
 ### Coming Soon
 - **SITL Simulator** - iNav and ArduPilot software-in-the-loop with FlightGear integration (temporarily disabled)
 - OSD element editor and font designer
-- Auto-updater and crash reporting
 
 ---
 
