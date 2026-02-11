@@ -27,7 +27,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Quick Start](#quick-start)
+- [Download](#download)
+- [Development](#development)
 - [Supported Vehicles](#supported-vehicles)
 - [Veteran Board Support](#️-veteran-board-support)
 - [Bug Reporting](#bug-reporting)
@@ -315,14 +316,34 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ---
 
-## Quick Start
+## Download
+
+Grab the latest release for your platform:
+
+| Platform | Format | Link |
+|----------|--------|------|
+| **Windows** | Installer (.exe) | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
+| **Windows** | Portable (.exe) | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
+| **macOS** | DMG (Apple Silicon) | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
+| **Linux** | AppImage | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
+| **Linux** | .deb | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
+
+Just download, install, and connect your flight controller via USB.
+
+> **Note on code signing:** ArduDeck binaries are currently unsigned. On macOS, you may see a Gatekeeper warning — right-click the app and select "Open", or run `xattr -cr /Applications/ArduDeck.app` in Terminal. On Windows, SmartScreen may show a warning — click "More info" then "Run anyway". We plan to obtain code signing certificates once the project reaches a meaningful user base to justify the cost.
+>
+> **Auto-updates:** On Windows and Linux, ArduDeck supports seamless in-app updates — download and install with a single click. On macOS, because the app is not yet code-signed, in-app downloads are blocked by Gatekeeper. ArduDeck will still notify you when a new version is available and open the release page for manual download. Once we obtain an Apple Developer certificate, macOS will get full auto-update support automatically.
+
+---
+
+## Development
 
 ### Prerequisites
 
 - **Node.js** 20 or higher
 - **pnpm** 9 or higher
 
-### Installation
+### Setup
 
 ```bash
 # Clone the repository
@@ -342,18 +363,8 @@ pnpm dev
 ### Build for Production
 
 ```bash
-# Build all packages
-pnpm build
+pnpm package
 ```
-
-Releases are built via GitHub Actions and produce installers for:
-- **Linux** - AppImage, .deb
-- **macOS** - DMG
-- **Windows** - NSIS installer, portable .exe
-
-> **Note on code signing:** ArduDeck binaries are currently unsigned. On macOS, you may see a Gatekeeper warning — right-click the app and select "Open", or run `xattr -cr /Applications/ArduDeck.app` in Terminal. On Windows, SmartScreen may show a warning — click "More info" then "Run anyway". We plan to obtain code signing certificates once the project reaches a meaningful user base to justify the cost.
->
-> **Auto-updates:** On Windows and Linux, ArduDeck supports seamless in-app updates — download and install with a single click. On macOS, because the app is not yet code-signed, auto-update downloads are blocked by Gatekeeper. Instead, ArduDeck will notify you when a new version is available and open the release page so you can download it manually. Once we obtain an Apple Developer certificate, macOS will get full auto-update support automatically — no app changes needed.
 
 ---
 
