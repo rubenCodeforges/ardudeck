@@ -19,7 +19,7 @@ jobs:
 
       - name: Setup environment
         run: |
-          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-linux" >> $GITHUB_ENV
 
@@ -37,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Sync version to desktop app
+        run: pnpm sync-version
 
       - name: Build packages
         run: pnpm build
@@ -61,6 +64,14 @@ jobs:
           name: ${{ env.BUILD_NAME }}-deb
           path: apps/desktop/release/*.deb
 
+      - name: Upload Linux update metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUILD_NAME }}-meta
+          path: |
+            apps/desktop/release/*.yml
+            apps/desktop/release/*.blockmap
+
   build-mac-arm64:
     runs-on: macos-latest
     steps:
@@ -68,7 +79,7 @@ jobs:
 
       - name: Setup environment
         run: |
-          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-mac-arm64" >> $GITHUB_ENV
 
@@ -85,6 +96,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Sync version to desktop app
+        run: pnpm sync-version
 
       - name: Build packages
         run: pnpm build
@@ -109,6 +123,14 @@ jobs:
           name: ${{ env.BUILD_NAME }}-zip
           path: apps/desktop/release/*.zip
 
+      - name: Upload macOS update metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUILD_NAME }}-meta
+          path: |
+            apps/desktop/release/*.yml
+            apps/desktop/release/*.blockmap
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -117,7 +139,7 @@ jobs:
       - name: Setup environment
         shell: bash
         run: |
-          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-win" >> $GITHUB_ENV
 
@@ -130,6 +152,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Sync version to desktop app
+        run: pnpm sync-version
 
       - name: Build packages
         run: pnpm build
@@ -153,6 +178,14 @@ jobs:
         with:
           name: ${{ env.BUILD_NAME }}-portable
           path: apps/desktop/release/*portable*.exe
+
+      - name: Upload Windows update metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUILD_NAME }}-meta
+          path: |
+            apps/desktop/release/*.yml
+            apps/desktop/release/*.blockmap
 
   # Upload artifacts to the release that triggered this workflow
   release:
@@ -181,4 +214,6 @@ jobs:
             artifacts/**/*.deb \
             artifacts/**/*.dmg \
             artifacts/**/*.zip \
-            artifacts/**/*.exe
+            artifacts/**/*.exe \
+            artifacts/**/*.yml \
+            artifacts/**/*.blockmap

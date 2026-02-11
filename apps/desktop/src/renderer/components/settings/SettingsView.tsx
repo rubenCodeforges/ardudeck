@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSettingsStore, type VehicleProfile, type VehicleType } from '../../stores/settings-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useUpdateStore } from '../../stores/update-store';
 
 // Vehicle types supported by each firmware
 // Betaflight: Only multirotors (racing/freestyle focused)
@@ -1285,7 +1286,167 @@ export function SettingsView() {
             </section>
           </div>
         </div>
+
+        {/* ============================================ */}
+        {/* SECTION: About */}
+        {/* ============================================ */}
+        <AboutSection />
       </div>
+    </div>
+  );
+}
+
+function AboutSection() {
+  const {
+    currentVersion,
+    status,
+    latestVersion,
+    publishedAt,
+    downloadProgress,
+    bytesDownloaded,
+    totalBytes,
+    error,
+    checkForUpdate,
+    downloadUpdate,
+    installUpdate,
+  } = useUpdateStore();
+
+  const isChecking = status === 'checking';
+  const showCheckButton = status === 'idle' || status === 'not-available' || status === 'error';
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-gray-500 rounded-full" />
+        <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wider">About</h2>
+      </div>
+
+      <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-white">ArduDeck</h3>
+            <p className="text-sm text-gray-400 mt-0.5">
+              v{currentVersion || '...'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="https://github.com/rubenCodeforges/ardudeck"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-colors"
+            >
+              GitHub
+            </a>
+
+            {showCheckButton && (
+              <button
+                onClick={() => checkForUpdate()}
+                disabled={isChecking}
+                className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Check for Updates
+              </button>
+            )}
+
+            {isChecking && (
+              <span className="px-3 py-1.5 text-xs text-gray-400 flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Checking...
+              </span>
+            )}
+
+            {status === 'available' && (
+              <button
+                onClick={() => downloadUpdate()}
+                className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                Download v{latestVersion}
+              </button>
+            )}
+
+            {status === 'downloaded' && (
+              <button
+                onClick={() => installUpdate()}
+                className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                Restart to Update
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Status details */}
+        <div className="mt-4 pt-4 border-t border-gray-700/50">
+          {status === 'not-available' && (
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              You're up to date
+            </div>
+          )}
+
+          {status === 'available' && (
+            <div className="flex items-center justify-between bg-blue-500/10 rounded-lg p-3">
+              <div>
+                <p className="text-sm text-blue-300 font-medium">
+                  v{latestVersion} is available
+                </p>
+                {publishedAt && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Released {new Date(publishedAt).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {status === 'downloading' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>Downloading v{latestVersion}...</span>
+                <span className="tabular-nums">
+                  {totalBytes > 0
+                    ? `${(bytesDownloaded / (1024 * 1024)).toFixed(1)} / ${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
+                    : `${(bytesDownloaded / (1024 * 1024)).toFixed(1)} MB`}
+                </span>
+              </div>
+              <div className="h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.round(downloadProgress)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {status === 'downloaded' && (
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Update downloaded and ready to install
+            </div>
+          )}
+
+          {status === 'error' && error && (
+            <div className="flex items-center gap-2 text-sm text-red-400">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <span className="truncate">{error}</span>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

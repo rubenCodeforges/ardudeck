@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useUpdateStore } from '../../stores/update-store';
+import { useNavigationStore } from '../../stores/navigation-store';
 import { DebugConsole } from '../debug/DebugConsole';
+import { UpdateBanner } from './UpdateBanner';
 import iconImage from '../../assets/icon.png';
 
 interface AppShellProps {
@@ -9,6 +12,12 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { connectionState } = useConnectionStore();
+  const { currentVersion, status, fetchVersion } = useUpdateStore();
+  const setView = useNavigationStore((s) => s.setView);
+
+  useEffect(() => {
+    fetchVersion();
+  }, [fetchVersion]);
 
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0f]">
@@ -34,6 +43,20 @@ export function AppShell({ children }: AppShellProps) {
                 <span>TX: <span className="text-gray-200">{connectionState.packetsSent}</span></span>
               </div>
             </div>
+          )}
+
+          {/* Version badge */}
+          {currentVersion && (
+            <button
+              onClick={() => setView('settings')}
+              className="flex items-center gap-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+              title="About ArduDeck"
+            >
+              <span className="text-xs">v{currentVersion}</span>
+              {(status === 'available' || status === 'downloaded') && (
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              )}
+            </button>
           )}
 
           {/* Connection status */}
@@ -66,6 +89,9 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </div>
       </header>
+
+      {/* Update notification banner */}
+      <UpdateBanner />
 
       {/* Main content */}
       <div className="flex-1 overflow-hidden">{children}</div>

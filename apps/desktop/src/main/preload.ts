@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -1100,6 +1100,28 @@ const api = {
     const handler = (_: unknown, result: unknown) => callback(result as CalibrationCompleteEvent);
     ipcRenderer.on(IPC_CHANNELS.CALIBRATION_COMPLETE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.CALIBRATION_COMPLETE, handler);
+  },
+
+  // =============================================================================
+  // App Version & Updates
+  // =============================================================================
+
+  getAppVersion: (): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_GET_VERSION),
+
+  checkForUpdate: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_CHECK_UPDATE),
+
+  downloadUpdate: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_DOWNLOAD_UPDATE),
+
+  installUpdate: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_INSTALL_UPDATE),
+
+  onUpdateStatus: (callback: (info: AppUpdateInfo) => void) => {
+    const handler = (_: unknown, info: AppUpdateInfo) => callback(info);
+    ipcRenderer.on(IPC_CHANNELS.APP_UPDATE_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.APP_UPDATE_STATUS, handler);
   },
 
   /** Send log entry from renderer to main process */

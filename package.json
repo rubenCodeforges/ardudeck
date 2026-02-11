@@ -1,6 +1,6 @@
 {
   "name": "ardudeck",
-  "version": "0.1.0",
+  "version": "0.0.2-alpha",
   "private": true,
   "description": "ArduDeck - Modern Ground Control Station for ArduPilot",
   "author": {
@@ -37,7 +37,9 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "generate": "turbo run generate",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "sync-version": "node -e \"const r=require('./package.json'),d=require('./apps/desktop/package.json');d.version=r.version;require('fs').writeFileSync('./apps/desktop/package.json',JSON.stringify(d,null,2)+'\\n')\"",
+    "package": "pnpm sync-version && pnpm --filter @ardudeck/desktop package"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

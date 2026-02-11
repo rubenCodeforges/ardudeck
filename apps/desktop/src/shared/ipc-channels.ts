@@ -305,6 +305,13 @@ export const IPC_CHANNELS = {
   CALIBRATION_CANCEL: 'calibration:cancel',
   CALIBRATION_PROGRESS: 'calibration:progress', // Event from main
   CALIBRATION_COMPLETE: 'calibration:complete', // Event from main
+
+  // App / Updates
+  APP_GET_VERSION: 'app:get-version',
+  APP_CHECK_UPDATE: 'app:check-update',
+  APP_DOWNLOAD_UPDATE: 'app:download-update',
+  APP_INSTALL_UPDATE: 'app:install-update',
+  APP_UPDATE_STATUS: 'app:update-status',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -793,4 +800,31 @@ export interface ArduPilotSitlBinaryInfo {
   path?: string;
   version?: string;
   downloadedAt?: string;
+}
+
+// =============================================================================
+// Update / Version Types
+// =============================================================================
+
+export type AppUpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error';
+
+export interface AppUpdateInfo {
+  status: AppUpdateStatus;
+  currentVersion: string;
+  latestVersion?: string;
+  releaseUrl?: string;
+  releaseName?: string;
+  publishedAt?: string;
+  downloadProgress?: number; // 0-100
+  bytesDownloaded?: number;
+  totalBytes?: number;
+  downloadSpeed?: number; // bytes per second
+  error?: string;
 }

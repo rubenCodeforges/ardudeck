@@ -64,6 +64,7 @@ import {
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema } from '../shared/ipc-channels.js';
+import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
@@ -4258,6 +4259,29 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: message };
     }
   });
+
+  // ============================================================================
+  // App Version & Updates
+  // ============================================================================
+
+  ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, (): string => {
+    return app.getVersion();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.APP_CHECK_UPDATE, (): void => {
+    checkForUpdates();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.APP_DOWNLOAD_UPDATE, (): void => {
+    downloadUpdate();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.APP_INSTALL_UPDATE, (): void => {
+    installUpdate();
+  });
+
+  // Initialize auto-updater (handles auto-check on its own schedule)
+  initAutoUpdater(mainWindow);
 }
 
 /**
