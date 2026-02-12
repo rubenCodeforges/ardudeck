@@ -527,7 +527,7 @@ function getLegacyFirmwarePath(boardId: string, firmwareType: string): string {
   // In dev: resources/firmware/legacy/apm2/ArduCopter.hex
   // In prod: resources/firmware/legacy/apm2/ArduCopter.hex (packed in asar or extraResources)
   const resourcesPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'firmware', 'legacy', boardId)
+    ? path.join(app.getAppPath() + '.unpacked', 'resources', 'firmware', 'legacy', boardId)
     : path.join(app.getAppPath(), 'resources', 'firmware', 'legacy', boardId);
 
   return path.join(resourcesPath, `${firmwareType}.hex`);

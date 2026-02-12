@@ -118,7 +118,7 @@ class FlightGearLauncher {
     const isDev = !app.isPackaged;
     const resourcesPath = isDev
       ? join(app.getAppPath(), 'resources', 'flightgear', 'Protocol')
-      : join(process.resourcesPath, 'flightgear', 'Protocol');
+      : join(app.getAppPath() + '.unpacked', 'resources', 'flightgear', 'Protocol');
 
     const files = ['ardudeck-out.xml', 'ardudeck-in.xml'];
 

@@ -58,7 +58,7 @@ class SitlProcessManager {
    */
   private getSitlBinaryPath(): string {
     const basePath = app.isPackaged
-      ? path.join(process.resourcesPath, 'sitl')
+      ? path.join(app.getAppPath() + '.unpacked', 'resources', 'sitl')
       : path.join(app.getAppPath(), 'resources', 'sitl');
 
     const platform = process.platform;

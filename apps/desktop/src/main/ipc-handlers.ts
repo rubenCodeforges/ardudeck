@@ -3747,8 +3747,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       // Get the resources path (works in both dev and production)
       const resourcesPath = app.isPackaged
-        ? join(process.resourcesPath, 'drivers')
-        : join(app.getAppPath(), 'resources/drivers');
+        ? join(app.getAppPath() + '.unpacked', 'resources', 'drivers')
+        : join(app.getAppPath(), 'resources', 'drivers');
 
       const driverPath = join(resourcesPath, driverName);
 
