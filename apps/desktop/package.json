@@ -75,12 +75,20 @@
     },
     "files": [
       "out/**/*",
-      "resources/**/*"
+      "resources/**/*",
+      "node_modules/serialport/**/*",
+      "node_modules/@serialport/**/*",
+      "node_modules/usb/**/*",
+      "node_modules/node-addon-api/**/*",
+      "node_modules/node-gyp-build/**/*",
+      "node_modules/detect-libc/**/*"
     ],
     "asarUnpack": [
       "resources/bin/**/*",
       "resources/firmware/**/*",
-      "resources/sitl/**/*"
+      "resources/sitl/**/*",
+      "node_modules/@serialport/bindings-cpp/prebuilds/**/*",
+      "node_modules/usb/prebuilds/**/*"
     ],
     "icon": "resources/icon",
     "win": {
