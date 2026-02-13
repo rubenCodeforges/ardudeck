@@ -81,7 +81,8 @@
     "asarUnpack": [
       "resources/bin/**/*",
       "resources/firmware/**/*",
-      "resources/sitl/**/*"
+      "resources/sitl/**/*",
+      "**/*.node"
     ],
     "icon": "resources/icon",
     "win": {
