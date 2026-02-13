@@ -9,13 +9,14 @@
   <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React" /></a>
   <a href="https://mavlink.io/"><img src="https://img.shields.io/badge/MAVLink-v1%2Fv2-green" alt="MAVLink" /></a>
   <a href="https://github.com/iNavFlight/inav/wiki/MSP-V2"><img src="https://img.shields.io/badge/MSP-v1%2Fv2-orange" alt="MSP" /></a>
+  <a href="https://discord.gg/JX2JdVXPPC"><img src="https://img.shields.io/badge/Discord-Join%20Us-5865F2?logo=discord&logoColor=white" alt="Discord" /></a>
 </p>
 
 <p align="center">
   <strong>A modern, cross-platform ground control station for ArduPilot, Betaflight, and iNav.</strong>
 </p>
 
-> **ALPHA SOFTWARE** - ArduDeck is under active development. Features may be incomplete, unstable, or change without notice. **Use at your own risk** and always have a backup configuration tool available. We appreciate early testers - please [report bugs](#bug-reporting) to help improve the project!
+> **ALPHA SOFTWARE** - ArduDeck is under active development. Features may be incomplete, unstable, or change without notice. **Use at your own risk** and always have a backup configuration tool available. We appreciate early testers - [join our Discord](https://discord.gg/JX2JdVXPPC) for support and updates, or [report bugs](#bug-reporting) to help improve the project!
 
 ArduDeck is a next-generation ground control station built with Electron, React, and TypeScript. It provides real-time telemetry, parameter management, PID tuning, and mission planning for drones and vehicles running ArduPilot, Betaflight, or iNav firmware.
 

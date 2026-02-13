@@ -1,6 +1,6 @@
 {
   "name": "ardudeck",
-  "version": "0.0.21-alpha",
+  "version": "0.0.22-alpha",
   "private": true,
   "description": "ArduDeck - Modern Ground Control Station for ArduPilot",
   "author": {
