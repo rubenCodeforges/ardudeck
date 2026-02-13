@@ -76,7 +76,20 @@
     },
     "files": [
       "out/**/*",
-      "resources/**/*"
+      "resources/**/*",
+      {
+        "from": "../../node_modules",
+        "to": "node_modules",
+        "filter": [
+          "@serialport/**",
+          "serialport/**",
+          "node-gyp-build/**",
+          "detect-libc/**",
+          "node-addon-api/**",
+          "debug/**",
+          "ms/**"
+        ]
+      }
     ],
     "asarUnpack": [
       "resources/bin/**/*",
