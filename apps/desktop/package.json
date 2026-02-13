@@ -1,6 +1,6 @@
 {
   "name": "@ardudeck/desktop",
-  "version": "0.0.2-alpha",
+  "version": "0.0.22-alpha",
   "description": "ArduDeck - Desktop Application",
   "author": {
     "name": "rubenCodeforges",
@@ -31,6 +31,7 @@
     "dockview": "^4.13.0",
     "dockview-react": "^4.13.0",
     "electron-store": "^11.0.2",
+    "serialport": "^12.0.0",
     "electron-updater": "^6.7.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
@@ -61,7 +62,7 @@
   "build": {
     "appId": "com.ardudeck.desktop",
     "productName": "ArduDeck",
-    "npmRebuild": true,
+    "npmRebuild": false,
     "electronVersion": "28.3.3",
     "publish": [
       {
@@ -75,20 +76,12 @@
     },
     "files": [
       "out/**/*",
-      "resources/**/*",
-      "node_modules/serialport/**/*",
-      "node_modules/@serialport/**/*",
-      "node_modules/usb/**/*",
-      "node_modules/node-addon-api/**/*",
-      "node_modules/node-gyp-build/**/*",
-      "node_modules/detect-libc/**/*"
+      "resources/**/*"
     ],
     "asarUnpack": [
       "resources/bin/**/*",
       "resources/firmware/**/*",
-      "resources/sitl/**/*",
-      "node_modules/@serialport/bindings-cpp/prebuilds/**/*",
-      "node_modules/usb/prebuilds/**/*"
+      "resources/sitl/**/*"
     ],
     "icon": "resources/icon",
     "win": {
