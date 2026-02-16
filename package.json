@@ -2,7 +2,7 @@
   "name": "ardudeck",
   "version": "0.0.23-alpha",
   "private": true,
-  "description": "ArduDeck - Modern Ground Control Station for ArduPilot",
+  "description": "ArduDeck - Modern Ground Control Station",
   "author": {
     "name": "Ruben M",
     "url": "https://github.com/rubenCodeforges"
