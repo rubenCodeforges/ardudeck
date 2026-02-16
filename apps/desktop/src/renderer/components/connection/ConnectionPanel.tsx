@@ -18,9 +18,7 @@ export function ConnectionPanel() {
   const [tcpHost, setTcpHost] = useState('127.0.0.1');
   const [tcpPort, setTcpPort] = useState(5760);
   const [udpPort, setUdpPort] = useState(14550);
-  const [isScanning, setIsScanning] = useState(false);
   const [showDriverHelp, setShowDriverHelp] = useState(false);
-  const [scanFailed, setScanFailed] = useState(false);
   const hasAppliedMemory = useRef(false);
 
   // Apply connection memory on mount
@@ -247,26 +245,6 @@ export function ConnectionPanel() {
     }
   };
 
-  const handleScan = async () => {
-    setIsScanning(true);
-    setError(null);
-    setScanFailed(false);
-    try {
-      const results = await window.electronAPI.scanPorts();
-      if (results.length > 0) {
-        const first = results[0]!;
-        setSelectedPort(first.port);
-        setBaudRate(first.baudRate);
-        setScanFailed(false);
-      } else {
-        setError('No MAVLink devices found');
-        setScanFailed(true);
-      }
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
   const handleConnect = async () => {
     let success = false;
 
@@ -460,16 +438,6 @@ export function ConnectionPanel() {
                     </option>
                   ))}
                 </select>
-                <button
-                  onClick={refreshPorts}
-                  className="btn btn-secondary px-3"
-                  disabled={connectionState.isConnected}
-                  title="Refresh ports"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
               </div>
             </div>
 
@@ -487,28 +455,6 @@ export function ConnectionPanel() {
               </select>
             </div>
 
-            <button
-              onClick={handleScan}
-              disabled={isScanning || connectionState.isConnected}
-              className="btn btn-secondary w-full flex items-center justify-center gap-2"
-            >
-              {isScanning ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Scanning...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Scan
-                </>
-              )}
-            </button>
           </div>
         )}
 
