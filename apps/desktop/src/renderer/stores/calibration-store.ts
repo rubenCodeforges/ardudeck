@@ -62,6 +62,9 @@ export interface CalibrationState {
   saveSuccess: boolean;
   saveError: string | null;
 
+  // Track completed calibrations this session (arming flags may not clear until reboot)
+  completedCalibrations: Set<CalibrationTypeId>;
+
   // Actions
   open: () => void;
   close: () => void;
@@ -134,6 +137,8 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
   isSaving: false,
   saveSuccess: false,
   saveError: null,
+
+  completedCalibrations: new Set(),
 
   // ============================================================================
   // View Actions
@@ -390,7 +395,16 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
       // Save to EEPROM
       await window.electronAPI?.mspSaveEeprom?.();
 
-      set({ isSaving: false, saveSuccess: true });
+      // Track this calibration as completed this session
+      // (arming flags may not clear until reboot, so we track it locally)
+      const { calibrationType, completedCalibrations } = get();
+      if (calibrationType) {
+        const updated = new Set(completedCalibrations);
+        updated.add(calibrationType);
+        set({ isSaving: false, saveSuccess: true, completedCalibrations: updated });
+      } else {
+        set({ isSaving: false, saveSuccess: true });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save';
       set({ isSaving: false, saveError: message, saveSuccess: false });
@@ -450,6 +464,7 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
       isSaving: false,
       saveSuccess: false,
       saveError: null,
+      completedCalibrations: new Set(),
     });
   },
 }));

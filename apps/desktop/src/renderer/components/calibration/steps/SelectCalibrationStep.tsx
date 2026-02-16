@@ -198,7 +198,7 @@ const BackgroundPatterns: Record<CalibrationTypeId, React.ReactNode> = {
 };
 
 export function SelectCalibrationStep() {
-  const { protocol, sensors, isSensorsLoading, selectCalibrationType, error } = useCalibrationStore();
+  const { protocol, sensors, isSensorsLoading, selectCalibrationType, error, completedCalibrations } = useCalibrationStore();
   const { flight } = useTelemetryStore();
 
   // Get arming disabled reasons from telemetry
@@ -239,9 +239,15 @@ export function SelectCalibrationStep() {
           {availableTypes.map((calType) => {
             const isAvailable = isCalibrationTypeAvailable(calType, sensors);
             const theme = CalibrationThemes[calType.id];
-            const calibrationOk = isCalibrationOk(calType.id, armingDisabledReasons);
-            const calibrationNeeded = isCalibrationNeeded(calType.id, armingDisabledReasons);
-            const hasStatusInfo = CALIBRATION_ARMING_FLAGS[calType.id].length > 0;
+            // If calibration was completed + saved this session, show OK regardless of arming flags
+            // (iNav doesn't clear arming flags until reboot)
+            // accel-level and accel-6point share the same sensor, so completing either counts
+            const completedThisSession = completedCalibrations.has(calType.id)
+              || (calType.id === 'accel-level' && completedCalibrations.has('accel-6point'))
+              || (calType.id === 'accel-6point' && completedCalibrations.has('accel-level'));
+            const calibrationOk = completedThisSession || isCalibrationOk(calType.id, armingDisabledReasons);
+            const calibrationNeeded = !completedThisSession && isCalibrationNeeded(calType.id, armingDisabledReasons);
+            const hasStatusInfo = CALIBRATION_ARMING_FLAGS[calType.id].length > 0 || completedThisSession;
 
             return (
               <button
