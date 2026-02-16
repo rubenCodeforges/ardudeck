@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettingsStore, type VehicleProfile, type VehicleType } from '../../stores/settings-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -895,6 +895,8 @@ export function SettingsView() {
 
   const { connectionState } = useConnectionStore();
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [missionLocalValues, setMissionLocalValues] = useState<Record<string, string>>({});
+  const [missionErrors, setMissionErrors] = useState<Record<string, string | null>>({});
   const activeVehicle = getActiveVehicle();
   const estimatedFlightTime = getEstimatedFlightTime();
   const estimatedRange = getEstimatedRange();
@@ -966,6 +968,37 @@ export function SettingsView() {
     };
     const newVehicleId = addVehicle(newVehicleData);
     setActiveVehicle(newVehicleId);
+  };
+
+  const getMissionDisplayValue = (field: string): string | number => {
+    if (field in missionLocalValues) return missionLocalValues[field]!;
+    return (missionDefaults as any)[field] as number;
+  };
+
+  const handleMissionChange = (field: string, rawValue: string) => {
+    setMissionLocalValues(prev => ({ ...prev, [field]: rawValue }));
+    const rules = MISSION_FIELD_RULES[field];
+    if (rules) {
+      setMissionErrors(prev => ({ ...prev, [field]: validateField(rawValue, rules) }));
+    }
+  };
+
+  const handleMissionBlur = (field: string) => {
+    const raw = missionLocalValues[field];
+    if (raw === undefined) return;
+
+    const rules = MISSION_FIELD_RULES[field];
+    const error = rules ? validateField(raw, rules) : null;
+
+    if (error) {
+      setMissionLocalValues(prev => { const n = { ...prev }; delete n[field]; return n; });
+      setMissionErrors(prev => ({ ...prev, [field]: null }));
+      return;
+    }
+
+    updateMissionDefaults({ [field]: Number(raw) });
+    setMissionLocalValues(prev => { const n = { ...prev }; delete n[field]; return n; });
+    setMissionErrors(prev => ({ ...prev, [field]: null }));
   };
 
   return (
@@ -1183,17 +1216,21 @@ export function SettingsView() {
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      value={missionDefaults.safeAltitudeBuffer}
-                      onChange={(e) => updateMissionDefaults({
-                        safeAltitudeBuffer: Math.max(0, Number(e.target.value))
-                      })}
-                      className="w-full px-2 py-1.5 bg-gray-900/50 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                      value={getMissionDisplayValue('safeAltitudeBuffer')}
+                      onChange={(e) => handleMissionChange('safeAltitudeBuffer', e.target.value)}
+                      onBlur={() => handleMissionBlur('safeAltitudeBuffer')}
+                      className={`w-full px-2 py-1.5 bg-gray-900/50 border rounded text-white text-sm focus:outline-none ${
+                        missionErrors.safeAltitudeBuffer ? 'border-red-500/60 focus:border-red-500' : 'border-gray-700 focus:border-blue-500'
+                      }`}
                       min="0"
                       max="500"
                     />
                     <span className="text-gray-500 text-xs">m</span>
                   </div>
-                  <div className="text-[10px] text-gray-600 mt-1">Above terrain for warnings</div>
+                  {missionErrors.safeAltitudeBuffer
+                    ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.safeAltitudeBuffer}</div>
+                    : <div className="text-[10px] text-gray-600 mt-1">Above terrain for warnings</div>
+                  }
                 </div>
 
                 <div>
@@ -1203,17 +1240,21 @@ export function SettingsView() {
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      value={missionDefaults.defaultWaypointAltitude}
-                      onChange={(e) => updateMissionDefaults({
-                        defaultWaypointAltitude: Math.max(0, Number(e.target.value))
-                      })}
-                      className="w-full px-2 py-1.5 bg-gray-900/50 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                      value={getMissionDisplayValue('defaultWaypointAltitude')}
+                      onChange={(e) => handleMissionChange('defaultWaypointAltitude', e.target.value)}
+                      onBlur={() => handleMissionBlur('defaultWaypointAltitude')}
+                      className={`w-full px-2 py-1.5 bg-gray-900/50 border rounded text-white text-sm focus:outline-none ${
+                        missionErrors.defaultWaypointAltitude ? 'border-red-500/60 focus:border-red-500' : 'border-gray-700 focus:border-blue-500'
+                      }`}
                       min="0"
                       max="10000"
                     />
                     <span className="text-gray-500 text-xs">m</span>
                   </div>
-                  <div className="text-[10px] text-gray-600 mt-1">Default for new waypoints</div>
+                  {missionErrors.defaultWaypointAltitude
+                    ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultWaypointAltitude}</div>
+                    : <div className="text-[10px] text-gray-600 mt-1">Default for new waypoints</div>
+                  }
                 </div>
 
                 <div>
@@ -1223,17 +1264,21 @@ export function SettingsView() {
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      value={missionDefaults.defaultTakeoffAltitude}
-                      onChange={(e) => updateMissionDefaults({
-                        defaultTakeoffAltitude: Math.max(0, Number(e.target.value))
-                      })}
-                      className="w-full px-2 py-1.5 bg-gray-900/50 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                      value={getMissionDisplayValue('defaultTakeoffAltitude')}
+                      onChange={(e) => handleMissionChange('defaultTakeoffAltitude', e.target.value)}
+                      onBlur={() => handleMissionBlur('defaultTakeoffAltitude')}
+                      className={`w-full px-2 py-1.5 bg-gray-900/50 border rounded text-white text-sm focus:outline-none ${
+                        missionErrors.defaultTakeoffAltitude ? 'border-red-500/60 focus:border-red-500' : 'border-gray-700 focus:border-blue-500'
+                      }`}
                       min="0"
                       max="1000"
                     />
                     <span className="text-gray-500 text-xs">m</span>
                   </div>
-                  <div className="text-[10px] text-gray-600 mt-1">Altitude after launch</div>
+                  {missionErrors.defaultTakeoffAltitude
+                    ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultTakeoffAltitude}</div>
+                    : <div className="text-[10px] text-gray-600 mt-1">Altitude after launch</div>
+                  }
                 </div>
               </div>
             </section>
@@ -1471,6 +1516,56 @@ function AboutSection() {
  * Stores value in mm internally for consistency
  * Common frame sizes: 127mm (5"), 178mm (7"), 254mm (10"), 320mm, 450mm
  */
+// ============================================
+// Validation
+// ============================================
+
+interface FieldValidation {
+  min?: number;
+  max?: number;
+  required?: boolean;
+  integer?: boolean;
+}
+
+const VEHICLE_FIELD_RULES: Record<string, FieldValidation> = {
+  name:             { required: true },
+  weight:           { min: 1, max: 500_000, required: true, integer: true },
+  batteryCapacity:  { min: 100, max: 100_000, required: true, integer: true },
+  wingspan:         { min: 100, max: 10_000, integer: true },
+  wingArea:         { min: 100, max: 100_000, integer: true },
+  stallSpeed:       { min: 0.1, max: 100 },
+  transitionSpeed:  { min: 1, max: 100 },
+  wheelbase:        { min: 10, max: 5_000, integer: true },
+  wheelDiameter:    { min: 10, max: 1_000, integer: true },
+  maxSpeed:         { min: 0.1, max: 200 },
+  hullLength:       { min: 50, max: 10_000, integer: true },
+  displacement:     { min: 1, max: 500_000, integer: true },
+  maxDepth:         { min: 1, max: 11_000 },
+  motorKv:          { min: 100, max: 10_000, integer: true },
+  escRating:        { min: 1, max: 500 },
+  batteryDischarge: { min: 1, max: 200 },
+};
+
+const MISSION_FIELD_RULES: Record<string, FieldValidation> = {
+  safeAltitudeBuffer:      { min: 0, max: 500, required: true, integer: true },
+  defaultWaypointAltitude: { min: 0, max: 10_000, required: true, integer: true },
+  defaultTakeoffAltitude:  { min: 0, max: 1_000, required: true, integer: true },
+};
+
+function validateField(value: string, rules: FieldValidation, isText?: boolean): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return rules.required ? 'Required' : null;
+  }
+  if (isText) return null;
+  const num = Number(trimmed);
+  if (isNaN(num)) return 'Invalid number';
+  if (rules.min !== undefined && num < rules.min) return `Min: ${rules.min}`;
+  if (rules.max !== undefined && num > rules.max) return `Max: ${rules.max}`;
+  if (rules.integer && !Number.isInteger(num)) return 'Must be whole number';
+  return null;
+}
+
 function FrameSizeInput({
   value,
   onChange,
@@ -1572,6 +1667,8 @@ function VehicleInputField({
   min,
   max,
   step,
+  error,
+  onBlur,
 }: {
   label: string;
   value: string | number | undefined;
@@ -1582,6 +1679,8 @@ function VehicleInputField({
   min?: number;
   max?: number;
   step?: number;
+  error?: string | null;
+  onBlur?: () => void;
 }) {
   return (
     <div>
@@ -1591,14 +1690,18 @@ function VehicleInputField({
           type={type}
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           min={min}
           max={max}
           step={step}
-          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+          className={`flex-1 px-3 py-2 bg-gray-900 border rounded-lg text-white text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+          }`}
         />
         {unit && <span className="text-gray-500 text-sm w-8">{unit}</span>}
       </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
     </div>
   );
 }
@@ -1632,6 +1735,77 @@ function VehicleSelectField({
 }
 
 /**
+ * Hook for managing local draft state + validation for vehicle edit form.
+ * Fields are validated on change (visual feedback) and committed on blur.
+ * Invalid values revert to the last valid store value on blur.
+ */
+function useVehicleForm(vehicle: VehicleProfile, onUpdate: (updates: Partial<VehicleProfile>) => void) {
+  const [localValues, setLocalValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
+
+  // Clear local state when vehicle type changes (fields appear/disappear)
+  useEffect(() => {
+    setLocalValues({});
+    setErrors({});
+  }, [vehicle.type]);
+
+  const getDisplayValue = useCallback((field: string): string | number | undefined => {
+    if (field in localValues) return localValues[field];
+    return (vehicle as any)[field];
+  }, [localValues, vehicle]);
+
+  const handleChange = useCallback((field: string, rawValue: string, isText?: boolean) => {
+    setLocalValues(prev => ({ ...prev, [field]: rawValue }));
+    const rules = VEHICLE_FIELD_RULES[field];
+    if (rules) {
+      setErrors(prev => ({ ...prev, [field]: validateField(rawValue, rules, isText) }));
+    }
+  }, []);
+
+  const handleBlur = useCallback((field: string, isText?: boolean) => {
+    const raw = localValues[field];
+    if (raw === undefined) return; // wasn't edited
+
+    const rules = VEHICLE_FIELD_RULES[field];
+    const error = rules ? validateField(raw, rules, isText) : null;
+
+    if (error) {
+      // Revert to store value
+      setLocalValues(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      setErrors(prev => ({ ...prev, [field]: null }));
+      return;
+    }
+
+    // Commit valid value
+    if (isText) {
+      const trimmed = raw.trim();
+      onUpdate({ [field]: trimmed || undefined } as Partial<VehicleProfile>);
+    } else if (raw.trim() === '') {
+      onUpdate({ [field]: undefined } as Partial<VehicleProfile>);
+    } else {
+      onUpdate({ [field]: Number(raw) } as Partial<VehicleProfile>);
+    }
+
+    setLocalValues(prev => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setErrors(prev => ({ ...prev, [field]: null }));
+  }, [localValues, onUpdate]);
+
+  const getError = useCallback((field: string): string | null => {
+    return errors[field] ?? null;
+  }, [errors]);
+
+  return { getDisplayValue, handleChange, handleBlur, getError };
+}
+
+/**
  * Vehicle Edit Modal - Vehicle-type-specific fields
  */
 function VehicleEditModal({
@@ -1643,12 +1817,16 @@ function VehicleEditModal({
   onUpdate: (updates: Partial<VehicleProfile>) => void;
   onClose: () => void;
 }) {
+  const { getDisplayValue, handleChange, handleBlur, getError } = useVehicleForm(vehicle, onUpdate);
   const isCopter = vehicle.type === 'copter';
   const isPlane = vehicle.type === 'plane';
   const isVtol = vehicle.type === 'vtol';
   const isRover = vehicle.type === 'rover';
   const isBoat = vehicle.type === 'boat';
   const isSub = vehicle.type === 'sub';
+
+  const nameValue = (getDisplayValue('name') as string) ?? '';
+  const nameError = getError('name');
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
@@ -1679,11 +1857,15 @@ function VehicleEditModal({
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Vehicle Name</label>
               <input
                 type="text"
-                value={vehicle.name}
-                onChange={(e) => onUpdate({ name: e.target.value })}
+                value={nameValue}
+                onChange={(e) => handleChange('name', e.target.value.slice(0, 50), true)}
+                onBlur={() => handleBlur('name', true)}
                 placeholder="My Vehicle"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className={`w-full px-3 py-2 bg-gray-900 border rounded-lg text-white focus:outline-none ${
+                  nameError ? 'border-red-500/60 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
+                }`}
               />
+              {nameError && <div className="text-[10px] text-red-400 mt-0.5">{nameError}</div>}
             </div>
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Vehicle Type</label>
@@ -1726,17 +1908,33 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="All-Up Weight"
-                  value={vehicle.weight}
-                  onChange={(v) => onUpdate({ weight: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('weight')}
+                  onChange={(v) => handleChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
                   unit="g"
                   placeholder="600"
                 />
-                <VehicleInputField
+                <VehicleSelectField
                   label="Prop Size"
-                  value={vehicle.propSize}
+                  value={vehicle.propSize || ''}
                   onChange={(v) => onUpdate({ propSize: v || undefined })}
-                  type="text"
-                  placeholder="5x4.5"
+                  options={[
+                    { value: '', label: 'None' },
+                    { value: '3x3', label: '3x3' },
+                    { value: '4x4.5', label: '4x4.5' },
+                    { value: '5x3', label: '5x3' },
+                    { value: '5x4', label: '5x4' },
+                    { value: '5x4.5', label: '5x4.5' },
+                    { value: '5x5', label: '5x5' },
+                    { value: '6x3', label: '6x3' },
+                    { value: '6x4', label: '6x4' },
+                    { value: '7x3.5', label: '7x3.5' },
+                    { value: '7x4', label: '7x4' },
+                    { value: '8x4', label: '8x4' },
+                    { value: '9x4.5', label: '9x4.5' },
+                    { value: '10x4.5', label: '10x4.5' },
+                  ]}
                 />
               </div>
             </div>
@@ -1754,29 +1952,37 @@ function VehicleEditModal({
               <div className="grid grid-cols-2 gap-4">
                 <VehicleInputField
                   label="Wingspan"
-                  value={vehicle.wingspan}
-                  onChange={(v) => onUpdate({ wingspan: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('wingspan')}
+                  onChange={(v) => handleChange('wingspan', v)}
+                  onBlur={() => handleBlur('wingspan')}
+                  error={getError('wingspan')}
                   unit="mm"
                   placeholder="1200"
                 />
                 <VehicleInputField
                   label="Wing Area"
-                  value={vehicle.wingArea}
-                  onChange={(v) => onUpdate({ wingArea: v ? Number(v) : undefined })}
+                  value={getDisplayValue('wingArea')}
+                  onChange={(v) => handleChange('wingArea', v)}
+                  onBlur={() => handleBlur('wingArea')}
+                  error={getError('wingArea')}
                   unit="cm²"
                   placeholder="2400"
                 />
                 <VehicleInputField
                   label="All-Up Weight"
-                  value={vehicle.weight}
-                  onChange={(v) => onUpdate({ weight: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('weight')}
+                  onChange={(v) => handleChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
                   unit="g"
                   placeholder="1500"
                 />
                 <VehicleInputField
                   label="Stall Speed (if known)"
-                  value={vehicle.stallSpeed}
-                  onChange={(v) => onUpdate({ stallSpeed: v ? Number(v) : undefined })}
+                  value={getDisplayValue('stallSpeed')}
+                  onChange={(v) => handleChange('stallSpeed', v)}
+                  onBlur={() => handleBlur('stallSpeed')}
+                  error={getError('stallSpeed')}
                   unit="m/s"
                   placeholder="8"
                 />
@@ -1796,8 +2002,10 @@ function VehicleEditModal({
               <div className="grid grid-cols-2 gap-4">
                 <VehicleInputField
                   label="Wingspan"
-                  value={vehicle.wingspan}
-                  onChange={(v) => onUpdate({ wingspan: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('wingspan')}
+                  onChange={(v) => handleChange('wingspan', v)}
+                  onBlur={() => handleBlur('wingspan')}
+                  error={getError('wingspan')}
                   unit="mm"
                   placeholder="1500"
                 />
@@ -1813,15 +2021,19 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="All-Up Weight"
-                  value={vehicle.weight}
-                  onChange={(v) => onUpdate({ weight: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('weight')}
+                  onChange={(v) => handleChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
                   unit="g"
                   placeholder="3000"
                 />
                 <VehicleInputField
                   label="Transition Speed"
-                  value={vehicle.transitionSpeed}
-                  onChange={(v) => onUpdate({ transitionSpeed: v ? Number(v) : undefined })}
+                  value={getDisplayValue('transitionSpeed')}
+                  onChange={(v) => handleChange('transitionSpeed', v)}
+                  onBlur={() => handleBlur('transitionSpeed')}
+                  error={getError('transitionSpeed')}
                   unit="m/s"
                   placeholder="15"
                 />
@@ -1851,29 +2063,37 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="Total Weight"
-                  value={vehicle.weight}
-                  onChange={(v) => onUpdate({ weight: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('weight')}
+                  onChange={(v) => handleChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
                   unit="g"
                   placeholder="2000"
                 />
                 <VehicleInputField
                   label="Wheelbase"
-                  value={vehicle.wheelbase}
-                  onChange={(v) => onUpdate({ wheelbase: v ? Number(v) : undefined })}
+                  value={getDisplayValue('wheelbase')}
+                  onChange={(v) => handleChange('wheelbase', v)}
+                  onBlur={() => handleBlur('wheelbase')}
+                  error={getError('wheelbase')}
                   unit="mm"
                   placeholder="300"
                 />
                 <VehicleInputField
                   label="Wheel Diameter"
-                  value={vehicle.wheelDiameter}
-                  onChange={(v) => onUpdate({ wheelDiameter: v ? Number(v) : undefined })}
+                  value={getDisplayValue('wheelDiameter')}
+                  onChange={(v) => handleChange('wheelDiameter', v)}
+                  onBlur={() => handleBlur('wheelDiameter')}
+                  error={getError('wheelDiameter')}
                   unit="mm"
                   placeholder="100"
                 />
                 <VehicleInputField
                   label="Max Speed (if known)"
-                  value={vehicle.maxSpeed}
-                  onChange={(v) => onUpdate({ maxSpeed: v ? Number(v) : undefined })}
+                  value={getDisplayValue('maxSpeed')}
+                  onChange={(v) => handleChange('maxSpeed', v)}
+                  onBlur={() => handleBlur('maxSpeed')}
+                  error={getError('maxSpeed')}
                   unit="m/s"
                   placeholder="5"
                 />
@@ -1914,29 +2134,37 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="Hull Length"
-                  value={vehicle.hullLength}
-                  onChange={(v) => onUpdate({ hullLength: v ? Number(v) : undefined })}
+                  value={getDisplayValue('hullLength')}
+                  onChange={(v) => handleChange('hullLength', v)}
+                  onBlur={() => handleBlur('hullLength')}
+                  error={getError('hullLength')}
                   unit="mm"
                   placeholder="600"
                 />
                 <VehicleInputField
                   label="Total Weight"
-                  value={vehicle.weight}
-                  onChange={(v) => onUpdate({ weight: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('weight')}
+                  onChange={(v) => handleChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
                   unit="g"
                   placeholder="3000"
                 />
                 <VehicleInputField
                   label="Displacement"
-                  value={vehicle.displacement}
-                  onChange={(v) => onUpdate({ displacement: v ? Number(v) : undefined })}
+                  value={getDisplayValue('displacement')}
+                  onChange={(v) => handleChange('displacement', v)}
+                  onBlur={() => handleBlur('displacement')}
+                  error={getError('displacement')}
                   unit="g"
                   placeholder="3500"
                 />
                 <VehicleInputField
                   label="Max Speed (if known)"
-                  value={vehicle.maxSpeed}
-                  onChange={(v) => onUpdate({ maxSpeed: v ? Number(v) : undefined })}
+                  value={getDisplayValue('maxSpeed')}
+                  onChange={(v) => handleChange('maxSpeed', v)}
+                  onBlur={() => handleBlur('maxSpeed')}
+                  error={getError('maxSpeed')}
                   unit="m/s"
                   placeholder="3"
                 />
@@ -1956,8 +2184,10 @@ function VehicleEditModal({
               <div className="grid grid-cols-2 gap-4">
                 <VehicleInputField
                   label="Hull Length"
-                  value={vehicle.hullLength}
-                  onChange={(v) => onUpdate({ hullLength: v ? Number(v) : undefined })}
+                  value={getDisplayValue('hullLength')}
+                  onChange={(v) => handleChange('hullLength', v)}
+                  onBlur={() => handleBlur('hullLength')}
+                  error={getError('hullLength')}
                   unit="mm"
                   placeholder="500"
                 />
@@ -1974,15 +2204,19 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="Total Weight (dry)"
-                  value={vehicle.weight}
-                  onChange={(v) => onUpdate({ weight: Math.max(0, Number(v)) })}
+                  value={getDisplayValue('weight')}
+                  onChange={(v) => handleChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
                   unit="g"
                   placeholder="5000"
                 />
                 <VehicleInputField
                   label="Max Depth Rating"
-                  value={vehicle.maxDepth}
-                  onChange={(v) => onUpdate({ maxDepth: v ? Number(v) : undefined })}
+                  value={getDisplayValue('maxDepth')}
+                  onChange={(v) => handleChange('maxDepth', v)}
+                  onBlur={() => handleBlur('maxDepth')}
+                  error={getError('maxDepth')}
                   unit="m"
                   placeholder="100"
                 />
@@ -1998,8 +2232,10 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="Max Speed (if known)"
-                  value={vehicle.maxSpeed}
-                  onChange={(v) => onUpdate({ maxSpeed: v ? Number(v) : undefined })}
+                  value={getDisplayValue('maxSpeed')}
+                  onChange={(v) => handleChange('maxSpeed', v)}
+                  onBlur={() => handleBlur('maxSpeed')}
+                  error={getError('maxSpeed')}
                   unit="m/s"
                   placeholder="2"
                 />
@@ -2033,8 +2269,10 @@ function VehicleEditModal({
               />
               <VehicleInputField
                 label="Capacity"
-                value={vehicle.batteryCapacity}
-                onChange={(v) => onUpdate({ batteryCapacity: Math.max(0, Number(v)) })}
+                value={getDisplayValue('batteryCapacity')}
+                onChange={(v) => handleChange('batteryCapacity', v)}
+                onBlur={() => handleBlur('batteryCapacity')}
+                error={getError('batteryCapacity')}
                 unit="mAh"
                 placeholder="1500"
               />
@@ -2052,24 +2290,30 @@ function VehicleEditModal({
             <div className="mt-3 space-y-3">
               {/* Copter Advanced */}
               {isCopter && (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <VehicleInputField
                     label="Motor KV"
-                    value={vehicle.motorKv}
-                    onChange={(v) => onUpdate({ motorKv: v ? Number(v) : undefined })}
+                    value={getDisplayValue('motorKv')}
+                    onChange={(v) => handleChange('motorKv', v)}
+                    onBlur={() => handleBlur('motorKv')}
+                    error={getError('motorKv')}
                     placeholder="2400"
                   />
                   <VehicleInputField
                     label="ESC Rating"
-                    value={vehicle.escRating}
-                    onChange={(v) => onUpdate({ escRating: v ? Number(v) : undefined })}
+                    value={getDisplayValue('escRating')}
+                    onChange={(v) => handleChange('escRating', v)}
+                    onBlur={() => handleBlur('escRating')}
+                    error={getError('escRating')}
                     unit="A"
                     placeholder="30"
                   />
                   <VehicleInputField
                     label="Battery C-Rating"
-                    value={vehicle.batteryDischarge}
-                    onChange={(v) => onUpdate({ batteryDischarge: v ? Number(v) : undefined })}
+                    value={getDisplayValue('batteryDischarge')}
+                    onChange={(v) => handleChange('batteryDischarge', v)}
+                    onBlur={() => handleBlur('batteryDischarge')}
+                    error={getError('batteryDischarge')}
                     unit="C"
                     placeholder="75"
                   />
@@ -2078,26 +2322,44 @@ function VehicleEditModal({
 
               {/* Plane/VTOL Advanced */}
               {(isPlane || isVtol) && (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <VehicleInputField
                     label="Motor KV"
-                    value={vehicle.motorKv}
-                    onChange={(v) => onUpdate({ motorKv: v ? Number(v) : undefined })}
+                    value={getDisplayValue('motorKv')}
+                    onChange={(v) => handleChange('motorKv', v)}
+                    onBlur={() => handleBlur('motorKv')}
+                    error={getError('motorKv')}
                     placeholder="1000"
                   />
                   <VehicleInputField
                     label="ESC Rating"
-                    value={vehicle.escRating}
-                    onChange={(v) => onUpdate({ escRating: v ? Number(v) : undefined })}
+                    value={getDisplayValue('escRating')}
+                    onChange={(v) => handleChange('escRating', v)}
+                    onBlur={() => handleBlur('escRating')}
+                    error={getError('escRating')}
                     unit="A"
                     placeholder="40"
                   />
-                  <VehicleInputField
+                  <VehicleSelectField
                     label="Prop Size"
-                    value={vehicle.propSize}
+                    value={vehicle.propSize || ''}
                     onChange={(v) => onUpdate({ propSize: v || undefined })}
-                    type="text"
-                    placeholder="10x6"
+                    options={[
+                      { value: '', label: 'None' },
+                      { value: '7x5', label: '7x5' },
+                      { value: '8x4', label: '8x4' },
+                      { value: '8x6', label: '8x6' },
+                      { value: '9x6', label: '9x6' },
+                      { value: '10x5', label: '10x5' },
+                      { value: '10x6', label: '10x6' },
+                      { value: '10x7', label: '10x7' },
+                      { value: '11x7', label: '11x7' },
+                      { value: '12x6', label: '12x6' },
+                      { value: '13x6.5', label: '13x6.5' },
+                      { value: '14x7', label: '14x7' },
+                      { value: '16x8', label: '16x8' },
+                      { value: '18x8', label: '18x8' },
+                    ]}
                   />
                 </div>
               )}
@@ -2107,14 +2369,18 @@ function VehicleEditModal({
                 <div className="grid grid-cols-2 gap-3">
                   <VehicleInputField
                     label="Motor KV"
-                    value={vehicle.motorKv}
-                    onChange={(v) => onUpdate({ motorKv: v ? Number(v) : undefined })}
+                    value={getDisplayValue('motorKv')}
+                    onChange={(v) => handleChange('motorKv', v)}
+                    onBlur={() => handleBlur('motorKv')}
+                    error={getError('motorKv')}
                     placeholder="1200"
                   />
                   <VehicleInputField
                     label="ESC Rating"
-                    value={vehicle.escRating}
-                    onChange={(v) => onUpdate({ escRating: v ? Number(v) : undefined })}
+                    value={getDisplayValue('escRating')}
+                    onChange={(v) => handleChange('escRating', v)}
+                    onBlur={() => handleBlur('escRating')}
+                    error={getError('escRating')}
                     unit="A"
                     placeholder="30"
                   />

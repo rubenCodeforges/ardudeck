@@ -887,12 +887,12 @@ function RatesTab({
                 max={isLegacyInav ? 1000 : 200}
               />
               <DraggableSlider
-                label="Expo"
+                label={isInav && axis === 'Pitch' ? 'Expo (linked to Roll)' : 'Expo'}
                 value={rcTuning[expo] as number}
                 onChange={(v) => updateRcTuning(expo, v)}
                 max={100}
                 color={color}
-                hint="Curve softness"
+                hint={isInav && axis === 'Pitch' ? 'Shared with Roll in iNav' : 'Curve softness'}
               />
             </div>
             <div className="mt-4">

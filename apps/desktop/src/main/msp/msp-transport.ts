@@ -60,7 +60,7 @@ export async function sendMspRequest(command: number, timeout: number = 1000): P
     throw new Error('MSP transport not connected');
   }
 
-  if (ctx.servoCliModeActive || isCliModeActive()) {
+  if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -92,7 +92,7 @@ export async function sendMspRequestWithPayload(command: number, payload: Uint8A
     throw new Error('MSP transport not connected');
   }
 
-  if (ctx.servoCliModeActive || isCliModeActive()) {
+  if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -127,7 +127,7 @@ export async function sendMspV2Request(command: number, timeout: number = 1000):
     throw new Error('MSP transport not connected');
   }
 
-  if (ctx.servoCliModeActive || isCliModeActive()) {
+  if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 
@@ -159,7 +159,7 @@ export async function sendMspV2RequestWithPayload(command: number, payload: Uint
     throw new Error('MSP transport not connected');
   }
 
-  if (ctx.servoCliModeActive || isCliModeActive()) {
+  if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
     throw new Error('MSP blocked - CLI mode active');
   }
 

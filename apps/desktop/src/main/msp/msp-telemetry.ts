@@ -387,6 +387,7 @@ export function stopGpsSender(): void {
 
 export async function getRc(): Promise<{ channels: number[] } | null> {
   if (!ctx.currentTransport?.isOpen) return null;
+  if (ctx.tuningCliModeActive || ctx.servoCliModeActive) return null;
   if (ctx.rcPollInFlight) return null;
 
   ctx.rcPollInFlight = true;

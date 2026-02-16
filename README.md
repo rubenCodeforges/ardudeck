@@ -28,8 +28,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Download](#download)
-- [Development](#development)
+- [Download & Install](#download--install)
+- [Development (Contributors Only)](#development-contributors-only)
 - [Supported Vehicles](#supported-vehicles)
 - [Veteran Board Support](#️-veteran-board-support)
 - [Bug Reporting](#bug-reporting)
@@ -317,9 +317,9 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ---
 
-## Download
+## Download & Install
 
-Grab the latest release for your platform:
+**Most users should download a pre-built release.** No need to clone or build anything.
 
 | Platform | Format | Link |
 |----------|--------|------|
@@ -329,7 +329,7 @@ Grab the latest release for your platform:
 | **Linux** | AppImage | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
 | **Linux** | .deb | [Latest Release](https://github.com/rubenCodeforges/ardudeck/releases/latest) |
 
-Just download, install, and connect your flight controller via USB.
+**Getting started:** Download the installer for your platform, install, plug in your flight controller via USB, and you're ready to go.
 
 > **Note on code signing:** ArduDeck binaries are currently unsigned. On macOS, you may see a Gatekeeper warning — right-click the app and select "Open", or run `xattr -cr /Applications/ArduDeck.app` in Terminal. On Windows, SmartScreen may show a warning — click "More info" then "Run anyway". We plan to obtain code signing certificates once the project reaches a meaningful user base to justify the cost.
 >
@@ -337,7 +337,11 @@ Just download, install, and connect your flight controller via USB.
 
 ---
 
-## Development
+## Development (Contributors Only)
+
+> **Not a developer?** You don't need this section. Just [download the latest release](#download--install) above.
+
+The instructions below are only for contributors who want to modify ArduDeck's source code and submit pull requests.
 
 ### Prerequisites
 
@@ -347,8 +351,8 @@ Just download, install, and connect your flight controller via USB.
 ### Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/rubenCodeforges/ardudeck.git
+# Fork the repo on GitHub first, then clone your fork
+git clone https://github.com/<your-username>/ardudeck.git
 cd ardudeck
 
 # Install dependencies
@@ -496,13 +500,16 @@ Found a bug? We want to hear about it! ArduDeck includes a built-in bug reportin
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+Contributions are welcome! If you'd like to help improve ArduDeck, see the [Development](#development-contributors-only) section above for build instructions.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork the repository on GitHub
+2. Clone **your fork** (not the main repo)
+3. Create a feature branch (`git checkout -b feature/amazing-feature`)
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+> **Just want to use ArduDeck?** You don't need to fork or clone anything. [Download the latest release](#download--install) instead.
 
 ---
 

@@ -368,6 +368,9 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
     const { pendingModes } = get();
     set({ isSaving: true, saveError: null });
 
+    // Stop RC polling during save to prevent MSP/CLI interleaving
+    get().stopRcPolling();
+
     try {
       console.log('[ModesWizard] Saving modes to FC...');
 
@@ -409,6 +412,11 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         lastSaveSuccess: true,
       });
 
+      // Resume RC polling if wizard is still open
+      if (get().isWizardOpen) {
+        get().startRcPolling();
+      }
+
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to save modes';
@@ -417,6 +425,12 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         isSaving: false,
         saveError: msg,
       });
+
+      // Resume RC polling if wizard is still open
+      if (get().isWizardOpen) {
+        get().startRcPolling();
+      }
+
       return false;
     }
   },
