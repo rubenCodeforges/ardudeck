@@ -224,12 +224,23 @@ function App() {
   const [pendingView, setPendingView] = useState<ViewId | null>(null);
   const [detectedFcType, setDetectedFcType] = useState<VehicleType | null>(null);
 
+  // CLI exit dialog state
+  const [showCliExitDialog, setShowCliExitDialog] = useState(false);
+  const [cliExitPendingView, setCliExitPendingView] = useState<ViewId | null>(null);
+
   // Get active vehicle profile type
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId);
   const profileType = activeVehicle?.type || 'copter';
 
-  // Custom view change handler that checks for mismatch
+  // Custom view change handler that checks for CLI exit and mismatch
   const handleViewChange = (viewId: ViewId) => {
+    // Check if navigating away from CLI while in CLI mode
+    if (currentView === 'cli' && useCliStore.getState().isCliMode && connectionState.isConnected) {
+      setCliExitPendingView(viewId);
+      setShowCliExitDialog(true);
+      return;
+    }
+
     // Only check mismatch when connected and not already dismissed
     if (connectionState.isConnected && !mismatchDismissedForSession && connectionState.mavType !== undefined) {
       const fcType = mavTypeToVehicleType[connectionState.mavType] || 'copter';
@@ -274,6 +285,23 @@ function App() {
       setView(pendingView);
       setPendingView(null);
     }
+  };
+
+  // CLI exit dialog handlers
+  const handleCliExitConfirm = async () => {
+    setShowCliExitDialog(false);
+    const targetView = cliExitPendingView;
+    setCliExitPendingView(null);
+    // Exit CLI mode (triggers scheduleReconnect in main process)
+    await useCliStore.getState().exitCliMode();
+    if (targetView) {
+      setView(targetView);
+    }
+  };
+
+  const handleCliExitCancel = () => {
+    setShowCliExitDialog(false);
+    setCliExitPendingView(null);
   };
 
   // Initialize settings on mount
@@ -642,6 +670,49 @@ function App() {
           onIgnore={handleIgnoreMismatch}
           onDismissSession={handleDismissSession}
         />
+      )}
+
+      {/* CLI exit confirmation dialog */}
+      {showCliExitDialog && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl border border-amber-500/50 w-full max-w-md mx-4 overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-700 bg-amber-500/10">
+              <div className="flex items-center gap-3">
+                <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h2 className="text-lg font-semibold text-white">Leave CLI Terminal?</h2>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5">
+              <p className="text-gray-300 mb-3">
+                Leaving the CLI tab will send an exit command which triggers a flight controller reboot (2-4 seconds).
+              </p>
+              <p className="text-gray-400 text-sm">
+                The app will automatically reconnect after the board restarts.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-gray-700 flex gap-3">
+              <button
+                onClick={handleCliExitCancel}
+                className="flex-1 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+              >
+                Stay in CLI
+              </button>
+              <button
+                onClick={handleCliExitConfirm}
+                className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors"
+              >
+                Leave and Reboot
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </AppShell>

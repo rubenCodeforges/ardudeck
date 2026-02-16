@@ -46,7 +46,8 @@ export function registerMspHandlers(window: BrowserWindow): void {
   initCliHandlers(window);
 
   // Set up CLI mode change callback to pause/resume telemetry and reset CLI flags
-  setCliModeChangeCallback((cliActive) => {
+  // restartTelemetry=false when exiting via 'exit' command (board reboots, telemetry must not restart)
+  setCliModeChangeCallback((cliActive, restartTelemetry = true) => {
     if (cliActive) {
       stopMspTelemetry();
     } else {
@@ -54,7 +55,9 @@ export function registerMspHandlers(window: BrowserWindow): void {
       // This ensures MSP operations aren't blocked by stale flags
       ctx.servoCliModeActive = false;
       ctx.tuningCliModeActive = false;
-      startMspTelemetry();
+      if (restartTelemetry) {
+        startMspTelemetry();
+      }
     }
   });
 

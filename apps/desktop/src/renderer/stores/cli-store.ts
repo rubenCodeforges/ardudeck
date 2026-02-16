@@ -26,6 +26,7 @@ export interface CliStore {
   isCliMode: boolean;
   isEntering: boolean;
   isExiting: boolean;
+  hasEnteredSession: boolean;
 
   // Reboot/reconnect state (triggered by 'save' command)
   rebootState: CliRebootState;
@@ -242,6 +243,7 @@ export const useCliStore = create<CliStore>((set, get) => ({
   isCliMode: false,
   isEntering: false,
   isExiting: false,
+  hasEnteredSession: false,
 
   // Reboot state
   rebootState: 'idle' as CliRebootState,
@@ -269,7 +271,7 @@ export const useCliStore = create<CliStore>((set, get) => ({
     try {
       const success = await window.electronAPI.cliEnterMode();
       if (success) {
-        set({ isCliMode: true, isEntering: false });
+        set({ isCliMode: true, isEntering: false, hasEnteredSession: true });
       } else {
         set({ isEntering: false });
       }
@@ -466,9 +468,9 @@ export const useCliStore = create<CliStore>((set, get) => ({
     });
   },
 
-  // Handle save command - triggers reboot flow
+  // Handle save command - triggers reboot flow with auto-reconnect
   handleSaveCommand: async () => {
-    const { setRebootState, setRebootError, clearRebootState, appendOutput } = get();
+    const { setRebootState, setRebootError, clearRebootState } = get();
 
     console.log('[CLI Store] Starting save command flow...');
 
@@ -476,34 +478,44 @@ export const useCliStore = create<CliStore>((set, get) => ({
       // Step 1: Saving
       setRebootState('saving', 'Saving configuration to EEPROM...');
 
-      // Send save command
+      // Send save command (main process handles scheduleReconnect)
       await window.electronAPI.cliSendCommand('save');
 
-      // Step 2: Rebooting
+      // Step 2: Rebooting - poll for reconnection
       setRebootState('rebooting', 'Board is rebooting...');
-      console.log('[CLI Store] Save command sent, board is rebooting');
+      console.log('[CLI Store] Save command sent, waiting for auto-reconnect...');
 
-      // Wait for board to reboot (typical reboot takes 2-4 seconds)
-      await new Promise(r => setTimeout(r, 4000));
+      // Poll connectionState until reconnected (max 12s)
+      const pollStart = Date.now();
+      const maxWait = 12000;
+      let reconnected = false;
 
-      // Step 3: Reconnecting
-      setRebootState('reconnecting', 'Cleaning up connection...');
-      console.log('[CLI Store] Disconnecting to clean up state...');
+      while (Date.now() - pollStart < maxWait) {
+        await new Promise(r => setTimeout(r, 500));
+        const connState = useConnectionStore.getState().connectionState;
 
-      // Disconnect to clean up state
-      await window.electronAPI.disconnect();
+        if (connState.isReconnecting) {
+          setRebootState('reconnecting', 'Reconnecting to board...');
+        }
 
-      // Wait a bit for disconnect to complete
-      await new Promise(r => setTimeout(r, 500));
+        if (connState.isConnected && !connState.isReconnecting) {
+          reconnected = true;
+          break;
+        }
+      }
 
-      // Step 4: Done
-      setRebootState('done', 'Configuration saved! Board rebooted. Please reconnect.');
-      console.log('[CLI Store] Save complete, user should reconnect');
+      if (reconnected) {
+        setRebootState('done', 'Configuration saved! Board reconnected.');
+        console.log('[CLI Store] Save complete, board reconnected');
+      } else {
+        setRebootState('done', 'Configuration saved! Reconnecting...');
+        console.log('[CLI Store] Save complete, reconnect still in progress');
+      }
 
-      // Auto-clear after 3 seconds
+      // Auto-clear after 2 seconds
       setTimeout(() => {
         clearRebootState();
-      }, 3000);
+      }, 2000);
 
     } catch (err) {
       console.error('[CLI Store] Save failed:', err);
@@ -517,6 +529,7 @@ export const useCliStore = create<CliStore>((set, get) => ({
       isCliMode: false,
       isEntering: false,
       isExiting: false,
+      hasEnteredSession: false,
       rebootState: 'idle',
       rebootMessage: '',
       rebootError: null,
@@ -573,9 +586,20 @@ export function cleanupCliDataListener(): void {
 // Subscribe to connection state changes and reset CLI when disconnected
 // This prevents stale CLI state from blocking reconnection
 useConnectionStore.subscribe((state, prevState) => {
-  // If we just disconnected, reset CLI state
-  if (prevState.connectionState.isConnected && !state.connectionState.isConnected) {
-    console.log('[CLI Store] Connection lost, resetting CLI state');
+  // When auto-reconnect completes, reset CLI state (board rebooted, no longer in CLI)
+  if (prevState.connectionState.isReconnecting && !state.connectionState.isReconnecting && state.connectionState.isConnected) {
+    console.log('[CLI Store] Auto-reconnect completed, resetting CLI state');
     useCliStore.getState().reset();
+    return;
+  }
+
+  // If we just disconnected, reset CLI state — but NOT during auto-reconnect
+  if (prevState.connectionState.isConnected && !state.connectionState.isConnected) {
+    if (state.connectionState.isReconnecting) {
+      console.log('[CLI Store] Connection lost during auto-reconnect, keeping CLI state');
+    } else {
+      console.log('[CLI Store] Connection lost, resetting CLI state');
+      useCliStore.getState().reset();
+    }
   }
 });

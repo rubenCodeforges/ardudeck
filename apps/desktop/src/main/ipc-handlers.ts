@@ -1829,6 +1829,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Disconnect
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
+    // Cancel any pending auto-reconnect (user is intentionally disconnecting)
+    if (pendingReconnect || reconnectTimer) {
+      cancelReconnect('User disconnected');
+    }
+
     try {
       // Exit CLI mode first (sends 'exit' command to leave board in MSP mode)
       // This prevents board staying in CLI mode after disconnect

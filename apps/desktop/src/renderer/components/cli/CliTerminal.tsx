@@ -30,9 +30,6 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
 
   const {
     isCliMode,
-    isEntering,
-    enterCliMode,
-    exitCliMode,
     sendCommand,
     suggestions,
     selectedSuggestion,
@@ -226,15 +223,6 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
 
     return () => unsubscribe();
   }, []);
-
-  // Auto-enter CLI mode when connected to MSP board
-  // NOTE: Cleanup/exit is handled by CliView parent component - NOT here!
-  // Having both try to exit causes a race condition that breaks the connection.
-  useEffect(() => {
-    if (connectionState.isConnected && connectionState.protocol === 'msp' && !isCliMode && !isEntering) {
-      enterCliMode();
-    }
-  }, [connectionState.isConnected, connectionState.protocol, isCliMode, isEntering, enterCliMode]);
 
   // Clear current input line
   const clearCurrentLine = useCallback(() => {

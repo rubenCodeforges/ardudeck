@@ -21,7 +21,8 @@ let cliModeActive = false;
 let cliDataListener: ((data: Uint8Array) => void) | null = null;
 
 // Callback to notify MSP handlers when CLI mode changes
-let onCliModeChange: ((active: boolean) => void) | null = null;
+// restartTelemetry: false when exiting via 'exit' command (board will reboot, telemetry must not restart)
+let onCliModeChange: ((active: boolean, restartTelemetry?: boolean) => void) | null = null;
 
 
 // =============================================================================
@@ -59,7 +60,7 @@ export function setCliTransport(transport: Transport | null): void {
 /**
  * Set callback for CLI mode changes (so MSP can pause telemetry)
  */
-export function setCliModeChangeCallback(callback: (active: boolean) => void): void {
+export function setCliModeChangeCallback(callback: (active: boolean, restartTelemetry?: boolean) => void): void {
   onCliModeChange = callback;
 }
 
@@ -77,6 +78,8 @@ export function isCliModeActive(): boolean {
 export async function exitCliModeIfActive(): Promise<void> {
   if (cliModeActive && currentTransport?.isOpen) {
     try {
+      // NOTE: No scheduleReconnect here — this function is called during disconnect cleanup.
+      // The caller is about to close the transport, so reconnect would be pointless.
       // Use timeout to prevent hanging - if write takes > 1 second, skip it
       const writePromise = currentTransport.write(new TextEncoder().encode('exit\n'));
       const timeoutPromise = new Promise<void>((_, reject) =>
@@ -100,7 +103,8 @@ export async function exitCliModeIfActive(): Promise<void> {
   }
   cliDataListener = null;
   cliModeActive = false;
-  onCliModeChange?.(false);
+  // Don't restart telemetry - caller handles cleanup
+  onCliModeChange?.(false, false);
 }
 
 /**
@@ -277,14 +281,31 @@ export async function exitCliMode(): Promise<boolean> {
     return true;
   }
 
+  // Only schedule reconnect if CLI is actually active (exit triggers board reboot).
+  // If CLI is not active, just send exit and reset flags — no reboot expected.
+  const wasCliActive = cliModeActive;
+
   try {
+    if (wasCliActive) {
+      // Schedule auto-reconnect BEFORE sending exit (board will reboot)
+      const scheduleReconnect = (globalThis as Record<string, unknown>).__ardudeck_scheduleReconnect as
+        ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
+      if (scheduleReconnect) {
+        scheduleReconnect({
+          reason: 'CLI exit',
+          delayMs: 3000,
+          timeoutMs: 8000,
+          maxAttempts: 15,
+        });
+      }
+    }
+
     // ALWAYS send 'exit' command to ensure board exits CLI mode
-    // The board might be in CLI mode even if our cliModeActive flag is false
-    // (e.g., servo/motor CLI operations set different flags)
+    // Board might be in CLI mode even if our flag is false (servo/motor CLI ops)
     await currentTransport.write(new TextEncoder().encode('exit\n'));
 
-    // Wait for exit to complete
-    await delay(500);
+    // Wait briefly for the command to flush
+    await delay(300);
 
     // Remove data listener
     if (cliDataListener && currentTransport) {
@@ -293,8 +314,9 @@ export async function exitCliMode(): Promise<boolean> {
     }
 
     cliModeActive = false;
-    // ALWAYS trigger callback to reset MSP-side CLI flags too
-    onCliModeChange?.(false);
+    // Don't restart telemetry if board was in CLI (it's rebooting)
+    // Do restart telemetry if CLI wasn't active (just a safety exit, no reboot)
+    onCliModeChange?.(false, wasCliActive ? false : true);
 
     return true;
   } catch {
@@ -304,7 +326,7 @@ export async function exitCliMode(): Promise<boolean> {
       cliDataListener = null;
     }
     cliModeActive = false;
-    onCliModeChange?.(false);
+    onCliModeChange?.(false, false);
     return false;
   }
 }
@@ -362,9 +384,10 @@ export async function sendCliCommand(command: string): Promise<void> {
     throw new Error('Transport not connected');
   }
 
-  // Check if this is an exit command - need to clean up our state
+  // Check if this is an exit or save command - both trigger board reboot
   const trimmedCommand = command.trim().toLowerCase();
   const isExitCommand = trimmedCommand === 'exit' || trimmedCommand === 'quit';
+  const isSaveCommand = trimmedCommand === 'save';
 
   if (!cliModeActive && !isExitCommand) {
     // Auto-enter CLI mode if not already in it
@@ -390,8 +413,19 @@ export async function sendCliCommand(command: string): Promise<void> {
   // Send command with newline (NOT \r\n - causes parse errors!)
   await currentTransport.write(new TextEncoder().encode(command + '\n'));
 
-  // If exit command, clean up our state after a short delay
+  // If exit command, schedule reconnect and clean up state
   if (isExitCommand && cliModeActive) {
+    const scheduleReconnect = (globalThis as Record<string, unknown>).__ardudeck_scheduleReconnect as
+      ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
+    if (scheduleReconnect) {
+      scheduleReconnect({
+        reason: 'CLI exit',
+        delayMs: 3000,
+        timeoutMs: 8000,
+        maxAttempts: 15,
+      });
+    }
+
     await delay(300); // Give FC time to process exit
 
     // Remove data listener
@@ -401,7 +435,34 @@ export async function sendCliCommand(command: string): Promise<void> {
     }
 
     cliModeActive = false;
-    onCliModeChange?.(false);
+    // Don't restart telemetry - 'exit' triggers a board reboot
+    onCliModeChange?.(false, false);
+  }
+
+  // If save command, schedule reconnect and clean up state (save also reboots)
+  if (isSaveCommand && cliModeActive) {
+    const scheduleReconnect = (globalThis as Record<string, unknown>).__ardudeck_scheduleReconnect as
+      ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
+    if (scheduleReconnect) {
+      scheduleReconnect({
+        reason: 'CLI save',
+        delayMs: 4000,
+        timeoutMs: 8000,
+        maxAttempts: 15,
+      });
+    }
+
+    await delay(300);
+
+    // Remove data listener
+    if (cliDataListener && currentTransport) {
+      currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
+      cliDataListener = null;
+    }
+
+    cliModeActive = false;
+    // Don't restart telemetry - 'save' triggers a board reboot
+    onCliModeChange?.(false, false);
   }
 }
 
