@@ -11,7 +11,10 @@ export {
   getArduPilotBoards,
   getArduPilotVersions,
   getBetaflightBoards,
+  getBetaflightVersions,
+  resolveBetaflightDownloadUrl,
   getInavBoards,
+  getInavVersions,
   type BoardInfo,
   type VersionGroup,
 } from './manifest-fetcher.js';

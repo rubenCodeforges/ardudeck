@@ -455,6 +455,8 @@ const api = {
     protocol?: 'mavlink' | 'msp' | 'dfu' | 'usb';
     boardName?: string;
     boardId?: string;
+    targetName?: string;
+    fcVariant?: string;
     firmware?: string;
     firmwareVersion?: string;
     mcuType?: string;

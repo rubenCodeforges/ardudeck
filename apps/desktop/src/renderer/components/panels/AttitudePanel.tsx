@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, formatNumber } from './panel-utils';
 
@@ -166,27 +166,52 @@ export const AttitudePanel = React.memo(function AttitudePanel() {
   const attitude = useTelemetryStore((s) => s.attitude);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
 
+  // Throttle updates to 5Hz max — SVG DOM manipulation is expensive and
+  // attitude changes faster than ~5Hz are imperceptible on a small indicator
+  const lastUpdateRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [throttled, setThrottled] = useState({ roll: attitude.roll, pitch: attitude.pitch, yaw: attitude.yaw, heading: vfrHud.heading });
+
+  useEffect(() => {
+    const now = Date.now();
+    const elapsed = now - lastUpdateRef.current;
+    if (elapsed >= 200) {
+      lastUpdateRef.current = now;
+      setThrottled({ roll: attitude.roll, pitch: attitude.pitch, yaw: attitude.yaw, heading: vfrHud.heading });
+    } else if (!timerRef.current) {
+      // Schedule an update for when the throttle window expires
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        lastUpdateRef.current = Date.now();
+        setThrottled({ roll: attitude.roll, pitch: attitude.pitch, yaw: attitude.yaw, heading: vfrHud.heading });
+      }, 200 - elapsed);
+    }
+    return () => {
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    };
+  }, [attitude.roll, attitude.pitch, attitude.yaw, vfrHud.heading]);
+
   return (
     <PanelContainer className="flex flex-col items-center justify-center">
       <AttitudeIndicator
-        roll={attitude.roll}
-        pitch={attitude.pitch}
-        heading={vfrHud.heading}
+        roll={throttled.roll}
+        pitch={throttled.pitch}
+        heading={throttled.heading}
         size={200}
       />
 
       <div className="flex gap-6 mt-4 text-sm">
         <div className="text-center">
           <div className="text-gray-500 text-xs mb-0.5">Roll</div>
-          <div className="font-mono text-white">{formatNumber(attitude.roll, 1)}°</div>
+          <div className="font-mono text-white">{formatNumber(throttled.roll, 1)}°</div>
         </div>
         <div className="text-center">
           <div className="text-gray-500 text-xs mb-0.5">Pitch</div>
-          <div className="font-mono text-white">{formatNumber(attitude.pitch, 1)}°</div>
+          <div className="font-mono text-white">{formatNumber(throttled.pitch, 1)}°</div>
         </div>
         <div className="text-center">
           <div className="text-gray-500 text-xs mb-0.5">Yaw</div>
-          <div className="font-mono text-white">{formatNumber(attitude.yaw, 1)}°</div>
+          <div className="font-mono text-white">{formatNumber(throttled.yaw, 1)}°</div>
         </div>
       </div>
     </PanelContainer>

@@ -110,11 +110,19 @@ export async function queryMSPBoard(port: string, baudRate: number = 115200): Pr
               result.fcVersion = `${payload[0]}.${payload[1]}.${payload[2]}`;
               gotVersion = true;
             } else if (command === MSP_BOARD_INFO && payload.length >= 4) {
+              // MSP_BOARD_INFO format:
+              // [0-3]:  boardIdentifier (4 chars, e.g. "S405")
+              // [4-5]:  boardVersion (uint16 LE)
+              // [6]:    osdUsed (BF/iNav 4.1+)
+              // [7]:    commCompatability
+              // [8]:    targetName length
+              // [9+]:   targetName string (e.g. "JHEF405PRO", "SPEEDYBEEF405V3")
               result.boardId = String.fromCharCode(...payload.slice(0, 4)).trim();
-              if (payload.length > 4) {
-                const nameLength = payload[4];
-                if (nameLength && nameLength > 0 && payload.length >= 5 + nameLength) {
-                  result.boardName = String.fromCharCode(...payload.slice(5, 5 + nameLength));
+              if (payload.length >= 9) {
+                const targetNameLen = payload[8];
+                if (targetNameLen && targetNameLen > 0 && payload.length >= 9 + targetNameLen) {
+                  result.targetName = String.fromCharCode(...payload.slice(9, 9 + targetNameLen));
+                  result.boardName = result.targetName;
                 }
               }
               gotBoardInfo = true;

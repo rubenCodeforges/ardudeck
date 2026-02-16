@@ -342,11 +342,9 @@ function getStaticBoards(): BoardInfo[] {
 }
 
 /**
- * Static Betaflight board list
- * These boards are specific to Betaflight/Cleanflight firmware
+ * Static Betaflight board list (offline fallback)
  */
-const BETAFLIGHT_BOARDS: BoardInfo[] = [
-  // SpeedyBee (popular)
+const BETAFLIGHT_BOARDS_FALLBACK: BoardInfo[] = [
   { id: 'SPEEDYBEEF405', name: 'SpeedyBee F405', category: 'SpeedyBee', isPopular: true },
   { id: 'SPEEDYBEEF405V3', name: 'SpeedyBee F405 v3', category: 'SpeedyBee', isPopular: true },
   { id: 'SPEEDYBEEF405V4', name: 'SpeedyBee F405 v4', category: 'SpeedyBee' },
@@ -354,9 +352,6 @@ const BETAFLIGHT_BOARDS: BoardInfo[] = [
   { id: 'SPEEDYBEEF7', name: 'SpeedyBee F7', category: 'SpeedyBee' },
   { id: 'SPEEDYBEEF7V3', name: 'SpeedyBee F7 v3', category: 'SpeedyBee' },
   { id: 'SPEEDYBEEF7MINI', name: 'SpeedyBee F7 Mini', category: 'SpeedyBee' },
-  // Note: SpeedyBee F3 does NOT exist in Betaflight releases
-
-  // SPRacing
   { id: 'SPRACINGF3', name: 'SPRacing F3', category: 'SPRacing' },
   { id: 'SPRACINGF3EVO', name: 'SPRacing F3 EVO', category: 'SPRacing' },
   { id: 'SPRACINGF3MINI', name: 'SPRacing F3 Mini', category: 'SPRacing' },
@@ -365,8 +360,6 @@ const BETAFLIGHT_BOARDS: BoardInfo[] = [
   { id: 'SPRACINGF7DUAL', name: 'SPRacing F7 Dual', category: 'SPRacing' },
   { id: 'SPRACINGH7EXTREME', name: 'SPRacing H7 Extreme', category: 'SPRacing', isPopular: true },
   { id: 'SPRACINGH7RF', name: 'SPRacing H7 RF', category: 'SPRacing' },
-
-  // Kakute (Holybro)
   { id: 'KAKUTEF4', name: 'Kakute F4', category: 'Holybro' },
   { id: 'KAKUTEF4V2', name: 'Kakute F4 v2', category: 'Holybro' },
   { id: 'KAKUTEF7', name: 'Kakute F7', category: 'Holybro', isPopular: true },
@@ -374,8 +367,6 @@ const BETAFLIGHT_BOARDS: BoardInfo[] = [
   { id: 'KAKUTEH7', name: 'Kakute H7', category: 'Holybro', isPopular: true },
   { id: 'KAKUTEH7MINI', name: 'Kakute H7 Mini', category: 'Holybro' },
   { id: 'KAKUTEH7V2', name: 'Kakute H7 v2', category: 'Holybro' },
-
-  // Matek
   { id: 'MATEKF405', name: 'Matek F405', category: 'Matek', isPopular: true },
   { id: 'MATEKF405SE', name: 'Matek F405 SE', category: 'Matek' },
   { id: 'MATEKF405STD', name: 'Matek F405 STD', category: 'Matek' },
@@ -384,58 +375,38 @@ const BETAFLIGHT_BOARDS: BoardInfo[] = [
   { id: 'MATEKF722', name: 'Matek F722', category: 'Matek' },
   { id: 'MATEKF722SE', name: 'Matek F722 SE', category: 'Matek' },
   { id: 'MATEKH743', name: 'Matek H743', category: 'Matek', isPopular: true },
-
-  // Omnibus
   { id: 'OMNIBUS', name: 'Omnibus', category: 'Omnibus' },
   { id: 'OMNIBUSF4', name: 'Omnibus F4', category: 'Omnibus' },
   { id: 'OMNIBUSF4SD', name: 'Omnibus F4 SD', category: 'Omnibus' },
   { id: 'OMNIBUSF4V6', name: 'Omnibus F4 v6', category: 'Omnibus' },
   { id: 'OMNIBUSF7', name: 'Omnibus F7', category: 'Omnibus' },
-
-  // iFlight
   { id: 'IFLIGHT_BLITZ_F7_AIO', name: 'iFlight Blitz F7 AIO', category: 'iFlight', isPopular: true },
   { id: 'IFLIGHT_BLITZ_F722', name: 'iFlight Blitz F722', category: 'iFlight' },
   { id: 'IFLIGHT_SUCCEX_E_F4', name: 'iFlight SucceX-E F4', category: 'iFlight' },
   { id: 'IFLIGHT_SUCCEX_E_F7', name: 'iFlight SucceX-E F7', category: 'iFlight' },
   { id: 'IFLIGHT_F405_AIO', name: 'iFlight F405 AIO', category: 'iFlight' },
-
-  // Diatone
   { id: 'MAMBAF405', name: 'Mamba F405', category: 'Diatone' },
   { id: 'MAMBAF405US', name: 'Mamba F405 US', category: 'Diatone' },
   { id: 'MAMBAF405MK2', name: 'Mamba F405 MK2', category: 'Diatone' },
   { id: 'MAMBAF722', name: 'Mamba F722', category: 'Diatone' },
   { id: 'MAMBAF722S', name: 'Mamba F722 S', category: 'Diatone' },
   { id: 'MAMBAH743', name: 'Mamba H743', category: 'Diatone', isPopular: true },
-
-  // Flywoo
   { id: 'FLYWOOF405', name: 'Flywoo F405', category: 'Flywoo' },
   { id: 'FLYWOOF405HD', name: 'Flywoo F405 HD', category: 'Flywoo' },
   { id: 'FLYWOOF745', name: 'Flywoo F745', category: 'Flywoo' },
   { id: 'FLYWOOF745NANO', name: 'Flywoo F745 Nano', category: 'Flywoo' },
   { id: 'FLYWOOH743', name: 'Flywoo H743', category: 'Flywoo' },
-
-  // GEPRC
   { id: 'GEPRCF405', name: 'GEPRC F405', category: 'GEPRC' },
   { id: 'GEPRCF722', name: 'GEPRC F722', category: 'GEPRC' },
   { id: 'GEPRCF722_BT_HD', name: 'GEPRC F722 BT HD', category: 'GEPRC' },
-
-  // BetaFPV
   { id: 'BETAFPVF405', name: 'BetaFPV F405', category: 'BetaFPV' },
   { id: 'BETAFPVF722', name: 'BetaFPV F722', category: 'BetaFPV' },
   { id: 'BETAFLIGHTF4', name: 'Betaflight F4', category: 'BetaFPV' },
-
-  // Rush
   { id: 'RUSHCORE7', name: 'Rush Core 7', category: 'Rush' },
   { id: 'RUSHBLADEF7', name: 'Rush Blade F7', category: 'Rush' },
-
-  // Aikon
   { id: 'AIKONF4', name: 'Aikon F4', category: 'Aikon' },
   { id: 'AIKONF7', name: 'Aikon F7', category: 'Aikon' },
-
-  // TBS
   { id: 'COLIBRI_RACE', name: 'TBS Colibri Race', category: 'TBS' },
-
-  // Generic
   { id: 'STM32F405', name: 'Generic STM32F405', category: 'Generic' },
   { id: 'STM32F411', name: 'Generic STM32F411', category: 'Generic' },
   { id: 'STM32F7X2', name: 'Generic STM32F7x2', category: 'Generic' },
@@ -443,23 +414,12 @@ const BETAFLIGHT_BOARDS: BoardInfo[] = [
 ];
 
 /**
- * Get Betaflight board list
+ * Static iNav board list (offline fallback)
  */
-export function getBetaflightBoards(): BoardInfo[] {
-  return BETAFLIGHT_BOARDS;
-}
-
-/**
- * Static iNav board list
- * iNav shares many boards with Betaflight but has some unique ones
- */
-const INAV_BOARDS: BoardInfo[] = [
-  // SpeedyBee (popular for iNav wings)
+const INAV_BOARDS_FALLBACK: BoardInfo[] = [
   { id: 'SPEEDYBEEF405V3', name: 'SpeedyBee F405 v3', category: 'SpeedyBee', isPopular: true },
   { id: 'SPEEDYBEEF405WING', name: 'SpeedyBee F405 Wing', category: 'SpeedyBee', isPopular: true },
   { id: 'SPEEDYBEEF7V3', name: 'SpeedyBee F7 v3', category: 'SpeedyBee' },
-
-  // Matek (very popular for iNav)
   { id: 'MATEKF405SE', name: 'Matek F405 SE', category: 'Matek', isPopular: true },
   { id: 'MATEKF405WING', name: 'Matek F405 Wing', category: 'Matek', isPopular: true },
   { id: 'MATEKF405TE', name: 'Matek F405 TE', category: 'Matek' },
@@ -467,50 +427,458 @@ const INAV_BOARDS: BoardInfo[] = [
   { id: 'MATEKF722WING', name: 'Matek F722 Wing', category: 'Matek' },
   { id: 'MATEKH743', name: 'Matek H743', category: 'Matek', isPopular: true },
   { id: 'MATEKH743WING', name: 'Matek H743 Wing', category: 'Matek' },
-
-  // Kakute
   { id: 'KAKUTEF7', name: 'Kakute F7', category: 'Holybro' },
   { id: 'KAKUTEF7MINI', name: 'Kakute F7 Mini', category: 'Holybro' },
   { id: 'KAKUTEH7', name: 'Kakute H7', category: 'Holybro' },
   { id: 'KAKUTEH7MINI', name: 'Kakute H7 Mini', category: 'Holybro' },
-
-  // Omnibus
   { id: 'OMNIBUSF4', name: 'Omnibus F4', category: 'Omnibus' },
   { id: 'OMNIBUSF4PRO', name: 'Omnibus F4 Pro', category: 'Omnibus' },
   { id: 'OMNIBUSF7', name: 'Omnibus F7', category: 'Omnibus' },
-
-  // Mamba
   { id: 'MAMBAF405', name: 'Mamba F405', category: 'Diatone' },
   { id: 'MAMBAF722', name: 'Mamba F722', category: 'Diatone' },
   { id: 'MAMBAH743', name: 'Mamba H743', category: 'Diatone' },
-
-  // iFlight
   { id: 'IFLIGHT_BLITZ_F7_AIO', name: 'iFlight Blitz F7 AIO', category: 'iFlight' },
-
-  // Flywoo
   { id: 'FLYWOOF405', name: 'Flywoo F405', category: 'Flywoo' },
   { id: 'FLYWOOF745', name: 'Flywoo F745', category: 'Flywoo' },
-
-  // Generic
   { id: 'GENERIC', name: 'Generic Flight Controller', category: 'Generic' },
-
-  // F3 boards - FrSky/Airhero supported until iNav 2.6.1
   { id: 'FRSKYF3', name: 'FrSky F3', category: 'F3 Boards' },
   { id: 'AIRHEROF3', name: 'Airhero F3', category: 'F3 Boards' },
   { id: 'AIRHEROF3_QUAD', name: 'Airhero F3 Quad', category: 'F3 Boards' },
-
-  // SPRacing F3 boards - supported until iNav 2.0.0 (dropped in 2.1.0)
   { id: 'SPRACINGF3', name: 'SPRacing F3', category: 'F3 Boards (Legacy)' },
   { id: 'SPRACINGF3EVO', name: 'SPRacing F3 EVO', category: 'F3 Boards (Legacy)' },
   { id: 'SPRACINGF3MINI', name: 'SPRacing F3 Mini', category: 'F3 Boards (Legacy)' },
   { id: 'SPRACINGF3NEO', name: 'SPRacing F3 Neo', category: 'F3 Boards (Legacy)' },
 ];
 
+// ─── Betaflight Build API (build.betaflight.com) ────────────────────────────
+
+const BF_BUILD_API = 'https://build.betaflight.com';
+
+/** Manufacturer code → display name */
+const BF_MANUFACTURERS: Record<string, string> = {
+  'SPBE': 'SpeedyBee', 'HBRO': 'Holybro', 'MTKS': 'Matek',
+  'DIAT': 'Diatone', 'GEPR': 'GEPRC', 'IFRC': 'iFlight',
+  'RUSH': 'Rush', 'FLWO': 'Flywoo', 'BFPV': 'BetaFPV',
+  'AIRB': 'Airbot', 'AIKO': 'Aikon', 'FOXE': 'Foxeer',
+  'HGLR': 'HGLRC', 'JHEF': 'JHE', 'LMNR': 'Luminier',
+  'FOSS': 'Open Source', 'CUST': 'Custom', 'SKST': 'Skystars',
+  'TURC': 'TuneRC', 'BEFH': 'BetaFPV', 'TMTR': 'T-Motor',
+  'AXIS': 'AxisFlying', 'TCMM': 'TCMM',
+};
+
+/** Known target name prefixes for pretty-printing */
+const BF_TARGET_PREFIXES = [
+  'SPEEDYBEE', 'KAKUTE', 'MATEK', 'MAMBA', 'GEPRC', 'IFLIGHT',
+  'FLYWOO', 'BETAFPV', 'OMNIBUS', 'SPRACING', 'FOXEER', 'HGLRC',
+  'RUSHBLADE', 'RUSHCORE', 'AIKON', 'SKYSTARS', 'ATOMRC',
+] as const;
+
 /**
- * Get iNav board list
+ * Format a BF target name for display.
+ * "SPEEDYBEEF405V4" → "SpeedyBee F405 V4"
  */
-export function getInavBoards(): BoardInfo[] {
-  return INAV_BOARDS;
+function formatBfTargetName(target: string): string {
+  let rest = target;
+  let prefix = '';
+
+  for (const p of BF_TARGET_PREFIXES) {
+    if (target.startsWith(p)) {
+      prefix = p;
+      rest = target.slice(p.length);
+      break;
+    }
+  }
+
+  if (!prefix) return target;
+
+  // Insert spaces before chip designators (F4, F7, H7, etc.)
+  const formatted = rest.replace(/([A-Z])(\d)/g, '$1 $2').replace(/(\d)([A-Z])/g, '$1 $2');
+
+  // Map prefix to display name
+  const displayPrefix: Record<string, string> = {
+    'SPEEDYBEE': 'SpeedyBee', 'KAKUTE': 'Kakute', 'MATEK': 'Matek',
+    'MAMBA': 'Mamba', 'GEPRC': 'GEPRC', 'IFLIGHT': 'iFlight',
+    'FLYWOO': 'Flywoo', 'BETAFPV': 'BetaFPV', 'OMNIBUS': 'Omnibus',
+    'SPRACING': 'SPRacing', 'FOXEER': 'Foxeer', 'HGLRC': 'HGLRC',
+    'RUSHBLADE': 'Rush Blade', 'RUSHCORE': 'Rush Core', 'AIKON': 'Aikon',
+    'SKYSTARS': 'Skystars', 'ATOMRC': 'AtomRC',
+  };
+
+  return `${displayPrefix[prefix] ?? prefix} ${formatted}`.trim();
+}
+
+/**
+ * Map BF manufacturer code to category name
+ */
+function mapBfManufacturer(code: string): string {
+  return BF_MANUFACTURERS[code] ?? 'Other';
+}
+
+/** Cache: Betaflight target list */
+let bfTargetsCache: { data: BoardInfo[]; fetchedAt: number } | null = null;
+
+/** Cache: Betaflight releases per target */
+const bfVersionsCache = new Map<string, { data: FirmwareVersion[]; fetchedAt: number }>();
+
+/**
+ * Fetch JSON from a URL using Node https (GET)
+ */
+function fetchJson<T = any>(url: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    https.get(parsedUrl, { headers: { 'User-Agent': 'ArduDeck-GCS' } }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        return;
+      }
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+
+/**
+ * POST JSON to a URL and return parsed response
+ */
+function postJson<T = any>(url: string, body: Record<string, any>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    const payload = JSON.stringify(body);
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || 443,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'User-Agent': 'ArduDeck-GCS',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          try { resolve(JSON.parse(data)); }
+          catch (e) { reject(e); }
+        } else {
+          reject(new Error(`HTTP ${res.statusCode} POST ${url}: ${data.slice(0, 200)}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+/**
+ * Sleep helper for polling
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Resolve a Betaflight firmware download URL.
+ * For non-cloud builds: returns direct hex URL.
+ * For cloud builds: triggers build, polls for completion, returns download URL.
+ */
+export async function resolveBetaflightDownloadUrl(downloadUrl: string): Promise<string> {
+  // Extract release and target from URL pattern: /api/builds/{release}/{target}/hex
+  const match = downloadUrl.match(/\/api\/builds\/([^/]+)\/([^/]+)\/hex$/);
+  if (!match) return downloadUrl;
+
+  const release = match[1]!;
+  const target = match[2]!;
+
+  // Check build info to see if it's cloud-built
+  const buildInfo: { cloudBuild: boolean; url: string } =
+    await fetchJson(`${BF_BUILD_API}/api/builds/${release}/${target}`);
+
+  if (!buildInfo.cloudBuild) {
+    // Non-cloud: direct hex download via the url field from response
+    return `${BF_BUILD_API}${buildInfo.url}`;
+  }
+
+  // Cloud build: trigger a default build with CLOUD_BUILD option
+  // (matches BF configurator's core build mode with no custom options)
+  console.log(`[manifest-fetcher] Triggering BF cloud build for ${target} @ ${release}...`);
+  const buildResponse: { key?: string; url?: string; file?: string; status?: string } = await postJson(
+    `${BF_BUILD_API}/api/builds`,
+    { target, release, options: ['CLOUD_BUILD'] }
+  );
+
+  if (!buildResponse.key) {
+    throw new Error(`BF cloud build returned no key for ${target} @ ${release}`);
+  }
+
+  // If the server already has this build cached, status will be "success" immediately
+  if (buildResponse.status === 'success' && buildResponse.url) {
+    console.log(`[manifest-fetcher] BF cloud build cached, ready to download: ${buildResponse.file}`);
+    return `${BF_BUILD_API}${buildResponse.url}`;
+  }
+
+  // Poll build status until complete (max 120 seconds)
+  const buildKey = buildResponse.key;
+  const buildUrl = buildResponse.url; // firmware download path (relative)
+  const maxAttempts = 60;
+  for (let i = 0; i < maxAttempts; i++) {
+    await sleep(2000);
+    const status: { status?: string; timeOut?: number } =
+      await fetchJson(`${BF_BUILD_API}/api/builds/${buildKey}/status`);
+
+    if (status.status === 'success') {
+      console.log(`[manifest-fetcher] BF cloud build complete for ${target} @ ${release}`);
+      // Download from the url provided in the original build response
+      if (buildUrl) {
+        return `${BF_BUILD_API}${buildUrl}`;
+      }
+      // Fallback: try the key-based hex endpoint
+      return `${BF_BUILD_API}/api/builds/${buildKey}/hex`;
+    }
+
+    if (status.status === 'error' || status.status === 'failed') {
+      throw new Error(`BF cloud build failed for ${target} @ ${release}`);
+    }
+
+    // Still queued/building...
+    if (i % 5 === 0) {
+      console.log(`[manifest-fetcher] BF cloud build in progress (${i * 2}s)...`);
+    }
+  }
+
+  throw new Error(`BF cloud build timed out for ${target} @ ${release}`);
+}
+
+/**
+ * Fetch all Betaflight targets from the build API.
+ * Returns ~370 boards. Cached for 1 hour. Falls back to static list offline.
+ */
+export async function getBetaflightBoards(): Promise<BoardInfo[]> {
+  if (bfTargetsCache && Date.now() - bfTargetsCache.fetchedAt < CACHE_DURATION) {
+    return bfTargetsCache.data;
+  }
+  try {
+    const targets: Array<{ target: string; manufacturer: string; mcu: string }> =
+      await fetchJson(`${BF_BUILD_API}/api/targets`);
+
+    const boards: BoardInfo[] = targets.map((t) => ({
+      id: t.target,
+      name: formatBfTargetName(t.target),
+      category: mapBfManufacturer(t.manufacturer),
+    }));
+
+    // Sort alphabetically by name
+    boards.sort((a, b) => a.name.localeCompare(b.name));
+    bfTargetsCache = { data: boards, fetchedAt: Date.now() };
+    console.log(`[manifest-fetcher] Fetched ${boards.length} Betaflight targets from build API`);
+    return boards;
+  } catch (err) {
+    console.warn('[manifest-fetcher] BF targets API failed, using fallback:', err);
+    return BETAFLIGHT_BOARDS_FALLBACK;
+  }
+}
+
+/**
+ * Fetch available Betaflight firmware versions for a specific target.
+ * Uses the build.betaflight.com per-target API.
+ * For non-cloud builds: direct hex download at /api/builds/{release}/{target}/hex
+ * For cloud builds: hex download at /api/builds/{release}/{target}/hex (default config)
+ */
+export async function getBetaflightVersions(boardId: string): Promise<FirmwareVersion[]> {
+  const cached = bfVersionsCache.get(boardId);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_DURATION) {
+    return cached.data;
+  }
+
+  try {
+    const info: {
+      target: string;
+      manufacturer: string;
+      releases: Array<{
+        release: string;
+        type: string;
+        date: string;
+        cloudBuild: boolean;
+        withdrawn?: boolean;
+      }>;
+    } = await fetchJson(`${BF_BUILD_API}/api/targets/${boardId}`);
+
+    const versions: FirmwareVersion[] = [];
+
+    for (const rel of info.releases) {
+      if (rel.withdrawn) continue;
+      // Only include Stable releases (skip RC and Unstable)
+      if (rel.type !== 'Stable') continue;
+
+      // For both cloud and non-cloud builds, the build API serves hex at this path
+      const downloadUrl = `${BF_BUILD_API}/api/builds/${rel.release}/${boardId}/hex`;
+
+      versions.push({
+        version: rel.release,
+        releaseType: 'stable',
+        releaseDate: rel.date ?? '',
+        downloadUrl,
+        boardId,
+        vehicleType: 'Copter',
+      });
+    }
+
+    // Sort newest first
+    versions.sort((a, b) => compareVersions(b.version, a.version));
+
+    bfVersionsCache.set(boardId, { data: versions, fetchedAt: Date.now() });
+    console.log(`[manifest-fetcher] Fetched ${versions.length} BF versions for ${boardId}`);
+    return versions;
+  } catch (err) {
+    console.warn(`[manifest-fetcher] BF versions API failed for ${boardId}, using curated fallback:`, err);
+    return getBetaflightCuratedVersions(boardId);
+  }
+}
+
+// ─── iNav GitHub Releases ───────────────────────────────────────────────────
+
+/** Cache: iNav GitHub releases (with assets) */
+let inavReleasesCache: { data: InavRelease[]; fetchedAt: number } | null = null;
+
+interface InavAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface InavRelease {
+  tag_name: string;
+  name: string;
+  published_at: string;
+  prerelease: boolean;
+  assets: InavAsset[];
+}
+
+/**
+ * Fetch iNav releases from GitHub. Cached for 1 hour.
+ */
+async function fetchInavReleases(): Promise<InavRelease[]> {
+  if (inavReleasesCache && Date.now() - inavReleasesCache.fetchedAt < CACHE_DURATION) {
+    return inavReleasesCache.data;
+  }
+  const releases: InavRelease[] = await fetchJson(
+    'https://api.github.com/repos/iNavFlight/inav/releases?per_page=10'
+  );
+  // Filter to stable only
+  const stable = releases.filter((r) => !r.prerelease);
+  inavReleasesCache = { data: stable, fetchedAt: Date.now() };
+  console.log(`[manifest-fetcher] Fetched ${stable.length} stable iNav releases from GitHub`);
+  return stable;
+}
+
+/** Regex to extract target name from iNav hex asset filename */
+const INAV_HEX_REGEX = /^inav_[\d.]+(?:[-_]RC\d+)?_(.+)\.hex$/i;
+
+/**
+ * Fetch all iNav boards by parsing hex asset filenames across releases.
+ * Returns ~220 unique boards. Cached via fetchInavReleases(). Falls back to static list offline.
+ */
+export async function getInavBoards(): Promise<BoardInfo[]> {
+  try {
+    const releases = await fetchInavReleases();
+    const targetSet = new Set<string>();
+
+    for (const release of releases) {
+      for (const asset of release.assets) {
+        const match = INAV_HEX_REGEX.exec(asset.name);
+        if (match?.[1]) {
+          targetSet.add(match[1]);
+        }
+      }
+    }
+
+    const boards: BoardInfo[] = Array.from(targetSet).map((target) => ({
+      id: target,
+      name: formatBfTargetName(target), // reuse — same naming convention
+      category: categorizeInavBoard(target),
+    }));
+
+    boards.sort((a, b) => a.name.localeCompare(b.name));
+    console.log(`[manifest-fetcher] Parsed ${boards.length} unique iNav targets from releases`);
+    return boards;
+  } catch (err) {
+    console.warn('[manifest-fetcher] iNav releases API failed, using fallback:', err);
+    return INAV_BOARDS_FALLBACK;
+  }
+}
+
+/**
+ * Categorize an iNav board target into a display group
+ */
+function categorizeInavBoard(target: string): string {
+  const t = target.toUpperCase();
+  if (t.startsWith('SPEEDYBEE')) return 'SpeedyBee';
+  if (t.startsWith('MATEK')) return 'Matek';
+  if (t.startsWith('KAKUTE')) return 'Holybro';
+  if (t.startsWith('MAMBA')) return 'Diatone';
+  if (t.startsWith('OMNIBUS')) return 'Omnibus';
+  if (t.startsWith('IFLIGHT') || t.startsWith('BLITZ') || t.startsWith('SUCCEX')) return 'iFlight';
+  if (t.startsWith('FLYWOO')) return 'Flywoo';
+  if (t.startsWith('GEPRC')) return 'GEPRC';
+  if (t.startsWith('FOXEER')) return 'Foxeer';
+  if (t.startsWith('HGLRC')) return 'HGLRC';
+  if (t.startsWith('ATOMRC')) return 'AtomRC';
+  if (t.startsWith('BETAFPV')) return 'BetaFPV';
+  if (t.startsWith('SPRACING')) return 'SPRacing';
+  if (t.includes('F3') && (t.startsWith('FRSKY') || t.startsWith('AIRHERO') || t.startsWith('SPRACING'))) return 'F3 Boards';
+  return 'Other';
+}
+
+/**
+ * Get iNav firmware versions for a specific board from cached GitHub releases.
+ * Matches assets by target name and returns versions with direct download URLs.
+ */
+export async function getInavVersions(vehicleType: FirmwareVehicleType, boardId: string): Promise<FirmwareVersion[]> {
+  try {
+    const releases = await fetchInavReleases();
+    const versions: FirmwareVersion[] = [];
+
+    for (const release of releases) {
+      // Find matching hex asset for this board
+      const asset = release.assets.find((a) => {
+        const match = INAV_HEX_REGEX.exec(a.name);
+        return match?.[1] === boardId;
+      });
+
+      if (asset) {
+        versions.push({
+          version: release.tag_name,
+          releaseType: 'stable',
+          releaseDate: release.published_at?.split('T')[0] ?? '',
+          downloadUrl: asset.browser_download_url,
+          boardId,
+          vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
+          fileSize: hexToBinarySize(asset.size),
+        });
+      }
+    }
+
+    // Sort newest first
+    versions.sort((a, b) => compareVersions(b.version, a.version));
+
+    if (versions.length > 0) {
+      console.log(`[manifest-fetcher] Found ${versions.length} iNav versions for ${boardId}`);
+      return versions;
+    }
+
+    // No matching assets found — fall back to curated
+    return getInavCuratedVersions(vehicleType, boardId);
+  } catch {
+    return getInavCuratedVersions(vehicleType, boardId);
+  }
 }
 
 /**
@@ -803,9 +1171,9 @@ export async function fetchFirmwareVersions(
   } else if (source === 'px4') {
     versions = getPx4CuratedVersions(vehicleType, boardId);
   } else if (source === 'betaflight') {
-    versions = getBetaflightCuratedVersions(boardId);
+    versions = await getBetaflightVersions(boardId);
   } else if (source === 'inav') {
-    versions = getInavCuratedVersions(vehicleType, boardId);
+    versions = await getInavVersions(vehicleType, boardId);
   }
 
   return {
@@ -1114,8 +1482,11 @@ function getInavCuratedVersions(vehicleType: FirmwareVehicleType, boardId: strin
 }
 
 /**
- * Clear manifest cache
+ * Clear manifest cache (ArduPilot, Betaflight, iNav)
  */
 export function clearManifestCache(): void {
   manifestCache = null;
+  bfTargetsCache = null;
+  bfVersionsCache.clear();
+  inavReleasesCache = null;
 }

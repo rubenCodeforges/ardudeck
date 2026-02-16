@@ -279,7 +279,7 @@ function ArmButton({
           ${isArmed
             ? 'bg-red-500/20 border-red-500 shadow-lg shadow-red-500/30 focus:ring-red-500'
             : armSwitchOn
-              ? 'bg-amber-500/20 border-amber-500 animate-pulse focus:ring-amber-500'
+              ? 'bg-amber-500/20 border-amber-500 focus:ring-amber-500'
               : 'bg-gray-800 border-gray-600 hover:border-gray-500 focus:ring-gray-500'
           }
         `}
@@ -324,7 +324,7 @@ function ArmButton({
           {isArmed ? 'ARMED' : 'DISARMED'}
         </div>
         {armSwitchOn && !isArmed && (
-          <div className="text-amber-400 text-xs animate-pulse">Arming...</div>
+          <div className="text-amber-400 text-xs">Arming...</div>
         )}
         {!canArm && (
           <div className="text-gray-500 text-xs">Not configured</div>
@@ -377,7 +377,7 @@ function RcStatusIndicator({ isActive }: { isActive: boolean }) {
     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
       isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-700 text-gray-500'
     }`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+      <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-gray-500'}`} />
       <span>RC {isActive ? 'Active' : 'Idle'}</span>
     </div>
   );

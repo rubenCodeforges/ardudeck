@@ -257,7 +257,7 @@ export function SitlStatusPanel() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-zinc-500">RC Channels</span>
             {isOverrideActive && (
-              <span className="text-xs text-amber-400 animate-pulse">Override Active</span>
+              <span className="text-xs text-amber-400">Override Active</span>
             )}
           </div>
 

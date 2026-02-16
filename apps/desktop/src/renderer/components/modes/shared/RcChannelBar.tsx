@@ -102,7 +102,7 @@ export const RcChannelBar: React.FC<RcChannelBarProps> = ({
           <span
             className={`${
               compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'
-            } bg-green-500/20 text-green-400 rounded-full font-medium animate-pulse`}
+            } bg-green-500/20 text-green-400 rounded-full font-medium`}
           >
             ACTIVE
           </span>

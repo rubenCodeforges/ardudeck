@@ -259,11 +259,15 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       const port = board.port;
 
       // If we have a COM port, try comprehensive auto-detection (MAVLink → MSP → STM32)
+      let detectedFcVariant: string | undefined;
+      let detectedTargetName: string | undefined;
       if (port) {
         try {
           const autoResult = await window.electronAPI?.autoDetectBoard?.(port);
 
           if (autoResult?.success) {
+            detectedFcVariant = autoResult.fcVariant;
+            detectedTargetName = autoResult.targetName;
             // Update board with detected info
             // Keep original flasher type - 'serial' for USB-serial adapters, 'dfu' for native USB
             board = {
@@ -293,9 +297,14 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       if (sourceExplicitlySet) {
         console.log('[FirmwareStore] Source explicitly set by user, skipping auto-select');
       } else if (detectionMethod === 'msp') {
-        // MSP = Betaflight/iNav/Cleanflight boards - switch to Betaflight
-        console.log('[FirmwareStore] MSP detected - switching to Betaflight source');
-        targetSource = 'betaflight';
+        // Use fcVariant to pick the right source: INAV → inav, BTFL/CLFL → betaflight
+        if (detectedFcVariant === 'INAV') {
+          console.log('[FirmwareStore] iNav detected - switching to iNav source');
+          targetSource = 'inav';
+        } else {
+          console.log('[FirmwareStore] Betaflight detected - switching to Betaflight source');
+          targetSource = 'betaflight';
+        }
         set({ selectedSource: targetSource });
         await get().fetchBoards();
       } else if (detectionMethod === 'mavlink') {
@@ -309,19 +318,23 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       }
 
       // If we have a detected board, try to find matching board in list
+      // Prefer targetName (full build target like "JHEF405PRO") for exact matching
       const { availableBoards } = get();
-      console.log('[FirmwareStore] Detected board:', board.boardId, board.name);
+      const matchTarget = detectedTargetName || board.boardId;
+      console.log('[FirmwareStore] Detected board:', matchTarget, '(target:', detectedTargetName, ', boardId:', board.boardId, ')');
       console.log('[FirmwareStore] Available boards:', availableBoards.length, 'Source:', targetSource);
 
-      if (board.boardId && availableBoards.length > 0) {
+      if (matchTarget && availableBoards.length > 0) {
+        const targetUpper = matchTarget.toUpperCase();
         const boardIdLower = board.boardId.toLowerCase();
-        const boardNameLower = (board.name || '').toLowerCase();
 
         const matchingBoard = availableBoards.find(b => {
+          // Exact match on target name (case-insensitive) — primary match
+          if (b.id.toUpperCase() === targetUpper) return true;
+          // Fallback: loose matching on board ID or name
           const idMatch = b.id.toLowerCase() === boardIdLower;
-          const nameIncludes = boardNameLower && b.name.toLowerCase().includes(boardNameLower);
-          const nameIncludedIn = boardNameLower && boardNameLower.includes(b.name.toLowerCase());
-          return idMatch || nameIncludes || nameIncludedIn;
+          const nameIncludes = b.name.toLowerCase().includes(boardIdLower);
+          return idMatch || nameIncludes;
         });
 
         if (matchingBoard) {
@@ -329,7 +342,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
           set({ selectedBoard: matchingBoard });
           get().fetchVersions();
         } else {
-          console.log('[FirmwareStore] No matching board found for:', board.boardId);
+          console.log('[FirmwareStore] No matching board found for:', matchTarget);
         }
       }
     } catch (error) {

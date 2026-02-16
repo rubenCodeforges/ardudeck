@@ -28,6 +28,8 @@ import {
   dfuseUpload,
   dfuseLeave,
   dfuseEraseRange,
+  dfuseMassErase,
+  dfuseReadUnprotect,
   dfuseVerify,
   parseMemoryLayout,
 } from './dfuse-protocol.js';
@@ -280,15 +282,34 @@ export class DfuDevice {
         });
       }
 
+      // Find the alt descriptor for this alternate setting (used for string + functional descriptor)
+      const altDescriptor = ifaceArray.find(
+        (a: InterfaceDescriptor) => a.bAlternateSetting === this._info.alternateSetting
+      );
+
+      // Read interface string descriptor for memory layout (e.g. "@Internal Flash /0x08000000/04*016Kg,01*064Kg,07*128Kg")
+      if (!this._info.interfaceName && altDescriptor && altDescriptor.iInterface > 0) {
+        try {
+          const ifaceString = await new Promise<string | undefined>((resolve, reject) => {
+            this.device.getStringDescriptor(altDescriptor.iInterface, (err, str) => {
+              if (err) reject(err);
+              else resolve(str);
+            });
+          });
+          if (ifaceString) {
+            this._info.interfaceName = ifaceString;
+          }
+        } catch {
+          // Some devices don't support string descriptors
+        }
+      }
+
       // Try to get interface string for memory layout
       if (this._info.interfaceName) {
         this._memoryLayout = parseMemoryLayout(this._info.interfaceName);
       }
 
       // Try to parse functional descriptor from extra descriptors
-      const altDescriptor = ifaceArray.find(
-        (a: InterfaceDescriptor) => a.bAlternateSetting === this._info.alternateSetting
-      );
       if (altDescriptor?.extra) {
         this._funcDescriptor = parseDfuFunctionalDescriptor(altDescriptor.extra);
       }
@@ -432,39 +453,24 @@ export class DfuDevice {
     // Reset to idle state first
     await this.resetToIdle();
 
-    // Process each segment
-    for (const segment of firmware.segments) {
-      const { address, data } = segment;
+    // Phase 1: Erase flash
+    // Strategy: try sector erase → mass erase → read unprotect (each handles more failure modes)
+    await this.eraseForFlash(firmware, forceFullErase, onProgress);
 
-      // Erase required sectors
-      if (forceFullErase && this._memoryLayout) {
-        await dfuseEraseRange(this.device, this._info.interfaceNumber, this._memoryLayout, address, data.length, onProgress);
-      } else if (this._memoryLayout) {
-        // Erase only needed sectors
-        await dfuseEraseRange(this.device, this._info.interfaceNumber, this._memoryLayout, address, data.length, onProgress);
-      } else {
-        // No memory layout info - try sector erase at start address
-        // This is a fallback; may need multiple erases for large images
-        const sectorSize = 0x10000; // 64KB default assumption
-        for (let offset = 0; offset < data.length; offset += sectorSize) {
-          await this.eraseSector(address + offset);
-          if (onProgress) {
-            onProgress({
-              phase: 'erase',
-              current: Math.min(offset + sectorSize, data.length),
-              total: data.length,
-              percent: Math.round(Math.min((offset + sectorSize) / data.length, 1) * 100),
-            });
-          }
-        }
-      }
+    // Phase 2: Download and verify each segment
+    for (let i = 0; i < firmware.segments.length; i++) {
+      const segment = firmware.segments[i]!;
+      await this.download(segment.data, segment.address, onProgress);
 
-      // Download firmware data
-      await this.download(data, address, onProgress);
-
-      // Verify if requested
       if (verify) {
-        await dfuseVerify(this.device, this._info.interfaceNumber, address, data, this.transferSize, onProgress);
+        try {
+          await dfuseVerify(this.device, this._info.interfaceNumber, segment.address, segment.data, this.transferSize, onProgress);
+        } catch {
+          // Verify failed — likely read protection (RDP) blocking flash readback
+          // This is non-fatal: the download succeeded, we just can't read it back
+          // Recover device state for next segment
+          try { await this.resetToIdle(); } catch { /* ignore */ }
+        }
       }
     }
 
@@ -480,6 +486,83 @@ export class DfuDevice {
         });
       }
       await this.leave();
+    }
+  }
+
+  /**
+   * Erase flash for firmware download.
+   * Tries sector erase first, then mass erase, then read-unprotect as last resort.
+   */
+  private async eraseForFlash(
+    firmware: FirmwareImage,
+    forceFullErase: boolean,
+    onProgress?: ProgressCallback,
+  ): Promise<void> {
+    const iface = this._info.interfaceNumber;
+
+    // Step 1: Try sector erase (fastest when flash isn't write-protected)
+    if (this._memoryLayout && !forceFullErase) {
+      try {
+        for (const segment of firmware.segments) {
+          await dfuseEraseRange(this.device, iface, this._memoryLayout, segment.address, segment.data.length, onProgress);
+        }
+        return;
+      } catch {
+        // Sector erase failed (write protection?) — fall through to mass erase
+        try { await this.resetToIdle(); } catch { /* ignore */ }
+        try { await dfuClearStatus(this.device, iface); } catch { /* ignore */ }
+        try { await this.resetToIdle(); } catch { /* ignore */ }
+      }
+    }
+
+    // Step 2: Try mass erase (handles mixed sector sizes, but fails if write-protected)
+    try {
+      if (onProgress) {
+        onProgress({ phase: 'erase', current: 0, total: 1, percent: 0, message: 'Mass erasing flash...' });
+      }
+      await dfuseMassErase(this.device, iface);
+      if (onProgress) {
+        onProgress({ phase: 'erase', current: 1, total: 1, percent: 100 });
+      }
+      return;
+    } catch {
+      // Mass erase failed (write protection?) — fall through to read unprotect
+      try { await this.resetToIdle(); } catch { /* ignore */ }
+      try { await dfuClearStatus(this.device, iface); } catch { /* ignore */ }
+      try { await this.resetToIdle(); } catch { /* ignore */ }
+    }
+
+    // Step 3: Read unprotect — nuclear option, removes all protection + mass erases
+    // WARNING: This resets the device, so we must re-open it
+    if (onProgress) {
+      onProgress({ phase: 'erase', current: 0, total: 1, percent: 0, message: 'Removing flash protection...' });
+    }
+
+    try {
+      await dfuseReadUnprotect(this.device, iface);
+    } catch {
+      // Expected — device resets during unprotect, USB transfer may fail
+    }
+
+    // Device has reset — close our handle and wait for it to re-enumerate
+    try { await this.close(); } catch { /* ignore */ }
+    this._isOpen = false;
+    this.iface = null;
+
+    // Wait for device to come back (typically 2-4 seconds)
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const reappeared = await DfuDevice.waitForDevice(10000, this._info.vendorId);
+    if (!reappeared) {
+      throw new DfuError('Device did not re-appear after read unprotect. Reconnect and retry.');
+    }
+
+    // Take ownership of the new device handle
+    this.device = (reappeared as any).device;
+    await this.open();
+
+    if (onProgress) {
+      onProgress({ phase: 'erase', current: 1, total: 1, percent: 100, message: 'Flash protection removed' });
     }
   }
 

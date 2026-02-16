@@ -1187,7 +1187,7 @@ function ModeChannelIndicator({
           <div className="flex items-center gap-2">
             <span className="font-medium text-white">{info.name}</span>
             {isActive && (
-              <span className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/30 text-emerald-400 animate-pulse">
+              <span className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/30 text-emerald-400">
                 ACTIVE
               </span>
             )}
@@ -1562,7 +1562,7 @@ function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string
                             </button>
                           )}
                           {isActive ? (
-                            <span className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded-full animate-pulse">
+                            <span className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded-full">
                               ACTIVE
                             </span>
                           ) : (

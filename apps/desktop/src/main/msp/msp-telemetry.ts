@@ -97,7 +97,7 @@ export function startMspTelemetry(rateHz: number = 10): void {
     startTelemetryInterval(intervalMs);
   })();
 
-  startRcPoll(10);
+  startRcPoll(2); // 2Hz default — sufficient for throttle % display, saves ~8 serial round-trips/sec
 }
 
 function startTelemetryInterval(intervalMs: number): void {

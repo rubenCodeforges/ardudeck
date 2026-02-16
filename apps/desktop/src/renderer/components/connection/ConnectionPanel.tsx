@@ -379,7 +379,7 @@ export function ConnectionPanel() {
                 </div>
                 <div className="flex items-center gap-2">
                   {anySitlRunning && (
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   )}
                   {anySitlStarting ? (
                     <svg className={`w-5 h-5 animate-spin ${defaultSitlType === 'ardupilot' ? 'text-blue-300' : 'text-purple-300'}`} fill="none" viewBox="0 0 24 24">

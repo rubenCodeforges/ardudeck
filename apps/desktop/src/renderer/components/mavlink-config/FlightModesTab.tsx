@@ -430,7 +430,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
                       <div className="text-xs text-zinc-500">{pos.label}</div>
                     </div>
                     {isActive && (
-                      <span className="ml-auto px-2 py-0.5 text-[10px] bg-cyan-500/20 text-cyan-400 rounded-full animate-pulse">
+                      <span className="ml-auto px-2 py-0.5 text-[10px] bg-cyan-500/20 text-cyan-400 rounded-full">
                         ACTIVE
                       </span>
                     )}
@@ -506,7 +506,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
                     </div>
                     <div className="flex items-center gap-2">
                       {isActive && (
-                        <span className="px-2 py-0.5 text-[10px] bg-cyan-500/20 text-cyan-400 rounded-full animate-pulse">
+                        <span className="px-2 py-0.5 text-[10px] bg-cyan-500/20 text-cyan-400 rounded-full">
                           ACTIVE
                         </span>
                       )}

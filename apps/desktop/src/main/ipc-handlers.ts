@@ -74,7 +74,7 @@ import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
-import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getInavBoards, type BoardInfo, type VersionGroup } from './firmware/index.js';
+import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getBetaflightVersions, resolveBetaflightDownloadUrl, getInavBoards, getInavVersions, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
@@ -205,6 +205,21 @@ let transportCloseHandler: (() => void) | null = null;
 // BSOD FIX: MAVLink processing state to prevent overlapping packet processing
 let processingMavlink = false;
 const pendingMavlinkData: Uint8Array[] = [];
+
+// Battery fix: Coalesce MAVLink telemetry into a single IPC batch at 10Hz max
+let mavlinkTelemetryBatch: Record<string, unknown> = {};
+let mavlinkBatchTimer: NodeJS.Timeout | null = null;
+
+function queueMavlinkTelemetry(mainWindow: BrowserWindow, fields: Record<string, unknown>) {
+  Object.assign(mavlinkTelemetryBatch, fields);
+  if (!mavlinkBatchTimer) {
+    mavlinkBatchTimer = setTimeout(() => {
+      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_BATCH, mavlinkTelemetryBatch);
+      mavlinkTelemetryBatch = {};
+      mavlinkBatchTimer = null;
+    }, 100); // 10Hz max
+  }
+}
 
 /**
  * BSOD FIX: Clean up all transport event listeners
@@ -494,7 +509,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         armed,
         isFlying: armed && (baseMode & 0x04) !== 0, // MAV_MODE_FLAG_CUSTOM_MODE_ENABLED as proxy
       };
-      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'flight', data: flight });
+      queueMavlinkTelemetry(mainWindow, { flight });
       break;
     }
 
@@ -505,7 +520,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const remaining = payload[30] === 255 ? -1 : payload[30]!; // -1 if unknown
 
       const battery: BatteryData = { voltage, current, remaining };
-      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'battery', data: battery });
+      queueMavlinkTelemetry(mainWindow, { battery });
       break;
     }
 
@@ -519,7 +534,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const satellites = payload[29]!;
 
       const gps: GpsData = { fixType, satellites, hdop, lat, lon, alt };
-      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'gps', data: gps });
+      queueMavlinkTelemetry(mainWindow, { gps });
       break;
     }
 
@@ -533,7 +548,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const yawSpeed = readFloat(payload, 24) * (180 / Math.PI);
 
       const attitude: AttitudeData = { roll, pitch, yaw, rollSpeed, pitchSpeed, yawSpeed };
-      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'attitude', data: attitude });
+      queueMavlinkTelemetry(mainWindow, { attitude });
       break;
     }
 
@@ -548,7 +563,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const vz = readInt16(payload, 24) / 100;
 
       const position: PositionData = { lat, lon, alt, relativeAlt, vx, vy, vz };
-      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'position', data: position });
+      queueMavlinkTelemetry(mainWindow, { position });
       break;
     }
 
@@ -562,7 +577,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const throttle = readUint16(payload, 18);
 
       const vfrHud: VfrHudData = { airspeed, groundspeed, heading, throttle, alt, climb };
-      safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_UPDATE, { type: 'vfrHud', data: vfrHud });
+      queueMavlinkTelemetry(mainWindow, { vfrHud });
       break;
     }
 
@@ -1560,15 +1575,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 sendLog(mainWindow, 'packet', `MSG #${packet.msgid}`, `sysid=${packet.sysid} compid=${packet.compid} seq=${packet.seq} len=${packet.payload.length}`);
               }
 
-              // Send packet to renderer
-              safeSend(mainWindow, IPC_CHANNELS.MAVLINK_PACKET, {
-                msgid: packet.msgid,
-                sysid: packet.sysid,
-                compid: packet.compid,
-                seq: packet.seq,
-                payload: Array.from(packet.payload),
-              });
-
               // Update packet count periodically
               if (connectionState.packetsReceived % 50 === 0) {
                 sendConnectionState(mainWindow);
@@ -1627,7 +1633,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (options.protocol === 'msp') {
         sendLog(mainWindow, 'info', `Port opened, using MSP protocol (forced)...`);
 
-        // Don't set up MAVLink handler at all
+        // Remove the MAVLink data handler that was attached above (line ~1589)
+        // Without this, the closure stays attached and fires on every serial byte chunk
+        if (mavlinkDataHandler) {
+          currentTransport.off('data', mavlinkDataHandler as (...args: unknown[]) => void);
+        }
         mavlinkParser = null;
         mavlinkDataHandler = null;
 
@@ -1851,6 +1861,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (heartbeatTimeout) {
         clearTimeout(heartbeatTimeout);
         heartbeatTimeout = null;
+      }
+
+      // Clear MAVLink telemetry batch timer
+      if (mavlinkBatchTimer) {
+        clearTimeout(mavlinkBatchTimer);
+        mavlinkBatchTimer = null;
+        mavlinkTelemetryBatch = {};
       }
 
       if (currentTransport) {
@@ -2997,13 +3014,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
 
       if (source === 'betaflight') {
-        const boards = getBetaflightBoards();
+        const boards = await getBetaflightBoards();
         sendLog(mainWindow, 'info', `Found ${boards.length} Betaflight boards`);
         return { success: true, boards };
       }
 
       if (source === 'inav') {
-        const boards = getInavBoards();
+        const boards = await getInavBoards();
         sendLog(mainWindow, 'info', `Found ${boards.length} iNav boards`);
         return { success: true, boards };
       }
@@ -3034,12 +3051,20 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: true, groups };
       }
 
-      // For other sources, get flat list and group
-      const manifest = await fetchFirmwareVersions(source, vehicleType, boardId);
+      // For BF/iNav, use dedicated version fetchers; others use flat list
+      let versions: FirmwareVersion[];
+      if (source === 'betaflight') {
+        versions = await getBetaflightVersions(boardId);
+      } else if (source === 'inav') {
+        versions = await getInavVersions(vehicleType, boardId);
+      } else {
+        const manifest = await fetchFirmwareVersions(source, vehicleType, boardId);
+        versions = manifest.versions;
+      }
       const groups: VersionGroup[] = [{
         major: 'all',
         label: 'All Versions',
-        versions: manifest.versions,
+        versions,
         isLatest: true,
       }];
       return { success: true, groups };
@@ -3056,6 +3081,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     version: FirmwareVersion
   ): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     try {
+      // Resolve Betaflight cloud build URLs before downloading
+      if (version.downloadUrl.includes('build.betaflight.com/api/builds/')) {
+        sendLog(mainWindow, 'info', `Resolving Betaflight firmware URL for ${version.boardId} @ ${version.version}...`);
+        version = { ...version, downloadUrl: await resolveBetaflightDownloadUrl(version.downloadUrl) };
+      }
       sendLog(mainWindow, 'info', `Downloading firmware ${version.version}...`);
       const filePath = await downloadFirmware(version, mainWindow);
       sendLog(mainWindow, 'info', `Firmware downloaded to ${filePath}`);
@@ -3557,6 +3587,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     protocol?: 'mavlink' | 'msp' | 'dfu' | 'usb' | 'bootloader';
     boardName?: string;
     boardId?: string;
+    targetName?: string;
+    fcVariant?: string;
     firmware?: string;
     firmwareVersion?: string;
     mcuType?: string;
@@ -3694,18 +3726,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       if (mspResult && (mspResult.fcVariant || mspResult.boardId)) {
         const firmwareName = getFirmwareTypeName(mspResult.fcVariant);
-        const mappedBoard = mapMspBoardToArduPilot(mspResult.boardId);
+        // Use targetName (full build target like "JHEF405PRO") when available
+        const target = mspResult.targetName || mspResult.boardId;
 
-        sendLog(mainWindow, 'info', `Detected: ${firmwareName} v${mspResult.fcVersion} on ${mspResult.boardId}`);
-        if (mappedBoard) {
-          sendLog(mainWindow, 'info', `  Mapped to ArduPilot board: ${mappedBoard}`);
-        }
+        sendLog(mainWindow, 'info', `Detected: ${firmwareName} v${mspResult.fcVersion} on ${target} (short: ${mspResult.boardId})`);
 
         return {
           success: true,
           protocol: 'msp',
-          boardName: mappedBoard || mspResult.boardId,
-          boardId: mappedBoard || mspResult.boardId,  // Use mapped ID for ArduPilot board matching
+          boardName: target,
+          boardId: target,
+          targetName: mspResult.targetName,
+          fcVariant: mspResult.fcVariant,
           firmware: firmwareName,
           firmwareVersion: mspResult.fcVersion,
         };

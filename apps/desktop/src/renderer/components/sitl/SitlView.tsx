@@ -234,7 +234,7 @@ export default function SitlView() {
               : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
           }`}>
             <div className={`w-2 h-2 rounded-full ${
-              anyRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'
+              anyRunning ? 'bg-green-400' : 'bg-zinc-500'
             }`} />
             {anyRunning
               ? `${activeRunningTab === 'inav' ? 'iNav' : 'ArduPilot'} Running`
@@ -462,7 +462,7 @@ export default function SitlView() {
                     {/* Running status */}
                     {(isXPlaneRunning || isXPlaneStarting) && (
                       <div className="flex items-center gap-2 mb-3">
-                        <div className={`w-2 h-2 rounded-full ${isXPlaneRunning ? 'bg-green-400 animate-pulse' : 'bg-amber-400 animate-pulse'}`} />
+                        <div className={`w-2 h-2 rounded-full ${isXPlaneRunning ? 'bg-green-400' : 'bg-amber-400'}`} />
                         <span className="text-xs text-zinc-400">{isXPlaneStarting ? 'Starting X-Plane...' : 'X-Plane Running'}</span>
                       </div>
                     )}
@@ -554,11 +554,11 @@ export default function SitlView() {
                     {(isFlightGearRunning || isBridgeRunning) && (
                       <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-800">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${isFlightGearRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`} />
+                          <div className={`w-2 h-2 rounded-full ${isFlightGearRunning ? 'bg-green-400' : 'bg-zinc-500'}`} />
                           <span className="text-xs text-zinc-400">FlightGear</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${isBridgeRunning ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`} />
+                          <div className={`w-2 h-2 rounded-full ${isBridgeRunning ? 'bg-green-400' : 'bg-zinc-500'}`} />
                           <span className="text-xs text-zinc-400">Bridge</span>
                         </div>
                       </div>
