@@ -5,7 +5,7 @@
 
 import { spawn, ChildProcess } from 'node:child_process';
 import { app, BrowserWindow } from 'electron';
-import { chmod } from 'node:fs/promises';
+import { access, chmod } from 'node:fs/promises';
 import path from 'node:path';
 
 export interface SitlConfig {
@@ -157,6 +157,16 @@ class SitlProcessManager {
       }
     }
 
+    // Verify SITL binary exists before attempting spawn
+    try {
+      await access(sitlPath);
+    } catch {
+      const msg = `SITL binary not found at: ${sitlPath}`;
+      console.error('[SITL]', msg);
+      this._isRunning = false;
+      throw new Error(msg);
+    }
+
     // Make binary executable on Unix platforms
     if (process.platform !== 'win32') {
       try {
@@ -171,10 +181,15 @@ class SitlProcessManager {
 
     // Spawn options - cwd must be binary directory for SITL to work properly
     // Explicitly set stdio to pipe to ensure we can capture output
+    // Only override PATH on Unix - Windows needs its system PATH for DLL resolution (e.g. cygwin1.dll)
+    const spawnEnv = process.platform === 'win32'
+      ? { ...process.env }
+      : { ...process.env, PATH: '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin' };
+
     const spawnOptions = {
       cwd: path.dirname(sitlPath),
       stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, PATH: '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin' },
+      env: spawnEnv,
     };
 
 

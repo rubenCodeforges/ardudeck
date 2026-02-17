@@ -163,6 +163,15 @@ export function ConnectionPanel() {
             return;
           }
 
+          // Check if SITL is still running - if it crashed/failed, stop retrying
+          const inavStillRunning = useSitlStore.getState().isRunning;
+          const ardupilotStillRunning = useArduPilotSitlStore.getState().isRunning;
+          if (!inavStillRunning && !ardupilotStillRunning) {
+            console.warn('[ConnectionPanel] SITL process is no longer running, aborting auto-connect');
+            setError('SITL process failed to start. Check the SITL tab for details.');
+            return;
+          }
+
           const success = await connect({ type: 'tcp', host: '127.0.0.1', tcpPort: 5760 });
           if (success) {
             console.log('[ConnectionPanel] SITL auto-connect successful!');
