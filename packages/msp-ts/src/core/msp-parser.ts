@@ -25,6 +25,8 @@ enum ParserState {
   HEADER_M,
   HEADER_DIRECTION,
   V1_LENGTH,
+  V1_JUMBO_LENGTH_LO,
+  V1_JUMBO_LENGTH_HI,
   V1_COMMAND,
   V1_PAYLOAD,
   V1_CHECKSUM,
@@ -246,20 +248,46 @@ export class MSPParser {
       // MSP v1 states
       case ParserState.V1_LENGTH:
         this.payloadLength = byte;
-        if (this.payloadLength > MSP_V1_MAX_PAYLOAD) {
+        this.buffer = this.buffer.slice(1);
+        if (this.payloadLength === MSP_V1_MAX_PAYLOAD) {
+          // Jumbo frame: length=255 means next 2 bytes (after command) hold real 16-bit LE length
+          this.state = ParserState.V1_COMMAND;
+        } else {
+          this.payload = new Uint8Array(this.payloadLength);
+          this.payloadOffset = 0;
+          this.state = ParserState.V1_COMMAND;
+        }
+        return null;
+
+      case ParserState.V1_COMMAND:
+        this.command = byte;
+        this.buffer = this.buffer.slice(1);
+        if (this.payloadLength === MSP_V1_MAX_PAYLOAD) {
+          // Jumbo frame: next 2 bytes are real 16-bit LE payload length
+          this.state = ParserState.V1_JUMBO_LENGTH_LO;
+        } else if (this.payloadLength === 0) {
+          this.state = ParserState.V1_CHECKSUM;
+        } else {
+          this.state = ParserState.V1_PAYLOAD;
+        }
+        return null;
+
+      case ParserState.V1_JUMBO_LENGTH_LO:
+        this.payloadLength = byte;
+        this.buffer = this.buffer.slice(1);
+        this.state = ParserState.V1_JUMBO_LENGTH_HI;
+        return null;
+
+      case ParserState.V1_JUMBO_LENGTH_HI:
+        this.payloadLength |= byte << 8;
+        this.buffer = this.buffer.slice(1);
+        if (this.payloadLength > MSP_V2_MAX_PAYLOAD) {
           this.stats.badLength++;
           this.state = ParserState.IDLE;
           return null;
         }
         this.payload = new Uint8Array(this.payloadLength);
         this.payloadOffset = 0;
-        this.state = ParserState.V1_COMMAND;
-        this.buffer = this.buffer.slice(1);
-        return null;
-
-      case ParserState.V1_COMMAND:
-        this.command = byte;
-        this.buffer = this.buffer.slice(1);
         if (this.payloadLength === 0) {
           this.state = ParserState.V1_CHECKSUM;
         } else {
@@ -281,11 +309,25 @@ export class MSPParser {
         this.state = ParserState.IDLE;
 
         // Calculate expected checksum
-        const checksumData = new Uint8Array(2 + this.payloadLength);
-        checksumData[0] = this.payloadLength;
-        checksumData[1] = this.command;
-        checksumData.set(this.payload, 2);
-        const expectedChecksum = mspV1Checksum(checksumData);
+        // Jumbo frames: checksum covers 0xFF ^ command ^ length_lo ^ length_hi ^ payload
+        // Normal frames: checksum covers length ^ command ^ payload
+        const isJumbo = this.payloadLength >= MSP_V1_MAX_PAYLOAD;
+        let expectedChecksum: number;
+        if (isJumbo) {
+          const checksumData = new Uint8Array(4 + this.payloadLength);
+          checksumData[0] = MSP_V1_MAX_PAYLOAD; // 0xFF wire byte
+          checksumData[1] = this.command;
+          checksumData[2] = this.payloadLength & 0xFF;
+          checksumData[3] = (this.payloadLength >> 8) & 0xFF;
+          checksumData.set(this.payload, 4);
+          expectedChecksum = mspV1Checksum(checksumData);
+        } else {
+          const checksumData = new Uint8Array(2 + this.payloadLength);
+          checksumData[0] = this.payloadLength;
+          checksumData[1] = this.command;
+          checksumData.set(this.payload, 2);
+          expectedChecksum = mspV1Checksum(checksumData);
+        }
 
         if (checksum !== expectedChecksum) {
           this.stats.badChecksum++;

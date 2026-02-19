@@ -891,10 +891,10 @@ const SafetyTab = forwardRef<SafetyTabHandle, Props>(function SafetyTab({ isInav
         </Section>
       )}
 
-      {/* Receiver & Arming Section (iNav only) */}
+      {/* Receiver settings moved note */}
       {isInav && (
         <Section
-          title="Receiver & Arming Safety"
+          title="Arming Safety"
           icon={<Radio className="w-5 h-5 text-purple-400" />}
           color="purple"
           defaultOpen={false}
@@ -902,30 +902,6 @@ const SafetyTab = forwardRef<SafetyTabHandle, Props>(function SafetyTab({ isInav
           badgeColor="purple"
         >
           <div className="mt-4 space-y-6">
-            {/* Receiver Type - Visual Selection */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-3">Receiver Type</label>
-              <div className="grid grid-cols-4 gap-2">
-                {RECEIVER_TYPES.map((type) => {
-                  const isSelected = arming.receiverType === type.value;
-                  return (
-                    <button
-                      key={type.value}
-                      onClick={() => setArming(prev => ({ ...prev, receiverType: type.value }))}
-                      className={`p-4 rounded-xl border-2 transition-all text-center ${
-                        isSelected
-                          ? 'bg-purple-500/20 border-purple-500 text-white'
-                          : 'bg-zinc-800/30 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800/50 hover:border-zinc-600'
-                      }`}
-                    >
-                      <div className="text-2xl mb-1">{type.icon}</div>
-                      <div className="font-medium text-sm">{type.label}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Arming Safety */}
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-3">Navigation Arming Safety</label>
@@ -981,83 +957,13 @@ const SafetyTab = forwardRef<SafetyTabHandle, Props>(function SafetyTab({ isInav
               color="#A855F7"
               hint="Required for arming (0 = no GPS needed)"
             />
-          </div>
-        </Section>
-      )}
 
-      {/* Receiver Section (Betaflight) */}
-      {!isInav && (
-        <Section
-          title="Receiver Configuration"
-          icon={<Radio className="w-5 h-5 text-purple-400" />}
-          color="purple"
-          defaultOpen={false}
-          badge={bfReceiverChanged ? 'Modified' : undefined}
-          badgeColor="purple"
-        >
-          <div className="mt-4 space-y-6">
-            {/* Info Banner */}
-            <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-              <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-200/80">
-                Select your receiver protocol. Choose <strong>MSP</strong> to receive RC input via MSP
-                (useful for SITL testing or simulators).
+            <div className="flex items-start gap-3 p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
+              <Info className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-zinc-400">
+                Receiver type and protocol settings have moved to the <strong className="text-zinc-300">Receiver</strong> tab.
               </p>
             </div>
-
-            {/* Receiver Provider - Dropdown */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-3">Serial Receiver Provider</label>
-              <select
-                value={bfReceiver.serialrxProvider}
-                onChange={(e) => setBfReceiver({ serialrxProvider: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
-              >
-                {BF_RECEIVER_PROVIDERS.map((provider) => (
-                  <option key={provider.value} value={provider.value}>
-                    {provider.label} - {provider.description}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Quick Select Buttons */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-3">Quick Select</label>
-              <div className="grid grid-cols-4 gap-2">
-                {BF_QUICK_SELECT.map((qs) => {
-                  const isSelected = bfReceiver.serialrxProvider === qs.value;
-                  const info = BF_RECEIVER_PROVIDERS.find(p => p.value === qs.value);
-                  return (
-                    <button
-                      key={qs.value}
-                      onClick={() => setBfReceiver({ serialrxProvider: qs.value })}
-                      className={`p-3 rounded-xl border-2 transition-all text-center ${
-                        isSelected
-                          ? 'bg-purple-500/20 border-purple-500 text-white'
-                          : 'bg-zinc-800/30 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800/50 hover:border-zinc-600'
-                      }`}
-                    >
-                      <div className="font-medium text-sm">{qs.label}</div>
-                      {info && <div className="text-xs opacity-60 mt-0.5 truncate">{info.description}</div>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* MSP Mode Warning */}
-            {bfReceiver.serialrxProvider === 15 && (
-              <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-200/80">
-                  <strong>MSP Receiver Mode:</strong> RC signals will be received via MSP protocol instead of a
-                  physical receiver. Use this for SITL testing or software control. Your physical receiver will
-                  not work in this mode.
-                </p>
-              </div>
-            )}
-
           </div>
         </Section>
       )}

@@ -15,12 +15,12 @@ interface TransmitterVisualizerProps {
   compact?: boolean;
 }
 
-// Channel names and descriptions
+// Channel names in logical RPYT order (after rxMap reordering)
 const CHANNEL_INFO: { name: string; Icon: LucideIcon; description: string }[] = [
   { name: 'Roll', Icon: MoveHorizontal, description: 'Left stick horizontal' },
   { name: 'Pitch', Icon: MoveVertical, description: 'Left stick vertical' },
-  { name: 'Throttle', Icon: ArrowUp, description: 'Right stick vertical' },
   { name: 'Yaw', Icon: RotateCw, description: 'Right stick horizontal' },
+  { name: 'Throttle', Icon: ArrowUp, description: 'Right stick vertical' },
   { name: 'AUX 1', Icon: ToggleRight, description: 'Switch (usually ARM)' },
   { name: 'AUX 2', Icon: ToggleRight, description: 'Switch or 3-pos' },
   { name: 'AUX 3', Icon: ToggleRight, description: 'Additional switch' },

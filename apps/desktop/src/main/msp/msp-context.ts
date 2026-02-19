@@ -33,8 +33,9 @@ export class MspContext {
   telemetryPollCount = 0;
   telemetryGeneration = 0;
 
-  // Cached box names for flight mode decoding
+  // Cached box names/IDs for flight mode decoding
   cachedBoxNames: string[] = [];
+  cachedBoxIds: number[] = [];
   lastArmingFlags: number | null = null;
 
   // RC poll
@@ -46,6 +47,10 @@ export class MspContext {
 
   // Debug counter for setRawRc logging
   setRawRcCounter = 0;
+
+  // Packet counters for toolbar display
+  mspPacketsReceived = 0;
+  mspPacketsSent = 0;
 
   // GPS sender
   gpsSenderInterval: ReturnType<typeof setInterval> | null = null;
@@ -150,6 +155,8 @@ export class MspContext {
     this.lastKnownThrottlePercent = 0;
     this.lastSentThrottlePercent = null;
     this.setRawRcCounter = 0;
+    this.mspPacketsReceived = 0;
+    this.mspPacketsSent = 0;
 
     // GPS sender
     if (this.gpsSenderInterval) {
@@ -159,8 +166,9 @@ export class MspContext {
     this.gpsSenderEnabled = false;
     this.gpsSenderLoggedOnce = false;
 
-    // Cached box names
+    // Cached box names/IDs
     this.cachedBoxNames = [];
+    this.cachedBoxIds = [];
     this.lastArmingFlags = null;
 
     // Mutex & locking

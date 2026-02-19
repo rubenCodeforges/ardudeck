@@ -5,7 +5,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo } from '../shared/ipc-channels.js';
-import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
+import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
@@ -30,6 +30,7 @@ interface TelemetryBatch {
   battery?: BatteryData;
   vfrHud?: VfrHudData;
   flight?: FlightState;
+  rcChannels?: RcChannelsData;
 }
 import type { SerialPortInfo, ScanResult } from '@ardudeck/comms';
 
@@ -729,10 +730,64 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_OSD_CONFIG),
 
   // MSP RX Configuration
-  mspGetRxConfig: (): Promise<{ serialrxProvider: number; serialrxProviderName: string } | null> =>
+  mspGetRxConfig: (): Promise<{
+    serialrxProvider: number;
+    serialrxProviderName: string;
+    receiverType: number | null;
+    receiverTypeName: string | null;
+  } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RX_CONFIG),
-  mspSetRxConfig: (newProvider: number): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RX_CONFIG, newProvider),
+  mspSetRxConfig: (newProvider: number, newReceiverType?: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RX_CONFIG, newProvider, newReceiverType),
+
+  // MSP Serial Port Configuration
+  mspGetSerialConfig: (): Promise<{
+    ports: Array<{
+      identifier: number;
+      functionMask: number;
+      mspBaudrate: number;
+      sensorsBaudrate: number;
+      telemetryBaudrate: number;
+      peripheralsBaudrate: number;
+    }>;
+  } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERIAL_CONFIG),
+
+  mspSetSerialConfig: (config: {
+    ports: Array<{
+      identifier: number;
+      functionMask: number;
+      mspBaudrate: number;
+      sensorsBaudrate: number;
+      telemetryBaudrate: number;
+      peripheralsBaudrate: number;
+    }>;
+  }): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERIAL_CONFIG, config),
+
+  // MSP RX Map (channel mapping)
+  mspGetRxMap: (): Promise<number[] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RX_MAP),
+
+  mspSetRxMap: (map: number[]): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RX_MAP, map),
+
+  // MSP RC Deadband
+  mspGetRcDeadband: (): Promise<{
+    deadband: number;
+    yawDeadband: number;
+    altHoldDeadband: number;
+    deadbandThrottle: number;
+  } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_RC_DEADBAND),
+
+  mspSetRcDeadband: (config: {
+    deadband: number;
+    yawDeadband: number;
+    altHoldDeadband: number;
+    deadbandThrottle: number;
+  }): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_RC_DEADBAND, config),
 
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   mspGetSetting: (name: string): Promise<{ value: string | number; info: unknown } | null> =>

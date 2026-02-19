@@ -64,6 +64,7 @@ interface ModesWizardState {
   // Transmitter check state
   transmitterConfirmed: boolean;
   channelsDetected: boolean[];
+  rcChannelBaseline: number[] | null;
 
   // Actions - View
   setViewMode: (mode: ViewMode) => void;
@@ -139,6 +140,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
 
   transmitterConfirmed: false,
   channelsDetected: Array(8).fill(false),
+  rcChannelBaseline: null,
 
   // View actions
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -152,6 +154,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
       currentModeIndex: 0,
       transmitterConfirmed: false,
       channelsDetected: Array(8).fill(false),
+      rcChannelBaseline: null,
       saveError: null,
       lastSaveSuccess: false,
     });
@@ -293,13 +296,21 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
   },
 
   updateRcChannels: (channels) => {
-    const { channelsDetected, rcChannels: prevChannels } = get();
+    const { channelsDetected, rcChannelBaseline } = get();
+
+    // Capture baseline from first reading
+    if (!rcChannelBaseline) {
+      set({ rcChannels: channels, rcChannelBaseline: [...channels] });
+      return;
+    }
+
     const newDetected = [...channelsDetected];
 
-    // Detect if channels have significant movement (for transmitter check)
+    // Detect significant movement from baseline (not fixed 1500)
     for (let i = 0; i < Math.min(channels.length, 8); i++) {
-      const delta = Math.abs(channels[i]! - 1500);
-      if (delta > 100) {
+      const baseline = rcChannelBaseline[i] ?? 1500;
+      const delta = Math.abs(channels[i]! - baseline);
+      if (delta > 50) {
         newDetected[i] = true;
       }
     }
@@ -311,12 +322,19 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
   loadFromFC: async () => {
     set({ isLoading: true, loadError: null });
     try {
-      // Fetch modes and box names in parallel
-      const [modes, boxNames, boxIds] = await Promise.all([
-        window.electronAPI?.mspGetModeRanges(),
-        window.electronAPI?.mspGetBoxNames(),
-        window.electronAPI?.mspGetBoxIds(),
-      ]);
+      // Fetch modes, box names, and box IDs
+      // These go through the MSP mutex so they serialize properly
+      let modes = await window.electronAPI?.mspGetModeRanges();
+      let boxNames = await window.electronAPI?.mspGetBoxNames();
+      let boxIds = await window.electronAPI?.mspGetBoxIds();
+
+      // Retry once if any failed - FC may need settling time after connection
+      if (!modes || !boxNames || !boxIds) {
+        await new Promise(r => setTimeout(r, 1000));
+        if (!modes) modes = await window.electronAPI?.mspGetModeRanges();
+        if (!boxNames) boxNames = await window.electronAPI?.mspGetBoxNames();
+        if (!boxIds) boxIds = await window.electronAPI?.mspGetBoxIds();
+      }
 
       // Build box name mapping from boxIds -> boxNames
       const boxNameMapping: BoxNameMapping = {};
@@ -332,9 +350,12 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         const validModes = (modes as MSPModeRange[]).filter(
           (m) => m.rangeStart !== m.rangeEnd
         );
+        // Don't overwrite pendingModes if user already selected a preset
+        // (loadFromFC runs async and can complete after preset selection)
+        const { selectedPreset } = get();
         set({
           originalModes: validModes,
-          pendingModes: [...validModes],
+          ...(selectedPreset ? {} : { pendingModes: [...validModes] }),
           boxNameMapping,
           isLoading: false,
         });
@@ -468,6 +489,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
       lastSaveSuccess: false,
       transmitterConfirmed: false,
       channelsDetected: Array(8).fill(false),
+      rcChannelBaseline: null,
     });
   },
 

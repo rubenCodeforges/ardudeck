@@ -10,6 +10,8 @@ import {
   buildMspV1RequestWithPayload,
   buildMspV2RequestWithPayload,
   deserializeBoxNames,
+  deserializeBoxIds,
+  boxNamesFromBoxIds,
   deserializeAttitude,
   deserializeAltitude,
   deserializeAnalog,
@@ -71,24 +73,46 @@ export function startMspTelemetry(rateHz: number = 10): void {
 
     if (gen !== ctx.telemetryGeneration) return;
 
-    // Fetch BOXNAMES with retry - critical for flight mode decoding
-    // Use MSPv2 framing: BOXNAMES response can exceed 255 bytes (MSPv1 max) on modern boards
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const boxPayload = attempt <= 2
-          ? await sendMspV2Request(MSP.BOXNAMES, 2000)
-          : await sendMspRequest(MSP.BOXNAMES, 2000); // v1 fallback on attempt 3
-        ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
-        console.log('[MSP] Cached', ctx.cachedBoxNames.length, 'box names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
-        break;
-      } catch (err) {
-        ctx.cachedBoxNames = [];
-        const msg = err instanceof Error ? err.message : String(err);
-        if (attempt < 3) {
-          console.warn(`[MSP] BOXNAMES fetch attempt ${attempt} failed (${msg}), retrying in 500ms...`);
-          await new Promise(r => setTimeout(r, 500));
-        } else {
-          console.warn('[MSP] Failed to fetch BOXNAMES after 3 attempts - flight modes will show ACRO');
+    // Fetch box names - critical for flight mode decoding
+    // iNav: use BOXIDS + static lookup (BOXNAMES response too large for v1, causes checksum failures)
+    // Betaflight: use MSP_BOXNAMES directly (shorter response, fits in v1)
+    if (ctx.isInavFirmware) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const idsPayload = await sendMspRequest(MSP.BOXIDS, 2000);
+          const ids = deserializeBoxIds(idsPayload);
+          if (ids.length > 0) {
+            ctx.cachedBoxIds = ids;
+            ctx.cachedBoxNames = boxNamesFromBoxIds(ids);
+            console.log('[MSP] iNav box names from BOXIDS+lookup:', ctx.cachedBoxNames.length, 'names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+          }
+          break;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (attempt < 3) {
+            console.warn(`[MSP] BOXIDS fetch attempt ${attempt} failed (${msg}), retrying in 500ms...`);
+            await new Promise(r => setTimeout(r, 500));
+          } else {
+            console.warn('[MSP] Failed to fetch BOXIDS after 3 attempts - flight modes will show ACRO');
+          }
+        }
+      }
+    } else {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const boxPayload = await sendMspRequest(MSP.BOXNAMES, 2000);
+          ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
+          console.log('[MSP] Cached', ctx.cachedBoxNames.length, 'box names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+          break;
+        } catch (err) {
+          ctx.cachedBoxNames = [];
+          const msg = err instanceof Error ? err.message : String(err);
+          if (attempt < 3) {
+            console.warn(`[MSP] BOXNAMES fetch attempt ${attempt} failed (${msg}), retrying in 500ms...`);
+            await new Promise(r => setTimeout(r, 500));
+          } else {
+            console.warn('[MSP] Failed to fetch BOXNAMES after 3 attempts - flight modes will show ACRO');
+          }
         }
       }
     }
@@ -129,13 +153,23 @@ function startTelemetryInterval(intervalMs: number): void {
     ctx.telemetryLastStartTime = Date.now();
     ctx.telemetryPollCount++;
 
-    // Periodic BOXNAMES re-fetch if still empty (every ~5s at 10Hz)
+    // Periodic box names re-fetch if still empty (every ~5s at 10Hz)
     if (ctx.cachedBoxNames.length === 0 && ctx.telemetryPollCount % 50 === 0) {
       try {
-        const boxPayload = await sendMspV2Request(MSP.BOXNAMES, 2000);
-        ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
-        if (ctx.cachedBoxNames.length > 0) {
-          console.log('[MSP] BOXNAMES re-fetch succeeded:', ctx.cachedBoxNames.length, 'names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+        if (ctx.isInavFirmware) {
+          const idsPayload = await sendMspRequest(MSP.BOXIDS, 2000);
+          const ids = deserializeBoxIds(idsPayload);
+          if (ids.length > 0) {
+            ctx.cachedBoxIds = ids;
+            ctx.cachedBoxNames = boxNamesFromBoxIds(ids);
+            console.log('[MSP] BOXIDS re-fetch succeeded:', ctx.cachedBoxNames.length, 'names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+          }
+        } else {
+          const boxPayload = await sendMspRequest(MSP.BOXNAMES, 2000);
+          ctx.cachedBoxNames = deserializeBoxNames(boxPayload);
+          if (ctx.cachedBoxNames.length > 0) {
+            console.log('[MSP] BOXNAMES re-fetch succeeded:', ctx.cachedBoxNames.length, 'names:', ctx.cachedBoxNames.slice(0, 10).join(', '));
+          }
         }
       } catch {
         // Silent - will retry next cycle
@@ -404,7 +438,7 @@ export async function getRc(): Promise<{ channels: number[] } | null> {
 
 export async function setRawRc(channels: number[]): Promise<boolean> {
   ctx.setRawRcCounter++;
-  const shouldLog = ctx.setRawRcCounter % 50 === 1;
+  const shouldLog = ctx.setRawRcCounter % 500 === 1;
 
   if (!ctx.currentTransport?.isOpen) {
     if (shouldLog) console.warn('[MSP] setRawRc: Transport not open, skipping');

@@ -5,10 +5,12 @@
  * User moves sticks to confirm channels are detected.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useModesWizardStore } from '../../../stores/modes-wizard-store';
+import { useReceiverStore } from '../../../stores/receiver-store';
 import TransmitterVisualizer from '../shared/TransmitterVisualizer';
 import { Satellite, CheckCircle2, Clock, AlertTriangle, Square, CheckSquare } from 'lucide-react';
+import { reorderChannels } from '../../../utils/rc-channel-constants';
 
 export const TransmitterCheckStep: React.FC = () => {
   const {
@@ -21,6 +23,9 @@ export const TransmitterCheckStep: React.FC = () => {
     nextStep,
     prevStep,
   } = useModesWizardStore();
+  const rxMap = useReceiverStore((s) => s.rxMap);
+  const displayChannels = useMemo(() => reorderChannels(rcChannels, rxMap), [rcChannels, rxMap]);
+  const displayDetected = useMemo(() => reorderChannels(channelsDetected, rxMap), [channelsDetected, rxMap]);
 
   // Start RC polling when step mounts
   useEffect(() => {
@@ -89,8 +94,8 @@ export const TransmitterCheckStep: React.FC = () => {
       {/* Transmitter visualizer */}
       <div className="p-4 bg-zinc-800/50 rounded-xl border border-zinc-700">
         <TransmitterVisualizer
-          rcChannels={rcChannels}
-          channelsDetected={channelsDetected}
+          rcChannels={displayChannels}
+          channelsDetected={displayDetected}
         />
       </div>
 

@@ -67,7 +67,7 @@ import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLo
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
-import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../shared/telemetry-types.js';
+import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
 import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
@@ -443,6 +443,7 @@ const MSG_PARAM_VALUE = 22;
 const MSG_GPS_RAW_INT = 24;
 const MSG_ATTITUDE = 30;
 const MSG_GLOBAL_POSITION_INT = 33;
+const MSG_RC_CHANNELS = 65;
 const MSG_VFR_HUD = 74;
 
 // Mission message IDs
@@ -578,6 +579,21 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
 
       const vfrHud: VfrHudData = { airspeed, groundspeed, heading, throttle, alt, climb };
       queueMavlinkTelemetry(mainWindow, { vfrHud });
+      break;
+    }
+
+    case MSG_RC_CHANNELS: {
+      // MAVLink v2 wire order (sorted by size): time_boot_ms(U32), chan1-18(U16 each), chancount(U8), rssi(U8)
+      const chancount = payload[40]!;
+      const rssi = payload[41]!;
+      const channels: number[] = [];
+      for (let i = 0; i < 18; i++) {
+        channels.push(readUint16(payload, 4 + i * 2));
+      }
+      // Trim to actual channel count (unused channels report UINT16_MAX = 65535)
+      const activeChannels = channels.slice(0, chancount);
+      const rcChannels: RcChannelsData = { channels: activeChannels, chancount, rssi };
+      queueMavlinkTelemetry(mainWindow, { rcChannels });
       break;
     }
 

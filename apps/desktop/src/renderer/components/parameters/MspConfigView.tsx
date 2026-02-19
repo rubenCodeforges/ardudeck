@@ -24,6 +24,10 @@ import AutoLaunchTab from './AutoLaunchTab';
 // GpsRescueTab removed - GPS Rescue is now integrated into SafetyTab
 import FilterConfigTab from './FilterConfigTab';
 import VtxConfigTab from './VtxConfigTab';
+import ReceiverTab from './ReceiverTab';
+import PortsTab from './PortsTab';
+import ReceiverWizard from './ReceiverWizard';
+import { useReceiverStore } from '../../stores/receiver-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import {
   SlidersHorizontal,
@@ -33,6 +37,7 @@ import {
   Cog,
   Compass,
   Radio,
+  Cable,
   Shield,
   ChevronDown,
   Layers,
@@ -1393,7 +1398,7 @@ function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string
     Object.entries(MODE_INFO).map(([id, info]) => [id, { name: info.name, Icon: info.icon, color: info.color }])
   );
 
-  const AUX_NAMES = ['AUX 1', 'AUX 2', 'AUX 3', 'AUX 4'];
+  const AUX_NAMES = ['AUX 1', 'AUX 2', 'AUX 3', 'AUX 4', 'AUX 5', 'AUX 6', 'AUX 7', 'AUX 8', 'AUX 9', 'AUX 10', 'AUX 11', 'AUX 12'];
 
   return (
     <div className="max-w-full px-4 space-y-4">
@@ -1510,7 +1515,7 @@ function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string
                   const currentPercent = ((rcValue - rangeMin) / totalRange) * 100;
 
                   // Friendly switch names
-                  const switchNames = ['Switch A', 'Switch B', 'Switch C', 'Switch D', 'Switch E', 'Switch F', 'Switch G', 'Switch H'];
+                  const switchNames = ['Switch A', 'Switch B', 'Switch C', 'Switch D', 'Switch E', 'Switch F', 'Switch G', 'Switch H', 'Switch I', 'Switch J', 'Switch K', 'Switch L'];
                   const switchName = switchNames[mode.auxChannel] || `Switch ${mode.auxChannel + 1}`;
 
                   // Convert PWM range to friendly position description
@@ -1637,7 +1642,7 @@ function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string
   );
 }
 
-type TabId = 'tuning' | 'rates' | 'modes' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'auto-launch' | 'safety' | 'filters' | 'vtx';
+type TabId = 'tuning' | 'rates' | 'modes' | 'receiver' | 'ports' | 'sensors' | 'servo-tuning' | 'servo-mixer' | 'motor-mixer' | 'navigation' | 'auto-launch' | 'safety' | 'filters' | 'vtx';
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
@@ -1651,7 +1656,7 @@ export function MspConfigView() {
   const [error, setError] = useState<string | null>(null);
 
   // RC channel values (simulated for now - would come from MSP_RC)
-  const [rcChannels] = useState([1500, 1500, 1000, 1500, 1000, 1500, 1500, 1500]);
+  const [rcChannels] = useState([1500, 1500, 1000, 1500, 1000, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]);
 
   // Config state
   const [pid, setPid] = useState<MSPPid | null>(null);
@@ -1672,8 +1677,11 @@ export function MspConfigView() {
   const FEATURE_LED_STRIP = 16;
   const FEATURE_OSD = 18;
 
-  // Combined modified state: PIDs/rates OR modes OR safety have changes
-  const modified = pidRatesModified || modesHaveChanges() || safetyModified;
+  // Receiver store change detection
+  const receiverHasChanges = useReceiverStore((s) => s.hasChanges);
+
+  // Combined modified state: PIDs/rates OR modes OR safety OR receiver have changes
+  const modified = pidRatesModified || modesHaveChanges() || safetyModified || receiverHasChanges();
 
   // Sensors - use activeSensors from config load or telemetry
   // Betaflight sensor flags (from sensor_helpers.js):
@@ -1997,7 +2005,10 @@ export function MspConfigView() {
     if (!modified) return;
     setSaving(true);
     setError(null);
-    console.log('[UI] saveAll: saving PIDs, Rates, Modes, Safety, and EEPROM');
+    console.log('[UI] saveAll: saving PIDs, Rates, Modes, Safety, Receiver, and EEPROM');
+
+    // Snapshot change flags before saves (saveConfig resets originals)
+    const receiverModified = receiverHasChanges();
 
     try {
       // Save PIDs if available and modified
@@ -2040,8 +2051,18 @@ export function MspConfigView() {
         }
       }
 
+      // Save Receiver config (rxMap, deadband, serial ports) if changed
+      if (receiverModified) {
+        console.log('[UI] Saving Receiver config...');
+        const receiverSuccess = await useReceiverStore.getState().saveConfig();
+        if (!receiverSuccess) {
+          setError('Failed to save Receiver config');
+          return;
+        }
+      }
+
       // Save to EEPROM once (modes saveToFC handles its own EEPROM)
-      if (pidRatesModified || safetyModified) {
+      if (pidRatesModified || safetyModified || receiverModified) {
         console.log('[UI] Saving to EEPROM...');
         const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
         if (!eepromSuccess) {
@@ -2301,6 +2322,32 @@ export function MspConfigView() {
               </button>
             );
           })}
+
+          {/* Receiver */}
+          <button
+            onClick={() => setActiveTab('receiver')}
+            className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'receiver'
+                ? 'bg-gray-800 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+            }`}
+          >
+            <Radio className={`w-4 h-4 ${activeTab === 'receiver' ? 'text-teal-400' : 'text-teal-400 opacity-50'}`} />
+            <span className="text-sm font-medium">Receiver</span>
+          </button>
+
+          {/* Ports */}
+          <button
+            onClick={() => setActiveTab('ports')}
+            className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'ports'
+                ? 'bg-gray-800 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+            }`}
+          >
+            <Cable className={`w-4 h-4 ${activeTab === 'ports' ? 'text-sky-400' : 'text-sky-400 opacity-50'}`} />
+            <span className="text-sm font-medium">Ports</span>
+          </button>
 
           {/* Mixing dropdown (iNav only) */}
           {isInav && (
@@ -2707,6 +2754,21 @@ export function MspConfigView() {
         )}
 
         {/* Safety Tab (Receiver/Failsafe) */}
+        {/* Receiver Tab */}
+        {activeTab === 'receiver' && (
+          <ReceiverTab
+            isInav={isInav}
+            modified={modified}
+            setModified={setPidRatesModified}
+            onNavigateToTab={(tabId) => setActiveTab(tabId as TabId)}
+          />
+        )}
+
+        {/* Ports Tab */}
+        {activeTab === 'ports' && (
+          <PortsTab modified={modified} setModified={setPidRatesModified} />
+        )}
+
         {activeTab === 'safety' && (
           <SafetyTab ref={safetyRef} isInav={isInav} setModified={setSafetyModified} />
         )}

@@ -5,8 +5,10 @@
  * Provides connection UI and real-time telemetry display.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useMspTelemetryStore, setupMspTelemetryListeners } from '../../stores/msp-telemetry-store';
+import { PRIMARY_CHANNEL_COUNT, getChannelName, reorderChannels } from '../../utils/rc-channel-constants';
+import { useReceiverStore } from '../../stores/receiver-store';
 
 interface SerialPortInfo {
   path: string;
@@ -30,6 +32,8 @@ export function BetaflightDashboard() {
   const analog = useMspTelemetryStore((s) => s.analog);
   const status = useMspTelemetryStore((s) => s.status);
   const rc = useMspTelemetryStore((s) => s.rc);
+  const rxMap = useReceiverStore((s) => s.rxMap);
+  const displayRcChannels = useMemo(() => reorderChannels(rc.channels, rxMap), [rc.channels, rxMap]);
   const motors = useMspTelemetryStore((s) => s.motors);
   const gps = useMspTelemetryStore((s) => s.gps);
   const lastUpdate = useMspTelemetryStore((s) => s.lastUpdate);
@@ -356,11 +360,12 @@ export function BetaflightDashboard() {
             {/* RC Channels */}
             <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-4 col-span-2">
               <h3 className="text-sm font-medium text-gray-400 mb-3">RC Channels</h3>
+              {/* Primary sticks */}
               <div className="grid grid-cols-4 gap-2">
-                {rc.channels.slice(0, 8).map((value, i) => (
+                {displayRcChannels.slice(0, PRIMARY_CHANNEL_COUNT).map((value, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">CH{i + 1}</span>
+                      <span className="text-gray-500">{getChannelName(i, 'msp')}</span>
                       <span className="text-gray-400 font-mono">{value}</span>
                     </div>
                     <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -372,6 +377,28 @@ export function BetaflightDashboard() {
                   </div>
                 ))}
               </div>
+              {/* AUX channels */}
+              {displayRcChannels.length > PRIMARY_CHANNEL_COUNT && (
+                <>
+                  <div className="border-t border-gray-700/50 my-2" />
+                  <div className="grid grid-cols-4 gap-2">
+                    {displayRcChannels.slice(PRIMARY_CHANNEL_COUNT).map((value, i) => (
+                      <div key={i + PRIMARY_CHANNEL_COUNT} className="space-y-0.5">
+                        <div className="flex justify-between">
+                          <span className="text-[11px] text-gray-500">{getChannelName(i + PRIMARY_CHANNEL_COUNT, 'msp')}</span>
+                          <span className="text-[10px] text-gray-500 font-mono">{value}</span>
+                        </div>
+                        <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500/70 transition-all"
+                            style={{ width: `${((value - 1000) / 1000) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Motors */}

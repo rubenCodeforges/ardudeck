@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryState, AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState } from '../../shared/telemetry-types';
+import type { TelemetryState, AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../../shared/telemetry-types';
 
 /** Batch telemetry update - all fields optional */
 export interface TelemetryBatch {
@@ -9,6 +9,7 @@ export interface TelemetryBatch {
   battery?: BatteryData;
   vfrHud?: VfrHudData;
   flight?: FlightState;
+  rcChannels?: RcChannelsData;
 }
 
 interface TelemetryStore extends TelemetryState {
@@ -30,6 +31,7 @@ const initialState: TelemetryState = {
   lastGps: 0,
   lastBattery: 0,
   lastVfrHud: 0,
+  lastRcChannels: 0,
 
   attitude: { roll: 0, pitch: 0, yaw: 0, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0 },
   position: { lat: 0, lon: 0, alt: 0, relativeAlt: 0, vx: 0, vy: 0, vz: 0 },
@@ -37,6 +39,7 @@ const initialState: TelemetryState = {
   battery: { voltage: 0, current: 0, remaining: 0 },
   vfrHud: { airspeed: 0, groundspeed: 0, heading: 0, throttle: 0, alt: 0, climb: 0 },
   flight: { mode: 'Unknown', modeNum: 0, armed: false, isFlying: false },
+  rcChannels: { channels: [], chancount: 0, rssi: 0 },
 };
 
 export const useTelemetryStore = create<TelemetryStore>((set) => ({
@@ -78,6 +81,10 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
     if (batch.flight) {
       updates.flight = batch.flight;
       updates.lastHeartbeat = now;
+    }
+    if (batch.rcChannels) {
+      updates.rcChannels = batch.rcChannels;
+      updates.lastRcChannels = now;
     }
 
     set(updates);

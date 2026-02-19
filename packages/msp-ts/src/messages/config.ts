@@ -426,7 +426,7 @@ export function deserializeModeRanges(payload: Uint8Array): MSPModeRange[] {
  *
  * Note: SET_MODE_RANGE sets one range at a time, index is prepended
  */
-export function serializeModeRange(index: number, mode: MSPModeRange): Uint8Array {
+export function serializeModeRange(index: number, mode: MSPModeRange, isInav = false): Uint8Array {
   const builder = new PayloadBuilder();
 
   builder.writeU8(index);
@@ -434,8 +434,12 @@ export function serializeModeRange(index: number, mode: MSPModeRange): Uint8Arra
   builder.writeU8(mode.auxChannel);
   builder.writeU8(Math.round((mode.rangeStart - 900) / 25));
   builder.writeU8(Math.round((mode.rangeEnd - 900) / 25));
-  builder.writeU8(mode.modeLogic ?? 0);
-  builder.writeU8(mode.linkedTo ?? 0);
+
+  // iNav expects exactly 5 bytes - modeLogic/linkedTo are Betaflight-only extensions
+  if (!isInav) {
+    builder.writeU8(mode.modeLogic ?? 0);
+    builder.writeU8(mode.linkedTo ?? 0);
+  }
 
   return builder.build();
 }
@@ -2486,23 +2490,63 @@ export const SERIALRX_PROVIDER_NAMES: Record<number, string> = {
   15: 'MSP',
 };
 
+/**
+ * iNav receiver_type enum values (byte 23 of MSP_RX_CONFIG)
+ */
+export const INAV_RECEIVER_TYPE_NAMES: Record<number, string> = {
+  0: 'NONE',
+  1: 'SERIAL',
+  2: 'MSP',
+  3: 'SIM (SITL)',
+};
+
 export interface MSPRxConfig {
   serialrxProvider: number;
   serialrxProviderName: string;
+  /**
+   * iNav receiver_type (byte 23). Only present on iNav boards (payload >= 24 bytes).
+   * 0=NONE, 1=SERIAL, 2=MSP, 3=SIM(SITL)
+   */
+  receiverType: number | null;
+  receiverTypeName: string | null;
   /** Raw payload bytes - needed for read-modify-write via MSP_SET_RX_CONFIG */
   rawPayload: Uint8Array;
 }
 
 /**
  * Deserialize MSP_RX_CONFIG (44) response
- * Keeps the raw payload for read-modify-write pattern
+ *
+ * Byte layout (from iNav Configurator MSPHelper.js):
+ *   0:  serialrx_provider (U8)
+ *   1:  maxcheck (U16 LE)
+ *   3:  midrc (U16 LE)
+ *   5:  mincheck (U16 LE)
+ *   7:  spektrum_sat_bind (U8)
+ *   8:  rx_min_usec (U16 LE)
+ *  10:  rx_max_usec (U16 LE)
+ *  12:  4 null bytes (BF compat padding)
+ *  16:  spirx_protocol (U8)
+ *  17:  spirx_id (U32 LE)
+ *  21:  spirx_channel_count (U8)
+ *  22:  1 unused byte (fpvCamAngleDegrees, BF compat)
+ *  23:  receiver_type (U8) — iNav only
  */
 export function deserializeRxConfig(payload: Uint8Array): MSPRxConfig {
   const serialrxProvider = payload.length > 0 ? payload[0]! : 0;
 
+  // receiver_type is at byte 23 (iNav only, payload must be >= 24 bytes)
+  let receiverType: number | null = null;
+  let receiverTypeName: string | null = null;
+  if (payload.length >= 24) {
+    receiverType = payload[23]!;
+    receiverTypeName = INAV_RECEIVER_TYPE_NAMES[receiverType] ?? 'UNKNOWN';
+  }
+
   return {
     serialrxProvider,
     serialrxProviderName: SERIALRX_PROVIDER_NAMES[serialrxProvider] ?? 'UNKNOWN',
+    receiverType,
+    receiverTypeName,
     rawPayload: new Uint8Array(payload),
   };
 }
@@ -2510,10 +2554,189 @@ export function deserializeRxConfig(payload: Uint8Array): MSPRxConfig {
 /**
  * Serialize MSP_SET_RX_CONFIG (45) payload
  * Uses the read-modify-write pattern: takes the original raw payload
- * and replaces byte 0 (serialrx_provider) with the new value
+ * and replaces byte 0 (serialrx_provider) and optionally byte 23 (receiver_type)
  */
-export function serializeRxConfig(originalPayload: Uint8Array, newSerialrxProvider: number): Uint8Array {
+export function serializeRxConfig(
+  originalPayload: Uint8Array,
+  newSerialrxProvider: number,
+  newReceiverType?: number,
+): Uint8Array {
   const payload = new Uint8Array(originalPayload);
   payload[0] = newSerialrxProvider;
+  if (newReceiverType !== undefined && payload.length >= 24) {
+    payload[23] = newReceiverType;
+  }
   return payload;
+}
+
+// =============================================================================
+// Serial Port Configuration (MSP2_COMMON_CF_SERIAL_CONFIG 0x1009 / 0x100A)
+// =============================================================================
+
+/**
+ * Serial port function bit positions in the functionMask.
+ * Each function is represented by (1 << bit).
+ */
+export const SERIAL_FUNCTION_BIT = {
+  MSP: 0,
+  GPS: 1,
+  TELEMETRY_FRSKY: 2,
+  TELEMETRY_HOTT: 3,
+  TELEMETRY_LTM: 4,
+  TELEMETRY_SMARTPORT: 5,
+  RX_SERIAL: 6,
+  BLACKBOX: 7,
+  TELEMETRY_MAVLINK: 8,
+  TELEMETRY_IBUS: 9,
+  RUNCAM_DEVICE_CONTROL: 10,
+  TBS_SMARTAUDIO: 11,
+  IRC_TRAMP: 12,
+  OPFLOW: 14,
+  LOG: 15,
+  RANGEFINDER: 16,
+  VTX_FFPV: 17,
+  ESC: 18,
+  GSM_SMS: 19,
+  FRSKY_OSD: 20,
+  DJI_FPV: 21,
+  SBUS_OUTPUT: 22,
+  SMARTPORT_MASTER: 23,
+  MSP_DISPLAYPORT: 25,
+  GIMBAL: 26,
+  HEADTRACKER: 27,
+} as const;
+
+export const BAUD_RATES = [
+  'AUTO', '1200', '2400', '4800', '9600', '19200', '38400',
+  '57600', '115200', '230400', '250000', '460800', '921600',
+] as const;
+
+export interface MSPSerialPort {
+  identifier: number;         // 0-7=UART1-8, 20=USB VCP, 30-31=SOFTSERIAL
+  functionMask: number;       // bitmask using SERIAL_FUNCTION_BIT
+  mspBaudrate: number;        // index into BAUD_RATES
+  sensorsBaudrate: number;    // index into BAUD_RATES
+  telemetryBaudrate: number;  // index into BAUD_RATES
+  peripheralsBaudrate: number; // index into BAUD_RATES
+}
+
+export interface MSPSerialConfig {
+  ports: MSPSerialPort[];
+}
+
+/**
+ * Get human-readable port name from identifier.
+ */
+export function getSerialPortName(identifier: number): string {
+  if (identifier === 20) return 'USB VCP';
+  if (identifier === 30) return 'SOFTSERIAL1';
+  if (identifier === 31) return 'SOFTSERIAL2';
+  if (identifier >= 0 && identifier <= 7) return `UART${identifier + 1}`;
+  return `PORT${identifier}`;
+}
+
+/**
+ * Convert functionMask bitmask to an array of function names.
+ */
+export function maskToFunctions(mask: number): string[] {
+  const fns: string[] = [];
+  for (const [name, bit] of Object.entries(SERIAL_FUNCTION_BIT)) {
+    if (mask & (1 << bit)) fns.push(name);
+  }
+  return fns;
+}
+
+/**
+ * Convert array of function names to a bitmask.
+ */
+export function functionsToMask(fns: string[]): number {
+  let mask = 0;
+  for (const fn of fns) {
+    const bit = (SERIAL_FUNCTION_BIT as Record<string, number>)[fn];
+    if (bit !== undefined) mask |= (1 << bit);
+  }
+  return mask;
+}
+
+/**
+ * Deserialize MSP2_COMMON_CF_SERIAL_CONFIG (0x1009) response.
+ * 9 bytes per port: U8 identifier + U32LE functionMask + 4x U8 baud indices
+ */
+export function deserializeSerialConfig(payload: Uint8Array): MSPSerialConfig {
+  const BYTES_PER_PORT = 9;
+  const portCount = Math.floor(payload.length / BYTES_PER_PORT);
+  const ports: MSPSerialPort[] = [];
+
+  for (let i = 0; i < portCount; i++) {
+    const offset = i * BYTES_PER_PORT;
+    const identifier = payload[offset] ?? 0;
+    const functionMask =
+      (payload[offset + 1] ?? 0) |
+      ((payload[offset + 2] ?? 0) << 8) |
+      ((payload[offset + 3] ?? 0) << 16) |
+      ((payload[offset + 4] ?? 0) << 24);
+    const mspBaudrate = payload[offset + 5] ?? 0;
+    const sensorsBaudrate = payload[offset + 6] ?? 0;
+    const telemetryBaudrate = payload[offset + 7] ?? 0;
+    const peripheralsBaudrate = payload[offset + 8] ?? 0;
+
+    ports.push({
+      identifier,
+      functionMask,
+      mspBaudrate,
+      sensorsBaudrate,
+      telemetryBaudrate,
+      peripheralsBaudrate,
+    });
+  }
+
+  return { ports };
+}
+
+/**
+ * Serialize serial config for MSP2_COMMON_SET_CF_SERIAL_CONFIG (0x100A).
+ */
+export function serializeSerialConfig(config: MSPSerialConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  for (const port of config.ports) {
+    builder.writeU8(port.identifier);
+    builder.writeU32(port.functionMask);
+    builder.writeU8(port.mspBaudrate);
+    builder.writeU8(port.sensorsBaudrate);
+    builder.writeU8(port.telemetryBaudrate);
+    builder.writeU8(port.peripheralsBaudrate);
+  }
+
+  return builder.build();
+}
+
+// =============================================================================
+// RC Deadband (MSP_RC_DEADBAND 125 / MSP_SET_RC_DEADBAND 218)
+// =============================================================================
+
+export interface MSPRcDeadband {
+  deadband: number;            // 0-100 roll/pitch deadband
+  yawDeadband: number;         // 0-100 yaw deadband
+  altHoldDeadband: number;     // altitude hold throttle deadband
+  deadbandThrottle: number;    // reversible motors throttle deadband (U16)
+}
+
+export function deserializeRcDeadband(payload: Uint8Array): MSPRcDeadband {
+  const reader = new PayloadReader(payload);
+  return {
+    deadband: reader.readU8(),
+    yawDeadband: reader.readU8(),
+    altHoldDeadband: reader.readU8(),
+    deadbandThrottle: reader.readU16(),
+  };
+}
+
+export function serializeRcDeadband(config: MSPRcDeadband): Uint8Array {
+  const builder = new PayloadBuilder();
+  builder.writeU8(config.deadband);
+  builder.writeU8(config.yawDeadband);
+  builder.writeU8(config.altHoldDeadband);
+  builder.writeU16(config.deadbandThrottle);
+  return builder.build();
 }

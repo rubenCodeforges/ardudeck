@@ -30,21 +30,6 @@ export function AppShell({ children }: AppShellProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-6">
-          {/* Stats */}
-          {connectionState.isConnected && (
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2 text-gray-400">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-                <span>RX: <span className="text-gray-200">{connectionState.packetsReceived}</span></span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <span>TX: <span className="text-gray-200">{connectionState.packetsSent}</span></span>
-              </div>
-            </div>
-          )}
-
           {/* Version badge */}
           {currentVersion && (
             <button

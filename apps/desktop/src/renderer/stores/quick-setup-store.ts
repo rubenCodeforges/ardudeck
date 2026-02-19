@@ -60,6 +60,7 @@ interface QuickSetupState {
 
   // RC state (for transmitter check)
   rcChannels: number[];
+  rcChannelBaseline: number[] | null;
   isPollingRc: boolean;
   rcPollInterval: ReturnType<typeof setInterval> | null;
   transmitterConfirmed: boolean;
@@ -104,6 +105,7 @@ interface QuickSetupState {
   stopRcPolling: () => void;
   updateRcChannels: (channels: number[]) => void;
   setTransmitterConfirmed: (confirmed: boolean) => void;
+  resetChannelDetection: () => void;
 
   // Actions - Apply
   applyPreset: () => Promise<boolean>;
@@ -147,10 +149,11 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
   selectedPreset: null,
 
   rcChannels: Array(16).fill(1500),
+  rcChannelBaseline: null,
   isPollingRc: false,
   rcPollInterval: null,
   transmitterConfirmed: false,
-  channelsDetected: Array(8).fill(false),
+  channelsDetected: Array(16).fill(false),
 
   isApplying: false,
   applyProgress: DEFAULT_PROGRESS,
@@ -197,7 +200,8 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
       selectedVehicle: null,
       selectedPreset: null,
       transmitterConfirmed: false,
-      channelsDetected: Array(8).fill(false),
+      channelsDetected: Array(16).fill(false),
+      rcChannelBaseline: null,
       applyError: null,
       applySuccess: false,
       applyProgress: DEFAULT_PROGRESS,
@@ -223,10 +227,11 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
       selectedVehicle: null,
       selectedPreset: null,
       rcChannels: Array(16).fill(1500),
+      rcChannelBaseline: null,
       isPollingRc: false,
       rcPollInterval: null,
       transmitterConfirmed: false,
-      channelsDetected: Array(8).fill(false),
+      channelsDetected: Array(16).fill(false),
       isApplying: false,
       applyProgress: DEFAULT_PROGRESS,
       applyError: null,
@@ -334,13 +339,26 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
   },
 
   updateRcChannels: (channels) => {
-    const { channelsDetected } = get();
+    // Guard: ignore empty responses (no receiver connected still needs bars visible)
+    if (!channels || channels.length === 0) return;
+
+    const { channelsDetected, rcChannelBaseline } = get();
+
+    // Capture baseline from first reading — FC outputs failsafe/default values
+    // even when TX is off, so we compare against baseline, not fixed 1500
+    if (!rcChannelBaseline) {
+      set({ rcChannels: channels, rcChannelBaseline: [...channels] });
+      return;
+    }
+
     const newDetected = [...channelsDetected];
 
-    // Detect significant movement
-    for (let i = 0; i < Math.min(channels.length, 8); i++) {
-      const delta = Math.abs(channels[i]! - 1500);
-      if (delta > 100) {
+    // Detect significant movement FROM BASELINE (not from 1500)
+    // This prevents false detection from FC failsafe values when TX is off
+    for (let i = 0; i < Math.min(channels.length, 16); i++) {
+      const baseline = rcChannelBaseline[i] ?? 1500;
+      const delta = Math.abs(channels[i]! - baseline);
+      if (delta > 50) {
         newDetected[i] = true;
       }
     }
@@ -349,6 +367,9 @@ export const useQuickSetupStore = create<QuickSetupState>((set, get) => ({
   },
 
   setTransmitterConfirmed: (confirmed) => set({ transmitterConfirmed: confirmed }),
+
+  resetChannelDetection: () =>
+    set({ channelsDetected: Array(16).fill(false), rcChannelBaseline: null, transmitterConfirmed: false }),
 
   // ============================================================================
   // Apply Actions

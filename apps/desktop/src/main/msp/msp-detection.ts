@@ -51,6 +51,7 @@ export async function tryMspDetection(
     if (!ctx.mspParser) return;
     const packets = ctx.mspParser.parseSync(data);
     for (const packet of packets) {
+      ctx.mspPacketsReceived++;
       if (packet.direction === 'response') {
         handleMspResponse(packet.command, packet.payload);
       } else if (packet.direction === 'error') {

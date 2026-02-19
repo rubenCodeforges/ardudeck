@@ -264,19 +264,55 @@ export async function getOsdConfig(): Promise<OsdConfigData | null> {
 // RX Config
 // =============================================================================
 
-export async function getRxConfig(): Promise<MSPRxConfig | null> {
+/** Extended RX config with iNav receiver_type (byte 23) */
+export interface RxConfigResult {
+  serialrxProvider: number;
+  serialrxProviderName: string;
+  receiverType: number | null;
+  receiverTypeName: string | null;
+  rawPayload: Uint8Array;
+}
+
+// iNav receiver_type enum (byte 23 of RX_CONFIG)
+const RECEIVER_TYPE_NAMES: Record<number, string> = {
+  0: 'NONE', 1: 'SERIAL', 2: 'MSP', 3: 'SIM (SITL)',
+};
+
+export async function getRxConfig(): Promise<RxConfigResult | null> {
   if (!ctx.currentTransport?.isOpen) return null;
 
   return withConfigLock(async () => {
     try {
       const response = await sendMspRequest(MSP.RX_CONFIG, 2000);
-      const config = deserializeRxConfig(response);
+      const base = deserializeRxConfig(response);
+
+      // Parse receiver_type from byte 23 (iNav only, payload >= 24 bytes)
+      let receiverType: number | null = null;
+      let receiverTypeName: string | null = null;
+      if (base.rawPayload.length >= 24) {
+        const rt = base.rawPayload[23];
+        if (rt !== undefined) {
+          receiverType = rt;
+          receiverTypeName = RECEIVER_TYPE_NAMES[rt] ?? 'UNKNOWN';
+        }
+      }
+
+      const result: RxConfigResult = {
+        serialrxProvider: base.serialrxProvider,
+        serialrxProviderName: base.serialrxProviderName,
+        receiverType,
+        receiverTypeName,
+        rawPayload: base.rawPayload,
+      };
+
       console.log('[MSP] RX_CONFIG:', {
-        serialrxProvider: config.serialrxProvider,
-        serialrxProviderName: config.serialrxProviderName,
-        payloadLength: config.rawPayload.length,
+        serialrxProvider: result.serialrxProvider,
+        serialrxProviderName: result.serialrxProviderName,
+        receiverType: result.receiverType,
+        receiverTypeName: result.receiverTypeName,
+        payloadLength: result.rawPayload.length,
       });
-      return config;
+      return result;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (!msg.includes('not supported')) {
@@ -287,7 +323,7 @@ export async function getRxConfig(): Promise<MSPRxConfig | null> {
   });
 }
 
-export async function setRxConfig(newProvider: number): Promise<boolean> {
+export async function setRxConfig(newProvider: number, newReceiverType?: number): Promise<boolean> {
   if (!ctx.currentTransport?.isOpen) return false;
 
   return withConfigLock(async () => {
@@ -298,11 +334,16 @@ export async function setRxConfig(newProvider: number): Promise<boolean> {
       console.log('[MSP] RX_CONFIG read for modify:', {
         currentProvider: currentConfig.serialrxProviderName,
         newProvider: SERIALRX_PROVIDER_NAMES[newProvider] ?? newProvider,
+        newReceiverType,
         payloadLength: currentConfig.rawPayload.length,
       });
 
-      // Step 2: Modify serialrx_provider (byte 0) in the raw payload
+      // Step 2: Modify serialrx_provider (byte 0) and optionally receiver_type (byte 23)
       const newPayload = serializeRxConfig(currentConfig.rawPayload, newProvider);
+      // serializeRxConfig in compiled msp-ts may not support byte 23 — write it directly
+      if (newReceiverType !== undefined && newPayload.length >= 24) {
+        newPayload[23] = newReceiverType;
+      }
 
       // Step 3: Write back via MSP_SET_RX_CONFIG (45)
       await sendMspRequestWithPayload(MSP.SET_RX_CONFIG, newPayload, 2000);

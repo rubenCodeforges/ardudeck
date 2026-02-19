@@ -59,6 +59,12 @@ export interface FlightState {
   activeSensors?: number;
 }
 
+export interface RcChannelsData {
+  channels: number[];   // up to 18 channels, raw PWM values (800-2200)
+  chancount: number;    // number of active channels
+  rssi: number;         // 0-255
+}
+
 export interface TelemetryState {
   // Last update timestamps
   lastHeartbeat: number;
@@ -67,6 +73,7 @@ export interface TelemetryState {
   lastGps: number;
   lastBattery: number;
   lastVfrHud: number;
+  lastRcChannels: number;
 
   // Data
   attitude: AttitudeData;
@@ -75,6 +82,7 @@ export interface TelemetryState {
   battery: BatteryData;
   vfrHud: VfrHudData;
   flight: FlightState;
+  rcChannels: RcChannelsData;
 }
 
 // Flight modes for ArduPilot Copter

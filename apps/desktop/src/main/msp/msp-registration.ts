@@ -35,6 +35,7 @@ import { getMotorMixer, setMotorMixer, setMotorMixerRulesViaCli, setServoMixerRu
 import { getWaypoints, setWaypoint, uploadWaypoints, saveWaypoints, clearWaypoints, getMissionInfo } from './msp-navigation.js';
 import { getNavConfig, setNavConfig, getGpsConfig, setGpsConfig } from './msp-navigation.js';
 import { getFailsafeConfig, setFailsafeConfig, getGpsRescueConfig, setGpsRescueConfig, getGpsRescuePids, setGpsRescuePids, getFilterConfig, setFilterConfig, getVtxConfig, setVtxConfig, getOsdConfig, getRxConfig, setRxConfig } from './msp-peripheral-config.js';
+import { getSerialConfig, setSerialConfig, getRxMap, setRxMap, getRcDeadband, setRcDeadband } from './msp-serial-config.js';
 import { getSetting, setSetting, getSettings, setSettings } from './msp-settings.js';
 import { saveEeprom, calibrateAcc, calibrateMag, reboot, resetMspCliFlags } from './msp-commands.js';
 import { cleanupMspConnection } from './msp-cleanup.js';
@@ -136,7 +137,19 @@ export function registerMspHandlers(window: BrowserWindow): void {
 
   // RX configuration
   ipcMain.handle(IPC_CHANNELS.MSP_GET_RX_CONFIG, async () => getRxConfig());
-  ipcMain.handle(IPC_CHANNELS.MSP_SET_RX_CONFIG, async (_event, newProvider: number) => setRxConfig(newProvider));
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_RX_CONFIG, async (_event, newProvider: number, newReceiverType?: number) => setRxConfig(newProvider, newReceiverType));
+
+  // Serial port configuration
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_SERIAL_CONFIG, async () => getSerialConfig());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_SERIAL_CONFIG, async (_event, config: import('@ardudeck/msp-ts').MSPSerialConfig) => setSerialConfig(config));
+
+  // RX Map (channel mapping)
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_RX_MAP, async () => getRxMap());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_RX_MAP, async (_event, map: number[]) => setRxMap(map));
+
+  // RC Deadband
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_RC_DEADBAND, async () => getRcDeadband());
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_RC_DEADBAND, async (_event, config: import('@ardudeck/msp-ts').MSPRcDeadband) => setRcDeadband(config));
 
   // Generic settings API (read/write any CLI setting via MSP)
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTING, async (_event, name: string) => getSetting(name));
@@ -251,6 +264,18 @@ export function unregisterMspHandlers(): void {
   // RX config handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_RX_CONFIG);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_RX_CONFIG);
+
+  // Serial port config handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERIAL_CONFIG);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERIAL_CONFIG);
+
+  // RX Map handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_RX_MAP);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_RX_MAP);
+
+  // RC Deadband handlers
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_RC_DEADBAND);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_RC_DEADBAND);
 
   // Generic settings API
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTING);

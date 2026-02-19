@@ -25,6 +25,7 @@ export const IPC_CHANNELS = {
   // Telemetry
   TELEMETRY_UPDATE: 'telemetry:update',
   TELEMETRY_BATCH: 'telemetry:batch', // Batched telemetry update for performance
+  MSP_PACKET_COUNTS: 'msp:packet-counts', // MSP RX/TX packet counters for toolbar
 
   // Layout management
   LAYOUT_GET_ALL: 'layout:get-all',
@@ -201,6 +202,18 @@ export const IPC_CHANNELS = {
   // MSP RX Configuration
   MSP_GET_RX_CONFIG: 'msp:get-rx-config',
   MSP_SET_RX_CONFIG: 'msp:set-rx-config',
+
+  // MSP Serial Port Configuration
+  MSP_GET_SERIAL_CONFIG: 'msp:get-serial-config',
+  MSP_SET_SERIAL_CONFIG: 'msp:set-serial-config',
+
+  // MSP RX Map (channel mapping)
+  MSP_GET_RX_MAP: 'msp:get-rx-map',
+  MSP_SET_RX_MAP: 'msp:set-rx-map',
+
+  // MSP RC Deadband
+  MSP_GET_RC_DEADBAND: 'msp:get-rc-deadband',
+  MSP_SET_RC_DEADBAND: 'msp:set-rc-deadband',
 
   // MSP Generic Settings API (read/write any CLI setting via MSP)
   MSP_GET_SETTING: 'msp:get-setting',

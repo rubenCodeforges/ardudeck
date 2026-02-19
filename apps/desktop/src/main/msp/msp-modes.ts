@@ -15,6 +15,7 @@ import {
   serializeFeatureConfig,
   deserializeStatus,
   deserializeInavStatus,
+  boxNamesFromBoxIds,
   type MSPModeRange,
 } from '@ardudeck/msp-ts';
 import { ctx } from './msp-context.js';
@@ -54,11 +55,37 @@ export async function getModeRanges(): Promise<MSPModeRange[] | null> {
 export async function getBoxNames(): Promise<string[] | null> {
   if (!ctx.currentTransport?.isOpen) return null;
 
+  // Use telemetry-cached box names if already available (avoids duplicate fetch)
+  if (ctx.cachedBoxNames.length > 0) {
+    return [...ctx.cachedBoxNames];
+  }
+
   return withConfigLock(async () => {
+    // Re-check after acquiring lock - telemetry may have cached them while we waited
+    if (ctx.cachedBoxNames.length > 0) {
+      return [...ctx.cachedBoxNames];
+    }
+
+    // iNav: use BOXIDS + static lookup (BOXNAMES response too large for v1)
+    if (ctx.isInavFirmware) {
+      try {
+        const boxIds = await fetchBoxIdsForNames();
+        if (boxIds) return boxIds;
+      } catch (error) {
+        if (!isCliModeBlockedError(error)) {
+          console.error('[MSP] iNav BOXIDS+lookup failed, falling back to BOXNAMES:', error);
+        }
+      }
+    }
+
+    // Betaflight or iNav fallback: use MSP_BOXNAMES
     try {
-      // Use MSPv2: BOXNAMES response can exceed 255 bytes (MSPv1 max) on modern boards
-      const payload = await sendMspV2Request(MSP.BOXNAMES, 2000);
-      return deserializeBoxNames(payload);
+      const payload = await sendMspRequest(MSP.BOXNAMES, 2000);
+      const names = deserializeBoxNames(payload);
+      if (names.length > 0) {
+        ctx.cachedBoxNames = names;
+      }
+      return names;
     } catch (error) {
       if (!isCliModeBlockedError(error)) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -69,14 +96,39 @@ export async function getBoxNames(): Promise<string[] | null> {
   });
 }
 
+/** Fetch BOXIDS and resolve names via static flight mode table */
+async function fetchBoxIdsForNames(): Promise<string[] | null> {
+  const payload = await sendMspRequest(MSP.BOXIDS, 2000);
+  const ids = deserializeBoxIds(payload);
+  if (ids.length === 0) return null;
+  ctx.cachedBoxIds = ids;
+  const names = boxNamesFromBoxIds(ids);
+  ctx.cachedBoxNames = names;
+  console.log('[MSP] Box names from BOXIDS+lookup:', names.length, 'names:', names.slice(0, 10).join(', '));
+  return names;
+}
+
 export async function getBoxIds(): Promise<number[] | null> {
   if (!ctx.currentTransport?.isOpen) return null;
 
+  // Use cached box IDs if available
+  if (ctx.cachedBoxIds.length > 0) {
+    return [...ctx.cachedBoxIds];
+  }
+
   return withConfigLock(async () => {
+    if (ctx.cachedBoxIds.length > 0) {
+      return [...ctx.cachedBoxIds];
+    }
     try {
-      // Use MSPv2: BOXIDS response can be large on modern boards
-      const payload = await sendMspV2Request(MSP.BOXIDS, 2000);
-      return deserializeBoxIds(payload);
+      // Use v1 framing - matches iNav/Betaflight configurator reference implementations
+      // BOXIDS response is 1 byte per ID (~50 bytes), well within v1's 255-byte limit
+      const payload = await sendMspRequest(MSP.BOXIDS, 2000);
+      const ids = deserializeBoxIds(payload);
+      if (ids.length > 0) {
+        ctx.cachedBoxIds = ids;
+      }
+      return ids;
     } catch (error) {
       if (!isCliModeBlockedError(error)) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -99,7 +151,7 @@ export async function setModeRange(index: number, mode: MSPModeRange): Promise<b
 
   const mspSuccess = await withConfigLock(async () => {
     try {
-      const payload = serializeModeRange(index, mode);
+      const payload = serializeModeRange(index, mode, ctx.isInavFirmware);
       if (mode.rangeEnd > mode.rangeStart) {
         ctx.sendLog('info', `Setting mode ${index}: boxId=${mode.boxId} aux=${mode.auxChannel} range=${mode.rangeStart}-${mode.rangeEnd}`);
       }

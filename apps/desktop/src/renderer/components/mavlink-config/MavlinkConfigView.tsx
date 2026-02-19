@@ -31,6 +31,8 @@ import {
   Loader2,
   Navigation,
   Car,
+  Radio,
+  Cable,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -43,6 +45,8 @@ import TuningTab from './TuningTab';
 import BatteryTab from './BatteryTab';
 import ParameterTable from './ParameterTable';
 import RoverTuningTab from './RoverTuningTab';
+import ReceiverTab from './ReceiverTab';
+import SerialPortsTab from './SerialPortsTab';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -51,7 +55,7 @@ interface Toast {
   type: ToastType;
 }
 
-type TabId = 'pid' | 'rates' | 'modes' | 'safety' | 'sensors' | 'tuning' | 'battery' | 'parameters' | 'rover-tuning' | 'rover-nav';
+type TabId = 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'safety' | 'sensors' | 'tuning' | 'battery' | 'parameters' | 'rover-tuning' | 'rover-nav';
 
 interface Tab {
   id: TabId;
@@ -86,6 +90,18 @@ const AIRCRAFT_TABS: Tab[] = [
     name: 'Flight Modes',
     icon: <Settings className="w-5 h-5" />,
     description: 'Configure your transmitter switch positions',
+  },
+  {
+    id: 'receiver',
+    name: 'Receiver',
+    icon: <Radio className="w-5 h-5" />,
+    description: 'RC receiver protocol and live channel monitor',
+  },
+  {
+    id: 'serial-ports',
+    name: 'Serial Ports',
+    icon: <Cable className="w-5 h-5" />,
+    description: 'Configure serial port protocols and baud rates',
   },
   {
     id: 'safety',
@@ -139,6 +155,18 @@ const ROVER_TABS: Tab[] = [
     name: 'Drive Modes',
     icon: <Settings className="w-5 h-5" />,
     description: 'Configure your transmitter switch positions',
+  },
+  {
+    id: 'receiver',
+    name: 'Receiver',
+    icon: <Radio className="w-5 h-5" />,
+    description: 'RC receiver protocol and live channel monitor',
+  },
+  {
+    id: 'serial-ports',
+    name: 'Serial Ports',
+    icon: <Cable className="w-5 h-5" />,
+    description: 'Configure serial port protocols and baud rates',
   },
   {
     id: 'safety',
@@ -243,6 +271,10 @@ export const MavlinkConfigView: React.FC = () => {
       // Shared tabs
       case 'modes':
         return <FlightModesTab isRover={isRover} />;
+      case 'receiver':
+        return <ReceiverTab />;
+      case 'serial-ports':
+        return <SerialPortsTab />;
       case 'safety':
         return <SafetyTab />;
       case 'sensors':
@@ -305,6 +337,8 @@ export const MavlinkConfigView: React.FC = () => {
             // Color coding for different tab types
             const colorClass = tab.id === 'pid' || tab.id === 'rates' ? 'blue'
               : tab.id === 'modes' ? 'purple'
+              : tab.id === 'receiver' ? 'teal'
+              : tab.id === 'serial-ports' ? 'sky'
               : tab.id === 'safety' ? 'amber'
               : tab.id === 'sensors' ? 'cyan'
               : tab.id === 'tuning' ? 'emerald'
@@ -320,6 +354,8 @@ export const MavlinkConfigView: React.FC = () => {
                   isActive
                     ? colorClass === 'blue' ? 'text-blue-400 border-blue-400 bg-blue-500/5'
                     : colorClass === 'purple' ? 'text-purple-400 border-purple-400 bg-purple-500/5'
+                    : colorClass === 'teal' ? 'text-teal-400 border-teal-400 bg-teal-500/5'
+                    : colorClass === 'sky' ? 'text-sky-400 border-sky-400 bg-sky-500/5'
                     : colorClass === 'amber' ? 'text-amber-400 border-amber-400 bg-amber-500/5'
                     : colorClass === 'cyan' ? 'text-cyan-400 border-cyan-400 bg-cyan-500/5'
                     : colorClass === 'emerald' ? 'text-emerald-400 border-emerald-400 bg-emerald-500/5'
@@ -331,6 +367,8 @@ export const MavlinkConfigView: React.FC = () => {
                 <span className={isActive
                   ? colorClass === 'blue' ? 'text-blue-400'
                   : colorClass === 'purple' ? 'text-purple-400'
+                  : colorClass === 'teal' ? 'text-teal-400'
+                  : colorClass === 'sky' ? 'text-sky-400'
                   : colorClass === 'amber' ? 'text-amber-400'
                   : colorClass === 'cyan' ? 'text-cyan-400'
                   : colorClass === 'emerald' ? 'text-emerald-400'

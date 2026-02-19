@@ -27,14 +27,19 @@ export function isCliModeBlockedError(error: unknown): boolean {
 /**
  * Acquire the request mutex. Returns a release function.
  * Ensures only one MSP request is in-flight at a time.
+ *
+ * Uses capture-then-wait pattern: the new mutex promise is set BEFORE
+ * awaiting the old one, so concurrent callers see different (unresolved)
+ * promises and properly queue behind each other.
  */
 export async function acquireMutex(): Promise<() => void> {
-  await ctx.requestMutex;
-
   let release: () => void;
+  const previousMutex = ctx.requestMutex;
   ctx.requestMutex = new Promise(resolve => {
     release = resolve;
   });
+
+  await previousMutex;
 
   return release!;
 }
@@ -73,6 +78,7 @@ export async function sendMspRequest(command: number, timeout: number = 1000): P
 
     const packet = buildMspV1Request(command);
     await ctx.currentTransport.write(packet);
+    ctx.mspPacketsSent++;
 
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
@@ -105,6 +111,7 @@ export async function sendMspRequestWithPayload(command: number, payload: Uint8A
 
     const packet = buildMspV1RequestWithPayload(command, payload);
     await ctx.currentTransport.write(packet);
+    ctx.mspPacketsSent++;
 
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
@@ -140,6 +147,7 @@ export async function sendMspV2Request(command: number, timeout: number = 1000):
 
     const packet = buildMspV2Request(command);
     await ctx.currentTransport.write(packet);
+    ctx.mspPacketsSent++;
 
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
@@ -172,6 +180,7 @@ export async function sendMspV2RequestWithPayload(command: number, payload: Uint
 
     const packet = buildMspV2RequestWithPayload(command, payload);
     await ctx.currentTransport.write(packet);
+    ctx.mspPacketsSent++;
 
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
