@@ -443,7 +443,7 @@ export function ConnectionPanel() {
                   {ports.length === 0 && <option value="">No ports available</option>}
                   {ports.map((port) => (
                     <option key={port.path} value={port.path}>
-                      {port.path} {port.manufacturer && `(${port.manufacturer})`}
+                      {port.friendlyName || `${port.path}${port.manufacturer ? ` (${port.manufacturer})` : ''}`}
                     </option>
                   ))}
                 </select>
