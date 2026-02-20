@@ -175,6 +175,13 @@ jobs:
           name: ${{ env.BUILD_NAME }}-zip
           path: apps/desktop/release/*.zip
 
+      - name: Rename x64 metadata to avoid collision with arm64
+        working-directory: apps/desktop/release
+        run: |
+          for f in latest*.yml; do
+            [ -f "$f" ] && mv "$f" "${f%.yml}-x64.yml"
+          done
+
       - name: Upload macOS update metadata
         uses: actions/upload-artifact@v4
         with:
