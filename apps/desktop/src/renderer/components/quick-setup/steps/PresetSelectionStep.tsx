@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Info,
   Download,
+  Plane as PlaneIcon,
 } from 'lucide-react';
 
 // iNav-only modes that don't exist in Betaflight
@@ -126,7 +127,7 @@ const PresetCard: React.FC<PresetCardProps> = ({ preset, onSelect, needsPlatform
     >
       <div className="flex items-start gap-4">
         {/* Large icon */}
-        <div className="text-4xl">{preset.icon}</div>
+        <div className="w-10 h-10 flex items-center justify-center"><preset.icon className="w-8 h-8 text-zinc-300" /></div>
 
         {/* Content */}
         <div className="flex-1">
@@ -561,7 +562,7 @@ export const PresetSelectionStep: React.FC = () => {
 
   const presets = selectedVehicle === 'multirotor' ? multirotorPresets : fixedWingPresets;
   const vehicleTitle = selectedVehicle === 'multirotor' ? 'Multirotor' : 'Fixed Wing';
-  const vehicleIcon = selectedVehicle === 'multirotor' ? '🚁' : '✈️';
+  const VehicleIcon = selectedVehicle === 'multirotor' ? RotateCcw : PlaneIcon;
 
   return (
     <div className="space-y-6">
@@ -575,7 +576,7 @@ export const PresetSelectionStep: React.FC = () => {
           Change vehicle type
         </button>
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 mb-4">
-          <span className="text-3xl">{vehicleIcon}</span>
+          <VehicleIcon className="w-8 h-8 text-zinc-300" />
         </div>
         <h2 className="text-xl font-semibold text-zinc-100">{vehicleTitle} Presets</h2>
         <p className="text-sm text-zinc-400 mt-2 max-w-md mx-auto">

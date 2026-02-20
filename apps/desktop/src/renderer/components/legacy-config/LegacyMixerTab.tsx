@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { useLegacyConfigStore, type LegacyMotorMix, type LegacyServoMix } from '../../stores/legacy-config-store';
+import { Wrench, Settings, Cog } from 'lucide-react';
 
 // Maximum mixer entries (iNav limits)
 const MAX_MOTOR_MIXERS = 8;
@@ -89,7 +90,7 @@ export default function LegacyMixerTab() {
       {/* Info Banner */}
       <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
         <div className="flex items-start gap-3">
-          <span className="text-2xl">🔧</span>
+          <Wrench className="w-6 h-6 text-amber-400 shrink-0" />
           <div>
             <p className="text-sm text-amber-300 font-medium">Mixer Configuration</p>
             <p className="text-xs text-amber-300/70 mt-1">
@@ -111,7 +112,7 @@ export default function LegacyMixerTab() {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <span className="mr-2">⚙️</span>
+            <Settings className="w-4 h-4 mr-2 inline" />
             Motor Mixer ({motorMixer.length})
           </button>
           <button
@@ -122,7 +123,7 @@ export default function LegacyMixerTab() {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <span className="mr-2">🔩</span>
+            <Cog className="w-4 h-4 mr-2 inline" />
             Servo Mixer ({servoMixer.length})
           </button>
         </div>
@@ -163,7 +164,7 @@ export default function LegacyMixerTab() {
         <div>
           {motorMixer.length === 0 ? (
             <div className="text-center py-12 text-zinc-500">
-              <div className="text-4xl mb-3">⚙️</div>
+              <Settings className="w-10 h-10 text-zinc-500 mb-3 mx-auto" />
               <p>No motor mixer rules found.</p>
               <p className="text-sm mt-1">This is normal for fixed-wing aircraft.</p>
             </div>
@@ -264,7 +265,7 @@ export default function LegacyMixerTab() {
         <div>
           {servoMixer.length === 0 ? (
             <div className="text-center py-12 text-zinc-500">
-              <div className="text-4xl mb-3">🔩</div>
+              <Cog className="w-10 h-10 text-zinc-500 mb-3 mx-auto" />
               <p>No servo mixer rules found.</p>
               <p className="text-sm mt-1">Add rules to control servos from flight controller outputs.</p>
             </div>

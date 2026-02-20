@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Check } from 'lucide-react';
 
 // Storage utilities
 export function loadProfiles<T>(storageKey: string): Record<string, { name: string; data: T }> {
@@ -151,7 +151,7 @@ export function ProfileManager<T>({
                 disabled={!profileName.trim()}
                 className="px-2 py-1.5 text-emerald-400 hover:text-emerald-300 disabled:text-gray-600 transition-colors"
               >
-                ✓
+                <Check className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setShowSaveDialog(false)}

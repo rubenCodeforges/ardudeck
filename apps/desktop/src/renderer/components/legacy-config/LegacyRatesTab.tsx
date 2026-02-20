@@ -8,34 +8,35 @@
 import { useState, useMemo } from 'react';
 import { useLegacyConfigStore } from '../../stores/legacy-config-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
+import { Egg, Drama, Gauge, Film } from 'lucide-react';
 
 // Rate Presets
 const RATE_PRESETS = {
   beginner: {
     name: 'Beginner',
     description: 'Slow & predictable - great for learning',
-    icon: '🐣',
+    icon: Egg,
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     rates: { rcRate: 80, rcExpo: 20, rollRate: 40, pitchRate: 40, yawRate: 40, rcYawExpo: 20 },
   },
   freestyle: {
     name: 'Freestyle',
     description: 'Balanced for tricks & flow',
-    icon: '🎭',
+    icon: Drama,
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     rates: { rcRate: 100, rcExpo: 15, rollRate: 70, pitchRate: 70, yawRate: 65, rcYawExpo: 10 },
   },
   racing: {
     name: 'Racing',
     description: 'Fast & responsive for speed',
-    icon: '🏎️',
+    icon: Gauge,
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     rates: { rcRate: 120, rcExpo: 5, rollRate: 80, pitchRate: 80, yawRate: 70, rcYawExpo: 0 },
   },
   cinematic: {
     name: 'Cinematic',
     description: 'Ultra-smooth for filming',
-    icon: '🎬',
+    icon: Film,
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     rates: { rcRate: 70, rcExpo: 40, rollRate: 30, pitchRate: 30, yawRate: 25, rcYawExpo: 30 },
   },
@@ -238,7 +239,7 @@ export default function LegacyRatesTab() {
               onClick={() => applyPreset(preset)}
               className={`p-3 rounded-lg border bg-gradient-to-br ${preset.color} hover:scale-[1.02] transition-all text-left`}
             >
-              <div className="text-2xl mb-1">{preset.icon}</div>
+              <div className="mb-1"><preset.icon className="w-6 h-6 text-zinc-300 mx-auto" /></div>
               <div className="font-medium text-white text-sm">{preset.name}</div>
               <div className="text-xs text-zinc-400 mt-0.5">{preset.description}</div>
             </button>

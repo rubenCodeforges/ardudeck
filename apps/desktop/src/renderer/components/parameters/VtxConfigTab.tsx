@@ -16,6 +16,8 @@ import {
   CheckCircle,
   XCircle,
   Volume2,
+  Monitor,
+  Hash,
 } from 'lucide-react';
 
 // VTX band names
@@ -214,19 +216,19 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
               </p>
               <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-zinc-500">
                 <div className="flex items-center gap-2">
-                  <span className="text-purple-400">📡</span>
+                  <Radio className="w-3.5 h-3.5 text-purple-400" />
                   <span>Frequency: 5.8GHz band</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-purple-400">⚡</span>
+                  <Zap className="w-3.5 h-3.5 text-purple-400" />
                   <span>Power: 25mW - 800mW</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-purple-400">📺</span>
+                  <Monitor className="w-3.5 h-3.5 text-purple-400" />
                   <span>Bands: A, B, E, F, Raceband</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-purple-400">🔢</span>
+                  <Hash className="w-3.5 h-3.5 text-purple-400" />
                   <span>Channels: 1-8 per band</span>
                 </div>
               </div>

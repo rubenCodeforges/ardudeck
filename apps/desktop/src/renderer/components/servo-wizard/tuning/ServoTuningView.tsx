@@ -11,6 +11,7 @@ import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { ControlSurface, CONTROL_SURFACE_INFO } from '../presets/servo-presets';
 import AircraftDiagram from '../diagrams/AircraftDiagram';
 import ServoTuningCard, { SERVO_COLORS } from './ServoTuningCard';
+import { Settings, Save } from 'lucide-react';
 
 export default function ServoTuningView() {
   const {
@@ -108,7 +109,7 @@ export default function ServoTuningView() {
   if (!selectedPresetId || assignments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center">
-        <div className="text-6xl">⚙️</div>
+        <Settings className="w-16 h-16 text-zinc-500" />
         <div>
           <h2 className="text-xl font-bold text-white mb-2">No Servo Configuration</h2>
           <p className="text-zinc-400">Use the Wizard to configure your servos first.</p>
@@ -231,7 +232,7 @@ export default function ServoTuningView() {
               </>
             ) : (
               <>
-                💾 Save to FC
+                <Save className="w-4 h-4 inline mr-1" /> Save to FC
               </>
             )}
           </button>

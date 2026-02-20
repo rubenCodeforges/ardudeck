@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Compass, Home, PlaneLanding, MapPin, Satellite, AlertTriangle } from 'lucide-react';
 
 // Types matching msp-ts
 interface MSPNavConfig {
@@ -260,7 +261,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
     <div className="space-y-6">
       {/* Header Info */}
       <div className="bg-blue-500/10 rounded-xl border border-blue-500/30 p-4 flex items-start gap-4">
-        <span className="text-2xl">🧭</span>
+        <Compass className="w-6 h-6 text-blue-400" />
         <div>
           <p className="text-blue-400 font-medium">Navigation Settings (iNav) — Autonomous Flight</p>
           <p className="text-sm text-zinc-400 mt-1">
@@ -268,17 +269,17 @@ export default function NavigationTab({ modified, setModified }: Props) {
             like flying home automatically or following a mission.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-zinc-500">
-            <p><span className="text-green-400">🏠 RTH</span> — "Return To Home" flies back to where it took off</p>
-            <p><span className="text-purple-400">📍 Waypoints</span> — Pre-planned GPS points the aircraft will fly to</p>
-            <p><span className="text-amber-400">🛬 Landing</span> — How fast/slow it comes down after RTH</p>
-            <p><span className="text-blue-400">🛰️ GPS</span> — Satellite settings (usually leave on Auto)</p>
+            <p><span className="text-green-400 inline-flex items-center gap-1"><Home className="w-3.5 h-3.5" /> RTH</span> — "Return To Home" flies back to where it took off</p>
+            <p><span className="text-purple-400 inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Waypoints</span> — Pre-planned GPS points the aircraft will fly to</p>
+            <p><span className="text-amber-400 inline-flex items-center gap-1"><PlaneLanding className="w-3.5 h-3.5" /> Landing</span> — How fast/slow it comes down after RTH</p>
+            <p><span className="text-blue-400 inline-flex items-center gap-1"><Satellite className="w-3.5 h-3.5" /> GPS</span> — Satellite settings (usually leave on Auto)</p>
           </div>
         </div>
       </div>
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-xl">⚠️</span>
+          <AlertTriangle className="w-5 h-5 text-red-400" />
           <p className="text-sm text-red-400">{error}</p>
           <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">
             ×
@@ -290,7 +291,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-            <span className="text-xl">🏠</span>
+            <Home className="w-5 h-5 text-green-400" />
           </div>
           <div>
             <h3 className="text-sm font-medium text-white">Return to Home (RTH)</h3>
@@ -377,7 +378,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-            <span className="text-xl">🛬</span>
+            <PlaneLanding className="w-5 h-5 text-amber-400" />
           </div>
           <div>
             <h3 className="text-sm font-medium text-white">Landing Configuration</h3>
@@ -433,7 +434,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-            <span className="text-xl">📍</span>
+            <MapPin className="w-5 h-5 text-purple-400" />
           </div>
           <div>
             <h3 className="text-sm font-medium text-white">Waypoint Navigation</h3>
@@ -549,7 +550,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
         <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <span className="text-xl">🛰️</span>
+              <Satellite className="w-5 h-5 text-blue-400" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-white">GPS Configuration</h3>
@@ -635,7 +636,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
 
       {/* Safety Warning */}
       <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-start gap-4">
-        <span className="text-2xl">⚠️</span>
+        <AlertTriangle className="w-6 h-6 text-amber-400" />
         <div>
           <p className="text-amber-400 font-medium">Important Safety Notes</p>
           <ul className="text-sm text-zinc-400 mt-1 space-y-1 list-disc list-inside">

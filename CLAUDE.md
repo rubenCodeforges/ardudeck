@@ -25,7 +25,7 @@ All code MUST pass `npx tsc --noEmit` and `npx eslint` without errors.
 - For event handler callbacks typed as `(...args: unknown[]) => void`, cast appropriately
 
 ## UI Style Rules
-- **NO EMOJIS** - Use SVG icons or icon fonts (Lucide, etc.) instead of emojis everywhere in the UI
+- **NO EMOJIS** - NEVER use emoji characters (Unicode emoji) anywhere in UI code, data objects, or string constants. Always use Lucide React icons (`lucide-react`) instead. For `<option>` elements or plain text where components can't be used, use text labels only.
 - Keep interfaces clean and professional
 
 Modernizing ArduPilot's Mission Planner ground control station from legacy C#/.NET WinForms to a cross-platform solution using Electron (desktop) and Flutter (mobile).

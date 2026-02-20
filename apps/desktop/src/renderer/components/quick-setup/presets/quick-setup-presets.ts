@@ -7,6 +7,23 @@
  * - Rate tuning
  * - Flight modes
  * - Failsafe settings
+ */
+
+import {
+  Egg,
+  Drama,
+  Gauge,
+  Film,
+  Triangle,
+  PlaneTakeoff,
+  Plane,
+  Wind,
+  Globe,
+  Satellite,
+  type LucideIcon,
+} from 'lucide-react';
+
+/*
  *
  * These presets provide one-click setup for different flying styles,
  * eliminating the need to configure each system separately.
@@ -70,7 +87,7 @@ export interface AircraftConfig {
 export interface QuickSetupPreset {
   id: string;
   name: string;
-  icon: string;
+  icon: LucideIcon;
   description: string;
   tip: string;
   gradient: string;
@@ -135,7 +152,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   beginner: {
     id: 'beginner',
     name: 'Beginner',
-    icon: '🐣',
+    icon: Egg,
     description: 'Safe & stable for learning',
     tip: 'Self-leveling keeps you in control. Slow rates prevent overcorrection. Perfect for your first flights!',
     gradient: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
@@ -189,7 +206,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   freestyle: {
     id: 'freestyle',
     name: 'Freestyle',
-    icon: '🎭',
+    icon: Drama,
     description: 'Balanced for tricks & flow',
     tip: 'Three-position switch gives ANGLE/HORIZON/ACRO. AIRMODE keeps control at zero throttle for flips!',
     gradient: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
@@ -247,7 +264,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   racing: {
     id: 'racing',
     name: 'Racing',
-    icon: '🏎️',
+    icon: Gauge,
     description: 'Fast & responsive for speed',
     tip: 'Pure ACRO for maximum control. High rates for quick corrections. Beeper helps find crashes!',
     gradient: 'from-red-500/20 to-orange-500/10 border-red-500/30',
@@ -303,7 +320,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   cinematic: {
     id: 'cinematic',
     name: 'Cinematic',
-    icon: '🎬',
+    icon: Film,
     description: 'Ultra-smooth for filming',
     tip: 'Low rates + high expo = buttery smooth movements. GPS position hold for stable shots. RTH for safety.',
     gradient: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
@@ -361,7 +378,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   flyingWing: {
     id: 'flyingWing',
     name: 'Flying Wing',
-    icon: '🔺',
+    icon: Triangle,
     description: 'Delta wings & flying wings with elevon mixing',
     tip: 'Elevon mixing configured (left/right servos on CH3/CH4). Auto-launch, RTH, and waypoint navigation ready.',
     gradient: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
@@ -419,7 +436,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   fwTrainer: {
     id: 'fwTrainer',
     name: 'Trainer Plane',
-    icon: '🛫',
+    icon: PlaneTakeoff,
     description: 'Traditional airplane for beginners',
     tip: 'Classic aileron/elevator/rudder setup. Auto-level keeps wings stable. Perfect for learning fixed-wing flying.',
     gradient: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
@@ -477,7 +494,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   fwSport: {
     id: 'fwSport',
     name: 'Sport Plane',
-    icon: '✈️',
+    icon: Plane,
     description: 'Agile traditional airplane for experienced pilots',
     tip: 'Higher rates for aerobatics. Aileron/elevator/rudder setup. Switch between stabilized and acro modes.',
     gradient: 'from-red-500/20 to-orange-500/10 border-red-500/30',
@@ -535,7 +552,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   fwGlider: {
     id: 'fwGlider',
     name: 'Glider',
-    icon: '🪁',
+    icon: Wind,
     description: 'Efficient soaring & thermal hunting',
     tip: 'Optimized for glide efficiency. Low rates for precision. Soaring mode for thermals. Flying wing servo setup.',
     gradient: 'from-cyan-500/20 to-sky-500/10 border-cyan-500/30',
@@ -593,7 +610,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   fwLongRange: {
     id: 'fwLongRange',
     name: 'Long Range FPV',
-    icon: '🌍',
+    icon: Globe,
     description: 'Extended range for FPV missions',
     tip: 'Flying wing setup optimized for efficiency. Full navigation suite with waypoints, cruise, and RTH.',
     gradient: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30',
@@ -653,7 +670,7 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   longRange: {
     id: 'longRange',
     name: 'Long Range',
-    icon: '🛰️',
+    icon: Satellite,
     description: 'Extended range with GPS safety',
     tip: 'Conservative PIDs for efficiency. GPS cruise and RTH for safety. ANGLE mode for easy recovery.',
     gradient: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',

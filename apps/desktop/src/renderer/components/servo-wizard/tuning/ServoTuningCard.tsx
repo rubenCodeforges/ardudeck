@@ -7,20 +7,24 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ControlSurfaceAssignment, CONTROL_SURFACE_INFO } from '../presets/servo-presets';
+import {
+  ArrowDownLeft, ArrowUpRight, MoveVertical, MoveHorizontal,
+  ArrowLeft, ArrowRight, ArrowUpLeft, RefreshCw, Settings, type LucideIcon,
+} from 'lucide-react';
 
 // Surface icons for visual flair
-const SURFACE_ICONS: Record<string, string> = {
-  aileron_left: '↙️',
-  aileron_right: '↗️',
-  elevator: '↕️',
-  rudder: '↔️',
-  elevon_left: '⬅️',
-  elevon_right: '➡️',
-  vtail_left: '↖️',
-  vtail_right: '↗️',
-  yaw_servo: '🔄',
-  gimbal_pan: '↔️',
-  gimbal_tilt: '↕️',
+const SURFACE_ICONS: Record<string, LucideIcon> = {
+  aileron_left: ArrowDownLeft,
+  aileron_right: ArrowUpRight,
+  elevator: MoveVertical,
+  rudder: MoveHorizontal,
+  elevon_left: ArrowLeft,
+  elevon_right: ArrowRight,
+  vtail_left: ArrowUpLeft,
+  vtail_right: ArrowUpRight,
+  yaw_servo: RefreshCw,
+  gimbal_pan: MoveHorizontal,
+  gimbal_tilt: MoveVertical,
 };
 
 // Color palette for servos (consistent across diagram and cards)
@@ -64,7 +68,7 @@ export default function ServoTuningCard({
 
   const info = CONTROL_SURFACE_INFO[assignment.surface];
   const color = SERVO_COLORS[index % SERVO_COLORS.length];
-  const icon = SURFACE_ICONS[assignment.surface] || '⚙️';
+  const SurfaceIcon = SURFACE_ICONS[assignment.surface] || Settings;
 
   const { min, center, max } = assignment;
 
@@ -141,7 +145,7 @@ export default function ServoTuningCard({
       {/* Header: Icon, Name, Servo number, Reverse button */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xl">{icon}</span>
+          <SurfaceIcon className="w-5 h-5" />
           <div>
             <div className="text-sm font-medium text-white">{info.name}</div>
             <div className="text-xs text-zinc-500">Servo {assignment.servoIndex}</div>
@@ -161,7 +165,7 @@ export default function ServoTuningCard({
           }`}
           title={assignment.reversed ? 'Servo reversed' : 'Click to reverse'}
         >
-          {assignment.reversed ? '↔️ REV' : '↔️'}
+          {assignment.reversed ? 'REV' : 'FWD'}
         </button>
       </div>
 

@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { CircleSlash, Check } from 'lucide-react';
 import { useServoWizardStore, WizardStep, STEP_INFO } from '../../stores/servo-wizard-store';
 import {
   PlaneTypeStep,
@@ -189,7 +190,7 @@ export default function ServoWizard() {
   if (!servoSupported) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8 max-w-lg mx-auto text-center">
-        <div className="text-6xl">{isMultirotor ? '🚁' : '🚫'}</div>
+        <CircleSlash className="w-16 h-16 text-zinc-500" />
         <div>
           <h2 className="text-xl font-bold text-white mb-2">
             {isMultirotor ? 'Board Configured as Multirotor' : 'Servo Setup Not Available'}
@@ -328,7 +329,7 @@ export default function ServoWizard() {
                           : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                       }`}
                     >
-                      {isCompleted ? '✓' : info.icon}
+                      {isCompleted ? <Check className="w-4 h-4" /> : <info.icon className="w-4 h-4" />}
                     </div>
                     <span
                       className={`text-[10px] font-medium ${

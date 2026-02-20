@@ -36,19 +36,26 @@ import { useConnectionStore } from '../../stores/connection-store';
 // ============================================================================
 
 // Failsafe procedures
+import {
+  PlaneLanding,
+  CircleSlash,
+  Gamepad2,
+  Monitor as MonitorIcon,
+} from 'lucide-react';
+
 const FAILSAFE_PROCEDURES = [
-  { value: 0, label: 'Land', icon: '🛬', description: 'Land in place', color: 'amber' },
-  { value: 1, label: 'Drop', icon: '⚠️', description: 'Cut motors (dangerous!)', color: 'red' },
-  { value: 2, label: 'RTH', icon: '🏠', description: 'Return to home', color: 'green' },
-  { value: 3, label: 'None', icon: '🚫', description: 'Keep flying', color: 'gray' },
+  { value: 0, label: 'Land', icon: PlaneLanding, description: 'Land in place', color: 'amber' },
+  { value: 1, label: 'Drop', icon: AlertTriangle, description: 'Cut motors (dangerous!)', color: 'red' },
+  { value: 2, label: 'RTH', icon: Home, description: 'Return to home', color: 'green' },
+  { value: 3, label: 'None', icon: CircleSlash, description: 'Keep flying', color: 'gray' },
 ] as const;
 
 // Receiver types (iNav)
 const RECEIVER_TYPES = [
-  { value: 'NONE', label: 'None', icon: '🚫' },
-  { value: 'SERIAL', label: 'Serial', icon: '📡' },
-  { value: 'MSP', label: 'MSP', icon: '💻' },
-  { value: 'SIM (SITL)', label: 'SITL', icon: '🎮' },
+  { value: 'NONE', label: 'None', icon: CircleSlash },
+  { value: 'SERIAL', label: 'Serial', icon: Radio },
+  { value: 'MSP', label: 'MSP', icon: MonitorIcon },
+  { value: 'SIM (SITL)', label: 'SITL', icon: Gamepad2 },
 ] as const;
 
 // Betaflight receiver providers (serialrx_provider) - numeric values match FC encoding
@@ -585,7 +592,7 @@ const SafetyTab = forwardRef<SafetyTabHandle, Props>(function SafetyTab({ isInav
                         : 'bg-zinc-800/30 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800/50 hover:border-zinc-600'
                     }`}
                   >
-                    <div className="text-2xl mb-1">{proc.icon}</div>
+                    <div className="mb-1"><proc.icon className="w-6 h-6 mx-auto" /></div>
                     <div className="font-medium text-sm">{proc.label}</div>
                     <div className="text-xs opacity-70 mt-0.5">{proc.description}</div>
                   </button>

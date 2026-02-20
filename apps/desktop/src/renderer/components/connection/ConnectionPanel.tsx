@@ -6,7 +6,7 @@ import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import type { SerialPortInfo } from '@ardudeck/comms';
 import { DriverAssistant } from './DriverAssistant';
 
-const BAUD_RATES = [115200, 57600, 38400, 19200, 9600];
+const BAUD_RATES = [1500000, 921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600];
 
 export function ConnectionPanel() {
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();

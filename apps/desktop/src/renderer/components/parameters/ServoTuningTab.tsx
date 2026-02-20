@@ -9,6 +9,7 @@
 import { useEffect } from 'react';
 import { useServoWizardStore } from '../../stores/servo-wizard-store';
 import { ServoTuningView } from '../servo-wizard/tuning';
+import { CircleSlash } from 'lucide-react';
 
 export default function ServoTuningTab() {
   const {
@@ -62,7 +63,7 @@ export default function ServoTuningTab() {
   if (!servoSupported) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8 max-w-lg mx-auto text-center">
-        <div className="text-6xl">{isMultirotor ? '🚁' : '🚫'}</div>
+        <CircleSlash className="w-16 h-16 text-zinc-500" />
         <div>
           <h2 className="text-xl font-bold text-white mb-2">
             {isMultirotor ? 'Board Configured as Multirotor' : 'Servo Setup Not Available'}

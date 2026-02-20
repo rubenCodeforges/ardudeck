@@ -319,14 +319,16 @@ function App() {
     };
   }, []);
 
-  // Auto-collapse sidebar when connected (keep user's current view)
+  // Auto-collapse sidebar when connected, auto-expand only when disconnecting to welcome screen
   useEffect(() => {
     if (connectionState.isConnected) {
       setSidebarCollapsed(true);
-    } else {
+    } else if (currentView === 'telemetry') {
+      // Only auto-expand on disconnect if user is on the welcome/telemetry screen
+      // Don't interrupt offline-capable views like mission planning
       setSidebarCollapsed(false);
     }
-  }, [connectionState.isConnected]);
+  }, [connectionState.isConnected, currentView]);
 
   // Auto-load parameters, metadata, and mission when connected (MAVLink only)
   useEffect(() => {
@@ -640,17 +642,15 @@ function App() {
           ) : (
             <div className="relative h-full">
               <ConnectionPanel />
-              {connectionState.isConnected && (
-                <button
-                  onClick={() => setSidebarCollapsed(true)}
-                  className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-gray-700/50 text-gray-500 hover:text-gray-300 transition-colors"
-                  title="Collapse sidebar"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
-                </button>
-              )}
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-gray-700/50 text-gray-500 hover:text-gray-300 transition-colors"
+                title="Collapse sidebar"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
             </div>
           )}
         </aside>

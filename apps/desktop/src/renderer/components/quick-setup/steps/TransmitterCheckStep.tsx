@@ -541,7 +541,7 @@ export const TransmitterCheckStep: React.FC = () => {
       {selectedPreset && (
         <div className="p-3 bg-zinc-800/30 rounded-lg border border-zinc-700">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{selectedPreset.icon}</span>
+            <selectedPreset.icon className="w-6 h-6 text-zinc-300" />
             <div>
               <p className="text-sm text-zinc-300">
                 Applying <strong>{selectedPreset.name}</strong> preset

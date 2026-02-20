@@ -7,6 +7,7 @@
 
 import { useLegacyConfigStore, type LegacyServoConfig } from '../../stores/legacy-config-store';
 import { CompactSlider } from '../ui/DraggableSlider';
+import { Settings } from 'lucide-react';
 
 export default function LegacyServoTab() {
   const { servoConfigs, updateServoConfig } = useLegacyConfigStore();
@@ -22,7 +23,7 @@ export default function LegacyServoTab() {
   if (servoConfigs.length === 0) {
     return (
       <div className="text-center py-12 text-zinc-500">
-        <div className="text-4xl mb-3">⚙️</div>
+        <Settings className="w-10 h-10 text-zinc-500 mb-3 mx-auto" />
         <p>No servo configurations found.</p>
         <p className="text-sm mt-1">Run the dump command to load configuration.</p>
       </div>
@@ -36,7 +37,7 @@ export default function LegacyServoTab() {
       {/* Info Banner */}
       <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
         <div className="flex items-start gap-3">
-          <span className="text-2xl">⚙️</span>
+          <Settings className="w-6 h-6 text-amber-400 shrink-0" />
           <div>
             <p className="text-sm text-amber-300 font-medium">Servo Endpoint Configuration</p>
             <p className="text-xs text-amber-300/70 mt-1">
@@ -147,7 +148,7 @@ export default function LegacyServoTab() {
                           onClick={() => handleChange({ ...servo, rate: -servo.rate })}
                           className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs"
                         >
-                          ↔ Rev
+                          Reverse
                         </button>
                         <input
                           type="number"

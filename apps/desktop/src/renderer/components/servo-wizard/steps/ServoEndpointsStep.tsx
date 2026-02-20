@@ -10,6 +10,7 @@ import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO } from '../presets/servo-presets';
 import ServoEndpointSlider from '../shared/ServoEndpointSlider';
 import ServoBar from '../shared/ServoBar';
+import { Lightbulb } from 'lucide-react';
 
 export default function ServoEndpointsStep() {
   const {
@@ -179,7 +180,7 @@ export default function ServoEndpointsStep() {
 
       {/* Help tip */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
-        <span className="text-xl">💡</span>
+        <Lightbulb className="w-5 h-5 text-amber-400 shrink-0" />
         <div>
           <p className="text-sm text-amber-400 font-medium">Quick tips:</p>
           <ul className="text-xs text-zinc-400 mt-1 space-y-1 list-disc list-inside">

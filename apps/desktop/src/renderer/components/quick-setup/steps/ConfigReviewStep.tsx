@@ -16,6 +16,7 @@ import {
   Shield,
   Plane,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 
 // Section component for displaying configuration details
@@ -121,7 +122,7 @@ export const ConfigReviewStep: React.FC = () => {
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 mb-4">
-          <span className="text-3xl">{selectedPreset.icon}</span>
+          <selectedPreset.icon className="w-8 h-8 text-zinc-300" />
         </div>
         <h2 className="text-xl font-semibold text-zinc-100">
           Review: {selectedPreset.name}
@@ -191,7 +192,7 @@ export const ConfigReviewStep: React.FC = () => {
       {/* Warning */}
       <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
         <div className="flex items-start gap-3">
-          <span className="text-xl">⚠️</span>
+          <AlertTriangle className="w-5 h-5 text-amber-400" />
           <div>
             <h4 className="font-medium text-amber-200 text-sm">
               This will overwrite your current settings

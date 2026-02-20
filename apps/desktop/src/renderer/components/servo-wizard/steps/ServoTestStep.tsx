@@ -8,6 +8,7 @@
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO } from '../presets/servo-presets';
 import ServoBar from '../shared/ServoBar';
+import { Check, Lightbulb } from 'lucide-react';
 
 export default function ServoTestStep() {
   const {
@@ -103,7 +104,7 @@ export default function ServoTestStep() {
                       : 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
                   }`}
                 >
-                  {assignment.reversed ? '↩ Undo Reverse' : '↔ Reverse'}
+                  {assignment.reversed ? 'Undo Reverse' : 'Reverse'}
                 </button>
               </div>
 
@@ -121,7 +122,7 @@ export default function ServoTestStep() {
               <div className="mt-2 flex items-center gap-2">
                 {moving ? (
                   <>
-                    <span className="text-green-400">✓</span>
+                    <Check className="w-4 h-4 text-green-400" />
                     <span className="text-xs text-green-400">Servo is responding</span>
                   </>
                 ) : (
@@ -138,7 +139,7 @@ export default function ServoTestStep() {
 
       {/* Help tip */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
-        <span className="text-xl">💡</span>
+        <Lightbulb className="w-5 h-5 text-amber-400 shrink-0" />
         <div>
           <p className="text-sm text-amber-400 font-medium">How to check direction:</p>
           <ul className="text-xs text-zinc-400 mt-1 space-y-1 list-disc list-inside">

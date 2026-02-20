@@ -13,14 +13,14 @@ import PresetSelectionStep from './steps/PresetSelectionStep';
 import TransmitterCheckStep from './steps/TransmitterCheckStep';
 import ConfigReviewStep from './steps/ConfigReviewStep';
 import ApplyStep from './steps/ApplyStep';
-import { Rocket } from 'lucide-react';
+import { Rocket, Target, Radio, ClipboardList, type LucideIcon } from 'lucide-react';
 
 // Step info for progress display
 const STEPS = [
-  { id: 'welcome', label: 'Select', icon: '🎯' },
-  { id: 'transmitter', label: 'Check', icon: '📡' },
-  { id: 'review', label: 'Review', icon: '📋' },
-  { id: 'apply', label: 'Apply', icon: '🚀' },
+  { id: 'welcome', label: 'Select', icon: Target },
+  { id: 'transmitter', label: 'Check', icon: Radio },
+  { id: 'review', label: 'Review', icon: ClipboardList },
+  { id: 'apply', label: 'Apply', icon: Rocket },
 ] as const;
 
 export const QuickSetupWizard: React.FC = () => {
@@ -121,7 +121,7 @@ export const QuickSetupWizard: React.FC = () => {
                           />
                         </svg>
                       ) : (
-                        <span>{step.icon}</span>
+                        <step.icon className="w-4 h-4" />
                       )}
                     </div>
                     <span

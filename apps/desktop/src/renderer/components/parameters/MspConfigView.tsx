@@ -86,6 +86,9 @@ import {
   Info,
   Ruler,
   AlertTriangle,
+  Target,
+  Save,
+  Check,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -838,7 +841,7 @@ function RatesTab({
                   disabled={!profileName.trim()}
                   className="px-2 py-1.5 text-emerald-400 hover:text-emerald-300 disabled:text-gray-600 transition-colors"
                 >
-                  ✓
+                  <Check className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowSaveDialog(false)}
@@ -1049,7 +1052,7 @@ function PidTuningTab({
                   disabled={!profileName.trim()}
                   className="px-2 py-1.5 text-emerald-400 hover:text-emerald-300 disabled:text-gray-600 transition-colors"
                 >
-                  ✓
+                  <Check className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowSaveDialog(false)}
@@ -1326,17 +1329,17 @@ function SensorCard({
 // Telemetry value card for displaying multiple live values
 function TelemetryCard({
   title,
-  icon,
+  icon: Icon,
   values,
 }: {
   title: string;
-  icon: string;
+  icon: LucideIcon;
   values: Array<{ label: string; value: number | string; unit?: string }>;
 }) {
   return (
     <div className="p-4 rounded-xl border bg-gray-800/30 border-gray-700/30">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">{icon}</span>
+        <Icon className="w-5 h-5 text-cyan-400" />
         <span className="font-medium text-gray-300">{title}</span>
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -2292,7 +2295,7 @@ export function MspConfigView() {
                   : 'bg-gray-800 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {saving ? '💾 Saving...' : '💾 Save All Changes'}
+              {saving ? <><Save className="w-4 h-4 inline mr-1" />Saving...</> : <><Save className="w-4 h-4 inline mr-1" />Save All Changes</>}
             </button>
           </div>
         </div>
@@ -2617,7 +2620,7 @@ export function MspConfigView() {
                 {/* Attitude Card */}
                 <TelemetryCard
                   title="Attitude"
-                  icon="🎯"
+                  icon={Target}
                   values={[
                     { label: 'Roll', value: attitude?.roll ?? 0, unit: '°' },
                     { label: 'Pitch', value: attitude?.pitch ?? 0, unit: '°' },
@@ -2628,7 +2631,7 @@ export function MspConfigView() {
                 {/* Altitude Card */}
                 <TelemetryCard
                   title="Altitude"
-                  icon="📏"
+                  icon={Ruler}
                   values={[
                     { label: 'Alt', value: vfrHud?.alt ?? 0, unit: 'm' },
                     { label: 'Vario', value: vfrHud?.climb ?? 0, unit: 'm/s' },
@@ -2693,7 +2696,7 @@ export function MspConfigView() {
             {isInav ? (
               <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">🗺️</span>
+                  <Map className="w-6 h-6 text-green-400" />
                   <div>
                     <h4 className="font-medium text-green-400">iNav - Mission Planning Available!</h4>
                     <p className="text-sm text-gray-400">
@@ -2705,7 +2708,7 @@ export function MspConfigView() {
             ) : (
               <div className="bg-gray-800/30 border border-gray-700/30 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">ℹ️</span>
+                  <Info className="w-6 h-6 text-gray-400" />
                   <div>
                     <h4 className="font-medium text-gray-300">Betaflight - FPV Racing & Freestyle</h4>
                     <p className="text-sm text-gray-500">

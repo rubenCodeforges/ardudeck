@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO, ControlSurface } from '../presets/servo-presets';
 import AircraftDiagram from '../diagrams/AircraftDiagram';
+import { AlertTriangle } from 'lucide-react';
 
 export default function ServoAssignmentStep() {
   const {
@@ -112,7 +113,7 @@ export default function ServoAssignmentStep() {
           {/* Warning if duplicate servos */}
           {hasDuplicateServos(assignments) && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 flex items-center gap-2">
-              <span>⚠️</span>
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
               <span className="text-xs text-yellow-400">
                 Warning: Multiple surfaces assigned to the same servo!
               </span>

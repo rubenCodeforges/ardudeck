@@ -8,13 +8,14 @@
 import { useState } from 'react';
 import { useLegacyConfigStore } from '../../stores/legacy-config-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
+import { Egg, Drama, Gauge, Film, type LucideIcon } from 'lucide-react';
 
 // PID Presets - same as modern boards
 const PID_PRESETS = {
   beginner: {
     name: 'Beginner',
     description: 'Smooth & forgiving - great for learning',
-    icon: '🐣',
+    icon: Egg,
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     pids: {
       roll: { p: 35, i: 40, d: 20, ff: 0 },
@@ -25,7 +26,7 @@ const PID_PRESETS = {
   freestyle: {
     name: 'Freestyle',
     description: 'Responsive & smooth for tricks',
-    icon: '🎭',
+    icon: Drama,
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     pids: {
       roll: { p: 45, i: 45, d: 28, ff: 0 },
@@ -36,7 +37,7 @@ const PID_PRESETS = {
   racing: {
     name: 'Racing',
     description: 'Snappy & precise for speed',
-    icon: '🏎️',
+    icon: Gauge,
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     pids: {
       roll: { p: 55, i: 50, d: 32, ff: 0 },
@@ -47,7 +48,7 @@ const PID_PRESETS = {
   cinematic: {
     name: 'Cinematic',
     description: 'Ultra-smooth for video',
-    icon: '🎬',
+    icon: Film,
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     pids: {
       roll: { p: 30, i: 35, d: 18, ff: 0 },
@@ -211,7 +212,7 @@ export default function LegacyPidTab() {
               onClick={() => applyPreset(preset)}
               className={`p-3 rounded-lg border bg-gradient-to-br ${preset.color} hover:scale-[1.02] transition-all text-left`}
             >
-              <div className="text-2xl mb-1">{preset.icon}</div>
+              <div className="mb-1"><preset.icon className="w-6 h-6 text-zinc-300 mx-auto" /></div>
               <div className="font-medium text-white text-sm">{preset.name}</div>
               <div className="text-xs text-zinc-400 mt-0.5">{preset.description}</div>
             </button>

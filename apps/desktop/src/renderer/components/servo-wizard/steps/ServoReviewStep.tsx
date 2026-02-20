@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO, SERVO_INPUT_SOURCE } from '../presets/servo-presets';
+import { Check, X, Save, Info } from 'lucide-react';
 
 export default function ServoReviewStep() {
   const {
@@ -163,7 +164,7 @@ export default function ServoReviewStep() {
       {/* Save status */}
       {saveStatus === 'success' && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-2xl">✓</span>
+          <Check className="w-6 h-6 text-green-400" />
           <div>
             <p className="text-sm text-green-400 font-medium">Configuration saved successfully!</p>
             <p className="text-xs text-zinc-400 mt-1">
@@ -175,7 +176,7 @@ export default function ServoReviewStep() {
 
       {saveStatus === 'error' && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-2xl">✗</span>
+          <X className="w-6 h-6 text-red-400" />
           <div>
             <p className="text-sm text-red-400 font-medium">Failed to save configuration</p>
             <p className="text-xs text-zinc-400 mt-1">{errorMessage}</p>
@@ -185,7 +186,7 @@ export default function ServoReviewStep() {
 
       {/* Important notes */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
-        <span className="text-xl">ℹ️</span>
+        <Info className="w-5 h-5 text-blue-400 shrink-0" />
         <div>
           <p className="text-sm text-blue-400 font-medium">Before saving:</p>
           <ul className="text-xs text-zinc-400 mt-1 space-y-1 list-disc list-inside">
@@ -213,7 +214,7 @@ export default function ServoReviewStep() {
               onClick={handleFinish}
               className="px-6 py-2.5 rounded-lg font-medium bg-green-500 text-white hover:bg-green-400"
             >
-              ✓ Done
+              <Check className="w-4 h-4 inline mr-1" /> Done
             </button>
           ) : (
             <button
@@ -223,12 +224,12 @@ export default function ServoReviewStep() {
             >
               {isSaving ? (
                 <>
-                  <span className="animate-spin">⟳</span>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                   Saving...
                 </>
               ) : (
                 <>
-                  💾 Save to Flight Controller
+                  <Save className="w-4 h-4 inline mr-1" /> Save to Flight Controller
                 </>
               )}
             </button>

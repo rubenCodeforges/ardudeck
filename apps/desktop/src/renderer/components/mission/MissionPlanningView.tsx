@@ -18,6 +18,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useFirmwareStore } from '../../stores/firmware-store';
 import { isUnsupportedF3Board, hasInavF3Support } from '../../../shared/board-mappings';
+import { Map, AlertTriangle, Lightbulb, RefreshCw, Plane, Wrench } from 'lucide-react';
 
 // Reserved layout name for mission view (auto-save/restore)
 const MISSION_LAYOUT_NAME = '__mission_autosave';
@@ -115,7 +116,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
         <div className="max-w-2xl text-center">
           {/* Icon */}
           <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500/20 to-yellow-600/20 border border-orange-500/30 flex items-center justify-center">
-            <span className="text-5xl leading-none flex items-center justify-center w-full h-full">🗺️</span>
+            <Map className="w-12 h-12 text-orange-400" />
           </div>
 
           {/* Title */}
@@ -163,7 +164,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
         <div className="max-w-2xl text-center">
           {/* Icon */}
           <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-600/20 border border-red-500/30 flex items-center justify-center">
-            <span className="text-5xl leading-none flex items-center justify-center w-full h-full">⚠️</span>
+            <AlertTriangle className="w-12 h-12 text-red-400" />
           </div>
 
           {/* Title */}
@@ -206,7 +207,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
       <div className="max-w-2xl text-center">
         {/* Icon */}
         <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-600/20 border border-orange-500/30 flex items-center justify-center">
-          <span className="text-5xl leading-none flex items-center justify-center w-full h-full">🗺️</span>
+          <Map className="w-12 h-12 text-orange-400" />
         </div>
 
         {/* Title */}
@@ -226,12 +227,12 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
         {/* What you can do */}
         <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6 text-left mb-6">
           <h3 className="text-sm font-medium text-gray-300 mb-4 flex items-center gap-2">
-            <span>💡</span> Want autonomous missions? Here are your options:
+            <Lightbulb className="w-4 h-4 text-amber-400 inline" /> Want autonomous missions? Here are your options:
           </h3>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                <span className="text-xl">🔄</span>
+                <RefreshCw className="w-5 h-5 text-blue-400" />
               </div>
               <div>
                 <h4 className="font-medium text-blue-400">Flash iNav Firmware</h4>
@@ -243,7 +244,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
             </div>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
-                <span className="text-xl">🛩️</span>
+                <Plane className="w-5 h-5 text-green-400" />
               </div>
               <div>
                 <h4 className="font-medium text-green-400">Use ArduPilot Hardware</h4>
@@ -274,7 +275,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
             onClick={handleFlashInav}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            🔧 Flash iNav Firmware
+            Flash iNav Firmware
           </button>
           <button
             onClick={() => setView('telemetry')}
@@ -406,27 +407,8 @@ export function MissionPlanningView() {
 
   // EARLY RETURNS - After all hooks have been called
 
-  // If not connected, show "Connect First" message
-  if (!connectionState.isConnected) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gray-950 p-8">
-        <div className="max-w-md text-center">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 border border-blue-500/30 flex items-center justify-center">
-            <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-white mb-2">Connect to a Vehicle</h1>
-          <p className="text-gray-400 text-sm">
-            Connect to a flight controller to plan missions, upload waypoints, and configure autonomous flight paths.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // If connected to Betaflight, show "Not Available" message
-  if (missionPlanningUnavailable) {
+  if (connectionState.isConnected && missionPlanningUnavailable) {
     return (
       <MissionNotAvailable
         fcVariant={connectionState.fcVariant || 'Unknown'}
