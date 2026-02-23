@@ -9,7 +9,7 @@ import {
   MAVLINK_IFLAG_SIGNED,
 } from './constants.js';
 import { crcCalculateWithExtra, crcToBytes } from './crc.js';
-import { createSignature } from './signing.js';
+import { createSignature, createSignatureAsync } from './signing.js';
 import type { SerializeOptions, MessageInfo } from './types.js';
 
 // Global sequence counter
@@ -88,6 +88,71 @@ export function serializeV2(
     const signature = createSignature(
       signingKey,
       packet.slice(0, 12 + trimmedLength), // header + payload + CRC
+      linkId
+    );
+    packet.set(signature, 12 + trimmedLength);
+  }
+
+  return packet;
+}
+
+/**
+ * Serialize a MAVLink v2 packet with async signing (real SHA256)
+ * Use this when signing is enabled for proper cryptographic signatures.
+ */
+export async function serializeV2Async(
+  msgid: number,
+  payload: Uint8Array,
+  crcExtra: number,
+  options: SerializeOptions = {}
+): Promise<Uint8Array> {
+  const {
+    sysid = 255,
+    compid = 190,
+    sequence = getNextSequence(),
+    sign = false,
+    signingKey,
+    linkId = 0,
+  } = options;
+
+  // Trim trailing zeros from payload (MAVLink v2 optimization)
+  let trimmedLength = payload.length;
+  while (trimmedLength > 1 && payload[trimmedLength - 1] === 0) {
+    trimmedLength--;
+  }
+
+  const signatureLen = sign && signingKey ? 13 : 0;
+  const packetLen = 10 + trimmedLength + 2 + signatureLen;
+  const packet = new Uint8Array(packetLen);
+
+  // Header
+  packet[0] = MAVLINK_STX_V2;
+  packet[1] = trimmedLength;
+  packet[2] = sign && signingKey ? MAVLINK_IFLAG_SIGNED : 0;
+  packet[3] = 0;
+  packet[4] = sequence & 0xff;
+  packet[5] = sysid & 0xff;
+  packet[6] = compid & 0xff;
+
+  // 24-bit message ID, little-endian
+  packet[7] = msgid & 0xff;
+  packet[8] = (msgid >> 8) & 0xff;
+  packet[9] = (msgid >> 16) & 0xff;
+
+  // Payload
+  packet.set(payload.slice(0, trimmedLength), 10);
+
+  // CRC
+  const crc = crcCalculateWithExtra(packet, 10 + trimmedLength, crcExtra);
+  const [crcLo, crcHi] = crcToBytes(crc);
+  packet[10 + trimmedLength] = crcLo;
+  packet[11 + trimmedLength] = crcHi;
+
+  // Signature (async - real SHA256)
+  if (sign && signingKey) {
+    const signature = await createSignatureAsync(
+      signingKey,
+      packet.slice(0, 12 + trimmedLength),
       linkId
     );
     packet.set(signature, 12 + trimmedLength);

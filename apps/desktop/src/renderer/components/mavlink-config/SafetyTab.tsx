@@ -24,6 +24,7 @@ import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
+import { SigningSection } from '../settings/SigningSection';
 import {
   SAFETY_PRESETS,
   FENCE_TYPES,
@@ -419,6 +420,9 @@ const SafetyTab: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* MAVLink Signing */}
+      <SigningSection />
 
       {/* Save Reminder */}
       {modified > 0 && (

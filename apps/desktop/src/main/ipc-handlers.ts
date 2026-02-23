@@ -3,7 +3,7 @@
  * Handles communication between renderer and main process
  */
 
-import { ipcMain, BrowserWindow, dialog, app, shell } from 'electron';
+import { ipcMain, BrowserWindow, dialog, app, shell, safeStorage } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import Store from 'electron-store';
@@ -22,6 +22,7 @@ import {
   type MAVLinkPacket,
   serializeV1,
   serializeV2,
+  serializeV2Async,
   deserializeParamValue,
   serializeParamRequestList,
   serializeParamSet,
@@ -37,6 +38,11 @@ import {
   serializeMissionSetCurrent,
   deserializeMissionItemInt,
   deserializeMissionItem,
+  serializeSetupSigning,
+  getSigningTimestamp,
+  generateSigningKey,
+  SETUP_SIGNING_ID,
+  SETUP_SIGNING_CRC_EXTRA,
   PARAM_REQUEST_LIST_ID,
   PARAM_REQUEST_LIST_CRC_EXTRA,
   PARAM_SET_ID,
@@ -63,7 +69,7 @@ import {
   MISSION_SET_CURRENT_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus } from '../shared/ipc-channels.js';
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -195,6 +201,114 @@ let currentTransport: Transport | null = null;
 let currentVehicleType = 0; // 1=plane, 2=copter, etc.
 let mavlinkParser: MAVLinkParser | null = null;
 let heartbeatTimeout: NodeJS.Timeout | null = null;
+
+// =============================================================================
+// MAVLink Signing State
+// =============================================================================
+
+// Encrypted key storage (persisted across sessions)
+const signingStore = new Store<{ encryptedKey?: string; linkId?: number; sentToFc?: boolean }>({
+  name: 'mavlink-signing',
+  defaults: {},
+});
+
+let signingEnabled = false;
+let signingKey: Uint8Array | null = null;
+let signingLinkId = 0;
+let signingSentToFc = signingStore.get('sentToFc') ?? false;
+
+/**
+ * Load signing key from encrypted storage.
+ * Returns null if no key stored or decryption fails.
+ */
+function loadSigningKey(): Uint8Array | null {
+  try {
+    const encrypted = signingStore.get('encryptedKey');
+    if (!encrypted) return null;
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    const decrypted = safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
+    // Key is stored as hex string
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = parseInt(decrypted.substring(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save signing key to encrypted storage.
+ */
+function saveSigningKey(key: Uint8Array): void {
+  if (!safeStorage.isEncryptionAvailable()) {
+    // Fallback: store without encryption (platform doesn't support safeStorage)
+    const hex = Array.from(key).map(b => b.toString(16).padStart(2, '0')).join('');
+    signingStore.set('encryptedKey', hex);
+    return;
+  }
+  const hex = Array.from(key).map(b => b.toString(16).padStart(2, '0')).join('');
+  const encrypted = safeStorage.encryptString(hex);
+  signingStore.set('encryptedKey', encrypted.toString('base64'));
+}
+
+/**
+ * Convert a passphrase to a 32-byte signing key using SHA-256.
+ */
+async function passphraseToKey(passphrase: string): Promise<Uint8Array> {
+  const { createHash } = await import('node:crypto');
+  const hash = createHash('sha256').update(passphrase).digest();
+  return new Uint8Array(hash);
+}
+
+/**
+ * Get current signing status.
+ */
+function getSigningStatus(): SigningStatus {
+  return {
+    enabled: signingEnabled,
+    hasKey: signingKey !== null,
+    sentToFc: signingSentToFc,
+    keyFingerprint: signingKey
+      ? Array.from(signingKey.slice(0, 6)).map(b => b.toString(16).padStart(2, '0')).join('')
+      : undefined,
+  };
+}
+
+/**
+ * Centralized MAVLink packet send helper.
+ * Applies signing when enabled, handles v1/v2 selection.
+ */
+let signingLoggedOnce = false;
+
+async function sendMavlinkPacket(
+  msgid: number,
+  payload: Uint8Array,
+  crcExtra: number,
+  options: { sysid?: number; compid?: number; sequence?: number } = {}
+): Promise<Uint8Array> {
+  const opts = { sysid: 255, compid: 190, ...options };
+
+  if (signingEnabled && signingKey && detectedMavlinkVersion === 2) {
+    if (!signingLoggedOnce) {
+      signingLoggedOnce = true;
+      console.log(`[MAVLink Signing] Sending signed packet (msgid=${msgid}, len=${payload.length + 13}sig)`);
+    }
+    return serializeV2Async(msgid, payload, crcExtra, {
+      ...opts,
+      sign: true,
+      signingKey,
+      linkId: signingLinkId,
+    });
+  }
+
+  if (detectedMavlinkVersion === 2) {
+    return serializeV2(msgid, payload, crcExtra, opts);
+  }
+
+  return serializeV1(msgid, payload, crcExtra, opts);
+}
 
 // BSOD FIX: Store handler references for proper cleanup on disconnect
 // Without this, handlers accumulate on reconnect cycles causing driver stress
@@ -950,7 +1064,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
 }
 
 // Helper: Request a mission item from FC
-function requestMissionItem(mainWindow: BrowserWindow, seq: number): void {
+async function requestMissionItem(mainWindow: BrowserWindow, seq: number): Promise<void> {
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
   let packet: Uint8Array;
@@ -964,7 +1078,7 @@ function requestMissionItem(mainWindow: BrowserWindow, seq: number): void {
       seq,
       missionType: MAV_MISSION_TYPE.MISSION,
     });
-    packet = serializeV2(MISSION_REQUEST_INT_ID, payload, MISSION_REQUEST_INT_CRC_EXTRA, { sysid: 255, compid: 190 });
+    packet = await sendMavlinkPacket(MISSION_REQUEST_INT_ID, payload, MISSION_REQUEST_INT_CRC_EXTRA);
   } else {
     // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
     // ArduPilot uses v2 byte order internally regardless of packet format.
@@ -986,7 +1100,7 @@ function requestMissionItem(mainWindow: BrowserWindow, seq: number): void {
 }
 
 // Helper: Send a mission item to FC
-function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): void {
+async function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): Promise<void> {
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
   let packet: Uint8Array;
@@ -1011,7 +1125,7 @@ function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): void {
       z: item.altitude,
       missionType: MAV_MISSION_TYPE.MISSION,
     });
-    packet = serializeV2(MISSION_ITEM_INT_ID, payload, MISSION_ITEM_INT_CRC_EXTRA, { sysid: 255, compid: 190 });
+    packet = await sendMavlinkPacket(MISSION_ITEM_INT_ID, payload, MISSION_ITEM_INT_CRC_EXTRA);
   } else {
     // MAVLink v1: Use MISSION_ITEM (legacy format with float lat/lon)
     // v1 payload is 37 bytes (no mission_type), v2 is 38 bytes
@@ -1046,7 +1160,7 @@ function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): void {
 }
 
 // Helper: Send mission ACK
-function sendMissionAck(mainWindow: BrowserWindow, result: number): void {
+async function sendMissionAck(mainWindow: BrowserWindow, result: number): Promise<void> {
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
   let packet: Uint8Array;
@@ -1059,7 +1173,7 @@ function sendMissionAck(mainWindow: BrowserWindow, result: number): void {
       type: result,
       missionType: MAV_MISSION_TYPE.MISSION,
     });
-    packet = serializeV2(MISSION_ACK_ID, payload, MISSION_ACK_CRC_EXTRA, { sysid: 255, compid: 190 });
+    packet = await sendMavlinkPacket(MISSION_ACK_ID, payload, MISSION_ACK_CRC_EXTRA);
   } else {
     // MAVLink v1: 3 bytes (no mission_type)
     // Use v1 CRC_EXTRA (153) instead of v2 (146)
@@ -1551,6 +1665,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             for await (const packet of mavlinkParser.parse(chunk)) {
               connectionState.packetsReceived++;
 
+              // Detect signed incoming packets from FC
+              if (packet.isSigned && !connectionState.fcSigning) {
+                connectionState.fcSigning = true;
+                sendLog(mainWindow, 'info', 'FC is sending signed packets - MAVLink signing is active on the vehicle');
+                sendConnectionState(mainWindow);
+              }
+
               // Handle heartbeat (msgid 0)
               if (packet.msgid === 0) {
                 // Detect MAVLink version from packet format
@@ -1577,6 +1698,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                   connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
                   connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
                   connectionState.mavType = vehicleType;
+                  connectionState.mavlinkVersion = detectedMavlinkVersion;
+                  connectionState.signingEnabled = signingEnabled;
 
                   sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
                   sendConnectionState(mainWindow);
@@ -1921,6 +2044,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       mavlinkParser = null;
       connectionState = {
         isConnected: false,
+        signingEnabled,
         packetsReceived: 0,
         packetsSent: 0,
       };
@@ -1997,6 +2121,164 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     settingsStore.set(settings);
   });
 
+  // ============================================================================
+  // MAVLink Signing handlers
+  // ============================================================================
+
+  // Set signing key from passphrase (hashed with SHA-256)
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_SET_KEY, async (_, passphrase: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!passphrase || passphrase.length === 0) {
+        return { success: false, error: 'Passphrase cannot be empty' };
+      }
+      const key = await passphraseToKey(passphrase);
+      signingKey = key;
+      signingLinkId = signingStore.get('linkId') ?? 0;
+      saveSigningKey(key);
+      signingSentToFc = false;
+      signingStore.set('sentToFc', false);
+      sendLog(mainWindow, 'info', 'MAVLink signing key set from passphrase');
+      safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+      return { success: true };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: msg };
+    }
+  });
+
+  // Enable signing on outgoing packets
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_ENABLE, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!signingKey) {
+      // Try to load from storage
+      signingKey = loadSigningKey();
+      if (!signingKey) {
+        return { success: false, error: 'No signing key configured. Set a passphrase first.' };
+      }
+    }
+    signingEnabled = true;
+    connectionState.signingEnabled = true;
+    safeSend(mainWindow, IPC_CHANNELS.CONNECTION_STATE, connectionState);
+    safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+    sendLog(mainWindow, 'info', 'MAVLink signing enabled');
+    return { success: true };
+  });
+
+  // Disable signing on outgoing packets
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_DISABLE, async (): Promise<{ success: boolean }> => {
+    signingEnabled = false;
+    connectionState.signingEnabled = false;
+    safeSend(mainWindow, IPC_CHANNELS.CONNECTION_STATE, connectionState);
+    safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+    sendLog(mainWindow, 'info', 'MAVLink signing disabled');
+    return { success: true };
+  });
+
+  // Get current signing status
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_GET_STATUS, async (): Promise<SigningStatus> => {
+    // Try loading key from storage if not in memory
+    if (!signingKey) {
+      signingKey = loadSigningKey();
+    }
+    return getSigningStatus();
+  });
+
+  // Send SETUP_SIGNING message to the flight controller
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_SEND_TO_FC, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+    if (connectionState.protocol !== 'mavlink') {
+      return { success: false, error: 'Signing is only available for MAVLink connections' };
+    }
+    if (detectedMavlinkVersion !== 2) {
+      return { success: false, error: 'Signing requires MAVLink v2. This board uses MAVLink v1.' };
+    }
+    if (!signingKey) {
+      return { success: false, error: 'No signing key configured' };
+    }
+
+    try {
+      const targetSys = connectionState.systemId ?? 1;
+      const targetComp = connectionState.componentId ?? 1;
+
+      const payload = serializeSetupSigning({
+        targetSystem: targetSys,
+        targetComponent: targetComp,
+        secretKey: Array.from(signingKey),
+        initialTimestamp: getSigningTimestamp(),
+      });
+
+      // Send SETUP_SIGNING unsigned (FC doesn't know the key yet)
+      // Sent twice for reliability, matching Mission Planner behavior
+      const packet = serializeV2(SETUP_SIGNING_ID, payload, SETUP_SIGNING_CRC_EXTRA, {
+        sysid: 255,
+        compid: 190,
+      });
+
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      signingSentToFc = true;
+
+      // Auto-enable signing after sending to FC (matches Mission Planner)
+      signingEnabled = true;
+      connectionState.signingEnabled = true;
+      signingStore.set('sentToFc', true);
+      safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+      sendLog(mainWindow, 'info', `SETUP_SIGNING sent to FC (sys=${targetSys}, comp=${targetComp})`);
+      return { success: true };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to send SETUP_SIGNING', msg);
+      return { success: false, error: msg };
+    }
+  });
+
+  // Disable signing on FC and remove local key
+  // Sends SETUP_SIGNING with all-zero key + timestamp=0 to FC (matches Mission Planner)
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_REMOVE_KEY, async (): Promise<{ success: boolean; error?: string }> => {
+    // If connected to a MAVLink FC, send zero-key SETUP_SIGNING to disable on FC side
+    if (currentTransport?.isOpen && connectionState.isConnected && connectionState.protocol === 'mavlink') {
+      try {
+        const targetSys = connectionState.systemId ?? 1;
+        const targetComp = connectionState.componentId ?? 1;
+        const payload = serializeSetupSigning({
+          targetSystem: targetSys,
+          targetComponent: targetComp,
+          secretKey: new Array(32).fill(0),
+          initialTimestamp: 0n,
+        });
+        const packet = serializeV2(SETUP_SIGNING_ID, payload, SETUP_SIGNING_CRC_EXTRA, {
+          sysid: 255,
+          compid: 190,
+        });
+        await currentTransport.write(packet);
+        connectionState.packetsSent++;
+        await currentTransport.write(packet);
+        connectionState.packetsSent++;
+        sendLog(mainWindow, 'info', `SETUP_SIGNING (disable) sent to FC (sys=${targetSys}, comp=${targetComp})`);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        sendLog(mainWindow, 'error', 'Failed to send disable-signing to FC', msg);
+        return { success: false, error: `Failed to disable on FC: ${msg}` };
+      }
+    }
+
+    // Clean up local state
+    signingKey = null;
+    signingEnabled = false;
+    signingSentToFc = false;
+    signingStore.delete('encryptedKey');
+    signingStore.delete('sentToFc');
+    connectionState.signingEnabled = false;
+    safeSend(mainWindow, IPC_CHANNELS.CONNECTION_STATE, connectionState);
+    safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+    sendLog(mainWindow, 'info', 'MAVLink signing disabled and key removed');
+    return { success: true };
+  });
+
   // Parameter management handlers
 
   // Request all parameters from flight controller
@@ -2026,10 +2308,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         targetComponent: targetComp,
       });
 
-      // Use detected MAVLink version for compatibility
-      const packet = detectedMavlinkVersion === 2
-        ? serializeV2(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 })
-        : serializeV1(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+      // Use detected MAVLink version for compatibility (with signing if enabled)
+      const packet = await sendMavlinkPacket(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA);
       await currentTransport.write(packet);
       connectionState.packetsSent++;
 
@@ -2058,6 +2338,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
 
     try {
+      // Check if this param exists on the FC (if we have a param list)
+      if (receivedParams.size > 0 && !receivedParams.has(paramId)) {
+        sendLog(mainWindow, 'warning', `Parameter "${paramId}" does not exist on this flight controller`);
+        return { success: false, error: `Parameter "${paramId}" not found on this board. Use the Parameters list to see available parameters.` };
+      }
+
       // Build PARAM_SET message
       const payload = serializeParamSet({
         targetSystem: connectionState.systemId ?? 1,
@@ -2067,10 +2353,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         paramType: type,
       });
 
-      // Use detected MAVLink version for compatibility
-      const packet = detectedMavlinkVersion === 2
-        ? serializeV2(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA, { sysid: 255, compid: 190 })
-        : serializeV1(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA, { sysid: 255, compid: 190 });
+      // Use detected MAVLink version for compatibility (with signing if enabled)
+      const packet = await sendMavlinkPacket(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
 
       await currentTransport.write(packet);
       connectionState.packetsSent++;
@@ -2147,9 +2431,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param7: 0,
       });
 
-      const packet = detectedMavlinkVersion === 2
-        ? serializeV2(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 })
-        : serializeV1(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 });
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
 
       await currentTransport.write(packet);
       connectionState.packetsSent++;
@@ -2280,7 +2562,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           missionType: MAV_MISSION_TYPE.MISSION,
         });
-        packet = serializeV2(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA);
       } else {
         // MAVLink v1: manual payload (no mission_type)
         // Use v1 CRC_EXTRA (132) instead of v2 (148)
@@ -2344,7 +2626,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           count: items.length,
           missionType: MAV_MISSION_TYPE.MISSION,
         });
-        packet = serializeV2(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA);
       } else {
         // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
         // ArduPilot uses v2 byte order internally regardless of packet format.
@@ -2400,7 +2682,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           missionType: MAV_MISSION_TYPE.MISSION,
         });
-        packet = serializeV2(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA);
       } else {
         // MAVLink v1: manual payload (no mission_type)
         // Use v1 CRC_EXTRA (232) instead of v2 (25)
@@ -2444,7 +2726,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           seq,
         });
-        packet = serializeV2(MISSION_SET_CURRENT_ID, payload, MISSION_SET_CURRENT_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_SET_CURRENT_ID, payload, MISSION_SET_CURRENT_CRC_EXTRA);
       } else {
         // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
         // ArduPilot uses v2 byte order internally regardless of packet format.
@@ -2574,7 +2856,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           missionType: MAV_MISSION_TYPE.FENCE,
         });
-        packet = serializeV2(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA);
       } else {
         // MAVLink v1 doesn't support fence mission type in the standard way
         // Most FCs require v2 for fence operations
@@ -2633,7 +2915,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           count: items.length,
           missionType: MAV_MISSION_TYPE.FENCE,
         });
-        packet = serializeV2(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA);
       } else {
         const payload = new Uint8Array(5);
         payload[0] = items.length & 0xff;
@@ -2681,7 +2963,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           missionType: MAV_MISSION_TYPE.FENCE,
         });
-        packet = serializeV2(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA);
       } else {
         const payload = new Uint8Array(3);
         payload[0] = targetSystem & 0xff;
@@ -2790,7 +3072,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           missionType: MAV_MISSION_TYPE.RALLY,
         });
-        packet = serializeV2(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA);
       } else {
         const payload = new Uint8Array(3);
         payload[0] = targetSystem & 0xff;
@@ -2847,7 +3129,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           count: items.length,
           missionType: MAV_MISSION_TYPE.RALLY,
         });
-        packet = serializeV2(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA);
       } else {
         const payload = new Uint8Array(5);
         payload[0] = items.length & 0xff;
@@ -2895,7 +3177,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: 1,
           missionType: MAV_MISSION_TYPE.RALLY,
         });
-        packet = serializeV2(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA, { sysid: 255, compid: 190 });
+        packet = await sendMavlinkPacket(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA);
       } else {
         const payload = new Uint8Array(3);
         payload[0] = targetSystem & 0xff;
@@ -3267,9 +3549,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param7: 0,
       });
 
-      const packet = detectedMavlinkVersion === 2
-        ? serializeV2(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 })
-        : serializeV1(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 190 });
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
 
       await currentTransport.write(packet);
       connectionState.packetsSent++;

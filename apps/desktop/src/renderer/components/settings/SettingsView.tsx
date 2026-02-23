@@ -4,6 +4,7 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useUpdateStore } from '../../stores/update-store';
 
+
 // Vehicle types supported by each firmware
 // Betaflight: Only multirotors (racing/freestyle focused)
 // iNav: Multirotors, planes, rovers (GPS navigation firmware)
@@ -1332,7 +1333,6 @@ export function SettingsView() {
           </div>
         </div>
 
-        {/* ============================================ */}
         {/* SECTION: About */}
         {/* ============================================ */}
         <AboutSection />

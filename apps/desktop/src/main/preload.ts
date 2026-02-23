@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus } from '../shared/ipc-channels.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -71,6 +71,31 @@ const api = {
   // MAVLink
   sendMessage: (payload: number[]): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SEND, payload),
+
+  // MAVLink Signing
+  signingSetKey: (passphrase: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_SET_KEY, passphrase),
+
+  signingEnable: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_ENABLE),
+
+  signingDisable: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_DISABLE),
+
+  signingGetStatus: (): Promise<SigningStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_GET_STATUS),
+
+  signingSendToFc: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_SEND_TO_FC),
+
+  signingRemoveKey: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_REMOVE_KEY),
+
+  onSigningStatus: (callback: (status: SigningStatus) => void) => {
+    const handler = (_: unknown, status: SigningStatus) => callback(status);
+    ipcRenderer.on(IPC_CHANNELS.MAVLINK_SIGNING_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MAVLINK_SIGNING_STATUS, handler);
+  },
 
   // Event listeners
   onPacket: (callback: (packet: { msgid: number; sysid: number; compid: number; seq: number; payload: number[] }) => void) => {

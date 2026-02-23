@@ -16,6 +16,15 @@ export const IPC_CHANNELS = {
   MAVLINK_PACKET: 'mavlink:packet',
   MAVLINK_SEND: 'mavlink:send',
 
+  // MAVLink Signing
+  MAVLINK_SIGNING_SET_KEY: 'mavlink:signing-set-key',
+  MAVLINK_SIGNING_ENABLE: 'mavlink:signing-enable',
+  MAVLINK_SIGNING_DISABLE: 'mavlink:signing-disable',
+  MAVLINK_SIGNING_GET_STATUS: 'mavlink:signing-get-status',
+  MAVLINK_SIGNING_SEND_TO_FC: 'mavlink:signing-send-to-fc',
+  MAVLINK_SIGNING_REMOVE_KEY: 'mavlink:signing-remove-key',
+  MAVLINK_SIGNING_STATUS: 'mavlink:signing-status',
+
   // Connection state
   CONNECTION_STATE: 'connection:state',
 
@@ -384,6 +393,12 @@ export interface ConnectionState {
   reconnectReason?: string; // "Saving configuration", "Rebooting board"
   reconnectAttempt?: number; // Current attempt (1-based)
   reconnectMaxAttempts?: number; // Max attempts before giving up
+  /** Detected MAVLink protocol version (1 or 2) */
+  mavlinkVersion?: number;
+  // MAVLink signing
+  signingEnabled?: boolean;
+  /** True when we detect the FC is sending signed packets back */
+  fcSigning?: boolean;
   // Stats
   packetsReceived: number;
   packetsSent: number;
@@ -828,6 +843,18 @@ export type AppUpdateStatus =
   | 'downloading'
   | 'downloaded'
   | 'error';
+
+// =============================================================================
+// MAVLink Signing Types
+// =============================================================================
+
+export interface SigningStatus {
+  enabled: boolean;
+  hasKey: boolean;
+  sentToFc: boolean;
+  /** First 6 bytes of key as hex for visual identification */
+  keyFingerprint?: string;
+}
 
 export interface AppUpdateInfo {
   status: AppUpdateStatus;

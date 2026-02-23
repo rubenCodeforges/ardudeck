@@ -7,13 +7,16 @@
  * Use serializeV2Async for signed packets.
  */
 
+import { createHash, randomBytes } from 'node:crypto';
 import { MAVLINK_SIGNATURE_TIMESTAMP_EPOCH } from './constants.js';
 
 /**
  * Get MAVLink signing timestamp (milliseconds since 2015-01-01)
  */
 export function getSigningTimestamp(): bigint {
-  return BigInt(Date.now() - MAVLINK_SIGNATURE_TIMESTAMP_EPOCH);
+  // MAVLink signing timestamps are in 10µs units (milliseconds * 100)
+  // Reference: Mission Planner MavlinkParse.cs line 341
+  return BigInt(Date.now() - MAVLINK_SIGNATURE_TIMESTAMP_EPOCH) * 100n;
 }
 
 /**
@@ -84,18 +87,15 @@ export async function createSignatureAsync(
   signatureBlock[6] = Number((timestamp >> 40n) & 0xffn);
 
   // Calculate SHA256(secret_key + header + payload + CRC + link_id + timestamp)
-  const hashInput = new Uint8Array(
-    secretKey.length + packetData.length + 7 // +7 for link_id + timestamp
-  );
-  hashInput.set(secretKey, 0);
-  hashInput.set(packetData, secretKey.length);
-  hashInput.set(signatureBlock.slice(0, 7), secretKey.length + packetData.length);
+  // Reference: Mission Planner MavlinkParse.cs lines 360-376
+  const hash = createHash('sha256');
+  hash.update(secretKey);
+  hash.update(packetData);
+  hash.update(signatureBlock.slice(0, 7)); // linkId + timestamp
 
-  // Use Web Crypto API for SHA256
-  const hashBuffer = await crypto.subtle.digest('SHA-256', hashInput);
-  const hashArray = new Uint8Array(hashBuffer);
+  const hashArray = new Uint8Array(hash.digest());
 
-  // Take first 6 bytes of hash as signature
+  // Take first 6 bytes of hash as signature (SHA256_48)
   signatureBlock.set(hashArray.slice(0, 6), 7);
 
   return signatureBlock;
@@ -108,7 +108,7 @@ export async function createSignatureAsync(
  * @param packetData - Packet bytes (header + payload + CRC)
  * @param signature - 13-byte signature block from packet
  * @param allowOldTimestamps - Allow signatures with timestamps in the past
- * @param maxTimestampAge - Maximum age of timestamp in milliseconds (default: 60000)
+ * @param maxTimestampAge - Maximum age of timestamp in 10µs units (default: 6000000 = 60s)
  * @returns true if signature is valid
  */
 export async function verifySignature(
@@ -116,7 +116,7 @@ export async function verifySignature(
   packetData: Uint8Array,
   signature: Uint8Array,
   allowOldTimestamps = false,
-  maxTimestampAge = 60000
+  maxTimestampAge = 6_000_000
 ): Promise<boolean> {
   if (signature.length !== 13) {
     return false;
@@ -144,19 +144,16 @@ export async function verifySignature(
     }
   }
 
-  // Recalculate with matching timestamp
-  const linkId = signature[0] ?? 0;
-  const hashInput = new Uint8Array(
-    secretKey.length + packetData.length + 7
-  );
-  hashInput.set(secretKey, 0);
-  hashInput.set(packetData, secretKey.length);
-  hashInput.set(signature.slice(0, 7), secretKey.length + packetData.length);
+  // Recalculate hash with matching timestamp
+  // Reference: Mission Planner MAVLinkInterface.cs CheckSignature
+  const hash = createHash('sha256');
+  hash.update(secretKey);
+  hash.update(packetData);
+  hash.update(signature.slice(0, 7)); // linkId + timestamp
 
-  const hashBuffer = await crypto.subtle.digest('SHA-256', hashInput);
-  const hashArray = new Uint8Array(hashBuffer);
+  const hashArray = new Uint8Array(hash.digest());
 
-  // Compare signatures (constant-time comparison)
+  // Compare first 6 bytes (constant-time comparison)
   let valid = true;
   for (let i = 0; i < 6; i++) {
     if (hashArray[i] !== signature[7 + i]) {
@@ -171,7 +168,5 @@ export async function verifySignature(
  * Generate a random 32-byte signing key
  */
 export function generateSigningKey(): Uint8Array {
-  const key = new Uint8Array(32);
-  crypto.getRandomValues(key);
-  return key;
+  return new Uint8Array(randomBytes(32));
 }

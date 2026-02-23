@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { MoveHorizontal, MoveVertical, RefreshCw, Link, Lightbulb } from 'lucide-react';
+import { MoveHorizontal, MoveVertical, RefreshCw, Link, Lightbulb, AlertTriangle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { PresetSelector } from '../ui/PresetSelector';
@@ -38,6 +38,12 @@ const RatesTab: React.FC = () => {
 
   // Check if parameters are loaded
   const hasParameters = parameters.size > 0;
+
+  // Check if expected rate params exist on this board
+  const hasRateParams = useMemo(() => {
+    if (!hasParameters) return true; // Don't show warning until params are loaded
+    return parameters.has('ACRO_RP_RATE');
+  }, [hasParameters, parameters]);
 
   // Get current rate values from parameters
   const rateValues = useMemo(() => ({
@@ -95,13 +101,36 @@ const RatesTab: React.FC = () => {
         </div>
       )}
 
+      {/* Warning: Rate params not found on this board */}
+      {hasParameters && !hasRateParams && (
+        <div className="bg-red-500/10 rounded-xl border border-red-500/30 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <p className="text-red-300 font-medium">Incompatible Rate Parameters</p>
+              <p className="text-sm text-gray-400 mt-1">
+                This board does not have <span className="font-mono text-gray-300">ACRO_RP_RATE</span> / <span className="font-mono text-gray-300">ACRO_Y_RATE</span> parameters.
+                Your firmware may use different rate parameter names.
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Use the <span className="font-medium text-gray-300">Parameters</span> list view to find and edit your board's rate parameters directly.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Info card */}
       <InfoCard title="What are rates?" variant="info">
         Rates control how fast your aircraft spins when you move the sticks.
         Higher rates = faster rotation. Expo adds a curve so small stick movements are slower.
       </InfoCard>
 
-      {/* Quick Presets */}
+      {/* Controls disabled when params don't exist */}
+      <div className={!hasRateParams ? 'opacity-40 pointer-events-none' : ''}>
+      <div className="space-y-6">
       <PresetSelector
         presets={RATE_PRESETS}
         onApply={applyPreset}
@@ -109,7 +138,6 @@ const RatesTab: React.FC = () => {
         hint="Click to apply a rate style"
       />
 
-      {/* Custom Profiles */}
       <ProfileManager<RateProfileData>
         storageKey={RATE_PROFILES_KEY}
         currentData={rateValues}
@@ -265,6 +293,8 @@ const RatesTab: React.FC = () => {
             <div className="text-xs text-zinc-500">Yaw Expo</div>
           </div>
         </div>
+      </div>
+      </div>
       </div>
 
       {/* Tip */}

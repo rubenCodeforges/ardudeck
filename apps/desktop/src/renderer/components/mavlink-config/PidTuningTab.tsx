@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb } from 'lucide-react';
+import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb, AlertTriangle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { PresetSelector } from '../ui/PresetSelector';
@@ -53,6 +53,13 @@ const PidTuningTab: React.FC = () => {
 
   // Check if parameters are loaded
   const hasParameters = parameters.size > 0;
+
+  // Check if expected PID params exist on this board
+  // ATC_RAT_* params are ArduCopter 3.5+ - older boards use RATE_RLL_P etc.
+  const hasPidParams = useMemo(() => {
+    if (!hasParameters) return true; // Don't show warning until params are loaded
+    return parameters.has('ATC_RAT_RLL_P');
+  }, [hasParameters, parameters]);
 
   // Get current PID values from parameters
   const pidValues = useMemo(() => ({
@@ -126,13 +133,37 @@ const PidTuningTab: React.FC = () => {
         </div>
       )}
 
+      {/* Warning: PID params not found on this board */}
+      {hasParameters && !hasPidParams && (
+        <div className="bg-red-500/10 rounded-xl border border-red-500/30 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <p className="text-red-300 font-medium">Incompatible PID Parameters</p>
+              <p className="text-sm text-gray-400 mt-1">
+                This board does not have <span className="font-mono text-gray-300">ATC_RAT_*</span> parameters.
+                Your firmware may use different PID parameter names (e.g. <span className="font-mono text-gray-300">RATE_RLL_P</span> for older ArduCopter,
+                or <span className="font-mono text-gray-300">RLL2SRV_P</span> for ArduPlane).
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Use the <span className="font-medium text-gray-300">Parameters</span> list view to find and edit your board's PID parameters directly.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Info card */}
       <InfoCard title="What are PIDs?" variant="info">
         PIDs control how your aircraft responds to commands. P = how quickly it reacts,
         I = how well it holds position, D = how smoothly it stops. Start with a preset!
       </InfoCard>
 
-      {/* Quick Presets */}
+      {/* Quick Presets, Custom Profiles, and PID Sliders - disabled when params don't exist */}
+      <div className={!hasPidParams ? 'opacity-40 pointer-events-none' : ''}>
+      <div className="space-y-6">
       <PresetSelector
         presets={PID_PRESETS}
         onApply={applyPreset}
@@ -140,7 +171,6 @@ const PidTuningTab: React.FC = () => {
         hint="Click to apply a tuning style"
       />
 
-      {/* Custom Profiles */}
       <ProfileManager<PidProfileData>
         storageKey={PID_PROFILES_KEY}
         currentData={pidValues}
@@ -315,6 +345,8 @@ const PidTuningTab: React.FC = () => {
             />
           </div>
         </div>
+      </div>
+      </div>
       </div>
 
       {/* Explanation card */}

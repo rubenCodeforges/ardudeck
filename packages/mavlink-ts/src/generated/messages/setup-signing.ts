@@ -28,7 +28,7 @@ export function serializeSetupSigning(msg: SetupSigning): Uint8Array {
   buffer[9] = msg.targetComponent & 0xff;
   // Array: secret_key
   for (let i = 0; i < 32; i++) {
-    buffer[10 + i * 1] = msg.secretKey[i] ?? 0 & 0xff;
+    buffer[10 + i] = (msg.secretKey[i] ?? 0) & 0xff;
   }
 
   return buffer;
