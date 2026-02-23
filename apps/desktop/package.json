@@ -1,6 +1,6 @@
 {
   "name": "@ardudeck/desktop",
-  "version": "0.0.22-alpha",
+  "version": "0.0.27-alpha",
   "description": "ArduDeck - Desktop Application",
   "author": {
     "name": "rubenCodeforges",
@@ -119,6 +119,9 @@
       "target": [
         "AppImage",
         "deb"
+      ],
+      "executableArgs": [
+        "--no-sandbox"
       ]
     }
   }

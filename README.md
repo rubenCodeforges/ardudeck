@@ -331,6 +331,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 **Getting started:** Download the installer for your platform, install, plug in your flight controller via USB, and you're ready to go.
 
+> **Linux AppImage note:** On Ubuntu 24.04+ and other recent distros, the AppImage may not launch because `libfuse2` is no longer installed by default. Install it with `sudo apt install libfuse2`, or run with `APPIMAGE_EXTRACT_AND_RUN=1 ./ArduDeck-*.AppImage` to skip the FUSE requirement. Alternatively, use the `.deb` package which has no such dependency.
+>
 > **Note on code signing:** ArduDeck binaries are currently unsigned. On macOS, you may see a Gatekeeper warning — right-click the app and select "Open", or run `xattr -cr /Applications/ArduDeck.app` in Terminal. On Windows, SmartScreen may show a warning — click "More info" then "Run anyway". We plan to obtain code signing certificates once the project reaches a meaningful user base to justify the cost.
 >
 > **Auto-updates:** On Windows and Linux, ArduDeck supports seamless in-app updates — download and install with a single click. On macOS, because the app is not yet code-signed, in-app downloads are blocked by Gatekeeper. ArduDeck will still notify you when a new version is available and open the release page for manual download. Once we obtain an Apple Developer certificate, macOS will get full auto-update support automatically.

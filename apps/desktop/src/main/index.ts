@@ -11,6 +11,10 @@ import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
 // Handle uncaught exceptions gracefully - especially network errors
 // ECONNRESET happens when SITL is killed while connected
 process.on('uncaughtException', (error: Error) => {
