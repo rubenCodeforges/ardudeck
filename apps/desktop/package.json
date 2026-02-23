@@ -113,15 +113,13 @@
       ]
     },
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "afterPack": "./afterPack.cjs",
     "linux": {
       "icon": "resources/icon.png",
       "category": "Utility",
       "target": [
         "AppImage",
         "deb"
-      ],
-      "executableArgs": [
-        "--no-sandbox"
       ]
     }
   }
