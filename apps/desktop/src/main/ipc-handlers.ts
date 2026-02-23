@@ -2340,7 +2340,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       // Check if this param exists on the FC (if we have a param list)
       if (receivedParams.size > 0 && !receivedParams.has(paramId)) {
-        sendLog(mainWindow, 'warning', `Parameter "${paramId}" does not exist on this flight controller`);
+        sendLog(mainWindow, 'warn', `Parameter "${paramId}" does not exist on this flight controller`);
         return { success: false, error: `Parameter "${paramId}" not found on this board. Use the Parameters list to see available parameters.` };
       }
 
