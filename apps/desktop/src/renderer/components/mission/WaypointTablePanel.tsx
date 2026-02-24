@@ -24,25 +24,83 @@ function getGpsState() {
   };
 }
 
-// Commands available in the dropdown with friendly descriptions
-const AVAILABLE_COMMANDS = [
-  { value: MAV_CMD.NAV_TAKEOFF, label: 'Takeoff', desc: 'Launch and climb to altitude' },
-  { value: MAV_CMD.NAV_WAYPOINT, label: 'Waypoint', desc: 'Fly to this location' },
-  { value: MAV_CMD.NAV_SPLINE_WAYPOINT, label: 'Spline WP', desc: 'Fly through smoothly (curved path)' },
-  { value: MAV_CMD.NAV_LOITER_UNLIM, label: 'Loiter', desc: 'Circle here until commanded' },
-  { value: MAV_CMD.NAV_LOITER_TIME, label: 'Loiter Time', desc: 'Circle here for set duration' },
-  { value: MAV_CMD.NAV_LOITER_TURNS, label: 'Loiter Turns', desc: 'Circle here N times' },
-  { value: MAV_CMD.NAV_LAND, label: 'Land', desc: 'Land at this location' },
-  { value: MAV_CMD.NAV_RETURN_TO_LAUNCH, label: 'Return Home', desc: 'Fly back to launch point' },
-  { value: MAV_CMD.NAV_DELAY, label: 'Wait', desc: 'Pause mission for set time' },
-  { value: MAV_CMD.DO_CHANGE_SPEED, label: 'Set Speed', desc: 'Change flight speed' },
+// Grouped commands for the dropdown
+interface CommandOption {
+  value: number;
+  label: string;
+  desc: string;
+}
+interface CommandGroup {
+  group: string;
+  commands: CommandOption[];
+}
+const COMMAND_GROUPS: CommandGroup[] = [
+  {
+    group: 'Navigation',
+    commands: [
+      { value: MAV_CMD.NAV_TAKEOFF, label: 'Takeoff', desc: 'Launch and climb to altitude' },
+      { value: MAV_CMD.NAV_WAYPOINT, label: 'Waypoint', desc: 'Fly to this location' },
+      { value: MAV_CMD.NAV_SPLINE_WAYPOINT, label: 'Spline WP', desc: 'Fly through smoothly' },
+      { value: MAV_CMD.NAV_LOITER_UNLIM, label: 'Loiter', desc: 'Circle until commanded' },
+      { value: MAV_CMD.NAV_LOITER_TIME, label: 'Loiter Time', desc: 'Circle for set duration' },
+      { value: MAV_CMD.NAV_LOITER_TURNS, label: 'Loiter Turns', desc: 'Circle N times' },
+      { value: MAV_CMD.NAV_LOITER_TO_ALT, label: 'Loiter to Alt', desc: 'Loiter and change alt' },
+      { value: MAV_CMD.NAV_LAND, label: 'Land', desc: 'Land at this location' },
+      { value: MAV_CMD.NAV_RETURN_TO_LAUNCH, label: 'Return Home', desc: 'Fly back to launch' },
+      { value: MAV_CMD.NAV_VTOL_TAKEOFF, label: 'VTOL Takeoff', desc: 'VTOL vertical takeoff' },
+      { value: MAV_CMD.NAV_VTOL_LAND, label: 'VTOL Land', desc: 'VTOL vertical landing' },
+      { value: MAV_CMD.NAV_DELAY, label: 'Wait', desc: 'Pause mission for time' },
+      { value: MAV_CMD.NAV_PAYLOAD_PLACE, label: 'Payload Place', desc: 'Descend and release' },
+    ],
+  },
+  {
+    group: 'Conditions',
+    commands: [
+      { value: MAV_CMD.CONDITION_DELAY, label: 'Delay', desc: 'Wait seconds' },
+      { value: MAV_CMD.CONDITION_DISTANCE, label: 'Distance', desc: 'Wait until near next WP' },
+      { value: MAV_CMD.CONDITION_CHANGE_ALT, label: 'Change Alt', desc: 'Reach alt then continue' },
+      { value: MAV_CMD.CONDITION_YAW, label: 'Yaw', desc: 'Reach heading then continue' },
+    ],
+  },
+  {
+    group: 'Camera / Gimbal',
+    commands: [
+      { value: MAV_CMD.DO_SET_CAM_TRIGG_DIST, label: 'Camera Trigger', desc: 'Trigger at distance' },
+      { value: MAV_CMD.DO_DIGICAM_CONTROL, label: 'Digicam Control', desc: 'Take a photo' },
+      { value: MAV_CMD.DO_DIGICAM_CONFIGURE, label: 'Digicam Config', desc: 'Configure camera' },
+      { value: MAV_CMD.DO_SET_ROI, label: 'Set ROI', desc: 'Point camera at location' },
+      { value: MAV_CMD.DO_SET_ROI_LOCATION, label: 'ROI Location', desc: 'Point camera at GPS' },
+      { value: MAV_CMD.DO_SET_ROI_NONE, label: 'ROI None', desc: 'Stop camera tracking' },
+      { value: MAV_CMD.DO_MOUNT_CONTROL, label: 'Mount Control', desc: 'Set gimbal angles' },
+    ],
+  },
+  {
+    group: 'Actions',
+    commands: [
+      { value: MAV_CMD.DO_CHANGE_SPEED, label: 'Set Speed', desc: 'Change flight speed' },
+      { value: MAV_CMD.DO_SET_HOME, label: 'Set Home', desc: 'Set new home position' },
+      { value: MAV_CMD.DO_JUMP, label: 'Jump', desc: 'Jump to WP and repeat' },
+      { value: MAV_CMD.DO_SET_SERVO, label: 'Set Servo', desc: 'Set servo PWM' },
+      { value: MAV_CMD.DO_SET_RELAY, label: 'Set Relay', desc: 'Set relay on/off' },
+      { value: MAV_CMD.DO_FENCE_ENABLE, label: 'Fence Enable', desc: 'Enable/disable geofence' },
+      { value: MAV_CMD.DO_PARACHUTE, label: 'Parachute', desc: 'Deploy parachute' },
+      { value: MAV_CMD.DO_GRIPPER, label: 'Gripper', desc: 'Open/close gripper' },
+      { value: MAV_CMD.DO_VTOL_TRANSITION, label: 'VTOL Transition', desc: 'Switch VTOL/FW mode' },
+      { value: MAV_CMD.DO_LAND_START, label: 'Land Start', desc: 'Begin landing sequence' },
+      { value: MAV_CMD.DO_CHANGE_ALTITUDE, label: 'Change Alt', desc: 'Change altitude' },
+    ],
+  },
 ];
+
+// Flat list of all available commands (for lookup)
+const ALL_AVAILABLE_COMMANDS = COMMAND_GROUPS.flatMap(g => g.commands);
 
 // Get friendly description for a waypoint
 function getWaypointSummary(wp: MissionItem): string {
   const radiusSuffix = wp.param3 > 0 ? ` (${wp.param3}m radius)` : '';
 
   switch (wp.command) {
+    // Navigation
     case MAV_CMD.NAV_TAKEOFF:
       return `Takeoff to ${wp.altitude}m`;
     case MAV_CMD.NAV_WAYPOINT:
@@ -55,14 +113,98 @@ function getWaypointSummary(wp: MissionItem): string {
       return `Circle for ${wp.param1}s${radiusSuffix}`;
     case MAV_CMD.NAV_LOITER_TURNS:
       return `Circle ${wp.param1}x${radiusSuffix}`;
+    case MAV_CMD.NAV_LOITER_TO_ALT:
+      return `Loiter to ${wp.altitude}m${radiusSuffix}`;
     case MAV_CMD.NAV_LAND:
       return 'Land here';
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
       return 'Return to home';
+    case MAV_CMD.NAV_VTOL_TAKEOFF:
+      return `VTOL Takeoff to ${wp.altitude}m`;
+    case MAV_CMD.NAV_VTOL_LAND:
+      return 'VTOL Land here';
     case MAV_CMD.NAV_DELAY:
       return `Wait ${wp.param1}s`;
+    case MAV_CMD.NAV_PAYLOAD_PLACE:
+      return wp.param1 > 0 ? `Place payload (max ${wp.param1}m desc)` : 'Place payload';
+    case MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT:
+      return `Continue, change to ${wp.altitude}m`;
+    case MAV_CMD.NAV_GUIDED_ENABLE:
+      return wp.param1 > 0 ? 'Enable guided mode' : 'Disable guided mode';
+
+    // Conditions
+    case MAV_CMD.CONDITION_DELAY:
+      return `Wait ${wp.param1}s`;
+    case MAV_CMD.CONDITION_CHANGE_ALT:
+      return `Climb/descend at ${wp.param1} m/s`;
+    case MAV_CMD.CONDITION_DISTANCE:
+      return `Wait until ${wp.param1}m from next WP`;
+    case MAV_CMD.CONDITION_YAW:
+      return `Turn to ${wp.param1} deg`;
+
+    // Camera / Gimbal
+    case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+      return wp.param1 > 0 ? `Camera every ${wp.param1}m` : 'Camera trigger off';
+    case MAV_CMD.DO_DIGICAM_CONTROL:
+      return 'Take photo';
+    case MAV_CMD.DO_DIGICAM_CONFIGURE:
+      return 'Configure camera';
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+      return 'Point camera here';
+    case MAV_CMD.DO_SET_ROI_NONE:
+      return 'Stop camera tracking';
+    case MAV_CMD.DO_MOUNT_CONTROL:
+      return 'Set gimbal angles';
+    case MAV_CMD.DO_MOUNT_CONFIGURE:
+      return 'Configure gimbal';
+    case MAV_CMD.DO_CONTROL_VIDEO:
+      return 'Control video';
+
+    // Actions
     case MAV_CMD.DO_CHANGE_SPEED:
       return `Set speed to ${wp.param2} m/s`;
+    case MAV_CMD.DO_SET_HOME:
+      return wp.param1 === 1 ? 'Set home (current)' : 'Set home (location)';
+    case MAV_CMD.DO_JUMP:
+      return `Jump to WP ${wp.param1}` + (wp.param2 > 0 ? ` (${wp.param2}x)` : ' (forever)');
+    case MAV_CMD.DO_SET_SERVO:
+      return `Servo ${wp.param1} = ${wp.param2}`;
+    case MAV_CMD.DO_REPEAT_SERVO:
+      return `Cycle servo ${wp.param1}`;
+    case MAV_CMD.DO_SET_RELAY:
+      return `Relay ${wp.param1} ${wp.param2 > 0 ? 'ON' : 'OFF'}`;
+    case MAV_CMD.DO_REPEAT_RELAY:
+      return `Cycle relay ${wp.param1}`;
+    case MAV_CMD.DO_FENCE_ENABLE:
+      return wp.param1 > 0 ? 'Enable geofence' : 'Disable geofence';
+    case MAV_CMD.DO_PARACHUTE:
+      return 'Deploy parachute';
+    case MAV_CMD.DO_GRIPPER:
+      return wp.param2 === 0 ? 'Release gripper' : 'Grab gripper';
+    case MAV_CMD.DO_VTOL_TRANSITION:
+      return wp.param1 === 3 ? 'Transition to FW' : 'Transition to MC';
+    case MAV_CMD.DO_LAND_START:
+      return 'Begin landing sequence';
+    case MAV_CMD.DO_CHANGE_ALTITUDE:
+      return `Change alt to ${wp.param1}m`;
+    case MAV_CMD.DO_SET_MODE:
+      return `Set mode ${wp.param1}`;
+    case MAV_CMD.DO_PAUSE_CONTINUE:
+      return wp.param1 > 0 ? 'Resume mission' : 'Pause mission';
+    case MAV_CMD.DO_SET_REVERSE:
+      return wp.param1 > 0 ? 'Drive in reverse' : 'Drive forward';
+    case MAV_CMD.DO_INVERTED_FLIGHT:
+      return wp.param1 > 0 ? 'Inverted flight ON' : 'Inverted flight OFF';
+    case MAV_CMD.DO_AUTOTUNE_ENABLE:
+      return wp.param1 > 0 ? 'Autotune ON' : 'Autotune OFF';
+    case MAV_CMD.DO_ENGINE_CONTROL:
+      return wp.param1 > 0 ? 'Start engine' : 'Stop engine';
+    case MAV_CMD.DO_FLIGHTTERMINATION:
+      return 'Flight termination';
+    case MAV_CMD.DO_SET_PARAMETER:
+      return `Set param ${wp.param1} = ${wp.param2}`;
+
     default:
       return COMMAND_NAMES[wp.command] || `Command ${wp.command}`;
   }
@@ -129,6 +271,99 @@ function getCommandParams(cmd: number): Array<{
     case MAV_CMD.DO_CHANGE_SPEED:
       return [
         { key: 'param2' as const, label: 'Target Speed', unit: 'm/s', min: 1, max: 50, step: 1, show: true },
+      ];
+    case MAV_CMD.NAV_LOITER_TO_ALT:
+      return [
+        ...baseLocation,
+        { key: 'param3' as const, label: 'Radius', unit: 'm', min: 10, max: 500, step: 10, show: true },
+      ];
+    case MAV_CMD.NAV_VTOL_TAKEOFF:
+      return [
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 1, max: 500, step: 5, show: true },
+      ];
+    case MAV_CMD.NAV_VTOL_LAND:
+      return [
+        { key: 'param3' as const, label: 'Approach Alt', unit: 'm', min: 0, max: 200, step: 5, show: true },
+      ];
+    case MAV_CMD.NAV_PAYLOAD_PLACE:
+      return [
+        ...baseLocation,
+        { key: 'param1' as const, label: 'Max Descend', unit: 'm', min: 0, max: 50, step: 1, show: true },
+      ];
+    case MAV_CMD.CONDITION_DELAY:
+      return [
+        { key: 'param1' as const, label: 'Time', unit: 's', min: 0, max: 3600, step: 1, show: true },
+      ];
+    case MAV_CMD.CONDITION_CHANGE_ALT:
+      return [
+        { key: 'param1' as const, label: 'Rate', unit: 'm/s', min: 0, max: 10, step: 0.5, show: true },
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+      ];
+    case MAV_CMD.CONDITION_DISTANCE:
+      return [
+        { key: 'param1' as const, label: 'Distance', unit: 'm', min: 0, max: 10000, step: 10, show: true },
+      ];
+    case MAV_CMD.CONDITION_YAW:
+      return [
+        { key: 'param1' as const, label: 'Heading', unit: 'deg', min: 0, max: 360, step: 5, show: true },
+        { key: 'param2' as const, label: 'Speed', unit: 'deg/s', min: 0, max: 180, step: 5, show: true },
+      ];
+    case MAV_CMD.DO_JUMP:
+      return [
+        { key: 'param1' as const, label: 'Waypoint #', unit: '', min: 1, max: 999, step: 1, show: true },
+        { key: 'param2' as const, label: 'Repeat Count', unit: '', min: -1, max: 100, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+      return [
+        { key: 'param1' as const, label: 'Distance', unit: 'm', min: 0, max: 1000, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SET_SERVO:
+      return [
+        { key: 'param1' as const, label: 'Servo #', unit: '', min: 1, max: 16, step: 1, show: true },
+        { key: 'param2' as const, label: 'PWM', unit: 'us', min: 500, max: 2500, step: 10, show: true },
+      ];
+    case MAV_CMD.DO_SET_RELAY:
+      return [
+        { key: 'param1' as const, label: 'Relay #', unit: '', min: 0, max: 15, step: 1, show: true },
+        { key: 'param2' as const, label: 'On/Off', unit: '', min: 0, max: 1, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_REPEAT_SERVO:
+      return [
+        { key: 'param1' as const, label: 'Servo #', unit: '', min: 1, max: 16, step: 1, show: true },
+        { key: 'param2' as const, label: 'PWM', unit: 'us', min: 500, max: 2500, step: 10, show: true },
+        { key: 'param3' as const, label: 'Count', unit: '', min: 1, max: 100, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_REPEAT_RELAY:
+      return [
+        { key: 'param1' as const, label: 'Relay #', unit: '', min: 0, max: 15, step: 1, show: true },
+        { key: 'param2' as const, label: 'Count', unit: '', min: 1, max: 100, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+      return baseLocation;
+    case MAV_CMD.DO_MOUNT_CONTROL:
+      return [
+        { key: 'param1' as const, label: 'Pitch', unit: 'deg', min: -90, max: 90, step: 5, show: true },
+        { key: 'param2' as const, label: 'Roll', unit: 'deg', min: -90, max: 90, step: 5, show: true },
+        { key: 'param3' as const, label: 'Yaw', unit: 'deg', min: -180, max: 180, step: 5, show: true },
+      ];
+    case MAV_CMD.DO_FENCE_ENABLE:
+      return [
+        { key: 'param1' as const, label: 'Enable', unit: '', min: 0, max: 2, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_GRIPPER:
+      return [
+        { key: 'param1' as const, label: 'Gripper #', unit: '', min: 1, max: 4, step: 1, show: true },
+        { key: 'param2' as const, label: 'Action', unit: '', min: 0, max: 1, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_VTOL_TRANSITION:
+      return [
+        { key: 'param1' as const, label: 'State', unit: '', min: 1, max: 4, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_CHANGE_ALTITUDE:
+      return [
+        { key: 'param1' as const, label: 'Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+        { key: 'param2' as const, label: 'Frame', unit: '', min: 0, max: 10, step: 1, show: false },
       ];
     default:
       return baseLocation;
@@ -262,7 +497,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   };
 
   const getCommandName = (cmd: number) => COMMAND_NAMES[cmd] || `CMD ${cmd}`;
-  const getCommandInfo = (cmd: number) => AVAILABLE_COMMANDS.find(c => c.value === cmd);
+  const getCommandInfo = (cmd: number) => ALL_AVAILABLE_COMMANDS.find(c => c.value === cmd);
 
   return (
     <div className="h-full flex flex-col bg-gray-900/50">
@@ -399,10 +634,14 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
               onChange={(e) => handleCommandChange(selectedWaypoint.seq, Number(e.target.value))}
               className="w-full bg-gray-700 text-gray-200 text-sm px-2 py-1.5 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
             >
-              {AVAILABLE_COMMANDS.map((cmd) => (
-                <option key={cmd.value} value={cmd.value}>
-                  {cmd.label} — {cmd.desc}
-                </option>
+              {COMMAND_GROUPS.map((group) => (
+                <optgroup key={group.group} label={group.group}>
+                  {group.commands.map((cmd) => (
+                    <option key={cmd.value} value={cmd.value}>
+                      {cmd.label} -- {cmd.desc}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

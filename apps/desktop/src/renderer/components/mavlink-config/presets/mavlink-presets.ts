@@ -294,28 +294,25 @@ export function getLiPoVoltages(cells: number) {
 // PID Tuning Presets (ArduPilot)
 // =============================================================================
 
+/** Abstract PID values per axis (scheme-agnostic) */
+export interface PidAxisValues {
+  p: number;
+  i: number;
+  d: number;
+  ff?: number;
+}
+
 export interface PidPreset {
   name: string;
   description: string;
   icon: LucideIcon;
   iconColor: string;
   color: string;
-  params: {
-    // Roll PIDs
-    ATC_RAT_RLL_P: number;
-    ATC_RAT_RLL_I: number;
-    ATC_RAT_RLL_D: number;
-    ATC_RAT_RLL_FF: number;
-    // Pitch PIDs
-    ATC_RAT_PIT_P: number;
-    ATC_RAT_PIT_I: number;
-    ATC_RAT_PIT_D: number;
-    ATC_RAT_PIT_FF: number;
-    // Yaw PIDs
-    ATC_RAT_YAW_P: number;
-    ATC_RAT_YAW_I: number;
-    ATC_RAT_YAW_D: number;
-    ATC_RAT_YAW_FF: number;
+  /** Abstract PID values - mapped to actual param names via PidScheme at apply time */
+  values: {
+    roll: PidAxisValues;
+    pitch: PidAxisValues;
+    yaw: PidAxisValues;
   };
 }
 
@@ -326,19 +323,10 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     icon: Egg,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
-    params: {
-      ATC_RAT_RLL_P: 0.08,
-      ATC_RAT_RLL_I: 0.08,
-      ATC_RAT_RLL_D: 0.003,
-      ATC_RAT_RLL_FF: 0,
-      ATC_RAT_PIT_P: 0.08,
-      ATC_RAT_PIT_I: 0.08,
-      ATC_RAT_PIT_D: 0.003,
-      ATC_RAT_PIT_FF: 0,
-      ATC_RAT_YAW_P: 0.15,
-      ATC_RAT_YAW_I: 0.015,
-      ATC_RAT_YAW_D: 0,
-      ATC_RAT_YAW_FF: 0,
+    values: {
+      roll:  { p: 0.08, i: 0.08, d: 0.003, ff: 0 },
+      pitch: { p: 0.08, i: 0.08, d: 0.003, ff: 0 },
+      yaw:   { p: 0.15, i: 0.015, d: 0, ff: 0 },
     },
   },
   freestyle: {
@@ -347,19 +335,10 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     icon: Drama,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
-    params: {
-      ATC_RAT_RLL_P: 0.135,
-      ATC_RAT_RLL_I: 0.135,
-      ATC_RAT_RLL_D: 0.0036,
-      ATC_RAT_RLL_FF: 0,
-      ATC_RAT_PIT_P: 0.135,
-      ATC_RAT_PIT_I: 0.135,
-      ATC_RAT_PIT_D: 0.0036,
-      ATC_RAT_PIT_FF: 0,
-      ATC_RAT_YAW_P: 0.2,
-      ATC_RAT_YAW_I: 0.02,
-      ATC_RAT_YAW_D: 0,
-      ATC_RAT_YAW_FF: 0,
+    values: {
+      roll:  { p: 0.135, i: 0.135, d: 0.0036, ff: 0 },
+      pitch: { p: 0.135, i: 0.135, d: 0.0036, ff: 0 },
+      yaw:   { p: 0.2, i: 0.02, d: 0, ff: 0 },
     },
   },
   racing: {
@@ -368,19 +347,10 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     icon: Zap,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
-    params: {
-      ATC_RAT_RLL_P: 0.18,
-      ATC_RAT_RLL_I: 0.18,
-      ATC_RAT_RLL_D: 0.004,
-      ATC_RAT_RLL_FF: 0,
-      ATC_RAT_PIT_P: 0.18,
-      ATC_RAT_PIT_I: 0.18,
-      ATC_RAT_PIT_D: 0.004,
-      ATC_RAT_PIT_FF: 0,
-      ATC_RAT_YAW_P: 0.25,
-      ATC_RAT_YAW_I: 0.025,
-      ATC_RAT_YAW_D: 0,
-      ATC_RAT_YAW_FF: 0,
+    values: {
+      roll:  { p: 0.18, i: 0.18, d: 0.004, ff: 0 },
+      pitch: { p: 0.18, i: 0.18, d: 0.004, ff: 0 },
+      yaw:   { p: 0.25, i: 0.025, d: 0, ff: 0 },
     },
   },
   cinematic: {
@@ -389,42 +359,25 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     icon: Film,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
-    params: {
-      ATC_RAT_RLL_P: 0.06,
-      ATC_RAT_RLL_I: 0.06,
-      ATC_RAT_RLL_D: 0.002,
-      ATC_RAT_RLL_FF: 0,
-      ATC_RAT_PIT_P: 0.06,
-      ATC_RAT_PIT_I: 0.06,
-      ATC_RAT_PIT_D: 0.002,
-      ATC_RAT_PIT_FF: 0,
-      ATC_RAT_YAW_P: 0.12,
-      ATC_RAT_YAW_I: 0.012,
-      ATC_RAT_YAW_D: 0,
-      ATC_RAT_YAW_FF: 0,
+    values: {
+      roll:  { p: 0.06, i: 0.06, d: 0.002, ff: 0 },
+      pitch: { p: 0.06, i: 0.06, d: 0.002, ff: 0 },
+      yaw:   { p: 0.12, i: 0.012, d: 0, ff: 0 },
     },
   },
-};
-
-// Default ArduPilot PIDs for reset
-export const DEFAULT_ARDUPILOT_PIDS = {
-  ATC_RAT_RLL_P: 0.135,
-  ATC_RAT_RLL_I: 0.135,
-  ATC_RAT_RLL_D: 0.0036,
-  ATC_RAT_RLL_FF: 0,
-  ATC_RAT_PIT_P: 0.135,
-  ATC_RAT_PIT_I: 0.135,
-  ATC_RAT_PIT_D: 0.0036,
-  ATC_RAT_PIT_FF: 0,
-  ATC_RAT_YAW_P: 0.18,
-  ATC_RAT_YAW_I: 0.018,
-  ATC_RAT_YAW_D: 0,
-  ATC_RAT_YAW_FF: 0,
 };
 
 // =============================================================================
 // Rate Presets (ArduPilot)
 // =============================================================================
+
+/** Abstract rate values (scheme-agnostic) */
+export interface RateValues {
+  rpRate: number;
+  yawRate: number;
+  rpExpo: number;
+  yawExpo: number;
+}
 
 export interface RatePreset {
   name: string;
@@ -432,12 +385,8 @@ export interface RatePreset {
   icon: LucideIcon;
   iconColor: string;
   color: string;
-  params: {
-    ACRO_RP_RATE: number;  // Roll/Pitch rate in deg/s
-    ACRO_Y_RATE: number;   // Yaw rate in deg/s
-    ACRO_RP_EXPO: number;  // Roll/Pitch expo (0-1)
-    ACRO_Y_EXPO: number;   // Yaw expo (0-1)
-  };
+  /** Abstract rate values - mapped to actual param names via RateScheme at apply time */
+  values: RateValues;
 }
 
 export const RATE_PRESETS: Record<string, RatePreset> = {
@@ -447,12 +396,7 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
     icon: Egg,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
-    params: {
-      ACRO_RP_RATE: 90,
-      ACRO_Y_RATE: 45,
-      ACRO_RP_EXPO: 0.3,
-      ACRO_Y_EXPO: 0.2,
-    },
+    values: { rpRate: 90, yawRate: 45, rpExpo: 0.3, yawExpo: 0.2 },
   },
   freestyle: {
     name: 'Freestyle',
@@ -460,12 +404,7 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
     icon: Drama,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
-    params: {
-      ACRO_RP_RATE: 180,
-      ACRO_Y_RATE: 90,
-      ACRO_RP_EXPO: 0.2,
-      ACRO_Y_EXPO: 0.15,
-    },
+    values: { rpRate: 180, yawRate: 90, rpExpo: 0.2, yawExpo: 0.15 },
   },
   racing: {
     name: 'Racing',
@@ -473,12 +412,7 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
     icon: Zap,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
-    params: {
-      ACRO_RP_RATE: 360,
-      ACRO_Y_RATE: 180,
-      ACRO_RP_EXPO: 0.1,
-      ACRO_Y_EXPO: 0.1,
-    },
+    values: { rpRate: 360, yawRate: 180, rpExpo: 0.1, yawExpo: 0.1 },
   },
   cinematic: {
     name: 'Cinematic',
@@ -486,19 +420,6 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
     icon: Film,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
-    params: {
-      ACRO_RP_RATE: 60,
-      ACRO_Y_RATE: 30,
-      ACRO_RP_EXPO: 0.4,
-      ACRO_Y_EXPO: 0.3,
-    },
+    values: { rpRate: 60, yawRate: 30, rpExpo: 0.4, yawExpo: 0.3 },
   },
-};
-
-// Default ArduPilot rates for reset
-export const DEFAULT_ARDUPILOT_RATES = {
-  ACRO_RP_RATE: 180,
-  ACRO_Y_RATE: 90,
-  ACRO_RP_EXPO: 0,
-  ACRO_Y_EXPO: 0,
 };

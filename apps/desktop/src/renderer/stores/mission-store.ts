@@ -25,11 +25,15 @@ interface MSPWaypoint {
   flag: number;
 }
 
-// MSP waypoint action types
+// MSP waypoint action types (iNav)
 const MSP_WP_ACTION = {
   WAYPOINT: 1,
+  POSHOLD_UNLIM: 2,
   POSHOLD_TIME: 3,
   RTH: 4,
+  SET_POI: 5,
+  JUMP: 6,
+  SET_HEAD: 7,
   LAND: 8,
 } as const;
 
@@ -45,8 +49,12 @@ function missionItemToMspWaypoint(item: MissionItem, isLast: boolean): MSPWaypoi
   switch (item.command) {
     case MAV_CMD.NAV_WAYPOINT:
     case MAV_CMD.NAV_SPLINE_WAYPOINT:
+    case MAV_CMD.NAV_TAKEOFF:
       action = MSP_WP_ACTION.WAYPOINT;
       p1 = item.param1 > 0 ? Math.round(item.param1 * 100) : 0; // Speed m/s to cm/s
+      break;
+    case MAV_CMD.NAV_LOITER_UNLIM:
+      action = MSP_WP_ACTION.POSHOLD_UNLIM;
       break;
     case MAV_CMD.NAV_LOITER_TIME:
       action = MSP_WP_ACTION.POSHOLD_TIME;
@@ -55,6 +63,18 @@ function missionItemToMspWaypoint(item: MissionItem, isLast: boolean): MSPWaypoi
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
       action = MSP_WP_ACTION.RTH;
       p1 = item.param1 === 1 ? 1 : 0; // Land flag
+      break;
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+      action = MSP_WP_ACTION.SET_POI;
+      break;
+    case MAV_CMD.DO_JUMP:
+      action = MSP_WP_ACTION.JUMP;
+      p1 = Math.round(item.param1); // Target waypoint number
+      break;
+    case MAV_CMD.CONDITION_YAW:
+      action = MSP_WP_ACTION.SET_HEAD;
+      p1 = Math.round(item.param1); // Heading degrees
       break;
     case MAV_CMD.NAV_LAND:
       action = MSP_WP_ACTION.LAND;
@@ -88,6 +108,9 @@ function mspWaypointToMissionItem(wp: MSPWaypoint): MissionItem {
       command = MAV_CMD.NAV_WAYPOINT;
       param1 = wp.p1 / 100; // Speed cm/s to m/s
       break;
+    case MSP_WP_ACTION.POSHOLD_UNLIM:
+      command = MAV_CMD.NAV_LOITER_UNLIM;
+      break;
     case MSP_WP_ACTION.POSHOLD_TIME:
       command = MAV_CMD.NAV_LOITER_TIME;
       param1 = wp.p1; // Time in seconds
@@ -95,6 +118,17 @@ function mspWaypointToMissionItem(wp: MSPWaypoint): MissionItem {
     case MSP_WP_ACTION.RTH:
       command = MAV_CMD.NAV_RETURN_TO_LAUNCH;
       param1 = wp.p1; // Land flag
+      break;
+    case MSP_WP_ACTION.SET_POI:
+      command = MAV_CMD.DO_SET_ROI;
+      break;
+    case MSP_WP_ACTION.JUMP:
+      command = MAV_CMD.DO_JUMP;
+      param1 = wp.p1; // Target waypoint number
+      break;
+    case MSP_WP_ACTION.SET_HEAD:
+      command = MAV_CMD.CONDITION_YAW;
+      param1 = wp.p1; // Heading degrees
       break;
     case MSP_WP_ACTION.LAND:
       command = MAV_CMD.NAV_LAND;

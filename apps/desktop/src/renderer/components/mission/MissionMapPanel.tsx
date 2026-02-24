@@ -139,17 +139,30 @@ const DEFAULT_ZOOM_ROVER = 18; // Rovers need higher zoom for street-level detai
 function getCommandColor(cmd: number): string {
   switch (cmd) {
     case MAV_CMD.NAV_TAKEOFF:
+    case MAV_CMD.NAV_VTOL_TAKEOFF:
       return '#22c55e'; // Green - takeoff
     case MAV_CMD.NAV_LAND:
+    case MAV_CMD.NAV_VTOL_LAND:
+    case MAV_CMD.DO_LAND_START:
       return '#ef4444'; // Red - land
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
       return '#f97316'; // Orange - RTL
     case MAV_CMD.NAV_LOITER_UNLIM:
     case MAV_CMD.NAV_LOITER_TIME:
     case MAV_CMD.NAV_LOITER_TURNS:
+    case MAV_CMD.NAV_LOITER_TO_ALT:
       return '#a855f7'; // Purple - loiter
     case MAV_CMD.NAV_SPLINE_WAYPOINT:
       return '#06b6d4'; // Cyan - spline
+    case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+    case MAV_CMD.DO_DIGICAM_CONTROL:
+    case MAV_CMD.DO_DIGICAM_CONFIGURE:
+    case MAV_CMD.DO_MOUNT_CONTROL:
+    case MAV_CMD.DO_MOUNT_CONFIGURE:
+      return '#eab308'; // Yellow - camera/gimbal
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+      return '#ec4899'; // Pink - ROI
     default:
       return '#3b82f6'; // Blue - regular waypoint
   }
@@ -159,15 +172,26 @@ function getCommandColor(cmd: number): string {
 function getCommandShape(cmd: number): string {
   switch (cmd) {
     case MAV_CMD.NAV_TAKEOFF:
-      return '▲'; // Triangle up
+    case MAV_CMD.NAV_VTOL_TAKEOFF:
+      return '\u25B2'; // Triangle up
     case MAV_CMD.NAV_LAND:
-      return '▼'; // Triangle down
+    case MAV_CMD.NAV_VTOL_LAND:
+    case MAV_CMD.DO_LAND_START:
+      return '\u25BC'; // Triangle down
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
-      return '⌂'; // Home
+      return '\u2302'; // Home
     case MAV_CMD.NAV_LOITER_UNLIM:
     case MAV_CMD.NAV_LOITER_TIME:
     case MAV_CMD.NAV_LOITER_TURNS:
-      return '○'; // Circle for loiter
+    case MAV_CMD.NAV_LOITER_TO_ALT:
+      return '\u25CB'; // Circle for loiter
+    case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+    case MAV_CMD.DO_DIGICAM_CONTROL:
+    case MAV_CMD.DO_DIGICAM_CONFIGURE:
+      return '\u25A3'; // Square with fill - camera
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+      return '\u25C9'; // Fisheye - ROI
     default:
       return ''; // Just number for regular waypoints
   }

@@ -34,17 +34,20 @@ function haversineDistance(
 function getWaypointColor(cmd: number): string {
   switch (cmd) {
     case MAV_CMD.NAV_TAKEOFF:
-      return '#22c55e'; // Green
+    case MAV_CMD.NAV_VTOL_TAKEOFF:
+      return '#22c55e'; // Green - takeoff
     case MAV_CMD.NAV_LAND:
-      return '#ef4444'; // Red
+    case MAV_CMD.NAV_VTOL_LAND:
+      return '#ef4444'; // Red - land
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
-      return '#f97316'; // Orange
+      return '#f97316'; // Orange - RTL
     case MAV_CMD.NAV_LOITER_UNLIM:
     case MAV_CMD.NAV_LOITER_TIME:
     case MAV_CMD.NAV_LOITER_TURNS:
-      return '#a855f7'; // Purple
+    case MAV_CMD.NAV_LOITER_TO_ALT:
+      return '#a855f7'; // Purple - loiter
     case MAV_CMD.NAV_SPLINE_WAYPOINT:
-      return '#06b6d4'; // Cyan
+      return '#06b6d4'; // Cyan - spline
     default:
       return '#3b82f6'; // Blue
   }
@@ -473,6 +476,27 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
     }
   };
 
+  // Auto-adjust all waypoint altitudes to be above terrain + safe buffer
+  const handleAutoAdjustHeight = useCallback(() => {
+    if (waypointElevations.size === 0 || waypoints.length === 0) return;
+
+    let adjustedCount = 0;
+    for (const wp of waypoints) {
+      const groundElev = waypointElevations.get(wp.seq);
+      if (groundElev === undefined) continue;
+
+      const minSafe = groundElev + safeAltitudeBuffer;
+      if (wp.altitude < minSafe) {
+        updateWaypoint(wp.seq, { altitude: Math.ceil(minSafe) });
+        adjustedCount++;
+      }
+    }
+
+    if (adjustedCount === 0) {
+      // All waypoints are already safe - no changes needed
+    }
+  }, [waypoints, waypointElevations, safeAltitudeBuffer, updateWaypoint]);
+
   // Format distance for display
   const formatDistance = (meters: number): string => {
     if (meters >= 1000) {
@@ -490,29 +514,38 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
       ) : (
         <>
         {/* Legend and status */}
-        <div className="absolute top-1 right-2 flex items-center gap-3 text-[10px] pointer-events-none">
+        <div className="absolute top-1 right-2 flex items-center gap-3 text-[10px]">
           {terrainLoading && (
-            <span className="text-blue-400">Loading terrain...</span>
+            <span className="text-blue-400 pointer-events-none">Loading terrain...</span>
           )}
           {terrainData.length > 0 && !terrainLoading && (
             <>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 pointer-events-none">
                 <span className="w-2 h-2 rounded-sm bg-green-500/60" />
                 <span className="text-gray-500">Terrain</span>
               </span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 pointer-events-none">
                 <span className="w-3 h-0.5 bg-amber-500" style={{ borderStyle: 'dashed' }} />
                 <span className="text-gray-500">Safe +{safeAltitudeBuffer}m</span>
               </span>
             </>
           )}
           {collisionSegments.length > 0 && (
-            <span className="flex items-center gap-1 text-red-400">
+            <span className="flex items-center gap-1 text-red-400 pointer-events-none">
               <span className="w-2 h-2 rounded-full bg-red-500" />
               Collision!
             </span>
           )}
-          {!readOnly && <span className="text-gray-500">Drag points to edit</span>}
+          {!readOnly && terrainData.length > 0 && !terrainLoading && collisionSegments.length > 0 && (
+            <button
+              onClick={handleAutoAdjustHeight}
+              className="px-2 py-0.5 text-[10px] font-medium text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded transition-colors"
+              title={`Raise waypoints below terrain + ${safeAltitudeBuffer}m buffer`}
+            >
+              Auto Adjust
+            </button>
+          )}
+          {!readOnly && <span className="text-gray-500 pointer-events-none">Drag points to edit</span>}
         </div>
         <svg
           ref={svgRef}
