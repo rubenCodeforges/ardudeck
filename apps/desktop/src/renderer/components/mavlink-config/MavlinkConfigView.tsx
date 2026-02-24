@@ -33,6 +33,7 @@ import {
   Car,
   Radio,
   Cable,
+  RotateCw,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -215,6 +216,7 @@ export const MavlinkConfigView: React.FC = () => {
 
   const [isWritingFlash, setIsWritingFlash] = useState(false);
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
+  const [rebooting, setRebooting] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
 
   // Auto-hide toast after 3 seconds
@@ -251,6 +253,22 @@ export const MavlinkConfigView: React.FC = () => {
       setIsWritingFlash(false);
     }
   }, [markAllAsSaved, showToast]);
+
+  const handleReboot = useCallback(async () => {
+    setRebooting(true);
+    try {
+      const success = await window.electronAPI?.mavlinkReboot();
+      if (success) {
+        showToast('Rebooting flight controller...', 'info');
+      } else {
+        showToast('Failed to send reboot command', 'error');
+      }
+    } catch {
+      showToast('Failed to reboot flight controller', 'error');
+    } finally {
+      setTimeout(() => setRebooting(false), 3000);
+    }
+  }, [showToast]);
 
   const modified = modifiedCount();
 
@@ -308,6 +326,16 @@ export const MavlinkConfigView: React.FC = () => {
                 <span className="text-sm text-blue-400">Loading parameters...</span>
               </div>
             )}
+
+            <button
+              onClick={handleReboot}
+              disabled={rebooting}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium transition-colors"
+              title="Reboot flight controller"
+            >
+              <RotateCw className={`w-4 h-4 ${rebooting ? 'animate-spin' : ''}`} />
+              {rebooting ? 'Rebooting...' : 'Reboot'}
+            </button>
 
             {modified > 0 && (
               <>

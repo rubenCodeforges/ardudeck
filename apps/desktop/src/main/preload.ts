@@ -72,6 +72,9 @@ const api = {
   sendMessage: (payload: number[]): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SEND, payload),
 
+  mavlinkReboot: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_REBOOT),
+
   // MAVLink Signing
   signingSetKey: (passphrase: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_SET_KEY, passphrase),

@@ -16,6 +16,9 @@ export const IPC_CHANNELS = {
   MAVLINK_PACKET: 'mavlink:packet',
   MAVLINK_SEND: 'mavlink:send',
 
+  // MAVLink Commands
+  MAVLINK_REBOOT: 'mavlink:reboot',
+
   // MAVLink Signing
   MAVLINK_SIGNING_SET_KEY: 'mavlink:signing-set-key',
   MAVLINK_SIGNING_ENABLE: 'mavlink:signing-enable',

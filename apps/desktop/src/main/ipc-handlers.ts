@@ -2445,6 +2445,50 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
+  // Reboot the flight controller via MAVLink
+  // Sends MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN (246) with param1=1 (normal reboot)
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_REBOOT, async (): Promise<boolean> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return false;
+    }
+
+    try {
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        command: 246, // MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN
+        confirmation: 0,
+        param1: 1, // 1 = normal reboot autopilot
+        param2: 0,
+        param3: 0,
+        param4: 0,
+        param5: 0,
+        param6: 0,
+        param7: 0,
+      });
+
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', 'Sent reboot command to flight controller');
+
+      // Schedule auto-reconnect
+      scheduleReconnect({
+        reason: 'Rebooting flight controller',
+        delayMs: 3000,
+        timeoutMs: 10000,
+        maxAttempts: 15,
+      });
+
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to reboot flight controller', message);
+      return false;
+    }
+  });
+
   // Save parameters to file
   ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>): Promise<{ success: boolean; error?: string; filePath?: string }> => {
     try {
