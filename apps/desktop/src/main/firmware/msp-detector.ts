@@ -4,6 +4,12 @@
  */
 
 import { SerialTransport } from '@ardudeck/comms';
+import {
+  serializeV2,
+  serializeCommandLong,
+  COMMAND_LONG_ID,
+  COMMAND_LONG_CRC_EXTRA,
+} from '@ardudeck/mavlink-ts';
 
 // MSP command IDs
 const MSP_FC_VARIANT = 2;
@@ -305,6 +311,61 @@ export async function rebootToBootloader(
     return true;
   } catch (error) {
     console.error('[MSP] Failed to reboot to bootloader:', error);
+    if (transport) {
+      await transport.close().catch(() => {});
+    }
+    return false;
+  }
+}
+
+/**
+ * Reboot into DFU/bootloader mode via MAVLink
+ * Sends MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN (246) with param1=3 (bootloader)
+ * @param port Serial port path
+ * @param baudRate Baud rate (default 115200)
+ */
+export async function rebootToBootloaderMavlink(
+  port: string,
+  baudRate: number = 115200
+): Promise<boolean> {
+  let transport: SerialTransport | null = null;
+
+  try {
+    transport = new SerialTransport(port, { baudRate });
+    await transport.open();
+
+    // Build MAVLink COMMAND_LONG for PREFLIGHT_REBOOT_SHUTDOWN
+    const payload = serializeCommandLong({
+      targetSystem: 1,
+      targetComponent: 1,
+      command: 246, // MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN
+      confirmation: 0,
+      param1: 3, // 3 = reboot into bootloader
+      param2: 0,
+      param3: 0,
+      param4: 0,
+      param5: 0,
+      param6: 0,
+      param7: 0,
+    });
+
+    // Wrap in MAVLink v2 frame
+    const packet = serializeV2(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA, { sysid: 255, compid: 0 });
+    await transport.write(packet);
+
+    // Give it a moment to process
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Close port before board reboots
+    await transport.close();
+    transport = null;
+
+    // Wait for board to reboot - ArduPilot typically takes 2-4 seconds
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    return true;
+  } catch (error) {
+    console.error('[MAVLink] Failed to reboot to bootloader:', error);
     if (transport) {
       await transport.close().catch(() => {});
     }

@@ -287,5 +287,7 @@ export async function listSerialPorts(): Promise<SerialPortInfo[]> {
     productId: p.productId,
     vendorId: p.vendorId,
     friendlyName: p.friendlyName,
+    pnpId: p.pnpId,
+    locationId: p.locationId,
   }));
 }

@@ -4,6 +4,7 @@ import { useSettingsStore, type DefaultSitlType } from '../../stores/settings-st
 import { useSitlStore } from '../../stores/sitl-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import type { SerialPortInfo } from '@ardudeck/comms';
+import { formatPortDisplayName } from '../../utils/usb-device-names';
 import { DriverAssistant } from './DriverAssistant';
 
 const BAUD_RATES = [1500000, 921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600];
@@ -443,7 +444,7 @@ export function ConnectionPanel() {
                   {ports.length === 0 && <option value="">No ports available</option>}
                   {ports.map((port) => (
                     <option key={port.path} value={port.path}>
-                      {port.friendlyName || `${port.path}${port.manufacturer ? ` (${port.manufacturer})` : ''}`}
+                      {formatPortDisplayName(port)}
                     </option>
                   ))}
                 </select>

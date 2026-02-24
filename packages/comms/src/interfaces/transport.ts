@@ -185,12 +185,16 @@ export interface SerialPortInfo {
   manufacturer?: string;
   /** Serial number */
   serialNumber?: string;
-  /** Product ID */
+  /** Product ID (hex, e.g. "5740") */
   productId?: string;
-  /** Vendor ID */
+  /** Vendor ID (hex, e.g. "1209") */
   vendorId?: string;
-  /** Friendly name */
+  /** Friendly name (Windows only, from registry) */
   friendlyName?: string;
+  /** Plug and Play ID (contains VID/PID info) */
+  pnpId?: string;
+  /** Location ID */
+  locationId?: string;
 }
 
 /**

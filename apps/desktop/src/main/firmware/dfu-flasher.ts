@@ -18,7 +18,7 @@ import {
   type FirmwareImage,
   type FlashProgress as DfuProgress,
 } from '@ardudeck/stm32-dfu';
-import { rebootToBootloader } from './msp-detector.js';
+import { rebootToBootloader, rebootToBootloaderMavlink } from './msp-detector.js';
 import { acquireFlashLock, releaseFlashLock } from './flash-guard.js';
 
 /**
@@ -152,16 +152,20 @@ export async function flashWithDfu(
       }
     }
 
-    // If no DFU device found and board was detected via MSP, try rebooting into bootloader
-    if (!device && board.detectionMethod === 'msp' && board.port) {
-      sendLog(window, 'info', `Board detected via MSP - sending reboot to bootloader command on ${board.port}`);
+    // If no DFU device found, try rebooting into bootloader via the detected protocol
+    if (!device && board.port && (board.detectionMethod === 'msp' || board.detectionMethod === 'mavlink')) {
+      const protocol = board.detectionMethod === 'mavlink' ? 'MAVLink' : 'MSP';
+      sendLog(window, 'info', `Board detected via ${protocol} - sending reboot to bootloader command on ${board.port}`);
       sendProgress(window, {
         state: 'entering-bootloader',
         progress: 8,
         message: 'Rebooting board into DFU mode...',
       });
 
-      const rebooted = await rebootToBootloader(board.port);
+      const rebooted = board.detectionMethod === 'mavlink'
+        ? await rebootToBootloaderMavlink(board.port)
+        : await rebootToBootloader(board.port);
+
       if (rebooted) {
         sendLog(window, 'info', 'Reboot command sent, waiting for DFU device to appear...');
         sendProgress(window, {

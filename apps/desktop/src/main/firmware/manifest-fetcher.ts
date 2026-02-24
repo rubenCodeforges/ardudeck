@@ -1034,6 +1034,17 @@ export async function getArduPilotVersions(
       versionMap.get(major)!.push(fwVersion);
     }
 
+    // Deduplicate versions within each group (keep first entry per version string)
+    for (const [key, versions] of versionMap.entries()) {
+      const seen = new Set<string>();
+      const deduped = versions.filter(v => {
+        if (seen.has(v.version)) return false;
+        seen.add(v.version);
+        return true;
+      });
+      versionMap.set(key, deduped);
+    }
+
     // Sort versions within each group (newest first)
     for (const versions of versionMap.values()) {
       versions.sort((a, b) => compareVersions(b.version, a.version));

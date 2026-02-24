@@ -1149,8 +1149,12 @@ export function FirmwareFlashView() {
 
             {/* Error display - different styles for boot pad vs other errors */}
             {flashError && (() => {
-              const isBootPadError = flashError.toLowerCase().includes('boot') ||
-                                     flashError.toLowerCase().includes('bootloader');
+              const errorLower = flashError.toLowerCase();
+              const isBootRelated = errorLower.includes('boot') || errorLower.includes('bootloader');
+              // Only show "Boot Pads Required" for USB-serial boards (CP2102/FTDI/CH340),
+              // not for native USB boards that support DFU reboot
+              const isUsbSerialBoard = detectedBoard?.flasher === 'serial';
+              const isBootPadError = isBootRelated && isUsbSerialBoard;
 
               // Boot pad required - show friendly guidance card, not scary error
               if (isBootPadError && selectedBoard) {
@@ -1236,10 +1240,10 @@ export function FirmwareFlashView() {
 
             {/* Flash button - hidden when bootloader checklist or boot pad error wizard is shown */}
             {(() => {
-              const isBootPadError = flashError && (
-                flashError.toLowerCase().includes('boot') ||
-                flashError.toLowerCase().includes('bootloader')
-              );
+              const btnErrorLower = flashError?.toLowerCase() ?? '';
+              const btnBootRelated = btnErrorLower.includes('boot') || btnErrorLower.includes('bootloader');
+              const btnIsUsbSerial = detectedBoard?.flasher === 'serial';
+              const isBootPadError = flashError && btnBootRelated && btnIsUsbSerial;
               const showFlashButton = !detectedBoard?.inBootloader && !isBootPadError || isFlashing || flashState === 'complete';
 
               if (!showFlashButton) return null;
