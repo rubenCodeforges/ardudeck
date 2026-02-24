@@ -3312,7 +3312,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.FIRMWARE_DETECT_BOARD, async (): Promise<{ success: boolean; boards?: DetectedBoard[]; error?: string }> => {
     try {
       const boards = await detectBoards();
-      sendLog(mainWindow, 'info', `Detected ${boards.length} board(s)`);
+      sendLog(mainWindow, 'info', `Detected ${boards.length} ${boards.length === 1 ? 'board' : 'boards'}`);
       return { success: true, boards };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

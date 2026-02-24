@@ -252,6 +252,7 @@ const STATIC_BOARDS: BoardInfo[] = [
   { id: 'KakuteH7-bdshot', name: 'Kakute H7 (BDShot)', category: 'Holybro' },
   { id: 'KakuteH7Mini', name: 'Kakute H7 Mini', category: 'Holybro' },
   { id: 'KakuteH7v2', name: 'Kakute H7 v2', category: 'Holybro' },
+  { id: 'KakuteH7-Wing', name: 'Kakute H7 Wing', category: 'Holybro' },
 
   // SpeedyBee (F405 Wing is popular)
   { id: 'SpeedyBeeF405Wing', name: 'SpeedyBee F405 Wing', category: 'SpeedyBee', isPopular: true },
@@ -259,6 +260,7 @@ const STATIC_BOARDS: BoardInfo[] = [
   { id: 'speedybeef4v3', name: 'SpeedyBee F4 v3', category: 'SpeedyBee' },
   { id: 'SpeedyBeeF405Mini', name: 'SpeedyBee F405 Mini', category: 'SpeedyBee' },
   { id: 'SpeedyBeeF405WING', name: 'SpeedyBee F405 Wing (alt)', category: 'SpeedyBee' },
+  { id: 'SpeedyBeeF405WINGV2', name: 'SpeedyBee F405 Wing V2', category: 'SpeedyBee' },
   { id: 'SpeedyBeeF7V3', name: 'SpeedyBee F7 v3', category: 'SpeedyBee' },
 
   // Matek (H743 is popular)
@@ -270,6 +272,10 @@ const STATIC_BOARDS: BoardInfo[] = [
   { id: 'MatekF405-TE', name: 'Matek F405-TE', category: 'Matek' },
   { id: 'MatekF765-Wing', name: 'Matek F765-Wing', category: 'Matek' },
   { id: 'MatekH743-bdshot', name: 'Matek H743 (BDShot)', category: 'Matek' },
+  { id: 'MatekH743SE', name: 'Matek H743 SE', category: 'Matek' },
+  { id: 'MatekH743-periph', name: 'Matek H743 Periph', category: 'Matek' },
+  { id: 'MatekH743v3', name: 'Matek H743 v3', category: 'Matek' },
+  { id: 'MatekH7A3', name: 'Matek H7A3', category: 'Matek' },
   { id: 'MatekL431', name: 'Matek L431 (Wing Periph)', category: 'Matek' },
 
   // mRo

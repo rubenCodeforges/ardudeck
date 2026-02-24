@@ -204,7 +204,18 @@ export async function detectBoards(): Promise<DetectedBoard[]> {
   const usbDevices = await enumerateUsbDevices();
   const detectedBoards: DetectedBoard[] = [];
 
+  // Deduplicate by VID:PID — composite USB devices enumerate multiple interfaces
+  // (e.g. MAVLink + SLCAN + DFU) sharing the same VID:PID
+  const uniqueMap = new Map<string, UsbDevice>();
   for (const device of usbDevices) {
+    const key = `${device.vid}:${device.pid}`;
+    const existing = uniqueMap.get(key);
+    if (!existing || (!existing.port && device.port)) {
+      uniqueMap.set(key, device);
+    }
+  }
+
+  for (const device of uniqueMap.values()) {
     const key = `${device.vid}:${device.pid}`;
     const knownBoard = KNOWN_BOARDS[key];
 
