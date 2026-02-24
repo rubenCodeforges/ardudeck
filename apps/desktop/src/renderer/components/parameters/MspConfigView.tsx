@@ -1656,6 +1656,8 @@ export function MspConfigView() {
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [rebooting, setRebooting] = useState(false);
+  const [rebootNeeded, setRebootNeeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // RC channel values (simulated for now - would come from MSP_RC)
@@ -1773,6 +1775,22 @@ export function MspConfigView() {
     setPlatformChangeInProgress(false);
   };
 
+  // Reboot the flight controller with auto-reconnect
+  const handleReboot = async () => {
+    setRebooting(true);
+    setError(null);
+    try {
+      await window.electronAPI?.mspReboot();
+      setRebootNeeded(false);
+    } catch (err) {
+      console.error('[UI] Reboot error:', err);
+      setError('Reboot failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      // Give time for the board to disconnect before clearing state
+      setTimeout(() => setRebooting(false), 3000);
+    }
+  };
+
   /**
    * Toggle a hardware sensor via CLI setting (baro_hardware, mag_hardware, etc.)
    * These are not feature flags - they control hardware enablement.
@@ -1796,13 +1814,12 @@ export function MspConfigView() {
         // Save via CLI - this triggers FC reboot in Betaflight
         await window.electronAPI?.cliSendCommand('save');
         console.log(`[UI] ${settingName} set to ${value} via CLI - FC will reboot`);
-        setError(`${settingName} set to ${value}. FC is rebooting...`);
         success = true;
       } else {
-        // MSP2 worked - save to EEPROM
+        // MSP2 worked - save to EEPROM, reboot needed to apply
         await window.electronAPI?.mspSaveEeprom();
         console.log(`[UI] ${settingName} set to ${value} - reboot required`);
-        setError(`${settingName} changed to ${value}. Reboot FC to apply.`);
+        setRebootNeeded(true);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -1974,6 +1991,7 @@ export function MspConfigView() {
       }
       console.log('[UI] loadConfig complete, setting modified=false');
       setPidRatesModified(false);
+      setRebootNeeded(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load config');
     } finally {
@@ -2287,6 +2305,19 @@ export function MspConfigView() {
               Refresh
             </button>
             <button
+              onClick={handleReboot}
+              disabled={rebooting}
+              className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
+                rebootNeeded
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 animate-pulse'
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700'
+              }`}
+              title={rebootNeeded ? 'Settings changed - reboot to apply' : 'Reboot flight controller'}
+            >
+              <RotateCw className={`w-4 h-4 ${rebooting ? 'animate-spin' : ''}`} />
+              {rebooting ? 'Rebooting...' : rebootNeeded ? 'Reboot to Apply' : 'Reboot'}
+            </button>
+            <button
               onClick={saveAll}
               disabled={saving || !modified}
               className={`px-5 py-2 text-sm font-medium rounded-lg shadow-lg transition-all ${
@@ -2517,6 +2548,20 @@ export function MspConfigView() {
         <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/30 text-red-400 text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" /> {error}
           <button onClick={() => setError(null)} className="ml-auto hover:text-red-300">×</button>
+        </div>
+      )}
+
+      {/* Reboot needed banner */}
+      {rebootNeeded && !rebooting && (
+        <div className="px-6 py-3 bg-amber-500/10 border-b border-amber-500/30 text-amber-300 text-sm flex items-center gap-2">
+          <RotateCw className="w-4 h-4" />
+          <span>Settings changed that require a reboot to take effect.</span>
+          <button
+            onClick={handleReboot}
+            className="ml-auto px-3 py-1 text-xs font-medium rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 transition-colors"
+          >
+            Reboot Now
+          </button>
         </div>
       )}
 

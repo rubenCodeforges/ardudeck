@@ -303,13 +303,16 @@ const homeIcon = L.divIcon({
 function MapController({
   position,
   followVehicle,
+  onUserInteraction,
   containerRef,
 }: {
   position: [number, number];
   followVehicle: boolean;
+  onUserInteraction: () => void;
   containerRef: React.RefObject<HTMLDivElement>;
 }) {
   const map = useMap();
+  const lastSetPositionRef = useRef<[number, number] | null>(null);
 
   // Handle container resize
   useEffect(() => {
@@ -335,11 +338,37 @@ function MapController({
     };
   }, [map, containerRef]);
 
-  // Follow vehicle
+  // Disable follow-vehicle when user manually interacts with map (drag/zoom)
   useEffect(() => {
-    if (followVehicle) {
-      map.setView(position, map.getZoom(), { animate: true, duration: 0.5 });
+    const handleInteraction = () => {
+      onUserInteraction();
+    };
+
+    map.on('dragstart', handleInteraction);
+    map.on('zoomstart', handleInteraction);
+
+    return () => {
+      map.off('dragstart', handleInteraction);
+      map.off('zoomstart', handleInteraction);
+    };
+  }, [map, onUserInteraction]);
+
+  // Clear last position when follow is disabled so re-enabling always snaps to vehicle
+  useEffect(() => {
+    if (!followVehicle) {
+      lastSetPositionRef.current = null;
     }
+  }, [followVehicle]);
+
+  // Follow vehicle - only when coordinates actually change
+  useEffect(() => {
+    if (!followVehicle) return;
+
+    const last = lastSetPositionRef.current;
+    if (last && last[0] === position[0] && last[1] === position[1]) return;
+
+    lastSetPositionRef.current = position;
+    map.setView(position, map.getZoom(), { animate: true, duration: 0.5 });
   }, [position, followVehicle, map]);
 
   return null;
@@ -547,18 +576,23 @@ export const MapPanel = React.memo(function MapPanel() {
   const [ipLocation] = useIpLocation();
 
   // Default position - use IP location if available, otherwise fallback to London
-  const defaultPosition: [number, number] = ipLocation
-    ? [ipLocation.lat, ipLocation.lon]
-    : [51.505, -0.09];
+  const defaultPosition = useMemo<[number, number]>(
+    () => ipLocation ? [ipLocation.lat, ipLocation.lon] : [51.505, -0.09],
+    [ipLocation]
+  );
 
   // Get current position from GPS data
   const hasValidGps = gps.fixType >= 2 && gps.lat !== 0 && gps.lon !== 0;
-  const gpsPosition: [number, number] | null = hasValidGps
-    ? [gps.lat, gps.lon]
-    : null;
+  const gpsPosition = useMemo<[number, number] | null>(
+    () => hasValidGps ? [gps.lat, gps.lon] : null,
+    [hasValidGps, gps.lat, gps.lon]
+  );
 
   // Vehicle display position - use GPS if available, otherwise use home, then IP location
-  const vehiclePosition: [number, number] = gpsPosition || homePosition || defaultPosition;
+  const vehiclePosition = useMemo<[number, number]>(
+    () => gpsPosition || homePosition || defaultPosition,
+    [gpsPosition, homePosition, defaultPosition]
+  );
 
   // Calculate distance and bearing to home
   const homeStats = useMemo(() => {
@@ -594,6 +628,11 @@ export const MapPanel = React.memo(function MapPanel() {
       }
     }
   }, [gpsPosition, hasValidGps]); // Removed homePosition from deps - it's only read, not a condition
+
+  // Disable follow when user manually interacts with the map
+  const handleUserMapInteraction = useCallback(() => {
+    setFollowVehicle(false);
+  }, []);
 
   const clearTrail = useCallback(() => {
     setTrail([]);
@@ -772,6 +811,7 @@ export const MapPanel = React.memo(function MapPanel() {
         <MapController
           position={vehiclePosition}
           followVehicle={followVehicle}
+          onUserInteraction={handleUserMapInteraction}
           containerRef={containerRef}
         />
 
