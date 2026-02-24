@@ -5,8 +5,9 @@ import 'leaflet/dist/leaflet.css';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
-import { commandHasLocation, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
+import { commandHasLocation, isNavigationCommand, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { useIpLocation } from '../../utils/ip-geolocation';
+import { SEGMENT_COLORS, getSegmentColor, computeItemColors } from '../../utils/mission-segment-colors';
 
 // Geofence and Rally overlays
 import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
@@ -15,75 +16,128 @@ import { RallyMapOverlay } from '../rally/RallyMapOverlay';
 import { useFenceStore } from '../../stores/fence-store';
 import { useRallyStore } from '../../stores/rally-store';
 import { useEditModeStore } from '../../stores/edit-mode-store';
+import { useSettingsStore } from '../../stores/settings-store';
 
-// Build the complete mission path with curves for spline waypoints
-function buildMissionPath(waypoints: MissionItem[]): {
-  positions: [number, number][];
-  isSpline: boolean[];
-} {
-  if (waypoints.length < 2) {
-    return {
-      positions: waypoints.map(wp => [wp.latitude, wp.longitude] as [number, number]),
-      isSpline: waypoints.map(wp => wp.command === MAV_CMD.NAV_SPLINE_WAYPOINT)
-    };
+// Catmull-Rom spline interpolation between two nav waypoints
+function interpolateSpline(
+  navWaypoints: MissionItem[],
+  fromIdx: number,
+  toIdx: number,
+): [number, number][] {
+  const curr = navWaypoints[fromIdx]!;
+  const next = navWaypoints[toIdx]!;
+  const prev = fromIdx > 0 ? navWaypoints[fromIdx - 1]! : curr;
+  const after = toIdx < navWaypoints.length - 1 ? navWaypoints[toIdx + 1]! : next;
+
+  const p0: [number, number] = [prev.latitude, prev.longitude];
+  const p1: [number, number] = [curr.latitude, curr.longitude];
+  const p2: [number, number] = [next.latitude, next.longitude];
+  const p3: [number, number] = [after.latitude, after.longitude];
+
+  const points: [number, number][] = [[p1[0], p1[1]]];
+  const segments = 15;
+  for (let t = 1 / segments; t <= 1; t += 1 / segments) {
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const lat = 0.5 * (
+      (2 * p1[0]) +
+      (-p0[0] + p2[0]) * t +
+      (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+      (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3
+    );
+    const lng = 0.5 * (
+      (2 * p1[1]) +
+      (-p0[1] + p2[1]) * t +
+      (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+      (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3
+    );
+    points.push([lat, lng]);
   }
+  return points;
+}
 
-  const positions: [number, number][] = [];
-  const isSpline: boolean[] = [];
+interface PathSegment {
+  positions: [number, number][];
+  color: string;
+}
 
-  // Add first point
-  positions.push([waypoints[0]!.latitude, waypoints[0]!.longitude]);
-  isSpline.push(waypoints[0]!.command === MAV_CMD.NAV_SPLINE_WAYPOINT);
+// Build colored path segments from ALL mission items (not just location ones)
+function buildSegmentedPath(allItems: MissionItem[]): PathSegment[] {
+  // Extract navigation waypoints with locations for drawing
+  const navWaypoints = allItems.filter(
+    item => isNavigationCommand(item.command) && commandHasLocation(item.command),
+  );
+  if (navWaypoints.length < 2) return [];
 
-  // For each segment between waypoints
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    const curr = waypoints[i]!;
-    const next = waypoints[i + 1]!;
-    const currIsSpline = curr.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
-    const nextIsSpline = next.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
+  // State flags
+  let cameraActive = false;
+  let roiActive = false;
+  let speedOverride = false;
 
-    // If either endpoint is a spline, draw a curve
-    if (currIsSpline || nextIsSpline) {
-      // Get control points (previous and next waypoints for curve direction)
-      const prev = i > 0 ? waypoints[i - 1]! : curr;
-      const after = i < waypoints.length - 2 ? waypoints[i + 2]! : next;
+  const segments: PathSegment[] = [];
 
-      const p0: [number, number] = [prev.latitude, prev.longitude];
-      const p1: [number, number] = [curr.latitude, curr.longitude];
-      const p2: [number, number] = [next.latitude, next.longitude];
-      const p3: [number, number] = [after.latitude, after.longitude];
+  // Walk nav waypoints in order; for each pair, collect DO_* commands between them
+  for (let ni = 0; ni < navWaypoints.length - 1; ni++) {
+    const fromWp = navWaypoints[ni]!;
+    const toWp = navWaypoints[ni + 1]!;
 
-      // Interpolate curve using Catmull-Rom
-      const segments = 15;
-      for (let t = 1 / segments; t <= 1; t += 1 / segments) {
-        const t2 = t * t;
-        const t3 = t2 * t;
+    // Process DO_* / condition commands between fromWp.seq and toWp.seq
+    for (const item of allItems) {
+      if (item.seq <= fromWp.seq) continue;
+      if (item.seq >= toWp.seq) break;
+      // Skip nav commands (they're the waypoints themselves)
+      if (isNavigationCommand(item.command)) continue;
 
-        const lat = 0.5 * (
-          (2 * p1[0]) +
-          (-p0[0] + p2[0]) * t +
-          (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
-          (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3
-        );
-
-        const lng = 0.5 * (
-          (2 * p1[1]) +
-          (-p0[1] + p2[1]) * t +
-          (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
-          (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3
-        );
-
-        positions.push([lat, lng]);
-        isSpline.push(true);
+      switch (item.command) {
+        // Camera triggers
+        case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+          cameraActive = item.param1 > 0;
+          break;
+        case MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL:
+          cameraActive = item.param1 > 0;
+          break;
+        case MAV_CMD.IMAGE_START_CAPTURE:
+          cameraActive = true;
+          break;
+        case MAV_CMD.IMAGE_STOP_CAPTURE:
+          cameraActive = false;
+          break;
+        // ROI
+        case MAV_CMD.DO_SET_ROI:
+        case MAV_CMD.DO_SET_ROI_LOCATION:
+          roiActive = true;
+          break;
+        case MAV_CMD.DO_SET_ROI_NONE:
+          roiActive = false;
+          break;
+        // Speed
+        case MAV_CMD.DO_CHANGE_SPEED:
+          // param2 is speed; 0 or -1 means reset to default
+          speedOverride = item.param2 > 0;
+          break;
       }
     }
 
-    // Add the next waypoint
-    positions.push([next!.latitude, next!.longitude]);
-    isSpline.push(nextIsSpline);
+    const color = getSegmentColor(toWp.command, cameraActive, roiActive, speedOverride);
+
+    // Build positions for this segment (with spline if needed)
+    const currIsSpline = fromWp.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
+    const nextIsSpline = toWp.command === MAV_CMD.NAV_SPLINE_WAYPOINT;
+
+    let positions: [number, number][];
+    if (currIsSpline || nextIsSpline) {
+      positions = interpolateSpline(navWaypoints, ni, ni + 1);
+    } else {
+      positions = [
+        [fromWp.latitude, fromWp.longitude],
+        [toWp.latitude, toWp.longitude],
+      ];
+    }
+
+    segments.push({ positions, color });
   }
 
-  return { positions, isSpline };
+  return segments;
 }
 
 // Map layer options
@@ -198,9 +252,13 @@ function getCommandShape(cmd: number): string {
 }
 
 // Create waypoint marker icon
-function createWaypointIcon(wp: MissionItem, isSelected: boolean, isCurrent: boolean): L.DivIcon {
-  const baseColor = getCommandColor(wp.command);
-  const bgColor = isCurrent ? '#f59e0b' : isSelected ? baseColor : baseColor;
+function createWaypointIcon(wp: MissionItem, isSelected: boolean, isCurrent: boolean, segmentColor?: string): L.DivIcon {
+  // For regular waypoints, use segment color to reflect mission state (camera, ROI, speed)
+  // For special commands (takeoff, land, loiter, etc.), keep their distinct command color
+  const commandColor = getCommandColor(wp.command);
+  const hasSpecialColor = commandColor !== '#3b82f6'; // Not the default blue
+  const baseColor = hasSpecialColor ? commandColor : (segmentColor ?? commandColor);
+  const bgColor = isCurrent ? '#f59e0b' : baseColor;
   const size = isSelected ? 32 : 28;
   const shape = getCommandShape(wp.command);
   const displayText = shape || (wp.seq + 1).toString();
@@ -464,6 +522,7 @@ const DraggableMarker = memo(function DraggableMarker({
   onSelect,
   onDragEnd,
   readOnly = false,
+  segmentColor,
 }: {
   wp: MissionItem;
   isSelected: boolean;
@@ -471,6 +530,7 @@ const DraggableMarker = memo(function DraggableMarker({
   onSelect: (seq: number) => void;
   onDragEnd: (seq: number, lat: number, lng: number) => void;
   readOnly?: boolean;
+  segmentColor?: string;
 }) {
   const [position, setPosition] = useState<[number, number]>([wp.latitude, wp.longitude]);
   const markerRef = useRef<L.Marker>(null);
@@ -510,8 +570,8 @@ const DraggableMarker = memo(function DraggableMarker({
 
   // Memoize icon to prevent unnecessary recreations
   const icon = useMemo(
-    () => createWaypointIcon(wp, isSelected, isCurrent),
-    [wp.command, wp.seq, isSelected, isCurrent]
+    () => createWaypointIcon(wp, isSelected, isCurrent, segmentColor),
+    [wp.command, wp.seq, isSelected, isCurrent, segmentColor]
   );
 
   return (
@@ -622,6 +682,8 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
 
   // Get active edit mode from toolbar
   const activeMode = useEditModeStore((state) => state.activeMode);
+  const showSegmentColors = useSettingsStore((s) => s.missionDefaults.showSegmentColors);
+  const updateMissionDefaults = useSettingsStore((s) => s.updateMissionDefaults);
 
   // Get fence and rally stores for floating tools
   const fenceDrawMode = useFenceStore((state) => state.drawMode);
@@ -637,6 +699,14 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
 
   // Filter to only items with locations
   const waypoints = missionItems.filter(item => commandHasLocation(item.command));
+
+  // Auto-fit map when a mission is loaded (file or FC download)
+  const loadCounter = useMissionStore((s) => s.loadCounter);
+  useEffect(() => {
+    if (loadCounter > 0 && waypoints.length > 0) {
+      setFitTrigger(t => t + 1);
+    }
+  }, [loadCounter, waypoints.length]);
 
   // Reset click modes when home is cleared (e.g., New button clicked)
   useEffect(() => {
@@ -720,10 +790,13 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
 
   const layer = MAP_LAYERS[activeLayer];
 
-  // Build complete path with curves for spline waypoints
-  const missionPath = useMemo(() => {
-    return buildMissionPath(waypoints);
-  }, [waypoints]);
+  // Build colored path segments from all mission items (includes DO_* state changes)
+  const pathSegments = useMemo(() => {
+    return buildSegmentedPath(missionItems);
+  }, [missionItems]);
+
+  // Segment colors per item (for marker tinting)
+  const itemColors = useMemo(() => computeItemColors(missionItems), [missionItems]);
 
   return (
     <div className="h-full w-full relative">
@@ -754,17 +827,18 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
           maxZoom={layer.maxZoom}
         />
 
-        {/* Mission path - single polyline with curves through spline waypoints */}
-        {missionPath.positions.length > 1 && (
+        {/* Mission path - colored segments based on active state */}
+        {pathSegments.map((seg, i) => (
           <Polyline
-            positions={missionPath.positions}
+            key={i}
+            positions={seg.positions}
             pathOptions={{
-              color: '#3b82f6',
+              color: showSegmentColors ? seg.color : SEGMENT_COLORS.default,
               weight: 3,
               opacity: 0.8,
             }}
           />
-        )}
+        ))}
 
         {/* Clickable path segments for right-click insertion (hidden in readOnly mode) */}
         {!readOnly && waypoints.length > 1 && waypoints.slice(0, -1).map((wp, i) => {
@@ -826,6 +900,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
             onSelect={handleMarkerClick}
             onDragEnd={handleMarkerDragEnd}
             readOnly={readOnly}
+            segmentColor={showSegmentColors ? itemColors.get(wp.seq) : undefined}
           />
         ))}
 
@@ -1123,6 +1198,59 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-gray-900/80 backdrop-blur-sm px-6 py-4 rounded-xl text-center">
             <div className="text-gray-500 text-sm">No mission loaded</div>
+          </div>
+        </div>
+      )}
+
+      {/* Segment color legend + toggle */}
+      {activeMode === 'mission' && waypoints.length > 1 && (
+        <div className="absolute bottom-3 right-3 z-[1000]">
+          <div className="bg-gray-800/90 rounded-lg overflow-hidden text-xs">
+            <button
+              onClick={() => updateMissionDefaults({ showSegmentColors: !showSegmentColors })}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 w-full hover:bg-gray-700/50 transition-colors"
+            >
+              <div className={`w-3 h-3 rounded-sm border transition-colors ${
+                showSegmentColors
+                  ? 'bg-blue-500 border-blue-400'
+                  : 'bg-transparent border-gray-500'
+              }`}>
+                {showSegmentColors && (
+                  <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-gray-300 font-medium">Path colors</span>
+            </button>
+            {showSegmentColors && (
+              <div className="px-2.5 pb-2 pt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.camera }} />
+                  <span className="text-gray-400">Camera</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.roi }} />
+                  <span className="text-gray-400">ROI</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.speed }} />
+                  <span className="text-gray-400">Speed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.rth }} />
+                  <span className="text-gray-400">RTH</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.land }} />
+                  <span className="text-gray-400">Land</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.default }} />
+                  <span className="text-gray-400">Default</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

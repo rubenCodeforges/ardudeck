@@ -1,11 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import {
   COMMAND_NAMES,
   COMMAND_DESCRIPTIONS,
   MAV_CMD,
   commandHasLocation,
+  isNavigationCommand,
   type MissionItem
 } from '../../../shared/mission-types';
 import { FenceListPanel } from '../geofence/FenceListPanel';
@@ -13,6 +16,8 @@ import { RallyListPanel } from '../rally/RallyListPanel';
 import { useFenceStore } from '../../stores/fence-store';
 import { useRallyStore } from '../../stores/rally-store';
 import { useEditModeStore } from '../../stores/edit-mode-store';
+import { useConnectionStore } from '../../stores/connection-store';
+import { computeItemColors, SEGMENT_COLORS } from '../../utils/mission-segment-colors';
 
 // Helper to get GPS state without subscribing (avoids re-renders)
 function getGpsState() {
@@ -41,16 +46,20 @@ const COMMAND_GROUPS: CommandGroup[] = [
       { value: MAV_CMD.NAV_TAKEOFF, label: 'Takeoff', desc: 'Launch and climb to altitude' },
       { value: MAV_CMD.NAV_WAYPOINT, label: 'Waypoint', desc: 'Fly to this location' },
       { value: MAV_CMD.NAV_SPLINE_WAYPOINT, label: 'Spline WP', desc: 'Fly through smoothly' },
+      { value: MAV_CMD.NAV_ARC_WAYPOINT, label: 'Arc WP', desc: 'Curved arc path' },
       { value: MAV_CMD.NAV_LOITER_UNLIM, label: 'Loiter', desc: 'Circle until commanded' },
       { value: MAV_CMD.NAV_LOITER_TIME, label: 'Loiter Time', desc: 'Circle for set duration' },
       { value: MAV_CMD.NAV_LOITER_TURNS, label: 'Loiter Turns', desc: 'Circle N times' },
       { value: MAV_CMD.NAV_LOITER_TO_ALT, label: 'Loiter to Alt', desc: 'Loiter and change alt' },
+      { value: MAV_CMD.NAV_ALTITUDE_WAIT, label: 'Altitude Wait', desc: 'Wait at altitude (Plane)' },
+      { value: MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT, label: 'Continue/Alt', desc: 'Continue and change alt' },
       { value: MAV_CMD.NAV_LAND, label: 'Land', desc: 'Land at this location' },
       { value: MAV_CMD.NAV_RETURN_TO_LAUNCH, label: 'Return Home', desc: 'Fly back to launch' },
       { value: MAV_CMD.NAV_VTOL_TAKEOFF, label: 'VTOL Takeoff', desc: 'VTOL vertical takeoff' },
       { value: MAV_CMD.NAV_VTOL_LAND, label: 'VTOL Land', desc: 'VTOL vertical landing' },
       { value: MAV_CMD.NAV_DELAY, label: 'Wait', desc: 'Pause mission for time' },
       { value: MAV_CMD.NAV_PAYLOAD_PLACE, label: 'Payload Place', desc: 'Descend and release' },
+      { value: MAV_CMD.NAV_GUIDED_ENABLE, label: 'Guided Enable', desc: 'Enable guided mode' },
     ],
   },
   {
@@ -66,12 +75,21 @@ const COMMAND_GROUPS: CommandGroup[] = [
     group: 'Camera / Gimbal',
     commands: [
       { value: MAV_CMD.DO_SET_CAM_TRIGG_DIST, label: 'Camera Trigger', desc: 'Trigger at distance' },
+      { value: MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL, label: 'Camera Interval', desc: 'Trigger at time interval' },
       { value: MAV_CMD.DO_DIGICAM_CONTROL, label: 'Digicam Control', desc: 'Take a photo' },
       { value: MAV_CMD.DO_DIGICAM_CONFIGURE, label: 'Digicam Config', desc: 'Configure camera' },
+      { value: MAV_CMD.IMAGE_START_CAPTURE, label: 'Start Capture', desc: 'Start taking photos' },
+      { value: MAV_CMD.IMAGE_STOP_CAPTURE, label: 'Stop Capture', desc: 'Stop taking photos' },
+      { value: MAV_CMD.VIDEO_START_CAPTURE, label: 'Start Video', desc: 'Start recording' },
+      { value: MAV_CMD.VIDEO_STOP_CAPTURE, label: 'Stop Video', desc: 'Stop recording' },
+      { value: MAV_CMD.SET_CAMERA_ZOOM, label: 'Camera Zoom', desc: 'Set zoom level' },
+      { value: MAV_CMD.SET_CAMERA_FOCUS, label: 'Camera Focus', desc: 'Set focus' },
+      { value: MAV_CMD.SET_CAMERA_SOURCE, label: 'Camera Source', desc: 'Set video source' },
       { value: MAV_CMD.DO_SET_ROI, label: 'Set ROI', desc: 'Point camera at location' },
       { value: MAV_CMD.DO_SET_ROI_LOCATION, label: 'ROI Location', desc: 'Point camera at GPS' },
       { value: MAV_CMD.DO_SET_ROI_NONE, label: 'ROI None', desc: 'Stop camera tracking' },
       { value: MAV_CMD.DO_MOUNT_CONTROL, label: 'Mount Control', desc: 'Set gimbal angles' },
+      { value: MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW, label: 'Gimbal Pitch/Yaw', desc: 'Set gimbal pitch and yaw' },
     ],
   },
   {
@@ -80,23 +98,252 @@ const COMMAND_GROUPS: CommandGroup[] = [
       { value: MAV_CMD.DO_CHANGE_SPEED, label: 'Set Speed', desc: 'Change flight speed' },
       { value: MAV_CMD.DO_SET_HOME, label: 'Set Home', desc: 'Set new home position' },
       { value: MAV_CMD.DO_JUMP, label: 'Jump', desc: 'Jump to WP and repeat' },
+      { value: MAV_CMD.JUMP_TAG, label: 'Jump Tag', desc: 'Mark a tag label' },
+      { value: MAV_CMD.DO_JUMP_TAG, label: 'Do Jump Tag', desc: 'Jump to tag label' },
       { value: MAV_CMD.DO_SET_SERVO, label: 'Set Servo', desc: 'Set servo PWM' },
+      { value: MAV_CMD.DO_REPEAT_SERVO, label: 'Repeat Servo', desc: 'Cycle servo output' },
       { value: MAV_CMD.DO_SET_RELAY, label: 'Set Relay', desc: 'Set relay on/off' },
+      { value: MAV_CMD.DO_REPEAT_RELAY, label: 'Repeat Relay', desc: 'Cycle relay on/off' },
+      { value: MAV_CMD.DO_CHANGE_ALTITUDE, label: 'Change Alt', desc: 'Change altitude' },
       { value: MAV_CMD.DO_FENCE_ENABLE, label: 'Fence Enable', desc: 'Enable/disable geofence' },
       { value: MAV_CMD.DO_PARACHUTE, label: 'Parachute', desc: 'Deploy parachute' },
       { value: MAV_CMD.DO_GRIPPER, label: 'Gripper', desc: 'Open/close gripper' },
+      { value: MAV_CMD.DO_SPRAYER, label: 'Sprayer', desc: 'Enable/disable sprayer' },
+      { value: MAV_CMD.DO_WINCH, label: 'Winch', desc: 'Control winch motor' },
       { value: MAV_CMD.DO_VTOL_TRANSITION, label: 'VTOL Transition', desc: 'Switch VTOL/FW mode' },
       { value: MAV_CMD.DO_LAND_START, label: 'Land Start', desc: 'Begin landing sequence' },
-      { value: MAV_CMD.DO_CHANGE_ALTITUDE, label: 'Change Alt', desc: 'Change altitude' },
+      { value: MAV_CMD.DO_ENGINE_CONTROL, label: 'Engine Control', desc: 'Start/stop engine' },
+      { value: MAV_CMD.DO_AUX_FUNCTION, label: 'Aux Function', desc: 'Trigger RC aux function' },
+      { value: MAV_CMD.DO_SEND_SCRIPT_MESSAGE, label: 'Script Message', desc: 'Send to Lua script' },
+      { value: MAV_CMD.SET_YAW_SPEED, label: 'Yaw Speed', desc: 'Set yaw speed (Rover)' },
+      { value: MAV_CMD.DO_SET_RESUME_REPEAT_DIST, label: 'Resume Repeat', desc: 'Resume dist after RTL' },
+      { value: MAV_CMD.DO_AUTOTUNE_ENABLE, label: 'Autotune', desc: 'Enable/disable autotune' },
+      { value: MAV_CMD.DO_INVERTED_FLIGHT, label: 'Inverted Flight', desc: 'Inverted flight on/off' },
+    ],
+  },
+];
+
+// Simple mode: only the most common commands
+const SIMPLE_COMMAND_GROUPS: CommandGroup[] = [
+  {
+    group: 'Navigation',
+    commands: [
+      { value: MAV_CMD.NAV_TAKEOFF, label: 'Takeoff', desc: 'Launch and climb to altitude' },
+      { value: MAV_CMD.NAV_WAYPOINT, label: 'Waypoint', desc: 'Fly to this location' },
+      { value: MAV_CMD.NAV_LOITER_UNLIM, label: 'Loiter', desc: 'Circle until commanded' },
+      { value: MAV_CMD.NAV_LOITER_TIME, label: 'Loiter Time', desc: 'Circle for set duration' },
+      { value: MAV_CMD.NAV_LAND, label: 'Land', desc: 'Land at this location' },
+      { value: MAV_CMD.NAV_RETURN_TO_LAUNCH, label: 'Return Home', desc: 'Fly back to launch' },
+    ],
+  },
+  {
+    group: 'Camera',
+    commands: [
+      { value: MAV_CMD.DO_SET_CAM_TRIGG_DIST, label: 'Camera Trigger', desc: 'Trigger at distance' },
+      { value: MAV_CMD.DO_DIGICAM_CONTROL, label: 'Take Photo', desc: 'Trigger camera shutter' },
+      { value: MAV_CMD.IMAGE_START_CAPTURE, label: 'Start Capture', desc: 'Start taking photos' },
+      { value: MAV_CMD.IMAGE_STOP_CAPTURE, label: 'Stop Capture', desc: 'Stop taking photos' },
+    ],
+  },
+  {
+    group: 'Actions',
+    commands: [
+      { value: MAV_CMD.DO_CHANGE_SPEED, label: 'Set Speed', desc: 'Change flight speed' },
+      { value: MAV_CMD.DO_JUMP, label: 'Jump', desc: 'Jump to WP and repeat' },
+      { value: MAV_CMD.DO_SET_SERVO, label: 'Set Servo', desc: 'Set servo PWM' },
+    ],
+  },
+];
+
+// iNav MSP: only 8 waypoint types supported
+const INAV_COMMAND_GROUPS: CommandGroup[] = [
+  {
+    group: 'Navigation',
+    commands: [
+      { value: MAV_CMD.NAV_WAYPOINT, label: 'Waypoint', desc: 'Fly to location' },
+      { value: MAV_CMD.NAV_LOITER_UNLIM, label: 'Poshold', desc: 'Hold position indefinitely' },
+      { value: MAV_CMD.NAV_LOITER_TIME, label: 'Poshold Time', desc: 'Hold position for duration' },
+      { value: MAV_CMD.NAV_LAND, label: 'Land', desc: 'Land at location' },
+      { value: MAV_CMD.NAV_RETURN_TO_LAUNCH, label: 'RTH', desc: 'Return to home' },
+    ],
+  },
+  {
+    group: 'Actions',
+    commands: [
+      { value: MAV_CMD.DO_SET_ROI, label: 'Set POI', desc: 'Point of interest for camera' },
+      { value: MAV_CMD.DO_JUMP, label: 'Jump', desc: 'Jump to WP and repeat' },
+      { value: MAV_CMD.CONDITION_YAW, label: 'Set Heading', desc: 'Lock heading direction' },
     ],
   },
 ];
 
 // Flat list of all available commands (for lookup)
-const ALL_AVAILABLE_COMMANDS = COMMAND_GROUPS.flatMap(g => g.commands);
+const ALL_AVAILABLE_COMMANDS = [
+  ...COMMAND_GROUPS.flatMap(g => g.commands),
+  ...INAV_COMMAND_GROUPS.flatMap(g => g.commands),
+].filter((cmd, i, arr) => arr.findIndex(c => c.value === cmd.value) === i);
 
-// Get friendly description for a waypoint
-function getWaypointSummary(wp: MissionItem): string {
+// Custom command dropdown (replaces native select)
+function CommandDropdown({
+  value,
+  onChange,
+  advanced,
+  firmware,
+}: {
+  value: number;
+  onChange: (cmd: number) => void;
+  advanced: boolean;
+  firmware: 'ardupilot' | 'inav';
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  // iNav has only 8 commands total, no need for simple/advanced split
+  const groups = firmware === 'inav'
+    ? INAV_COMMAND_GROUPS
+    : advanced ? COMMAND_GROUPS : SIMPLE_COMMAND_GROUPS;
+
+  // Current command label
+  const currentCmd = ALL_AVAILABLE_COMMANDS.find(c => c.value === value);
+  const currentLabel = currentCmd?.label || COMMAND_NAMES[value] || `CMD ${value}`;
+
+  // Filter groups by search
+  const filteredGroups = search.trim()
+    ? groups
+        .map(g => ({
+          ...g,
+          commands: g.commands.filter(
+            c => c.label.toLowerCase().includes(search.toLowerCase())
+              || c.desc.toLowerCase().includes(search.toLowerCase()),
+          ),
+        }))
+        .filter(g => g.commands.length > 0)
+    : groups;
+
+  // Close on click outside (check both button and popup since popup is fixed/portaled)
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    const target = e.target as Node;
+    if (
+      dropdownRef.current && !dropdownRef.current.contains(target) &&
+      popupRef.current && !popupRef.current.contains(target)
+    ) {
+      setIsOpen(false);
+      setSearch('');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      requestAnimationFrame(() => searchRef.current?.focus());
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen, handleClickOutside]);
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={() => {
+          if (!isOpen && dropdownRef.current) {
+            const rect = dropdownRef.current.getBoundingClientRect();
+            setPopupStyle({
+              position: 'fixed',
+              left: rect.left,
+              width: rect.width,
+              bottom: window.innerHeight - rect.top + 4,
+              maxHeight: Math.max(200, rect.top - 12),
+            });
+          }
+          setIsOpen(!isOpen);
+        }}
+        className="w-full flex items-center justify-between bg-gray-700 text-gray-200 text-sm px-2 py-1.5 rounded border border-gray-600 hover:border-gray-500 focus:border-blue-500 focus:outline-none"
+      >
+        <span className="truncate">{currentLabel}</span>
+        <svg className={`w-4 h-4 shrink-0 ml-1 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && createPortal(
+        <div ref={popupRef} className="z-[9999] bg-gray-800 border border-gray-600 rounded-lg shadow-xl flex flex-col overflow-hidden" style={popupStyle}>
+          {/* Search input */}
+          <div className="p-1.5 border-b border-gray-700/50 shrink-0">
+            <div className="relative">
+              <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={searchRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsOpen(false);
+                    setSearch('');
+                  }
+                  // Select first match on Enter
+                  if (e.key === 'Enter' && filteredGroups.length > 0) {
+                    const firstCmd = filteredGroups[0]?.commands[0];
+                    if (firstCmd) {
+                      onChange(firstCmd.value);
+                      setIsOpen(false);
+                      setSearch('');
+                    }
+                  }
+                }}
+                placeholder="Search commands..."
+                className="w-full bg-gray-700/60 text-gray-200 text-xs pl-7 pr-2 py-1.5 rounded border border-gray-600/50 focus:border-blue-500/50 focus:outline-none placeholder-gray-500"
+              />
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="overflow-auto flex-1 min-h-0">
+            {filteredGroups.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-gray-500 text-center">No commands match "{search}"</div>
+            ) : (
+              filteredGroups.map((group) => (
+                <div key={group.group}>
+                  <div className="px-2 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-800">
+                    {group.group}
+                  </div>
+                  {group.commands.map((cmd) => (
+                    <button
+                      key={cmd.value}
+                      onClick={() => {
+                        onChange(cmd.value);
+                        setIsOpen(false);
+                        setSearch('');
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-sm transition-colors flex items-center gap-2 ${
+                        cmd.value === value
+                          ? 'bg-blue-600/30 text-blue-300'
+                          : 'text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      <span className="font-medium whitespace-nowrap" title={advanced ? cmd.desc : undefined}>{cmd.label}</span>
+                      {!advanced && <span className="text-xs text-gray-500 truncate">{cmd.desc}</span>}
+                    </button>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+// Get description for a waypoint
+// advanced=false: friendly labels for beginners ("Fly here", "Circle here")
+// advanced=true: standard GCS labels ("WP", "Loiter Unlim")
+function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
   const radiusSuffix = wp.param3 > 0 ? ` (${wp.param3}m radius)` : '';
 
   switch (wp.command) {
@@ -104,24 +351,32 @@ function getWaypointSummary(wp: MissionItem): string {
     case MAV_CMD.NAV_TAKEOFF:
       return `Takeoff to ${wp.altitude}m`;
     case MAV_CMD.NAV_WAYPOINT:
+      if (advanced) return wp.param1 > 0 ? `WP (hold ${wp.param1}s)` : 'WP';
       return wp.param1 > 0 ? `Fly here, wait ${wp.param1}s` : 'Fly here';
     case MAV_CMD.NAV_SPLINE_WAYPOINT:
+      if (advanced) return wp.param1 > 0 ? `Spline WP (hold ${wp.param1}s)` : 'Spline WP';
       return wp.param1 > 0 ? `Smooth path, wait ${wp.param1}s` : 'Smooth path';
     case MAV_CMD.NAV_LOITER_UNLIM:
+      if (advanced) return `Loiter Unlim${radiusSuffix}`;
       return `Circle here${radiusSuffix}`;
     case MAV_CMD.NAV_LOITER_TIME:
+      if (advanced) return `Loiter ${wp.param1}s${radiusSuffix}`;
       return `Circle for ${wp.param1}s${radiusSuffix}`;
     case MAV_CMD.NAV_LOITER_TURNS:
+      if (advanced) return `Loiter ${wp.param1}x${radiusSuffix}`;
       return `Circle ${wp.param1}x${radiusSuffix}`;
     case MAV_CMD.NAV_LOITER_TO_ALT:
       return `Loiter to ${wp.altitude}m${radiusSuffix}`;
     case MAV_CMD.NAV_LAND:
+      if (advanced) return 'Land';
       return 'Land here';
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
+      if (advanced) return 'RTL';
       return 'Return to home';
     case MAV_CMD.NAV_VTOL_TAKEOFF:
       return `VTOL Takeoff to ${wp.altitude}m`;
     case MAV_CMD.NAV_VTOL_LAND:
+      if (advanced) return 'VTOL Land';
       return 'VTOL Land here';
     case MAV_CMD.NAV_DELAY:
       return `Wait ${wp.param1}s`;
@@ -129,8 +384,17 @@ function getWaypointSummary(wp: MissionItem): string {
       return wp.param1 > 0 ? `Place payload (max ${wp.param1}m desc)` : 'Place payload';
     case MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT:
       return `Continue, change to ${wp.altitude}m`;
+    case MAV_CMD.NAV_ARC_WAYPOINT:
+      if (advanced) return 'Arc WP';
+      return 'Curved path';
+    case MAV_CMD.NAV_ALTITUDE_WAIT:
+      return `Wait at ${wp.altitude}m`;
     case MAV_CMD.NAV_GUIDED_ENABLE:
       return wp.param1 > 0 ? 'Enable guided mode' : 'Disable guided mode';
+    case MAV_CMD.NAV_SCRIPT_TIME:
+      return `Script for ${wp.param1}s`;
+    case MAV_CMD.NAV_ATTITUDE_TIME:
+      return `Hold attitude ${wp.param1}s`;
 
     // Conditions
     case MAV_CMD.CONDITION_DELAY:
@@ -144,22 +408,52 @@ function getWaypointSummary(wp: MissionItem): string {
 
     // Camera / Gimbal
     case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+      if (advanced) return wp.param1 > 0 ? `CAM_TRIGG_DIST ${wp.param1}m` : 'CAM_TRIGG off';
       return wp.param1 > 0 ? `Camera every ${wp.param1}m` : 'Camera trigger off';
     case MAV_CMD.DO_DIGICAM_CONTROL:
+      if (advanced) return 'DIGICAM_CONTROL';
       return 'Take photo';
     case MAV_CMD.DO_DIGICAM_CONFIGURE:
+      if (advanced) return 'DIGICAM_CONFIGURE';
       return 'Configure camera';
     case MAV_CMD.DO_SET_ROI:
     case MAV_CMD.DO_SET_ROI_LOCATION:
+      if (advanced) return 'SET_ROI';
       return 'Point camera here';
     case MAV_CMD.DO_SET_ROI_NONE:
+      if (advanced) return 'ROI_NONE';
       return 'Stop camera tracking';
     case MAV_CMD.DO_MOUNT_CONTROL:
+      if (advanced) return 'MOUNT_CONTROL';
       return 'Set gimbal angles';
     case MAV_CMD.DO_MOUNT_CONFIGURE:
+      if (advanced) return 'MOUNT_CONFIGURE';
       return 'Configure gimbal';
     case MAV_CMD.DO_CONTROL_VIDEO:
       return 'Control video';
+    case MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL:
+      if (advanced) return wp.param1 > 0 ? `CAM_TRIGG_INT ${wp.param1}s` : 'CAM_TRIGG_INT off';
+      return wp.param1 > 0 ? `Camera every ${wp.param1}s` : 'Camera interval off';
+    case MAV_CMD.IMAGE_START_CAPTURE:
+      if (advanced) return wp.param2 > 0 ? `IMG_START (${wp.param2}s int)` : 'IMG_START';
+      return wp.param2 > 0 ? `Start photos every ${wp.param2}s` : 'Start taking photos';
+    case MAV_CMD.IMAGE_STOP_CAPTURE:
+      if (advanced) return 'IMG_STOP';
+      return 'Stop taking photos';
+    case MAV_CMD.VIDEO_START_CAPTURE:
+      if (advanced) return 'VID_START';
+      return 'Start recording video';
+    case MAV_CMD.VIDEO_STOP_CAPTURE:
+      if (advanced) return 'VID_STOP';
+      return 'Stop recording video';
+    case MAV_CMD.SET_CAMERA_ZOOM:
+      return `Camera zoom ${wp.param2}`;
+    case MAV_CMD.SET_CAMERA_FOCUS:
+      return `Camera focus ${wp.param2}`;
+    case MAV_CMD.SET_CAMERA_SOURCE:
+      return 'Set camera source';
+    case MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW:
+      return `Gimbal pitch ${wp.param1} yaw ${wp.param2}`;
 
     // Actions
     case MAV_CMD.DO_CHANGE_SPEED:
@@ -204,9 +498,25 @@ function getWaypointSummary(wp: MissionItem): string {
       return 'Flight termination';
     case MAV_CMD.DO_SET_PARAMETER:
       return `Set param ${wp.param1} = ${wp.param2}`;
+    case MAV_CMD.JUMP_TAG:
+      return `Tag ${wp.param1}`;
+    case MAV_CMD.DO_JUMP_TAG:
+      return `Jump to tag ${wp.param1}` + (wp.param2 > 0 ? ` (${wp.param2}x)` : ' (forever)');
+    case MAV_CMD.DO_SPRAYER:
+      return wp.param1 > 0 ? 'Sprayer ON' : 'Sprayer OFF';
+    case MAV_CMD.DO_WINCH:
+      return 'Control winch';
+    case MAV_CMD.DO_SEND_SCRIPT_MESSAGE:
+      return `Script msg ${wp.param1}`;
+    case MAV_CMD.SET_YAW_SPEED:
+      return `Yaw ${wp.param1} at ${wp.param2} deg/s`;
+    case MAV_CMD.DO_SET_RESUME_REPEAT_DIST:
+      return `Resume repeat ${wp.param1}m`;
+    case MAV_CMD.DO_AUX_FUNCTION:
+      return `Aux function ${wp.param1}`;
 
     default:
-      return COMMAND_NAMES[wp.command] || `Command ${wp.command}`;
+      return COMMAND_NAMES[wp.command] || `Unknown CMD ${wp.command}`;
   }
 }
 
@@ -365,6 +675,110 @@ function getCommandParams(cmd: number): Array<{
         { key: 'param1' as const, label: 'Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
         { key: 'param2' as const, label: 'Frame', unit: '', min: 0, max: 10, step: 1, show: false },
       ];
+    // New commands
+    case MAV_CMD.NAV_ARC_WAYPOINT:
+      return [
+        ...baseLocation,
+      ];
+    case MAV_CMD.NAV_ALTITUDE_WAIT:
+      return [
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+        { key: 'param1' as const, label: 'Climb Rate', unit: 'm/s', min: 0, max: 10, step: 0.5, show: true },
+      ];
+    case MAV_CMD.NAV_SCRIPT_TIME:
+      return [
+        { key: 'param1' as const, label: 'Command', unit: '', min: 0, max: 999, step: 1, show: true },
+        { key: 'param2' as const, label: 'Timeout', unit: 's', min: 0, max: 3600, step: 1, show: true },
+      ];
+    case MAV_CMD.NAV_ATTITUDE_TIME:
+      return [
+        { key: 'param1' as const, label: 'Time', unit: 's', min: 0, max: 3600, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL:
+      return [
+        { key: 'param1' as const, label: 'Interval', unit: 's', min: 0, max: 3600, step: 1, show: true },
+        { key: 'param2' as const, label: 'Count', unit: '', min: 0, max: 999, step: 1, show: true },
+      ];
+    case MAV_CMD.IMAGE_START_CAPTURE:
+      return [
+        { key: 'param2' as const, label: 'Interval', unit: 's', min: 0, max: 3600, step: 1, show: true },
+        { key: 'param3' as const, label: 'Total Images', unit: '', min: 0, max: 999, step: 1, show: true },
+      ];
+    case MAV_CMD.IMAGE_STOP_CAPTURE:
+      return [];
+    case MAV_CMD.VIDEO_START_CAPTURE:
+      return [];
+    case MAV_CMD.VIDEO_STOP_CAPTURE:
+      return [];
+    case MAV_CMD.SET_CAMERA_ZOOM:
+      return [
+        { key: 'param1' as const, label: 'Zoom Type', unit: '', min: 0, max: 2, step: 1, show: true },
+        { key: 'param2' as const, label: 'Zoom Value', unit: '', min: 0, max: 100, step: 1, show: true },
+      ];
+    case MAV_CMD.SET_CAMERA_FOCUS:
+      return [
+        { key: 'param1' as const, label: 'Focus Type', unit: '', min: 0, max: 2, step: 1, show: true },
+        { key: 'param2' as const, label: 'Focus Value', unit: '', min: 0, max: 100, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW:
+      return [
+        { key: 'param1' as const, label: 'Pitch', unit: 'deg', min: -90, max: 90, step: 5, show: true },
+        { key: 'param2' as const, label: 'Yaw', unit: 'deg', min: -180, max: 180, step: 5, show: true },
+      ];
+    case MAV_CMD.JUMP_TAG:
+      return [
+        { key: 'param1' as const, label: 'Tag #', unit: '', min: 1, max: 999, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_JUMP_TAG:
+      return [
+        { key: 'param1' as const, label: 'Tag #', unit: '', min: 1, max: 999, step: 1, show: true },
+        { key: 'param2' as const, label: 'Repeat Count', unit: '', min: -1, max: 100, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SPRAYER:
+      return [
+        { key: 'param1' as const, label: 'Enable', unit: '', min: 0, max: 1, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_WINCH:
+      return [
+        { key: 'param1' as const, label: 'Instance', unit: '', min: 1, max: 4, step: 1, show: true },
+        { key: 'param2' as const, label: 'Action', unit: '', min: 0, max: 2, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SEND_SCRIPT_MESSAGE:
+      return [
+        { key: 'param1' as const, label: 'ID', unit: '', min: 0, max: 999, step: 1, show: true },
+        { key: 'param2' as const, label: 'Param 1', unit: '', min: -1000, max: 1000, step: 1, show: true },
+        { key: 'param3' as const, label: 'Param 2', unit: '', min: -1000, max: 1000, step: 1, show: true },
+      ];
+    case MAV_CMD.SET_YAW_SPEED:
+      return [
+        { key: 'param1' as const, label: 'Yaw Angle', unit: 'deg', min: -180, max: 180, step: 5, show: true },
+        { key: 'param2' as const, label: 'Speed', unit: 'deg/s', min: 0, max: 180, step: 5, show: true },
+      ];
+    case MAV_CMD.DO_AUX_FUNCTION:
+      return [
+        { key: 'param1' as const, label: 'Function', unit: '', min: 0, max: 999, step: 1, show: true },
+        { key: 'param2' as const, label: 'Switch Pos', unit: '', min: 0, max: 2, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_SET_RESUME_REPEAT_DIST:
+      return [
+        { key: 'param1' as const, label: 'Distance', unit: 'm', min: 0, max: 10000, step: 10, show: true },
+      ];
+    case MAV_CMD.DO_ENGINE_CONTROL:
+      return [
+        { key: 'param1' as const, label: 'Start/Stop', unit: '', min: 0, max: 1, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_AUTOTUNE_ENABLE:
+      return [
+        { key: 'param1' as const, label: 'Enable', unit: '', min: 0, max: 1, step: 1, show: true },
+      ];
+    case MAV_CMD.DO_INVERTED_FLIGHT:
+      return [
+        { key: 'param1' as const, label: 'Inverted', unit: '', min: 0, max: 1, step: 1, show: true },
+      ];
+    case MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT:
+      return [
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+      ];
     default:
       return baseLocation;
   }
@@ -424,6 +838,20 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     reorderWaypoints,
   } = useMissionStore();
 
+  const advancedLabels = useSettingsStore((s) => s.missionDefaults.advancedMissionLabels);
+  const settingsFirmware = useSettingsStore((s) => s.missionDefaults.missionFirmware);
+  const connectionState = useConnectionStore((s) => s.connectionState);
+
+  const showSegmentColors = useSettingsStore((s) => s.missionDefaults.showSegmentColors);
+
+  // Segment colors for sidebar indicators (matches map line colors)
+  const itemColors = useMemo(() => computeItemColors(missionItems), [missionItems]);
+
+  // When connected, auto-detect firmware from protocol. When disconnected, use setting.
+  const effectiveFirmware: 'ardupilot' | 'inav' = connectionState.isConnected
+    ? (connectionState.protocol === 'msp' && connectionState.fcVariant === 'INAV' ? 'inav' : 'ardupilot')
+    : settingsFirmware;
+
   const [draggedSeq, setDraggedSeq] = useState<number | null>(null);
   const [dropTargetSeq, setDropTargetSeq] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -449,15 +877,15 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   const handleAddWaypoint = () => {
     const lastWp = missionItems[missionItems.length - 1];
-    // Get GPS state without subscribing (avoids re-renders)
     const gpsState = getGpsState();
+    const homePosition = useMissionStore.getState().homePosition;
 
-    // Use GPS position if available, otherwise last waypoint, otherwise default
-    const baseLat = lastWp?.latitude ?? (gpsState.hasGpsFix ? gpsState.lat : 0);
-    const baseLon = lastWp?.longitude ?? (gpsState.hasGpsFix ? gpsState.lon : 0);
+    // Use last waypoint, then GPS, then home position (required by addWaypoint anyway)
+    const baseLat = lastWp?.latitude ?? (gpsState.hasGpsFix ? gpsState.lat : homePosition?.lat ?? 0);
+    const baseLon = lastWp?.longitude ?? (gpsState.hasGpsFix ? gpsState.lon : homePosition?.lon ?? 0);
     const alt = lastWp?.altitude ?? 100;
 
-    // Offset slightly from last position
+    // Offset slightly from base position so new WP doesn't stack exactly on top
     const lat = baseLat + 0.001;
     const lon = baseLon + 0.001;
 
@@ -496,12 +924,12 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     setDropTargetSeq(null);
   };
 
-  const getCommandName = (cmd: number) => COMMAND_NAMES[cmd] || `CMD ${cmd}`;
+  const getCommandName = (cmd: number) => COMMAND_NAMES[cmd] || `Unknown CMD ${cmd}`;
   const getCommandInfo = (cmd: number) => ALL_AVAILABLE_COMMANDS.find(c => c.value === cmd);
 
   return (
     <div className="h-full flex flex-col bg-gray-900/50">
-      {/* Simple table - just # and description */}
+      {/* Waypoint list */}
       <div className="flex-1 overflow-auto" ref={tableRef}>
         {missionItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 p-4">
@@ -527,7 +955,10 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
               const isCurrent = wp.seq === currentSeq;
               const isDragging = wp.seq === draggedSeq;
               const isDropTarget = wp.seq === dropTargetSeq;
-              const cmdInfo = getCommandInfo(wp.command);
+              const isChild = !isNavigationCommand(wp.command);
+              const segColor = showSegmentColors && !isCurrent && !(isSelected && !readOnly)
+                ? (itemColors.get(wp.seq) ?? SEGMENT_COLORS.default)
+                : undefined;
 
               return (
                 <div
@@ -539,7 +970,9 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   onDragLeave={!readOnly ? handleDragLeave : undefined}
                   onDrop={(e) => !readOnly && handleDrop(e, wp.seq)}
                   onDragEnd={!readOnly ? handleDragEnd : undefined}
-                  className={`flex items-center gap-2 px-2 py-2 transition-colors ${
+                  className={`flex items-center gap-2 py-2 transition-colors ${
+                    isChild ? 'px-2 pl-8' : 'px-2'
+                  } ${
                     readOnly ? '' : 'cursor-pointer'
                   } ${
                     isDropTarget ? 'border-t-2 border-t-blue-500' : ''
@@ -550,6 +983,8 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                       ? 'bg-orange-500/10 border-l-2 border-l-orange-500'
                       : isSelected && !readOnly
                       ? 'bg-blue-500/20 border-l-2 border-l-blue-500'
+                      : isChild
+                      ? 'border-l-2 border-l-gray-700/50 ml-[14px] hover:bg-gray-800/20'
                       : readOnly
                       ? 'border-l-2 border-l-transparent'
                       : 'hover:bg-gray-800/30 border-l-2 border-l-transparent'
@@ -564,21 +999,39 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     </div>
                   )}
 
-                  {/* Number badge */}
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    isCurrent
-                      ? 'bg-orange-500 text-white'
-                      : isSelected && !readOnly
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-700 text-gray-300'
-                  }`}>
-                    {wp.seq + 1}
-                  </div>
+                  {/* Badge: numbered circle for nav commands, small dot for child commands */}
+                  {isChild ? (
+                    <div className="w-5 h-5 rounded flex items-center justify-center shrink-0">
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isCurrent ? 'bg-orange-400' : isSelected && !readOnly ? 'bg-blue-400' : !segColor ? 'bg-gray-500' : ''
+                        }`}
+                        style={segColor ? { backgroundColor: segColor } : undefined}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        isCurrent
+                          ? 'bg-orange-500 text-white'
+                          : isSelected && !readOnly
+                          ? 'bg-blue-500 text-white'
+                          : segColor
+                          ? 'text-white'
+                          : 'bg-gray-700 text-gray-300'
+                      }`}
+                      style={segColor ? { backgroundColor: segColor } : undefined}
+                    >
+                      {wp.seq + 1}
+                    </div>
+                  )}
 
                   {/* Description */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-200 truncate">
-                      {getWaypointSummary(wp)}
+                    <div className={`truncate ${
+                      isChild ? 'text-xs text-gray-400' : 'text-sm text-gray-200'
+                    }`}>
+                      {getWaypointSummary(wp, advancedLabels)}
                     </div>
                     {commandHasLocation(wp.command) && (
                       <div className="text-[10px] text-gray-500 font-mono">
@@ -629,21 +1082,12 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
           {/* Command selector */}
           <div className="mb-3">
             <label className="block text-[11px] text-gray-500 mb-1">Action</label>
-            <select
+            <CommandDropdown
               value={selectedWaypoint.command}
-              onChange={(e) => handleCommandChange(selectedWaypoint.seq, Number(e.target.value))}
-              className="w-full bg-gray-700 text-gray-200 text-sm px-2 py-1.5 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
-            >
-              {COMMAND_GROUPS.map((group) => (
-                <optgroup key={group.group} label={group.group}>
-                  {group.commands.map((cmd) => (
-                    <option key={cmd.value} value={cmd.value}>
-                      {cmd.label} -- {cmd.desc}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={(cmd) => handleCommandChange(selectedWaypoint.seq, cmd)}
+              advanced={advancedLabels}
+              firmware={effectiveFirmware}
+            />
           </div>
 
           {/* Dynamic parameters */}

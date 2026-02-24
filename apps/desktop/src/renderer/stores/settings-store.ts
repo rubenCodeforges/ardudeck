@@ -80,10 +80,15 @@ export interface FlightStats {
 /**
  * Mission planning defaults
  */
+export type MissionFirmware = 'ardupilot' | 'inav';
+
 export interface MissionDefaults {
   safeAltitudeBuffer: number;     // meters above terrain for collision warning
   defaultWaypointAltitude: number; // meters - default altitude for new waypoints
   defaultTakeoffAltitude: number;  // meters - default takeoff altitude
+  advancedMissionLabels: boolean;  // false = friendly labels ("Fly here"), true = standard ("WP")
+  missionFirmware: MissionFirmware; // Which firmware's commands to show when disconnected
+  showSegmentColors: boolean;      // Color-coded path segments on map (camera, ROI, speed, etc.)
 }
 
 /**
@@ -170,6 +175,9 @@ const DEFAULT_MISSION_DEFAULTS: MissionDefaults = {
   safeAltitudeBuffer: 30,        // 30m above terrain
   defaultWaypointAltitude: 100,  // 100m default altitude
   defaultTakeoffAltitude: 50,    // 50m takeoff altitude
+  advancedMissionLabels: false,  // Friendly labels by default
+  missionFirmware: 'ardupilot',  // Default firmware for offline mission planning
+  showSegmentColors: true,       // Color-coded path segments on by default
 };
 
 const DEFAULT_VEHICLE: VehicleProfile = {
@@ -394,7 +402,7 @@ export const useSettingsStore = create<SettingsStore>()(
       const settings = await window.electronAPI?.getSettings();
       if (settings) {
         set({
-          missionDefaults: settings.missionDefaults || { ...DEFAULT_MISSION_DEFAULTS },
+          missionDefaults: { ...DEFAULT_MISSION_DEFAULTS, ...settings.missionDefaults },
           vehicles: settings.vehicles?.length ? settings.vehicles : [{ ...DEFAULT_VEHICLE }],
           activeVehicleId: settings.activeVehicleId || settings.vehicles?.[0]?.id || 'default',
           flightStats: settings.flightStats || { ...DEFAULT_FLIGHT_STATS },

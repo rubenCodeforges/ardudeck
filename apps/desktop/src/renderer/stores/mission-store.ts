@@ -170,6 +170,7 @@ interface MissionStore {
   selectedSeq: number | null;     // UI selection
   lastSuccessMessage: string | null;  // For toast notifications
   hasTerrainCollisions: boolean;  // Terrain collision warning
+  loadCounter: number;            // Increments on bulk load (file/download) to trigger map fit
 
   // Computed (as functions)
   getWaypointCount: () => number;
@@ -224,6 +225,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   selectedSeq: null,
   lastSuccessMessage: null,
   hasTerrainCollisions: false,
+  loadCounter: 0,
 
   // Computed values
   getWaypointCount: () => get().missionItems.length,
@@ -499,13 +501,19 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
   // IPC event handlers (from FC download)
   setMissionItems: (items: MissionItem[]) => {
-    // Filter out home waypoint at 0,0 coordinates (seq=0 with invalid position)
-    // FC creates this placeholder when no GPS fix is available
+    // Extract home waypoint: seq=0 is always the home position in ArduPilot missions.
+    // It shares MAV_CMD 16 (WAYPOINT) but has current=true in the protocol.
+    // Also detect seq=0 at 0,0 (placeholder when no GPS fix).
+    let homePosition: HomePosition | null = null;
     const filteredItems = items.filter(item => {
-      // Keep if not seq 0, or if it has valid coordinates
-      if (item.seq !== 0) return true;
-      // Filter out seq 0 if it's at 0,0 (invalid home position)
-      return item.latitude !== 0 || item.longitude !== 0;
+      if (item.seq === 0) {
+        // seq=0 is home position - extract it if it has valid coordinates
+        if (item.latitude !== 0 || item.longitude !== 0) {
+          homePosition = { lat: item.latitude, lon: item.longitude, alt: item.altitude };
+        }
+        return false; // Always remove seq=0 from mission items
+      }
+      return true;
     });
 
     // Renumber remaining items starting from 0
@@ -516,22 +524,46 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
     set({
       missionItems: renumberedItems,
+      ...(homePosition ? { homePosition } : {}),
       isLoading: false,
       progress: null,
       isDirty: false,
       error: null,
       lastSuccessMessage: `Downloaded ${renumberedItems.length} waypoints from flight controller`,
+      loadCounter: get().loadCounter + 1,
     });
   },
 
   // For file loading (toolbar handles toast via showToast prop)
   setMissionItemsFromFile: (items: MissionItem[]) => {
+    // Extract home waypoint: seq=0 with current=true is the home/launch position.
+    // In QGC WPL format: "0  1  0  16  ..." where second field (current=1) marks home.
+    let homePosition: HomePosition | null = null;
+    const filteredItems = items.filter(item => {
+      if (item.seq === 0 && item.current) {
+        // This is the home position - extract it
+        if (item.latitude !== 0 || item.longitude !== 0) {
+          homePosition = { lat: item.latitude, lon: item.longitude, alt: item.altitude };
+        }
+        return false; // Remove from mission items
+      }
+      return true;
+    });
+
+    // Renumber remaining items starting from 0
+    const renumberedItems = filteredItems.map((item, index) => ({
+      ...item,
+      seq: index,
+    }));
+
     set({
-      missionItems: items,
+      missionItems: renumberedItems,
+      ...(homePosition ? { homePosition } : {}),
       isLoading: false,
       progress: null,
       isDirty: false,
       error: null,
+      loadCounter: get().loadCounter + 1,
     });
   },
 
@@ -594,6 +626,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       selectedSeq: null,
       lastSuccessMessage: null,
       hasTerrainCollisions: false,
+      loadCounter: 0,
     });
   },
 }));

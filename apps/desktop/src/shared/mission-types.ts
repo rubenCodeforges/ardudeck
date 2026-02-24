@@ -28,10 +28,12 @@ export const MAV_CMD = {
   NAV_TAKEOFF_LOCAL: 24,
   NAV_CONTINUE_AND_CHANGE_ALT: 30,
   NAV_LOITER_TO_ALT: 31,
+  NAV_ARC_WAYPOINT: 36,
   NAV_SPLINE_WAYPOINT: 82,
-  NAV_GUIDED_ENABLE: 92,
+  NAV_ALTITUDE_WAIT: 83,
   NAV_VTOL_TAKEOFF: 84,
   NAV_VTOL_LAND: 85,
+  NAV_GUIDED_ENABLE: 92,
   NAV_DELAY: 93,
   NAV_PAYLOAD_PLACE: 94,
 
@@ -76,12 +78,34 @@ export const MAV_CMD = {
   DO_INVERTED_FLIGHT: 210,
   DO_GRIPPER: 211,
   DO_AUTOTUNE_ENABLE: 212,
-  DO_SET_RESUME_REPEAT_DIST: 213,
-  DO_GUIDED_LIMITS: 220,
-  DO_ENGINE_CONTROL: 221,
-  DO_SET_MISSION_CURRENT: 224,
+  SET_YAW_SPEED: 213,
+  DO_SET_CAM_TRIGG_INTERVAL: 214,
+  DO_SET_RESUME_REPEAT_DIST: 215,
+  DO_SPRAYER: 216,
+  DO_SEND_SCRIPT_MESSAGE: 217,
   DO_AUX_FUNCTION: 218,
+  DO_GUIDED_LIMITS: 222,
+  DO_ENGINE_CONTROL: 223,
+  DO_SET_MISSION_CURRENT: 224,
+
+  // Camera protocol commands
+  SET_CAMERA_MODE: 530,
+  SET_CAMERA_ZOOM: 531,
+  SET_CAMERA_FOCUS: 532,
+  SET_CAMERA_SOURCE: 534,
+  JUMP_TAG: 600,
+  DO_JUMP_TAG: 601,
+  DO_GIMBAL_MANAGER_PITCHYAW: 1000,
+  IMAGE_START_CAPTURE: 2000,
+  IMAGE_STOP_CAPTURE: 2001,
+  VIDEO_START_CAPTURE: 2500,
+  VIDEO_STOP_CAPTURE: 2501,
   DO_VTOL_TRANSITION: 3000,
+
+  // ArduPilot custom commands
+  DO_WINCH: 42600,
+  NAV_SCRIPT_TIME: 42702,
+  NAV_ATTITUDE_TIME: 42703,
 } as const;
 
 export type MavCmd = typeof MAV_CMD[keyof typeof MAV_CMD];
@@ -100,12 +124,16 @@ export const COMMAND_NAMES: Record<number, string> = {
   [MAV_CMD.NAV_TAKEOFF_LOCAL]: 'Takeoff Local',
   [MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT]: 'Continue/Change Alt',
   [MAV_CMD.NAV_LOITER_TO_ALT]: 'Loiter to Alt',
+  [MAV_CMD.NAV_ARC_WAYPOINT]: 'Arc Waypoint',
   [MAV_CMD.NAV_SPLINE_WAYPOINT]: 'Spline WP',
-  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Guided Enable',
+  [MAV_CMD.NAV_ALTITUDE_WAIT]: 'Altitude Wait',
   [MAV_CMD.NAV_VTOL_TAKEOFF]: 'VTOL Takeoff',
   [MAV_CMD.NAV_VTOL_LAND]: 'VTOL Land',
+  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Guided Enable',
   [MAV_CMD.NAV_DELAY]: 'Delay',
   [MAV_CMD.NAV_PAYLOAD_PLACE]: 'Payload Place',
+  [MAV_CMD.NAV_SCRIPT_TIME]: 'Script Time',
+  [MAV_CMD.NAV_ATTITUDE_TIME]: 'Attitude Time',
 
   // Conditions
   [MAV_CMD.CONDITION_DELAY]: 'Condition Delay',
@@ -148,12 +176,28 @@ export const COMMAND_NAMES: Record<number, string> = {
   [MAV_CMD.DO_INVERTED_FLIGHT]: 'Inverted Flight',
   [MAV_CMD.DO_GRIPPER]: 'Gripper',
   [MAV_CMD.DO_AUTOTUNE_ENABLE]: 'Autotune',
+  [MAV_CMD.SET_YAW_SPEED]: 'Set Yaw Speed',
+  [MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL]: 'Camera Interval',
   [MAV_CMD.DO_SET_RESUME_REPEAT_DIST]: 'Resume Repeat Dist',
+  [MAV_CMD.DO_SPRAYER]: 'Sprayer',
+  [MAV_CMD.DO_SEND_SCRIPT_MESSAGE]: 'Script Message',
+  [MAV_CMD.DO_AUX_FUNCTION]: 'Aux Function',
   [MAV_CMD.DO_GUIDED_LIMITS]: 'Guided Limits',
   [MAV_CMD.DO_ENGINE_CONTROL]: 'Engine Control',
   [MAV_CMD.DO_SET_MISSION_CURRENT]: 'Set Mission Item',
-  [MAV_CMD.DO_AUX_FUNCTION]: 'Aux Function',
+  [MAV_CMD.SET_CAMERA_MODE]: 'Camera Mode',
+  [MAV_CMD.SET_CAMERA_ZOOM]: 'Camera Zoom',
+  [MAV_CMD.SET_CAMERA_FOCUS]: 'Camera Focus',
+  [MAV_CMD.SET_CAMERA_SOURCE]: 'Camera Source',
+  [MAV_CMD.JUMP_TAG]: 'Jump Tag',
+  [MAV_CMD.DO_JUMP_TAG]: 'Do Jump Tag',
+  [MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW]: 'Gimbal Pitch/Yaw',
+  [MAV_CMD.IMAGE_START_CAPTURE]: 'Start Capture',
+  [MAV_CMD.IMAGE_STOP_CAPTURE]: 'Stop Capture',
+  [MAV_CMD.VIDEO_START_CAPTURE]: 'Start Video',
+  [MAV_CMD.VIDEO_STOP_CAPTURE]: 'Stop Video',
   [MAV_CMD.DO_VTOL_TRANSITION]: 'VTOL Transition',
+  [MAV_CMD.DO_WINCH]: 'Winch',
 };
 
 // Command descriptions for tooltips
@@ -168,12 +212,16 @@ export const COMMAND_DESCRIPTIONS: Record<number, string> = {
   [MAV_CMD.NAV_TAKEOFF]: 'Takeoff to specified altitude',
   [MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT]: 'Continue to next WP while changing altitude',
   [MAV_CMD.NAV_LOITER_TO_ALT]: 'Loiter and climb/descend to altitude',
+  [MAV_CMD.NAV_ARC_WAYPOINT]: 'Fly a curved arc path through waypoint',
   [MAV_CMD.NAV_SPLINE_WAYPOINT]: 'Spline waypoint for smooth curves',
-  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Enable/disable guided mode from companion',
+  [MAV_CMD.NAV_ALTITUDE_WAIT]: 'Wait at altitude until climb rate met',
   [MAV_CMD.NAV_VTOL_TAKEOFF]: 'VTOL takeoff to altitude',
   [MAV_CMD.NAV_VTOL_LAND]: 'VTOL land at location',
+  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Enable/disable guided mode from companion',
   [MAV_CMD.NAV_DELAY]: 'Wait for specified time or until time of day',
   [MAV_CMD.NAV_PAYLOAD_PLACE]: 'Descend and release payload',
+  [MAV_CMD.NAV_SCRIPT_TIME]: 'Run Lua script for specified time',
+  [MAV_CMD.NAV_ATTITUDE_TIME]: 'Hold attitude for specified time',
 
   // Conditions
   [MAV_CMD.CONDITION_DELAY]: 'Wait for seconds before next command',
@@ -216,12 +264,28 @@ export const COMMAND_DESCRIPTIONS: Record<number, string> = {
   [MAV_CMD.DO_INVERTED_FLIGHT]: 'Enable/disable inverted flight',
   [MAV_CMD.DO_GRIPPER]: 'Open/close gripper',
   [MAV_CMD.DO_AUTOTUNE_ENABLE]: 'Enable/disable autotune',
+  [MAV_CMD.SET_YAW_SPEED]: 'Set yaw angle and speed for rover',
+  [MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL]: 'Trigger camera at time intervals',
   [MAV_CMD.DO_SET_RESUME_REPEAT_DIST]: 'Set distance for mission resume after RTL',
+  [MAV_CMD.DO_SPRAYER]: 'Enable/disable crop sprayer',
+  [MAV_CMD.DO_SEND_SCRIPT_MESSAGE]: 'Send message to onboard Lua script',
+  [MAV_CMD.DO_AUX_FUNCTION]: 'Trigger auxiliary function switch',
   [MAV_CMD.DO_GUIDED_LIMITS]: 'Set limits for guided mode',
   [MAV_CMD.DO_ENGINE_CONTROL]: 'Start/stop engine',
   [MAV_CMD.DO_SET_MISSION_CURRENT]: 'Jump to mission item without counting',
-  [MAV_CMD.DO_AUX_FUNCTION]: 'Trigger auxiliary function switch',
+  [MAV_CMD.SET_CAMERA_MODE]: 'Set camera operating mode',
+  [MAV_CMD.SET_CAMERA_ZOOM]: 'Set camera zoom level',
+  [MAV_CMD.SET_CAMERA_FOCUS]: 'Set camera focus',
+  [MAV_CMD.SET_CAMERA_SOURCE]: 'Set camera video source',
+  [MAV_CMD.JUMP_TAG]: 'Mark a tag label for DO_JUMP_TAG',
+  [MAV_CMD.DO_JUMP_TAG]: 'Jump to tagged mission item',
+  [MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW]: 'Set gimbal pitch and yaw angles',
+  [MAV_CMD.IMAGE_START_CAPTURE]: 'Start taking photos at interval',
+  [MAV_CMD.IMAGE_STOP_CAPTURE]: 'Stop taking photos',
+  [MAV_CMD.VIDEO_START_CAPTURE]: 'Start recording video',
+  [MAV_CMD.VIDEO_STOP_CAPTURE]: 'Stop recording video',
   [MAV_CMD.DO_VTOL_TRANSITION]: 'Transition between VTOL and fixed-wing',
+  [MAV_CMD.DO_WINCH]: 'Control winch motor',
 };
 
 // Commands that have location (lat/lon/alt)
@@ -234,8 +298,9 @@ export const COMMANDS_WITH_LOCATION: Set<number> = new Set([
   MAV_CMD.NAV_TAKEOFF,
   MAV_CMD.NAV_LAND_LOCAL,
   MAV_CMD.NAV_TAKEOFF_LOCAL,
-  MAV_CMD.NAV_SPLINE_WAYPOINT,
   MAV_CMD.NAV_LOITER_TO_ALT,
+  MAV_CMD.NAV_ARC_WAYPOINT,
+  MAV_CMD.NAV_SPLINE_WAYPOINT,
   MAV_CMD.NAV_VTOL_TAKEOFF,
   MAV_CMD.NAV_VTOL_LAND,
   MAV_CMD.NAV_PAYLOAD_PLACE,
@@ -371,7 +436,7 @@ export function createTakeoffWaypoint(
  * Get human-readable name for a command
  */
 export function getCommandName(command: number): string {
-  return COMMAND_NAMES[command] || `CMD ${command}`;
+  return COMMAND_NAMES[command] || `Unknown CMD ${command}`;
 }
 
 /**
@@ -379,6 +444,16 @@ export function getCommandName(command: number): string {
  */
 export function commandHasLocation(command: number): boolean {
   return COMMANDS_WITH_LOCATION.has(command);
+}
+
+/**
+ * Check if a command is a navigation command (vehicle movement)
+ * Navigation commands are "parent" items in the mission list.
+ * DO_* and CONDITION_* commands are "children" that execute at the preceding parent.
+ * MAVLink spec: NAV commands are in range 16-95.
+ */
+export function isNavigationCommand(command: number): boolean {
+  return command >= 16 && command <= 95;
 }
 
 /**

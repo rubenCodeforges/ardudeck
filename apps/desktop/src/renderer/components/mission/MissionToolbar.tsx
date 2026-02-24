@@ -4,6 +4,7 @@ import { useMissionStore } from '../../stores/mission-store';
 import { useFenceStore } from '../../stores/fence-store';
 import { useRallyStore } from '../../stores/rally-store';
 import { useEditModeStore, type EditMode } from '../../stores/edit-mode-store';
+import { useSettingsStore } from '../../stores/settings-store';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -47,6 +48,105 @@ function ModeButton({
         }`} />
       )}
     </button>
+  );
+}
+
+function MissionModeControls() {
+  const advancedLabels = useSettingsStore((s) => s.missionDefaults.advancedMissionLabels);
+  const missionFirmware = useSettingsStore((s) => s.missionDefaults.missionFirmware);
+  const updateMissionDefaults = useSettingsStore((s) => s.updateMissionDefaults);
+  const { connectionState } = useConnectionStore();
+  const isConnected = connectionState.isConnected;
+
+  // Auto-detect firmware when connected
+  const detectedFirmware = isConnected
+    ? (connectionState.protocol === 'msp' && connectionState.fcVariant === 'INAV' ? 'inav' : 'ardupilot')
+    : null;
+  const effectiveFirmware = detectedFirmware ?? missionFirmware;
+  const isInav = effectiveFirmware === 'inav';
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {/* Simple / Advanced toggle - only relevant for ArduPilot (iNav has only 8 commands) */}
+      {!isInav && (
+        <div className={`flex items-center rounded-lg overflow-hidden border transition-colors ${
+          advancedLabels ? 'border-amber-500/40' : 'border-teal-500/40'
+        }`}>
+          <button
+            onClick={() => updateMissionDefaults({ advancedMissionLabels: false })}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              !advancedLabels
+                ? 'bg-teal-600/80 text-white'
+                : 'text-gray-500 hover:bg-gray-700/40'
+            }`}
+            title="Simplified commands and friendly labels"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+            Simple
+          </button>
+          <div className={`w-px h-5 transition-colors ${advancedLabels ? 'bg-amber-500/30' : 'bg-teal-500/30'}`} />
+          <button
+            onClick={() => updateMissionDefaults({ advancedMissionLabels: true })}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              advancedLabels
+                ? 'bg-amber-600/80 text-white'
+                : 'text-gray-500 hover:bg-gray-700/40'
+            }`}
+            title="All commands with standard GCS naming"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Advanced
+          </button>
+        </div>
+      )}
+
+      {/* Firmware selector - only when disconnected */}
+      {!isConnected && (
+        <div className={`flex items-center rounded-lg overflow-hidden border transition-colors ${
+          isInav ? 'border-violet-500/40' : 'border-sky-500/40'
+        }`}>
+          <button
+            onClick={() => updateMissionDefaults({ missionFirmware: 'ardupilot' })}
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              !isInav
+                ? 'bg-sky-600/80 text-white'
+                : 'text-gray-500 hover:bg-gray-700/40'
+            }`}
+            title="ArduPilot mission commands"
+          >
+            ArduPilot
+          </button>
+          <div className={`w-px h-5 transition-colors ${isInav ? 'bg-violet-500/30' : 'bg-sky-500/30'}`} />
+          <button
+            onClick={() => updateMissionDefaults({ missionFirmware: 'inav' })}
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              isInav
+                ? 'bg-violet-600/80 text-white'
+                : 'text-gray-500 hover:bg-gray-700/40'
+            }`}
+            title="iNav mission commands (8 waypoint types)"
+          >
+            iNav
+          </button>
+        </div>
+      )}
+
+      {/* When connected, show detected firmware as a badge */}
+      {isConnected && detectedFirmware && (
+        <div className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border ${
+          isInav
+            ? 'bg-violet-600/20 border-violet-500/30 text-violet-400'
+            : 'bg-sky-600/20 border-sky-500/30 text-sky-400'
+        }`}>
+          {isInav ? 'iNav' : 'ArduPilot'}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -206,9 +306,9 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/60 border-b border-gray-700/50">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 bg-gray-800/60 border-b border-gray-700/50 shrink-0">
       {/* Mode Selector - Segmented Control */}
-      <div className="flex items-center rounded-lg overflow-hidden border border-gray-600/50">
+      <div className="flex items-center rounded-lg overflow-hidden border border-gray-600/50 shrink-0">
         <ModeButton
           mode="mission"
           label="Mission"
@@ -238,10 +338,10 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       </div>
 
       {/* Separator */}
-      <div className="w-px h-6 bg-gray-700/50" />
+      <div className="w-px h-6 bg-gray-700/50 shrink-0" />
 
       {/* FC Operations */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={handleDownload}
           disabled={!isConnected || isLoading || fcOpsDisabledForMsp}
@@ -306,13 +406,13 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       </div>
 
       {/* Separator */}
-      <div className="w-px h-6 bg-gray-700/50" />
+      <div className="w-px h-6 bg-gray-700/50 shrink-0" />
 
       {/* New */}
       <button
         onClick={handleNew}
         disabled={isLoading || !hasItems}
-        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
+        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0 ${
           !isLoading && hasItems
             ? 'bg-gray-700/50 hover:bg-gray-600/50 text-gray-300'
             : 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
@@ -326,10 +426,10 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       </button>
 
       {/* Separator */}
-      <div className="w-px h-6 bg-gray-700/50" />
+      <div className="w-px h-6 bg-gray-700/50 shrink-0" />
 
       {/* File Operations */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={handleSaveFile}
           disabled={!hasItems}
@@ -363,7 +463,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
       {/* Collision warning indicator (mission mode only) */}
       {activeMode === 'mission' && missionStore.hasTerrainCollisions && (
-        <div className="px-2 py-1 rounded text-xs bg-red-500/20 border border-red-500/30 text-red-400 flex items-center gap-1.5">
+        <div className="px-2 py-1 rounded text-xs bg-red-500/20 border border-red-500/30 text-red-400 flex items-center gap-1.5 shrink-0">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
@@ -371,10 +471,13 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
         </div>
       )}
 
+      {/* Firmware + Simple/Advanced controls */}
+      <MissionModeControls />
+
       {/* Layout controls */}
       <button
         onClick={onResetLayout}
-        className="px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 text-xs rounded transition-colors"
+        className="px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 text-xs rounded transition-colors shrink-0"
         title="Reset panel layout"
       >
         Reset Layout
