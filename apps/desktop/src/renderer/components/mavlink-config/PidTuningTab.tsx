@@ -178,8 +178,8 @@ const PidTuningTab: React.FC = () => {
         </div>
       )}
 
-      {/* Warning: No recognized PID scheme found */}
-      {hasParameters && isUnknown && (
+      {/* Warning: No recognized PID scheme found (suppress while still loading) */}
+      {hasParameters && !isLoading && isUnknown && (
         <div className="bg-red-500/10 rounded-xl border border-red-500/30 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">

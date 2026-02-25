@@ -46,6 +46,7 @@ const RatesTab: React.FC = () => {
     const get = (name: string, fallback: number) => parameters.get(name)?.value ?? fallback;
     return {
       rpRate: get(scheme.rollPitch.rate, scheme.defaults.rpRate),
+      pitchRate: scheme.pitch ? get(scheme.pitch.rate, scheme.defaults.pitchRate ?? scheme.defaults.rpRate) : undefined,
       yawRate: get(scheme.yaw.rate, scheme.defaults.yawRate),
       rpExpo: scheme.rollPitch.expo ? get(scheme.rollPitch.expo, scheme.defaults.rpExpo) : 0,
       yawExpo: scheme.yaw.expo ? get(scheme.yaw.expo, scheme.defaults.yawExpo) : 0,
@@ -110,8 +111,8 @@ const RatesTab: React.FC = () => {
         </div>
       )}
 
-      {/* Warning: No recognized rate scheme */}
-      {hasParameters && isUnknown && (
+      {/* Warning: No recognized rate scheme (suppress while still loading) */}
+      {hasParameters && !isLoading && isUnknown && (
         <div className="bg-red-500/10 rounded-xl border border-red-500/30 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
@@ -212,7 +213,7 @@ const RatesTab: React.FC = () => {
           )}
         </div>
 
-        {/* Pitch (shares rates with Roll in ArduPilot) */}
+        {/* Pitch */}
         <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
           <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
             <MoveVertical className="w-5 h-5 text-emerald-400" /> Pitch
@@ -225,13 +226,13 @@ const RatesTab: React.FC = () => {
           <div className="space-y-4">
             <DraggableSlider
               label={`Max Rate (${scheme.rateUnit})`}
-              value={rateValues.rpRate}
-              onChange={() => {}}
+              value={!scheme.rpLinked && rateValues.pitchRate !== undefined ? rateValues.pitchRate : rateValues.rpRate}
+              onChange={!scheme.rpLinked && scheme.pitch ? (v) => setParameter(scheme.pitch!.rate, v) : () => {}}
               min={scheme.rpRateMin}
               max={scheme.rpRateMax}
               step={scheme.rpRateStep}
               color="#10B981"
-              hint={scheme.rpLinked ? 'Controlled by Roll settings' : ''}
+              hint={scheme.rpLinked ? 'Controlled by Roll settings' : 'At full stick deflection'}
               disabled={scheme.rpLinked}
             />
             {scheme.hasExpo && scheme.rollPitch.expo && (
@@ -251,7 +252,7 @@ const RatesTab: React.FC = () => {
           {scheme.hasExpo && (
             <div className="mt-4">
               <RateCurve
-                rcRate={rateValues.rpRate}
+                rcRate={!scheme.rpLinked && rateValues.pitchRate !== undefined ? rateValues.pitchRate : rateValues.rpRate}
                 superRate={0}
                 expo={rateValues.rpExpo * scheme.expoScale}
                 color="#10B981"
@@ -309,11 +310,17 @@ const RatesTab: React.FC = () => {
       {scheme && rateValues && (
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4">
         <h3 className="text-sm font-medium text-zinc-300 mb-3">Current Settings Summary</h3>
-        <div className={`grid ${scheme.hasExpo ? 'grid-cols-4' : 'grid-cols-2'} gap-4 text-center`}>
+        <div className={`grid ${scheme.hasExpo ? 'grid-cols-4' : scheme.rpLinked ? 'grid-cols-2' : 'grid-cols-3'} gap-4 text-center`}>
           <div>
             <div className="text-2xl font-mono text-blue-400">{rateValues.rpRate}</div>
-            <div className="text-xs text-zinc-500">Roll/Pitch Rate ({scheme.rateUnit})</div>
+            <div className="text-xs text-zinc-500">{scheme.rpLinked ? 'Roll/Pitch' : 'Roll'} Rate ({scheme.rateUnit})</div>
           </div>
+          {!scheme.rpLinked && rateValues.pitchRate !== undefined && (
+            <div>
+              <div className="text-2xl font-mono text-emerald-400">{rateValues.pitchRate}</div>
+              <div className="text-xs text-zinc-500">Pitch Rate ({scheme.rateUnit})</div>
+            </div>
+          )}
           <div>
             <div className="text-2xl font-mono text-orange-400">{rateValues.yawRate}</div>
             <div className="text-xs text-zinc-500">Yaw Rate ({scheme.rateUnit})</div>

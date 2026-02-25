@@ -55,6 +55,17 @@ export function validateParameterValue(
     return { valid: true };
   }
 
+  // Bitmask params: validate value is non-negative integer, skip enum check
+  if (metadata.bitmask && Object.keys(metadata.bitmask).length > 0) {
+    if (value < 0 || !Number.isInteger(value)) {
+      return {
+        valid: false,
+        error: 'Bitmask value must be a non-negative integer',
+      };
+    }
+    return { valid: true };
+  }
+
   // Check if value is in allowed values list (enum-like params)
   if (metadata.values && Object.keys(metadata.values).length > 0) {
     const allowedValues = Object.keys(metadata.values).map(Number);

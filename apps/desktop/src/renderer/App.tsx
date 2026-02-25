@@ -319,16 +319,14 @@ function App() {
     };
   }, []);
 
-  // Auto-collapse sidebar when connected, auto-expand only when disconnecting to welcome screen
+  // Auto-collapse sidebar when connected, auto-expand when disconnected
   useEffect(() => {
     if (connectionState.isConnected) {
       setSidebarCollapsed(true);
-    } else if (currentView === 'telemetry') {
-      // Only auto-expand on disconnect if user is on the welcome/telemetry screen
-      // Don't interrupt offline-capable views like mission planning
+    } else {
       setSidebarCollapsed(false);
     }
-  }, [connectionState.isConnected, currentView]);
+  }, [connectionState.isConnected]);
 
   // Auto-load parameters, metadata, and mission when connected (MAVLink only)
   useEffect(() => {

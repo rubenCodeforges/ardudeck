@@ -7,9 +7,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
-import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { useConnectionStore } from '../../stores/connection-store';
+import BitmaskEditor from './BitmaskEditor';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -17,6 +17,34 @@ interface Toast {
   message: string;
   type: ToastType;
 }
+
+/**
+ * Format a parameter value for display.
+ * Strips IEEE 754 float32 representation noise (precision beyond ~7 sig digits)
+ * but preserves all meaningful precision. Edit field always uses raw value.
+ */
+function formatParamValue(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  // float32 has ~7 significant digits. Anything beyond that is IEEE noise.
+  // toPrecision(7) then parseFloat strips trailing zeros.
+  return String(parseFloat(value.toPrecision(7)));
+}
+
+/** Group color map for filter tabs */
+const GROUP_COLORS: Record<string, string> = {
+  all: 'blue',
+  arming: 'emerald',
+  battery: 'orange',
+  failsafe: 'red',
+  flight_modes: 'purple',
+  tuning: 'blue',
+  gps: 'cyan',
+  compass: 'pink',
+  rc: 'teal',
+  motors: 'amber',
+  navigation: 'indigo',
+  logging: 'zinc',
+};
 
 // Sort indicator component
 function SortIndicator({ column, currentColumn, direction }: {
@@ -75,6 +103,8 @@ const ParameterTable: React.FC = () => {
   const [editValue, setEditValue] = useState<string>('');
   const [editError, setEditError] = useState<string | null>(null);
   const [editWarning, setEditWarning] = useState<string | null>(null);
+
+  const [bitmaskParam, setBitmaskParam] = useState<string | null>(null);
 
   const [isWritingFlash, setIsWritingFlash] = useState(false);
   const [isSavingFile, setIsSavingFile] = useState(false);
@@ -203,6 +233,11 @@ const ParameterTable: React.FC = () => {
     cancelEdit();
   }, [editValue, setParameter, cancelEdit, validateParameter, isValidNumberString]);
 
+  const handleBitmaskSave = useCallback(async (paramId: string, value: number) => {
+    await setParameter(paramId, value);
+    setBitmaskParam(null);
+  }, [setParameter]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent, paramId: string) => {
     if (e.key === 'Enter') {
       saveEdit(paramId);
@@ -217,37 +252,21 @@ const ParameterTable: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Toolbar */}
+      {/* Search & filter bar */}
       <div className="shrink-0 px-4 py-3 border-b border-zinc-800/50 bg-zinc-900/30">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-zinc-700/30 text-blue-400 disabled:text-zinc-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            title="Download parameters from flight controller"
-          >
-            <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <div className="flex items-center gap-3">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearch}
+              placeholder="Search parameters..."
+              className="w-full px-4 py-2 pl-10 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/50"
+            />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            {isLoading ? 'Downloading...' : 'Refresh'}
-          </button>
-
-          {/* Write to Flash button */}
-          {modified > 0 && (
-            <button
-              onClick={handleWriteToFlashClick}
-              disabled={isWritingFlash}
-              className="px-3 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-zinc-700/30 text-green-400 disabled:text-zinc-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              title="Save parameters to flight controller's permanent storage (EEPROM)"
-            >
-              <svg className={`w-4 h-4 ${isWritingFlash ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-              </svg>
-              {isWritingFlash ? 'Writing...' : 'Write to Flash'}
-            </button>
-          )}
-
-          <div className="w-px h-6 bg-zinc-700/50 mx-1" />
+          </div>
 
           {/* File operations */}
           <button
@@ -274,23 +293,10 @@ const ParameterTable: React.FC = () => {
             {isLoadingFile ? 'Loading...' : 'Load'}
           </button>
 
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleSearch}
-              placeholder="Search parameters..."
-              className="w-full max-w-md px-4 py-2 pl-10 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/50"
-            />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-
           {modified > 0 && (
             <button
               onClick={toggleShowOnlyModified}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 showOnlyModified
                   ? 'bg-amber-500/30 text-amber-300 ring-1 ring-amber-500/50'
                   : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
@@ -323,8 +329,8 @@ const ParameterTable: React.FC = () => {
           </div>
         )}
 
-        {/* Error message */}
-        {error && (
+        {/* Error message - hide while actively loading */}
+        {error && !isLoading && (
           <div className="mt-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
             {error}
           </div>
@@ -339,6 +345,7 @@ const ParameterTable: React.FC = () => {
               const count = groupCounts().get(group.id) ?? 0;
               const isActive = selectedGroup === group.id;
               if (group.id !== 'all' && count === 0) return null;
+              const c = GROUP_COLORS[group.id] ?? 'zinc';
 
               return (
                 <button
@@ -346,18 +353,18 @@ const ParameterTable: React.FC = () => {
                   onClick={() => setSelectedGroup(group.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                     isActive
-                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      ? `bg-${c}-500/20 text-${c}-400 border border-${c}-500/30`
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                   }`}
                   title={group.description}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className={`w-3.5 h-3.5 ${isActive ? `text-${c}-400` : `text-${c}-400 opacity-50`}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={group.icon} />
                   </svg>
                   {group.name}
                   {count > 0 && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                      isActive ? 'bg-blue-500/30 text-blue-300' : 'bg-zinc-700/50 text-zinc-500'
+                      isActive ? `bg-${c}-500/30 text-${c}-300` : 'bg-zinc-700/50 text-zinc-500'
                     }`}>
                       {count}
                     </span>
@@ -383,7 +390,7 @@ const ParameterTable: React.FC = () => {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="sticky top-0 bg-zinc-900/95 backdrop-blur border-b border-zinc-800/50">
+            <thead className="sticky top-0 bg-zinc-900/95 backdrop-blur border-b border-zinc-800/50 z-10">
               <tr className="text-left text-xs text-zinc-500 uppercase tracking-wider">
                 <th className="px-4 py-3 font-medium w-[220px]">
                   <button
@@ -394,8 +401,7 @@ const ParameterTable: React.FC = () => {
                     <SortIndicator column="name" currentColumn={sortColumn} direction={sortDirection} />
                   </button>
                 </th>
-                <th className="px-4 py-3 font-medium w-[120px]">Value</th>
-                <th className="px-4 py-3 font-medium w-[80px]">Type</th>
+                <th className="px-4 py-3 font-medium w-[140px]">Value</th>
                 <th className="px-4 py-3 font-medium">Description</th>
                 <th className="px-4 py-3 font-medium w-[100px]">
                   <button
@@ -408,11 +414,11 @@ const ParameterTable: React.FC = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/30">
-              {displayParams.map((param) => (
+            <tbody>
+              {displayParams.map((param, idx) => (
                 <tr
                   key={param.id}
-                  className="hover:bg-zinc-800/20 transition-colors"
+                  className={`hover:bg-zinc-800/30 transition-colors ${idx % 2 === 0 ? 'bg-zinc-900/20' : ''}`}
                 >
                   <td className="px-4 py-2.5">
                     <span className="font-mono text-sm text-zinc-200">{param.id}</span>
@@ -420,7 +426,7 @@ const ParameterTable: React.FC = () => {
                   <td className="px-4 py-2.5">
                     {param.isReadOnly ? (
                       <span className="font-mono text-sm text-zinc-500 tabular-nums" title="Read-only parameter">
-                        {param.value}
+                        {formatParamValue(param.value)}
                       </span>
                     ) : editingParam === param.id ? (
                       <div className="relative">
@@ -443,35 +449,55 @@ const ParameterTable: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => startEdit(param.id, param.value)}
-                        className="font-mono text-sm text-zinc-300 hover:text-blue-400 transition-colors tabular-nums"
-                        title={(() => {
-                          const meta = getParameterMetadata(param.id);
-                          if (!meta) return undefined;
-                          const hints: string[] = [];
-                          if (meta.range) hints.push(`Range: ${meta.range.min} to ${meta.range.max}`);
-                          if (meta.values) hints.push(`Values: ${Object.entries(meta.values).map(([k,v]) => `${k}=${v}`).join(', ')}`);
-                          if (meta.units) hints.push(`Units: ${meta.units}`);
-                          return hints.length > 0 ? hints.join('\n') : undefined;
-                        })()}
-                      >
-                        {param.value}
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className="text-xs text-zinc-500">{getParamTypeName(param.type)}</span>
+                    ) : (() => {
+                      const meta = getParameterMetadata(param.id);
+                      const hasBitmask = meta?.bitmask && Object.keys(meta.bitmask).length > 0;
+                      return (
+                        <div className="relative flex items-center gap-2">
+                          <button
+                            onClick={() => startEdit(param.id, param.value)}
+                            className="font-mono text-sm text-zinc-300 hover:text-blue-400 transition-colors tabular-nums"
+                            title={(() => {
+                              const hints: string[] = [];
+                              hints.push(`Raw: ${param.value}`);
+                              if (meta?.range) hints.push(`Range: ${meta.range.min} to ${meta.range.max}`);
+                              if (meta?.values) hints.push(`Values: ${Object.entries(meta.values).map(([k,v]) => `${k}=${v}`).join(', ')}`);
+                              if (meta?.units) hints.push(`Units: ${meta.units}`);
+                              return hints.join('\n');
+                            })()}
+                          >
+                            {formatParamValue(param.value)}
+                          </button>
+                          {hasBitmask && (
+                            <button
+                              onClick={() => setBitmaskParam(bitmaskParam === param.id ? null : param.id)}
+                              className="px-2 py-0.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded text-xs font-medium transition-colors"
+                              title="Open bitmask editor"
+                            >
+                              Bitmask
+                            </button>
+                          )}
+                          {bitmaskParam === param.id && hasBitmask && (
+                            <BitmaskEditor
+                              paramId={param.id}
+                              value={param.value}
+                              bitmask={meta!.bitmask!}
+                              onSave={(v) => handleBitmaskSave(param.id, v)}
+                              onCancel={() => setBitmaskParam(null)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-2.5">
                     <span
-                      className={`text-sm line-clamp-2 ${
+                      className={`text-sm line-clamp-1 ${
                         hasOfficialDescription(param.id)
                           ? 'text-zinc-400'
                           : 'text-zinc-500 italic'
                       }`}
-                      title={hasOfficialDescription(param.id) ? undefined : 'Auto-generated description'}
+                      title={getDescription(param.id)}
                     >
                       {getDescription(param.id)}
                     </span>

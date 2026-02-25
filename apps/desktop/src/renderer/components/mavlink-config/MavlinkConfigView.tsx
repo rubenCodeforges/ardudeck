@@ -61,7 +61,8 @@ type TabId = 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'safety' 
 interface Tab {
   id: TabId;
   name: string;
-  icon: React.ReactNode;
+  Icon: React.FC<{ className?: string }>;
+  color: string;
   description: string;
   badge?: string;
 }
@@ -74,126 +75,29 @@ function isRoverType(mavType: number | undefined): boolean {
 
 // Aircraft tabs (copters, planes, VTOL)
 const AIRCRAFT_TABS: Tab[] = [
-  {
-    id: 'pid',
-    name: 'PID Tuning',
-    icon: <Gauge className="w-5 h-5" />,
-    description: 'Fine-tune PID gains for each axis',
-  },
-  {
-    id: 'rates',
-    name: 'Rates',
-    icon: <Activity className="w-5 h-5" />,
-    description: 'Configure rate curves and expo',
-  },
-  {
-    id: 'modes',
-    name: 'Flight Modes',
-    icon: <Settings className="w-5 h-5" />,
-    description: 'Configure your transmitter switch positions',
-  },
-  {
-    id: 'receiver',
-    name: 'Receiver',
-    icon: <Radio className="w-5 h-5" />,
-    description: 'RC receiver protocol and live channel monitor',
-  },
-  {
-    id: 'serial-ports',
-    name: 'Serial Ports',
-    icon: <Cable className="w-5 h-5" />,
-    description: 'Configure serial port protocols and baud rates',
-  },
-  {
-    id: 'safety',
-    name: 'Safety',
-    icon: <Shield className="w-5 h-5" />,
-    description: 'Failsafes, arming checks, geofence',
-  },
-  {
-    id: 'sensors',
-    name: 'Sensors',
-    icon: <Cpu className="w-5 h-5" />,
-    description: 'Live telemetry and sensor health',
-  },
-  {
-    id: 'tuning',
-    name: 'Tuning',
-    icon: <Sliders className="w-5 h-5" />,
-    description: 'Performance presets and basic tuning',
-  },
-  {
-    id: 'battery',
-    name: 'Battery',
-    icon: <Battery className="w-5 h-5" />,
-    description: 'Battery monitor configuration',
-  },
-  {
-    id: 'parameters',
-    name: 'All Parameters',
-    icon: <Table className="w-5 h-5" />,
-    description: 'Full parameter list for experts',
-    badge: 'Expert',
-  },
+  { id: 'pid', name: 'PID Tuning', Icon: Gauge, color: 'text-blue-400', description: 'Fine-tune PID gains for each axis' },
+  { id: 'rates', name: 'Rates', Icon: Activity, color: 'text-purple-400', description: 'Configure rate curves and expo' },
+  { id: 'modes', name: 'Flight Modes', Icon: Settings, color: 'text-green-400', description: 'Configure your transmitter switch positions' },
+  { id: 'receiver', name: 'Receiver', Icon: Radio, color: 'text-teal-400', description: 'RC receiver protocol and live channel monitor' },
+  { id: 'serial-ports', name: 'Serial Ports', Icon: Cable, color: 'text-sky-400', description: 'Configure serial port protocols and baud rates' },
+  { id: 'safety', name: 'Safety', Icon: Shield, color: 'text-amber-400', description: 'Failsafes, arming checks, geofence' },
+  { id: 'sensors', name: 'Sensors', Icon: Cpu, color: 'text-cyan-400', description: 'Live telemetry and sensor health' },
+  { id: 'tuning', name: 'Tuning', Icon: Sliders, color: 'text-emerald-400', description: 'Performance presets and basic tuning' },
+  { id: 'battery', name: 'Battery', Icon: Battery, color: 'text-orange-400', description: 'Battery monitor configuration' },
+  { id: 'parameters', name: 'All Parameters', Icon: Table, color: 'text-zinc-400', description: 'Full parameter list for experts', badge: 'Expert' },
 ];
 
 // Rover/Boat tabs
 const ROVER_TABS: Tab[] = [
-  {
-    id: 'rover-tuning',
-    name: 'Speed & Steering',
-    icon: <Car className="w-5 h-5" />,
-    description: 'Configure speed limits and steering behavior',
-  },
-  {
-    id: 'rover-nav',
-    name: 'Navigation',
-    icon: <Navigation className="w-5 h-5" />,
-    description: 'Waypoint following and loiter settings',
-  },
-  {
-    id: 'modes',
-    name: 'Drive Modes',
-    icon: <Settings className="w-5 h-5" />,
-    description: 'Configure your transmitter switch positions',
-  },
-  {
-    id: 'receiver',
-    name: 'Receiver',
-    icon: <Radio className="w-5 h-5" />,
-    description: 'RC receiver protocol and live channel monitor',
-  },
-  {
-    id: 'serial-ports',
-    name: 'Serial Ports',
-    icon: <Cable className="w-5 h-5" />,
-    description: 'Configure serial port protocols and baud rates',
-  },
-  {
-    id: 'safety',
-    name: 'Safety',
-    icon: <Shield className="w-5 h-5" />,
-    description: 'Failsafes, arming checks, geofence',
-  },
-  {
-    id: 'sensors',
-    name: 'Sensors',
-    icon: <Cpu className="w-5 h-5" />,
-    description: 'Live telemetry and sensor health',
-  },
-  {
-    id: 'battery',
-    name: 'Battery',
-    icon: <Battery className="w-5 h-5" />,
-    description: 'Battery monitor configuration',
-  },
-  {
-    id: 'parameters',
-    name: 'All Parameters',
-    icon: <Table className="w-5 h-5" />,
-    description: 'Full parameter list for experts',
-    badge: 'Expert',
-  },
+  { id: 'rover-tuning', name: 'Speed & Steering', Icon: Car, color: 'text-blue-400', description: 'Configure speed limits and steering behavior' },
+  { id: 'rover-nav', name: 'Navigation', Icon: Navigation, color: 'text-purple-400', description: 'Waypoint following and loiter settings' },
+  { id: 'modes', name: 'Drive Modes', Icon: Settings, color: 'text-green-400', description: 'Configure your transmitter switch positions' },
+  { id: 'receiver', name: 'Receiver', Icon: Radio, color: 'text-teal-400', description: 'RC receiver protocol and live channel monitor' },
+  { id: 'serial-ports', name: 'Serial Ports', Icon: Cable, color: 'text-sky-400', description: 'Configure serial port protocols and baud rates' },
+  { id: 'safety', name: 'Safety', Icon: Shield, color: 'text-amber-400', description: 'Failsafes, arming checks, geofence' },
+  { id: 'sensors', name: 'Sensors', Icon: Cpu, color: 'text-cyan-400', description: 'Live telemetry and sensor health' },
+  { id: 'battery', name: 'Battery', Icon: Battery, color: 'text-orange-400', description: 'Battery monitor configuration' },
+  { id: 'parameters', name: 'All Parameters', Icon: Table, color: 'text-zinc-400', description: 'Full parameter list for experts', badge: 'Expert' },
 ];
 
 export const MavlinkConfigView: React.FC = () => {
@@ -309,106 +213,100 @@ export const MavlinkConfigView: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-zinc-950">
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-zinc-800/50 bg-zinc-900/30">
+      <div className="shrink-0 px-6 py-4 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/90 to-gray-900/50">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-white">Vehicle Configuration</h1>
-            <p className="text-sm text-zinc-500 mt-0.5">
-              {connectionState.autopilot || 'ArduPilot'} • {parameters.size} parameters loaded
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+              <Cpu className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                {connectionState.autopilot || 'ArduPilot'} Configuration
+              </h2>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                {connectionState.vehicleType && (
+                  <>
+                    <span className="text-emerald-400">{connectionState.vehicleType}</span>
+                    <span>•</span>
+                  </>
+                )}
+                <span>{parameters.size} parameters</span>
+                {connectionState.systemId != null && (
+                  <>
+                    <span>•</span>
+                    <span>SysID {connectionState.systemId}</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Status badges and actions */}
           <div className="flex items-center gap-3">
             {isLoading && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <span className="text-sm text-blue-400">Loading parameters...</span>
+                <span className="text-sm text-blue-400">Loading...</span>
               </div>
             )}
+
+            {modified > 0 && (
+              <span className="px-3 py-1 text-sm rounded-lg bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                Unsaved
+              </span>
+            )}
+
+            <button
+              onClick={() => fetchParameters()}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
+            >
+              Refresh
+            </button>
 
             <button
               onClick={handleReboot}
               disabled={rebooting}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
               title="Reboot flight controller"
             >
               <RotateCw className={`w-4 h-4 ${rebooting ? 'animate-spin' : ''}`} />
               {rebooting ? 'Rebooting...' : 'Reboot'}
             </button>
 
-            {modified > 0 && (
-              <>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <span className="text-sm text-amber-400">{modified} unsaved</span>
-                </div>
-                <button
-                  onClick={handleWriteToFlashClick}
-                  disabled={isWritingFlash}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-zinc-700/30 text-green-400 disabled:text-zinc-500 rounded-lg text-sm font-medium transition-colors"
-                  title="Save parameters to flight controller's permanent storage"
-                >
-                  <Save className={`w-4 h-4 ${isWritingFlash ? 'animate-pulse' : ''}`} />
-                  {isWritingFlash ? 'Saving...' : 'Write to Flash'}
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleWriteToFlashClick}
+              disabled={isWritingFlash || modified === 0}
+              className={`px-5 py-2 text-sm font-medium rounded-lg shadow-lg transition-all flex items-center gap-2 ${
+                modified > 0
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-500/25'
+                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              }`}
+              title="Save parameters to flight controller's permanent storage"
+            >
+              <Save className={`w-4 h-4 ${isWritingFlash ? 'animate-pulse' : ''}`} />
+              {isWritingFlash ? 'Saving...' : 'Save All Changes'}
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Tab navigation */}
-      <div className="shrink-0 px-6 border-b border-zinc-800/50 bg-zinc-900/20">
-        <div className="flex gap-1 overflow-x-auto overflow-y-hidden scrollbar-none">
+        {/* Tabs */}
+        <div className="flex gap-1.5 mt-4 flex-wrap items-center">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
-            // Color coding for different tab types
-            const colorClass = tab.id === 'pid' || tab.id === 'rates' ? 'blue'
-              : tab.id === 'modes' ? 'purple'
-              : tab.id === 'receiver' ? 'teal'
-              : tab.id === 'serial-ports' ? 'sky'
-              : tab.id === 'safety' ? 'amber'
-              : tab.id === 'sensors' ? 'cyan'
-              : tab.id === 'tuning' ? 'emerald'
-              : tab.id === 'battery' ? 'orange'
-              : tab.id === 'parameters' ? 'zinc'
-              : 'blue';
-
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 -mb-px whitespace-nowrap ${
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
                   isActive
-                    ? colorClass === 'blue' ? 'text-blue-400 border-blue-400 bg-blue-500/5'
-                    : colorClass === 'purple' ? 'text-purple-400 border-purple-400 bg-purple-500/5'
-                    : colorClass === 'teal' ? 'text-teal-400 border-teal-400 bg-teal-500/5'
-                    : colorClass === 'sky' ? 'text-sky-400 border-sky-400 bg-sky-500/5'
-                    : colorClass === 'amber' ? 'text-amber-400 border-amber-400 bg-amber-500/5'
-                    : colorClass === 'cyan' ? 'text-cyan-400 border-cyan-400 bg-cyan-500/5'
-                    : colorClass === 'emerald' ? 'text-emerald-400 border-emerald-400 bg-emerald-500/5'
-                    : colorClass === 'orange' ? 'text-orange-400 border-orange-400 bg-orange-500/5'
-                    : 'text-zinc-400 border-zinc-400 bg-zinc-500/5'
-                    : 'text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-zinc-800/30'
+                    ? 'bg-gray-800 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
                 }`}
               >
-                <span className={isActive
-                  ? colorClass === 'blue' ? 'text-blue-400'
-                  : colorClass === 'purple' ? 'text-purple-400'
-                  : colorClass === 'teal' ? 'text-teal-400'
-                  : colorClass === 'sky' ? 'text-sky-400'
-                  : colorClass === 'amber' ? 'text-amber-400'
-                  : colorClass === 'cyan' ? 'text-cyan-400'
-                  : colorClass === 'emerald' ? 'text-emerald-400'
-                  : colorClass === 'orange' ? 'text-orange-400'
-                  : 'text-zinc-400'
-                  : 'text-zinc-500'
-                }>
-                  {tab.icon}
-                </span>
-                <span>{tab.name}</span>
+                <tab.Icon className={`w-4 h-4 ${isActive ? tab.color : `${tab.color} opacity-50`}`} />
+                <span className="text-sm font-medium">{tab.name}</span>
                 {tab.badge && (
-                  <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-zinc-700/50 rounded text-zinc-400">
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[10px] bg-zinc-700/50 rounded text-zinc-400">
                     {tab.badge}
                   </span>
                 )}
@@ -416,13 +314,6 @@ export const MavlinkConfigView: React.FC = () => {
             );
           })}
         </div>
-      </div>
-
-      {/* Tab description */}
-      <div className="shrink-0 px-6 py-2 bg-zinc-900/10 border-b border-zinc-800/30">
-        <p className="text-xs text-zinc-500">
-          {tabs.find((t) => t.id === activeTab)?.description}
-        </p>
       </div>
 
       {/* Tab content */}

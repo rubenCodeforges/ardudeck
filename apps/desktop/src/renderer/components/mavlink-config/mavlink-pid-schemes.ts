@@ -151,6 +151,8 @@ export interface RateScheme {
   /** True if roll and pitch share the same rate param */
   rpLinked: boolean;
   rollPitch: { rate: string; expo?: string };
+  /** Separate pitch params when rpLinked is false (e.g. ArduPlane ACRO_PITCH_RATE) */
+  pitch?: { rate: string; expo?: string };
   yaw: { rate: string; expo?: string };
   /** Unit label for the rate value */
   rateUnit: string;
@@ -165,6 +167,7 @@ export interface RateScheme {
   expoScale: number;
   defaults: {
     rpRate: number;
+    pitchRate?: number;
     yawRate: number;
     rpExpo: number;
     yawExpo: number;
@@ -199,12 +202,28 @@ const LEGACY_RATE_SCHEME: RateScheme = {
   defaults: { rpRate: 4.5, yawRate: 4.5, rpExpo: 0, yawExpo: 0 },
 };
 
+const PLANE_RATE_SCHEME: RateScheme = {
+  id: 'plane',
+  label: 'ArduPlane',
+  hasExpo: false,
+  rpLinked: false,
+  rollPitch: { rate: 'ACRO_ROLL_RATE' },
+  pitch: { rate: 'ACRO_PITCH_RATE' },
+  yaw: { rate: 'ACRO_YAW_RATE' },
+  rateUnit: 'deg/s',
+  rpRateMin: 10, rpRateMax: 720, rpRateStep: 5,
+  yawRateMin: 0, yawRateMax: 360, yawRateStep: 5,
+  expoScale: 1,
+  defaults: { rpRate: 180, pitchRate: 180, yawRate: 0, rpExpo: 0, yawExpo: 0 },
+};
+
 /**
  * Detect which rate parameter scheme this board uses.
  */
 export function detectRateScheme(parameters: Map<string, { value: number }>): RateScheme {
   if (parameters.has('ACRO_RP_RATE')) return MODERN_RATE_SCHEME;
   if (parameters.has('ACRO_RP_P')) return LEGACY_RATE_SCHEME;
+  if (parameters.has('ACRO_ROLL_RATE')) return PLANE_RATE_SCHEME;
   return { ...MODERN_RATE_SCHEME, id: 'unknown' as RateSchemeId };
 }
 
@@ -227,6 +246,10 @@ export function getAllRateParamNames(scheme: RateScheme): string[] {
   const names: string[] = [];
   names.push(scheme.rollPitch.rate);
   if (scheme.rollPitch.expo) names.push(scheme.rollPitch.expo);
+  if (scheme.pitch) {
+    names.push(scheme.pitch.rate);
+    if (scheme.pitch.expo) names.push(scheme.pitch.expo);
+  }
   names.push(scheme.yaw.rate);
   if (scheme.yaw.expo) names.push(scheme.yaw.expo);
   return names;
@@ -263,10 +286,13 @@ export function buildPresetParams(
  */
 export function buildRatePresetParams(
   scheme: RateScheme,
-  values: { rpRate: number; yawRate: number; rpExpo?: number; yawExpo?: number },
+  values: { rpRate: number; pitchRate?: number; yawRate: number; rpExpo?: number; yawExpo?: number },
 ): Record<string, number> {
   const params: Record<string, number> = {};
   params[scheme.rollPitch.rate] = values.rpRate;
+  if (scheme.pitch) {
+    params[scheme.pitch.rate] = values.pitchRate ?? values.rpRate;
+  }
   params[scheme.yaw.rate] = values.yawRate;
   if (scheme.rollPitch.expo && values.rpExpo !== undefined) {
     params[scheme.rollPitch.expo] = values.rpExpo;
