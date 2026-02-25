@@ -457,6 +457,15 @@ export function isNavigationCommand(command: number): boolean {
 }
 
 /**
+ * Check if a mission item has valid (non-zero) coordinates.
+ * Lat=0, Lng=0 is "Null Island" in the Gulf of Guinea and almost certainly
+ * indicates an unset/default value rather than an intentional waypoint.
+ */
+export function hasValidCoordinates(lat: number, lng: number): boolean {
+  return lat !== 0 || lng !== 0;
+}
+
+/**
  * Calculate distance between two coordinates (Haversine formula)
  * @returns Distance in meters
  */
@@ -483,7 +492,9 @@ export function calculateDistance(
  */
 export function calculateMissionDistance(items: MissionItem[]): number {
   let total = 0;
-  const locItems = items.filter(item => commandHasLocation(item.command));
+  const locItems = items.filter(item =>
+    commandHasLocation(item.command) && hasValidCoordinates(item.latitude, item.longitude)
+  );
 
   for (let i = 1; i < locItems.length; i++) {
     const prev = locItems[i - 1];

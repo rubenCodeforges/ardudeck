@@ -13,6 +13,7 @@ import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareVersion, FlashProgress, FlashResult, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FlashOptions } from '../shared/firmware-types.js';
 import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEvent } from '../shared/calibration-types.js';
+import type { MissionSummary, StoredMission, SaveMissionPayload, FlightLog, MissionListFilter, MissionSortOptions } from '../shared/mission-library-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -1211,6 +1212,40 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.APP_UPDATE_STATUS, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.APP_UPDATE_STATUS, handler);
   },
+
+  // =============================================================================
+  // Mission Library (offline storage)
+  // =============================================================================
+
+  missionLibraryList: (filter?: MissionListFilter, sort?: MissionSortOptions): Promise<MissionSummary[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_LIST, filter, sort),
+
+  missionLibraryGet: (id: string): Promise<StoredMission | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_GET, id),
+
+  missionLibrarySave: (payload: SaveMissionPayload): Promise<MissionSummary> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_SAVE, payload),
+
+  missionLibraryDelete: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_DELETE, id),
+
+  missionLibraryDuplicate: (id: string, newName: string): Promise<MissionSummary | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_DUPLICATE, id, newName),
+
+  missionLibraryGetTags: (): Promise<string[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_GET_TAGS),
+
+  missionLibraryFlightLogs: (missionId: string): Promise<FlightLog[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_FLIGHT_LOGS, missionId),
+
+  missionLibraryAddLog: (log: Omit<FlightLog, 'id' | 'createdAt'>): Promise<FlightLog> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_ADD_LOG, log),
+
+  missionLibraryUpdateLog: (log: FlightLog): Promise<FlightLog> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_UPDATE_LOG, log),
+
+  missionLibraryDeleteLog: (missionId: string, logId: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_DELETE_LOG, missionId, logId),
 
   /** Send log entry from renderer to main process */
   logEntry: (level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string): void => {

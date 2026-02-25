@@ -12,6 +12,7 @@ import { OsdView } from './components/osd/OsdView';
 import ReportBugView from './components/report/ReportBugView';
 import SitlView from './components/sitl/SitlView';
 import { CalibrationView } from './components/calibration/CalibrationView';
+import { MissionLibraryView } from './components/mission-library/MissionLibraryView';
 import { useConnectionStore } from './stores/connection-store';
 import { useCalibrationStore } from './stores/calibration-store';
 import { useTelemetryStore } from './stores/telemetry-store';
@@ -382,9 +383,7 @@ function App() {
       if (!state.isConnected && !state.isWaitingForHeartbeat && !shouldSkipReset) {
         reset();
         resetParameters();
-        resetMission();
-        resetFence();
-        resetRally();
+        // Keep mission, fence, and rally data on disconnect - user may be planning offline
         resetLegacyConfig();
         resetCli();
         stopOverride();
@@ -532,6 +531,9 @@ function App() {
       if (currentView === 'osd') {
         return <OsdView />;
       }
+      if (currentView === 'library') {
+        return <MissionLibraryView />;
+      }
       if (currentView === 'report') {
         return <ReportBugView />;
       }
@@ -605,6 +607,8 @@ function App() {
         return <ParametersView />;
       case 'mission':
         return <MissionPlanningView />;
+      case 'library':
+        return <MissionLibraryView />;
       case 'settings':
         return <SettingsView />;
       case 'firmware':

@@ -331,6 +331,18 @@ export const IPC_CHANNELS = {
   CALIBRATION_PROGRESS: 'calibration:progress', // Event from main
   CALIBRATION_COMPLETE: 'calibration:complete', // Event from main
 
+  // Mission Library (offline storage)
+  MISSION_LIBRARY_LIST: 'mission-library:list',
+  MISSION_LIBRARY_GET: 'mission-library:get',
+  MISSION_LIBRARY_SAVE: 'mission-library:save',
+  MISSION_LIBRARY_DELETE: 'mission-library:delete',
+  MISSION_LIBRARY_DUPLICATE: 'mission-library:duplicate',
+  MISSION_LIBRARY_GET_TAGS: 'mission-library:get-tags',
+  MISSION_LIBRARY_FLIGHT_LOGS: 'mission-library:flight-logs',
+  MISSION_LIBRARY_ADD_LOG: 'mission-library:add-log',
+  MISSION_LIBRARY_UPDATE_LOG: 'mission-library:update-log',
+  MISSION_LIBRARY_DELETE_LOG: 'mission-library:delete-log',
+
   // App / Updates
   APP_GET_VERSION: 'app:get-version',
   APP_CHECK_UPDATE: 'app:check-update',

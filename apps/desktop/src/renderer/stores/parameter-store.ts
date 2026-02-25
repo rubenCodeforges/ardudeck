@@ -7,6 +7,14 @@ import { validateParameterValue, type ParameterMetadataStore, type ValidationRes
 export type SortColumn = 'name' | 'status';
 export type SortDirection = 'asc' | 'desc';
 
+export interface FileParamDiff {
+  paramId: string;
+  currentValue: number;
+  fileValue: number;
+  type: number;
+  selected: boolean;
+}
+
 interface ParameterStore {
   // State
   parameters: Map<string, ParameterWithMeta>;
@@ -21,6 +29,12 @@ interface ParameterStore {
   showOnlyModified: boolean;
   sortColumn: SortColumn;
   sortDirection: SortDirection;
+
+  // File compare state
+  showCompareModal: boolean;
+  fileParamDiffs: FileParamDiff[];
+  isApplyingFileParams: boolean;
+  applyProgress: { applied: number; total: number } | null;
 
   // Computed
   filteredParameters: () => ParameterWithMeta[];
@@ -49,6 +63,14 @@ interface ParameterStore {
   revertParameter: (paramId: string) => void;
   markAllAsSaved: () => void;
   reset: () => void;
+
+  // File compare actions
+  loadFileForCompare: (fileParams: Array<{ id: string; value: number }>) => void;
+  closeCompareModal: () => void;
+  toggleDiffSelection: (paramId: string) => void;
+  selectAllDiffs: () => void;
+  deselectAllDiffs: () => void;
+  applySelectedFileParams: () => Promise<{ applied: number; failed: number }>;
 }
 
 export const useParameterStore = create<ParameterStore>((set, get) => ({
@@ -64,6 +86,12 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   showOnlyModified: false,
   sortColumn: 'name' as SortColumn,
   sortDirection: 'asc' as SortDirection,
+
+  // File compare state
+  showCompareModal: false,
+  fileParamDiffs: [],
+  isApplyingFileParams: false,
+  applyProgress: null,
 
   filteredParameters: () => {
     const { parameters, searchQuery, selectedGroup, showOnlyModified, sortColumn, sortDirection } = get();
@@ -331,6 +359,97 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     });
   },
 
+  // File compare actions
+  loadFileForCompare: (fileParams) => {
+    const { parameters } = get();
+    const diffs: FileParamDiff[] = [];
+
+    for (const fp of fileParams) {
+      const existing = parameters.get(fp.id);
+      if (!existing) continue; // Skip params not on the vehicle
+      if (existing.isReadOnly) continue; // Skip read-only params
+
+      // Only include if values actually differ
+      if (existing.value !== fp.value) {
+        diffs.push({
+          paramId: fp.id,
+          currentValue: existing.value,
+          fileValue: fp.value,
+          type: existing.type,
+          selected: true, // Select all by default
+        });
+      }
+    }
+
+    // Sort alphabetically
+    diffs.sort((a, b) => a.paramId.localeCompare(b.paramId));
+
+    set({ showCompareModal: true, fileParamDiffs: diffs });
+  },
+
+  closeCompareModal: () => {
+    set({ showCompareModal: false, fileParamDiffs: [], applyProgress: null });
+  },
+
+  toggleDiffSelection: (paramId) => {
+    set(state => ({
+      fileParamDiffs: state.fileParamDiffs.map(d =>
+        d.paramId === paramId ? { ...d, selected: !d.selected } : d
+      ),
+    }));
+  },
+
+  selectAllDiffs: () => {
+    set(state => ({
+      fileParamDiffs: state.fileParamDiffs.map(d => ({ ...d, selected: true })),
+    }));
+  },
+
+  deselectAllDiffs: () => {
+    set(state => ({
+      fileParamDiffs: state.fileParamDiffs.map(d => ({ ...d, selected: false })),
+    }));
+  },
+
+  applySelectedFileParams: async () => {
+    const { fileParamDiffs } = get();
+    const selected = fileParamDiffs.filter(d => d.selected);
+    if (selected.length === 0) return { applied: 0, failed: 0 };
+
+    set({ isApplyingFileParams: true, applyProgress: { applied: 0, total: selected.length } });
+
+    let applied = 0;
+    let failed = 0;
+
+    for (const diff of selected) {
+      const result = await window.electronAPI?.setParameter(diff.paramId, diff.fileValue, diff.type);
+      if (result?.success) {
+        applied++;
+        // Update local state
+        set(state => {
+          const params = new Map(state.parameters);
+          const existing = params.get(diff.paramId);
+          if (existing) {
+            params.set(diff.paramId, {
+              ...existing,
+              value: diff.fileValue,
+              isModified: existing.originalValue !== diff.fileValue,
+            });
+          }
+          return {
+            parameters: params,
+            applyProgress: { applied, total: selected.length },
+          };
+        });
+      } else {
+        failed++;
+      }
+    }
+
+    set({ isApplyingFileParams: false, showCompareModal: false, fileParamDiffs: [], applyProgress: null });
+    return { applied, failed };
+  },
+
   reset: () => set({
     parameters: new Map(),
     metadata: null,
@@ -344,5 +463,9 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     showOnlyModified: false,
     sortColumn: 'name',
     sortDirection: 'asc',
+    showCompareModal: false,
+    fileParamDiffs: [],
+    isApplyingFileParams: false,
+    applyProgress: null,
   }),
 }));

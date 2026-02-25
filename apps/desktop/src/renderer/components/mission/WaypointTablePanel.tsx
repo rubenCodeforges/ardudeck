@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  Camera, Clock, Gauge, Crosshair, RotateCw, RotateCcw,
+  Repeat, Wrench, Ruler, ArrowUpDown, type LucideIcon,
+} from 'lucide-react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -27,6 +31,125 @@ function getGpsState() {
     lat: gps.lat,
     lon: gps.lon,
   };
+}
+
+// Child command icon mapping: returns a Lucide icon for non-nav commands
+function getChildCommandIcon(cmd: number, wp: MissionItem): LucideIcon | null {
+  switch (cmd) {
+    // Yaw / Turn
+    case MAV_CMD.CONDITION_YAW:
+      return wp.param3 < 0 ? RotateCcw : RotateCw;
+
+    // Wait / Delay
+    case MAV_CMD.CONDITION_DELAY:
+    case MAV_CMD.NAV_DELAY:
+      return Clock;
+
+    // Camera / Photo / Gimbal
+    case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+    case MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL:
+    case MAV_CMD.DO_DIGICAM_CONTROL:
+    case MAV_CMD.DO_DIGICAM_CONFIGURE:
+    case MAV_CMD.DO_CONTROL_VIDEO:
+    case MAV_CMD.IMAGE_START_CAPTURE:
+    case MAV_CMD.IMAGE_STOP_CAPTURE:
+    case MAV_CMD.VIDEO_START_CAPTURE:
+    case MAV_CMD.VIDEO_STOP_CAPTURE:
+    case MAV_CMD.SET_CAMERA_ZOOM:
+    case MAV_CMD.SET_CAMERA_FOCUS:
+    case MAV_CMD.SET_CAMERA_SOURCE:
+    case MAV_CMD.DO_MOUNT_CONTROL:
+    case MAV_CMD.DO_MOUNT_CONFIGURE:
+    case MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW:
+      return Camera;
+
+    // Speed
+    case MAV_CMD.DO_CHANGE_SPEED:
+      return Gauge;
+
+    // ROI
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+    case MAV_CMD.DO_SET_ROI_NONE:
+      return Crosshair;
+
+    // Jump
+    case MAV_CMD.DO_JUMP:
+    case MAV_CMD.DO_JUMP_TAG:
+    case MAV_CMD.JUMP_TAG:
+      return Repeat;
+
+    // Servo / Relay
+    case MAV_CMD.DO_SET_SERVO:
+    case MAV_CMD.DO_REPEAT_SERVO:
+    case MAV_CMD.DO_SET_RELAY:
+    case MAV_CMD.DO_REPEAT_RELAY:
+      return Wrench;
+
+    // Altitude change
+    case MAV_CMD.CONDITION_CHANGE_ALT:
+    case MAV_CMD.DO_CHANGE_ALTITUDE:
+      return ArrowUpDown;
+
+    // Distance
+    case MAV_CMD.CONDITION_DISTANCE:
+      return Ruler;
+
+    default:
+      return null;
+  }
+}
+
+// Color by command category for child icons
+function getChildIconColor(cmd: number): string {
+  switch (cmd) {
+    // Camera / Gimbal - amber
+    case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
+    case MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL:
+    case MAV_CMD.DO_DIGICAM_CONTROL:
+    case MAV_CMD.DO_DIGICAM_CONFIGURE:
+    case MAV_CMD.DO_CONTROL_VIDEO:
+    case MAV_CMD.IMAGE_START_CAPTURE:
+    case MAV_CMD.IMAGE_STOP_CAPTURE:
+    case MAV_CMD.VIDEO_START_CAPTURE:
+    case MAV_CMD.VIDEO_STOP_CAPTURE:
+    case MAV_CMD.SET_CAMERA_ZOOM:
+    case MAV_CMD.SET_CAMERA_FOCUS:
+    case MAV_CMD.SET_CAMERA_SOURCE:
+    case MAV_CMD.DO_MOUNT_CONTROL:
+    case MAV_CMD.DO_MOUNT_CONFIGURE:
+    case MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW:
+      return '#fbbf24';
+
+    // Yaw / Turn - blue
+    case MAV_CMD.CONDITION_YAW:
+      return '#60a5fa';
+
+    // Wait / Delay - gray
+    case MAV_CMD.CONDITION_DELAY:
+    case MAV_CMD.NAV_DELAY:
+      return '#9ca3af';
+
+    // Speed - cyan
+    case MAV_CMD.DO_CHANGE_SPEED:
+      return '#22d3ee';
+
+    // ROI - pink
+    case MAV_CMD.DO_SET_ROI:
+    case MAV_CMD.DO_SET_ROI_LOCATION:
+    case MAV_CMD.DO_SET_ROI_NONE:
+      return '#f472b6';
+
+    // Jump - orange
+    case MAV_CMD.DO_JUMP:
+    case MAV_CMD.DO_JUMP_TAG:
+    case MAV_CMD.JUMP_TAG:
+      return '#fb923c';
+
+    // Default gray for servo/relay/alt/distance/other
+    default:
+      return '#9ca3af';
+  }
 }
 
 // Grouped commands for the dropdown
@@ -403,8 +526,12 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
       return `Climb/descend at ${wp.param1} m/s`;
     case MAV_CMD.CONDITION_DISTANCE:
       return `Wait until ${wp.param1}m from next WP`;
-    case MAV_CMD.CONDITION_YAW:
-      return `Turn to ${wp.param1} deg`;
+    case MAV_CMD.CONDITION_YAW: {
+      const isRelative = wp.param4 !== 0;
+      return isRelative
+        ? `Turn by ${wp.param1} deg`
+        : `Turn to ${wp.param1} deg`;
+    }
 
     // Camera / Gimbal
     case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
@@ -615,8 +742,10 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.CONDITION_YAW:
       return [
-        { key: 'param1' as const, label: 'Heading', unit: 'deg', min: 0, max: 360, step: 5, show: true },
+        { key: 'param1' as const, label: 'Angle', unit: 'deg', min: 0, max: 360, step: 5, show: true },
         { key: 'param2' as const, label: 'Speed', unit: 'deg/s', min: 0, max: 180, step: 5, show: true },
+        { key: 'param3' as const, label: 'Direction', unit: '-1=CCW 0=auto 1=CW', min: -1, max: 1, step: 1, show: true },
+        { key: 'param4' as const, label: 'Relative', unit: '0=abs 1=rel', min: 0, max: 1, step: 1, show: true },
       ];
     case MAV_CMD.DO_JUMP:
       return [
@@ -854,7 +983,49 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   const [draggedSeq, setDraggedSeq] = useState<number | null>(null);
   const [dropTargetSeq, setDropTargetSeq] = useState<number | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // Pre-compute parent-child group structure
+  const groupInfo = useMemo(() => {
+    const parentOf = new Map<number, number>(); // childSeq -> parentSeq
+    const childCountOf = new Map<number, number>(); // parentSeq -> number of children
+    let currentParent: number | null = null;
+
+    for (const item of missionItems) {
+      const child = !isNavigationCommand(item.command) || item.command === MAV_CMD.NAV_DELAY;
+      if (!child) {
+        currentParent = item.seq;
+        childCountOf.set(item.seq, 0);
+      } else if (currentParent !== null) {
+        parentOf.set(item.seq, currentParent);
+        childCountOf.set(currentParent, (childCountOf.get(currentParent) ?? 0) + 1);
+      }
+    }
+
+    return { parentOf, childCountOf };
+  }, [missionItems]);
+
+  const toggleCollapse = useCallback((parentSeq: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(parentSeq)) next.delete(parentSeq);
+      else next.add(parentSeq);
+      return next;
+    });
+  }, []);
+
+  const collapseAll = useCallback(() => {
+    const parentSeqs = missionItems
+      .filter(item => isNavigationCommand(item.command) && item.command !== MAV_CMD.NAV_DELAY)
+      .map(item => item.seq);
+    setCollapsedGroups(new Set(parentSeqs));
+  }, [missionItems]);
+
+  const expandAll = useCallback(() => {
+    setCollapsedGroups(new Set());
+  }, []);
 
   // In readOnly mode, don't show selection for editing
   const selectedWaypoint = readOnly ? null : missionItems.find(wp => wp.seq === selectedSeq);
@@ -929,6 +1100,30 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="h-full flex flex-col bg-gray-900/50">
+      {/* Collapse / Expand controls */}
+      {missionItems.length > 0 && (
+        <div className="shrink-0 px-3 py-1.5 border-b border-gray-800/50 flex items-center justify-between">
+          <span className="text-[10px] text-gray-500">{missionItems.length} items</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={collapseAll}
+              className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+              title="Collapse all groups"
+            >
+              Collapse all
+            </button>
+            <span className="text-gray-700 text-[10px]">|</span>
+            <button
+              onClick={expandAll}
+              className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+              title="Expand all groups"
+            >
+              Expand all
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Waypoint list */}
       <div className="flex-1 overflow-auto" ref={tableRef}>
         {missionItems.length === 0 ? (
@@ -950,15 +1145,28 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
           </div>
         ) : (
           <div className="divide-y divide-gray-800/50">
-            {missionItems.map((wp) => {
+            {missionItems.map((wp, idx) => {
               const isSelected = wp.seq === selectedSeq;
               const isCurrent = wp.seq === currentSeq;
               const isDragging = wp.seq === draggedSeq;
               const isDropTarget = wp.seq === dropTargetSeq;
-              const isChild = !isNavigationCommand(wp.command);
+              const isChild = !isNavigationCommand(wp.command) || wp.command === MAV_CMD.NAV_DELAY;
               const segColor = showSegmentColors && !isCurrent && !(isSelected && !readOnly)
                 ? (itemColors.get(wp.seq) ?? SEGMENT_COLORS.default)
                 : undefined;
+              // Add micro gap before parent nav rows (except the first item)
+              const isParentWithGap = !isChild && idx > 0;
+
+              // Collapse logic: hide children of collapsed parents
+              const parentSeq = groupInfo.parentOf.get(wp.seq);
+              if (isChild && parentSeq !== undefined && collapsedGroups.has(parentSeq)) {
+                return null;
+              }
+
+              // Parent collapse info
+              const childCount = !isChild ? (groupInfo.childCountOf.get(wp.seq) ?? 0) : 0;
+              const isCollapsed = !isChild && collapsedGroups.has(wp.seq);
+              const hasChildren = childCount > 0;
 
               return (
                 <div
@@ -971,7 +1179,9 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   onDrop={(e) => !readOnly && handleDrop(e, wp.seq)}
                   onDragEnd={!readOnly ? handleDragEnd : undefined}
                   className={`flex items-center gap-2 py-2 transition-colors ${
-                    isChild ? 'px-2 pl-8' : 'px-2'
+                    isChild ? 'px-2 pl-8 bg-gray-800/[0.06]' : 'px-2'
+                  } ${
+                    isParentWithGap ? 'mt-1' : ''
                   } ${
                     readOnly ? '' : 'cursor-pointer'
                   } ${
@@ -999,16 +1209,42 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     </div>
                   )}
 
-                  {/* Badge: numbered circle for nav commands, small dot for child commands */}
+                  {/* Collapse chevron for parent nav items with children */}
+                  {!isChild && hasChildren ? (
+                    <button
+                      onClick={(e) => toggleCollapse(wp.seq, e)}
+                      className="w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors shrink-0"
+                      title={isCollapsed ? `Expand (${childCount} items)` : 'Collapse'}
+                    >
+                      <svg className={`w-3 h-3 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : !isChild ? (
+                    <div className="w-4" />
+                  ) : null}
+
+                  {/* Badge: numbered circle for nav commands, icon or dot for child commands */}
                   {isChild ? (
-                    <div className="w-5 h-5 rounded flex items-center justify-center shrink-0">
-                      <div
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isCurrent ? 'bg-orange-400' : isSelected && !readOnly ? 'bg-blue-400' : !segColor ? 'bg-gray-500' : ''
-                        }`}
-                        style={segColor ? { backgroundColor: segColor } : undefined}
-                      />
-                    </div>
+                    (() => {
+                      const ChildIcon = getChildCommandIcon(wp.command, wp);
+                      const intrinsicColor = getChildIconColor(wp.command);
+                      const iconColor = isCurrent ? '#fb923c' : isSelected && !readOnly ? '#60a5fa' : segColor || intrinsicColor;
+                      return (
+                        <div className="w-5 h-5 rounded flex items-center justify-center shrink-0">
+                          {ChildIcon ? (
+                            <ChildIcon className="w-3.5 h-3.5" style={{ color: iconColor }} />
+                          ) : (
+                            <div
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isCurrent ? 'bg-orange-400' : isSelected && !readOnly ? 'bg-blue-400' : !segColor ? 'bg-gray-500' : ''
+                              }`}
+                              style={segColor ? { backgroundColor: segColor } : undefined}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
@@ -1028,10 +1264,25 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
                   {/* Description */}
                   <div className="flex-1 min-w-0">
-                    <div className={`truncate ${
+                    <div className={`flex items-center gap-1.5 ${
                       isChild ? 'text-xs text-gray-400' : 'text-sm text-gray-200'
                     }`}>
-                      {getWaypointSummary(wp, advancedLabels)}
+                      <span className="truncate">{getWaypointSummary(wp, advancedLabels)}</span>
+                      {wp.command === MAV_CMD.CONDITION_YAW && wp.param3 !== 0 && (
+                        <span className={`px-1 py-0 text-[9px] font-bold rounded shrink-0 ${
+                          wp.param3 < 0
+                            ? 'bg-blue-500/15 text-blue-400'
+                            : 'bg-blue-500/15 text-blue-400'
+                        }`}>
+                          {wp.param3 < 0 ? 'CCW' : 'CW'}
+                        </span>
+                      )}
+                      {/* Collapsed child count badge */}
+                      {isCollapsed && childCount > 0 && (
+                        <span className="px-1.5 py-0 text-[9px] rounded bg-gray-700/50 text-gray-500 shrink-0">
+                          +{childCount}
+                        </span>
+                      )}
                     </div>
                     {commandHasLocation(wp.command) && (
                       <div className="text-[10px] text-gray-500 font-mono">

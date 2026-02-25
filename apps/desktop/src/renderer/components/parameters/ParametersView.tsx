@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
-import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
+import { useParameterStore, type SortColumn, type FileParamDiff } from '../../stores/parameter-store';
 import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import { getParamTypeName } from '../../../shared/parameter-types';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
@@ -77,6 +77,17 @@ export function ParametersView() {
     hasOfficialDescription,
     validateParameter,
     getParameterMetadata,
+    // File compare
+    showCompareModal,
+    fileParamDiffs,
+    isApplyingFileParams,
+    applyProgress,
+    loadFileForCompare,
+    closeCompareModal,
+    toggleDiffSelection,
+    selectAllDiffs,
+    deselectAllDiffs,
+    applySelectedFileParams,
   } = useParameterStore();
 
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -143,23 +154,24 @@ export function ParametersView() {
     try {
       const result = await window.electronAPI?.loadParamsFromFile();
       if (result?.success && result.params) {
-        // Apply loaded parameters
-        let appliedCount = 0;
-        for (const param of result.params) {
-          const existing = parameters.get(param.id);
-          if (existing) {
-            await setParameter(param.id, param.value);
-            appliedCount++;
-          }
-        }
-        showToast(`Applied ${appliedCount} of ${result.params.length} parameters`, 'success');
+        // Load file params for comparison - do NOT auto-set on vehicle
+        loadFileForCompare(result.params);
       } else if (result?.error && result.error !== 'Cancelled') {
         showToast(result.error, 'error');
       }
     } finally {
       setIsLoadingFile(false);
     }
-  }, [parameters, setParameter, showToast]);
+  }, [loadFileForCompare, showToast]);
+
+  const handleApplySelectedParams = useCallback(async () => {
+    const result = await applySelectedFileParams();
+    if (result.applied > 0) {
+      showToast(`Applied ${result.applied} parameter${result.applied !== 1 ? 's' : ''} to vehicle${result.failed > 0 ? ` (${result.failed} failed)` : ''}`, result.failed > 0 ? 'info' : 'success');
+    } else if (result.failed > 0) {
+      showToast(`Failed to apply ${result.failed} parameter${result.failed !== 1 ? 's' : ''}`, 'error');
+    }
+  }, [applySelectedFileParams, showToast]);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -457,18 +469,17 @@ export function ParametersView() {
                     <SortIndicator column="name" currentColumn={sortColumn} direction={sortDirection} />
                   </button>
                 </th>
-                <th className="px-4 py-3 font-medium w-[120px]">Value</th>
-                <th className="px-4 py-3 font-medium w-[80px]">Type</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium w-[100px]">
+                <th className="px-4 py-3 font-medium w-[200px]">
                   <button
                     onClick={() => toggleSort('status')}
                     className="group flex items-center hover:text-gray-300 transition-colors"
                   >
-                    Status
+                    Value
                     <SortIndicator column="status" currentColumn={sortColumn} direction={sortDirection} />
                   </button>
                 </th>
+                <th className="px-4 py-3 font-medium w-[80px]">Type</th>
+                <th className="px-4 py-3 font-medium">Description</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
@@ -481,48 +492,68 @@ export function ParametersView() {
                     <span className="font-mono text-sm text-gray-200">{param.id}</span>
                   </td>
                   <td className="px-4 py-2.5">
-                    {param.isReadOnly ? (
-                      <span className="font-mono text-sm text-gray-500 tabular-nums" title="Read-only parameter">
-                        {param.value}
-                      </span>
-                    ) : editingParam === param.id ? (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => handleEditChange(param.id, e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, param.id)}
-                          onBlur={() => !editError && saveEdit(param.id)}
-                          autoFocus
-                          className={`w-full px-2 py-1 bg-gray-800 border rounded text-sm font-mono text-gray-200 focus:outline-none ${
-                            editError ? 'border-red-500/50' : editWarning ? 'border-amber-500/50' : 'border-blue-500/50'
-                          }`}
-                        />
-                        {(editError || editWarning) && (
-                          <div className={`absolute left-0 top-full mt-1 px-2 py-1 text-xs rounded shadow-lg z-10 max-w-xs ${
-                            editError ? 'bg-red-900/90 text-red-300' : 'bg-amber-900/90 text-amber-300'
-                          }`}>
-                            {editError || editWarning}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => startEdit(param.id, param.value)}
-                        className="font-mono text-sm text-gray-300 hover:text-blue-400 transition-colors tabular-nums"
-                        title={(() => {
-                          const meta = getParameterMetadata(param.id);
-                          if (!meta) return undefined;
-                          const hints: string[] = [];
-                          if (meta.range) hints.push(`Range: ${meta.range.min} to ${meta.range.max}`);
-                          if (meta.values) hints.push(`Values: ${Object.entries(meta.values).map(([k,v]) => `${k}=${v}`).join(', ')}`);
-                          if (meta.units) hints.push(`Units: ${meta.units}`);
-                          return hints.length > 0 ? hints.join('\n') : undefined;
-                        })()}
-                      >
-                        {param.value}
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {param.isReadOnly ? (
+                        <span className="font-mono text-sm text-gray-500 tabular-nums" title="Read-only parameter">
+                          {param.value}
+                        </span>
+                      ) : editingParam === param.id ? (
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => handleEditChange(param.id, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, param.id)}
+                            onBlur={() => !editError && saveEdit(param.id)}
+                            autoFocus
+                            className={`w-full px-2 py-1 bg-gray-800 border rounded text-sm font-mono text-gray-200 focus:outline-none ${
+                              editError ? 'border-red-500/50' : editWarning ? 'border-amber-500/50' : 'border-blue-500/50'
+                            }`}
+                          />
+                          {(editError || editWarning) && (
+                            <div className={`absolute left-0 top-full mt-1 px-2 py-1 text-xs rounded shadow-lg z-10 max-w-xs ${
+                              editError ? 'bg-red-900/90 text-red-300' : 'bg-amber-900/90 text-amber-300'
+                            }`}>
+                              {editError || editWarning}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEdit(param.id, param.value)}
+                          className="font-mono text-sm text-gray-300 hover:text-blue-400 transition-colors tabular-nums"
+                          title={(() => {
+                            const meta = getParameterMetadata(param.id);
+                            if (!meta) return undefined;
+                            const hints: string[] = [];
+                            if (meta.range) hints.push(`Range: ${meta.range.min} to ${meta.range.max}`);
+                            if (meta.values) hints.push(`Values: ${Object.entries(meta.values).map(([k,v]) => `${k}=${v}`).join(', ')}`);
+                            if (meta.units) hints.push(`Units: ${meta.units}`);
+                            return hints.length > 0 ? hints.join('\n') : undefined;
+                          })()}
+                        >
+                          {param.value}
+                        </button>
+                      )}
+                      {param.isReadOnly ? (
+                        <span className="px-1.5 py-0.5 bg-gray-700/50 text-gray-500 rounded text-[10px] shrink-0">
+                          RO
+                        </span>
+                      ) : param.isModified ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">
+                            Modified
+                          </span>
+                          <button
+                            onClick={() => revertParameter(param.id)}
+                            className="text-[10px] text-gray-500 hover:text-gray-300"
+                            title={`Revert to ${param.originalValue}`}
+                          >
+                            (revert)
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5">
                     <span className="text-xs text-gray-500">{getParamTypeName(param.type)}</span>
@@ -538,26 +569,6 @@ export function ParametersView() {
                     >
                       {getDescription(param.id)}
                     </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {param.isReadOnly ? (
-                      <span className="px-2 py-0.5 bg-gray-700/50 text-gray-500 rounded text-xs">
-                        Read-only
-                      </span>
-                    ) : param.isModified ? (
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs">
-                          Modified
-                        </span>
-                        <button
-                          onClick={() => revertParameter(param.id)}
-                          className="text-xs text-gray-500 hover:text-gray-300"
-                          title={`Revert to ${param.originalValue}`}
-                        >
-                          (revert)
-                        </button>
-                      </div>
-                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -644,6 +655,130 @@ export function ParametersView() {
               >
                 Write to Flash
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Compare Modal */}
+      {showCompareModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-800">
+              <h3 className="text-lg font-semibold text-white">Compare Parameters</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {fileParamDiffs.length === 0
+                  ? 'No differences found - all file parameters match the vehicle.'
+                  : `${fileParamDiffs.length} parameter${fileParamDiffs.length !== 1 ? 's' : ''} differ between file and vehicle. Select which to apply.`
+                }
+              </p>
+            </div>
+
+            {fileParamDiffs.length > 0 && (
+              <>
+                {/* Select all / Deselect all */}
+                <div className="px-6 py-2 border-b border-gray-800/50 flex items-center gap-3">
+                  <button
+                    onClick={selectAllDiffs}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Select all
+                  </button>
+                  <span className="text-gray-700">|</span>
+                  <button
+                    onClick={deselectAllDiffs}
+                    className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                  >
+                    Deselect all
+                  </button>
+                  <span className="ml-auto text-xs text-gray-500">
+                    {fileParamDiffs.filter(d => d.selected).length} of {fileParamDiffs.length} selected
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-auto px-6 py-2">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500 uppercase">
+                        <th className="pb-2 w-8"></th>
+                        <th className="pb-2">Parameter</th>
+                        <th className="pb-2 text-right">Vehicle</th>
+                        <th className="pb-2 text-center w-8"></th>
+                        <th className="pb-2">File</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/50">
+                      {fileParamDiffs.map(diff => (
+                        <tr
+                          key={diff.paramId}
+                          className={`cursor-pointer transition-colors ${diff.selected ? 'hover:bg-gray-800/30' : 'opacity-50 hover:opacity-75'}`}
+                          onClick={() => toggleDiffSelection(diff.paramId)}
+                        >
+                          <td className="py-2 pr-2">
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                              diff.selected
+                                ? 'bg-blue-500/30 border-blue-500/50'
+                                : 'border-gray-600 bg-gray-800/50'
+                            }`}>
+                              {diff.selected && (
+                                <svg className="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 font-mono text-gray-300">{diff.paramId}</td>
+                          <td className="py-2 text-right font-mono text-gray-500">{diff.currentValue}</td>
+                          <td className="py-2 text-center text-gray-600">
+                            <svg className="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                          </td>
+                          <td className="py-2 font-mono text-amber-400">{diff.fileValue}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Progress bar while applying */}
+            {isApplyingFileParams && applyProgress && (
+              <div className="px-6 py-2 border-t border-gray-800/50">
+                <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                  <span>Applying parameters...</span>
+                  <span>{applyProgress.applied} / {applyProgress.total}</span>
+                </div>
+                <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-150"
+                    style={{ width: `${(applyProgress.applied / applyProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="px-6 py-4 border-t border-gray-800 flex justify-end gap-3">
+              <button
+                onClick={closeCompareModal}
+                disabled={isApplyingFileParams}
+                className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 disabled:text-gray-600 transition-colors"
+              >
+                {fileParamDiffs.length === 0 ? 'Close' : 'Cancel'}
+              </button>
+              {fileParamDiffs.length > 0 && (
+                <button
+                  onClick={handleApplySelectedParams}
+                  disabled={isApplyingFileParams || fileParamDiffs.filter(d => d.selected).length === 0}
+                  className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-gray-700/30 text-blue-400 disabled:text-gray-500 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {isApplyingFileParams
+                    ? 'Applying...'
+                    : `Apply ${fileParamDiffs.filter(d => d.selected).length} Parameter${fileParamDiffs.filter(d => d.selected).length !== 1 ? 's' : ''}`
+                  }
+                </button>
+              )}
             </div>
           </div>
         </div>

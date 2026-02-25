@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { useMissionStore } from '../../stores/mission-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
-import { commandHasLocation, isNavigationCommand, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
+import { commandHasLocation, isNavigationCommand, hasValidCoordinates, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { useIpLocation } from '../../utils/ip-geolocation';
 import { SEGMENT_COLORS, getSegmentColor, computeItemColors } from '../../utils/mission-segment-colors';
 
@@ -63,9 +63,9 @@ interface PathSegment {
 
 // Build colored path segments from ALL mission items (not just location ones)
 function buildSegmentedPath(allItems: MissionItem[]): PathSegment[] {
-  // Extract navigation waypoints with locations for drawing
+  // Extract navigation waypoints with locations for drawing (skip 0,0 null coordinates)
   const navWaypoints = allItems.filter(
-    item => isNavigationCommand(item.command) && commandHasLocation(item.command),
+    item => isNavigationCommand(item.command) && commandHasLocation(item.command) && hasValidCoordinates(item.latitude, item.longitude),
   );
   if (navWaypoints.length < 2) return [];
 
@@ -403,12 +403,16 @@ function MapClickHandler({
   return null;
 }
 
-// Fit map to waypoints
+// Fit map to waypoints - only fires when trigger actually changes (not on every render)
 function FitToBounds({ waypoints, trigger }: { waypoints: MissionItem[]; trigger: number }) {
   const map = useMap();
+  const lastTriggerRef = useRef(0);
 
   useEffect(() => {
-    if (trigger > 0 && waypoints.length > 0) {
+    if (trigger === lastTriggerRef.current) return;
+    lastTriggerRef.current = trigger;
+
+    if (waypoints.length > 0) {
       const bounds = L.latLngBounds(
         waypoints.map(wp => [wp.latitude, wp.longitude] as [number, number])
       );
@@ -697,8 +701,10 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
   // Disable mission editing when fence or rally editing is active
   const isFenceOrRallyActive = fenceDrawMode !== 'none' || rallyAddMode;
 
-  // Filter to only items with locations
-  const waypoints = missionItems.filter(item => commandHasLocation(item.command));
+  // Filter to only items with locations and valid (non-zero) coordinates
+  const waypoints = missionItems.filter(
+    item => commandHasLocation(item.command) && hasValidCoordinates(item.latitude, item.longitude),
+  );
 
   // Auto-fit map when a mission is loaded (file or FC download)
   const loadCounter = useMissionStore((s) => s.loadCounter);

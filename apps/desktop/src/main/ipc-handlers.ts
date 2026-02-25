@@ -83,6 +83,7 @@ import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManife
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getBetaflightVersions, resolveBetaflightDownloadUrl, getInavBoards, getInavVersions, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
+import { initMissionLibraryHandlers, cleanupMissionLibraryHandlers } from './mission-library/index.js';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
 import {
@@ -4115,6 +4116,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Register Calibration handlers
   initCalibrationHandlers(mainWindow);
+
+  // Register Mission Library handlers
+  initMissionLibraryHandlers();
 
   // ============================================================================
   // Driver utilities

@@ -5,6 +5,7 @@ import { useFenceStore } from '../../stores/fence-store';
 import { useRallyStore } from '../../stores/rally-store';
 import { useEditModeStore, type EditMode } from '../../stores/edit-mode-store';
 import { useSettingsStore } from '../../stores/settings-store';
+import { SaveMissionModal } from '../mission-library/SaveMissionModal';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -204,6 +205,9 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
   // Collision warning dialog state (mission only)
   const [showCollisionWarning, setShowCollisionWarning] = useState(false);
+
+  // Save to Library modal state
+  const [showSaveLibraryModal, setShowSaveLibraryModal] = useState(false);
 
   // Mode-aware handlers
   const handleDownload = async () => {
@@ -458,6 +462,28 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
         </button>
       </div>
 
+      {/* Library save button (mission mode only) */}
+      {activeMode === 'mission' && (
+        <>
+          <div className="w-px h-6 bg-gray-700/50 shrink-0" />
+          <button
+            onClick={() => setShowSaveLibraryModal(true)}
+            disabled={!missionHasItems}
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0 ${
+              missionHasItems
+                ? 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30'
+                : 'bg-gray-700/30 text-gray-500 cursor-not-allowed'
+            }`}
+            title={missionHasItems ? 'Save mission to library for reuse' : 'Add waypoints first'}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            Library
+          </button>
+        </>
+      )}
+
       {/* Spacer */}
       <div className="flex-1" />
 
@@ -520,6 +546,14 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
             </div>
           </div>
         </div>
+      )}
+
+      {/* Save to Library modal */}
+      {showSaveLibraryModal && (
+        <SaveMissionModal
+          onClose={() => setShowSaveLibraryModal(false)}
+          onSaved={() => showToast?.('Mission saved to library', 'success')}
+        />
       )}
     </div>
   );
