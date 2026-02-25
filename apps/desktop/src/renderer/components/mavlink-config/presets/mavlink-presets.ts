@@ -43,6 +43,29 @@ export const FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
   },
 };
 
+export const PLANE_FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
+  beginner: {
+    name: 'Beginner Safe',
+    description: 'Safe modes - FBWA, Loiter, RTL',
+    modes: [5, 5, 12, 12, 11, 11], // FBWA, FBWA, Loiter, Loiter, RTL, RTL
+  },
+  intermediate: {
+    name: 'Intermediate',
+    description: 'Add Auto and Cruise for missions',
+    modes: [5, 7, 12, 10, 11, 11], // FBWA, Cruise, Loiter, Auto, RTL, RTL
+  },
+  advanced: {
+    name: 'Advanced',
+    description: 'Full control with Manual and Acro',
+    modes: [0, 4, 5, 12, 10, 11], // Manual, Acro, FBWA, Loiter, Auto, RTL
+  },
+  vtol: {
+    name: 'VTOL QuadPlane',
+    description: 'QLoiter, FBWA, QRTL for VTOL aircraft',
+    modes: [19, 19, 5, 5, 21, 21], // QLoiter, QLoiter, FBWA, FBWA, QRTL, QRTL
+  },
+};
+
 // =============================================================================
 // Skill Level Presets (Tuning)
 // =============================================================================

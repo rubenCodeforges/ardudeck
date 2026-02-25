@@ -45,6 +45,7 @@ import { InfoCard } from '../ui/InfoCard';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import {
   FLIGHT_MODE_PRESETS,
+  PLANE_FLIGHT_MODE_PRESETS,
   type FlightModePreset,
 } from './presets/mavlink-presets';
 
@@ -95,6 +96,34 @@ const COPTER_MODES: Record<number, { name: string; description: string; icon: Re
   25: { name: 'SystemID', description: 'System identification', icon: Activity, safe: false },
 };
 
+// ArduPlane flight modes with proper icons
+const PLANE_MODES: Record<number, { name: string; description: string; icon: React.ElementType; safe: boolean }> = {
+  0: { name: 'Manual', description: 'Full manual control', icon: Hand, safe: false },
+  1: { name: 'Circle', description: 'Circle around a point', icon: Circle, safe: true },
+  2: { name: 'Stabilize', description: 'Level flight with manual throttle', icon: Hand, safe: true },
+  3: { name: 'Training', description: 'Limits roll/pitch but allows recovery', icon: Dumbbell, safe: true },
+  4: { name: 'Acro', description: 'Rate-controlled aerobatics', icon: Gamepad2, safe: false },
+  5: { name: 'FBWA', description: 'Fly By Wire A - stabilized manual', icon: Plane, safe: true },
+  6: { name: 'FBWB', description: 'Fly By Wire B - speed/altitude hold', icon: Plane, safe: true },
+  7: { name: 'Cruise', description: 'Throttle and roll hold heading/alt', icon: Navigation, safe: true },
+  8: { name: 'AutoTune', description: 'Automatic PID tuning', icon: Wrench, safe: true },
+  10: { name: 'Auto', description: 'Follow mission waypoints', icon: Map, safe: true },
+  11: { name: 'RTL', description: 'Return to launch point', icon: Home, safe: true },
+  12: { name: 'Loiter', description: 'Circle and hold position', icon: Lock, safe: true },
+  13: { name: 'Takeoff', description: 'Automatic takeoff', icon: Rocket, safe: true },
+  14: { name: 'Avoid_ADSB', description: 'Avoid other aircraft', icon: AlertTriangle, safe: true },
+  15: { name: 'Guided', description: 'Fly to GCS-commanded points', icon: Navigation, safe: true },
+  17: { name: 'QStabilize', description: 'VTOL stabilize mode', icon: Hand, safe: true },
+  18: { name: 'QHover', description: 'VTOL hover in place', icon: Pin, safe: true },
+  19: { name: 'QLoiter', description: 'VTOL position hold', icon: Lock, safe: true },
+  20: { name: 'QLand', description: 'VTOL automatic landing', icon: PlaneLanding, safe: true },
+  21: { name: 'QRTL', description: 'VTOL return to launch', icon: Home, safe: true },
+  22: { name: 'QAutotune', description: 'VTOL automatic PID tuning', icon: Wrench, safe: true },
+  23: { name: 'QAcro', description: 'VTOL rate-controlled aerobatics', icon: Gamepad2, safe: false },
+  24: { name: 'Thermal', description: 'Soaring thermal detection', icon: Wind, safe: true },
+  25: { name: 'Loiter to QLand', description: 'Loiter then VTOL land', icon: PlaneLanding, safe: true },
+};
+
 // ArduRover drive modes
 const ROVER_MODES: Record<number, { name: string; description: string; icon: React.ElementType; safe: boolean }> = {
   0: { name: 'Manual', description: 'Full manual throttle and steering', icon: Hand, safe: true },
@@ -112,7 +141,7 @@ const ROVER_MODES: Record<number, { name: string; description: string; icon: Rea
 };
 
 // Convert FLIGHT_MODE_PRESETS to PresetSelector format
-const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
+const COPTER_PRESET_SELECTOR: Record<string, Preset> = {
   beginner: {
     name: 'Beginner',
     description: FLIGHT_MODE_PRESETS.beginner!.description,
@@ -143,16 +172,58 @@ const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
   },
 };
 
-function getModeInfo(modeNum: number, isRover: boolean = false) {
-  const modes = isRover ? ROVER_MODES : COPTER_MODES;
+const PLANE_PRESET_SELECTOR: Record<string, Preset> = {
+  beginner: {
+    name: 'Beginner',
+    description: PLANE_FLIGHT_MODE_PRESETS.beginner!.description,
+    icon: Shield,
+    iconColor: 'text-green-400',
+    color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
+  },
+  intermediate: {
+    name: 'Intermediate',
+    description: PLANE_FLIGHT_MODE_PRESETS.intermediate!.description,
+    icon: TrendingUp,
+    iconColor: 'text-blue-400',
+    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
+  },
+  advanced: {
+    name: 'Advanced',
+    description: PLANE_FLIGHT_MODE_PRESETS.advanced!.description,
+    icon: Settings,
+    iconColor: 'text-purple-400',
+    color: 'from-purple-500/20 to-pink-500/10 border-purple-500/30',
+  },
+  vtol: {
+    name: 'VTOL',
+    description: PLANE_FLIGHT_MODE_PRESETS.vtol!.description,
+    icon: Plane,
+    iconColor: 'text-amber-400',
+    color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
+  },
+};
+
+type VehicleCategory = 'copter' | 'plane' | 'rover';
+
+function getModesForCategory(category: VehicleCategory) {
+  switch (category) {
+    case 'plane': return PLANE_MODES;
+    case 'rover': return ROVER_MODES;
+    default: return COPTER_MODES;
+  }
+}
+
+function getModeInfo(modeNum: number, category: VehicleCategory = 'copter') {
+  const modes = getModesForCategory(category);
   return modes[modeNum] ?? { name: 'Unknown', description: 'Unknown mode', icon: HelpCircle, safe: false };
 }
 
 interface FlightModesTabProps {
-  isRover?: boolean;
+  vehicleCategory?: VehicleCategory;
 }
 
-const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
+const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copter' }) => {
+  const isRover = vehicleCategory === 'rover';
   const { parameters, setParameter, modifiedCount } = useParameterStore();
   const rcChannels = null as number[] | null;
   const [liveRcValue, setLiveRcValue] = useState<number>(1500);
@@ -202,9 +273,13 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
     setParameter('FLTMODE_CH', channel);
   };
 
+  // Get presets for current vehicle category
+  const presetData = vehicleCategory === 'plane' ? PLANE_FLIGHT_MODE_PRESETS : FLIGHT_MODE_PRESETS;
+  const presetSelectorPresets = vehicleCategory === 'plane' ? PLANE_PRESET_SELECTOR : COPTER_PRESET_SELECTOR;
+
   // Apply preset
   const applyPreset = (presetKey: string) => {
-    const preset = FLIGHT_MODE_PRESETS[presetKey];
+    const preset = presetData[presetKey];
     if (preset) {
       preset.modes.forEach((mode, index) => {
         setParameter(`FLTMODE${index + 1}`, mode);
@@ -218,7 +293,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
     <div className="p-6 space-y-6">
       {/* Header with View Mode Toggle */}
       <div className="flex items-center justify-between">
-        <InfoCard title={isRover ? "Drive Mode Configuration" : "Flight Mode Configuration"} variant="info" className="flex-1">
+        <InfoCard title={isRover ? "Drive Mode Configuration" : vehicleCategory === 'plane' ? "Plane Mode Configuration" : "Flight Mode Configuration"} variant="info" className="flex-1">
           {advancedMode
             ? `Configure all 6 mode slots for fine-grained control with multi-position switches.`
             : `Configure the 3 primary switch positions. Most transmitters use a 3-position switch.`}
@@ -264,7 +339,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
             {SWITCH_POSITIONS.map((pos, idx) => {
               const isPositionActive = activeSlot !== null && pos.slots.includes(activeSlot);
               const primarySlot = pos.slots[idx === 2 ? 1 : 0]!;
-              const modeInfo = getModeInfo(flightModes[primarySlot - 1] ?? 0, isRover);
+              const modeInfo = getModeInfo(flightModes[primarySlot - 1] ?? 0, vehicleCategory);
               const IconComponent = modeInfo.icon;
 
               return (
@@ -305,7 +380,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
 
       {/* Quick Presets */}
       <PresetSelector
-        presets={PRESET_SELECTOR_PRESETS}
+        presets={presetSelectorPresets}
         onApply={applyPreset}
         label="Quick Presets"
         hint="Click to apply a mode configuration"
@@ -324,7 +399,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
               <span className="text-lg font-mono text-cyan-400">{liveRcValue}</span>
               {activeSlot && (
                 <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-xs">
-                  {getModeInfo(flightModes[activeSlot - 1] ?? 0, isRover).name}
+                  {getModeInfo(flightModes[activeSlot - 1] ?? 0, vehicleCategory).name}
                 </span>
               )}
             </div>
@@ -399,7 +474,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
             {SWITCH_POSITIONS.map((pos) => {
               const primarySlot = pos.name === 'High' ? 6 : pos.name === 'Mid' ? 3 : 1;
               const currentMode = flightModes[primarySlot - 1] ?? 0;
-              const modeInfo = getModeInfo(currentMode, isRover);
+              const modeInfo = getModeInfo(currentMode, vehicleCategory);
               const isSafe = modeInfo.safe;
               const isActive = activeSlot !== null && pos.slots.includes(activeSlot);
               const IconComponent = modeInfo.icon;
@@ -446,7 +521,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
                     }}
                     className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
                   >
-                    {Object.entries(isRover ? ROVER_MODES : COPTER_MODES).map(([num, mode]) => (
+                    {Object.entries(getModesForCategory(vehicleCategory)).map(([num, mode]) => (
                       <option key={num} value={num}>
                         {mode.name} {!mode.safe ? '(Advanced)' : ''}
                       </option>
@@ -469,7 +544,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
           <div className="grid grid-cols-2 gap-4">
             {MODE_PWM_RANGES.map((range) => {
               const currentMode = flightModes[range.slot - 1] ?? 0;
-              const modeInfo = getModeInfo(currentMode, isRover);
+              const modeInfo = getModeInfo(currentMode, vehicleCategory);
               const isSafe = modeInfo.safe;
               const isActive = activeSlot === range.slot;
               const IconComponent = modeInfo.icon;
@@ -541,7 +616,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
                     onChange={(e) => handleModeChange(range.slot, Number(e.target.value))}
                     className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
                   >
-                    {Object.entries(isRover ? ROVER_MODES : COPTER_MODES).map(([num, mode]) => (
+                    {Object.entries(getModesForCategory(vehicleCategory)).map(([num, mode]) => (
                       <option key={num} value={num}>
                         {mode.name} {!mode.safe ? '(Advanced)' : ''}
                       </option>
@@ -572,7 +647,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ isRover = false }) => {
         <h3 className="text-sm font-medium text-zinc-300">Mode Reference</h3>
         <div className="bg-zinc-900/30 rounded-xl border border-zinc-800/30 p-4">
           <div className="grid grid-cols-3 gap-3">
-            {Object.entries(isRover ? ROVER_MODES : COPTER_MODES)
+            {Object.entries(getModesForCategory(vehicleCategory))
               .filter(([, mode]) => mode.safe)
               .slice(0, 9)
               .map(([num, mode]) => {

@@ -14,44 +14,54 @@ import { useParameterStore } from '../../stores/parameter-store';
 // Constants
 // =============================================================================
 
-/** ArduPilot serial protocol options */
+/** ArduPilot serial protocol options (from AP_SerialManager.h) */
 const SERIAL_PROTOCOLS: { value: number; label: string }[] = [
   { value: -1, label: 'None' },
   { value: 1, label: 'MAVLink1' },
   { value: 2, label: 'MAVLink2' },
-  { value: 4, label: 'SBus Out' },
+  { value: 3, label: 'FrSky D' },
+  { value: 4, label: 'FrSky SPort' },
   { value: 5, label: 'GPS' },
   { value: 7, label: 'Alexmos Gimbal' },
   { value: 8, label: 'SToRM32 Gimbal' },
   { value: 9, label: 'Rangefinder' },
-  { value: 10, label: 'FrSky SPort' },
+  { value: 10, label: 'FrSky Passthrough' },
   { value: 11, label: 'Lidar360' },
-  { value: 12, label: 'Beacon' },
-  { value: 13, label: 'Volz Servo' },
-  { value: 14, label: 'SBus Out' },
-  { value: 15, label: 'ESC Telemetry' },
-  { value: 16, label: 'Devo Telemetry' },
-  { value: 17, label: 'OpticalFlow' },
-  { value: 18, label: 'RobotisServo' },
-  { value: 19, label: 'NMEAOutput' },
-  { value: 20, label: 'WindVane' },
-  { value: 21, label: 'SLCAN' },
-  { value: 22, label: 'RCIN' },
-  { value: 23, label: 'MegaSquirt' },
-  { value: 24, label: 'DJI FPV' },
-  { value: 25, label: 'SmartAudio' },
-  { value: 26, label: 'DroneCAN' },
+  { value: 13, label: 'Beacon' },
+  { value: 14, label: 'Volz Servo' },
+  { value: 15, label: 'SBus Out' },
+  { value: 16, label: 'ESC Telemetry' },
+  { value: 17, label: 'Devo Telemetry' },
+  { value: 18, label: 'OpticalFlow' },
+  { value: 19, label: 'Robotis Servo' },
+  { value: 20, label: 'NMEA Output' },
+  { value: 21, label: 'WindVane' },
+  { value: 22, label: 'SLCAN' },
+  { value: 23, label: 'RCIN' },
+  { value: 24, label: 'EFI Serial' },
+  { value: 25, label: 'LTM Telemetry' },
+  { value: 26, label: 'RunCam' },
+  { value: 27, label: 'HoTT Telemetry' },
   { value: 28, label: 'Scripting' },
-  { value: 29, label: 'CrossFire MAVLink' },
+  { value: 29, label: 'Crossfire (CRSF)' },
   { value: 30, label: 'Generator' },
   { value: 31, label: 'Winch' },
   { value: 32, label: 'MSP' },
-  { value: 33, label: 'DisplayPort' },
-  { value: 34, label: 'MAVLink HL' },
-  { value: 35, label: 'IRC Tramp' },
-  { value: 36, label: 'DDS XRCE' },
-  { value: 37, label: 'IMUOUT' },
-  { value: 38, label: 'RCIN' },
+  { value: 33, label: 'DJI FPV OSD' },
+  { value: 34, label: 'AirSpeed' },
+  { value: 35, label: 'ADSB' },
+  { value: 36, label: 'AHRS' },
+  { value: 37, label: 'SmartAudio' },
+  { value: 38, label: 'FETtec OneWire' },
+  { value: 39, label: 'Torqeedo' },
+  { value: 40, label: 'AIS' },
+  { value: 41, label: 'CoDevESC' },
+  { value: 42, label: 'MSP DisplayPort' },
+  { value: 43, label: 'MAVLink HL' },
+  { value: 44, label: 'IRC Tramp' },
+  { value: 45, label: 'DDS XRCE' },
+  { value: 46, label: 'IMUOUT' },
+  { value: 48, label: 'PPP' },
 ];
 
 /** ArduPilot baud rate encoding (stored as baud/1 for exact or baud/1000 for common) */
@@ -100,7 +110,7 @@ function PortRow({ index }: { index: number }) {
   const label = PORT_LABELS[index] ?? `Serial${index}`;
   const isUsb = index === 0;
 
-  const isRcin = Number(protocol) === 22 || Number(protocol) === 38;
+  const isRcin = Number(protocol) === 23;
   const isMavlink = Number(protocol) === 1 || Number(protocol) === 2;
 
   const selectStyle = 'bg-zinc-800 text-zinc-300 text-xs rounded px-1.5 py-1 border border-zinc-700 focus:border-blue-500 focus:outline-none w-full';
@@ -187,7 +197,7 @@ const SerialPortsTab: React.FC = () => {
   const hasRcin = useMemo(() => {
     for (let i = 0; i < portCount; i++) {
       const proto = parameters.get(`SERIAL${i}_PROTOCOL`)?.value;
-      if (Number(proto) === 22 || Number(proto) === 38) return true;
+      if (Number(proto) === 23) return true;
     }
     return false;
   }, [parameters, portCount]);

@@ -67,10 +67,21 @@ interface Tab {
   badge?: string;
 }
 
+type VehicleCategory = 'copter' | 'plane' | 'rover';
+
+// Determine vehicle category from MAV_TYPE
+function getVehicleCategory(mavType: number | undefined): VehicleCategory {
+  if (mavType === undefined) return 'copter';
+  // MAV_TYPE_GROUND_ROVER = 10, MAV_TYPE_SURFACE_BOAT = 11
+  if (mavType === 10 || mavType === 11) return 'rover';
+  // MAV_TYPE_FIXED_WING = 1, MAV_TYPE_VTOL types = 19-25
+  if (mavType === 1 || (mavType >= 19 && mavType <= 25)) return 'plane';
+  return 'copter';
+}
+
 // Check if MAV_TYPE is a ground vehicle (Rover)
 function isRoverType(mavType: number | undefined): boolean {
-  // MAV_TYPE_GROUND_ROVER = 10, MAV_TYPE_SURFACE_BOAT = 11
-  return mavType === 10 || mavType === 11;
+  return getVehicleCategory(mavType) === 'rover';
 }
 
 // Aircraft tabs (copters, planes, VTOL)
@@ -105,7 +116,8 @@ export const MavlinkConfigView: React.FC = () => {
   const connectionState = useConnectionStore((s) => s.connectionState);
 
   // Determine vehicle type and appropriate tabs
-  const isRover = isRoverType(connectionState.mavType);
+  const vehicleCategory = getVehicleCategory(connectionState.mavType);
+  const isRover = vehicleCategory === 'rover';
   const tabs = useMemo(() => isRover ? ROVER_TABS : AIRCRAFT_TABS, [isRover]);
   const defaultTab = isRover ? 'rover-tuning' : 'pid';
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
@@ -192,7 +204,7 @@ export const MavlinkConfigView: React.FC = () => {
         return <RoverTuningTab section="navigation" />;
       // Shared tabs
       case 'modes':
-        return <FlightModesTab isRover={isRover} />;
+        return <FlightModesTab vehicleCategory={vehicleCategory} />;
       case 'receiver':
         return <ReceiverTab />;
       case 'serial-ports':
