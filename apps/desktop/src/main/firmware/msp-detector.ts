@@ -319,6 +319,83 @@ export async function rebootToBootloader(
 }
 
 /**
+ * Reboot into bootloader via CLI 'dfu' command.
+ * This is the method iNav Configurator uses:
+ *   1. Send '####\r\n' to enter CLI mode
+ *   2. Wait for 'CLI' prompt
+ *   3. Send 'dfu\r\n' to trigger bootloader
+ *   4. Disconnect
+ *
+ * MSP_SET_REBOOT with type 4 (flash bootloader) doesn't work reliably on many boards.
+ */
+export async function rebootToBootloaderCli(
+  port: string,
+  baudRate: number = 115200,
+  log?: (msg: string) => void,
+): Promise<boolean> {
+  let transport: SerialTransport | null = null;
+  const info = log || ((msg: string) => console.log(`[MSP] ${msg}`));
+
+  try {
+    transport = new SerialTransport(port, { baudRate });
+    await transport.open();
+
+    // Step 1: Send '####\r\n' to enter CLI mode
+    info('Sending #### to enter CLI mode...');
+    const cliEnter = new TextEncoder().encode('####\r\n');
+    await transport.write(cliEnter);
+
+    // Step 2: Wait for 'CLI' prompt (up to 2 seconds)
+    const gotCli = await new Promise<boolean>((resolve) => {
+      let received = '';
+      const timeout = setTimeout(() => {
+        transport?.off('data', handler);
+        resolve(false);
+      }, 2000);
+
+      const handler = (data: Uint8Array) => {
+        received += new TextDecoder().decode(data);
+        if (received.includes('CLI')) {
+          clearTimeout(timeout);
+          transport?.off('data', handler);
+          resolve(true);
+        }
+      };
+      transport!.on('data', handler);
+    });
+
+    if (gotCli) {
+      info('CLI mode entered successfully');
+    } else {
+      info('CLI prompt not received — trying dfu command anyway...');
+    }
+
+    // Step 3: Send 'dfu\r\n' to trigger bootloader
+    info('Sending dfu command...');
+    const dfuCmd = new TextEncoder().encode('dfu\r\n');
+    await transport.write(dfuCmd);
+
+    // Give it a moment to process before disconnecting
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Step 4: Disconnect
+    await transport.close();
+    transport = null;
+
+    // Wait for board to reboot into bootloader
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    return true;
+  } catch (error) {
+    console.error('[MSP] Failed to reboot to bootloader via CLI:', error);
+    if (transport) {
+      await transport.close().catch(() => {});
+    }
+    return false;
+  }
+}
+
+/**
  * Reboot into DFU/bootloader mode via MAVLink
  * Sends MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN (246) with param1=3 (bootloader)
  * @param port Serial port path

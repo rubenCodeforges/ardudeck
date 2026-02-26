@@ -28,6 +28,7 @@ export {
 export { flashWithDfu, isDfuUtilAvailable, listDfuDevices } from './dfu-flasher.js';
 export { flashWithAvrdude, getAvrdudePath, isAvrdudeAvailable } from './avr-flasher.js';
 export { flashWithSerialBootloader } from './stm32-serial-flasher.js';
+export { flashWithArduPilotBootloader } from './ardupilot-flasher.js';
 export {
   querySTM32ChipId,
   detectSTM32Chip,

@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs/promises';
+import * as zlib from 'zlib';
 import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { DetectedBoard, FlashProgress, FlashResult } from '../../shared/firmware-types.js';
@@ -18,7 +19,7 @@ import {
   type FirmwareImage,
   type FlashProgress as DfuProgress,
 } from '@ardudeck/stm32-dfu';
-import { rebootToBootloader, rebootToBootloaderMavlink } from './msp-detector.js';
+import { rebootToBootloaderCli, rebootToBootloaderMavlink } from './msp-detector.js';
 import { acquireFlashLock, releaseFlashLock } from './flash-guard.js';
 
 /**
@@ -65,10 +66,36 @@ function phaseToState(phase: DfuProgress['phase']): FlashProgress['state'] {
 }
 
 /**
+ * Parse ArduPilot APJ file (JSON with base64 zlib-compressed image)
+ * Used for cross-flashing iNav/Betaflight boards to ArduPilot via DFU
+ */
+async function parseApjForDfu(buffer: Buffer): Promise<FirmwareImage> {
+  const json = JSON.parse(buffer.toString('utf-8')) as { image?: string; image_size?: number };
+  if (!json.image || !json.image_size) {
+    throw new Error('Invalid APJ file: missing image or image_size');
+  }
+
+  const compressed = Buffer.from(json.image, 'base64');
+  const decompressed = await new Promise<Buffer>((resolve, reject) => {
+    zlib.inflate(compressed, (err, result) => {
+      if (err) reject(new Error(`APJ decompression failed: ${err.message}`));
+      else resolve(result);
+    });
+  });
+
+  return loadBinFile(new Uint8Array(decompressed.buffer, decompressed.byteOffset, decompressed.length), STM32_FLASH_START);
+}
+
+/**
  * Load firmware from file based on extension
  */
 async function loadFirmware(firmwarePath: string): Promise<FirmwareImage> {
   const buffer = await fs.readFile(firmwarePath);
+
+  // Check for ArduPilot APJ file (JSON with compressed firmware)
+  if (firmwarePath.toLowerCase().endsWith('.apj')) {
+    return parseApjForDfu(buffer);
+  }
 
   // Check for DfuSe .dfu file
   if (firmwarePath.toLowerCase().endsWith('.dfu') || isDfuFile(buffer)) {
@@ -164,7 +191,7 @@ export async function flashWithDfu(
 
       const rebooted = board.detectionMethod === 'mavlink'
         ? await rebootToBootloaderMavlink(board.port)
-        : await rebootToBootloader(board.port);
+        : await rebootToBootloaderCli(board.port, 115200, (msg) => sendLog(window, 'info', msg));
 
       if (rebooted) {
         sendLog(window, 'info', 'Reboot command sent, waiting for DFU device to appear...');
@@ -198,9 +225,22 @@ export async function flashWithDfu(
 
     if (!device) {
       sendLog(window, 'error', 'No DFU device found - board may need manual bootloader entry');
+
+      // Detect cross-flashing (MSP board + ArduPilot firmware) and give specific instructions
+      const isCrossFlash = board.detectionMethod === 'msp' && firmwarePath.toLowerCase().endsWith('.apj');
+      const errorMsg = isCrossFlash
+        ? 'Cross-flashing from iNav/Betaflight to ArduPilot requires manual DFU mode.\n\n' +
+          '1. Disconnect USB\n' +
+          '2. Hold the BOOT button (or short the boot pads)\n' +
+          '3. While holding BOOT, connect USB\n' +
+          '4. Release BOOT after connecting\n' +
+          '5. Click Flash again\n\n' +
+          'The BOOT button/pads are usually near the MCU chip on the board.'
+        : 'No STM32 DFU device found. Make sure the board is in DFU/bootloader mode (hold BOOT button while connecting).';
+
       return {
         success: false,
-        error: 'No STM32 DFU device found. Make sure the board is in DFU/bootloader mode (hold BOOT button while connecting).',
+        error: errorMsg,
         duration: Date.now() - startTime,
       };
     }

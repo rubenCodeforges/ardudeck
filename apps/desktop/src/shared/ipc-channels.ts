@@ -869,6 +869,8 @@ export interface SigningStatus {
   sentToFc: boolean;
   /** First 6 bytes of key as hex for visual identification */
   keyFingerprint?: string;
+  /** Full key as Base64 (matches Mission Planner display format) */
+  keyBase64?: string;
 }
 
 export interface AppUpdateInfo {

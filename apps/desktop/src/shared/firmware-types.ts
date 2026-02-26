@@ -13,7 +13,7 @@ export type FirmwareVehicleType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat'
 export type ReleaseType = 'stable' | 'beta' | 'dev';
 
 // Flasher type based on MCU
-export type FlasherType = 'dfu' | 'avrdude' | 'serial';
+export type FlasherType = 'dfu' | 'avrdude' | 'serial' | 'ardupilot';
 
 // Detection method for board identification
 export type DetectionMethod = 'vid-pid' | 'bootloader' | 'mavlink' | 'msp' | 'dfu' | 'manual';
@@ -150,7 +150,7 @@ export const KNOWN_BOARDS: Record<string, Partial<DetectedBoard>> = {
     name: 'ArduPilot ChibiOS',
     boardId: 'ChibiOS',
     mcuType: 'STM32',
-    flasher: 'dfu',
+    flasher: 'ardupilot',
     inBootloader: false,
   },
 
@@ -159,14 +159,14 @@ export const KNOWN_BOARDS: Record<string, Partial<DetectedBoard>> = {
     name: 'Pixhawk 1',
     boardId: 'Pixhawk1',
     mcuType: 'STM32F427',
-    flasher: 'dfu',
+    flasher: 'ardupilot',
     inBootloader: false,
   },
   '26ac:0032': {
     name: 'Pixhawk 4',
     boardId: 'Pixhawk4',
     mcuType: 'STM32F765',
-    flasher: 'dfu',
+    flasher: 'ardupilot',
     inBootloader: false,
   },
 
@@ -175,21 +175,21 @@ export const KNOWN_BOARDS: Record<string, Partial<DetectedBoard>> = {
     name: 'CubeBlack',
     boardId: 'CubeBlack',
     mcuType: 'STM32F427',
-    flasher: 'dfu',
+    flasher: 'ardupilot',
     inBootloader: false,
   },
   '2dae:1016': {
     name: 'CubeOrange',
     boardId: 'CubeOrange',
     mcuType: 'STM32H743',
-    flasher: 'dfu',
+    flasher: 'ardupilot',
     inBootloader: false,
   },
   '2dae:1058': {
     name: 'CubeOrange+',
     boardId: 'CubeOrangePlus',
     mcuType: 'STM32H743',
-    flasher: 'dfu',
+    flasher: 'ardupilot',
     inBootloader: false,
   },
 
@@ -202,8 +202,9 @@ export const KNOWN_BOARDS: Record<string, Partial<DetectedBoard>> = {
     inBootloader: false,
   },
   '0483:5740': {
-    name: 'SpeedyBee F405 (DFU)',
-    boardId: 'speedybeef4',
+    // Generic STM32 VCP PID — shared by many F4 boards (SpeedyBee, Matek, etc.)
+    name: 'STM32F405 Flight Controller',
+    boardId: 'unknown',
     mcuType: 'STM32F405',
     flasher: 'dfu',
     inBootloader: true,
@@ -320,7 +321,7 @@ export const KNOWN_BOARDS: Record<string, Partial<DetectedBoard>> = {
  */
 export const FIRMWARE_SERVERS = {
   ardupilot: {
-    manifest: 'https://firmware.ardupilot.org/manifest.json',
+    manifest: 'https://firmware.ardupilot.org/manifest.json.gz',
     base: 'https://firmware.ardupilot.org',
   },
   px4: {

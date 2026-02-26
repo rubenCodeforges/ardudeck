@@ -325,14 +325,15 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       console.log('[FirmwareStore] Detected board:', matchTarget, '(target:', detectedTargetName, ', boardId:', board.boardId, ')');
       console.log('[FirmwareStore] Available boards:', availableBoards.length, 'Source:', targetSource);
 
-      if (matchTarget && availableBoards.length > 0) {
+      if (matchTarget && matchTarget !== 'unknown' && availableBoards.length > 0) {
         const targetUpper = matchTarget.toUpperCase();
         const boardIdLower = board.boardId.toLowerCase();
 
         const matchingBoard = availableBoards.find(b => {
           // Exact match on target name (case-insensitive) — primary match
           if (b.id.toUpperCase() === targetUpper) return true;
-          // Fallback: loose matching on board ID or name
+          // Fallback: loose matching on board ID or name (skip if boardId is generic)
+          if (boardIdLower === 'unknown' || boardIdLower === 'stm32-dfu') return false;
           const idMatch = b.id.toLowerCase() === boardIdLower;
           const nameIncludes = b.name.toLowerCase().includes(boardIdLower);
           return idMatch || nameIncludes;
@@ -435,7 +436,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
           name: result.boardName,
           boardId: result.boardName.toLowerCase(),
           mcuType: 'Unknown',
-          flasher: 'dfu',
+          flasher: 'ardupilot',
           port,
           inBootloader: false,
           detectionMethod: 'mavlink',
@@ -469,16 +470,18 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
 
   // Selection actions
   setSelectedVehicleType: (type) => {
+    // Keep board and availableBoards — board lists don't change per vehicle type
+    // Only clear version-related state since versions depend on vehicle type
     set({
       selectedVehicleType: type,
-      selectedBoard: null,
       selectedVersionGroup: null,
       selectedVersion: null,
-      availableBoards: [],
       versionGroups: [],
     });
-    // Fetch boards for the new vehicle type
-    get().fetchBoards();
+    // If a board is selected, fetch versions for the new vehicle type
+    if (get().selectedBoard) {
+      get().fetchVersions();
+    }
   },
 
   setSelectedSource: (source) => {
@@ -536,10 +539,16 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
 
   setSelectedVersionGroup: (group) => {
     set({ selectedVersionGroup: group });
-    // Auto-select latest stable version in group
+    // Auto-select latest version in group that matches current filters
     if (group) {
-      const stableVersion = group.versions.find(v => v.releaseType === 'stable');
-      set({ selectedVersion: stableVersion || group.versions[0] || null });
+      const { includeBeta, includeDev } = get();
+      const visible = group.versions.filter(v => {
+        if (v.releaseType === 'stable') return true;
+        if (v.releaseType === 'beta' && includeBeta) return true;
+        if (v.releaseType === 'dev' && includeDev) return true;
+        return false;
+      });
+      set({ selectedVersion: visible[0] || null });
     } else {
       set({ selectedVersion: null });
     }
@@ -637,12 +646,21 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
           isFetchingVersions: false,
           versionsError: null,
         });
-        // Auto-select latest version group
-        const latestGroup = result.groups.find(g => g.isLatest) || result.groups[0];
+        // Auto-select latest version group that has visible versions
+        const { includeBeta, includeDev } = get();
+        const hasVisibleVersions = (g: VersionGroup) => g.versions.some(v => {
+          if (v.releaseType === 'stable') return true;
+          if (v.releaseType === 'beta' && includeBeta) return true;
+          if (v.releaseType === 'dev' && includeDev) return true;
+          return false;
+        });
+        // Prefer the latest group that has visible versions, fall back to any group
+        const latestGroup = result.groups.find(g => g.isLatest && hasVisibleVersions(g))
+          || result.groups.find(g => hasVisibleVersions(g))
+          || result.groups[0];
         if (latestGroup) {
-          set({ selectedVersionGroup: latestGroup });
-          const stableVersion = latestGroup.versions.find(v => v.releaseType === 'stable');
-          set({ selectedVersion: stableVersion || latestGroup.versions[0] || null });
+          // Use setSelectedVersionGroup to get filter-aware version selection
+          get().setSelectedVersionGroup(latestGroup);
         }
       } else {
         const errorMsg = result?.error || 'Failed to fetch versions (no error message)';
@@ -705,6 +723,19 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
         return;
       }
 
+      // Cross-flashing: ArduPilot onto an MSP board (iNav/Betaflight) needs _with_bl.hex
+      // The .apj is application-only and requires ArduPilot's bootloader already present.
+      // The _with_bl.hex bundles bootloader + application for a full chip flash.
+      let versionToDownload = selectedVersion;
+      if (selectedSource === 'ardupilot' && detectedBoard.detectionMethod === 'msp') {
+        const url = selectedVersion.downloadUrl;
+        if (url.endsWith('.apj')) {
+          const crossFlashUrl = url.replace(/\.apj$/, '_with_bl.hex');
+          versionToDownload = { ...selectedVersion, downloadUrl: crossFlashUrl };
+          console.log(`[FirmwareStore] Cross-flash: rewrote URL to ${crossFlashUrl}`);
+        }
+      }
+
       set({
         flashState: 'downloading',
         flashError: null,
@@ -712,7 +743,7 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
       });
 
       try {
-        const downloadResult = await window.electronAPI?.downloadFirmware?.(selectedVersion);
+        const downloadResult = await window.electronAPI?.downloadFirmware?.(versionToDownload);
         if (!downloadResult?.success || !downloadResult.filePath) {
           set({
             flashState: 'error',

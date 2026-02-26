@@ -4,6 +4,7 @@
  */
 
 import * as https from 'https';
+import * as zlib from 'zlib';
 import * as path from 'path';
 import { app } from 'electron';
 import {
@@ -31,7 +32,7 @@ const SUPPORTED_VEHICLES: Record<FirmwareSource, FirmwareVehicleType[]> = {
   ardupilot: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],
   px4: ['copter', 'plane', 'vtol', 'rover'],
   betaflight: ['copter'],
-  inav: ['copter', 'plane'],
+  inav: ['copter', 'plane', 'rover', 'boat'],
   custom: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],
 };
 
@@ -131,6 +132,7 @@ async function fetchArduPilotManifest(): Promise<any> {
 
   return new Promise((resolve, reject) => {
     const url = FIRMWARE_SERVERS.ardupilot.manifest;
+    const isGzipped = url.endsWith('.gz');
 
     https.get(url, (res) => {
       if (res.statusCode !== 200) {
@@ -138,11 +140,13 @@ async function fetchArduPilotManifest(): Promise<any> {
         return;
       }
 
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => { chunks.push(chunk); });
       res.on('end', () => {
         try {
-          const manifest = JSON.parse(data);
+          const buffer = Buffer.concat(chunks);
+          const jsonStr = isGzipped ? zlib.gunzipSync(buffer).toString('utf-8') : buffer.toString('utf-8');
+          const manifest = JSON.parse(jsonStr);
           manifestCache = {
             data: manifest,
             fetchedAt: Date.now(),
@@ -1009,9 +1013,19 @@ export async function getArduPilotVersions(
       if (entry.format !== 'apj') continue;
 
       const version = entry['mav-firmware-version'];
-      const releaseType = entry['mav-firmware-version-type']?.toLowerCase() || 'stable';
+      const rawType = (entry['mav-firmware-version-type'] || '').toLowerCase();
 
       if (!version) continue;
+
+      // Normalize release type: "STABLE-4.6.3" → "stable", "OFFICIAL" → "stable", "DEV" → "dev", "BETA" → "beta"
+      let releaseType: 'stable' | 'beta' | 'dev' = 'stable';
+      if (rawType.startsWith('stable') || rawType === 'official') {
+        releaseType = 'stable';
+      } else if (rawType.startsWith('beta')) {
+        releaseType = 'beta';
+      } else if (rawType.startsWith('dev')) {
+        releaseType = 'dev';
+      }
 
       // Parse major.minor from version (e.g., "4.5.7" -> "4.5")
       const parts = version.split('.');
@@ -1020,9 +1034,9 @@ export async function getArduPilotVersions(
 
       const fwVersion: FirmwareVersion = {
         version,
-        releaseType: releaseType === 'official' ? 'stable' : releaseType as any,
+        releaseType,
         releaseDate: '',
-        downloadUrl: entry.url || `${FIRMWARE_SERVERS.ardupilot.base}/${firmwareType}/${releaseType === 'official' ? 'stable' : releaseType}-${version}/${boardId}/ardu${firmwareNameLower}.apj`,
+        downloadUrl: entry.url || `${FIRMWARE_SERVERS.ardupilot.base}/${firmwareType}/${releaseType}-${version}/${boardId}/ardu${firmwareNameLower}.apj`,
         boardId,
         vehicleType: firmwareType,
         gitHash: entry['git-sha'],

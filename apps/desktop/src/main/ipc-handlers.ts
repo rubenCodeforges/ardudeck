@@ -80,7 +80,7 @@ import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
-import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getBetaflightVersions, resolveBetaflightDownloadUrl, getInavBoards, getInavVersions, type BoardInfo, type VersionGroup } from './firmware/index.js';
+import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, flashWithArduPilotBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getBetaflightVersions, resolveBetaflightDownloadUrl, getInavBoards, getInavVersions, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
 import { initMissionLibraryHandlers, cleanupMissionLibraryHandlers } from './mission-library/index.js';
@@ -273,6 +273,9 @@ function getSigningStatus(): SigningStatus {
     sentToFc: signingSentToFc,
     keyFingerprint: signingKey
       ? Array.from(signingKey.slice(0, 6)).map(b => b.toString(16).padStart(2, '0')).join('')
+      : undefined,
+    keyBase64: signingKey
+      ? Buffer.from(signingKey).toString('base64')
       : undefined,
   };
 }
@@ -3460,56 +3463,78 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       let result: FlashResult;
 
-      // For boards with serial port, check USB VID to determine method
-      // CP2102/FTDI (10c4, 0403, 1a86) = Serial bootloader, STM32 native (0483) = DFU
-      const hasSerialPort = board.port && (board.detectionMethod === 'msp' || board.detectionMethod === 'bootloader');
+      // ArduPilot boards with a serial port use the ArduPilot bootloader protocol.
+      // Only boards confirmed as ArduPilot (by VID/PID or MAVLink) use this path.
+      // .apj hint only applies to unidentified boards (vid-pid) — NOT MSP boards,
+      // since iNav/Betaflight don't have the ArduPilot bootloader.
+      const isApjFile = firmwarePath.toLowerCase().endsWith('.apj');
+      const isArduPilotBoard = board.flasher === 'ardupilot' || board.detectionMethod === 'mavlink';
+      const apjOnUnidentifiedBoard = isApjFile && board.detectionMethod !== 'msp';
+      const useArduPilotFlasher = board.port && (isArduPilotBoard || apjOnUnidentifiedBoard);
 
-      if (hasSerialPort) {
-        const vid = board.usbVid;
-        const isNativeUsb = vid === 0x0483; // STM32 native USB
-        const isUsbSerial = vid === 0x10c4 || vid === 0x0403 || vid === 0x1a86; // CP2102, FTDI, CH340
+      sendLog(mainWindow, 'info', `Routing decision: isApj=${isApjFile}, isArduPilotBoard=${isArduPilotBoard}, apjOnUnidentified=${apjOnUnidentifiedBoard}, useArduPilot=${!!useArduPilotFlasher}, hasPort=${!!board.port}`);
 
-        if (isNativeUsb) {
-          sendLog(mainWindow, 'info', 'Board with native USB - using DFU...');
-          result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-        } else if (isUsbSerial || board.detectionMethod === 'bootloader') {
-          // USB-serial adapters OR boards already in bootloader mode -> use serial bootloader
-          sendLog(mainWindow, 'info', 'Board with USB-serial adapter - using serial bootloader...');
-          // If already detected via bootloader, skip reboot sequence
-          const flashOptions = board.detectionMethod === 'bootloader'
-            ? { ...options, noRebootSequence: true }
-            : options;
-          if (!flashOptions?.noRebootSequence && board.detectionMethod === 'msp') {
-            sendLog(mainWindow, 'info', 'Will send MSP reboot to bootloader first...');
-          }
-          result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, flashOptions);
-        } else {
-          // Unknown VID, try DFU first
-          sendLog(mainWindow, 'info', `Board with unknown VID ${vid?.toString(16)} - trying DFU...`);
-          result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-        }
-      } else if (board.flasher === 'dfu') {
-        sendLog(mainWindow, 'info', 'Using DFU flasher...');
-        result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-      } else if (board.flasher === 'avrdude') {
-        sendLog(mainWindow, 'info', 'Using AVRdude flasher...');
-        result = await flashWithAvrdude(firmwarePath, board, mainWindow, firmwareAbortController);
-      } else if (board.flasher === 'serial' && board.port) {
-        // USB-serial boards (CP2102/FTDI) use STM32 UART bootloader
-        // Note: This requires boot pads to be shorted for bootloader entry
-        sendLog(mainWindow, 'info', 'Using STM32 serial bootloader...');
-        if (!options?.noRebootSequence) {
-          sendLog(mainWindow, 'warn', 'Serial bootloader may require BOOT pads to be shorted!');
-        }
-        try {
-          result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, options);
-        } catch (flashError) {
-          const errMsg = flashError instanceof Error ? flashError.message : String(flashError);
-          sendLog(mainWindow, 'error', `Serial flasher error: ${errMsg}`);
-          return { success: false, error: `Serial flash failed: ${errMsg}` };
-        }
+      if (useArduPilotFlasher) {
+        sendLog(mainWindow, 'info', `Using ArduPilot bootloader flasher (${isApjFile ? '.apj file' : 'board type'})...`);
+        result = await flashWithArduPilotBootloader(firmwarePath, board, mainWindow, firmwareAbortController, options);
       } else {
-        return { success: false, error: `Unsupported flasher type: ${board.flasher}` };
+        // For non-ArduPilot boards, use VID-based routing
+        // CP2102/FTDI (10c4, 0403, 1a86) = Serial bootloader, STM32 native (0483) = DFU
+        const hasSerialPort = board.port && (board.detectionMethod === 'msp' || board.detectionMethod === 'bootloader');
+
+        if (hasSerialPort) {
+          const vid = board.usbVid;
+          const isNativeUsb = vid === 0x0483; // STM32 native USB
+          const isUsbSerial = vid === 0x10c4 || vid === 0x0403 || vid === 0x1a86; // CP2102, FTDI, CH340
+
+          if (isNativeUsb && board.detectionMethod === 'msp') {
+            // MSP board with native USB: CLI 'dfu' reboots into DFU mode (USB DFU device).
+            // The board re-enumerates as VID 0x0483/PID 0xDF11 — no serial port.
+            sendLog(mainWindow, 'info', 'MSP board with native USB - using DFU via CLI reboot...');
+            result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+          } else if (isNativeUsb) {
+            sendLog(mainWindow, 'info', 'Board with native USB - using DFU...');
+            result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+          } else if (isUsbSerial || board.detectionMethod === 'bootloader') {
+            // USB-serial adapters OR boards already in bootloader mode -> use serial bootloader
+            sendLog(mainWindow, 'info', 'Board with USB-serial adapter - using serial bootloader...');
+            // If already detected via bootloader, skip reboot sequence
+            const flashOptions = board.detectionMethod === 'bootloader'
+              ? { ...options, noRebootSequence: true }
+              : options;
+            if (!flashOptions?.noRebootSequence && board.detectionMethod === 'msp') {
+              sendLog(mainWindow, 'info', 'Will send MSP reboot to bootloader first...');
+            }
+            result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, flashOptions);
+          } else {
+            // Unknown VID, try DFU first
+            sendLog(mainWindow, 'info', `Board with unknown VID ${vid?.toString(16)} - trying DFU...`);
+            result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+          }
+        } else if (board.flasher === 'dfu' || board.flasher === 'ardupilot') {
+          // ArduPilot boards without a port (e.g. in DFU mode) fall through to DFU
+          sendLog(mainWindow, 'info', 'Using DFU flasher...');
+          result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
+        } else if (board.flasher === 'avrdude') {
+          sendLog(mainWindow, 'info', 'Using AVRdude flasher...');
+          result = await flashWithAvrdude(firmwarePath, board, mainWindow, firmwareAbortController);
+        } else if (board.flasher === 'serial' && board.port) {
+          // USB-serial boards (CP2102/FTDI) use STM32 UART bootloader
+          // Note: This requires boot pads to be shorted for bootloader entry
+          sendLog(mainWindow, 'info', 'Using STM32 serial bootloader...');
+          if (!options?.noRebootSequence) {
+            sendLog(mainWindow, 'warn', 'Serial bootloader may require BOOT pads to be shorted!');
+          }
+          try {
+            result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, options);
+          } catch (flashError) {
+            const errMsg = flashError instanceof Error ? flashError.message : String(flashError);
+            sendLog(mainWindow, 'error', `Serial flasher error: ${errMsg}`);
+            return { success: false, error: `Serial flash failed: ${errMsg}` };
+          }
+        } else {
+          return { success: false, error: `Unsupported flasher type: ${board.flasher}` };
+        }
       }
 
       // Clear abort controller

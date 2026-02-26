@@ -9,6 +9,7 @@ export function SigningSection() {
     hasKey,
     sentToFc,
     keyFingerprint,
+    keyBase64,
     loading,
     error,
     setKey,
@@ -23,6 +24,7 @@ export function SigningSection() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmDisable, setConfirmDisable] = useState(false);
+  const [keyCopied, setKeyCopied] = useState(false);
 
   useEffect(() => {
     const unsub = initSigningListener();
@@ -146,12 +148,32 @@ export function SigningSection() {
             <span className="text-xs font-medium text-zinc-300">Set signing passphrase</span>
           </div>
           <div className="ml-7">
-            {hasKey && keyFingerprint && (
+            {hasKey && keyBase64 && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] text-zinc-500">Key:</span>
-                <code className="text-[10px] font-mono text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded">
-                  {keyFingerprint}...
+                <code className="text-[10px] font-mono text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded max-w-[220px] truncate" title={keyBase64}>
+                  {keyBase64}
                 </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(keyBase64);
+                    setKeyCopied(true);
+                    setTimeout(() => setKeyCopied(false), 2000);
+                  }}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+                  title="Copy key (Base64 - same format as Mission Planner)"
+                >
+                  {keyCopied ? (
+                    <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
               </div>
             )}
             <p className="text-xs text-zinc-500 mb-2">

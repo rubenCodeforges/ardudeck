@@ -7,6 +7,7 @@ interface SigningStore {
   hasKey: boolean;
   sentToFc: boolean;
   keyFingerprint: string | null;
+  keyBase64: string | null;
   loading: boolean;
   error: string | null;
 
@@ -25,6 +26,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
   hasKey: false,
   sentToFc: false,
   keyFingerprint: null,
+  keyBase64: null,
   loading: false,
   error: null,
 
@@ -37,6 +39,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
           hasKey: status.hasKey,
           sentToFc: status.sentToFc,
           keyFingerprint: status.keyFingerprint ?? null,
+          keyBase64: status.keyBase64 ?? null,
         });
       }
     } catch {
@@ -106,7 +109,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await window.electronAPI?.signingRemoveKey();
-      set({ enabled: false, hasKey: false, sentToFc: false, keyFingerprint: null, loading: false });
+      set({ enabled: false, hasKey: false, sentToFc: false, keyFingerprint: null, keyBase64: null, loading: false });
     } catch {
       set({ loading: false });
     }
@@ -118,6 +121,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
       hasKey: status.hasKey,
       sentToFc: status.sentToFc,
       keyFingerprint: status.keyFingerprint ?? null,
+      keyBase64: status.keyBase64 ?? null,
     });
   },
 }));

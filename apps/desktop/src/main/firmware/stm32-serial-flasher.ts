@@ -4,12 +4,13 @@
  * For boards connected via USB-serial adapter (not native USB)
  */
 
-import { SerialTransport } from '@ardudeck/comms';
+import { SerialTransport, listSerialPorts } from '@ardudeck/comms';
 import * as fs from 'fs/promises';
+import * as zlib from 'zlib';
 import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { DetectedBoard, FlashProgress, FlashResult, FlashOptions } from '../../shared/firmware-types.js';
-import { rebootToBootloader } from './msp-detector.js';
+import { rebootToBootloaderCli } from './msp-detector.js';
 import { acquireFlashLock, releaseFlashLock } from './flash-guard.js';
 
 // Inline firmware image type to avoid import issues
@@ -577,10 +578,38 @@ function parseHexFile(content: string): FirmwareImage {
 }
 
 /**
+ * Parse ArduPilot APJ file (JSON with base64 zlib-compressed image)
+ */
+async function parseApjFile(buffer: Buffer): Promise<FirmwareImage> {
+  const json = JSON.parse(buffer.toString('utf-8')) as { image?: string; image_size?: number };
+  if (!json.image || !json.image_size) {
+    throw new Error('Invalid APJ file: missing image or image_size');
+  }
+
+  const compressed = Buffer.from(json.image, 'base64');
+  const decompressed = await new Promise<Buffer>((resolve, reject) => {
+    zlib.inflate(compressed, (err, result) => {
+      if (err) reject(new Error(`APJ decompression failed: ${err.message}`));
+      else resolve(result);
+    });
+  });
+
+  return {
+    segments: [{ address: FLASH_START, data: new Uint8Array(decompressed.buffer, decompressed.byteOffset, decompressed.length) }],
+    totalSize: decompressed.length,
+  };
+}
+
+/**
  * Load firmware from file
  */
 async function loadFirmware(firmwarePath: string): Promise<FirmwareImage> {
   const buffer = await fs.readFile(firmwarePath);
+
+  // ArduPilot APJ file (JSON with compressed firmware)
+  if (firmwarePath.toLowerCase().endsWith('.apj')) {
+    return parseApjFile(buffer);
+  }
 
   if (firmwarePath.toLowerCase().endsWith('.hex')) {
     const content = buffer.toString('utf-8');
@@ -608,8 +637,10 @@ export async function flashWithSerialBootloader(
 ): Promise<FlashResult> {
   const startTime = Date.now();
   let bootloader: STM32SerialBootloader | null = null;
+  // Port may change after reboot (native USB re-enumerates)
+  let flashPort = board.port;
 
-  if (!board.port) {
+  if (!flashPort) {
     return {
       success: false,
       error: 'No serial port specified',
@@ -627,7 +658,7 @@ export async function flashWithSerialBootloader(
   }
 
   sendLog(window, 'info', `Starting serial bootloader flash: ${firmwarePath}`);
-  sendLog(window, 'info', `Port: ${board.port}`);
+  sendLog(window, 'info', `Port: ${flashPort}`);
 
   try {
     sendProgress(window, {
@@ -637,7 +668,8 @@ export async function flashWithSerialBootloader(
     });
 
     const firmware = await loadFirmware(firmwarePath);
-    sendLog(window, 'info', `Loaded firmware: ${firmware.totalSize} bytes`);
+    const fileExt = firmwarePath.split('.').pop()?.toLowerCase() ?? 'unknown';
+    sendLog(window, 'info', `Loaded firmware: ${firmware.totalSize} bytes, format: ${fileExt}, segments: ${firmware.segments.length}`);
 
     // If detected via MSP and no reboot sequence is not set, try to reboot into bootloader
     if (board.detectionMethod === 'msp' && !options?.noRebootSequence) {
@@ -647,14 +679,69 @@ export async function flashWithSerialBootloader(
         message: 'Rebooting into bootloader mode...',
       });
 
-      // Try both bootloader types - ROM first (more compatible), then flash
-      sendLog(window, 'info', 'Sending MSP reboot to bootloader (ROM mode)...');
-      const rebooted = await rebootToBootloader(board.port, 115200, false);
+      // Use CLI 'dfu' command to enter bootloader — works for both iNav and Betaflight.
+      // MSP_SET_REBOOT type 4 doesn't work reliably on iNav boards.
+      const isNativeUsb = board.usbVid === 0x0483;
+
+      sendLog(window, 'info', 'Entering CLI to send DFU reboot command...');
+
+      // Record ports before reboot so we can detect new ones
+      // On macOS, ports can appear as /dev/cu.* or /dev/tty.* — normalize for comparison
+      const normalizePort = (p: string) => p.replace('/dev/cu.', '/dev/tty.');
+      const portsBeforeRaw = isNativeUsb ? (await listSerialPorts()).map(p => p.path) : [];
+      const portsBeforeSet = new Set(portsBeforeRaw.map(normalizePort));
+      if (isNativeUsb) {
+        sendLog(window, 'info', `Ports before reboot (${portsBeforeRaw.length}): ${portsBeforeRaw.join(', ') || 'none'}`);
+      }
+
+      const rebooted = await rebootToBootloaderCli(flashPort, 115200, (msg) => sendLog(window, 'info', msg));
 
       if (rebooted) {
         sendLog(window, 'info', 'Reboot command sent!');
-        sendLog(window, 'info', 'Waiting 4s for board to enter bootloader...');
-        await new Promise(r => setTimeout(r, 4000));
+
+        if (isNativeUsb) {
+          // Native USB: port disappears and reappears as bootloader re-initializes USB CDC
+          sendLog(window, 'info', 'Waiting for board to re-enumerate USB...');
+          sendProgress(window, {
+            state: 'entering-bootloader',
+            progress: 7,
+            message: 'Waiting for bootloader USB...',
+          });
+
+          // Wait for port to disappear and reappear (up to 8 seconds)
+          let newPort: string | undefined;
+          for (let i = 0; i < 16; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            const portsNow = (await listSerialPorts()).map(p => p.path);
+            // Look for a new port that wasn't there before (normalize to handle macOS cu/tty variants)
+            const newPorts = portsNow.filter(p => !portsBeforeSet.has(normalizePort(p)));
+            if (newPorts.length > 0) {
+              newPort = newPorts[0];
+              sendLog(window, 'info', `New port appeared: ${newPort}`);
+              break;
+            }
+            // Also check if original port came back (normalize for cu/tty comparison)
+            const normalizedFlashPort = normalizePort(flashPort);
+            const matchingPort = i >= 4 ? portsNow.find(p => normalizePort(p) === normalizedFlashPort) : undefined;
+            if (matchingPort) {
+              newPort = matchingPort;
+              sendLog(window, 'info', `Original port reappeared: ${newPort}`);
+              break;
+            }
+          }
+
+          if (newPort) {
+            flashPort = newPort;
+            // Give the bootloader a moment to fully initialize
+            await new Promise(r => setTimeout(r, 500));
+          } else {
+            sendLog(window, 'warn', 'Port did not reappear after reboot — trying original port...');
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        } else {
+          sendLog(window, 'info', 'Waiting 4s for board to enter bootloader...');
+          await new Promise(r => setTimeout(r, 4000));
+        }
       } else {
         sendLog(window, 'warn', 'MSP reboot command failed');
       }
@@ -664,6 +751,7 @@ export async function flashWithSerialBootloader(
 
     // STM32 ROM bootloader auto-detects baud from 0x7F sync byte
     // Standard rates - same as detection code
+    sendLog(window, 'info', `Connecting to bootloader on port: ${flashPort}`);
     const baudRates = [115200, 57600, 38400, 19200, 9600];
     let synced = false;
     let foundResponsiveBaudRate = false;
@@ -677,7 +765,7 @@ export async function flashWithSerialBootloader(
       sendLog(window, 'info', `Trying bootloader connection at ${baudRate} baud...`);
 
       try {
-        bootloader = new STM32SerialBootloader(board.port, window, baudRate);
+        bootloader = new STM32SerialBootloader(flashPort, window, baudRate);
         await bootloader.open();
 
         synced = await bootloader.sync();
@@ -699,7 +787,7 @@ export async function flashWithSerialBootloader(
             await bootloader.close();
             await new Promise(r => setTimeout(r, 1000));  // BSOD FIX: Was 500ms, increased for full driver release
 
-            bootloader = new STM32SerialBootloader(board.port, window, baudRate);
+            bootloader = new STM32SerialBootloader(flashPort, window, baudRate);
             await bootloader.open();
 
             synced = await bootloader.sync();
@@ -730,6 +818,7 @@ export async function flashWithSerialBootloader(
     }
 
     if (!synced || !bootloader) {
+      sendLog(window, 'error', `Bootloader sync failed on ${flashPort} after trying baud rates: ${baudRates.join(', ')}`);
       return {
         success: false,
         error: `Could not connect to bootloader. For boards with USB-serial adapter (CP2102/FTDI):
@@ -763,6 +852,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
           const flashSizeBytes = flashSizeKb * 1024;
           if (firmware.totalSize > flashSizeBytes) {
             const firmwareSizeKb = Math.round(firmware.totalSize / 1024);
+            sendLog(window, 'error', `Firmware too large: ${firmwareSizeKb}KB > ${flashSizeKb}KB flash`);
             await bootloader.close();
             return {
               success: false,
@@ -775,6 +865,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
     }
 
     if (abortController?.signal.aborted) {
+      sendLog(window, 'warn', 'Flash aborted by user');
       return { success: false, error: 'Aborted', duration: Date.now() - startTime };
     }
 
@@ -787,6 +878,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
 
     const erased = await bootloader.eraseFlash();
     if (!erased) {
+      sendLog(window, 'error', 'Flash erase command failed — bootloader did not ACK');
       return {
         success: false,
         error: 'Flash erase failed',
@@ -796,6 +888,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
     sendLog(window, 'info', 'Flash erased');
 
     if (abortController?.signal.aborted) {
+      sendLog(window, 'warn', 'Flash aborted by user after erase');
       return { success: false, error: 'Aborted', duration: Date.now() - startTime };
     }
 

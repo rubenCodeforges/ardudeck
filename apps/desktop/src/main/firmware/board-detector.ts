@@ -151,9 +151,10 @@ async function findSerialPortForDevice(vid: string, pid: string): Promise<string
     } else if (platform === 'darwin') {
       // On macOS, scan /dev for tty.usbmodem* and tty.usbserial* devices
       // and try to match via ioreg USB info
+      // Also check cu.usbmodem* — ArduPilot ChibiOS CDC devices may only enumerate there
       try {
-        // Get list of USB serial devices
-        const { stdout: lsOutput } = await execAsync('ls /dev/tty.usb* 2>/dev/null || true', { timeout: 3000 });
+        // Get list of USB serial devices (both tty and cu)
+        const { stdout: lsOutput } = await execAsync('ls /dev/tty.usb* /dev/cu.usbmodem* 2>/dev/null || true', { timeout: 3000 });
         const devices = lsOutput.split('\n').filter(d => d.trim());
 
         if (devices.length === 0) return undefined;
@@ -221,8 +222,10 @@ export async function detectBoards(): Promise<DetectedBoard[]> {
 
     if (knownBoard) {
       // Find serial port if not already found
+      // Always try — ArduPilot boards need a port for bootloader flashing,
+      // and the lookup is fast (returns undefined for actual DFU-only devices)
       let port = device.port;
-      if (!port && knownBoard.flasher !== 'dfu') {
+      if (!port) {
         port = await findSerialPortForDevice(device.vid, device.pid);
       }
 

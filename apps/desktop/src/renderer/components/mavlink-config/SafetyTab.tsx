@@ -28,6 +28,7 @@ import { SigningSection } from '../settings/SigningSection';
 import {
   SAFETY_PRESETS,
   FENCE_TYPES,
+  ARMING_CHECKS,
   type SafetyPreset,
 } from './presets/mavlink-presets';
 
@@ -92,6 +93,28 @@ const SafetyTab: React.FC = () => {
       }
     }
   }, [setParameter]);
+
+  // Individual arming check entries (exclude bit 1 "All" which is a special flag)
+  const armingCheckEntries = useMemo(() =>
+    Object.entries(ARMING_CHECKS)
+      .filter(([bit]) => Number(bit) !== 1)
+      .map(([bit, info]) => ({ bit: Number(bit), ...info }))
+      .sort((a, b) => a.bit - b.bit),
+    []
+  );
+
+  // All individual bits OR'd together (65534 = all checks except the "All" flag)
+  const allBitsValue = useMemo(() =>
+    armingCheckEntries.reduce((acc, entry) => acc | entry.bit, 0),
+    [armingCheckEntries]
+  );
+
+  const isCustomMode = safetyValues.armingCheck !== 1 && safetyValues.armingCheck !== 0;
+
+  const toggleArmingCheck = useCallback((bit: number) => {
+    const newValue = safetyValues.armingCheck ^ bit;
+    setParameter('ARMING_CHECK', newValue);
+  }, [safetyValues.armingCheck, setParameter]);
 
   const modified = modifiedCount();
 
@@ -369,6 +392,7 @@ const SafetyTab: React.FC = () => {
             onChange={(e) => {
               if (e.target.value === 'all') setParameter('ARMING_CHECK', 1);
               else if (e.target.value === 'none') setParameter('ARMING_CHECK', 0);
+              else if (e.target.value === 'custom') setParameter('ARMING_CHECK', allBitsValue);
             }}
             className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
           >
@@ -389,33 +413,24 @@ const SafetyTab: React.FC = () => {
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          {[
-            { name: 'Barometer', bit: 2 },
-            { name: 'Compass', bit: 4 },
-            { name: 'GPS Lock', bit: 8 },
-            { name: 'INS (Gyro/Accel)', bit: 16 },
-            { name: 'Parameters', bit: 32 },
-            { name: 'RC Channels', bit: 64 },
-            { name: 'Board Voltage', bit: 128 },
-            { name: 'Battery Level', bit: 256 },
-            { name: 'Logging', bit: 1024 },
-            { name: 'Safety Switch', bit: 2048 },
-          ].map((check) => {
+          {armingCheckEntries.map((check) => {
             const isEnabled = safetyValues.armingCheck === 1 || (safetyValues.armingCheck & check.bit) !== 0;
             return (
-              <div
-                key={check.name}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
+              <button
+                key={check.bit}
+                onClick={() => isCustomMode && toggleArmingCheck(check.bit)}
+                title={isCustomMode ? check.description : 'Switch to Custom mode to toggle individual checks'}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors ${
                   isEnabled ? 'bg-green-500/10 text-green-400' : 'bg-zinc-800/50 text-zinc-500'
-                }`}
+                } ${isCustomMode ? 'cursor-pointer hover:bg-zinc-700/40' : 'cursor-default'}`}
               >
                 {isEnabled ? (
-                  <CheckCircle className="w-3 h-3" />
+                  <CheckCircle className="w-3 h-3 shrink-0" />
                 ) : (
-                  <XCircle className="w-3 h-3" />
+                  <XCircle className="w-3 h-3 shrink-0" />
                 )}
                 <span>{check.name}</span>
-              </div>
+              </button>
             );
           })}
         </div>

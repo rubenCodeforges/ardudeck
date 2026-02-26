@@ -485,12 +485,13 @@ export function FirmwareFlashView() {
     }
   }, [isConnected, connectedBoardId, connectedProtocol, connectedFcVariant, detectedBoard, sourceExplicitlySet, setSelectedBoard, autoSetSource]);
 
-  // Fetch boards on mount and when source/vehicle changes
+  // Fetch boards on mount and when source changes
+  // Board lists don't depend on vehicle type for any source
   useEffect(() => {
     if (selectedSource !== 'custom') {
       fetchBoards();
     }
-  }, [selectedSource, selectedVehicleType]);
+  }, [selectedSource]);
 
   // Set up IPC event listeners
   useEffect(() => {
@@ -577,6 +578,37 @@ export function FirmwareFlashView() {
       return false;
     });
   }, [selectedVersionGroup, includeBeta, includeDev]);
+
+  // Filter version groups to only show groups with visible versions
+  const visibleVersionGroups = useMemo(() => {
+    return versionGroups.filter(group =>
+      group.versions.some(v => {
+        if (v.releaseType === 'stable') return true;
+        if (v.releaseType === 'beta' && includeBeta) return true;
+        if (v.releaseType === 'dev' && includeDev) return true;
+        return false;
+      })
+    );
+  }, [versionGroups, includeBeta, includeDev]);
+
+  // Sync selectedVersion when filters change — ensure it's still visible
+  useEffect(() => {
+    if (!selectedVersionGroup || !selectedVersion) return;
+    const stillVisible = filteredVersions.some(v => v.version === selectedVersion.version);
+    if (!stillVisible) {
+      setSelectedVersion(filteredVersions[0] || null);
+    }
+  }, [filteredVersions, selectedVersion, selectedVersionGroup, setSelectedVersion]);
+
+  // Clear selectedVersionGroup if it's no longer visible (e.g. user disabled beta filter)
+  useEffect(() => {
+    if (!selectedVersionGroup) return;
+    const stillVisible = visibleVersionGroups.some(g => g.major === selectedVersionGroup.major);
+    if (!stillVisible) {
+      // Redirect to first visible group, or null if none exist
+      setSelectedVersionGroup(visibleVersionGroups[0] || null);
+    }
+  }, [visibleVersionGroups, selectedVersionGroup, setSelectedVersionGroup]);
 
   // Can only flash after clicking Connect (which sets detectedBoard with port info)
   const canFlash =
@@ -678,24 +710,24 @@ export function FirmwareFlashView() {
 
             {/* Connection Status - compact info line */}
             {detectedBoard && (
-              <div className="flex items-center gap-2 p-2 bg-zinc-800/50 rounded-lg border border-zinc-700 mb-3 text-sm">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-zinc-300">Connected:</span>
-                <span className="text-zinc-400">{detectedBoard.port || 'USB'}</span>
+              <div className="flex items-center gap-2 p-2 bg-zinc-800/50 rounded-lg border border-zinc-700 mb-3 text-sm overflow-hidden">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                <span className="text-zinc-300 shrink-0">Connected:</span>
+                <span className="text-zinc-400 truncate min-w-0">{detectedBoard.port || 'USB'}</span>
                 {/* Show detected board info with protocol badge */}
                 {detectedBoard.name && detectedBoard.name !== 'unknown' && detectedBoard.name !== 'Unknown' && (
                   <>
-                    <span className="text-zinc-600">•</span>
-                    <span className="text-emerald-400 font-medium">{detectedBoard.name}</span>
+                    <span className="text-zinc-600 shrink-0">·</span>
+                    <span className="text-emerald-400 font-medium shrink-0">{detectedBoard.name}</span>
                   </>
                 )}
                 {/* Show current firmware if detected */}
                 {detectedBoard.currentFirmware && (
-                  <span className="text-cyan-400 text-xs">({detectedBoard.currentFirmware})</span>
+                  <span className="text-cyan-400 text-xs shrink-0">({detectedBoard.currentFirmware})</span>
                 )}
                 {/* Protocol badge */}
                 {detectedBoard.detectionMethod && detectedBoard.detectionMethod !== 'vid-pid' && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
                     detectedBoard.detectionMethod === 'mavlink' ? 'bg-blue-500/20 text-blue-400' :
                     detectedBoard.detectionMethod === 'msp' ? 'bg-purple-500/20 text-purple-400' :
                     detectedBoard.detectionMethod === 'dfu' ? 'bg-amber-500/20 text-amber-400' :
@@ -707,12 +739,12 @@ export function FirmwareFlashView() {
                 {/* MCU info for bootloader detection */}
                 {detectedBoard.mcuType && detectedBoard.mcuType !== 'Unknown' && !detectedBoard.name?.includes(detectedBoard.mcuType) && (
                   <>
-                    <span className="text-zinc-600">•</span>
-                    <span className="text-zinc-400">{detectedBoard.mcuType}</span>
+                    <span className="text-zinc-600 shrink-0">·</span>
+                    <span className="text-zinc-400 shrink-0">{detectedBoard.mcuType}</span>
                   </>
                 )}
                 {detectedBoard.chipId && (
-                  <span className="text-zinc-500 text-xs font-mono ml-auto">
+                  <span className="text-zinc-500 text-xs font-mono ml-auto shrink-0">
                     0x{detectedBoard.chipId.toString(16).padStart(4, '0')}
                   </span>
                 )}
@@ -939,33 +971,65 @@ export function FirmwareFlashView() {
                 <div className="text-red-400 text-sm py-2">{versionsError}</div>
               ) : versionGroups.length > 0 ? (
                 <div className="space-y-3">
-                  {/* Version group pills */}
-                  <div className="flex flex-wrap gap-2">
-                    {versionGroups.slice(0, 4).map((group) => (
-                      <button
-                        key={group.major}
-                        onClick={() => setSelectedVersionGroup(group)}
-                        disabled={isFlashing}
-                        className={`
-                          px-3 py-1.5 rounded-lg text-sm transition-colors
-                          ${
-                            selectedVersionGroup?.major === group.major
-                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
-                          }
-                          ${group.isLatest ? 'ring-1 ring-emerald-500/30' : ''}
-                        `}
-                      >
-                        {group.label}
-                        {group.isLatest && (
-                          <span className="ml-1.5 text-emerald-400 text-xs">Latest</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Beta/Dev toggles (advanced mode) - show above pills for context */}
+                  {advancedMode && (
+                    <div className="flex gap-3">
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeBeta}
+                          onChange={(e) => setIncludeBeta(e.target.checked)}
+                          disabled={isFlashing}
+                          className="rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
+                        />
+                        Include Beta
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeDev}
+                          onChange={(e) => setIncludeDev(e.target.checked)}
+                          disabled={isFlashing}
+                          className="rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
+                        />
+                        Include Dev
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Version group pills - only show groups with visible versions */}
+                  {visibleVersionGroups.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {visibleVersionGroups.slice(0, 4).map((group) => (
+                        <button
+                          key={group.major}
+                          onClick={() => setSelectedVersionGroup(group)}
+                          disabled={isFlashing}
+                          className={`
+                            px-3 py-1.5 rounded-lg text-sm transition-colors
+                            ${
+                              selectedVersionGroup?.major === group.major
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
+                            }
+                            ${group.isLatest ? 'ring-1 ring-emerald-500/30' : ''}
+                          `}
+                        >
+                          {group.label}
+                          {group.isLatest && (
+                            <span className="ml-1.5 text-emerald-400 text-xs">Latest</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-zinc-500 text-sm py-2">
+                      No stable releases available for this board. Enable Beta or Dev in Advanced mode to see pre-release versions.
+                    </div>
+                  )}
 
                   {/* Specific version dropdown */}
-                  {selectedVersionGroup && (
+                  {selectedVersionGroup && filteredVersions.length > 0 ? (
                     <div className="flex gap-3 items-center">
                       <select
                         value={selectedVersion?.version || ''}
@@ -986,38 +1050,16 @@ export function FirmwareFlashView() {
                           </option>
                         ))}
                       </select>
-
-                      {/* Beta/Dev toggles (advanced mode) */}
-                      {advancedMode && (
-                        <div className="flex gap-3">
-                          <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={includeBeta}
-                              onChange={(e) => setIncludeBeta(e.target.checked)}
-                              disabled={isFlashing}
-                              className="rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
-                            />
-                            Beta
-                          </label>
-                          <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={includeDev}
-                              onChange={(e) => setIncludeDev(e.target.checked)}
-                              disabled={isFlashing}
-                              className="rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
-                            />
-                            Dev
-                          </label>
-                        </div>
-                      )}
                     </div>
-                  )}
+                  ) : selectedVersionGroup && filteredVersions.length === 0 ? (
+                    <div className="text-zinc-500 text-sm py-2">
+                      No versions match current filters for {selectedVersionGroup.label}. Enable Beta or Dev to see more.
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="text-zinc-500 text-sm py-2">
-                  Select a board to see available versions
+                  No firmware found for {selectedBoard?.name} ({VEHICLE_TYPE_NAMES[selectedVehicleType]})
                 </div>
               )}
             </div>

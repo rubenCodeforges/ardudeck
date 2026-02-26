@@ -8,14 +8,14 @@
 
 let isFlashing = false;
 let flashStartTime: number | null = null;
-let flashType: 'serial' | 'dfu' | null = null;
+let flashType: 'serial' | 'dfu' | 'ardupilot' | null = null;
 
 /**
  * Acquire the flash lock
  * @param type The type of flash operation ('serial' or 'dfu')
  * @returns true if lock acquired, false if already locked
  */
-export function acquireFlashLock(type: 'serial' | 'dfu'): boolean {
+export function acquireFlashLock(type: 'serial' | 'dfu' | 'ardupilot'): boolean {
   if (isFlashing) {
     console.warn(`[FlashGuard] Flash operation already in progress (${flashType}), rejecting new ${type} request`);
     return false;
@@ -50,7 +50,7 @@ export function isFlashInProgress(): boolean {
  * Get current flash operation type
  * @returns 'serial', 'dfu', or null
  */
-export function getFlashType(): 'serial' | 'dfu' | null {
+export function getFlashType(): 'serial' | 'dfu' | 'ardupilot' | null {
   return flashType;
 }
 
