@@ -3625,7 +3625,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // List available serial ports
   ipcMain.handle(IPC_CHANNELS.FIRMWARE_LIST_PORTS, async (): Promise<{
     success: boolean;
-    ports?: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string }>;
+    ports?: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string; friendlyName?: string }>;
     error?: string;
   }> => {
     try {
@@ -3638,6 +3638,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           manufacturer: p.manufacturer,
           vendorId: p.vendorId,
           productId: p.productId,
+          friendlyName: p.friendlyName,
         })),
       };
     } catch (error) {

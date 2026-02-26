@@ -446,7 +446,7 @@ const api = {
 
   listSerialPorts: (): Promise<{
     success: boolean;
-    ports?: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string }>;
+    ports?: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string; friendlyName?: string }>;
     error?: string;
   }> =>
     ipcRenderer.invoke(IPC_CHANNELS.FIRMWARE_LIST_PORTS),

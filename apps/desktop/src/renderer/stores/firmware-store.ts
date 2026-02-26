@@ -36,6 +36,7 @@ export interface SerialPortInfo {
   manufacturer?: string;
   vendorId?: string;
   productId?: string;
+  friendlyName?: string;
 }
 
 interface FirmwareStore {

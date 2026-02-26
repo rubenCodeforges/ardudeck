@@ -5,6 +5,7 @@ import type { FirmwareVehicleType, FirmwareSource } from '../../../shared/firmwa
 import { FIRMWARE_SOURCE_NAMES, KNOWN_BOARDS } from '../../../shared/firmware-types';
 import { BoardPicker } from './BoardPicker';
 import { BootPadWizard } from './BootPadWizard';
+import { formatPortDisplayName } from '../../utils/usb-device-names';
 
 /**
  * Get suggested boards based on detected MCU type
@@ -124,7 +125,7 @@ function SerialPortPicker({
   onProbe,
   disabled,
 }: {
-  ports: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string }>;
+  ports: Array<{ path: string; manufacturer?: string; vendorId?: string; productId?: string; friendlyName?: string }>;
   isLoading: boolean;
   isProbing: boolean;
   onRefresh: () => void;
@@ -161,10 +162,7 @@ function SerialPortPicker({
               className="flex items-center justify-between p-2 bg-zinc-900 rounded border border-zinc-700"
             >
               <div className="flex-1 min-w-0">
-                <div className="text-zinc-200 text-sm font-medium">{port.path}</div>
-                {port.manufacturer && (
-                  <div className="text-zinc-500 text-xs truncate">{port.manufacturer}</div>
-                )}
+                <div className="text-zinc-200 text-sm font-medium truncate">{formatPortDisplayName(port)}</div>
               </div>
               <button
                 onClick={() => onProbe(port.path)}
