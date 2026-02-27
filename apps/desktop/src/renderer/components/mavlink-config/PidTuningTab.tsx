@@ -15,7 +15,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb, AlertTriangle, Info } from 'lucide-react';
+import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb, AlertTriangle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { PresetSelector } from '../ui/PresetSelector';
@@ -191,6 +191,7 @@ const PidTuningTab: React.FC = () => {
                 Could not detect a known PID parameter scheme on this board.
                 Expected <span className="font-mono text-gray-300">ATC_RAT_*</span>,
                 <span className="font-mono text-gray-300"> RATE_RLL_*</span>,
+                <span className="font-mono text-gray-300"> RLL_RATE_*</span>,
                 <span className="font-mono text-gray-300"> RLL2SRV_*</span>, or
                 <span className="font-mono text-gray-300"> Q_A_RAT_*</span> parameters.
               </p>
@@ -199,17 +200,6 @@ const PidTuningTab: React.FC = () => {
               </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Detected scheme badge */}
-      {hasParameters && scheme && !isUnknown && (
-        <div className="bg-blue-500/10 rounded-xl border border-blue-500/20 p-3 flex items-center gap-3">
-          <Info className="w-4 h-4 text-blue-400 shrink-0" />
-          <p className="text-sm text-blue-300">
-            Detected <span className="font-medium">{scheme.label}</span> PID parameters
-            {!scheme.hasFF && <span className="text-blue-400/60"> (no feedforward on this firmware)</span>}
-          </p>
         </div>
       )}
 

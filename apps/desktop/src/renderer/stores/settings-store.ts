@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import type { TelemetrySpeed } from '../../shared/ipc-channels.js';
 
 /**
  * Vehicle type for visualization
@@ -21,6 +22,7 @@ export interface VehicleProfile {
   // Battery - common to all
   batteryCells: number;       // Cell count (3S=3, 4S=4, 6S=6, etc.)
   batteryCapacity: number;    // mAh
+  batteryChemistry?: 'lipo' | 'lihv' | 'lion' | 'life';  // Battery chemistry type (default: lipo)
   batteryDischarge?: number;  // C rating (optional, for advanced users)
 
   // === COPTER-SPECIFIC ===
@@ -92,6 +94,13 @@ export interface MissionDefaults {
 }
 
 /**
+ * Display unit preferences for large vehicle support
+ * 'small' = mm, g, mAh (default - racing/freestyle quads)
+ * 'large' = m, kg, Ah (large aircraft, industrial drones)
+ */
+export type DisplayUnits = 'small' | 'large';
+
+/**
  * Connection memory - remembers last used connection settings
  */
 export interface ConnectionMemory {
@@ -136,6 +145,13 @@ interface SettingsStore {
   // SITL preferences
   defaultSitlType: DefaultSitlType;
 
+  // Telemetry stream rate
+  telemetrySpeed: TelemetrySpeed;
+
+  // Display units
+  displayUnits: DisplayUnits;
+  setDisplayUnits: (units: DisplayUnits) => void;
+
   // Computed
   getActiveVehicle: () => VehicleProfile | null;
   getCruiseSpeed: () => number;
@@ -166,6 +182,9 @@ interface SettingsStore {
   // Actions - SITL preferences
   setDefaultSitlType: (type: DefaultSitlType) => void;
 
+  // Actions - Telemetry
+  setTelemetrySpeed: (speed: TelemetrySpeed) => void;
+
   // Reset
   resetToDefaults: () => void;
 }
@@ -193,8 +212,12 @@ const DEFAULT_VEHICLE: VehicleProfile = {
 /**
  * Get nominal voltage from cell count
  */
-function getCellVoltage(cells: number): number {
-  return cells * 3.7; // LiPo nominal voltage
+const CHEMISTRY_NOMINAL: Record<string, number> = {
+  lipo: 3.7, lihv: 3.8, lion: 3.6, life: 3.3,
+};
+
+function getCellVoltage(cells: number, chemistry?: string): number {
+  return cells * (CHEMISTRY_NOMINAL[chemistry || 'lipo'] ?? 3.7);
 }
 
 /**
@@ -208,29 +231,55 @@ function estimateCruiseSpeed(vehicle: VehicleProfile): number {
 
   switch (vehicle.type) {
     case 'copter': {
-      // Larger frames = faster cruise, but diminishing returns
-      // Motor count affects efficiency (more motors = slightly slower cruise for same size)
-      // frameSize is in mm, convert to inches for calculation (127mm = 5")
+      // If prop pitch is known, use it for a better speed estimate
+      // Pitch speed (theoretical max) = pitch(in) × RPM / 1056
+      // Cruise ≈ 40-50% of pitch speed
+      const prop = parsePropSize(vehicle.propSize);
+      if (prop && vehicle.motorKv) {
+        const voltage = getCellVoltage(vehicle.batteryCells || 4, vehicle.batteryChemistry);
+        const maxRPM = vehicle.motorKv * voltage;
+        // Pitch speed in m/s = pitch(in) × RPM × 0.0254 / 60
+        const pitchSpeed = prop.pitch * maxRPM * 0.0254 / 60;
+        return Math.min(pitchSpeed * 0.45, 40); // Cruise at ~45% pitch speed, cap at 40 m/s
+      }
+      // Fallback: frame size heuristic
       const frameSizeInches = (vehicle.frameSize || 127) / 25.4;
       const motorFactor = vehicle.motorCount ? (4 / vehicle.motorCount) * 0.9 + 0.1 : 1;
       return (8 + frameSizeInches * 0.8) * motorFactor; // 5" quad = ~12 m/s
     }
     case 'plane': {
-      // Wing loading affects cruise speed: heavier per area = faster
-      // Stall speed if known is best indicator
-      if (vehicle.stallSpeed) {
-        return vehicle.stallSpeed * 1.5; // Cruise at 1.5x stall
+      if (vehicle.stallSpeed && vehicle.stallSpeed > 0) {
+        return vehicle.stallSpeed * 1.5;
       }
+      // Prop pitch speed is a hard physical ceiling — cruise is a fraction of it
+      const prop = parsePropSize(vehicle.propSize);
+      if (prop && vehicle.motorKv) {
+        const voltage = getCellVoltage(vehicle.batteryCells || 4, vehicle.batteryChemistry);
+        const maxRPM = vehicle.motorKv * voltage;
+        const pitchSpeed = prop.pitch * maxRPM * 0.0254 / 60; // m/s
+        // Planes are more aerodynamically efficient than copters — cruise at ~60% pitch speed
+        return Math.min(pitchSpeed * 0.6, 80);
+      }
+      // Fallback: wing loading heuristic
       const wingspan = vehicle.wingspan || 1200;
-      const wingArea = vehicle.wingArea || (wingspan * wingspan * 0.15); // Rough AR=6 estimate
-      const wingLoading = vehicle.weight / (wingArea / 10000); // g/dm²
-      return 10 + Math.sqrt(wingLoading) * 0.8; // Higher loading = faster
+      const wingArea = vehicle.wingArea || ((wingspan * wingspan * 0.15) / 100);
+      if (wingArea <= 0 || vehicle.weight <= 0) return 15;
+      const wingLoading = vehicle.weight / (wingArea / 100); // g/dm²
+      if (!isFinite(wingLoading)) return 15;
+      return 10 + Math.sqrt(wingLoading) * 0.8;
     }
     case 'vtol': {
-      // VTOL in forward flight similar to plane
-      // Transition speed is a good reference if known
       if (vehicle.transitionSpeed) {
         return vehicle.transitionSpeed * 1.2;
+      }
+      // Same physics — pitch speed limits forward flight
+      const prop = parsePropSize(vehicle.propSize);
+      if (prop && vehicle.motorKv) {
+        const voltage = getCellVoltage(vehicle.batteryCells || 4, vehicle.batteryChemistry);
+        const maxRPM = vehicle.motorKv * voltage;
+        const pitchSpeed = prop.pitch * maxRPM * 0.0254 / 60;
+        // VTOL forward flight: ~55% pitch speed (more drag than pure plane)
+        return Math.min(pitchSpeed * 0.55, 60);
       }
       const wingspan = vehicle.wingspan || 1500;
       return 12 + (wingspan / 200);
@@ -241,13 +290,23 @@ function estimateCruiseSpeed(vehicle: VehicleProfile): number {
       return 2 + (wheelDiameter / 50); // 100mm wheels = ~4 m/s
     }
     case 'boat': {
-      // Hull type significantly affects speed
+      // Hull speed formula — displacement hulls have a hard limit
       const hullLength = vehicle.hullLength || 600;
-      const hullSpeedKnots = 1.34 * Math.sqrt(hullLength / 304.8); // Hull speed formula
+      const hullSpeedKnots = 1.34 * Math.sqrt(hullLength / 304.8);
       let multiplier = 1.0;
       if (vehicle.hullType === 'planing') multiplier = 2.0;
       if (vehicle.hullType === 'catamaran') multiplier = 1.3;
-      return hullSpeedKnots * 0.514 * multiplier; // Convert knots to m/s
+      const hullSpeedMs = hullSpeedKnots * 0.514 * multiplier;
+      // For prop-driven boats, pitch speed is also a ceiling
+      const prop = parsePropSize(vehicle.propSize);
+      if (prop && vehicle.motorKv) {
+        const voltage = getCellVoltage(vehicle.batteryCells || 4, vehicle.batteryChemistry);
+        const maxRPM = vehicle.motorKv * voltage;
+        const pitchSpeed = prop.pitch * maxRPM * 0.0254 / 60;
+        // Water props are ~30% efficient; real limit is min of hull speed and pitch speed
+        return Math.min(pitchSpeed * 0.3, hullSpeedMs);
+      }
+      return hullSpeedMs;
     }
     case 'sub': {
       // Thrusters affect speed capability
@@ -260,62 +319,148 @@ function estimateCruiseSpeed(vehicle: VehicleProfile): number {
 }
 
 /**
- * Estimate power draw based on vehicle type and properties
+ * Parse prop size string "5x4.5" → { diameter, pitch } in inches
+ */
+function parsePropSize(propSize: string | undefined): { diameter: number; pitch: number } | null {
+  if (!propSize) return null;
+  const match = propSize.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/);
+  if (!match?.[1] || !match[2]) return null;
+  return { diameter: parseFloat(match[1]), pitch: parseFloat(match[2]) };
+}
+
+/**
+ * Estimate power draw based on vehicle type and properties.
+ * Uses advanced fields (motor KV, ESC rating, prop size) when available
+ * for more accurate estimates; falls back to weight-based formulas.
  */
 function estimatePowerDraw(vehicle: VehicleProfile): number {
   const weight = vehicle.weight || 1000;
+  const weightKg = weight / 1000;
+  const voltage = getCellVoltage(vehicle.batteryCells || 4, vehicle.batteryChemistry);
+  const prop = parsePropSize(vehicle.propSize);
 
   switch (vehicle.type) {
     case 'copter': {
-      // Base: 150-200W per kg at cruise
-      // More motors = slightly more efficient (redundancy)
-      // Larger props = more efficient
-      // frameSize is in mm, convert to inches for calculation (127mm = 5")
       const motorCount = vehicle.motorCount || 4;
+
+      // Best: ESC rating known → max power × hover throttle fraction
+      if (vehicle.escRating) {
+        const maxPower = voltage * vehicle.escRating * motorCount;
+        const gramsPerMotor = weight / motorCount;
+        const hoverThrottle = Math.min(0.85, Math.max(0.3, 0.4 + (gramsPerMotor / 1500)));
+        return maxPower * hoverThrottle;
+      }
+
+      // Frame size + motor count heuristic
       const frameSizeInches = (vehicle.frameSize || 127) / 25.4;
-      const baseWattsPerKg = 200 - (motorCount - 4) * 5 - (frameSizeInches - 5) * 3;
-      return (weight / 1000) * Math.max(140, baseWattsPerKg);
+      let wattsPerKg = 200 - (motorCount - 4) * 5 - (frameSizeInches - 5) * 3;
+      wattsPerKg = Math.max(140, wattsPerKg);
+
+      if (prop) {
+        // Known prop: scale efficiency by diameter (5" = baseline 1.0)
+        const effFactor = Math.max(0.5, (prop.diameter / 5) ** 0.7);
+        wattsPerKg /= effFactor;
+
+        // KV + prop: penalize KV/prop mismatch
+        if (vehicle.motorKv) {
+          const cells = vehicle.batteryCells || 4;
+          const optimalKv = 30000 / (prop.diameter * Math.sqrt(cells));
+          const kvDeviation = Math.abs(vehicle.motorKv / optimalKv - 1);
+          wattsPerKg *= (1 + kvDeviation * 0.15);
+        }
+      } else {
+        // No prop data: assume average/suboptimal propulsion (+15% conservative)
+        wattsPerKg *= 1.15;
+      }
+
+      return weightKg * wattsPerKg;
     }
     case 'plane': {
-      // Wing loading affects efficiency
-      // Lower loading = more efficient glide
-      const wingArea = vehicle.wingArea;
-      if (wingArea) {
-        const wingLoading = weight / (wingArea / 10000);
-        return (weight / 1000) * (50 + wingLoading * 0.3);
+      // Best: ESC rating known → max power × cruise throttle fraction
+      if (vehicle.escRating) {
+        const maxPower = voltage * vehicle.escRating;
+        let cruiseThrottle = 0.35;
+        if (vehicle.wingArea && vehicle.wingArea > 0) {
+          const wingLoading = weight / (vehicle.wingArea / 100);
+          if (isFinite(wingLoading)) {
+            cruiseThrottle = Math.min(0.6, 0.25 + wingLoading * 0.001);
+          }
+        }
+        // With prop data we can refine; without, assume average efficiency
+        if (!prop) cruiseThrottle *= 1.1;
+        return maxPower * cruiseThrottle;
       }
-      return (weight / 1000) * 65;
+
+      // Fallback: wing loading based estimate
+      let basePower: number;
+      if (vehicle.wingArea && vehicle.wingArea > 0) {
+        const wingLoading = weight / (vehicle.wingArea / 100); // g/dm²
+        basePower = isFinite(wingLoading)
+          ? weightKg * (50 + wingLoading * 0.3)
+          : weightKg * 65;
+      } else {
+        basePower = weightKg * 65;
+      }
+
+      if (prop) {
+        // Known prop: larger diameter = better propulsive efficiency
+        const effFactor = Math.max(0.5, (prop.diameter / 10) ** 0.5);
+        basePower /= effFactor;
+        // High pitch/diameter = speed-optimized, less efficient cruise
+        const pitchRatio = prop.pitch / prop.diameter;
+        if (pitchRatio > 0.6) {
+          basePower *= (1 + (pitchRatio - 0.6) * 0.3);
+        }
+      } else {
+        // No prop data: assume average propulsion efficiency (+20% conservative)
+        basePower *= 1.2;
+      }
+
+      return basePower;
     }
     case 'vtol': {
-      // VTOL has hover inefficiency but forward flight efficiency
-      // Assume 50% hover, 50% forward flight average
-      const hoverPower = (weight / 1000) * 180;
-      const forwardPower = (weight / 1000) * 65;
-      return (hoverPower + forwardPower) / 2;
+      // VTOL: hover phase + forward flight phase
+      const hoverMotors = vehicle.vtolMotorCount || 4;
+      let hoverPower: number;
+      if (vehicle.escRating) {
+        const maxHoverPower = voltage * vehicle.escRating * hoverMotors;
+        hoverPower = maxHoverPower * 0.55;
+      } else {
+        hoverPower = weightKg * (prop ? 170 : 195); // prop known = better estimate
+      }
+      const forwardPower = weightKg * (prop ? 60 : 72);
+      // Typical mission: ~40% hover (takeoff/landing/loiter), 60% forward flight
+      return hoverPower * 0.4 + forwardPower * 0.6;
     }
     case 'rover': {
-      // Drive type affects efficiency
       let efficiency = 1.0;
-      if (vehicle.driveType === 'skid') efficiency = 1.3; // Less efficient
-      if (vehicle.driveType === 'ackermann') efficiency = 0.9; // More efficient
-      return (weight / 1000) * 30 * efficiency;
+      if (vehicle.driveType === 'skid') efficiency = 1.3;
+      if (vehicle.driveType === 'ackermann') efficiency = 0.9;
+      // ESC-based if available
+      if (vehicle.escRating) {
+        return voltage * vehicle.escRating * 0.4 * efficiency;
+      }
+      return weightKg * 30 * efficiency;
     }
     case 'boat': {
-      // Hull type significantly affects power
       let hullEfficiency = 1.0;
-      if (vehicle.hullType === 'planing') hullEfficiency = 2.5; // Much more power needed
+      if (vehicle.hullType === 'planing') hullEfficiency = 2.5;
       if (vehicle.hullType === 'catamaran') hullEfficiency = 0.8;
       if (vehicle.hullType === 'pontoon') hullEfficiency = 1.2;
-      // Propulsion type matters too
       let propEfficiency = 1.0;
       if (vehicle.propellerType === 'jet') propEfficiency = 1.5;
       if (vehicle.propellerType === 'paddle') propEfficiency = 1.3;
-      return (weight / 1000) * 40 * hullEfficiency * propEfficiency;
+      if (vehicle.escRating) {
+        return voltage * vehicle.escRating * 0.45 * hullEfficiency * propEfficiency;
+      }
+      return weightKg * 40 * hullEfficiency * propEfficiency;
     }
     case 'sub': {
-      // Depth doesn't affect power much, but thruster count does
       const thrusterCount = vehicle.thrusterCount || 4;
-      return (weight / 1000) * (35 + thrusterCount * 5);
+      if (vehicle.escRating) {
+        return voltage * vehicle.escRating * thrusterCount * 0.35;
+      }
+      return weightKg * (35 + thrusterCount * 5);
     }
     default:
       return 150;
@@ -355,6 +500,8 @@ export const useSettingsStore = create<SettingsStore>()(
   flightStats: { ...DEFAULT_FLIGHT_STATS },
   connectionMemory: { ...DEFAULT_CONNECTION_MEMORY },
   defaultSitlType: 'inav',
+  telemetrySpeed: 'normal' as TelemetrySpeed,
+  displayUnits: 'small' as DisplayUnits,
 
   // Computed
   getActiveVehicle: () => {
@@ -373,17 +520,21 @@ export const useSettingsStore = create<SettingsStore>()(
     const vehicle = get().getActiveVehicle();
     if (!vehicle) return 20 * 60; // Default 20 minutes
 
-    const voltage = getCellVoltage(vehicle.batteryCells || 4);
+    const voltage = getCellVoltage(vehicle.batteryCells || 4, vehicle.batteryChemistry);
     const powerDraw = vehicle._avgPowerDraw || estimatePowerDraw(vehicle);
 
-    if (powerDraw <= 0) return 20 * 60;
+    if (!powerDraw || powerDraw <= 0 || !isFinite(powerDraw)) return 20 * 60;
 
     // Energy in Wh = (mAh * V) / 1000
     const energyWh = (vehicle.batteryCapacity * voltage) / 1000;
     // Time in hours = Energy / Power, convert to seconds
     // Apply 80% usable capacity for safety
     const flightTimeSeconds = ((energyWh / powerDraw) * 0.8) * 3600;
-    return Math.round(flightTimeSeconds);
+
+    // Guard against NaN/Infinity from edge-case inputs
+    if (!isFinite(flightTimeSeconds) || flightTimeSeconds < 0) return 20 * 60;
+    // Cap at 24 hours - anything beyond is clearly an estimation error
+    return Math.min(Math.round(flightTimeSeconds), 24 * 3600);
   },
 
   // Estimated range in meters
@@ -393,7 +544,12 @@ export const useSettingsStore = create<SettingsStore>()(
 
     const flightTime = get().getEstimatedFlightTime();
     const cruiseSpeed = vehicle._cruiseSpeed || estimateCruiseSpeed(vehicle);
-    return Math.round(flightTime * cruiseSpeed);
+
+    if (!isFinite(cruiseSpeed) || cruiseSpeed < 0) return 0;
+    const range = flightTime * cruiseSpeed;
+    // Guard against NaN/Infinity, cap at 10000km
+    if (!isFinite(range) || range < 0) return 0;
+    return Math.min(Math.round(range), 10_000_000);
   },
 
   // Persistence actions
@@ -408,6 +564,8 @@ export const useSettingsStore = create<SettingsStore>()(
           flightStats: settings.flightStats || { ...DEFAULT_FLIGHT_STATS },
           connectionMemory: settings.connectionMemory || { ...DEFAULT_CONNECTION_MEMORY },
           defaultSitlType: (settings as unknown as Record<string, unknown>).defaultSitlType as DefaultSitlType || 'inav',
+          telemetrySpeed: ((settings as unknown as Record<string, unknown>).telemetrySpeed as TelemetrySpeed) || 'normal',
+          displayUnits: ((settings as unknown as Record<string, unknown>).displayUnits as DisplayUnits) || 'small',
           _isInitialized: true,
         });
       } else {
@@ -432,6 +590,8 @@ export const useSettingsStore = create<SettingsStore>()(
         flightStats: state.flightStats,
         connectionMemory: state.connectionMemory,
         defaultSitlType: state.defaultSitlType,
+        telemetrySpeed: state.telemetrySpeed,
+        displayUnits: state.displayUnits,
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -534,6 +694,15 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ defaultSitlType: type });
   },
 
+  // Actions - Telemetry
+  setTelemetrySpeed: (speed) => {
+    set({ telemetrySpeed: speed });
+  },
+
+  setDisplayUnits: (units) => {
+    set({ displayUnits: units });
+  },
+
   // Reset
   resetToDefaults: () => {
     set({
@@ -543,6 +712,7 @@ export const useSettingsStore = create<SettingsStore>()(
       flightStats: { ...DEFAULT_FLIGHT_STATS },
       connectionMemory: { ...DEFAULT_CONNECTION_MEMORY },
       defaultSitlType: 'inav',
+      telemetrySpeed: 'normal',
     });
   },
 })));
@@ -564,6 +734,8 @@ useSettingsStore.subscribe(
     flightStats: state.flightStats,
     connectionMemory: state.connectionMemory,
     defaultSitlType: state.defaultSitlType,
+    telemetrySpeed: state.telemetrySpeed,
+    displayUnits: state.displayUnits,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -575,7 +747,9 @@ useSettingsStore.subscribe(
         curr.activeVehicleId !== prev.activeVehicleId ||
         curr.flightStats !== prev.flightStats ||
         curr.connectionMemory !== prev.connectionMemory ||
-        curr.defaultSitlType !== prev.defaultSitlType
+        curr.defaultSitlType !== prev.defaultSitlType ||
+        curr.telemetrySpeed !== prev.telemetrySpeed ||
+        curr.displayUnits !== prev.displayUnits
       ) {
         debouncedSave();
       }

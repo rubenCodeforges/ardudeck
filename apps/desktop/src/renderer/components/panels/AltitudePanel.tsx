@@ -2,7 +2,8 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 export function AltitudePanel() {
-  const { vfrHud, position } = useTelemetryStore();
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const position = useTelemetryStore((s) => s.position);
 
   return (
     <PanelContainer>

@@ -2,7 +2,7 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 export function SpeedPanel() {
-  const { vfrHud } = useTelemetryStore();
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
 
   return (
     <PanelContainer>

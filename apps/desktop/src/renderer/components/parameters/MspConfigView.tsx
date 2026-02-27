@@ -1357,6 +1357,204 @@ function TelemetryCard({
   );
 }
 
+// Feature bit constants (shared between MspConfigView and MspSensorsTabContent)
+const FEATURE_GPS = 7;
+const FEATURE_SONAR = 9;
+
+// Sensors Tab Content - isolated component to prevent telemetry re-renders from propagating to MspConfigView
+function MspSensorsTabContent({
+  sensors,
+  features,
+  featureSaving,
+  isInav,
+  onFeatureToggle,
+  onHardwareSensorToggle,
+}: {
+  sensors: { acc: boolean; baro: boolean; mag: boolean; gps: boolean; sonar: boolean; gyro: boolean };
+  features: number;
+  featureSaving: boolean;
+  isInav: boolean;
+  onFeatureToggle: (bit: number, enabled: boolean) => void;
+  onHardwareSensorToggle: (settingName: string, enabled: boolean) => void;
+}) {
+  // Telemetry subscriptions scoped to this component only - re-renders here don't affect MspConfigView
+  const gps = useTelemetryStore((s) => s.gps);
+  const attitude = useTelemetryStore((s) => s.attitude);
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const battery = useTelemetryStore((s) => s.battery);
+
+  return (
+    <div className="max-w-full px-4 space-y-4">
+      {/* Sensor Status Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <SensorCard
+          name="Gyroscope"
+          available={sensors.gyro}
+          Icon={RefreshCw}
+          description="Measures rotation speed - essential for flight"
+        />
+        <SensorCard
+          name="Accelerometer"
+          available={sensors.acc}
+          Icon={Ruler}
+          description="Measures tilt angle - needed for self-level"
+          liveValue={`${(attitude?.roll ?? 0).toFixed(0)}° / ${(attitude?.pitch ?? 0).toFixed(0)}°`}
+        />
+        <SensorCard
+          name="GPS"
+          available={sensors.gps}
+          Icon={Satellite}
+          description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Feature disabled or not connected'}
+          liveValue={sensors.gps ? `${gps?.satellites || 0} sats` : undefined}
+          canToggle={true}
+          isEnabled={(features & (1 << FEATURE_GPS)) !== 0}
+          onToggle={(enabled) => onFeatureToggle(FEATURE_GPS, enabled)}
+          toggleSaving={featureSaving}
+        />
+        <SensorCard
+          name="Barometer"
+          available={sensors.baro}
+          Icon={Gauge}
+          description="Measures altitude via air pressure"
+          liveValue={sensors.baro ? (vfrHud?.alt ?? 0) : undefined}
+          unit="m"
+          canToggle={true}
+          isEnabled={sensors.baro}
+          onToggle={(enabled) => onHardwareSensorToggle('baro_hardware', enabled)}
+          toggleSaving={featureSaving}
+        />
+        <SensorCard
+          name="Magnetometer"
+          available={sensors.mag}
+          Icon={Compass}
+          description="Measures heading - needed for GPS navigation"
+          liveValue={sensors.mag ? `${(attitude?.yaw ?? 0).toFixed(0)}°` : undefined}
+          canToggle={true}
+          isEnabled={sensors.mag}
+          onToggle={(enabled) => onHardwareSensorToggle('mag_hardware', enabled)}
+          toggleSaving={featureSaving}
+        />
+        <SensorCard
+          name="Rangefinder"
+          available={sensors.sonar}
+          Icon={Ruler}
+          description="Measures distance to ground - for precise landings"
+          canToggle={true}
+          isEnabled={(features & (1 << FEATURE_SONAR)) !== 0}
+          onToggle={(enabled) => onFeatureToggle(FEATURE_SONAR, enabled)}
+          toggleSaving={featureSaving}
+        />
+      </div>
+
+      {/* Live Telemetry Section */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Live Telemetry</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Attitude Card */}
+          <TelemetryCard
+            title="Attitude"
+            icon={Target}
+            values={[
+              { label: 'Roll', value: attitude?.roll ?? 0, unit: '°' },
+              { label: 'Pitch', value: attitude?.pitch ?? 0, unit: '°' },
+              { label: 'Yaw', value: attitude?.yaw ?? 0, unit: '°' },
+            ]}
+          />
+
+          {/* Altitude Card */}
+          <TelemetryCard
+            title="Altitude"
+            icon={Ruler}
+            values={[
+              { label: 'Alt', value: vfrHud?.alt ?? 0, unit: 'm' },
+              { label: 'Vario', value: vfrHud?.climb ?? 0, unit: 'm/s' },
+              { label: 'Voltage', value: battery?.voltage ?? 0, unit: 'V' },
+            ]}
+          />
+        </div>
+
+        {/* GPS Data Card (only if GPS available) */}
+        {sensors.gps && (
+          <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Satellite className="w-5 h-5 text-blue-400" />
+              <span className="font-medium text-blue-300">GPS Position</span>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="text-center">
+                <div className="text-lg font-mono text-cyan-400">
+                  {(gps?.lat || 0).toFixed(6)}
+                </div>
+                <div className="text-xs text-gray-500">Latitude</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-mono text-cyan-400">
+                  {(gps?.lon || 0).toFixed(6)}
+                </div>
+                <div className="text-xs text-gray-500">Longitude</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-mono text-cyan-400">
+                  {(gps?.alt || 0).toFixed(1)}
+                  <span className="text-xs text-gray-500 ml-1">m</span>
+                </div>
+                <div className="text-xs text-gray-500">GPS Alt</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-mono text-cyan-400">
+                  {(vfrHud?.groundspeed || 0).toFixed(1)}
+                  <span className="text-xs text-gray-500 ml-1">m/s</span>
+                </div>
+                <div className="text-xs text-gray-500">Speed</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!sensors.gps && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-yellow-400" />
+            <div>
+              <h4 className="font-medium text-yellow-400">GPS Not Connected</h4>
+              <p className="text-sm text-gray-400">
+                To use GPS Rescue (automatic return home), connect a GPS module to your flight controller.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isInav ? (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <Map className="w-6 h-6 text-green-400" />
+            <div>
+              <h4 className="font-medium text-green-400">iNav - Mission Planning Available!</h4>
+              <p className="text-sm text-gray-400">
+                Your board runs iNav which supports autonomous waypoint missions. Check Mission Planning in the navigation.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-800/30 border border-gray-700/30 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <Info className="w-6 h-6 text-gray-400" />
+            <div>
+              <h4 className="font-medium text-gray-300">Betaflight - FPV Racing & Freestyle</h4>
+              <p className="text-sm text-gray-500">
+                Betaflight is optimized for manual flight. For autonomous missions and GPS navigation, consider flashing iNav firmware.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Modes Tab Content - Uses the new modes wizard and advanced editor
 function ModesTabContent({ onNavigateToTab }: { onNavigateToTab?: (tabId: string) => void }) {
   const {
@@ -1649,8 +1847,8 @@ type TabId = 'tuning' | 'rates' | 'modes' | 'receiver' | 'ports' | 'sensors' | '
 
 export function MspConfigView() {
   const { connectionState, platformChangeInProgress, setPlatformChangeInProgress } = useConnectionStore();
-  // Use same telemetry store as OSD (populated by MSP polling via TELEMETRY_BATCH)
-  const { gps, attitude, flight, vfrHud, battery } = useTelemetryStore();
+  // Only subscribe to activeSensors (changes rarely) - live telemetry values are in MspSensorsTabContent
+  const activeSensorsFromFlight = useTelemetryStore((state) => state.flight?.activeSensors ?? 0);
   const { hasChanges: modesHaveChanges, saveToFC: saveModesToFC, isSaving: modesSaving } = useModesWizardStore();
   const { openWizard: openQuickSetup, isOpen: quickSetupOpen, applySuccess: quickSetupSuccess } = useQuickSetupStore();
   const [activeTab, setActiveTab] = useState<TabId>('tuning');
@@ -1676,8 +1874,7 @@ export function MspConfigView() {
   const [configActiveSensors, setConfigActiveSensors] = useState<number>(0); // Fetched once on config load
 
   // Feature bit constants (from MSP_FEATURE_CONFIG)
-  const FEATURE_GPS = 7;      // GPS feature enable
-  const FEATURE_SONAR = 9;    // Rangefinder/Sonar feature enable
+  // FEATURE_GPS and FEATURE_SONAR are defined at module level (shared with MspSensorsTabContent)
   const FEATURE_TELEMETRY = 10;
   const FEATURE_LED_STRIP = 16;
   const FEATURE_OSD = 18;
@@ -1691,7 +1888,7 @@ export function MspConfigView() {
   // Sensors - use activeSensors from config load or telemetry
   // Betaflight sensor flags (from sensor_helpers.js):
   // bit 0: ACC, bit 1: BARO, bit 2: MAG, bit 3: GPS, bit 4: SONAR, bit 5: GYRO
-  const activeSensors = configActiveSensors || flight?.activeSensors || 0;
+  const activeSensors = configActiveSensors || activeSensorsFromFlight || 0;
   const sensors = useMemo(() => ({
     acc: (activeSensors & (1 << 0)) !== 0,   // bit 0
     baro: (activeSensors & (1 << 1)) !== 0,  // bit 1
@@ -2594,176 +2791,16 @@ export function MspConfigView() {
         {/* Modes Tab */}
         {activeTab === 'modes' && <ModesTabContent onNavigateToTab={(tabId) => setActiveTab(tabId as TabId)} />}
 
-        {/* Sensors Tab */}
+        {/* Sensors Tab - extracted to isolate telemetry re-renders */}
         {activeTab === 'sensors' && (
-          <div className="max-w-full px-4 space-y-4">
-            {/* Sensor Status Cards */}
-            <div className="grid grid-cols-2 gap-4">
-              <SensorCard
-                name="Gyroscope"
-                available={sensors.gyro}
-                Icon={RefreshCw}
-                description="Measures rotation speed - essential for flight"
-              />
-              <SensorCard
-                name="Accelerometer"
-                available={sensors.acc}
-                Icon={Ruler}
-                description="Measures tilt angle - needed for self-level"
-                liveValue={`${(attitude?.roll ?? 0).toFixed(0)}° / ${(attitude?.pitch ?? 0).toFixed(0)}°`}
-              />
-              <SensorCard
-                name="GPS"
-                available={sensors.gps}
-                Icon={Satellite}
-                description={sensors.gps ? `${gps?.satellites || 0} satellites locked` : 'Feature disabled or not connected'}
-                liveValue={sensors.gps ? `${gps?.satellites || 0} sats` : undefined}
-                canToggle={true}
-                isEnabled={(features & (1 << FEATURE_GPS)) !== 0}
-                onToggle={(enabled) => handleFeatureToggle(FEATURE_GPS, enabled)}
-                toggleSaving={featureSaving}
-              />
-              <SensorCard
-                name="Barometer"
-                available={sensors.baro}
-                Icon={Gauge}
-                description="Measures altitude via air pressure"
-                liveValue={sensors.baro ? (vfrHud?.alt ?? 0) : undefined}
-                unit="m"
-                canToggle={true}
-                isEnabled={sensors.baro}
-                onToggle={(enabled) => handleHardwareSensorToggle('baro_hardware', enabled)}
-                toggleSaving={featureSaving}
-              />
-              <SensorCard
-                name="Magnetometer"
-                available={sensors.mag}
-                Icon={Compass}
-                description="Measures heading - needed for GPS navigation"
-                liveValue={sensors.mag ? `${(attitude?.yaw ?? 0).toFixed(0)}°` : undefined}
-                canToggle={true}
-                isEnabled={sensors.mag}
-                onToggle={(enabled) => handleHardwareSensorToggle('mag_hardware', enabled)}
-                toggleSaving={featureSaving}
-              />
-              <SensorCard
-                name="Rangefinder"
-                available={sensors.sonar}
-                Icon={Ruler}
-                description="Measures distance to ground - for precise landings"
-                canToggle={true}
-                isEnabled={(features & (1 << FEATURE_SONAR)) !== 0}
-                onToggle={(enabled) => handleFeatureToggle(FEATURE_SONAR, enabled)}
-                toggleSaving={featureSaving}
-              />
-            </div>
-
-            {/* Live Telemetry Section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Live Telemetry</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {/* Attitude Card */}
-                <TelemetryCard
-                  title="Attitude"
-                  icon={Target}
-                  values={[
-                    { label: 'Roll', value: attitude?.roll ?? 0, unit: '°' },
-                    { label: 'Pitch', value: attitude?.pitch ?? 0, unit: '°' },
-                    { label: 'Yaw', value: attitude?.yaw ?? 0, unit: '°' },
-                  ]}
-                />
-
-                {/* Altitude Card */}
-                <TelemetryCard
-                  title="Altitude"
-                  icon={Ruler}
-                  values={[
-                    { label: 'Alt', value: vfrHud?.alt ?? 0, unit: 'm' },
-                    { label: 'Vario', value: vfrHud?.climb ?? 0, unit: 'm/s' },
-                    { label: 'Voltage', value: battery?.voltage ?? 0, unit: 'V' },
-                  ]}
-                />
-              </div>
-
-              {/* GPS Data Card (only if GPS available) */}
-              {sensors.gps && (
-                <div className="p-4 rounded-xl border bg-blue-500/10 border-blue-500/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Satellite className="w-5 h-5 text-blue-400" />
-                    <span className="font-medium text-blue-300">GPS Position</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="text-center">
-                      <div className="text-lg font-mono text-cyan-400">
-                        {(gps?.lat || 0).toFixed(6)}
-                      </div>
-                      <div className="text-xs text-gray-500">Latitude</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-mono text-cyan-400">
-                        {(gps?.lon || 0).toFixed(6)}
-                      </div>
-                      <div className="text-xs text-gray-500">Longitude</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-mono text-cyan-400">
-                        {(gps?.alt || 0).toFixed(1)}
-                        <span className="text-xs text-gray-500 ml-1">m</span>
-                      </div>
-                      <div className="text-xs text-gray-500">GPS Alt</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-mono text-cyan-400">
-                        {(vfrHud?.groundspeed || 0).toFixed(1)}
-                        <span className="text-xs text-gray-500 ml-1">m/s</span>
-                      </div>
-                      <div className="text-xs text-gray-500">Speed</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {!sensors.gps && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-6 h-6 text-yellow-400" />
-                  <div>
-                    <h4 className="font-medium text-yellow-400">GPS Not Connected</h4>
-                    <p className="text-sm text-gray-400">
-                      To use GPS Rescue (automatic return home), connect a GPS module to your flight controller.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isInav ? (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                <div className="flex items-center gap-3">
-                  <Map className="w-6 h-6 text-green-400" />
-                  <div>
-                    <h4 className="font-medium text-green-400">iNav - Mission Planning Available!</h4>
-                    <p className="text-sm text-gray-400">
-                      Your board runs iNav which supports autonomous waypoint missions. Check Mission Planning in the navigation.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gray-800/30 border border-gray-700/30 rounded-xl p-4">
-                <div className="flex items-center gap-3">
-                  <Info className="w-6 h-6 text-gray-400" />
-                  <div>
-                    <h4 className="font-medium text-gray-300">Betaflight - FPV Racing & Freestyle</h4>
-                    <p className="text-sm text-gray-500">
-                      Betaflight is optimized for manual flight. For autonomous missions and GPS navigation, consider flashing iNav firmware.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <MspSensorsTabContent
+            sensors={sensors}
+            features={features}
+            featureSaving={featureSaving}
+            isInav={isInav}
+            onFeatureToggle={handleFeatureToggle}
+            onHardwareSensorToggle={handleHardwareSensorToggle}
+          />
         )}
 
         {/* Servo Tuning Tab (iNav only) */}

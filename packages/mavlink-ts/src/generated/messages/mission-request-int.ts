@@ -1,7 +1,7 @@
 /**
  * Request the information of the mission item with the sequence number seq. The response of the system to this message should be a MISSION_ITEM_INT message. https://mavlink.io/en/services/mission.html
  * Message ID: 51
- * CRC Extra: 129
+ * CRC Extra: 196
  */
 export interface MissionRequestInt {
   /** System ID */
@@ -15,8 +15,8 @@ export interface MissionRequestInt {
 }
 
 export const MISSION_REQUEST_INT_ID = 51;
-export const MISSION_REQUEST_INT_CRC_EXTRA = 129;
-export const MISSION_REQUEST_INT_MIN_LENGTH = 5;
+export const MISSION_REQUEST_INT_CRC_EXTRA = 196;
+export const MISSION_REQUEST_INT_MIN_LENGTH = 4;
 export const MISSION_REQUEST_INT_MAX_LENGTH = 5;
 
 export function serializeMissionRequestInt(msg: MissionRequestInt): Uint8Array {

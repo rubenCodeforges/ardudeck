@@ -1,7 +1,7 @@
 /**
  * Request the overall list of mission items from the system/component.
  * Message ID: 43
- * CRC Extra: 148
+ * CRC Extra: 132
  */
 export interface MissionRequestList {
   /** System ID */
@@ -13,8 +13,8 @@ export interface MissionRequestList {
 }
 
 export const MISSION_REQUEST_LIST_ID = 43;
-export const MISSION_REQUEST_LIST_CRC_EXTRA = 148;
-export const MISSION_REQUEST_LIST_MIN_LENGTH = 3;
+export const MISSION_REQUEST_LIST_CRC_EXTRA = 132;
+export const MISSION_REQUEST_LIST_MIN_LENGTH = 2;
 export const MISSION_REQUEST_LIST_MAX_LENGTH = 3;
 
 export function serializeMissionRequestList(msg: MissionRequestList): Uint8Array {

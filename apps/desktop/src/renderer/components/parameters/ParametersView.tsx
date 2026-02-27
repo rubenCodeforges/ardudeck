@@ -120,6 +120,16 @@ export function ParametersView() {
     setShowWriteConfirm(false);
     setIsWritingFlash(true);
     try {
+      // Auto-checkpoint before writing to flash
+      const modified = modifiedParameters();
+      if (modified.length > 0) {
+        const boardUid = connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`;
+        const boardName = connectionState.vehicleType || 'Unknown';
+        await window.electronAPI?.saveParamCheckpoint(boardUid, boardName,
+          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value }))
+        );
+      }
+
       const result = await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
         markAllAsSaved();
@@ -127,12 +137,12 @@ export function ParametersView() {
       } else {
         showToast(result?.error ?? 'Failed to write to flash', 'error');
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to write to flash', 'error');
     } finally {
       setIsWritingFlash(false);
     }
-  }, [markAllAsSaved, showToast]);
+  }, [markAllAsSaved, showToast, modifiedParameters, connectionState]);
 
   const handleSaveToFile = useCallback(async () => {
     setIsSavingFile(true);

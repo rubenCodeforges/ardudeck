@@ -227,7 +227,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
   const { parameters, setParameter, modifiedCount } = useParameterStore();
   const rcChannels = null as number[] | null;
   const [liveRcValue, setLiveRcValue] = useState<number>(1500);
-  const [advancedMode, setAdvancedMode] = useState<boolean>(false);
+  const [advancedMode, setAdvancedMode] = useState<boolean>(true);
   const [showRcBar, setShowRcBar] = useState<boolean>(false);
 
   // Get current flight mode values

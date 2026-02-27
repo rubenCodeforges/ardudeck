@@ -37,6 +37,7 @@ export const IPC_CHANNELS = {
   // Telemetry
   TELEMETRY_UPDATE: 'telemetry:update',
   TELEMETRY_BATCH: 'telemetry:batch', // Batched telemetry update for performance
+  TELEMETRY_SET_STREAM_RATE: 'telemetry:set-stream-rate', // Change MAVLink stream rate preset
   MSP_PACKET_COUNTS: 'msp:packet-counts', // MSP RX/TX packet counters for toolbar
 
   // Layout management
@@ -57,6 +58,12 @@ export const IPC_CHANNELS = {
   PARAM_WRITE_FLASH: 'param:write-flash',
   PARAM_SAVE_FILE: 'param:save-file',
   PARAM_LOAD_FILE: 'param:load-file',
+
+  // Parameter history (version control)
+  PARAM_HISTORY_SAVE: 'param:history-save',
+  PARAM_HISTORY_LIST: 'param:history-list',
+  PARAM_HISTORY_RESTORE: 'param:history-restore',
+  PARAM_HISTORY_DELETE: 'param:history-delete',
 
   // Parameter metadata
   PARAM_METADATA_FETCH: 'param:metadata-fetch',
@@ -410,6 +417,8 @@ export interface ConnectionState {
   reconnectMaxAttempts?: number; // Max attempts before giving up
   /** Detected MAVLink protocol version (1 or 2) */
   mavlinkVersion?: number;
+  /** Unique board identifier from AUTOPILOT_VERSION uid/uid2 (hex string) */
+  boardUid?: string;
   // MAVLink signing
   signingEnabled?: boolean;
   /** True when we detect the FC is sending signed packets back */
@@ -536,6 +545,7 @@ export interface SettingsStoreSchema {
   activeVehicleId: string | null;
   flightStats: SettingsFlightStats;
   connectionMemory?: SettingsConnectionMemory;
+  telemetrySpeed?: TelemetrySpeed;
 }
 
 // =============================================================================
@@ -887,3 +897,9 @@ export interface AppUpdateInfo {
   downloadSpeed?: number; // bytes per second
   error?: string;
 }
+
+/**
+ * Telemetry stream speed preset
+ * Controls MAVLink SET_MESSAGE_INTERVAL rates
+ */
+export type TelemetrySpeed = 'eco' | 'normal' | 'max';

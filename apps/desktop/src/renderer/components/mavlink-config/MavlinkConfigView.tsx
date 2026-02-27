@@ -34,6 +34,7 @@ import {
   Radio,
   Cable,
   RotateCw,
+  History,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -48,6 +49,7 @@ import ParameterTable from './ParameterTable';
 import RoverTuningTab from './RoverTuningTab';
 import ReceiverTab from './ReceiverTab';
 import SerialPortsTab from './SerialPortsTab';
+import ParamHistoryModal from './ParamHistoryModal';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -112,7 +114,12 @@ const ROVER_TABS: Tab[] = [
 ];
 
 export const MavlinkConfigView: React.FC = () => {
-  const { parameters, isLoading, fetchParameters, modifiedCount, modifiedParameters, markAllAsSaved } = useParameterStore();
+  const paramCount = useParameterStore((s) => s.paramCount);
+  const isLoading = useParameterStore((s) => s.isLoading);
+  const fetchParameters = useParameterStore((s) => s.fetchParameters);
+  const modifiedCount = useParameterStore((s) => s.modifiedCount);
+  const modifiedParameters = useParameterStore((s) => s.modifiedParameters);
+  const markAllAsSaved = useParameterStore((s) => s.markAllAsSaved);
   const connectionState = useConnectionStore((s) => s.connectionState);
 
   // Determine vehicle type and appropriate tabs
@@ -132,6 +139,7 @@ export const MavlinkConfigView: React.FC = () => {
 
   const [isWritingFlash, setIsWritingFlash] = useState(false);
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
 
@@ -143,10 +151,10 @@ export const MavlinkConfigView: React.FC = () => {
 
   // Load parameters on mount if not loaded
   useEffect(() => {
-    if (connectionState.isConnected && parameters.size === 0 && !isLoading) {
+    if (connectionState.isConnected && paramCount === 0 && !isLoading) {
       fetchParameters();
     }
-  }, [connectionState.isConnected, parameters.size, isLoading, fetchParameters]);
+  }, [connectionState.isConnected, paramCount, isLoading, fetchParameters]);
 
   const handleWriteToFlashClick = useCallback(() => {
     setShowWriteConfirm(true);
@@ -156,6 +164,16 @@ export const MavlinkConfigView: React.FC = () => {
     setShowWriteConfirm(false);
     setIsWritingFlash(true);
     try {
+      // Auto-checkpoint before writing to flash
+      const modified = modifiedParameters();
+      if (modified.length > 0) {
+        const boardUid = connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`;
+        const boardName = connectionState.vehicleType || 'Unknown';
+        await window.electronAPI?.saveParamCheckpoint(boardUid, boardName,
+          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value }))
+        );
+      }
+
       const result = await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
         markAllAsSaved();
@@ -168,7 +186,7 @@ export const MavlinkConfigView: React.FC = () => {
     } finally {
       setIsWritingFlash(false);
     }
-  }, [markAllAsSaved, showToast]);
+  }, [markAllAsSaved, showToast, modifiedParameters, connectionState]);
 
   const handleReboot = useCallback(async () => {
     setRebooting(true);
@@ -242,7 +260,7 @@ export const MavlinkConfigView: React.FC = () => {
                     <span>•</span>
                   </>
                 )}
-                <span>{parameters.size} parameters</span>
+                <span>{paramCount} parameters</span>
                 {connectionState.systemId != null && (
                   <>
                     <span>•</span>
@@ -283,6 +301,15 @@ export const MavlinkConfigView: React.FC = () => {
             >
               <RotateCw className={`w-4 h-4 ${rebooting ? 'animate-spin' : ''}`} />
               {rebooting ? 'Rebooting...' : 'Reboot'}
+            </button>
+
+            <button
+              onClick={() => setShowHistory(true)}
+              className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
+              title="View parameter change history"
+            >
+              <History className="w-4 h-4" />
+              History
             </button>
 
             <button
@@ -383,6 +410,16 @@ export const MavlinkConfigView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Parameter History Modal */}
+      {showHistory && (
+        <ParamHistoryModal
+          boardUid={connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`}
+          boardName={connectionState.vehicleType || 'Unknown'}
+          onClose={() => setShowHistory(false)}
+          showToast={showToast}
+        />
       )}
 
       {/* Toast notification */}

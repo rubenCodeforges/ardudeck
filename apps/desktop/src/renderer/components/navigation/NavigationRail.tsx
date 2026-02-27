@@ -116,7 +116,7 @@ interface NavigationRailProps {
 
 export function NavigationRail({ onViewChange }: NavigationRailProps) {
   const { currentView, setView } = useNavigationStore();
-  const { connectionState } = useConnectionStore();
+  const connectionState = useConnectionStore((s) => s.connectionState);
 
   // Show CLI nav item only for MSP (Betaflight/iNav) connections
   const showCli = connectionState.isConnected && connectionState.protocol === 'msp';

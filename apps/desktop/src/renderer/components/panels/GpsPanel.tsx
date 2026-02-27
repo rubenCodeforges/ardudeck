@@ -3,7 +3,7 @@ import { GPS_FIX_TYPES } from '../../../shared/telemetry-types';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 export function GpsPanel() {
-  const { gps } = useTelemetryStore();
+  const gps = useTelemetryStore((s) => s.gps);
 
   const fixColor = gps.fixType >= 3 ? 'bg-emerald-400' : gps.fixType >= 2 ? 'bg-yellow-400' : 'bg-red-400';
 

@@ -1,7 +1,7 @@
 /**
  * Acknowledgment message during waypoint handling. The type field states if this message is a positive ack (type=0) or if an error happened (type=non-zero).
  * Message ID: 47
- * CRC Extra: 146
+ * CRC Extra: 153
  */
 export interface MissionAck {
   /** System ID */
@@ -15,8 +15,8 @@ export interface MissionAck {
 }
 
 export const MISSION_ACK_ID = 47;
-export const MISSION_ACK_CRC_EXTRA = 146;
-export const MISSION_ACK_MIN_LENGTH = 4;
+export const MISSION_ACK_CRC_EXTRA = 153;
+export const MISSION_ACK_MIN_LENGTH = 3;
 export const MISSION_ACK_MAX_LENGTH = 4;
 
 export function serializeMissionAck(msg: MissionAck): Uint8Array {

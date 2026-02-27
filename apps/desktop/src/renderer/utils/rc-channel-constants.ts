@@ -34,6 +34,26 @@ export function getChannelName(index: number, protocol: 'msp' | 'mavlink'): stri
 }
 
 /**
+ * Build MAVLink channel names based on RCMAP_* parameters.
+ *
+ * MAVLink RC_CHANNELS sends physical channel values (ch1, ch2, ...).
+ * RCMAP_* tells us which physical channel carries which function.
+ * Returns a name array indexed by physical channel (0-based).
+ */
+export function getMavlinkChannelNames(rcmap: { roll: number; pitch: number; throttle: number; yaw: number }): string[] {
+  const names: string[] = Array.from({ length: 18 }, (_, i) => `CH${i + 1}`);
+
+  // RCMAP values are 1-based channel numbers
+  if (rcmap.roll >= 1 && rcmap.roll <= 18) names[rcmap.roll - 1] = 'Roll';
+  if (rcmap.pitch >= 1 && rcmap.pitch <= 18) names[rcmap.pitch - 1] = 'Pitch';
+  if (rcmap.throttle >= 1 && rcmap.throttle <= 18) names[rcmap.throttle - 1] = 'Throttle';
+  if (rcmap.yaw >= 1 && rcmap.yaw <= 18) names[rcmap.yaw - 1] = 'Yaw';
+
+  // Label remaining channels 5+ as CHx (AUX)
+  return names;
+}
+
+/**
  * Reorder raw MSP_RC channels into logical order using the rxMap.
  *
  * MSP_RC returns channels in the receiver's physical order (e.g. AETR for SBUS).

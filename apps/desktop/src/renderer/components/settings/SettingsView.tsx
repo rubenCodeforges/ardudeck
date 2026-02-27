@@ -1,9 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSettingsStore, type VehicleProfile, type VehicleType } from '../../stores/settings-store';
+import { useSettingsStore, type VehicleProfile, type VehicleType, type DisplayUnits } from '../../stores/settings-store';
+import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useUpdateStore } from '../../stores/update-store';
 
+// Display unit conversion helpers - storage is always mm/g/mAh
+function fmtWeight(g: number, units: DisplayUnits): string {
+  return units === 'large' ? `${+(g / 1000).toFixed(1)}kg` : `${g}g`;
+}
+function fmtLength(mm: number, units: DisplayUnits): string {
+  return units === 'large' ? `${+(mm / 1000).toFixed(2)}m` : `${mm}mm`;
+}
+function fmtCapacity(mah: number, units: DisplayUnits): string {
+  return units === 'large' ? `${+(mah / 1000).toFixed(1)}Ah` : `${mah}mAh`;
+}
+function unitLabel(smallUnit: string, units: DisplayUnits): string {
+  if (units !== 'large') return smallUnit;
+  return ({ g: 'kg', mm: 'm', mAh: 'Ah' } as Record<string, string>)[smallUnit] ?? smallUnit;
+}
+
+// Fields that convert by ÷1000 when display units = 'large'
+const LARGE_UNIT_FIELDS: Record<string, number> = {
+  weight: 1000, wingspan: 1000, hullLength: 1000, wheelbase: 1000,
+  batteryCapacity: 1000, displacement: 1000,
+};
 
 // Vehicle types supported by each firmware
 // Betaflight: Only multirotors (racing/freestyle focused)
@@ -223,7 +244,8 @@ function CircularGauge({
   color: string;
   size?: number;
 }) {
-  const percentage = Math.min(100, (value / max) * 100);
+  const safeValue = isFinite(value) ? Math.max(0, value) : 0;
+  const percentage = max > 0 ? Math.min(100, (safeValue / max) * 100) : 0;
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -259,7 +281,7 @@ function CircularGauge({
         </svg>
         {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-bold text-white">{value}</span>
+          <span className="text-xl font-bold text-white">{safeValue}</span>
           <span className="text-xs text-gray-400">{unit}</span>
         </div>
       </div>
@@ -326,7 +348,7 @@ const WEATHER_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 const WEATHER_LOCATION_THRESHOLD = 0.01; // ~1km movement before refetch
 
 function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
-  const { gps } = useTelemetryStore();
+  const gps = useTelemetryStore((s) => s.gps);
   const [weather, setWeather] = useState<WeatherData | null>(weatherCache.data);
   const [loading, setLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -783,6 +805,30 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           </>
         )}
       </div>
+
+      {/* Contextual wind warning */}
+      {(isBad || isCaution) && (
+        <div className={`mt-3 rounded-lg p-2 flex items-start gap-2 ${isBad ? 'bg-red-500/10 border border-red-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
+          <svg className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isBad ? 'text-red-400' : 'text-amber-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className={`text-[11px] leading-relaxed ${isBad ? 'text-red-400' : 'text-amber-400'}`}>
+            {weather.windGusts >= gustLimit
+              ? `Gusts of ${weather.windGusts} km/h exceed safe limit (${gustLimit} km/h). Risk of loss of control.`
+              : weather.windSpeed >= windLimit
+                ? `Sustained wind of ${weather.windSpeed} km/h exceeds safe limit (${windLimit} km/h).`
+                : weather.condition === 'Thunderstorm'
+                  ? 'Thunderstorm activity detected. Do not fly.'
+                  : weather.condition === 'Rain'
+                    ? 'Rain detected. Electronics at risk.'
+                    : weather.visibility < visibilityLimit
+                      ? `Low visibility (${weather.visibility} km). Maintain visual line of sight.`
+                      : weather.condition === 'Fog'
+                        ? 'Fog detected. Reduced visibility likely.'
+                        : `Wind approaching limits. Monitor conditions closely.`}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -859,6 +905,7 @@ function TipsSection({ vehicle }: { vehicle: VehicleProfile | null }) {
 
 // Format time helper
 function formatTime(seconds: number): string {
+  if (!isFinite(seconds) || seconds < 0) return '--';
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   if (hours > 0) {
@@ -869,10 +916,55 @@ function formatTime(seconds: number): string {
 
 // Format distance helper
 function formatDistance(meters: number): string {
+  if (!isFinite(meters) || meters < 0) return '--';
   if (meters >= 1000) {
     return `${(meters / 1000).toFixed(1)} km`;
   }
   return `${Math.round(meters)} m`;
+}
+
+/**
+ * ArduPilot Flight Statistics - reads STAT_ parameters from the FC
+ * Only shown when connected via MAVLink (ArduPilot stores cumulative stats on-board)
+ */
+function ArduPilotFlightStats() {
+  const { parameters } = useParameterStore();
+
+  const statFlightTime = parameters.get('STAT_FLTTIME')?.value ?? 0;
+  const statRuntime = parameters.get('STAT_RUNTIME')?.value ?? 0;
+  const statBootCount = parameters.get('STAT_BOOTCNT')?.value ?? 0;
+
+  return (
+    <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-4">
+      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Flight Statistics (from FC)</h3>
+      <div className="grid grid-cols-2 gap-2">
+        <StatCard
+          icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          value={formatTime(statFlightTime)}
+          label="Total Flight Time"
+          color="bg-blue-500/20 text-blue-400"
+        />
+        <StatCard
+          icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+          value={formatTime(statRuntime)}
+          label="Total Powered Time"
+          color="bg-emerald-500/20 text-emerald-400"
+        />
+        <StatCard
+          icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
+          value={statBootCount.toString()}
+          label="Boot Count"
+          color="bg-purple-500/20 text-purple-400"
+        />
+        <StatCard
+          icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+          value={statFlightTime > 0 ? `${Math.round((statFlightTime / statRuntime) * 100)}%` : '--'}
+          label="Flight Ratio"
+          color="bg-amber-500/20 text-amber-400"
+        />
+      </div>
+    </section>
+  );
 }
 
 /**
@@ -883,7 +975,6 @@ export function SettingsView() {
     missionDefaults,
     vehicles,
     activeVehicleId,
-    flightStats,
     updateMissionDefaults,
     addVehicle,
     updateVehicle,
@@ -892,6 +983,8 @@ export function SettingsView() {
     getActiveVehicle,
     getEstimatedFlightTime,
     getEstimatedRange,
+    displayUnits,
+    setDisplayUnits,
   } = useSettingsStore();
 
   const { connectionState } = useConnectionStore();
@@ -1079,9 +1172,9 @@ export function SettingsView() {
                         {activeVehicle.type === 'sub' && 'Depth'}
                       </div>
                       <div className="text-sm text-white font-medium">
-                        {activeVehicle.type === 'copter' && `${activeVehicle.frameSize || 127}mm ${activeVehicle.motorCount === 6 ? 'Hex' : activeVehicle.motorCount === 8 ? 'Octo' : 'Quad'}`}
-                        {activeVehicle.type === 'plane' && `${activeVehicle.wingspan || 1200}mm`}
-                        {activeVehicle.type === 'vtol' && `${activeVehicle.wingspan || 1500}mm`}
+                        {activeVehicle.type === 'copter' && `${fmtLength(activeVehicle.frameSize || 127, displayUnits)} ${activeVehicle.motorCount === 6 ? 'Hex' : activeVehicle.motorCount === 8 ? 'Octo' : 'Quad'}`}
+                        {activeVehicle.type === 'plane' && fmtLength(activeVehicle.wingspan || 1200, displayUnits)}
+                        {activeVehicle.type === 'vtol' && fmtLength(activeVehicle.wingspan || 1500, displayUnits)}
                         {activeVehicle.type === 'rover' && (activeVehicle.driveType === 'ackermann' ? 'Car' : activeVehicle.driveType === 'skid' ? 'Skid' : 'Tank')}
                         {activeVehicle.type === 'boat' && (activeVehicle.hullType ? `${activeVehicle.hullType.charAt(0).toUpperCase()}${activeVehicle.hullType.slice(1)}` : 'Displacement')}
                         {activeVehicle.type === 'sub' && `${activeVehicle.maxDepth || 100}m`}
@@ -1090,12 +1183,12 @@ export function SettingsView() {
                     {/* Weight */}
                     <div className="bg-black/20 rounded-lg p-2">
                       <div className="text-xs text-gray-500">Weight</div>
-                      <div className="text-sm text-white font-medium">{activeVehicle.weight}g</div>
+                      <div className="text-sm text-white font-medium">{fmtWeight(activeVehicle.weight, displayUnits)}</div>
                     </div>
                     {/* Battery */}
                     <div className="bg-black/20 rounded-lg p-2">
                       <div className="text-xs text-gray-500">Battery</div>
-                      <div className="text-sm text-white font-medium">{activeVehicle.batteryCells}S {activeVehicle.batteryCapacity}mAh</div>
+                      <div className="text-sm text-white font-medium">{activeVehicle.batteryCells}S{activeVehicle.batteryChemistry && activeVehicle.batteryChemistry !== 'lipo' ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[activeVehicle.batteryChemistry] ?? ''}` : ''} {fmtCapacity(activeVehicle.batteryCapacity, displayUnits)}</div>
                     </div>
                     {/* Type-specific secondary spec */}
                     <div className="bg-black/20 rounded-lg p-2">
@@ -1133,9 +1226,31 @@ export function SettingsView() {
                   size={85}
                 />
               </div>
-              <div className="text-center text-xs text-gray-500 mb-2">Based on 80% battery usage</div>
+              {/* Multi-level estimates table */}
+              <div className="bg-black/20 rounded-lg overflow-hidden">
+                <div className="grid grid-cols-3 text-[10px] text-gray-500 uppercase tracking-wider px-2 py-1.5 border-b border-gray-700/30">
+                  <span>Usage</span>
+                  <span className="text-center">Time</span>
+                  <span className="text-right">Range</span>
+                </div>
+                {[
+                  { pct: 60, label: '60%', color: 'text-green-400', note: 'Safe' },
+                  { pct: 80, label: '80%', color: 'text-blue-400', note: 'Normal' },
+                  { pct: 95, label: '95%', color: 'text-red-400', note: 'Max' },
+                ].map(({ pct, label, color, note }) => {
+                  const scaledTime = Math.round(estimatedFlightTime * (pct / 80));
+                  const scaledRange = Math.round(estimatedRange * (pct / 80));
+                  return (
+                    <div key={pct} className="grid grid-cols-3 px-2 py-1.5 text-xs border-b border-gray-700/10 last:border-0">
+                      <span className={`${color} font-medium`}>{label} <span className="text-gray-600 font-normal">{note}</span></span>
+                      <span className="text-center text-gray-300">{formatTime(scaledTime)}</span>
+                      <span className="text-right text-gray-300">{formatDistance(scaledRange)}</span>
+                    </div>
+                  );
+                })}
+              </div>
               {/* Approximation note */}
-              <div className="bg-blue-500/10 rounded-lg p-2 flex items-start gap-2">
+              <div className="bg-blue-500/10 rounded-lg p-2 flex items-start gap-2 mt-2">
                 <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -1150,44 +1265,20 @@ export function SettingsView() {
           </div>
 
           {/* Stats + Tips row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Quick Stats - 2x2 grid */}
-            <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-4">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Flight Statistics</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <StatCard
-                  icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                  value={formatTime(flightStats.totalFlightTimeSeconds)}
-                  label="Flight Time"
-                  color="bg-blue-500/20 text-blue-400"
-                />
-                <StatCard
-                  icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
-                  value={formatDistance(flightStats.totalDistanceMeters)}
-                  label="Distance"
-                  color="bg-emerald-500/20 text-emerald-400"
-                />
-                <StatCard
-                  icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
-                  value={flightStats.totalMissions.toString()}
-                  label="Missions"
-                  color="bg-purple-500/20 text-purple-400"
-                />
-                <StatCard
-                  icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
-                  value={flightStats.lastFlightDate ? new Date(flightStats.lastFlightDate).toLocaleDateString() : 'Never'}
-                  label="Last Flight"
-                  color="bg-amber-500/20 text-amber-400"
-                />
-              </div>
-            </section>
-
-            {/* Tips Section */}
+          {connectionState.protocol === 'mavlink' && connectionState.isConnected ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ArduPilotFlightStats />
+              <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-4">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Tips & Recommendations</h3>
+                <TipsSection vehicle={activeVehicle} />
+              </section>
+            </div>
+          ) : (
             <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-4">
               <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Tips & Recommendations</h3>
               <TipsSection vehicle={activeVehicle} />
             </section>
-          </div>
+          )}
         </div>
 
         {/* ============================================ */}
@@ -1197,6 +1288,43 @@ export function SettingsView() {
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
             <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Configuration</h2>
+          </div>
+
+          {/* Display Units Toggle */}
+          <div className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-4 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+              </svg>
+              <div>
+                <div className="text-sm font-medium text-white">Display Units</div>
+                <div className="text-[11px] text-gray-500">
+                  {displayUnits === 'small' ? 'mm, g, mAh - for small/racing builds' : 'm, kg, Ah - for large aircraft'}
+                </div>
+              </div>
+            </div>
+            <div className="flex bg-gray-900/50 rounded-lg border border-gray-700/50 overflow-hidden">
+              <button
+                onClick={() => setDisplayUnits('small')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  displayUnits === 'small'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                mm / g / mAh
+              </button>
+              <button
+                onClick={() => setDisplayUnits('large')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  displayUnits === 'large'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                m / kg / Ah
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1566,6 +1694,99 @@ function validateField(value: string, rules: FieldValidation, isText?: boolean):
   return null;
 }
 
+// Prop size input: text field with format validation + preset grid
+function PropSizeInput({
+  value,
+  onChange,
+  presets,
+}: {
+  value: string | undefined;
+  onChange: (val: string | undefined) => void;
+  presets: { size: string; label?: string }[];
+}) {
+  // customMode is pure UI state - no useEffect needed
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  // Detect if current stored value is a custom (non-preset) value
+  const isCustomValue = !!value && !presets.some(p => p.size === value);
+  const showCustomInput = customMode || isCustomValue;
+
+  const validate = (v: string): string | null => {
+    if (!v) return null;
+    if (!/^\d+(?:\.\d+)?x\d+(?:\.\d+)?$/.test(v)) return 'Use DxP format (e.g. 10x5)';
+    const parts = v.split('x').map(Number);
+    const diam = parts[0];
+    const pitch = parts[1];
+    if (!diam || diam < 1 || diam > 40) return 'Diameter: 1-40"';
+    if (!pitch || pitch < 1 || pitch > 20) return 'Pitch: 1-20"';
+    return null;
+  };
+
+  const handleSelect = (val: string) => {
+    if (val === '__custom__') {
+      setCustomMode(true);
+      setCustomValue('');
+      setError(null);
+    } else if (val === '') {
+      setCustomMode(false);
+      onChange(undefined);
+    } else {
+      setCustomMode(false);
+      onChange(val);
+    }
+  };
+
+  const handleCustom = (raw: string) => {
+    const cleaned = raw.replace(/[^0-9.x]/g, '');
+    setCustomValue(cleaned);
+    const err = validate(cleaned);
+    setError(err);
+    if (!err && cleaned) onChange(cleaned);
+  };
+
+  const handleCustomBlur = () => {
+    // Just validate on blur - user exits custom mode via the dropdown
+    if (customValue) {
+      setError(validate(customValue));
+    } else {
+      setError(null);
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-xs text-gray-400 mb-1">Propeller</label>
+      <select
+        value={showCustomInput ? '__custom__' : (value || '')}
+        onChange={(e) => handleSelect(e.target.value)}
+        className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+      >
+        <option value="">None</option>
+        {presets.map((p) => (
+          <option key={p.size} value={p.size}>{p.label || `${p.size}"`}</option>
+        ))}
+        <option value="__custom__">Custom size...</option>
+      </select>
+      {showCustomInput && (
+        <input
+          type="text"
+          value={customMode ? customValue : (value || '')}
+          onChange={(e) => handleCustom(e.target.value)}
+          onBlur={handleCustomBlur}
+          placeholder="DxP (e.g. 9.5x4.7)"
+          autoFocus={customMode}
+          className={`w-full mt-1.5 px-3 py-2 bg-gray-900 border rounded-lg text-sm focus:outline-none ${
+            error ? 'border-red-500/60 text-white' : 'border-gray-600 text-white focus:border-blue-500'
+          }`}
+        />
+      )}
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
+    </div>
+  );
+}
+
 function FrameSizeInput({
   value,
   onChange,
@@ -1575,40 +1796,24 @@ function FrameSizeInput({
 }) {
   const [unit, setUnit] = useState<'mm' | 'in'>('mm');
 
-  // Convert stored mm to display value
   const displayValue = value !== undefined
     ? unit === 'mm'
       ? value
-      : Math.round(value / 25.4 * 10) / 10  // mm to inches, 1 decimal
+      : Math.round(value / 25.4 * 10) / 10
     : '';
 
-  // Handle input and convert to mm for storage
   const handleChange = (inputVal: string) => {
-    if (inputVal === '') {
-      onChange(undefined);
-      return;
-    }
+    if (inputVal === '') { onChange(undefined); return; }
     const numVal = parseFloat(inputVal);
     if (isNaN(numVal) || numVal < 0) return;
-
-    // Convert to mm for storage
     const mmValue = unit === 'mm' ? Math.round(numVal) : Math.round(numVal * 25.4);
     onChange(mmValue);
   };
 
-  // Common presets for quick selection
-  const presets = [
-    { mm: 127, label: '5"' },
-    { mm: 178, label: '7"' },
-    { mm: 254, label: '10"' },
-    { mm: 320, label: '320' },
-    { mm: 450, label: '450' },
-  ];
-
   return (
     <div>
-      <label className="block text-xs text-gray-400 mb-1">Frame Size (diagonal)</label>
-      <div className="flex items-center">
+      <label className="block text-xs text-gray-400 mb-1">Frame Size</label>
+      <div className="relative">
         <input
           type="number"
           value={displayValue}
@@ -1616,43 +1821,17 @@ function FrameSizeInput({
           placeholder={unit === 'mm' ? '450' : '5'}
           min={0}
           step={unit === 'mm' ? 10 : 0.5}
-          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-l-lg border-r-0 text-white text-sm focus:outline-none focus:border-blue-500 focus:z-10"
+          className="w-full px-3 py-2 pr-12 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
         />
         <button
           type="button"
           onClick={() => setUnit(unit === 'mm' ? 'in' : 'mm')}
-          className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-r-lg text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors min-w-[40px]"
-          title="Toggle between mm and inches"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs hover:text-blue-400 transition-colors px-1"
+          title="Toggle mm / inches"
         >
           {unit}
         </button>
       </div>
-      {/* Quick presets */}
-      <div className="flex gap-1 mt-1.5">
-        {presets.map((p) => (
-          <button
-            key={p.mm}
-            type="button"
-            onClick={() => onChange(p.mm)}
-            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
-              value === p.mm
-                ? 'bg-blue-600/50 text-blue-300'
-                : 'bg-gray-800 text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-      {/* Show conversion */}
-      {value !== undefined && value > 0 && (
-        <div className="text-[10px] text-gray-500 mt-1">
-          {unit === 'mm'
-            ? `≈ ${(value / 25.4).toFixed(1)}" prop diagonal`
-            : `= ${value}mm motor-to-motor`
-          }
-        </div>
-      )}
     </div>
   );
 }
@@ -1685,7 +1864,7 @@ function VehicleInputField({
   return (
     <div>
       <label className="block text-xs text-gray-400 mb-1">{label}</label>
-      <div className="flex items-center gap-2">
+      <div className="relative">
         <input
           type={type}
           value={value ?? ''}
@@ -1695,11 +1874,15 @@ function VehicleInputField({
           min={min}
           max={max}
           step={step}
-          className={`flex-1 px-3 py-2 bg-gray-900 border rounded-lg text-white text-sm focus:outline-none ${
+          className={`w-full px-3 py-2 bg-gray-900 border rounded-lg text-white text-sm focus:outline-none ${
+            unit ? 'pr-12' : ''
+          } ${
             error ? 'border-red-500/60 focus:border-red-500' : 'border-gray-600 focus:border-blue-500'
           }`}
         />
-        {unit && <span className="text-gray-500 text-sm w-8">{unit}</span>}
+        {unit && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">{unit}</span>
+        )}
       </div>
       {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
     </div>
@@ -1818,6 +2001,42 @@ function VehicleEditModal({
   onClose: () => void;
 }) {
   const { getDisplayValue, handleChange, handleBlur, getError } = useVehicleForm(vehicle, onUpdate);
+  const { displayUnits } = useSettingsStore();
+  const large = displayUnits === 'large';
+
+  // Conversion factor for current display units (1 = no conversion)
+  const factor = (field: string) => large ? (LARGE_UNIT_FIELDS[field] ?? 1) : 1;
+
+  // Wrap getDisplayValue to convert stored small-unit values for display
+  const getConvertedValue = (field: string) => {
+    const raw = getDisplayValue(field);
+    const f = factor(field);
+    if (f === 1 || raw === undefined || raw === '') return raw;
+    const num = typeof raw === 'string' ? parseFloat(raw) : raw;
+    if (typeof num !== 'number' || isNaN(num)) return raw;
+    return +(num / f).toFixed(3);
+  };
+
+  // Wrap handleChange to convert user input (large units) back to small units for storage
+  const handleConvertedChange = (field: string, value: string, isText?: boolean) => {
+    const f = factor(field);
+    if (f === 1 || isText) return handleChange(field, value, isText);
+    if (value === '') return handleChange(field, value);
+    const num = parseFloat(value);
+    if (isNaN(num)) return handleChange(field, value);
+    handleChange(field, String(Math.round(num * f)));
+  };
+
+  // Get unit label converted for large mode
+  const getUnit = (smallUnit: string) => unitLabel(smallUnit, displayUnits);
+
+  // Get placeholder converted for large mode
+  const getPlaceholder = (field: string, defaultVal: string) => {
+    const f = factor(field);
+    if (f === 1) return defaultVal;
+    return String(+(parseFloat(defaultVal) / f));
+  };
+
   const isCopter = vehicle.type === 'copter';
   const isPlane = vehicle.type === 'plane';
   const isVtol = vehicle.type === 'vtol';
@@ -1908,32 +2127,21 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="All-Up Weight"
-                  value={getDisplayValue('weight')}
-                  onChange={(v) => handleChange('weight', v)}
+                  value={getConvertedValue('weight')}
+                  onChange={(v) => handleConvertedChange('weight', v)}
                   onBlur={() => handleBlur('weight')}
                   error={getError('weight')}
-                  unit="g"
-                  placeholder="600"
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('weight', '600')}
                 />
-                <VehicleSelectField
-                  label="Prop Size"
-                  value={vehicle.propSize || ''}
-                  onChange={(v) => onUpdate({ propSize: v || undefined })}
-                  options={[
-                    { value: '', label: 'None' },
-                    { value: '3x3', label: '3x3' },
-                    { value: '4x4.5', label: '4x4.5' },
-                    { value: '5x3', label: '5x3' },
-                    { value: '5x4', label: '5x4' },
-                    { value: '5x4.5', label: '5x4.5' },
-                    { value: '5x5', label: '5x5' },
-                    { value: '6x3', label: '6x3' },
-                    { value: '6x4', label: '6x4' },
-                    { value: '7x3.5', label: '7x3.5' },
-                    { value: '7x4', label: '7x4' },
-                    { value: '8x4', label: '8x4' },
-                    { value: '9x4.5', label: '9x4.5' },
-                    { value: '10x4.5', label: '10x4.5' },
+                <PropSizeInput
+                  value={vehicle.propSize}
+                  onChange={(v) => onUpdate({ propSize: v })}
+                  presets={[
+                    { size: '3x3' }, { size: '4x4.5' }, { size: '5x3' },
+                    { size: '5x4.5' }, { size: '6x4' }, { size: '7x3.5' },
+                    { size: '7x4' }, { size: '8x4' }, { size: '9x4.5' },
+                    { size: '10x4.5' },
                   ]}
                 />
               </div>
@@ -1952,12 +2160,21 @@ function VehicleEditModal({
               <div className="grid grid-cols-2 gap-4">
                 <VehicleInputField
                   label="Wingspan"
-                  value={getDisplayValue('wingspan')}
-                  onChange={(v) => handleChange('wingspan', v)}
+                  value={getConvertedValue('wingspan')}
+                  onChange={(v) => handleConvertedChange('wingspan', v)}
                   onBlur={() => handleBlur('wingspan')}
                   error={getError('wingspan')}
-                  unit="mm"
-                  placeholder="1200"
+                  unit={getUnit('mm')}
+                  placeholder={getPlaceholder('wingspan', '1200')}
+                />
+                <VehicleInputField
+                  label="All-Up Weight"
+                  value={getConvertedValue('weight')}
+                  onChange={(v) => handleConvertedChange('weight', v)}
+                  onBlur={() => handleBlur('weight')}
+                  error={getError('weight')}
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('weight', '1500')}
                 />
                 <VehicleInputField
                   label="Wing Area"
@@ -1969,22 +2186,23 @@ function VehicleEditModal({
                   placeholder="2400"
                 />
                 <VehicleInputField
-                  label="All-Up Weight"
-                  value={getDisplayValue('weight')}
-                  onChange={(v) => handleChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit="g"
-                  placeholder="1500"
-                />
-                <VehicleInputField
-                  label="Stall Speed (if known)"
+                  label="Stall Speed"
                   value={getDisplayValue('stallSpeed')}
                   onChange={(v) => handleChange('stallSpeed', v)}
                   onBlur={() => handleBlur('stallSpeed')}
                   error={getError('stallSpeed')}
                   unit="m/s"
                   placeholder="8"
+                />
+                <PropSizeInput
+                  value={vehicle.propSize}
+                  onChange={(v) => onUpdate({ propSize: v })}
+                  presets={[
+                    { size: '8x4' }, { size: '8x6' }, { size: '9x6' },
+                    { size: '10x5' }, { size: '10x7' }, { size: '11x7' },
+                    { size: '12x6' }, { size: '13x6.5' }, { size: '14x7' },
+                    { size: '16x8' }, { size: '18x8' },
+                  ]}
                 />
               </div>
             </div>
@@ -2002,12 +2220,12 @@ function VehicleEditModal({
               <div className="grid grid-cols-2 gap-4">
                 <VehicleInputField
                   label="Wingspan"
-                  value={getDisplayValue('wingspan')}
-                  onChange={(v) => handleChange('wingspan', v)}
+                  value={getConvertedValue('wingspan')}
+                  onChange={(v) => handleConvertedChange('wingspan', v)}
                   onBlur={() => handleBlur('wingspan')}
                   error={getError('wingspan')}
-                  unit="mm"
-                  placeholder="1500"
+                  unit={getUnit('mm')}
+                  placeholder={getPlaceholder('wingspan', '1500')}
                 />
                 <VehicleSelectField
                   label="VTOL Motors"
@@ -2021,12 +2239,12 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="All-Up Weight"
-                  value={getDisplayValue('weight')}
-                  onChange={(v) => handleChange('weight', v)}
+                  value={getConvertedValue('weight')}
+                  onChange={(v) => handleConvertedChange('weight', v)}
                   onBlur={() => handleBlur('weight')}
                   error={getError('weight')}
-                  unit="g"
-                  placeholder="3000"
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('weight', '3000')}
                 />
                 <VehicleInputField
                   label="Transition Speed"
@@ -2036,6 +2254,15 @@ function VehicleEditModal({
                   error={getError('transitionSpeed')}
                   unit="m/s"
                   placeholder="15"
+                />
+                <PropSizeInput
+                  value={vehicle.propSize}
+                  onChange={(v) => onUpdate({ propSize: v })}
+                  presets={[
+                    { size: '8x6' }, { size: '10x5' }, { size: '10x7' },
+                    { size: '12x6' }, { size: '14x7' }, { size: '16x8' },
+                    { size: '18x8' },
+                  ]}
                 />
               </div>
             </div>
@@ -2063,21 +2290,21 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="Total Weight"
-                  value={getDisplayValue('weight')}
-                  onChange={(v) => handleChange('weight', v)}
+                  value={getConvertedValue('weight')}
+                  onChange={(v) => handleConvertedChange('weight', v)}
                   onBlur={() => handleBlur('weight')}
                   error={getError('weight')}
-                  unit="g"
-                  placeholder="2000"
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('weight', '2000')}
                 />
                 <VehicleInputField
                   label="Wheelbase"
-                  value={getDisplayValue('wheelbase')}
-                  onChange={(v) => handleChange('wheelbase', v)}
+                  value={getConvertedValue('wheelbase')}
+                  onChange={(v) => handleConvertedChange('wheelbase', v)}
                   onBlur={() => handleBlur('wheelbase')}
                   error={getError('wheelbase')}
-                  unit="mm"
-                  placeholder="300"
+                  unit={getUnit('mm')}
+                  placeholder={getPlaceholder('wheelbase', '300')}
                 />
                 <VehicleInputField
                   label="Wheel Diameter"
@@ -2089,7 +2316,7 @@ function VehicleEditModal({
                   placeholder="100"
                 />
                 <VehicleInputField
-                  label="Max Speed (if known)"
+                  label="Max Speed"
                   value={getDisplayValue('maxSpeed')}
                   onChange={(v) => handleChange('maxSpeed', v)}
                   onBlur={() => handleBlur('maxSpeed')}
@@ -2134,33 +2361,33 @@ function VehicleEditModal({
                 />
                 <VehicleInputField
                   label="Hull Length"
-                  value={getDisplayValue('hullLength')}
-                  onChange={(v) => handleChange('hullLength', v)}
+                  value={getConvertedValue('hullLength')}
+                  onChange={(v) => handleConvertedChange('hullLength', v)}
                   onBlur={() => handleBlur('hullLength')}
                   error={getError('hullLength')}
-                  unit="mm"
-                  placeholder="600"
+                  unit={getUnit('mm')}
+                  placeholder={getPlaceholder('hullLength', '600')}
                 />
                 <VehicleInputField
                   label="Total Weight"
-                  value={getDisplayValue('weight')}
-                  onChange={(v) => handleChange('weight', v)}
+                  value={getConvertedValue('weight')}
+                  onChange={(v) => handleConvertedChange('weight', v)}
                   onBlur={() => handleBlur('weight')}
                   error={getError('weight')}
-                  unit="g"
-                  placeholder="3000"
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('weight', '3000')}
                 />
                 <VehicleInputField
                   label="Displacement"
-                  value={getDisplayValue('displacement')}
-                  onChange={(v) => handleChange('displacement', v)}
+                  value={getConvertedValue('displacement')}
+                  onChange={(v) => handleConvertedChange('displacement', v)}
                   onBlur={() => handleBlur('displacement')}
                   error={getError('displacement')}
-                  unit="g"
-                  placeholder="3500"
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('displacement', '3500')}
                 />
                 <VehicleInputField
-                  label="Max Speed (if known)"
+                  label="Max Speed"
                   value={getDisplayValue('maxSpeed')}
                   onChange={(v) => handleChange('maxSpeed', v)}
                   onBlur={() => handleBlur('maxSpeed')}
@@ -2184,12 +2411,12 @@ function VehicleEditModal({
               <div className="grid grid-cols-2 gap-4">
                 <VehicleInputField
                   label="Hull Length"
-                  value={getDisplayValue('hullLength')}
-                  onChange={(v) => handleChange('hullLength', v)}
+                  value={getConvertedValue('hullLength')}
+                  onChange={(v) => handleConvertedChange('hullLength', v)}
                   onBlur={() => handleBlur('hullLength')}
                   error={getError('hullLength')}
-                  unit="mm"
-                  placeholder="500"
+                  unit={getUnit('mm')}
+                  placeholder={getPlaceholder('hullLength', '500')}
                 />
                 <VehicleSelectField
                   label="Thruster Count"
@@ -2203,13 +2430,13 @@ function VehicleEditModal({
                   ]}
                 />
                 <VehicleInputField
-                  label="Total Weight (dry)"
-                  value={getDisplayValue('weight')}
-                  onChange={(v) => handleChange('weight', v)}
+                  label="Dry Weight"
+                  value={getConvertedValue('weight')}
+                  onChange={(v) => handleConvertedChange('weight', v)}
                   onBlur={() => handleBlur('weight')}
                   error={getError('weight')}
-                  unit="g"
-                  placeholder="5000"
+                  unit={getUnit('g')}
+                  placeholder={getPlaceholder('weight', '5000')}
                 />
                 <VehicleInputField
                   label="Max Depth Rating"
@@ -2231,7 +2458,7 @@ function VehicleEditModal({
                   ]}
                 />
                 <VehicleInputField
-                  label="Max Speed (if known)"
+                  label="Max Speed"
                   value={getDisplayValue('maxSpeed')}
                   onChange={(v) => handleChange('maxSpeed', v)}
                   onBlur={() => handleBlur('maxSpeed')}
@@ -2253,28 +2480,41 @@ function VehicleEditModal({
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <VehicleSelectField
+                label="Chemistry"
+                value={vehicle.batteryChemistry || 'lipo'}
+                onChange={(v) => onUpdate({ batteryChemistry: v as VehicleProfile['batteryChemistry'] })}
+                options={[
+                  { value: 'lipo', label: 'LiPo (3.7V)' },
+                  { value: 'lihv', label: 'LiHV (3.8V)' },
+                  { value: 'lion', label: 'Li-Ion (3.6V)' },
+                  { value: 'life', label: 'LiFePO4 (3.3V)' },
+                ]}
+              />
+              <VehicleSelectField
                 label="Cell Count"
                 value={vehicle.batteryCells || 4}
                 onChange={(v) => onUpdate({ batteryCells: Number(v) })}
                 options={[
-                  { value: 2, label: '2S (7.4V)' },
-                  { value: 3, label: '3S (11.1V)' },
-                  { value: 4, label: '4S (14.8V)' },
-                  { value: 5, label: '5S (18.5V)' },
-                  { value: 6, label: '6S (22.2V)' },
-                  { value: 8, label: '8S (29.6V)' },
-                  { value: 12, label: '12S (44.4V)' },
-                  { value: 14, label: '14S (51.8V)' },
+                  { value: 2, label: '2S' },
+                  { value: 3, label: '3S' },
+                  { value: 4, label: '4S' },
+                  { value: 5, label: '5S' },
+                  { value: 6, label: '6S' },
+                  { value: 7, label: '7S' },
+                  { value: 8, label: '8S' },
+                  { value: 10, label: '10S' },
+                  { value: 12, label: '12S' },
+                  { value: 14, label: '14S' },
                 ]}
               />
               <VehicleInputField
                 label="Capacity"
-                value={getDisplayValue('batteryCapacity')}
-                onChange={(v) => handleChange('batteryCapacity', v)}
+                value={getConvertedValue('batteryCapacity')}
+                onChange={(v) => handleConvertedChange('batteryCapacity', v)}
                 onBlur={() => handleBlur('batteryCapacity')}
                 error={getError('batteryCapacity')}
-                unit="mAh"
-                placeholder="1500"
+                unit={getUnit('mAh')}
+                placeholder={getPlaceholder('batteryCapacity', '1500')}
               />
             </div>
           </div>
@@ -2339,27 +2579,6 @@ function VehicleEditModal({
                     error={getError('escRating')}
                     unit="A"
                     placeholder="40"
-                  />
-                  <VehicleSelectField
-                    label="Prop Size"
-                    value={vehicle.propSize || ''}
-                    onChange={(v) => onUpdate({ propSize: v || undefined })}
-                    options={[
-                      { value: '', label: 'None' },
-                      { value: '7x5', label: '7x5' },
-                      { value: '8x4', label: '8x4' },
-                      { value: '8x6', label: '8x6' },
-                      { value: '9x6', label: '9x6' },
-                      { value: '10x5', label: '10x5' },
-                      { value: '10x6', label: '10x6' },
-                      { value: '10x7', label: '10x7' },
-                      { value: '11x7', label: '11x7' },
-                      { value: '12x6', label: '12x6' },
-                      { value: '13x6.5', label: '13x6.5' },
-                      { value: '14x7', label: '14x7' },
-                      { value: '16x8', label: '16x8' },
-                      { value: '18x8', label: '18x8' },
-                    ]}
                   />
                 </div>
               )}
@@ -2442,28 +2661,32 @@ function VehicleCard({
   onDelete,
   canDelete,
 }: VehicleCardProps) {
+  const { displayUnits } = useSettingsStore();
   // Build vehicle-specific info string
   const getVehicleSpecs = () => {
     const parts: string[] = [];
-    const batteryStr = `${vehicle.batteryCells}S ${vehicle.batteryCapacity}mAh`;
+    const chemLabel = vehicle.batteryChemistry && vehicle.batteryChemistry !== 'lipo'
+      ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[vehicle.batteryChemistry] ?? ''}`
+      : '';
+    const batteryStr = `${vehicle.batteryCells}S${chemLabel} ${fmtCapacity(vehicle.batteryCapacity, displayUnits)}`;
 
     switch (vehicle.type) {
       case 'copter':
-        if (vehicle.frameSize) parts.push(`${vehicle.frameSize}mm`);
+        if (vehicle.frameSize) parts.push(fmtLength(vehicle.frameSize, displayUnits));
         if (vehicle.motorCount) {
           const motorNames: Record<number, string> = { 3: 'Tri', 4: 'Quad', 6: 'Hex', 8: 'Octo' };
           parts.push(motorNames[vehicle.motorCount] || `${vehicle.motorCount}M`);
         }
         parts.push(batteryStr);
-        parts.push(`${vehicle.weight}g`);
+        parts.push(fmtWeight(vehicle.weight, displayUnits));
         break;
       case 'plane':
-        if (vehicle.wingspan) parts.push(`${vehicle.wingspan}mm span`);
+        if (vehicle.wingspan) parts.push(`${fmtLength(vehicle.wingspan, displayUnits)} span`);
         parts.push(batteryStr);
-        parts.push(`${vehicle.weight}g`);
+        parts.push(fmtWeight(vehicle.weight, displayUnits));
         break;
       case 'vtol':
-        if (vehicle.wingspan) parts.push(`${vehicle.wingspan}mm`);
+        if (vehicle.wingspan) parts.push(fmtLength(vehicle.wingspan, displayUnits));
         if (vehicle.vtolMotorCount) parts.push(`${vehicle.vtolMotorCount} VTOL motors`);
         parts.push(batteryStr);
         break;
@@ -2479,7 +2702,7 @@ function VehicleCard({
         if (vehicle.hullType) {
           parts.push(vehicle.hullType.charAt(0).toUpperCase() + vehicle.hullType.slice(1));
         }
-        if (vehicle.hullLength) parts.push(`${vehicle.hullLength}mm`);
+        if (vehicle.hullLength) parts.push(fmtLength(vehicle.hullLength, displayUnits));
         parts.push(batteryStr);
         break;
       case 'sub':
@@ -2489,7 +2712,7 @@ function VehicleCard({
         break;
       default:
         parts.push(batteryStr);
-        parts.push(`${vehicle.weight}g`);
+        parts.push(fmtWeight(vehicle.weight, displayUnits));
     }
 
     return parts.join(' • ');

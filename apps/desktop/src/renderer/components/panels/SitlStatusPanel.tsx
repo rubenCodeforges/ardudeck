@@ -56,7 +56,11 @@ function RCChannelBar({ channel, value, label }: { channel: number; value: numbe
 }
 
 export function SitlStatusPanel() {
-  const { flight, position, gps, attitude, battery } = useTelemetryStore();
+  const flight = useTelemetryStore((s) => s.flight);
+  const position = useTelemetryStore((s) => s.position);
+  const gps = useTelemetryStore((s) => s.gps);
+  const attitude = useTelemetryStore((s) => s.attitude);
+  const battery = useTelemetryStore((s) => s.battery);
   const { connectionState } = useConnectionStore();
   const sitlStore = useSitlStore();
   const sitlRunning = sitlStore.isRunning;

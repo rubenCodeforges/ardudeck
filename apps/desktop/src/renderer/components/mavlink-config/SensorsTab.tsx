@@ -9,7 +9,7 @@
  * - Sensor health indicators
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Compass,
   Navigation,
@@ -88,15 +88,23 @@ function TelemetryValue({
 }
 
 const SensorsTab: React.FC = () => {
-  const { attitude, gps, battery, vfrHud } = useTelemetryStore();
+  const attitude = useTelemetryStore((s) => s.attitude);
+  const gps = useTelemetryStore((s) => s.gps);
+  const battery = useTelemetryStore((s) => s.battery);
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
   const sysStatus = null as { onboardControlSensorsHealth: number; onboardControlSensorsEnabled: number } | null;
   const heartbeat = null as { autopilot?: string } | null;
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const lastUpdateRef = useRef(0);
 
-  // Track last update time
+  // Track last update time - throttled to once per second to avoid cascading re-renders
   useEffect(() => {
     if (attitude || gps || battery) {
-      setLastUpdate(new Date());
+      const now = Date.now();
+      if (now - lastUpdateRef.current > 1000) {
+        lastUpdateRef.current = now;
+        setLastUpdate(new Date());
+      }
     }
   }, [attitude, gps, battery]);
 
@@ -189,7 +197,6 @@ const SensorsTab: React.FC = () => {
               className="w-16 h-16 border-2 border-blue-400 rounded"
               style={{
                 transform: `rotate(${attitude?.roll ?? 0}deg)`,
-                transition: 'transform 0.1s',
               }}
             >
               <div

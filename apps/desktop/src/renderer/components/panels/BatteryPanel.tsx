@@ -92,7 +92,7 @@ function BatteryIcon({ percentage, voltage }: { percentage: number; voltage: num
 }
 
 export function BatteryPanel() {
-  const { battery } = useTelemetryStore();
+  const battery = useTelemetryStore((s) => s.battery);
 
   const textColor = battery.remaining > 30 ? 'text-emerald-400' : battery.remaining > 15 ? 'text-yellow-400' : 'text-red-400';
 

@@ -199,7 +199,7 @@ const BackgroundPatterns: Record<CalibrationTypeId, React.ReactNode> = {
 
 export function SelectCalibrationStep() {
   const { protocol, sensors, isSensorsLoading, selectCalibrationType, error, completedCalibrations } = useCalibrationStore();
-  const { flight } = useTelemetryStore();
+  const flight = useTelemetryStore((s) => s.flight);
 
   // Get arming disabled reasons from telemetry
   const armingDisabledReasons = flight.armingDisabledReasons || [];

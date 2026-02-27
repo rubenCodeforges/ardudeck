@@ -296,21 +296,92 @@ export const BATTERY_MONITORS: Record<number, { name: string; description: strin
 };
 
 // =============================================================================
+// Battery Chemistry Types
+// =============================================================================
+
+export type BatteryChemistry = 'lipo' | 'lihv' | 'lion' | 'life';
+
+export interface BatteryChemistryInfo {
+  name: string;
+  description: string;
+  /** Per-cell voltages */
+  cellFull: number;
+  cellNominal: number;
+  cellStorage: number;
+  /** ArduPilot-safe thresholds - enough margin for RTL */
+  cellLow: number;
+  cellCritical: number;
+  cellMin: number;
+}
+
+export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo> = {
+  lipo: {
+    name: 'LiPo',
+    description: 'Standard lithium polymer - most common for RC',
+    cellFull: 4.2,
+    cellNominal: 3.7,
+    cellStorage: 3.8,
+    cellLow: 3.6,
+    cellCritical: 3.5,
+    cellMin: 3.0,
+  },
+  lihv: {
+    name: 'LiHV',
+    description: 'High-voltage LiPo - 4.35V full charge',
+    cellFull: 4.35,
+    cellNominal: 3.8,
+    cellStorage: 3.9,
+    cellLow: 3.7,
+    cellCritical: 3.6,
+    cellMin: 3.1,
+  },
+  lion: {
+    name: 'Li-Ion',
+    description: 'Lithium-ion - higher energy density, lower discharge rate',
+    cellFull: 4.2,
+    cellNominal: 3.6,
+    cellStorage: 3.7,
+    cellLow: 3.2,
+    cellCritical: 3.0,
+    cellMin: 2.5,
+  },
+  life: {
+    name: 'LiFePO4',
+    description: 'Lithium iron phosphate - very stable, long cycle life',
+    cellFull: 3.6,
+    cellNominal: 3.3,
+    cellStorage: 3.3,
+    cellLow: 3.1,
+    cellCritical: 3.0,
+    cellMin: 2.5,
+  },
+};
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 
 /**
- * Calculate LiPo cell voltages
+ * Calculate cell voltages for any chemistry and cell count.
+ * Thresholds are set conservatively for ArduPilot - enough margin for RTL.
+ */
+export function getCellVoltages(cells: number, chemistry: BatteryChemistry = 'lipo') {
+  const chem = BATTERY_CHEMISTRIES[chemistry];
+  return {
+    nominal: cells * chem.cellNominal,
+    full: cells * chem.cellFull,
+    storage: cells * chem.cellStorage,
+    low: cells * chem.cellLow,
+    critical: cells * chem.cellCritical,
+    min: cells * chem.cellMin,
+  };
+}
+
+/**
+ * Calculate LiPo cell voltages (legacy wrapper)
  */
 export function getLiPoVoltages(cells: number) {
-  return {
-    nominal: cells * 3.7,
-    full: cells * 4.2,
-    storage: cells * 3.8,
-    low: cells * 3.5,
-    critical: cells * 3.3,
-    min: cells * 3.0,
-  };
+  return getCellVoltages(cells, 'lipo');
 }
 
 // =============================================================================

@@ -6,9 +6,8 @@
  * Uses Lucide icons (no emojis) and DraggableSliders.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Battery,
   BarChart3,
   Zap,
   Plug,
@@ -19,7 +18,12 @@ import {
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
-import { BATTERY_MONITORS, getLiPoVoltages } from './presets/mavlink-presets';
+import {
+  BATTERY_MONITORS,
+  getCellVoltages,
+  BATTERY_CHEMISTRIES,
+  type BatteryChemistry,
+} from './presets/mavlink-presets';
 
 const BatteryTab: React.FC = () => {
   const { parameters, setParameter, modifiedCount } = useParameterStore();
@@ -40,12 +44,17 @@ const BatteryTab: React.FC = () => {
     battAmpOffset: parameters.get('BATT_AMP_OFFSET')?.value ?? 0,
   }), [parameters]);
 
-  // Common LiPo cell counts
-  const cellCounts = [2, 3, 4, 5, 6];
+  // Battery chemistry state
+  const [chemistry, setChemistry] = useState<BatteryChemistry>('lipo');
+  const chemInfo = BATTERY_CHEMISTRIES[chemistry];
 
-  // Get recommended voltages for selected cell count
+  // Cell counts: 2S-6S compact row, 7S-12S second row for larger setups
+  const cellCountsLow = [2, 3, 4, 5, 6];
+  const cellCountsHigh = [7, 8, 10, 12];
+
+  // Get recommended voltages for selected cell count + chemistry
   const getRecommendedVoltages = (cells: number) => {
-    const v = getLiPoVoltages(cells);
+    const v = getCellVoltages(cells, chemistry);
     return {
       arm: v.storage,
       low: v.low,
@@ -64,8 +73,11 @@ const BatteryTab: React.FC = () => {
   // Estimate cell count from arm voltage
   const estimatedCells = useMemo(() => {
     if (batteryValues.battArmVolt <= 0) return 0;
-    return Math.round(batteryValues.battArmVolt / 3.7);
-  }, [batteryValues.battArmVolt]);
+    return Math.round(batteryValues.battArmVolt / chemInfo.cellNominal);
+  }, [batteryValues.battArmVolt, chemInfo.cellNominal]);
+
+  // Max voltage for sliders - based on 12S full charge of current chemistry + margin
+  const maxVoltageSlider = Math.ceil(12 * chemInfo.cellFull * 10) + 10;
 
   const modified = modifiedCount();
 
@@ -135,7 +147,7 @@ const BatteryTab: React.FC = () => {
             value={batteryValues.battCapacity}
             onChange={(v) => setParameter('BATT_CAPACITY', v)}
             min={0}
-            max={20000}
+            max={30000}
             step={100}
             color="#22C55E"
             hint="Match your battery pack capacity"
@@ -143,7 +155,7 @@ const BatteryTab: React.FC = () => {
 
           {/* Common capacity presets */}
           <div className="flex flex-wrap gap-2">
-            {[1300, 2200, 3000, 4000, 5000, 6000].map((cap) => (
+            {[1300, 2200, 3000, 5000, 8000, 10000, 16000].map((cap) => (
               <button
                 key={cap}
                 onClick={() => setParameter('BATT_CAPACITY', cap)}
@@ -160,7 +172,7 @@ const BatteryTab: React.FC = () => {
         </div>
       </div>
 
-      {/* LiPo Cell Configuration */}
+      {/* Battery Chemistry & Cell Configuration */}
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -168,20 +180,46 @@ const BatteryTab: React.FC = () => {
               <Plug className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-white">LiPo Cell Count</h3>
-              <p className="text-xs text-zinc-500">Auto-calculate voltage thresholds</p>
+              <h3 className="text-sm font-medium text-white">Battery Chemistry & Cell Count</h3>
+              <p className="text-xs text-zinc-500">Select chemistry, then cell count to auto-calculate thresholds</p>
             </div>
           </div>
           {estimatedCells > 0 && (
             <span className="px-2 py-1 text-xs bg-zinc-800 rounded text-zinc-400">
-              Currently: ~{estimatedCells}S
+              Currently: ~{estimatedCells}S {chemInfo.name}
             </span>
           )}
         </div>
 
+        {/* Chemistry Selector */}
         <div className="flex gap-2">
-          {cellCounts.map((cells) => {
-            const voltages = getLiPoVoltages(cells);
+          {(Object.entries(BATTERY_CHEMISTRIES) as [BatteryChemistry, typeof chemInfo][]).map(([key, chem]) => (
+            <button
+              key={key}
+              onClick={() => setChemistry(key)}
+              className={`flex-1 p-2.5 rounded-lg border text-center transition-all ${
+                chemistry === key
+                  ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                  : 'bg-zinc-800/50 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+              }`}
+            >
+              <div className="text-sm font-medium">{chem.name}</div>
+              <div className="text-[10px] text-zinc-500 mt-0.5">
+                {chem.cellNominal}V/cell
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Chemistry description */}
+        <div className="bg-zinc-800/50 rounded-lg p-2.5">
+          <p className="text-xs text-zinc-500">{chemInfo.description}</p>
+        </div>
+
+        {/* Cell Count - Low range */}
+        <div className="flex gap-2">
+          {cellCountsLow.map((cells) => {
+            const voltages = getCellVoltages(cells, chemistry);
             const isActive = estimatedCells === cells;
             return (
               <button
@@ -195,7 +233,31 @@ const BatteryTab: React.FC = () => {
               >
                 <div className="text-lg font-bold">{cells}S</div>
                 <div className="text-[10px] text-zinc-500 mt-1">
-                  {voltages.nominal.toFixed(1)}V nom
+                  {voltages.nominal.toFixed(1)}V
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Cell Count - High range */}
+        <div className="flex gap-2">
+          {cellCountsHigh.map((cells) => {
+            const voltages = getCellVoltages(cells, chemistry);
+            const isActive = estimatedCells === cells;
+            return (
+              <button
+                key={cells}
+                onClick={() => applyCellPreset(cells)}
+                className={`flex-1 p-3 rounded-lg border text-center transition-all ${
+                  isActive
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                    : 'bg-zinc-800/50 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                }`}
+              >
+                <div className="text-lg font-bold">{cells}S</div>
+                <div className="text-[10px] text-zinc-500 mt-1">
+                  {voltages.nominal.toFixed(1)}V
                 </div>
               </button>
             );
@@ -207,10 +269,10 @@ const BatteryTab: React.FC = () => {
           <div className="bg-zinc-800/50 rounded-lg p-3">
             <div className="grid grid-cols-4 gap-3 text-center">
               {[
-                { label: 'Full', voltage: getLiPoVoltages(estimatedCells).full, color: 'text-green-400' },
-                { label: 'Storage', voltage: getLiPoVoltages(estimatedCells).storage, color: 'text-blue-400' },
-                { label: 'Low', voltage: getLiPoVoltages(estimatedCells).low, color: 'text-amber-400' },
-                { label: 'Critical', voltage: getLiPoVoltages(estimatedCells).critical, color: 'text-red-400' },
+                { label: 'Full', voltage: getCellVoltages(estimatedCells, chemistry).full, color: 'text-green-400' },
+                { label: 'Storage', voltage: getCellVoltages(estimatedCells, chemistry).storage, color: 'text-blue-400' },
+                { label: 'Low (RTL)', voltage: getCellVoltages(estimatedCells, chemistry).low, color: 'text-amber-400' },
+                { label: 'Critical', voltage: getCellVoltages(estimatedCells, chemistry).critical, color: 'text-red-400' },
               ].map((v) => (
                 <div key={v.label}>
                   <div className={`text-sm font-mono ${v.color}`}>{v.voltage.toFixed(1)}V</div>
@@ -220,6 +282,15 @@ const BatteryTab: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* ArduPilot threshold philosophy note */}
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+          <p className="text-xs text-zinc-400">
+            <span className="text-blue-400">ArduPilot note:</span> Thresholds are set conservatively to ensure enough
+            battery remains for RTL. Low triggers RTL warning, Critical triggers emergency land. Unlike Betaflight,
+            these must account for the energy needed to fly home.
+          </p>
+        </div>
       </div>
 
       {/* Voltage Thresholds */}
@@ -240,7 +311,7 @@ const BatteryTab: React.FC = () => {
             value={Math.round(batteryValues.battArmVolt * 10)}
             onChange={(v) => setParameter('BATT_ARM_VOLT', v / 10)}
             min={0}
-            max={260}
+            max={maxVoltageSlider}
             step={1}
             color="#3B82F6"
             hint="Won't arm below this voltage"
@@ -251,10 +322,10 @@ const BatteryTab: React.FC = () => {
             value={Math.round(batteryValues.battLowVolt * 10)}
             onChange={(v) => setParameter('BATT_LOW_VOLT', v / 10)}
             min={0}
-            max={260}
+            max={maxVoltageSlider}
             step={1}
             color="#F59E0B"
-            hint="Warning alert triggers here"
+            hint="RTL warning triggers here"
           />
 
           <DraggableSlider
@@ -262,10 +333,10 @@ const BatteryTab: React.FC = () => {
             value={Math.round(batteryValues.battCrtVolt * 10)}
             onChange={(v) => setParameter('BATT_CRT_VOLT', v / 10)}
             min={0}
-            max={260}
+            max={maxVoltageSlider}
             step={1}
             color="#EF4444"
-            hint="Failsafe triggers here"
+            hint="Emergency land triggers here"
           />
         </div>
 
@@ -279,13 +350,13 @@ const BatteryTab: React.FC = () => {
           {batteryValues.battCrtVolt > 0 && estimatedCells > 0 && (
             <div
               className="absolute top-0 w-0.5 h-full bg-red-400"
-              style={{ left: `${(batteryValues.battCrtVolt / (estimatedCells * 4.2)) * 100}%` }}
+              style={{ left: `${(batteryValues.battCrtVolt / (estimatedCells * chemInfo.cellFull)) * 100}%` }}
             />
           )}
           {batteryValues.battLowVolt > 0 && estimatedCells > 0 && (
             <div
               className="absolute top-0 w-0.5 h-full bg-amber-400"
-              style={{ left: `${(batteryValues.battLowVolt / (estimatedCells * 4.2)) * 100}%` }}
+              style={{ left: `${(batteryValues.battLowVolt / (estimatedCells * chemInfo.cellFull)) * 100}%` }}
             />
           )}
         </div>

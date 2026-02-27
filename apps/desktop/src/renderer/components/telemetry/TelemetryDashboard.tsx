@@ -12,6 +12,8 @@ import 'dockview-react/dist/styles/dockview.css';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useLayoutStore } from '../../stores/layout-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useSettingsStore } from '../../stores/settings-store';
+import type { TelemetrySpeed } from '../../../shared/ipc-channels';
 
 // Reserved layout name for auto-save (separate from user-named layouts)
 const TELEMETRY_AUTOSAVE_NAME = '__telemetry_autosave';
@@ -472,10 +474,28 @@ function AddPanelDropdown({ onAddPanel, supportsMissionPlanning }: { onAddPanel:
   );
 }
 
+// Telemetry speed selector labels
+const SPEED_OPTIONS: { value: TelemetrySpeed; label: string }[] = [
+  { value: 'eco', label: 'Eco' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'max', label: 'Max' },
+];
+
 // Quick stats bar
 function QuickStatsBar() {
-  const { flight, vfrHud, battery } = useTelemetryStore();
+  const flight = useTelemetryStore((s) => s.flight);
+  const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const battery = useTelemetryStore((s) => s.battery);
+  const connectionState = useConnectionStore((s) => s.connectionState);
+  const telemetrySpeed = useSettingsStore((s) => s.telemetrySpeed);
+  const setTelemetrySpeed = useSettingsStore((s) => s.setTelemetrySpeed);
   const batteryColor = battery.remaining > 30 ? 'text-emerald-400' : battery.remaining > 15 ? 'text-yellow-400' : 'text-red-400';
+  const isMavlink = connectionState.protocol === 'mavlink';
+
+  const handleSpeedChange = (speed: TelemetrySpeed) => {
+    setTelemetrySpeed(speed);
+    window.electronAPI?.setTelemetryStreamRate(speed);
+  };
 
   return (
     <div className={`shrink-0 px-4 py-2 flex items-center justify-between border-b ${
@@ -512,6 +532,26 @@ function QuickStatsBar() {
           <span className="text-gray-500">BAT</span>
           <span className={`font-mono text-sm ${batteryColor}`}>{battery.voltage.toFixed(1)}V</span>
         </div>
+        {isMavlink && (
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-gray-500">RATE</span>
+            <div className="flex bg-gray-700/30 rounded-lg p-0.5">
+              {SPEED_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSpeedChange(opt.value)}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                    telemetrySpeed === opt.value
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -520,7 +560,7 @@ function QuickStatsBar() {
 export function TelemetryDashboard() {
   const apiRef = useRef<DockviewApi | null>(null);
   const { layouts, activeLayoutName, loadLayouts, saveLayout, setActiveLayout } = useLayoutStore();
-  const { connectionState } = useConnectionStore();
+  const connectionState = useConnectionStore((s) => s.connectionState);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
 
   // Check if mission planning is supported

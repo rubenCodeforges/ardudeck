@@ -6,10 +6,12 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { History } from 'lucide-react';
 import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { useConnectionStore } from '../../stores/connection-store';
 import BitmaskEditor from './BitmaskEditor';
+import ParamHistoryModal from './ParamHistoryModal';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -110,6 +112,7 @@ const ParameterTable: React.FC = () => {
   const [isSavingFile, setIsSavingFile] = useState(false);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
 
   // Auto-hide toast after 3 seconds
@@ -130,6 +133,16 @@ const ParameterTable: React.FC = () => {
     setShowWriteConfirm(false);
     setIsWritingFlash(true);
     try {
+      // Auto-checkpoint before writing to flash
+      const modified = modifiedParameters();
+      if (modified.length > 0) {
+        const boardUid = connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`;
+        const boardName = connectionState.vehicleType || 'Unknown';
+        await window.electronAPI?.saveParamCheckpoint(boardUid, boardName,
+          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value }))
+        );
+      }
+
       const result = await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
         markAllAsSaved();
@@ -142,7 +155,7 @@ const ParameterTable: React.FC = () => {
     } finally {
       setIsWritingFlash(false);
     }
-  }, [markAllAsSaved, showToast]);
+  }, [markAllAsSaved, showToast, modifiedParameters, connectionState]);
 
   const handleSaveToFile = useCallback(async () => {
     setIsSavingFile(true);
@@ -291,6 +304,15 @@ const ParameterTable: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             {isLoadingFile ? 'Loading...' : 'Load'}
+          </button>
+
+          <button
+            onClick={() => setShowHistory(true)}
+            className="px-3 py-2 bg-zinc-700/30 hover:bg-zinc-700/50 text-zinc-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            title="View parameter change history"
+          >
+            <History className="w-4 h-4" />
+            History
           </button>
 
           {modified > 0 && (
@@ -610,6 +632,16 @@ const ParameterTable: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Parameter History Modal */}
+      {showHistory && (
+        <ParamHistoryModal
+          boardUid={connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`}
+          boardName={connectionState.vehicleType || 'Unknown'}
+          onClose={() => setShowHistory(false)}
+          showToast={showToast}
+        />
       )}
 
       {/* Toast notification */}

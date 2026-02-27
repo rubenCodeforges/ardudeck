@@ -2,7 +2,7 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, formatNumber } from './panel-utils';
 
 export function VelocityPanel() {
-  const { position } = useTelemetryStore();
+  const position = useTelemetryStore((s) => s.position);
 
   return (
     <PanelContainer>

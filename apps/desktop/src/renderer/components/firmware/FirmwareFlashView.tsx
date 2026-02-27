@@ -823,59 +823,6 @@ export function FirmwareFlashView() {
           {/* Divider line */}
           <div className="h-px bg-zinc-800" />
 
-          {/* Vehicle Type */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-3">
-              Vehicle Type
-              {selectedSource === 'betaflight' && (
-                <span className="ml-2 text-xs text-amber-400/80 font-normal">
-                  (Betaflight only supports multirotors)
-                </span>
-              )}
-              {selectedSource === 'inav' && (
-                <span className="ml-2 text-xs text-cyan-400/80 font-normal">
-                  (iNav supports copters, planes, rovers, boats)
-                </span>
-              )}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(VEHICLE_ICONS) as FirmwareVehicleType[]).map((type) => {
-                const isAvailable = availableVehicleTypes.includes(type);
-                const isSelected = selectedVehicleType === type;
-                const isDisabled = isFlashing || !isAvailable;
-
-                return (
-                  <button
-                    key={type}
-                    onClick={() => isAvailable && setSelectedVehicleType(type)}
-                    disabled={isDisabled}
-                    title={!isAvailable ? `${VEHICLE_TYPE_NAMES[type]} not supported by ${FIRMWARE_SOURCE_NAMES[selectedSource]}` : undefined}
-                    className={`
-                      px-3 py-2 rounded-lg border transition-all flex items-center gap-2 relative
-                      ${isSelected
-                        ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                        : isAvailable
-                          ? 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-                          : 'border-zinc-800 bg-zinc-900 text-zinc-600 cursor-not-allowed'
-                      }
-                      ${isFlashing ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                  >
-                    <div className={`w-5 h-5 ${!isAvailable ? 'opacity-40' : ''}`}>{VEHICLE_ICONS[type]}</div>
-                    <span className={`text-sm font-medium ${!isAvailable ? 'line-through decoration-zinc-600' : ''}`}>
-                      {VEHICLE_TYPE_NAMES[type]}
-                    </span>
-                    {!isAvailable && (
-                      <svg className="w-3.5 h-3.5 absolute -top-1 -right-1 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Firmware Source */}
           <div>
             <label className="block text-sm font-medium text-zinc-400 mb-3">
@@ -953,6 +900,59 @@ export function FirmwareFlashView() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Vehicle Type */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-3">
+              Vehicle Type
+              {selectedSource === 'betaflight' && (
+                <span className="ml-2 text-xs text-amber-400/80 font-normal">
+                  (Betaflight only supports multirotors)
+                </span>
+              )}
+              {selectedSource === 'inav' && (
+                <span className="ml-2 text-xs text-cyan-400/80 font-normal">
+                  (iNav supports copters, planes, rovers, boats)
+                </span>
+              )}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(VEHICLE_ICONS) as FirmwareVehicleType[]).map((type) => {
+                const isAvailable = availableVehicleTypes.includes(type);
+                const isSelected = selectedVehicleType === type;
+                const isDisabled = isFlashing || !isAvailable;
+
+                return (
+                  <button
+                    key={type}
+                    onClick={() => isAvailable && setSelectedVehicleType(type)}
+                    disabled={isDisabled}
+                    title={!isAvailable ? `${VEHICLE_TYPE_NAMES[type]} not supported by ${FIRMWARE_SOURCE_NAMES[selectedSource]}` : undefined}
+                    className={`
+                      px-3 py-2 rounded-lg border transition-all flex items-center gap-2 relative
+                      ${isSelected
+                        ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                        : isAvailable
+                          ? 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-600 cursor-not-allowed'
+                      }
+                      ${isFlashing ? 'opacity-50 cursor-not-allowed' : ''}
+                    `}
+                  >
+                    <div className={`w-5 h-5 ${!isAvailable ? 'opacity-40' : ''}`}>{VEHICLE_ICONS[type]}</div>
+                    <span className={`text-sm font-medium ${!isAvailable ? 'line-through decoration-zinc-600' : ''}`}>
+                      {VEHICLE_TYPE_NAMES[type]}
+                    </span>
+                    {!isAvailable && (
+                      <svg className="w-3.5 h-3.5 absolute -top-1 -right-1 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Version Selection */}

@@ -67,9 +67,12 @@ import {
   MISSION_CLEAR_ALL_CRC_EXTRA,
   MISSION_SET_CURRENT_ID,
   MISSION_SET_CURRENT_CRC_EXTRA,
+  serializeHeartbeat,
+  HEARTBEAT_ID,
+  HEARTBEAT_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed } from '../shared/ipc-channels.js';
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -213,10 +216,30 @@ const signingStore = new Store<{ encryptedKey?: string; linkId?: number; sentToF
   defaults: {},
 });
 
+// Parameter history storage (version control per board)
+import type { ParamChange, ParamCheckpoint, BoardParamHistory } from '../shared/param-history-types.js';
+const paramHistoryStore = new Store<{ boards: Record<string, BoardParamHistory> }>({
+  name: 'param-history',
+  defaults: { boards: {} },
+});
+
 let signingEnabled = false;
 let signingKey: Uint8Array | null = null;
 let signingLinkId = 0;
 let signingSentToFc = signingStore.get('sentToFc') ?? false;
+
+/**
+ * Auto-load signing key from encrypted storage.
+ * Must be called after app.whenReady() since safeStorage requires it.
+ */
+function autoLoadSigningKey(): void {
+  if (signingKey) return; // Already loaded
+  signingKey = loadSigningKey();
+  if (signingKey) {
+    signingLinkId = signingStore.get('linkId') ?? 0;
+    console.log('[MAVLink Signing] Key loaded from storage at startup');
+  }
+}
 
 /**
  * Load signing key from encrypted storage.
@@ -320,6 +343,73 @@ let mavlinkDataHandler: ((data: Uint8Array) => Promise<void>) | null = null;
 let transportErrorHandler: ((err: Error) => void) | null = null;
 let transportCloseHandler: (() => void) | null = null;
 
+// GCS heartbeat: ArduPilot requires GCS heartbeats to recognize us as a valid GCS
+let gcsHeartbeatInterval: NodeJS.Timeout | null = null;
+
+// Telemetry stream rate presets (Hz values per message category)
+const STREAM_RATE_PRESETS: Record<TelemetrySpeed, { attitude: number; position: number; other: number }> = {
+  eco:    { attitude: 10, position: 4,  other: 2 },
+  normal: { attitude: 30, position: 10, other: 5 },
+  max:    { attitude: 50, position: 15, other: 10 },
+};
+
+// Current telemetry speed (updated from settings on connect, from renderer on toggle)
+let currentTelemetrySpeed: TelemetrySpeed = 'normal';
+
+/**
+ * Send MAV_CMD_SET_MESSAGE_INTERVAL for all telemetry streams.
+ * Uses the preset rates for the given speed.
+ */
+async function sendStreamRateRequests(mainWindow: BrowserWindow, speed: TelemetrySpeed): Promise<void> {
+  if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+
+  const rates = STREAM_RATE_PRESETS[speed];
+  if (!rates) return;
+
+  const targetSys = connectionState.systemId ?? 1;
+  const targetComp = connectionState.componentId ?? 1;
+
+  const messageIntervals = [
+    { msgId: 30, hz: rates.attitude },  // ATTITUDE
+    { msgId: 33, hz: rates.position },  // GLOBAL_POSITION_INT
+    { msgId: 24, hz: rates.other },     // GPS_RAW_INT
+    { msgId: 1,  hz: rates.other },     // SYS_STATUS
+    { msgId: 65, hz: rates.other },     // RC_CHANNELS
+    { msgId: 74, hz: rates.other },     // VFR_HUD
+    { msgId: 36, hz: rates.other },     // SERVO_OUTPUT_RAW
+    { msgId: 27, hz: rates.other },     // RAW_IMU
+    { msgId: 29, hz: rates.other },     // SCALED_PRESSURE
+  ];
+
+  let sent = 0;
+  for (const req of messageIntervals) {
+    if (!currentTransport?.isOpen) break;
+    try {
+      const intervalUs = Math.round(1_000_000 / req.hz);
+      const cmdPayload = serializeCommandLong({
+        targetSystem: targetSys,
+        targetComponent: targetComp,
+        command: 511, // MAV_CMD_SET_MESSAGE_INTERVAL
+        confirmation: 0,
+        param1: req.msgId,
+        param2: intervalUs,
+        param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+      });
+      const pkt = await sendMavlinkPacket(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA);
+      await currentTransport!.write(pkt);
+      sent++;
+      // Small delay between commands so FC can process each one
+      await new Promise(resolve => setTimeout(resolve, 30));
+    } catch (err) {
+      console.error(`[StreamRate] Failed to send interval for msg #${req.msgId}:`, err);
+    }
+  }
+
+  currentTelemetrySpeed = speed;
+  const r = STREAM_RATE_PRESETS[speed]!;
+  sendLog(mainWindow, 'info', `Telemetry rate: ${speed}`, `${sent}/${messageIntervals.length} cmds sent — ATT ${r.attitude}Hz, POS ${r.position}Hz, OTHER ${r.other}Hz`);
+}
+
 // BSOD FIX: MAVLink processing state to prevent overlapping packet processing
 let processingMavlink = false;
 const pendingMavlinkData: Uint8Array[] = [];
@@ -391,6 +481,7 @@ let detectedMavlinkVersion: 1 | 2 = 1; // Default to v1 for compatibility
 let expectedParamCount = 0;
 let receivedParams = new Map<string, ParamValue>();
 let paramDownloadTimeout: NodeJS.Timeout | null = null;
+let paramDownloadActive = false; // True only during bulk PARAM_REQUEST_LIST download
 
 // Parameter metadata cache (keyed by vehicle type)
 const metadataCache = new Map<VehicleType, ParameterMetadataStore>();
@@ -577,17 +668,20 @@ const MSG_MISSION_ACK = 47;
 const MSG_MISSION_REQUEST_INT = 51;
 const MSG_MISSION_ITEM_INT = 73;
 
+// Autopilot version (for UID extraction)
+const MSG_AUTOPILOT_VERSION = 148;
+
 // Fence message ID
 const MSG_FENCE_STATUS = 162;
 
-// MAVLink v1 CRC_EXTRA values (without mission_type extension field)
-// These differ from v2 because v2 includes the mission_type field in CRC calculation
-const MISSION_REQUEST_LIST_CRC_EXTRA_V1 = 132;  // v2 = 148
-const MISSION_COUNT_CRC_EXTRA_V1 = 221;         // v2 = 52
-const MISSION_REQUEST_CRC_EXTRA_V1 = 230;       // v2 = 177
-const MISSION_ITEM_CRC_EXTRA_V1 = 254;          // v2 = 95
-const MISSION_CLEAR_ALL_CRC_EXTRA_V1 = 232;     // v2 = 25
-const MISSION_ACK_CRC_EXTRA_V1 = 153;           // v2 = 146
+// MAVLink CRC_EXTRA values for v1 paths (manual payload construction without mission_type)
+// Per MAVLink spec, CRC_EXTRA excludes extension fields, so these match the generated v2 values
+const MISSION_REQUEST_LIST_CRC_EXTRA_V1 = 132;
+const MISSION_COUNT_CRC_EXTRA_V1 = 221;
+const MISSION_REQUEST_CRC_EXTRA_V1 = 230;
+const MISSION_ITEM_CRC_EXTRA_V1 = 254;
+const MISSION_CLEAR_ALL_CRC_EXTRA_V1 = 232;
+const MISSION_ACK_CRC_EXTRA_V1 = 153;
 
 // Parse telemetry from MAVLink packet
 // NOTE: MAVLink v2 orders payload fields by size (largest first for alignment)
@@ -599,6 +693,11 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
   if (missionMsgIds.includes(msgid)) {
     const hexPayload = Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ');
     sendLog(mainWindow, 'debug', `Received MSG #${msgid} (len=${payload.length}): ${hexPayload}`);
+  }
+
+  // DIAGNOSTIC: Log ALL incoming messages during upload to see what FC sends
+  if (missionUploadState || missionDownloadState) {
+    console.log(`[MISSION DIAG] Incoming MSG #${msgid} (len=${payload.length})`);
   }
 
   switch (msgid) {
@@ -752,8 +851,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       };
       safeSend(mainWindow, IPC_CHANNELS.PARAM_PROGRESS, progress);
 
-      // Check if complete
-      if (receivedParams.size >= param.paramCount) {
+      // Check if bulk download is complete (only during active download, not after individual PARAM_SET responses)
+      if (paramDownloadActive && receivedParams.size >= param.paramCount) {
+        paramDownloadActive = false;
         if (paramDownloadTimeout) {
           clearTimeout(paramDownloadTimeout);
           paramDownloadTimeout = null;
@@ -914,6 +1014,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_MISSION_REQUEST:
     case MSG_MISSION_REQUEST_INT: {
       // FC requesting mission item during upload
+      console.log(`[MISSION] Received MISSION_REQUEST (msg ${msgid}), uploadState=${!!missionUploadState}`);
       if (!missionUploadState) {
         sendLog(mainWindow, 'debug', `Received MISSION_REQUEST but no upload in progress`);
         break;
@@ -1064,6 +1165,46 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       }
       break;
     }
+
+    case MSG_AUTOPILOT_VERSION: {
+      // AUTOPILOT_VERSION (148) - extract board UID for param history
+      // Wire order (v2 size-sorted): capabilities(8), uid(8), flight_sw_version(4), ...
+      // uid at offset 8 (bigint), uid2 at offset 60 (18 bytes)
+      try {
+        if (payload.length >= 60) {
+          const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+          const uid = view.getBigUint64(8, true);
+
+          // Check uid2 (18 bytes at offset 60) - supersedes uid if non-zero
+          let hasUid2 = false;
+          if (payload.length >= 78) {
+            for (let i = 60; i < 78; i++) {
+              if (payload[i] !== 0) { hasUid2 = true; break; }
+            }
+          }
+
+          let boardUid: string;
+          if (hasUid2) {
+            // uid2 as hex string
+            boardUid = Array.from(payload.slice(60, 78)).map(b => b.toString(16).padStart(2, '0')).join('');
+          } else if (uid !== 0n) {
+            boardUid = uid.toString(16);
+          } else {
+            // No UID - use systemId fallback
+            boardUid = `mavlink-${connectionState.systemId ?? 0}`;
+          }
+
+          if (!connectionState.boardUid) {
+            connectionState.boardUid = boardUid;
+            sendConnectionState(mainWindow);
+            sendLog(mainWindow, 'info', `Board UID: ${boardUid}`);
+          }
+        }
+      } catch (err) {
+        sendLog(mainWindow, 'debug', 'Failed to parse AUTOPILOT_VERSION for UID', String(err));
+      }
+      break;
+    }
   }
 }
 
@@ -1087,7 +1228,7 @@ async function requestMissionItem(mainWindow: BrowserWindow, seq: number): Promi
     // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
     // ArduPilot uses v2 byte order internally regardless of packet format.
     // v2 order: seq(2), target_system(1), target_component(1) - no mission_type for v1
-    // Use v1 CRC_EXTRA (230) instead of v2 (177)
+    // v1 path: manual payload without mission_type extension
     const payload = new Uint8Array(4);
     payload[0] = seq & 0xff;              // seq low byte
     payload[1] = (seq >> 8) & 0xff;       // seq high byte
@@ -1151,7 +1292,7 @@ async function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): Pr
       missionType: 0, // Ignored for v1
     });
     // Slice off the last byte (mission_type) for v1
-    // Use v1 CRC_EXTRA (254) instead of v2 (95)
+    // v1 path: manual payload without mission_type extension
     const payload = fullPayload.slice(0, 37);
     packet = serializeV1(MISSION_ITEM_ID, payload, MISSION_ITEM_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
   }
@@ -1180,7 +1321,7 @@ async function sendMissionAck(mainWindow: BrowserWindow, result: number): Promis
     packet = await sendMavlinkPacket(MISSION_ACK_ID, payload, MISSION_ACK_CRC_EXTRA);
   } else {
     // MAVLink v1: 3 bytes (no mission_type)
-    // Use v1 CRC_EXTRA (153) instead of v2 (146)
+    // v1 path: manual payload without mission_type extension
     const payload = new Uint8Array(3);
     payload[0] = targetSystem & 0xff;
     payload[1] = 1; // target_component
@@ -1217,6 +1358,9 @@ function getMissionResultName(result: number): string {
 }
 
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
+  // Auto-load signing key now that app is ready (safeStorage requires app.whenReady)
+  autoLoadSigningKey();
+
   // List available serial ports
   ipcMain.handle(IPC_CHANNELS.COMMS_LIST_PORTS, async (): Promise<SerialPortInfo[]> => {
     return listSerialPorts();
@@ -1338,6 +1482,255 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   };
 
   /**
+   * Create the MAVLink data handler with backpressure support.
+   * Reusable for both initial connection and reconnection.
+   */
+  const createMavlinkDataHandler = (): ((data: Uint8Array) => Promise<void>) => {
+    return async (data: Uint8Array) => {
+      if (!mavlinkParser) return;
+
+      // BSOD FIX: Queue data and process with backpressure
+      pendingMavlinkData.push(data);
+
+      // Skip if already processing - prevents overlapping async loops
+      if (processingMavlink) return;
+      processingMavlink = true;
+
+      try {
+        while (pendingMavlinkData.length > 0) {
+          const chunk = pendingMavlinkData.shift()!;
+
+          for await (const packet of mavlinkParser.parse(chunk)) {
+            connectionState.packetsReceived++;
+
+            // Detect signed incoming packets from FC
+            if (packet.isSigned && !connectionState.fcSigning) {
+              connectionState.fcSigning = true;
+              sendLog(mainWindow, 'info', 'FC is sending signed packets - MAVLink signing is active on the vehicle');
+
+              // Auto-enable signing if we have a stored key that was previously sent to FC
+              if (signingKey && signingSentToFc && !signingEnabled) {
+                signingEnabled = true;
+                connectionState.signingEnabled = true;
+                sendLog(mainWindow, 'info', 'MAVLink signing auto-enabled (stored key found)');
+                safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+              } else if (!signingKey) {
+                sendLog(mainWindow, 'warn', 'Vehicle requires MAVLink signing but no key is configured. Go to Settings to set a signing passphrase.');
+              }
+
+              sendConnectionState(mainWindow);
+            }
+
+            // Handle heartbeat (msgid 0)
+            if (packet.msgid === 0) {
+              // Detect MAVLink version from packet format
+              detectedMavlinkVersion = packet.isMavlink2 ? 2 : 1;
+
+              // MAVLink v2 reorders payload by size (largest first):
+              // custom_mode(4) at offset 0, type(1) at offset 4, autopilot(1) at offset 5
+              // Note: ArduPilot uses v2 byte order even with v1 packet framing
+              const vehicleType = packet.payload[4]!;
+              const autopilotType = packet.payload[5]!;
+
+              // First heartbeat - connection confirmed!
+              if (connectionState.isWaitingForHeartbeat) {
+                if (heartbeatTimeout) {
+                  clearTimeout(heartbeatTimeout);
+                  heartbeatTimeout = null;
+                }
+
+                connectionState.isWaitingForHeartbeat = false;
+                connectionState.isConnected = true;
+                connectionState.protocol = 'mavlink';
+                connectionState.systemId = packet.sysid;
+                connectionState.componentId = packet.compid;
+                connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
+                connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
+                connectionState.mavType = vehicleType;
+                connectionState.mavlinkVersion = detectedMavlinkVersion;
+                connectionState.signingEnabled = signingEnabled;
+
+                sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
+                sendConnectionState(mainWindow);
+
+                // Request AUTOPILOT_VERSION to get board UID for param history
+                try {
+                  const cmdPayload = serializeCommandLong({
+                    targetSystem: packet.sysid,
+                    targetComponent: packet.compid,
+                    command: 512, // MAV_CMD_REQUEST_MESSAGE
+                    confirmation: 0,
+                    param1: MSG_AUTOPILOT_VERSION,
+                    param2: 0, param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+                  });
+                  const pkt = detectedMavlinkVersion === 2
+                    ? serializeV2(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA)
+                    : serializeV1(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA);
+                  await currentTransport!.write(pkt);
+                } catch {
+                  // Non-critical - boardUid will use fallback
+                }
+
+                // Start sending GCS heartbeats at 1Hz
+                // ArduPilot requires GCS heartbeats to recognize us as a valid GCS
+                const sysId = packet.sysid;
+                const compId = packet.compid;
+                const mavVer = detectedMavlinkVersion;
+
+                const sendGcsHeartbeat = () => {
+                  if (!currentTransport?.isOpen) return;
+                  try {
+                    const hbPayload = serializeHeartbeat({
+                      type: 6, // MAV_TYPE_GCS
+                      autopilot: 8, // MAV_AUTOPILOT_INVALID
+                      baseMode: 0,
+                      customMode: 0,
+                      systemStatus: 4, // MAV_STATE_ACTIVE
+                      mavlinkVersion: 3,
+                    });
+                    const hbPkt = mavVer === 2
+                      ? serializeV2(HEARTBEAT_ID, hbPayload, HEARTBEAT_CRC_EXTRA)
+                      : serializeV1(HEARTBEAT_ID, hbPayload, HEARTBEAT_CRC_EXTRA);
+                    currentTransport!.write(hbPkt).catch(() => {});
+                  } catch {
+                    // Non-critical
+                  }
+                };
+
+                // Send first GCS heartbeat immediately
+                sendGcsHeartbeat();
+                if (gcsHeartbeatInterval) clearInterval(gcsHeartbeatInterval);
+                gcsHeartbeatInterval = setInterval(sendGcsHeartbeat, 1000);
+
+                // Request individual message streams via MAV_CMD_SET_MESSAGE_INTERVAL
+                // Uses stored speed preference from settings
+                setTimeout(async () => {
+                  // Load speed preference from settings
+                  const savedSpeed = (settingsStore.get('telemetrySpeed') as TelemetrySpeed | undefined) ?? 'normal';
+                  currentTelemetrySpeed = savedSpeed;
+                  await sendStreamRateRequests(mainWindow, savedSpeed);
+                }, 1500);
+              }
+            }
+
+            // Parse telemetry data from known message types
+            parseTelemetry(mainWindow, packet);
+
+            // Log packets (limit to not spam)
+            if (connectionState.packetsReceived <= 10 || connectionState.packetsReceived % 100 === 0) {
+              sendLog(mainWindow, 'packet', `MSG #${packet.msgid}`, `sysid=${packet.sysid} compid=${packet.compid} seq=${packet.seq} len=${packet.payload.length}`);
+            }
+
+            // Update packet count periodically
+            if (connectionState.packetsReceived % 50 === 0) {
+              sendConnectionState(mainWindow);
+            }
+          }
+
+          // BSOD FIX: Yield to event loop between chunks to prevent starvation
+          if (pendingMavlinkData.length > 0) {
+            await new Promise(r => setImmediate(r));
+          }
+        }
+      } finally {
+        processingMavlink = false;
+      }
+    };
+  };
+
+  /**
+   * Attempt MAVLink reconnection: set up parser/pipeline and wait for heartbeat.
+   * Returns true if heartbeat received and connection restored.
+   */
+  const attemptMavlinkReconnect = async (transportDesc: string): Promise<boolean> => {
+    // Clean up old MAVLink state
+    cleanupTransportListeners();
+    mavlinkParser = new MAVLinkParser();
+
+    // Set up full MAVLink pipeline
+    mavlinkDataHandler = createMavlinkDataHandler();
+    currentTransport!.on('data', mavlinkDataHandler);
+
+    // Set up error/close handlers
+    transportErrorHandler = (error: Error) => {
+      if (!isReconnectPending()) {
+        console.error('Transport error:', error);
+        sendLog(mainWindow, 'error', 'Transport error', error.message);
+      }
+      safeSend(mainWindow, 'connection:error', error.message);
+    };
+    currentTransport!.on('error', transportErrorHandler);
+
+    transportCloseHandler = () => {
+      if (heartbeatTimeout) {
+        clearTimeout(heartbeatTimeout);
+        heartbeatTimeout = null;
+      }
+      if (isReconnectPending()) {
+        // Pause GCS heartbeats during reconnect (will restart on new heartbeat)
+        if (gcsHeartbeatInterval) {
+          clearInterval(gcsHeartbeatInterval);
+          gcsHeartbeatInterval = null;
+        }
+        sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
+        return;
+      }
+      // Unexpected close (e.g. physical USB disconnect) - full cleanup
+      // so port watcher can restart and detect reconnected devices
+      cleanupMspConnection();
+      cleanupTransportListeners();
+      if (gcsHeartbeatInterval) {
+        clearInterval(gcsHeartbeatInterval);
+        gcsHeartbeatInterval = null;
+      }
+      if (mavlinkBatchTimer) {
+        clearTimeout(mavlinkBatchTimer);
+        mavlinkBatchTimer = null;
+        mavlinkTelemetryBatch = {};
+      }
+      currentTransport = null;
+      mavlinkParser = null;
+      connectionState.isConnected = false;
+      connectionState.isWaitingForHeartbeat = false;
+      sendLog(mainWindow, 'info', 'Connection closed');
+      sendConnectionState(mainWindow);
+    };
+    currentTransport!.on('close', transportCloseHandler);
+
+    // Signal heartbeat detection - the data handler will set isConnected when heartbeat arrives
+    connectionState.isWaitingForHeartbeat = true;
+    connectionState.transport = transportDesc;
+    connectionState.packetsReceived = 0;
+    connectionState.packetsSent = 0;
+
+    // Wait for MAVLink heartbeat with timeout
+    const heartbeatReceived = await new Promise<boolean>((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (connectionState.isConnected) {
+          clearInterval(checkInterval);
+          resolve(true);
+        }
+      }, 100);
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve(false);
+      }, 2500);
+    });
+
+    if (heartbeatReceived) {
+      connectionState.isReconnecting = false;
+      sendConnectionState(mainWindow);
+      sendLog(mainWindow, 'info', 'Reconnected successfully!', `${connectionState.autopilot} ${connectionState.vehicleType}`);
+      return true;
+    }
+
+    // Failed - clean up MAVLink pipeline
+    cleanupTransportListeners();
+    connectionState.isWaitingForHeartbeat = false;
+    return false;
+  };
+
+  /**
    * Attempt to reconnect to the board
    */
   const attemptReconnect = async (): Promise<void> => {
@@ -1384,36 +1777,48 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         await transport.open();
         currentTransport = transport;
 
-        // Re-detect MSP protocol
-        const mspInfo = await tryMspDetection(currentTransport, mainWindow);
-        if (mspInfo) {
-          const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
+        if (pendingReconnect.protocol === 'mavlink') {
+          // MAVLink reconnection - set up full pipeline and wait for heartbeat
+          connectionState.portPath = pendingReconnect.portPath;
+          const connected = await attemptMavlinkReconnect(
+            `${pendingReconnect.portPath} @ ${pendingReconnect.baudRate || 115200}`
+          );
+          if (connected) {
+            pendingReconnect = null;
+            return;
+          }
+        } else {
+          // Re-detect MSP protocol
+          const mspInfo = await tryMspDetection(currentTransport, mainWindow);
+          if (mspInfo) {
+            const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
 
-          connectionState = {
-            isConnected: true,
-            isReconnecting: false,
-            protocol: 'msp',
-            transport: 'serial',
-            portPath: pendingReconnect.portPath,
-            fcVariant: mspInfo.fcVariant,
-            fcVersion: mspInfo.fcVersion,
-            boardId: mspInfo.boardId,
-            apiVersion: mspInfo.apiVersion,
-            autopilot: mspInfo.fcVariant,
-            vehicleType,
-            isLegacyBoard: isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion),
-            packetsReceived: 0,
-            packetsSent: 0,
-          };
+            connectionState = {
+              isConnected: true,
+              isReconnecting: false,
+              protocol: 'msp',
+              transport: 'serial',
+              portPath: pendingReconnect.portPath,
+              fcVariant: mspInfo.fcVariant,
+              fcVersion: mspInfo.fcVersion,
+              boardId: mspInfo.boardId,
+              apiVersion: mspInfo.apiVersion,
+              autopilot: mspInfo.fcVariant,
+              vehicleType,
+              isLegacyBoard: isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion),
+              packetsReceived: 0,
+              packetsSent: 0,
+            };
 
-          // Setup transport handlers for the new connection
-          setupReconnectTransportHandlers(transport);
+            // Setup transport handlers for the new connection
+            setupReconnectTransportHandlers(transport);
 
-          sendConnectionState(mainWindow);
-          sendLog(mainWindow, 'info', 'Reconnected successfully!', `${mspInfo.fcVariant} ${mspInfo.fcVersion}`);
+            sendConnectionState(mainWindow);
+            sendLog(mainWindow, 'info', 'Reconnected successfully!', `${mspInfo.fcVariant} ${mspInfo.fcVersion}`);
 
-          pendingReconnect = null;
-          return;
+            pendingReconnect = null;
+            return;
+          }
         }
       } else if (pendingReconnect.host) {
         // TCP reconnection (SITL)
@@ -1431,34 +1836,46 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         await transport.open();
         currentTransport = transport;
 
-        const mspInfo = await tryMspDetection(currentTransport, mainWindow);
-        if (mspInfo) {
-          const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
+        if (pendingReconnect.protocol === 'mavlink') {
+          // MAVLink reconnection over TCP
+          const connected = await attemptMavlinkReconnect(
+            `TCP ${pendingReconnect.host}:${pendingReconnect.tcpPort || 5760}`
+          );
+          if (connected) {
+            connectionState.isSitl = sitlProcess.isRunning;
+            pendingReconnect = null;
+            return;
+          }
+        } else {
+          const mspInfo = await tryMspDetection(currentTransport, mainWindow);
+          if (mspInfo) {
+            const vehicleType = await getMspVehicleType(mspInfo.fcVariant) || 'Unknown';
 
-          connectionState = {
-            isConnected: true,
-            isReconnecting: false,
-            protocol: 'msp',
-            transport: 'tcp',
-            fcVariant: mspInfo.fcVariant,
-            fcVersion: mspInfo.fcVersion,
-            boardId: mspInfo.boardId,
-            apiVersion: mspInfo.apiVersion,
-            autopilot: mspInfo.fcVariant,
-            vehicleType,
-            isLegacyBoard: isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion),
-            isSitl: sitlProcess.isRunning,
-            packetsReceived: 0,
-            packetsSent: 0,
-          };
+            connectionState = {
+              isConnected: true,
+              isReconnecting: false,
+              protocol: 'msp',
+              transport: 'tcp',
+              fcVariant: mspInfo.fcVariant,
+              fcVersion: mspInfo.fcVersion,
+              boardId: mspInfo.boardId,
+              apiVersion: mspInfo.apiVersion,
+              autopilot: mspInfo.fcVariant,
+              vehicleType,
+              isLegacyBoard: isLegacyMspBoard(mspInfo.fcVariant, mspInfo.fcVersion),
+              isSitl: sitlProcess.isRunning,
+              packetsReceived: 0,
+              packetsSent: 0,
+            };
 
-          setupReconnectTransportHandlers(transport);
+            setupReconnectTransportHandlers(transport);
 
-          sendConnectionState(mainWindow);
-          sendLog(mainWindow, 'info', 'Reconnected successfully!', `${mspInfo.fcVariant} ${vehicleType}`);
+            sendConnectionState(mainWindow);
+            sendLog(mainWindow, 'info', 'Reconnected successfully!', `${mspInfo.fcVariant} ${vehicleType}`);
 
-          pendingReconnect = null;
-          return;
+            pendingReconnect = null;
+            return;
+          }
         }
       }
 
@@ -1509,11 +1926,29 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // Check if this is an expected close (reboot in progress)
       if (isReconnectPending()) {
+        if (gcsHeartbeatInterval) {
+          clearInterval(gcsHeartbeatInterval);
+          gcsHeartbeatInterval = null;
+        }
         sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
         return; // Don't update state - reconnect logic handles it
       }
 
-      // Unexpected close
+      // Unexpected close (e.g. physical USB disconnect) - full cleanup
+      // so port watcher can restart and detect reconnected devices
+      cleanupMspConnection();
+      cleanupTransportListeners();
+      if (gcsHeartbeatInterval) {
+        clearInterval(gcsHeartbeatInterval);
+        gcsHeartbeatInterval = null;
+      }
+      if (mavlinkBatchTimer) {
+        clearTimeout(mavlinkBatchTimer);
+        mavlinkBatchTimer = null;
+        mavlinkTelemetryBatch = {};
+      }
+      currentTransport = null;
+      mavlinkParser = null;
       connectionState.isConnected = false;
       connectionState.isWaitingForHeartbeat = false;
       sendLog(mainWindow, 'info', 'Connection closed');
@@ -1652,87 +2087,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // BSOD FIX: MAVLink data handler with backpressure to prevent event loop starvation
       // Stored at module level so we can properly remove it on disconnect
-      mavlinkDataHandler = async (data: Uint8Array) => {
-        if (!mavlinkParser) return;
-
-        // BSOD FIX: Queue data and process with backpressure
-        pendingMavlinkData.push(data);
-
-        // Skip if already processing - prevents overlapping async loops
-        if (processingMavlink) return;
-        processingMavlink = true;
-
-        try {
-          while (pendingMavlinkData.length > 0) {
-            const chunk = pendingMavlinkData.shift()!;
-
-            for await (const packet of mavlinkParser.parse(chunk)) {
-              connectionState.packetsReceived++;
-
-              // Detect signed incoming packets from FC
-              if (packet.isSigned && !connectionState.fcSigning) {
-                connectionState.fcSigning = true;
-                sendLog(mainWindow, 'info', 'FC is sending signed packets - MAVLink signing is active on the vehicle');
-                sendConnectionState(mainWindow);
-              }
-
-              // Handle heartbeat (msgid 0)
-              if (packet.msgid === 0) {
-                // Detect MAVLink version from packet format
-                detectedMavlinkVersion = packet.isMavlink2 ? 2 : 1;
-
-                // MAVLink v2 reorders payload by size (largest first):
-                // custom_mode(4) at offset 0, type(1) at offset 4, autopilot(1) at offset 5
-                // Note: ArduPilot uses v2 byte order even with v1 packet framing
-                const vehicleType = packet.payload[4]!;
-                const autopilotType = packet.payload[5]!;
-
-                // First heartbeat - connection confirmed!
-                if (connectionState.isWaitingForHeartbeat) {
-                  if (heartbeatTimeout) {
-                    clearTimeout(heartbeatTimeout);
-                    heartbeatTimeout = null;
-                  }
-
-                  connectionState.isWaitingForHeartbeat = false;
-                  connectionState.isConnected = true;
-                  connectionState.protocol = 'mavlink';
-                  connectionState.systemId = packet.sysid;
-                  connectionState.componentId = packet.compid;
-                  connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
-                  connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
-                  connectionState.mavType = vehicleType;
-                  connectionState.mavlinkVersion = detectedMavlinkVersion;
-                  connectionState.signingEnabled = signingEnabled;
-
-                  sendLog(mainWindow, 'info', `Connected to ${connectionState.autopilot} ${connectionState.vehicleType}`, `System ID: ${packet.sysid}, Component ID: ${packet.compid}, MAVLink v${detectedMavlinkVersion}`);
-                  sendConnectionState(mainWindow);
-                }
-              }
-
-              // Parse telemetry data from known message types
-              parseTelemetry(mainWindow, packet);
-
-              // Log packets (limit to not spam)
-              if (connectionState.packetsReceived <= 10 || connectionState.packetsReceived % 100 === 0) {
-                sendLog(mainWindow, 'packet', `MSG #${packet.msgid}`, `sysid=${packet.sysid} compid=${packet.compid} seq=${packet.seq} len=${packet.payload.length}`);
-              }
-
-              // Update packet count periodically
-              if (connectionState.packetsReceived % 50 === 0) {
-                sendConnectionState(mainWindow);
-              }
-            }
-
-            // BSOD FIX: Yield to event loop between chunks to prevent starvation
-            if (pendingMavlinkData.length > 0) {
-              await new Promise(r => setImmediate(r));
-            }
-          }
-        } finally {
-          processingMavlink = false;
-        }
-      };
+      mavlinkDataHandler = createMavlinkDataHandler();
 
       // Setup data handler
       currentTransport.on('data', mavlinkDataHandler);
@@ -1761,7 +2116,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           return; // Don't update state - reconnect logic handles it
         }
 
-        // Unexpected close
+        // Unexpected close (e.g. physical USB disconnect) - full cleanup
+        // so port watcher can restart and detect reconnected devices
+        cleanupMspConnection();
+        cleanupTransportListeners();
+        if (mavlinkBatchTimer) {
+          clearTimeout(mavlinkBatchTimer);
+          mavlinkBatchTimer = null;
+          mavlinkTelemetryBatch = {};
+        }
+        currentTransport = null;
+        mavlinkParser = null;
         connectionState.isConnected = false;
         connectionState.isWaitingForHeartbeat = false;
         sendLog(mainWindow, 'info', 'Connection closed');
@@ -2006,6 +2371,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         heartbeatTimeout = null;
       }
 
+      // Clear GCS heartbeat interval
+      if (gcsHeartbeatInterval) {
+        clearInterval(gcsHeartbeatInterval);
+        gcsHeartbeatInterval = null;
+      }
+
       // Clear MAVLink telemetry batch timer
       if (mavlinkBatchTimer) {
         clearTimeout(mavlinkBatchTimer);
@@ -2123,6 +2494,15 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SAVE, async (_, settings: SettingsStoreSchema): Promise<void> => {
     settingsStore.set(settings);
+  });
+
+  // Telemetry stream rate control (MAVLink only)
+  ipcMain.handle(IPC_CHANNELS.TELEMETRY_SET_STREAM_RATE, async (_, speed: TelemetrySpeed): Promise<{ success: boolean }> => {
+    if (connectionState.protocol !== 'mavlink' || !connectionState.isConnected) {
+      return { success: false };
+    }
+    await sendStreamRateRequests(mainWindow, speed);
+    return { success: true };
   });
 
   // ============================================================================
@@ -2294,6 +2674,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Reset parameter tracking state
     receivedParams.clear();
     expectedParamCount = 0;
+    paramDownloadActive = true;
 
     // Clear any existing timeout
     if (paramDownloadTimeout) {
@@ -2581,6 +2962,84 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // ============================================================================
+  // Parameter History (Version Control)
+  // ============================================================================
+
+  ipcMain.handle(IPC_CHANNELS.PARAM_HISTORY_SAVE, async (
+    _,
+    boardUid: string,
+    boardName: string,
+    changes: ParamChange[]
+  ): Promise<{ success: boolean; checkpointId?: string }> => {
+    try {
+      const { randomUUID } = await import('crypto');
+      const checkpoint: ParamCheckpoint = {
+        id: randomUUID(),
+        timestamp: Date.now(),
+        changes,
+      };
+
+      const boards = paramHistoryStore.get('boards');
+      const existing = boards[boardUid];
+      if (existing) {
+        existing.checkpoints.unshift(checkpoint);
+        // Keep max 100 checkpoints per board
+        if (existing.checkpoints.length > 100) {
+          existing.checkpoints = existing.checkpoints.slice(0, 100);
+        }
+        existing.boardName = boardName;
+      } else {
+        boards[boardUid] = {
+          boardUid,
+          boardName,
+          checkpoints: [checkpoint],
+        };
+      }
+      paramHistoryStore.set('boards', boards);
+      sendLog(mainWindow, 'info', `Param checkpoint saved: ${changes.length} change(s) for board ${boardUid}`);
+      return { success: true, checkpointId: checkpoint.id };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to save param checkpoint', message);
+      return { success: false };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PARAM_HISTORY_LIST, async (
+    _,
+    boardUid: string
+  ): Promise<ParamCheckpoint[]> => {
+    const boards = paramHistoryStore.get('boards');
+    return boards[boardUid]?.checkpoints ?? [];
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PARAM_HISTORY_RESTORE, async (
+    _,
+    boardUid: string,
+    checkpointId: string
+  ): Promise<{ success: boolean; changes?: ParamChange[] }> => {
+    const boards = paramHistoryStore.get('boards');
+    const board = boards[boardUid];
+    if (!board) return { success: false };
+    const checkpoint = board.checkpoints.find(c => c.id === checkpointId);
+    if (!checkpoint) return { success: false };
+    return { success: true, changes: checkpoint.changes };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PARAM_HISTORY_DELETE, async (
+    _,
+    boardUid: string,
+    checkpointId: string
+  ): Promise<{ success: boolean }> => {
+    const boards = paramHistoryStore.get('boards');
+    const board = boards[boardUid];
+    if (!board) return { success: false };
+    board.checkpoints = board.checkpoints.filter(c => c.id !== checkpointId);
+    paramHistoryStore.set('boards', boards);
+    return { success: true };
+  });
+
+  // ============================================================================
   // Mission Planning handlers
   // ============================================================================
 
@@ -2613,7 +3072,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         packet = await sendMavlinkPacket(MISSION_REQUEST_LIST_ID, payload, MISSION_REQUEST_LIST_CRC_EXTRA);
       } else {
         // MAVLink v1: manual payload (no mission_type)
-        // Use v1 CRC_EXTRA (132) instead of v2 (148)
+        // v1 path: manual payload without mission_type extension
         const payload = new Uint8Array(2);
         payload[0] = targetSystem & 0xff;
         payload[1] = 1; // target_component
@@ -2667,6 +3126,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       let packet: Uint8Array;
       const targetSystem = connectionState.systemId ?? 1;
 
+      // DIAGNOSTIC: Log upload attempt details
+      console.log(`[MISSION UPLOAD] MAVLink v${detectedMavlinkVersion}, targetSystem=${targetSystem}, count=${items.length}`);
+      console.log(`[MISSION UPLOAD] MISSION_COUNT_CRC_EXTRA=${MISSION_COUNT_CRC_EXTRA} (should be 221)`);
+
       if (detectedMavlinkVersion === 2) {
         const payload = serializeMissionCount({
           targetSystem,
@@ -2674,6 +3137,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           count: items.length,
           missionType: MAV_MISSION_TYPE.MISSION,
         });
+        console.log(`[MISSION UPLOAD] v2 payload: ${Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
         packet = await sendMavlinkPacket(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA);
       } else {
         // MAVLink v1 packet but use v2 byte order (size-sorted) for payload!
@@ -2684,10 +3148,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         payload[1] = (items.length >> 8) & 0xff;  // count high byte
         payload[2] = targetSystem & 0xff;         // target_system
         payload[3] = 1;                           // target_component
+        console.log(`[MISSION UPLOAD] v1 payload: ${Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
         packet = serializeV1(MISSION_COUNT_ID, payload, MISSION_COUNT_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
       }
 
+      console.log(`[MISSION UPLOAD] Full packet (${packet.length} bytes): ${Array.from(packet).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
       await currentTransport.write(packet);
+      console.log(`[MISSION UPLOAD] Packet written to transport OK`);
       connectionState.packetsSent++;
 
       // Log raw bytes for debugging
@@ -2733,7 +3200,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         packet = await sendMavlinkPacket(MISSION_CLEAR_ALL_ID, payload, MISSION_CLEAR_ALL_CRC_EXTRA);
       } else {
         // MAVLink v1: manual payload (no mission_type)
-        // Use v1 CRC_EXTRA (232) instead of v2 (25)
+        // v1 path: manual payload without mission_type extension
         const payload = new Uint8Array(2);
         payload[0] = targetSystem & 0xff;
         payload[1] = 1; // target_component

@@ -1,7 +1,7 @@
 /**
  * This message is emitted as response to MISSION_REQUEST_LIST by the MAV and to initiate a write transaction. The GCS can then request the individual mission item based on the knowledge of the total number of waypoints.
  * Message ID: 44
- * CRC Extra: 52
+ * CRC Extra: 221
  */
 export interface MissionCount {
   /** System ID */
@@ -15,8 +15,8 @@ export interface MissionCount {
 }
 
 export const MISSION_COUNT_ID = 44;
-export const MISSION_COUNT_CRC_EXTRA = 52;
-export const MISSION_COUNT_MIN_LENGTH = 5;
+export const MISSION_COUNT_CRC_EXTRA = 221;
+export const MISSION_COUNT_MIN_LENGTH = 4;
 export const MISSION_COUNT_MAX_LENGTH = 5;
 
 export function serializeMissionCount(msg: MissionCount): Uint8Array {

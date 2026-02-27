@@ -437,7 +437,7 @@ const COMMON_MODES = [
 // =============================================================================
 
 export function FlightControlPanel() {
-  const { flight } = useTelemetryStore();
+  const flight = useTelemetryStore((s) => s.flight);
   const connectionState = useConnectionStore((state) => state.connectionState);
   const isConnected = connectionState?.isConnected ?? false;
   const protocol = connectionState?.protocol;

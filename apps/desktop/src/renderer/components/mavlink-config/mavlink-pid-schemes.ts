@@ -4,7 +4,8 @@
  * ArduPilot uses different parameter names depending on firmware version and vehicle type:
  * - Modern ArduCopter 3.5+: ATC_RAT_RLL_P, ATC_RAT_RLL_I, ATC_RAT_RLL_D, ATC_RAT_RLL_FF
  * - Legacy ArduCopter <3.5 (APM 2.5): RATE_RLL_P, RATE_RLL_I, RATE_RLL_D (no FF)
- * - ArduPlane: RLL2SRV_P, RLL2SRV_I, RLL2SRV_D (angle controller, not rate)
+ * - ArduPlane 4.5+: RLL_RATE_P, RLL_RATE_I, RLL_RATE_D, RLL_RATE_FF (rate controller)
+ * - ArduPlane (legacy): RLL2SRV_P, RLL2SRV_I, RLL2SRV_D (angle controller, not rate)
  * - QuadPlane VTOL: Q_A_RAT_RLL_P, Q_A_RAT_RLL_I, Q_A_RAT_RLL_D, Q_A_RAT_RLL_FF
  *
  * This module auto-detects the scheme by probing the parameter store.
@@ -87,23 +88,64 @@ const LEGACY_COPTER_SCHEME: PidScheme = {
   },
 };
 
-const PLANE_SCHEME: PidScheme = {
-  id: 'plane',
-  label: 'ArduPlane',
-  description: 'Fixed-wing servo controller',
-  hasFF: false,
-  roll: { p: 'RLL2SRV_P', i: 'RLL2SRV_I', d: 'RLL2SRV_D' },
-  pitch: { p: 'PTCH2SRV_P', i: 'PTCH2SRV_I', d: 'PTCH2SRV_D' },
-  yaw: { p: 'YAW2SRV_SLIP', i: 'YAW2SRV_INT', d: 'YAW2SRV_DAMP' },
-  // Plane PID values are in a different range (0-5 typical)
-  pScale: 100, iScale: 1000, dScale: 1000, ffScale: 1,
-  pMax: 500, iMax: 500, dMax: 500, ffMax: 0,
-  defaults: {
-    roll: { p: 0.4, i: 0.0, d: 0.0 },
-    pitch: { p: 0.6, i: 0.0, d: 0.0 },
-    yaw: { p: 0.0, i: 0.0, d: 0.0 },
-  },
-};
+/**
+ * ArduPlane PID scheme builder.
+ * Mission Planner handles both modern and legacy param names via String[] fallback arrays
+ * (see ConfigArduplane.cs) — we do the same with resolvePlaneParam().
+ * Modern ArduPlane 4.5+ renamed the angle-to-servo params to rate controller params:
+ *   RLL2SRV_P → RLL_RATE_P,  PTCH2SRV_P → PTCH_RATE_P,  YAW2SRV_* → YAW_RATE_*
+ */
+
+/** Resolve which ArduPlane parameter name is present, preferring the modern name */
+function resolvePlaneParam(parameters: Map<string, unknown>, modern: string, legacy: string): string {
+  return parameters.has(modern) ? modern : legacy;
+}
+
+/** Build a plane PID scheme adapted to whichever param names exist on the board */
+function buildPlaneScheme(parameters: Map<string, { value: number }>): PidScheme {
+  const isModern = parameters.has('RLL_RATE_P');
+  const r = (m: string, l: string) => resolvePlaneParam(parameters, m, l);
+
+  return {
+    id: 'plane',
+    label: 'ArduPlane',
+    description: 'Fixed-wing controller',
+    hasFF: isModern,
+    roll: {
+      p: r('RLL_RATE_P', 'RLL2SRV_P'),
+      i: r('RLL_RATE_I', 'RLL2SRV_I'),
+      d: r('RLL_RATE_D', 'RLL2SRV_D'),
+      ...(isModern ? { ff: 'RLL_RATE_FF' } : {}),
+    },
+    pitch: {
+      p: r('PTCH_RATE_P', 'PTCH2SRV_P'),
+      i: r('PTCH_RATE_I', 'PTCH2SRV_I'),
+      d: r('PTCH_RATE_D', 'PTCH2SRV_D'),
+      ...(isModern ? { ff: 'PTCH_RATE_FF' } : {}),
+    },
+    yaw: {
+      p: r('YAW_RATE_P', 'YAW2SRV_SLIP'),
+      i: r('YAW_RATE_I', 'YAW2SRV_INT'),
+      d: r('YAW_RATE_D', 'YAW2SRV_DAMP'),
+      ...(isModern ? { ff: 'YAW_RATE_FF' } : {}),
+    },
+    // Modern rate controller uses small decimals (0.08-0.35), legacy angle controller uses larger values (0-5)
+    ...(isModern
+      ? { pScale: 1000, iScale: 1000, dScale: 10000, ffScale: 100, pMax: 500, iMax: 1000, dMax: 500, ffMax: 500 }
+      : { pScale: 100, iScale: 1000, dScale: 1000, ffScale: 1, pMax: 500, iMax: 500, dMax: 500, ffMax: 0 }),
+    defaults: isModern
+      ? {
+          roll:  { p: 0.08, i: 0.1, d: 0.003, ff: 0.2 },
+          pitch: { p: 0.08, i: 0.1, d: 0.003, ff: 0.2 },
+          yaw:   { p: 0.08, i: 0.01, d: 0, ff: 0 },
+        }
+      : {
+          roll:  { p: 0.4, i: 0.0, d: 0.0 },
+          pitch: { p: 0.6, i: 0.0, d: 0.0 },
+          yaw:   { p: 0.0, i: 0.0, d: 0.0 },
+        },
+  };
+}
 
 const QUADPLANE_SCHEME: PidScheme = {
   id: 'quadplane',
@@ -128,13 +170,14 @@ const QUADPLANE_SCHEME: PidScheme = {
 
 /**
  * Detect which PID parameter scheme this board uses by probing the parameter store.
- * Checks in order of specificity: quadplane > modern copter > legacy copter > plane > unknown
+ * Checks in order of specificity: quadplane > modern copter > legacy copter > plane > unknown.
+ * ArduPlane handles both modern (RLL_RATE_*) and legacy (RLL2SRV_*) naming transparently.
  */
 export function detectPidScheme(parameters: Map<string, { value: number }>): PidScheme {
   if (parameters.has('Q_A_RAT_RLL_P')) return QUADPLANE_SCHEME;
   if (parameters.has('ATC_RAT_RLL_P')) return MODERN_COPTER_SCHEME;
   if (parameters.has('RATE_RLL_P')) return LEGACY_COPTER_SCHEME;
-  if (parameters.has('RLL2SRV_P')) return PLANE_SCHEME;
+  if (parameters.has('RLL_RATE_P') || parameters.has('RLL2SRV_P')) return buildPlaneScheme(parameters);
   return { ...MODERN_COPTER_SCHEME, id: 'unknown' as PidSchemeId };
 }
 

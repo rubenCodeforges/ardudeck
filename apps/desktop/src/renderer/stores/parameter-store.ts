@@ -73,6 +73,9 @@ interface ParameterStore {
   applySelectedFileParams: () => Promise<{ applied: number; failed: number }>;
 }
 
+// Tracks params the user has actively edited via setParameter (pending FC confirmation)
+const userModifiedParams = new Set<string>();
+
 export const useParameterStore = create<ParameterStore>((set, get) => ({
   parameters: new Map(),
   metadata: null,
@@ -245,6 +248,9 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       return false;
     }
 
+    // Track that this param was user-initiated (so updateParameter preserves originalValue)
+    userModifiedParams.add(paramId);
+
     // Update local state optimistically
     set(state => {
       const params = new Map(state.parameters);
@@ -263,7 +269,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
           type: paramType,
           index: -1,
           originalValue: value,
-          isModified: true,
+          isModified: false,
           isReadOnly: false,
         });
       }
@@ -274,18 +280,30 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   },
 
   updateParameter: (param) => {
+    // Check if this PARAM_VALUE is a response to a user-initiated setParameter call
+    const isUserEdit = userModifiedParams.has(param.paramId);
+    if (isUserEdit) {
+      userModifiedParams.delete(param.paramId);
+    }
+
     set(state => {
       const params = new Map(state.parameters);
       const existing = params.get(param.paramId);
       const readOnly = isReadOnlyParameter(param.paramId);
+
+      // For user edits: preserve originalValue so the param shows as modified
+      // For FC-initiated changes (e.g. MIS_TOTAL after mission upload): update baseline
+      const originalValue = isUserEdit
+        ? (existing?.originalValue ?? param.paramValue)
+        : param.paramValue;
 
       params.set(param.paramId, {
         id: param.paramId,
         value: param.paramValue,
         type: param.paramType,
         index: param.paramIndex,
-        originalValue: existing?.originalValue ?? param.paramValue,
-        isModified: existing ? existing.originalValue !== param.paramValue : false,
+        originalValue,
+        isModified: isUserEdit ? originalValue !== param.paramValue : false,
         isReadOnly: readOnly,
       });
 
@@ -295,12 +313,28 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
   setProgress: (progress) => set({ progress }),
 
-  setComplete: () => set({
-    isLoading: false,
-    progress: null,
-    error: null,
-    lastRefresh: Date.now()
-  }),
+  setComplete: () => {
+    // Full download complete — clear any pending user edits tracker
+    userModifiedParams.clear();
+    set(state => {
+      // After a full download, the FC's values are ground truth.
+      // Reset all baselines so sensor/calibration params the FC updated
+      // internally don't show as "modified" (all setParameter writes are immediate).
+      const params = new Map(state.parameters);
+      for (const [id, param] of params) {
+        if (param.isModified) {
+          params.set(id, { ...param, originalValue: param.value, isModified: false });
+        }
+      }
+      return {
+        parameters: params,
+        isLoading: false,
+        progress: null,
+        error: null,
+        lastRefresh: Date.now(),
+      };
+    });
+  },
 
   setError: (error) => set({ error, isLoading: false }),
 
@@ -450,7 +484,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     return { applied, failed };
   },
 
-  reset: () => set({
+  reset: () => { userModifiedParams.clear(); set({
     parameters: new Map(),
     metadata: null,
     isLoading: false,
@@ -467,5 +501,5 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     fileParamDiffs: [],
     isApplyingFileParams: false,
     applyProgress: null,
-  }),
+  }); },
 }));

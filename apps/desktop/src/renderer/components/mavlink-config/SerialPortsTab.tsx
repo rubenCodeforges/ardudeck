@@ -38,7 +38,7 @@ const SERIAL_PROTOCOLS: { value: number; label: string }[] = [
   { value: 21, label: 'WindVane' },
   { value: 22, label: 'SLCAN' },
   { value: 23, label: 'RCIN' },
-  { value: 24, label: 'EFI Serial' },
+  { value: 24, label: 'MegaSquirt EFI' },
   { value: 25, label: 'LTM Telemetry' },
   { value: 26, label: 'RunCam' },
   { value: 27, label: 'HoTT Telemetry' },

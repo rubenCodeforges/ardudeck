@@ -2,7 +2,7 @@
  * Message encoding a mission item. This message is emitted to announce
                 the presence of a mission item and to set a mission item on the system. The mission item can be either in x, y, z meters (type: LOCAL) or x:lat, y:lon, z:altitude. Local frame is Z-down, right handed (NED), global frame is Z-up, right handed (ENU). NaN may be used to indicate an optional/default value (e.g. to use the system's current latitude or yaw rather than a specific value). See also https://mavlink.io/en/services/mission.html.
  * Message ID: 39
- * CRC Extra: 95
+ * CRC Extra: 254
  */
 export interface MissionItem {
   /** System ID */
@@ -38,8 +38,8 @@ export interface MissionItem {
 }
 
 export const MISSION_ITEM_ID = 39;
-export const MISSION_ITEM_CRC_EXTRA = 95;
-export const MISSION_ITEM_MIN_LENGTH = 38;
+export const MISSION_ITEM_CRC_EXTRA = 254;
+export const MISSION_ITEM_MIN_LENGTH = 37;
 export const MISSION_ITEM_MAX_LENGTH = 38;
 
 export function serializeMissionItem(msg: MissionItem): Uint8Array {

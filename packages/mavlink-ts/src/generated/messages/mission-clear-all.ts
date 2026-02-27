@@ -1,7 +1,7 @@
 /**
  * Delete all mission items at once.
  * Message ID: 45
- * CRC Extra: 25
+ * CRC Extra: 232
  */
 export interface MissionClearAll {
   /** System ID */
@@ -13,8 +13,8 @@ export interface MissionClearAll {
 }
 
 export const MISSION_CLEAR_ALL_ID = 45;
-export const MISSION_CLEAR_ALL_CRC_EXTRA = 25;
-export const MISSION_CLEAR_ALL_MIN_LENGTH = 3;
+export const MISSION_CLEAR_ALL_CRC_EXTRA = 232;
+export const MISSION_CLEAR_ALL_MIN_LENGTH = 2;
 export const MISSION_CLEAR_ALL_MAX_LENGTH = 3;
 
 export function serializeMissionClearAll(msg: MissionClearAll): Uint8Array {

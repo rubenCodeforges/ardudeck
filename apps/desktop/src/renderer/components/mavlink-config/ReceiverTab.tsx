@@ -13,7 +13,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Radio, Signal, SignalZero, Activity, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
-import { PRIMARY_CHANNEL_COUNT, getChannelName } from '../../utils/rc-channel-constants';
+import { PRIMARY_CHANNEL_COUNT, getMavlinkChannelNames } from '../../utils/rc-channel-constants';
 
 // =============================================================================
 // Constants
@@ -45,9 +45,9 @@ const ChannelBar: React.FC<{
   channelIndex: number;
   value: number;
   isActive: boolean;
-}> = ({ channelIndex, value, isActive }) => {
+  name: string;
+}> = ({ value, isActive, name }) => {
   const percent = Math.min(100, Math.max(0, ((value - 900) / 1200) * 100));
-  const name = getChannelName(channelIndex, 'mavlink');
 
   return (
     <div className="space-y-1">
@@ -75,9 +75,9 @@ const CompactChannelBar: React.FC<{
   channelIndex: number;
   value: number;
   isActive: boolean;
-}> = ({ channelIndex, value, isActive }) => {
+  name: string;
+}> = ({ value, isActive, name }) => {
   const percent = Math.min(100, Math.max(0, ((value - 900) / 1200) * 100));
-  const name = getChannelName(channelIndex, 'mavlink');
 
   return (
     <div className="space-y-0.5">
@@ -130,6 +130,15 @@ const ReceiverTab: React.FC = () => {
   const { parameters, setParameter } = useParameterStore();
   const rcChannels = useTelemetryStore((s) => s.rcChannels);
   const lastRcChannels = useTelemetryStore((s) => s.lastRcChannels);
+
+  // Build RCMAP-aware channel names from ArduPilot parameters
+  const channelNames = useMemo(() => {
+    const roll = (parameters.get('RCMAP_ROLL')?.value as number) ?? 1;
+    const pitch = (parameters.get('RCMAP_PITCH')?.value as number) ?? 2;
+    const throttle = (parameters.get('RCMAP_THROTTLE')?.value as number) ?? 3;
+    const yaw = (parameters.get('RCMAP_YAW')?.value as number) ?? 4;
+    return getMavlinkChannelNames({ roll, pitch, throttle, yaw });
+  }, [parameters]);
 
   // Signal status based on last update time
   const [signalStatus, setSignalStatus] = useState<'none' | 'stale' | 'active'>('none');
@@ -283,6 +292,7 @@ const ReceiverTab: React.FC = () => {
                   channelIndex={i}
                   value={value}
                   isActive={activeChannels[i] ?? false}
+                  name={channelNames[i] ?? `CH${i + 1}`}
                 />
               ))}
             </div>
@@ -298,6 +308,7 @@ const ReceiverTab: React.FC = () => {
                       channelIndex={i + PRIMARY_CHANNEL_COUNT}
                       value={value}
                       isActive={activeChannels[i + PRIMARY_CHANNEL_COUNT] ?? false}
+                      name={channelNames[i + PRIMARY_CHANNEL_COUNT] ?? `CH${i + PRIMARY_CHANNEL_COUNT + 1}`}
                     />
                   ))}
                 </div>
@@ -349,7 +360,7 @@ const ReceiverTab: React.FC = () => {
             <tbody>
               {calData.map((cal, i) => (
                 <tr key={i} className="border-t border-zinc-800/50">
-                  <td className="px-3 py-1.5 text-zinc-300">{getChannelName(i, 'mavlink')}</td>
+                  <td className="px-3 py-1.5 text-zinc-300">{channelNames[i] ?? `CH${i + 1}`}</td>
                   <td className="px-3 py-1.5 text-right font-mono text-zinc-400">{cal.min}</td>
                   <td className="px-3 py-1.5 text-right font-mono text-zinc-400">{cal.trim}</td>
                   <td className="px-3 py-1.5 text-right font-mono text-zinc-400">{cal.max}</td>
