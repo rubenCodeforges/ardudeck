@@ -256,7 +256,17 @@ export const useFirmwareStore = create<FirmwareStore>((set, get) => ({
         return;
       }
 
-      let board = usbResult.boards[0]!;
+      // Pick the best board from detected candidates:
+      // 1. Prefer boards matched via KNOWN_BOARDS (have a real flasher type) over unidentified ones
+      // 2. Prefer boards with a known flasher type over 'unknown'
+      // 3. If still ambiguous, take the first one (user can use Advanced mode to pick manually)
+      let board: typeof usbResult.boards[0];
+      if (usbResult.boards.length === 1) {
+        board = usbResult.boards[0]!;
+      } else {
+        const known = usbResult.boards.filter(b => b.flasher !== 'unknown');
+        board = (known.length > 0 ? known[0] : usbResult.boards[0])!;
+      }
       const port = board.port;
 
       // If we have a COM port, try comprehensive auto-detection (MAVLink → MSP → STM32)

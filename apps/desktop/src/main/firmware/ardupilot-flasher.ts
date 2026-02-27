@@ -382,6 +382,47 @@ async function reboot(transport: SerialTransport, window: BrowserWindow | null):
 }
 
 /**
+ * Reboot into bootloader via NSH shell (fallback method from uploader.py)
+ * Opens serial, sends '\r\r\r' to get an NSH prompt, then 'reboot -b\n' to enter bootloader.
+ * This works when MAVLink reboot fails (e.g. board not in MAVLink mode).
+ */
+async function rebootToBootloaderNsh(
+  port: string,
+  window: BrowserWindow | null,
+): Promise<boolean> {
+  let transport: SerialTransport | null = null;
+  try {
+    transport = new SerialTransport(port, {
+      baudRate: 115200,
+      dataBits: 8,
+      parity: 'none',
+      stopBits: 1,
+    });
+    await transport.open();
+
+    // Send carriage returns to get NSH prompt (like uploader.py)
+    sendLog(window, 'info', 'NSH: sending prompt request...');
+    await transport.write(new Uint8Array([0x0D, 0x0D, 0x0D])); // \r\r\r
+    await new Promise(r => setTimeout(r, 500));
+
+    // Send 'reboot -b\n' to reboot into bootloader
+    sendLog(window, 'info', 'NSH: sending reboot -b...');
+    const cmd = new TextEncoder().encode('reboot -b\n');
+    await transport.write(cmd);
+    await new Promise(r => setTimeout(r, 200));
+
+    await transport.close();
+    transport = null;
+    return true;
+  } catch {
+    if (transport) {
+      await transport.close().catch(() => {});
+    }
+    return false;
+  }
+}
+
+/**
  * Flash firmware using ArduPilot's custom serial bootloader protocol
  *
  * @param firmwarePath Path to .apj or .bin firmware file
@@ -454,21 +495,32 @@ export async function flashWithArduPilotBootloader(
     }
 
     // Step 2: Reboot board into bootloader if needed
-    if (!options?.noRebootSequence && board.detectionMethod === 'mavlink') {
+    // ArduPilot boards detected via VID/PID are running application firmware, NOT bootloader.
+    // We must reboot them into bootloader mode first (same as Mission Planner / uploader.py).
+    const needsReboot = !options?.noRebootSequence && !board.inBootloader;
+    if (needsReboot) {
       sendProgress(window, {
         state: 'entering-bootloader',
         progress: 3,
         message: 'Rebooting board into bootloader mode...',
       });
-      sendLog(window, 'info', 'Sending MAVLink reboot-to-bootloader command...');
 
+      // Try MAVLink reboot command first (works on all ArduPilot boards)
+      sendLog(window, 'info', 'Sending MAVLink reboot-to-bootloader command...');
       const rebooted = await rebootToBootloaderMavlink(board.port);
       if (rebooted) {
         sendLog(window, 'info', 'Reboot command sent, waiting for bootloader to start...');
-        // ArduPilot takes ~3s to reboot into bootloader
         await new Promise(r => setTimeout(r, 3000));
       } else {
-        sendLog(window, 'warn', 'MAVLink reboot failed — board may already be in bootloader');
+        // Fallback: NSH shell reboot (like uploader.py does)
+        sendLog(window, 'info', 'MAVLink reboot failed, trying NSH shell reboot...');
+        const nshRebooted = await rebootToBootloaderNsh(board.port, window);
+        if (nshRebooted) {
+          sendLog(window, 'info', 'NSH reboot sent, waiting for bootloader to start...');
+          await new Promise(r => setTimeout(r, 3000));
+        } else {
+          sendLog(window, 'warn', 'All reboot methods failed — board may already be in bootloader');
+        }
       }
     } else if (options?.noRebootSequence) {
       sendLog(window, 'info', 'Skipping reboot — assuming board is already in bootloader');
@@ -499,13 +551,29 @@ export async function flashWithArduPilotBootloader(
       message: 'Synchronizing with bootloader...',
     });
 
-    const synced = await ardupilotSync(transport, window);
+    let synced = await ardupilotSync(transport, window);
     if (!synced) {
-      // If initial sync fails, try closing and reopening after a delay
-      // (bootloader may still be initializing)
-      sendLog(window, 'warn', 'Initial sync failed, retrying after delay...');
+      // If initial sync fails, the board may not be in bootloader mode yet.
+      // Try rebooting into bootloader and syncing again.
+      sendLog(window, 'warn', 'Initial sync failed, attempting bootloader reboot...');
       await transport.close();
-      await new Promise(r => setTimeout(r, 2000));
+      transport = null;
+
+      // Try MAVLink reboot (works even without prior connection)
+      sendLog(window, 'info', 'Attempting MAVLink reboot to bootloader...');
+      let rebooted = await rebootToBootloaderMavlink(board.port);
+      if (!rebooted) {
+        sendLog(window, 'info', 'Attempting NSH shell reboot to bootloader...');
+        rebooted = await rebootToBootloaderNsh(board.port, window);
+      }
+
+      if (rebooted) {
+        sendLog(window, 'info', 'Reboot sent, waiting for bootloader...');
+        await new Promise(r => setTimeout(r, 4000));
+      } else {
+        // No reboot method worked, wait a bit in case bootloader is still starting
+        await new Promise(r => setTimeout(r, 2000));
+      }
 
       transport = new SerialTransport(board.port, {
         baudRate: 115200,
@@ -515,8 +583,8 @@ export async function flashWithArduPilotBootloader(
       });
       await transport.open();
 
-      const retrySync = await ardupilotSync(transport, window, 5);
-      if (!retrySync) {
+      synced = await ardupilotSync(transport, window, 5);
+      if (!synced) {
         return {
           success: false,
           error: `Could not connect to ArduPilot bootloader on ${board.port}.\n\nMake sure:\n1. The board is running ArduPilot firmware (not Betaflight/iNav)\n2. The board has the ArduPilot bootloader installed\n3. No other application is using the serial port\n\nIf the board does not respond, try disconnecting and reconnecting USB.`,

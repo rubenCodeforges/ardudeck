@@ -1,250 +1,85 @@
 /**
  * Board Detector
- * Enumerates USB devices and matches against known board VID/PID
- * Also queries STM32 bootloader to detect chip type when possible
+ * Enumerates serial ports and matches against known board VID/PID.
+ * Uses listSerialPorts() from @ardudeck/comms (wraps the serialport npm library)
+ * instead of platform-specific CLI commands for reliable cross-platform detection.
+ *
+ * Any board with a serial port is detectable — KNOWN_BOARDS provides enrichment
+ * (nicer names, flasher hints), but unmatched ports are still included as candidates
+ * for auto-detection via MAVLink/MSP.
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { KNOWN_BOARDS, type DetectedBoard, getSTM32ChipInfo } from '../../shared/firmware-types.js';
+import { listSerialPorts } from '@ardudeck/comms';
+import { KNOWN_BOARDS, type DetectedBoard } from '../../shared/firmware-types.js';
 import { detectSTM32Chip } from './stm32-bootloader.js';
 
-const execAsync = promisify(exec);
-
 /**
- * USB device info from system enumeration
- */
-interface UsbDevice {
-  vid: string;
-  pid: string;
-  port?: string;
-  description?: string;
-}
-
-/**
- * Parse Windows wmic output for USB devices
- */
-function parseWindowsDevices(output: string): UsbDevice[] {
-  const devices: UsbDevice[] = [];
-  const lines = output.split('\n').filter(line => line.trim());
-
-  for (const line of lines) {
-    // Match VID_XXXX&PID_XXXX pattern
-    const vidMatch = line.match(/VID_([0-9A-Fa-f]{4})/i);
-    const pidMatch = line.match(/PID_([0-9A-Fa-f]{4})/i);
-
-    if (vidMatch && pidMatch) {
-      const vid = vidMatch[1]!.toLowerCase();
-      const pid = pidMatch[1]!.toLowerCase();
-
-      // Try to extract COM port
-      const comMatch = line.match(/\((COM\d+)\)/);
-
-      devices.push({
-        vid,
-        pid,
-        port: comMatch?.[1],
-        description: line.split('  ').filter(Boolean)[0]?.trim(),
-      });
-    }
-  }
-
-  return devices;
-}
-
-/**
- * Parse Linux lsusb output
- */
-function parseLinuxDevices(output: string): UsbDevice[] {
-  const devices: UsbDevice[] = [];
-  const lines = output.split('\n').filter(line => line.trim());
-
-  for (const line of lines) {
-    // Bus 001 Device 003: ID 0483:df11 STMicroelectronics STM Device in DFU Mode
-    const match = line.match(/ID\s+([0-9a-f]{4}):([0-9a-f]{4})\s+(.+)/i);
-    if (match) {
-      devices.push({
-        vid: match[1]!.toLowerCase(),
-        pid: match[2]!.toLowerCase(),
-        description: match[3]!.trim(),
-      });
-    }
-  }
-
-  return devices;
-}
-
-/**
- * Parse macOS system_profiler output
- */
-function parseMacDevices(output: string): UsbDevice[] {
-  const devices: UsbDevice[] = [];
-
-  // Parse XML-ish output from system_profiler
-  const sections = output.split(/\n\s*\n/);
-
-  for (const section of sections) {
-    const vidMatch = section.match(/Vendor ID:\s*0x([0-9a-f]{4})/i);
-    const pidMatch = section.match(/Product ID:\s*0x([0-9a-f]{4})/i);
-    const nameMatch = section.match(/^\s+(.+):$/m);
-
-    if (vidMatch && pidMatch) {
-      devices.push({
-        vid: vidMatch[1]!.toLowerCase(),
-        pid: pidMatch[1]!.toLowerCase(),
-        description: nameMatch?.[1]?.trim(),
-      });
-    }
-  }
-
-  return devices;
-}
-
-/**
- * Enumerate USB devices on the system
- */
-async function enumerateUsbDevices(): Promise<UsbDevice[]> {
-  const platform = process.platform;
-
-  try {
-    if (platform === 'win32') {
-      // Use wmic to list USB devices
-      const { stdout } = await execAsync(
-        'wmic path Win32_PnPEntity where "DeviceID like \'%USB%\'" get DeviceID,Name /format:list',
-        { timeout: 5000 }
-      );
-      return parseWindowsDevices(stdout);
-    } else if (platform === 'linux') {
-      // Use lsusb
-      const { stdout } = await execAsync('lsusb', { timeout: 5000 });
-      return parseLinuxDevices(stdout);
-    } else if (platform === 'darwin') {
-      // Use system_profiler
-      const { stdout } = await execAsync(
-        'system_profiler SPUSBDataType',
-        { timeout: 5000 }
-      );
-      return parseMacDevices(stdout);
-    }
-  } catch (error) {
-    console.error('Failed to enumerate USB devices:', error);
-  }
-
-  return [];
-}
-
-/**
- * Find serial port for a USB device
- */
-async function findSerialPortForDevice(vid: string, pid: string): Promise<string | undefined> {
-  const platform = process.platform;
-
-  try {
-    if (platform === 'win32') {
-      const { stdout } = await execAsync(
-        `wmic path Win32_SerialPort where "PNPDeviceID like '%VID_${vid.toUpperCase()}&PID_${pid.toUpperCase()}%'" get DeviceID /format:list`,
-        { timeout: 3000 }
-      );
-
-      const match = stdout.match(/DeviceID=(COM\d+)/i);
-      return match?.[1];
-    } else if (platform === 'darwin') {
-      // On macOS, scan /dev for tty.usbmodem* and tty.usbserial* devices
-      // and try to match via ioreg USB info
-      // Also check cu.usbmodem* — ArduPilot ChibiOS CDC devices may only enumerate there
-      try {
-        // Get list of USB serial devices (both tty and cu)
-        const { stdout: lsOutput } = await execAsync('ls /dev/tty.usb* /dev/cu.usbmodem* 2>/dev/null || true', { timeout: 3000 });
-        const devices = lsOutput.split('\n').filter(d => d.trim());
-
-        if (devices.length === 0) return undefined;
-
-        // If there's only one device, return it
-        if (devices.length === 1) return devices[0];
-
-        // Try to match via ioreg - look for VID/PID
-        const { stdout: ioregOutput } = await execAsync(
-          `ioreg -r -c IOUSBHostDevice -l | grep -A20 "idVendor.*${parseInt(vid, 16)}" | grep -A10 "idProduct.*${parseInt(pid, 16)}" | grep "IOCalloutDevice" | head -1`,
-          { timeout: 5000 }
-        );
-
-        const match = ioregOutput.match(/"IOCalloutDevice"\s*=\s*"([^"]+)"/);
-        if (match) return match[1];
-
-        // Fallback: return first device if ioreg doesn't find a match
-        return devices[0];
-      } catch {
-        // If ioreg fails, try to find any USB serial device
-        try {
-          const { stdout } = await execAsync('ls /dev/tty.usb* 2>/dev/null | head -1', { timeout: 2000 });
-          return stdout.trim() || undefined;
-        } catch {
-          return undefined;
-        }
-      }
-    } else if (platform === 'linux') {
-      // On Linux, check /dev/ttyACM* and /dev/ttyUSB*
-      try {
-        const { stdout } = await execAsync('ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null | head -1', { timeout: 2000 });
-        return stdout.trim() || undefined;
-      } catch {
-        return undefined;
-      }
-    }
-  } catch {
-    return undefined;
-  }
-
-  return undefined;
-}
-
-/**
- * Detect connected flight controller boards
+ * Detect connected flight controller boards by enumerating serial ports
+ * and matching VID/PID against KNOWN_BOARDS.
+ *
+ * Flow:
+ * 1. List all serial ports (with VID/PID metadata from serialport library)
+ * 2. For each port with VID/PID, look up KNOWN_BOARDS
+ * 3. If match → create DetectedBoard from KNOWN_BOARDS entry
+ * 4. If no match but VID is 1209 (ArduPilot pid.codes) → create ArduPilot ChibiOS entry
+ * 5. If no match at all → include as unidentified board for auto-detection
+ * 6. Ports without VID/PID (e.g. Bluetooth, built-in) are skipped
  */
 export async function detectBoards(): Promise<DetectedBoard[]> {
-  const usbDevices = await enumerateUsbDevices();
+  const ports = await listSerialPorts();
   const detectedBoards: DetectedBoard[] = [];
 
-  // Deduplicate by VID:PID — composite USB devices enumerate multiple interfaces
-  // (e.g. MAVLink + SLCAN + DFU) sharing the same VID:PID
-  const uniqueMap = new Map<string, UsbDevice>();
-  for (const device of usbDevices) {
-    const key = `${device.vid}:${device.pid}`;
-    const existing = uniqueMap.get(key);
-    if (!existing || (!existing.port && device.port)) {
-      uniqueMap.set(key, device);
-    }
-  }
+  // Deduplicate by VID:PID — composite USB devices may enumerate multiple serial
+  // interfaces (e.g. MAVLink + SLCAN) sharing the same VID:PID.
+  // Keep the first port path encountered per VID:PID pair.
+  const seenVidPid = new Set<string>();
 
-  for (const device of uniqueMap.values()) {
-    const key = `${device.vid}:${device.pid}`;
-    const knownBoard = KNOWN_BOARDS[key];
+  for (const port of ports) {
+    // Skip ports without VID/PID — these are typically built-in serial ports,
+    // Bluetooth SPP, or virtual ports that aren't USB flight controllers
+    if (!port.vendorId || !port.productId) continue;
+
+    const vid = port.vendorId.toLowerCase();
+    const pid = port.productId.toLowerCase();
+    const key = `${vid}:${pid}`;
+
+    // Deduplicate composite USB devices
+    if (seenVidPid.has(key)) continue;
+    seenVidPid.add(key);
+
+    // Look up in KNOWN_BOARDS
+    let knownBoard = KNOWN_BOARDS[key];
+
+    // Fallback: VID 0x1209 is ArduPilot's registered pid.codes vendor ID.
+    // Any device with this VID is an ArduPilot ChibiOS board, even with unknown PIDs.
+    if (!knownBoard && vid === '1209') {
+      knownBoard = {
+        name: port.manufacturer || port.friendlyName || 'ArduPilot ChibiOS',
+        boardId: 'ChibiOS',
+        mcuType: 'STM32',
+        flasher: 'ardupilot',
+        inBootloader: false,
+      };
+    }
 
     if (knownBoard) {
-      // Find serial port if not already found
-      // Always try — ArduPilot boards need a port for bootloader flashing,
-      // and the lookup is fast (returns undefined for actual DFU-only devices)
-      let port = device.port;
-      if (!port) {
-        port = await findSerialPortForDevice(device.vid, device.pid);
-      }
-
+      // Matched via KNOWN_BOARDS or ArduPilot VID fallback
       const board: DetectedBoard = {
-        name: knownBoard.name || device.description || 'Unknown Board',
+        name: knownBoard.name || port.friendlyName || port.manufacturer || 'Unknown Board',
         boardId: knownBoard.boardId || key,
         mcuType: knownBoard.mcuType || 'Unknown',
         flasher: knownBoard.flasher || 'dfu',
-        port,
-        usbVid: parseInt(device.vid, 16),
-        usbPid: parseInt(device.pid, 16),
+        port: port.path,
+        usbVid: parseInt(vid, 16),
+        usbPid: parseInt(pid, 16),
         inBootloader: knownBoard.inBootloader || false,
         detectionMethod: 'vid-pid',
       };
 
       // If board has COM port but unknown MCU, try STM32 bootloader query
-      if (port && board.mcuType === 'Unknown') {
+      if (board.mcuType === 'Unknown') {
         try {
-          const stm32Result = await detectSTM32Chip(port);
+          const stm32Result = await detectSTM32Chip(port.path);
           if (stm32Result) {
             board.chipId = stm32Result.chipId;
             board.detectedMcu = stm32Result.chipInfo?.mcu;
@@ -252,20 +87,34 @@ export async function detectBoards(): Promise<DetectedBoard[]> {
             board.detectionMethod = 'bootloader';
             board.inBootloader = true;
 
-            // Update board name to include detected MCU
             if (stm32Result.chipInfo) {
               board.name = `${knownBoard.name?.split(' (')[0]} → ${stm32Result.chipInfo.mcu}`;
             }
 
-            // Determine flasher type based on chip family
             if (stm32Result.chipInfo?.family) {
-              board.flasher = 'dfu';  // All STM32 use DFU
+              board.flasher = 'dfu';
             }
           }
         } catch {
           // Bootloader query failed, continue with VID/PID info only
         }
       }
+
+      detectedBoards.push(board);
+    } else {
+      // No match in KNOWN_BOARDS and not ArduPilot VID — include as unidentified
+      // board so the auto-detect step can probe it via MAVLink/MSP
+      const board: DetectedBoard = {
+        name: port.friendlyName || port.manufacturer || `USB Serial (${key})`,
+        boardId: 'unknown',
+        mcuType: 'Unknown',
+        flasher: 'unknown',
+        port: port.path,
+        usbVid: parseInt(vid, 16),
+        usbPid: parseInt(pid, 16),
+        inBootloader: false,
+        detectionMethod: 'vid-pid',
+      };
 
       detectedBoards.push(board);
     }

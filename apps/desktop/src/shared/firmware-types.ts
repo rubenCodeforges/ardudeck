@@ -13,7 +13,7 @@ export type FirmwareVehicleType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat'
 export type ReleaseType = 'stable' | 'beta' | 'dev';
 
 // Flasher type based on MCU
-export type FlasherType = 'dfu' | 'avrdude' | 'serial' | 'ardupilot';
+export type FlasherType = 'dfu' | 'avrdude' | 'serial' | 'ardupilot' | 'unknown';
 
 // Detection method for board identification
 export type DetectionMethod = 'vid-pid' | 'bootloader' | 'mavlink' | 'msp' | 'dfu' | 'manual';
@@ -145,8 +145,16 @@ export const KNOWN_BOARDS: Record<string, Partial<DetectedBoard>> = {
     inBootloader: true,
   },
 
-  // ArduPilot ChibiOS generic
+  // ArduPilot ChibiOS generic (VID 0x1209 = pid.codes VID registered to ArduPilot)
+  // PID 0x5740 = standard CDC, 0x5741 = SLCAN/dual CDC (used by some boards like Matek)
   '1209:5740': {
+    name: 'ArduPilot ChibiOS',
+    boardId: 'ChibiOS',
+    mcuType: 'STM32',
+    flasher: 'ardupilot',
+    inBootloader: false,
+  },
+  '1209:5741': {
     name: 'ArduPilot ChibiOS',
     boardId: 'ChibiOS',
     mcuType: 'STM32',

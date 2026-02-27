@@ -65,6 +65,7 @@ export class MAVLinkParser {
   reset(): void {
     // BSOD FIX: Don't reallocate, just reset length
     this.bufferLength = 0;
+    this.packetQueue.length = 0;
     this.stats = {
       packetsReceived: 0,
       badCRC: 0,
@@ -81,26 +82,57 @@ export class MAVLinkParser {
     return this.messageRegistry.get(msgid);
   }
 
+  // Queue for packets parsed by feed() and consumed by parseNext()
+  private packetQueue: MAVLinkPacket[] = [];
+
   /**
-   * Parse incoming data and yield complete packets
-   * Reference: MavlinkParse.cs ReadPacket method (lines 128-234)
+   * Feed incoming data into the parser buffer.
+   * Parsed packets are queued and retrieved via parseNext().
+   * Use this for event-driven code (e.g. serial port data handlers)
+   * where async generators can't be used.
    */
-  async *parse(data: Uint8Array): AsyncGenerator<MAVLinkPacket> {
+  feed(data: Uint8Array): void {
     // BSOD FIX: Grow buffer only when necessary (rare), avoid constant allocation
     const requiredLength = this.bufferLength + data.length;
     if (requiredLength > this.buffer.length) {
-      // Double the buffer size or use required length, whichever is larger
       const newSize = Math.max(this.buffer.length * 2, requiredLength);
       const newBuffer = new Uint8Array(newSize);
       newBuffer.set(this.buffer.subarray(0, this.bufferLength));
       this.buffer = newBuffer;
     }
 
-    // Copy new data without allocation (reuse existing buffer)
     this.buffer.set(data, this.bufferLength);
     this.bufferLength += data.length;
     this.stats.bytesReceived += data.length;
 
+    // Parse all complete packets from the buffer
+    this.drainBuffer();
+  }
+
+  /**
+   * Get the next parsed packet, or null if none available.
+   * Call after feed() to retrieve packets one at a time.
+   */
+  parseNext(): MAVLinkPacket | null {
+    return this.packetQueue.shift() ?? null;
+  }
+
+  /**
+   * Parse incoming data and yield complete packets (async generator API).
+   * Reference: MavlinkParse.cs ReadPacket method (lines 128-234)
+   */
+  async *parse(data: Uint8Array): AsyncGenerator<MAVLinkPacket> {
+    this.feed(data);
+    let pkt;
+    while ((pkt = this.parseNext()) !== null) {
+      yield pkt;
+    }
+  }
+
+  /**
+   * Extract all complete packets from the internal buffer into the packet queue.
+   */
+  private drainBuffer(): void {
     while (true) {
       // Find start byte (STX)
       let startIdx = -1;
@@ -168,10 +200,10 @@ export class MAVLinkParser {
       const msgInfo = this.messageRegistry.get(packet.msgid);
       if (!msgInfo) {
         this.stats.unknownMessage++;
-        // Still yield the packet, but without CRC validation
+        // Still queue the packet, but without CRC validation
         // This allows handling of unknown messages
         this.stats.packetsReceived++;
-        yield packet;
+        this.packetQueue.push(packet);
         continue;
       }
 
@@ -201,7 +233,7 @@ export class MAVLinkParser {
       }
 
       this.stats.packetsReceived++;
-      yield packet;
+      this.packetQueue.push(packet);
     }
   }
 }
