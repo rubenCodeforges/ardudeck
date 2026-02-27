@@ -37,6 +37,7 @@ interface ParameterStore {
   applyProgress: { applied: number; total: number } | null;
 
   // Computed
+  paramCount: number;
   filteredParameters: () => ParameterWithMeta[];
   modifiedCount: () => number;
   modifiedParameters: () => ParameterWithMeta[];
@@ -78,6 +79,7 @@ const userModifiedParams = new Set<string>();
 
 export const useParameterStore = create<ParameterStore>((set, get) => ({
   parameters: new Map(),
+  paramCount: 0,
   metadata: null,
   isLoading: false,
   isLoadingMetadata: false,
@@ -273,7 +275,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
           isReadOnly: false,
         });
       }
-      return { parameters: params };
+      return { parameters: params, paramCount: params.size };
     });
 
     return true;
@@ -307,7 +309,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
         isReadOnly: readOnly,
       });
 
-      return { parameters: params };
+      return { parameters: params, paramCount: params.size };
     });
   },
 
@@ -327,7 +329,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
         }
       }
       return {
-        parameters: params,
+        parameters: params, paramCount: params.size,
         isLoading: false,
         progress: null,
         error: null,
@@ -370,7 +372,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
         });
       }
 
-      return { parameters: params };
+      return { parameters: params, paramCount: params.size };
     });
   },
 
@@ -389,7 +391,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
         }
       }
 
-      return { parameters: params, showOnlyModified: false };
+      return { parameters: params, paramCount: params.size, showOnlyModified: false };
     });
   },
 
@@ -471,7 +473,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
             });
           }
           return {
-            parameters: params,
+            parameters: params, paramCount: params.size,
             applyProgress: { applied, total: selected.length },
           };
         });
@@ -486,6 +488,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
   reset: () => { userModifiedParams.clear(); set({
     parameters: new Map(),
+    paramCount: 0,
     metadata: null,
     isLoading: false,
     isLoadingMetadata: false,
