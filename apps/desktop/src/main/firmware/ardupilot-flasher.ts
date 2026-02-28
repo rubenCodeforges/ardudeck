@@ -7,7 +7,7 @@
  * NOT STM32 DFU or STM32 ROM bootloader — this is ArduPilot's own bootloader
  */
 
-import { SerialTransport } from '@ardudeck/comms';
+import { SerialTransport, listSerialPorts } from '@ardudeck/comms';
 import * as fs from 'fs/promises';
 import * as zlib from 'zlib';
 import { BrowserWindow } from 'electron';
@@ -497,6 +497,9 @@ export async function flashWithArduPilotBootloader(
     // Step 2: Reboot board into bootloader if needed
     // ArduPilot boards detected via VID/PID are running application firmware, NOT bootloader.
     // We must reboot them into bootloader mode first (same as Mission Planner / uploader.py).
+    // Native USB boards (VID 0x1209 = ArduPilot ChibiOS) re-enumerate as a different COM port
+    // in bootloader mode, so we need to scan for port changes after reboot.
+    let flashPort = board.port;
     const needsReboot = !options?.noRebootSequence && !board.inBootloader;
     if (needsReboot) {
       sendProgress(window, {
@@ -505,22 +508,67 @@ export async function flashWithArduPilotBootloader(
         message: 'Rebooting board into bootloader mode...',
       });
 
+      // Record ports before reboot so we can detect new ones after
+      // On macOS, ports can appear as /dev/cu.* or /dev/tty.* — normalize for comparison
+      const normalizePort = (p: string) => p.replace('/dev/cu.', '/dev/tty.');
+      const portsBeforeRaw = (await listSerialPorts()).map(p => p.path);
+      const portsBeforeSet = new Set(portsBeforeRaw.map(normalizePort));
+      sendLog(window, 'info', `Ports before reboot (${portsBeforeRaw.length}): ${portsBeforeRaw.join(', ') || 'none'}`);
+
       // Try MAVLink reboot command first (works on all ArduPilot boards)
       sendLog(window, 'info', 'Sending MAVLink reboot-to-bootloader command...');
-      const rebooted = await rebootToBootloaderMavlink(board.port);
-      if (rebooted) {
-        sendLog(window, 'info', 'Reboot command sent, waiting for bootloader to start...');
-        await new Promise(r => setTimeout(r, 3000));
-      } else {
+      let rebooted = await rebootToBootloaderMavlink(board.port);
+      if (!rebooted) {
         // Fallback: NSH shell reboot (like uploader.py does)
         sendLog(window, 'info', 'MAVLink reboot failed, trying NSH shell reboot...');
-        const nshRebooted = await rebootToBootloaderNsh(board.port, window);
-        if (nshRebooted) {
-          sendLog(window, 'info', 'NSH reboot sent, waiting for bootloader to start...');
-          await new Promise(r => setTimeout(r, 3000));
-        } else {
-          sendLog(window, 'warn', 'All reboot methods failed — board may already be in bootloader');
+        rebooted = await rebootToBootloaderNsh(board.port, window);
+      }
+
+      if (rebooted) {
+        sendLog(window, 'info', 'Reboot command sent, scanning for bootloader port...');
+        sendProgress(window, {
+          state: 'entering-bootloader',
+          progress: 4,
+          message: 'Waiting for bootloader USB...',
+        });
+
+        // Native USB boards re-enumerate as a different COM port in bootloader mode.
+        // Scan for new ports that weren't present before reboot (up to 8 seconds).
+        let newPort: string | undefined;
+        for (let i = 0; i < 16; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const portsNow = (await listSerialPorts()).map(p => p.path);
+
+          // Look for a new port that wasn't there before
+          const newPorts = portsNow.filter(p => !portsBeforeSet.has(normalizePort(p)));
+          if (newPorts.length > 0) {
+            newPort = newPorts[0];
+            sendLog(window, 'info', `New bootloader port appeared: ${newPort}`);
+            break;
+          }
+
+          // After 2s, also check if original port came back (some boards keep same port)
+          if (i >= 4) {
+            const normalizedFlashPort = normalizePort(flashPort);
+            const matchingPort = portsNow.find(p => normalizePort(p) === normalizedFlashPort);
+            if (matchingPort) {
+              newPort = matchingPort;
+              sendLog(window, 'info', `Original port reappeared: ${newPort}`);
+              break;
+            }
+          }
         }
+
+        if (newPort) {
+          flashPort = newPort;
+          // Give the bootloader a moment to fully initialize after USB enumeration
+          await new Promise(r => setTimeout(r, 500));
+        } else {
+          sendLog(window, 'warn', 'No new port detected after reboot — trying original port...');
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } else {
+        sendLog(window, 'warn', 'All reboot methods failed — board may already be in bootloader');
       }
     } else if (options?.noRebootSequence) {
       sendLog(window, 'info', 'Skipping reboot — assuming board is already in bootloader');
@@ -530,11 +578,13 @@ export async function flashWithArduPilotBootloader(
     sendProgress(window, {
       state: 'preparing',
       progress: 5,
-      message: 'Connecting to ArduPilot bootloader...',
+      message: `Connecting to ArduPilot bootloader on ${flashPort}...`,
     });
 
+    sendLog(window, 'info', `Using port: ${flashPort}${flashPort !== board.port ? ` (changed from ${board.port})` : ''}`);
+
     // ArduPilot bootloader uses 115200 8N1 (NOT 8E1 like STM32 ROM bootloader)
-    transport = new SerialTransport(board.port, {
+    transport = new SerialTransport(flashPort, {
       baudRate: 115200,
       dataBits: 8,
       parity: 'none',
@@ -561,10 +611,10 @@ export async function flashWithArduPilotBootloader(
 
       // Try MAVLink reboot (works even without prior connection)
       sendLog(window, 'info', 'Attempting MAVLink reboot to bootloader...');
-      let rebooted = await rebootToBootloaderMavlink(board.port);
+      let rebooted = await rebootToBootloaderMavlink(flashPort);
       if (!rebooted) {
         sendLog(window, 'info', 'Attempting NSH shell reboot to bootloader...');
-        rebooted = await rebootToBootloaderNsh(board.port, window);
+        rebooted = await rebootToBootloaderNsh(flashPort, window);
       }
 
       if (rebooted) {
@@ -575,7 +625,7 @@ export async function flashWithArduPilotBootloader(
         await new Promise(r => setTimeout(r, 2000));
       }
 
-      transport = new SerialTransport(board.port, {
+      transport = new SerialTransport(flashPort, {
         baudRate: 115200,
         dataBits: 8,
         parity: 'none',
@@ -587,7 +637,7 @@ export async function flashWithArduPilotBootloader(
       if (!synced) {
         return {
           success: false,
-          error: `Could not connect to ArduPilot bootloader on ${board.port}.\n\nMake sure:\n1. The board is running ArduPilot firmware (not Betaflight/iNav)\n2. The board has the ArduPilot bootloader installed\n3. No other application is using the serial port\n\nIf the board does not respond, try disconnecting and reconnecting USB.`,
+          error: `Could not connect to ArduPilot bootloader on ${flashPort}.\n\nMake sure:\n1. The board is running ArduPilot firmware (not Betaflight/iNav)\n2. The board has the ArduPilot bootloader installed\n3. No other application is using the serial port\n\nIf the board does not respond, try disconnecting and reconnecting USB.`,
           duration: Date.now() - startTime,
         };
       }

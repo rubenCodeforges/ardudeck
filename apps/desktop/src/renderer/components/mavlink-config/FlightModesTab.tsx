@@ -5,7 +5,7 @@
  * Shows 6 mode slots with dropdown selectors, PWM ranges, and live RC visualization.
  */
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import {
   Settings,
   Shield,
@@ -36,10 +36,13 @@ import {
   Activity,
   ToggleLeft,
   ToggleRight,
-  ChevronDown,
-  ChevronUp,
+  Search,
+  X,
+  Check,
+  Radio,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { useTelemetryStore } from '../../stores/telemetry-store';
 
 import { InfoCard } from '../ui/InfoCard';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
@@ -59,15 +62,20 @@ const MODE_PWM_RANGES = [
   { slot: 6, min: 1750, max: 2100, label: 'Position 6 (High)', position: 'high', group: 3 },
 ];
 
-// Switch position groupings (for 3-position switch)
+// Switch position groupings (for 3-position switch) — ordered top-to-bottom to match physical switch
 const SWITCH_POSITIONS = [
-  { name: 'Low', label: 'Switch Down', slots: [1, 2], color: 'bg-blue-500' },
-  { name: 'Mid', label: 'Switch Center', slots: [3, 4], color: 'bg-purple-500' },
   { name: 'High', label: 'Switch Up', slots: [5, 6], color: 'bg-orange-500' },
+  { name: 'Mid', label: 'Switch Center', slots: [3, 4], color: 'bg-purple-500' },
+  { name: 'Low', label: 'Switch Down', slots: [1, 2], color: 'bg-blue-500' },
 ];
 
 // Primary slots for simple mode (most commonly used with 3-position switch)
 const PRIMARY_SLOTS = [1, 3, 6];
+
+// AUX channel range for mode switch detection (CH5-CH12, 0-indexed: 4-11)
+const AUX_START = 4;
+const AUX_END = 12;
+const DETECT_THRESHOLD = 150; // PWM movement to trigger detection
 
 // ArduCopter flight modes with proper icons
 const COPTER_MODES: Record<number, { name: string; description: string; icon: React.ElementType; safe: boolean }> = {
@@ -225,10 +233,78 @@ interface FlightModesTabProps {
 const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copter' }) => {
   const isRover = vehicleCategory === 'rover';
   const { parameters, setParameter, modifiedCount } = useParameterStore();
-  const rcChannels = null as number[] | null;
-  const [liveRcValue, setLiveRcValue] = useState<number>(1500);
+
+  // --- Live RC from telemetry store (same pattern as ReceiverTab) ---
+  const rcChannels = useTelemetryStore((s) => s.rcChannels);
+  const lastRcChannels = useTelemetryStore((s) => s.lastRcChannels);
+
   const [advancedMode, setAdvancedMode] = useState<boolean>(true);
-  const [showRcBar, setShowRcBar] = useState<boolean>(false);
+  const [detectMode, setDetectMode] = useState(false);
+  const [detectedChannel, setDetectedChannel] = useState<number | null>(null);
+
+  // Signal status tracking
+  const [signalStatus, setSignalStatus] = useState<'none' | 'stale' | 'active'>('none');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastRcChannels;
+      if (lastRcChannels === 0 || rcChannels.chancount === 0) {
+        setSignalStatus('none');
+      } else if (elapsed > 2000) {
+        setSignalStatus('stale');
+      } else {
+        setSignalStatus('active');
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [lastRcChannels, rcChannels.chancount]);
+
+  // Channel baseline for active detection
+  const [channelBaseline, setChannelBaseline] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (channelBaseline.length === 0 && rcChannels.channels.length > 0) {
+      setChannelBaseline([...rcChannels.channels]);
+      return;
+    }
+    if (channelBaseline.length > 0 && !detectMode) {
+      // Update baseline slowly when not detecting (for general active display)
+      // No-op: baseline stays from initial capture
+    }
+  }, [rcChannels.channels, channelBaseline.length, detectMode]);
+
+  // Detect-mode baseline: snapshot when entering detect mode
+  const detectBaseline = useRef<number[]>([]);
+
+  const startDetect = useCallback(() => {
+    setDetectMode(true);
+    setDetectedChannel(null);
+    detectBaseline.current = [...rcChannels.channels];
+  }, [rcChannels.channels]);
+
+  const cancelDetect = useCallback(() => {
+    setDetectMode(false);
+    setDetectedChannel(null);
+  }, []);
+
+  const confirmDetect = useCallback((ch: number) => {
+    setParameter('FLTMODE_CH', ch);
+    setDetectMode(false);
+    setDetectedChannel(null);
+  }, [setParameter]);
+
+  // Auto-detect channel movement during detect mode
+  useEffect(() => {
+    if (!detectMode || detectBaseline.current.length === 0) return;
+    for (let i = AUX_START; i < Math.min(AUX_END, rcChannels.channels.length); i++) {
+      const current = rcChannels.channels[i];
+      const base = detectBaseline.current[i];
+      if (current !== undefined && base !== undefined && Math.abs(current - base) > DETECT_THRESHOLD) {
+        setDetectedChannel(i + 1); // 1-based channel number
+        return;
+      }
+    }
+  }, [detectMode, rcChannels.channels]);
 
   // Get current flight mode values
   const flightModes = useMemo(() => {
@@ -246,15 +322,16 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
     return param?.value ?? 5;
   }, [parameters]);
 
-  // Update live RC value from telemetry
-  useEffect(() => {
-    if (rcChannels && modeChannel >= 1 && modeChannel <= rcChannels.length) {
-      setLiveRcValue(rcChannels[modeChannel - 1] ?? 1500);
-    }
-  }, [rcChannels, modeChannel]);
+  // Live RC value for mode channel
+  const liveRcValue = useMemo(() => {
+    if (signalStatus !== 'active' || rcChannels.channels.length === 0) return null;
+    const idx = modeChannel - 1;
+    return rcChannels.channels[idx] ?? null;
+  }, [rcChannels.channels, modeChannel, signalStatus]);
 
   // Determine which mode slot is currently active
   const activeSlot = useMemo(() => {
+    if (liveRcValue === null) return null;
     for (const range of MODE_PWM_RANGES) {
       if (liveRcValue >= range.min && liveRcValue <= range.max) {
         return range.slot;
@@ -311,9 +388,132 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
         </button>
       </div>
 
+      {/* Mode Switch Channel — with auto-detect */}
+      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4">
+        {!detectMode ? (
+          /* Default state: dropdown + detect button */
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-zinc-300">Mode Switch Channel</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">Which RC channel controls flight modes</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={modeChannel}
+                onChange={(e) => handleChannelChange(Number(e.target.value))}
+                className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                {[5, 6, 7, 8, 9, 10, 11, 12].map((ch) => (
+                  <option key={ch} value={ch}>
+                    Channel {ch}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={startDetect}
+                disabled={signalStatus !== 'active'}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  signalStatus === 'active'
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30'
+                    : 'bg-zinc-800 text-zinc-600 border border-zinc-700 cursor-not-allowed'
+                }`}
+                title={signalStatus !== 'active' ? 'Connect to vehicle to use auto-detect' : 'Auto-detect mode switch channel'}
+              >
+                <Search className="w-3.5 h-3.5" />
+                Detect
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Detect mode: channel bars + instruction */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-cyan-300">Detecting Mode Switch Channel</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {detectedChannel
+                    ? `Channel ${detectedChannel} detected — use this channel?`
+                    : 'Flip your mode switch on your transmitter'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {detectedChannel && (
+                  <button
+                    onClick={() => confirmDetect(detectedChannel)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Use CH{detectedChannel}
+                  </button>
+                )}
+                <button
+                  onClick={cancelDetect}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            {/* AUX channel bars (CH5-CH12) */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              {Array.from({ length: Math.min(AUX_END - AUX_START, rcChannels.channels.length - AUX_START) }, (_, i) => {
+                const idx = AUX_START + i;
+                const value = rcChannels.channels[idx] ?? 1500;
+                const chNum = idx + 1;
+                const isDetected = detectedChannel === chNum;
+                const base = detectBaseline.current[idx] ?? 1500;
+                const movement = Math.abs(value - base);
+                const percent = Math.min(100, Math.max(0, ((value - 900) / 1200) * 100));
+
+                return (
+                  <div key={idx} className="space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[11px] ${isDetected ? 'text-green-400 font-medium' : 'text-zinc-500'}`}>
+                        CH{chNum}
+                        {isDetected && ' — Detected'}
+                      </span>
+                      <span className={`text-[10px] font-mono ${isDetected ? 'text-green-400' : 'text-zinc-600'}`}>{value}</span>
+                    </div>
+                    <div className={`h-1.5 rounded-full overflow-hidden relative ${isDetected ? 'bg-green-500/20' : 'bg-zinc-800'}`}>
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-zinc-700" />
+                      <div
+                        className={`absolute top-0 bottom-0 w-1.5 rounded-full transition-all ${
+                          isDetected ? 'bg-green-500' : movement > 50 ? 'bg-cyan-500' : 'bg-zinc-600'
+                        }`}
+                        style={{ left: `calc(${percent}% - 3px)` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Presets */}
+      <PresetSelector
+        presets={presetSelectorPresets}
+        onApply={applyPreset}
+        label="Quick Presets"
+        hint="Click to apply a mode configuration"
+      />
+
       {/* Visual Switch Position Diagram */}
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4">
-        <h3 className="text-sm font-medium text-zinc-300 mb-3">Switch Position Diagram</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-zinc-300">Switch Position Diagram</h3>
+          {signalStatus === 'active' ? (
+            <span className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] bg-green-500/20 text-green-400 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              LIVE
+            </span>
+          ) : (
+            <span className="text-[10px] text-zinc-600">Connect to see live data</span>
+          )}
+        </div>
         <div className="flex items-center justify-center gap-8">
           {/* Physical switch representation */}
           <div className="flex flex-col items-center">
@@ -338,7 +538,8 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
           <div className="flex-1 space-y-2">
             {SWITCH_POSITIONS.map((pos, idx) => {
               const isPositionActive = activeSlot !== null && pos.slots.includes(activeSlot);
-              const primarySlot = pos.slots[idx === 2 ? 1 : 0]!;
+              // Primary slot: High→6, Mid→3, Low→1
+              const primarySlot = pos.name === 'High' ? 6 : pos.name === 'Mid' ? 3 : 1;
               const modeInfo = getModeInfo(flightModes[primarySlot - 1] ?? 0, vehicleCategory);
               const IconComponent = modeInfo.icon;
 
@@ -368,6 +569,9 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                       {modeInfo.name}
                     </span>
                   </div>
+                  {isPositionActive && liveRcValue !== null && (
+                    <span className="text-xs font-mono text-cyan-400/70">{liveRcValue}</span>
+                  )}
                   <span className="text-xs text-zinc-600">
                     Slots {pos.slots.join(', ')}
                   </span>
@@ -375,94 +579,6 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
               );
             })}
           </div>
-        </div>
-      </div>
-
-      {/* Quick Presets */}
-      <PresetSelector
-        presets={presetSelectorPresets}
-        onApply={applyPreset}
-        label="Quick Presets"
-        hint="Click to apply a mode configuration"
-      />
-
-      {/* Collapsible Live RC Channel Visualization */}
-      {rcChannels && rcChannels.length > 0 && (
-        <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/5 rounded-xl border border-cyan-500/20">
-          <button
-            onClick={() => setShowRcBar(!showRcBar)}
-            className="w-full p-3 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-cyan-400" />
-              <span className="text-sm text-cyan-300">Live RC: Channel {modeChannel}</span>
-              <span className="text-lg font-mono text-cyan-400">{liveRcValue}</span>
-              {activeSlot && (
-                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-xs">
-                  {getModeInfo(flightModes[activeSlot - 1] ?? 0, vehicleCategory).name}
-                </span>
-              )}
-            </div>
-            {showRcBar ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-cyan-400" />}
-          </button>
-
-          {showRcBar && (
-            <div className="px-4 pb-4">
-              {/* PWM bar with mode zones */}
-              <div className="relative h-6 bg-zinc-800 rounded-full overflow-hidden">
-                {MODE_PWM_RANGES.map((range, idx) => {
-                  const left = ((range.min - 900) / 1200) * 100;
-                  const width = ((range.max - range.min) / 1200) * 100;
-                  const isActive = activeSlot === range.slot;
-                  return (
-                    <div
-                      key={range.slot}
-                      className={`absolute top-0 h-full transition-colors ${
-                        isActive ? 'bg-cyan-500/40' : idx % 2 === 0 ? 'bg-zinc-700/30' : 'bg-zinc-700/50'
-                      }`}
-                      style={{ left: `${left}%`, width: `${width}%` }}
-                    >
-                      <span className={`absolute inset-0 flex items-center justify-center text-xs ${
-                        isActive ? 'text-cyan-300 font-medium' : 'text-zinc-500'
-                      }`}>
-                        {range.slot}
-                      </span>
-                    </div>
-                  );
-                })}
-                <div
-                  className="absolute top-0 h-full w-1 bg-yellow-400 shadow-lg shadow-yellow-400/50 transition-all"
-                  style={{ left: `${Math.max(0, Math.min(100, ((liveRcValue - 900) / 1200) * 100))}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-1 text-[10px] text-zinc-500">
-                <span>900</span>
-                <span>1500</span>
-                <span>2100</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Mode Channel Selector */}
-      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-zinc-300">Mode Switch Channel</h3>
-            <p className="text-xs text-zinc-500 mt-0.5">Which RC channel controls flight modes</p>
-          </div>
-          <select
-            value={modeChannel}
-            onChange={(e) => handleChannelChange(Number(e.target.value))}
-            className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-          >
-            {[5, 6, 7, 8, 9, 10, 11, 12].map((ch) => (
-              <option key={ch} value={ch}>
-                Channel {ch}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 

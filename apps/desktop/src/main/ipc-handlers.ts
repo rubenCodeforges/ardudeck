@@ -86,6 +86,7 @@ import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
+import { getBoardInfoFromVersion } from '../shared/board-ids.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, flashWithArduPilotBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getBetaflightVersions, resolveBetaflightDownloadUrl, getInavBoards, getInavVersions, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
@@ -1246,13 +1247,30 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     }
 
     case MSG_AUTOPILOT_VERSION: {
-      // AUTOPILOT_VERSION (148) - extract board UID for param history
-      // Wire order (v2 size-sorted): capabilities(8), uid(8), flight_sw_version(4), ...
-      // uid at offset 8 (bigint), uid2 at offset 60 (18 bytes)
+      // AUTOPILOT_VERSION (148) - extract board UID and board type
+      // Wire order (v2 size-sorted): capabilities(8), uid(8), flight_sw_version(4),
+      //   middleware_sw_version(4), os_sw_version(4), board_version(4), vendor_id(2),
+      //   product_id(2), flight_custom_version(8), middleware_custom_version(8),
+      //   os_custom_version(8), uid2(18)
       try {
         if (payload.length >= 60) {
           const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
           const uid = view.getBigUint64(8, true);
+
+          // Extract board_version (offset 28, uint32 LE) — contains ArduPilot board type ID
+          if (payload.length >= 32 && !connectionState.boardId) {
+            const boardVersion = view.getUint32(28, true);
+            if (boardVersion > 0) {
+              const boardInfo = getBoardInfoFromVersion(boardVersion);
+              if (boardInfo) {
+                connectionState.boardId = boardInfo.name;
+                sendConnectionState(mainWindow);
+                sendLog(mainWindow, 'info', `Board type: ${boardInfo.name} (ID ${boardVersion})`);
+              } else {
+                sendLog(mainWindow, 'debug', `Unknown board type ID: ${boardVersion}`);
+              }
+            }
+          }
 
           // Check uid2 (18 bytes at offset 60) - supersedes uid if non-zero
           let hasUid2 = false;
@@ -1280,7 +1298,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           }
         }
       } catch (err) {
-        sendLog(mainWindow, 'debug', 'Failed to parse AUTOPILOT_VERSION for UID', String(err));
+        sendLog(mainWindow, 'debug', 'Failed to parse AUTOPILOT_VERSION', String(err));
       }
       break;
     }
@@ -4387,7 +4405,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           parser.feed(data);
           let packet: any;
           while ((packet = parser.parseNext()) !== null) {
-            if (packet.msgId === 0) { // HEARTBEAT
+            if (packet.msgid === 0) { // HEARTBEAT
               const payload = packet.payload;
               const vehicleType = payload.length > 4 ? payload[4] : 0;
               const vTypeName = VEHICLE_NAMES[vehicleType] || `Type ${vehicleType}`;
@@ -4396,13 +4414,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               const autopilotName = AUTOPILOT_NAMES[autopilotType] || `Autopilot ${autopilotType}`;
 
               sendLog(mainWindow, 'info', `Heartbeat received: ${autopilotName}, ${vTypeName}`);
-              sendLog(mainWindow, 'debug', `  system: ${packet.systemId}, component: ${packet.componentId}, MAVLink v${packet.magic === 0xFD ? 2 : 1}`);
+              sendLog(mainWindow, 'debug', `  system: ${packet.sysid}, component: ${packet.compid}, MAVLink v${packet.header === 0xFD ? 2 : 1}`);
 
               if (timeoutId) clearTimeout(timeoutId);
               resolve({
-                targetSystem: packet.systemId,
-                targetComponent: packet.componentId,
-                mavlinkVersion: packet.magic === 0xFD ? 2 : 1,
+                targetSystem: packet.sysid,
+                targetComponent: packet.compid,
+                mavlinkVersion: packet.header === 0xFD ? 2 : 1,
                 vehicleTypeName: vTypeName,
               });
             }
@@ -4453,7 +4471,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           parser.feed(data);
           let pkt;
           while ((pkt = parser.parseNext()) !== null) {
-            if (pkt.msgId === AUTOPILOT_VERSION_ID) {
+            if (pkt.msgid === AUTOPILOT_VERSION_ID) {
               const version = deserializeAutopilotVersion(pkt.payload);
 
               // Extract board type ID (upper 16 bits of boardVersion)
@@ -4620,13 +4638,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             parser.feed(data);
             let pkt;
             while ((pkt = parser.parseNext()) !== null) {
-              if (pkt.msgId === 0) { // HEARTBEAT
+              if (pkt.msgid === 0) { // HEARTBEAT
                 gotHeartbeat = true;
                 transport.off('data', handler);
                 resolve({
-                  systemId: pkt.systemId,
-                  componentId: pkt.componentId,
-                  mavVersion: pkt.magic === 0xFD ? 2 : 1,
+                  systemId: pkt.sysid,
+                  componentId: pkt.compid,
+                  mavVersion: pkt.header === 0xFD ? 2 : 1,
                   vehicleType: pkt.payload.length > 4 ? pkt.payload[4]! : 0,
                 });
               }
@@ -4656,14 +4674,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
         await transport.write(packet);
 
-        // Wait for AUTOPILOT_VERSION (1s timeout)
+        // Wait for AUTOPILOT_VERSION (2.5s timeout — H7 boards can be slow to respond)
         const versionResult = await Promise.race([
           new Promise<{ boardName?: string; firmwareVersion?: string } | null>((resolve) => {
             const handler = (data: Uint8Array) => {
               parser.feed(data);
               let pkt;
               while ((pkt = parser.parseNext()) !== null) {
-                if (pkt.msgId === AUTOPILOT_VERSION_ID) {
+                if (pkt.msgid === AUTOPILOT_VERSION_ID) {
                   const version = deserializeAutopilotVersion(pkt.payload);
                   const boardInfo = getBoardInfoFromVersion(version.boardVersion);
                   const fwMajor = (version.flightSwVersion >> 24) & 0xFF;
@@ -4680,7 +4698,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             };
             transport.on('data', handler);
           }),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
         ]);
 
         await transport.close();
