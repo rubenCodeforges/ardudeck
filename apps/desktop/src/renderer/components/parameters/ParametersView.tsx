@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { AlertTriangle, RotateCw, Loader2, Star } from 'lucide-react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore, type SortColumn, type FileParamDiff } from '../../stores/parameter-store';
 import { useQuickSetupStore } from '../../stores/quick-setup-store';
@@ -77,9 +78,18 @@ export function ParametersView() {
     hasOfficialDescription,
     validateParameter,
     getParameterMetadata,
+    isRebootRequired,
+    isFavourite,
+    toggleFavourite,
+    showOnlyFavourites,
+    toggleShowOnlyFavourites,
+    favouriteCount,
     // File compare
     showCompareModal,
     fileParamDiffs,
+    fileSkippedCount,
+    fileTotalCount,
+    fileVehicleType,
     isApplyingFileParams,
     applyProgress,
     loadFileForCompare,
@@ -100,6 +110,9 @@ export function ParametersView() {
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [rebootRequiredParams, setRebootRequiredParams] = useState<string[]>([]);
+  const [rebooting, setRebooting] = useState(false);
+  const pendingParamRefresh = useRef(false);
   const [saveDropdownOpen, setSaveDropdownOpen] = useState(false);
   const saveDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -139,13 +152,21 @@ export function ParametersView() {
       if (modified.length > 0) {
         const boardUid = connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`;
         const boardName = connectionState.vehicleType || 'Unknown';
+        const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
         await window.electronAPI?.saveParamCheckpoint(boardUid, boardName,
-          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value }))
+          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value })),
+          vehicleType
         );
       }
 
       const result = await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
+        // Check if any written params require a reboot
+        const rebootParams = modified.filter(p => isRebootRequired(p.id)).map(p => p.id);
+        if (rebootParams.length > 0) {
+          setRebootRequiredParams(rebootParams);
+        }
+
         markAllAsSaved();
         showToast('Parameters saved to flash successfully', 'success');
       } else {
@@ -156,7 +177,38 @@ export function ParametersView() {
     } finally {
       setIsWritingFlash(false);
     }
-  }, [markAllAsSaved, showToast, modifiedParameters, connectionState]);
+  }, [markAllAsSaved, showToast, modifiedParameters, connectionState, isRebootRequired]);
+
+  const handleReboot = useCallback(async () => {
+    setRebooting(true);
+    try {
+      const success = await window.electronAPI?.mavlinkReboot();
+      if (success) {
+        if (rebootRequiredParams.length > 0) {
+          pendingParamRefresh.current = true;
+        } else {
+          showToast('Rebooting flight controller...', 'info');
+        }
+      } else {
+        setRebooting(false);
+        showToast('Failed to send reboot command', 'error');
+      }
+    } catch {
+      setRebooting(false);
+      showToast('Failed to reboot flight controller', 'error');
+    }
+  }, [showToast, rebootRequiredParams]);
+
+  // Watch for reconnection completion after a reboot we initiated
+  useEffect(() => {
+    if (!pendingParamRefresh.current) return;
+    if (connectionState.isConnected && !connectionState.isReconnecting) {
+      pendingParamRefresh.current = false;
+      setRebooting(false);
+      setRebootRequiredParams([]);
+      showToast('Reboot complete', 'success');
+    }
+  }, [connectionState.isConnected, connectionState.isReconnecting, showToast]);
 
   const handleSaveToFile = useCallback(async (changedOnly?: boolean) => {
     setIsSavingFile(true);
@@ -179,7 +231,8 @@ export function ParametersView() {
         return;
       }
 
-      const result = await window.electronAPI?.saveParamsToFile(params);
+      const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
+      const result = await window.electronAPI?.saveParamsToFile(params, vehicleType);
       if (result?.success) {
         showToast(`Saved ${params.length} parameter${params.length !== 1 ? 's' : ''} to file`, 'success');
       } else if (result?.error && result.error !== 'Cancelled') {
@@ -188,7 +241,7 @@ export function ParametersView() {
     } finally {
       setIsSavingFile(false);
     }
-  }, [parameters, showToast]);
+  }, [parameters, connectionState.vehicleType, connectionState.fcVariant, showToast]);
 
   const handleLoadFromFile = useCallback(async () => {
     setIsLoadingFile(true);
@@ -196,7 +249,7 @@ export function ParametersView() {
       const result = await window.electronAPI?.loadParamsFromFile();
       if (result?.success && result.params) {
         // Load file params for comparison - do NOT auto-set on vehicle
-        loadFileForCompare(result.params);
+        loadFileForCompare(result.params, result.vehicleType);
       } else if (result?.error && result.error !== 'Cancelled') {
         showToast(result.error, 'error');
       }
@@ -434,6 +487,21 @@ export function ParametersView() {
             </svg>
           </div>
 
+          {favouriteCount() > 0 && (
+            <button
+              onClick={toggleShowOnlyFavourites}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                showOnlyFavourites
+                  ? 'bg-yellow-500/30 text-yellow-300 ring-1 ring-yellow-500/50'
+                  : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+              }`}
+              title={showOnlyFavourites ? 'Show all parameters' : 'Show only favourite parameters'}
+            >
+              <Star className={`w-3 h-3 ${showOnlyFavourites ? 'fill-yellow-300' : ''}`} />
+              {favouriteCount()} favourites
+            </button>
+          )}
+
           {modified > 0 && (
             <button
               onClick={toggleShowOnlyModified}
@@ -517,6 +585,57 @@ export function ParametersView() {
         </div>
       )}
 
+      {/* Reboot Required Banner */}
+      {rebootRequiredParams.length > 0 && (
+        <div className={`shrink-0 px-4 py-2.5 border-b flex items-center justify-between ${
+          rebooting
+            ? 'bg-blue-500/10 border-blue-500/30'
+            : 'bg-amber-500/10 border-amber-500/30'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {rebooting ? (
+              <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            )}
+            {rebooting ? (
+              <span className="text-sm text-blue-300">
+                {connectionState.isReconnecting
+                  ? 'Reconnecting to flight controller...'
+                  : 'Rebooting flight controller...'}
+                {connectionState.isReconnecting && connectionState.reconnectAttempt != null && (
+                  <span className="text-blue-400/70 ml-2">
+                    Attempt {connectionState.reconnectAttempt}{connectionState.reconnectMaxAttempts ? ` / ${connectionState.reconnectMaxAttempts}` : ''}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-sm text-amber-300">
+                Reboot required for {rebootRequiredParams.length} parameter{rebootRequiredParams.length !== 1 ? 's' : ''} to take effect:
+                {' '}<span className="font-mono text-xs text-amber-400/70">{rebootRequiredParams.join(', ')}</span>
+              </span>
+            )}
+          </div>
+          {!rebooting && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setRebootRequiredParams([])}
+                className="px-2.5 py-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={handleReboot}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors flex items-center gap-1.5"
+              >
+                <RotateCw className="w-3 h-3" />
+                Reboot Now
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Parameter table */}
       <div className="flex-1 overflow-auto">
         {paramCount === 0 && !isLoading ? (
@@ -562,7 +681,21 @@ export function ParametersView() {
                   className="hover:bg-gray-800/20 transition-colors"
                 >
                   <td className="px-4 py-2.5">
-                    <span className="font-mono text-sm text-gray-200">{param.id}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavourite(param.id); }}
+                        className="shrink-0 p-0.5 rounded transition-colors hover:bg-gray-700/50"
+                        title={isFavourite(param.id) ? 'Remove from favourites' : 'Add to favourites'}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${isFavourite(param.id) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600 hover:text-gray-400'}`} />
+                      </button>
+                      <span className="font-mono text-sm text-gray-200">{param.id}</span>
+                      {isRebootRequired(param.id) && (
+                        <span className="px-1 py-0.5 text-[9px] leading-none bg-amber-500/15 text-amber-500/70 rounded border border-amber-500/20" title="Requires reboot to take effect">
+                          Reboot
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
@@ -653,10 +786,16 @@ export function ParametersView() {
       {/* Status bar */}
       <div className="shrink-0 px-4 py-2 border-t border-gray-800/50 bg-gray-900/30 text-xs text-gray-500 flex items-center gap-4">
         <span>{paramCount} parameters</span>
-        {(searchQuery || selectedGroup !== 'all' || showOnlyModified) && displayParams.length !== paramCount && (
+        {(searchQuery || selectedGroup !== 'all' || showOnlyModified || showOnlyFavourites) && displayParams.length !== paramCount && (
           <>
             <span className="text-gray-700">|</span>
             <span>{displayParams.length} shown</span>
+          </>
+        )}
+        {showOnlyFavourites && (
+          <>
+            <span className="text-gray-700">|</span>
+            <span className="text-yellow-400">Favourites only</span>
           </>
         )}
         {showOnlyModified && (
@@ -690,6 +829,12 @@ export function ParametersView() {
               <p className="text-sm text-gray-400 mt-1">
                 The following {modifiedParameters().length} parameter(s) will be saved permanently to the flight controller.
               </p>
+              {modifiedParameters().some(p => isRebootRequired(p.id)) && (
+                <p className="text-sm text-amber-400 mt-1.5 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Some parameters require a reboot to take effect.
+                </p>
+              )}
             </div>
 
             <div className="flex-1 overflow-auto px-6 py-4">
@@ -705,7 +850,14 @@ export function ParametersView() {
                 <tbody className="divide-y divide-gray-800/50">
                   {modifiedParameters().map(param => (
                     <tr key={param.id}>
-                      <td className="py-2 font-mono text-gray-300">{param.id}</td>
+                      <td className="py-2 font-mono text-gray-300">
+                        {param.id}
+                        {isRebootRequired(param.id) && (
+                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
+                            Reboot
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 text-right font-mono text-gray-500">{param.originalValue}</td>
                       <td className="py-2 text-center text-gray-600">→</td>
                       <td className="py-2 font-mono text-amber-400">{param.value}</td>
@@ -745,6 +897,22 @@ export function ParametersView() {
                   : `${fileParamDiffs.length} parameter${fileParamDiffs.length !== 1 ? 's' : ''} differ between file and vehicle. Select which to apply.`
                 }
               </p>
+              {(() => {
+                const currentVehicle = connectionState.vehicleType || connectionState.fcVariant;
+                return fileVehicleType && currentVehicle && fileVehicleType !== currentVehicle ? (
+                  <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="text-xs text-amber-300">
+                      File was saved from <span className="font-semibold">{fileVehicleType}</span> but vehicle is <span className="font-semibold">{currentVehicle}</span>
+                    </span>
+                  </div>
+                ) : null;
+              })()}
+              {fileSkippedCount > 0 && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {fileTotalCount} params in file: {fileTotalCount - fileSkippedCount} matched vehicle, {fileSkippedCount} skipped (not found on this firmware)
+                </p>
+              )}
             </div>
 
             {fileParamDiffs.length > 0 && (

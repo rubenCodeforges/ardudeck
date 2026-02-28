@@ -28,6 +28,7 @@ import {
   FlightModePanel,
   FlightControlPanel,
   MapPanel,
+  MessagesPanel,
   // Mission panels (for monitoring during flight) - MissionMapPanel removed (merged into MapPanel)
   WaypointTablePanel,
   AltitudeProfilePanel,
@@ -53,6 +54,7 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   FlightModePanel: () => <PanelWrapper component={FlightModePanel} />,
   FlightControlPanel: () => <PanelWrapper component={FlightControlPanel} />,
   MapPanel: () => <PanelWrapper component={MapPanel} />, // Now includes mission overlays
+  MessagesPanel: () => <PanelWrapper component={MessagesPanel} />,
   // Mission panels (for monitoring during flight) - readOnly mode
   // Note: MissionMapPanel removed - mission data now integrated into MapPanel
   WaypointTablePanel: () => <WaypointTablePanel readOnly />,
@@ -320,6 +322,7 @@ function LayoutToolbar({
   layouts,
   activeLayout,
   supportsMissionPlanning,
+  isMavlink,
 }: {
   onSave: (name: string) => void;
   onLoad: (name: string) => void;
@@ -328,6 +331,7 @@ function LayoutToolbar({
   layouts: string[];
   activeLayout: string;
   supportsMissionPlanning: boolean;
+  isMavlink: boolean;
 }) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [layoutName, setLayoutName] = useState('');
@@ -418,7 +422,7 @@ function LayoutToolbar({
       <div className="flex-1" />
 
       {/* Add panel dropdown */}
-      <AddPanelDropdown onAddPanel={onAddPanel} supportsMissionPlanning={supportsMissionPlanning} />
+      <AddPanelDropdown onAddPanel={onAddPanel} supportsMissionPlanning={supportsMissionPlanning} isMavlink={isMavlink} />
     </div>
   );
 }
@@ -427,13 +431,19 @@ function LayoutToolbar({
 // Note: missionMap removed - now integrated into unified MapPanel
 const MISSION_PANEL_IDS = ['waypoints', 'altitudeProfile'];
 
+// MAVLink-only panel IDs (STATUSTEXT doesn't exist in MSP)
+const MAVLINK_PANEL_IDS = ['messages'];
+
 // Add panel dropdown
-function AddPanelDropdown({ onAddPanel, supportsMissionPlanning }: { onAddPanel: (id: string, component: string, title: string) => void; supportsMissionPlanning: boolean }) {
+function AddPanelDropdown({ onAddPanel, supportsMissionPlanning, isMavlink }: { onAddPanel: (id: string, component: string, title: string) => void; supportsMissionPlanning: boolean; isMavlink: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Filter out mission panels if mission planning is not supported
+  // Filter out panels based on protocol support
   const availablePanels = Object.entries(PANEL_COMPONENTS).filter(([id]) => {
     if (MISSION_PANEL_IDS.includes(id) && !supportsMissionPlanning) {
+      return false;
+    }
+    if (MAVLINK_PANEL_IDS.includes(id) && !isMavlink) {
       return false;
     }
     return true;
@@ -694,6 +704,7 @@ export function TelemetryDashboard() {
         layouts={Object.keys(layouts).filter(name => !name.startsWith('__'))}
         activeLayout={activeLayoutName}
         supportsMissionPlanning={supportsMissionPlanning}
+        isMavlink={connectionState.protocol === 'mavlink'}
       />
 
       {/* Dockview container */}

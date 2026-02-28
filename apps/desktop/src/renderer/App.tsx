@@ -25,6 +25,7 @@ import { useLegacyConfigStore } from './stores/legacy-config-store';
 import { useCliStore, setupCliDataListener, cleanupCliDataListener } from './stores/cli-store';
 import { initializeSettings, useSettingsStore, type VehicleType } from './stores/settings-store';
 import { useFlightControlStore } from './stores/flight-control-store';
+import { useMessagesStore } from './stores/messages-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
 
@@ -176,8 +177,10 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
 function App() {
   const { connectionState, setConnectionState } = useConnectionStore();
   const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, updateBatch, reset } = useTelemetryStore();
+  const addStatusMessage = useMessagesStore((s) => s.addMessage);
+  const clearMessages = useMessagesStore((s) => s.clear);
   const { currentView, setView } = useNavigationStore();
-  const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata } = useParameterStore();
+  const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata, paramCount } = useParameterStore();
   const {
     fetchMission,
     setMissionItems,
@@ -335,7 +338,10 @@ function App() {
     if (connectionState.isConnected && connectionState.protocol !== 'msp') {
       // Small delay to ensure connection is stable
       const timer = setTimeout(() => {
-        fetchParameters();
+        // Only fetch params on fresh connection (not reconnection after reboot)
+        if (paramCount === 0) {
+          fetchParameters();
+        }
         // Fetch metadata based on vehicle type
         if (connectionState.mavType !== undefined) {
           fetchMetadata(connectionState.mavType);
@@ -389,10 +395,11 @@ function App() {
         stopOverride();
         resetFlightControl();
         resetCalibration();
+        clearMessages();
       }
     });
     return () => { unsubscribe?.(); };
-  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl, resetCalibration]);
+  }, [setConnectionState, reset, resetParameters, resetMission, resetFence, resetRally, resetLegacyConfig, resetCli, stopOverride, resetFlightControl, resetCalibration, clearMessages]);
 
   // Batched telemetry handler (preferred - single IPC message, single store update)
   useEffect(() => {
@@ -416,6 +423,14 @@ function App() {
     });
     return () => { unsubscribe?.(); };
   }, [updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight]);
+
+  // MAVLink STATUSTEXT handler
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onStatusText((msg) => {
+      addStatusMessage(msg.severity, msg.severityLabel as any, msg.text);
+    });
+    return () => { unsubscribe?.(); };
+  }, [addStatusMessage]);
 
   // Parameter events
   useEffect(() => {

@@ -4,6 +4,7 @@ import { useUpdateStore } from '../../stores/update-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { DebugConsole } from '../debug/DebugConsole';
 import { UpdateBanner } from './UpdateBanner';
+import { ArmDisarmButton } from './ArmDisarmButton';
 import iconImage from '../../assets/icon.png';
 
 interface AppShellProps {
@@ -22,14 +23,14 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0f]">
       {/* Header */}
-      <header className="h-14 border-b border-gray-800/50 bg-gray-900/50 backdrop-blur-sm flex items-center px-6 shrink-0">
+      <header className="h-14 border-b border-gray-800/50 bg-gray-900/50 backdrop-blur-sm flex items-center px-6 shrink-0 relative z-50">
         <div className="flex items-center gap-3">
           {/* Logo */}
           <img src={iconImage} alt="ArduDeck" className="h-8 rounded-md" />
           <h1 className="text-lg font-semibold text-white">ArduDeck</h1>
         </div>
 
-        <div className="ml-auto flex items-center gap-6">
+        <div className="ml-auto flex items-center gap-4">
           {/* Version badge */}
           {currentVersion && (
             <button
@@ -43,6 +44,9 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </button>
           )}
+
+          {/* ARM / DISARM button */}
+          <ArmDisarmButton />
 
           {/* Connection status */}
           <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-gray-800/50 border ${

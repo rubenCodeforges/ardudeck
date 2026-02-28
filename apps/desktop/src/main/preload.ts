@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage } from '../shared/ipc-channels.js';
 import type { ParamChange, ParamCheckpoint } from '../shared/param-history-types.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
@@ -77,6 +77,9 @@ const api = {
   mavlinkReboot: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_REBOOT),
 
+  mavlinkArmDisarm: (arm: boolean, force?: boolean): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_ARM_DISARM, arm, force),
+
   // MAVLink Signing
   signingSetKey: (passphrase: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SIGNING_SET_KEY, passphrase),
@@ -146,6 +149,13 @@ const api = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.TELEMETRY_BATCH, handler);
   },
 
+  // MAVLink STATUSTEXT messages
+  onStatusText: (callback: (msg: { severity: number; severityLabel: string; text: string }) => void) => {
+    const handler = (_: unknown, msg: { severity: number; severityLabel: string; text: string }) => callback(msg);
+    ipcRenderer.on(IPC_CHANNELS.MAVLINK_STATUSTEXT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MAVLINK_STATUSTEXT, handler);
+  },
+
   // Telemetry stream rate control (MAVLink only)
   setTelemetryStreamRate: (speed: TelemetrySpeed): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.TELEMETRY_SET_STREAM_RATE, speed),
@@ -208,15 +218,15 @@ const api = {
   writeParamsToFlash: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_WRITE_FLASH),
 
-  saveParamsToFile: (params: Array<{ id: string; value: number }>): Promise<{ success: boolean; error?: string; filePath?: string }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_FILE, params),
+  saveParamsToFile: (params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_FILE, params, vehicleType),
 
-  loadParamsFromFile: (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }> }> =>
+  loadParamsFromFile: (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }>; vehicleType?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_LOAD_FILE),
 
   // Parameter history (version control)
-  saveParamCheckpoint: (boardUid: string, boardName: string, changes: ParamChange[]): Promise<{ success: boolean; checkpointId?: string }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PARAM_HISTORY_SAVE, boardUid, boardName, changes),
+  saveParamCheckpoint: (boardUid: string, boardName: string, changes: ParamChange[], vehicleType?: string): Promise<{ success: boolean; checkpointId?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_HISTORY_SAVE, boardUid, boardName, changes, vehicleType),
 
   getParamHistory: (boardUid: string): Promise<ParamCheckpoint[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_HISTORY_LIST, boardUid),

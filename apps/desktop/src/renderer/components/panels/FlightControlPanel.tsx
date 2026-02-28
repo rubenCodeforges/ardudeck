@@ -7,10 +7,11 @@
  * Design follows the visual language of other telemetry panels (BatteryPanel, AttitudePanel).
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useFlightControlStore } from '../../stores/flight-control-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useMessagesStore } from '../../stores/messages-store';
 import { PanelContainer, SectionTitle } from './panel-utils';
 
 // =============================================================================
@@ -259,11 +260,13 @@ function ArmButton({
   canArm,
   armSwitchOn,
   onToggle,
+  compact = false,
 }: {
   isArmed: boolean;
   canArm: boolean;
   armSwitchOn: boolean;
   onToggle: (state: boolean) => void;
+  compact?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center">
@@ -272,7 +275,7 @@ function ArmButton({
         onClick={() => onToggle(!armSwitchOn)}
         disabled={!canArm}
         className={`
-          relative w-24 h-24 rounded-full border-4
+          relative ${compact ? 'w-14 h-14 border-[3px]' : 'w-24 h-24 border-4'} rounded-full
           transition-all duration-300 ease-out
           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900
           ${canArm ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
@@ -287,27 +290,25 @@ function ArmButton({
         {/* Inner circle */}
         <div
           className={`
-            absolute inset-2 rounded-full flex items-center justify-center
+            absolute ${compact ? 'inset-1' : 'inset-2'} rounded-full flex items-center justify-center
             transition-colors duration-300
             ${isArmed ? 'bg-red-500' : armSwitchOn ? 'bg-amber-500' : 'bg-gray-700'}
           `}
         >
           <svg
-            className={`w-10 h-10 ${isArmed || armSwitchOn ? 'text-white' : 'text-gray-400'}`}
+            className={`${compact ? 'w-6 h-6' : 'w-10 h-10'} ${isArmed || armSwitchOn ? 'text-white' : 'text-gray-400'}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
           >
             {isArmed ? (
-              // Armed icon - filled shield
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
               />
             ) : (
-              // Disarmed icon - power symbol
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -319,14 +320,14 @@ function ArmButton({
       </button>
 
       {/* Status text */}
-      <div className="mt-3 text-center">
-        <div className={`text-lg font-bold ${isArmed ? 'text-red-400' : 'text-gray-400'}`}>
+      <div className={`${compact ? 'mt-1.5' : 'mt-3'} text-center`}>
+        <div className={`${compact ? 'text-xs' : 'text-lg'} font-bold ${isArmed ? 'text-red-400' : 'text-gray-400'}`}>
           {isArmed ? 'ARMED' : 'DISARMED'}
         </div>
         {armSwitchOn && !isArmed && (
           <div className="text-amber-400 text-xs">Arming...</div>
         )}
-        {!canArm && (
+        {!canArm && !compact && (
           <div className="text-gray-500 text-xs">Not configured</div>
         )}
       </div>
@@ -433,7 +434,276 @@ const COMMON_MODES = [
 ];
 
 // =============================================================================
-// Main Component
+// MAVLink Flight Control (ArduPilot)
+// =============================================================================
+
+function MavlinkFlightControl() {
+  const flight = useTelemetryStore((s) => s.flight);
+  const messages = useMessagesStore((s) => s.messages);
+  const [isLoading, setIsLoading] = useState(false);
+  const [forceArm, setForceArm] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'info' | 'error' | 'success' } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isHorizontal, setIsHorizontal] = useState(false);
+  const prevArmedRef = useRef(flight.armed);
+
+  // Detect panel orientation for responsive layout
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setIsHorizontal(entry.contentRect.width > entry.contentRect.height * 1.5);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Watch for armed state changes to provide feedback
+  useEffect(() => {
+    if (flight.armed !== prevArmedRef.current) {
+      prevArmedRef.current = flight.armed;
+      if (isLoading) {
+        setIsLoading(false);
+        setStatusMsg({
+          text: flight.armed ? 'Armed successfully' : 'Disarmed',
+          type: 'success',
+        });
+        setTimeout(() => setStatusMsg(null), 3000);
+      }
+    }
+  }, [flight.armed, isLoading]);
+
+  // Extract PreArm failure reasons from STATUSTEXT messages
+  const preArmReasons = useMemo(() => {
+    if (flight.armed) return [];
+    return messages
+      .filter((m) => m.text.includes('PreArm:') || m.text.includes('Arm:'))
+      .map((m) => {
+        // Extract the reason part after "PreArm:" or "Arm:"
+        const match = m.text.match(/(?:Pre)?Arm:\s*(.+)/);
+        return match ? match[1]!.trim() : m.text;
+      })
+      .filter((reason, i, arr) => arr.indexOf(reason) === i) // deduplicate
+      .slice(0, 10);
+  }, [messages, flight.armed]);
+
+  // Watch for ARM/DISARM command result in messages
+  const lastArmResult = useMemo(() => {
+    const result = messages.find((m) => m.text.startsWith('ARM/DISARM'));
+    if (!result) return null;
+    const isAccepted = result.text.includes('accepted');
+    return { accepted: isAccepted, text: result.text, timestamp: result.timestamp };
+  }, [messages]);
+
+  // Show command result feedback
+  useEffect(() => {
+    if (lastArmResult && isLoading) {
+      if (!lastArmResult.accepted) {
+        setIsLoading(false);
+        setStatusMsg({ text: lastArmResult.text, type: 'error' });
+        setTimeout(() => setStatusMsg(null), 5000);
+      }
+    }
+  }, [lastArmResult, isLoading]);
+
+  const handleArmDisarm = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setStatusMsg(null);
+    try {
+      const wantArm = !flight.armed;
+      const ok = await window.electronAPI.mavlinkArmDisarm(wantArm, wantArm && forceArm);
+      if (!ok) {
+        setIsLoading(false);
+        setStatusMsg({ text: 'Not connected', type: 'error' });
+        setTimeout(() => setStatusMsg(null), 3000);
+      }
+      // If ok, wait for armed state change or COMMAND_ACK result (handled by effects above)
+      // Timeout fallback: stop loading after 5s if no state change
+      setTimeout(() => {
+        setIsLoading((prev) => {
+          if (prev) {
+            setStatusMsg({ text: 'No response from vehicle', type: 'error' });
+            setTimeout(() => setStatusMsg(null), 5000);
+          }
+          return false;
+        });
+      }, 5000);
+    } catch (err) {
+      console.error('[FlightControl] MAVLink arm/disarm failed:', err);
+      setIsLoading(false);
+      setStatusMsg({ text: 'Command error', type: 'error' });
+      setTimeout(() => setStatusMsg(null), 3000);
+    }
+  };
+
+  // Status message color
+  const statusColor = statusMsg?.type === 'success' ? 'text-emerald-400' : statusMsg?.type === 'error' ? 'text-red-400' : 'text-gray-400';
+
+  return (
+    <PanelContainer>
+      <div ref={containerRef} className="h-full">
+        {isHorizontal ? (
+          /* Horizontal layout — ARM button is THE hero control */
+          <div className="h-full flex flex-col justify-center gap-3">
+            <div className="flex items-center gap-4">
+              {/* Left: Mode + protocol */}
+              <div className="shrink-0 w-20">
+                <div className="text-white font-medium leading-tight">{flight.mode || 'Unknown'}</div>
+                <div className="text-[10px] text-gray-500">MAVLink</div>
+              </div>
+
+              {/* CENTER: The ARM button — primary control */}
+              <div className="flex-1 flex justify-center">
+                <button
+                  onClick={() => handleArmDisarm()}
+                  disabled={isLoading}
+                  className={`
+                    flex items-center justify-center gap-3 min-w-[200px] px-8 py-3.5 rounded-xl
+                    font-bold text-base uppercase tracking-wider
+                    transition-all duration-200 select-none border-2
+                    ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
+                    ${flight.armed
+                      ? 'bg-red-500/15 border-red-500/50 text-red-400 hover:bg-red-500/25 shadow-lg shadow-red-500/10'
+                      : forceArm
+                        ? 'bg-amber-500/15 border-amber-500/50 text-amber-400 hover:bg-amber-500/25 shadow-lg shadow-amber-500/10'
+                        : 'bg-gray-800/60 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:text-white hover:border-gray-500/50'
+                    }
+                  `}
+                >
+                  {isLoading ? (
+                    <>
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span>{flight.armed ? 'Disarming...' : 'Arming...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`w-2.5 h-2.5 rounded-full ${
+                        flight.armed ? 'bg-red-400 animate-pulse' : forceArm ? 'bg-amber-400' : 'bg-gray-500'
+                      }`} />
+                      <span>{flight.armed ? 'Disarm' : forceArm ? 'Force Arm' : 'Arm'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Right: Force toggle */}
+              <div className="shrink-0 w-20 flex justify-end">
+                <button
+                  onClick={() => setForceArm(!forceArm)}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-lg transition-all
+                    ${forceArm
+                      ? 'bg-amber-500/10 border border-amber-500/30'
+                      : 'bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/50'
+                    }
+                  `}
+                  title="Force ARM bypasses pre-arm safety checks"
+                >
+                  <svg className={`w-3.5 h-3.5 ${forceArm ? 'text-amber-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span className={`text-xs font-medium ${forceArm ? 'text-amber-300' : 'text-gray-300'}`}>Force</span>
+                  <div className={`w-7 h-3.5 rounded-full transition-colors relative ${forceArm ? 'bg-amber-500' : 'bg-gray-600'}`}>
+                    <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${forceArm ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Status feedback — right below the ARM button */}
+            {statusMsg && (
+              <div className={`text-center text-xs font-medium ${statusColor}`}>{statusMsg.text}</div>
+            )}
+
+            {/* Pre-arm reasons as compact chips */}
+            {!flight.armed && preArmReasons.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {preArmReasons.map((reason, i) => (
+                  <span key={i} className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-red-300 text-[11px]">
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Vertical layout for side panels */
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-white font-medium">{flight.mode || 'Unknown'}</div>
+              <div className="text-xs text-gray-500">MAVLink</div>
+            </div>
+
+            <div className="flex justify-center mb-4">
+              <ArmButton
+                isArmed={flight.armed}
+                canArm={true}
+                armSwitchOn={flight.armed}
+                onToggle={() => handleArmDisarm()}
+              />
+            </div>
+
+            {statusMsg && (
+              <div className={`text-center text-xs font-medium mb-3 ${statusColor}`}>{statusMsg.text}</div>
+            )}
+
+            {!flight.armed && preArmReasons.length > 0 && (
+              <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <div className="text-red-400 text-[10px] font-medium uppercase tracking-wider mb-1.5">Pre-arm Checks Failed</div>
+                <div className="flex flex-col gap-1">
+                  {preArmReasons.map((reason, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <svg className="w-3 h-3 text-red-400 mt-px shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span className="text-red-300 text-[11px] leading-tight">{reason}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setForceArm(!forceArm)}
+              className={`
+                flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all
+                ${forceArm
+                  ? 'bg-amber-500/10 border border-amber-500/30'
+                  : 'bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/50'
+                }
+              `}
+            >
+              <div className="flex items-center gap-2.5">
+                <svg className={`w-4 h-4 ${forceArm ? 'text-amber-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="text-left">
+                  <div className={`text-xs font-medium ${forceArm ? 'text-amber-300' : 'text-gray-300'}`}>Force ARM</div>
+                  <div className="text-[10px] text-gray-500">Bypass pre-arm checks</div>
+                </div>
+              </div>
+              <div className={`w-8 h-4 rounded-full transition-colors relative ${forceArm ? 'bg-amber-500' : 'bg-gray-600'}`}>
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${forceArm ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+
+            <div className="flex-1" />
+          </div>
+        )}
+      </div>
+    </PanelContainer>
+  );
+}
+
+// =============================================================================
+// Main Component (MSP)
 // =============================================================================
 
 export function FlightControlPanel() {
@@ -546,15 +816,20 @@ export function FlightControlPanel() {
   };
 
   // Not connected state
-  if (!isConnected || protocol !== 'msp') {
+  if (!isConnected) {
     return (
       <PanelContainer className="flex flex-col items-center justify-center">
         <svg className="w-12 h-12 text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
         </svg>
-        <div className="text-gray-500 text-sm">Connect to MSP device</div>
+        <div className="text-gray-500 text-sm">Connect to a device</div>
       </PanelContainer>
     );
+  }
+
+  // MAVLink mode: show arm/disarm with force-arm option
+  if (protocol === 'mavlink') {
+    return <MavlinkFlightControl />;
   }
 
   return (

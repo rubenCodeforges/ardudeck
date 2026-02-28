@@ -24,7 +24,20 @@ jobs:
 
       - name: Setup environment
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          # Derive version from git tag when available, otherwise fall back to package.json
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+          fi
+
+          if [ -n "$TAG" ]; then
+            # Strip leading 'v' from tag: v0.0.28-rc-3 → 0.0.28-rc-3
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-linux" >> $GITHUB_ENV
 
@@ -44,7 +57,16 @@ jobs:
         run: pnpm install
 
       - name: Sync version to desktop app
-        run: pnpm sync-version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const root = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+            root.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./package.json', JSON.stringify(root, null, 2) + '\n');
+            const desktop = JSON.parse(fs.readFileSync('./apps/desktop/package.json', 'utf8'));
+            desktop.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
+          "
 
       - name: Build packages
         run: pnpm build
@@ -80,7 +102,18 @@ jobs:
 
       - name: Setup environment
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+          fi
+
+          if [ -n "$TAG" ]; then
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-mac-arm64" >> $GITHUB_ENV
 
@@ -99,7 +132,16 @@ jobs:
         run: pnpm install
 
       - name: Sync version to desktop app
-        run: pnpm sync-version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const root = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+            root.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./package.json', JSON.stringify(root, null, 2) + '\n');
+            const desktop = JSON.parse(fs.readFileSync('./apps/desktop/package.json', 'utf8'));
+            desktop.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
+          "
 
       - name: Build packages
         run: pnpm build
@@ -135,7 +177,18 @@ jobs:
 
       - name: Setup environment
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+          fi
+
+          if [ -n "$TAG" ]; then
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-mac-x64" >> $GITHUB_ENV
 
@@ -154,7 +207,16 @@ jobs:
         run: pnpm install
 
       - name: Sync version to desktop app
-        run: pnpm sync-version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const root = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+            root.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./package.json', JSON.stringify(root, null, 2) + '\n');
+            const desktop = JSON.parse(fs.readFileSync('./apps/desktop/package.json', 'utf8'));
+            desktop.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
+          "
 
       - name: Build packages
         run: pnpm build
@@ -198,7 +260,18 @@ jobs:
       - name: Setup environment
         shell: bash
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+          fi
+
+          if [ -n "$TAG" ]; then
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BUILD_NAME=ArduDeck-${VERSION}-win" >> $GITHUB_ENV
 
@@ -213,7 +286,17 @@ jobs:
         run: pnpm install
 
       - name: Sync version to desktop app
-        run: pnpm sync-version
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const root = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+            root.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./package.json', JSON.stringify(root, null, 2) + '\n');
+            const desktop = JSON.parse(fs.readFileSync('./apps/desktop/package.json', 'utf8'));
+            desktop.version = '${{ env.VERSION }}';
+            fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
+          "
 
       - name: Build packages
         run: pnpm build

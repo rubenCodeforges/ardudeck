@@ -70,9 +70,12 @@ import {
   serializeHeartbeat,
   HEARTBEAT_ID,
   HEARTBEAT_CRC_EXTRA,
+  serializeRcChannelsOverride,
+  RC_CHANNELS_OVERRIDE_ID,
+  RC_CHANNELS_OVERRIDE_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed } from '../shared/ipc-channels.js';
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
@@ -483,6 +486,9 @@ let receivedParams = new Map<string, ParamValue>();
 let paramDownloadTimeout: NodeJS.Timeout | null = null;
 let paramDownloadActive = false; // True only during bulk PARAM_REQUEST_LIST download
 
+// STATUSTEXT chunk reassembly buffer (for multi-chunk messages >50 chars)
+const statustextChunkBuffer = new Map<number, { severity: number; chunks: string[]; timer: NodeJS.Timeout | null }>();
+
 // Parameter metadata cache (keyed by vehicle type)
 const metadataCache = new Map<VehicleType, ParameterMetadataStore>();
 
@@ -654,6 +660,8 @@ const MSG_ATTITUDE = 30;
 const MSG_GLOBAL_POSITION_INT = 33;
 const MSG_RC_CHANNELS = 65;
 const MSG_VFR_HUD = 74;
+const MSG_COMMAND_ACK = 77;
+const MSG_STATUSTEXT = 253;
 
 // Mission message IDs
 const MSG_MISSION_ITEM = 39;
@@ -811,6 +819,77 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const activeChannels = channels.slice(0, chancount);
       const rcChannels: RcChannelsData = { channels: activeChannels, chancount, rssi };
       queueMavlinkTelemetry(mainWindow, { rcChannels });
+      break;
+    }
+
+    case MSG_STATUSTEXT: {
+      // STATUSTEXT base fields (both 1-byte types, declaration order preserved):
+      //   severity(U8)@0, text(char[50])@1
+      // Extension fields (after base): id(U16)@51, chunkSeq(U8)@53
+      // v1 payloads are 51 bytes (no extensions), v2 payloads are 54 bytes
+      const severity = payload[0]!;
+      const text = new TextDecoder().decode(payload.slice(1, 51)).replace(/\0.*$/, '');
+      const chunkId = payload.length >= 54 ? readUint16(payload, 51) : 0;
+      const chunkSeq = payload.length >= 54 ? (payload[53] ?? 0) : 0;
+
+      if (chunkId === 0) {
+        // Single-chunk message — emit immediately
+        const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
+        mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity, severityLabel, text });
+      } else {
+        // Multi-chunk message — accumulate and reassemble
+        let entry = statustextChunkBuffer.get(chunkId);
+        if (!entry) {
+          entry = { severity, chunks: [], timer: null };
+          statustextChunkBuffer.set(chunkId, entry);
+        }
+        entry.chunks[chunkSeq] = text;
+
+        // Clear previous flush timer
+        if (entry.timer) clearTimeout(entry.timer);
+
+        // Check if this is the last chunk (text shorter than 50 chars or contains null)
+        const isLastChunk = text.length < 50;
+        if (isLastChunk) {
+          // Reassemble and emit
+          const fullText = entry.chunks.join('');
+          const severityLabel = SEVERITY_LABELS[entry.severity] ?? 'INFO';
+          mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: entry.severity, severityLabel, text: fullText });
+          statustextChunkBuffer.delete(chunkId);
+        } else {
+          // Set timeout to flush incomplete messages after 2s
+          entry.timer = setTimeout(() => {
+            const buf = statustextChunkBuffer.get(chunkId);
+            if (buf) {
+              const fullText = buf.chunks.join('');
+              const severityLabel = SEVERITY_LABELS[buf.severity] ?? 'INFO';
+              mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: buf.severity, severityLabel, text: fullText });
+              statustextChunkBuffer.delete(chunkId);
+            }
+          }, 2000);
+        }
+      }
+      break;
+    }
+
+    case MSG_COMMAND_ACK: {
+      // v1 wire order (3 bytes): command(U16)@0, result(U8)@2
+      // v2 wire order (up to 10 bytes): resultParam2(I32)@0, command(U16)@4, result(U8)@6, progress(U8)@7, targetSystem(U8)@8, targetComponent(U8)@9
+      const isV2Payload = payload.length >= 6;
+      const ackCommand = isV2Payload ? readUint16(payload, 4) : readUint16(payload, 0);
+      const ackResult = isV2Payload ? (payload[6] ?? 0) : (payload[2] ?? 0);
+      // MAV_RESULT: 0=ACCEPTED, 1=TEMPORARILY_REJECTED, 2=DENIED, 3=UNSUPPORTED, 4=FAILED, 5=IN_PROGRESS
+      const MAV_RESULT_NAMES = ['ACCEPTED', 'TEMPORARILY_REJECTED', 'DENIED', 'UNSUPPORTED', 'FAILED', 'IN_PROGRESS'];
+      const resultName = MAV_RESULT_NAMES[ackResult] ?? `UNKNOWN(${ackResult})`;
+
+      // Log arm/disarm command results prominently and forward to messages panel
+      if (ackCommand === 400) {
+        const severity = ackResult === 0 ? 6 : 4; // MAV_SEVERITY_INFO=6, WARNING=4
+        const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
+        const text = ackResult === 0 ? 'ARM/DISARM accepted' : `ARM/DISARM ${resultName}`;
+        mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity, severityLabel, text });
+        sendLog(mainWindow, ackResult === 0 ? 'info' : 'warn', text);
+      }
       break;
     }
 
@@ -2270,6 +2349,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         isConnected: false,
         isWaitingForHeartbeat: true,
         transport: transportName,
+        portPath: options.port, // Store port path for reconnection after reboot
         packetsReceived: 0,
         packetsSent: 0,
       };
@@ -2874,8 +2954,66 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
+  // ARM / DISARM via MAV_CMD_COMPONENT_ARM_DISARM (command 400)
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_ARM_DISARM, async (_, arm: boolean, force?: boolean): Promise<boolean> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return false;
+    }
+
+    try {
+      // When force-arming without a transmitter, ArduPilot blocks with "waiting for RC".
+      // Send RC_CHANNELS_OVERRIDE with neutral values so the FC sees RC input.
+      if (force && arm) {
+        const rcPayload = serializeRcChannelsOverride({
+          targetSystem: connectionState.systemId ?? 1,
+          targetComponent: 1,
+          chan1Raw: 1500, // Roll center
+          chan2Raw: 1500, // Pitch center
+          chan3Raw: 1000, // Throttle low
+          chan4Raw: 1500, // Yaw center
+          chan5Raw: 1000,
+          chan6Raw: 1000,
+          chan7Raw: 1000,
+          chan8Raw: 1000,
+          chan9Raw: 0, chan10Raw: 0, chan11Raw: 0, chan12Raw: 0,
+          chan13Raw: 0, chan14Raw: 0, chan15Raw: 0, chan16Raw: 0,
+          chan17Raw: 0, chan18Raw: 0,
+        });
+        const rcPacket = await sendMavlinkPacket(RC_CHANNELS_OVERRIDE_ID, rcPayload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
+        await currentTransport.write(rcPacket);
+        // Give ArduPilot time to process the RC input
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        command: 400, // MAV_CMD_COMPONENT_ARM_DISARM
+        confirmation: 0,
+        param1: arm ? 1 : 0,      // 1 = arm, 0 = disarm
+        param2: force ? 21196 : 0, // ArduPilot: 21196 = force arm/disarm (bypass safety checks)
+        param3: 0,
+        param4: 0,
+        param5: 0,
+        param6: 0,
+        param7: 0,
+      });
+
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Sent ${arm ? 'ARM' : 'DISARM'} command${force ? ' (FORCE)' : ''}`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', `Failed to ${arm ? 'arm' : 'disarm'}`, message);
+      return false;
+    }
+  });
+
   // Save parameters to file
-  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>): Promise<{ success: boolean; error?: string; filePath?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
         title: 'Save Parameters',
@@ -2891,8 +3029,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
+      // Header with vehicle type and timestamp for cross-vehicle-type safety
+      const header = [
+        `# ArduDeck Parameter File`,
+        vehicleType ? `# Vehicle: ${vehicleType}` : null,
+        `# Date: ${new Date().toISOString()}`,
+        `# Parameters: ${params.length}`,
+        '',
+      ].filter(Boolean).join('\n');
+
       // Format: PARAM_NAME,VALUE (one per line)
-      const content = params.map(p => `${p.id},${p.value}`).join('\n');
+      const content = header + params.map(p => `${p.id},${p.value}`).join('\n');
 
       const fs = await import('fs/promises');
       await fs.writeFile(result.filePath, content, 'utf-8');
@@ -2907,7 +3054,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Load parameters from file
-  ipcMain.handle(IPC_CHANNELS.PARAM_LOAD_FILE, async (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }> }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_LOAD_FILE, async (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }>; vehicleType?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
         title: 'Load Parameters',
@@ -2930,11 +3077,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Parse: PARAM_NAME,VALUE (one per line)
       // Also supports PARAM_NAME VALUE (space-separated, like Mission Planner)
       const params: Array<{ id: string; value: number }> = [];
+      let vehicleType: string | undefined;
       const lines = content.split(/\r?\n/);
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue; // Skip empty lines and comments
+        if (!trimmed) continue;
+
+        // Parse header comments for metadata
+        if (trimmed.startsWith('#')) {
+          const vehicleMatch = trimmed.match(/^#\s*Vehicle:\s*(.+)/i);
+          if (vehicleMatch?.[1]) {
+            vehicleType = vehicleMatch[1].trim();
+          }
+          continue;
+        }
 
         // Try comma-separated first, then space/tab
         let parts = trimmed.split(',');
@@ -2952,8 +3109,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
       }
 
-      sendLog(mainWindow, 'info', `Loaded ${params.length} parameters from ${filePath}`);
-      return { success: true, params };
+      sendLog(mainWindow, 'info', `Loaded ${params.length} parameters from ${filePath}${vehicleType ? ` (${vehicleType})` : ''}`);
+      return { success: true, params, vehicleType };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to load parameters', message);
@@ -2969,7 +3126,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     _,
     boardUid: string,
     boardName: string,
-    changes: ParamChange[]
+    changes: ParamChange[],
+    vehicleType?: string
   ): Promise<{ success: boolean; checkpointId?: string }> => {
     try {
       const { randomUUID } = await import('crypto');
@@ -2977,6 +3135,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         id: randomUUID(),
         timestamp: Date.now(),
         changes,
+        vehicleType,
       };
 
       const boards = paramHistoryStore.get('boards');

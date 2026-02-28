@@ -16,6 +16,7 @@ export interface ParamCheckpoint {
   timestamp: number;
   changes: ParamChange[];
   label?: string;
+  vehicleType?: string; // e.g. "ArduCopter", "ArduPlane", "INAV", "BTFL"
 }
 
 export interface BoardParamHistory {

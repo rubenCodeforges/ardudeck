@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
 
   // MAVLink Commands
   MAVLINK_REBOOT: 'mavlink:reboot',
+  MAVLINK_ARM_DISARM: 'mavlink:arm-disarm',
 
   // MAVLink Signing
   MAVLINK_SIGNING_SET_KEY: 'mavlink:signing-set-key',
@@ -39,6 +40,9 @@ export const IPC_CHANNELS = {
   TELEMETRY_BATCH: 'telemetry:batch', // Batched telemetry update for performance
   TELEMETRY_SET_STREAM_RATE: 'telemetry:set-stream-rate', // Change MAVLink stream rate preset
   MSP_PACKET_COUNTS: 'msp:packet-counts', // MSP RX/TX packet counters for toolbar
+
+  // MAVLink Status Messages (STATUSTEXT)
+  MAVLINK_STATUSTEXT: 'mavlink:statustext',
 
   // Layout management
   LAYOUT_GET_ALL: 'layout:get-all',
@@ -896,6 +900,34 @@ export interface AppUpdateInfo {
   totalBytes?: number;
   downloadSpeed?: number; // bytes per second
   error?: string;
+}
+
+/**
+ * MAVLink STATUSTEXT severity levels (RFC-5424)
+ */
+export type StatusSeverity =
+  | 'EMERGENCY'   // 0
+  | 'ALERT'       // 1
+  | 'CRITICAL'    // 2
+  | 'ERROR'       // 3
+  | 'WARNING'     // 4
+  | 'NOTICE'      // 5
+  | 'INFO'        // 6
+  | 'DEBUG';      // 7
+
+export const SEVERITY_LABELS: StatusSeverity[] = [
+  'EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING', 'NOTICE', 'INFO', 'DEBUG',
+];
+
+/**
+ * A MAVLink STATUSTEXT message received from the FC
+ */
+export interface StatusMessage {
+  severity: number;
+  severityLabel: StatusSeverity;
+  text: string;
+  timestamp: number;
+  count: number;
 }
 
 /**

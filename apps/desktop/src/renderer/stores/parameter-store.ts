@@ -15,6 +15,26 @@ export interface FileParamDiff {
   selected: boolean;
 }
 
+// localStorage key for persisting favourites across sessions
+const FAVOURITES_STORAGE_KEY = 'ardudeck-param-favourites';
+
+function loadFavourites(): Set<string> {
+  try {
+    const stored = localStorage.getItem(FAVOURITES_STORAGE_KEY);
+    if (stored) {
+      const arr = JSON.parse(stored) as string[];
+      return new Set(arr);
+    }
+  } catch { /* ignore corrupt data */ }
+  return new Set();
+}
+
+function saveFavourites(favourites: Set<string>) {
+  try {
+    localStorage.setItem(FAVOURITES_STORAGE_KEY, JSON.stringify([...favourites]));
+  } catch { /* ignore write errors */ }
+}
+
 interface ParameterStore {
   // State
   parameters: Map<string, ParameterWithMeta>;
@@ -27,12 +47,17 @@ interface ParameterStore {
   searchQuery: string;
   selectedGroup: string;
   showOnlyModified: boolean;
+  showOnlyFavourites: boolean;
+  favourites: Set<string>;
   sortColumn: SortColumn;
   sortDirection: SortDirection;
 
   // File compare state
   showCompareModal: boolean;
   fileParamDiffs: FileParamDiff[];
+  fileSkippedCount: number;
+  fileTotalCount: number;
+  fileVehicleType: string | null;
   isApplyingFileParams: boolean;
   applyProgress: { applied: number; total: number } | null;
 
@@ -42,10 +67,13 @@ interface ParameterStore {
   modifiedCount: () => number;
   modifiedParameters: () => ParameterWithMeta[];
   groupCounts: () => Map<string, number>;
+  favouriteCount: () => number;
   getDescription: (paramId: string) => string;
   hasOfficialDescription: (paramId: string) => boolean;
   validateParameter: (paramId: string, value: number) => ValidationResult;
-  getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; values?: Record<number, string>; units?: string; bitmask?: Record<number, string> } | null;
+  getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; values?: Record<number, string>; units?: string; bitmask?: Record<number, string>; rebootRequired?: boolean } | null;
+  isRebootRequired: (paramId: string) => boolean;
+  isFavourite: (paramId: string) => boolean;
 
   // Actions
   fetchParameters: () => Promise<void>;
@@ -59,6 +87,8 @@ interface ParameterStore {
   setSelectedGroup: (group: string) => void;
   setShowOnlyModified: (show: boolean) => void;
   toggleShowOnlyModified: () => void;
+  toggleShowOnlyFavourites: () => void;
+  toggleFavourite: (paramId: string) => void;
   setSortColumn: (column: SortColumn) => void;
   toggleSort: (column: SortColumn) => void;
   revertParameter: (paramId: string) => void;
@@ -66,7 +96,7 @@ interface ParameterStore {
   reset: () => void;
 
   // File compare actions
-  loadFileForCompare: (fileParams: Array<{ id: string; value: number }>) => void;
+  loadFileForCompare: (fileParams: Array<{ id: string; value: number }>, fileVehicleType?: string) => void;
   closeCompareModal: () => void;
   toggleDiffSelection: (paramId: string) => void;
   selectAllDiffs: () => void;
@@ -89,20 +119,30 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   searchQuery: '',
   selectedGroup: 'all',
   showOnlyModified: false,
+  showOnlyFavourites: false,
+  favourites: loadFavourites(),
   sortColumn: 'name' as SortColumn,
   sortDirection: 'asc' as SortDirection,
 
   // File compare state
   showCompareModal: false,
   fileParamDiffs: [],
+  fileSkippedCount: 0,
+  fileTotalCount: 0,
+  fileVehicleType: null,
   isApplyingFileParams: false,
   applyProgress: null,
 
   filteredParameters: () => {
-    const { parameters, searchQuery, selectedGroup, showOnlyModified, sortColumn, sortDirection } = get();
+    const { parameters, searchQuery, selectedGroup, showOnlyModified, showOnlyFavourites, favourites, sortColumn, sortDirection } = get();
     let params = Array.from(parameters.values());
 
-    // Filter by group first
+    // Filter by favourites
+    if (showOnlyFavourites) {
+      params = params.filter(p => favourites.has(p.id));
+    }
+
+    // Filter by group
     if (selectedGroup !== 'all') {
       params = params.filter(p => parameterBelongsToGroup(p.id, selectedGroup));
     }
@@ -204,7 +244,27 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       values: meta.values,
       units: meta.units,
       bitmask: meta.bitmask,
+      rebootRequired: meta.rebootRequired,
     };
+  },
+
+  isRebootRequired: (paramId: string) => {
+    const { metadata } = get();
+    return metadata?.[paramId]?.rebootRequired === true;
+  },
+
+  isFavourite: (paramId: string) => {
+    return get().favourites.has(paramId);
+  },
+
+  favouriteCount: () => {
+    const { favourites, parameters } = get();
+    // Only count favourites that exist in the current parameter set
+    let count = 0;
+    for (const id of favourites) {
+      if (parameters.has(id)) count++;
+    }
+    return count;
   },
 
   fetchParameters: async () => {
@@ -348,6 +408,23 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
   toggleShowOnlyModified: () => set(state => ({ showOnlyModified: !state.showOnlyModified })),
 
+  toggleShowOnlyFavourites: () => set(state => ({ showOnlyFavourites: !state.showOnlyFavourites })),
+
+  toggleFavourite: (paramId: string) => {
+    set(state => {
+      const next = new Set(state.favourites);
+      if (next.has(paramId)) {
+        next.delete(paramId);
+      } else {
+        next.add(paramId);
+      }
+      saveFavourites(next);
+      // Auto-disable favourites filter when no favourites remain
+      const disableFilter = next.size === 0 && state.showOnlyFavourites;
+      return { favourites: next, ...(disableFilter ? { showOnlyFavourites: false } : {}) };
+    });
+  },
+
   setSortColumn: (column) => set({ sortColumn: column }),
 
   toggleSort: (column) => set(state => {
@@ -396,13 +473,14 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   },
 
   // File compare actions
-  loadFileForCompare: (fileParams) => {
+  loadFileForCompare: (fileParams, fileVehicleType) => {
     const { parameters } = get();
     const diffs: FileParamDiff[] = [];
+    let skipped = 0;
 
     for (const fp of fileParams) {
       const existing = parameters.get(fp.id);
-      if (!existing) continue; // Skip params not on the vehicle
+      if (!existing) { skipped++; continue; } // Skip params not on the vehicle
       if (existing.isReadOnly) continue; // Skip read-only params
 
       // Only include if values actually differ
@@ -420,11 +498,17 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     // Sort alphabetically
     diffs.sort((a, b) => a.paramId.localeCompare(b.paramId));
 
-    set({ showCompareModal: true, fileParamDiffs: diffs });
+    set({
+      showCompareModal: true,
+      fileParamDiffs: diffs,
+      fileSkippedCount: skipped,
+      fileTotalCount: fileParams.length,
+      fileVehicleType: fileVehicleType ?? null,
+    });
   },
 
   closeCompareModal: () => {
-    set({ showCompareModal: false, fileParamDiffs: [], applyProgress: null });
+    set({ showCompareModal: false, fileParamDiffs: [], fileSkippedCount: 0, fileTotalCount: 0, fileVehicleType: null, applyProgress: null });
   },
 
   toggleDiffSelection: (paramId) => {
@@ -482,7 +566,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       }
     }
 
-    set({ isApplyingFileParams: false, showCompareModal: false, fileParamDiffs: [], applyProgress: null });
+    set({ isApplyingFileParams: false, showCompareModal: false, fileParamDiffs: [], fileSkippedCount: 0, fileTotalCount: 0, fileVehicleType: null, applyProgress: null });
     return { applied, failed };
   },
 
@@ -498,10 +582,15 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     searchQuery: '',
     selectedGroup: 'all',
     showOnlyModified: false,
+    showOnlyFavourites: false,
+    // NOTE: favourites are NOT reset - they persist across connections
     sortColumn: 'name',
     sortDirection: 'asc',
     showCompareModal: false,
     fileParamDiffs: [],
+    fileSkippedCount: 0,
+    fileTotalCount: 0,
+    fileVehicleType: null,
     isApplyingFileParams: false,
     applyProgress: null,
   }); },

@@ -5,8 +5,8 @@
  * Provides search, filter, edit, and file operations.
  */
 
-import React, { useState, useCallback } from 'react';
-import { History } from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { History, AlertTriangle, RotateCw, Loader2, Star } from 'lucide-react';
 import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -99,6 +99,12 @@ const ParameterTable: React.FC = () => {
     hasOfficialDescription,
     validateParameter,
     getParameterMetadata,
+    isRebootRequired,
+    isFavourite,
+    toggleFavourite,
+    showOnlyFavourites,
+    toggleShowOnlyFavourites,
+    favouriteCount,
   } = useParameterStore();
 
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -114,6 +120,9 @@ const ParameterTable: React.FC = () => {
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [rebootRequiredParams, setRebootRequiredParams] = useState<string[]>([]);
+  const [rebooting, setRebooting] = useState(false);
+  const pendingParamRefresh = useRef(false);
 
   // Auto-hide toast after 3 seconds
   const showToast = useCallback((message: string, type: ToastType) => {
@@ -138,13 +147,21 @@ const ParameterTable: React.FC = () => {
       if (modified.length > 0) {
         const boardUid = connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`;
         const boardName = connectionState.vehicleType || 'Unknown';
+        const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
         await window.electronAPI?.saveParamCheckpoint(boardUid, boardName,
-          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value }))
+          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value })),
+          vehicleType
         );
       }
 
       const result = await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
+        // Check if any written params require a reboot
+        const rebootParams = modified.filter(p => isRebootRequired(p.id)).map(p => p.id);
+        if (rebootParams.length > 0) {
+          setRebootRequiredParams(rebootParams);
+        }
+
         markAllAsSaved();
         showToast('Parameters saved to flash successfully', 'success');
       } else {
@@ -155,13 +172,45 @@ const ParameterTable: React.FC = () => {
     } finally {
       setIsWritingFlash(false);
     }
-  }, [markAllAsSaved, showToast, modifiedParameters, connectionState]);
+  }, [markAllAsSaved, showToast, modifiedParameters, connectionState, isRebootRequired]);
+
+  const handleReboot = useCallback(async () => {
+    setRebooting(true);
+    try {
+      const success = await window.electronAPI?.mavlinkReboot();
+      if (success) {
+        if (rebootRequiredParams.length > 0) {
+          pendingParamRefresh.current = true;
+        } else {
+          showToast('Rebooting flight controller...', 'info');
+        }
+      } else {
+        setRebooting(false);
+        showToast('Failed to send reboot command', 'error');
+      }
+    } catch {
+      setRebooting(false);
+      showToast('Failed to reboot flight controller', 'error');
+    }
+  }, [showToast, rebootRequiredParams]);
+
+  // Watch for reconnection completion after a reboot we initiated
+  useEffect(() => {
+    if (!pendingParamRefresh.current) return;
+    if (connectionState.isConnected && !connectionState.isReconnecting) {
+      pendingParamRefresh.current = false;
+      setRebooting(false);
+      setRebootRequiredParams([]);
+      showToast('Reboot complete', 'success');
+    }
+  }, [connectionState.isConnected, connectionState.isReconnecting, showToast]);
 
   const handleSaveToFile = useCallback(async () => {
     setIsSavingFile(true);
     try {
       const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
-      const result = await window.electronAPI?.saveParamsToFile(params);
+      const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
+      const result = await window.electronAPI?.saveParamsToFile(params, vehicleType);
       if (result?.success) {
         showToast(`Saved ${params.length} parameters to file`, 'success');
       } else if (result?.error && result.error !== 'Cancelled') {
@@ -170,7 +219,7 @@ const ParameterTable: React.FC = () => {
     } finally {
       setIsSavingFile(false);
     }
-  }, [parameters, showToast]);
+  }, [parameters, connectionState.vehicleType, connectionState.fcVariant, showToast]);
 
   const handleLoadFromFile = useCallback(async () => {
     setIsLoadingFile(true);
@@ -315,6 +364,21 @@ const ParameterTable: React.FC = () => {
             History
           </button>
 
+          {favouriteCount() > 0 && (
+            <button
+              onClick={toggleShowOnlyFavourites}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                showOnlyFavourites
+                  ? 'bg-yellow-500/30 text-yellow-300 ring-1 ring-yellow-500/50'
+                  : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+              }`}
+              title={showOnlyFavourites ? 'Show all parameters' : 'Show only favourite parameters'}
+            >
+              <Star className={`w-3 h-3 ${showOnlyFavourites ? 'fill-yellow-300' : ''}`} />
+              {favouriteCount()} favourites
+            </button>
+          )}
+
           {modified > 0 && (
             <button
               onClick={toggleShowOnlyModified}
@@ -398,6 +462,57 @@ const ParameterTable: React.FC = () => {
         </div>
       )}
 
+      {/* Reboot Required Banner */}
+      {rebootRequiredParams.length > 0 && (
+        <div className={`shrink-0 px-4 py-2.5 border-b flex items-center justify-between ${
+          rebooting
+            ? 'bg-blue-500/10 border-blue-500/30'
+            : 'bg-amber-500/10 border-amber-500/30'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {rebooting ? (
+              <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            )}
+            {rebooting ? (
+              <span className="text-sm text-blue-300">
+                {connectionState.isReconnecting
+                  ? `Reconnecting to flight controller...`
+                  : 'Rebooting flight controller...'}
+                {connectionState.isReconnecting && connectionState.reconnectAttempt != null && (
+                  <span className="text-blue-400/70 ml-2">
+                    Attempt {connectionState.reconnectAttempt}{connectionState.reconnectMaxAttempts ? ` / ${connectionState.reconnectMaxAttempts}` : ''}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-sm text-amber-300">
+                Reboot required for {rebootRequiredParams.length} parameter{rebootRequiredParams.length !== 1 ? 's' : ''} to take effect:
+                {' '}<span className="font-mono text-xs text-amber-400/70">{rebootRequiredParams.join(', ')}</span>
+              </span>
+            )}
+          </div>
+          {!rebooting && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setRebootRequiredParams([])}
+                className="px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={handleReboot}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors flex items-center gap-1.5"
+              >
+                <RotateCw className="w-3 h-3" />
+                Reboot Now
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Parameter table */}
       <div className="flex-1 overflow-auto">
         {paramCount === 0 && !isLoading ? (
@@ -443,7 +558,21 @@ const ParameterTable: React.FC = () => {
                   className={`hover:bg-zinc-800/30 transition-colors ${idx % 2 === 0 ? 'bg-zinc-900/20' : ''}`}
                 >
                   <td className="px-4 py-2.5">
-                    <span className="font-mono text-sm text-zinc-200">{param.id}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavourite(param.id); }}
+                        className="shrink-0 p-0.5 rounded transition-colors hover:bg-zinc-700/50"
+                        title={isFavourite(param.id) ? 'Remove from favourites' : 'Add to favourites'}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${isFavourite(param.id) ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-600 hover:text-zinc-400'}`} />
+                      </button>
+                      <span className="font-mono text-sm text-zinc-200">{param.id}</span>
+                      {isRebootRequired(param.id) && (
+                        <span className="px-1 py-0.5 text-[9px] leading-none bg-amber-500/15 text-amber-500/70 rounded border border-amber-500/20" title="Requires reboot to take effect">
+                          Reboot
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5">
                     {param.isReadOnly ? (
@@ -554,10 +683,16 @@ const ParameterTable: React.FC = () => {
       {/* Status bar */}
       <div className="shrink-0 px-4 py-2 border-t border-zinc-800/50 bg-zinc-900/30 text-xs text-zinc-500 flex items-center gap-4">
         <span>{paramCount} parameters</span>
-        {(searchQuery || selectedGroup !== 'all' || showOnlyModified) && displayParams.length !== paramCount && (
+        {(searchQuery || selectedGroup !== 'all' || showOnlyModified || showOnlyFavourites) && displayParams.length !== paramCount && (
           <>
             <span className="text-zinc-700">|</span>
             <span>{displayParams.length} shown</span>
+          </>
+        )}
+        {showOnlyFavourites && (
+          <>
+            <span className="text-zinc-700">|</span>
+            <span className="text-yellow-400">Favourites only</span>
           </>
         )}
         {showOnlyModified && (
@@ -591,6 +726,12 @@ const ParameterTable: React.FC = () => {
               <p className="text-sm text-zinc-400 mt-1">
                 The following {modifiedParameters().length} parameter(s) will be saved permanently to the flight controller.
               </p>
+              {modifiedParameters().some(p => isRebootRequired(p.id)) && (
+                <p className="text-sm text-amber-400 mt-1.5 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Some parameters require a reboot to take effect.
+                </p>
+              )}
             </div>
 
             <div className="flex-1 overflow-auto px-6 py-4">
@@ -606,7 +747,14 @@ const ParameterTable: React.FC = () => {
                 <tbody className="divide-y divide-zinc-800/50">
                   {modifiedParameters().map(param => (
                     <tr key={param.id}>
-                      <td className="py-2 font-mono text-zinc-300">{param.id}</td>
+                      <td className="py-2 font-mono text-zinc-300">
+                        {param.id}
+                        {isRebootRequired(param.id) && (
+                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
+                            Reboot
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 text-right font-mono text-zinc-500">{param.originalValue}</td>
                       <td className="py-2 text-center text-zinc-600">-</td>
                       <td className="py-2 font-mono text-amber-400">{param.value}</td>

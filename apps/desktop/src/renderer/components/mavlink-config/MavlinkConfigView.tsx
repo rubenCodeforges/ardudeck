@@ -15,7 +15,7 @@
  * - All Parameters: Full parameter table (expert mode)
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Gauge,
   Activity,
@@ -35,6 +35,7 @@ import {
   Cable,
   RotateCw,
   History,
+  AlertTriangle,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -120,6 +121,7 @@ export const MavlinkConfigView: React.FC = () => {
   const modifiedCount = useParameterStore((s) => s.modifiedCount);
   const modifiedParameters = useParameterStore((s) => s.modifiedParameters);
   const markAllAsSaved = useParameterStore((s) => s.markAllAsSaved);
+  const isRebootRequired = useParameterStore((s) => s.isRebootRequired);
   const connectionState = useConnectionStore((s) => s.connectionState);
 
   // Determine vehicle type and appropriate tabs
@@ -142,6 +144,9 @@ export const MavlinkConfigView: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [rebootRequiredParams, setRebootRequiredParams] = useState<string[]>([]);
+  // Tracks whether we initiated a reboot from the banner and should auto-refresh params
+  const pendingParamRefresh = useRef(false);
 
   // Auto-hide toast after 3 seconds
   const showToast = useCallback((message: string, type: ToastType) => {
@@ -169,13 +174,21 @@ export const MavlinkConfigView: React.FC = () => {
       if (modified.length > 0) {
         const boardUid = connectionState.boardUid || `mavlink-${connectionState.systemId ?? 0}`;
         const boardName = connectionState.vehicleType || 'Unknown';
+        const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
         await window.electronAPI?.saveParamCheckpoint(boardUid, boardName,
-          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value }))
+          modified.map(p => ({ paramId: p.id, oldValue: p.originalValue ?? p.value, newValue: p.value })),
+          vehicleType
         );
       }
 
       const result = await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
+        // Check if any written params require a reboot
+        const rebootParams = modified.filter(p => isRebootRequired(p.id)).map(p => p.id);
+        if (rebootParams.length > 0) {
+          setRebootRequiredParams(rebootParams);
+        }
+
         markAllAsSaved();
         showToast('Parameters saved to flash successfully', 'success');
       } else {
@@ -186,23 +199,41 @@ export const MavlinkConfigView: React.FC = () => {
     } finally {
       setIsWritingFlash(false);
     }
-  }, [markAllAsSaved, showToast, modifiedParameters, connectionState]);
+  }, [markAllAsSaved, showToast, modifiedParameters, connectionState, isRebootRequired]);
 
   const handleReboot = useCallback(async () => {
     setRebooting(true);
     try {
       const success = await window.electronAPI?.mavlinkReboot();
       if (success) {
-        showToast('Rebooting flight controller...', 'info');
+        // Don't clear banner yet - keep it showing reconnection progress
+        // Set flag so we auto-refresh params when reconnection completes
+        if (rebootRequiredParams.length > 0) {
+          pendingParamRefresh.current = true;
+        } else {
+          showToast('Rebooting flight controller...', 'info');
+        }
       } else {
+        setRebooting(false);
         showToast('Failed to send reboot command', 'error');
       }
     } catch {
+      setRebooting(false);
       showToast('Failed to reboot flight controller', 'error');
-    } finally {
-      setTimeout(() => setRebooting(false), 3000);
     }
-  }, [showToast]);
+  }, [showToast, rebootRequiredParams]);
+
+  // Watch for reconnection completion after a reboot we initiated
+  useEffect(() => {
+    if (!pendingParamRefresh.current) return;
+    if (connectionState.isConnected && !connectionState.isReconnecting) {
+      // Reconnection complete - store already has correct values from markAllAsSaved()
+      pendingParamRefresh.current = false;
+      setRebooting(false);
+      setRebootRequiredParams([]);
+      showToast('Reboot complete', 'success');
+    }
+  }, [connectionState.isConnected, connectionState.isReconnecting, showToast]);
 
   const modified = modifiedCount();
 
@@ -355,6 +386,66 @@ export const MavlinkConfigView: React.FC = () => {
         </div>
       </div>
 
+      {/* Reboot Required Banner */}
+      {rebootRequiredParams.length > 0 && (
+        <div className={`shrink-0 px-6 py-3 border-b flex items-center justify-between ${
+          rebooting
+            ? 'bg-blue-500/10 border-blue-500/30'
+            : 'bg-amber-500/10 border-amber-500/30'
+        }`}>
+          <div className="flex items-center gap-3">
+            {rebooting ? (
+              <Loader2 className="w-5 h-5 text-blue-400 animate-spin shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+            )}
+            <div>
+              {rebooting ? (
+                <>
+                  <span className="text-sm text-blue-300 font-medium">
+                    {connectionState.isReconnecting
+                      ? `Reconnecting to flight controller...`
+                      : 'Rebooting flight controller...'}
+                  </span>
+                  {connectionState.isReconnecting && connectionState.reconnectAttempt != null && (
+                    <span className="text-sm text-blue-400/70 ml-2">
+                      Attempt {connectionState.reconnectAttempt}{connectionState.reconnectMaxAttempts ? ` / ${connectionState.reconnectMaxAttempts}` : ''}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-sm text-amber-300 font-medium">Reboot Required</span>
+                  <span className="text-sm text-amber-400/70 ml-2">
+                    {rebootRequiredParams.length} parameter{rebootRequiredParams.length !== 1 ? 's' : ''} need a reboot to take effect:
+                    {' '}<span className="font-mono text-xs">{rebootRequiredParams.join(', ')}</span>
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {!rebooting && (
+              <>
+                <button
+                  onClick={() => setRebootRequiredParams([])}
+                  className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={handleReboot}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors flex items-center gap-1.5"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                  Reboot Now
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tab content */}
       <div className="flex-1 overflow-auto">
         {renderTabContent()}
@@ -369,6 +460,12 @@ export const MavlinkConfigView: React.FC = () => {
               <p className="text-sm text-zinc-400 mt-1">
                 The following {modifiedParameters().length} parameter(s) will be saved permanently to the flight controller.
               </p>
+              {modifiedParameters().some(p => isRebootRequired(p.id)) && (
+                <p className="text-sm text-amber-400 mt-1.5 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Some parameters require a reboot to take effect.
+                </p>
+              )}
             </div>
 
             <div className="flex-1 overflow-auto px-6 py-4">
@@ -384,7 +481,14 @@ export const MavlinkConfigView: React.FC = () => {
                 <tbody className="divide-y divide-zinc-800/50">
                   {modifiedParameters().map(param => (
                     <tr key={param.id}>
-                      <td className="py-2 font-mono text-zinc-300">{param.id}</td>
+                      <td className="py-2 font-mono text-zinc-300">
+                        {param.id}
+                        {isRebootRequired(param.id) && (
+                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
+                            Reboot
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 text-right font-mono text-zinc-500">{param.originalValue}</td>
                       <td className="py-2 text-center text-zinc-600">→</td>
                       <td className="py-2 font-mono text-amber-400">{param.value}</td>
