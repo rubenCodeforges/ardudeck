@@ -2,7 +2,7 @@
  * MAVLink Receiver Tab
  *
  * Receiver configuration for ArduPilot vehicles.
- * - RC protocol selection (RCIN_TYPE parameter)
+ * - RC protocol selection (RC_PROTOCOLS bitmask parameter)
  * - Live RC channel bars from RC_CHANNELS MAVLink message
  * - RC calibration reference (RC1_MIN/MAX/TRIM through RC8)
  *
@@ -19,22 +19,23 @@ import { PRIMARY_CHANNEL_COUNT, getMavlinkChannelNames } from '../../utils/rc-ch
 // Constants
 // =============================================================================
 
-/** ArduPilot RCIN_TYPE values */
-const RCIN_PROTOCOLS: { value: number; label: string; description: string }[] = [
-  { value: 0, label: 'All', description: 'Auto-detect all protocols' },
-  { value: 1, label: 'PPM', description: 'PPM sum signal' },
-  { value: 2, label: 'SBus', description: 'Futaba SBus (inverted serial)' },
-  { value: 3, label: 'DSM/Spektrum', description: 'DSM2/DSMX satellite' },
-  { value: 4, label: 'SUMD', description: 'Graupner SUMD' },
-  { value: 5, label: 'SRXL', description: 'Multiplex SRXL' },
-  { value: 7, label: 'SBus (NI)', description: 'SBus non-inverted' },
-  { value: 9, label: 'CRSF/ELRS', description: 'TBS Crossfire / ExpressLRS' },
-  { value: 10, label: 'ST24', description: 'Yuneec ST24' },
-  { value: 11, label: 'FPORT', description: 'FrSky FPort' },
-  { value: 12, label: 'FPORT2', description: 'FrSky FPort 2.0' },
-  { value: 13, label: 'SRXL2', description: 'Spektrum SRXL2' },
-  { value: 14, label: 'GHST', description: 'ImmersionRC Ghost' },
-  { value: 15, label: 'DroneCAN', description: 'DroneCAN RC input' },
+/** ArduPilot RC_PROTOCOLS bitmask values (bit positions → power of 2) */
+const RC_PROTOCOL_OPTIONS: { value: number; label: string; description: string }[] = [
+  { value: 0, label: 'Auto-Detect', description: 'Auto-detect all protocols (value 0)' },
+  { value: 1, label: 'All', description: 'Enable all protocols' },
+  { value: 2, label: 'PPM', description: 'PPM sum signal' },
+  { value: 4, label: 'IBUS', description: 'FlySky IBUS' },
+  { value: 8, label: 'SBus', description: 'Futaba SBus (inverted serial)' },
+  { value: 16, label: 'SBus (NI)', description: 'SBus non-inverted' },
+  { value: 32, label: 'DSM/Spektrum', description: 'DSM2/DSMX satellite' },
+  { value: 64, label: 'SUMD', description: 'Graupner SUMD' },
+  { value: 128, label: 'SRXL', description: 'Multiplex SRXL' },
+  { value: 256, label: 'SRXL2', description: 'Spektrum SRXL2' },
+  { value: 512, label: 'CRSF/ELRS', description: 'TBS Crossfire / ExpressLRS' },
+  { value: 1024, label: 'ST24', description: 'Yuneec ST24' },
+  { value: 2048, label: 'FPORT', description: 'FrSky FPort' },
+  { value: 4096, label: 'FPORT2', description: 'FrSky FPort 2.0' },
+  { value: 8192, label: 'FastSBUS', description: 'Fast SBus' },
 ];
 
 // =============================================================================
@@ -176,8 +177,8 @@ const ReceiverTab: React.FC = () => {
     }
   }, [rcChannels.channels, channelBaseline]);
 
-  // Current RC protocol
-  const rcinType = parameters.get('RCIN_TYPE')?.value ?? 0;
+  // Current RC protocol bitmask
+  const rcProtocols = parameters.get('RC_PROTOCOLS')?.value ?? 0;
 
   // RC calibration values - show up to chancount (max 16)
   const calChannelCount = Math.max(rcChannels.chancount, 8);
@@ -224,15 +225,15 @@ const ReceiverTab: React.FC = () => {
             <div className="flex flex-wrap gap-2">
               {[
                 { label: 'Auto-Detect', value: 0 },
-                { label: 'CRSF / ELRS', value: 9 },
-                { label: 'SBus', value: 2 },
-                { label: 'DSM/Spektrum', value: 3 },
+                { label: 'CRSF / ELRS', value: 512 },
+                { label: 'SBus', value: 8 },
+                { label: 'DSM/Spektrum', value: 32 },
               ].map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => setParameter('RCIN_TYPE', opt.value)}
+                  onClick={() => setParameter('RC_PROTOCOLS', opt.value)}
                   className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                    Number(rcinType) === opt.value
+                    Number(rcProtocols) === opt.value
                       ? 'bg-teal-600 text-white'
                       : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                   }`}
@@ -247,11 +248,11 @@ const ReceiverTab: React.FC = () => {
           <div>
             <label className="text-xs text-zinc-400 mb-2 block">All Protocols</label>
             <select
-              value={Number(rcinType)}
-              onChange={(e) => setParameter('RCIN_TYPE', Number(e.target.value))}
+              value={Number(rcProtocols)}
+              onChange={(e) => setParameter('RC_PROTOCOLS', Number(e.target.value))}
               className="w-full bg-zinc-800 text-zinc-200 rounded-lg px-3 py-2 text-sm border border-zinc-700 focus:border-teal-500 focus:outline-none"
             >
-              {RCIN_PROTOCOLS.map((p) => (
+              {RC_PROTOCOL_OPTIONS.map((p) => (
                 <option key={p.value} value={p.value}>
                   {p.label} - {p.description}
                 </option>
@@ -325,7 +326,7 @@ const ReceiverTab: React.FC = () => {
                 <ul className="text-xs text-zinc-400 mt-1 space-y-0.5 list-disc list-inside">
                   <li>Receiver is powered and bound to transmitter</li>
                   <li>Correct SERIAL port has RCIN protocol set</li>
-                  <li>RCIN_TYPE matches your receiver hardware</li>
+                  <li>RC_PROTOCOLS matches your receiver hardware</li>
                 </ul>
               </div>
             </div>

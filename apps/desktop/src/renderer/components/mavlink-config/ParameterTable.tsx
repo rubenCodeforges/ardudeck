@@ -7,7 +7,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { History, AlertTriangle, RotateCw, Loader2, Star } from 'lucide-react';
-import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
+import { useParameterStore, type SortColumn, type FileParamDiff } from '../../stores/parameter-store';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { useConnectionStore } from '../../stores/connection-store';
 import BitmaskEditor from './BitmaskEditor';
@@ -105,6 +105,20 @@ const ParameterTable: React.FC = () => {
     showOnlyFavourites,
     toggleShowOnlyFavourites,
     favouriteCount,
+    // File compare
+    showCompareModal,
+    fileParamDiffs,
+    fileSkippedCount,
+    fileTotalCount,
+    fileVehicleType,
+    isApplyingFileParams,
+    applyProgress,
+    loadFileForCompare,
+    closeCompareModal,
+    toggleDiffSelection,
+    selectAllDiffs,
+    deselectAllDiffs,
+    applySelectedFileParams,
   } = useParameterStore();
 
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -123,6 +137,20 @@ const ParameterTable: React.FC = () => {
   const [rebootRequiredParams, setRebootRequiredParams] = useState<string[]>([]);
   const [rebooting, setRebooting] = useState(false);
   const pendingParamRefresh = useRef(false);
+  const [saveDropdownOpen, setSaveDropdownOpen] = useState(false);
+  const saveDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close save dropdown on outside click
+  useEffect(() => {
+    if (!saveDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (saveDropdownRef.current && !saveDropdownRef.current.contains(e.target as Node)) {
+        setSaveDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [saveDropdownOpen]);
 
   // Auto-hide toast after 3 seconds
   const showToast = useCallback((message: string, type: ToastType) => {
@@ -205,14 +233,31 @@ const ParameterTable: React.FC = () => {
     }
   }, [connectionState.isConnected, connectionState.isReconnecting, showToast]);
 
-  const handleSaveToFile = useCallback(async () => {
+  const handleSaveToFile = useCallback(async (changedOnly?: boolean) => {
     setIsSavingFile(true);
+    setSaveDropdownOpen(false);
     try {
-      const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
+      let params = Array.from(parameters.values())
+        .filter(p => !p.isReadOnly)
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map(p => ({ id: p.id, value: p.value }));
+
+      if (changedOnly) {
+        params = Array.from(parameters.values())
+          .filter(p => !p.isReadOnly && p.isModified)
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map(p => ({ id: p.id, value: p.value }));
+      }
+
+      if (params.length === 0) {
+        showToast(changedOnly ? 'No changed parameters to save' : 'No parameters to save', 'info');
+        return;
+      }
+
       const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
       const result = await window.electronAPI?.saveParamsToFile(params, vehicleType);
       if (result?.success) {
-        showToast(`Saved ${params.length} parameters to file`, 'success');
+        showToast(`Saved ${params.length} parameter${params.length !== 1 ? 's' : ''} to file`, 'success');
       } else if (result?.error && result.error !== 'Cancelled') {
         showToast(result.error, 'error');
       }
@@ -226,22 +271,23 @@ const ParameterTable: React.FC = () => {
     try {
       const result = await window.electronAPI?.loadParamsFromFile();
       if (result?.success && result.params) {
-        let appliedCount = 0;
-        for (const param of result.params) {
-          const existing = parameters.get(param.id);
-          if (existing) {
-            await setParameter(param.id, param.value);
-            appliedCount++;
-          }
-        }
-        showToast(`Applied ${appliedCount} of ${result.params.length} parameters`, 'success');
+        loadFileForCompare(result.params, result.vehicleType);
       } else if (result?.error && result.error !== 'Cancelled') {
         showToast(result.error, 'error');
       }
     } finally {
       setIsLoadingFile(false);
     }
-  }, [parameters, setParameter, showToast]);
+  }, [loadFileForCompare, showToast]);
+
+  const handleApplySelectedParams = useCallback(async () => {
+    const result = await applySelectedFileParams();
+    if (result.applied > 0) {
+      showToast(`Applied ${result.applied} parameter${result.applied !== 1 ? 's' : ''} to vehicle${result.failed > 0 ? ` (${result.failed} failed)` : ''}`, result.failed > 0 ? 'info' : 'success');
+    } else if (result.failed > 0) {
+      showToast(`Failed to apply ${result.failed} parameter${result.failed !== 1 ? 's' : ''}`, 'error');
+    }
+  }, [applySelectedFileParams, showToast]);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -330,18 +376,50 @@ const ParameterTable: React.FC = () => {
             </svg>
           </div>
 
-          {/* File operations */}
-          <button
-            onClick={handleSaveToFile}
-            disabled={isSavingFile || paramCount === 0}
-            className="px-3 py-2 bg-zinc-700/30 hover:bg-zinc-700/50 disabled:bg-zinc-800/30 text-zinc-300 disabled:text-zinc-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            title="Save parameters to file"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            {isSavingFile ? 'Saving...' : 'Save'}
-          </button>
+          {/* File operations — split Save button with dropdown */}
+          <div className="relative" ref={saveDropdownRef}>
+            <div className="flex">
+              <button
+                onClick={() => handleSaveToFile(false)}
+                disabled={isSavingFile || paramCount === 0}
+                className="px-3 py-2 bg-zinc-700/30 hover:bg-zinc-700/50 disabled:bg-zinc-800/30 text-zinc-300 disabled:text-zinc-600 rounded-l-lg text-sm font-medium transition-colors flex items-center gap-2"
+                title="Save all parameters to file"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {isSavingFile ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={() => setSaveDropdownOpen(prev => !prev)}
+                disabled={isSavingFile || paramCount === 0}
+                className="px-1.5 py-2 bg-zinc-700/30 hover:bg-zinc-700/50 disabled:bg-zinc-800/30 text-zinc-300 disabled:text-zinc-600 rounded-r-lg border-l border-zinc-600/30 text-sm transition-colors"
+                title="Save options"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            {saveDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-52 bg-zinc-800 border border-zinc-700/50 rounded-lg shadow-xl z-50 py-1">
+                <button
+                  onClick={() => handleSaveToFile(false)}
+                  className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700/50 transition-colors"
+                >
+                  Save All Parameters
+                </button>
+                <button
+                  onClick={() => handleSaveToFile(true)}
+                  disabled={modified === 0}
+                  className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700/50 disabled:text-zinc-600 disabled:hover:bg-transparent transition-colors"
+                >
+                  Save Changed Only
+                  {modified > 0 && <span className="ml-1 text-xs text-yellow-400">({modified})</span>}
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={handleLoadFromFile}
@@ -790,6 +868,146 @@ const ParameterTable: React.FC = () => {
           onClose={() => setShowHistory(false)}
           showToast={showToast}
         />
+      )}
+
+      {/* File Compare Modal */}
+      {showCompareModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-zinc-800">
+              <h3 className="text-lg font-semibold text-white">Compare Parameters</h3>
+              <p className="text-sm text-zinc-400 mt-1">
+                {fileParamDiffs.length === 0
+                  ? 'No differences found - all file parameters match the vehicle.'
+                  : `${fileParamDiffs.length} parameter${fileParamDiffs.length !== 1 ? 's' : ''} differ between file and vehicle. Select which to apply.`
+                }
+              </p>
+              {(() => {
+                const currentVehicle = connectionState.vehicleType || connectionState.fcVariant;
+                return fileVehicleType && currentVehicle && fileVehicleType !== currentVehicle ? (
+                  <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="text-xs text-amber-300">
+                      File was saved from <span className="font-semibold">{fileVehicleType}</span> but vehicle is <span className="font-semibold">{currentVehicle}</span>
+                    </span>
+                  </div>
+                ) : null;
+              })()}
+              {fileSkippedCount > 0 && (
+                <p className="text-xs text-zinc-500 mt-2">
+                  {fileTotalCount} params in file: {fileTotalCount - fileSkippedCount} matched vehicle, {fileSkippedCount} skipped (not found on this firmware)
+                </p>
+              )}
+            </div>
+
+            {fileParamDiffs.length > 0 && (
+              <>
+                {/* Select all / Deselect all */}
+                <div className="px-6 py-2 border-b border-zinc-800/50 flex items-center gap-3">
+                  <button
+                    onClick={selectAllDiffs}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Select all
+                  </button>
+                  <span className="text-zinc-700">|</span>
+                  <button
+                    onClick={deselectAllDiffs}
+                    className="text-xs text-zinc-400 hover:text-zinc-300 transition-colors"
+                  >
+                    Deselect all
+                  </button>
+                  <span className="ml-auto text-xs text-zinc-500">
+                    {fileParamDiffs.filter(d => d.selected).length} of {fileParamDiffs.length} selected
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-auto px-6 py-2">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-zinc-500 uppercase">
+                        <th className="pb-2 w-8"></th>
+                        <th className="pb-2">Parameter</th>
+                        <th className="pb-2 text-right">Vehicle</th>
+                        <th className="pb-2 text-center w-8"></th>
+                        <th className="pb-2">File</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/50">
+                      {fileParamDiffs.map(diff => (
+                        <tr
+                          key={diff.paramId}
+                          className={`cursor-pointer transition-colors ${diff.selected ? 'hover:bg-zinc-800/30' : 'opacity-50 hover:opacity-75'}`}
+                          onClick={() => toggleDiffSelection(diff.paramId)}
+                        >
+                          <td className="py-2 pr-2">
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                              diff.selected
+                                ? 'bg-blue-500/30 border-blue-500/50'
+                                : 'border-zinc-600 bg-zinc-800/50'
+                            }`}>
+                              {diff.selected && (
+                                <svg className="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 font-mono text-zinc-300">{diff.paramId}</td>
+                          <td className="py-2 text-right font-mono text-zinc-500">{diff.currentValue}</td>
+                          <td className="py-2 text-center text-zinc-600">
+                            <svg className="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                          </td>
+                          <td className="py-2 font-mono text-amber-400">{diff.fileValue}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Progress bar while applying */}
+            {isApplyingFileParams && applyProgress && (
+              <div className="px-6 py-2 border-t border-zinc-800/50">
+                <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
+                  <span>Applying parameters...</span>
+                  <span>{applyProgress.applied} / {applyProgress.total}</span>
+                </div>
+                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-150"
+                    style={{ width: `${(applyProgress.applied / applyProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="px-6 py-4 border-t border-zinc-800 flex justify-end gap-3">
+              <button
+                onClick={closeCompareModal}
+                disabled={isApplyingFileParams}
+                className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 disabled:text-zinc-600 transition-colors"
+              >
+                {fileParamDiffs.length === 0 ? 'Close' : 'Cancel'}
+              </button>
+              {fileParamDiffs.length > 0 && (
+                <button
+                  onClick={handleApplySelectedParams}
+                  disabled={isApplyingFileParams || fileParamDiffs.filter(d => d.selected).length === 0}
+                  className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-zinc-700/30 text-blue-400 disabled:text-zinc-500 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {isApplyingFileParams
+                    ? 'Applying...'
+                    : `Apply ${fileParamDiffs.filter(d => d.selected).length} Parameter${fileParamDiffs.filter(d => d.selected).length !== 1 ? 's' : ''}`
+                  }
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast notification */}
