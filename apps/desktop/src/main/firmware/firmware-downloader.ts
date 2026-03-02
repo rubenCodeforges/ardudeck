@@ -31,7 +31,8 @@ export function getFirmwareCachePath(version: FirmwareVersion): string {
     else ext = '.hex'; // Default assumption
   }
 
-  const filename = `${version.boardId || 'unknown'}_${version.version.replace(/\./g, '_')}${ext}`;
+  const vehicle = version.vehicleType || 'unknown';
+  const filename = `${vehicle}_${version.boardId || 'unknown'}_${version.version.replace(/\./g, '_')}${ext}`;
   return path.join(FIRMWARE_CACHE_DIR, filename);
 }
 
