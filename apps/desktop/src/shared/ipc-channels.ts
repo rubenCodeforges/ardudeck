@@ -56,6 +56,7 @@ export const IPC_CHANNELS = {
   PARAM_REQUEST_ALL: 'param:request-all',
   PARAM_SET: 'param:set',
   PARAM_VALUE: 'param:value',
+  PARAM_BULK_LOAD: 'param:bulk-load', // FTP fast path: all params in one event
   PARAM_PROGRESS: 'param:progress',
   PARAM_COMPLETE: 'param:complete',
   PARAM_ERROR: 'param:error',

@@ -91,6 +91,12 @@ import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmwa
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers } from './calibration/index.js';
 import { initMissionLibraryHandlers, cleanupMissionLibraryHandlers } from './mission-library/index.js';
+import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } from './mavlink-ftp/index.js';
+import {
+  serializeFileTransferProtocol,
+  FILE_TRANSFER_PROTOCOL_ID,
+  FILE_TRANSFER_PROTOCOL_CRC_EXTRA,
+} from '@ardudeck/mavlink-ts';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
 import {
@@ -486,6 +492,11 @@ let expectedParamCount = 0;
 let receivedParams = new Map<string, ParamValue>();
 let paramDownloadTimeout: NodeJS.Timeout | null = null;
 let paramDownloadActive = false; // True only during bulk PARAM_REQUEST_LIST download
+let paramDownloadStartTime = 0; // Timestamp for measuring download duration
+
+// MAVLink FTP client for fast parameter download
+let ftpClient: MavlinkFtpClient | null = null;
+let paramRequestInFlight = false; // Guard against concurrent param download requests
 
 // STATUSTEXT chunk reassembly buffer (for multi-chunk messages >50 chars)
 const statustextChunkBuffer = new Map<number, { severity: number; chunks: string[]; timer: NodeJS.Timeout | null }>();
@@ -679,6 +690,9 @@ const MSG_MISSION_ITEM_INT = 73;
 
 // Autopilot version (for UID extraction)
 const MSG_AUTOPILOT_VERSION = 148;
+
+// FTP message ID
+const MSG_FILE_TRANSFER_PROTOCOL = 110;
 
 // Fence message ID
 const MSG_FENCE_STATUS = 162;
@@ -939,7 +953,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           paramDownloadTimeout = null;
         }
         safeSend(mainWindow, IPC_CHANNELS.PARAM_COMPLETE);
-        sendLog(mainWindow, 'info', `Downloaded ${receivedParams.size} parameters`);
+        const elapsed = paramDownloadStartTime > 0 ? ((Date.now() - paramDownloadStartTime) / 1000).toFixed(1) : '?';
+        sendLog(mainWindow, 'info', `Downloaded ${receivedParams.size} parameters via PARAM_REQUEST_LIST in ${elapsed}s`);
       }
       break;
     }
@@ -1299,6 +1314,21 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         }
       } catch (err) {
         sendLog(mainWindow, 'debug', 'Failed to parse AUTOPILOT_VERSION', String(err));
+      }
+      break;
+    }
+
+    case MSG_FILE_TRANSFER_PROTOCOL: {
+      // FILE_TRANSFER_PROTOCOL (110) - route to FTP client
+      // Payload: targetNetwork(1) + targetSystem(1) + targetComponent(1) + ftpPayload(251)
+      // MAVLink v2 trims trailing zeros, so payload can be much shorter than 254 bytes.
+      // Minimum useful FTP response: 3 (outer) + 12 (FTP header) = 15 bytes
+      if (ftpClient && payload.length >= 15) {
+        // Zero-pad to 251 bytes for the FTP parser (v2 trimming removed trailing zeros)
+        const ftpPayload = new Uint8Array(251);
+        const ftpBytes = payload.subarray(3);
+        ftpPayload.set(ftpBytes.subarray(0, Math.min(ftpBytes.length, 251)));
+        ftpClient.handleResponse(ftpPayload);
       }
       break;
     }
@@ -2515,6 +2545,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // This ensures we can reconnect even if close failed
       currentTransport = null;
       mavlinkParser = null;
+      paramRequestInFlight = false;
+      if (ftpClient) {
+        ftpClient.cleanup().catch(() => {});
+        ftpClient = null;
+      }
       connectionState = {
         isConnected: false,
         signingEnabled,
@@ -2763,26 +2798,22 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Parameter management handlers
 
-  // Request all parameters from flight controller
-  ipcMain.handle(IPC_CHANNELS.PARAM_REQUEST_ALL, async (): Promise<{ success: boolean; error?: string }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
-    }
-
-    // Reset parameter tracking state
+  /**
+   * Request parameters via traditional PARAM_REQUEST_LIST (fallback path).
+   * Sends the MAVLink message and lets the PARAM_VALUE handler in parseTelemetry
+   * stream results back to the renderer.
+   */
+  async function requestParamsTraditional(): Promise<{ success: boolean; error?: string }> {
     receivedParams.clear();
     expectedParamCount = 0;
     paramDownloadActive = true;
+    paramDownloadStartTime = Date.now();
 
-    // Clear any existing timeout
     if (paramDownloadTimeout) {
       clearTimeout(paramDownloadTimeout);
     }
 
     try {
-      // Build PARAM_REQUEST_LIST message
-      // Use target component 1 (MAV_COMP_ID_AUTOPILOT1) for the main autopilot
-      // Note: Can't use 0 because MAVLink v2 trims trailing zeros from payload
       const targetSys = connectionState.systemId ?? 1;
       const targetComp = 1; // MAV_COMP_ID_AUTOPILOT1
 
@@ -2791,14 +2822,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         targetComponent: targetComp,
       });
 
-      // Use detected MAVLink version for compatibility (with signing if enabled)
       const packet = await sendMavlinkPacket(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA);
-      await currentTransport.write(packet);
+      await currentTransport!.write(packet);
       connectionState.packetsSent++;
 
-      sendLog(mainWindow, 'info', 'Requesting parameters from flight controller...');
+      sendLog(mainWindow, 'info', 'Requesting parameters (traditional PARAM_REQUEST_LIST)...');
 
-      // Set initial timeout (30 seconds for first response)
       paramDownloadTimeout = setTimeout(() => {
         if (receivedParams.size === 0) {
           safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
@@ -2811,6 +2840,127 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to request parameters', message);
       return { success: false, error: message };
+    }
+  }
+
+  /**
+   * Try downloading parameters via MAVLink FTP (fast path).
+   * Downloads @PARAM/param.pck and parses the packed binary format.
+   * Returns true if successful (params sent to renderer), false to trigger fallback.
+   */
+  async function requestParamsViaFtp(): Promise<boolean> {
+    const ftpStartTime = Date.now();
+    const targetSys = connectionState.systemId ?? 1;
+    const targetComp = 1;
+
+    // Create FTP client if needed
+    ftpClient = new MavlinkFtpClient({
+      sendPacket: async (ftpPayload: Uint8Array) => {
+        // Wrap FTP payload in FILE_TRANSFER_PROTOCOL MAVLink message
+        const ftpMsg = serializeFileTransferProtocol({
+          targetNetwork: 0,
+          targetSystem: targetSys,
+          targetComponent: targetComp,
+          payload: Array.from(ftpPayload),
+        });
+
+        const packet = await sendMavlinkPacket(FILE_TRANSFER_PROTOCOL_ID, ftpMsg, FILE_TRANSFER_PROTOCOL_CRC_EXTRA);
+        await currentTransport!.write(packet);
+        connectionState.packetsSent++;
+      },
+      log: (level, message) => {
+        sendLog(mainWindow, level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'debug', message);
+      },
+    });
+
+    // Download the packed parameter file
+    const fileData = await ftpClient.downloadFile(
+      PARAM_PCK_PATH,
+      (received, total) => {
+        const percentage = total > 0 ? Math.round((received / total) * 100) : 0;
+        safeSend(mainWindow, IPC_CHANNELS.PARAM_PROGRESS, {
+          total: 0, // We don't know param count yet during FTP download
+          received: 0,
+          percentage,
+        });
+      },
+    );
+
+    // Cleanup FTP client
+    ftpClient = null;
+
+    if (!fileData || fileData.length === 0) {
+      return false;
+    }
+
+    // Parse the packed parameter file
+    const result = parseParamPack(fileData);
+    if (!result || result.params.length === 0) {
+      sendLog(mainWindow, 'warn', 'FTP: param.pck parse failed or empty');
+      return false;
+    }
+
+    const ftpElapsed = ((Date.now() - ftpStartTime) / 1000).toFixed(1);
+    sendLog(mainWindow, 'info', `Downloaded ${result.params.length} parameters via MAVLink FTP in ${ftpElapsed}s`);
+
+    // Build bulk payload and populate receivedParams for PARAM_SET validation
+    receivedParams.clear();
+    expectedParamCount = result.totalParams;
+    const paramCount = result.params.length;
+    const bulkPayload: ParamValuePayload[] = [];
+
+    for (let i = 0; i < paramCount; i++) {
+      const p = result.params[i]!;
+      const entry: ParamValuePayload = {
+        paramId: p.name,
+        paramValue: p.value,
+        paramType: p.type,
+        paramCount: result.totalParams,
+        paramIndex: i,
+      };
+
+      receivedParams.set(p.name, entry);
+      bulkPayload.push(entry);
+    }
+
+    // Single IPC event with all params — renderer applies in one state update
+    safeSend(mainWindow, IPC_CHANNELS.PARAM_BULK_LOAD, bulkPayload);
+
+    return true;
+  }
+
+  // Request all parameters from flight controller
+  // Strategy: try MAVLink FTP first (fast), fall back to PARAM_REQUEST_LIST (universal)
+  ipcMain.handle(IPC_CHANNELS.PARAM_REQUEST_ALL, async (): Promise<{ success: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+
+    // Guard against concurrent requests (renderer may fire multiple times on connect)
+    if (paramRequestInFlight) {
+      return { success: true }; // Already in progress
+    }
+    paramRequestInFlight = true;
+
+    try {
+      // Only attempt FTP on MAVLink v2 connections (FTP requires v2)
+      if (detectedMavlinkVersion === 2) {
+        try {
+          sendLog(mainWindow, 'info', 'Requesting parameters via MAVLink FTP (fast path)...');
+          const ftpSuccess = await requestParamsViaFtp();
+          if (ftpSuccess) {
+            return { success: true };
+          }
+          sendLog(mainWindow, 'info', 'FTP not available, falling back to traditional parameter download...');
+        } catch (err) {
+          sendLog(mainWindow, 'debug', `FTP attempt failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      // Fallback: traditional PARAM_REQUEST_LIST
+      return requestParamsTraditional();
+    } finally {
+      paramRequestInFlight = false;
     }
   });
 

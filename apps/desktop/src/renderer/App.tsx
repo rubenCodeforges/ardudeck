@@ -180,7 +180,7 @@ function App() {
   const addStatusMessage = useMessagesStore((s) => s.addMessage);
   const clearMessages = useMessagesStore((s) => s.clear);
   const { currentView, setView } = useNavigationStore();
-  const { updateParameter, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata, paramCount } = useParameterStore();
+  const { updateParameter, bulkLoadParameters, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata, paramCount } = useParameterStore();
   const {
     fetchMission,
     setMissionItems,
@@ -435,17 +435,19 @@ function App() {
   // Parameter events
   useEffect(() => {
     const unsubParamValue = window.electronAPI?.onParamValue(updateParameter);
+    const unsubBulkLoad = window.electronAPI?.onParamBulkLoad(bulkLoadParameters);
     const unsubProgress = window.electronAPI?.onParamProgress(setProgress);
     const unsubComplete = window.electronAPI?.onParamComplete(setComplete);
     const unsubError = window.electronAPI?.onParamError(setError);
 
     return () => {
       unsubParamValue?.();
+      unsubBulkLoad?.();
       unsubProgress?.();
       unsubComplete?.();
       unsubError?.();
     };
-  }, [updateParameter, setProgress, setComplete, setError]);
+  }, [updateParameter, bulkLoadParameters, setProgress, setComplete, setError]);
 
   // Mission events
   useEffect(() => {

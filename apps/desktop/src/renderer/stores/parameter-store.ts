@@ -80,6 +80,7 @@ interface ParameterStore {
   fetchMetadata: (mavType: number) => Promise<void>;
   setParameter: (paramId: string, value: number) => Promise<boolean>;
   updateParameter: (param: ParamValuePayload) => void;
+  bulkLoadParameters: (params: ParamValuePayload[]) => void;
   setProgress: (progress: ParameterProgress) => void;
   setComplete: () => void;
   setError: (error: string | null) => void;
@@ -370,6 +371,31 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       });
 
       return { parameters: params, paramCount: params.size };
+    });
+  },
+
+  bulkLoadParameters: (params) => {
+    // FTP fast path: build entire parameter map in one state update
+    userModifiedParams.clear();
+    const newParams = new Map<string, ParameterWithMeta>();
+    for (const p of params) {
+      newParams.set(p.paramId, {
+        id: p.paramId,
+        value: p.paramValue,
+        type: p.paramType,
+        index: p.paramIndex,
+        originalValue: p.paramValue,
+        isModified: false,
+        isReadOnly: isReadOnlyParameter(p.paramId),
+      });
+    }
+    set({
+      parameters: newParams,
+      paramCount: newParams.size,
+      isLoading: false,
+      progress: null,
+      error: null,
+      lastRefresh: Date.now(),
     });
   },
 

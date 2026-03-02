@@ -517,67 +517,128 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
         <div className="flex items-center justify-center gap-8">
           {/* Physical switch representation */}
           <div className="flex flex-col items-center">
-            <div className="w-12 h-32 bg-zinc-800 rounded-lg relative border border-zinc-700">
-              {/* Switch positions markers */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-orange-500/50 rounded" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1 bg-purple-500/50 rounded" />
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500/50 rounded" />
-              {/* Active position indicator */}
-              {activeSlot && (
-                <div
-                  className={`absolute left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-cyan-500 shadow-lg shadow-cyan-500/50 transition-all duration-300 ${
-                    activeSlot <= 2 ? 'bottom-1' : activeSlot <= 4 ? 'top-1/2 -translate-y-1/2' : 'top-1'
-                  }`}
-                />
-              )}
-            </div>
+            {advancedMode ? (
+              /* 6-position switch */
+              <div className="w-12 h-48 bg-zinc-800 rounded-lg relative border border-zinc-700">
+                {MODE_PWM_RANGES.map((range, i) => {
+                  const topPercent = 8 + i * (84 / 5); // Distribute 6 markers evenly
+                  const slotColor = i <= 1 ? 'bg-blue-500/50' : i <= 3 ? 'bg-purple-500/50' : 'bg-orange-500/50';
+                  return (
+                    <div key={range.slot} className={`absolute left-1/2 -translate-x-1/2 w-8 h-1 ${slotColor} rounded`} style={{ top: `${100 - topPercent}%` }} />
+                  );
+                })}
+                {activeSlot && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-cyan-500 shadow-lg shadow-cyan-500/50 transition-all duration-300"
+                    style={{ top: `${100 - (8 + (activeSlot - 1) * (84 / 5))}%`, transform: 'translateX(-50%) translateY(-50%)' }}
+                  />
+                )}
+              </div>
+            ) : (
+              /* 3-position switch */
+              <div className="w-12 h-32 bg-zinc-800 rounded-lg relative border border-zinc-700">
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-orange-500/50 rounded" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1 bg-purple-500/50 rounded" />
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500/50 rounded" />
+                {activeSlot && (
+                  <div
+                    className={`absolute left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-cyan-500 shadow-lg shadow-cyan-500/50 transition-all duration-300 ${
+                      activeSlot <= 2 ? 'bottom-1' : activeSlot <= 4 ? 'top-1/2 -translate-y-1/2' : 'top-1'
+                    }`}
+                  />
+                )}
+              </div>
+            )}
             <span className="text-xs text-zinc-500 mt-2">Mode Switch</span>
           </div>
 
           {/* Position to modes mapping */}
           <div className="flex-1 space-y-2">
-            {SWITCH_POSITIONS.map((pos, idx) => {
-              const isPositionActive = activeSlot !== null && pos.slots.includes(activeSlot);
-              // Primary slot: High→6, Mid→3, Low→1
-              const primarySlot = pos.name === 'High' ? 6 : pos.name === 'Mid' ? 3 : 1;
-              const modeInfo = getModeInfo(flightModes[primarySlot - 1] ?? 0, vehicleCategory);
-              const IconComponent = modeInfo.icon;
+            {advancedMode ? (
+              /* 6-position: show all individual slots */
+              [...MODE_PWM_RANGES].reverse().map((range) => {
+                const isSlotActive = activeSlot === range.slot;
+                const modeInfo = getModeInfo(flightModes[range.slot - 1] ?? 0, vehicleCategory);
+                const IconComponent = modeInfo.icon;
+                const positionInfo = SWITCH_POSITIONS.find(p => p.slots.includes(range.slot));
+                const dotColor = positionInfo?.color ?? 'bg-zinc-500';
 
-              return (
-                <div
-                  key={pos.name}
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                    isPositionActive
-                      ? 'bg-cyan-500/10 border border-cyan-500/30'
-                      : 'bg-zinc-800/50 border border-transparent'
-                  }`}
-                >
-                  <div className={`w-3 h-3 rounded-full ${pos.color}`} />
-                  <div className="w-16">
-                    <div className={`text-sm font-medium ${isPositionActive ? 'text-cyan-400' : 'text-zinc-300'}`}>
-                      {pos.name}
+                return (
+                  <div
+                    key={range.slot}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
+                      isSlotActive
+                        ? 'bg-cyan-500/10 border border-cyan-500/30'
+                        : 'bg-zinc-800/50 border border-transparent'
+                    }`}
+                  >
+                    <div className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
+                    <div className="w-20">
+                      <div className={`text-sm font-medium ${isSlotActive ? 'text-cyan-400' : 'text-zinc-300'}`}>
+                        Slot {range.slot}
+                      </div>
+                      <div className="text-[10px] text-zinc-500 font-mono">{range.min}-{range.max}</div>
                     </div>
-                    <div className="text-[10px] text-zinc-500">{pos.label}</div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                        isSlotActive ? 'bg-cyan-500/20' : 'bg-zinc-700/50'
+                      }`}>
+                        <IconComponent className={`w-3.5 h-3.5 ${isSlotActive ? 'text-cyan-400' : 'text-zinc-400'}`} />
+                      </div>
+                      <span className={`text-sm ${isSlotActive ? 'text-cyan-300' : 'text-zinc-400'}`}>
+                        {modeInfo.name}
+                      </span>
+                    </div>
+                    {isSlotActive && liveRcValue !== null && (
+                      <span className="text-xs font-mono text-cyan-400/70">{liveRcValue}</span>
+                    )}
                   </div>
-                  <div className="flex-1 flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      isPositionActive ? 'bg-cyan-500/20' : 'bg-zinc-700/50'
-                    }`}>
-                      <IconComponent className={`w-4 h-4 ${isPositionActive ? 'text-cyan-400' : 'text-zinc-400'}`} />
+                );
+              })
+            ) : (
+              /* 3-position: grouped by switch position */
+              SWITCH_POSITIONS.map((pos) => {
+                const isPositionActive = activeSlot !== null && pos.slots.includes(activeSlot);
+                const primarySlot = pos.name === 'High' ? 6 : pos.name === 'Mid' ? 3 : 1;
+                const modeInfo = getModeInfo(flightModes[primarySlot - 1] ?? 0, vehicleCategory);
+                const IconComponent = modeInfo.icon;
+
+                return (
+                  <div
+                    key={pos.name}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      isPositionActive
+                        ? 'bg-cyan-500/10 border border-cyan-500/30'
+                        : 'bg-zinc-800/50 border border-transparent'
+                    }`}
+                  >
+                    <div className={`w-3 h-3 rounded-full ${pos.color}`} />
+                    <div className="w-16">
+                      <div className={`text-sm font-medium ${isPositionActive ? 'text-cyan-400' : 'text-zinc-300'}`}>
+                        {pos.name}
+                      </div>
+                      <div className="text-[10px] text-zinc-500">{pos.label}</div>
                     </div>
-                    <span className={`text-sm ${isPositionActive ? 'text-cyan-300' : 'text-zinc-400'}`}>
-                      {modeInfo.name}
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        isPositionActive ? 'bg-cyan-500/20' : 'bg-zinc-700/50'
+                      }`}>
+                        <IconComponent className={`w-4 h-4 ${isPositionActive ? 'text-cyan-400' : 'text-zinc-400'}`} />
+                      </div>
+                      <span className={`text-sm ${isPositionActive ? 'text-cyan-300' : 'text-zinc-400'}`}>
+                        {modeInfo.name}
+                      </span>
+                    </div>
+                    {isPositionActive && liveRcValue !== null && (
+                      <span className="text-xs font-mono text-cyan-400/70">{liveRcValue}</span>
+                    )}
+                    <span className="text-xs text-zinc-600">
+                      Slots {pos.slots.join(', ')}
                     </span>
                   </div>
-                  {isPositionActive && liveRcValue !== null && (
-                    <span className="text-xs font-mono text-cyan-400/70">{liveRcValue}</span>
-                  )}
-                  <span className="text-xs text-zinc-600">
-                    Slots {pos.slots.join(', ')}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>

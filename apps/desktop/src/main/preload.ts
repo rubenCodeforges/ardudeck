@@ -192,6 +192,12 @@ const api = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_VALUE, handler);
   },
 
+  onParamBulkLoad: (callback: (params: ParamValuePayload[]) => void) => {
+    const handler = (_: unknown, params: ParamValuePayload[]) => callback(params);
+    ipcRenderer.on(IPC_CHANNELS.PARAM_BULK_LOAD, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PARAM_BULK_LOAD, handler);
+  },
+
   onParamProgress: (callback: (progress: ParameterProgress) => void) => {
     const handler = (_: unknown, progress: ParameterProgress) => callback(progress);
     ipcRenderer.on(IPC_CHANNELS.PARAM_PROGRESS, handler);
