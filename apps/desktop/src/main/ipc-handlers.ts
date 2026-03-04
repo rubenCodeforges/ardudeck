@@ -73,6 +73,9 @@ import {
   serializeRcChannelsOverride,
   RC_CHANNELS_OVERRIDE_ID,
   RC_CHANNELS_OVERRIDE_CRC_EXTRA,
+  serializeRequestDataStream,
+  REQUEST_DATA_STREAM_ID,
+  REQUEST_DATA_STREAM_CRC_EXTRA,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
 import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed } from '../shared/ipc-channels.js';
@@ -357,6 +360,9 @@ let transportCloseHandler: (() => void) | null = null;
 // GCS heartbeat: ArduPilot requires GCS heartbeats to recognize us as a valid GCS
 let gcsHeartbeatInterval: NodeJS.Timeout | null = null;
 
+// Stream rate retry: ArduPilot may not accept stream requests until it recognizes us as a GCS
+let streamRateRetryTimeout: NodeJS.Timeout | null = null;
+
 // Telemetry stream rate presets (Hz values per message category)
 const STREAM_RATE_PRESETS: Record<TelemetrySpeed, { attitude: number; position: number; other: number }> = {
   eco:    { attitude: 10, position: 4,  other: 2 },
@@ -368,7 +374,56 @@ const STREAM_RATE_PRESETS: Record<TelemetrySpeed, { attitude: number; position: 
 let currentTelemetrySpeed: TelemetrySpeed = 'normal';
 
 /**
- * Send MAV_CMD_SET_MESSAGE_INTERVAL for all telemetry streams.
+ * Send REQUEST_DATA_STREAM (msg #66) for legacy stream groups.
+ * This is the older, universally-supported method used by Mission Planner.
+ * ArduPilot maps stream groups to individual messages internally.
+ *
+ * Stream groups:
+ *   0=ALL, 1=RAW_SENSORS, 2=EXTENDED_STATUS, 3=RC_CHANNELS,
+ *   4=RAW_CONTROLLER, 6=POSITION, 10=EXTRA1, 11=EXTRA2, 12=EXTRA3
+ */
+async function sendLegacyStreamRequests(mainWindow: BrowserWindow, speed: TelemetrySpeed): Promise<void> {
+  if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+
+  const rates = STREAM_RATE_PRESETS[speed];
+  if (!rates) return;
+
+  const targetSys = connectionState.systemId ?? 1;
+  const targetComp = connectionState.componentId ?? 1;
+
+  // Map stream groups to Hz rates (same groups Mission Planner requests)
+  const streamRequests = [
+    { streamId: 1,  hz: rates.other },     // RAW_SENSORS: RAW_IMU, SCALED_PRESSURE, GPS_RAW_INT
+    { streamId: 2,  hz: rates.other },     // EXTENDED_STATUS: SYS_STATUS, GPS_RAW_INT, NAV_CONTROLLER
+    { streamId: 3,  hz: rates.other },     // RC_CHANNELS: RC_CHANNELS, SERVO_OUTPUT_RAW
+    { streamId: 6,  hz: rates.position },  // POSITION: GLOBAL_POSITION_INT, LOCAL_POSITION
+    { streamId: 10, hz: rates.attitude },  // EXTRA1: ATTITUDE
+    { streamId: 11, hz: rates.position },  // EXTRA2: VFR_HUD
+    { streamId: 12, hz: rates.other },     // EXTRA3: BATTERY_STATUS, etc.
+  ];
+
+  for (const req of streamRequests) {
+    if (!currentTransport?.isOpen) break;
+    try {
+      const payload = serializeRequestDataStream({
+        targetSystem: targetSys,
+        targetComponent: targetComp,
+        reqStreamId: req.streamId,
+        reqMessageRate: req.hz,
+        startStop: 1, // 1 = start sending
+      });
+      const pkt = await sendMavlinkPacket(REQUEST_DATA_STREAM_ID, payload, REQUEST_DATA_STREAM_CRC_EXTRA);
+      await currentTransport!.write(pkt);
+      await new Promise(resolve => setTimeout(resolve, 20));
+    } catch {
+      // Non-critical, SET_MESSAGE_INTERVAL is the primary method
+    }
+  }
+}
+
+/**
+ * Send MAV_CMD_SET_MESSAGE_INTERVAL for all telemetry streams,
+ * then fall back to REQUEST_DATA_STREAM for broad compatibility.
  * Uses the preset rates for the given speed.
  */
 async function sendStreamRateRequests(mainWindow: BrowserWindow, speed: TelemetrySpeed): Promise<void> {
@@ -415,6 +470,10 @@ async function sendStreamRateRequests(mainWindow: BrowserWindow, speed: Telemetr
       console.error(`[StreamRate] Failed to send interval for msg #${req.msgId}:`, err);
     }
   }
+
+  // Also send legacy REQUEST_DATA_STREAM as fallback for broader compatibility
+  // Some ArduPilot configurations only respond to the older stream group requests
+  await sendLegacyStreamRequests(mainWindow, speed);
 
   currentTelemetrySpeed = speed;
   const r = STREAM_RATE_PRESETS[speed]!;
@@ -1739,7 +1798,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               // These send their own heartbeats but don't represent the actual vehicle
               if (NON_VEHICLE_TYPES.has(vehicleType)) {
                 sendLog(mainWindow, 'debug', `Ignoring heartbeat from non-vehicle component: ${VEHICLE_NAMES[vehicleType] || vehicleType} (sysid=${packet.sysid}, compid=${packet.compid})`);
-                break;
+                continue;
               }
 
               // First heartbeat from a real vehicle - connection confirmed!
@@ -1812,14 +1871,23 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 if (gcsHeartbeatInterval) clearInterval(gcsHeartbeatInterval);
                 gcsHeartbeatInterval = setInterval(sendGcsHeartbeat, 1000);
 
-                // Request individual message streams via MAV_CMD_SET_MESSAGE_INTERVAL
+                // Request individual message streams via MAV_CMD_SET_MESSAGE_INTERVAL + REQUEST_DATA_STREAM
                 // Uses stored speed preference from settings
                 setTimeout(async () => {
-                  // Load speed preference from settings
                   const savedSpeed = (settingsStore.get('telemetrySpeed') as TelemetrySpeed | undefined) ?? 'normal';
                   currentTelemetrySpeed = savedSpeed;
                   await sendStreamRateRequests(mainWindow, savedSpeed);
                 }, 1500);
+
+                // Retry stream requests after 5s in case the FC wasn't ready the first time
+                // ArduPilot may need 3-5 heartbeats before accepting a new GCS
+                if (streamRateRetryTimeout) clearTimeout(streamRateRetryTimeout);
+                streamRateRetryTimeout = setTimeout(async () => {
+                  streamRateRetryTimeout = null;
+                  if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+                  sendLog(mainWindow, 'debug', 'Retrying stream rate requests');
+                  await sendStreamRateRequests(mainWindow, currentTelemetrySpeed);
+                }, 5000);
               }
             }
 
@@ -1881,6 +1949,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         if (gcsHeartbeatInterval) {
           clearInterval(gcsHeartbeatInterval);
           gcsHeartbeatInterval = null;
+        }
+        if (streamRateRetryTimeout) {
+          clearTimeout(streamRateRetryTimeout);
+          streamRateRetryTimeout = null;
         }
         sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
         return;
@@ -2140,6 +2212,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         if (gcsHeartbeatInterval) {
           clearInterval(gcsHeartbeatInterval);
           gcsHeartbeatInterval = null;
+        }
+        if (streamRateRetryTimeout) {
+          clearTimeout(streamRateRetryTimeout);
+          streamRateRetryTimeout = null;
         }
         sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
         return; // Don't update state - reconnect logic handles it
