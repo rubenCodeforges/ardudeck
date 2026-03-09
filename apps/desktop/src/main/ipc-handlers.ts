@@ -3491,7 +3491,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       ].filter(Boolean).join('\n');
 
       // Format: PARAM_NAME,VALUE (one per line)
-      const content = header + params.map(p => `${p.id},${p.value}`).join('\n');
+      const content = header + '\n\n' + params.map(p => `${p.id},${p.value}`).join('\n');
 
       const fs = await import('fs/promises');
       await fs.writeFile(result.filePath, content, 'utf-8');
