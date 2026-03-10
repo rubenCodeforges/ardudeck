@@ -453,6 +453,7 @@ async function sendStreamRateRequests(mainWindow: BrowserWindow, speed: Telemetr
     { msgId: 33, hz: rates.position },  // GLOBAL_POSITION_INT
     { msgId: 24, hz: rates.other },     // GPS_RAW_INT
     { msgId: 1,  hz: rates.other },     // SYS_STATUS
+    { msgId: 35, hz: rates.other },     // RC_CHANNELS_RAW (fallback for ELRS-over-MAVLink)
     { msgId: 65, hz: rates.other },     // RC_CHANNELS
     { msgId: 74, hz: rates.other },     // VFR_HUD
     { msgId: 36, hz: rates.other },     // SERVO_OUTPUT_RAW
@@ -500,6 +501,39 @@ const pendingMavlinkData: Uint8Array[] = [];
 // Battery fix: Coalesce MAVLink telemetry into a single IPC batch at 10Hz max
 let mavlinkTelemetryBatch: Record<string, unknown> = {};
 let mavlinkBatchTimer: NodeJS.Timeout | null = null;
+
+// RC channel merge: msg 65 (RC_CHANNELS, 18ch) + msg 35 (RC_CHANNELS_RAW, 8ch) fallback.
+// Some FCs (e.g. ELRS over MAVLink) may send stale stick data in msg 65 but fresh data in msg 35.
+let rcMsg65: { channels: number[]; chancount: number; rssi: number } = { channels: [], chancount: 0, rssi: 0 };
+let rcMsg35: { channels: number[]; rssi: number } = { channels: [], rssi: 0 };
+
+function emitMergedRcChannels(mainWindow: BrowserWindow): void {
+  const has65 = rcMsg65.chancount > 0;
+  const has35 = rcMsg35.channels.length > 0;
+  if (!has65 && !has35) return;
+
+  // Base from msg 65 (up to 18 channels), fall back to msg 35 (8 channels)
+  const channels = has65 ? [...rcMsg65.channels] : [...rcMsg35.channels];
+  const chancount = has65 ? rcMsg65.chancount : rcMsg35.channels.length;
+  const rssi = has65 ? rcMsg65.rssi : rcMsg35.rssi;
+
+  // Overlay msg 35 channels 1-8 onto msg 65 when both exist.
+  // In normal operation both sources match; when msg 65 has stale sticks, msg 35 fixes them.
+  if (has65 && has35) {
+    for (let i = 0; i < rcMsg35.channels.length && i < channels.length; i++) {
+      channels[i] = rcMsg35.channels[i]!;
+    }
+  }
+
+  queueMavlinkTelemetry(mainWindow, {
+    rcChannels: { channels, chancount, rssi } as RcChannelsData,
+  });
+}
+
+function resetRcChannelState(): void {
+  rcMsg65 = { channels: [], chancount: 0, rssi: 0 };
+  rcMsg35 = { channels: [], rssi: 0 };
+}
 
 function queueMavlinkTelemetry(mainWindow: BrowserWindow, fields: Record<string, unknown>) {
   Object.assign(mavlinkTelemetryBatch, fields);
@@ -586,6 +620,7 @@ function resetMavlinkDiagCache(): void {
   cachedHeartbeat = null;
   cachedAutopilotVersion = null;
   statustextHistory = [];
+  resetRcChannelState();
 }
 
 // Parameter metadata cache (keyed by vehicle type)
@@ -780,6 +815,7 @@ const MSG_PARAM_VALUE = 22;
 const MSG_GPS_RAW_INT = 24;
 const MSG_ATTITUDE = 30;
 const MSG_GLOBAL_POSITION_INT = 33;
+const MSG_RC_CHANNELS_RAW = 35;
 const MSG_RC_CHANNELS = 65;
 const MSG_VFR_HUD = 74;
 const MSG_COMMAND_ACK = 77;
@@ -953,8 +989,25 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       break;
     }
 
+    case MSG_RC_CHANNELS_RAW: {
+      // RC_CHANNELS_RAW (msg 35): 8 channels per port — fallback for FCs that don't populate msg 65 fully.
+      // v2 wire order: time_boot_ms(U32), chan1-8(U16×8), port(U8), rssi(U8)
+      const rawPort = payload[20]!;
+      if (rawPort === 0) {
+        // Only use port 0 (primary RC input)
+        const rawChannels: number[] = [];
+        for (let i = 0; i < 8; i++) {
+          rawChannels.push(readUint16(payload, 4 + i * 2));
+        }
+        rcMsg35 = { channels: rawChannels, rssi: payload[21]! };
+        emitMergedRcChannels(mainWindow);
+      }
+      break;
+    }
+
     case MSG_RC_CHANNELS: {
-      // MAVLink v2 wire order (sorted by size): time_boot_ms(U32), chan1-18(U16 each), chancount(U8), rssi(U8)
+      // RC_CHANNELS (msg 65): up to 18 channels — primary source.
+      // v2 wire order: time_boot_ms(U32), chan1-18(U16×18), chancount(U8), rssi(U8)
       const chancount = payload[40]!;
       const rssi = payload[41]!;
       const channels: number[] = [];
@@ -962,9 +1015,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         channels.push(readUint16(payload, 4 + i * 2));
       }
       // Trim to actual channel count (unused channels report UINT16_MAX = 65535)
-      const activeChannels = channels.slice(0, chancount);
-      const rcChannels: RcChannelsData = { channels: activeChannels, chancount, rssi };
-      queueMavlinkTelemetry(mainWindow, { rcChannels });
+      rcMsg65 = { channels: channels.slice(0, chancount), chancount, rssi };
+      emitMergedRcChannels(mainWindow);
       break;
     }
 
