@@ -68,6 +68,8 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **Terrain Data** - Real elevation data from Open-Meteo (Copernicus DEM)
 - **Collision Detection** - Visual warnings when path intersects terrain
 - **Spline Waypoints** - Smooth curved flight paths with Catmull-Rom interpolation
+- **Survey Grid** - Automated survey patterns (Grid, Crosshatch, Circular) with configurable camera, spacing, overlap, and angle
+- **3D Mission View** - Three-dimensional visualization of mission waypoints and flight path
 - **Command Support** - Takeoff, Waypoint, Loiter, Land, RTL, Speed changes
 - **File Operations** - Save/Load .waypoints and QGC .plan formats
 - **Upload/Download** - Full MAVLink mission protocol support
@@ -108,6 +110,7 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **Rate Profiles** - Rate curve editor with visualization
 - **Flight Modes** - 6-mode channel assignment for ArduPilot
 - **Safety & Failsafe** - Failsafe actions, geofence behavior, RTL settings
+- **MAVLink Signing** - Passphrase-based packet signing to prevent unauthorized access to your vehicle
 - **Battery Monitor** - Voltage/current sensor calibration
 - **Sensor Status** - Compass, GPS, barometer, and IMU health
 - **Rover/Boat Tuning** - Dedicated tuning parameters for ground and marine vehicles
@@ -145,7 +148,7 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ### Lua Graph Editor
 - **Visual Scripting** - Build ArduPilot Lua scripts by connecting nodes, no coding required
-- **37+ Nodes** - Sensors, logic, math, actions, timing, and variables
+- **50+ Nodes** - Sensors, logic, math, actions, timing, variables, and flow control
 - **Live Lua Preview** - See compiled output in real-time as you build
 - **Templates** - Pre-built graphs for common tasks (battery alerts, geofencing, camera triggers)
 - **Export to .lua** - One-click compilation to ArduPilot-compatible Lua scripts
@@ -192,6 +195,49 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 
 ## Screenshots
 
+### Lua Graph Editor
+
+<p align="center">
+  <a href="docs/screenshots/lua_loaded_template.png?raw=true">
+    <img src="docs/screenshots/lua_loaded_template.png" alt="Lua Graph Editor" width="800"/>
+  </a>
+  <br/>
+  <em>Visual scripting for ArduPilot Lua - build scripts by connecting nodes, no coding required</em>
+</p>
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/lua_tempalte_list_dialog.png?raw=true">
+        <img src="docs/screenshots/lua_tempalte_list_dialog.png" alt="Lua Templates" width="400"/>
+      </a>
+      <br/><em>Pre-built Graph Templates</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/lua_node_list_left_sidebar.png?raw=true">
+        <img src="docs/screenshots/lua_node_list_left_sidebar.png" alt="Node Categories" width="400"/>
+      </a>
+      <br/><em>50+ Nodes Across 7 Categories</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/lua_node_properties_right_sidebar.png?raw=true">
+        <img src="docs/screenshots/lua_node_properties_right_sidebar.png" alt="Node Properties" width="400"/>
+      </a>
+      <br/><em>Node Properties & Port Inspector</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/Lua_project_properties_right_sidebar.png?raw=true">
+        <img src="docs/screenshots/Lua_project_properties_right_sidebar.png" alt="Script Settings" width="400"/>
+      </a>
+      <br/><em>Script Settings & Run Interval</em>
+    </td>
+  </tr>
+</table>
+
+### Mission Planning
+
 <p align="center">
   <a href="docs/screenshots/mission_planning.png?raw=true">
     <img src="docs/screenshots/mission_planning.png" alt="Mission Planning" width="800"/>
@@ -199,6 +245,39 @@ ArduDeck is a next-generation ground control station built with Electron, React,
   <br/>
   <em>Mission planning with terrain-aware altitude profile and automatic elevation data</em>
 </p>
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/mission_panner_3d_view.png?raw=true">
+        <img src="docs/screenshots/mission_panner_3d_view.png" alt="3D Mission View" width="400"/>
+      </a>
+      <br/><em>3D Mission Visualization</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/Mission_planning_survey_grid_pattern.png?raw=true">
+        <img src="docs/screenshots/Mission_planning_survey_grid_pattern.png" alt="Survey Grid Pattern" width="400"/>
+      </a>
+      <br/><em>Survey Grid Pattern</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/Mission_planning_survey_grid_crosshatch.png?raw=true">
+        <img src="docs/screenshots/Mission_planning_survey_grid_crosshatch.png" alt="Survey Crosshatch" width="400"/>
+      </a>
+      <br/><em>Survey Crosshatch Pattern</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/Mission_planning_survey_circular_pattern.png?raw=true">
+        <img src="docs/screenshots/Mission_planning_survey_circular_pattern.png" alt="Survey Circular Pattern" width="400"/>
+      </a>
+      <br/><em>Survey Circular Pattern</em>
+    </td>
+  </tr>
+</table>
+
+### Telemetry & General
 
 <table>
   <tr>
@@ -292,6 +371,25 @@ ArduDeck is a next-generation ground control station built with Electron, React,
   </tr>
 </table>
 
+### ArduPilot Configuration
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/Mavlink%20Signing.png?raw=true">
+        <img src="docs/screenshots/Mavlink%20Signing.png" alt="MAVLink Signing" width="400"/>
+      </a>
+      <br/><em>MAVLink Signing - Packet Security</em>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/params_screen.png?raw=true">
+        <img src="docs/screenshots/params_screen.png" alt="Parameter Management" width="400"/>
+      </a>
+      <br/><em>Parameter Management</em>
+    </td>
+  </tr>
+</table>
+
 ### Additional Features
 
 <table>
@@ -317,10 +415,10 @@ ArduDeck is a next-generation ground control station built with Electron, React,
       <br/><em>SITL Simulator with FlightGear</em>
     </td>
     <td align="center">
-      <a href="docs/screenshots/params_screen.png?raw=true">
-        <img src="docs/screenshots/params_screen.png" alt="Parameter Management" width="400"/>
+      <a href="docs/screenshots/Mission_planning_survey_grid_generated_circular.png?raw=true">
+        <img src="docs/screenshots/Mission_planning_survey_grid_generated_circular.png" alt="Generated Survey 3D" width="400"/>
       </a>
-      <br/><em>Parameter Management</em>
+      <br/><em>Generated Survey in 3D View</em>
     </td>
   </tr>
 </table>
@@ -503,7 +601,10 @@ Found a bug? We want to hear about it! ArduDeck includes a built-in bug reportin
 - **Quick Setup Wizard** with preset library for common frame types
 - **VTX and filter configuration** for Betaflight/iNav
 - **ArduPilot configuration UI** - PID tuning, rate profiles, flight modes, safety, battery monitor, sensors
-- **Lua Graph Editor** - Visual scripting for ArduPilot Lua with 37+ nodes, compiler, and [in-app docs](apps/desktop/src/renderer/components/lua-graph/docs/)
+- **Lua Graph Editor** - Visual scripting for ArduPilot Lua with 50+ nodes, compiler, templates, and [in-app docs](apps/desktop/src/renderer/components/lua-graph/docs/)
+- **Survey Grid Planner** - Automated survey patterns (Grid, Crosshatch, Circular) with camera and flight parameter configuration
+- **3D Mission View** - Three-dimensional visualization of mission waypoints and flight paths
+- **MAVLink Signing** - Passphrase-based packet signing for secure vehicle communication
 
 ### Coming Soon
 - **SITL Simulator** - iNav and ArduPilot software-in-the-loop with FlightGear integration (temporarily disabled)
