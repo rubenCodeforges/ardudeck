@@ -306,7 +306,7 @@ function startTelemetryInterval(intervalMs: number): void {
         const decimal = gpsToDecimalDegrees(gps);
 
         batch.gps = { fixType: gps.fixType, satellites: gps.numSat, hdop: gps.hdop / 100, lat: decimal.latDeg, lon: decimal.lonDeg, alt: decimal.altM };
-        batch.position = { lat: decimal.latDeg, lon: decimal.lonDeg, alt: decimal.altM, relativeAlt: decimal.altM, vx: 0, vy: 0, vz: 0 };
+        batch.position = { lat: decimal.latDeg, lon: decimal.lonDeg, alt: decimal.altM, relativeAlt: altitudeM, vx: 0, vy: 0, vz: 0 };
         batch.vfrHud = { airspeed: decimal.speedMs, groundspeed: decimal.speedMs, heading: headingDeg, throttle: throttlePercent, alt: altitudeM, climb: varioMs };
       } catch {
         batch.vfrHud = { airspeed: 0, groundspeed: 0, heading: headingDeg, throttle: throttlePercent, alt: altitudeM, climb: varioMs };
