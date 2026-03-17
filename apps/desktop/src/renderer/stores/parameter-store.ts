@@ -3,6 +3,7 @@ import type { Parameter, ParameterWithMeta, ParameterProgress, ParamValuePayload
 import { isReadOnlyParameter, generateFallbackDescription } from '../../shared/parameter-types.js';
 import { parameterBelongsToGroup } from '../../shared/parameter-groups.js';
 import { validateParameterValue, type ParameterMetadataStore, type ValidationResult } from '../../shared/parameter-metadata.js';
+import { createSearchRegex } from '../../shared/search-utils.js';
 
 export type SortColumn = 'name' | 'status';
 export type SortDirection = 'asc' | 'desc';
@@ -188,14 +189,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
     // Then filter by search query (supports regex patterns like `serial[56]_baud`)
     if (searchQuery.trim()) {
-      let regex: RegExp;
-      try {
-        regex = new RegExp(searchQuery, 'i');
-      } catch {
-        // If the query isn't valid regex, escape it and match as literal string
-        const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        regex = new RegExp(escaped, 'i');
-      }
+      const regex = createSearchRegex(searchQuery);
       params = params.filter(p => regex.test(p.id));
     }
 

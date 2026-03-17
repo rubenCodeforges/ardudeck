@@ -18,7 +18,8 @@
     "preview": "electron-vite preview",
     "package": "electron-builder",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ardudeck/comms": "workspace:*",
@@ -36,9 +37,9 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "maplibre-gl": "^5.19.0",
-    "three": "^0.170.0",
     "react-leaflet": "4.2.1",
     "serialport": "^12.0.0",
+    "three": "^0.170.0",
     "usb": "^2.16.0",
     "zustand": "^4.5.0"
   },
@@ -46,9 +47,9 @@
     "@electron-toolkit/utils": "^3.0.0",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20.10.5",
-    "@types/three": "^0.170.0",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
+    "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "electron": "28.3.3",
@@ -61,7 +62,8 @@
     "react-dom": "^18.2.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.11"
+    "vite": "^5.0.11",
+    "vitest": "^2.1.9"
   },
   "build": {
     "appId": "com.ardudeck.desktop",
