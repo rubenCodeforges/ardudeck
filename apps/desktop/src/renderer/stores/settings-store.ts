@@ -173,6 +173,8 @@ interface SettingsStore {
   // Experimental features
   surveyUnlocked: boolean;
   setSurveyUnlocked: (enabled: boolean) => void;
+  companionUnlocked: boolean;
+  setCompanionUnlocked: (enabled: boolean) => void;
 
   // Mission defaults
   missionDefaults: MissionDefaults;
@@ -558,6 +560,10 @@ export const useSettingsStore = create<SettingsStore>()(
   setSurveyUnlocked: (enabled: boolean) => {
     set({ surveyUnlocked: enabled });
   },
+  companionUnlocked: false,
+  setCompanionUnlocked: (enabled: boolean) => {
+    set({ companionUnlocked: enabled });
+  },
 
   // Initial state (will be replaced by loadSettings)
   missionDefaults: { ...DEFAULT_MISSION_DEFAULTS },
@@ -644,6 +650,7 @@ export const useSettingsStore = create<SettingsStore>()(
             ...((settings as unknown as Record<string, unknown>).uiVisibility as Partial<UiVisibility> | undefined),
           },
           surveyUnlocked: !!((settings as unknown as Record<string, unknown>).surveyUnlocked),
+          companionUnlocked: !!((settings as unknown as Record<string, unknown>).companionUnlocked),
           _isInitialized: true,
         });
       } else {
@@ -675,6 +682,7 @@ export const useSettingsStore = create<SettingsStore>()(
         ...(state.experienceLevelVersion ? { experienceLevelVersion: state.experienceLevelVersion } : {}),
         uiVisibility: state.uiVisibility,
         surveyUnlocked: state.surveyUnlocked,
+        companionUnlocked: state.companionUnlocked,
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -854,6 +862,7 @@ useSettingsStore.subscribe(
     experienceLevelVersion: state.experienceLevelVersion,
     uiVisibility: state.uiVisibility,
     surveyUnlocked: state.surveyUnlocked,
+    companionUnlocked: state.companionUnlocked,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -872,7 +881,8 @@ useSettingsStore.subscribe(
         curr.experienceLevel !== prev.experienceLevel ||
         curr.experienceLevelVersion !== prev.experienceLevelVersion ||
         curr.uiVisibility !== prev.uiVisibility ||
-        curr.surveyUnlocked !== prev.surveyUnlocked
+        curr.surveyUnlocked !== prev.surveyUnlocked ||
+        curr.companionUnlocked !== prev.companionUnlocked
       ) {
         debouncedSave();
       }

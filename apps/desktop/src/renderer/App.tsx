@@ -15,6 +15,7 @@ import { CalibrationView } from './components/calibration/CalibrationView';
 import { MissionLibraryView } from './components/mission-library/MissionLibraryView';
 import { LuaGraphView } from './components/lua-graph/LuaGraphView';
 import { ModuleManagerView } from './components/modules/ModuleManagerView';
+import { CompanionDashboard } from './components/companion/CompanionDashboard';
 import { useConnectionStore } from './stores/connection-store';
 import { useCalibrationStore } from './stores/calibration-store';
 import { useTelemetryStore } from './stores/telemetry-store';
@@ -28,6 +29,7 @@ import { useCliStore, setupCliDataListener, cleanupCliDataListener } from './sto
 import { initializeSettings, useSettingsStore, type VehicleType, type ExperienceLevel } from './stores/settings-store';
 import { ExperienceLevelDialog } from './components/ui/ExperienceLevelDialog';
 import { useFlightControlStore } from './stores/flight-control-store';
+import { useCompanionStore } from './stores/companion-store';
 import { useMessagesStore } from './stores/messages-store';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
@@ -528,6 +530,25 @@ function App() {
     };
   }, [setRallyItems, updateRallyProgress, setRallyError, setRallyUploadComplete, setRallyClearComplete]);
 
+  // Companion computer IPC listeners
+  const setCompanionConnectionState = useCompanionStore((s) => s.setConnectionState);
+  const setCompanionMetrics = useCompanionStore((s) => s.setMetrics);
+  const setCompanionProcesses = useCompanionStore((s) => s.setProcesses);
+  const addCompanionLog = useCompanionStore((s) => s.addLog);
+
+  useEffect(() => {
+    const cleanups = [
+      window.electronAPI.onCompanionConnectionState(setCompanionConnectionState),
+      window.electronAPI.onCompanionMetrics(setCompanionMetrics),
+      window.electronAPI.onCompanionProcesses(setCompanionProcesses),
+      window.electronAPI.onCompanionLogs(addCompanionLog),
+      window.electronAPI.onCompanionHeartbeat((data) => {
+        useCompanionStore.getState().setHeartbeat(data.online, data.lastSeen, data.systemType);
+      }),
+    ];
+    return () => cleanups.forEach((fn) => fn());
+  }, [setCompanionConnectionState, setCompanionMetrics, setCompanionProcesses, addCompanionLog]);
+
   // Calibration events
   useEffect(() => {
     const unsubProgress = window.electronAPI?.onCalibrationProgress?.((event) => {
@@ -583,6 +604,9 @@ function App() {
       }
       if (currentView === 'modules') {
         return <ModuleManagerView />;
+      }
+      if (currentView === 'companion') {
+        return <CompanionDashboard />;
       }
       if (currentView === 'settings') {
         return <SettingsView />;
@@ -677,6 +701,8 @@ function App() {
         return <LuaGraphView />;
       case 'modules':
         return <ModuleManagerView />;
+      case 'companion':
+        return <CompanionDashboard />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;

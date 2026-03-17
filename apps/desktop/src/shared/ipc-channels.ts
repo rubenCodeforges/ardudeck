@@ -388,6 +388,47 @@ export const IPC_CHANNELS = {
   APP_INSTALL_UPDATE: 'app:install-update',
   APP_UPDATE_STATUS: 'app:update-status',
   APP_OPEN_EXTERNAL: 'app:open-external',
+
+  // =========================================================================
+  // Companion Computer (Agent WebSocket + MAVLink Layer 1)
+  // =========================================================================
+
+  // Connection management
+  COMPANION_CONNECT: 'companion:connect',
+  COMPANION_DISCONNECT: 'companion:disconnect',
+  COMPANION_CONNECTION_STATE: 'companion:connection-state',
+
+  // Discovery
+  COMPANION_DISCOVER: 'companion:discover',
+  COMPANION_DISCOVER_RESULT: 'companion:discover-result',
+
+  // Layer 1 (MAVLink heartbeat)
+  COMPANION_HEARTBEAT: 'companion:heartbeat',
+  COMPANION_STATUSTEXT: 'companion:statustext',
+
+  // Layer 2 (Agent — real-time streams via WebSocket)
+  COMPANION_METRICS: 'companion:metrics',
+  COMPANION_PROCESSES: 'companion:processes',
+  COMPANION_PROCESS_KILL: 'companion:process-kill',
+  COMPANION_LOGS: 'companion:logs',
+  COMPANION_SERVICES: 'companion:services',
+  COMPANION_SERVICE_ACTION: 'companion:service-action',
+  COMPANION_FILES_LIST: 'companion:files-list',
+  COMPANION_FILE_READ: 'companion:file-read',
+  COMPANION_FILE_WRITE: 'companion:file-write',
+  COMPANION_TERMINAL_SEND: 'companion:terminal-send',       // renderer -> main (keystrokes)
+  COMPANION_TERMINAL_DATA: 'companion:terminal-data',       // main -> renderer (output)
+  COMPANION_TERMINAL_RESIZE: 'companion:terminal-resize',
+  COMPANION_NETWORK: 'companion:network',
+  COMPANION_INFO: 'companion:info',
+
+  // Layer 3 (Docker / BlueOS)
+  COMPANION_CONTAINERS: 'companion:containers',
+  COMPANION_CONTAINER_ACTION: 'companion:container-action',
+  COMPANION_CONTAINER_LOGS: 'companion:container-logs',
+  COMPANION_EXTENSIONS: 'companion:extensions',
+  COMPANION_EXTENSION_INSTALL: 'companion:extension-install',
+  COMPANION_EXTENSION_REMOVE: 'companion:extension-remove',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -408,6 +449,38 @@ export interface ConnectOptions {
   udpRemotePort?: number;
   /** Force a specific protocol, skipping auto-detection */
   protocol?: 'mavlink' | 'msp';
+}
+
+/**
+ * Companion computer connect options
+ */
+export interface CompanionConnectOptions {
+  host: string;
+  port?: number;  // Default: 48400
+  token: string;
+}
+
+/**
+ * Companion connection state (sent over COMPANION_CONNECTION_STATE)
+ */
+export interface CompanionConnectionIpcState {
+  state: 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+  host: string | null;
+  port: number | null;
+  agentVersion: string | null;
+  protocolVersion: string | null;
+  versionMismatch: boolean;
+  reconnectAttempt: number;
+}
+
+/**
+ * Companion discovery result
+ */
+export interface CompanionDiscoveryResult {
+  host: string;
+  port: number;
+  hostname: string;
+  source: 'mdns' | 'manual' | 'mavlink-hint';
 }
 
 /**

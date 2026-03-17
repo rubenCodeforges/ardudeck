@@ -63,7 +63,7 @@ export type LayerKey = keyof typeof MAP_LAYERS;
  */
 export function resolveTileUrl(layerKey: LayerKey, z: number, x: number, y: number): string {
   const layer = MAP_LAYERS[layerKey];
-  let url = layer.url;
+  let url: string = layer.url;
 
   // Rotate subdomains deterministically based on (x + y) to spread load
   if (layer.subdomains.length > 0) {

@@ -21,6 +21,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ardudeck/companion-types": "workspace:*",
     "@ardudeck/comms": "workspace:*",
     "@ardudeck/mavlink-ts": "workspace:*",
     "@ardudeck/msp-ts": "workspace:*",
@@ -40,10 +41,12 @@
     "react-leaflet": "4.2.1",
     "serialport": "^12.0.0",
     "usb": "^2.16.0",
+    "ws": "^8.18.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@electron-toolkit/utils": "^3.0.0",
+    "@types/ws": "^8.5.0",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20.10.5",
     "@types/three": "^0.170.0",

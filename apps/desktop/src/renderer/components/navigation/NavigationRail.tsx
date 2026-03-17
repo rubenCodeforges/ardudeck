@@ -1,5 +1,6 @@
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useSettingsStore } from '../../stores/settings-store';
 
 interface NavItem {
   id: ViewId;
@@ -128,6 +129,17 @@ const calibrationNavItem: NavItem = {
   ),
 };
 
+// Companion nav item - only shown when a companion is detected
+const companionNavItem: NavItem = {
+  id: 'companion',
+  label: 'Companion Computer',
+  icon: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+    </svg>
+  ),
+};
+
 // Future navigation items (disabled placeholders)
 const futureItems: (Omit<NavItem, 'id'> & { id: string })[] = [];
 
@@ -153,6 +165,10 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
   }
   if (showCli) {
     allNavItems.push(cliNavItem);
+  }
+  const companionUnlocked = useSettingsStore((s) => s.companionUnlocked);
+  if (connectionState.isConnected && companionUnlocked) {
+    allNavItems.push(companionNavItem);
   }
 
   const handleClick = (viewId: ViewId) => {

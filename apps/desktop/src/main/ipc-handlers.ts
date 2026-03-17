@@ -17,6 +17,7 @@ import {
   type SerialPortInfo,
   type ScanResult,
 } from '@ardudeck/comms';
+import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers.js';
 import {
   MAVLinkParser,
   type MAVLinkPacket,
@@ -877,6 +878,15 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const autopilotType = payload[5]!;
       const baseMode = payload[6]!;
 
+      // Companion computer heartbeat detection (MAV_COMP_ID_ONBOARD_COMPUTER = 191)
+      if (packet.compid === 191) {
+        mainWindow.webContents.send(IPC_CHANNELS.COMPANION_HEARTBEAT, {
+          online: true,
+          lastSeen: Date.now(),
+          systemType: `type-${vehicleType}`,
+        });
+      }
+
       // Only process heartbeats from the connected autopilot, not companion computers/cameras/etc.
       if (NON_VEHICLE_TYPES.has(vehicleType)) break;
       if (connectionState.componentId != null && packet.compid !== connectionState.componentId) break;
@@ -1037,6 +1047,14 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // v1 payloads are 51 bytes (no extensions), v2 payloads are 54 bytes
       const severity = payload[0]!;
       const text = new TextDecoder().decode(payload.slice(1, 51)).replace(/\0.*$/, '');
+
+      // Forward STATUSTEXT from companion computer (MAV_COMP_ID_ONBOARD_COMPUTER = 191)
+      if (packet.compid === 191) {
+        mainWindow.webContents.send(IPC_CHANNELS.COMPANION_STATUSTEXT, {
+          severity,
+          text,
+        });
+      }
       const chunkId = payload.length >= 54 ? readUint16(payload, 51) : 0;
       const chunkSeq = payload.length >= 54 ? (payload[53] ?? 0) : 0;
 
@@ -6007,6 +6025,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Initialize auto-updater (handles auto-check on its own schedule)
   initAutoUpdater(mainWindow);
+
+  // Companion computer (agent WebSocket)
+  registerCompanionIpcHandlers(mainWindow);
 }
 
 /**

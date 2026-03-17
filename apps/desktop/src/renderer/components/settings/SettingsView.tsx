@@ -1560,6 +1560,8 @@ export function SettingsView() {
 function ExperimentalFeaturesSection() {
   const surveyUnlocked = useSettingsStore((s) => s.surveyUnlocked);
   const setSurveyUnlocked = useSettingsStore((s) => s.setSurveyUnlocked);
+  const companionUnlocked = useSettingsStore((s) => s.companionUnlocked);
+  const setCompanionUnlocked = useSettingsStore((s) => s.setCompanionUnlocked);
 
   return (
     <div className="mt-8">
@@ -1596,6 +1598,26 @@ function ExperimentalFeaturesSection() {
             >
               <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
                 surveyUnlocked ? 'left-[18px]' : 'left-0.5'
+              }`} />
+            </button>
+          </div>
+
+          {/* Companion Computer */}
+          <div className="flex items-center justify-between bg-gray-900/40 rounded-lg p-3">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-gray-200 font-medium">Companion Computer</div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                Monitor and manage companion boards (Raspberry Pi, ESP32, Jetson) with remote terminal, metrics, and service control
+              </div>
+            </div>
+            <button
+              onClick={() => setCompanionUnlocked(!companionUnlocked)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                companionUnlocked ? 'bg-purple-600' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
+                companionUnlocked ? 'left-[18px]' : 'left-0.5'
               }`} />
             </button>
           </div>

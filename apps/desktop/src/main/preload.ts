@@ -4,7 +4,8 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult } from '../shared/ipc-channels.js';
+import type { SystemInfo, NetworkInfo, MetricsData, ProcessInfo, LogEntry, FileEntry, ServiceInfo, ServiceAction, ContainerInfo, ContainerAction, ExtensionInfo } from '@ardudeck/companion-types';
 import type { InstalledModule, ModuleProgress, UpdateAvailable } from '../shared/module-types.js';
 import type { ParamChange, ParamCheckpoint } from '../shared/param-history-types.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
@@ -1380,6 +1381,116 @@ const api = {
     const handler = (_: unknown, progress: ModuleProgress) => callback(progress);
     ipcRenderer.on(IPC_CHANNELS.MODULE_PROGRESS, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MODULE_PROGRESS, handler);
+  },
+
+  // =============================================================================
+  // Companion Computer (Agent WebSocket)
+  // =============================================================================
+
+  companionConnect: (options: CompanionConnectOptions): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_CONNECT, options),
+
+  companionDisconnect: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_DISCONNECT),
+
+  companionDiscover: (host?: string): Promise<CompanionDiscoveryResult | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_DISCOVER, host),
+
+  companionGetInfo: (): Promise<SystemInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_INFO),
+
+  companionGetNetwork: (): Promise<NetworkInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_NETWORK),
+
+  companionGetServices: (): Promise<ServiceInfo[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SERVICES),
+
+  companionServiceAction: (name: string, action: ServiceAction): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SERVICE_ACTION, name, action),
+
+  companionKillProcess: (pid: number): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_PROCESS_KILL, pid),
+
+  companionListFiles: (path: string): Promise<FileEntry[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_FILES_LIST, path),
+
+  companionReadFile: (path: string): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_FILE_READ, path),
+
+  companionWriteFile: (path: string, data: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_FILE_WRITE, path, data),
+
+  companionSendTerminalData: (data: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_TERMINAL_SEND, data),
+
+  companionResizeTerminal: (cols: number, rows: number): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_TERMINAL_RESIZE, cols, rows),
+
+  companionGetContainers: (): Promise<ContainerInfo[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_CONTAINERS),
+
+  companionContainerAction: (id: string, action: ContainerAction): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_CONTAINER_ACTION, id, action),
+
+  companionGetContainerLogs: (id: string): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_CONTAINER_LOGS, id),
+
+  companionGetExtensions: (): Promise<ExtensionInfo[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_EXTENSIONS),
+
+  companionInstallExtension: (identifier: string, version: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_EXTENSION_INSTALL, identifier, version),
+
+  companionRemoveExtension: (identifier: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COMPANION_EXTENSION_REMOVE, identifier),
+
+  // Companion event listeners
+  onCompanionConnectionState: (callback: (state: CompanionConnectionIpcState) => void) => {
+    const handler = (_: unknown, state: CompanionConnectionIpcState) => callback(state);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_CONNECTION_STATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_CONNECTION_STATE, handler);
+  },
+
+  onCompanionMetrics: (callback: (data: MetricsData) => void) => {
+    const handler = (_: unknown, data: MetricsData) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_METRICS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_METRICS, handler);
+  },
+
+  onCompanionProcesses: (callback: (data: ProcessInfo[]) => void) => {
+    const handler = (_: unknown, data: ProcessInfo[]) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_PROCESSES, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_PROCESSES, handler);
+  },
+
+  onCompanionLogs: (callback: (data: LogEntry) => void) => {
+    const handler = (_: unknown, data: LogEntry) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_LOGS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_LOGS, handler);
+  },
+
+  onCompanionTerminalData: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_TERMINAL_DATA, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_TERMINAL_DATA, handler);
+  },
+
+  onCompanionDiscoveryResult: (callback: (result: CompanionDiscoveryResult) => void) => {
+    const handler = (_: unknown, result: CompanionDiscoveryResult) => callback(result);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_DISCOVER_RESULT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_DISCOVER_RESULT, handler);
+  },
+
+  onCompanionHeartbeat: (callback: (data: { online: boolean; lastSeen: number; systemType: string }) => void) => {
+    const handler = (_: unknown, data: { online: boolean; lastSeen: number; systemType: string }) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_HEARTBEAT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_HEARTBEAT, handler);
+  },
+
+  onCompanionStatusText: (callback: (data: { severity: number; text: string }) => void) => {
+    const handler = (_: unknown, data: { severity: number; text: string }) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.COMPANION_STATUSTEXT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_STATUSTEXT, handler);
   },
 };
 
