@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -26,6 +26,15 @@ import { CachedAreaOverlay } from '../map/CachedAreaOverlay';
 
 // Shared map layer definitions (centralized)
 import { MAP_LAYERS, type LayerKey } from '../../../shared/map-layers';
+
+// Map overlays (weather radar, airspace, airports)
+import { WeatherRadarOverlay } from '../map/overlays/WeatherRadarOverlay';
+import { AirspaceOverlay } from '../map/overlays/AirspaceOverlay';
+import { AirportOverlay } from '../map/overlays/AirportOverlay';
+import { AirspaceLegend } from '../map/overlays/AirspaceLegend';
+import { OverlayToggles } from '../map/overlays/OverlayToggles';
+import { ApiKeyDialog } from '../map/overlays/ApiKeyDialog';
+import { useOverlayStore } from '../../stores/overlay-store';
 
 // Telemetry map only uses a subset of layers (no Google layers)
 const TELEMETRY_LAYERS = {
@@ -944,6 +953,42 @@ const TelemetryMap3D = React.memo(function TelemetryMap3D() {
   );
 });
 
+// Overlay data fetcher (runs inside MapContainer)
+function OverlayFetcher() {
+  const map = useMap();
+  const activeOverlays = useOverlayStore((s) => s.activeOverlays);
+  const fetchOverlayData = useOverlayStore((s) => s.fetchOverlayData);
+  const fetchRadarMeta = useOverlayStore((s) => s.fetchRadarMeta);
+
+  useEffect(() => {
+    if (activeOverlays.has('radar')) {
+      fetchRadarMeta();
+      const interval = setInterval(fetchRadarMeta, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeOverlays, fetchRadarMeta]);
+
+  useEffect(() => {
+    useOverlayStore.getState().checkApiKey();
+  }, []);
+
+  useMapEvents({
+    moveend: () => {
+      const center = map.getCenter();
+      fetchOverlayData(center.lat, center.lng, map.getZoom());
+    },
+  });
+
+  useEffect(() => {
+    if (activeOverlays.has('airspace') || activeOverlays.has('airports')) {
+      const center = map.getCenter();
+      fetchOverlayData(center.lat, center.lng, map.getZoom());
+    }
+  }, [activeOverlays, fetchOverlayData, map]);
+
+  return null;
+}
+
 // ─── MapPanel entry point — delegates to 2D or 3D based on global mapMode ────
 
 export const MapPanel = React.memo(function MapPanel() {
@@ -985,6 +1030,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
   const [headingLineLength, setHeadingLineLength] = useState(100); // meters
   const [mapBounds, setMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const handleBoundsChange = useCallback((b: { north: number; south: number; east: number; west: number }) => setMapBounds(b), []);
+  const activeOverlays = useOverlayStore((s) => s.activeOverlays);
   const lastUpdateRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -1198,8 +1244,16 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           </svg>
           Height
         </button>
+        <div className="border-t border-gray-700/50 my-0.5" />
+        <OverlayToggles />
         <OfflineAreaDownload bounds={mapBounds} activeLayer={currentLayer} />
       </div>
+
+      {/* Airspace legend */}
+      {activeOverlays.has('airspace') && <AirspaceLegend />}
+
+      {/* API key dialog */}
+      <ApiKeyDialog />
 
       {/* Compass overlay */}
       {showCompass && <CompassOverlay heading={vfrHud.heading} />}
@@ -1321,6 +1375,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           key={currentLayer}
           url={`tile-cache://${currentLayer}/{z}/{x}/{y}.png`}
           maxZoom={layer.maxZoom}
+          maxNativeZoom={layer.maxNativeZoom ?? layer.maxZoom}
         />
 
         {/* Terrain elevation heatmap overlay */}
@@ -1463,6 +1518,12 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           </>
         )}
         {/* ======= END MISSION OVERLAYS ======= */}
+
+        {/* Map overlays */}
+        <OverlayFetcher />
+        {activeOverlays.has('airspace') && <AirspaceOverlay />}
+        {activeOverlays.has('radar') && <WeatherRadarOverlay />}
+        {activeOverlays.has('airports') && <AirportOverlay />}
 
         {/* Vehicle marker - always show */}
         <Marker
