@@ -8,6 +8,10 @@ export interface MapLayer {
   url: string;
   subdomains: readonly string[];
   maxZoom: number;
+  /** Max zoom at which tiles actually exist on the server. Beyond this, tiles are upscaled. */
+  maxNativeZoom?: number;
+  /** Extra headers to send when fetching tiles (e.g. Referer for Google) */
+  headers?: Record<string, string>;
 }
 
 export const MAP_LAYERS = {
@@ -25,15 +29,19 @@ export const MAP_LAYERS = {
   },
   googleSat: {
     name: 'Google Sat',
-    url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-    subdomains: [],
-    maxZoom: 21,
+    url: 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 22,
+    maxNativeZoom: 20,
+    headers: { Referer: 'https://www.google.com/' },
   },
   googleHybrid: {
     name: 'Hybrid',
-    url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    subdomains: [],
-    maxZoom: 21,
+    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 22,
+    maxNativeZoom: 20,
+    headers: { Referer: 'https://www.google.com/' },
   },
   terrain: {
     name: 'Terrain',
@@ -52,6 +60,13 @@ export const MAP_LAYERS = {
     url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
     subdomains: [],
     maxZoom: 15,
+  },
+  radar: {
+    name: 'Radar',
+    url: 'https://tilecache.rainviewer.com/{radarPath}/256/{z}/{x}/{y}/2/1_1.png',
+    subdomains: [],
+    maxZoom: 22,
+    maxNativeZoom: 6,
   },
 } as const satisfies Record<string, MapLayer>;
 

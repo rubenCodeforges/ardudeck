@@ -93,12 +93,27 @@ export function setupTileCacheProtocol(): void {
         return new Response(null, { status: 400 });
       }
 
-      // Check if layer is valid
-      if (!(layer in MAP_LAYERS)) {
+      // Check if layer is valid (support radar-{path} dynamic layers)
+      const isRadarLayer = layer.startsWith('radar-');
+      if (!(layer in MAP_LAYERS) && !isRadarLayer) {
         return new Response(null, { status: 404 });
       }
 
-      const tilePath = getTilePath(layer, z, x, y);
+      const layerKey = isRadarLayer ? 'radar' : layer;
+      const layerDef = MAP_LAYERS[layerKey as LayerKey];
+
+      // Clamp zoom to maxNativeZoom — fetch parent tile if beyond native range
+      let fetchZ = z;
+      let fetchX = x;
+      let fetchY = y;
+      if ('maxNativeZoom' in layerDef && z > layerDef.maxNativeZoom) {
+        const zDiff = z - layerDef.maxNativeZoom;
+        fetchZ = layerDef.maxNativeZoom;
+        fetchX = x >> zDiff;
+        fetchY = y >> zDiff;
+      }
+
+      const tilePath = getTilePath(layer, fetchZ, fetchX, fetchY);
 
       // 1. Try disk cache first
       try {
@@ -112,17 +127,29 @@ export function setupTileCacheProtocol(): void {
 
       // 2. Fetch from network
       try {
-        const realUrl = resolveTileUrl(layer as LayerKey, z, x, y);
-        const response = await fetch(realUrl);
+        let realUrl: string;
+        if (isRadarLayer) {
+          // Layer name is radar-{path}, e.g. radar-/v2/radar/1609402200
+          const radarPath = layer.substring(6);
+          realUrl = `https://tilecache.rainviewer.com${radarPath}/256/${fetchZ}/${fetchX}/${fetchY}/2/1_1.png`;
+        } else {
+          realUrl = resolveTileUrl(layerKey as LayerKey, fetchZ, fetchX, fetchY);
+        }
+        const fetchHeaders: Record<string, string> = {};
+        if ('headers' in layerDef) Object.assign(fetchHeaders, layerDef.headers);
+        const response = await fetch(realUrl, { headers: fetchHeaders });
 
         if (!response.ok) {
-          return new Response(null, { status: response.status });
+          // Return transparent PNG instead of error status to avoid black tiles
+          return new Response(TRANSPARENT_PNG, {
+            headers: { 'Content-Type': 'image/png' },
+          });
         }
 
         const buffer = Buffer.from(await response.arrayBuffer());
 
         // Save to disk cache (fire-and-forget, don't block response)
-        const dir = join(getCacheDir(), layer, String(z), String(x));
+        const dir = join(getCacheDir(), layer, String(fetchZ), String(fetchX));
         mkdir(dir, { recursive: true })
           .then(() => writeFile(tilePath, buffer))
           .catch(() => { /* ignore write errors */ });
@@ -373,8 +400,11 @@ async function runDownload(
       }
 
       try {
+        const layerDef = MAP_LAYERS[job.layer];
         const realUrl = resolveTileUrl(job.layer, job.z, job.x, job.y);
-        const response = await fetch(realUrl, { signal: controller.signal });
+        const fetchHeaders: Record<string, string> = {};
+        if ('headers' in layerDef) Object.assign(fetchHeaders, layerDef.headers);
+        const response = await fetch(realUrl, { signal: controller.signal, headers: fetchHeaders });
 
         if (response.ok) {
           const buffer = Buffer.from(await response.arrayBuffer());
