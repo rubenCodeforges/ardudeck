@@ -96,3 +96,6 @@ MissionPlanner-ref/
 # Debug
 .debug/
 inav-configurator
+
+# Dev-only test driver discovery file
+.ardudeck-mcp.json
