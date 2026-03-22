@@ -1542,5 +1542,38 @@ const api = {
 // Expose to renderer
 contextBridge.exposeInMainWorld('electronAPI', api);
 
+// Dev-only: test driver IPC bridge
+// Uses contextBridge because contextIsolation: true means direct window
+// assignments are not visible to the renderer. Callbacks receive only
+// serializable data — the renderer sends responses via sendTestResponse().
+if (process.env.NODE_ENV === 'development') {
+  contextBridge.exposeInMainWorld('__testing', {
+    /**
+     * Register a listener for incoming test requests from main process.
+     * The callback receives (requestId, params) — both serializable.
+     * The renderer must call sendTestResponse() with the result.
+     */
+    onTestRequest: (channel: string, callback: (requestId: string, params: any) => void) => {
+      ipcRenderer.on(channel, (_event: any, requestId: string, params: any) => {
+        callback(requestId, params);
+      });
+    },
+
+    /**
+     * Send a test response back to the main process.
+     */
+    sendTestResponse: (channel: string, requestId: string, result: { success: boolean; data?: any; error?: string }) => {
+      ipcRenderer.send(`${channel}:response`, requestId, result);
+    },
+
+    /**
+     * Signal that the test driver has finished registering all handlers.
+     */
+    signalReady: () => {
+      ipcRenderer.send('testing:driver-ready');
+    },
+  });
+}
+
 // Type declaration for renderer
 export type ElectronAPI = typeof api;
