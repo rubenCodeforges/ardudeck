@@ -18,6 +18,7 @@ import type { DetectedBoard, FirmwareVersion, FlashProgress, FlashResult, Firmwa
 import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEvent } from '../shared/calibration-types.js';
 import type { MissionSummary, StoredMission, SaveMissionPayload, FlightLog, MissionListFilter, MissionSortOptions } from '../shared/mission-library-types.js';
 import type { DroneBridgeInfo, DroneBridgeStats, DroneBridgeSettings, DroneBridgeClients, DroneBridgeDetected } from '../shared/dronebridge-types.js';
+import type { RainViewerMeta, AirspaceData, AirportData } from '../shared/overlay-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -1526,11 +1527,11 @@ const api = {
   },
 
   // Map overlays
-  getRadarMeta: (): Promise<unknown> =>
+  getRadarMeta: (): Promise<RainViewerMeta | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.OVERLAY_GET_RADAR_META),
-  getAirspace: (params: { lat: number; lon: number; zoom: number }): Promise<unknown> =>
+  getAirspace: (params: { lat: number; lon: number; zoom: number }): Promise<{ error?: string; data: AirspaceData[] }> =>
     ipcRenderer.invoke(IPC_CHANNELS.OVERLAY_GET_AIRSPACE, params),
-  getAirports: (params: { lat: number; lon: number; zoom: number }): Promise<unknown> =>
+  getAirports: (params: { lat: number; lon: number; zoom: number }): Promise<{ error?: string; data: AirportData[] }> =>
     ipcRenderer.invoke(IPC_CHANNELS.OVERLAY_GET_AIRPORTS, params),
   getApiKey: (service: string): Promise<{ hasKey: boolean; key: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.OVERLAY_GET_API_KEY, service),
