@@ -82,8 +82,10 @@ export function FileBrowserPanel() {
       const data = await window.electronAPI.companionReadFile(entry.path);
       // Handle both string and binary (ArrayBuffer/Uint8Array) responses
       let blob: Blob;
-      if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+      if (data instanceof ArrayBuffer) {
         blob = new Blob([data]);
+      } else if (data instanceof Uint8Array) {
+        blob = new Blob([data.buffer]);
       } else if (typeof data === 'string') {
         blob = new Blob([data]);
       } else {

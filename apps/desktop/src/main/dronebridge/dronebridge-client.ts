@@ -10,7 +10,7 @@ import type {
   DroneBridgeClients,
 } from '../../shared/dronebridge-types.js';
 
-const DEFAULT_TIMEOUT = 3000;
+const DEFAULT_TIMEOUT = 5000;
 
 /** Fetch with AbortController timeout */
 async function fetchWithTimeout(

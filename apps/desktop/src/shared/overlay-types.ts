@@ -1,4 +1,4 @@
-export type OverlayId = 'radar' | 'airspace' | 'airports';
+export type OverlayId = 'radar' | 'openaip' | 'airspace';
 
 // ─── RainViewer ──────────────────────────────────────────────────────────────
 

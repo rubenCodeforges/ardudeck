@@ -5402,6 +5402,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return isEsptoolAvailable();
   });
 
+  ipcMain.handle(IPC_CHANNELS.ESP32_DOWNLOAD_ESPTOOL, async () => {
+    const { downloadEsptool } = await import('./firmware/esp32-flasher.js');
+    await downloadEsptool();
+    return true;
+  });
+
   ipcMain.handle(IPC_CHANNELS.ESP32_DETECT, async (_event, port: string) => {
     const { detectEsp32Chip } = await import('./firmware/esp32-flasher.js');
     return detectEsp32Chip(port);
@@ -5414,6 +5420,15 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     const { flashEsp32 } = await import('./firmware/esp32-flasher.js');
     firmwareAbortController = new AbortController();
     return flashEsp32(options, mainWindow, firmwareAbortController);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ESP32_FLASH_TEMPLATE, async (
+    _event,
+    options: { templateId: string; port: string; detectedChip?: string; eraseAll?: boolean },
+  ) => {
+    const { flashTemplate } = await import('./firmware/esp32-flasher.js');
+    firmwareAbortController = new AbortController();
+    return flashTemplate(options, mainWindow, firmwareAbortController);
   });
 
   // Register MSP handlers for Betaflight/iNav/Cleanflight support

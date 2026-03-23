@@ -16,7 +16,7 @@ const apiKeyStore = new Store<ApiKeyStoreSchema>({
   defaults: { keys: {} },
 });
 
-function getApiKey(service: string): string | null {
+export function getApiKey(service: string): string | null {
   const stored = apiKeyStore.get('keys')[service];
   if (!stored) return null;
   try {

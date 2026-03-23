@@ -325,6 +325,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       }
 
       // MAVLink path for ArduPilot boards
+      // Home position is a planning reference only — ArduPilot sets its own home on arm via GPS.
       const result = await window.electronAPI?.uploadMission(missionItems);
       if (result?.success) {
         // Don't set isLoading: false here - wait for MISSION_ACK via onMissionUploadComplete
@@ -390,14 +391,8 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
   // Local editing - simple: one click = one waypoint
   // First waypoint is always Takeoff, subsequent are regular waypoints
-  // Requires home position to be set first
   addWaypoint: (lat: number, lon: number, alt?: number) => {
-    const { missionItems, homePosition } = get();
-
-    // Can't add waypoints without home position
-    if (!homePosition) {
-      return;
-    }
+    const { missionItems } = get();
 
     // Get default altitudes from settings
     const { missionDefaults } = useSettingsStore.getState();

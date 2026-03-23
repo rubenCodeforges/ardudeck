@@ -31,32 +31,40 @@ function createTerrainGridLayer(
   opacity: number,
   fixedRange: ElevationRange | null,
   referenceAlt: number | null,
-  onElevationRangeChange?: (range: ElevationRange) => void,
+  onElevationRangeChange: (range: ElevationRange) => void,
 ) {
   // Track min/max elevation across all visible tiles
   const tileElevations = new Map<string, { min: number; max: number }>();
+  let reportTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Debounce range reporting — wait for all tiles to finish loading before
+  // reporting, so the parent gets a stable range and only recreates the layer once
   function reportRange() {
-    if (!onElevationRangeChange) return;
-    let globalMin = Infinity;
-    let globalMax = -Infinity;
-    for (const val of tileElevations.values()) {
-      if (val.min < globalMin) globalMin = val.min;
-      if (val.max > globalMax) globalMax = val.max;
-    }
-    if (globalMin === Infinity) {
-      onElevationRangeChange({ min: 0, max: 0 });
-    } else {
-      onElevationRangeChange({ min: globalMin, max: globalMax });
-    }
+    if (reportTimer) clearTimeout(reportTimer);
+    reportTimer = setTimeout(() => {
+      let globalMin = Infinity;
+      let globalMax = -Infinity;
+      for (const val of tileElevations.values()) {
+        if (val.min < globalMin) globalMin = val.min;
+        if (val.max > globalMax) globalMax = val.max;
+      }
+      if (globalMin === Infinity) {
+        onElevationRangeChange({ min: 0, max: 0 });
+      } else {
+        onElevationRangeChange({ min: globalMin, max: globalMax });
+      }
+    }, 500);
   }
 
-  // When fixedRange is set, we normalize elevations to [fixedRange.min, fixedRange.max]
-  // and map that onto the LUT. Otherwise we use absolute elevation mapping.
+  // Capture color-mapping config at layer creation time — all tiles in this
+  // layer instance use the same mapping, so there are no tile seams
   const useFixed = fixedRange !== null && fixedRange.max > fixedRange.min;
   const fixedMin = useFixed ? fixedRange!.min : 0;
   const fixedSpan = useFixed ? (fixedRange!.max - fixedRange!.min) : 0;
   const refAlt = referenceAlt ?? 0;
+  const lutData = lut.data;
+  const lutSteps = lut.steps;
+  const lutMaxElev = lut.maxElevation;
 
   const TerrainLayer = L.GridLayer.extend({
     options: {
@@ -104,10 +112,6 @@ function createTerrainGridLayer(
 
         let tileMin = Infinity;
         let tileMax = -Infinity;
-
-        const lutData = lut.data;
-        const lutSteps = lut.steps;
-        const lutMaxElev = lut.maxElevation;
 
         for (let i = 0; i < src.length; i += 4) {
           const r = src[i]!;
@@ -173,7 +177,6 @@ function createTerrainGridLayer(
     const key = (tile as any)._terrainKey as string | undefined;
     if (key) {
       tileElevations.delete(key);
-      reportRange();
     }
   });
 

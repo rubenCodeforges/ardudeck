@@ -9,6 +9,7 @@ import type {
   ContainerInfo,
   ExtensionInfo,
 } from '@ardudeck/companion-types';
+import type { DroneBridgeInfo, DroneBridgeStats } from '../../shared/dronebridge-types';
 
 const MAX_LOG_ENTRIES = 500;
 
@@ -33,6 +34,11 @@ interface CompanionStore {
   containers: ContainerInfo[];
   extensions: ExtensionInfo[];
 
+  // DroneBridge
+  droneBridgeIp: string | null;
+  droneBridgeInfo: DroneBridgeInfo | null;
+  droneBridgeStats: DroneBridgeStats | null;
+
   // Actions
   setConnectionState: (state: CompanionConnectionIpcState) => void;
   setHeartbeat: (online: boolean, lastSeen: number, type?: string) => void;
@@ -43,6 +49,9 @@ interface CompanionStore {
   addLog: (entry: LogEntry) => void;
   setContainers: (data: ContainerInfo[]) => void;
   setExtensions: (data: ExtensionInfo[]) => void;
+  setDroneBridgeIp: (ip: string | null) => void;
+  setDroneBridgeInfo: (info: DroneBridgeInfo | null) => void;
+  setDroneBridgeStats: (stats: DroneBridgeStats | null) => void;
   reset: () => void;
 }
 
@@ -72,6 +81,10 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
 
   containers: [],
   extensions: [],
+
+  droneBridgeIp: null,
+  droneBridgeInfo: null,
+  droneBridgeStats: null,
 
   setConnectionState: (state) => set({
     connectionState: state,
@@ -105,6 +118,10 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
 
   setExtensions: (data) => set({ extensions: data }),
 
+  setDroneBridgeIp: (ip) => set({ droneBridgeIp: ip }),
+  setDroneBridgeInfo: (info) => set({ droneBridgeInfo: info }),
+  setDroneBridgeStats: (stats) => set({ droneBridgeStats: stats }),
+
   reset: () => set({
     connectionState: { ...initialConnectionState },
     detected: false,
@@ -118,5 +135,8 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
     logs: [],
     containers: [],
     extensions: [],
+    droneBridgeIp: null,
+    droneBridgeInfo: null,
+    droneBridgeStats: null,
   }),
 }));

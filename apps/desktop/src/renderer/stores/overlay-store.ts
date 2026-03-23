@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { OverlayId, AirspaceData, AirportData, RainViewerMeta } from '../../shared/overlay-types';
+import type { OverlayId, AirspaceData, RainViewerMeta } from '../../shared/overlay-types';
 
 interface OverlayStore {
   // Toggle state
@@ -10,10 +10,9 @@ interface OverlayStore {
   radarMeta: RainViewerMeta | null;
   fetchRadarMeta: () => Promise<void>;
 
-  // Airspace & airports
+  // Airspace zones
   airspaceData: AirspaceData[];
-  airportData: AirportData[];
-  fetchOverlayData: (lat: number, lon: number, zoom: number) => Promise<void>;
+  fetchAirspaceData: (lat: number, lon: number, zoom: number) => Promise<void>;
 
   // API key state
   openaipKeyMissing: boolean;
@@ -21,7 +20,7 @@ interface OverlayStore {
   setShowApiKeyDialog: (show: boolean) => void;
   checkApiKey: () => Promise<boolean>;
 
-  // Throttling state
+  // Throttling state (airspace fetching)
   _lastFetchPos: { lat: number; lon: number; zoom: number } | null;
   _lastFetchTime: number;
 }
@@ -44,7 +43,6 @@ export const useOverlayStore = create<OverlayStore>((set, get) => ({
   activeOverlays: new Set(),
   radarMeta: null,
   airspaceData: [],
-  airportData: [],
   openaipKeyMissing: false,
   showApiKeyDialog: false,
   _lastFetchPos: null,
@@ -56,8 +54,8 @@ export const useOverlayStore = create<OverlayStore>((set, get) => ({
     if (current.has(id)) {
       current.delete(id);
     } else {
-      // If enabling an OpenAIP overlay, check for API key first
-      if ((id === 'airspace' || id === 'airports') && state.openaipKeyMissing) {
+      // If enabling an OpenAIP-dependent overlay, check for API key first
+      if ((id === 'openaip' || id === 'airspace') && state.openaipKeyMissing) {
         set({ showApiKeyDialog: true });
         return;
       }
@@ -84,18 +82,13 @@ export const useOverlayStore = create<OverlayStore>((set, get) => ({
     }
   },
 
-  fetchOverlayData: async (lat, lon, zoom) => {
+  fetchAirspaceData: async (lat, lon, zoom) => {
     const state = get();
+    if (!state.activeOverlays.has('airspace')) return;
+
     const now = Date.now();
-    const hasAirspace = state.activeOverlays.has('airspace');
-    const hasAirports = state.activeOverlays.has('airports');
-
-    if (!hasAirspace && !hasAirports) return;
-
-    // Throttle: skip if too recent
     if (now - state._lastFetchTime < MIN_FETCH_INTERVAL) return;
 
-    // Skip if position hasn't changed enough
     if (state._lastFetchPos) {
       const dist = haversineKm(lat, lon, state._lastFetchPos.lat, state._lastFetchPos.lon);
       const zoomDelta = Math.abs(zoom - state._lastFetchPos.zoom);
@@ -104,33 +97,16 @@ export const useOverlayStore = create<OverlayStore>((set, get) => ({
 
     set({ _lastFetchPos: { lat, lon, zoom }, _lastFetchTime: now });
 
-    const params = { lat, lon, zoom };
-
     try {
-      const [airspaceResult, airportResult] = await Promise.all([
-        hasAirspace ? window.electronAPI.getAirspace(params) : null,
-        hasAirports ? window.electronAPI.getAirports(params) : null,
-      ]);
-
-      if (airspaceResult) {
-        const res = airspaceResult as { error?: string; data: AirspaceData[] };
-        if (res.error === 'no-key') {
-          set({ openaipKeyMissing: true, showApiKeyDialog: true });
-          return;
-        }
-        set({ airspaceData: res.data });
+      const result = await window.electronAPI.getAirspace({ lat, lon, zoom });
+      const res = result as { error?: string; data: AirspaceData[] };
+      if (res.error === 'no-key') {
+        set({ openaipKeyMissing: true, showApiKeyDialog: true });
+        return;
       }
-
-      if (airportResult) {
-        const res = airportResult as { error?: string; data: AirportData[] };
-        if (res.error === 'no-key') {
-          set({ openaipKeyMissing: true, showApiKeyDialog: true });
-          return;
-        }
-        set({ airportData: res.data });
-      }
+      set({ airspaceData: res.data });
     } catch {
-      // Ignore fetch errors — keep stale data
+      // Ignore — keep stale data
     }
   },
 }));

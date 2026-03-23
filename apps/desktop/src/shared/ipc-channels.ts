@@ -144,7 +144,9 @@ export const IPC_CHANNELS = {
   // ESP32 flashing
   ESP32_DETECT: 'esp32:detect',
   ESP32_FLASH: 'esp32:flash',
+  ESP32_FLASH_TEMPLATE: 'esp32:flash-template',
   ESP32_CHECK_ESPTOOL: 'esp32:check-esptool',
+  ESP32_DOWNLOAD_ESPTOOL: 'esp32:download-esptool',
 
   // DroneBridge ESP32
   DRONEBRIDGE_DETECT: 'dronebridge:detect',
@@ -156,6 +158,8 @@ export const IPC_CHANNELS = {
   DRONEBRIDGE_GET_CLIENTS: 'dronebridge:get-clients',
   DRONEBRIDGE_ADD_UDP_CLIENT: 'dronebridge:add-udp-client',
   DRONEBRIDGE_CLEAR_UDP_CLIENTS: 'dronebridge:clear-udp-clients',
+  DRONEBRIDGE_READ_SERIAL: 'dronebridge:read-serial',
+  DRONEBRIDGE_READ_SERIAL_RESET: 'dronebridge:read-serial-reset',
 
   // MSP Connection (Betaflight/iNav/Cleanflight)
   MSP_CONNECT: 'msp:connect',

@@ -23,7 +23,7 @@ import { createMissionThreeJsLayer, type MissionThreeJsLayer } from './mission-t
 import { createVehicleThreeJsLayer, type VehicleThreeJsLayer } from './vehicle-threejs-layer';
 
 // Shared map layer definitions (centralized)
-import { MAP_LAYERS, type LayerKey } from '../../../shared/map-layers';
+import { MAP_LAYERS, type LayerKey, type MapLayer } from '../../../shared/map-layers';
 import { LayerIcon } from '../map/LayerIcon';
 
 // Exclude 'dem' from the layer picker (it's a data layer, not a base map)
@@ -849,17 +849,8 @@ export function Mission3DPanel({
       {navWaypoints.length === 0 && !isTelemetryMode && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-gray-900/80 backdrop-blur-sm px-6 py-4 rounded-xl text-center">
-            {!homePosition ? (
-              <>
-                <div className="text-gray-400 text-sm mb-2">Set Home position first</div>
-                <div className="text-gray-500 text-xs">Switch to 2D to set home and add waypoints</div>
-              </>
-            ) : (
-              <>
-                <div className="text-gray-400 text-sm mb-2">No waypoints yet</div>
-                <div className="text-gray-500 text-xs">Add waypoints in 2D view to see them in 3D</div>
-              </>
-            )}
+            <div className="text-gray-400 text-sm mb-2">No waypoints yet</div>
+            <div className="text-gray-500 text-xs">Add waypoints in 2D view to see them in 3D</div>
           </div>
         </div>
       )}
@@ -875,6 +866,7 @@ function setSourceData(map: maplibregl.Map, id: string, features: GeoJSON.Featur
 }
 
 function buildStyle(layerKey: LayerKey): maplibregl.StyleSpecification {
+  const layer = MAP_LAYERS[layerKey];
   return {
     version: 8,
     sources: {
@@ -882,6 +874,7 @@ function buildStyle(layerKey: LayerKey): maplibregl.StyleSpecification {
         type: 'raster',
         tiles: [getCachedTileUrl(layerKey as BaseLayerKey)],
         tileSize: 256,
+        maxzoom: (layer as MapLayer).maxNativeZoom ?? layer.maxZoom,
       },
     },
     layers: [{ id: 'raster-layer', type: 'raster', source: 'raster-tiles' }],

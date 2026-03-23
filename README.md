@@ -52,9 +52,22 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 ### Interactive Map
 - **Live Vehicle Tracking** - Real-time position with heading indicator
 - **Flight Trail** - Historical path visualization
-- **Multiple Layers** - Street, Satellite, Terrain, Dark mode
+- **Multiple Layers** - Street, Satellite, Google Sat, Hybrid, Terrain, Dark mode
 - **Home Position** - Distance and bearing to home
 - **Overlays** - Compass, attitude indicator, stats
+- **Weather Radar** - RainViewer weather overlay with dynamic color schemes
+- **Airspace Zones** - Colored CTR, restricted, danger, and TMA zone polygons with legend
+- **Aviation Charts** - OpenAIP tile layer with airports, navaids, and zoom-adaptive aviation symbology
+- **Terrain Elevation** - Color-coded height overlay with auto-range and relative-to-craft modes
+- **Offline Maps** - Download map regions for offline use with tile caching
+
+### Companion Board Support
+- **Companion Board Store** - Browse pre-configured templates for ESP32, Raspberry Pi, Jetson, and Orange Pi
+- **ESP32 Flashing** - Direct USB flash with auto-downloaded esptool (DroneBridge, MAVLink bridge)
+- **DroneBridge Integration** - Auto-detect DroneBridge ESP32 on network, view status, configure WiFi/serial settings
+- **Agent Dashboard** - Real-time CPU/RAM/temp metrics, terminal access, service management for companion computers
+- **Dockview Layouts** - Customizable panel layouts with presets (Overview, Debug, Manage)
+- **Encrypted API Keys** - Secure storage for OpenAIP and other service credentials
 
 ### Dockable Dashboard
 - **IDE-Style Panels** - Drag & drop layout customization

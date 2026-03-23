@@ -94,6 +94,13 @@ export interface FlashResult {
   error?: string;
   duration?: number;               // Time taken in ms
   verified?: boolean;
+  /** DroneBridge boot log info read over serial after flash */
+  serialInfo?: {
+    settings: Record<string, unknown> | null;
+    apIp: string | null;
+    ssid: string | null;
+    rawLog: string;
+  };
 }
 
 /**

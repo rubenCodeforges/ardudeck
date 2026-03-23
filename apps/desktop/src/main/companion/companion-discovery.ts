@@ -37,12 +37,13 @@ export function startDiscovery(
     const { Bonjour } = require('bonjour-service');
     bonjourInstance = new Bonjour();
     activeBrowser = bonjourInstance!.find({ type: 'ardudeck-agent', protocol: 'tcp' });
-    activeBrowser!.on('up', (service: BonjourService) => {
-      const host = service.addresses?.[0] ?? service.host;
+    activeBrowser!.on('up', (...args: unknown[]) => {
+      const svc = args[0] as BonjourService;
+      const host = svc.addresses?.[0] ?? svc.host;
       onFound({
         host,
-        port: service.port,
-        hostname: service.name,
+        port: svc.port,
+        hostname: svc.name,
         source: 'mdns',
       });
     });

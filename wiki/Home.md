@@ -27,6 +27,8 @@ ArduDeck is a cross-platform ground control station for ArduPilot, Betaflight, a
 | [[Tuning Presets]] | One-click skill level and mission type presets |
 | [[All Parameters]] | Expert parameter table with search, compare, file ops |
 | [[Firmware Flash]] | Flash ArduPilot, Betaflight, iNav, or custom firmware |
+| [[Map Overlays]] | Weather radar, airspace zones, aviation charts, terrain elevation |
+| [[Companion Board]] | ESP32 flashing, DroneBridge, companion computer management |
 | [[Lua Graph Editor]] | Visual scripting for ArduPilot Lua scripts |
 | [[Lua Node Reference]] | Complete node catalog and API reference |
 | [[Lua Examples]] | Worked examples with generated Lua code |

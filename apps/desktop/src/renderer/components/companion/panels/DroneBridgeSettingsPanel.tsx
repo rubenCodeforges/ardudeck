@@ -125,24 +125,42 @@ export function DroneBridgeSettingsPanel() {
     setForm((prev) => prev ? { ...prev, [key]: value } : prev);
   }, []);
 
-  // Fetch settings on mount
+  // Fetch settings on mount, with retries for freshly booted devices
   useEffect(() => {
     if (!droneBridgeIp) return;
+    let cancelled = false;
 
     const fetchSettings = async () => {
       setLoading(true);
       setError(null);
-      try {
-        const settings = await window.electronAPI.dronebridgeGetSettings(droneBridgeIp);
-        setLoaded(settings);
-        setForm(settings);
-      } catch {
-        setError('Failed to load settings');
-      } finally {
+
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (cancelled) return;
+
+        try {
+          const settings = await window.electronAPI.dronebridgeGetSettings(droneBridgeIp);
+          if (settings) {
+            setLoaded(settings);
+            setForm(settings);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // will retry
+        }
+
+        if (attempt < 5) {
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+      }
+
+      if (!cancelled) {
+        setError('Could not load settings — device may still be booting');
         setLoading(false);
       }
     };
     fetchSettings();
+    return () => { cancelled = true; };
   }, [droneBridgeIp]);
 
   // Dirty check

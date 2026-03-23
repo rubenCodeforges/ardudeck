@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCompanionStore } from '../../../stores/companion-store';
 import { PanelContainer, StatRow, SectionTitle } from '../../panels/panel-utils';
 import { formatDbVersion, ESP32_MODE_LABELS } from '../../../../shared/dronebridge-types';
@@ -56,13 +56,9 @@ export function DroneBridgeStatusPanel() {
   const droneBridgeIp = useCompanionStore((s) => s.droneBridgeIp);
   const droneBridgeInfo = useCompanionStore((s) => s.droneBridgeInfo);
   const droneBridgeStats = useCompanionStore((s) => s.droneBridgeStats);
-  const setDroneBridgeIp = useCompanionStore((s) => s.setDroneBridgeIp);
   const setDroneBridgeInfo = useCompanionStore((s) => s.setDroneBridgeInfo);
   const setDroneBridgeStats = useCompanionStore((s) => s.setDroneBridgeStats);
 
-  const [probeIp, setProbeIp] = useState('192.168.2.1');
-  const [probing, setProbing] = useState(false);
-  const [probeError, setProbeError] = useState<string | null>(null);
   const [mode, setMode] = useState<number | null>(null);
   const [reachable, setReachable] = useState(false);
 
@@ -70,52 +66,48 @@ export function DroneBridgeStatusPanel() {
   const prevTimeRef = useRef<number | null>(null);
   const [throughput, setThroughput] = useState(0);
 
-  // Auto-detect on mount
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Fetch info when IP becomes available, with retries for freshly flashed devices
   useEffect(() => {
-    if (droneBridgeIp) return;
-    const detect = async () => {
-      try {
-        const result = await window.electronAPI.dronebridgeDetect();
-        if (result) {
-          setDroneBridgeIp(result.ip);
-          setDroneBridgeInfo(result.info);
-          setReachable(true);
+    if (!droneBridgeIp) return;
+    let cancelled = false;
+
+    const fetchAll = async (retries = 5) => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        if (cancelled) return;
+
+        try {
+          const info = await window.electronAPI.dronebridgeGetInfo(droneBridgeIp);
+          if (info) {
+            setDroneBridgeInfo(info);
+            setReachable(true);
+            setFetchError(null);
+
+            // Also fetch settings for mode
+            const settings = await window.electronAPI.dronebridgeGetSettings(droneBridgeIp);
+            if (settings) setMode(settings.esp32_mode);
+            return;
+          }
+        } catch {
+          // will retry
         }
-      } catch {
-        // Not found
-      }
-    };
-    detect();
-  }, [droneBridgeIp, setDroneBridgeIp, setDroneBridgeInfo]);
 
-  // Fetch info once when IP becomes available
-  useEffect(() => {
-    if (!droneBridgeIp) return;
-    const fetchInfo = async () => {
-      try {
-        const info = await window.electronAPI.dronebridgeGetInfo(droneBridgeIp);
-        setDroneBridgeInfo(info);
-        setReachable(true);
-      } catch {
+        // Device might still be booting — wait before retrying
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+      }
+
+      if (!cancelled) {
         setReachable(false);
+        setFetchError(`Could not reach DroneBridge at ${droneBridgeIp}`);
       }
     };
-    fetchInfo();
-  }, [droneBridgeIp, setDroneBridgeInfo]);
 
-  // Fetch settings once to get mode
-  useEffect(() => {
-    if (!droneBridgeIp) return;
-    const fetchSettings = async () => {
-      try {
-        const settings = await window.electronAPI.dronebridgeGetSettings(droneBridgeIp);
-        setMode(settings.esp32_mode);
-      } catch {
-        // ignore
-      }
-    };
-    fetchSettings();
-  }, [droneBridgeIp]);
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [droneBridgeIp, setDroneBridgeInfo]);
 
   // Poll stats every 2 seconds
   useEffect(() => {
@@ -124,8 +116,13 @@ export function DroneBridgeStatusPanel() {
     const fetchStats = async () => {
       try {
         const stats = await window.electronAPI.dronebridgeGetStats(droneBridgeIp);
+        if (!stats) {
+          setReachable(false);
+          return;
+        }
         setDroneBridgeStats(stats);
         setReachable(true);
+        setFetchError(null);
 
         // Compute throughput
         const now = Date.now();
@@ -148,54 +145,12 @@ export function DroneBridgeStatusPanel() {
     return () => clearInterval(interval);
   }, [droneBridgeIp, setDroneBridgeStats]);
 
-  const handleProbe = useCallback(async () => {
-    setProbing(true);
-    setProbeError(null);
-    try {
-      const info = await window.electronAPI.dronebridgeGetInfo(probeIp);
-      setDroneBridgeIp(probeIp);
-      setDroneBridgeInfo(info);
-      setReachable(true);
-    } catch {
-      setProbeError('Could not reach DroneBridge at this address');
-    } finally {
-      setProbing(false);
-    }
-  }, [probeIp, setDroneBridgeIp, setDroneBridgeInfo]);
-
-  // Not detected — show probe UI
+  // No IP set — parent (DroneBridgeTab) handles this state
   if (!droneBridgeIp) {
     return (
       <PanelContainer>
-        <div className="flex flex-col items-center justify-center h-full gap-4">
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-1">No DroneBridge detected</div>
-            <div className="text-xs text-gray-600">
-              Enter the IP address of your DroneBridge ESP32
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 w-full max-w-xs">
-            <input
-              type="text"
-              value={probeIp}
-              onChange={(e) => setProbeIp(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleProbe(); }}
-              placeholder="192.168.2.1"
-              className="flex-1 bg-gray-800 border border-gray-700 rounded px-2.5 py-1.5 text-sm text-gray-200 font-mono placeholder-gray-600 focus:outline-none focus:border-blue-500"
-            />
-            <button
-              onClick={handleProbe}
-              disabled={probing}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm rounded transition-colors"
-            >
-              {probing ? 'Probing...' : 'Probe'}
-            </button>
-          </div>
-
-          {probeError && (
-            <div className="text-xs text-red-400">{probeError}</div>
-          )}
+        <div className="flex items-center justify-center h-full text-xs text-gray-600">
+          No DroneBridge IP configured
         </div>
       </PanelContainer>
     );
@@ -211,9 +166,12 @@ export function DroneBridgeStatusPanel() {
           <div className={`w-3 h-3 rounded-full shrink-0 ${reachable ? 'bg-emerald-400' : 'bg-red-400'}`} />
           <div>
             <div className={`text-sm font-medium ${reachable ? 'text-emerald-400' : 'text-red-400'}`}>
-              {reachable ? 'Connected' : 'Unreachable'}
+              {reachable ? 'Connected' : 'Connecting...'}
             </div>
             <div className="text-xs text-gray-500 font-mono">{droneBridgeIp}</div>
+            {!reachable && fetchError && (
+              <div className="text-[10px] text-red-400/70 mt-0.5">{fetchError}</div>
+            )}
           </div>
         </div>
 

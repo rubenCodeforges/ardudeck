@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ardudeck-test-driver": {
+      "command": "node",
+      "args": ["apps/desktop/src/main/testing/mcp-bridge.mjs"]
+    }
+  }
+}

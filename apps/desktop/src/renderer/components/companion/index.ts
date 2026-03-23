@@ -15,6 +15,8 @@ export const COMPANION_PANEL_COMPONENTS = {
   services: { component: 'CompanionServicesPanel', title: 'Services' },
   containers: { component: 'CompanionContainersPanel', title: 'Containers' },
   extensions: { component: 'CompanionExtensionsPanel', title: 'Extensions' },
+  droneBridgeStatus: { component: 'CompanionDroneBridgeStatusPanel', title: 'DroneBridge' },
+  droneBridgeSettings: { component: 'CompanionDroneBridgeSettingsPanel', title: 'DroneBridge Settings' },
 } as const;
 
 export type CompanionPanelId = keyof typeof COMPANION_PANEL_COMPONENTS;

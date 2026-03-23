@@ -68,6 +68,13 @@ export const MAP_LAYERS = {
     maxZoom: 22,
     maxNativeZoom: 6,
   },
+  openaip: {
+    name: 'OpenAIP',
+    url: 'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png',
+    subdomains: [],
+    maxZoom: 22,
+    maxNativeZoom: 14,
+  },
 } as const satisfies Record<string, MapLayer>;
 
 export type LayerKey = keyof typeof MAP_LAYERS;

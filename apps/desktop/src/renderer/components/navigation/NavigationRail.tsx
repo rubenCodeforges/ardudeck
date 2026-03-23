@@ -167,7 +167,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
     allNavItems.push(cliNavItem);
   }
   const companionUnlocked = useSettingsStore((s) => s.companionUnlocked);
-  if (connectionState.isConnected && companionUnlocked) {
+  if (companionUnlocked) {
     allNavItems.push(companionNavItem);
   }
 

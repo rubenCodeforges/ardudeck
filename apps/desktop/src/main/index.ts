@@ -131,6 +131,11 @@ app.whenReady().then(() => {
   setupModuleIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
 
+  // Dev-only: start test driver MCP server
+  if (isDev) {
+    import('./testing/index.js').then((m) => m.initTestingMcp(mainWindow)).catch(console.error);
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();

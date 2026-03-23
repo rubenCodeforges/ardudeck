@@ -7,6 +7,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { DroneBridgeSettings } from '../../shared/dronebridge-types.js';
 import * as client from './dronebridge-client.js';
+import { readDroneBridgeBootLog, readDroneBridgeWithReset } from './dronebridge-serial-reader.js';
 
 const DRONEBRIDGE_DEFAULT_IP = '192.168.2.1';
 
@@ -98,6 +99,25 @@ export function registerDroneBridgeIpcHandlers(mainWindow: BrowserWindow): void 
       return true;
     } catch {
       return null;
+    }
+  });
+
+  // Read DroneBridge boot log over USB serial (no WiFi needed)
+  ipcMain.handle(IPC_CHANNELS.DRONEBRIDGE_READ_SERIAL, async (_event, port: string) => {
+    try {
+      return await readDroneBridgeBootLog(port, 8000);
+    } catch {
+      return null;
+    }
+  });
+
+  // Reset ESP32 via DTR toggle and read boot log (for already-connected devices)
+  ipcMain.handle(IPC_CHANNELS.DRONEBRIDGE_READ_SERIAL_RESET, async (_event, port: string) => {
+    try {
+      return await readDroneBridgeWithReset(port, 10000);
+    } catch (err) {
+      console.error('[DroneBridge] Serial reset read failed:', err);
+      throw err;
     }
   });
 }

@@ -1545,6 +1545,31 @@ export function SettingsView() {
           <TileCacheCard />
         </div>
 
+        {/* ============================================ */}
+        {/* SECTION: Map Overlays */}
+        {/* ============================================ */}
+        <div className="mt-8 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
+            <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Map Overlays</h2>
+          </div>
+          <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-200">Map Overlays</h3>
+                <p className="text-xs text-gray-500">API keys for airspace and airport data</p>
+              </div>
+            </div>
+
+            <OpenAipKeyInput />
+          </div>
+        </div>
+
         {/* SECTION: Experimental Features */}
         {/* ============================================ */}
         <ExperimentalFeaturesSection />
@@ -1553,6 +1578,58 @@ export function SettingsView() {
         {/* ============================================ */}
         <AboutSection />
       </div>
+    </div>
+  );
+}
+
+function OpenAipKeyInput() {
+  const [key, setKey] = useState('');
+  const [hasKey, setHasKey] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    window.electronAPI?.getApiKey('openaip').then((result: { hasKey: boolean; key: string }) => {
+      if (result?.hasKey) {
+        setHasKey(true);
+        setKey(result.key);
+      }
+    });
+  }, []);
+
+  const handleSave = async () => {
+    await window.electronAPI?.setApiKey('openaip', key.trim());
+    setHasKey(!!key.trim());
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div>
+      <label className="block text-xs text-gray-400 mb-1.5">
+        OpenAIP API Key
+        <span className="text-gray-600 ml-1">— free at</span>{' '}
+        <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+          openaip.net
+        </a>
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="password"
+          value={key}
+          onChange={(e) => { setKey(e.target.value); setSaved(false); }}
+          placeholder={hasKey ? '••••••••••••••••' : 'Paste your API key'}
+          className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onClick={handleSave}
+          className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+        >
+          {saved ? 'Saved' : 'Save'}
+        </button>
+      </div>
+      {hasKey && !saved && (
+        <p className="text-xs text-emerald-400 mt-1">Key configured</p>
+      )}
     </div>
   );
 }

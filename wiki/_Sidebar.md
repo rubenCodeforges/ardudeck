@@ -11,12 +11,19 @@
 - [[Receiver]]
 - [[Serial Ports]]
 - [[Safety and Failsafe]]
+- [[MAVLink Signing]]
 - [[Battery]]
 - [[Tuning Presets]]
 - [[All Parameters]]
 
 **Firmware**
 - [[Firmware Flash]]
+
+**Map & Overlays**
+- [[Map Overlays]]
+
+**Companion Board**
+- [[Companion Board]]
 
 **Lua Graph Editor**
 - [[Lua Graph Editor]]

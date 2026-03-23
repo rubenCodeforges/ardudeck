@@ -14,6 +14,7 @@ import { setMaxListeners } from 'events';
 import Store from 'electron-store';
 import { IPC_CHANNELS, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion } from '../shared/ipc-channels.js';
 import { resolveTileUrl, MAP_LAYERS, type LayerKey } from '../shared/map-layers.js';
+import { getApiKey } from './overlays/overlay-ipc-handlers.js';
 
 // ─── Settings Store ──────────────────────────────────────────────────────────
 
@@ -93,6 +94,15 @@ export function setupTileCacheProtocol(): void {
         return new Response(null, { status: 400 });
       }
 
+      // OpenAIP tiles require an API key — reject early if missing
+      const isOpenAipLayer = layer === 'openaip';
+      if (isOpenAipLayer) {
+        const apiKey = getApiKey('openaip');
+        if (!apiKey) {
+          return new Response(TRANSPARENT_PNG, { headers: { 'Content-Type': 'image/png' } });
+        }
+      }
+
       // Check if layer is valid (support radar-{path} dynamic layers)
       const isRadarLayer = layer.startsWith('radar-');
       if (!(layer in MAP_LAYERS) && !isRadarLayer) {
@@ -129,14 +139,21 @@ export function setupTileCacheProtocol(): void {
       try {
         let realUrl: string;
         if (isRadarLayer) {
-          // Layer name is radar-{path}, e.g. radar-/v2/radar/1609402200
-          const radarPath = layer.substring(6);
-          realUrl = `https://tilecache.rainviewer.com${radarPath}/256/${fetchZ}/${fetchX}/${fetchY}/2/1_1.png`;
+          // Layer name is radar-{timestamp}-c{colorScheme}, e.g. radar-1609402200-c6
+          const parts = layer.substring(6).split('-c');
+          const timestamp = parts[0];
+          const colorScheme = parts[1] ?? '6';
+          realUrl = `https://tilecache.rainviewer.com/v2/radar/${timestamp}/256/${fetchZ}/${fetchX}/${fetchY}/${colorScheme}/1_1.png`;
         } else {
           realUrl = resolveTileUrl(layerKey as LayerKey, fetchZ, fetchX, fetchY);
         }
         const fetchHeaders: Record<string, string> = {};
         if ('headers' in layerDef) Object.assign(fetchHeaders, layerDef.headers);
+        // Inject API key for OpenAIP tiles as query parameter
+        if (isOpenAipLayer) {
+          const apiKey = getApiKey('openaip');
+          if (apiKey) realUrl += `?apiKey=${encodeURIComponent(apiKey)}`;
+        }
         const response = await fetch(realUrl, { headers: fetchHeaders });
 
         if (!response.ok) {
