@@ -1,21 +1,15 @@
 /**
  * TuningTab
  *
- * Simplified tuning with presets for skill levels and mission types.
+ * Simplified tuning overview and fine-tuning sliders.
  * Hides PID complexity while giving users meaningful control.
- * Uses Lucide icons (no emojis) and DraggableSliders.
  */
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import {
   Sliders,
-  Shield,
-  TrendingUp,
   Target,
-  Map,
-  Eye,
   Zap,
-  Film,
   Wrench,
   Save,
   Lightbulb,
@@ -23,70 +17,6 @@ import {
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
-import { PresetSelector, type Preset } from '../ui/PresetSelector';
-import {
-  SKILL_PRESETS,
-  MISSION_PRESETS,
-  type SkillPreset,
-  type MissionPreset,
-} from './presets/mavlink-presets';
-
-// Convert skill presets to PresetSelector format
-const SKILL_PRESET_OPTIONS: Record<string, Preset> = {
-  beginner: {
-    name: 'Beginner',
-    description: SKILL_PRESETS.beginner!.description,
-    icon: Shield,
-    iconColor: 'text-green-400',
-    color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
-  },
-  intermediate: {
-    name: 'Intermediate',
-    description: SKILL_PRESETS.intermediate!.description,
-    icon: TrendingUp,
-    iconColor: 'text-blue-400',
-    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
-  },
-  expert: {
-    name: 'Expert',
-    description: SKILL_PRESETS.expert!.description,
-    icon: Target,
-    iconColor: 'text-red-400',
-    color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
-  },
-};
-
-// Convert mission presets to PresetSelector format
-const MISSION_PRESET_OPTIONS: Record<string, Preset> = {
-  mapping: {
-    name: 'Mapping',
-    description: MISSION_PRESETS.mapping!.description,
-    icon: Map,
-    iconColor: 'text-amber-400',
-    color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
-  },
-  surveillance: {
-    name: 'Surveillance',
-    description: MISSION_PRESETS.surveillance!.description,
-    icon: Eye,
-    iconColor: 'text-purple-400',
-    color: 'from-purple-500/20 to-pink-500/10 border-purple-500/30',
-  },
-  sport: {
-    name: 'Sport',
-    description: MISSION_PRESETS.sport!.description,
-    icon: Zap,
-    iconColor: 'text-blue-400',
-    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
-  },
-  cinema: {
-    name: 'Cinematic',
-    description: MISSION_PRESETS.cinema!.description,
-    icon: Film,
-    iconColor: 'text-rose-400',
-    color: 'from-rose-500/20 to-red-500/10 border-rose-500/30',
-  },
-};
 
 const TuningTab: React.FC = () => {
   const { parameters, setParameter, modifiedCount, fetchParameters, isLoading } = useParameterStore();
@@ -112,26 +42,6 @@ const TuningTab: React.FC = () => {
     wpnavAccel: parameters.get('WPNAV_ACCEL')?.value ?? 250,
     wpnavRadius: parameters.get('WPNAV_RADIUS')?.value ?? 200,
   }), [parameters]);
-
-  // Apply skill preset
-  const applySkillPreset = useCallback(async (presetKey: string) => {
-    const preset = SKILL_PRESETS[presetKey];
-    if (preset) {
-      for (const [param, value] of Object.entries(preset.params)) {
-        await setParameter(param, value);
-      }
-    }
-  }, [setParameter]);
-
-  // Apply mission preset
-  const applyMissionPreset = useCallback(async (presetKey: string) => {
-    const preset = MISSION_PRESETS[presetKey];
-    if (preset) {
-      for (const [param, value] of Object.entries(preset.params)) {
-        await setParameter(param, value);
-      }
-    }
-  }, [setParameter]);
 
   const modified = modifiedCount();
 
@@ -161,28 +71,6 @@ const TuningTab: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Help Card */}
-      <InfoCard title="Tuning Made Simple" variant="info">
-        Presets adjust multiple parameters at once for the best flying experience.
-        Choose your skill level first, then optionally pick a mission type.
-      </InfoCard>
-
-      {/* Skill Level Presets */}
-      <PresetSelector
-        presets={SKILL_PRESET_OPTIONS}
-        onApply={applySkillPreset}
-        label="Skill Level"
-        hint="How responsive should the aircraft be?"
-      />
-
-      {/* Mission Type Presets */}
-      <PresetSelector
-        presets={MISSION_PRESET_OPTIONS}
-        onApply={applyMissionPreset}
-        label="Mission Type"
-        hint="What are you flying for?"
-      />
 
       {/* Current Settings Overview */}
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
