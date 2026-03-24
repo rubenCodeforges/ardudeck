@@ -402,17 +402,16 @@ export function createDefaultWaypoint(
 
 /**
  * Create a takeoff waypoint
- * Takeoff at specified location to target altitude
+ * ArduPilot takes off from wherever the vehicle is — lat/lon are set to 0
+ * (ignored by the flight controller). Only the target altitude matters.
  * @param seq Sequence number
- * @param latitude Launch latitude
- * @param longitude Launch longitude
  * @param altitude Target altitude to climb to (meters, relative to home)
  * @param pitch Minimum pitch during takeoff (degrees, 0 = straight up)
  */
 export function createTakeoffWaypoint(
   seq: number,
-  latitude: number,
-  longitude: number,
+  _latitude: number,
+  _longitude: number,
   altitude: number = 50,
   pitch: number = 15,
 ): MissionItem {
@@ -426,8 +425,8 @@ export function createTakeoffWaypoint(
     param2: 0,       // Empty
     param3: 0,       // Empty
     param4: NaN,     // Yaw (NaN = keep current)
-    latitude,
-    longitude,
+    latitude: 0,     // ArduPilot takes off from current position
+    longitude: 0,    // ArduPilot takes off from current position
     altitude,
   };
 }

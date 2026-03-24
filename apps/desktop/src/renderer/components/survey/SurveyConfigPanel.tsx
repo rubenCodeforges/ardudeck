@@ -8,12 +8,18 @@ import { useMissionStore } from '../../stores/mission-store';
 import { CameraPresetSelector } from './CameraPresetSelector';
 import { SurveyStatsPanel } from './SurveyStatsPanel';
 import { surveyToMissionItems } from './mission-builder';
-import type { SurveyPattern, CameraPreset } from './survey-types';
+import type { SurveyPattern, CameraPreset, AltitudeReference } from './survey-types';
 
 const PATTERN_OPTIONS: { id: SurveyPattern; label: string; description: string }[] = [
   { id: 'grid', label: 'Grid', description: 'Lawnmower pattern' },
   { id: 'crosshatch', label: 'Crosshatch', description: 'Double perpendicular grid' },
   { id: 'circular', label: 'Circular', description: 'Concentric rings' },
+];
+
+const ALT_REF_OPTIONS: { id: AltitudeReference; label: string; description: string }[] = [
+  { id: 'relative', label: 'Relative', description: 'Altitude relative to home position' },
+  { id: 'terrain', label: 'Terrain', description: 'Altitude above terrain (AGL) at each point' },
+  { id: 'asl', label: 'ASL', description: 'Altitude above mean sea level' },
 ];
 
 export function SurveyConfigPanel() {
@@ -30,6 +36,7 @@ export function SurveyConfigPanel() {
   const setCamera = useSurveyStore((s) => s.setCamera);
   const setGridAngle = useSurveyStore((s) => s.setGridAngle);
   const setOvershoot = useSurveyStore((s) => s.setOvershoot);
+  const setAltitudeReference = useSurveyStore((s) => s.setAltitudeReference);
   const setShowFootprints = useSurveyStore((s) => s.setShowFootprints);
   const startDrawing = useSurveyStore((s) => s.startDrawing);
   const clearSurvey = useSurveyStore((s) => s.clearSurvey);
@@ -117,6 +124,25 @@ export function SurveyConfigPanel() {
         <Section title="Flight">
           <div className="space-y-2">
             <SliderInput label="Altitude" value={config.altitude} onChange={setAltitude} min={10} max={500} step={5} unit="m" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-14 flex-shrink-0">Alt Ref</span>
+              <div className="flex gap-1 flex-1">
+                {ALT_REF_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setAltitudeReference(opt.id)}
+                    className={`flex-1 px-1.5 py-1 text-[10px] rounded-md transition-colors ${
+                      config.altitudeReference === opt.id
+                        ? 'bg-purple-600/80 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                    }`}
+                    title={opt.description}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <SliderInput label="Speed" value={config.speed} onChange={setSpeed} min={1} max={30} step={0.5} unit="m/s" />
           </div>
         </Section>
@@ -125,7 +151,7 @@ export function SurveyConfigPanel() {
         <Section title="Overlap">
           <div className="space-y-2">
             <SliderInput label="Front" value={config.frontOverlap} onChange={setFrontOverlap} min={50} max={95} step={1} unit="%" />
-            <SliderInput label="Side" value={config.sideOverlap} onChange={setSideOverlap} min={20} max={80} step={1} unit="%" />
+            <SliderInput label="Side" value={config.sideOverlap} onChange={setSideOverlap} min={20} max={99} step={1} unit="%" />
           </div>
         </Section>
 

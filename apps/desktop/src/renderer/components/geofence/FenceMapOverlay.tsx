@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { Polygon, Circle, Marker, Polyline } from 'react-leaflet';
+import { Polygon, Circle, Marker, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { useFenceStore, type FenceDrawMode } from '../../stores/fence-store';
 import type { PolygonFence, CircleFence } from '../../../shared/fence-types';
@@ -93,6 +93,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
     setSelectedFenceId,
     setDrawMode,
     updatePolygonVertex,
+    removeVertexFromPolygon,
     updateCircle,
     setReturnPoint,
   } = useFenceStore();
@@ -135,6 +136,16 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
       updatePolygonVertex(polygonId, vertexIndex, lat, lng);
     },
     [readOnly, updatePolygonVertex]
+  );
+
+  // Handle vertex delete (right-click)
+  const handleVertexContextMenu = useCallback(
+    (polygonId: string, vertexIndex: number, vertexCount: number, e: L.LeafletMouseEvent) => {
+      e.originalEvent.preventDefault();
+      if (readOnly || vertexCount <= 3) return; // Need at least 3 vertices
+      removeVertexFromPolygon(polygonId, vertexIndex);
+    },
+    [readOnly, removeVertexFromPolygon]
   );
 
   // Handle circle center drag
@@ -297,7 +308,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
           );
         })}
 
-      {/* Draggable vertices for selected polygon */}
+      {/* Draggable vertices for selected polygon - right-click to delete, hover for coordinates */}
       {!readOnly &&
         polygons
           .filter((p) => p.id === selectedFenceId)
@@ -310,8 +321,16 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
                 draggable
                 eventHandlers={{
                   dragend: (e) => handleVertexDrag(polygon.id, i, e as unknown as L.LeafletMouseEvent),
+                  contextmenu: (e) => handleVertexContextMenu(polygon.id, i, polygon.vertices.length, e as unknown as L.LeafletMouseEvent),
                 }}
-              />
+              >
+                <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+                  <span style={{ fontSize: '10px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
+                    {`P${i + 1}: ${vertex.lat.toFixed(6)}, ${vertex.lon.toFixed(6)}`}
+                    {polygon.vertices.length > 3 ? '\nRight-click to delete' : ''}
+                  </span>
+                </Tooltip>
+              </Marker>
             ))
           )}
 

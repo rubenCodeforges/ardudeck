@@ -54,9 +54,11 @@ export function surveyToMissionItems(
   });
 
   // 3. NAV_WAYPOINT for each flight path point
-  const frame = config.useTerrainFollow
+  const frame = config.altitudeReference === 'terrain'
     ? MAV_FRAME.GLOBAL_TERRAIN_ALT
-    : MAV_FRAME.GLOBAL_RELATIVE_ALT;
+    : config.altitudeReference === 'asl'
+      ? MAV_FRAME.GLOBAL
+      : MAV_FRAME.GLOBAL_RELATIVE_ALT;
 
   for (const wp of result.waypoints) {
     items.push({

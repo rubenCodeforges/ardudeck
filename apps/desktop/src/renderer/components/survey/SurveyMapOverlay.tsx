@@ -3,7 +3,7 @@
  * camera footprints, and drawing preview on the map.
  */
 import { useMemo, useCallback, memo } from 'react';
-import { Polygon, Polyline, CircleMarker, Marker } from 'react-leaflet';
+import { Polygon, Polyline, CircleMarker, Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { useSurveyStore } from '../../stores/survey-store';
 import type { LatLng } from './survey-types';
@@ -43,28 +43,52 @@ const DRAWING_VERTEX_ICON = createVertexIcon(true);
 
 /**
  * Draggable vertex marker for survey polygon editing.
+ * - Drag to reposition
+ * - Right-click to delete (if polygon has more than 3 vertices)
+ * - Tooltip shows coordinates
  */
 const VertexMarker = memo(function VertexMarker({
   position,
   index,
+  canDelete,
   onDragEnd,
+  onDelete,
 }: {
   position: LatLng;
   index: number;
+  canDelete: boolean;
   onDragEnd: (index: number, lat: number, lng: number) => void;
+  onDelete: (index: number) => void;
 }) {
   const handleDragEnd = useCallback((e: L.DragEndEvent) => {
     const latlng = (e.target as L.Marker).getLatLng();
     onDragEnd(index, latlng.lat, latlng.lng);
   }, [index, onDragEnd]);
 
+  const handleContextMenu = useCallback((e: L.LeafletMouseEvent) => {
+    e.originalEvent.preventDefault();
+    if (canDelete) {
+      onDelete(index);
+    }
+  }, [index, canDelete, onDelete]);
+
   return (
     <Marker
       position={[position.lat, position.lng]}
       icon={VERTEX_ICON}
       draggable
-      eventHandlers={{ dragend: handleDragEnd }}
-    />
+      eventHandlers={{
+        dragend: handleDragEnd,
+        contextmenu: handleContextMenu,
+      }}
+    >
+      <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+        <span style={{ fontSize: '10px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
+          {`P${index + 1}: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`}
+          {canDelete ? '\nRight-click to delete' : ''}
+        </span>
+      </Tooltip>
+    </Marker>
   );
 });
 
@@ -75,6 +99,7 @@ export function SurveyMapOverlay() {
   const result = useSurveyStore((s) => s.result);
   const showFootprints = useSurveyStore((s) => s.showFootprints);
   const updateVertex = useSurveyStore((s) => s.updateVertex);
+  const removeVertex = useSurveyStore((s) => s.removeVertex);
 
   // Drawing preview (in-progress polygon)
   const drawingPositions = useMemo(
@@ -109,6 +134,10 @@ export function SurveyMapOverlay() {
   const handleVertexDrag = useCallback((index: number, lat: number, lng: number) => {
     updateVertex(index, lat, lng);
   }, [updateVertex]);
+
+  const handleVertexDelete = useCallback((index: number) => {
+    removeVertex(index);
+  }, [removeVertex]);
 
   return (
     <>
@@ -153,13 +182,15 @@ export function SurveyMapOverlay() {
               dashArray: '6, 3',
             }}
           />
-          {/* Draggable vertex markers */}
+          {/* Draggable vertex markers - right-click to delete, hover for coordinates */}
           {polygon.map((v, i) => (
             <VertexMarker
               key={`vertex-${i}`}
               position={v}
               index={i}
+              canDelete={polygon.length > 3}
               onDragEnd={handleVertexDrag}
+              onDelete={handleVertexDelete}
             />
           ))}
         </>
