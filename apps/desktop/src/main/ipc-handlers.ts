@@ -1030,11 +1030,22 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_RC_CHANNELS: {
       // RC_CHANNELS (msg 65): up to 18 channels — primary source.
       // v2 wire order: time_boot_ms(U32), chan1-18(U16×18), chancount(U8), rssi(U8)
-      const chancount = payload[40]!;
+      let chancount = payload[40]!;
       const rssi = payload[41]!;
       const channels: number[] = [];
       for (let i = 0; i < 18; i++) {
         channels.push(readUint16(payload, 4 + i * 2));
+      }
+      // Some FCs (e.g. ELRS over MAVLink) report chancount=0 while still populating
+      // valid channel data. Infer count from actual values: valid channels have
+      // values in the typical RC range (800-2200), unused ones are 0 or UINT16_MAX.
+      if (chancount === 0) {
+        let inferred = 0;
+        for (let i = 0; i < 18; i++) {
+          const v = channels[i]!;
+          if (v > 0 && v < 65535) inferred = i + 1;
+        }
+        chancount = inferred;
       }
       // Trim to actual channel count (unused channels report UINT16_MAX = 65535)
       rcMsg65 = { channels: channels.slice(0, chancount), chancount, rssi };
