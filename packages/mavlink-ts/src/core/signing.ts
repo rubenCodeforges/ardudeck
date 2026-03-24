@@ -2,9 +2,6 @@
  * MAVLink v2 Packet Signing
  * SHA256-based authentication for MAVLink packets
  * Reference: MavlinkParse.cs lines 329-383
- *
- * Note: Full signing implementation requires async crypto.
- * Use serializeV2Async for signed packets.
  */
 
 import { createHash, randomBytes } from 'node:crypto';
@@ -20,54 +17,19 @@ export function getSigningTimestamp(): bigint {
 }
 
 /**
- * Create signature block (placeholder for sync context)
- * For full signing, use createSignatureAsync
+ * Create signature block for a MAVLink packet
+ * Returns 13-byte signature block: linkId (1) + timestamp (6) + SHA256_48 (6)
  *
  * @param secretKey - 32-byte secret key
  * @param packetData - Packet bytes (header + payload + CRC)
  * @param linkId - Link identifier (0-255)
- * @returns 13-byte signature block (timestamp only, no hash)
+ * @returns 13-byte signature block with valid SHA256_48 hash
  */
 export function createSignature(
   secretKey: Uint8Array,
   packetData: Uint8Array,
   linkId: number
 ): Uint8Array {
-  // For sync context, return a placeholder signature with just timestamp
-  // Full implementation requires async crypto
-  const timestamp = getSigningTimestamp();
-  const signatureBlock = new Uint8Array(13);
-
-  // Link ID (1 byte)
-  signatureBlock[0] = linkId & 0xff;
-
-  // Timestamp (6 bytes, little-endian)
-  signatureBlock[1] = Number(timestamp & 0xffn);
-  signatureBlock[2] = Number((timestamp >> 8n) & 0xffn);
-  signatureBlock[3] = Number((timestamp >> 16n) & 0xffn);
-  signatureBlock[4] = Number((timestamp >> 24n) & 0xffn);
-  signatureBlock[5] = Number((timestamp >> 32n) & 0xffn);
-  signatureBlock[6] = Number((timestamp >> 40n) & 0xffn);
-
-  // Signature placeholder (6 bytes) - will be zeros
-  // Use createSignatureAsync for actual signing
-  return signatureBlock;
-}
-
-/**
- * Create signature for a MAVLink packet (async version with real crypto)
- * Returns 13-byte signature block: linkId (1) + timestamp (6) + signature (6)
- *
- * @param secretKey - 32-byte secret key
- * @param packetData - Packet bytes (header + payload + CRC)
- * @param linkId - Link identifier (0-255)
- * @returns 13-byte signature block
- */
-export async function createSignatureAsync(
-  secretKey: Uint8Array,
-  packetData: Uint8Array,
-  linkId: number
-): Promise<Uint8Array> {
   if (secretKey.length !== 32) {
     throw new Error('Signing key must be 32 bytes');
   }
@@ -99,6 +61,24 @@ export async function createSignatureAsync(
   signatureBlock.set(hashArray.slice(0, 6), 7);
 
   return signatureBlock;
+}
+
+/**
+ * Create signature for a MAVLink packet (async version)
+ * Delegates to createSignature — kept for backwards compatibility.
+ * Node.js createHash('sha256') is synchronous, so no actual async work needed.
+ *
+ * @param secretKey - 32-byte secret key
+ * @param packetData - Packet bytes (header + payload + CRC)
+ * @param linkId - Link identifier (0-255)
+ * @returns 13-byte signature block
+ */
+export async function createSignatureAsync(
+  secretKey: Uint8Array,
+  packetData: Uint8Array,
+  linkId: number
+): Promise<Uint8Array> {
+  return createSignature(secretKey, packetData, linkId);
 }
 
 /**
