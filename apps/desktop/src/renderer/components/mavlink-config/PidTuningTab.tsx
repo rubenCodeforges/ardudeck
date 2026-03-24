@@ -15,7 +15,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb, AlertTriangle } from 'lucide-react';
+import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb, AlertTriangle, Gauge } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
@@ -23,7 +23,7 @@ import { PresetSelector } from '../ui/PresetSelector';
 import { ProfileManager } from '../ui/ProfileManager';
 import { InfoCard } from '../ui/InfoCard';
 import { PID_PRESETS } from './presets/mavlink-presets';
-import { detectPidScheme, buildPresetParams, type PidScheme, type AxisParams } from './mavlink-pid-schemes';
+import { detectPidScheme, buildPresetParams, buildAccelParams, type PidScheme, type AxisParams } from './mavlink-pid-schemes';
 
 // Storage key for custom profiles
 const PID_PROFILES_KEY = 'ardudeck_mavlink_pid_profiles';
@@ -69,11 +69,28 @@ const PidTuningTab: React.FC = () => {
     };
   }, [scheme, parameters]);
 
+  // Get current acceleration limit values from parameters
+  const accelValues = useMemo(() => {
+    if (!scheme?.accel) return null;
+    const get = (name: string, fallback: number) => parameters.get(name)?.value ?? fallback;
+    const defaults = scheme.accelDefaults ?? { roll: 110000, pitch: 110000, yaw: 27000 };
+    return {
+      roll: get(scheme.accel.roll, defaults.roll),
+      pitch: get(scheme.accel.pitch, defaults.pitch),
+      yaw: get(scheme.accel.yaw, defaults.yaw),
+    };
+  }, [scheme, parameters]);
+
   // Build profile data as a flat Record for save/load
   const profileData = useMemo(() => {
     if (!scheme || !pidValues) return {};
-    return buildPresetParams(scheme, pidValues);
-  }, [scheme, pidValues]);
+    const pidParams = buildPresetParams(scheme, pidValues);
+    if (accelValues) {
+      const accelParams = buildAccelParams(scheme, accelValues);
+      return { ...pidParams, ...accelParams };
+    }
+    return pidParams;
+  }, [scheme, pidValues, accelValues]);
 
   // Apply a preset
   const applyPreset = useCallback(async (presetKey: string) => {
@@ -83,6 +100,13 @@ const PidTuningTab: React.FC = () => {
       const params = buildPresetParams(scheme, preset.values);
       for (const [param, value] of Object.entries(params)) {
         await setParameter(param, value);
+      }
+      // Apply acceleration limits if preset defines them and scheme supports them
+      if (preset.accel && scheme.accel) {
+        const accelParams = buildAccelParams(scheme, preset.accel);
+        for (const [param, value] of Object.entries(accelParams)) {
+          await setParameter(param, value);
+        }
       }
     }
   }, [scheme, setParameter]);
@@ -94,6 +118,13 @@ const PidTuningTab: React.FC = () => {
     Object.entries(params).forEach(([param, value]) => {
       setParameter(param, value);
     });
+    // Reset acceleration limits if scheme supports them
+    if (scheme.accel && scheme.accelDefaults) {
+      const accelParams = buildAccelParams(scheme, scheme.accelDefaults);
+      Object.entries(accelParams).forEach(([param, value]) => {
+        setParameter(param, value);
+      });
+    }
   }, [scheme, setParameter]);
 
   // Load profile
@@ -272,6 +303,53 @@ const PidTuningTab: React.FC = () => {
             </div>
           </div>
           {renderAxisSliders(scheme.yaw, scheme, pidValues.yaw)}
+        </div>
+      </div>
+      )}
+
+      {/* Acceleration Limits - only for copter-type schemes */}
+      {scheme?.accel && accelValues && (
+      <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
+            <Gauge className="w-5 h-5 text-rose-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-white">Acceleration Limits</h3>
+            <p className="text-xs text-gray-500">Max rotational acceleration per axis (deg/s²). Set by Initial Parameters and Autotune.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-5">
+          <DraggableSlider
+            label="Roll"
+            value={Math.round(accelValues.roll / 100)}
+            onChange={(v) => handlePidChange(scheme.accel!.roll, v * 100)}
+            min={0}
+            max={1800}
+            step={10}
+            color="#F43F5E"
+            hint="deg/s²"
+          />
+          <DraggableSlider
+            label="Pitch"
+            value={Math.round(accelValues.pitch / 100)}
+            onChange={(v) => handlePidChange(scheme.accel!.pitch, v * 100)}
+            min={0}
+            max={1800}
+            step={10}
+            color="#10B981"
+            hint="deg/s²"
+          />
+          <DraggableSlider
+            label="Yaw"
+            value={Math.round(accelValues.yaw / 100)}
+            onChange={(v) => handlePidChange(scheme.accel!.yaw, v * 100)}
+            min={0}
+            max={720}
+            step={5}
+            color="#F59E0B"
+            hint="deg/s²"
+          />
         </div>
       </div>
       )}

@@ -408,6 +408,8 @@ export interface PidPreset {
     pitch: PidAxisValues;
     yaw: PidAxisValues;
   };
+  /** Optional acceleration limit values in cdeg/s² (applied when scheme supports accel) */
+  accel?: { roll: number; pitch: number; yaw: number };
 }
 
 export const PID_PRESETS: Record<string, PidPreset> = {
@@ -422,6 +424,7 @@ export const PID_PRESETS: Record<string, PidPreset> = {
       pitch: { p: 0.08, i: 0.08, d: 0.003, ff: 0 },
       yaw:   { p: 0.15, i: 0.015, d: 0, ff: 0 },
     },
+    accel: { roll: 80000, pitch: 80000, yaw: 20000 },
   },
   freestyle: {
     name: 'Freestyle',
@@ -434,6 +437,7 @@ export const PID_PRESETS: Record<string, PidPreset> = {
       pitch: { p: 0.135, i: 0.135, d: 0.0036, ff: 0 },
       yaw:   { p: 0.2, i: 0.02, d: 0, ff: 0 },
     },
+    accel: { roll: 110000, pitch: 110000, yaw: 27000 },
   },
   racing: {
     name: 'Racing',
@@ -446,6 +450,7 @@ export const PID_PRESETS: Record<string, PidPreset> = {
       pitch: { p: 0.18, i: 0.18, d: 0.004, ff: 0 },
       yaw:   { p: 0.25, i: 0.025, d: 0, ff: 0 },
     },
+    accel: { roll: 160000, pitch: 160000, yaw: 40000 },
   },
   cinematic: {
     name: 'Cinematic',
@@ -458,6 +463,7 @@ export const PID_PRESETS: Record<string, PidPreset> = {
       pitch: { p: 0.06, i: 0.06, d: 0.002, ff: 0 },
       yaw:   { p: 0.12, i: 0.012, d: 0, ff: 0 },
     },
+    accel: { roll: 55000, pitch: 55000, yaw: 14000 },
   },
 };
 

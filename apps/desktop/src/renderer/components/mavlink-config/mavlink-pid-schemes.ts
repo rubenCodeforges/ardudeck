@@ -24,6 +24,12 @@ export interface AxisParams {
   ff?: string; // Legacy copter and plane don't have FF
 }
 
+export interface AccelParams {
+  roll: string;
+  pitch: string;
+  yaw: string;
+}
+
 export interface PidScheme {
   id: PidSchemeId;
   label: string;
@@ -48,6 +54,14 @@ export interface PidScheme {
     pitch: { p: number; i: number; d: number; ff?: number };
     yaw: { p: number; i: number; d: number; ff?: number };
   };
+  /** Optional acceleration limit parameter names (copter-type schemes only) */
+  accel?: AccelParams;
+  /** Default acceleration limit values in cdeg/s² */
+  accelDefaults?: {
+    roll: number;
+    pitch: number;
+    yaw: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +83,8 @@ const MODERN_COPTER_SCHEME: PidScheme = {
     pitch: { p: 0.135, i: 0.135, d: 0.0036, ff: 0 },
     yaw: { p: 0.18, i: 0.018, d: 0, ff: 0 },
   },
+  accel: { roll: 'ATC_ACCEL_R_MAX', pitch: 'ATC_ACCEL_P_MAX', yaw: 'ATC_ACCEL_Y_MAX' },
+  accelDefaults: { roll: 110000, pitch: 110000, yaw: 27000 },
 };
 
 const LEGACY_COPTER_SCHEME: PidScheme = {
@@ -162,6 +178,8 @@ const QUADPLANE_SCHEME: PidScheme = {
     pitch: { p: 0.25, i: 0.25, d: 0.004, ff: 0 },
     yaw: { p: 0.25, i: 0.025, d: 0, ff: 0 },
   },
+  accel: { roll: 'Q_A_ACCEL_R_MAX', pitch: 'Q_A_ACCEL_P_MAX', yaw: 'Q_A_ACCEL_Y_MAX' },
+  accelDefaults: { roll: 110000, pitch: 110000, yaw: 27000 },
 };
 
 // ---------------------------------------------------------------------------
@@ -281,6 +299,9 @@ export function getAllPidParamNames(scheme: PidScheme): string[] {
     names.push(axis.p, axis.i, axis.d);
     if (axis.ff) names.push(axis.ff);
   }
+  if (scheme.accel) {
+    names.push(scheme.accel.roll, scheme.accel.pitch, scheme.accel.yaw);
+  }
   return names;
 }
 
@@ -322,6 +343,22 @@ export function buildPresetParams(
     }
   }
   return params;
+}
+
+/**
+ * Build acceleration limit params mapped to the active scheme's parameter names.
+ * Values are in cdeg/s² (centidegrees per second squared).
+ */
+export function buildAccelParams(
+  scheme: PidScheme,
+  values: { roll: number; pitch: number; yaw: number },
+): Record<string, number> {
+  if (!scheme.accel) return {};
+  return {
+    [scheme.accel.roll]: values.roll,
+    [scheme.accel.pitch]: values.pitch,
+    [scheme.accel.yaw]: values.yaw,
+  };
 }
 
 /**
