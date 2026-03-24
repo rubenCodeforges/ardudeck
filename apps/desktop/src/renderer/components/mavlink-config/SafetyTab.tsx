@@ -71,9 +71,9 @@ const SafetyTab: React.FC = () => {
     // GCS failsafe
     fsGcsEnable: parameters.get('FS_GCS_ENABLE')?.value ?? 0,
     // Battery failsafe (low)
-    fsBattEnable: parameters.get('FS_BATT_ENABLE')?.value ?? 0,
-    fsBattVoltage: parameters.get('FS_BATT_VOLTAGE')?.value ?? 0,
-    fsBattMah: parameters.get('FS_BATT_MAH')?.value ?? 0,
+    battFsLowAct: parameters.get('BATT_FS_LOW_ACT')?.value ?? 0,
+    battLowVolt: parameters.get('BATT_LOW_VOLT')?.value ?? 0,
+    battLowMah: parameters.get('BATT_LOW_MAH')?.value ?? 0,
     // Battery failsafe (critical)
     battFsCrtAct: parameters.get('BATT_FS_CRT_ACT')?.value ?? 0,
     battCrtVolt: parameters.get('BATT_CRT_VOLT')?.value ?? 0,
@@ -256,8 +256,8 @@ const SafetyTab: React.FC = () => {
             <div>
               <label className="text-xs text-zinc-400 block mb-1.5">Action</label>
               <select
-                value={safetyValues.fsBattEnable}
-                onChange={(e) => setParameter('FS_BATT_ENABLE', Number(e.target.value))}
+                value={safetyValues.battFsLowAct}
+                onChange={(e) => setParameter('BATT_FS_LOW_ACT', Number(e.target.value))}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
               >
                 <option value={0}>Disabled</option>
@@ -268,8 +268,8 @@ const SafetyTab: React.FC = () => {
 
             <DraggableSlider
               label="Low Voltage (V)"
-              value={Math.round(safetyValues.fsBattVoltage * 10)}
-              onChange={(v) => setParameter('FS_BATT_VOLTAGE', v / 10)}
+              value={Math.round(safetyValues.battLowVolt * 10)}
+              onChange={(v) => setParameter('BATT_LOW_VOLT', v / 10)}
               min={0}
               max={260}
               step={1}
@@ -278,14 +278,14 @@ const SafetyTab: React.FC = () => {
             />
 
             <DraggableSlider
-              label="Low mAh Used"
-              value={safetyValues.fsBattMah}
-              onChange={(v) => setParameter('FS_BATT_MAH', v)}
+              label="Low mAh Remaining"
+              value={safetyValues.battLowMah}
+              onChange={(v) => setParameter('BATT_LOW_MAH', v)}
               min={0}
               max={10000}
               step={100}
               color="#F59E0B"
-              hint="Trigger when mAh consumed exceeds this"
+              hint="Trigger when remaining mAh drops below this"
             />
           </div>
         </div>

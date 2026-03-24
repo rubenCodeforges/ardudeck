@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock lucide-react since it's a renderer dependency not available in Node tests
+vi.mock('lucide-react', () => ({
+  Egg: 'Egg',
+  Drama: 'Drama',
+  Zap: 'Zap',
+  Film: 'Film',
+}));
+
 import { SAFETY_PRESETS } from '../mavlink-presets';
 
 /**
@@ -54,18 +63,18 @@ describe('SAFETY_PRESETS - critical battery failsafe (issue #35)', () => {
 });
 
 describe('SAFETY_PRESETS - low battery params coexist with critical battery', () => {
-  it('all presets still include low battery FS_BATT_ENABLE', () => {
+  it('all presets still include low battery BATT_FS_LOW_ACT', () => {
     for (const [key, preset] of Object.entries(SAFETY_PRESETS)) {
       expect(
         preset.params,
-        `preset "${key}" is missing FS_BATT_ENABLE`,
-      ).toHaveProperty('FS_BATT_ENABLE');
+        `preset "${key}" is missing BATT_FS_LOW_ACT`,
+      ).toHaveProperty('BATT_FS_LOW_ACT');
     }
   });
 
   it('maximum preset has both low and critical battery actions enabled', () => {
     const preset = SAFETY_PRESETS['maximum']!;
-    expect(preset.params['FS_BATT_ENABLE']).toBeGreaterThan(0);
+    expect(preset.params['BATT_FS_LOW_ACT']).toBeGreaterThan(0);
     expect(preset.params['BATT_FS_CRT_ACT']).toBeGreaterThan(0);
   });
 
@@ -73,7 +82,7 @@ describe('SAFETY_PRESETS - low battery params coexist with critical battery', ()
     const preset = SAFETY_PRESETS['maximum']!;
     // Low battery = Land (2), Critical battery = Land immediately (1)
     // Both are "land" type actions; critical should not be less aggressive
-    const lowAction = preset.params['FS_BATT_ENABLE']!;
+    const lowAction = preset.params['BATT_FS_LOW_ACT']!;
     const critAction = preset.params['BATT_FS_CRT_ACT']!;
     // Both should be non-zero (enabled)
     expect(lowAction).toBeGreaterThan(0);
@@ -104,7 +113,7 @@ describe('SAFETY_PRESETS - structural integrity', () => {
   const expectedParams = [
     'FS_THR_ENABLE',
     'FS_GCS_ENABLE',
-    'FS_BATT_ENABLE',
+    'BATT_FS_LOW_ACT',
     'BATT_FS_CRT_ACT',
     'FENCE_ENABLE',
     'ARMING_CHECK',
