@@ -198,6 +198,7 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
       'FS_THR_ENABLE': 1, // RTL on throttle failsafe
       'FS_GCS_ENABLE': 1, // RTL on GCS failsafe
       'FS_BATT_ENABLE': 2, // Land on battery failsafe
+      'BATT_FS_CRT_ACT': 1, // Land immediately on critical battery
       'FENCE_ENABLE': 1,
       'FENCE_TYPE': 7, // All fence types
       'ARMING_CHECK': 1, // All arming checks
@@ -210,6 +211,7 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
       'FS_THR_ENABLE': 1,
       'FS_GCS_ENABLE': 0, // No GCS failsafe
       'FS_BATT_ENABLE': 1, // RTL on battery failsafe
+      'BATT_FS_CRT_ACT': 1, // Land immediately on critical battery
       'FENCE_ENABLE': 1,
       'FENCE_TYPE': 3, // Altitude + circle only
       'ARMING_CHECK': 1,
@@ -222,6 +224,7 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
       'FS_THR_ENABLE': 1, // Keep throttle failsafe
       'FS_GCS_ENABLE': 0,
       'FS_BATT_ENABLE': 0,
+      'BATT_FS_CRT_ACT': 0, // No critical battery action
       'FENCE_ENABLE': 0,
       'ARMING_CHECK': 0, // Bypass arming checks (dangerous!)
     },

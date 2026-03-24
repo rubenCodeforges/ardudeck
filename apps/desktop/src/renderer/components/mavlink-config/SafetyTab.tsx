@@ -70,10 +70,14 @@ const SafetyTab: React.FC = () => {
     fsThrValue: parameters.get('FS_THR_VALUE')?.value ?? 975,
     // GCS failsafe
     fsGcsEnable: parameters.get('FS_GCS_ENABLE')?.value ?? 0,
-    // Battery failsafe
+    // Battery failsafe (low)
     fsBattEnable: parameters.get('FS_BATT_ENABLE')?.value ?? 0,
     fsBattVoltage: parameters.get('FS_BATT_VOLTAGE')?.value ?? 0,
     fsBattMah: parameters.get('FS_BATT_MAH')?.value ?? 0,
+    // Battery failsafe (critical)
+    battFsCrtAct: parameters.get('BATT_FS_CRT_ACT')?.value ?? 0,
+    battCrtVolt: parameters.get('BATT_CRT_VOLT')?.value ?? 0,
+    battCrtMah: parameters.get('BATT_CRT_MAH')?.value ?? 0,
     // Fence
     fenceEnable: parameters.get('FENCE_ENABLE')?.value ?? 0,
     fenceType: parameters.get('FENCE_TYPE')?.value ?? 3,
@@ -283,6 +287,63 @@ const SafetyTab: React.FC = () => {
               color="#F59E0B"
               hint="Trigger when mAh consumed exceeds this"
             />
+          </div>
+        </div>
+
+        {/* Critical Battery Failsafe Card */}
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800/50 p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-white">Critical Battery</h3>
+              <p className="text-xs text-zinc-500">Last resort when battery is dangerously low</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-zinc-400 block mb-1.5">Action</label>
+              <select
+                value={safetyValues.battFsCrtAct}
+                onChange={(e) => setParameter('BATT_FS_CRT_ACT', Number(e.target.value))}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value={0}>Disabled</option>
+                <option value={1}>Land Immediately</option>
+                <option value={2}>RTL - Return to Launch</option>
+              </select>
+            </div>
+
+            <DraggableSlider
+              label="Critical Voltage (V)"
+              value={Math.round(safetyValues.battCrtVolt * 10)}
+              onChange={(v) => setParameter('BATT_CRT_VOLT', v / 10)}
+              min={0}
+              max={260}
+              step={1}
+              color="#EF4444"
+              hint="Emergency action when voltage drops below this"
+            />
+
+            <DraggableSlider
+              label="Critical mAh Remaining"
+              value={safetyValues.battCrtMah}
+              onChange={(v) => setParameter('BATT_CRT_MAH', v)}
+              min={0}
+              max={10000}
+              step={100}
+              color="#EF4444"
+              hint="Emergency action when remaining mAh drops below this"
+            />
+          </div>
+
+          <div className="bg-zinc-800/50 rounded-lg p-3">
+            <p className="text-xs text-zinc-500">
+              <span className="text-red-400">Warning:</span> Critical battery should trigger a more
+              aggressive action than low battery (e.g. Land vs RTL). Set voltage lower than the low battery threshold.
+            </p>
           </div>
         </div>
 
