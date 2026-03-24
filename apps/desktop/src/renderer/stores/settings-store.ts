@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { TelemetrySpeed } from '../../shared/ipc-channels.js';
+import type { TelemetrySpeed, BoardStats } from '../../shared/ipc-channels.js';
 import type { FirmwareSource } from '../../shared/firmware-types.js';
 
 /**
@@ -12,10 +12,19 @@ export type VehicleType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat' | 'sub'
  * Vehicle profile for performance calculations
  * Uses user-friendly inputs that pilots actually know
  */
+export type { BoardStats } from '../../shared/ipc-channels.js';
+
 export interface VehicleProfile {
   id: string;
   name: string;
   type: VehicleType;
+
+  // Board identification
+  boardUid?: string;           // Unique board identifier from AUTOPILOT_VERSION uid/uid2
+  boardId?: string;            // Board type name (e.g., "fmuv3", "Pixhawk4")
+  boardName?: string;          // Human-friendly display name
+  lastConnected?: string;      // ISO date of last connection
+  boardStats?: BoardStats;     // Flight stats from STAT_* parameters
 
   // Common physical
   weight: number;             // grams (AUW - all up weight with battery)
@@ -238,6 +247,18 @@ interface SettingsStore {
   updateVehicle: (id: string, updates: Partial<VehicleProfile>) => void;
   removeVehicle: (id: string) => void;
   setActiveVehicle: (id: string | null) => void;
+
+  // Actions - Board association
+  /**
+   * Associate a board with the active profile, or switch to / create a profile for this board.
+   * Returns the profile ID that ended up associated.
+   * - If a profile already has this boardUid → switch to it
+   * - If active profile has no boardUid → assign this board to it
+   * - If active profile has a different boardUid → create new profile (cloned from active) and switch
+   */
+  associateBoard: (boardUid: string, boardId?: string, boardName?: string) => string;
+  /** Update board stats from STAT_* parameters on the active profile */
+  updateBoardStats: (stats: BoardStats) => void;
 
   // Actions - Flight stats
   updateFlightStats: (updates: Partial<FlightStats>) => void;
@@ -754,6 +775,73 @@ export const useSettingsStore = create<SettingsStore>()(
 
   setActiveVehicle: (id) => {
     set({ activeVehicleId: id });
+  },
+
+  // Actions - Board association
+  associateBoard: (boardUid, boardId, boardName) => {
+    const state = get();
+    const now = new Date().toISOString();
+
+    // 1. Check if any existing profile already has this boardUid
+    const existingProfile = state.vehicles.find(v => v.boardUid === boardUid);
+    if (existingProfile) {
+      // Switch to it and update connection timestamp
+      set((s) => ({
+        activeVehicleId: existingProfile.id,
+        vehicles: s.vehicles.map(v =>
+          v.id === existingProfile.id
+            ? { ...v, lastConnected: now, ...(boardId && { boardId }), ...(boardName && { boardName }) }
+            : v
+        ),
+      }));
+      return existingProfile.id;
+    }
+
+    // 2. Active profile has no boardUid → claim it for this board
+    const activeProfile = state.vehicles.find(v => v.id === state.activeVehicleId);
+    if (activeProfile && !activeProfile.boardUid) {
+      set((s) => ({
+        vehicles: s.vehicles.map(v =>
+          v.id === activeProfile.id
+            ? { ...v, boardUid, lastConnected: now, ...(boardId && { boardId }), ...(boardName && { boardName }) }
+            : v
+        ),
+      }));
+      return activeProfile.id;
+    }
+
+    // 3. Active profile has a different boardUid → clone it as template for a new profile
+    const template = activeProfile || state.vehicles[0];
+    const newId = `vehicle-${Date.now()}`;
+    const displayName = boardName || boardId || 'New Board';
+    const newVehicle: VehicleProfile = {
+      ...(template ? { ...template } : { type: 'copter' as VehicleType, weight: 500, batteryCells: 4, batteryCapacity: 1500 }),
+      id: newId,
+      name: displayName,
+      boardUid,
+      boardId,
+      boardName,
+      lastConnected: now,
+      boardStats: undefined,
+      notes: template ? `Cloned from "${template.name}"` : undefined,
+    };
+    set((s) => ({
+      vehicles: [...s.vehicles, newVehicle],
+      activeVehicleId: newId,
+    }));
+    return newId;
+  },
+
+  updateBoardStats: (stats) => {
+    const state = get();
+    if (!state.activeVehicleId) return;
+    set((s) => ({
+      vehicles: s.vehicles.map(v =>
+        v.id === s.activeVehicleId
+          ? { ...v, boardStats: { ...v.boardStats, ...stats, lastUpdated: new Date().toISOString() } }
+          : v
+      ),
+    }));
   },
 
   // Actions - Flight stats

@@ -1056,6 +1056,10 @@ export function SettingsView() {
       weight: type === 'copter' ? 500 : type === 'plane' ? 1500 : 1000,
       batteryCells: 4,
       batteryCapacity: type === 'copter' ? 1300 : type === 'plane' ? 3000 : 5000,
+      // Board identification from current connection
+      ...(connectionState.boardUid && { boardUid: connectionState.boardUid }),
+      ...(connectionState.boardId && { boardId: connectionState.boardId }),
+      lastConnected: new Date().toISOString(),
       // Copter-specific defaults
       ...(type === 'copter' && { frameSize: 127, motorCount: 4, motorKv: 2400, propSize: '5x4.5' }),  // 127mm = 5"
       // Plane-specific defaults
@@ -1144,8 +1148,13 @@ export function SettingsView() {
                       <div className="text-lg font-medium text-white truncate">
                         {activeVehicle?.name || 'No vehicle'}
                       </div>
-                      <div className="text-sm text-gray-400">
-                        {activeVehicle ? VEHICLE_TYPE_NAMES[activeVehicle.type] : ''}
+                      <div className="text-sm text-gray-400 flex items-center gap-2">
+                        <span>{activeVehicle ? VEHICLE_TYPE_NAMES[activeVehicle.type] : ''}</span>
+                        {activeVehicle?.boardId && (
+                          <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded" title={activeVehicle.boardUid ? `UID: ${activeVehicle.boardUid}` : undefined}>
+                            {activeVehicle.boardId}
+                          </span>
+                        )}
                       </div>
                     </div>
                     {activeVehicle && (
@@ -1206,6 +1215,44 @@ export function SettingsView() {
                       </div>
                     </div>
                   </div>
+                  {/* Board Stats (from STAT_* parameters) */}
+                  {activeVehicle.boardStats && (activeVehicle.boardStats.totalFlightCount != null || activeVehicle.boardStats.totalFlightTime != null) && (
+                    <div className="mt-3 pt-3 border-t border-gray-700/30">
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Board Stats</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {activeVehicle.boardStats.totalFlightCount != null && (
+                          <div className="bg-black/20 rounded-lg p-2">
+                            <div className="text-[10px] text-gray-500">Flights</div>
+                            <div className="text-xs text-white font-medium">{activeVehicle.boardStats.totalFlightCount}</div>
+                          </div>
+                        )}
+                        {activeVehicle.boardStats.totalFlightTime != null && (
+                          <div className="bg-black/20 rounded-lg p-2">
+                            <div className="text-[10px] text-gray-500">Flight Time</div>
+                            <div className="text-xs text-white font-medium">{formatTime(activeVehicle.boardStats.totalFlightTime)}</div>
+                          </div>
+                        )}
+                        {activeVehicle.boardStats.totalRunTime != null && (
+                          <div className="bg-black/20 rounded-lg p-2">
+                            <div className="text-[10px] text-gray-500">Run Time</div>
+                            <div className="text-xs text-white font-medium">{formatTime(activeVehicle.boardStats.totalRunTime)}</div>
+                          </div>
+                        )}
+                        {activeVehicle.boardStats.totalDistance != null && (
+                          <div className="bg-black/20 rounded-lg p-2">
+                            <div className="text-[10px] text-gray-500">Distance</div>
+                            <div className="text-xs text-white font-medium">{formatDistance(activeVehicle.boardStats.totalDistance)}</div>
+                          </div>
+                        )}
+                        {activeVehicle.boardStats.bootCount != null && (
+                          <div className="bg-black/20 rounded-lg p-2">
+                            <div className="text-[10px] text-gray-500">Boots</div>
+                            <div className="text-xs text-white font-medium">{activeVehicle.boardStats.bootCount}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -2992,6 +3039,11 @@ function VehicleCard({
                 <span className="text-white font-medium text-sm">{vehicle.name}</span>
                 {isActive && (
                   <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">Active</span>
+                )}
+                {vehicle.boardUid && (
+                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded" title={`Board UID: ${vehicle.boardUid}`}>
+                    {vehicle.boardId || vehicle.boardName || vehicle.boardUid.slice(0, 8)}
+                  </span>
                 )}
               </div>
               <div className="text-gray-500 text-xs">

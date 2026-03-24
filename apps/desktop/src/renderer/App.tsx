@@ -31,6 +31,7 @@ import { ExperienceLevelDialog } from './components/ui/ExperienceLevelDialog';
 import { useFlightControlStore } from './stores/flight-control-store';
 import { useCompanionStore } from './stores/companion-store';
 import { useMessagesStore } from './stores/messages-store';
+import { useBoardProfileAssociation } from './hooks/useBoardProfileAssociation';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
 
@@ -227,6 +228,9 @@ function App() {
     handleCalibrationComplete,
   } = useCalibrationStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Board-profile association (auto-link boards to vehicle profiles)
+  useBoardProfileAssociation();
 
   // Mismatch dialog state
   const [showMismatchDialog, setShowMismatchDialog] = useState(false);

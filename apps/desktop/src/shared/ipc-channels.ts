@@ -600,6 +600,19 @@ export interface LayoutStoreSchema {
 export type SettingsVehicleType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat' | 'sub';
 
 /**
+ * Board statistics from ArduPilot STAT_* parameters.
+ * Updated each time a board connects and parameters are loaded.
+ */
+export interface BoardStats {
+  totalFlightTime?: number;    // STAT_FLTTIME - seconds
+  totalFlightCount?: number;   // STAT_FLTCNT
+  totalRunTime?: number;       // STAT_RUNTIME - seconds
+  totalDistance?: number;       // STAT_DISTFLWN - meters
+  bootCount?: number;          // STAT_BOOTCNT
+  lastUpdated?: string;        // ISO date of last stats update
+}
+
+/**
  * Vehicle profile for performance calculations
  */
 export interface SettingsVehicleProfile {
@@ -610,6 +623,12 @@ export interface SettingsVehicleProfile {
   batteryCells: number;
   batteryCapacity: number;
   batteryDischarge?: number;
+  // Board identification
+  boardUid?: string;           // Unique board identifier from AUTOPILOT_VERSION uid/uid2
+  boardId?: string;            // Board type name (e.g., "fmuv3", "Pixhawk4")
+  boardName?: string;          // Human-friendly display name
+  lastConnected?: string;      // ISO date of last connection
+  boardStats?: BoardStats;     // Flight stats from STAT_* parameters
   // Copter
   frameSize?: number;
   motorCount?: number;
