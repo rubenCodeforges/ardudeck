@@ -224,6 +224,11 @@ let currentTransport: Transport | null = null;
 let currentVehicleType = 0; // 1=plane, 2=copter, etc.
 let mavlinkParser: MAVLinkParser | null = null;
 let heartbeatTimeout: NodeJS.Timeout | null = null;
+let heartbeatWatchdog: NodeJS.Timeout | null = null;
+
+// Heartbeat watchdog: detect when vehicle stops sending heartbeats (e.g. powered off)
+// ArduPilot sends heartbeats at 1Hz; 5 seconds means 5 missed heartbeats before disconnect
+const HEARTBEAT_WATCHDOG_MS = 5000;
 
 // =============================================================================
 // MAVLink Signing State
@@ -1850,6 +1855,43 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   };
 
   /**
+   * Reset the heartbeat watchdog timer.
+   * Called on each real vehicle heartbeat to confirm the vehicle is still alive.
+   * If no heartbeat arrives within HEARTBEAT_WATCHDOG_MS, triggers disconnect.
+   */
+  const resetHeartbeatWatchdog = (): void => {
+    if (heartbeatWatchdog) clearTimeout(heartbeatWatchdog);
+    heartbeatWatchdog = setTimeout(() => {
+      heartbeatWatchdog = null;
+      if (!connectionState.isConnected) return;
+      sendLog(mainWindow, 'warn', 'Vehicle heartbeat lost', `No heartbeat received for ${HEARTBEAT_WATCHDOG_MS / 1000}s — disconnecting`);
+      // Close transport to trigger normal disconnect flow via transportCloseHandler
+      if (currentTransport?.isOpen) {
+        currentTransport.close().catch(() => {});
+      } else {
+        // Transport already closed/gone - manually clean up connection state
+        cleanupMspConnection();
+        if (gcsHeartbeatInterval) {
+          clearInterval(gcsHeartbeatInterval);
+          gcsHeartbeatInterval = null;
+        }
+        if (mavlinkBatchTimer) {
+          clearTimeout(mavlinkBatchTimer);
+          mavlinkBatchTimer = null;
+          mavlinkTelemetryBatch = {};
+        }
+        currentTransport = null;
+        mavlinkParser = null;
+        resetMavlinkDiagCache();
+        connectionState.isConnected = false;
+        connectionState.isWaitingForHeartbeat = false;
+        sendLog(mainWindow, 'info', 'Connection closed');
+        sendConnectionState(mainWindow);
+      }
+    }, HEARTBEAT_WATCHDOG_MS);
+  };
+
+  /**
    * Create the MAVLink data handler with backpressure support.
    * Reusable for both initial connection and reconnection.
    */
@@ -1934,6 +1976,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 continue;
               }
 
+              // Reset heartbeat watchdog on every real vehicle heartbeat
+              // This confirms the vehicle is still alive and communicating
+              if (connectionState.isConnected) {
+                resetHeartbeatWatchdog();
+              }
+
               // First heartbeat from a real vehicle - connection confirmed!
               if (connectionState.isWaitingForHeartbeat) {
                 if (heartbeatTimeout) {
@@ -2002,6 +2050,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 sendGcsHeartbeat();
                 if (gcsHeartbeatInterval) clearInterval(gcsHeartbeatInterval);
                 gcsHeartbeatInterval = setInterval(sendGcsHeartbeat, 1000);
+
+                // Start heartbeat watchdog to detect vehicle going offline
+                resetHeartbeatWatchdog();
 
                 // Request individual message streams via MAV_CMD_SET_MESSAGE_INTERVAL + REQUEST_DATA_STREAM
                 // Uses stored speed preference from settings
@@ -2075,6 +2126,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (heartbeatTimeout) {
         clearTimeout(heartbeatTimeout);
         heartbeatTimeout = null;
+      }
+      if (heartbeatWatchdog) {
+        clearTimeout(heartbeatWatchdog);
+        heartbeatWatchdog = null;
       }
       if (isReconnectPending()) {
         // Pause GCS heartbeats during reconnect (will restart on new heartbeat)
@@ -2341,6 +2396,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         heartbeatTimeout = null;
       }
 
+      if (heartbeatWatchdog) {
+        clearTimeout(heartbeatWatchdog);
+        heartbeatWatchdog = null;
+      }
+
       // Check if this is an expected close (reboot in progress)
       if (isReconnectPending()) {
         if (gcsHeartbeatInterval) {
@@ -2539,6 +2599,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         if (heartbeatTimeout) {
           clearTimeout(heartbeatTimeout);
           heartbeatTimeout = null;
+        }
+
+        if (heartbeatWatchdog) {
+          clearTimeout(heartbeatWatchdog);
+          heartbeatWatchdog = null;
         }
 
         // Check if this is an expected close (reboot in progress)
@@ -2834,6 +2899,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (heartbeatTimeout) {
         clearTimeout(heartbeatTimeout);
         heartbeatTimeout = null;
+      }
+
+      // Clear heartbeat watchdog
+      if (heartbeatWatchdog) {
+        clearTimeout(heartbeatWatchdog);
+        heartbeatWatchdog = null;
       }
 
       // Clear GCS heartbeat interval
@@ -6526,6 +6597,12 @@ export async function cleanupOnShutdown(): Promise<void> {
   if (heartbeatTimeout) {
     clearTimeout(heartbeatTimeout);
     heartbeatTimeout = null;
+  }
+
+  // Clear heartbeat watchdog
+  if (heartbeatWatchdog) {
+    clearTimeout(heartbeatWatchdog);
+    heartbeatWatchdog = null;
   }
 
   // Reset state
