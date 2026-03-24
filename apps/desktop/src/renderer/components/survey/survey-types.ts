@@ -5,6 +5,14 @@
 
 export type SurveyPattern = 'grid' | 'crosshatch' | 'circular';
 
+/**
+ * Altitude reference frame for survey waypoints.
+ * - 'relative': Altitude relative to home position (GLOBAL_RELATIVE_ALT)
+ * - 'asl': Altitude above mean sea level (GLOBAL)
+ * - 'terrain': Altitude relative to terrain at each point (GLOBAL_TERRAIN_ALT)
+ */
+export type AltitudeReference = 'relative' | 'asl' | 'terrain';
+
 export interface CameraPreset {
   name: string;
   sensorWidth: number;   // mm
@@ -25,11 +33,11 @@ export interface SurveyConfig {
   altitude: number;          // meters AGL
   speed: number;             // m/s
   frontOverlap: number;      // % (60-90)
-  sideOverlap: number;       // % (30-70)
+  sideOverlap: number;       // % (20-99)
   camera: CameraPreset;
   gridAngle: number;         // degrees, 0=north-south lines
   overshoot: number;         // meters past polygon edge for turns
-  useTerrainFollow: boolean;
+  altitudeReference: AltitudeReference;
 }
 
 export interface SurveyResult {
@@ -68,5 +76,5 @@ export const DEFAULT_SURVEY_CONFIG: Omit<SurveyConfig, 'polygon'> = {
   },
   gridAngle: 0,
   overshoot: 20,
-  useTerrainFollow: false,
+  altitudeReference: 'relative',
 };

@@ -85,10 +85,19 @@ export interface FlightStats {
  */
 export type MissionFirmware = 'ardupilot' | 'inav';
 
+/**
+ * Altitude reference frame for mission planning.
+ * - 'relative': Altitude relative to home position
+ * - 'asl': Altitude above mean sea level
+ * - 'terrain': Altitude above terrain (AGL) at each waypoint
+ */
+export type DefaultAltitudeReference = 'relative' | 'asl' | 'terrain';
+
 export interface MissionDefaults {
   safeAltitudeBuffer: number;     // meters above terrain for collision warning
   defaultWaypointAltitude: number; // meters - default altitude for new waypoints
   defaultTakeoffAltitude: number;  // meters - default takeoff altitude
+  defaultAltitudeReference: DefaultAltitudeReference; // Default altitude reference frame
   advancedMissionLabels: boolean;  // false = friendly labels ("Fly here"), true = standard ("WP")
   missionFirmware: MissionFirmware; // Which firmware's commands to show when disconnected
   showSegmentColors: boolean;      // Color-coded path segments on map (camera, ROI, speed, etc.)
@@ -256,6 +265,7 @@ const DEFAULT_MISSION_DEFAULTS: MissionDefaults = {
   safeAltitudeBuffer: 30,        // 30m above terrain
   defaultWaypointAltitude: 100,  // 100m default altitude
   defaultTakeoffAltitude: 50,    // 50m takeoff altitude
+  defaultAltitudeReference: 'relative', // Altitude relative to home by default
   advancedMissionLabels: false,  // Friendly labels by default
   missionFirmware: 'ardupilot',  // Default firmware for offline mission planning
   showSegmentColors: true,       // Color-coded path segments on by default

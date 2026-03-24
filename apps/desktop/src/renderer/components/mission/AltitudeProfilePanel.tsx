@@ -476,7 +476,10 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
     }
   };
 
-  // Auto-adjust all waypoint altitudes to be above terrain + safe buffer
+  // Auto-adjust all waypoint altitudes to be above terrain + safe buffer.
+  // Uses the higher of safeAltitudeBuffer or the waypoint's current altitude
+  // as the target clearance, so a survey configured at 80m AGL won't be
+  // reduced to just the 30m safe buffer.
   const handleAutoAdjustHeight = useCallback(() => {
     if (waypointElevations.size === 0 || waypoints.length === 0) return;
 
@@ -485,7 +488,10 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
       const groundElev = waypointElevations.get(wp.seq);
       if (groundElev === undefined) continue;
 
-      const minSafe = groundElev + safeAltitudeBuffer;
+      // Maintain at least the waypoint's intended clearance or the safe buffer,
+      // whichever is greater
+      const targetClearance = Math.max(safeAltitudeBuffer, wp.altitude);
+      const minSafe = groundElev + targetClearance;
       if (wp.altitude < minSafe) {
         updateWaypoint(wp.seq, { altitude: Math.ceil(minSafe) });
         adjustedCount++;

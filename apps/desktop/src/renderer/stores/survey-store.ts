@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern } from '../components/survey/survey-types';
+import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern, AltitudeReference } from '../components/survey/survey-types';
 import { DEFAULT_SURVEY_CONFIG } from '../components/survey/survey-types';
 import type { CameraPreset } from '../components/survey/survey-types';
 import { generateGrid } from '../components/survey/generators/grid-generator';
@@ -35,11 +35,12 @@ interface SurveyStore {
   setCamera: (camera: CameraPreset) => void;
   setGridAngle: (angle: number) => void;
   setOvershoot: (overshoot: number) => void;
-  setTerrainFollow: (enabled: boolean) => void;
+  setAltitudeReference: (ref: AltitudeReference) => void;
   setShowFootprints: (show: boolean) => void;
 
   // Polygon editing
   updateVertex: (index: number, lat: number, lng: number) => void;
+  removeVertex: (index: number) => void;
 
   // Survey actions
   generateSurvey: () => void;
@@ -135,8 +136,8 @@ export const useSurveyStore = create<SurveyStore>((set, get) => ({
     get().generateSurvey();
   },
 
-  setTerrainFollow: (useTerrainFollow) => {
-    set({ config: { ...get().config, useTerrainFollow } });
+  setAltitudeReference: (altitudeReference) => {
+    set({ config: { ...get().config, altitudeReference } });
   },
 
   setShowFootprints: (showFootprints) => {
@@ -148,6 +149,14 @@ export const useSurveyStore = create<SurveyStore>((set, get) => ({
     if (!polygon) return;
     const newPolygon = [...polygon];
     newPolygon[index] = { lat, lng };
+    set({ polygon: newPolygon });
+    get().generateSurvey();
+  },
+
+  removeVertex: (index) => {
+    const { polygon } = get();
+    if (!polygon || polygon.length <= 3) return; // Need at least 3 vertices
+    const newPolygon = polygon.filter((_, i) => i !== index);
     set({ polygon: newPolygon });
     get().generateSurvey();
   },

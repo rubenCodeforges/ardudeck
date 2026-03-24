@@ -1410,7 +1410,7 @@ export function SettingsView() {
                 Mission Planning Defaults
               </h2>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">
                     Safe Alt Buffer
@@ -1481,6 +1481,24 @@ export function SettingsView() {
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultTakeoffAltitude}</div>
                     : <div className="text-[10px] text-gray-600 mt-1">Altitude after launch</div>
                   }
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    Alt Reference
+                  </label>
+                  <select
+                    value={missionDefaults.defaultAltitudeReference ?? 'relative'}
+                    onChange={(e) => updateMissionDefaults({
+                      defaultAltitudeReference: e.target.value as 'relative' | 'asl' | 'terrain',
+                    })}
+                    className="w-full px-2 py-1.5 bg-gray-900/50 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="relative">Relative to Home</option>
+                    <option value="terrain">Above Terrain (AGL)</option>
+                    <option value="asl">Above Sea Level</option>
+                  </select>
+                  <div className="text-[10px] text-gray-600 mt-1">Default altitude reference</div>
                 </div>
               </div>
             </section>
