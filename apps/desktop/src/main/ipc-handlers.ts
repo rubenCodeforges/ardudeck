@@ -3136,10 +3136,20 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           secretKey: new Array(32).fill(0),
           initialTimestamp: 0n,
         });
-        const packet = serializeV2(SETUP_SIGNING_ID, payload, SETUP_SIGNING_CRC_EXTRA, {
-          sysid: 255,
-          compid: 190,
-        });
+        // When signing is active, send SIGNED so the FC accepts it.
+        // An unsigned packet would be silently dropped by a signing-enabled FC.
+        const packet = signingEnabled && signingKey && detectedMavlinkVersion === 2
+          ? serializeV2(SETUP_SIGNING_ID, payload, SETUP_SIGNING_CRC_EXTRA, {
+              sysid: 255,
+              compid: 190,
+              sign: true,
+              signingKey,
+              linkId: signingLinkId,
+            })
+          : serializeV2(SETUP_SIGNING_ID, payload, SETUP_SIGNING_CRC_EXTRA, {
+              sysid: 255,
+              compid: 190,
+            });
         await currentTransport.write(packet);
         connectionState.packetsSent++;
         await currentTransport.write(packet);
