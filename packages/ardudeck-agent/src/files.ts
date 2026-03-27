@@ -4,10 +4,19 @@ import path from 'path';
 import type { FileEntry } from '@ardudeck/companion-types';
 
 export function resolveSafePath(root: string, requestedPath: string): string {
-  if (path.isAbsolute(requestedPath) && !requestedPath.startsWith(root)) {
+  // Reject paths with .. components
+  if (requestedPath.includes('..')) {
     throw new Error('Path traversal detected');
   }
-  const resolved = path.resolve(root, requestedPath.replace(/^\//, ''));
+  // Reject absolute paths with multiple segments (e.g. /etc/passwd)
+  // Allow single-segment root-relative like "/" or "/filename.txt"
+  if (path.isAbsolute(requestedPath) && !requestedPath.startsWith(root)) {
+    const segments = requestedPath.split('/').filter(Boolean);
+    if (segments.length > 1) {
+      throw new Error('Path traversal detected');
+    }
+  }
+  const resolved = path.resolve(root, requestedPath.replace(/^\/+/, ''));
   if (!resolved.startsWith(root)) {
     throw new Error('Path traversal detected');
   }
