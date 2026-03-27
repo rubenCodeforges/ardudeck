@@ -4,6 +4,9 @@ import path from 'path';
 import type { FileEntry } from '@ardudeck/companion-types';
 
 export function resolveSafePath(root: string, requestedPath: string): string {
+  if (path.isAbsolute(requestedPath) && !requestedPath.startsWith(root)) {
+    throw new Error('Path traversal detected');
+  }
   const resolved = path.resolve(root, requestedPath.replace(/^\//, ''));
   if (!resolved.startsWith(root)) {
     throw new Error('Path traversal detected');
