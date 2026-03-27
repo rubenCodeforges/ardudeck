@@ -1,0 +1,5 @@
+remote="$1"
+
+if [ "$remote" = "origin" ]; then
+  pnpm test
+fi
