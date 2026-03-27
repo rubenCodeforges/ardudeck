@@ -85,7 +85,7 @@ export function FileBrowserPanel() {
       if (data instanceof ArrayBuffer) {
         blob = new Blob([data]);
       } else if (data instanceof Uint8Array) {
-        blob = new Blob([data.buffer]);
+        blob = new Blob([data.buffer as ArrayBuffer]);
       } else if (typeof data === 'string') {
         blob = new Blob([data]);
       } else {

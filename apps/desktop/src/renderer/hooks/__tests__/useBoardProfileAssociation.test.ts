@@ -345,7 +345,7 @@ describe('protocol-based stats filtering (hook guard logic)', () => {
 
   it('MSP protocol should NOT sync STAT_* params', () => {
     // Simulate MSP protocol — hook skips stats update
-    const protocol = 'msp';
+    const protocol: string = 'msp';
     if (protocol === 'mavlink') {
       useSettingsStore.getState().updateBoardStats({ totalFlightCount: 42 });
     }
