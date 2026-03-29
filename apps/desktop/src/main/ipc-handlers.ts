@@ -3755,7 +3755,15 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       ].filter(Boolean).join('\n');
 
       // Format: PARAM_NAME,VALUE (one per line)
-      const content = header + '\n\n' + params.map(p => `${p.id},${p.value}`).join('\n');
+      // MAVLink parameters are 32-bit floats. When decoded into JS 64-bit doubles
+      // they carry floating-point noise (e.g. 0.18000000715255737 instead of 0.18).
+      // toPrecision(6) recovers the original 6 significant digits; parseFloat strips
+      // trailing zeros so integers stored as floats still look clean (e.g. "1" not "1.00000").
+      const formatValue = (value: number): string => {
+        if (Number.isInteger(value)) return String(value);
+        return String(parseFloat(value.toPrecision(6)));
+      };
+      const content = header + '\n\n' + params.map(p => `${p.id},${formatValue(p.value)}`).join('\n');
 
       const fs = await import('fs/promises');
       await fs.writeFile(result.filePath, content, 'utf-8');
