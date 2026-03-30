@@ -46,7 +46,6 @@ jobs:
         run: |
           brew update
           brew install gawk coreutils ccache || true
-          python3 -m pip install --break-system-packages --upgrade pip
           python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future
 
       - name: Configure SITL
@@ -96,7 +95,6 @@ jobs:
         run: |
           brew update
           brew install gawk coreutils ccache || true
-          python3 -m pip install --break-system-packages --upgrade pip
           python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future
 
       - name: Configure SITL
@@ -145,7 +143,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc g++ gawk git make cmake python3-pip ccache
-          python3 -m pip install --upgrade pip
           python3 -m pip install empy==3.3.4 pexpect setuptools future
 
       - name: Configure SITL
