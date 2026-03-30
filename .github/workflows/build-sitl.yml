@@ -46,7 +46,7 @@ jobs:
         run: |
           brew update
           brew install gawk coreutils ccache || true
-          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future
+          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
@@ -95,7 +95,7 @@ jobs:
         run: |
           brew update
           brew install gawk coreutils ccache || true
-          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future
+          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
@@ -142,8 +142,8 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc g++ gawk git make cmake python3-pip ccache
-          python3 -m pip install empy==3.3.4 pexpect setuptools future
+          sudo apt-get install -y gcc g++ gawk git make cmake python3-pip ccache libxml2-dev libxslt-dev
+          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
