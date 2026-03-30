@@ -42,17 +42,22 @@ jobs:
           submodules: recursive
           path: ardupilot
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install build dependencies
         run: |
           brew update
           brew install gawk coreutils ccache || true
-          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
+          pip install empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
         run: ./waf configure --board sitl
 
       - name: Build vehicles
+        timeout-minutes: 30
         working-directory: ardupilot
         run: |
           VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
@@ -91,17 +96,22 @@ jobs:
           submodules: recursive
           path: ardupilot
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install build dependencies
         run: |
           brew update
           brew install gawk coreutils ccache || true
-          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
+          pip install empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
         run: ./waf configure --board sitl
 
       - name: Build vehicles
+        timeout-minutes: 30
         working-directory: ardupilot
         run: |
           VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
@@ -139,17 +149,22 @@ jobs:
           submodules: recursive
           path: ardupilot
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc g++ gawk git make cmake python3-pip ccache libxml2-dev libxslt-dev
-          python3 -m pip install --break-system-packages empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
+          sudo apt-get install -y gcc g++ gawk git make cmake ccache libxml2-dev libxslt-dev
+          pip install empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
         run: ./waf configure --board sitl
 
       - name: Build vehicles
+        timeout-minutes: 30
         working-directory: ardupilot
         run: |
           VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
