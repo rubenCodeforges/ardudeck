@@ -54,19 +54,11 @@ jobs:
 
       - name: Configure SITL
         working-directory: ardupilot
-        run: ./waf configure --board sitl -j1
-
-      - name: Pre-generate Lua bindings
-        working-directory: ardupilot
-        timeout-minutes: 5
-        run: |
-          # Build the gen-bindings tool and run it single-threaded before the main build
-          # This avoids a deadlock when WAF tries to build+run gen-bindings in parallel with other tasks
-          ./waf --targets=libraries/AP_Scripting/lua_generated_bindings.cpp -j1 || true
+        run: ./waf configure --board sitl --disable-scripting
 
       - name: Build vehicles
         working-directory: ardupilot
-        timeout-minutes: 30
+        timeout-minutes: 20
         run: |
           VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
           IFS=',' read -ra VEHICLE_LIST <<< "$VEHICLES"
@@ -116,19 +108,11 @@ jobs:
 
       - name: Configure SITL
         working-directory: ardupilot
-        run: ./waf configure --board sitl -j1
-
-      - name: Pre-generate Lua bindings
-        working-directory: ardupilot
-        timeout-minutes: 5
-        run: |
-          # Build the gen-bindings tool and run it single-threaded before the main build
-          # This avoids a deadlock when WAF tries to build+run gen-bindings in parallel with other tasks
-          ./waf --targets=libraries/AP_Scripting/lua_generated_bindings.cpp -j1 || true
+        run: ./waf configure --board sitl --disable-scripting
 
       - name: Build vehicles
         working-directory: ardupilot
-        timeout-minutes: 30
+        timeout-minutes: 20
         run: |
           VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
           IFS=',' read -ra VEHICLE_LIST <<< "$VEHICLES"
@@ -177,19 +161,11 @@ jobs:
 
       - name: Configure SITL
         working-directory: ardupilot
-        run: ./waf configure --board sitl -j1
-
-      - name: Pre-generate Lua bindings
-        working-directory: ardupilot
-        timeout-minutes: 5
-        run: |
-          # Build the gen-bindings tool and run it single-threaded before the main build
-          # This avoids a deadlock when WAF tries to build+run gen-bindings in parallel with other tasks
-          ./waf --targets=libraries/AP_Scripting/lua_generated_bindings.cpp -j1 || true
+        run: ./waf configure --board sitl
 
       - name: Build vehicles
         working-directory: ardupilot
-        timeout-minutes: 30
+        timeout-minutes: 20
         run: |
           VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
           IFS=',' read -ra VEHICLE_LIST <<< "$VEHICLES"
