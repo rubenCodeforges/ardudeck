@@ -1057,6 +1057,8 @@ export interface SigningStatus {
   keyBase64?: string;
   /** True when our key doesn't match the FC's signing key */
   keyMismatch?: boolean;
+  /** All saved signing keys (fingerprint, label, associated FC system IDs) */
+  savedKeys?: Array<{ fingerprint: string; label?: string; systemIds: number[] }>;
 }
 
 export interface AppUpdateInfo {

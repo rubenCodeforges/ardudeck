@@ -235,7 +235,12 @@ const HEARTBEAT_WATCHDOG_MS = 5000;
 // =============================================================================
 
 // Encrypted key storage (persisted across sessions)
-const signingStore = new Store<{ encryptedKey?: string; linkId?: number; sentToFc?: boolean }>({
+const signingStore = new Store<{
+  encryptedKey?: string;
+  linkId?: number;
+  sentToFc?: boolean;
+  savedKeys?: Array<{ encryptedKey: string; fingerprint: string; label?: string; systemIds?: number[] }>;
+}>({
   name: 'mavlink-signing',
   defaults: {},
 });
@@ -253,14 +258,103 @@ let signingLinkId = 0;
 let signingSentToFc = signingStore.get('sentToFc') ?? false;
 let signingKeyMismatch = false;
 
+// Multi-key storage: all saved signing keys loaded into memory for auto-matching
+// Parallel arrays: allSavedKeys[i] corresponds to allSavedFingerprints[i]
+let allSavedKeys: Uint8Array[] = [];
+let allSavedFingerprints: string[] = [];
+
+/**
+ * Load all saved signing keys from encrypted storage into memory.
+ */
+function loadAllSavedKeys(): void {
+  const saved = signingStore.get('savedKeys') ?? [];
+  allSavedKeys = [];
+  allSavedFingerprints = [];
+  for (const entry of saved) {
+    try {
+      if (!safeStorage.isEncryptionAvailable()) continue;
+      const decrypted = safeStorage.decryptString(Buffer.from(entry.encryptedKey, 'base64'));
+      const bytes = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) {
+        bytes[i] = parseInt(decrypted.substring(i * 2, i * 2 + 2), 16);
+      }
+      allSavedKeys.push(bytes);
+      allSavedFingerprints.push(entry.fingerprint);
+    } catch {
+      // Skip corrupted entries
+    }
+  }
+}
+
+/**
+ * Save a key to the saved keys list (deduplicates by fingerprint).
+ */
+function addToSavedKeys(key: Uint8Array): void {
+  const fingerprint = Array.from(key.slice(0, 6)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const saved = signingStore.get('savedKeys') ?? [];
+
+  // Check if already saved (by fingerprint)
+  if (saved.some(k => k.fingerprint === fingerprint)) return;
+
+  // Encrypt and save
+  const hex = Array.from(key).map(b => b.toString(16).padStart(2, '0')).join('');
+  if (safeStorage.isEncryptionAvailable()) {
+    const encrypted = safeStorage.encryptString(hex);
+    saved.push({ encryptedKey: encrypted.toString('base64'), fingerprint, systemIds: [] });
+  } else {
+    saved.push({ encryptedKey: hex, fingerprint, systemIds: [] });
+  }
+  signingStore.set('savedKeys', saved);
+
+  // Reload into memory
+  loadAllSavedKeys();
+}
+
+/**
+ * Associate a system ID with a saved key (after successful verification).
+ * Next time we connect to this sysid, we try this key first.
+ */
+function associateKeyWithSystem(keyFingerprint: string, sysid: number): void {
+  const saved = signingStore.get('savedKeys') ?? [];
+  const entry = saved.find(k => k.fingerprint === keyFingerprint);
+  if (!entry) return;
+
+  const ids = entry.systemIds ?? [];
+  if (!ids.includes(sysid)) {
+    entry.systemIds = [...ids, sysid];
+    signingStore.set('savedKeys', saved);
+    console.log(`[MAVLink Signing] Associated key ${keyFingerprint} with sysid ${sysid}`);
+  }
+}
+
+/**
+ * Get saved key fingerprints for UI display.
+ */
+function getSavedKeyFingerprints(): Array<{ fingerprint: string; label?: string; systemIds: number[] }> {
+  return (signingStore.get('savedKeys') ?? []).map(k => ({
+    fingerprint: k.fingerprint,
+    label: k.label,
+    systemIds: k.systemIds ?? [],
+  }));
+}
+
 /**
  * Auto-load signing key from encrypted storage.
  * Must be called after app.whenReady() since safeStorage requires it.
  */
 function autoLoadSigningKey(): void {
+  // Always load the full saved keys list for auto-matching on connect
+  loadAllSavedKeys();
+  if (allSavedKeys.length > 0) {
+    console.log(`[MAVLink Signing] Loaded ${allSavedKeys.length} saved key(s) for auto-matching`);
+  }
+
   if (signingKey) return; // Already loaded
   signingKey = loadSigningKey();
   if (signingKey) {
+    // Migrate legacy single-key into the multi-key saved list
+    addToSavedKeys(signingKey);
+
     signingLinkId = signingStore.get('linkId') ?? 0;
     // If key was previously sent to FC, enable signing immediately.
     // This ensures outgoing packets are signed from the first packet,
@@ -313,8 +407,34 @@ function saveSigningKey(key: Uint8Array): void {
 
 /**
  * Convert a passphrase to a 32-byte signing key using SHA-256.
+ * Also accepts raw keys as hex (64 chars) or base64 (44 chars) - used directly without hashing.
+ * This matches Mission Planner which can accept both passphrases and raw keys.
  */
 async function passphraseToKey(passphrase: string): Promise<Uint8Array> {
+  // Detect raw hex key (64 hex chars = 32 bytes)
+  if (/^[0-9a-fA-F]{64}$/.test(passphrase)) {
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = parseInt(passphrase.substring(i * 2, i * 2 + 2), 16);
+    }
+    console.log('[MAVLink Signing] Using raw hex key (64 chars)');
+    return bytes;
+  }
+
+  // Detect raw base64 key (44 chars = 32 bytes in base64)
+  if (/^[A-Za-z0-9+/]{42,44}={0,2}$/.test(passphrase) && passphrase.length >= 42 && passphrase.length <= 44) {
+    try {
+      const decoded = Buffer.from(passphrase, 'base64');
+      if (decoded.length === 32) {
+        console.log('[MAVLink Signing] Using raw base64 key (44 chars)');
+        return new Uint8Array(decoded);
+      }
+    } catch {
+      // Not valid base64 - fall through to passphrase hashing
+    }
+  }
+
+  // Default: hash passphrase with SHA-256 (same as Mission Planner & UDPProxy)
   const { createHash } = await import('node:crypto');
   const hash = createHash('sha256').update(passphrase).digest();
   return new Uint8Array(hash);
@@ -335,6 +455,7 @@ function getSigningStatus(): SigningStatus {
       ? Buffer.from(signingKey).toString('base64')
       : undefined,
     keyMismatch: signingKeyMismatch,
+    savedKeys: getSavedKeyFingerprints(),
   };
 }
 
@@ -1920,39 +2041,111 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
               // Verify our key against the FC's signed packets on EVERY new connection.
               // This catches key mismatches when a proxy (mavproxy) overwrites the FC's key.
+              // If the current key doesn't match, try ALL saved keys (like Mission Planner).
               // Must await so signing state is resolved BEFORE subsequent packets are sent.
-              if (signingKey && packet.signature) {
+              if (packet.signature) {
                 try {
                   const packetDataWithoutSig = packet.buffer.slice(0, packet.buffer.length - MAVLINK_SIGNATURE_BLOCK_LEN);
-                  const isValid = await verifySignature(signingKey, packetDataWithoutSig, packet.signature, true);
-                  if (isValid) {
+
+                  const fcSysid = connectionState.systemId ?? packet.sysid;
+                  const currentKeyFingerprint = signingKey
+                    ? Array.from(signingKey.slice(0, 6)).map(b => b.toString(16).padStart(2, '0')).join('')
+                    : null;
+
+                  // Try current key first
+                  let matchedKey: Uint8Array | null = null;
+                  let matchedFingerprint: string | null = null;
+                  const triedFingerprints: string[] = [];
+
+                  if (signingKey && currentKeyFingerprint) {
+                    triedFingerprints.push(currentKeyFingerprint);
+                    const isValid = await verifySignature(signingKey, packetDataWithoutSig, packet.signature, true);
+                    if (isValid) {
+                      matchedKey = signingKey;
+                      matchedFingerprint = currentKeyFingerprint;
+                    }
+                  }
+
+                  // If current key didn't match, try saved keys - prioritize keys
+                  // previously associated with this FC's sysid, skip current key (already tried)
+                  if (!matchedKey && allSavedKeys.length > 0) {
+                    const saved = signingStore.get('savedKeys') ?? [];
+                    // Build priority order: keys matching this sysid first, then the rest
+                    const indices = allSavedKeys.map((_, i) => i);
+                    indices.sort((a, b) => {
+                      const aMatch = (saved[a]?.systemIds ?? []).includes(fcSysid) ? 0 : 1;
+                      const bMatch = (saved[b]?.systemIds ?? []).includes(fcSysid) ? 0 : 1;
+                      return aMatch - bMatch;
+                    });
+
+                    for (const idx of indices) {
+                      const fp = allSavedFingerprints[idx]!;
+                      // Skip if same as current key (already tried above)
+                      if (fp === currentKeyFingerprint) continue;
+                      triedFingerprints.push(fp);
+                      const savedKey = allSavedKeys[idx]!;
+                      const isValid = await verifySignature(savedKey, packetDataWithoutSig, packet.signature, true);
+                      if (isValid) {
+                        matchedKey = savedKey;
+                        matchedFingerprint = fp;
+                        break;
+                      }
+                    }
+                  }
+
+                  // Track whether signing state changed so we can re-trigger requests
+                  const wasSigningEnabled = signingEnabled;
+
+                  if (matchedKey) {
+                    // Switch to the matched key (may be a different saved key)
+                    if (matchedKey !== signingKey) {
+                      signingKey = matchedKey;
+                      saveSigningKey(matchedKey);
+                      signingLinkId = signingStore.get('linkId') ?? 0;
+                      const fp = matchedFingerprint!.slice(0, 8);
+                      sendLog(mainWindow, 'info', `Auto-matched saved signing key ${fp}...`);
+                    }
                     signingEnabled = true;
                     signingKeyMismatch = false;
                     connectionState.signingEnabled = true;
-                    const fingerprint = Array.from(signingKey.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join('');
-                    sendLog(mainWindow, 'info', `MAVLink signing auto-enabled (key ${fingerprint}... verified against FC)`);
+                    const fingerprint = Array.from(signingKey!.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join('');
+                    sendLog(mainWindow, 'info', `MAVLink signing auto-enabled (key ${fingerprint}... verified against FC sysid=${fcSysid})`);
+                    // Associate this key with the FC's system ID for future fast-matching
+                    if (matchedFingerprint) {
+                      associateKeyWithSystem(matchedFingerprint, fcSysid);
+                    }
                     safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
-                  } else {
-                    // Key mismatch - DISABLE signing to prevent sending wrongly-signed packets.
-                    // Wrongly-signed packets crash mavproxy's pymavlink serializer.
+                  } else if (triedFingerprints.length > 0) {
+                    // Key mismatch - disable signing to prevent proxy errors.
                     signingEnabled = false;
                     signingKeyMismatch = true;
                     connectionState.signingEnabled = false;
-                    const isNetwork = connectionState.connectionType === 'tcp' || connectionState.connectionType === 'udp';
-                    const proxyHint = isNetwork
-                      ? ' When using a proxy (mavproxy/UDPproxy), the proxy may have overwritten the FC\'s signing key with its own passphrase. Use the same passphrase in ArduDeck as in the proxy\'s "signing setup" command.'
-                      : '';
+                    const triedList = triedFingerprints.map(f => f.slice(0, 8) + '...').join(', ');
                     sendLog(mainWindow, 'warn',
-                      'Signing key mismatch - disabling signing to prevent proxy errors.',
-                      `Your key does not match the vehicle/proxy key. Update your passphrase in Safety > MAVLink Signing.${proxyHint}`
+                      `Signing key mismatch - tried ${triedFingerprints.length} key(s): [${triedList}], none matched FC sysid=${fcSysid}.`,
+                      'Enter the correct passphrase, or paste the raw key (hex/base64) from Mission Planner in the Connection panel.'
                     );
+                    safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
+                  } else {
+                    sendLog(mainWindow, 'warn', 'Vehicle requires MAVLink signing but no key is configured. Set a signing passphrase in the Connection panel before connecting.');
+                  }
+
+                  // RACE CONDITION FIX: If signing state changed after connection was
+                  // already established, initial requests (stream rates, FTP params) were
+                  // sent with the wrong signing state and got dropped by the FC.
+                  // Re-trigger them now with the corrected signing state.
+                  if (signingEnabled !== wasSigningEnabled && connectionState.isConnected) {
+                    sendLog(mainWindow, 'info', 'Signing state changed after connect - re-requesting streams and params');
+                    setTimeout(async () => {
+                      if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+                      await sendStreamRateRequests(mainWindow, currentTelemetrySpeed);
+                    }, 500);
+                    // Notify renderer to re-trigger param fetch
                     safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
                   }
                 } catch {
                   // Non-critical - signing verification failed, continue without signing
                 }
-              } else if (!signingKey) {
-                sendLog(mainWindow, 'warn', 'Vehicle requires MAVLink signing but no key is configured. Go to Safety > MAVLink Signing to set a signing passphrase.');
               }
 
               sendConnectionState(mainWindow);
@@ -3059,13 +3252,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Passphrase cannot be empty' };
       }
       const key = await passphraseToKey(passphrase);
+      const newB64 = Buffer.from(key).toString('base64').slice(0, 12);
+      const savedBefore = (signingStore.get('savedKeys') ?? []).length;
       signingKey = key;
       signingLinkId = signingStore.get('linkId') ?? 0;
       saveSigningKey(key);
+      // Also save to multi-key list for auto-matching on future connections
+      addToSavedKeys(key);
+      const savedAfter = (signingStore.get('savedKeys') ?? []).length;
       signingSentToFc = false;
       signingKeyMismatch = false;
       signingStore.set('sentToFc', false);
-      sendLog(mainWindow, 'info', 'MAVLink signing key set from passphrase');
+      sendLog(mainWindow, 'info', `Signing key set: ${newB64}... (${savedAfter} key${savedAfter > 1 ? 's' : ''} stored)`);
       safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
       return { success: true };
     } catch (error) {
@@ -3677,9 +3875,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
 
     try {
-      // When force-arming without a transmitter, ArduPilot blocks with "waiting for RC".
-      // Send RC_CHANNELS_OVERRIDE with neutral values so the FC sees RC input.
-      if (force && arm) {
+      // When arming without a transmitter, ArduPilot needs RC input.
+      // Auto-start the SITL RC sender if SITL is running so ArduPilot
+      // gets continuous 50Hz RC input and doesn't trigger RC failsafe.
+      if (arm && ardupilotSitlProcess.isRunning && !ardupilotRcSender.isRunning) {
+        ardupilotRcSender.start();
+        sendLog(mainWindow, 'info', 'Auto-started RC sender for SITL arming');
+        // Give ArduPilot time to see RC input before arm command
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Also send a one-shot RC_CHANNELS_OVERRIDE via MAVLink as a fallback
+      if (arm) {
         const rcPayload = serializeRcChannelsOverride({
           targetSystem: connectionState.systemId ?? 1,
           targetComponent: 1,

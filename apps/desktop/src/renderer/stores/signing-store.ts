@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { SigningStatus } from '../../shared/ipc-channels.js';
 
+interface SavedKeyInfo {
+  fingerprint: string;
+  label?: string;
+  systemIds: number[];
+}
+
 interface SigningStore {
   // State
   enabled: boolean;
@@ -9,6 +15,7 @@ interface SigningStore {
   keyFingerprint: string | null;
   keyBase64: string | null;
   keyMismatch: boolean;
+  savedKeys: SavedKeyInfo[];
   loading: boolean;
   error: string | null;
 
@@ -29,6 +36,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
   keyFingerprint: null,
   keyBase64: null,
   keyMismatch: false,
+  savedKeys: [],
   loading: false,
   error: null,
 
@@ -43,6 +51,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
           keyFingerprint: status.keyFingerprint ?? null,
           keyBase64: status.keyBase64 ?? null,
           keyMismatch: status.keyMismatch ?? false,
+          savedKeys: status.savedKeys ?? [],
         });
       }
     } catch {
@@ -126,6 +135,7 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
       keyFingerprint: status.keyFingerprint ?? null,
       keyBase64: status.keyBase64 ?? null,
       keyMismatch: status.keyMismatch ?? false,
+      savedKeys: status.savedKeys ?? [],
     });
   },
 }));

@@ -155,6 +155,21 @@ const ADVANCED_UI_VISIBILITY: UiVisibility = {
 };
 
 /**
+ * A saved network connection entry for the recent connections list
+ */
+export interface SavedConnection {
+  type: 'tcp' | 'udp';
+  label: string;  // e.g. "217.154.114.45:20001 (MAVLink)"
+  host?: string;
+  port: number;
+  protocol: 'mavlink' | 'msp';
+  udpMode?: 'listen' | 'client';
+  udpRemoteHost?: string;
+  udpRemotePort?: number;
+  lastUsed: number; // timestamp
+}
+
+/**
  * Connection memory - remembers last used connection settings
  */
 export interface ConnectionMemory {
@@ -169,6 +184,8 @@ export interface ConnectionMemory {
   lastUdpRemotePort?: number;
   lastUdpProtocol?: 'mavlink' | 'msp';
   lastConnectionType?: 'serial' | 'tcp' | 'udp';
+  /** Recent TCP/UDP connections for quick reconnect */
+  recentConnections?: SavedConnection[];
 }
 
 /**
@@ -873,9 +890,44 @@ export const useSettingsStore = create<SettingsStore>()(
 
   // Actions - Connection memory
   updateConnectionMemory: (updates) => {
-    set((state) => ({
-      connectionMemory: { ...state.connectionMemory, ...updates },
-    }));
+    set((state) => {
+      const mem = { ...state.connectionMemory, ...updates };
+
+      // Auto-add to recent connections for TCP/UDP
+      if (updates.lastConnectionType === 'tcp' || updates.lastConnectionType === 'udp') {
+        const recent = [...(mem.recentConnections ?? [])];
+        const entry: SavedConnection = updates.lastConnectionType === 'tcp'
+          ? {
+              type: 'tcp',
+              label: `${updates.lastTcpHost ?? mem.lastTcpHost}:${updates.lastTcpPort ?? mem.lastTcpPort} (${(updates.lastTcpProtocol ?? mem.lastTcpProtocol ?? 'mavlink').toUpperCase()})`,
+              host: updates.lastTcpHost ?? mem.lastTcpHost,
+              port: updates.lastTcpPort ?? mem.lastTcpPort ?? 5760,
+              protocol: updates.lastTcpProtocol ?? mem.lastTcpProtocol ?? 'mavlink',
+              lastUsed: Date.now(),
+            }
+          : {
+              type: 'udp',
+              label: (updates.lastUdpMode ?? mem.lastUdpMode) === 'client'
+                ? `${updates.lastUdpRemoteHost ?? mem.lastUdpRemoteHost}:${updates.lastUdpRemotePort ?? mem.lastUdpRemotePort} (UDP ${(updates.lastUdpProtocol ?? mem.lastUdpProtocol ?? 'mavlink').toUpperCase()})`
+                : `UDP :${updates.lastUdpPort ?? mem.lastUdpPort} listen (${(updates.lastUdpProtocol ?? mem.lastUdpProtocol ?? 'mavlink').toUpperCase()})`,
+              host: (updates.lastUdpMode ?? mem.lastUdpMode) === 'client' ? (updates.lastUdpRemoteHost ?? mem.lastUdpRemoteHost) : undefined,
+              port: (updates.lastUdpMode ?? mem.lastUdpMode) === 'client' ? (updates.lastUdpRemotePort ?? mem.lastUdpRemotePort ?? 14550) : (updates.lastUdpPort ?? mem.lastUdpPort ?? 14550),
+              protocol: updates.lastUdpProtocol ?? mem.lastUdpProtocol ?? 'mavlink',
+              udpMode: updates.lastUdpMode ?? mem.lastUdpMode,
+              udpRemoteHost: updates.lastUdpRemoteHost ?? mem.lastUdpRemoteHost,
+              udpRemotePort: updates.lastUdpRemotePort ?? mem.lastUdpRemotePort,
+              lastUsed: Date.now(),
+            };
+
+        // Deduplicate by label, keep max 10
+        const idx = recent.findIndex(c => c.label === entry.label);
+        if (idx >= 0) recent.splice(idx, 1);
+        recent.unshift(entry);
+        mem.recentConnections = recent.slice(0, 10);
+      }
+
+      return { connectionMemory: mem };
+    });
   },
 
   // Actions - SITL preferences

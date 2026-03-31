@@ -11,6 +11,7 @@ export function SigningSection() {
     keyFingerprint,
     keyBase64,
     keyMismatch,
+    savedKeys,
     loading,
     error,
     setKey,
@@ -46,9 +47,8 @@ export function SigningSection() {
     }
   }, [localError]);
 
-  if (!connectionState.isConnected) return null;
-
-  const isV1Only = connectionState.mavlinkVersion === 1;
+  const isConnected = connectionState.isConnected;
+  const isV1Only = isConnected && connectionState.mavlinkVersion === 1;
 
   const handleSetKey = async () => {
     if (!passphrase.trim()) {
@@ -144,20 +144,19 @@ export function SigningSection() {
         <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
           <p className="text-xs text-red-400 font-medium mb-1">Signing key mismatch</p>
           <p className="text-xs text-zinc-400">
-            Your signing key doesn't match the vehicle's key. If using a proxy
-            (mavproxy, UDPproxy), ensure you use the same passphrase that was
-            used in the proxy's signing setup.
+            Your signing key doesn't match the vehicle/proxy key. Paste the base64 key from Mission Planner,
+            or enter the same passphrase used on the proxy.
           </p>
         </div>
       )}
 
       {/* Network connection info */}
-      {!isV1Only && (connectionState.connectionType === 'tcp' || connectionState.connectionType === 'udp') && (
+      {!isV1Only && isConnected && (connectionState.connectionType === 'tcp' || connectionState.connectionType === 'udp') && (
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5">
           <p className="text-xs text-zinc-400">
             Connected over {connectionState.connectionType === 'tcp' ? 'TCP' : 'UDP'}.
-            If using a proxy with its own signing, ensure ArduDeck uses the same passphrase.
-            Setting up signing via direct serial connection is most reliable.
+            If using a proxy (UDPProxy/mavproxy), enter the same passphrase or paste the base64 key from Mission Planner.
+            All saved keys are tried automatically on connect.
           </p>
         </div>
       )}
@@ -202,8 +201,8 @@ export function SigningSection() {
             )}
             <p className="text-xs text-zinc-500 mb-2">
               {hasKey
-                ? 'Enter a new passphrase to change it.'
-                : 'Choose a passphrase shared between this GCS and your flight controller. Use the same passphrase in Mission Planner or any other GCS.'}
+                ? 'Add another passphrase, base64, or hex key.'
+                : 'Enter a passphrase, or paste a base64/hex key from Mission Planner.'}
             </p>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -212,7 +211,7 @@ export function SigningSection() {
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSetKey(); }}
-                  placeholder={hasKey ? 'New passphrase...' : 'Enter passphrase...'}
+                  placeholder={hasKey ? 'Passphrase, base64, or hex key...' : 'Passphrase, base64, or hex key...'}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                   disabled={loading}
                 />
@@ -238,13 +237,45 @@ export function SigningSection() {
                 disabled={loading || !passphrase.trim()}
                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-xs rounded-lg transition-colors"
               >
-                {hasKey ? 'Update' : 'Set Key'}
+                {hasKey ? 'Add Key' : 'Set Key'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Step 2: Send to FC (auto-enables signing) */}
+        {/* Saved keys list */}
+        {savedKeys.length > 1 && (
+          <div className="rounded-lg border border-zinc-700/30 bg-zinc-800/20 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-3.5 h-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+              </svg>
+              <span className="text-[11px] text-zinc-400">{savedKeys.length} saved keys (auto-tried on connect)</span>
+            </div>
+            <div className="space-y-1">
+              {savedKeys.map((k) => {
+                let b64 = k.fingerprint + '...';
+                try {
+                  const bytes = k.fingerprint.match(/.{2}/g)?.map(h => parseInt(h, 16)) ?? [];
+                  b64 = btoa(String.fromCharCode(...bytes)).slice(0, 8) + '...';
+                } catch { /* fallback */ }
+                const isActive = keyBase64?.startsWith(b64.slice(0, 4));
+                return (
+                  <div key={k.fingerprint} className="flex items-center gap-2 px-2 py-1 rounded bg-zinc-800/40">
+                    <code className={`text-[10px] font-mono flex-1 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`}>{b64}</code>
+                    {k.systemIds.length > 0 && (
+                      <span className="text-[9px] text-zinc-600">sysid {k.systemIds.join(',')}</span>
+                    )}
+                    {isActive && <span className="text-[9px] text-emerald-500">active</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Send to FC (auto-enables signing) - only when connected */}
+        {isConnected && (
         <div className={`rounded-lg border p-3 ${sentToFc ? 'border-emerald-500/20 bg-emerald-500/5' : !hasKey ? 'border-zinc-800/30 bg-zinc-800/10 opacity-40' : 'border-zinc-700/50 bg-zinc-800/30'}`}>
           <div className="flex items-center gap-2.5">
             <StepIndicator step={2} done={sentToFc} active={hasKey && !sentToFc} />
@@ -267,15 +298,16 @@ export function SigningSection() {
             </p>
             {(connectionState.connectionType === 'tcp' || connectionState.connectionType === 'udp') && (
               <p className="text-[10px] text-zinc-600 mt-0.5">
-                May not work through proxies. Use direct serial if it fails.
+                Sends your key to the FC/proxy. If the proxy rejects it, paste the proxy's key instead.
               </p>
             )}
           </div>
         </div>
+        )}
       </div>
 
-      {/* Controls (only shown when fully configured) */}
-      {fullyConfigured && (
+      {/* Controls (only shown when fully configured AND connected) */}
+      {isConnected && fullyConfigured && (
         <div className="space-y-2">
           {/* Pause/resume toggle */}
           <div className="flex items-center justify-between rounded-lg border border-zinc-700/30 bg-zinc-800/30 px-3 py-2.5">

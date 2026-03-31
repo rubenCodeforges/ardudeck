@@ -31,6 +31,7 @@ import { ExperienceLevelDialog } from './components/ui/ExperienceLevelDialog';
 import { useFlightControlStore } from './stores/flight-control-store';
 import { useCompanionStore } from './stores/companion-store';
 import { useMessagesStore } from './stores/messages-store';
+import { useSigningStore } from './stores/signing-store';
 import { useBoardProfileAssociation } from './hooks/useBoardProfileAssociation';
 import type { ElectronAPI } from '../main/preload';
 import logoImage from './assets/logo.png';
@@ -382,6 +383,22 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [connectionState.isConnected, connectionState.protocol, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
+
+  // Signing-aware retry: when signing state changes mid-connection (e.g. key auto-matched
+  // or mismatch resolved), re-fetch params if they haven't loaded yet.
+  const signingEnabled = useSigningStore((s) => s.enabled);
+  const signingKeyMismatch = useSigningStore((s) => s.keyMismatch);
+  useEffect(() => {
+    if (connectionState.isConnected && connectionState.protocol !== 'msp' && paramCount === 0) {
+      // Signing state just changed - retry param fetch after short delay
+      const timer = setTimeout(() => {
+        if (paramCount === 0) {
+          fetchParameters();
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [signingEnabled, signingKeyMismatch]);
 
   // MSP telemetry: only run when on telemetry view
   // Parameters view handles its own telemetry via MspConfigView (sensors tab only)

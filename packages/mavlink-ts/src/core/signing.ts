@@ -141,6 +141,14 @@ export async function verifySignature(
     }
   }
 
+  if (!valid) {
+    const received = Array.from(signature.slice(7, 13)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const computed = Array.from(hashArray.slice(0, 6)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const linkId = signature[0];
+    const keyFp = Array.from(secretKey.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log(`[Signing] MISMATCH: received=${received} computed=${computed} linkId=${linkId} pktLen=${packetData.length} key=${keyFp}...`);
+  }
+
   return valid;
 }
 
