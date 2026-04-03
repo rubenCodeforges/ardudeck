@@ -105,6 +105,9 @@ import {
   FILE_TRANSFER_PROTOCOL_ID,
   FILE_TRANSFER_PROTOCOL_CRC_EXTRA,
 } from '@ardudeck/mavlink-ts';
+import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
+import { writeFile, readFile } from 'node:fs/promises';
+import { parseDataFlashLog, runHealthChecks } from '@ardudeck/dataflash-parser';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
 import {
@@ -733,6 +736,7 @@ let paramDownloadStartTime = 0; // Timestamp for measuring download duration
 // MAVLink FTP client for fast parameter download
 let ftpClient: MavlinkFtpClient | null = null;
 let paramRequestInFlight = false; // Guard against concurrent param download requests
+let logDownloadManager: LogDownloadManager | null = null;
 
 // STATUSTEXT chunk reassembly buffer (for multi-chunk messages >50 chars)
 const statustextChunkBuffer = new Map<number, { severity: number; chunks: string[]; timer: NodeJS.Timeout | null }>();
@@ -971,6 +975,8 @@ const MSG_FILE_TRANSFER_PROTOCOL = 110;
 
 // Fence message ID
 const MSG_FENCE_STATUS = 162;
+const MSG_LOG_ENTRY = 118;
+const MSG_LOG_DATA = 120;
 
 // MAVLink CRC_EXTRA values for v1 paths (manual payload construction without mission_type)
 // Per MAVLink spec, CRC_EXTRA excludes extension fields, so these match the generated v2 values
@@ -1695,6 +1701,14 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         const ftpBytes = payload.subarray(3);
         ftpPayload.set(ftpBytes.subarray(0, Math.min(ftpBytes.length, 251)));
         ftpClient.handleResponse(ftpPayload);
+      }
+      break;
+    }
+
+    case MSG_LOG_ENTRY:
+    case MSG_LOG_DATA: {
+      if (logDownloadManager) {
+        logDownloadManager.handleMessage(msgid, payload);
       }
       break;
     }
@@ -6378,6 +6392,98 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Map overlays (RainViewer radar, OpenAIP airspace/airports)
   setupOverlayHandlers();
+
+  // === Log Download & Diagnostics ===
+
+  ipcMain.handle(IPC_CHANNELS.LOG_LIST_REQUEST, async (): Promise<LogListEntry[]> => {
+    if (!currentTransport) return [];
+
+    const targetSys = connectionState.systemId ?? 1;
+    logDownloadManager = new LogDownloadManager(
+      sendMavlinkPacket,
+      (data) => currentTransport!.write(data),
+      (level, msg) => mainWindow && sendLog(mainWindow, level as ConsoleLogEntry['level'], msg),
+      targetSys,
+      1,
+    );
+
+    return logDownloadManager.requestLogList();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LOG_DOWNLOAD, async (_, logId: number, logSize: number): Promise<string | null> => {
+    if (!currentTransport || !logDownloadManager || !mainWindow) return null;
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save Flight Log',
+      defaultPath: `log_${logId}.bin`,
+      filters: [
+        { name: 'Flight Logs', extensions: ['bin'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) return null;
+
+    const data = await logDownloadManager.downloadLog(logId, logSize, (received, total) => {
+      safeSend(mainWindow!, IPC_CHANNELS.LOG_DOWNLOAD_PROGRESS, { logId, received, total });
+    });
+
+    if (!data) {
+      safeSend(mainWindow, IPC_CHANNELS.LOG_DOWNLOAD_ERROR, { logId, error: 'Download failed' });
+      return null;
+    }
+
+    await writeFile(result.filePath, data);
+    safeSend(mainWindow, IPC_CHANNELS.LOG_DOWNLOAD_COMPLETE, { logId, path: result.filePath, size: data.length });
+    return result.filePath;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LOG_DOWNLOAD_CANCEL, async () => {
+    logDownloadManager?.cancel();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LOG_OPEN_FILE, async (): Promise<{ path: string; data: number[] } | null> => {
+    if (!mainWindow) return null;
+
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Open Flight Log',
+      filters: [
+        { name: 'Flight Logs', extensions: ['bin', 'log'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (result.canceled || !result.filePaths[0]) return null;
+
+    const data = await readFile(result.filePaths[0]);
+    return { path: result.filePaths[0], data: Array.from(data) };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LOG_PARSE, async (_, data: number[]): Promise<unknown> => {
+    const buffer = new Uint8Array(data);
+    const log = parseDataFlashLog(buffer);
+
+    // Run health checks
+    const healthResults = runHealthChecks(log);
+
+    // Serialize Maps to plain objects for IPC transfer
+    const formats: Record<number, unknown> = {};
+    for (const [k, v] of log.formats) formats[k] = v;
+    const messages: Record<string, unknown> = {};
+    for (const [k, v] of log.messages) messages[k] = v;
+
+    return {
+      log: {
+        formats,
+        messages,
+        metadata: log.metadata,
+        timeRange: log.timeRange,
+        messageTypes: log.messageTypes,
+      },
+      healthResults,
+    };
+  });
 }
 
 /**

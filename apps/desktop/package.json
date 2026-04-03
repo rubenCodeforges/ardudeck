@@ -25,6 +25,7 @@
   "dependencies": {
     "@ardudeck/comms": "workspace:*",
     "@ardudeck/companion-types": "workspace:*",
+    "@ardudeck/dataflash-parser": "workspace:^",
     "@ardudeck/mavlink-ts": "workspace:*",
     "@ardudeck/msp-ts": "workspace:*",
     "@ardudeck/stm32-dfu": "workspace:*",
@@ -42,6 +43,7 @@
     "react-leaflet": "4.2.1",
     "serialport": "^12.0.0",
     "three": "^0.170.0",
+    "uplot": "^1.6.32",
     "usb": "^2.16.0",
     "ws": "^8.18.0",
     "zustand": "^4.5.0"

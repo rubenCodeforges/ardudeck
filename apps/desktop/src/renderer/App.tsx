@@ -16,6 +16,7 @@ import { MissionLibraryView } from './components/mission-library/MissionLibraryV
 import { LuaGraphView } from './components/lua-graph/LuaGraphView';
 import { ModuleManagerView } from './components/modules/ModuleManagerView';
 import { CompanionDashboard } from './components/companion/CompanionDashboard';
+import { LogsView } from './components/logs/LogsView';
 import { useConnectionStore } from './stores/connection-store';
 import { useCalibrationStore } from './stores/calibration-store';
 import { useTelemetryStore } from './stores/telemetry-store';
@@ -629,6 +630,9 @@ function App() {
       if (currentView === 'companion') {
         return <CompanionDashboard />;
       }
+      if (currentView === 'logs') {
+        return <LogsView />;
+      }
       if (currentView === 'settings') {
         return <SettingsView />;
       }
@@ -724,6 +728,8 @@ function App() {
         return <ModuleManagerView />;
       case 'companion':
         return <CompanionDashboard />;
+      case 'logs':
+        return <LogsView />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;

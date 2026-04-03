@@ -1635,6 +1635,10 @@ export function SettingsView() {
           </div>
         </div>
 
+        {/* SECTION: Console */}
+        {/* ============================================ */}
+        <ConsoleSettingsSection />
+
         {/* SECTION: Experimental Features */}
         {/* ============================================ */}
         <ExperimentalFeaturesSection />
@@ -1699,11 +1703,50 @@ function OpenAipKeyInput() {
   );
 }
 
+function ConsoleSettingsSection() {
+  const showDebugLogs = useSettingsStore((s) => s.showDebugLogs);
+  const setShowDebugLogs = useSettingsStore((s) => s.setShowDebugLogs);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-gray-500 rounded-full" />
+        <h2 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Console</h2>
+      </div>
+
+      <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-5">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between bg-gray-900/40 rounded-lg p-3">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-gray-200 font-medium">Verbose Logging</div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                Show debug and packet-level messages in the console. When off, only info, warnings, and errors are shown.
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDebugLogs(!showDebugLogs)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                showDebugLogs ? 'bg-blue-600' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
+                showDebugLogs ? 'left-[18px]' : 'left-0.5'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ExperimentalFeaturesSection() {
   const surveyUnlocked = useSettingsStore((s) => s.surveyUnlocked);
   const setSurveyUnlocked = useSettingsStore((s) => s.setSurveyUnlocked);
   const companionUnlocked = useSettingsStore((s) => s.companionUnlocked);
   const setCompanionUnlocked = useSettingsStore((s) => s.setCompanionUnlocked);
+  const experimentalLogs = useSettingsStore((s) => s.experimentalLogs);
+  const setExperimentalLogs = useSettingsStore((s) => s.setExperimentalLogs);
 
   return (
     <div className="mt-8">
@@ -1760,6 +1803,26 @@ function ExperimentalFeaturesSection() {
             >
               <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
                 companionUnlocked ? 'left-[18px]' : 'left-0.5'
+              }`} />
+            </button>
+          </div>
+
+          {/* Flight Log Diagnostics */}
+          <div className="flex items-center justify-between bg-gray-900/40 rounded-lg p-3">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-gray-200 font-medium">Flight Log Diagnostics</div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                Download and analyze flight logs with automated health reports and interactive data explorer
+              </div>
+            </div>
+            <button
+              onClick={() => setExperimentalLogs(!experimentalLogs)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                experimentalLogs ? 'bg-purple-600' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
+                experimentalLogs ? 'left-[18px]' : 'left-0.5'
               }`} />
             </button>
           </div>

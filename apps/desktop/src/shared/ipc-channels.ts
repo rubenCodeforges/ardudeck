@@ -456,6 +456,20 @@ export const IPC_CHANNELS = {
   OVERLAY_GET_AIRPORTS: 'overlay:get-airports',
   OVERLAY_GET_API_KEY: 'overlay:get-api-key',
   OVERLAY_SET_API_KEY: 'overlay:set-api-key',
+
+  // Log download & diagnostics
+  LOG_LIST_REQUEST: 'log:list-request',
+  LOG_LIST_ITEM: 'log:list-item',
+  LOG_LIST_COMPLETE: 'log:list-complete',
+  LOG_DOWNLOAD: 'log:download',
+  LOG_DOWNLOAD_PROGRESS: 'log:download-progress',
+  LOG_DOWNLOAD_COMPLETE: 'log:download-complete',
+  LOG_DOWNLOAD_ERROR: 'log:download-error',
+  LOG_DOWNLOAD_CANCEL: 'log:download-cancel',
+  LOG_PARSE: 'log:parse',
+  LOG_PARSE_PROGRESS: 'log:parse-progress',
+  LOG_PARSE_COMPLETE: 'log:parse-complete',
+  LOG_OPEN_FILE: 'log:open-file',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -720,6 +734,8 @@ export interface SettingsStoreSchema {
   experienceLevel?: 'beginner' | 'advanced';
   experienceLevelVersion?: string;
   uiVisibility?: UiVisibilitySettings;
+  experimentalLogs?: boolean;
+  showDebugLogs?: boolean;
 }
 
 // =============================================================================

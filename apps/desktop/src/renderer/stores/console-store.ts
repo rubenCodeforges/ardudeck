@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ConsoleLogEntry } from '../../shared/ipc-channels';
+import { useSettingsStore } from './settings-store';
 
 const MAX_LOG_ENTRIES = 500;
 
@@ -20,10 +21,15 @@ export const useConsoleStore = create<ConsoleStore>((set) => ({
   isExpanded: false,
   filter: 'all',
 
-  addLog: (entry) =>
+  addLog: (entry) => {
+    // Drop debug/packet-level logs when showDebugLogs is off
+    if ((entry.level === 'debug' || entry.level === 'packet') && !useSettingsStore.getState().showDebugLogs) {
+      return;
+    }
     set((state) => ({
       logs: [...state.logs.slice(-(MAX_LOG_ENTRIES - 1)), entry],
-    })),
+    }));
+  },
 
   clearLogs: () => set({ logs: [] }),
 

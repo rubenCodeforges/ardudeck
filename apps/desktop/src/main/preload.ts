@@ -452,6 +452,49 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings),
 
   // ============================================================================
+  // Log Download & Diagnostics
+  // ============================================================================
+
+  logListRequest: (): Promise<unknown[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOG_LIST_REQUEST),
+
+  logDownload: (logId: number, logSize: number): Promise<string | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOG_DOWNLOAD, logId, logSize),
+
+  logDownloadCancel: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOG_DOWNLOAD_CANCEL),
+
+  logOpenFile: (): Promise<{ path: string; data: number[] } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOG_OPEN_FILE),
+
+  logParse: (data: number[]): Promise<unknown> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOG_PARSE, data),
+
+  onLogDownloadProgress: (callback: (progress: { logId: number; received: number; total: number }) => void) => {
+    const handler = (_: unknown, progress: { logId: number; received: number; total: number }) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.LOG_DOWNLOAD_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.LOG_DOWNLOAD_PROGRESS, handler);
+  },
+
+  onLogDownloadComplete: (callback: (result: { logId: number; path: string; size: number }) => void) => {
+    const handler = (_: unknown, result: { logId: number; path: string; size: number }) => callback(result);
+    ipcRenderer.on(IPC_CHANNELS.LOG_DOWNLOAD_COMPLETE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.LOG_DOWNLOAD_COMPLETE, handler);
+  },
+
+  onLogDownloadError: (callback: (error: { logId: number; error: string }) => void) => {
+    const handler = (_: unknown, error: { logId: number; error: string }) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.LOG_DOWNLOAD_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.LOG_DOWNLOAD_ERROR, handler);
+  },
+
+  onLogParseProgress: (callback: (progress: { bytesConsumed: number; totalBytes: number }) => void) => {
+    const handler = (_: unknown, progress: { bytesConsumed: number; totalBytes: number }) => callback(progress);
+    ipcRenderer.on(IPC_CHANNELS.LOG_PARSE_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.LOG_PARSE_PROGRESS, handler);
+  },
+
+  // ============================================================================
   // Firmware Flash
   // ============================================================================
 

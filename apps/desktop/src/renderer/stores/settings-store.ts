@@ -210,6 +210,12 @@ interface SettingsStore {
   setSurveyUnlocked: (enabled: boolean) => void;
   companionUnlocked: boolean;
   setCompanionUnlocked: (enabled: boolean) => void;
+  experimentalLogs: boolean;
+  setExperimentalLogs: (enabled: boolean) => void;
+
+  // Console
+  showDebugLogs: boolean;
+  setShowDebugLogs: (enabled: boolean) => void;
 
   // Mission defaults
   missionDefaults: MissionDefaults;
@@ -612,6 +618,15 @@ export const useSettingsStore = create<SettingsStore>()(
   setCompanionUnlocked: (enabled: boolean) => {
     set({ companionUnlocked: enabled });
   },
+  experimentalLogs: false,
+  setExperimentalLogs: (enabled: boolean) => {
+    set({ experimentalLogs: enabled });
+  },
+
+  showDebugLogs: false,
+  setShowDebugLogs: (enabled: boolean) => {
+    set({ showDebugLogs: enabled });
+  },
 
   // Initial state (will be replaced by loadSettings)
   missionDefaults: { ...DEFAULT_MISSION_DEFAULTS },
@@ -699,6 +714,8 @@ export const useSettingsStore = create<SettingsStore>()(
           },
           surveyUnlocked: !!((settings as unknown as Record<string, unknown>).surveyUnlocked),
           companionUnlocked: !!((settings as unknown as Record<string, unknown>).companionUnlocked),
+          experimentalLogs: !!((settings as unknown as Record<string, unknown>).experimentalLogs),
+          showDebugLogs: !!((settings as unknown as Record<string, unknown>).showDebugLogs),
           _isInitialized: true,
         });
       } else {
@@ -731,6 +748,8 @@ export const useSettingsStore = create<SettingsStore>()(
         uiVisibility: state.uiVisibility,
         surveyUnlocked: state.surveyUnlocked,
         companionUnlocked: state.companionUnlocked,
+        experimentalLogs: state.experimentalLogs,
+        showDebugLogs: state.showDebugLogs,
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -1013,6 +1032,8 @@ useSettingsStore.subscribe(
     uiVisibility: state.uiVisibility,
     surveyUnlocked: state.surveyUnlocked,
     companionUnlocked: state.companionUnlocked,
+    experimentalLogs: state.experimentalLogs,
+    showDebugLogs: state.showDebugLogs,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -1032,7 +1053,9 @@ useSettingsStore.subscribe(
         curr.experienceLevelVersion !== prev.experienceLevelVersion ||
         curr.uiVisibility !== prev.uiVisibility ||
         curr.surveyUnlocked !== prev.surveyUnlocked ||
-        curr.companionUnlocked !== prev.companionUnlocked
+        curr.companionUnlocked !== prev.companionUnlocked ||
+        curr.experimentalLogs !== prev.experimentalLogs ||
+        curr.showDebugLogs !== prev.showDebugLogs
       ) {
         debouncedSave();
       }
