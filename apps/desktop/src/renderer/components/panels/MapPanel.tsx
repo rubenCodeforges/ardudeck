@@ -633,7 +633,7 @@ const TelemetryMap3D = React.memo(function TelemetryMap3D() {
   const [showHeadingLine, setShowHeadingLine] = useState(false); // off by default in 3D — vehicle model shows heading
   const [showMission, setShowMission] = useState(true);
   const [showTerrain, setShowTerrain] = useState(true);
-  const [useRealVehicleSize, setUseRealVehicleSize] = useState(true);
+  const [useRealVehicleSize, setUseRealVehicleSize] = useState(false);
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [trail, setTrail] = useState<[number, number][]>([]);
   const [homePosition, setHomePosition] = useState<[number, number] | null>(null);
@@ -704,10 +704,16 @@ const TelemetryMap3D = React.memo(function TelemetryMap3D() {
     }
   }, [gpsPosition, hasValidGps]);
 
-  // Handle map ready — store ref and attach drag listener
+  // Handle map ready — store ref, attach drag listener, and center on vehicle
   const handleMapReady = useCallback((map: import('maplibre-gl').Map) => {
     mapInstanceRef.current = map;
     map.on('dragstart', () => setFollowVehicle(false));
+    // Center on vehicle immediately when 3D map loads (follow effect uses a ref
+    // that isn't a dependency, so it won't fire until the next GPS update)
+    const g = useTelemetryStore.getState().gps;
+    if (g.fixType >= 2 && g.lat !== 0 && g.lon !== 0) {
+      map.flyTo({ center: [g.lon, g.lat], duration: 500 });
+    }
   }, []);
 
   // Follow vehicle on GPS update
@@ -895,7 +901,11 @@ const TelemetryMap3D = React.memo(function TelemetryMap3D() {
       {/* Stats overlay */}
       <div className="absolute bottom-2 left-2 z-[1000] bg-gray-900/90 backdrop-blur-sm rounded px-3 py-2 text-xs text-gray-300 space-y-1 min-w-[130px]">
         <div className="flex justify-between">
-          <span className="text-gray-500">Alt</span>
+          <span className="text-gray-500">MSL</span>
+          <span className="font-mono text-white">{position.alt.toFixed(1)}<span className="text-gray-500 ml-0.5">m</span></span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Rel</span>
           <span className="font-mono text-white">{position.relativeAlt.toFixed(1)}<span className="text-gray-500 ml-0.5">m</span></span>
         </div>
         <div className="flex justify-between">
@@ -1324,7 +1334,11 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
       {/* Stats overlay */}
       <div className="absolute bottom-2 left-2 z-[1000] bg-gray-900/90 backdrop-blur-sm rounded px-3 py-2 text-xs text-gray-300 space-y-1 min-w-[130px]">
         <div className="flex justify-between">
-          <span className="text-gray-500">Alt</span>
+          <span className="text-gray-500">MSL</span>
+          <span className="font-mono text-white">{position.alt.toFixed(1)}<span className="text-gray-500 ml-0.5">m</span></span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Rel</span>
           <span className="font-mono text-white">{position.relativeAlt.toFixed(1)}<span className="text-gray-500 ml-0.5">m</span></span>
         </div>
         <div className="flex justify-between">
