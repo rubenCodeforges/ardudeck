@@ -5,6 +5,58 @@ import { useNavigationStore } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 
+/** AI disclaimer dialog shown before first AI interaction */
+export function AiWarningDialog({ onAccept, onCancel }: { onAccept: (dismiss: boolean) => void; onCancel: () => void }) {
+  const [dontShow, setDontShow] = useState(false);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]">
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 w-full max-w-md mx-4 shadow-2xl">
+        <div className="px-5 pt-5 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white">AI Analysis is Experimental</h3>
+              <div className="text-xs text-gray-400 mt-2 leading-relaxed space-y-2">
+                <p>AI-generated suggestions may be inaccurate or inappropriate for your specific vehicle and configuration.</p>
+                <p>Always verify parameter recommendations against ArduPilot documentation before applying. Incorrect parameters can lead to loss of vehicle control.</p>
+                <p className="text-amber-400/80">You are solely responsible for any changes applied to your flight controller.</p>
+              </div>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 mt-4 ml-11 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={dontShow}
+              onChange={(e) => setDontShow(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-900/50 text-purple-500 focus:ring-purple-500/30 focus:ring-offset-0 cursor-pointer"
+            />
+            <span className="text-xs text-gray-500">Don't show this again</span>
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-700/40">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700/40 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onAccept(dontShow)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 transition-colors"
+          >
+            I understand
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Parsed parameter suggestion from AI response */
 interface ParamSuggestion {
   name: string;
@@ -91,7 +143,7 @@ function renderMarkdown(md: string): string {
 }
 
 /** Inline param action card rendered below AI messages */
-function ParamActionCard({ params }: { params: ParamSuggestion[] }) {
+function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]; requireWarning: (action: () => void) => void }) {
   const isConnected = useConnectionStore((s) => s.connectionState.isConnected);
   const parameterStore = useParameterStore;
   const [applied, setApplied] = useState<Set<string>>(new Set());
@@ -171,7 +223,7 @@ function ParamActionCard({ params }: { params: ParamSuggestion[] }) {
               )}
               {isConnected && !isApplied && (
                 <button
-                  onClick={() => handleApply(p)}
+                  onClick={() => requireWarning(() => handleApply(p))}
                   disabled={!!applying}
                   className="ml-auto text-[10px] px-2 py-0.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 rounded transition-colors disabled:opacity-50 flex-shrink-0"
                 >
@@ -201,7 +253,7 @@ function ParamActionCard({ params }: { params: ParamSuggestion[] }) {
         {isConnected ? (
           !allApplied && params.length > 1 && (
             <button
-              onClick={handleApplyAll}
+              onClick={() => requireWarning(handleApplyAll)}
               disabled={!!applying}
               className="text-[11px] px-3 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 rounded transition-colors disabled:opacity-50"
             >
@@ -210,7 +262,7 @@ function ParamActionCard({ params }: { params: ParamSuggestion[] }) {
           )
         ) : (
           <button
-            onClick={handleExport}
+            onClick={() => requireWarning(handleExport)}
             disabled={exported}
             className="text-[11px] px-3 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/25 rounded transition-colors disabled:opacity-50"
           >
@@ -232,10 +284,32 @@ export function AiAnalysisPanel() {
   const isAiAnalyzing = useLogStore((s) => s.isAiAnalyzing);
   const aiAnalysisError = useLogStore((s) => s.aiAnalysisError);
   const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const aiWarningDismissed = useSettingsStore((s) => s.aiWarningDismissed);
 
   const [input, setInput] = useState('');
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const requireWarning = useCallback((action: () => void) => {
+    if (aiWarningDismissed) {
+      action();
+    } else {
+      setPendingAction(() => action);
+    }
+  }, [aiWarningDismissed]);
+
+  const handleWarningAccept = useCallback((dismiss: boolean) => {
+    if (dismiss) {
+      useSettingsStore.getState().setAiWarningDismissed(true);
+    }
+    pendingAction?.();
+    setPendingAction(null);
+  }, [pendingAction]);
+
+  const handleWarningCancel = useCallback(() => {
+    setPendingAction(null);
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -371,8 +445,10 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
   const handleSubmit = () => {
     const msg = input.trim();
     if (!msg || isAiAnalyzing) return;
-    setInput('');
-    handleSend(msg);
+    requireWarning(() => {
+      setInput('');
+      handleSend(msg);
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -417,6 +493,20 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
 
   return (
     <div className="h-full flex flex-col">
+      {pendingAction && (
+        <AiWarningDialog onAccept={handleWarningAccept} onCancel={handleWarningCancel} />
+      )}
+
+      {/* Disclaimer banner */}
+      <div className="flex items-center gap-2 mx-4 mt-3 mb-0 px-3 py-2 bg-amber-500/8 border border-amber-500/20 rounded-lg">
+        <svg className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p className="text-[10px] text-amber-300/70 leading-snug">
+          AI suggestions are experimental. Always verify recommendations before applying. Incorrect parameters can cause loss of control.
+        </p>
+      </div>
+
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {aiMessages.length === 0 ? (
@@ -440,7 +530,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
               ].map((suggestion) => (
                 <button
                   key={suggestion}
-                  onClick={() => handleSend(suggestion)}
+                  onClick={() => requireWarning(() => handleSend(suggestion))}
                   disabled={isAiAnalyzing}
                   className="text-xs px-3 py-2 rounded-lg bg-gray-800/50 hover:bg-purple-500/10 hover:border-purple-500/30 border border-gray-700/40 text-gray-400 hover:text-purple-300 transition-colors text-left disabled:opacity-50"
                 >
@@ -477,7 +567,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
                         dangerouslySetInnerHTML={{ __html: renderMarkdown(displayContent) }}
                       />
                       {paramSuggestions.length > 0 && (
-                        <ParamActionCard params={paramSuggestions} />
+                        <ParamActionCard params={paramSuggestions} requireWarning={requireWarning} />
                       )}
                     </div>
                   )}

@@ -1791,8 +1791,19 @@ function AiAnalysisSection() {
       <section className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 rounded-xl border border-gray-700/50 p-5">
         <div className="space-y-4">
           <p className="text-xs text-gray-500">
-            Enable AI-powered analysis of your flight logs. The AI reviews health check results and provides actionable recommendations. Your API key is encrypted and stored locally.
+            Enable AI-powered analysis of your flight logs. Your API key is encrypted and stored locally.
           </p>
+
+          <div className="flex items-start gap-2 bg-amber-500/8 border border-amber-500/20 rounded-lg p-3">
+            <svg className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="text-[11px] text-amber-300/80 leading-relaxed space-y-1">
+              <p><strong className="text-amber-300">Experimental feature.</strong></p>
+              <p>AI suggestions are not a substitute for your own judgement.</p>
+              <p>Always verify recommendations against ArduPilot documentation and your vehicle's specific configuration before applying changes. Incorrect parameters can cause loss of control.</p>
+            </div>
+          </div>
 
           {/* Provider selection */}
           <div>
@@ -1854,6 +1865,7 @@ function AiAnalysisSection() {
           )}
         </div>
       </section>
+
     </div>
   );
 }

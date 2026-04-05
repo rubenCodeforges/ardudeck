@@ -1,7 +1,8 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useLogStore } from '../../stores/log-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { HealthCheckCard } from './HealthCheckCard';
+import { AiWarningDialog } from './AiAnalysisPanel';
 import type { ExplorerPreset, HealthCheckResult } from '@ardudeck/dataflash-parser';
 
 function computeFlightStats(log: ReturnType<typeof useLogStore.getState>['currentLog']) {
@@ -49,9 +50,19 @@ export function HealthReportPanel() {
   const currentLog = useLogStore((s) => s.currentLog);
   const currentLogPath = useLogStore((s) => s.currentLogPath);
   const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const aiWarningDismissed = useSettingsStore((s) => s.aiWarningDismissed);
   const aiInsightCards = useLogStore((s) => s.aiInsightCards);
   const isAiInsightLoading = useLogStore((s) => s.isAiInsightLoading);
   const aiInsightError = useLogStore((s) => s.aiInsightError);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  const requireWarning = useCallback((action: () => void) => {
+    if (aiWarningDismissed) {
+      action();
+    } else {
+      setPendingAction(() => action);
+    }
+  }, [aiWarningDismissed]);
 
   const flightStats = useMemo(() => computeFlightStats(currentLog), [currentLog]);
 
@@ -143,6 +154,17 @@ Return 3-6 cards. Most important issues first.`;
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4">
+      {pendingAction && (
+        <AiWarningDialog
+          onAccept={(dismiss) => {
+            if (dismiss) useSettingsStore.getState().setAiWarningDismissed(true);
+            pendingAction();
+            setPendingAction(null);
+          }}
+          onCancel={() => setPendingAction(null)}
+        />
+      )}
+
       {/* Log info header */}
       <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
         <div className="flex items-center gap-3 mb-3">
@@ -213,7 +235,7 @@ Return 3-6 cards. Most important issues first.`;
           <div className="mt-4 pt-4 border-t border-gray-700/30">
             {aiInsightCards.length > 0 ? (
               <button
-                onClick={handleAiAnalyze}
+                onClick={() => requireWarning(handleAiAnalyze)}
                 disabled={isAiInsightLoading}
                 className="text-xs px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 rounded-lg transition-colors disabled:opacity-50"
               >
@@ -221,7 +243,7 @@ Return 3-6 cards. Most important issues first.`;
               </button>
             ) : (
               <button
-                onClick={handleAiAnalyze}
+                onClick={() => requireWarning(handleAiAnalyze)}
                 disabled={isAiInsightLoading}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/25 rounded-lg transition-colors disabled:opacity-50"
               >
@@ -255,6 +277,7 @@ Return 3-6 cards. Most important issues first.`;
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
             <h3 className="text-sm font-semibold text-purple-300">AI Insights</h3>
+            <span className="text-[10px] text-amber-400/60 ml-auto">Experimental - verify before applying</span>
           </div>
           {isAiInsightLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

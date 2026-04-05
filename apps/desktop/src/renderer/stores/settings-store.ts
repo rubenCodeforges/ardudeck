@@ -220,6 +220,8 @@ interface SettingsStore {
   // AI Analysis
   aiProvider: 'claude' | 'openai' | 'gemini' | null;
   setAiProvider: (provider: 'claude' | 'openai' | 'gemini' | null) => void;
+  aiWarningDismissed: boolean;
+  setAiWarningDismissed: (dismissed: boolean) => void;
 
   // Mission defaults
   missionDefaults: MissionDefaults;
@@ -636,6 +638,10 @@ export const useSettingsStore = create<SettingsStore>()(
   setAiProvider: (provider) => {
     set({ aiProvider: provider });
   },
+  aiWarningDismissed: false,
+  setAiWarningDismissed: (dismissed) => {
+    set({ aiWarningDismissed: dismissed });
+  },
 
   // Initial state (will be replaced by loadSettings)
   missionDefaults: { ...DEFAULT_MISSION_DEFAULTS },
@@ -726,6 +732,7 @@ export const useSettingsStore = create<SettingsStore>()(
           experimentalLogs: !!((settings as unknown as Record<string, unknown>).experimentalLogs),
           showDebugLogs: !!((settings as unknown as Record<string, unknown>).showDebugLogs),
           aiProvider: ((settings as unknown as Record<string, unknown>).aiProvider as 'claude' | 'openai' | 'gemini' | null) ?? null,
+          aiWarningDismissed: !!((settings as unknown as Record<string, unknown>).aiWarningDismissed),
           _isInitialized: true,
         });
       } else {
@@ -761,6 +768,7 @@ export const useSettingsStore = create<SettingsStore>()(
         experimentalLogs: state.experimentalLogs,
         showDebugLogs: state.showDebugLogs,
         aiProvider: state.aiProvider,
+        aiWarningDismissed: state.aiWarningDismissed,
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -1046,6 +1054,7 @@ useSettingsStore.subscribe(
     experimentalLogs: state.experimentalLogs,
     showDebugLogs: state.showDebugLogs,
     aiProvider: state.aiProvider,
+    aiWarningDismissed: state.aiWarningDismissed,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -1068,7 +1077,8 @@ useSettingsStore.subscribe(
         curr.companionUnlocked !== prev.companionUnlocked ||
         curr.experimentalLogs !== prev.experimentalLogs ||
         curr.showDebugLogs !== prev.showDebugLogs ||
-        curr.aiProvider !== prev.aiProvider
+        curr.aiProvider !== prev.aiProvider ||
+        curr.aiWarningDismissed !== prev.aiWarningDismissed
       ) {
         debouncedSave();
       }
