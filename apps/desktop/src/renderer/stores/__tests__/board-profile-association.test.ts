@@ -143,11 +143,9 @@ describe('associateBoard', () => {
     expect(newVehicle?.boardId).toBe('CubeOrange');
     expect(newVehicle?.boardName).toBe('Cube');
     expect(newVehicle?.lastConnected).toBeDefined();
-    // Should be cloned from template
-    expect(newVehicle?.type).toBe('plane');
-    expect(newVehicle?.weight).toBe(2000);
-    expect(newVehicle?.notes).toContain('Cloned from');
-    // boardStats should be cleared on new profile
+    // Should be a blank profile with defaults (not cloned)
+    expect(newVehicle?.type).toBe('copter');
+    expect(newVehicle?.weight).toBe(500);
     expect(newVehicle?.boardStats).toBeUndefined();
   });
 
@@ -534,7 +532,7 @@ describe('board association + stats integration', () => {
     expect(useSettingsStore.getState().activeVehicleId).toBe('v1');
   });
 
-  it('cloned profile inherits template vehicle type and physical specs', () => {
+  it('new profile uses defaults instead of cloning from template', () => {
     resetStore(
       [makeVehicle({
         id: 'v1',
@@ -554,14 +552,12 @@ describe('board association + stats integration', () => {
     const newId = useSettingsStore.getState().associateBoard('uid-new', 'MatekF405');
     const cloned = useSettingsStore.getState().vehicles.find(v => v.id === newId);
 
+    // Should be a blank profile with defaults (not cloned from template)
     expect(cloned?.type).toBe('copter');
-    expect(cloned?.weight).toBe(350);
-    expect(cloned?.batteryCells).toBe(6);
-    expect(cloned?.batteryCapacity).toBe(1100);
-    expect(cloned?.frameSize).toBe(127);
-    expect(cloned?.motorCount).toBe(4);
-    expect(cloned?.motorKv).toBe(2400);
-    // But board identity should be the new board's
+    expect(cloned?.weight).toBe(500);
+    expect(cloned?.batteryCells).toBe(4);
+    expect(cloned?.batteryCapacity).toBe(1500);
+    // Board identity should be the new board's
     expect(cloned?.boardUid).toBe('uid-new');
     expect(cloned?.boardId).toBe('MatekF405');
   });

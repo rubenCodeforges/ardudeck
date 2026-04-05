@@ -785,6 +785,20 @@ function FieldPickerPanel() {
     return map;
   }, [messageTypes]);
 
+  // Map each selected field to its chart series color (matches chart line colors)
+  const seriesColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    let idx = 0;
+    selectedFields.forEach((fields, type) => {
+      if (fields.length === 0) return;
+      for (const field of fields) {
+        map.set(`${type}.${field}`, SERIES_COLORS[idx % SERIES_COLORS.length]!);
+        idx++;
+      }
+    });
+    return map;
+  }, [selectedFields]);
+
   return (
     <div className="h-full flex flex-col">
       {/* Search + presets (sticky top) */}
@@ -866,6 +880,7 @@ function FieldPickerPanel() {
                 <div className="ml-3 mt-0.5 mb-1 pl-2 space-y-0.5" style={{ borderLeft: `2px solid ${groupColor}40` }}>
                   {fields.map((field) => {
                     const isChecked = selectedFields.get(type)?.includes(field) ?? false;
+                    const lineColor = seriesColorMap.get(`${type}.${field}`);
                     return (
                       <label
                         key={field}
@@ -879,6 +894,9 @@ function FieldPickerPanel() {
                           onChange={() => handleFieldToggle(type, field)}
                           className="rounded border-gray-600 bg-gray-800 text-blue-500 w-3 h-3"
                         />
+                        {isChecked && lineColor && (
+                          <span className="w-3 h-[3px] rounded-full flex-shrink-0" style={{ backgroundColor: lineColor }} />
+                        )}
                         <span className={isChecked ? 'text-gray-200' : 'text-gray-500'}>{field}</span>
                       </label>
                     );
