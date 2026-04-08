@@ -127,9 +127,7 @@
       "gatekeeperAssess": false,
       "entitlements": "codesign/entitlements.mac.plist",
       "entitlementsInherit": "codesign/entitlements.mac.inherit.plist",
-      "notarize": {
-        "teamId": "54MGKBU8DL"
-      },
+      "notarize": true,
       "target": [
         "dmg",
         "zip"
