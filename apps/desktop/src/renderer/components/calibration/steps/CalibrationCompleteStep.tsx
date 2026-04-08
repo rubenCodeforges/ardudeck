@@ -133,7 +133,8 @@ export function CalibrationCompleteStep() {
             </button>
           )}
 
-          {calibrationSuccess && !saveSuccess && (
+          {/* MSP/INAV: separate "Save to FC" step (writes to EEPROM via MSP) */}
+          {calibrationSuccess && !isMavlink && !saveSuccess && (
             <button
               onClick={saveCalibrationData}
               disabled={isSaving}
@@ -158,7 +159,7 @@ export function CalibrationCompleteStep() {
             </button>
           )}
 
-          {saveSuccess && (
+          {saveSuccess && !isMavlink && (
             <div className="px-6 py-2.5 bg-green-500/20 rounded-lg text-green-400 font-medium flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -170,7 +171,11 @@ export function CalibrationCompleteStep() {
       </div>
 
       {/* Persistent Storage Option */}
-      {saveSuccess && !savePersistentSuccess && (
+      {/* MSP: shown after "Save to FC" succeeds. */}
+      {/* MAVLink/ArduPilot: shown immediately after a successful calibration —
+          AP automatically commits cal values to params on completion, so the
+          only remaining step is writing params to flash for persistence. */}
+      {calibrationSuccess && (isMavlink ? !savePersistentSuccess : (saveSuccess && !savePersistentSuccess)) && (
         <div className="bg-gray-800/30 rounded-xl border border-gray-700/30 p-5">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
@@ -179,10 +184,12 @@ export function CalibrationCompleteStep() {
               </svg>
             </div>
             <div className="flex-1">
-              <h4 className="text-sm font-medium text-gray-200 mb-1">Save to Persistent Storage</h4>
+              <h4 className="text-sm font-medium text-gray-200 mb-1">
+                {isMavlink ? 'Save to Bootloader' : 'Save to Persistent Storage'}
+              </h4>
               <p className="text-xs text-gray-400 mb-3">
                 {isMavlink
-                  ? 'Write calibration parameters to flash. This ensures calibration data survives firmware updates.'
+                  ? 'Calibration is already applied to the flight controller. Write parameters to bootloader flash so they survive a firmware update.'
                   : 'Save calibration data to the bootloader partition. This data will survive firmware updates.'}
               </p>
 
@@ -209,7 +216,7 @@ export function CalibrationCompleteStep() {
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
                       </svg>
-                      Save to Persistent Storage
+                      {isMavlink ? 'Save to Bootloader' : 'Save to Persistent Storage'}
                     </>
                   )}
                 </button>
@@ -237,12 +244,17 @@ export function CalibrationCompleteStep() {
       )}
 
       {/* Info note */}
-      {calibrationSuccess && !saveSuccess && (
+      {calibrationSuccess && !saveSuccess && !isMavlink && (
         <p className="text-center text-xs text-gray-500">
           Calibration data has been applied. Click "Save to FC" to persist changes to flash memory.
         </p>
       )}
-      {saveSuccess && !savePersistentSuccess && (
+      {calibrationSuccess && isMavlink && !savePersistentSuccess && (
+        <p className="text-center text-xs text-gray-500">
+          The flight controller already applied the calibration. Use "Save to Bootloader" so it survives firmware updates.
+        </p>
+      )}
+      {saveSuccess && !isMavlink && !savePersistentSuccess && (
         <p className="text-center text-xs text-green-500/70">
           Calibration saved to flash memory. You can also save to persistent storage above to survive firmware updates.
         </p>

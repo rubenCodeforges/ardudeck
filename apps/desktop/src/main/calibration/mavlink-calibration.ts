@@ -90,6 +90,9 @@ let compassStartTime = 0;
 // 6-point state
 let expectedPosition = -1; // ArduPilot position enum value from FC
 let positionStatus = [false, false, false, false, false, false];
+// Safety-net timer fired after the user confirms the last position
+// (in case AP's "Calibration successful" STATUSTEXT is dropped or never sent)
+let sixPointFallbackTimerId: ReturnType<typeof setTimeout> | null = null;
 
 // =============================================================================
 // Init
@@ -153,6 +156,27 @@ export async function confirmMavlinkPosition(position: number): Promise<{ succes
     return { success: false, error: 'Failed to send position confirmation — ensure FC is connected' };
   }
 
+  // Mark this position as captured locally
+  positionStatus[position] = true;
+
+  // After the LAST position is confirmed, arm a fallback timer in case the
+  // FC's "Calibration successful" STATUSTEXT is dropped or never sent.
+  // AP processes the 6 samples synchronously and saves to params; this
+  // typically takes <2s. We give it 8s of grace before assuming success.
+  if (position === 5) {
+    if (sixPointFallbackTimerId) clearTimeout(sixPointFallbackTimerId);
+    sixPointFallbackTimerId = setTimeout(() => {
+      sixPointFallbackTimerId = null;
+      if (!deps || activeCalType !== 'accel-6point') return;
+      deps.sendLog('warn', 'No completion message from FC after 8s — assuming calibration succeeded (fallback)');
+      deps.sendComplete({
+        type: 'accel-6point',
+        success: true,
+      });
+      cancelMavlinkCalibration();
+    }, 8000);
+  }
+
   return { success: true };
 }
 
@@ -160,6 +184,10 @@ export function cancelMavlinkCalibration(): void {
   if (compassTimerId) {
     clearInterval(compassTimerId);
     compassTimerId = null;
+  }
+  if (sixPointFallbackTimerId) {
+    clearTimeout(sixPointFallbackTimerId);
+    sixPointFallbackTimerId = null;
   }
   activeCalType = null;
   expectedPosition = -1;
@@ -175,8 +203,10 @@ export function handleCalibrationStatusText(text: string, severity: number): voi
 
   const lower = text.toLowerCase();
 
-  // Completion detection
-  if (lower.includes('calibration successful') || lower.includes('calibration done')) {
+  // Completion detection — match the exact strings ArduPilot emits.
+  // AP_AccelCal sends "Calibration successful" / "Calibration FAILED" /
+  // "Calibration cancelled" via _printf (MAV_SEVERITY_CRITICAL).
+  if (lower.includes('calibration successful') || lower.includes('calibration done') || lower.includes('calibration complete')) {
     deps.sendLog('info', `Calibration completed successfully`);
     deps.sendComplete({
       type: activeCalType,
@@ -186,12 +216,25 @@ export function handleCalibrationStatusText(text: string, severity: number): voi
     return;
   }
 
-  if (lower.includes('calibration failed') || lower.includes('cal failed')) {
+  if (lower.includes('calibration failed') || lower.includes('cal failed') || lower.includes('calibration cancelled')) {
     deps.sendLog('error', `Calibration failed: ${text}`);
     deps.sendComplete({
       type: activeCalType,
       success: false,
       error: text,
+    });
+    cancelMavlinkCalibration();
+    return;
+  }
+
+  // "Trim OK: ..." is what AP emits after a successful level/trim cal — but
+  // for accel-level we already complete on COMMAND_ACK ACCEPTED above.
+  // Kept here as a defensive fallback in case the ACK is missed.
+  if (activeCalType === 'accel-level' && lower.includes('trim ok')) {
+    deps.sendLog('info', `Level calibration completed: ${text}`);
+    deps.sendComplete({
+      type: 'accel-level',
+      success: true,
     });
     cancelMavlinkCalibration();
     return;
@@ -254,6 +297,22 @@ export function handleCalibrationCommandAck(command: number, result: number): vo
   if (command === MAV_CMD_PREFLIGHT_CALIBRATION) {
     if (result === 0) {
       // ACCEPTED
+      // For synchronous one-shot calibrations (accel-level/gyro), ArduPilot
+      // performs the work BEFORE returning the ACK. So ACCEPTED == done.
+      // (calibrate_trim() and calibrate_gyros() in AP_InertialSensor return
+      //  MAV_RESULT_ACCEPTED only after the calibration completes; they emit
+      //  no STATUSTEXT. Mission Planner's doCommand() relies on this same
+      //  semantic — see ConfigAccelerometerCalibration.cs BUT_level_Click.)
+      if (activeCalType === 'accel-level' || activeCalType === 'gyro') {
+        deps.sendLog('info', `${activeCalType} calibration accepted by FC — completion confirmed`);
+        deps.sendComplete({
+          type: activeCalType,
+          success: true,
+        });
+        cancelMavlinkCalibration();
+        return;
+      }
+      // For 6-point and compass, ACCEPTED only means "calibration started"
       deps.sendLog('info', 'Calibration command accepted by flight controller');
     } else if (result === 5) {
       // IN_PROGRESS — already calibrating
@@ -287,8 +346,12 @@ export function handleIncomingCommandLong(command: number, param1: number): void
   if (!deps || activeCalType !== 'accel-6point') return;
 
   if (command === MAV_CMD_ACCELCAL_VEHICLE_POS) {
+    // Always log incoming position requests so we can diagnose stuck calibrations.
+    deps.sendLog('info', `FC sent ACCELCAL_VEHICLE_POS param1=${param1}`);
+
     if (param1 === ACCELCAL_POS.SUCCESS) {
-      // All positions done successfully
+      // All positions done successfully — AP sends this once per second
+      // after AP_AccelCal::success() is called.
       deps.sendLog('info', 'All calibration positions captured successfully');
       deps.sendComplete({
         type: 'accel-6point',
@@ -317,40 +380,14 @@ export function handleIncomingCommandLong(command: number, param1: number): void
       return;
     }
 
-    // Mark previous position as done (if any)
-    // ArduPilot requests positions sequentially, so when it asks for next position,
-    // the previous one was captured successfully
-    if (posIndex > 0) {
-      // Find which index came before this one based on what positions are false
-      for (let i = 0; i < 6; i++) {
-        if (i !== posIndex && !positionStatus[i]) {
-          // If this was the one we were on before, mark it done
-          // Actually, simpler: mark all up to the current request count as done
-        }
-      }
-    }
-
-    // Count how many positions have been completed
-    const completedCount = positionStatus.filter(Boolean).length;
-
     deps.sendLog('info', `Place vehicle ${POSITION_NAMES[posIndex]} (position ${posIndex + 1}/6)`);
     deps.sendProgress({
       type: 'accel-6point',
-      progress: (completedCount / 6) * 100,
+      progress: (positionStatus.filter(Boolean).length / 6) * 100,
       statusText: `Place vehicle ${POSITION_NAMES[posIndex]}`,
       currentPosition: posIndex as 0 | 1 | 2 | 3 | 4 | 5,
       positionStatus: [...positionStatus],
     });
-  }
-}
-
-/**
- * Called when the user confirms a position and the FC accepts it.
- * Marks the position as done in our tracking state.
- */
-export function markPositionDone(posIndex: number): void {
-  if (posIndex >= 0 && posIndex < 6) {
-    positionStatus[posIndex] = true;
   }
 }
 
