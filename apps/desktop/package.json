@@ -122,6 +122,14 @@
     },
     "mac": {
       "icon": "resources/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "codesign/entitlements.mac.plist",
+      "entitlementsInherit": "codesign/entitlements.mac.inherit.plist",
+      "notarize": {
+        "teamId": "54MGKBU8DL"
+      },
       "target": [
         "dmg",
         "zip"

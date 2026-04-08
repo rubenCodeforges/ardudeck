@@ -148,6 +148,13 @@ jobs:
 
       - name: Build macOS arm64
         working-directory: apps/desktop
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_FOR_PULL_REQUEST: 'true'
         run: pnpm package --mac --arm64 --publish never
 
       - name: Upload macOS arm64 dmg
@@ -223,6 +230,13 @@ jobs:
 
       - name: Build macOS x64
         working-directory: apps/desktop
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_FOR_PULL_REQUEST: 'true'
         run: pnpm package --mac --x64 --publish never
 
       - name: Upload macOS x64 dmg
