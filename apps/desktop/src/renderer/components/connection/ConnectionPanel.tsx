@@ -134,7 +134,12 @@ export function ConnectionPanel() {
       setError(null);
       const downloaded = await downloadArdupilotBinary();
       if (!downloaded) {
-        setError(`Failed to download ArduPilot ${ardupilotVehicleType} binary.`);
+        const detail = useArduPilotSitlStore.getState().lastError;
+        setError(
+          detail
+            ? `Failed to download ArduPilot ${ardupilotVehicleType} binary: ${detail}`
+            : `Failed to download ArduPilot ${ardupilotVehicleType} binary.`
+        );
         return;
       }
     }

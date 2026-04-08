@@ -227,22 +227,32 @@ class ArduPilotSitlDownloader {
     try {
       await mkdir(cygwinDir, { recursive: true });
 
+      // Cygwin runtime DLLs required by the Mission Planner-provided ArduPilot
+      // SITL binaries. They live in the root of /Tools/MissionPlanner/sitl/
+      // (not a cygwin/ subdir — that path 404s). Keep this list in sync with
+      // the actual dependencies of the .elf files on that server.
       const dlls = [
         'cygwin1.dll',
+        'cyggcc_s-1.dll',
         'cyggcc_s-seh-1.dll',
         'cygstdc++-6.dll',
-        'cygz.dll',
+        'cygatomic-1.dll',
+        'cyggomp-1.dll',
+        'cygiconv-2.dll',
+        'cygintl-8.dll',
+        'cygquadmath-0.dll',
+        'cygssp-0.dll',
       ];
 
       for (const dll of dlls) {
-        const url = `${CYGWIN_BASE_URL}/cygwin/${dll}`;
+        const url = `${CYGWIN_BASE_URL}/${dll}`;
         const dllPath = path.join(cygwinDir, dll);
 
         try { await access(dllPath); continue; } catch { /* need download */ }
 
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(`Failed to download ${dll}: HTTP ${response.status}`);
+          throw new Error(`${dll}: HTTP ${response.status} ${response.statusText} — ${url}`);
         }
 
         const arrayBuffer = await response.arrayBuffer();
