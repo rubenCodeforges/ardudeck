@@ -483,6 +483,9 @@ function MavlinkFlightControl() {
   const missionLoaded = missionItems.length > 0;
   const currentSeq = useMissionStore((s) => s.currentSeq);
   const fetchMission = useMissionStore((s) => s.fetchMission);
+  const missionDirty = useMissionStore((s) => s.isDirty);
+  const uploadMission = useMissionStore((s) => s.uploadMission);
+  const updateWaypoint = useMissionStore((s) => s.updateWaypoint);
   const missionModes = MISSION_MODES[vehicleClass];
   const isInAuto = flight.modeNum === missionModes.auto;
   const isInPause = flight.modeNum === missionModes.pause;
@@ -497,7 +500,7 @@ function MavlinkFlightControl() {
   const [modeLoading, setModeLoading] = useState<number | null>(null);
   const [showTakeoffDialog, setShowTakeoffDialog] = useState(false);
   const [takeoffAlt, setTakeoffAlt] = useState(10);
-  const [guidedMode, setGuidedMode] = useState<number | null>(null);
+  const pendingAutoMissionStartRef = useRef(false);
 
   // Detect panel orientation for responsive layout
   useEffect(() => {
@@ -597,41 +600,117 @@ function MavlinkFlightControl() {
     }
   };
 
-  const checkMissions = async (x:number, y:number) => {
-    return window.electronAPI.mavlinkMissionStart(x, y);
-  };
+  const normalizeTakeoffAltitudeToWp = useCallback((): boolean => {
+    if (!missionLoaded) return false;
+    const first = missionItems[0];
+    // console.log(first?.altitude)
+    if (!first) return false;
+    const firstIsTakeoff =
+      first.command === MAV_CMD.NAV_TAKEOFF || first.command === MAV_CMD.NAV_VTOL_TAKEOFF;
+    if (!firstIsTakeoff || typeof first.altitude !== 'number') return false;
 
-  const startArmed = async () => {
-    return window.electronAPI.mavlinkArmDisarm(true, true);
-  };
+    const firstNavAfterTakeoff = missionItems.find(
+      (item) => item.seq > first.seq && (
+        item.command === MAV_CMD.NAV_WAYPOINT || item.command === MAV_CMD.NAV_SPLINE_WAYPOINT
+      ),
+    );
 
-  const takeOff = async (altM:number) => {
-    return window.electronAPI.mavlinkTakeoff(altM);
-  };
+    if (!firstNavAfterTakeoff || typeof firstNavAfterTakeoff.altitude !== 'number') return false;
 
-  const autoDrone = async (altM:number) => {
-    
-    const ALT_CAP_M = 20;
-    for (const item of missionItems) {
-      if (typeof item.altitude === 'number' && item.altitude > ALT_CAP_M) {
-        updateWaypoint(item.seq, { altitude: ALT_CAP_M });
-      }
-    }
-  };
+    // Keep mission altitude profile coherent: TAKEOFF should not sit above the
+    // first navigation waypoint, otherwise AUTO can keep climbing indefinitely.
+    updateWaypoint(first.seq, { altitude: Math.max(2, firstNavAfterTakeoff.altitude) });
+    return true;
+  }, [missionLoaded, missionItems, updateWaypoint]);
 
   // Mode switching
   const handleSetMode = async (modeNum: number) => {
+    if (modeLoading !== null) return;
     setModeLoading(modeNum);
     setStatusMsg(null);
-    
-    if (modeNum === missionModes.auto) {
-      autoDrone(20);
+    try {
+      let missionWasNormalized = false;
+      if (modeNum === missionModes.auto && missionLoaded) {
+        missionWasNormalized = normalizeTakeoffAltitudeToWp();
+        if (missionWasNormalized) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+
+      if (modeNum === missionModes.auto && missionLoaded && (missionDirty || missionWasNormalized)) {
+        setStatusMsg({ text: 'Uploading mission to FC before AUTO…', type: 'info' });
+        const uploaded = await uploadMission();
+        if (!uploaded) {
+          setStatusMsg({ text: 'Mission upload failed — AUTO start aborted', type: 'error' });
+          setModeLoading(null);
+          setTimeout(() => setStatusMsg(null), 3500);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+
+      const ok = await window.electronAPI.mavlinkSetMode(modeNum);
+      if (!ok) {
+        setStatusMsg({ text: 'Not connected', type: 'error' });
+        setModeLoading(null);
+        setTimeout(() => setStatusMsg(null), 3000);
+        return;
+      }
+
+
+      if (modeNum === missionModes.auto && missionLoaded) {
+        if (!flight.armed) {
+          pendingAutoMissionStartRef.current = true;
+          setStatusMsg({ text: 'AUTO queued - arm to start mission', type: 'info' });
+          setTimeout(() => setStatusMsg(null), 3000);
+        } else {
+          const missionStartOk = await window.electronAPI.mavlinkMissionStart(0, 0);
+          setStatusMsg({
+            text: missionStartOk ? 'Mission started (AUTO)' : 'AUTO set, but mission start failed',
+            type: missionStartOk ? 'success' : 'error',
+          });
+          setTimeout(() => setStatusMsg(null), 3500);
+        }
+      }
+      setTimeout(() => setModeLoading(null), 3000);
+    } catch {
+      setStatusMsg({ text: 'Mode change failed', type: 'error' });
+      setModeLoading(null);
+      setTimeout(() => setStatusMsg(null), 3000);
     }
   };
 
 
   // If AUTO was selected before arming, start mission exactly once after
   // heartbeat confirms armed+AUTO
+  useEffect(() => {
+    if (!missionLoaded) {
+      pendingAutoMissionStartRef.current = false;
+      return;
+    }
+    if (!isInAuto) {
+      pendingAutoMissionStartRef.current = false;
+      return;
+    }
+    if (!flight.armed) {
+      return;
+    }
+    if (!pendingAutoMissionStartRef.current) return;
+    pendingAutoMissionStartRef.current = false;
+    void (async () => {
+      try {
+        const missionStartOk = await window.electronAPI.mavlinkMissionStart(0, 0);
+        setStatusMsg({
+          text: missionStartOk ? 'AUTO armed: mission started from item 0' : 'AUTO armed, but mission start failed',
+          type: missionStartOk ? 'success' : 'error',
+        });
+        setTimeout(() => setStatusMsg(null), 3500);
+      } catch {
+        setStatusMsg({ text: 'AUTO armed mission kick failed', type: 'error' });
+        setTimeout(() => setStatusMsg(null), 3500);
+      }
+    })();
+  }, [flight.armed, missionLoaded, isInAuto]);
 
   // Clear mode loading when heartbeat confirms the switch
   useEffect(() => {

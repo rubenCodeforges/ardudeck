@@ -1805,10 +1805,15 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           }
         }
 
-        sendLog(mainWindow, 'debug', `FC requesting mission item ${seq} (msg ${msgid}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`);
+        const responseUsesInt = msgid === MSG_MISSION_REQUEST_INT;
+        sendLog(
+          mainWindow,
+          'debug',
+          `FC requesting mission item ${seq} (msg ${msgid}, respond=${responseUsesInt ? 'MISSION_ITEM_INT' : 'MISSION_ITEM'}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`,
+        );
 
         if (seq < missionUploadState.items.length) {
-          sendMissionItem(mainWindow, missionUploadState.items[seq]!);
+          sendMissionItem(mainWindow, missionUploadState.items[seq]!, { forceIntFormat: responseUsesInt });
           missionUploadState.currentSeq = seq;
 
           // Send progress
@@ -1841,6 +1846,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         // MAVLink v2: 4 bytes (adds mission_type)
         // type is at byte offset 2
         const ackType = payload.length >= 3 ? payload[2]! : 0;
+        sendLog(mainWindow, 'debug', `Received MISSION_ACK type=${ackType} (${getMissionResultName(ackType)})`);
 
         if (ackType === MAV_MISSION_RESULT.ACCEPTED) {
           if (missionUploadState) {
@@ -2067,13 +2073,18 @@ async function requestMissionItem(mainWindow: BrowserWindow, seq: number): Promi
 }
 
 // Helper: Send a mission item to FC
-async function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): Promise<void> {
+async function sendMissionItem(
+  mainWindow: BrowserWindow,
+  item: MissionItem,
+  opts?: { forceIntFormat?: boolean },
+): Promise<void> {
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
   let packet: Uint8Array;
   const targetSystem = connectionState.systemId ?? 1;
+  const preferIntFormat = opts?.forceIntFormat ?? (detectedMavlinkVersion === 2);
 
-  if (detectedMavlinkVersion === 2) {
+  if (preferIntFormat) {
     // MAVLink v2: Use MISSION_ITEM_INT (preferred, higher precision)
     const payload = serializeMissionItemInt({
       targetSystem,
@@ -2119,7 +2130,11 @@ async function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): Pr
     packet = serializeV1(MISSION_ITEM_ID, payload, MISSION_ITEM_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
   }
 
-  sendLog(mainWindow, 'debug', `Sending mission item ${item.seq} (MAVLink v${detectedMavlinkVersion})`);
+  sendLog(
+    mainWindow,
+    'debug',
+    `Sending mission item ${item.seq} (${preferIntFormat ? 'MISSION_ITEM_INT' : 'MISSION_ITEM'}, MAVLink v${detectedMavlinkVersion})`,
+  );
 
   currentTransport.write(packet).catch(err => {
     sendLog(mainWindow, 'error', `Failed to send mission item ${item.seq}`, String(err));
