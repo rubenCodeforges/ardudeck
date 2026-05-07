@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useFlightControlStore } from '../../stores/flight-control-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -20,6 +21,7 @@ import { PreArmParamFix } from '../prearm/PreArmParamFix';
 import { PanelContainer, SectionTitle } from './panel-utils';
 import { getVehicleClass, ARDUPILOT_COMMON_MODES, VEHICLE_CAPABILITIES, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
 import { executeTakeoff, presentTakeoff } from './takeoff-strategies';
+import { MAV_CMD } from '../../../shared/mission-types';
 
 // =============================================================================
 // Visual Components
@@ -460,7 +462,9 @@ const MISSION_MODES: Record<ArduPilotVehicleClass, { auto: number; pause: number
 };
 
 function MavlinkFlightControl() {
+  const { t } = useTranslation();
   const flight = useTelemetryStore((s) => s.flight);
+  const position = useTelemetryStore((s) => s.position);
   const messages = useMessagesStore((s) => s.messages);
   const connectionState = useConnectionStore((s) => s.connectionState);
   // Multi-signal VTOL detection: MAV_TYPE alone is unreliable on first
@@ -476,9 +480,9 @@ function MavlinkFlightControl() {
   const availableModes = ARDUPILOT_COMMON_MODES[vehicleClass];
   const capabilities = VEHICLE_CAPABILITIES[vehicleClass];
   const missionItems = useMissionStore((s) => s.missionItems);
+  const missionLoaded = missionItems.length > 0;
   const currentSeq = useMissionStore((s) => s.currentSeq);
   const fetchMission = useMissionStore((s) => s.fetchMission);
-  const missionLoaded = missionItems.length > 0;
   const missionModes = MISSION_MODES[vehicleClass];
   const isInAuto = flight.modeNum === missionModes.auto;
   const isInPause = flight.modeNum === missionModes.pause;
@@ -493,6 +497,7 @@ function MavlinkFlightControl() {
   const [modeLoading, setModeLoading] = useState<number | null>(null);
   const [showTakeoffDialog, setShowTakeoffDialog] = useState(false);
   const [takeoffAlt, setTakeoffAlt] = useState(10);
+  const [guidedMode, setGuidedMode] = useState<number | null>(null);
 
   // Detect panel orientation for responsive layout
   useEffect(() => {
@@ -592,26 +597,41 @@ function MavlinkFlightControl() {
     }
   };
 
-  // Mode switching
-  const handleSetMode = async (modeNum: number) => {
-    if (modeLoading !== null) return;
-    setModeLoading(modeNum);
-    setStatusMsg(null);
-    try {
-      const ok = await window.electronAPI.mavlinkSetMode(modeNum);
-      if (!ok) {
-        setStatusMsg({ text: 'Not connected', type: 'error' });
-        setModeLoading(null);
-        setTimeout(() => setStatusMsg(null), 3000);
+  const checkMissions = async (x:number, y:number) => {
+    return window.electronAPI.mavlinkMissionStart(x, y);
+  };
+
+  const startArmed = async () => {
+    return window.electronAPI.mavlinkArmDisarm(true, true);
+  };
+
+  const takeOff = async (altM:number) => {
+    return window.electronAPI.mavlinkTakeoff(altM);
+  };
+
+  const autoDrone = async (altM:number) => {
+    
+    const ALT_CAP_M = 20;
+    for (const item of missionItems) {
+      if (typeof item.altitude === 'number' && item.altitude > ALT_CAP_M) {
+        updateWaypoint(item.seq, { altitude: ALT_CAP_M });
       }
-      // Mode confirmation comes via heartbeat - timeout clears loading
-      setTimeout(() => setModeLoading(null), 3000);
-    } catch {
-      setStatusMsg({ text: 'Mode change failed', type: 'error' });
-      setModeLoading(null);
-      setTimeout(() => setStatusMsg(null), 3000);
     }
   };
+
+  // Mode switching
+  const handleSetMode = async (modeNum: number) => {
+    setModeLoading(modeNum);
+    setStatusMsg(null);
+    
+    if (modeNum === missionModes.auto) {
+      autoDrone(20);
+    }
+  };
+
+
+  // If AUTO was selected before arming, start mission exactly once after
+  // heartbeat confirms armed+AUTO
 
   // Clear mode loading when heartbeat confirms the switch
   useEffect(() => {
@@ -907,10 +927,10 @@ function MavlinkFlightControl() {
                         <span className="font-mono text-content-secondary">
                           {currentSeq != null
                             ? `→ ${currentSeq + 1}/${missionItems.length}`
-                            : (isInAuto ? 'starting…' : 'idle')}
+                            : (isInAuto ? t('flight.starting') : t('flight.idle'))}
                         </span>
                       </>
-                    : <span className="text-content-secondary">No mission</span>}
+                    : <span className="text-content-secondary">{t('flight.noMission')}</span>}
                 </span>
                 <button
                   onClick={() => { void fetchMission(); }}
@@ -924,26 +944,50 @@ function MavlinkFlightControl() {
                     onClick={() => handleSetMode(missionModes.auto)}
                     disabled={!flight.armed || isInAuto}
                     className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 transition-all"
-                    title={!flight.armed ? 'Arm first' : 'Switch to AUTO'}
+                    title={!flight.armed ? t('flight.armFirst') : t('flight.startAutoTitle')}
                   >
-                    {isInAuto ? 'Running' : 'Start'}
+                    {isInAuto ? t('flight.running') : t('flight.start')}
                   </button>
                   {isInAuto ? (
                     <button
                       onClick={() => handleSetMode(missionModes.pause)}
                       disabled={!flight.armed}
                       className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 transition-all"
-                    >Pause</button>
+                    >{t('flight.pause')}</button>
                   ) : (
                     <button
                       onClick={() => handleSetMode(missionModes.auto)}
                       disabled={!flight.armed || !isInPause}
                       className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 transition-all"
-                      title={isInPause ? `Resume from ${missionModes.pauseLabel}` : `Pause first`}
-                    >Resume</button>
+                      title={isInPause ? `Resume from ${missionModes.pauseLabel}` : t('flight.pauseFirst')}
+                    >{t('flight.resume')}</button>
                   )}
                 </div>
               )}
+              <div className="flex gap-1 mt-1">
+                <button
+                  onClick={() => handleSetMode(rtlModeNum)}
+                  disabled={!flight.armed || flight.modeNum === rtlModeNum}
+                  className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-fuchsia-500/10 border border-fuchsia-500/30 hover:bg-fuchsia-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-fuchsia-300 transition-all"
+                    title={!flight.armed ? t('flight.armFirst') : t('flight.returnHome')}
+                >
+                  {t('flight.rth')}
+                </button>
+                {landSupported && (
+                  <button
+                    onClick={() => {
+                      if (landModeNum != null) {
+                        void handleSetMode(landModeNum);
+                      }
+                    }}
+                    disabled={!flight.armed || landModeNum == null || flight.modeNum === landModeNum}
+                    className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-rose-300 transition-all"
+                    title={!flight.armed ? t('flight.armFirst') : `Switch to ${landLabel}`}
+                  >
+                    {landLabel}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Takeoff altitude dialog — compact single-row: label, small

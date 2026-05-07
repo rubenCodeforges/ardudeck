@@ -20,6 +20,7 @@ import {
 import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers.js';
 import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-handlers.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
+import { publishTelemetryToPythonPlugins } from './python/python-ipc.js';
 import {
   MAVLinkParser,
   type MAVLinkPacket,
@@ -719,6 +720,7 @@ function queueMavlinkTelemetry(mainWindow: BrowserWindow, fields: Record<string,
   if (!mavlinkBatchTimer) {
     mavlinkBatchTimer = setTimeout(() => {
       safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_BATCH, mavlinkTelemetryBatch);
+      publishTelemetryToPythonPlugins(mavlinkTelemetryBatch);
       mavlinkTelemetryBatch = {};
       mavlinkBatchTimer = null;
     }, 100); // 10Hz max
@@ -1777,18 +1779,30 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         let seq: number;
         const seqAtOffset0 = payload[0]! | (payload[1]! << 8);
         const seqAtOffset2 = payload[2]! | (payload[3]! << 8);
+        const maxSeq = missionUploadState.items.length - 1;
 
         // Check if bytes 2-3 look like GCS IDs (255, 190) - indicates v2 order
         const looksLikeV2Order = (payload[2] === 0xFF && payload[3] === 0xBE) ||
                                  (payload[2] === 0xFF && payload[3] === 0x01) ||
                                  seqAtOffset2 > 1000;  // Unreasonable seq
 
+        // Primary: message id + heuristic.
         if (msgid === MSG_MISSION_REQUEST_INT || looksLikeV2Order) {
           // v2 byte order: seq is at offset 0
           seq = seqAtOffset0;
         } else {
           // v1 byte order: seq is at offset 2
           seq = seqAtOffset2;
+        }
+
+        // Safety net: a number of FC builds send MSG 40 with v2 payload order.
+        // If the chosen seq is out of range but the alternative is valid, swap.
+        if (seq > maxSeq) {
+          const altSeq = seq === seqAtOffset0 ? seqAtOffset2 : seqAtOffset0;
+          if (altSeq <= maxSeq) {
+            sendLog(mainWindow, 'debug', `MISSION_REQUEST seq remap ${seq} -> ${altSeq} (payload order mismatch)`);
+            seq = altSeq;
+          }
         }
 
         sendLog(mainWindow, 'debug', `FC requesting mission item ${seq} (msg ${msgid}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`);
@@ -4476,6 +4490,35 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
 
     try {
+      // ArduPilot SITL reliability profile: before ARM, relax checks/failsafes
+      // that commonly cause immediate auto-disarm during scripted launches.
+      // Best-effort only; unsupported params are ignored.
+      if (arm && ardupilotSitlProcess.isRunning) {
+        const setSitlParam = async (paramId: string, paramValue: number, paramType: number = 6): Promise<void> => {
+          try {
+            const payload = serializeParamSet({
+              targetSystem: connectionState.systemId ?? 1,
+              targetComponent: 1,
+              paramId,
+              paramValue,
+              paramType,
+            });
+            const packet = await sendMavlinkPacket(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
+            await currentTransport!.write(packet);
+            connectionState.packetsSent++;
+          } catch {
+            // Ignore per-param write failures; arm path continues.
+          }
+        };
+
+        await setSitlParam('ARMING_CHECK', 0);   // bypass noisy pre-arm checks in SITL
+        await setSitlParam('FS_EKF_ACTION', 0);  // don't force-land/disarm on transient EKF init
+        await setSitlParam('FS_THR_ENABLE', 0);  // no RC throttle failsafe in headless sim
+        await setSitlParam('DISARM_DELAY', 60);  // prevent immediate landed auto-disarm
+        // Give FC a short window to apply params before command 400.
+        await new Promise(resolve => setTimeout(resolve, 120));
+      }
+
       // When arming without a transmitter, ArduPilot needs RC input.
       // Auto-start the SITL RC sender if SITL is running so ArduPilot
       // gets continuous 50Hz RC input and doesn't trigger RC failsafe.
@@ -4509,13 +4552,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
+      // In ArduPilot SITL we prefer forced arm by default: simulator sessions
+      // often fail transient pre-arm checks (EKF/GPS settling, virtual RC
+      // timing) even though the user explicitly requested arming from UI.
+      // Keep real-hardware behavior unchanged.
+      const shouldForceArm = arm && ardupilotSitlProcess.isRunning ? true : !!force;
       const payload = serializeCommandLong({
         targetSystem: connectionState.systemId ?? 1,
         targetComponent: 1,
         command: 400, // MAV_CMD_COMPONENT_ARM_DISARM
         confirmation: 0,
         param1: arm ? 1 : 0,      // 1 = arm, 0 = disarm
-        param2: force ? 21196 : 0, // ArduPilot: 21196 = force arm/disarm (bypass safety checks)
+        param2: shouldForceArm ? 21196 : 0, // ArduPilot: 21196 = force arm/disarm (bypass safety checks)
         param3: 0,
         param4: 0,
         param5: 0,
@@ -4527,7 +4575,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await currentTransport.write(packet);
       connectionState.packetsSent++;
 
-      sendLog(mainWindow, 'info', `Sent ${arm ? 'ARM' : 'DISARM'} command${force ? ' (FORCE)' : ''}`);
+      sendLog(mainWindow, 'info', `Sent ${arm ? 'ARM' : 'DISARM'} command${shouldForceArm ? ' (FORCE)' : ''}`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -4589,6 +4637,38 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to set mode', message);
+      return false;
+    }
+  });
+
+  // MAV_CMD_MISSION_START (command 300) via COMMAND_LONG.
+  // Starts mission execution in AUTO mode.
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_MISSION_START, async (_, firstItem: number = 0, lastItem: number = 0): Promise<boolean> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return false;
+    }
+    try {
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        command: 300, // MAV_CMD_MISSION_START
+        confirmation: 0,
+        param1: firstItem,
+        param2: lastItem,
+        param3: 0,
+        param4: 0,
+        param5: 0,
+        param6: 0,
+        param7: 0,
+      });
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+      sendLog(mainWindow, 'info', `Sent MISSION_START first=${firstItem} last=${lastItem}`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to send MISSION_START', message);
       return false;
     }
   });

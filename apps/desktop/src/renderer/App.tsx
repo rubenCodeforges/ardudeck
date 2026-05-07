@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppShell } from './components/layout/AppShell';
 import { ConnectionPanel } from './components/connection/ConnectionPanel';
 import { TelemetryDashboard } from './components/telemetry/TelemetryDashboard';
@@ -79,6 +80,7 @@ function VehicleMismatchDialog({
   onIgnore: () => void;
   onDismissSession: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div className="bg-surface-raised rounded-xl border border-amber-500/50 w-full max-w-md mx-4 overflow-hidden shadow-2xl">
@@ -88,18 +90,20 @@ function VehicleMismatchDialog({
             <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <h2 className="text-lg font-semibold text-content">Vehicle Type Mismatch</h2>
+            <h2 className="text-lg font-semibold text-content">{t('app.vehicleTypeMismatch')}</h2>
           </div>
         </div>
 
         {/* Content */}
         <div className="px-6 py-5">
           <p className="text-content mb-4">
-            Your vehicle profile is set to <span className="font-semibold text-amber-400">{VEHICLE_TYPE_NAMES[profileType]}</span> but
-            the connected flight controller is a <span className="font-semibold text-blue-400">{VEHICLE_TYPE_NAMES[fcType]}</span>.
+            {t('app.profileSetTo', {
+              profile: VEHICLE_TYPE_NAMES[profileType],
+              fc: VEHICLE_TYPE_NAMES[fcType],
+            })}
           </p>
           <p className="text-content-secondary text-sm">
-            Performance estimates and settings may not be accurate for your actual vehicle.
+            {t('app.mismatchHint')}
           </p>
         </div>
 
@@ -109,20 +113,20 @@ function VehicleMismatchDialog({
             onClick={onUpdateProfile}
             className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
           >
-            Update Profile to {VEHICLE_TYPE_NAMES[fcType]}
+            {t('app.updateProfileTo', { fc: VEHICLE_TYPE_NAMES[fcType] })}
           </button>
           <div className="flex gap-2">
             <button
               onClick={onIgnore}
               className="flex-1 px-4 py-2 bg-surface-raised hover:bg-surface text-content rounded-lg transition-colors"
             >
-              Ignore Once
+              {t('app.ignoreOnce')}
             </button>
             <button
               onClick={onDismissSession}
               className="flex-1 px-4 py-2 bg-surface-raised hover:bg-surface text-content rounded-lg transition-colors"
             >
-              Don't Ask Again
+              {t('app.dontAskAgain')}
             </button>
           </div>
         </div>
@@ -132,6 +136,7 @@ function VehicleMismatchDialog({
 }
 
 function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
+  const { t } = useTranslation();
   const { connectionState } = useConnectionStore();
 
   const handleDisconnect = async () => {
@@ -144,7 +149,7 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
       <button
         onClick={onExpand}
         className="p-2 rounded-lg hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"
-        title="Expand sidebar"
+        title={t('app.expandSidebar')}
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -177,7 +182,7 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
         <button
           onClick={handleDisconnect}
           className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
-          title="Disconnect"
+          title={t('app.disconnect')}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
@@ -189,6 +194,7 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
 }
 
 function App() {
+  const { t } = useTranslation();
   const { connectionState, setConnectionState } = useConnectionStore();
   const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, updateBatch, reset } = useTelemetryStore();
   const addStatusMessage = useMessagesStore((s) => s.addMessage);
@@ -652,11 +658,10 @@ function App() {
             </div>
 
             <h2 className="text-2xl font-semibold text-content mb-3">
-              Welcome to ArduDeck
+              {t('app.welcomeTitle')}
             </h2>
             <p className="text-content-secondary mb-8 leading-relaxed">
-              Connect to your flight controller using the panel on the left.
-              Choose serial, TCP, or UDP connection method.
+              {t('app.welcomeSubtitle')}
             </p>
 
             {/* Feature cards */}
@@ -667,8 +672,8 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-content mb-1">Auto-detect</h3>
-                <p className="text-xs text-content-secondary">Automatically find MAVLink devices</p>
+                <h3 className="text-sm font-medium text-content mb-1">{t('app.autoDetect')}</h3>
+                <p className="text-xs text-content-secondary">{t('app.autoDetectDesc')}</p>
               </div>
 
               <div className="p-4 rounded-xl bg-surface border border-subtle">
@@ -677,8 +682,8 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-content mb-1">Real-time</h3>
-                <p className="text-xs text-content-secondary">Live telemetry streaming</p>
+                <h3 className="text-sm font-medium text-content mb-1">{t('app.realtime')}</h3>
+                <p className="text-xs text-content-secondary">{t('app.realtimeDesc')}</p>
               </div>
 
               <div className="p-4 rounded-xl bg-surface border border-subtle">
@@ -687,8 +692,8 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-content mb-1">Parameters</h3>
-                <p className="text-xs text-content-secondary">Configure your vehicle</p>
+                <h3 className="text-sm font-medium text-content mb-1">{t('app.parameters')}</h3>
+                <p className="text-xs text-content-secondary">{t('app.parametersDesc')}</p>
               </div>
 
               <div className="p-4 rounded-xl bg-surface border border-subtle">
@@ -697,8 +702,8 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-content mb-1">Mission Planning</h3>
-                <p className="text-xs text-content-secondary">Create flight plans</p>
+                <h3 className="text-sm font-medium text-content mb-1">{t('app.missionPlanning')}</h3>
+                <p className="text-xs text-content-secondary">{t('app.missionPlanningDesc')}</p>
               </div>
             </div>
           </div>

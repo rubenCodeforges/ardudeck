@@ -193,6 +193,14 @@ ArduDeck is a next-generation ground control station built with Electron, React,
 - **UDP** - Listen mode for MAVProxy and other forwarders
 - **Auto-Detect** - Scan ports for MAVLink devices
 
+### Python Plugins (Alpha)
+- **System Python sidecars** - Run user-authored Python scripts (incl. neural network inference) as long-lived sidecar processes alongside ArduDeck
+- **Isolated venvs** - Each plugin gets its own `.venv`, dependencies pinned via `requirements.txt`, hash-invalidated re-installs
+- **JSON-RPC bridge** - Plugins register handlers with `@rpc(...)` and receive telemetry pushes via `@subscribe(...)` (see [`packages/python-sdk`](packages/python-sdk))
+- **Dashboard integration** - Plugins that declare `ui.panel` in their manifest render as dockview panels in the telemetry dashboard
+- **Reference plugin** - [`examples/python-plugins/anomaly-ai`](examples/python-plugins/anomaly-ai) demonstrates a rolling-window anomaly detector you can swap to ONNX
+- **Settings UI** - **Settings → Python Plugins** lists installed plugins, manages install/uninstall/start/stop, and streams their stdout/stderr
+
 ### SITL Simulator & FlightGear Bridge
 
 > **Temporarily Disabled** - Both iNav and ArduPilot SITL integration are under development and temporarily disabled. The SITL simulator requires complex protocol bridging that is still being refined. Check back in a future release!

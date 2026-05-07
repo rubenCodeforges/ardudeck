@@ -769,6 +769,23 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
     }),
     {
       name: 'ardupilot-sitl-storage',
+      version: 2,
+      migrate: (persistedState: unknown, fromVersion: number) => {
+        if (typeof persistedState !== 'object' || persistedState === null) {
+          return persistedState as ArduPilotSitlStore;
+        }
+        const state = persistedState as Record<string, unknown>;
+        // v2 reset: always default to wipe-on-start after app restart so
+        // stale SITL EEPROM/calibration data cannot trap users in EKF/IMU
+        // pre-arm loops ("Need Position Estimate", "Gyros inconsistent", etc).
+        if (fromVersion < 2) {
+          return {
+            ...state,
+            wipeOnStart: true,
+          } as ArduPilotSitlStore;
+        }
+        return persistedState as ArduPilotSitlStore;
+      },
       // Persist configuration only
       partialize: (state) => ({
         vehicleType: state.vehicleType,
@@ -776,7 +793,8 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         releaseTrack: state.releaseTrack,
         homeLocation: state.homeLocation,
         speedup: state.speedup,
-        wipeOnStart: state.wipeOnStart,
+        // Keep wipeOnStart session-local: we want a clean boot every time the
+        // app restarts, then auto-uncheck after successful launch.
         simulator: state.simulator,
         simAddress: state.simAddress,
         // Sim battery overrides (so user-tuned battery profiles survive restart).

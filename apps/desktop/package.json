@@ -1,6 +1,6 @@
 {
   "name": "@ardudeck/desktop",
-  "version": "0.0.27-alpha",
+  "version": "0.0.31-alpha",
   "description": "ArduDeck - Desktop Application",
   "author": {
     "name": "rubenCodeforges",
@@ -41,10 +41,12 @@
     "dockview-react": "^4.13.0",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.7.3",
+    "i18next": "^26.0.10",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "maplibre-gl": "^5.19.0",
     "node-pty": "^1.0.0",
+    "react-i18next": "^17.0.7",
     "react-leaflet": "4.2.1",
     "serialport": "^12.0.0",
     "three": "^0.170.0",

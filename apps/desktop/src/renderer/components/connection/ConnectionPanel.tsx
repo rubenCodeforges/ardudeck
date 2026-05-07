@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore, type DefaultSitlType } from '../../stores/settings-store';
 import { useSitlStore } from '../../stores/sitl-store';
@@ -14,6 +15,7 @@ import { MessagesPanel } from '../panels/MessagesPanel';
 const BAUD_RATES = [1500000, 921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600];
 
 export function ConnectionPanel() {
+  const { t } = useTranslation();
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();
   const { connectionMemory, updateConnectionMemory, removeRecentConnection } = useSettingsStore();
   const settingsInitialized = useSettingsStore((s) => s._isInitialized);
@@ -166,7 +168,7 @@ export function ConnectionPanel() {
       }
     }
 
-    setError('Could not connect to SITL. Make sure it is running on TCP port 5760.');
+    setError(t('connection.sitlConnectFailed'));
   };
 
   // Respond to SITL starting - switch to TCP and auto-connect with retry
@@ -200,7 +202,7 @@ export function ConnectionPanel() {
           const ardupilotStillRunning = useArduPilotSitlStore.getState().isRunning;
           if (!inavStillRunning && !ardupilotStillRunning) {
             console.warn('[ConnectionPanel] SITL process is no longer running, aborting auto-connect');
-            setError('SITL process failed to start. Check the SITL tab for details.');
+            setError(t('connection.sitlStartFailed'));
             return;
           }
 
@@ -220,7 +222,7 @@ export function ConnectionPanel() {
         }
 
         console.warn('[ConnectionPanel] SITL auto-connect failed after all retries');
-        setError('Could not connect to SITL. Try connecting manually.');
+        setError(t('connection.sitlConnectManual'));
       };
 
       autoConnectWithRetry();
@@ -412,14 +414,14 @@ export function ConnectionPanel() {
                   </svg>
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <div className="text-[13px] font-medium text-content">SITL Simulator</div>
+                  <div className="text-[13px] font-medium text-content">{t('connection.sitlSimulator')}</div>
                   <div className="text-[11px] text-content-secondary mt-0.5">
                     {ardupilotIsDownloading ? `Downloading${ardupilotDownloadProgress ? ` ${ardupilotDownloadProgress.progress}%` : '...'}`
-                      : anySitlStarting ? 'Starting...'
+                      : anySitlStarting ? t('connection.starting')
                       : inavIsRunning ? 'iNav running on TCP :5760'
                       : ardupilotIsRunning ? `ArduPilot ${ardupilotVehicleType} running on TCP :5760`
-                      : ardupilotNeedsDownload ? 'Click to download and launch'
-                      : 'Launch virtual flight controller'}
+                      : ardupilotNeedsDownload ? t('connection.clickDownloadLaunch')
+                      : t('connection.launchVirtualFc')}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

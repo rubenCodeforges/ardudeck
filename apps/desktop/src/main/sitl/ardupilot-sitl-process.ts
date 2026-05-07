@@ -406,7 +406,9 @@ class ArduPilotSitlProcessManager {
         cwd: path.dirname(binaryPath),
         env,
         stdio: ['pipe', 'pipe', 'pipe'],
-        shell: process.platform === 'win32',
+        // Run the binary directly on all platforms. Using shell on Windows
+        // breaks launches for userData paths that include spaces/non-ASCII.
+        shell: false,
       });
       this._isRunning = true;
       const launchedAt = Date.now();

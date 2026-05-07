@@ -1,0 +1,15 @@
+{
+  "slug": "anomaly-ai",
+  "name": "Anomaly Detection AI",
+  "version": "0.1.0",
+  "description": "Demonstrates a long-lived Python sidecar that scores telemetry windows for anomalies. Ships with a tiny synthetic baseline; swap in an ONNX model in main.py for a real detector.",
+  "author": "ArduDeck Contributors",
+  "entry": "main.py",
+  "minPython": "3.10",
+  "capabilities": ["telemetry.subscribe", "mavlink.send", "ui.panel"],
+  "ui": {
+    "panelId": "anomaly-ai",
+    "title": "AI Anomaly",
+    "icon": "Activity"
+  }
+}

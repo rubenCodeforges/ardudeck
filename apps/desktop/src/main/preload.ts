@@ -20,6 +20,16 @@ import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEven
 import type { MissionSummary, StoredMission, SaveMissionPayload, FlightLog, MissionListFilter, MissionSortOptions } from '../shared/mission-library-types.js';
 import type { DroneBridgeInfo, DroneBridgeStats, DroneBridgeSettings, DroneBridgeClients, DroneBridgeDetected } from '../shared/dronebridge-types.js';
 import type { RainViewerMeta, AirspaceData, AirportData } from '../shared/overlay-types.js';
+import type {
+  PythonDetectResult,
+  PythonPluginDescriptor,
+  PythonPluginEvent,
+  PythonPluginInstallProgress,
+  PythonPluginLogEvent,
+  PythonPluginStatusEvent,
+  PythonRpcParams,
+  PythonRpcResult,
+} from '../shared/python-plugin-types.js';
 
 type TelemetryUpdate =
   | { type: 'attitude'; data: AttitudeData }
@@ -91,6 +101,9 @@ const api = {
 
   mavlinkSetMode: (customMode: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SET_MODE, customMode),
+
+  mavlinkMissionStart: (firstItem?: number, lastItem?: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_MISSION_START, firstItem ?? 0, lastItem ?? 0),
 
   mavlinkTakeoff: (altitude: number, pitchDeg?: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_TAKEOFF, altitude, pitchDeg),
@@ -1816,7 +1829,174 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.OVERLAY_GET_API_KEY, service),
   setApiKey: (service: string, key: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.OVERLAY_SET_API_KEY, service, key),
+
+  // =========================================================================
+  // Python Plugins (system Python sidecars)
+  // =========================================================================
+
+  pythonDetect: (): Promise<PythonDetectResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_DETECT),
+
+  pythonOpenDir: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_OPEN_DIR),
+
+  pythonPluginList: (): Promise<PythonPluginDescriptor[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_LIST),
+
+  pythonPluginRefresh: (): Promise<PythonPluginDescriptor[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_REFRESH),
+
+  pythonPluginInstall: (
+    fromPath?: string,
+  ): Promise<{ ok: true; slug: string } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_INSTALL, fromPath),
+
+  pythonPluginUninstall: (
+    slug: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_UNINSTALL, slug),
+
+  pythonPluginStart: (
+    slug: string,
+  ): Promise<
+    { ok: true; descriptor: PythonPluginDescriptor } | { ok: false; error: string }
+  > => ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_START, slug),
+
+  pythonPluginStop: (
+    slug: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_STOP, slug),
+
+  pythonPluginCall: (
+    slug: string,
+    method: string,
+    params?: PythonRpcParams,
+  ): Promise<{ ok: true; result: PythonRpcResult } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PYTHON_PLUGIN_CALL, slug, method, params),
+
+  onPythonPluginStatus: (callback: (event: PythonPluginStatusEvent) => void) => {
+    const handler = (_: unknown, event: PythonPluginStatusEvent) => callback(event);
+    ipcRenderer.on(IPC_CHANNELS.PYTHON_PLUGIN_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PYTHON_PLUGIN_STATUS, handler);
+  },
+
+  onPythonPluginLog: (callback: (event: PythonPluginLogEvent) => void) => {
+    const handler = (_: unknown, event: PythonPluginLogEvent) => callback(event);
+    ipcRenderer.on(IPC_CHANNELS.PYTHON_PLUGIN_LOG, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PYTHON_PLUGIN_LOG, handler);
+  },
+
+  onPythonPluginEvent: (callback: (event: PythonPluginEvent) => void) => {
+    const handler = (_: unknown, event: PythonPluginEvent) => callback(event);
+    ipcRenderer.on(IPC_CHANNELS.PYTHON_PLUGIN_EVENT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PYTHON_PLUGIN_EVENT, handler);
+  },
+
+  onPythonPluginInstallProgress: (
+    callback: (event: PythonPluginInstallProgress) => void,
+  ) => {
+    const handler = (_: unknown, event: PythonPluginInstallProgress) => callback(event);
+    ipcRenderer.on(IPC_CHANNELS.PYTHON_PLUGIN_INSTALL_PROGRESS, handler);
+    return () =>
+      ipcRenderer.removeListener(IPC_CHANNELS.PYTHON_PLUGIN_INSTALL_PROGRESS, handler);
+  },
 };
+
+type PluginCommandRequest = {
+  requestId: string;
+  slug: string;
+  command: string;
+  payload: unknown;
+};
+
+async function executePluginCommand(
+  command: string,
+  payload: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  try {
+    switch (command) {
+      case 'mavlink.land': {
+        const lat = Number(p['lat'] ?? 0);
+        const lon = Number(p['lon'] ?? 0);
+        const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_LAND, lat, lon);
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_LAND returned false' };
+      }
+      case 'mavlink.goto': {
+        const lat = Number(p['lat']);
+        const lon = Number(p['lon']);
+        const alt = Number(p['alt']);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(alt)) {
+          return { ok: false, error: 'mavlink.goto requires finite lat/lon/alt' };
+        }
+        const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_GOTO, lat, lon, alt);
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_GOTO returned false' };
+      }
+      case 'mavlink.set_mode': {
+        const customMode = Number(p['customMode']);
+        if (!Number.isFinite(customMode)) {
+          return { ok: false, error: 'mavlink.set_mode requires numeric customMode' };
+        }
+        const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SET_MODE, customMode);
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_SET_MODE returned false' };
+      }
+      case 'mavlink.takeoff': {
+        const altitude = Number(p['altitude'] ?? p['alt'] ?? 10);
+        const pitchDegRaw = p['pitchDeg'];
+        if (!Number.isFinite(altitude) || altitude <= 0) {
+          return { ok: false, error: 'mavlink.takeoff requires positive numeric altitude/alt' };
+        }
+        const pitchDeg = Number.isFinite(Number(pitchDegRaw)) ? Number(pitchDegRaw) : undefined;
+        const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_TAKEOFF, altitude, pitchDeg);
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_COMMAND_TAKEOFF returned false' };
+      }
+      case 'mavlink.vtol_takeoff': {
+        const altitude = Number(p['altitude'] ?? p['alt'] ?? 10);
+        if (!Number.isFinite(altitude) || altitude <= 0) {
+          return { ok: false, error: 'mavlink.vtol_takeoff requires positive numeric altitude/alt' };
+        }
+        const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_VTOL_TAKEOFF, altitude);
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_COMMAND_VTOL_TAKEOFF returned false' };
+      }
+      case 'mavlink.mission_start': {
+        const firstItem = Number(p['firstItem'] ?? 0);
+        const lastItem = Number(p['lastItem'] ?? 0);
+        if (!Number.isFinite(firstItem) || !Number.isFinite(lastItem)) {
+          return { ok: false, error: 'mavlink.mission_start requires numeric firstItem/lastItem' };
+        }
+        const ok = await ipcRenderer.invoke(
+          IPC_CHANNELS.MAVLINK_MISSION_START,
+          Math.trunc(firstItem),
+          Math.trunc(lastItem),
+        );
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_MISSION_START returned false' };
+      }
+      case 'mavlink.arm':
+      case 'mavlink.disarm': {
+        const arm = command === 'mavlink.arm';
+        const force = Boolean(p['force'] ?? false);
+        const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_ARM_DISARM, arm, force);
+        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_ARM_DISARM returned false' };
+      }
+      default:
+        return { ok: false, error: `Unsupported plugin command: ${command}` };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+ipcRenderer.on(
+  IPC_CHANNELS.PYTHON_PLUGIN_COMMAND_REQUEST,
+  async (_event: unknown, request: PluginCommandRequest) => {
+    const result = await executePluginCommand(request.command, request.payload);
+    ipcRenderer.send(IPC_CHANNELS.PYTHON_PLUGIN_COMMAND_RESULT, {
+      requestId: request.requestId,
+      ok: result.ok,
+      error: 'error' in result ? result.error : undefined,
+    });
+  },
+);
 
 // Expose to renderer
 contextBridge.exposeInMainWorld('electronAPI', api);
