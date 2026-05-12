@@ -563,6 +563,43 @@ export const IPC_CHANNELS = {
   LOG_RECENT_ADD: 'log:recent-add',
   LOG_RECENT_REMOVE: 'log:recent-remove',
   LOG_RECENT_CLEAR: 'log:recent-clear',
+
+  // =========================================================================
+  // Python Plugins (system Python sidecars with JSON-RPC over stdio)
+  // =========================================================================
+
+  /** Detect a usable Python interpreter on the host system. */
+  PYTHON_DETECT: 'python:detect',
+  /** Open the user's python-plugins directory in the system file manager. */
+  PYTHON_OPEN_DIR: 'python:open-dir',
+
+  /** List all installed Python plugins with current status. */
+  PYTHON_PLUGIN_LIST: 'python:plugin:list',
+  /** Re-scan the python-plugins directory and reload manifests. */
+  PYTHON_PLUGIN_REFRESH: 'python:plugin:refresh',
+  /** Install a plugin from a local folder/zip and create its venv. */
+  PYTHON_PLUGIN_INSTALL: 'python:plugin:install',
+  /** Uninstall a plugin (stop sidecar, drop venv, remove files). */
+  PYTHON_PLUGIN_UNINSTALL: 'python:plugin:uninstall',
+  /** Launch the sidecar process for a plugin. */
+  PYTHON_PLUGIN_START: 'python:plugin:start',
+  /** Stop the sidecar process for a plugin. */
+  PYTHON_PLUGIN_STOP: 'python:plugin:stop',
+  /** Invoke an RPC method on a running plugin and return the result. */
+  PYTHON_PLUGIN_CALL: 'python:plugin:call',
+
+  /** Push channel: per-plugin status transitions (installing/ready/error/...). */
+  PYTHON_PLUGIN_STATUS: 'python:plugin:status',
+  /** Push channel: log lines from sidecar stdout/stderr. */
+  PYTHON_PLUGIN_LOG: 'python:plugin:log',
+  /** Push channel: plugin-emitted events (renderer-side subscribe by name). */
+  PYTHON_PLUGIN_EVENT: 'python:plugin:event',
+  /** Push channel: pip install progress while a plugin's venv is provisioning. */
+  PYTHON_PLUGIN_INSTALL_PROGRESS: 'python:plugin:install-progress',
+  /** Internal bridge: main -> preload command execution request. */
+  PYTHON_PLUGIN_COMMAND_REQUEST: 'python:plugin:command-request',
+  /** Internal bridge: preload -> main command execution result. */
+  PYTHON_PLUGIN_COMMAND_RESULT: 'python:plugin:command-result',
 } as const;
 
 export type IpcChannels = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

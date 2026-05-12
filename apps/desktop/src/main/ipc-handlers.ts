@@ -17,6 +17,7 @@ import {
   type SerialPortInfo,
   type ScanResult,
 } from '@ardudeck/comms';
+import { publishTelemetryToPythonPlugins, cleanupPythonPlugins } from './python/python-ipc.js';
 import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers.js';
 import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-handlers.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
@@ -719,6 +720,7 @@ function queueMavlinkTelemetry(mainWindow: BrowserWindow, fields: Record<string,
   if (!mavlinkBatchTimer) {
     mavlinkBatchTimer = setTimeout(() => {
       safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_BATCH, mavlinkTelemetryBatch);
+      publishTelemetryToPythonPlugins(mavlinkTelemetryBatch);
       mavlinkTelemetryBatch = {};
       mavlinkBatchTimer = null;
     }, 100); // 10Hz max
@@ -8995,6 +8997,12 @@ export async function cleanupOnShutdown(): Promise<void> {
   if (heartbeatGraceTimer) {
     clearTimeout(heartbeatGraceTimer);
     heartbeatGraceTimer = null;
+  }
+
+  try {
+    await cleanupPythonPlugins();
+  } catch (err) {
+    console.warn('[Shutdown] Error stopping Python plugins:', err);
   }
 
   // Reset state

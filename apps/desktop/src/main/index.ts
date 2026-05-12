@@ -7,6 +7,7 @@ import { app, BrowserWindow, shell } from 'electron';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
+import { setupPythonIpc } from './python/python-ipc.js';
 import { setupModuleIpc } from './modules/module-ipc.js';
 import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers } from './tile-cache.js';
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
@@ -133,6 +134,7 @@ app.whenReady().then(() => {
 
   // Setup IPC handlers
   setupIpcHandlers(mainWindow);
+  setupPythonIpc(mainWindow);
   setupModuleIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
 

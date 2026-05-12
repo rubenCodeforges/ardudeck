@@ -43,6 +43,7 @@ import {
   SitlFailureDockPanel,
   PANEL_COMPONENTS,
 } from '../panels';
+import { PythonPluginPanel } from '../panels/PythonPluginPanel';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 
 // Panel component wrapper for dockview
@@ -73,6 +74,7 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   // SITL simulation panels
   SitlEnvironmentDockPanel: () => <PanelWrapper component={SitlEnvironmentDockPanel} />,
   SitlFailureDockPanel: () => <PanelWrapper component={SitlFailureDockPanel} />,
+  PythonPluginPanel: (props) => <PythonPluginPanel {...props} />,
 };
 
 // Preset layout definitions (pilotView is the default)
@@ -894,6 +896,23 @@ export function TelemetryDashboard() {
         if (!apiRef.current || !isPresetLayout(presetKey)) return;
         apiRef.current.clear();
         loadPresetLayout(apiRef.current, presetKey);
+      },
+      openPythonPlugin: (slug, title) => {
+        const api = apiRef.current;
+        if (!api) return;
+        const panelId = `python-plugin:${slug}`;
+        const existing = api.panels.find((p) => p.id === panelId);
+        if (existing) {
+          existing.api.setActive();
+          return;
+        }
+        const panel = api.addPanel({
+          id: panelId,
+          component: 'PythonPluginPanel',
+          title,
+          params: { slug },
+        });
+        panel?.api.setActive();
       },
     });
     return () => {

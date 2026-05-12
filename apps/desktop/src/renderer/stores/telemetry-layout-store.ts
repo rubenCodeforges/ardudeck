@@ -11,6 +11,11 @@ export interface TelemetryLayoutBridge {
   /** Bring an existing panel's tab to the front so its DOM is visible. */
   activatePanel: (panelId: PanelId) => void;
   loadPreset: (presetKey: string) => void;
+  /**
+   * Open a Python plugin's UI as a dockview panel. If a panel for the slug
+   * already exists, it is brought to the foreground instead of duplicated.
+   */
+  openPythonPlugin: (slug: string, title: string) => void;
 }
 
 interface TelemetryLayoutStore {

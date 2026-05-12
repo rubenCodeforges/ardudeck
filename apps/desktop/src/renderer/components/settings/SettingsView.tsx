@@ -15,6 +15,7 @@ import { ConfigSelectors } from './vehicle-profile/ConfigSelectors';
 import { PhysicsAdvanced } from './vehicle-profile/PhysicsAdvanced';
 import { ParamsPreview } from './vehicle-profile/ParamsPreview';
 import { StallSpeedCalcButton } from './vehicle-profile/StallSpeedCalcButton';
+import { PythonPluginsView } from './python-plugins';
 import { inferProfileFromParams } from '../../lib/vehicle-templates/import';
 import { saveParmToFile } from '../../lib/vehicle-templates/export-parm';
 import { getTemplate, defaultTemplateForType } from '../../lib/vehicle-templates/registry';
@@ -1690,6 +1691,16 @@ export function SettingsView() {
         {/* SECTION: Experimental Features */}
         {/* ============================================ */}
         <ExperimentalFeaturesSection />
+
+        {/* SECTION: Python Plugins */}
+        {/* ============================================ */}
+        <div className="mt-8 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Python Plugins</h2>
+          </div>
+          <PythonPluginsView />
+        </div>
 
         {/* SECTION: About */}
         {/* ============================================ */}
