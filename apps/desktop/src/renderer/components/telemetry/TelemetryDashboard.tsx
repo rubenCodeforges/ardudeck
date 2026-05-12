@@ -18,6 +18,7 @@ import { useSettingsStore } from '../../stores/settings-store';
 import { useEditModeStore } from '../../stores/edit-mode-store';
 import { useTelemetryLayoutStore } from '../../stores/telemetry-layout-store';
 import { useResolvedTheme } from '../../hooks/useTheme';
+import { useEffectiveHudThrottle } from '../../hooks/useEffectiveHudThrottle';
 import type { TelemetrySpeed } from '../../../shared/ipc-channels';
 
 // Reserved layout name for auto-save (separate from user-named layouts)
@@ -631,6 +632,7 @@ const SPEED_OPTIONS: { value: TelemetrySpeed; label: string }[] = [
 function QuickStatsBar() {
   const flight = useTelemetryStore((s) => s.flight);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const hudThrottle = useEffectiveHudThrottle();
   const battery = useTelemetryStore((s) => s.battery);
   const gps = useTelemetryStore((s) => s.gps);
   const sensorHealth = useTelemetryStore((s) => s.sensorHealth);
@@ -693,12 +695,14 @@ function QuickStatsBar() {
           className="flex items-baseline gap-1.5"
           title={
             isMavlink
-              ? 'ArduPilot VFR_HUD: averaged motor throttle from the FC (not RC stick). In AUTO / mission takeoff the FC commands thrust; virtual RC / SITL slider can stay at idle while this value shows real demand.'
+              ? hudThrottle.source === 'servo_pwm'
+                ? 'Estimated from SERVO_OUTPUT_RAW (motor PWM → %). ArduPilot VFR_HUD.throttle often tracks RC input, which stays low in AUTO even while motors spin.'
+                : 'VFR_HUD.throttle from FC (not your RC stick). In Guided takeoff this usually rises with thrust; in AUTO the FC may still report low here — we then switch to motor PWM if available.'
               : 'Throttle from telemetry (VFR_HUD / FC).'
           }
         >
           <span className="text-content-secondary">THR</span>
-          <span className="font-mono text-sm text-content">{vfrHud.throttle}%</span>
+          <span className="font-mono text-sm text-content">{hudThrottle.value}%</span>
         </div>
         <div className="flex items-baseline gap-1.5">
           <span className="text-content-secondary">BAT</span>

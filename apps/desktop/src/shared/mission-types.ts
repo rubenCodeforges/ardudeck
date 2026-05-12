@@ -433,11 +433,25 @@ export function createTakeoffWaypoint(
   };
 }
 
-/** Mission items that already start a vertical AUTO takeoff leg. */
-const AUTO_TAKEOFF_LEAD_COMMANDS: ReadonlySet<number> = new Set([
+/**
+ * Vertical takeoff-at-home only — after a manual GUIDED climb, AUTO may skip
+ * this item (still at home). Do not skip NAV_LOITER_TO_ALT: vehicle must still
+ * fly the route to the first map point.
+ */
+const AUTO_HOME_VERTICAL_TAKEOFF_COMMANDS: ReadonlySet<number> = new Set([
   MAV_CMD.NAV_TAKEOFF,
   MAV_CMD.NAV_TAKEOFF_LOCAL,
   MAV_CMD.NAV_VTOL_TAKEOFF,
+]);
+
+/**
+ * Mission already begins with a vertical takeoff or LOITER_TO_ALT lead — do not
+ * prepend another. (LOITER_TO_ALT is not used as an auto-prepended leg: from
+ * landed state ArduPilot's wp_run() refuses to spool until airbourne; use NAV_TAKEOFF.)
+ */
+const AUTO_DEPARTURE_LEAD_COMMANDS: ReadonlySet<number> = new Set([
+  ...AUTO_HOME_VERTICAL_TAKEOFF_COMMANDS,
+  MAV_CMD.NAV_LOITER_TO_ALT,
 ]);
 
 function renumberMissionSeq(items: MissionItem[]): MissionItem[] {
@@ -517,7 +531,7 @@ function pickAltitudeForAutoTakeoffLeadIn(items: MissionItem[]): number {
 export function getMissionGuidedTakeoffAltitudeM(items: MissionItem[]): number {
   if (items.length === 0) return 10;
   const f = items[0];
-  if (f != null && AUTO_TAKEOFF_LEAD_COMMANDS.has(f.command) && Number.isFinite(f.altitude)) {
+  if (f != null && AUTO_DEPARTURE_LEAD_COMMANDS.has(f.command) && Number.isFinite(f.altitude)) {
     return Math.max(0, f.altitude);
   }
   return pickAltitudeForAutoTakeoffLeadIn(items);
@@ -530,18 +544,20 @@ export function getMissionGuidedTakeoffAltitudeM(items: MissionItem[]): number {
 export function getAutoMissionResumeIndexAfterGuidedTakeoff(items: MissionItem[]): number {
   if (items.length <= 1) return 0;
   const f = items[0];
-  if (f != null && AUTO_TAKEOFF_LEAD_COMMANDS.has(f.command)) return 1;
+  if (f != null && AUTO_HOME_VERTICAL_TAKEOFF_COMMANDS.has(f.command)) return 1;
   return 0;
 }
 
 /**
  * Ensures copter/VTOL missions start with a takeoff nav item so ArduPilot AUTO
- * can climb using mission altitude before flying to waypoints. If the first
- * item is already NAV_TAKEOFF / NAV_VTOL_TAKEOFF (or local takeoff), the list
- * is only renumbered. Otherwise prepends takeoff with altitude taken from the
- * first map waypoint (NAV_WAYPOINT / SPLINE), else first reliable NAV_* item,
- * else first item / 10 m fallback. Skips LOITER_TO_ALT-style ceilings for the
- * takeoff target altitude.
+ * can climb from the ground (`NAV_TAKEOFF` / `NAV_VTOL_TAKEOFF`). Do **not**
+ * prepend `NAV_LOITER_TO_ALT` as the first leg: while `land_complete` is true,
+ * ArduPilot runs `wp_run()` for that command, which calls `make_safe_ground_handling()`
+ * and never spools motors — the vehicle stays on the ground at 0% thrust.
+ *
+ * If the first item is already a departure lead (takeoff / VTOL takeoff / user
+ * LOITER_TO_ALT), the list is only renumbered. Takeoff altitude follows the
+ * first map waypoint when possible (see `pickAltitudeForAutoTakeoffLeadIn`).
  *
  * Plane/rover/sub: unchanged aside from seq renumbering.
  */
@@ -558,18 +574,21 @@ export function ensureAutoMissionTakeoffPrefix(
   }
 
   const first = items[0];
-  if (first != null && AUTO_TAKEOFF_LEAD_COMMANDS.has(first.command)) {
+  if (first != null && AUTO_DEPARTURE_LEAD_COMMANDS.has(first.command)) {
     return { mission: renumberMissionSeq(items), didPrepend: false };
   }
 
-  const alt = pickAltitudeForAutoTakeoffLeadIn(items);
-  const lead =
-    vehicleClass === 'vtol'
-      ? createVtolTakeoffWaypoint(0, alt, 0)
-      : createTakeoffWaypoint(0, 0, 0, alt, 15);
+  if (vehicleClass === 'vtol') {
+    const alt = pickAltitudeForAutoTakeoffLeadIn(items);
+    return {
+      mission: renumberMissionSeq([createVtolTakeoffWaypoint(0, alt, 0), ...items]),
+      didPrepend: true,
+    };
+  }
 
+  const alt = pickAltitudeForAutoTakeoffLeadIn(items);
   return {
-    mission: renumberMissionSeq([lead, ...items]),
+    mission: renumberMissionSeq([createTakeoffWaypoint(0, 0, 0, alt, 15), ...items]),
     didPrepend: true,
   };
 }

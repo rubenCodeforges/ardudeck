@@ -8,6 +8,9 @@ import {
   getOsdRows,
 } from '../utils/osd/font-renderer';
 import { useTelemetryStore } from './telemetry-store';
+import { useConnectionStore } from './connection-store';
+import { effectiveThrottleDisplayPercent } from '../../shared/telemetry-throttle-display';
+import { getVehicleClass } from '../../shared/telemetry-types';
 import { calculateCcrp } from '../utils/ccrp-calculator';
 import { usePayloadStore } from './payload-store';
 import {
@@ -294,8 +297,17 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
     } else {
       // Live mode - use telemetry store (map ALL fields, use 0 for unavailable)
       const telemetry = useTelemetryStore.getState();
+      const mavType = useConnectionStore.getState().connectionState.mavType;
       const lat = telemetry.gps.lat || telemetry.position.lat;
       const lon = telemetry.gps.lon || telemetry.position.lon;
+      const hudTh = effectiveThrottleDisplayPercent({
+        vfrThrottle: telemetry.vfrHud.throttle,
+        armed: telemetry.flight.armed,
+        servoOutputs: telemetry.servoOutput?.outputs ?? null,
+        servoLastUpdateMs: telemetry.lastServoOutput,
+        nowMs: Date.now(),
+        vehicleClass: getVehicleClass(mavType),
+      });
       values = {
         altitude: telemetry.vfrHud.alt || telemetry.position.relativeAlt,
         speed: telemetry.vfrHud.groundspeed,
@@ -307,7 +319,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         batteryPercent: telemetry.battery.remaining,
         gpsSats: telemetry.gps.satellites,
         rssi: 0,
-        throttle: telemetry.vfrHud.throttle,
+        throttle: hudTh.value,
         latitude: lat,
         longitude: lon,
         targetLat: lat,

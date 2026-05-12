@@ -101,7 +101,7 @@ describe('ensureAutoMissionTakeoffPrefix', () => {
     expect(mission[0]!.command).toBe(MAV_CMD.NAV_WAYPOINT);
   });
 
-  it('takeoff altitude follows first map waypoint, not NAV_LOITER_TO_ALT ceiling', () => {
+  it('does not prepend when mission already starts with NAV_LOITER_TO_ALT', () => {
     const loiterToAlt: MissionItem = {
       seq: 0,
       frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
@@ -118,9 +118,11 @@ describe('ensureAutoMissionTakeoffPrefix', () => {
     };
     const wp = createDefaultWaypoint(1, -35.361, 149.161, 15);
     const { mission, didPrepend } = ensureAutoMissionTakeoffPrefix([loiterToAlt, wp], 'copter');
-    expect(didPrepend).toBe(true);
-    expect(mission[0]!.command).toBe(MAV_CMD.NAV_TAKEOFF);
-    expect(mission[0]!.altitude).toBe(15);
+    expect(didPrepend).toBe(false);
+    expect(mission).toHaveLength(2);
+    expect(mission[0]!.command).toBe(MAV_CMD.NAV_LOITER_TO_ALT);
+    expect(mission[0]!.seq).toBe(0);
+    expect(mission[1]!.seq).toBe(1);
   });
 });
 
@@ -138,8 +140,46 @@ describe('getMissionGuidedTakeoffAltitudeM / getAutoMissionResumeIndexAfterGuide
     expect(getAutoMissionResumeIndexAfterGuidedTakeoff([wp])).toBe(0);
   });
 
+  it('uses first NAV_LOITER_TO_ALT altitude when it leads the mission', () => {
+    const lead: MissionItem = {
+      seq: 0,
+      frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
+      command: MAV_CMD.NAV_LOITER_TO_ALT,
+      current: false,
+      autocontinue: true,
+      param1: 0,
+      param2: 0,
+      param3: 0,
+      param4: 0,
+      latitude: -35,
+      longitude: 149,
+      altitude: 42,
+    };
+    const wp = createDefaultWaypoint(1, -35.01, 149.01, 20);
+    expect(getMissionGuidedTakeoffAltitudeM([lead, wp])).toBe(42);
+  });
+
   it('single takeoff item resumes at 0', () => {
     const t = createTakeoffWaypoint(0, 0, 0, 40);
     expect(getAutoMissionResumeIndexAfterGuidedTakeoff([t])).toBe(0);
+  });
+
+  it('does not skip NAV_LOITER_TO_ALT lead after guided takeoff (still need route leg)', () => {
+    const lead: MissionItem = {
+      seq: 0,
+      frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
+      command: MAV_CMD.NAV_LOITER_TO_ALT,
+      current: false,
+      autocontinue: true,
+      param1: 0,
+      param2: 0,
+      param3: 0,
+      param4: 0,
+      latitude: -35,
+      longitude: 149,
+      altitude: 30,
+    };
+    const wp = createDefaultWaypoint(1, -35.01, 149.01, 30);
+    expect(getAutoMissionResumeIndexAfterGuidedTakeoff([lead, wp])).toBe(0);
   });
 });

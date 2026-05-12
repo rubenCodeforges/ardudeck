@@ -254,7 +254,9 @@ async function waitForTakeoffRelativeAlt(
 /**
  * Multirotor + helicopter takeoff:
  *   GPS ready → STABILIZE → ARM → GUIDED → verify armed → NAV_TAKEOFF,
- *   then wait until telemetry altitude reaches target (not just IPC success).
+ *   then await until telemetry altitude reaches target (not just IPC success).
+ *   The Promise resolves only after that wait — UI stays responsive because
+ *   work is async (no extra thread needed).
  * STABILIZE first because GUIDED arms can be rejected on the first try and
  * STABILIZE is the most permissive arm-from mode for copter.
  */

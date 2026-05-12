@@ -1,11 +1,13 @@
 import React from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useEffectiveHudThrottle } from '../../hooks/useEffectiveHudThrottle';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 export const FlightModePanel = React.memo(function FlightModePanel() {
   // Use selective subscriptions to prevent re-renders on unrelated telemetry updates
   const flight = useTelemetryStore((s) => s.flight);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
+  const hudThrottle = useEffectiveHudThrottle();
   const battery = useTelemetryStore((s) => s.battery);
 
   const batteryColor = battery.remaining < 0 ? 'text-content-secondary' : battery.remaining > 30 ? 'text-emerald-400' : battery.remaining > 15 ? 'text-yellow-400' : 'text-red-400';
@@ -28,7 +30,7 @@ export const FlightModePanel = React.memo(function FlightModePanel() {
           <StatRow label="Heading" value={formatNumber(vfrHud.heading, 0)} unit="°" />
           <StatRow label="Altitude" value={formatNumber(vfrHud.alt, 1)} unit="m" />
           <StatRow label="Speed" value={formatNumber(vfrHud.groundspeed, 1)} unit="m/s" />
-          <StatRow label="Throttle" value={vfrHud.throttle} unit="%" />
+          <StatRow label="Throttle" value={hudThrottle.value} unit="%" />
           <div className="flex justify-between items-baseline py-0.5">
             <span className="text-content-secondary text-xs">Battery</span>
             <span className={`font-mono text-sm ${batteryColor}`}>
