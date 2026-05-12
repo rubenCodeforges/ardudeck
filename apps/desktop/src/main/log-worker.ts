@@ -32,12 +32,27 @@ parentPort.on('message', (msg: { type: string; data: Uint8Array }) => {
       const messages: Record<string, unknown> = {};
       for (const [k, v] of log.messages) messages[k] = v;
 
+      // Maps don't structured-clone cheaply across worker boundary; convert
+      // unitLabels / multValues to plain objects keyed by char. Guard against
+      // a stale parser dist (these were added after the last build) — falling
+      // back to empty maps keeps log loading working regardless.
+      const unitLabels: Record<string, string> = {};
+      if (log.unitLabels instanceof Map) {
+        for (const [k, v] of log.unitLabels) unitLabels[k] = v;
+      }
+      const multValues: Record<string, number> = {};
+      if (log.multValues instanceof Map) {
+        for (const [k, v] of log.multValues) multValues[k] = v;
+      }
+
       const serialized = {
         formats,
         messages,
         metadata: log.metadata,
         timeRange: log.timeRange,
         messageTypes: log.messageTypes,
+        unitLabels,
+        multValues,
       };
 
       // Run health checks while we have the parsed log with Maps

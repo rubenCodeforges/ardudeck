@@ -29,6 +29,7 @@ export function ConnectionPanel() {
   const [udpMode, setUdpMode] = useState<'listen' | 'client'>('listen');
   const [udpRemoteHost, setUdpRemoteHost] = useState('192.168.1.1');
   const [udpRemotePort, setUdpRemotePort] = useState(14550);
+  const [udpClientLocalPort, setUdpClientLocalPort] = useState(14550);
   const [tcpProtocol, setTcpProtocol] = useState<'mavlink' | 'msp'>('mavlink');
   const [udpProtocol, setUdpProtocol] = useState<'mavlink' | 'msp'>('mavlink');
   const [showDriverHelp, setShowDriverHelp] = useState(false);
@@ -52,6 +53,7 @@ export function ConnectionPanel() {
     if (connectionMemory.lastUdpMode) setUdpMode(connectionMemory.lastUdpMode);
     if (connectionMemory.lastUdpRemoteHost) setUdpRemoteHost(connectionMemory.lastUdpRemoteHost);
     if (connectionMemory.lastUdpRemotePort) setUdpRemotePort(connectionMemory.lastUdpRemotePort);
+    if (connectionMemory.lastUdpClientLocalPort) setUdpClientLocalPort(connectionMemory.lastUdpClientLocalPort);
     if (connectionMemory.lastTcpProtocol) setTcpProtocol(connectionMemory.lastTcpProtocol);
     if (connectionMemory.lastUdpProtocol) setUdpProtocol(connectionMemory.lastUdpProtocol);
     hasAppliedMemory.current = true;
@@ -303,6 +305,7 @@ export function ConnectionPanel() {
         setUdpMode('client');
         setUdpRemoteHost(c.udpRemoteHost ?? '192.168.1.1');
         setUdpRemotePort(c.udpRemotePort ?? 14550);
+        if (c.udpClientLocalPort) setUdpClientLocalPort(c.udpClientLocalPort);
       } else {
         setUdpMode('listen');
         setUdpPort(c.port);
@@ -352,6 +355,7 @@ export function ConnectionPanel() {
         udpMode,
         udpRemoteHost: udpMode === 'client' ? udpRemoteHost : undefined,
         udpRemotePort: udpMode === 'client' ? udpRemotePort : undefined,
+        udpClientLocalPort: udpMode === 'client' ? udpClientLocalPort : undefined,
         protocol: udpProtocol,
       });
       if (success) {
@@ -360,6 +364,7 @@ export function ConnectionPanel() {
           lastUdpMode: udpMode,
           lastUdpRemoteHost: udpRemoteHost,
           lastUdpRemotePort: udpRemotePort,
+          lastUdpClientLocalPort: udpClientLocalPort,
           lastUdpProtocol: udpProtocol,
           lastConnectionType: 'udp',
         });
@@ -699,6 +704,19 @@ export function ConnectionPanel() {
                     className="input"
                     disabled={connectionState.isConnected}
                   />
+                </div>
+                <div>
+                  <label className="label">Local Port</label>
+                  <input
+                    type="number"
+                    value={udpClientLocalPort}
+                    onChange={(e) => setUdpClientLocalPort(Number(e.target.value))}
+                    className="input"
+                    disabled={connectionState.isConnected}
+                  />
+                  <p className="mt-1 text-xs text-content-secondary">
+                    Source port for outgoing packets. Keep stable across reconnects: ArduPilot caches the first source endpoint it sees and replies there for the rest of the link. Change only if 14550 is in use locally.
+                  </p>
                 </div>
                 <p className="text-xs text-content-secondary">
                   Connect to a remote device at this address

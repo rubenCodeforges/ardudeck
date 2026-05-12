@@ -20,10 +20,7 @@ export const IPC_CHANNELS = {
   MAVLINK_REBOOT: 'mavlink:reboot',
   MAVLINK_ARM_DISARM: 'mavlink:arm-disarm',
   MAVLINK_SET_MODE: 'mavlink:set-mode',
-  MAVLINK_MISSION_START: 'mavlink:mission-start',
   MAVLINK_COMMAND_TAKEOFF: 'mavlink:command-takeoff',
-  /** MAV_CMD_DO_CHANGE_SPEED (178): param1 = climb-speed type, param2 = m/s (COMMAND_LONG). */
-  MAVLINK_DO_CHANGE_CLIMB_SPEED: 'mavlink:do-change-climb-speed',
   MAVLINK_COMMAND_VTOL_TAKEOFF: 'mavlink:command-vtol-takeoff',
   MAVLINK_GOTO: 'mavlink:goto',
   MAVLINK_ORBIT: 'mavlink:orbit',
@@ -80,8 +77,6 @@ export const IPC_CHANNELS = {
 
   // Console/debug
   CONSOLE_LOG: 'console:log',
-  /** Renderer → main: one-line trace for AUTO/mission/takeoff diagnosis (stdout [AUTO/MISSION]) */
-  AUTO_MISSION_DIAG: 'dev:auto-mission-diag',
 
   // Telemetry
   TELEMETRY_UPDATE: 'telemetry:update',
@@ -366,6 +361,8 @@ export const IPC_CHANNELS = {
   ARDUPILOT_SITL_STOP: 'ardupilot-sitl:stop',
   ARDUPILOT_SITL_STATUS: 'ardupilot-sitl:status',
   ARDUPILOT_SITL_DOWNLOAD: 'ardupilot-sitl:download',
+  /** Copy a user-selected local file into the SITL cache (e.g. when upstream download is blocked). */
+  ARDUPILOT_SITL_IMPORT_BINARY: 'ardupilot-sitl:import-binary',
   ARDUPILOT_SITL_DOWNLOAD_PROGRESS: 'ardupilot-sitl:download-progress',
   ARDUPILOT_SITL_CHECK_BINARY: 'ardupilot-sitl:check-binary',
   ARDUPILOT_SITL_CHECK_PLATFORM: 'ardupilot-sitl:check-platform',
@@ -431,6 +428,14 @@ export const IPC_CHANNELS = {
   // Motor Test
   MOTOR_TEST_START: 'motor-test:start',
   MOTOR_TEST_STOP: 'motor-test:stop',
+
+  // Servo Test (per-channel pulse via MAV_CMD_DO_SET_SERVO)
+  SERVO_TEST_PULSE: 'servo-test:pulse',
+  SERVO_TEST_RELEASE: 'servo-test:release',
+
+  // RC Override (synthetic stick input via RC_CHANNELS_OVERRIDE for bench testing)
+  RC_OVERRIDE_SET: 'rc-override:set',
+  RC_OVERRIDE_RELEASE: 'rc-override:release',
 
   // Mission Library (offline storage)
   MISSION_LIBRARY_LIST: 'mission-library:list',
@@ -615,6 +620,13 @@ export interface ConnectOptions {
   udpMode?: 'listen' | 'client';
   udpRemoteHost?: string;
   udpRemotePort?: number;
+  /**
+   * Local port to bind for UDP client mode. Defaults to 14550. Must be
+   * stable across reconnects — ArduPilot's UDPIN driver caches the source
+   * IP+port of the first packet it sees and replies there forever, so
+   * letting the OS pick an ephemeral port (0) breaks reconnect.
+   */
+  udpClientLocalPort?: number;
   /** Force a specific protocol, skipping auto-detection */
   protocol?: 'mavlink' | 'msp';
 }
@@ -859,6 +871,21 @@ export interface UiVisibilitySettings {
 }
 
 /**
+ * A user-saved survey planner preset. Shape is duplicated loosely here to keep
+ * the shared module from importing renderer-only survey types. The renderer is
+ * the source of truth for the strict type (see survey-presets.ts).
+ */
+export interface PersistedSurveyPreset {
+  id: string;
+  name: string;
+  description: string;
+  tag: string;
+  isUserDefined: true;
+  config: Record<string, unknown>;
+  camera?: Record<string, unknown>;
+}
+
+/**
  * Settings store schema (persisted to disk)
  */
 export interface SettingsStoreSchema {
@@ -874,6 +901,17 @@ export interface SettingsStoreSchema {
   experimentalLogs?: boolean;
   showDebugLogs?: boolean;
   aiProvider?: 'claude' | 'openai' | 'gemini' | null;
+  /** User-saved survey planner presets. Built-in presets ship in code. */
+  surveyPresets?: PersistedSurveyPreset[];
+  /** Last-used survey preset id (built-in or user-defined). Restored on app start. */
+  lastSurveyPresetId?: string;
+  /**
+   * Last-used survey config (camera, altitude, overlaps, pattern, etc.) so
+   * planner state survives app restart. Polygon and result are NOT persisted
+   * (scene-specific). Loose Record shape to keep this module free of
+   * renderer-only survey types.
+   */
+  surveySavedConfig?: Record<string, unknown>;
 }
 
 // =============================================================================
@@ -1200,7 +1238,7 @@ export interface ArduPilotSitlDownloadProgress {
   progress: number;  // 0-100
   bytesDownloaded: number;
   totalBytes: number;
-  status: 'downloading' | 'extracting' | 'complete' | 'error';
+  status: 'preparing' | 'downloading' | 'extracting' | 'complete' | 'error';
   error?: string;
 }
 

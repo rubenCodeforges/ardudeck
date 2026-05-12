@@ -1,8 +1,48 @@
 /**
  * Survey Statistics Calculator
  */
-import type { LatLng, SurveyConfig, SurveyStats } from './survey-types';
+import type { CameraPreset, LatLng, SurveyConfig, SurveyStats } from './survey-types';
 import { distanceLatLng, polygonArea } from './geo-math';
+
+/**
+ * Returns the effective survey footprint. If the camera preset has a
+ * manualCorridorWidth set (e.g. rover/lawnmower mode with no camera), that
+ * value is returned as both width and height so downstream spacing math
+ * collapses to "lines spaced at corridor width". Otherwise computes from
+ * sensor + focal length + altitude.
+ */
+export function getEffectiveFootprint(
+  camera: CameraPreset,
+  altitude: number,
+): { width: number; height: number } {
+  if (camera.manualCorridorWidth && camera.manualCorridorWidth > 0) {
+    const w = camera.manualCorridorWidth;
+    return { width: w, height: w };
+  }
+  return calculateFootprint(camera.sensorWidth, camera.sensorHeight, camera.focalLength, altitude);
+}
+
+/**
+ * Returns the effective line/photo spacing for the survey. In manual mode the
+ * overlap sliders don't apply (there's no camera footprint to overlap), so
+ * spacing is the corridor width directly. Critically, this also prevents the
+ * default 60% side overlap from collapsing lineSpacing into something tiny
+ * (e.g. 0.6 m for a 1.5 m mower deck), which would otherwise produce tens of
+ * thousands of waypoints and crash the renderer.
+ */
+export function getEffectiveSpacing(
+  camera: CameraPreset,
+  footprintWidth: number,
+  footprintHeight: number,
+  frontOverlap: number,
+  sideOverlap: number,
+): { lineSpacing: number; photoSpacing: number } {
+  if (camera.manualCorridorWidth && camera.manualCorridorWidth > 0) {
+    const w = camera.manualCorridorWidth;
+    return { lineSpacing: w, photoSpacing: w };
+  }
+  return calculateSpacing(footprintWidth, footprintHeight, frontOverlap, sideOverlap);
+}
 
 /**
  * Calculate GSD (Ground Sample Distance) in cm/pixel.
@@ -68,12 +108,12 @@ export function computeSurveyStats(
   lineCount: number,
 ): SurveyStats {
   const { camera, altitude, speed } = config;
-  const gsd = calculateGSD(camera.sensorWidth, camera.focalLength, camera.imageWidth, altitude);
-  const { width: footprintWidth, height: footprintHeight } = calculateFootprint(
-    camera.sensorWidth, camera.sensorHeight, camera.focalLength, altitude,
-  );
-  const { lineSpacing, photoSpacing } = calculateSpacing(
-    footprintWidth, footprintHeight, config.frontOverlap, config.sideOverlap,
+  // GSD is meaningless without a real camera; report 0 in manual mode.
+  const isManual = !!(camera.manualCorridorWidth && camera.manualCorridorWidth > 0);
+  const gsd = isManual ? 0 : calculateGSD(camera.sensorWidth, camera.focalLength, camera.imageWidth, altitude);
+  const { width: footprintWidth, height: footprintHeight } = getEffectiveFootprint(camera, altitude);
+  const { lineSpacing, photoSpacing } = getEffectiveSpacing(
+    camera, footprintWidth, footprintHeight, config.frontOverlap, config.sideOverlap,
   );
   const flightDistance = calculateFlightDistance(waypoints);
   const flightTime = speed > 0 ? flightDistance / speed : 0;

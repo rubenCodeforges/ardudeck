@@ -16,10 +16,12 @@ import { MissionStatusBar } from './MissionStatusBar';
 import { MissionMapPanel } from './MissionMapPanel';
 import { WaypointTablePanel } from './WaypointTablePanel';
 import { AltitudeProfilePanel } from './AltitudeProfilePanel';
+import { SurveyConfigPanel } from '../survey/SurveyConfigPanel';
 import { useMissionStore } from '../../stores/mission-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useFirmwareStore } from '../../stores/firmware-store';
+import { useSurveyStore } from '../../stores/survey-store';
 import { isUnsupportedF3Board, hasInavF3Support } from '../../../shared/board-mappings';
 import { Map, AlertTriangle, Lightbulb, RefreshCw, Plane, Wrench } from 'lucide-react';
 
@@ -38,7 +40,12 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   MissionMapPanel: () => <MissionMapPanel />,
   WaypointTablePanel: () => <WaypointTablePanel />,
   AltitudeProfilePanel: () => <AltitudeProfilePanel />,
+  SurveyConfigPanel: () => <SurveyConfigPanel />,
 };
+
+// Stable panel id for the Survey tab — opened/closed dynamically based on
+// whether survey mode is active. Lives as a sibling tab next to Waypoints.
+const SURVEY_PANEL_ID = 'surveyConfig';
 
 // Default layout configuration - Map top-left, Waypoints top-right, Altitude Profile bottom
 function createDefaultLayout(api: DockviewApi): void {
@@ -297,6 +304,8 @@ export function MissionPlanningView() {
   const resolvedTheme = useResolvedTheme();
   const { connectionState } = useConnectionStore();
   const { lastSuccessMessage, error, clearLastSuccessMessage, missionItems, fetchMission, isLoading } = useMissionStore();
+  const surveyIsActive = useSurveyStore((s) => s.isActive);
+  const deactivateSurvey = useSurveyStore((s) => s.deactivateSurvey);
   const [toast, setToast] = useState<Toast | null>(null);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
 
@@ -329,6 +338,45 @@ export function MissionPlanningView() {
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  // Add/remove the Survey panel as a tab next to Waypoints whenever survey
+  // mode toggles. We attach it to the same group as the waypoint table so it
+  // becomes a sibling tab (user can switch between Waypoints / Survey) rather
+  // than carving out additional screen real estate. When survey mode ends we
+  // remove the panel and let dockview restore focus to Waypoints.
+  useEffect(() => {
+    if (!apiRef.current || !layoutLoaded) return;
+    const api = apiRef.current;
+    const existing = api.getPanel(SURVEY_PANEL_ID);
+
+    if (surveyIsActive && !existing) {
+      const waypointPanel = api.getPanel('waypointTable');
+      const refGroup = waypointPanel?.group;
+      api.addPanel({
+        id: SURVEY_PANEL_ID,
+        component: 'SurveyConfigPanel',
+        title: 'Survey',
+        ...(refGroup ? { position: { referenceGroup: refGroup } } : {}),
+      });
+      // Focus the new tab so the user lands on it after starting survey mode.
+      api.getPanel(SURVEY_PANEL_ID)?.api.setActive();
+    } else if (!surveyIsActive && existing) {
+      api.removePanel(existing);
+    }
+  }, [surveyIsActive, layoutLoaded]);
+
+  // Closing the Survey tab manually should also exit survey mode — otherwise
+  // the add/remove effect above would just re-create it on the next render.
+  useEffect(() => {
+    if (!apiRef.current || !layoutLoaded) return;
+    const api = apiRef.current;
+    const disposable = api.onDidRemovePanel((panel) => {
+      if (panel.id === SURVEY_PANEL_ID && useSurveyStore.getState().isActive) {
+        deactivateSurvey();
+      }
+    });
+    return () => disposable.dispose();
+  }, [layoutLoaded, deactivateSurvey]);
 
   // Auto-save layout when it changes
   useEffect(() => {

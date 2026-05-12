@@ -3,7 +3,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import type { CameraPreset } from './survey-types';
-import { CAMERA_PRESET_GROUPS, CUSTOM_CAMERA } from './camera-presets';
+import { CAMERA_PRESET_GROUPS, CUSTOM_CAMERA, MANUAL_CAMERA } from './camera-presets';
 
 interface CameraPresetSelectorProps {
   value: CameraPreset;
@@ -35,6 +35,7 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
   })).filter(group => group.presets.length > 0);
 
   const isCustom = value.name === 'Custom';
+  const isManual = value.name === 'Manual';
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -49,9 +50,14 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
       </button>
 
       {/* Sensor info summary */}
-      {!isCustom && (
+      {!isCustom && !isManual && (
         <div className="mt-1 text-[10px] text-content-secondary leading-tight">
           {value.sensorWidth}x{value.sensorHeight}mm sensor, {value.focalLength}mm, {value.imageWidth}x{value.imageHeight}px
+        </div>
+      )}
+      {isManual && (
+        <div className="mt-1 text-[10px] text-content-secondary leading-tight">
+          Corridor width set directly (no camera)
         </div>
       )}
 
@@ -90,15 +96,29 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
             </div>
           ))}
 
-          {/* Custom option */}
+          {/* Custom & Manual options — both are user-defined, but Custom still
+              uses camera optics (sensor/focal) while Manual skips them entirely
+              and sets the line spacing directly. */}
           <div className="border-t border-subtle">
             <button
               onClick={() => { onChange({ ...CUSTOM_CAMERA }); setIsOpen(false); }}
               className={`w-full px-3 py-1.5 text-left text-xs hover:bg-purple-600/20 transition-colors ${
                 isCustom ? 'text-purple-300 bg-purple-600/10' : 'text-content-secondary'
               }`}
+              title="Camera not in presets — enter sensor/focal specs to compute the footprint"
             >
-              Custom...
+              <div className="font-medium">Custom camera...</div>
+              <div className="text-[10px] text-content-tertiary">Enter sensor + focal length</div>
+            </button>
+            <button
+              onClick={() => { onChange({ ...MANUAL_CAMERA }); setIsOpen(false); }}
+              className={`w-full px-3 py-1.5 text-left text-xs hover:bg-purple-600/20 transition-colors ${
+                isManual ? 'text-purple-300 bg-purple-600/10' : 'text-content-secondary'
+              }`}
+              title="No camera — set the line spacing directly (e.g. rover/lawnmower deck width)"
+            >
+              <div className="font-medium">No camera (manual width)...</div>
+              <div className="text-[10px] text-content-tertiary">Set corridor width directly (rover/mower)</div>
             </button>
           </div>
         </div>

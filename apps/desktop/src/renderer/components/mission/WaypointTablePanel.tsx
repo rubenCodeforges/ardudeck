@@ -963,6 +963,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     setSelectedSeq,
     updateWaypoint,
     removeWaypoint,
+    removeWaypoints,
     addWaypoint,
     reorderWaypoints,
   } = useMissionStore();
@@ -984,7 +985,25 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   const [draggedSeq, setDraggedSeq] = useState<number | null>(null);
   const [dropTargetSeq, setDropTargetSeq] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+  const [multiSelected, setMultiSelected] = useState<Set<number>>(new Set());
+  const [lastCheckedSeq, setLastCheckedSeq] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // Any structural change to missionItems (single delete, reorder, add, refresh)
+  // can shift the seq numbers our checkbox set refers to. The safe thing is to
+  // drop the multi-selection — better than silently selecting the wrong rows.
+  // The bulk delete handler clears multiSelected itself first, so this no-ops
+  // for its own changes.
+  const prevMissionLengthRef = useRef(missionItems.length);
+  useEffect(() => {
+    if (prevMissionLengthRef.current !== missionItems.length) {
+      prevMissionLengthRef.current = missionItems.length;
+      if (multiSelected.size > 0) {
+        setMultiSelected(new Set());
+        setLastCheckedSeq(null);
+      }
+    }
+  }, [missionItems.length, multiSelected.size]);
 
   // Pre-compute parent-child group structure
   const groupInfo = useMemo(() => {
@@ -1046,6 +1065,54 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     removeWaypoint(seq);
   };
 
+  // Toggle one waypoint's checkbox. Shift-click selects the range from the
+  // previously checked row to the current row (inclusive), so users can
+  // bulk-select large mission segments quickly.
+  const handleCheckboxToggle = (seq: number, e: React.MouseEvent) => {
+    const shiftKey = e.shiftKey;
+    setMultiSelected(prev => {
+      const next = new Set(prev);
+      if (shiftKey && lastCheckedSeq !== null && lastCheckedSeq !== seq) {
+        const seqs = missionItems.map(w => w.seq);
+        const a = seqs.indexOf(lastCheckedSeq);
+        const b = seqs.indexOf(seq);
+        if (a !== -1 && b !== -1) {
+          const [lo, hi] = a <= b ? [a, b] : [b, a];
+          // Mirror the action of the anchor row: if it's currently selected,
+          // shift-click extends selection; otherwise it extends deselection.
+          const shouldSelect = prev.has(lastCheckedSeq);
+          for (let i = lo; i <= hi; i++) {
+            const s = seqs[i];
+            if (s === undefined) continue;
+            if (shouldSelect) next.add(s);
+            else next.delete(s);
+          }
+        }
+      } else {
+        if (next.has(seq)) next.delete(seq);
+        else next.add(seq);
+      }
+      return next;
+    });
+    setLastCheckedSeq(seq);
+  };
+
+  const handleDeleteSelected = () => {
+    if (multiSelected.size === 0) return;
+    removeWaypoints([...multiSelected]);
+    setMultiSelected(new Set());
+    setLastCheckedSeq(null);
+  };
+
+  const handleSelectAll = () => {
+    setMultiSelected(new Set(missionItems.map(w => w.seq)));
+  };
+
+  const handleClearSelection = () => {
+    setMultiSelected(new Set());
+    setLastCheckedSeq(null);
+  };
+
   const handleAddWaypoint = () => {
     const lastWp = missionItems[missionItems.length - 1];
     const gpsState = getGpsState();
@@ -1100,27 +1167,62 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="h-full flex flex-col bg-surface">
-      {/* Collapse / Expand controls */}
+      {/* Header: collapse/expand or, when multi-selected, bulk actions */}
       {missionItems.length > 0 && (
         <div className="shrink-0 px-3 py-1.5 border-b border-subtle flex items-center justify-between">
-          <span className="text-[10px] text-content-secondary">{missionItems.length} items</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={collapseAll}
-              className="text-[10px] text-content-secondary hover:text-content transition-colors"
-              title="Collapse all groups"
-            >
-              Collapse all
-            </button>
-            <span className="text-content-tertiary text-[10px]">|</span>
-            <button
-              onClick={expandAll}
-              className="text-[10px] text-content-secondary hover:text-content transition-colors"
-              title="Expand all groups"
-            >
-              Expand all
-            </button>
-          </div>
+          {!readOnly && multiSelected.size > 0 ? (
+            <>
+              <span className="text-[10px] text-content-secondary">
+                {multiSelected.size} of {missionItems.length} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSelectAll}
+                  className="text-[10px] text-content-secondary hover:text-content transition-colors"
+                  title="Select all waypoints"
+                >
+                  Select all
+                </button>
+                <span className="text-content-tertiary text-[10px]">|</span>
+                <button
+                  onClick={handleClearSelection}
+                  className="text-[10px] text-content-secondary hover:text-content transition-colors"
+                  title="Clear selection"
+                >
+                  Clear
+                </button>
+                <span className="text-content-tertiary text-[10px]">|</span>
+                <button
+                  onClick={handleDeleteSelected}
+                  className="text-[10px] text-red-400 hover:text-red-300 transition-colors font-medium"
+                  title={`Delete ${multiSelected.size} selected waypoint${multiSelected.size === 1 ? '' : 's'}`}
+                >
+                  Delete selected
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] text-content-secondary">{missionItems.length} items</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={collapseAll}
+                  className="text-[10px] text-content-secondary hover:text-content transition-colors"
+                  title="Collapse all groups"
+                >
+                  Collapse all
+                </button>
+                <span className="text-content-tertiary text-[10px]">|</span>
+                <button
+                  onClick={expandAll}
+                  className="text-[10px] text-content-secondary hover:text-content transition-colors"
+                  title="Expand all groups"
+                >
+                  Expand all
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1200,6 +1302,26 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                       : 'hover:bg-surface border-l-2 border-l-transparent'
                   }`}
                 >
+                  {/* Multi-select checkbox - hidden in readOnly mode */}
+                  {!readOnly && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCheckboxToggle(wp.seq, e);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="shrink-0 flex items-center justify-center w-5 h-5"
+                      title="Shift+click to select range"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={multiSelected.has(wp.seq)}
+                        onChange={() => { /* handled by wrapper onClick to capture shift */ }}
+                        className="w-3.5 h-3.5 rounded border-subtle bg-surface-raised text-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </div>
+                  )}
+
                   {/* Drag handle - hidden in readOnly mode */}
                   {!readOnly && (
                     <div className="text-content-tertiary cursor-grab active:cursor-grabbing">

@@ -11,7 +11,7 @@ import {
   distance2D,
   boundingBox,
 } from '../geo-math';
-import { calculateFootprint, calculateSpacing, computeSurveyStats } from '../survey-stats';
+import { computeSurveyStats, getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
 
 /**
  * Check if a point is inside a polygon (ray casting).
@@ -40,12 +40,10 @@ export function generateCircular(config: SurveyConfig): SurveyResult {
   const origin = polygonCentroid(polygon);
   const localPoly = polygon.map(v => latLngToLocal(origin, v));
 
-  // Camera footprint and spacing
-  const { width: footprintW, height: footprintH } = calculateFootprint(
-    camera.sensorWidth, camera.sensorHeight, camera.focalLength, altitude,
-  );
-  const { lineSpacing, photoSpacing } = calculateSpacing(
-    footprintW, footprintH, frontOverlap, sideOverlap,
+  // Camera footprint and spacing (or manual corridor width if camera is in manual mode)
+  const { width: footprintW, height: footprintH } = getEffectiveFootprint(camera, altitude);
+  const { lineSpacing, photoSpacing } = getEffectiveSpacing(
+    camera, footprintW, footprintH, frontOverlap, sideOverlap,
   );
 
   if (lineSpacing <= 0 || photoSpacing <= 0) {
@@ -94,12 +92,16 @@ export function generateCircular(config: SurveyConfig): SurveyResult {
 
   // Convert to lat/lng
   const waypoints: LatLng[] = waypointsLocal.map(p => localToLatLng(origin, p.x, p.y));
-  const photoPositions: LatLng[] = photoLocal.map(p => localToLatLng(origin, p.x, p.y));
+  // Manual mode: skip photo / footprint outputs — they're camera concepts.
+  const isManual = !!(camera.manualCorridorWidth && camera.manualCorridorWidth > 0);
+  const photoPositions: LatLng[] = isManual
+    ? []
+    : photoLocal.map(p => localToLatLng(origin, p.x, p.y));
 
   // Footprints for circular are squares (camera points down)
   const halfW = footprintW / 2;
   const halfH = footprintH / 2;
-  const footprints: LatLng[][] = photoLocal.map(p => {
+  const footprints: LatLng[][] = isManual ? [] : photoLocal.map(p => {
     return [
       localToLatLng(origin, p.x - halfW, p.y - halfH),
       localToLatLng(origin, p.x + halfW, p.y - halfH),

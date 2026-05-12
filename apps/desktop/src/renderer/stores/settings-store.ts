@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { TelemetrySpeed, BoardStats } from '../../shared/ipc-channels.js';
+import type { TelemetrySpeed, BoardStats, PersistedSurveyPreset } from '../../shared/ipc-channels.js';
 import type { FirmwareSource } from '../../shared/firmware-types.js';
 
 /**
@@ -209,6 +209,7 @@ export interface SavedConnection {
   udpMode?: 'listen' | 'client';
   udpRemoteHost?: string;
   udpRemotePort?: number;
+  udpClientLocalPort?: number;
   lastUsed: number; // timestamp
 }
 
@@ -225,6 +226,7 @@ export interface ConnectionMemory {
   lastUdpMode?: 'listen' | 'client';
   lastUdpRemoteHost?: string;
   lastUdpRemotePort?: number;
+  lastUdpClientLocalPort?: number;
   lastUdpProtocol?: 'mavlink' | 'msp';
   lastConnectionType?: 'serial' | 'tcp' | 'udp';
   /** Recent TCP/UDP connections for quick reconnect */
@@ -320,6 +322,16 @@ interface SettingsStore {
   // UI visibility (granular control)
   uiVisibility: UiVisibility;
   setUiVisibility: (updates: Partial<UiVisibility>) => void;
+
+  // Survey planner — user-saved presets and last-used selection.
+  // Built-in presets live in code (survey-presets.ts); this is the user slice.
+  surveyPresets: PersistedSurveyPreset[];
+  lastSurveyPresetId: string | null;
+  surveySavedConfig: Record<string, unknown> | null;
+  saveSurveyPreset: (preset: PersistedSurveyPreset) => void;
+  removeSurveyPreset: (id: string) => void;
+  setLastSurveyPresetId: (id: string | null) => void;
+  setSurveySavedConfig: (config: Record<string, unknown> | null) => void;
 
   // Computed
   getActiveVehicle: () => VehicleProfile | null;
@@ -726,6 +738,30 @@ export const useSettingsStore = create<SettingsStore>()(
   experienceLevelVersion: null as string | null,
   uiVisibility: { ...BEGINNER_UI_VISIBILITY },
 
+  surveyPresets: [] as PersistedSurveyPreset[],
+  lastSurveyPresetId: null as string | null,
+  surveySavedConfig: null as Record<string, unknown> | null,
+  saveSurveyPreset: (preset: PersistedSurveyPreset) => {
+    set((s) => {
+      const others = s.surveyPresets.filter((p) => p.id !== preset.id);
+      return { surveyPresets: [...others, preset] };
+    });
+  },
+  removeSurveyPreset: (id: string) => {
+    set((s) => ({
+      surveyPresets: s.surveyPresets.filter((p) => p.id !== id),
+      // Clear the "last used" pointer if we just removed it; otherwise startup
+      // tries to restore a preset that no longer exists.
+      lastSurveyPresetId: s.lastSurveyPresetId === id ? null : s.lastSurveyPresetId,
+    }));
+  },
+  setLastSurveyPresetId: (id: string | null) => {
+    set({ lastSurveyPresetId: id });
+  },
+  setSurveySavedConfig: (config) => {
+    set({ surveySavedConfig: config });
+  },
+
   // Computed
   getActiveVehicle: () => {
     const { vehicles, activeVehicleId } = get();
@@ -804,6 +840,9 @@ export const useSettingsStore = create<SettingsStore>()(
           showDebugLogs: !!((settings as unknown as Record<string, unknown>).showDebugLogs),
           aiProvider: ((settings as unknown as Record<string, unknown>).aiProvider as 'claude' | 'openai' | 'gemini' | null) ?? null,
           aiWarningDismissed: !!((settings as unknown as Record<string, unknown>).aiWarningDismissed),
+          surveyPresets: (settings.surveyPresets ?? []) as PersistedSurveyPreset[],
+          lastSurveyPresetId: settings.lastSurveyPresetId ?? null,
+          surveySavedConfig: (settings.surveySavedConfig as Record<string, unknown> | undefined) ?? null,
           _isInitialized: true,
         });
       } else {
@@ -842,6 +881,9 @@ export const useSettingsStore = create<SettingsStore>()(
         showDebugLogs: state.showDebugLogs,
         aiProvider: state.aiProvider,
         aiWarningDismissed: state.aiWarningDismissed,
+        surveyPresets: state.surveyPresets,
+        ...(state.lastSurveyPresetId ? { lastSurveyPresetId: state.lastSurveyPresetId } : {}),
+        ...(state.surveySavedConfig ? { surveySavedConfig: state.surveySavedConfig } : {}),
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -1027,6 +1069,7 @@ export const useSettingsStore = create<SettingsStore>()(
               udpMode: updates.lastUdpMode ?? mem.lastUdpMode,
               udpRemoteHost: updates.lastUdpRemoteHost ?? mem.lastUdpRemoteHost,
               udpRemotePort: updates.lastUdpRemotePort ?? mem.lastUdpRemotePort,
+              udpClientLocalPort: updates.lastUdpClientLocalPort ?? mem.lastUdpClientLocalPort,
               lastUsed: Date.now(),
             };
 
@@ -1143,6 +1186,9 @@ useSettingsStore.subscribe(
     showDebugLogs: state.showDebugLogs,
     aiProvider: state.aiProvider,
     aiWarningDismissed: state.aiWarningDismissed,
+    surveyPresets: state.surveyPresets,
+    lastSurveyPresetId: state.lastSurveyPresetId,
+    surveySavedConfig: state.surveySavedConfig,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -1168,7 +1214,10 @@ useSettingsStore.subscribe(
         curr.advancedCommandsUnlocked !== prev.advancedCommandsUnlocked ||
         curr.showDebugLogs !== prev.showDebugLogs ||
         curr.aiProvider !== prev.aiProvider ||
-        curr.aiWarningDismissed !== prev.aiWarningDismissed
+        curr.aiWarningDismissed !== prev.aiWarningDismissed ||
+        curr.surveyPresets !== prev.surveyPresets ||
+        curr.lastSurveyPresetId !== prev.lastSurveyPresetId ||
+        curr.surveySavedConfig !== prev.surveySavedConfig
       ) {
         debouncedSave();
       }

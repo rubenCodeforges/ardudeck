@@ -9,7 +9,7 @@
  * - Draggable vertices for selected fence
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Polygon, Circle, Marker, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { useFenceStore, type FenceDrawMode } from '../../stores/fence-store';
@@ -82,6 +82,54 @@ const createVertexIcon = (isSelected: boolean) =>
     iconAnchor: [6, 6],
   });
 
+// Floating delete button shown at the centroid of the selected fence.
+// Renders as a small red pill with a trash glyph + label so it is obvious
+// even when the underlying zone fill is tinted similarly.
+const createDeleteButtonIcon = () =>
+  L.divIcon({
+    className: 'custom-div-icon',
+    html: `
+      <div style="
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        background-color: #dc2626;
+        color: #ffffff;
+        border: 1px solid #b91c1c;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        cursor: pointer;
+        white-space: nowrap;
+        user-select: none;
+      ">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7"></path>
+        </svg>
+        Delete
+      </div>
+    `,
+    iconSize: [70, 22],
+    iconAnchor: [35, 11],
+  });
+
+// Centroid of a polygon's vertices (simple average — good enough for placing
+// a floating UI marker; not a true geometric centroid).
+function polygonCentroid(vertices: Array<{ lat: number; lon: number }>): [number, number] {
+  if (vertices.length === 0) return [0, 0];
+  let lat = 0;
+  let lon = 0;
+  for (const v of vertices) {
+    lat += v.lat;
+    lon += v.lon;
+  }
+  return [lat / vertices.length, lon / vertices.length];
+}
+
 export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
   const {
     polygons,
@@ -96,7 +144,40 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
     removeVertexFromPolygon,
     updateCircle,
     setReturnPoint,
+    removePolygon,
+    removeCircle,
   } = useFenceStore();
+
+  // Delete the currently selected fence (polygon or circle). Used by both
+  // the keyboard shortcut and the floating centroid button.
+  const deleteSelectedFence = useCallback(() => {
+    if (!selectedFenceId || readOnly) return;
+    if (polygons.some(p => p.id === selectedFenceId)) {
+      removePolygon(selectedFenceId);
+    } else if (circles.some(c => c.id === selectedFenceId)) {
+      removeCircle(selectedFenceId);
+    }
+  }, [selectedFenceId, readOnly, polygons, circles, removePolygon, removeCircle]);
+
+  // Keyboard shortcut: Delete or Backspace removes the selected zone. Skip when
+  // the user is typing in an input/textarea or while a draw mode is active
+  // (Backspace there typically means "undo last vertex" semantically — better
+  // to not steal the key).
+  useEffect(() => {
+    if (readOnly || !selectedFenceId || drawMode !== 'none') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+      }
+      e.preventDefault();
+      deleteSelectedFence();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [readOnly, selectedFenceId, drawMode, deleteSelectedFence]);
 
   // Handle polygon click - exit draw mode to allow editing
   const handlePolygonClick = useCallback(
@@ -389,6 +470,57 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
           }}
         />
       )}
+
+      {/* Floating delete button at centroid of selected zone (skipped in readOnly).
+          Discoverable mouse-side affordance to complement the Delete key shortcut. */}
+      {!readOnly && selectedFenceId && drawMode === 'none' && (() => {
+        const selectedPoly = polygons.find((p) => p.id === selectedFenceId);
+        if (selectedPoly) {
+          const center = polygonCentroid(selectedPoly.vertices);
+          return (
+            <Marker
+              key={`${selectedPoly.id}-delete-btn`}
+              position={center}
+              icon={createDeleteButtonIcon()}
+              interactive
+              eventHandlers={{
+                click: (e: L.LeafletMouseEvent) => {
+                  e.originalEvent.stopPropagation();
+                  e.originalEvent.preventDefault();
+                  deleteSelectedFence();
+                },
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -14]} opacity={0.9}>
+                <span style={{ fontSize: '10px' }}>Delete this zone (Del)</span>
+              </Tooltip>
+            </Marker>
+          );
+        }
+        const selectedCircle = circles.find((c) => c.id === selectedFenceId);
+        if (selectedCircle) {
+          return (
+            <Marker
+              key={`${selectedCircle.id}-delete-btn`}
+              position={[selectedCircle.center.lat, selectedCircle.center.lon]}
+              icon={createDeleteButtonIcon()}
+              interactive
+              eventHandlers={{
+                click: (e: L.LeafletMouseEvent) => {
+                  e.originalEvent.stopPropagation();
+                  e.originalEvent.preventDefault();
+                  deleteSelectedFence();
+                },
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -14]} opacity={0.9}>
+                <span style={{ fontSize: '10px' }}>Delete this zone (Del)</span>
+              </Tooltip>
+            </Marker>
+          );
+        }
+        return null;
+      })()}
 
       {/* Drawing preview */}
       {drawingPreview}

@@ -9,6 +9,8 @@ function makeLog(messages: Record<string, DataFlashMessage[]>): DataFlashLog {
     metadata: { vehicleType: 'copter', firmwareVersion: '4.5.1', firmwareString: '', boardType: '', gitHash: '' },
     timeRange: { startUs: 0, endUs: 60_000_000 },
     messageTypes: Object.keys(messages),
+    unitLabels: new Map(),
+    multValues: new Map(),
   };
 }
 

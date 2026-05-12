@@ -74,7 +74,6 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   // SITL simulation panels
   SitlEnvironmentDockPanel: () => <PanelWrapper component={SitlEnvironmentDockPanel} />,
   SitlFailureDockPanel: () => <PanelWrapper component={SitlFailureDockPanel} />,
-  // Python plugin host panel (slug provided via dockview params).
   PythonPluginPanel: (props) => <PythonPluginPanel {...props} />,
 };
 
@@ -690,7 +689,14 @@ function QuickStatsBar() {
           <span className="text-content-secondary">SPD</span>
           <span className="font-mono text-sm text-content">{vfrHud.groundspeed.toFixed(1)}m/s</span>
         </div>
-        <div className="flex items-baseline gap-1.5">
+        <div
+          className="flex items-baseline gap-1.5"
+          title={
+            isMavlink
+              ? 'ArduPilot VFR_HUD: averaged motor throttle from the FC (not RC stick). In AUTO / mission takeoff the FC commands thrust; virtual RC / SITL slider can stay at idle while this value shows real demand.'
+              : 'Throttle from telemetry (VFR_HUD / FC).'
+          }
+        >
           <span className="text-content-secondary">THR</span>
           <span className="font-mono text-sm text-content">{vfrHud.throttle}%</span>
         </div>

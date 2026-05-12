@@ -78,6 +78,10 @@ export function createDataFlashParser(): DataFlashStreamParser {
     boardType: '',
     gitHash: '',
   };
+  // Unit/multiplier metadata from UNIT, MULT, FMTU records (newer ArduPilot).
+  // Populated lazily as those messages stream by — empty for older firmware.
+  const unitLabels = new Map<string, string>();
+  const multValues = new Map<string, number>();
   let minTimeUs = Infinity;
   let maxTimeUs = 0;
   let consumed = 0;
@@ -89,6 +93,46 @@ export function createDataFlashParser(): DataFlashStreamParser {
     combined.set(buffer, 0);
     combined.set(chunk, buffer.length);
     buffer = combined;
+  }
+
+  // Process UNIT/MULT/FMTU records that carry units metadata. ArduPilot logs
+  // these in the header before normal data flows, but we can't assume strict
+  // ordering — UNIT and MULT entries should be ready by the time we process
+  // their FMTU references in practice.
+  function extractUnitsMetadata(msg: DataFlashMessage): void {
+    if (msg.type === 'UNIT') {
+      // UNIT format: "QbZ" → TimeUS (Q), Id (b = int8), Label (Z = char[64])
+      const idVal = msg.fields['Id'];
+      const label = msg.fields['Label'];
+      if (typeof idVal === 'number' && typeof label === 'string') {
+        unitLabels.set(String.fromCharCode(idVal), label);
+      }
+      return;
+    }
+    if (msg.type === 'MULT') {
+      // MULT format: "Qbd" → TimeUS, Id (int8), Mult (float64)
+      const idVal = msg.fields['Id'];
+      const mult = msg.fields['Mult'];
+      if (typeof idVal === 'number' && typeof mult === 'number') {
+        multValues.set(String.fromCharCode(idVal), mult);
+      }
+      return;
+    }
+    if (msg.type === 'FMTU') {
+      // FMTU format: "QBNN" → TimeUS, FmtType (uint8), UnitIds (char[16]), MultIds (char[16])
+      const fmtType = msg.fields['FmtType'];
+      const unitIds = msg.fields['UnitIds'];
+      const multIds = msg.fields['MultIds'];
+      if (typeof fmtType !== 'number') return;
+      const target = formats.get(fmtType);
+      if (!target) return;
+      if (typeof unitIds === 'string') {
+        target.unitChars = Array.from(unitIds);
+      }
+      if (typeof multIds === 'string') {
+        target.multChars = Array.from(multIds);
+      }
+    }
   }
 
   function extractMetadata(msg: DataFlashMessage): void {
@@ -165,6 +209,7 @@ export function createDataFlashParser(): DataFlashStreamParser {
         }
 
         extractMetadata(msg);
+        extractUnitsMetadata(msg);
 
         let arr = messages.get(msg.type);
         if (!arr) {
@@ -208,6 +253,8 @@ export function createDataFlashParser(): DataFlashStreamParser {
           endUs: maxTimeUs,
         },
         messageTypes: Array.from(messages.keys()).sort(),
+        unitLabels,
+        multValues,
       };
     },
   };
@@ -218,4 +265,31 @@ export function parseDataFlashLog(buffer: Uint8Array): DataFlashLog {
   const parser = createDataFlashParser();
   parser.feed(buffer);
   return parser.finalize();
+}
+
+/**
+ * Resolve the human-readable unit string for a given message type and field
+ * name (e.g. ('ATT', 'Roll') → "deg"). Returns undefined when the log lacks
+ * UNIT/FMTU records, the field is unitless ('-'), or the type/field is
+ * unknown. Cheap to call per render — does linear search over formats by name
+ * (typically O(few hundred) and only the first match is needed).
+ */
+export function getFieldUnit(
+  log: DataFlashLog,
+  messageType: string,
+  fieldName: string,
+): string | undefined {
+  if (log.unitLabels.size === 0) return undefined;
+  for (const fmt of log.formats.values()) {
+    if (fmt.name !== messageType) continue;
+    if (!fmt.unitChars) return undefined;
+    const idx = fmt.fields.indexOf(fieldName);
+    if (idx === -1) return undefined;
+    const unitChar = fmt.unitChars[idx];
+    if (!unitChar || unitChar === '-') return undefined;
+    const label = log.unitLabels.get(unitChar);
+    if (!label || label === '-' || label === '') return undefined;
+    return label;
+  }
+  return undefined;
 }

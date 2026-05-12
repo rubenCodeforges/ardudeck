@@ -30,12 +30,18 @@ function formatArea(sqMeters: number): string {
 }
 
 export function SurveyStatsPanel({ stats }: SurveyStatsPanelProps) {
-  if (stats.photoCount === 0) return null;
+  // Hide stats only when there's nothing to show. Manual/ground-vehicle mode
+  // has photoCount=0 but real lineCount/distance/area — still useful.
+  if (stats.photoCount === 0 && stats.lineCount === 0) return null;
+
+  // Manual mode has no camera, so GSD and Photos are meaningless. We detect
+  // it heuristically (photoCount=0 with lines > 0 only happens in that mode).
+  const isManualMode = stats.photoCount === 0 && stats.lineCount > 0;
 
   return (
     <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
-      <StatItem label="GSD" value={`${stats.gsd.toFixed(1)} cm/px`} />
-      <StatItem label="Photos" value={stats.photoCount.toLocaleString()} />
+      {!isManualMode && <StatItem label="GSD" value={`${stats.gsd.toFixed(1)} cm/px`} />}
+      {!isManualMode && <StatItem label="Photos" value={stats.photoCount.toLocaleString()} />}
       <StatItem label="Lines" value={stats.lineCount.toString()} />
       <StatItem label="Distance" value={formatDistance(stats.flightDistance)} />
       <StatItem label="Time" value={formatTime(stats.flightTime)} />

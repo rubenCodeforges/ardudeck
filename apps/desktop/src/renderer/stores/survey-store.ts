@@ -1,10 +1,14 @@
 import { create } from 'zustand';
-import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern, AltitudeReference } from '../components/survey/survey-types';
+import { subscribeWithSelector } from 'zustand/middleware';
+import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern, AltitudeReference, GroundPattern } from '../components/survey/survey-types';
 import { DEFAULT_SURVEY_CONFIG } from '../components/survey/survey-types';
 import type { CameraPreset } from '../components/survey/survey-types';
 import { generateGrid } from '../components/survey/generators/grid-generator';
 import { generateCrosshatch } from '../components/survey/generators/crosshatch-generator';
 import { generateCircular } from '../components/survey/generators/circular-generator';
+import { generateSpiral } from '../components/survey/generators/spiral-generator';
+import { generatePerimeterFill } from '../components/survey/generators/perimeter-fill-generator';
+import { useSettingsStore } from './settings-store';
 
 type DrawMode = 'none' | 'polygon';
 
@@ -37,6 +41,9 @@ interface SurveyStore {
   setOvershoot: (overshoot: number) => void;
   setAltitudeReference: (ref: AltitudeReference) => void;
   setShowFootprints: (show: boolean) => void;
+  setGroundPattern: (pattern: GroundPattern) => void;
+  setSpiralDirection: (direction: 'inward' | 'outward') => void;
+  setPerimeterPasses: (passes: number) => void;
 
   // Polygon editing
   updateVertex: (index: number, lat: number, lng: number) => void;
@@ -47,6 +54,14 @@ interface SurveyStore {
   clearSurvey: () => void;
   activateSurvey: () => void;
   deactivateSurvey: () => void;
+
+  // Preset application — overlays a preset's config slice + (optional) camera
+  // onto the current config in a single store update. Only the fields the
+  // preset specifies are overwritten; gridAngle and polygon are preserved.
+  applyPresetConfig: (
+    partial: Partial<Omit<SurveyConfig, 'polygon' | 'gridAngle'>>,
+    camera?: CameraPreset,
+  ) => void;
 }
 
 function runGenerator(config: SurveyConfig): SurveyResult | null {
@@ -59,12 +74,22 @@ function runGenerator(config: SurveyConfig): SurveyResult | null {
       return generateCrosshatch(config);
     case 'circular':
       return generateCircular(config);
+    case 'spiral':
+      return generateSpiral(config);
+    case 'perimeter-fill':
+      return generatePerimeterFill(config);
     default:
       return generateGrid(config);
   }
 }
 
-export const useSurveyStore = create<SurveyStore>((set, get) => ({
+// Module-level flag — true after the initial hydration from settings, used to
+// suppress the persistence subscriber during the very first applyPresetConfig
+// call (otherwise we'd save the hydrated config back to itself before any
+// user change, which is harmless but noisy).
+let isHydratingFromSettings = false;
+
+export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, get) => ({
   drawMode: 'none',
   drawingVertices: [],
   polygon: null,
@@ -144,6 +169,26 @@ export const useSurveyStore = create<SurveyStore>((set, get) => ({
     set({ showFootprints });
   },
 
+  setGroundPattern: (groundPattern) => {
+    set({ config: { ...get().config, groundPattern } });
+    // No regeneration needed — the waypoint geometry is identical between
+    // boustrophedon and reverse-alternating. Only mission-builder reads this
+    // when materializing the mission (to insert DO_SET_REVERSE between lines).
+  },
+
+  setSpiralDirection: (spiralDirection) => {
+    set({ config: { ...get().config, spiralDirection } });
+    get().generateSurvey();
+  },
+
+  setPerimeterPasses: (perimeterPasses) => {
+    // Clamp at the same range the generator enforces so the slider/UI can't
+    // push past what's geometrically sensible.
+    const clamped = Math.max(1, Math.min(5, Math.round(perimeterPasses)));
+    set({ config: { ...get().config, perimeterPasses: clamped } });
+    get().generateSurvey();
+  },
+
   updateVertex: (index, lat, lng) => {
     const { polygon } = get();
     if (!polygon) return;
@@ -193,4 +238,64 @@ export const useSurveyStore = create<SurveyStore>((set, get) => ({
       result: null,
     });
   },
-}));
+
+  applyPresetConfig: (partial, camera) => {
+    const current = get().config;
+    // Merge — preset wins on keys it sets, current stays for everything else.
+    // Camera is only replaced when the preset explicitly provides one (e.g.
+    // Mower template flips into Manual mode); otherwise the user's chosen
+    // camera survives a template switch.
+    const nextConfig = {
+      ...current,
+      ...partial,
+      ...(camera ? { camera } : {}),
+    };
+    set({ config: nextConfig });
+    // Regenerate so the map updates immediately.
+    get().generateSurvey();
+  },
+})));
+
+// Persistence: any change to the survey config is serialized and pushed to
+// settings-store, which auto-saves it via the existing electron-store flow.
+// We strip the polygon (scene-specific, not worth carrying across sessions —
+// loading a saved polygon on a different map location would be confusing).
+useSurveyStore.subscribe(
+  (state) => state.config,
+  (config) => {
+    if (isHydratingFromSettings) return;
+    // The Omit<SurveyConfig, 'polygon'> shape carries no polygon field already,
+    // but the cast keeps us tolerant of future shape changes.
+    useSettingsStore.getState().setSurveySavedConfig(config as unknown as Record<string, unknown>);
+  },
+);
+
+// Shared hydration helper — applies saved config over the defaults without
+// triggering the persistence subscriber above.
+function applySavedConfig(saved: Record<string, unknown>) {
+  isHydratingFromSettings = true;
+  try {
+    const merged = { ...DEFAULT_SURVEY_CONFIG, ...(saved as Partial<typeof DEFAULT_SURVEY_CONFIG>) };
+    useSurveyStore.setState({ config: merged });
+  } finally {
+    isHydratingFromSettings = false;
+  }
+}
+
+// Hydration: when settings finishes loading (single false→true transition of
+// _isInitialized) and a saved config exists, apply it.
+useSettingsStore.subscribe(
+  (state) => state._isInitialized,
+  (init, prev) => {
+    if (!init || prev) return;
+    const saved = useSettingsStore.getState().surveySavedConfig;
+    if (saved) applySavedConfig(saved);
+  },
+);
+
+// HMR / late-import safety: if settings finished loading before this module
+// attached its subscriber, hydrate immediately from the current snapshot.
+if (useSettingsStore.getState()._isInitialized) {
+  const saved = useSettingsStore.getState().surveySavedConfig;
+  if (saved) applySavedConfig(saved);
+}

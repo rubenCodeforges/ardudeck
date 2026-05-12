@@ -3,7 +3,18 @@
  * Types and interfaces for photogrammetry survey planning
  */
 
-export type SurveyPattern = 'grid' | 'crosshatch' | 'circular';
+export type SurveyPattern = 'grid' | 'crosshatch' | 'circular' | 'spiral' | 'perimeter-fill';
+
+/**
+ * Ground-vehicle path pattern. Only meaningful in manual / mower mode
+ * (camera.manualCorridorWidth set). Camera flights always use the standard
+ * boustrophedon path; the rover may need to avoid U-turns.
+ * - boustrophedon: zigzag, rover turns 180° at each line end (skid-steer friendly)
+ * - reverse-alternating: rover drives forward on odd lines and in reverse on
+ *   even lines, jogging perpendicular between them. Inserts MAV_CMD.DO_SET_REVERSE
+ *   between line pairs. Needed for Ackermann/car-like mowers that can't turn in place.
+ */
+export type GroundPattern = 'boustrophedon' | 'reverse-alternating';
 
 /**
  * Altitude reference frame for survey waypoints.
@@ -20,6 +31,12 @@ export interface CameraPreset {
   imageWidth: number;     // pixels
   imageHeight: number;    // pixels
   focalLength: number;    // mm
+  /**
+   * When set (>0), bypasses camera-based footprint calculation and uses this
+   * value as the survey corridor width directly. Intended for non-camera use
+   * cases (e.g. ArduRover lawnmower defining lines by cutting deck width).
+   */
+  manualCorridorWidth?: number;  // meters
 }
 
 export interface LatLng {
@@ -38,6 +55,12 @@ export interface SurveyConfig {
   gridAngle: number;         // degrees, 0=north-south lines
   overshoot: number;         // meters past polygon edge for turns
   altitudeReference: AltitudeReference;
+  /** Ground-vehicle path pattern. Only consumed in manual / mower mode. */
+  groundPattern?: GroundPattern;
+  /** Spiral direction (only used when pattern === 'spiral'). */
+  spiralDirection?: 'inward' | 'outward';
+  /** Number of perimeter passes before the grid fill (only used when pattern === 'perimeter-fill'). */
+  perimeterPasses?: number;
 }
 
 export interface SurveyResult {
@@ -77,4 +100,7 @@ export const DEFAULT_SURVEY_CONFIG: Omit<SurveyConfig, 'polygon'> = {
   gridAngle: 0,
   overshoot: 20,
   altitudeReference: 'relative',
+  groundPattern: 'boustrophedon',
+  spiralDirection: 'inward',
+  perimeterPasses: 2,
 };

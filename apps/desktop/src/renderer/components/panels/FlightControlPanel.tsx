@@ -8,21 +8,19 @@
  */
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useFlightControlStore } from '../../stores/flight-control-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMessagesStore } from '../../stores/messages-store';
 import { useMissionStore } from '../../stores/mission-store';
-import { useSettingsStore } from '../../stores/settings-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { isPreArmMessage, extractPreArmReason, matchPreArmError } from '../../../shared/prearm-checks';
 import { PreArmParamFix } from '../prearm/PreArmParamFix';
 import { PanelContainer, SectionTitle } from './panel-utils';
 import { getVehicleClass, ARDUPILOT_COMMON_MODES, VEHICLE_CAPABILITIES, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
-import { altHold, executeTakeoff, presentTakeoff, type TakeoffContext } from './takeoff-strategies';
-import { MAV_CMD } from '../../../shared/mission-types';
+import { ensureAutoMissionTakeoffPrefix, type MissionItem } from '../../../shared/mission-types';
+import { executeTakeoff, presentTakeoff } from './takeoff-strategies';
 
 // =============================================================================
 // Visual Components
@@ -462,95 +460,8 @@ const MISSION_MODES: Record<ArduPilotVehicleClass, { auto: number; pause: number
   sub:    { auto: 3,  pause: 16, pauseLabel: 'PosHold' },
 };
 
-/**
- * MAVLink NAV_TAKEOFF / TKOFF_ALT / VTOL takeoff all use metres above home on the wire.
- * Convert a desired AMSL altitude using estimated home AMSL from GLOBAL_POSITION_INT-style telemetry.
- */
-function resolveTakeoffRelativeMetres(
-  inputM: number,
-  reference: 'above_home' | 'amsl',
-  position: { alt: number; relativeAlt: number },
-): { ok: true; relativeM: number; homeAmsl: number } | { ok: false; reason: string } {
-  if (!Number.isFinite(inputM)) {
-    return { ok: false, reason: 'Invalid altitude value' };
-  }
-  const homeAmsl = position.alt - position.relativeAlt;
-  if (!Number.isFinite(homeAmsl)) {
-    return { ok: false, reason: 'No valid altitude telemetry — wait for position estimate' };
-  }
-  const relativeM = reference === 'amsl' ? inputM - homeAmsl : inputM;
-  if (!Number.isFinite(relativeM)) {
-    return { ok: false, reason: 'Could not compute height above home' };
-  }
-  if (relativeM < 0.5) {
-    return {
-      ok: false,
-      reason:
-        reference === 'amsl'
-          ? `Target ${inputM}m MSL is at or below home (~${homeAmsl.toFixed(0)}m MSL). Increase target.`
-          : 'Height above home must be at least 0.5m',
-    };
-  }
-  return { ok: true, relativeM, homeAmsl };
-}
-
-/** Loiter / QLoiter / rover Loiter — SITL mode channels can override SET_MODE; optional repo hold eases drift. */
-function needsHoldPositionPrep(vehicleClass: ArduPilotVehicleClass, modeNum: number): boolean {
-  return (
-    (vehicleClass === 'copter' && modeNum === 5) ||
-    (vehicleClass === 'plane' && modeNum === 12) ||
-    (vehicleClass === 'vtol' && modeNum === 19) ||
-    (vehicleClass === 'rover' && modeNum === 5)
-  );
-}
-
-/**
- * SITL reads UDP RC at 50 Hz — a prior climb stick (e.g. VTOL takeoff throttle 0.7) keeps
- * commanding climb after MAVLink SET_MODE until we push a full neutral frame.
- */
-async function neutralizeSitlVirtualRcSticks(): Promise<void> {
-  if (!useArduPilotSitlStore.getState().isRunning) return;
-  await window.electronAPI.ardupilotSitlRcSend({
-    roll: 0, pitch: 0, yaw: 0, throttle: 0,
-    aux1: 0, aux2: 0, aux3: 0, aux4: 0,
-  });
-  await new Promise((r) => setTimeout(r, 120));
-}
-
-/**
- * SITL: neutral RC so FLTMODE sticks don’t fight SET_MODE.
- * MAVLink goto: only for frames where DO_REPOSITION is safe before a hold mode.
- * On **copter / VTOL** in GUIDED + NAV_TAKEOFF (or any guided climb), DO_REPOSITION
- * uses MAV_DO_REPOSITION_FLAGS_CHANGE_MODE → stays/re-enters GUIDED and can **keep
- * vertical climb** instead of yielding to Loiter — skip goto; Loiter/QLoiter latch
- * at the current point without this prelude.
- */
-async function prepareHoldPositionBeforeSetMode(vehicleClass: ArduPilotVehicleClass): Promise<void> {
-  const sitlRunning = useArduPilotSitlStore.getState().isRunning;
-  if (sitlRunning) {
-    await neutralizeSitlVirtualRcSticks();
-  }
-
-  if (vehicleClass === 'copter' || vehicleClass === 'vtol') {
-    return;
-  }
-
-  const { flight, position } = useTelemetryStore.getState();
-  if (!flight.armed) return;
-
-  const { lat, lon, relativeAlt: rel } = position;
-  const latOk = Number.isFinite(lat) && Math.abs(lat) <= 90;
-  const lonOk = Number.isFinite(lon) && Math.abs(lon) <= 180;
-  if (!latOk || !lonOk || !Number.isFinite(rel)) return;
-
-  await window.electronAPI.mavlinkGoto(lat, lon, rel);
-  await new Promise((r) => setTimeout(r, 150));
-}
-
 function MavlinkFlightControl() {
-  const { t } = useTranslation();
   const flight = useTelemetryStore((s) => s.flight);
-  const position = useTelemetryStore((s) => s.position);
   const messages = useMessagesStore((s) => s.messages);
   const connectionState = useConnectionStore((s) => s.connectionState);
   // Multi-signal VTOL detection: MAV_TYPE alone is unreliable on first
@@ -566,12 +477,11 @@ function MavlinkFlightControl() {
   const availableModes = ARDUPILOT_COMMON_MODES[vehicleClass];
   const capabilities = VEHICLE_CAPABILITIES[vehicleClass];
   const missionItems = useMissionStore((s) => s.missionItems);
-  const missionLoaded = missionItems.length > 0;
   const currentSeq = useMissionStore((s) => s.currentSeq);
   const fetchMission = useMissionStore((s) => s.fetchMission);
-  const missionDirty = useMissionStore((s) => s.isDirty);
   const uploadMission = useMissionStore((s) => s.uploadMission);
-  const updateWaypoint = useMissionStore((s) => s.updateWaypoint);
+  const missionStoreLoading = useMissionStore((s) => s.isLoading);
+  const missionLoaded = missionItems.length > 0;
   const missionModes = MISSION_MODES[vehicleClass];
   const isInAuto = flight.modeNum === missionModes.auto;
   const isInPause = flight.modeNum === missionModes.pause;
@@ -586,16 +496,7 @@ function MavlinkFlightControl() {
   const [modeLoading, setModeLoading] = useState<number | null>(null);
   const [showTakeoffDialog, setShowTakeoffDialog] = useState(false);
   const [takeoffAlt, setTakeoffAlt] = useState(10);
-  /** When true, {@link takeoffAlt} is interpreted as target AMSL (metres above mean sea level). */
-  const [takeoffAltIsAmsl, setTakeoffAltIsAmsl] = useState(false);
-  const pendingAutoMissionStartRef = useRef(false);
-
-  /** Forwards to main process stdout as `[AUTO/MISSION] [ui] …` (grep in dev terminal). */
-  const uiMissionDiag = (msg: string) => {
-    void window.electronAPI.autoMissionDiag?.(
-      `${msg} | telem armed=${flight.armed} modeNum=${flight.modeNum}(${flight.mode}) isInAuto=${isInAuto} missionWp=${missionItems.length} dirty=${missionDirty}`,
-    );
-  };
+  const [autoMissionBusy, setAutoMissionBusy] = useState(false);
 
   // Detect panel orientation for responsive layout
   useEffect(() => {
@@ -695,194 +596,19 @@ function MavlinkFlightControl() {
     }
   };
 
-  const normalizeTakeoffAltitudeToWp = useCallback((): boolean => {
-    if (!missionLoaded) return false;
-    const first = missionItems[0];
-    if (!first) return false;
-    const firstIsTakeoff =
-      first.command === MAV_CMD.NAV_TAKEOFF || first.command === MAV_CMD.NAV_VTOL_TAKEOFF;
-    if (!firstIsTakeoff || typeof first.altitude !== 'number') return false;
-
-    const { defaultTakeoffAltitude } = useSettingsStore.getState().missionDefaults;
-    // Mission planning "Takeoff altitude" (Settings → Mission) — not the first WP altitude.
-    let takeoffAlt = Math.max(2, defaultTakeoffAltitude);
-
-    const firstNavAfterTakeoff = missionItems.find(
-      (item) => item.seq > first.seq && (
-        item.command === MAV_CMD.NAV_WAYPOINT || item.command === MAV_CMD.NAV_SPLINE_WAYPOINT
-      ),
-    );
-
-    // Do not command takeoff above the first cruise waypoint (avoids climb-then-descend to WP1).
-    if (firstNavAfterTakeoff && typeof firstNavAfterTakeoff.altitude === 'number') {
-      takeoffAlt = Math.min(takeoffAlt, Math.max(2, firstNavAfterTakeoff.altitude));
-    }
-
-    if (Math.abs(first.altitude - takeoffAlt) < 0.05) return false;
-    updateWaypoint(first.seq, { altitude: takeoffAlt });
-    return true;
-  }, [missionLoaded, missionItems, updateWaypoint]);
-
-  /**
-   * ArduPilot often advances MISSION_CURRENT to 1 (first NAV waypoint) while still
-   * disarmed in AUTO, skipping seq 0 NAV_TAKEOFF — vehicle never climbs. Logs showed
-   * MISSION_CURRENT seq=1 before ARM while seq 0 was Takeoff. Force current back to 0
-   * before MISSION_START when the mission begins with a takeoff command.
-   */
-  const beginAutoMissionExecution = async (): Promise<boolean> => {
-    const sitlRunning = useArduPilotSitlStore.getState().isRunning;
-    // SITL RC sender defaults aux1-4 to -1 → 1000 PWM (first FLTMODE slot, e.g. Stabilize/Circle).
-    // That stream runs at 50 Hz and can fight GCS-selected AUTO so the craft never runs the mission.
-    // Push mode channels to neutral (1500 µs) so MAVLink mode is not continuously overridden.
-    if (sitlRunning) {
-      uiMissionDiag(
-        'beginAutoMission: SITL — ardupilotSitlRcSend aux1..4=0 (1500µs) so FLTMODE sticks do not override AUTO',
-      );
-      await window.electronAPI.ardupilotSitlRcSend({
-        aux1: 0,
-        aux2: 0,
-        aux3: 0,
-        aux4: 0,
-      });
-      await new Promise((r) => setTimeout(r, 120));
-    }
-
-    const items = useMissionStore.getState().missionItems;
-    const first = items[0];
-    const firstIsTakeoff =
-      !!first &&
-      (first.command === MAV_CMD.NAV_TAKEOFF || first.command === MAV_CMD.NAV_VTOL_TAKEOFF);
-
-    if (firstIsTakeoff) {
-      uiMissionDiag(
-        'beginAutoMission: MISSION_SET_CURRENT 0 so NAV_TAKEOFF (seq 0) runs — FC may have been at seq≥1 in AUTO disarmed',
-      );
-      const setCur = await window.electronAPI.setCurrentWaypoint(0);
-      if (!setCur.success) {
-        uiMissionDiag(`beginAutoMission: setCurrentWaypoint(0) failed ${setCur.error ?? ''}`);
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-
-    const ok = await window.electronAPI.mavlinkMissionStart(0, 0);
-    if (!ok) uiMissionDiag('beginAutoMission: mavlinkMissionStart IPC returned false');
-    return ok;
-  };
-
-  /** ArduCopter custom_mode 2 is AltHold (baro only); pilots expect “hang here” → Loiter + same prep as Loiter pill. */
-  const COPTER_MODE_ALTHOLD = 2;
-  const COPTER_MODE_LOITER = 5;
-  /** While still in GUIDED + NAV_TAKEOFF climb, cut WPNAV climb (m/s) before Loiter so vertical rate drops immediately. */
-  const COPTER_ALTHOLD_GUIDED_CLIMB_CAP_MS = 0.5;
-
   // Mode switching
   const handleSetMode = async (modeNum: number) => {
     if (modeLoading !== null) return;
-
-    if (
-      useArduPilotSitlStore.getState().isRunning &&
-      (vehicleClass === 'copter' || vehicleClass === 'vtol')
-    ) {
-      await neutralizeSitlVirtualRcSticks();
-    }
-
-    if (vehicleClass === 'copter' && modeNum === COPTER_MODE_ALTHOLD) {
-      if (!flight.armed) {
-        setStatusMsg({ text: 'Arm first to hold at current altitude', type: 'error' });
-        setTimeout(() => setStatusMsg(null), 3500);
-        return;
-      }
-      pendingAutoMissionStartRef.current = false;
-      setModeLoading(COPTER_MODE_LOITER);
-      setStatusMsg({ text: 'AltHold: slowing climb, then Loiter…', type: 'info' });
-      try {
-        uiMissionDiag('AltHold pill → climb cap if Guided + altHold() → Loiter');
-        await prepareHoldPositionBeforeSetMode(vehicleClass);
-        const storeNow = useTelemetryStore.getState();
-        if (storeNow.flight.modeNum === capabilities.guidedModeNum) {
-          await window.electronAPI.mavlinkDoChangeClimbSpeed(COPTER_ALTHOLD_GUIDED_CLIMB_CAP_MS);
-          await new Promise((r) => setTimeout(r, 150));
-        }
-        const rel = useTelemetryStore.getState().position.relativeAlt;
-        const altRef =
-          Number.isFinite(rel) && rel > 0.25 ? Math.min(500, Math.max(0.5, rel)) : 1;
-        const result = await altHold(buildTakeoffContext(altRef));
-        if (!result.ok) {
-          setStatusMsg({ text: result.reason, type: 'error' });
-          setModeLoading(null);
-          setTimeout(() => setStatusMsg(null), 4500);
-          return;
-        }
-        setTimeout(() => setModeLoading(null), 3000);
-      } catch (err) {
-        console.error('[FlightControl] AltHold → Loiter path failed:', err);
-        setStatusMsg({ text: 'Alt hold failed', type: 'error' });
-        setModeLoading(null);
-        setTimeout(() => setStatusMsg(null), 3500);
-      }
-      return;
-    }
-
-    if (modeNum !== missionModes.auto) {
-      pendingAutoMissionStartRef.current = false;
-    }
     setModeLoading(modeNum);
     setStatusMsg(null);
     try {
-      uiMissionDiag(
-        `handleSetMode → custom_mode=${modeNum} (AUTO=${missionModes.auto}) missionLoaded=${missionLoaded} missionDirty=${missionDirty}`,
-      );
-      let missionWasNormalized = false;
-      if (modeNum === missionModes.auto && missionLoaded) {
-        missionWasNormalized = normalizeTakeoffAltitudeToWp();
-        if (missionWasNormalized) {
-          await new Promise((r) => setTimeout(r, 50));
-        }
-      }
-
-      if (modeNum === missionModes.auto && missionLoaded && (missionDirty || missionWasNormalized)) {
-        setStatusMsg({ text: 'Uploading mission to FC before AUTO…', type: 'info' });
-        const uploaded = await uploadMission();
-        if (!uploaded) {
-          uiMissionDiag('uploadMission() returned false — AUTO aborted (check MISSION_ACK / timeouts in main log)');
-          setStatusMsg({ text: 'Mission upload failed — AUTO start aborted', type: 'error' });
-          setModeLoading(null);
-          setTimeout(() => setStatusMsg(null), 3500);
-          return;
-        }
-        await new Promise((r) => setTimeout(r, 250));
-      }
-
-      if (needsHoldPositionPrep(vehicleClass, modeNum)) {
-        await prepareHoldPositionBeforeSetMode(vehicleClass);
-      }
-
       const ok = await window.electronAPI.mavlinkSetMode(modeNum);
       if (!ok) {
-        uiMissionDiag('mavlinkSetMode IPC failed (not connected?)');
         setStatusMsg({ text: 'Not connected', type: 'error' });
         setModeLoading(null);
         setTimeout(() => setStatusMsg(null), 3000);
-        return;
       }
-
-
-      if (modeNum === missionModes.auto && missionLoaded) {
-        if (!flight.armed) {
-          pendingAutoMissionStartRef.current = true;
-          uiMissionDiag('AUTO while disarmed: set pendingAutoMissionStart → expect MISSION_START after arm + HEARTBEAT shows AUTO');
-          setStatusMsg({ text: 'AUTO queued - arm to start mission', type: 'info' });
-          setTimeout(() => setStatusMsg(null), 3000);
-        } else {
-          uiMissionDiag('AUTO while armed: beginAutoMissionExecution()');
-          const missionStartOk = await beginAutoMissionExecution();
-          setStatusMsg({
-            text: missionStartOk ? 'Mission started (AUTO)' : 'AUTO set, but mission start failed',
-            type: missionStartOk ? 'success' : 'error',
-          });
-          setTimeout(() => setStatusMsg(null), 3500);
-        }
-      }
+      // Mode confirmation comes via heartbeat - timeout clears loading
       setTimeout(() => setModeLoading(null), 3000);
     } catch {
       setStatusMsg({ text: 'Mode change failed', type: 'error' });
@@ -890,38 +616,6 @@ function MavlinkFlightControl() {
       setTimeout(() => setStatusMsg(null), 3000);
     }
   };
-
-
-  // If AUTO was selected before arming, start mission exactly once after
-  // heartbeat confirms armed+AUTO.
-  // Important: do NOT clear pending when !isInAuto — heartbeat can lag behind
-  // SET_MODE by up to ~1s; clearing early dropped MISSION_START so the craft
-  // stayed in AUTO on the ground without executing the mission.
-  useEffect(() => {
-    if (!missionLoaded) {
-      pendingAutoMissionStartRef.current = false;
-      return;
-    }
-    if (!isInAuto || !flight.armed) {
-      return;
-    }
-    if (!pendingAutoMissionStartRef.current) return;
-    pendingAutoMissionStartRef.current = false;
-    void (async () => {
-      try {
-        uiMissionDiag('post-arm effect: armed+AUTO+had pending → beginAutoMissionExecution()');
-        const missionStartOk = await beginAutoMissionExecution();
-        setStatusMsg({
-          text: missionStartOk ? 'AUTO armed: mission started from item 0' : 'AUTO armed, but mission start failed',
-          type: missionStartOk ? 'success' : 'error',
-        });
-        setTimeout(() => setStatusMsg(null), 3500);
-      } catch {
-        setStatusMsg({ text: 'AUTO armed mission kick failed', type: 'error' });
-        setTimeout(() => setStatusMsg(null), 3500);
-      }
-    })();
-  }, [flight.armed, missionLoaded, isInAuto]);
 
   // Clear mode loading when heartbeat confirms the switch
   useEffect(() => {
@@ -947,47 +641,174 @@ function MavlinkFlightControl() {
     return check(); // one last check
   }, []);
 
-  /** Shared MAVLink context for takeoff + AltHold pill (latter only uses mode switch paths). */
-  const buildTakeoffContext = useCallback(
-    (altitudeM: number): TakeoffContext => {
-      const store = useTelemetryStore.getState;
-      return {
-        altitudeM,
-        forceArm,
-        vehicleClass,
-        capabilities,
-        isSitl: connectionState.isSitl ?? sitlIsRunning,
-        getFlight:   () => store().flight,
-        getGps:      () => store().gps,
-        getPosition: () => store().position,
-        getVfrHud:   () => store().vfrHud,
-        getParam: (id) => {
-          const p = useParameterStore.getState().parameters.get(id);
-          return p ? { value: p.value, type: p.type } : undefined;
-        },
-        api: {
-          mavlinkSetMode:     window.electronAPI.mavlinkSetMode,
-          mavlinkArmDisarm:   window.electronAPI.mavlinkArmDisarm,
-          mavlinkTakeoff:     window.electronAPI.mavlinkTakeoff,
-          mavlinkDoChangeClimbSpeed: window.electronAPI.mavlinkDoChangeClimbSpeed,
-          mavlinkVtolTakeoff: window.electronAPI.mavlinkVtolTakeoff,
-          setParameter:       window.electronAPI.setParameter,
-          sitlRcStart:        window.electronAPI.ardupilotSitlRcStart,
-          sitlRcSend:         window.electronAPI.ardupilotSitlRcSend,
-        },
-        setStatus: setStatusMsg,
-        waitForState,
-      };
-    },
-    [
-      forceArm,
-      vehicleClass,
-      capabilities,
-      connectionState.isSitl,
-      sitlIsRunning,
-      waitForState,
-    ],
-  );
+  /**
+   * ArduPilot AUTO from home: GPS/EKF, upload mission (`ensureAutoMissionTakeoffPrefix`
+   * adds NAV_TAKEOFF for copter/VTOL when missing), MISSION_SET_CURRENT 0, AUTO,
+   * arm — FC runs takeoff then waypoints in one plan. Copter with 2+ items: best-effort
+   * wait for `currentSeq >= 1` after arm so UI reflects end of takeoff leg.
+   */
+  const runAutoMissionFlow = useCallback(async () => {
+    if (autoMissionBusy || isLoading) return;
+    const ms0 = useMissionStore.getState();
+
+    if (ms0.missionItems.length === 0) {
+      setStatusMsg({ text: 'No mission — add waypoints in the mission editor', type: 'error' });
+      setTimeout(() => setStatusMsg(null), 5000);
+      return;
+    }
+
+    setAutoMissionBusy(true);
+    setStatusMsg(null);
+    try {
+      setStatusMsg({ text: 'Waiting for GPS/EKF…', type: 'info' });
+      const gpsOk = await waitForState(() => {
+        const g = useTelemetryStore.getState().gps;
+        return g.fixType >= 3 && g.hdop < 2.5;
+      }, 30_000);
+
+      if (!gpsOk) {
+        setStatusMsg({ text: 'GPS/EKF not ready — fix type 3+ and HDOP needed for AUTO', type: 'error' });
+        setTimeout(() => setStatusMsg(null), 6000);
+        return;
+      }
+
+      const ms = useMissionStore.getState();
+      const protocol = useConnectionStore.getState().connectionState?.protocol;
+      const isSitlConn = connectionState.isSitl === true || sitlIsRunning;
+      let preparedMavlinkMission: MissionItem[] | null = null;
+
+      if (protocol === 'msp') {
+        if (ms.isDirty) {
+          setStatusMsg({ text: 'Uploading mission…', type: 'info' });
+          const up = await uploadMission();
+          if (!up) {
+            const err = useMissionStore.getState().error ?? 'Upload failed';
+            setStatusMsg({ text: err, type: 'error' });
+            setTimeout(() => setStatusMsg(null), 6000);
+            return;
+          }
+          const uploadOk = await waitForState(() => !useMissionStore.getState().isLoading, 20_000, 120);
+          if (!uploadOk || useMissionStore.getState().error) {
+            const err = useMissionStore.getState().error ?? 'Mission upload did not finish';
+            setStatusMsg({ text: err, type: 'error' });
+            setTimeout(() => setStatusMsg(null), 6000);
+            return;
+          }
+        }
+      } else {
+        // MAVLink / ArduPilot: always push the prepared mission so the FC cannot
+        // run a stale or empty plan — required for disarmed ground AUTO + NAV_TAKEOFF.
+        const { mission: missionForAuto, didPrepend: didPrependTakeoff } = ensureAutoMissionTakeoffPrefix(
+          ms.missionItems,
+          vehicleClass,
+        );
+        setStatusMsg({
+          text: didPrependTakeoff
+            ? 'Uploading mission (AUTO takeoff from mission alt)…'
+            : 'Uploading mission…',
+          type: 'info',
+        });
+        const up = await uploadMission(missionForAuto);
+        if (!up) {
+          const err = useMissionStore.getState().error ?? 'Upload failed';
+          setStatusMsg({ text: err, type: 'error' });
+          setTimeout(() => setStatusMsg(null), 6000);
+          return;
+        }
+        const uploadOk = await waitForState(() => !useMissionStore.getState().isLoading, 20_000, 120);
+        if (!uploadOk || useMissionStore.getState().error) {
+          const err = useMissionStore.getState().error ?? 'Mission upload did not finish';
+          setStatusMsg({ text: err, type: 'error' });
+          setTimeout(() => setStatusMsg(null), 6000);
+          return;
+        }
+        if (didPrependTakeoff) {
+          useMissionStore.setState({ missionItems: missionForAuto });
+        }
+
+        preparedMavlinkMission = missionForAuto;
+
+        const wpRes = await window.electronAPI?.setCurrentWaypoint?.(0);
+        if (wpRes && !wpRes.success) {
+          setStatusMsg({
+            text: `Mission uploaded — could not reset to WP0 (${wpRes.error ?? 'unknown'})`,
+            type: 'info',
+          });
+          await new Promise((r) => setTimeout(r, 2500));
+          setStatusMsg(null);
+        }
+
+        if (isSitlConn && window.electronAPI?.ardupilotSitlRcStart && window.electronAPI?.ardupilotSitlRcSend) {
+          await window.electronAPI.ardupilotSitlRcStart();
+          await window.electronAPI.ardupilotSitlRcSend({ throttle: -1 });
+        }
+      }
+
+      // GPS fix arrives before EKF "position estimate" — short settle reduces
+      // PreArm: Need Position Estimate when arming into AUTO immediately after.
+      const ekfSettleMs = isSitlConn ? 1200 : 3500;
+      setStatusMsg({ text: 'Waiting for EKF position estimate…', type: 'info' });
+      await new Promise((r) => setTimeout(r, ekfSettleMs));
+
+      setStatusMsg({ text: 'Switching to AUTO…', type: 'info' });
+      const modeSent = await window.electronAPI.mavlinkSetMode(missionModes.auto);
+      if (!modeSent) {
+        setStatusMsg({ text: 'Not connected', type: 'error' });
+        setTimeout(() => setStatusMsg(null), 4000);
+        return;
+      }
+      const modeOk = await waitForState(
+        () => useTelemetryStore.getState().flight.modeNum === missionModes.auto,
+        8_000,
+      );
+      if (!modeOk) {
+        setStatusMsg({ text: 'Failed to enter AUTO — check mode mapping / PreArm', type: 'error' });
+        setTimeout(() => setStatusMsg(null), 6000);
+        return;
+      }
+
+      if (!useTelemetryStore.getState().flight.armed) {
+        setStatusMsg({ text: 'Arming — AUTO will run the mission…', type: 'info' });
+        const armSent = await window.electronAPI.mavlinkArmDisarm(true, forceArm);
+        if (!armSent) {
+          setStatusMsg({ text: 'Arm command not sent', type: 'error' });
+          setTimeout(() => setStatusMsg(null), 4000);
+          return;
+        }
+        const armedOk = await waitForState(() => useTelemetryStore.getState().flight.armed, 8_000);
+        if (!armedOk) {
+          setStatusMsg({ text: 'Arm failed — resolve PreArm checks or use Force', type: 'error' });
+          setTimeout(() => setStatusMsg(null), 6000);
+          return;
+        }
+      }
+
+      if (
+        protocol === 'mavlink' &&
+        vehicleClass === 'copter' &&
+        preparedMavlinkMission &&
+        preparedMavlinkMission.length > 1
+      ) {
+        setStatusMsg({ text: 'Mission: takeoff leg, then enroute…', type: 'info' });
+        await waitForState(() => (useMissionStore.getState().currentSeq ?? 0) >= 1, 120_000, 400);
+      }
+
+      setStatusMsg({ text: 'AUTO mission running', type: 'success' });
+      setTimeout(() => setStatusMsg(null), 4000);
+    } finally {
+      setAutoMissionBusy(false);
+    }
+  }, [
+    autoMissionBusy,
+    isLoading,
+    uploadMission,
+    waitForState,
+    forceArm,
+    missionModes.auto,
+    vehicleClass,
+    connectionState.isSitl,
+    sitlIsRunning,
+  ]);
 
   // Takeoff dispatch: each vehicle class has its own self-contained procedure
   // in ./takeoff-strategies.ts (copter NAV_TAKEOFF, plane TAKEOFF mode, VTOL
@@ -997,30 +818,37 @@ function MavlinkFlightControl() {
   const handleTakeoff = async () => {
     setShowTakeoffDialog(false);
     const store = useTelemetryStore.getState;
-    const resolved = resolveTakeoffRelativeMetres(
-      takeoffAlt,
-      takeoffAltIsAmsl ? 'amsl' : 'above_home',
-      store().position,
-    );
-    if (!resolved.ok) {
-      setStatusMsg({ text: resolved.reason, type: 'error' });
-      setTimeout(() => setStatusMsg(null), 5000);
-      return;
-    }
-
-    const result = await executeTakeoff(buildTakeoffContext(resolved.relativeM));
+    const result = await executeTakeoff({
+      altitudeM:    takeoffAlt,
+      forceArm,
+      vehicleClass,
+      capabilities,
+      isSitl: connectionState.isSitl ?? sitlIsRunning,
+      getFlight:   () => store().flight,
+      getGps:      () => store().gps,
+      getPosition: () => store().position,
+      getParam: (id) => {
+        const p = useParameterStore.getState().parameters.get(id);
+        return p ? { value: p.value, type: p.type } : undefined;
+      },
+      api: {
+        mavlinkSetMode:     window.electronAPI.mavlinkSetMode,
+        mavlinkArmDisarm:   window.electronAPI.mavlinkArmDisarm,
+        mavlinkTakeoff:     window.electronAPI.mavlinkTakeoff,
+        mavlinkVtolTakeoff: window.electronAPI.mavlinkVtolTakeoff,
+        setParameter:       window.electronAPI.setParameter,
+        sitlRcStart:        window.electronAPI.ardupilotSitlRcStart,
+        sitlRcSend:         window.electronAPI.ardupilotSitlRcSend,
+      },
+      setStatus: setStatusMsg,
+      waitForState,
+    });
     if (result.ok) {
-      setStatusMsg({
-        text: takeoffAltIsAmsl
-          ? `NAV_TAKEOFF ~${takeoffAlt}m MSL (${resolved.relativeM.toFixed(1)}m above home)`
-          : `NAV_TAKEOFF ${resolved.relativeM.toFixed(1)}m above home`,
-        type: 'info',
-      });
+      setStatusMsg({ text: `Taking off to ${takeoffAlt}m...`, type: 'success' });
     } else {
       setStatusMsg({ text: result.reason, type: 'error' });
     }
-    // Leave success status longer so climb milestones + "Reached target altitude" can appear.
-    setTimeout(() => setStatusMsg(null), result.ok ? 12_000 : 5000);
+    setTimeout(() => setStatusMsg(null), 3000);
   };
 
   // Per-vehicle button + dialog copy comes from the strategy module.
@@ -1034,7 +862,18 @@ function MavlinkFlightControl() {
   const landDisabledReason = capabilities.land.disabledReason;
 
   // Status message color
-  const statusColor = statusMsg?.type === 'success' ? 'text-emerald-400' : statusMsg?.type === 'error' ? 'text-red-400' : 'text-content-secondary';
+  const statusColor =
+    statusMsg?.type === 'success' ? 'text-emerald-400' :
+    statusMsg?.type === 'error' ? 'text-red-400' :
+    statusMsg?.type === 'info' ? 'text-sky-300' :
+    'text-content-secondary';
+
+  const autoMissionDisabled =
+    !missionLoaded ||
+    autoMissionBusy ||
+    missionStoreLoading ||
+    isLoading ||
+    (flight.armed && isInAuto);
 
   return (
     <PanelContainer>
@@ -1113,6 +952,31 @@ function MavlinkFlightControl() {
             {/* Status feedback — right below the ARM button */}
             {statusMsg && (
               <div className={`text-center text-xs font-medium ${statusColor}`}>{statusMsg.text}</div>
+            )}
+
+            {missionLoaded && (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void runAutoMissionFlow()}
+                  disabled={autoMissionDisabled}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-500/15 border border-violet-500/35 text-violet-200 hover:bg-violet-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Upload mission (NAV_TAKEOFF added if missing), set WP0, AUTO + arm on ground — FC runs takeoff then waypoints. Use Takeoff for a separate Guided takeoff."
+                >
+                  {autoMissionBusy ? 'AUTO…' : 'Run AUTO'}
+                </button>
+                {flight.armed && !isInAuto && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetMode(missionModes.auto)}
+                    disabled={modeLoading !== null}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-40 transition-colors"
+                    title="Already armed — switch to AUTO only"
+                  >
+                    → AUTO
+                  </button>
+                )}
+              </div>
             )}
 
             {/* Pre-arm reasons as compact chips */}
@@ -1204,20 +1068,12 @@ function MavlinkFlightControl() {
                 of every other control on this panel. */}
             <div className="grid grid-cols-3 gap-1 mb-2">
               {availableModes.map((mode) => {
-                const isActive =
-                  flight.modeNum === mode.modeNum ||
-                  (vehicleClass === 'copter' &&
-                    mode.modeNum === COPTER_MODE_ALTHOLD &&
-                    flight.modeNum === COPTER_MODE_LOITER);
+                const isActive = flight.modeNum === mode.modeNum;
                 return (
                   <button
                     key={mode.modeNum}
                     onClick={() => handleSetMode(mode.modeNum)}
-                    title={
-                      vehicleClass === 'copter' && mode.modeNum === COPTER_MODE_ALTHOLD
-                        ? 'Hold at current altitude & position (GPS Loiter — not baro-only AltHold)'
-                        : mode.name
-                    }
+                    title={mode.name}
                     className={`px-1 py-1.5 rounded-md text-[11px] font-medium truncate
                       transition-colors duration-150
                       ${isActive
@@ -1260,10 +1116,10 @@ function MavlinkFlightControl() {
                         <span className="font-mono text-content-secondary">
                           {currentSeq != null
                             ? `→ ${currentSeq + 1}/${missionItems.length}`
-                            : (isInAuto ? t('flight.starting') : t('flight.idle'))}
+                            : (isInAuto ? 'starting…' : 'idle')}
                         </span>
                       </>
-                    : <span className="text-content-secondary">{t('flight.noMission')}</span>}
+                    : <span className="text-content-secondary">No mission</span>}
                 </span>
                 <button
                   onClick={() => { void fetchMission(); }}
@@ -1272,55 +1128,42 @@ function MavlinkFlightControl() {
                 >⟳</button>
               </div>
               {missionLoaded && (
-                <div className="flex gap-1">
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => void runAutoMissionFlow()}
+                    disabled={autoMissionDisabled}
+                    className="w-full px-2 py-1.5 text-[11px] font-semibold rounded-md bg-violet-500/15 border border-violet-500/35 text-violet-200 hover:bg-violet-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    title="Mission on FC: WP0, AUTO + arm — NAV_TAKEOFF then waypoints. Separate Takeoff button is Guided-style only."
+                  >
+                    {autoMissionBusy ? 'Starting AUTO…' : 'Run AUTO mission'}
+                  </button>
+                  <div className="flex gap-1">
                   <button
                     onClick={() => handleSetMode(missionModes.auto)}
                     disabled={!flight.armed || isInAuto}
                     className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 transition-all"
-                    title={!flight.armed ? t('flight.armFirst') : t('flight.startAutoTitle')}
+                    title={!flight.armed ? 'Arm first, or use Run AUTO mission' : 'Switch to AUTO'}
                   >
-                    {isInAuto ? t('flight.running') : t('flight.start')}
+                    {isInAuto ? 'Running' : 'Start'}
                   </button>
                   {isInAuto ? (
                     <button
                       onClick={() => handleSetMode(missionModes.pause)}
                       disabled={!flight.armed}
                       className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 transition-all"
-                    >{t('flight.pause')}</button>
+                    >Pause</button>
                   ) : (
                     <button
                       onClick={() => handleSetMode(missionModes.auto)}
                       disabled={!flight.armed || !isInPause}
                       className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 transition-all"
-                      title={isInPause ? `Resume from ${missionModes.pauseLabel}` : t('flight.pauseFirst')}
-                    >{t('flight.resume')}</button>
+                      title={isInPause ? `Resume from ${missionModes.pauseLabel}` : `Pause first`}
+                    >Resume</button>
                   )}
+                  </div>
                 </div>
               )}
-              <div className="flex gap-1 mt-1">
-                <button
-                  onClick={() => handleSetMode(rtlModeNum)}
-                  disabled={!flight.armed || flight.modeNum === rtlModeNum}
-                  className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-fuchsia-500/10 border border-fuchsia-500/30 hover:bg-fuchsia-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-fuchsia-300 transition-all"
-                    title={!flight.armed ? t('flight.armFirst') : t('flight.returnHome')}
-                >
-                  {t('flight.rth')}
-                </button>
-                {landSupported && (
-                  <button
-                    onClick={() => {
-                      if (landModeNum != null) {
-                        void handleSetMode(landModeNum);
-                      }
-                    }}
-                    disabled={!flight.armed || landModeNum == null || flight.modeNum === landModeNum}
-                    className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-rose-300 transition-all"
-                    title={!flight.armed ? t('flight.armFirst') : `Switch to ${landLabel}`}
-                  >
-                    {landLabel}
-                  </button>
-                )}
-              </div>
             </div>
 
             {/* Takeoff altitude dialog — compact single-row: label, small
@@ -1329,37 +1172,19 @@ function MavlinkFlightControl() {
                 the panel. */}
             {showTakeoffDialog && (
               <div className="mb-2 p-1.5 bg-surface-raised rounded-lg border border-default">
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5">
                   <span className="text-[11px] text-content-secondary shrink-0">
-                    {takeoffAltIsAmsl ? 'Target MSL' : takeoffPresentation.dialogPrompt}
+                    {takeoffPresentation.dialogPrompt}
                   </span>
                   <input
                     type="number"
-                    min={takeoffAltIsAmsl ? -500 : 1}
-                    max={takeoffAltIsAmsl ? 12000 : 500}
-                    step={takeoffAltIsAmsl ? 1 : 1}
+                    min={1}
+                    max={100}
                     value={takeoffAlt}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      if (!Number.isFinite(v)) return;
-                      if (takeoffAltIsAmsl) {
-                        setTakeoffAlt(Math.max(-500, Math.min(12000, v)));
-                      } else {
-                        setTakeoffAlt(Math.max(1, Math.min(500, v)));
-                      }
-                    }}
-                    className="w-16 px-1.5 py-1 text-sm font-mono bg-surface-input border border-subtle rounded text-content"
+                    onChange={(e) => setTakeoffAlt(Math.max(1, Math.min(100, Number(e.target.value))))}
+                    className="w-14 px-1.5 py-1 text-sm font-mono bg-surface-input border border-subtle rounded text-content"
                   />
                   <span className="text-[11px] text-content-secondary shrink-0">m</span>
-                  <label className="flex items-center gap-1 text-[10px] text-content-secondary cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={takeoffAltIsAmsl}
-                      onChange={(e) => setTakeoffAltIsAmsl(e.target.checked)}
-                      className="rounded border-subtle"
-                    />
-                    AMSL
-                  </label>
                   <button
                     onClick={handleTakeoff}
                     className="ml-auto px-2.5 py-1 text-[11px] font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
@@ -1373,11 +1198,6 @@ function MavlinkFlightControl() {
                     aria-label="Cancel takeoff"
                   >✕</button>
                 </div>
-                {takeoffAltIsAmsl && Number.isFinite(position.alt - position.relativeAlt) && (
-                  <p className="mt-1 text-[10px] text-content-tertiary leading-tight">
-                    Home ~{(position.alt - position.relativeAlt).toFixed(0)}m MSL from telemetry; climb command uses metres above home.
-                  </p>
-                )}
                 {takeoffPresentation.dialogNote && (
                   <p className="mt-1 text-[10px] text-content-tertiary leading-tight">
                     {takeoffPresentation.dialogNote}

@@ -28,7 +28,6 @@ import { TAKEOFF_AT_HOME_ICON } from './takeoff-icon';
 // Survey grid overlay
 import { SurveyDrawTool } from '../survey/SurveyDrawTool';
 import { SurveyMapOverlay } from '../survey/SurveyMapOverlay';
-import { SurveyConfigPanel } from '../survey/SurveyConfigPanel';
 import { useSurveyStore } from '../../stores/survey-store';
 
 // Offline map download
@@ -1277,8 +1276,8 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         )}
       </MapContainer>
 
-      {/* Survey config panel */}
-      {surveyIsActive && surveyPolygon && <SurveyConfigPanel />}
+      {/* Survey config panel lives as a docked tab next to Waypoints; see
+          MissionPlanningView. The map no longer renders it as a floating overlay. */}
 
       {/* Layer selector */}
       <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
@@ -1620,23 +1619,16 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         )}
       </div>
 
-      {/* Placeholder message when no waypoints - only in mission mode */}
-      {activeMode === 'mission' && waypoints.length === 0 && !readOnly && (
+      {/* Center map prompt — kept only for the "Set Home" mode, which is a
+          discrete action the user kicks off from the toolbar and has no other
+          map-side indicator. The waypoint variant was redundant with the
+          sidebar empty state and the bottom toolbar; removed to stop blocking
+          the area users are trying to click. */}
+      {activeMode === 'mission' && isSettingHome && !readOnly && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-surface border border-subtle shadow-lg px-6 py-4 rounded-xl text-center">
-            {isSettingHome ? (
-              <>
-                <div className="text-emerald-400 text-sm mb-2">Click anywhere on the map</div>
-                <div className="text-content-secondary text-xs">to set your Home position</div>
-              </>
-            ) : (
-              <>
-                <div className="text-blue-400 text-sm mb-2">Click to add first waypoint</div>
-                <div className="text-content-secondary text-xs">
-                  Click "Add WP" or <kbd className="bg-surface-raised px-1.5 py-0.5 rounded text-content-secondary text-[10px]">Shift</kbd>+click
-                </div>
-              </>
-            )}
+            <div className="text-emerald-400 text-sm mb-2">Click anywhere on the map</div>
+            <div className="text-content-secondary text-xs">to set your Home position</div>
           </div>
         </div>
       )}

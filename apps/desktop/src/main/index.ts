@@ -4,14 +4,13 @@
  */
 
 import { app, BrowserWindow, shell } from 'electron';
-import net from 'node:net';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
+import { setupPythonIpc } from './python/python-ipc.js';
 import { setupModuleIpc } from './modules/module-ipc.js';
 import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers } from './tile-cache.js';
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
-import { setupPythonIpc, cleanupPythonPlugins } from './python/python-ipc.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -56,116 +55,6 @@ process.on('unhandledRejection', (reason: unknown) => {
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
-// Electron can still emit CSP warnings in development with Vite HMR.
-// Keep warnings enabled in production builds.
-if (isDev) {
-  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
-}
-
-function buildCsp(): string {
-  const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'";
-  const directives = [
-    "default-src 'self'",
-    scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https: tile-cache: module:",
-    "font-src 'self' data:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "frame-ancestors 'none'",
-  ];
-
-  if (isDev) {
-    directives.push(
-      "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https: wss:",
-    );
-  } else {
-    directives.push("connect-src 'self' https: wss:");
-  }
-
-  return directives.join('; ');
-}
-
-function attachCsp(mainWindow: BrowserWindow): void {
-  const csp = buildCsp();
-
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [csp],
-      },
-    });
-  });
-}
-
-/** Wait until something accepts TCP on host:port (Vite dev server is up). */
-function waitForDevServerTcp(host: string, port: number, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve, reject) => {
-    const scheduleRetry = (): void => {
-      if (Date.now() >= deadline) {
-        reject(new Error(`Timed out waiting for dev server at ${host}:${port}`));
-        return;
-      }
-      setTimeout(tryConnect, 250);
-    };
-    const tryConnect = (): void => {
-      const socket = net.connect({ host, port }, () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.on('error', () => {
-        socket.destroy();
-        scheduleRetry();
-      });
-    };
-    tryConnect();
-  });
-}
-
-async function loadRenderer(mainWindow: BrowserWindow): Promise<void> {
-  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
-    const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
-
-    try {
-      const parsed = new URL(rendererUrl);
-      const defaultPort = parsed.protocol === 'https:' ? 443 : 80;
-      const port = Number(parsed.port || defaultPort);
-      if (Number.isFinite(port) && port > 0) {
-        await waitForDevServerTcp(parsed.hostname, port, 60_000);
-      }
-    } catch (e) {
-      console.warn('[Main] Could not wait for Vite dev server (will still try loadURL):', e);
-    }
-
-    // Only load ELECTRON_RENDERER_URL — alternate ports are not other Vite instances and
-    // cause ERR_CONNECTION_REFUSED noise / blank window when the real server is on :5173.
-    const maxAttempts = 40;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        await mainWindow.loadURL(rendererUrl);
-        return;
-      } catch (error) {
-        if (attempt === maxAttempts) {
-          console.error('[Main] Failed to load renderer URL:', rendererUrl, error);
-          await mainWindow.loadURL(
-            `data:text/html,${encodeURIComponent(
-              '<h2>Renderer failed to start</h2><p>Vite dev server is unavailable. Check terminal logs and restart dev command.</p>',
-            )}`,
-          );
-          return;
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    return;
-  }
-
-  await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-}
-
 // Set app name early to ensure consistent userData path in dev mode
 // This ensures electron-store saves to %APPDATA%/ardudeck/ instead of %APPDATA%/Electron/
 app.name = 'ardudeck';
@@ -174,7 +63,7 @@ app.name = 'ardudeck';
 registerTileCacheScheme();
 registerModuleSchemePrivileges();
 
-async function createWindow(): Promise<BrowserWindow> {
+function createWindow(): BrowserWindow {
   // Get the icon path based on platform
   // In dev: __dirname is out/main/, resources is at ../../resources/
   // In prod: app.getAppPath() points to the app root
@@ -204,8 +93,6 @@ async function createWindow(): Promise<BrowserWindow> {
     },
   });
 
-  attachCsp(mainWindow);
-
   mainWindow.on('ready-to-show', () => {
     mainWindow.show();
   });
@@ -220,13 +107,17 @@ async function createWindow(): Promise<BrowserWindow> {
     mainWindow.webContents.openDevTools();
   }
 
-  // Load the app with retries in dev mode.
-  void loadRenderer(mainWindow);
+  // Load the app
+  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  }
 
   return mainWindow;
 }
 
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   // Set macOS dock icon
   if (process.platform === 'darwin') {
     const resourcesPath = isDev
@@ -234,17 +125,18 @@ app.whenReady().then(async () => {
       : join(app.getAppPath(), 'resources');
     app.dock.setIcon(join(resourcesPath, 'icon.png'));
   }
+
   // Setup tile cache protocol handler (must be after app.ready)
   setupTileCacheProtocol();
   setupModuleProtocol();
 
-  const mainWindow = await createWindow();
+  const mainWindow = createWindow();
 
   // Setup IPC handlers
   setupIpcHandlers(mainWindow);
+  setupPythonIpc(mainWindow);
   setupModuleIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
-  setupPythonIpc(mainWindow);
 
   // Dev-only: start test driver MCP server
   if (isDev) {
@@ -253,7 +145,7 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      void createWindow();
+      createWindow();
     }
   });
 });
@@ -270,11 +162,6 @@ app.on('before-quit', async (event) => {
   event.preventDefault();
 
   try {
-    await cleanupPythonPlugins();
-  } catch (err) {
-    console.error('[App] Python cleanup error:', err);
-  }
-  try {
     await cleanupOnShutdown();
   } catch (err) {
     console.error('[App] Cleanup error:', err);
@@ -287,11 +174,6 @@ app.on('before-quit', async (event) => {
 // Also handle SIGINT/SIGTERM for graceful shutdown in dev mode
 process.on('SIGINT', async () => {
   try {
-    await cleanupPythonPlugins();
-  } catch (err) {
-    console.error('[App] Python cleanup error:', err);
-  }
-  try {
     await cleanupOnShutdown();
   } catch (err) {
     console.error('[App] Cleanup error:', err);
@@ -300,11 +182,6 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
-  try {
-    await cleanupPythonPlugins();
-  } catch (err) {
-    console.error('[App] Python cleanup error:', err);
-  }
   try {
     await cleanupOnShutdown();
   } catch (err) {

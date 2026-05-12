@@ -6,7 +6,7 @@ export type {
   DataFlashStreamParser,
 } from './types.js';
 export { decodeField, fieldSize } from './field-types.js';
-export { createDataFlashParser, parseDataFlashLog } from './parser.js';
+export { createDataFlashParser, parseDataFlashLog, getFieldUnit } from './parser.js';
 export {
   runHealthChecks,
   getModeName,

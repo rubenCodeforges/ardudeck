@@ -3,6 +3,8 @@
  * Types and constants for mission waypoint management
  */
 
+import type { ArduPilotVehicleClass } from './telemetry-types';
+
 // MAV_FRAME constants for coordinate reference
 export const MAV_FRAME = {
   GLOBAL: 0,                    // Absolute altitude (MSL)
@@ -428,6 +430,147 @@ export function createTakeoffWaypoint(
     latitude: 0,     // ArduPilot takes off from current position
     longitude: 0,    // ArduPilot takes off from current position
     altitude,
+  };
+}
+
+/** Mission items that already start a vertical AUTO takeoff leg. */
+const AUTO_TAKEOFF_LEAD_COMMANDS: ReadonlySet<number> = new Set([
+  MAV_CMD.NAV_TAKEOFF,
+  MAV_CMD.NAV_TAKEOFF_LOCAL,
+  MAV_CMD.NAV_VTOL_TAKEOFF,
+]);
+
+function renumberMissionSeq(items: MissionItem[]): MissionItem[] {
+  return items.map((it, i) => ({ ...it, seq: i }));
+}
+
+/**
+ * VTOL / quadplane: first mission item for vertical climb in AUTO (command 84).
+ */
+export function createVtolTakeoffWaypoint(
+  seq: number,
+  altitude: number,
+  transitionHeadingDeg: number = 0,
+): MissionItem {
+  return {
+    seq,
+    frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
+    command: MAV_CMD.NAV_VTOL_TAKEOFF,
+    current: false,
+    autocontinue: true,
+    param1: transitionHeadingDeg,
+    param2: 0,
+    param3: 0,
+    param4: 0,
+    latitude: 0,
+    longitude: 0,
+    altitude,
+  };
+}
+
+/**
+ * Altitude on NAV_LOITER_TO_ALT / CONTINUE_AND_CHANGE_ALT is often a *climb
+ * ceiling* before the route — using it for AUTO NAV_TAKEOFF makes the vehicle
+ * chase a high target while the first real waypoint on the map is lower.
+ */
+const ALT_UNRELIABLE_FOR_AUTO_TAKEOFF_LEAD: ReadonlySet<number> = new Set([
+  MAV_CMD.NAV_LOITER_TO_ALT,
+  MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT,
+  MAV_CMD.NAV_ALTITUDE_WAIT,
+]);
+
+function firstRouteWaypointAltitudeM(items: MissionItem[]): number | null {
+  const wp = items.find(
+    (it) =>
+      (it.command === MAV_CMD.NAV_WAYPOINT || it.command === MAV_CMD.NAV_SPLINE_WAYPOINT) &&
+      hasValidCoordinates(it.latitude, it.longitude) &&
+      Number.isFinite(it.altitude),
+  );
+  if (wp == null) return null;
+  return Math.max(0, wp.altitude);
+}
+
+function pickAltitudeForAutoTakeoffLeadIn(items: MissionItem[]): number {
+  const routeAlt = firstRouteWaypointAltitudeM(items);
+  if (routeAlt != null) {
+    return routeAlt;
+  }
+  const nav = items.find(
+    (it) =>
+      isNavigationCommand(it.command) &&
+      !ALT_UNRELIABLE_FOR_AUTO_TAKEOFF_LEAD.has(it.command),
+  );
+  if (nav != null && Number.isFinite(nav.altitude)) {
+    return Math.max(0, nav.altitude);
+  }
+  const first = items[0];
+  if (first != null && Number.isFinite(first.altitude) && first.altitude > 0) {
+    return first.altitude;
+  }
+  return 10;
+}
+
+/**
+ * Target altitude (m, home-relative) for a GUIDED-style takeoff that matches
+ * the uploaded AUTO mission (same rules as mission takeoff prep).
+ */
+export function getMissionGuidedTakeoffAltitudeM(items: MissionItem[]): number {
+  if (items.length === 0) return 10;
+  const f = items[0];
+  if (f != null && AUTO_TAKEOFF_LEAD_COMMANDS.has(f.command) && Number.isFinite(f.altitude)) {
+    return Math.max(0, f.altitude);
+  }
+  return pickAltitudeForAutoTakeoffLeadIn(items);
+}
+
+/**
+ * After a manual GUIDED takeoff, AUTO should resume at this mission index
+ * (skip a leading NAV_TAKEOFF leg if present and there is a following item).
+ */
+export function getAutoMissionResumeIndexAfterGuidedTakeoff(items: MissionItem[]): number {
+  if (items.length <= 1) return 0;
+  const f = items[0];
+  if (f != null && AUTO_TAKEOFF_LEAD_COMMANDS.has(f.command)) return 1;
+  return 0;
+}
+
+/**
+ * Ensures copter/VTOL missions start with a takeoff nav item so ArduPilot AUTO
+ * can climb using mission altitude before flying to waypoints. If the first
+ * item is already NAV_TAKEOFF / NAV_VTOL_TAKEOFF (or local takeoff), the list
+ * is only renumbered. Otherwise prepends takeoff with altitude taken from the
+ * first map waypoint (NAV_WAYPOINT / SPLINE), else first reliable NAV_* item,
+ * else first item / 10 m fallback. Skips LOITER_TO_ALT-style ceilings for the
+ * takeoff target altitude.
+ *
+ * Plane/rover/sub: unchanged aside from seq renumbering.
+ */
+export function ensureAutoMissionTakeoffPrefix(
+  items: MissionItem[],
+  vehicleClass: ArduPilotVehicleClass,
+): { mission: MissionItem[]; didPrepend: boolean } {
+  if (items.length === 0) {
+    return { mission: [], didPrepend: false };
+  }
+
+  if (vehicleClass === 'plane' || vehicleClass === 'rover' || vehicleClass === 'sub') {
+    return { mission: renumberMissionSeq(items), didPrepend: false };
+  }
+
+  const first = items[0];
+  if (first != null && AUTO_TAKEOFF_LEAD_COMMANDS.has(first.command)) {
+    return { mission: renumberMissionSeq(items), didPrepend: false };
+  }
+
+  const alt = pickAltitudeForAutoTakeoffLeadIn(items);
+  const lead =
+    vehicleClass === 'vtol'
+      ? createVtolTakeoffWaypoint(0, alt, 0)
+      : createTakeoffWaypoint(0, 0, 0, alt, 15);
+
+  return {
+    mission: renumberMissionSeq([lead, ...items]),
+    didPrepend: true,
   };
 }
 

@@ -16,6 +16,7 @@ import { ConfigSelectors } from './vehicle-profile/ConfigSelectors';
 import { PhysicsAdvanced } from './vehicle-profile/PhysicsAdvanced';
 import { ParamsPreview } from './vehicle-profile/ParamsPreview';
 import { StallSpeedCalcButton } from './vehicle-profile/StallSpeedCalcButton';
+import { PythonPluginsView } from './python-plugins';
 import { inferProfileFromParams } from '../../lib/vehicle-templates/import';
 import { saveParmToFile } from '../../lib/vehicle-templates/export-parm';
 import { getTemplate, defaultTemplateForType } from '../../lib/vehicle-templates/registry';

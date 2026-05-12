@@ -43,7 +43,7 @@ export interface ServoOutputRaw {
 }
 
 export const SERVO_OUTPUT_RAW_ID = 36;
-export const SERVO_OUTPUT_RAW_CRC_EXTRA = 175;
+export const SERVO_OUTPUT_RAW_CRC_EXTRA = 222;
 export const SERVO_OUTPUT_RAW_MIN_LENGTH = 37;
 export const SERVO_OUTPUT_RAW_MAX_LENGTH = 37;
 
@@ -51,6 +51,9 @@ export function serializeServoOutputRaw(msg: ServoOutputRaw): Uint8Array {
   const buffer = new Uint8Array(37);
   const view = new DataView(buffer.buffer);
 
+  // MAVLink wire format: non-extension fields sorted by type size, then
+  // extension fields appended in declaration order. Base = time_usec (u32),
+  // servo1-8 (u16), port (u8). Extension = servo9-16 (u16).
   view.setUint32(0, msg.timeUsec, true);
   view.setUint16(4, msg.servo1Raw, true);
   view.setUint16(6, msg.servo2Raw, true);
@@ -60,15 +63,15 @@ export function serializeServoOutputRaw(msg: ServoOutputRaw): Uint8Array {
   view.setUint16(14, msg.servo6Raw, true);
   view.setUint16(16, msg.servo7Raw, true);
   view.setUint16(18, msg.servo8Raw, true);
-  view.setUint16(20, msg.servo9Raw, true);
-  view.setUint16(22, msg.servo10Raw, true);
-  view.setUint16(24, msg.servo11Raw, true);
-  view.setUint16(26, msg.servo12Raw, true);
-  view.setUint16(28, msg.servo13Raw, true);
-  view.setUint16(30, msg.servo14Raw, true);
-  view.setUint16(32, msg.servo15Raw, true);
-  view.setUint16(34, msg.servo16Raw, true);
-  buffer[36] = msg.port & 0xff;
+  buffer[20] = msg.port & 0xff;
+  view.setUint16(21, msg.servo9Raw, true);
+  view.setUint16(23, msg.servo10Raw, true);
+  view.setUint16(25, msg.servo11Raw, true);
+  view.setUint16(27, msg.servo12Raw, true);
+  view.setUint16(29, msg.servo13Raw, true);
+  view.setUint16(31, msg.servo14Raw, true);
+  view.setUint16(33, msg.servo15Raw, true);
+  view.setUint16(35, msg.servo16Raw, true);
 
   return buffer;
 }
@@ -86,14 +89,14 @@ export function deserializeServoOutputRaw(payload: Uint8Array): ServoOutputRaw {
     servo6Raw: view.getUint16(14, true),
     servo7Raw: view.getUint16(16, true),
     servo8Raw: view.getUint16(18, true),
-    servo9Raw: view.getUint16(20, true),
-    servo10Raw: view.getUint16(22, true),
-    servo11Raw: view.getUint16(24, true),
-    servo12Raw: view.getUint16(26, true),
-    servo13Raw: view.getUint16(28, true),
-    servo14Raw: view.getUint16(30, true),
-    servo15Raw: view.getUint16(32, true),
-    servo16Raw: view.getUint16(34, true),
-    port: payload[36],
+    port: payload[20],
+    servo9Raw: view.getUint16(21, true),
+    servo10Raw: view.getUint16(23, true),
+    servo11Raw: view.getUint16(25, true),
+    servo12Raw: view.getUint16(27, true),
+    servo13Raw: view.getUint16(29, true),
+    servo14Raw: view.getUint16(31, true),
+    servo15Raw: view.getUint16(33, true),
+    servo16Raw: view.getUint16(35, true),
   };
 }

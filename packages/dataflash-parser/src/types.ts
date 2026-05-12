@@ -5,6 +5,11 @@ export interface FMTMessage {
   length: number;
   format: string;     // type chars e.g. "QfffffffI"
   fields: string[];   // field names e.g. ["TimeUS", "Roll", "Pitch", ...]
+  /** Per-field unit char from FMTU.UnitIds. '-' means no unit. Populated only
+   *  when the log contains FMTU messages (newer ArduPilot firmware). */
+  unitChars?: string[];
+  /** Per-field multiplier char from FMTU.MultIds. '-' means no multiplier. */
+  multChars?: string[];
 }
 
 /** A single parsed log message */
@@ -31,6 +36,11 @@ export interface DataFlashLog {
   timeRange: { startUs: number; endUs: number };
   /** All unique message type names found */
   messageTypes: string[];
+  /** Unit char → human label, e.g. 'm' → "m", 'd' → "deg". Sourced from UNIT
+   *  records. Empty when the log has no UNIT/FMTU records (older firmware). */
+  unitLabels: Map<string, string>;
+  /** Multiplier char → numeric multiplier. Sourced from MULT records. */
+  multValues: Map<string, number>;
 }
 
 /** Streaming parser interface */

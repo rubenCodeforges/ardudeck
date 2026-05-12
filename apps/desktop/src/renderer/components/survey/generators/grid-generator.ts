@@ -17,7 +17,7 @@
 import type { LatLng, SurveyConfig, SurveyResult } from '../survey-types';
 import { latLngToLocal, localToLatLng, polygonCentroid, rotatePoint } from '../geo-math';
 import { clipScanLines } from '../polygon-clip';
-import { calculateFootprint, calculateSpacing, computeSurveyStats } from '../survey-stats';
+import { computeSurveyStats, getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
 
 /**
  * Generate a camera footprint polygon at a given position and angle.
@@ -50,6 +50,14 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
     return { waypoints: [], photoPositions: [], footprints: [], stats: emptyStats(config) };
   }
 
+  // Ground-vehicle / no-camera mode: skip the camera footprint visualization
+  // and the per-line "photo" sampling entirely. Photos and footprint rectangles
+  // are camera concepts; a mower or rover only needs the line endpoints as
+  // waypoints. Also force overshoot=0 since it's a fixed-wing turn-radius
+  // buffer that doesn't apply to skid-steer ground vehicles.
+  const isManual = !!(camera.manualCorridorWidth && camera.manualCorridorWidth > 0);
+  const effectiveOvershoot = isManual ? 0 : overshoot;
+
   const origin = polygonCentroid(polygon);
   const angleRad = -gridAngle * (Math.PI / 180); // Negative to align scan lines
 
@@ -59,12 +67,10 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
     return rotatePoint(local, angleRad);
   });
 
-  // Camera footprint and spacing
-  const { width: footprintW, height: footprintH } = calculateFootprint(
-    camera.sensorWidth, camera.sensorHeight, camera.focalLength, altitude,
-  );
-  const { lineSpacing, photoSpacing } = calculateSpacing(
-    footprintW, footprintH, frontOverlap, sideOverlap,
+  // Camera footprint and spacing (or manual corridor width if camera is in manual mode)
+  const { width: footprintW, height: footprintH } = getEffectiveFootprint(camera, altitude);
+  const { lineSpacing, photoSpacing } = getEffectiveSpacing(
+    camera, footprintW, footprintH, frontOverlap, sideOverlap,
   );
 
   if (lineSpacing <= 0 || photoSpacing <= 0) {
@@ -72,7 +78,7 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
   }
 
   // Clip scan lines to polygon
-  const clippedLines = clipScanLines(localPoly, lineSpacing, overshoot);
+  const clippedLines = clipScanLines(localPoly, lineSpacing, effectiveOvershoot);
 
   if (clippedLines.length === 0) {
     return { waypoints: [], photoPositions: [], footprints: [], stats: emptyStats(config) };
@@ -96,18 +102,21 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
     // Line start point
     waypointsLocal.push({ x: startX, y });
 
-    // Photo positions along the line
-    const lineLength = Math.abs(endX - startX);
-    const direction = endX > startX ? 1 : -1;
-    const numPhotos = Math.max(1, Math.floor(lineLength / photoSpacing));
+    // Photo positions along the line — skipped in manual/ground-vehicle mode
+    // since there's no camera and rendering thousands of dots tanks the map.
+    if (!isManual) {
+      const lineLength = Math.abs(endX - startX);
+      const direction = endX > startX ? 1 : -1;
+      const numPhotos = Math.max(1, Math.floor(lineLength / photoSpacing));
 
-    // Center photos within the line
-    const totalPhotoSpan = (numPhotos - 1) * photoSpacing;
-    const photoStart = startX + direction * (lineLength - totalPhotoSpan) / 2;
+      // Center photos within the line
+      const totalPhotoSpan = (numPhotos - 1) * photoSpacing;
+      const photoStart = startX + direction * (lineLength - totalPhotoSpan) / 2;
 
-    for (let p = 0; p < numPhotos; p++) {
-      const px = photoStart + direction * p * photoSpacing;
-      photoLocal.push({ x: px, y });
+      for (let p = 0; p < numPhotos; p++) {
+        const px = photoStart + direction * p * photoSpacing;
+        photoLocal.push({ x: px, y });
+      }
     }
 
     // Line end point

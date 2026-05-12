@@ -17,10 +17,10 @@ import {
   type SerialPortInfo,
   type ScanResult,
 } from '@ardudeck/comms';
+import { publishTelemetryToPythonPlugins, cleanupPythonPlugins } from './python/python-ipc.js';
 import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers.js';
 import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-handlers.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
-import { publishTelemetryToPythonPlugins } from './python/python-ipc.js';
 import {
   MAVLinkParser,
   type MAVLinkPacket,
@@ -100,7 +100,7 @@ import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type P
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
-import { MAV_MISSION_RESULT, MAV_MISSION_TYPE, getCommandName } from '../shared/mission-types.js';
+import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
@@ -123,7 +123,8 @@ import {
   FILE_TRANSFER_PROTOCOL_CRC_EXTRA,
 } from '@ardudeck/mavlink-ts';
 import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
-import { writeFile, readFile } from 'node:fs/promises';
+import { writeFile, readFile, copyFile, mkdir, chmod, rm } from 'node:fs/promises';
+import path from 'node:path';
 import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
@@ -786,6 +787,8 @@ let paramDownloadStartTime = 0; // Timestamp for measuring download duration
 let ftpClient: MavlinkFtpClient | null = null;
 let paramRequestInFlight = false; // Guard against concurrent param download requests
 let logDownloadManager: LogDownloadManager | null = null;
+/** One-shot SITL copter battery/arming PARAM_SET pass after param download. */
+let sitlCopterBatteryTuneApplied = false;
 
 // In-flight one-shot PARAM_REQUEST_READ callbacks keyed by paramId. The
 // MSG_PARAM_VALUE handler invokes the matching callback when the FC's
@@ -804,20 +807,119 @@ let cachedAutopilotVersion: BoardDumpMavlink['autopilot_version'] | null = null;
 let statustextHistory: Array<{ ts: number; severity: number; severityLabel: string; text: string }> = [];
 const MAX_STATUSTEXT_HISTORY = 150;
 
-/** Last FC custom_mode from HEARTBEAT — for mode-change-only [AUTO/MISSION] lines */
-let lastMissionDiagCustomMode: number | undefined = undefined;
-
-let lastMissionDiagCurrentSeq: number | undefined = undefined;
-
 function resetMavlinkDiagCache(): void {
   cachedSysStatus = null;
   cachedHeartbeat = null;
   cachedAutopilotVersion = null;
   statustextHistory = [];
   lastReportedArmed = null;
-  lastMissionDiagCustomMode = undefined;
-  lastMissionDiagCurrentSeq = undefined;
   resetRcChannelState();
+  sitlCopterBatteryTuneApplied = false;
+}
+
+/** MAV_TYPE values that use ArduCopter-style battery / arming parameters in SITL. */
+function isCopterFamilyMavType(mavType: number): boolean {
+  switch (mavType) {
+    case 2: // QUADROTOR
+    case 3: // COAXIAL
+    case 4: // HELICOPTER
+    case 13: // HEXAROTOR
+    case 14: // OCTOROTOR
+    case 15: // TRICOPTER
+    case 29: // DODECAROTOR
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * After parameters are downloaded, push battery / arming tweaks over MAVLink so
+ * they win over stale SITL eeprom.bin (which overrides --defaults on boot).
+ * Only runs once per MAVLink session for ArduPilot SITL + copter-class vehicles.
+ */
+async function maybeApplySitlCopterBatteryTune(mainWindow: BrowserWindow): Promise<void> {
+  if (sitlCopterBatteryTuneApplied) return;
+  if (!connectionState.isSitl || !ardupilotSitlProcess.isRunning) return;
+  if (!connectionState.isConnected || !currentTransport?.isOpen) return;
+  const mav = connectionState.mavType ?? -1;
+  if (!isCopterFamilyMavType(mav)) return;
+  if (receivedParams.size === 0) return;
+
+  sitlCopterBatteryTuneApplied = true;
+
+  const targetSystem = connectionState.systemId ?? 1;
+  const targetComponent = 1;
+  const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const paramSetFromCache = async (paramId: string, value: number): Promise<boolean> => {
+    const cached = receivedParams.get(paramId);
+    if (!cached) return false;
+    try {
+      const setPayload = serializeParamSet({
+        targetSystem,
+        targetComponent,
+        paramId,
+        paramValue: value,
+        paramType: cached.paramType,
+      });
+      const packet = await sendMavlinkPacket(PARAM_SET_ID, setPayload, PARAM_SET_CRC_EXTRA);
+      await currentTransport!.write(packet);
+      connectionState.packetsSent++;
+      await delay(100);
+      return true;
+    } catch (err) {
+      sendLog(mainWindow, 'debug', `SITL tune: skipped ${paramId}`, err instanceof Error ? err.message : String(err));
+      return false;
+    }
+  };
+
+  /** Best-effort set when the name is missing from the param list (type guessed). */
+  const paramSetBlind = async (paramId: string, value: number, paramType: number): Promise<void> => {
+    try {
+      const setPayload = serializeParamSet({
+        targetSystem,
+        targetComponent,
+        paramId,
+        paramValue: value,
+        paramType,
+      });
+      const packet = await sendMavlinkPacket(PARAM_SET_ID, setPayload, PARAM_SET_CRC_EXTRA);
+      await currentTransport!.write(packet);
+      connectionState.packetsSent++;
+      await delay(100);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  sendLog(mainWindow, 'info', 'SITL: applying battery/arming MAVLink tweaks (overrides stale EEPROM for this session)…');
+
+  // Pack thresholds well below a healthy sim voltage; SIM_* nudged upward.
+  await paramSetFromCache('BATT_LOW_VOLT', 6);
+  await paramSetFromCache('BATT_CRT_VOLT', 5);
+  await paramSetFromCache('SIM_BATT_VOLTAGE', 25);
+
+  const cap = receivedParams.get('SIM_BATT_CAP_AH');
+  if (cap) {
+    await paramSetFromCache('SIM_BATT_CAP_AH', cap.paramValue + 0.02);
+  }
+
+  // Prefer cached names when the firmware exposes them.
+  await paramSetFromCache('FS_BATT_ENABLE', 0);
+  await paramSetFromCache('ARMING_MIN_VOLT', 0);
+  await paramSetFromCache('BATT_FS_LOW_ACT', 0);
+
+  // Builds that omit the above IDs — still try common alternates (FC ignores unknown ids).
+  if (!receivedParams.has('ARMING_MIN_VOLT')) {
+    await paramSetBlind('ARMING_MIN_VOLT', 0, 9); // REAL32
+    await paramSetBlind('ARMING_VOLT_MIN', 0, 9);
+  }
+  if (!receivedParams.has('FS_BATT_ENABLE')) {
+    await paramSetBlind('FS_BATT_ENABLE', 0, 2); // INT8
+  }
+
+  sendLog(mainWindow, 'info', 'SITL: battery/arming tweak pass complete');
 }
 
 // Parameter metadata cache (keyed by vehicle type)
@@ -839,35 +941,6 @@ let missionUploadState: {
 
 // Track pending clear operation
 let missionClearPending = false;
-
-/**
- * Loud, grep-friendly trace for AUTO / mission upload / MISSION_START / takeoff issues.
- * Always prints to the dev terminal (in addition to unified logger via console intercept).
- */
-function missionAutoDiag(...parts: unknown[]): void {
-  const msg = parts
-    .map((p) => {
-      if (typeof p === 'object' && p !== null) {
-        try {
-          return JSON.stringify(p);
-        } catch {
-          return String(p);
-        }
-      }
-      return String(p);
-    })
-    .join(' ');
-  console.log(`[AUTO/MISSION] ${msg}`);
-}
-
-const MISSION_STATUSTEXT_DIAG_RE =
-  /\b(prearm|pre-arm|Arm:|mission|waypoint|takeoff|Takeoff|EKF|GPS|fence|geofence|RTL|denied|AUTO|NAV_|command|upload|altitude)\b/i;
-
-function missionStatustextDiag(severityLabel: string, text: string): void {
-  if (MISSION_STATUSTEXT_DIAG_RE.test(text)) {
-    missionAutoDiag(`STATUSTEXT [${severityLabel}] ${text}`);
-  }
-}
 
 // Fence download state
 let fenceDownloadState: {
@@ -1171,13 +1244,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       };
       queueMavlinkTelemetry(mainWindow, { flight });
 
-      if (lastMissionDiagCustomMode !== customMode) {
-        missionAutoDiag(
-          `HEARTBEAT mode → ${modeName} (custom_mode=${customMode}) armed=${armed} mav_type=${vehicleType} base_mode=0x${baseMode.toString(16)} sys_status=${systemStatus}`,
-        );
-        lastMissionDiagCustomMode = customMode;
-      }
-
       // Cache for bug report diagnostics
       cachedHeartbeat = { autopilot: autopilotType, type: vehicleType, base_mode: baseMode, custom_mode: customMode, system_status: payload[7]! };
       break;
@@ -1449,7 +1515,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
         mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity, severityLabel, text });
         pushStatustextHistory(severity, severityLabel, text);
-        missionStatustextDiag(severityLabel, text);
         // Forward to MAVLink calibration module if calibration is active
         if (isMavlinkCalibrationActive()) handleCalibrationStatusText(text, severity);
       } else {
@@ -1472,7 +1537,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           const severityLabel = SEVERITY_LABELS[entry.severity] ?? 'INFO';
           mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: entry.severity, severityLabel, text: fullText });
           pushStatustextHistory(entry.severity, severityLabel, fullText);
-          missionStatustextDiag(severityLabel, fullText);
           if (isMavlinkCalibrationActive()) handleCalibrationStatusText(fullText, entry.severity);
           statustextChunkBuffer.delete(chunkId);
         } else {
@@ -1484,7 +1548,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
               const severityLabel = SEVERITY_LABELS[buf.severity] ?? 'INFO';
               mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: buf.severity, severityLabel, text: fullText });
               pushStatustextHistory(buf.severity, severityLabel, fullText);
-              missionStatustextDiag(severityLabel, fullText);
               if (isMavlinkCalibrationActive()) handleCalibrationStatusText(fullText, buf.severity);
               statustextChunkBuffer.delete(chunkId);
             }
@@ -1517,14 +1580,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const MAV_RESULT_NAMES = ['ACCEPTED', 'TEMPORARILY_REJECTED', 'DENIED', 'UNSUPPORTED', 'FAILED', 'IN_PROGRESS'];
       const resultName = MAV_RESULT_NAMES[ackResult] ?? `UNKNOWN(${ackResult})`;
 
-      if (ackCommand === 176 || ackCommand === 300) {
-        const label = ackCommand === 176 ? 'DO_SET_MODE' : 'MISSION_START';
-        missionAutoDiag(`COMMAND_ACK ${label} cmd=${ackCommand} result=${ackResult} (${resultName})`);
-      }
-
       // Log arm/disarm command results prominently and forward to messages panel
       if (ackCommand === 400) {
-        missionAutoDiag(`COMMAND_ACK ARM/DISARM cmd=400 result=${ackResult} (${resultName})`);
         const severity = ackResult === 0 ? 6 : 4; // MAV_SEVERITY_INFO=6, WARNING=4
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
         const text = ackResult === 0 ? 'ARM/DISARM accepted' : `ARM/DISARM ${resultName}`;
@@ -1534,7 +1591,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
 
       // Log takeoff command results
       if (ackCommand === 22) {
-        missionAutoDiag(`COMMAND_ACK NAV_TAKEOFF cmd=22 result=${ackResult} (${resultName})`);
         const severity = ackResult === 0 ? 6 : 4;
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
         const text = ackResult === 0 ? 'Takeoff accepted' : `Takeoff ${resultName}`;
@@ -1664,6 +1720,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         safeSend(mainWindow, IPC_CHANNELS.PARAM_COMPLETE);
         const elapsed = paramDownloadStartTime > 0 ? ((Date.now() - paramDownloadStartTime) / 1000).toFixed(1) : '?';
         sendLog(mainWindow, 'info', `Downloaded ${receivedParams.size} parameters via PARAM_REQUEST_LIST in ${elapsed}s`);
+        void maybeApplySitlCopterBatteryTune(mainWindow);
       }
       break;
     }
@@ -1783,9 +1840,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         }
         missionDownloadState.timeout = setTimeout(() => {
           if (missionDownloadState && missionDownloadState.received.size < missionDownloadState.expected) {
-            missionAutoDiag(
-              `MISSION download TIMEOUT got ${missionDownloadState.received.size}/${missionDownloadState.expected}`,
-            );
             safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR,
               `Timeout: received ${missionDownloadState.received.size}/${missionDownloadState.expected} mission items`);
             missionDownloadState = null;
@@ -1821,9 +1875,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_MISSION_REQUEST:
     case MSG_MISSION_REQUEST_INT: {
       // FC requesting mission item during upload
+      console.log(`[MISSION] Received MISSION_REQUEST (msg ${msgid}), uploadState=${!!missionUploadState}`);
       if (!missionUploadState) {
         sendLog(mainWindow, 'debug', `Received MISSION_REQUEST but no upload in progress`);
-        missionAutoDiag(`MISSION_REQUEST msg=${msgid} IGNORED (no upload in progress) raw0..7=${Array.from(payload.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')).join(' ')}`);
         break;
       }
 
@@ -1835,14 +1889,12 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         let seq: number;
         const seqAtOffset0 = payload[0]! | (payload[1]! << 8);
         const seqAtOffset2 = payload[2]! | (payload[3]! << 8);
-        const maxSeq = missionUploadState.items.length - 1;
 
         // Check if bytes 2-3 look like GCS IDs (255, 190) - indicates v2 order
         const looksLikeV2Order = (payload[2] === 0xFF && payload[3] === 0xBE) ||
                                  (payload[2] === 0xFF && payload[3] === 0x01) ||
                                  seqAtOffset2 > 1000;  // Unreasonable seq
 
-        // Primary: message id + heuristic.
         if (msgid === MSG_MISSION_REQUEST_INT || looksLikeV2Order) {
           // v2 byte order: seq is at offset 0
           seq = seqAtOffset0;
@@ -1851,29 +1903,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           seq = seqAtOffset2;
         }
 
-        // Safety net: a number of FC builds send MSG 40 with v2 payload order.
-        // If the chosen seq is out of range but the alternative is valid, swap.
-        if (seq > maxSeq) {
-          const altSeq = seq === seqAtOffset0 ? seqAtOffset2 : seqAtOffset0;
-          if (altSeq <= maxSeq) {
-            sendLog(mainWindow, 'debug', `MISSION_REQUEST seq remap ${seq} -> ${altSeq} (payload order mismatch)`);
-            missionAutoDiag(`MISSION_REQUEST seq remap ${seq} -> ${altSeq} (byte-order heuristic) msg=${msgid}`);
-            seq = altSeq;
-          }
-        }
-
-        const fcAskedInt = msgid === MSG_MISSION_REQUEST_INT;
-        const rawHead = Array.from(payload.slice(0, Math.min(8, payload.length)))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join(' ');
-        missionAutoDiag(
-          `MISSION_REQUEST msg=${msgid} seq=${seq}/${maxSeq} total_items=${missionUploadState.items.length} fc_asked_int=${fcAskedInt} mav=${detectedMavlinkVersion} (v2 → always MISSION_ITEM_INT reply) v2_order_heur=${looksLikeV2Order} raw=${rawHead}`,
-        );
-        sendLog(
-          mainWindow,
-          'debug',
-          `FC requesting mission item ${seq} (msg ${msgid}, MAVLink v${detectedMavlinkVersion}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`,
-        );
+        sendLog(mainWindow, 'debug', `FC requesting mission item ${seq} (msg ${msgid}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`);
 
         if (seq < missionUploadState.items.length) {
           sendMissionItem(mainWindow, missionUploadState.items[seq]!);
@@ -1892,14 +1922,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
             clearTimeout(missionUploadState.timeout);
           }
           missionUploadState.timeout = setTimeout(() => {
-            missionAutoDiag('MISSION upload TIMEOUT (FC stopped requesting items for 5s) — mission may be incomplete on FC');
             safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Upload timeout: FC stopped requesting items');
             missionUploadState = null;
           }, 5000);
-        } else {
-          missionAutoDiag(
-            `MISSION_REQUEST BAD seq=${seq} (max valid=${maxSeq}) — NOT sending item; check FC/GCS seq parsing. raw=${rawHead}`,
-          );
         }
       } catch (err) {
         sendLog(mainWindow, 'error', 'Failed to parse MISSION_REQUEST', String(err));
@@ -1914,17 +1939,11 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         // MAVLink v2: 4 bytes (adds mission_type)
         // type is at byte offset 2
         const ackType = payload.length >= 3 ? payload[2]! : 0;
-        const ackHex = Array.from(payload).map((b) => b.toString(16).padStart(2, '0')).join(' ');
-        sendLog(mainWindow, 'debug', `Received MISSION_ACK type=${ackType} (${getMissionResultName(ackType)})`);
-        missionAutoDiag(
-          `MISSION_ACK type=${ackType} (${getMissionResultName(ackType)}) payload_len=${payload.length} hex=${ackHex} had_upload_state=${!!missionUploadState}`,
-        );
 
         if (ackType === MAV_MISSION_RESULT.ACCEPTED) {
           if (missionUploadState) {
             const itemCount = missionUploadState.items.length;
             sendLog(mainWindow, 'info', `Mission upload complete: ${itemCount} items`);
-            missionAutoDiag(`MISSION upload COMPLETE on FC (${itemCount} items)`);
             if (missionUploadState.timeout) {
               clearTimeout(missionUploadState.timeout);
             }
@@ -1941,7 +1960,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         } else {
           // Error
           const errorMsg = getMissionResultName(ackType);
-          missionAutoDiag(`MISSION_ACK REJECTED: ${errorMsg} — AUTO may not run this mission`);
           safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, `Mission error: ${errorMsg}`);
           sendLog(mainWindow, 'error', `Mission ACK error: ${errorMsg}`);
 
@@ -1971,10 +1989,6 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       let seq: number;
       if (payload.length >= 2) {
         seq = payload[0]! | (payload[1]! << 8); // Little-endian uint16
-        if (lastMissionDiagCurrentSeq !== seq) {
-          missionAutoDiag(`MISSION_CURRENT seq=${seq} (FC active mission index)`);
-          lastMissionDiagCurrentSeq = seq;
-        }
         safeSend(mainWindow, IPC_CHANNELS.MISSION_CURRENT, seq);
       }
       break;
@@ -2151,22 +2165,13 @@ async function requestMissionItem(mainWindow: BrowserWindow, seq: number): Promi
 }
 
 // Helper: Send a mission item to FC
-async function sendMissionItem(
-  mainWindow: BrowserWindow,
-  item: MissionItem,
-  opts?: { forceIntFormat?: boolean },
-): Promise<void> {
+async function sendMissionItem(mainWindow: BrowserWindow, item: MissionItem): Promise<void> {
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
   let packet: Uint8Array;
   const targetSystem = connectionState.systemId ?? 1;
-  // Never send deprecated MISSION_ITEM when the link is MAVLink v2 — ArduPilot rejects
-  // the pattern (warns "GCS should send MISSION_ITEM_INT"). `forceIntFormat: false` must
-  // not override v2 (MISSION_REQUEST vs MISSION_REQUEST_INT both need INT on v2).
-  const preferIntFormat =
-    detectedMavlinkVersion === 2 ? true : (opts?.forceIntFormat ?? false);
 
-  if (preferIntFormat) {
+  if (detectedMavlinkVersion === 2) {
     // MAVLink v2: Use MISSION_ITEM_INT (preferred, higher precision)
     const payload = serializeMissionItemInt({
       targetSystem,
@@ -2212,15 +2217,7 @@ async function sendMissionItem(
     packet = serializeV1(MISSION_ITEM_ID, payload, MISSION_ITEM_CRC_EXTRA_V1, { sysid: 255, compid: 190 });
   }
 
-  sendLog(
-    mainWindow,
-    'debug',
-    `Sending mission item ${item.seq} (${preferIntFormat ? 'MISSION_ITEM_INT' : 'MISSION_ITEM'}, MAVLink v${detectedMavlinkVersion})`,
-  );
-
-  missionAutoDiag(
-    `TX MISSION_ITEM seq=${item.seq} cmd=${item.command} (${getCommandName(item.command)}) frame=${item.frame} z=${item.altitude} lat=${item.latitude} lon=${item.longitude} fmt=${preferIntFormat ? 'INT' : 'LEGACY'} mav=${detectedMavlinkVersion}`,
-  );
+  sendLog(mainWindow, 'debug', `Sending mission item ${item.seq} (MAVLink v${detectedMavlinkVersion})`);
 
   currentTransport.write(packet).catch(err => {
     sendLog(mainWindow, 'error', `Failed to send mission item ${item.seq}`, String(err));
@@ -2281,9 +2278,6 @@ function getMissionResultName(result: number): string {
 }
 
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
-  ipcMain.handle(IPC_CHANNELS.AUTO_MISSION_DIAG, (_evt, line: string) => {
-    missionAutoDiag(`[ui] ${line}`);
-  });
   // Auto-load signing key now that app is ready (safeStorage requires app.whenReady)
   autoLoadSigningKey();
 
@@ -3245,12 +3239,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         case 'udp':
           if (options.udpMode === 'client') {
             if (!options.udpRemoteHost || !options.udpRemotePort) throw new Error('Remote host and port required for UDP client mode');
+            // Bind to a fixed local port (default 14550). ArduPilot UDPIN
+            // latches the source IP+port of the first packet it receives and
+            // replies there for the lifetime of the link; using an ephemeral
+            // port (0) breaks reconnects because the new source port doesn't
+            // match the one the FC cached. See issue #86.
+            const clientLocalPort = options.udpClientLocalPort ?? 14550;
             currentTransport = new UdpTransport({
-              localPort: 0,
+              localPort: clientLocalPort,
               remoteHost: options.udpRemoteHost,
               remotePort: options.udpRemotePort,
             });
-            transportName = `UDP client ${options.udpRemoteHost}:${options.udpRemotePort}`;
+            transportName = `UDP client ${options.udpRemoteHost}:${options.udpRemotePort} (local :${clientLocalPort})`;
           } else {
             currentTransport = new UdpTransport({
               localPort: options.udpPort ?? 14550,
@@ -4128,6 +4128,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Single IPC event with all params — renderer applies in one state update
     safeSend(mainWindow, IPC_CHANNELS.PARAM_BULK_LOAD, bulkPayload);
 
+    void maybeApplySitlCopterBatteryTune(mainWindow);
+
     return true;
   }
 
@@ -4594,35 +4596,6 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
 
     try {
-      // ArduPilot SITL reliability profile: before ARM, relax checks/failsafes
-      // that commonly cause immediate auto-disarm during scripted launches.
-      // Best-effort only; unsupported params are ignored.
-      if (arm && ardupilotSitlProcess.isRunning) {
-        const setSitlParam = async (paramId: string, paramValue: number, paramType: number = 6): Promise<void> => {
-          try {
-            const payload = serializeParamSet({
-              targetSystem: connectionState.systemId ?? 1,
-              targetComponent: 1,
-              paramId,
-              paramValue,
-              paramType,
-            });
-            const packet = await sendMavlinkPacket(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
-            await currentTransport!.write(packet);
-            connectionState.packetsSent++;
-          } catch {
-            // Ignore per-param write failures; arm path continues.
-          }
-        };
-
-        await setSitlParam('ARMING_CHECK', 0);   // bypass noisy pre-arm checks in SITL
-        await setSitlParam('FS_EKF_ACTION', 0);  // don't force-land/disarm on transient EKF init
-        await setSitlParam('FS_THR_ENABLE', 0);  // no RC throttle failsafe in headless sim
-        await setSitlParam('DISARM_DELAY', 60);  // prevent immediate landed auto-disarm
-        // Give FC a short window to apply params before command 400.
-        await new Promise(resolve => setTimeout(resolve, 120));
-      }
-
       // When arming without a transmitter, ArduPilot needs RC input.
       // Auto-start the SITL RC sender if SITL is running so ArduPilot
       // gets continuous 50Hz RC input and doesn't trigger RC failsafe.
@@ -4656,18 +4629,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // In ArduPilot SITL we prefer forced arm by default: simulator sessions
-      // often fail transient pre-arm checks (EKF/GPS settling, virtual RC
-      // timing) even though the user explicitly requested arming from UI.
-      // Keep real-hardware behavior unchanged.
-      const shouldForceArm = arm && ardupilotSitlProcess.isRunning ? true : !!force;
       const payload = serializeCommandLong({
         targetSystem: connectionState.systemId ?? 1,
         targetComponent: 1,
         command: 400, // MAV_CMD_COMPONENT_ARM_DISARM
         confirmation: 0,
         param1: arm ? 1 : 0,      // 1 = arm, 0 = disarm
-        param2: shouldForceArm ? 21196 : 0, // ArduPilot: 21196 = force arm/disarm (bypass safety checks)
+        param2: force ? 21196 : 0, // ArduPilot: 21196 = force arm/disarm (bypass safety checks)
         param3: 0,
         param4: 0,
         param5: 0,
@@ -4679,8 +4647,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await currentTransport.write(packet);
       connectionState.packetsSent++;
 
-      sendLog(mainWindow, 'info', `Sent ${arm ? 'ARM' : 'DISARM'} command${shouldForceArm ? ' (FORCE)' : ''}`);
-      missionAutoDiag(`TX ARM/DISARM arm=${arm} force=${shouldForceArm} target_sys=${connectionState.systemId ?? 1}`);
+      sendLog(mainWindow, 'info', `Sent ${arm ? 'ARM' : 'DISARM'} command${force ? ' (FORCE)' : ''}`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -4738,49 +4705,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       connectionState.packetsSent++;
 
       sendLog(mainWindow, 'info', `Sent SET_MODE customMode=${customMode} (DO_SET_MODE + legacy)`);
-      missionAutoDiag(
-        `TX DO_SET_MODE+legacy custom_mode=${customMode} base_mode=0x${baseMode.toString(16)} armed_bit=${lastReportedArmed ? 1 : 0} target_sys=${connectionState.systemId ?? 1}`,
-      );
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to set mode', message);
-      return false;
-    }
-  });
-
-  // MAV_CMD_MISSION_START (command 300) via COMMAND_LONG.
-  // Starts mission execution in AUTO mode.
-  ipcMain.handle(IPC_CHANNELS.MAVLINK_MISSION_START, async (_, firstItem: number = 0, lastItem: number = 0): Promise<boolean> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      missionAutoDiag('TX MISSION_START ABORTED (not connected)');
-      return false;
-    }
-    try {
-      missionAutoDiag(
-        `TX MISSION_START MAV_CMD=300 first=${firstItem} last=${lastItem} target_sys=${connectionState.systemId ?? 1} — expect COMMAND_ACK cmd=300`,
-      );
-      const payload = serializeCommandLong({
-        targetSystem: connectionState.systemId ?? 1,
-        targetComponent: 1,
-        command: 300, // MAV_CMD_MISSION_START
-        confirmation: 0,
-        param1: firstItem,
-        param2: lastItem,
-        param3: 0,
-        param4: 0,
-        param5: 0,
-        param6: 0,
-        param7: 0,
-      });
-      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
-      sendLog(mainWindow, 'info', `Sent MISSION_START first=${firstItem} last=${lastItem}`);
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      sendLog(mainWindow, 'error', 'Failed to send MISSION_START', message);
       return false;
     }
   });
@@ -4836,94 +4764,40 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // MAV_CMD_NAV_TAKEOFF (command 22) - takeoff to altitude.
-  // param1 = minimum pitch (deg) for fixed-wing if this path is used; Copter ignores it.
-  // Default 0 — real plane launches use MAVLINK_COMMAND_TAKEOFF rarely (mode TAKEOFF instead).
-  //
-  // Must use COMMAND_INT (not LONG) so altitude has an explicit frame, and
-  // frame must be MAV_FRAME_GLOBAL_RELATIVE_ALT (3): ArduCopter's
-  // handle_MAV_CMD_NAV_TAKEOFF returns DENIED for any other frame (e.g. 6 =
-  // GLOBAL_RELATIVE_ALT_INT). Plane VTOL takeoff (cmd 84) still uses frame 6
-  // in its own handler — do not copy that here.
+  // param1 = minimum pitch angle (deg). Copter ignores it; plane uses it as
+  // initial climb pitch. 0° means "climb level" → plane won't lift off.
+  // Default 15° is a safe climb pitch for fixed-wing.
   ipcMain.handle(IPC_CHANNELS.MAVLINK_COMMAND_TAKEOFF, async (_, altitude: number, pitchDeg?: number): Promise<boolean> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
       return false;
     }
 
-    // Copter ignores param1; non‑NaN param4 avoids rare parser quirks. Pitch defaults 0.
-    const pitch = typeof pitchDeg === 'number' ? pitchDeg : 0;
-
-    const rawAlt = Number(altitude);
-    const altM = Number.isFinite(rawAlt)
-      ? Math.min(500, Math.max(0.5, rawAlt))
-      : 10;
-
-    try {
-      const payload = serializeCommandInt({
-        targetSystem: connectionState.systemId ?? 1,
-        targetComponent: 1,
-        frame: 3, // MAV_FRAME_GLOBAL_RELATIVE_ALT — only frame Copter accepts for this cmd
-        command: 22,
-        current: 0,
-        autocontinue: 0,
-        param1: pitch,
-        param2: 0,
-        // MAV_CMD_NAV_TAKEOFF param3: NAV_TAKEOFF_FLAGS_HORIZONTAL_POSITION_NOT_REQUIRED (enum value 1).
-        // Without it, AP may couple horizontal nav with x=y=0.
-        param3: 1,
-        // ArduCopter: yaw via param4 is documented as unsupported; use 0 (not NaN on the wire).
-        param4: 0,
-        x: 0,
-        y: 0,
-        z: altM,
-      });
-
-      const packet = await sendMavlinkPacket(COMMAND_INT_ID, payload, COMMAND_INT_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
-
-      sendLog(mainWindow, 'info', `Sent TAKEOFF command, altitude=${altM}m pitch=${pitch}°`);
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      sendLog(mainWindow, 'error', 'Failed to send takeoff command', message);
-      return false;
-    }
-  });
-
-  // MAV_CMD_DO_CHANGE_SPEED (178) — COMMAND_LONG. ArduCopter uses param1 = speed type;
-  // MAV_DO_CHANGE_SPEED_TYPE_CLIMB_SPEED = 2 sets wpnav climb rate (m/s). param3 = -1 leaves throttle unchanged.
-  ipcMain.handle(IPC_CHANNELS.MAVLINK_DO_CHANGE_CLIMB_SPEED, async (_, speedMs: number): Promise<boolean> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return false;
-    }
-
-    const raw = Number(speedMs);
-    const climb = Number.isFinite(raw) ? Math.min(8, Math.max(0.05, raw)) : 0.65;
+    const pitch = typeof pitchDeg === 'number' ? pitchDeg : 15;
 
     try {
       const payload = serializeCommandLong({
         targetSystem: connectionState.systemId ?? 1,
         targetComponent: 1,
-        command: 178, // MAV_CMD_DO_CHANGE_SPEED
+        command: 22,
         confirmation: 0,
-        param1: 2, // MAV_DO_CHANGE_SPEED_TYPE_CLIMB_SPEED
-        param2: climb,
-        param3: -1,
+        param1: pitch,
+        param2: 0,
+        param3: 0,
         param4: 0,
         param5: 0,
         param6: 0,
-        param7: 0,
+        param7: altitude,
       });
 
       const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
       await currentTransport.write(packet);
       connectionState.packetsSent++;
 
-      sendLog(mainWindow, 'info', `Sent DO_CHANGE_SPEED climb=${climb.toFixed(2)} m/s`);
+      sendLog(mainWindow, 'info', `Sent TAKEOFF command, altitude=${altitude}m pitch=${pitch}°`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      sendLog(mainWindow, 'error', 'Failed to send DO_CHANGE_SPEED (climb)', message);
+      sendLog(mainWindow, 'error', 'Failed to send takeoff command', message);
       return false;
     }
   });
@@ -4947,8 +4821,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param1: -1,         // groundspeed: -1 = use default
         param2: 1,          // MAV_DO_REPOSITION_FLAGS_CHANGE_MODE (auto-switch to GUIDED)
         param3: 0,          // reserved
-        // NaN = leave yaw unchanged (param4=0 forces north → lateral hunt / weave near target).
-        param4: Number.NaN,
+        param4: 0,          // yaw: 0 = north (NaN not reliable in float32)
         x: Math.round(lat * 1e7),  // latitude as int32 (degrees * 1e7)
         y: Math.round(lon * 1e7),  // longitude as int32 (degrees * 1e7)
         z: alt,             // altitude (meters, relative to home)
@@ -5785,6 +5658,146 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
+  // Servo Test via MAV_CMD_DO_SET_SERVO (command 183)
+  // Drives a single output channel to a specific PWM. Used by the Servo Output
+  // tab's per-row test buttons. ArduPilot accepts this even when armed for
+  // ground testing; user is responsible for safety (props off, etc.).
+  ipcMain.handle(IPC_CHANNELS.SERVO_TEST_PULSE, async (_, request: { channel: number; pwm: number }) => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+    if (connectionState.protocol !== 'mavlink') {
+      return { success: false, error: 'Servo test requires MAVLink connection' };
+    }
+    try {
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        command: 183, // MAV_CMD_DO_SET_SERVO
+        confirmation: 0,
+        param1: request.channel,
+        param2: request.pwm,
+        param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+      });
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+      sendLog(mainWindow, 'info', `Servo test: ch ${request.channel} -> ${request.pwm}us`);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to send servo test', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // RC Override stick test — drives RC1..RC4 with synthetic stick positions.
+  // Unlike DO_SET_SERVO, this goes through the autopilot's mixer so it works
+  // for outputs assigned to mixer functions (Aileron/Elevator/Throttle/etc).
+  // Assumes default RCMAP (Roll=RC1, Pitch=RC2, Throttle=RC3, Yaw=RC4).
+  ipcMain.handle(IPC_CHANNELS.RC_OVERRIDE_SET, async (_, request: { roll: number; pitch: number; throttle: number; yaw: number; modeChannel?: number; modePwm?: number }) => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+    if (connectionState.protocol !== 'mavlink') {
+      return { success: false, error: 'RC override requires MAVLink connection' };
+    }
+    try {
+      // Aux channels default to UINT16_MAX = "ignore" per MAVLink spec, so we
+      // don't accidentally hijack FLTMODE_CH or other RCx_OPTION-driven aux
+      // functions with stale values. If the caller asks us to pin a specific
+      // channel (typically FLTMODE_CH so the test stays in MANUAL while RX is
+      // detached) we override that single aux slot.
+      const IGNORE = 65535;
+      const aux: number[] = new Array(14).fill(IGNORE); // chan5-18
+      if (request.modeChannel && request.modePwm && request.modeChannel >= 5 && request.modeChannel <= 18) {
+        aux[request.modeChannel - 5] = request.modePwm;
+      }
+      const payload = serializeRcChannelsOverride({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        chan1Raw: request.roll,
+        chan2Raw: request.pitch,
+        chan3Raw: request.throttle,
+        chan4Raw: request.yaw,
+        chan5Raw: aux[0]!, chan6Raw: aux[1]!, chan7Raw: aux[2]!, chan8Raw: aux[3]!,
+        chan9Raw: aux[4]!, chan10Raw: aux[5]!, chan11Raw: aux[6]!, chan12Raw: aux[7]!,
+        chan13Raw: aux[8]!, chan14Raw: aux[9]!, chan15Raw: aux[10]!, chan16Raw: aux[11]!,
+        chan17Raw: aux[12]!, chan18Raw: aux[13]!,
+      });
+      const packet = await sendMavlinkPacket(RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Release RC override by sending UINT16_MAX on every channel - ArduPilot's
+  // documented signal that the GCS is no longer overriding RC.
+  ipcMain.handle(IPC_CHANNELS.RC_OVERRIDE_RELEASE, async () => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+    if (connectionState.protocol !== 'mavlink') {
+      return { success: false, error: 'RC override requires MAVLink connection' };
+    }
+    try {
+      const RELEASE = 65535; // UINT16_MAX = "ignore this channel"
+      const payload = serializeRcChannelsOverride({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        chan1Raw: RELEASE, chan2Raw: RELEASE, chan3Raw: RELEASE, chan4Raw: RELEASE,
+        chan5Raw: RELEASE, chan6Raw: RELEASE, chan7Raw: RELEASE, chan8Raw: RELEASE,
+        chan9Raw: RELEASE, chan10Raw: RELEASE, chan11Raw: RELEASE, chan12Raw: RELEASE,
+        chan13Raw: RELEASE, chan14Raw: RELEASE, chan15Raw: RELEASE, chan16Raw: RELEASE,
+        chan17Raw: RELEASE, chan18Raw: RELEASE,
+      });
+      const packet = await sendMavlinkPacket(RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+      sendLog(mainWindow, 'info', 'RC override released');
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Releases an override set by SERVO_TEST_PULSE. ArduPilot interprets PWM=0
+  // on DO_SET_SERVO as "stop overriding this channel" and returns it to the
+  // autopilot's normal control.
+  ipcMain.handle(IPC_CHANNELS.SERVO_TEST_RELEASE, async (_, request: { channel: number }) => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return { success: false, error: 'Not connected' };
+    }
+    if (connectionState.protocol !== 'mavlink') {
+      return { success: false, error: 'Servo test requires MAVLink connection' };
+    }
+    try {
+      const payload = serializeCommandLong({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        command: 183,
+        confirmation: 0,
+        param1: request.channel,
+        param2: 0,
+        param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+      });
+      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+      sendLog(mainWindow, 'info', `Servo test release: ch ${request.channel}`);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to send servo release', message);
+      return { success: false, error: message };
+    }
+  });
+
   // Stop all motors by sending DO_MOTOR_TEST with throttle=0 to every motor.
   // ArduPilot's motor test auto-stops on its duration timer, but this gives
   // a user-triggered immediate stop.
@@ -6170,19 +6183,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Set timeout waiting for FC to request first item
       missionUploadState.timeout = setTimeout(() => {
         if (missionUploadState && missionUploadState.currentSeq === 0) {
-          missionAutoDiag('MISSION upload TIMEOUT (no MISSION_REQUEST in 10s after MISSION_COUNT) — check link / FC');
           safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Timeout: FC did not request mission items');
           missionUploadState = null;
         }
       }, 10000);
-
-      const summary = items
-        .slice(0, 6)
-        .map((it) => `s${it.seq}:${getCommandName(it.command)}`)
-        .join(', ');
-      missionAutoDiag(
-        `MISSION upload BEGIN count=${items.length} mav=${detectedMavlinkVersion} preview=[${summary}${items.length > 6 ? ',…' : ''}]`,
-      );
 
       return { success: true };
     } catch (error) {
@@ -7827,13 +7831,66 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ): Promise<{ success: boolean; path?: string; error?: string }> => {
     // Download Cygwin DLLs first on Windows
     if (process.platform === 'win32') {
-      const cygwinResult = await ardupilotSitlDownloader.downloadCygwin();
+      const cygwinResult = await ardupilotSitlDownloader.downloadCygwin(vehicleType, releaseTrack);
       if (!cygwinResult.success) {
         return { success: false, error: `Failed to download Cygwin DLLs: ${cygwinResult.error}` };
       }
     }
 
     return ardupilotSitlDownloader.download(vehicleType, releaseTrack);
+  });
+
+  // Install SITL binary from a local file (same layout as download — e.g. Windows .exe).
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_IMPORT_BINARY, async (
+    _event,
+    vehicleType: ArduPilotVehicleType,
+    releaseTrack: ArduPilotReleaseTrack,
+  ): Promise<{ success: boolean; path?: string; error?: string }> => {
+    try {
+      const parent = BrowserWindow.getFocusedWindow() ?? mainWindow;
+      const { canceled, filePaths } = await dialog.showOpenDialog(parent ?? undefined, {
+        title: 'Select ArduPilot SITL binary',
+        properties: ['openFile'],
+        filters: [
+          {
+            name: process.platform === 'win32' ? 'SITL (exe / elf)' : 'SITL binary',
+            extensions: process.platform === 'win32' ? ['exe', 'elf'] : ['*'],
+          },
+          { name: 'All files', extensions: ['*'] },
+        ],
+      });
+      if (canceled || !filePaths[0]) {
+        return { success: false, error: 'Cancelled' };
+      }
+      const src = filePaths[0];
+      const dest = ardupilotSitlDownloader.getBinaryPath(vehicleType, releaseTrack);
+      await mkdir(path.dirname(dest), { recursive: true });
+      try {
+        await copyFile(src, dest);
+      } catch (e) {
+        const m = e instanceof Error ? e.message : String(e);
+        return { success: false, error: `Could not copy binary: ${m}` };
+      }
+      if (process.platform !== 'win32') {
+        try {
+          await chmod(dest, 0o755);
+        } catch { /* best-effort */ }
+      }
+      if (process.platform === 'win32') {
+        const cygwinResult = await ardupilotSitlDownloader.downloadCygwin(vehicleType, releaseTrack);
+        if (!cygwinResult.success) {
+          await rm(dest, { force: true }).catch(() => {});
+          return {
+            success: false,
+            error: `Cygwin DLLs required to run SITL could not be downloaded: ${cygwinResult.error}. Try again or use a better network/VPN.`,
+          };
+        }
+      }
+      return { success: true, path: dest };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
   });
 
   // Check if ArduPilot SITL binary exists
@@ -8495,6 +8552,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     for (const [k, v] of log.formats) formats[k] = v;
     const messages: Record<string, unknown> = {};
     for (const [k, v] of log.messages) messages[k] = v;
+    // unitLabels / multValues were added to DataFlashLog after the package's
+    // dist was last built. Guard so a stale dist doesn't crash the IPC handler
+    // (and so older logs that simply have no UNIT/FMTU records also work).
+    const unitLabels: Record<string, string> = {};
+    if (log.unitLabels instanceof Map) {
+      for (const [k, v] of log.unitLabels) unitLabels[k] = v;
+    }
+    const multValues: Record<string, number> = {};
+    if (log.multValues instanceof Map) {
+      for (const [k, v] of log.multValues) multValues[k] = v;
+    }
 
     return {
       log: {
@@ -8503,6 +8571,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         metadata: log.metadata,
         timeRange: log.timeRange,
         messageTypes: log.messageTypes,
+        unitLabels,
+        multValues,
       },
       healthResults,
       path: filePath,
@@ -9092,6 +9162,12 @@ export async function cleanupOnShutdown(): Promise<void> {
   if (heartbeatGraceTimer) {
     clearTimeout(heartbeatGraceTimer);
     heartbeatGraceTimer = null;
+  }
+
+  try {
+    await cleanupPythonPlugins();
+  } catch (err) {
+    console.warn('[Shutdown] Error stopping Python plugins:', err);
   }
 
   // Reset state

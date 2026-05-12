@@ -92,6 +92,26 @@ chunks.push(buildFmt(12, 13, 'ERR', 'QBB', 'TimeUS,Subsys,ECode'));
 // = 8+4+2+4+4+4+1+1 = 28 payload, 31 total
 chunks.push(buildFmt(13, 31, 'PM', 'QIHIIIBB', 'TimeUS,NLon,NLoop,MaxT,Mem,Load,ErrL,IntE'));
 
+// ESC: QBfffff (TimeUS,Instance,RPM,Volt,Curr,Temp,CTot) — multi-instance.
+// Quad with motor 2 deliberately running hot + slow + drawing more current
+// so per-instance picker has something visually distinct to compare.
+// = 8+1+4*5 = 29 payload, 32 total
+chunks.push(buildFmt(14, 32, 'ESC', 'QBfffff', 'TimeUS,Instance,RPM,Volt,Curr,Temp,CTot'));
+
+// RCIN: QHHHHHHHH (TimeUS,C1..C8) = 8+2*8 = 24 payload, 27 total
+chunks.push(buildFmt(15, 27, 'RCIN', 'QHHHHHHHH', 'TimeUS,C1,C2,C3,C4,C5,C6,C7,C8'));
+
+// RCOU: QHHHHHHHH (TimeUS,C1..C8) = 8+2*8 = 24 payload, 27 total
+chunks.push(buildFmt(16, 27, 'RCOU', 'QHHHHHHHH', 'TimeUS,C1,C2,C3,C4,C5,C6,C7,C8'));
+
+// RATE: Qffffff (TimeUS,RDes,R,PDes,P,YDes,Y) = 8+4*6 = 32 payload, 35 total
+// Desired vs actual body rates - tracking error spikes during vibration window.
+chunks.push(buildFmt(17, 35, 'RATE', 'Qffffff', 'TimeUS,RDes,R,PDes,P,YDes,Y'));
+
+// CMD: QHHHBffffff + CName (16) — synthetic format with name field for
+// event-marker testing. = 8+2*3+1+4*6+16 = 55 payload, 58 total.
+chunks.push(buildFmt(18, 58, 'CMD', 'QHHHBffffffN', 'TimeUS,CTot,CNum,CId,COpt,Prm1,Prm2,Prm3,Prm4,Lat,Lng,CName'));
+
 // ---- Now generate flight data ----
 
 const FLIGHT_DURATION_S = 300; // 5 minute flight
@@ -128,6 +148,32 @@ chunks.push(buildMsg(7, modePayload(startTimeUs + 30_000_000, 2, 1)));  // ALT_H
 chunks.push(buildMsg(7, modePayload(startTimeUs + 90_000_000, 5, 1)));  // LOITER at 90s
 chunks.push(buildMsg(7, modePayload(startTimeUs + 240_000_000, 6, 1))); // RTL at 240s
 chunks.push(buildMsg(7, modePayload(startTimeUs + 280_000_000, 9, 1))); // LAND at 280s
+
+// CMD entries — sparse navigation commands so event markers have something
+// to render. CName is the human-readable label that the event-marker layer
+// surfaces above the chart.
+function cmdPayload(timeUs: number, ctot: number, cnum: number, cid: number, cname: string): Uint8Array {
+  const p = new Uint8Array(55);
+  const v = new DataView(p.buffer);
+  writeU64LE(v, 0, timeUs);
+  v.setUint16(8, ctot, true);    // CTot
+  v.setUint16(10, cnum, true);   // CNum
+  v.setUint16(12, cid, true);    // CId
+  p[14] = 0;                     // COpt
+  v.setFloat32(15, 0, true);     // Prm1
+  v.setFloat32(19, 0, true);     // Prm2
+  v.setFloat32(23, 0, true);     // Prm3
+  v.setFloat32(27, 0, true);     // Prm4
+  v.setFloat32(31, 0, true);     // Lat
+  v.setFloat32(35, 0, true);     // Lng
+  // CName is N (char[16])
+  for (let i = 0; i < Math.min(cname.length, 16); i++) p[39 + i] = cname.charCodeAt(i);
+  return p;
+}
+chunks.push(buildMsg(18, cmdPayload(startTimeUs + 30_000_000,  4, 1, 22, 'NAV_TAKEOFF')));
+chunks.push(buildMsg(18, cmdPayload(startTimeUs + 90_000_000,  4, 2, 16, 'NAV_WAYPOINT')));
+chunks.push(buildMsg(18, cmdPayload(startTimeUs + 180_000_000, 4, 3, 16, 'NAV_WAYPOINT')));
+chunks.push(buildMsg(18, cmdPayload(startTimeUs + 240_000_000, 4, 4, 20, 'NAV_RTL')));
 
 // Generate time-series data
 for (let t = 0; t < FLIGHT_DURATION_S * 1000; t += SAMPLE_RATE_MS) {
@@ -322,6 +368,91 @@ for (let t = 0; t < FLIGHT_DURATION_S * 1000; t += SAMPLE_RATE_MS) {
     p[8] = 3;  // Subsys: Compass
     p[9] = 4;  // ECode: Unhealthy
     chunks.push(buildMsg(12, p));
+  }
+
+  // ESC × 4 motors @ 100ms — payload is base RPM scaled by throttle, with
+  // per-motor offsets so users can spot motor 2 (the "bad" motor) running
+  // hotter, slower, and drawing more current. Voltage tracks the battery
+  // sag from BAT so the two views agree.
+  {
+    const baseRpm = alt > 5 ? 3500 + Math.sin(tS / 4) * 200 : (tS < 2 ? 0 : 1100);
+    const baseVolt = 16.8 - (tS / FLIGHT_DURATION_S) * 2.6;
+    const escVolt = baseVolt - (alt > 10 ? 0.5 : 0);
+    for (let inst = 0; inst < 4; inst++) {
+      const p = new Uint8Array(29);
+      const v = new DataView(p.buffer);
+      writeU64LE(v, 0, timeUs);
+      p[8] = inst;
+      // Per-motor variation. Motor 2 = unbalanced/failing motor.
+      const isBad = inst === 2;
+      const rpmOffset = isBad ? -250 : (inst - 1.5) * 30;
+      const currBase = isBad ? 22 : 15;
+      const tempBase = isBad ? 65 : 42 + inst * 1.5;
+      v.setFloat32(9, baseRpm + rpmOffset + (Math.random() - 0.5) * 60, true); // RPM
+      v.setFloat32(13, escVolt + (Math.random() - 0.5) * 0.05, true);          // Volt
+      v.setFloat32(17, alt > 10 ? currBase + Math.random() * 3 : 0.4, true);   // Curr
+      v.setFloat32(21, tempBase + Math.sin(tS / 30) * 4, true);                // Temp
+      v.setFloat32(25, (tS / FLIGHT_DURATION_S) * (isBad ? 700 : 540), true);  // CTot (mAh)
+      chunks.push(buildMsg(14, p));
+    }
+  }
+
+  // RCIN @ 100ms — pilot stick inputs. C1=Roll, C2=Pitch, C3=Throttle, C4=Yaw.
+  // Stays around 1500 (centered) with throttle following the altitude profile.
+  {
+    const p = new Uint8Array(24);
+    const v = new DataView(p.buffer);
+    writeU64LE(v, 0, timeUs);
+    const throttle = Math.max(1000, Math.min(2000, 1100 + alt * 7));
+    v.setUint16(8, Math.floor(1500 + Math.sin(tS / 3) * 80), true);  // C1 Roll
+    v.setUint16(10, Math.floor(1500 + Math.cos(tS / 4) * 60), true); // C2 Pitch
+    v.setUint16(12, Math.floor(throttle), true);                     // C3 Throttle
+    v.setUint16(14, Math.floor(1500 + Math.sin(tS / 7) * 100), true); // C4 Yaw
+    v.setUint16(16, 1000, true); // C5 (mode switch)
+    v.setUint16(18, 1500, true); // C6
+    v.setUint16(20, 1500, true); // C7
+    v.setUint16(22, 1500, true); // C8
+    chunks.push(buildMsg(15, p));
+  }
+
+  // RCOU @ 100ms — motor outputs C1..C4 active for a quad. Throttle baseline
+  // shared across motors with small per-motor trim so the chart shows 4
+  // distinct lines bunched together. C2 (motor 2 in 1-based) trends higher
+  // because the bad ESC needs more PWM to hold attitude.
+  {
+    const p = new Uint8Array(24);
+    const v = new DataView(p.buffer);
+    writeU64LE(v, 0, timeUs);
+    const baseOut = alt > 5 ? 1450 + alt * 2 + Math.sin(tS / 4) * 40 : (tS < 2 ? 1000 : 1200);
+    v.setUint16(8,  Math.floor(baseOut + 5), true);   // C1
+    v.setUint16(10, Math.floor(baseOut + 28), true);  // C2  (compensating for bad motor 2 — ESC index 2 = output 3 historically; we exaggerate on C2 too for visible spread)
+    v.setUint16(12, Math.floor(baseOut + 60), true);  // C3 (output for ESC 2)
+    v.setUint16(14, Math.floor(baseOut + 12), true);  // C4
+    v.setUint16(16, 1500, true);
+    v.setUint16(18, 1500, true);
+    v.setUint16(20, 1500, true);
+    v.setUint16(22, 1500, true);
+    chunks.push(buildMsg(16, p));
+  }
+
+  // RATE @ 100ms — body-rate desired vs actual for tuning view. Baseline is
+  // smooth tracking; during the 120-140s vibration window we inject extra
+  // tracking error so the "Rate Tuning" preset shows a clear deviation.
+  {
+    const p = new Uint8Array(32);
+    const v = new DataView(p.buffer);
+    writeU64LE(v, 0, timeUs);
+    const trackingNoise = (tS > 120 && tS < 140) ? 0.15 : 0.03;
+    const rDes = Math.sin(tS / 3) * 0.4;
+    const pDes = Math.cos(tS / 4) * 0.3;
+    const yDes = Math.sin(tS / 6) * 0.2;
+    v.setFloat32(8,  rDes, true);                                          // RDes
+    v.setFloat32(12, rDes + (Math.random() - 0.5) * trackingNoise, true);  // R
+    v.setFloat32(16, pDes, true);                                          // PDes
+    v.setFloat32(20, pDes + (Math.random() - 0.5) * trackingNoise, true);  // P
+    v.setFloat32(24, yDes, true);                                          // YDes
+    v.setFloat32(28, yDes + (Math.random() - 0.5) * trackingNoise, true);  // Y
+    chunks.push(buildMsg(17, p));
   }
 }
 

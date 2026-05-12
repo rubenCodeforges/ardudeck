@@ -67,3 +67,15 @@ export const CUSTOM_CAMERA: CameraPreset = {
   imageHeight: 3000,
   focalLength: 8.8,
 };
+
+// Manual corridor width — for non-camera surveys (e.g. ArduRover lawnmower).
+// Sensor/image fields are placeholders; survey math uses manualCorridorWidth.
+export const MANUAL_CAMERA: CameraPreset = {
+  name: 'Manual',
+  sensorWidth: 0,
+  sensorHeight: 0,
+  imageWidth: 0,
+  imageHeight: 0,
+  focalLength: 0,
+  manualCorridorWidth: 1.5, // 1.5 m default — typical residential mower deck
+};

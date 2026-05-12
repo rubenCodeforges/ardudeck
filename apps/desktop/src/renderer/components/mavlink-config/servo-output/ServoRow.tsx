@@ -56,8 +56,30 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
       [prefix, setParameter]
     );
 
+    const minPwm = minParam?.value ?? 1100;
+    const trimPwm = trimParam?.value ?? 1500;
+    const maxPwm = maxParam?.value ?? 1900;
+
+    const pulse = useCallback((pwm: number) => {
+      void window.electronAPI?.servoTestPulse?.(channel, pwm);
+    }, [channel]);
+
+    const release = useCallback(() => {
+      void window.electronAPI?.servoTestRelease?.(channel);
+    }, [channel]);
+
+    // ArduPlane only honors MAV_CMD_DO_SET_SERVO on outputs configured as
+    // Disabled (0), RCPassThru (1), or RCx_PASSTHRU (51-66). Mixer functions
+    // (Aileron, Elevator, Throttle, etc.) are recomputed every cycle and
+    // override any SET_SERVO. See:
+    // https://ardupilot.org/plane/docs/common-mavlink-mission-command-messages-mav_cmd.html
+    const canTestDirectly = funcValue === 0 || funcValue === 1 || (funcValue >= 51 && funcValue <= 66);
+    const testTooltip = canTestDirectly
+      ? undefined
+      : 'ArduPlane mixer overrides this output. DO_SET_SERVO only works on Disabled (0), RCPassThru (1), or RCx_PASSTHRU (51-66) functions.';
+
     return (
-      <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_80px_80px_80px] gap-2 items-center px-3 py-2 hover:bg-surface-raised/30">
+      <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_70px_70px_70px_180px] gap-2 items-center px-3 py-2 hover:bg-surface-raised/30">
         {/* Channel number */}
         <div className="text-center text-sm font-mono text-content-secondary">{channel}</div>
 
@@ -141,8 +163,18 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
           max={pwmMax}
         />
 
+        {/* Test buttons: pulse to MIN/TRIM/MAX, then release autopilot control.
+            Disabled when the function is mixer-driven (ArduPlane mixer would
+            overwrite SET_SERVO every cycle). */}
+        <div className="flex items-center gap-1" title={testTooltip}>
+          <TestButton label="Min"  disabled={!canTestDirectly} onClick={() => pulse(minPwm)} />
+          <TestButton label="Trim" disabled={!canTestDirectly} onClick={() => pulse(trimPwm)} />
+          <TestButton label="Max"  disabled={!canTestDirectly} onClick={() => pulse(maxPwm)} />
+          <TestButton label="Rel"  disabled={!canTestDirectly} onClick={release} variant="release" />
+        </div>
+
         {!hasParams && (
-          <div className="col-span-7 text-xs text-content-tertiary text-center">
+          <div className="col-span-8 text-xs text-content-tertiary text-center">
             (params not loaded for channel {channel})
           </div>
         )}
@@ -152,6 +184,29 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
 );
 
 ServoRow.displayName = 'ServoRow';
+
+interface TestButtonProps {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  variant?: 'pulse' | 'release';
+}
+
+const TestButton: React.FC<TestButtonProps> = ({ label, disabled, onClick, variant = 'pulse' }) => {
+  const colors = variant === 'release'
+    ? 'border-amber-500/40 text-amber-300 hover:bg-amber-500/10'
+    : 'border-pink-500/40 text-pink-300 hover:bg-pink-500/10';
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex-1 h-7 px-1 text-[11px] font-mono rounded border bg-surface-base ${colors} disabled:opacity-30 disabled:cursor-not-allowed transition-colors`}
+    >
+      {label}
+    </button>
+  );
+};
 
 interface NumberCellProps {
   param: string;

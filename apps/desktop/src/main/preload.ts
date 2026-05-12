@@ -102,18 +102,8 @@ const api = {
   mavlinkSetMode: (customMode: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_SET_MODE, customMode),
 
-  mavlinkMissionStart: (firstItem?: number, lastItem?: number): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_MISSION_START, firstItem ?? 0, lastItem ?? 0),
-
-  /** Dev: forward one line to main stdout as [AUTO/MISSION] [ui] … */
-  autoMissionDiag: (line: string): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.AUTO_MISSION_DIAG, line),
-
   mavlinkTakeoff: (altitude: number, pitchDeg?: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_TAKEOFF, altitude, pitchDeg),
-
-  mavlinkDoChangeClimbSpeed: (speedMs: number): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_DO_CHANGE_CLIMB_SPEED, speedMs),
 
   mavlinkVtolTakeoff: (altitude: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_VTOL_TAKEOFF, altitude),
@@ -211,6 +201,19 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.MOTOR_TEST_START, request),
   motorTestStop: (motorCount: number): Promise<MotorTestResponse> =>
     ipcRenderer.invoke(IPC_CHANNELS.MOTOR_TEST_STOP, motorCount),
+
+  // Servo Test — pulse a single channel to a specific PWM via MAV_CMD_DO_SET_SERVO
+  servoTestPulse: (channel: number, pwm: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SERVO_TEST_PULSE, { channel, pwm }),
+  servoTestRelease: (channel: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SERVO_TEST_RELEASE, { channel }),
+
+  // RC override stick test — drives RC1..RC4 (Roll/Pitch/Throttle/Yaw) so
+  // the ArduPlane mixer translates them to whatever outputs they're mapped to.
+  rcOverrideSet: (roll: number, pitch: number, throttle: number, yaw: number, modeChannel?: number, modePwm?: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RC_OVERRIDE_SET, { roll, pitch, throttle, yaw, modeChannel, modePwm }),
+  rcOverrideRelease: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RC_OVERRIDE_RELEASE),
 
   // MAVLink Signing
   signingSetKey: (passphrase: string): Promise<{ success: boolean; error?: string }> =>
@@ -1259,6 +1262,9 @@ const api = {
   ardupilotSitlDownload: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD, vehicleType, releaseTrack),
 
+  ardupilotSitlImportBinary: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_IMPORT_BINARY, vehicleType, releaseTrack),
+
   ardupilotSitlCheckBinary: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_BINARY, vehicleType, releaseTrack),
 
@@ -1964,19 +1970,6 @@ async function executePluginCommand(
         }
         const ok = await ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_VTOL_TAKEOFF, altitude);
         return ok ? { ok: true } : { ok: false, error: 'MAVLINK_COMMAND_VTOL_TAKEOFF returned false' };
-      }
-      case 'mavlink.mission_start': {
-        const firstItem = Number(p['firstItem'] ?? 0);
-        const lastItem = Number(p['lastItem'] ?? 0);
-        if (!Number.isFinite(firstItem) || !Number.isFinite(lastItem)) {
-          return { ok: false, error: 'mavlink.mission_start requires numeric firstItem/lastItem' };
-        }
-        const ok = await ipcRenderer.invoke(
-          IPC_CHANNELS.MAVLINK_MISSION_START,
-          Math.trunc(firstItem),
-          Math.trunc(lastItem),
-        );
-        return ok ? { ok: true } : { ok: false, error: 'MAVLINK_MISSION_START returned false' };
       }
       case 'mavlink.arm':
       case 'mavlink.disarm': {

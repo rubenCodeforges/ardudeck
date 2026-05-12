@@ -47,7 +47,7 @@ export interface RcChannelsOverride {
 }
 
 export const RC_CHANNELS_OVERRIDE_ID = 70;
-export const RC_CHANNELS_OVERRIDE_CRC_EXTRA = 140;
+export const RC_CHANNELS_OVERRIDE_CRC_EXTRA = 124;
 export const RC_CHANNELS_OVERRIDE_MIN_LENGTH = 38;
 export const RC_CHANNELS_OVERRIDE_MAX_LENGTH = 38;
 
@@ -55,6 +55,10 @@ export function serializeRcChannelsOverride(msg: RcChannelsOverride): Uint8Array
   const buffer = new Uint8Array(38);
   const view = new DataView(buffer.buffer);
 
+  // MAVLink wire format: non-extension fields are sorted by type size (uint16
+  // before uint8). chan1-8 are uint16 base fields, target_system and
+  // target_component are uint8 base fields, chan9-18 are uint16 extension
+  // fields (kept in declared order at the end).
   view.setUint16(0, msg.chan1Raw, true);
   view.setUint16(2, msg.chan2Raw, true);
   view.setUint16(4, msg.chan3Raw, true);
@@ -63,18 +67,18 @@ export function serializeRcChannelsOverride(msg: RcChannelsOverride): Uint8Array
   view.setUint16(10, msg.chan6Raw, true);
   view.setUint16(12, msg.chan7Raw, true);
   view.setUint16(14, msg.chan8Raw, true);
-  view.setUint16(16, msg.chan9Raw, true);
-  view.setUint16(18, msg.chan10Raw, true);
-  view.setUint16(20, msg.chan11Raw, true);
-  view.setUint16(22, msg.chan12Raw, true);
-  view.setUint16(24, msg.chan13Raw, true);
-  view.setUint16(26, msg.chan14Raw, true);
-  view.setUint16(28, msg.chan15Raw, true);
-  view.setUint16(30, msg.chan16Raw, true);
-  view.setUint16(32, msg.chan17Raw, true);
-  view.setUint16(34, msg.chan18Raw, true);
-  buffer[36] = msg.targetSystem & 0xff;
-  buffer[37] = msg.targetComponent & 0xff;
+  buffer[16] = msg.targetSystem & 0xff;
+  buffer[17] = msg.targetComponent & 0xff;
+  view.setUint16(18, msg.chan9Raw, true);
+  view.setUint16(20, msg.chan10Raw, true);
+  view.setUint16(22, msg.chan11Raw, true);
+  view.setUint16(24, msg.chan12Raw, true);
+  view.setUint16(26, msg.chan13Raw, true);
+  view.setUint16(28, msg.chan14Raw, true);
+  view.setUint16(30, msg.chan15Raw, true);
+  view.setUint16(32, msg.chan16Raw, true);
+  view.setUint16(34, msg.chan17Raw, true);
+  view.setUint16(36, msg.chan18Raw, true);
 
   return buffer;
 }
@@ -91,17 +95,17 @@ export function deserializeRcChannelsOverride(payload: Uint8Array): RcChannelsOv
     chan6Raw: view.getUint16(10, true),
     chan7Raw: view.getUint16(12, true),
     chan8Raw: view.getUint16(14, true),
-    chan9Raw: view.getUint16(16, true),
-    chan10Raw: view.getUint16(18, true),
-    chan11Raw: view.getUint16(20, true),
-    chan12Raw: view.getUint16(22, true),
-    chan13Raw: view.getUint16(24, true),
-    chan14Raw: view.getUint16(26, true),
-    chan15Raw: view.getUint16(28, true),
-    chan16Raw: view.getUint16(30, true),
-    chan17Raw: view.getUint16(32, true),
-    chan18Raw: view.getUint16(34, true),
-    targetSystem: payload[36],
-    targetComponent: payload[37],
+    targetSystem: payload[16],
+    targetComponent: payload[17],
+    chan9Raw: view.getUint16(18, true),
+    chan10Raw: view.getUint16(20, true),
+    chan11Raw: view.getUint16(22, true),
+    chan12Raw: view.getUint16(24, true),
+    chan13Raw: view.getUint16(26, true),
+    chan14Raw: view.getUint16(28, true),
+    chan15Raw: view.getUint16(30, true),
+    chan16Raw: view.getUint16(32, true),
+    chan17Raw: view.getUint16(34, true),
+    chan18Raw: view.getUint16(36, true),
   };
 }

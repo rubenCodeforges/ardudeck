@@ -15,6 +15,7 @@ import { Move, Lightbulb } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { ServoRow } from './ServoRow';
+import { StickTestPanel } from './StickTestPanel';
 
 const PWM_MIN = 800;
 const PWM_MAX = 2200;
@@ -59,6 +60,8 @@ const ServoOutputTab: React.FC = () => {
         </div>
       )}
 
+      {hasParameters && <StickTestPanel />}
+
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center">
@@ -76,7 +79,7 @@ const ServoOutputTab: React.FC = () => {
         </div>
 
         <div className="rounded-lg border border-subtle overflow-hidden">
-          <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_80px_80px_80px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary bg-surface-raised/40 border-b border-subtle">
+          <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_70px_70px_70px_180px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary bg-surface-raised/40 border-b border-subtle">
             <div className="text-center">#</div>
             <div>Position</div>
             <div className="text-center">Reverse</div>
@@ -84,6 +87,7 @@ const ServoOutputTab: React.FC = () => {
             <div className="text-center">Min</div>
             <div className="text-center">Trim</div>
             <div className="text-center">Max</div>
+            <div className="text-center">Test</div>
           </div>
           <div className="divide-y divide-subtle/60">
             {Array.from({ length: channelCount }, (_, i) => i + 1).map((ch) => (

@@ -44,6 +44,13 @@ const MODE_COLORS: Record<string, string> = {
   ACRO: '#f97316', CIRCLE: '#84cc16', BRAKE: '#6366f1', SMART_RTL: '#fbbf24',
 };
 
+/** Color per event-marker type, used by the chart draw hook. */
+const EVENT_TYPE_COLORS: Record<string, string> = {
+  MODE: '#a855f7',
+  MSG: '#10b981',
+  CMD: '#f59e0b',
+};
+
 const COPTER_MODES: Record<number, string> = {
   0: 'STABILIZE', 1: 'ACRO', 2: 'ALT_HOLD', 3: 'AUTO', 4: 'GUIDED',
   5: 'LOITER', 6: 'RTL', 7: 'CIRCLE', 9: 'LAND', 11: 'DRIFT',
@@ -57,6 +64,7 @@ function getModeName(modeNum: number): string {
 
 const QUICK_PRESETS = [
   { label: 'Attitude', desc: 'DesRoll vs Roll, DesPitch vs Pitch', types: ['ATT'], fields: { ATT: ['DesRoll', 'Roll', 'DesPitch', 'Pitch'] } },
+  { label: 'Rate Tuning', desc: 'Desired vs actual body rates', types: ['RATE'], fields: { RATE: ['RDes', 'R', 'PDes', 'P', 'YDes', 'Y'] } },
   { label: 'Vibration', desc: 'X/Y/Z acceleration variance', types: ['VIBE'], fields: { VIBE: ['VibeX', 'VibeY', 'VibeZ'] } },
   { label: 'GPS', desc: 'Satellite count & dilution', types: ['GPS'], fields: { GPS: ['NSats', 'HDop'] } },
   { label: 'Battery', desc: 'Voltage & current draw', types: ['BAT'], fields: { BAT: ['Volt', 'Curr'] } },
@@ -64,7 +72,29 @@ const QUICK_PRESETS = [
   { label: 'Compass', desc: 'Magnetic field X/Y/Z', types: ['MAG'], fields: { MAG: ['MagX', 'MagY', 'MagZ'] } },
   { label: 'EKF', desc: 'Innovation test ratios', types: ['NKF4'], fields: { NKF4: ['SV', 'SP', 'SH'] } },
   { label: 'Power', desc: 'Board voltage', types: ['POWR'], fields: { POWR: ['Vcc'] } },
+  { label: 'Motor Outputs', desc: 'PWM out per motor (RCOU)', types: ['RCOU'], fields: { RCOU: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8'] } },
+  { label: 'ESC RPM', desc: 'RPM per motor — split by instance', types: ['ESC'], fields: { ESC: ['RPM'] } },
+  { label: 'ESC Temp', desc: 'Temperature per ESC', types: ['ESC'], fields: { ESC: ['Temp'] } },
+  { label: 'ESC Power', desc: 'Voltage & current per ESC', types: ['ESC'], fields: { ESC: ['Volt', 'Curr'] } },
+  { label: 'Position', desc: 'Desired vs actual XY position', types: ['PSCN', 'PSCE'], fields: { PSCN: ['DPN', 'PN'], PSCE: ['DPE', 'PE'] } },
+  { label: 'Position (legacy)', desc: 'PSC desired vs actual', types: ['PSC'], fields: { PSC: ['TPX', 'PX', 'TPY', 'PY'] } },
+  { label: 'Airspeed', desc: 'Indicated vs true airspeed', types: ['ARSP'], fields: { ARSP: ['Airspeed', 'DiffPress'] } },
+  { label: 'Rangefinder', desc: 'Distance per sensor (RFND)', types: ['RFND'], fields: { RFND: ['Dist'] } },
+  { label: 'Wind Estimate', desc: 'Wind X/Y/Z (NKF2)', types: ['NKF2'], fields: { NKF2: ['VWN', 'VWE'] } },
+  { label: 'Inputs vs Outputs', desc: 'RC in vs motor out', types: ['RCIN', 'RCOU'], fields: { RCIN: ['C1', 'C2', 'C3', 'C4'], RCOU: ['C1', 'C2', 'C3', 'C4'] } },
 ];
+
+/**
+ * Common non-numeric ("event") fields per ArduPilot message type. The field
+ * picker shows these alongside numeric fields so users can render them as
+ * vertical event markers on the chart instead of being silently dropped for
+ * being non-numeric.
+ */
+const EVENT_FIELDS_BY_TYPE: Record<string, string[]> = {
+  MODE: ['Name'],
+  MSG: ['Message'],
+  CMD: ['CName'],
+};
 
 function getModeTimeline(log: ReturnType<typeof useLogStore.getState>['currentLog']) {
   if (!log) return [];
@@ -103,19 +133,65 @@ function getFlightPath(log: ReturnType<typeof useLogStore.getState>['currentLog'
 // Chart Panel
 // ============================================================================
 
-function ChartPanel() {
+/**
+ * `chartId` lets multiple ChartPanel instances coexist with independent
+ * field selections (Mission Planner-style comparison view). Each panel
+ * renders the slice of the store keyed by its own chartId; the global field
+ * picker writes to whichever chart the user has selected as active.
+ */
+function ChartPanel({ chartId }: { chartId: string }) {
   const currentLog = useLogStore((s) => s.currentLog);
-  const selectedTypes = useLogStore((s) => s.selectedTypes);
-  const selectedFields = useLogStore((s) => s.selectedFields);
+  const selectedTypes = useLogStore((s) => s.selectedTypesByChart[chartId] ?? []);
+  const selectedFields = useLogStore((s) => s.selectedFieldsByChart[chartId] ?? new Map());
+  const activeChartId = useLogStore((s) => s.activeChartId);
+  const setActiveChartId = useLogStore((s) => s.setActiveChartId);
+  const chartIds = useLogStore((s) => s.chartIds);
+  const isActive = activeChartId === chartId;
+  const chartIndex = chartIds.indexOf(chartId);
   const resolvedTheme = useResolvedTheme();
   const isLight = resolvedTheme === 'light';
-  const setSelectedTypes = useLogStore((s) => s.setSelectedTypes);
-  const setSelectedFields = useLogStore((s) => s.setSelectedFields);
+  // Cross-chart field application: presets here mutate THIS chart's state,
+  // which means we briefly re-target the store's active id, write, then
+  // restore. Saves callers from threading chartId through every store
+  // action signature.
+  const writeToThisChart = useCallback((fn: () => void) => {
+    const store = useLogStore.getState();
+    const prev = store.activeChartId;
+    if (prev !== chartId) store.setActiveChartId(chartId);
+    fn();
+    if (prev !== chartId) store.setActiveChartId(prev);
+  }, [chartId]);
+  const setSelectedTypes = useCallback((types: string[]) => {
+    writeToThisChart(() => useLogStore.getState().setSelectedTypes(types));
+  }, [writeToThisChart]);
+  const setSelectedFields = useCallback((type: string, fields: string[]) => {
+    writeToThisChart(() => useLogStore.getState().setSelectedFields(type, fields));
+  }, [writeToThisChart]);
 
   const chartRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
-  const [isZoomed, setIsZoomed] = useState(false);
-  const [xRange, setXRange] = useState<{ min: number; max: number } | null>(null);
+  // Local zoom state used when sync is disabled. When sync is enabled the
+  // effective xRange comes from the store (`syncedXRange`) so all charts
+  // share one time window — drag-zoom on chart 1 also zooms chart 2.
+  const [localXRange, setLocalXRange] = useState<{ min: number; max: number } | null>(null);
+  const syncedXRange = useLogStore((s) => s.syncedXRange);
+  const syncZoomEnabled = useLogStore((s) => s.syncZoomEnabled);
+  const setSyncedXRange = useLogStore((s) => s.setSyncedXRange);
+  const setSyncZoomEnabled = useLogStore((s) => s.setSyncZoomEnabled);
+  const xRange = syncZoomEnabled ? syncedXRange : localXRange;
+  const isZoomed = xRange !== null;
+  // Stable broadcaster used inside uPlot hooks; avoids re-creating the chart
+  // every time the store-derived flag flips.
+  const applyZoom = useCallback((range: { min: number; max: number } | null) => {
+    if (useLogStore.getState().syncZoomEnabled) {
+      useLogStore.getState().setSyncedXRange(range);
+    } else {
+      setLocalXRange(range);
+    }
+  }, []);
+  // Legend defaults to collapsed once it would exceed the inline-summary
+  // threshold; user can pin it open per-chart.
+  const [legendExpanded, setLegendExpanded] = useState(false);
 
   const messageTypes = currentLog?.messageTypes ?? [];
   const modeTimeline = useMemo(() => getModeTimeline(currentLog), [currentLog]);
@@ -125,12 +201,43 @@ function ChartPanel() {
   const chartData = useMemo(() => {
     if (!currentLog) return null;
 
+    // Build a (type, field) → unit string lookup from the parsed log's UNIT/FMTU
+    // metadata. Falls back gracefully when the log has no unit records (older
+    // firmware) — the helper just returns undefined and labels render unitless.
+    const unitLabels = currentLog.unitLabels ?? {};
+    const formatList = Object.values(currentLog.formats);
+    const lookupUnit = (type: string, field: string): string | undefined => {
+      if (Object.keys(unitLabels).length === 0) return undefined;
+      for (const fmt of formatList) {
+        if (fmt.name !== type) continue;
+        if (!fmt.unitChars) return undefined;
+        const idx = fmt.fields.indexOf(field);
+        if (idx === -1) return undefined;
+        const ch = fmt.unitChars[idx];
+        if (!ch || ch === '-') return undefined;
+        const label = unitLabels[ch];
+        if (!label || label === '-' || label === '') return undefined;
+        return label;
+      }
+      return undefined;
+    };
+    const labelWithUnit = (base: string, type: string, field: string): string => {
+      const u = lookupUnit(type, field);
+      return u ? `${base} (${u})` : base;
+    };
+
     // Derive active types from selectedFields (don't depend on selectedTypes)
     const activeTypes: string[] = [];
     selectedFields.forEach((fields, type) => {
       if (fields.length > 0) activeTypes.push(type);
     });
     if (activeTypes.length === 0) return null;
+
+    // Event markers — non-numeric fields (MODE.Name, MSG.Message, CMD.CName)
+    // selected from the field picker. Rendered as vertical lines via the
+    // uPlot draw hook below. Kept separate from numeric series so they don't
+    // pollute the y-axis with NaN-only "data".
+    const eventMarkers: { timeS: number; label: string; color: string }[] = [];
 
     // Collect per-type time+value arrays, then join onto a common time axis
     const perType: { time: number[]; label: string; values: number[] }[][] = [];
@@ -164,8 +271,42 @@ function ChartPanel() {
 
       const time = msgs.map((m) => m.timeUs / 1_000_000);
       const typeSeries: { time: number[]; label: string; values: number[] }[] = [];
+      const eventAllow = EVENT_FIELDS_BY_TYPE[type];
       for (const field of fields) {
-        if (splitByInstance) {
+        // Per-instance field selection: a stored name like `RPM[2]` means
+        // "only instance 2 of RPM" (Mission Planner parity). Bare `RPM`
+        // means "all instances" (legacy behavior). Both can coexist.
+        const instMatch = field.match(/^(.+?)\[(\d+)\]$/);
+        const baseField = instMatch ? instMatch[1]! : field;
+        const targetInst = instMatch ? Number(instMatch[2]) : null;
+
+        // Event-marker fields are extracted as discrete (timeS, label) tuples
+        // and drawn separately. We dedupe consecutive identical labels so a
+        // chatty MSG stream doesn't render thousands of identical markers.
+        if (eventAllow?.includes(baseField) && typeof sample.fields[baseField] !== 'number') {
+          let lastLabel: string | null = null;
+          const color = EVENT_TYPE_COLORS[type] ?? '#9ca3af';
+          for (const m of msgs) {
+            const raw = m.fields[baseField];
+            const label = typeof raw === 'string' ? raw : String(raw ?? '');
+            if (!label || label === lastLabel) continue;
+            eventMarkers.push({ timeS: m.timeUs / 1_000_000, label: `${type}: ${label}`, color });
+            lastLabel = label;
+          }
+          continue;
+        }
+        if (targetInst !== null && instanceKey) {
+          // Single instance pick — emit one series for just this instance.
+          const ti: number[] = [];
+          const vi: number[] = [];
+          for (const m of msgs) {
+            if (m.fields[instanceKey] !== targetInst) continue;
+            ti.push(m.timeUs / 1_000_000);
+            const v = m.fields[baseField];
+            vi.push(typeof v === 'number' ? v : NaN);
+          }
+          typeSeries.push({ time: ti, label: labelWithUnit(`${type}[${targetInst}].${baseField}`, type, baseField), values: vi });
+        } else if (splitByInstance) {
           // Bucket messages by instance value, preserving per-instance time
           // axes (different sample rates per sensor are common).
           const byInst = new Map<number, { time: number[]; values: number[] }>();
@@ -175,28 +316,42 @@ function ChartPanel() {
             let bucket = byInst.get(inst);
             if (!bucket) { bucket = { time: [], values: [] }; byInst.set(inst, bucket); }
             bucket.time.push(m.timeUs / 1_000_000);
-            const v = m.fields[field];
+            const v = m.fields[baseField];
             bucket.values.push(typeof v === 'number' ? v : NaN);
           }
           for (const [inst, bucket] of [...byInst.entries()].sort((a, b) => a[0] - b[0])) {
             typeSeries.push({
               time: bucket.time,
-              label: `${type}[${inst}].${field}`,
+              label: labelWithUnit(`${type}[${inst}].${baseField}`, type, baseField),
               values: bucket.values,
             });
           }
         } else {
           const values = msgs.map((m) => {
-            const v = m.fields[field];
+            const v = m.fields[baseField];
             return typeof v === 'number' ? v : NaN;
           });
-          typeSeries.push({ time, label: `${type}.${field}`, values });
+          typeSeries.push({ time, label: labelWithUnit(`${type}.${baseField}`, type, baseField), values });
         }
       }
       if (typeSeries.length > 0) perType.push(typeSeries);
     }
 
-    if (perType.length === 0) return null;
+    // No numeric series? If event markers were picked, render an empty chart
+    // spanning the full log so the markers still show up. Without this, picking
+    // only MODE.Name (very common workflow) would silently render nothing.
+    if (perType.length === 0) {
+      if (eventMarkers.length === 0) return null;
+      const startS = currentLog.timeRange.startUs / 1_000_000;
+      const endS = currentLog.timeRange.endUs / 1_000_000;
+      const time = new Float64Array([startS, endS]);
+      const empty = new Float64Array([NaN, NaN]);
+      return {
+        data: [time, empty] as uPlot.AlignedData,
+        series: [{ label: '(events only)', data: [NaN, NaN] }],
+        eventMarkers,
+      };
+    }
 
     // If all series share the same time axis (single type), use it directly
     const allSeries = perType.flat();
@@ -207,6 +362,7 @@ function ChartPanel() {
       return {
         data: [new Float64Array(firstTime), ...allSeries.map((s) => new Float64Array(s.values))] as uPlot.AlignedData,
         series: allSeries.map((s) => ({ label: s.label, data: s.values })),
+        eventMarkers,
       };
     }
 
@@ -230,6 +386,7 @@ function ChartPanel() {
     return {
       data: [unionTime, ...aligned] as uPlot.AlignedData,
       series: allSeries.map((s) => ({ label: s.label, data: s.values })),
+      eventMarkers,
     };
   }, [currentLog, selectedFields]);
 
@@ -241,6 +398,12 @@ function ChartPanel() {
 
     const container = chartRef.current;
     const { width, height } = container.getBoundingClientRect();
+
+    // Snapshot mode + event data into closure-stable refs so the draw hooks
+    // don't have to re-read the React store on every paint (the chart
+    // re-creates itself when chartData changes anyway, picking up new data).
+    const modeSegments = modeTimeline;
+    const markers = chartData.eventMarkers ?? [];
 
     const opts: uPlot.Options = {
       width: Math.max(width, 300),
@@ -255,10 +418,67 @@ function ChartPanel() {
             const minX = u.posToVal(u.select.left, 'x');
             const maxX = u.posToVal(u.select.left + u.select.width, 'x');
             u.setScale('x', { min: minX, max: maxX });
-            setIsZoomed(true);
-            setXRange({ min: minX, max: maxX });
+            applyZoom({ min: minX, max: maxX });
           }
           u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+        }],
+        // Render mode bands BEFORE series so they sit underneath the chart
+        // lines and act as a tinted backdrop. drawClear runs right after the
+        // canvas wipe and before any series stroke - perfect for backdrops.
+        drawClear: [(u) => {
+          if (modeSegments.length === 0) return;
+          const ctx = u.ctx;
+          const xMin = u.scales.x?.min ?? 0;
+          const xMax = u.scales.x?.max ?? 0;
+          const top = u.bbox.top;
+          const bottom = u.bbox.top + u.bbox.height;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(u.bbox.left, top, u.bbox.width, u.bbox.height);
+          ctx.clip();
+          for (const seg of modeSegments) {
+            if (seg.endS < xMin || seg.startS > xMax) continue;
+            const x1 = u.valToPos(Math.max(seg.startS, xMin), 'x', true);
+            const x2 = u.valToPos(Math.min(seg.endS, xMax), 'x', true);
+            ctx.fillStyle = seg.color + '14'; // ~8% alpha
+            ctx.fillRect(x1, top, x2 - x1, bottom - top);
+          }
+          ctx.restore();
+        }],
+        // Render event markers AFTER series so they sit on top with crisp
+        // labels visible against the chart content.
+        draw: [(u) => {
+          if (markers.length === 0) return;
+          const ctx = u.ctx;
+          const xMin = u.scales.x?.min ?? 0;
+          const xMax = u.scales.x?.max ?? 0;
+          const top = u.bbox.top;
+          const bottom = u.bbox.top + u.bbox.height;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(u.bbox.left, top, u.bbox.width, u.bbox.height);
+          ctx.clip();
+          ctx.font = '10px system-ui';
+          ctx.textBaseline = 'top';
+          // Cull labels that would visually overlap (within 6px of the
+          // previous one) so a flurry of MSGs doesn't render as a black bar.
+          let lastLabelX = -Infinity;
+          for (const m of markers) {
+            if (m.timeS < xMin || m.timeS > xMax) continue;
+            const x = u.valToPos(m.timeS, 'x', true);
+            ctx.strokeStyle = m.color + 'cc';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, top);
+            ctx.lineTo(x, bottom);
+            ctx.stroke();
+            if (x - lastLabelX > 6) {
+              ctx.fillStyle = m.color;
+              ctx.fillText(m.label, x + 3, top + 2);
+              lastLabelX = x;
+            }
+          }
+          ctx.restore();
         }],
       },
       scales: { x: { time: false }, y: { auto: true } },
@@ -305,15 +525,13 @@ function ChartPanel() {
       const newMin = xMin + (range - newRange) * pctLeft;
       const newMax = newMin + newRange;
       plot.setScale('x', { min: newMin, max: newMax });
-      setIsZoomed(true);
-      setXRange({ min: newMin, max: newMax });
+      applyZoom({ min: newMin, max: newMax });
     };
 
     const handleDblClick = () => {
       const xData = chartData.data[0] as Float64Array;
       plot.setScale('x', { min: xData[0]!, max: xData[xData.length - 1]! });
-      setIsZoomed(false);
-      setXRange(null);
+      applyZoom(null);
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
@@ -324,7 +542,27 @@ function ChartPanel() {
       container.removeEventListener('dblclick', handleDblClick);
       if (plotRef.current) { plotRef.current.destroy(); plotRef.current = null; }
     };
-  }, [chartData, isLight]);
+  }, [chartData, isLight, modeTimeline, applyZoom]);
+
+  // Apply the synchronized zoom range to this chart's plot whenever the
+  // store value changes (i.e. another chart drove the zoom). Local zoom is
+  // already applied imperatively in the user-gesture handlers above, so this
+  // only fires for *external* updates and during initial render.
+  //
+  // When sync is enabled but no explicit range is set, we use the full *log*
+  // time range rather than each chart's own data extent — otherwise a chart
+  // showing ESC RPM (data only at 290-340s) and one showing RCOU (data at
+  // 0-340s) start out visually misaligned even though sync is "on".
+  useEffect(() => {
+    if (!syncZoomEnabled || !plotRef.current || !chartData) return;
+    if (syncedXRange) {
+      plotRef.current.setScale('x', { min: syncedXRange.min, max: syncedXRange.max });
+    } else if (currentLog) {
+      const min = currentLog.timeRange.startUs / 1_000_000;
+      const max = currentLog.timeRange.endUs / 1_000_000;
+      if (max > min) plotRef.current.setScale('x', { min, max });
+    }
+  }, [syncedXRange, syncZoomEnabled, chartData, currentLog]);
 
   useEffect(() => {
     const el = chartRef.current;
@@ -342,10 +580,9 @@ function ChartPanel() {
     if (plotRef.current && chartData) {
       const xData = chartData.data[0] as Float64Array;
       plotRef.current.setScale('x', { min: xData[0]!, max: xData[xData.length - 1]! });
-      setIsZoomed(false);
-      setXRange(null);
+      applyZoom(null);
     }
-  }, [chartData]);
+  }, [chartData, applyZoom]);
 
   const applyPreset = useCallback((preset: typeof QUICK_PRESETS[number]) => {
     const validTypes = preset.types.filter((t) => messageTypes.includes(t));
@@ -374,7 +611,13 @@ function ChartPanel() {
 
   if (!chartData) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 p-6">
+      <div
+        className={`h-full flex flex-col items-center justify-center gap-4 p-6 ${isActive ? 'ring-1 ring-blue-500/40 rounded-sm' : ''}`}
+        onMouseDown={() => { if (!isActive) setActiveChartId(chartId); }}
+      >
+        <div className={`text-[10px] uppercase tracking-wider ${isActive ? 'text-blue-400 font-semibold' : 'text-content-tertiary'}`}>
+          Chart {chartIndex + 1}{isActive ? ' • picker target' : ' • click to target'}
+        </div>
         <div className="text-content-secondary text-sm">Pick a quick plot or select fields</div>
         <div className="flex flex-wrap justify-center gap-2">
           {QUICK_PRESETS.filter((p) => p.types.some((t) => messageTypes.includes(t))).map((preset) => (
@@ -399,7 +642,121 @@ function ChartPanel() {
   const visibleRange = visibleXMax - visibleXMin;
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div
+      className={`h-full flex flex-col relative ${isActive ? 'ring-1 ring-blue-500/40 rounded-sm' : ''}`}
+      onMouseDown={() => { if (!isActive) setActiveChartId(chartId); }}
+    >
+      {(() => {
+        // Group series by message type so the legend reads as a structured
+        // table rather than a flat run-on list. With many series this is
+        // dramatically denser — 26 items become 8 type rows, and the user
+        // can still see every field name and its line color.
+        type SeriesEntry = { label: string; field: string; color: string };
+        const groups = new Map<string, SeriesEntry[]>();
+        chartData.series.forEach((s, i) => {
+          const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
+          // Label format is `TYPE.field` or `TYPE[N].field` (per-instance).
+          // Strip the leading TYPE off so the field name reads cleanly inside
+          // its group; the type is shown once as the row label.
+          const m = s.label.match(/^([A-Z][A-Z0-9_]*)(\[\d+\])?\.(.+)$/);
+          const type = m?.[1] ?? s.label;
+          const inst = m?.[2] ?? '';
+          const field = m?.[3] ?? s.label;
+          const display = inst ? `${field}${inst}` : field;
+          if (!groups.has(type)) groups.set(type, []);
+          groups.get(type)!.push({ label: s.label, field: display, color });
+        });
+        const groupCount = groups.size;
+        const seriesCount = chartData.series.length;
+        // Inline summary fits comfortably up to ~6 series; past that, default
+        // to collapsed and let the user expand per chart. The threshold is
+        // intentional: 6 chips fit on a single line at typical panel widths.
+        const shouldAutoCollapse = seriesCount > 6;
+        const isCollapsed = shouldAutoCollapse && !legendExpanded;
+        return (
+          <div className="flex flex-col flex-shrink-0 border-b border-subtle bg-surface-overlay-subtle">
+            {/* Header row — chart label + summary + expand/collapse */}
+            <div className="flex items-center gap-2 px-3 py-1 text-[10px] min-h-[22px]">
+              <span className={`uppercase tracking-wider shrink-0 ${isActive ? 'text-blue-400 font-semibold' : 'text-content-tertiary'}`}>
+                Chart {chartIndex + 1}{isActive ? ' • picker target' : ''}
+              </span>
+              {seriesCount === 0 ? (
+                <span className="text-content-tertiary italic">no fields selected</span>
+              ) : (
+                <>
+                  <span className="w-px h-3 bg-subtle shrink-0" />
+                  {isCollapsed ? (
+                    // Collapsed: type names with per-type counts. User sees
+                    // *what kinds* of data are plotted without the chart
+                    // legend hijacking half the panel.
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      {[...groups.entries()].map(([type, items]) => (
+                        <button
+                          key={type}
+                          onClick={() => setLegendExpanded(true)}
+                          className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-surface-raised hover:bg-blue-500/10 text-content transition-colors"
+                          title={items.map((it) => it.field).join(', ')}
+                        >
+                          <span className="font-medium">{type}</span>
+                          <span className="text-content-tertiary tabular-nums">{items.length}</span>
+                          <span className="flex items-center gap-[2px]">
+                            {items.slice(0, 4).map((it) => (
+                              <span key={it.label} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: it.color }} />
+                            ))}
+                            {items.length > 4 && (
+                              <span className="text-[9px] text-content-tertiary">+{items.length - 4}</span>
+                            )}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-[9px] text-content-tertiary tabular-nums shrink-0">
+                      {seriesCount} series · {groupCount} {groupCount === 1 ? 'group' : 'groups'}
+                    </span>
+                  )}
+                </>
+              )}
+              {shouldAutoCollapse && (
+                <button
+                  onClick={() => setLegendExpanded(!legendExpanded)}
+                  className="ml-auto text-[10px] px-1.5 py-0.5 rounded text-content-secondary hover:text-content hover:bg-surface-raised transition-colors flex items-center gap-1 shrink-0"
+                  title={legendExpanded ? 'Collapse legend' : 'Show all field names'}
+                >
+                  {legendExpanded ? 'Collapse' : 'Expand'}
+                  <svg className={`w-2.5 h-2.5 transition-transform ${legendExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Detail rows — only when expanded OR when few enough series fit
+                inline. Each row is a TYPE group with its field chips. */}
+            {(!shouldAutoCollapse || legendExpanded) && seriesCount > 0 && (
+              <div className="px-3 pb-1.5 grid gap-y-0.5 max-h-[120px] overflow-y-auto"
+                   style={{ gridTemplateColumns: 'min-content 1fr' }}>
+                {[...groups.entries()].map(([type, items]) => (
+                  <div key={type} className="contents">
+                    <span className="text-[10px] font-semibold text-content pr-3 tabular-nums whitespace-nowrap self-start py-0.5">
+                      {type}
+                    </span>
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 min-w-0">
+                      {items.map((it) => (
+                        <span key={it.label} className="inline-flex items-center gap-1 text-[10px] whitespace-nowrap" title={it.label}>
+                          <span className="w-3 h-[3px] rounded-full shrink-0" style={{ backgroundColor: it.color }} />
+                          <span className="text-content-secondary tabular-nums">{it.field}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Mode timeline — synced with chart X axis */}
       {modeTimeline.length > 0 && visibleRange > 0 && (
         <div className="h-5 mx-2 mt-1 flex-shrink-0 rounded overflow-hidden relative bg-surface">
@@ -431,14 +788,36 @@ function ChartPanel() {
       {/* Chart */}
       <div ref={chartRef} className="flex-1 min-h-0" />
 
-      {isZoomed && (
-        <button
-          onClick={resetZoom}
-          className="absolute top-1 right-2 z-10 text-[10px] px-2 py-1 bg-surface-overlay hover:bg-surface-raised text-content hover:text-content rounded border border-subtle transition-colors backdrop-blur-sm"
-        >
-          Reset Zoom
-        </button>
-      )}
+      <div className="absolute top-1 right-2 z-10 flex items-center gap-1.5">
+        {chartIds.length > 1 && (
+          <button
+            onClick={() => setSyncZoomEnabled(!syncZoomEnabled)}
+            className={`text-[10px] px-2 py-1 rounded border transition-colors backdrop-blur-sm flex items-center gap-1 ${
+              syncZoomEnabled
+                ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border-blue-500/40'
+                : 'bg-surface-overlay hover:bg-surface-raised text-content-secondary hover:text-content border-subtle'
+            }`}
+            title={syncZoomEnabled ? 'Sync zoom across all charts (on)' : 'Sync zoom across all charts (off)'}
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {syncZoomEnabled ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101M3 3l18 18" />
+              )}
+            </svg>
+            <span>{syncZoomEnabled ? 'Synced' : 'Unsynced'}</span>
+          </button>
+        )}
+        {isZoomed && (
+          <button
+            onClick={resetZoom}
+            className="text-[10px] px-2 py-1 bg-surface-overlay hover:bg-surface-raised text-content hover:text-content rounded border border-subtle transition-colors backdrop-blur-sm"
+          >
+            Reset Zoom
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -756,13 +1135,27 @@ function FlightPathPanel() {
 
 function FieldPickerPanel() {
   const currentLog = useLogStore((s) => s.currentLog);
-  const selectedTypes = useLogStore((s) => s.selectedTypes);
-  const selectedFields = useLogStore((s) => s.selectedFields);
+  // Picker always operates on the active chart so writes go to the panel
+  // the user just clicked. ChartPanel components read from their OWN chartId
+  // (not activeChartId) so each chart updates independently.
+  const activeChartId = useLogStore((s) => s.activeChartId);
+  const chartIds = useLogStore((s) => s.chartIds);
+  const selectedFieldsByChart = useLogStore((s) => s.selectedFieldsByChart);
+  const selectedFields = selectedFieldsByChart[activeChartId] ?? new Map();
+  const selectedTypes = useLogStore((s) => s.selectedTypesByChart[s.activeChartId] ?? []);
   const isLightTheme = useResolvedTheme() === 'light';
   const setSelectedTypes = useLogStore((s) => s.setSelectedTypes);
   const setSelectedFields = useLogStore((s) => s.setSelectedFields);
+  const setActiveChartId = useLogStore((s) => s.setActiveChartId);
+  // removeChart is intentionally not used here — chart removal goes through
+  // dockview's panel close button, which fires onDidRemovePanel and the
+  // explorer cleans up the store entry. Keeping a single removal path
+  // avoids "tab gone but panel still rendering" desync.
   const [search, setSearch] = useState('');
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
+  // Tracks which `${type}.${field}` combos have their per-instance picker
+  // expanded — only relevant for multi-instance types (ESC, IMU, MAG, ...).
+  const [expandedInstanceFields, setExpandedInstanceFields] = useState<Set<string>>(new Set());
 
   const messageTypes = currentLog?.messageTypes ?? [];
 
@@ -775,9 +1168,11 @@ function FieldPickerPanel() {
   // Get fields for any message type (not just selected ones).
   // We hide the instance discriminator ("Instance" / "I") because it carries
   // no signal worth plotting — it's the per-row sensor index, not data.
-  // Instead, we expose `instanceCount` so the UI can hint "× 4 motors" on
-  // the type header so the user knows their picked field will fan out into
-  // multiple series automatically.
+  // Numeric fields become normal series; whitelisted non-numeric fields
+  // (MODE.Name, MSG.Message, CMD.CName) become event markers — Mission
+  // Planner overlays these as vertical labels and the user wanted parity.
+  // Other non-numeric fields stay hidden because they're noise (FMT names,
+  // raw byte buffers, etc.).
   const typeFields = useMemo(() => {
     if (!currentLog) return {};
     const result: Record<string, string[]> = {};
@@ -785,20 +1180,34 @@ function FieldPickerPanel() {
       const msgs = currentLog.messages[type];
       if (msgs && msgs.length > 0) {
         const firstMsg = msgs[0]!;
+        const eventAllow = new Set(EVENT_FIELDS_BY_TYPE[type] ?? []);
         result[type] = Object.keys(firstMsg.fields).filter(
           (f) => f !== 'TimeUS' && f !== 'Instance' && f !== 'I'
-            && typeof firstMsg.fields[f] === 'number',
+            && (typeof firstMsg.fields[f] === 'number' || eventAllow.has(f)),
         );
       }
     }
     return result;
   }, [currentLog, messageTypes]);
 
-  // Per-type instance count: how many distinct sensor instances the type
-  // contains (1 = single-sensor; >1 = multi-instance like ESC × N motors).
-  const typeInstanceCount = useMemo(() => {
-    if (!currentLog) return new Map<string, number>();
-    const out = new Map<string, number>();
+  // Per-(type, field) flag: is this an event-marker (string) field?
+  const isEventField = useCallback(
+    (type: string, field: string): boolean => {
+      const allow = EVENT_FIELDS_BY_TYPE[type];
+      if (!allow || !allow.includes(field)) return false;
+      const msgs = currentLog?.messages[type];
+      if (!msgs || msgs.length === 0) return false;
+      return typeof msgs[0]!.fields[field] !== 'number';
+    },
+    [currentLog],
+  );
+
+  // Per-type sorted list of distinct instance numbers (e.g. ESC → [0,1,2,3]).
+  // Empty array for single-instance types. Drives both the "× N" header chip
+  // and the per-instance sub-checkboxes under each field row.
+  const typeInstances = useMemo(() => {
+    if (!currentLog) return new Map<string, number[]>();
+    const out = new Map<string, number[]>();
     for (const type of messageTypes) {
       const msgs = currentLog.messages[type];
       if (!msgs || msgs.length === 0) continue;
@@ -812,7 +1221,7 @@ function FieldPickerPanel() {
         const v = msgs[i]!.fields[key];
         if (typeof v === 'number') distinct.add(v);
       }
-      if (distinct.size > 1) out.set(type, distinct.size);
+      if (distinct.size > 1) out.set(type, [...distinct].sort((a, b) => a - b));
     }
     return out;
   }, [currentLog, messageTypes]);
@@ -838,16 +1247,18 @@ function FieldPickerPanel() {
 
   const handleFieldToggle = useCallback((type: string, field: string) => {
     const store = useLogStore.getState();
-    const current = store.selectedFields.get(type) ?? [];
+    const activeId = store.activeChartId;
+    const currentFields: Map<string, string[]> = store.selectedFieldsByChart[activeId] ?? new Map();
+    const currentTypes: string[] = store.selectedTypesByChart[activeId] ?? [];
+    const current: string[] = currentFields.get(type) ?? [];
     const isRemoving = current.includes(field);
     const newFields = isRemoving ? current.filter((f) => f !== field) : [...current, field];
     store.setSelectedFields(type, newFields);
 
-    // Auto-manage selectedTypes based on whether any fields are checked
-    if (!isRemoving && !store.selectedTypes.includes(type)) {
-      store.setSelectedTypes([...store.selectedTypes, type]);
+    if (!isRemoving && !currentTypes.includes(type)) {
+      store.setSelectedTypes([...currentTypes, type]);
     } else if (isRemoving && newFields.length === 0) {
-      store.setSelectedTypes(store.selectedTypes.filter((t) => t !== type));
+      store.setSelectedTypes(currentTypes.filter((t) => t !== type));
     }
   }, []);
 
@@ -881,6 +1292,38 @@ function FieldPickerPanel() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Chart-target tabs (only shown if more than one chart exists). Each
+          tab is the destination for picker checkboxes; clicking switches
+          which chart the picker writes to. The dockview also broadcasts
+          panel focus, so clicking a chart panel directly does the same. */}
+      {chartIds.length > 1 && (
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-subtle bg-surface-overlay-subtle overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-wider text-content-tertiary mr-1 shrink-0">target:</span>
+          {chartIds.map((cid, idx) => {
+            const isActive = cid === activeChartId;
+            const m = selectedFieldsByChart[cid] ?? new Map();
+            let fieldsCount = 0;
+            m.forEach((arr: string[]) => { fieldsCount += arr.length; });
+            return (
+              <button
+                key={cid}
+                onClick={() => setActiveChartId(cid)}
+                className={`text-[10px] px-2 py-0.5 rounded transition-colors flex items-center gap-1 shrink-0 ${
+                  isActive
+                    ? 'bg-blue-500/25 text-blue-400 border border-blue-500/40'
+                    : 'bg-surface-raised hover:bg-blue-500/10 text-content-secondary border border-transparent'
+                }`}
+                title={isActive ? 'Field picker writes to this chart' : 'Switch picker target to this chart'}
+              >
+                Chart {idx + 1}
+                {fieldsCount > 0 && (
+                  <span className="text-[9px] text-content-tertiary tabular-nums">{fieldsCount}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {/* Search + presets (sticky top) */}
       <div className="p-3 pb-2 space-y-2 border-b border-subtle">
         <div className="relative">
@@ -918,7 +1361,8 @@ function FieldPickerPanel() {
             <button
               onClick={() => {
                 const s = useLogStore.getState();
-                s.selectedFields.forEach((_fields, type) => s.setSelectedFields(type, []));
+                const fields = s.selectedFieldsByChart[s.activeChartId] ?? new Map();
+                fields.forEach((_v, type) => s.setSelectedFields(type, []));
                 s.setSelectedTypes([]);
               }}
               className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
@@ -937,20 +1381,21 @@ function FieldPickerPanel() {
           const groupColor = typeColorMap.get(type) ?? '#6b7280';
           const activeFieldCount = selectedFields.get(type)?.length ?? 0;
           const hasSelection = activeFieldCount > 0;
-          const instances = typeInstanceCount.get(type);
+          const instances = typeInstances.get(type);
+          const instanceCount = instances?.length;
           return (
             <div key={type}>
               <button
                 onClick={() => toggleExpanded(type)}
                 className={`flex items-center gap-2 text-xs w-full rounded px-2 py-1.5 transition-colors hover:bg-surface-overlay-subtle`}
                 style={{ backgroundColor: hasSelection ? `${groupColor}${isLightTheme ? '20' : '18'}` : undefined, opacity: hasSelection ? 1 : (isLightTheme ? 0.6 : 0.45) }}
-                title={instances ? `${instances} instances — selecting a field plots one line per instance` : undefined}
+                title={instanceCount ? `${instanceCount} instances — pick the field for all, or expand to pick a specific instance` : undefined}
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: groupColor }} />
                 <span className={hasSelection ? 'font-semibold' : 'font-medium'} style={{ color: groupColor }}>{type}</span>
-                {instances && (
+                {instanceCount && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-surface-raised text-content-secondary">
-                    × {instances}
+                    × {instanceCount}
                   </span>
                 )}
                 {activeFieldCount > 0 && (
@@ -966,26 +1411,95 @@ function FieldPickerPanel() {
               {isExpanded && fields.length > 0 && (
                 <div className="ml-3 mt-0.5 mb-1 pl-2 space-y-0.5" style={{ borderLeft: `2px solid ${groupColor}40` }}>
                   {fields.map((field) => {
-                    const isChecked = selectedFields.get(type)?.includes(field) ?? false;
+                    const selectedForType = selectedFields.get(type) ?? [];
+                    const isChecked = selectedForType.includes(field);
                     const lineColor = seriesColorMap.get(`${type}.${field}`);
+                    const isEvent = isEventField(type, field);
+                    const showInstancePicker = !!instances && !isEvent;
+                    const fieldKey = `${type}.${field}`;
+                    const isInstanceExpanded = expandedInstanceFields.has(fieldKey);
+                    // Count which specific instances are picked for this field
+                    // (e.g. user selected RPM[0] and RPM[2]) so the row chip
+                    // can show "2/4" instead of just hiding the state.
+                    const pickedInstances = showInstancePicker
+                      ? instances.filter((i) => selectedForType.includes(`${field}[${i}]`))
+                      : [];
                     return (
-                      <label
-                        key={field}
-                        className={`flex items-center gap-2 text-[11px] cursor-pointer rounded px-2 py-1 transition-colors ${
-                          isChecked ? 'bg-surface' : 'hover:bg-surface-overlay-subtle'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleFieldToggle(type, field)}
-                          className="rounded border bg-surface-raised text-blue-500 w-3 h-3"
-                        />
-                        {isChecked && lineColor && (
-                          <span className="w-3 h-[3px] rounded-full flex-shrink-0" style={{ backgroundColor: lineColor }} />
+                      <div key={field}>
+                        <div
+                          className={`flex items-center gap-2 text-[11px] rounded px-2 py-1 transition-colors ${
+                            isChecked ? 'bg-surface' : 'hover:bg-surface-overlay-subtle'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleFieldToggle(type, field)}
+                            className="rounded border bg-surface-raised text-blue-500 w-3 h-3 cursor-pointer"
+                            title={isEvent ? 'Event marker — renders as vertical line on chart' : showInstancePicker ? 'Plot all instances on the same chart' : undefined}
+                          />
+                          {isChecked && !isEvent && lineColor && (
+                            <span className="w-3 h-[3px] rounded-full flex-shrink-0" style={{ backgroundColor: lineColor }} />
+                          )}
+                          {isEvent && (
+                            <span className="w-[2px] h-3 flex-shrink-0" style={{ backgroundColor: groupColor }} title="Event marker" />
+                          )}
+                          <span
+                            className={`${isChecked || pickedInstances.length > 0 ? 'text-content' : 'text-content-secondary'} cursor-pointer flex-1`}
+                            onClick={() => handleFieldToggle(type, field)}
+                          >
+                            {field}
+                          </span>
+                          {isEvent && (
+                            <span className="text-[8px] uppercase tracking-wider text-content-tertiary">event</span>
+                          )}
+                          {showInstancePicker && (
+                            <button
+                              onClick={() => setExpandedInstanceFields((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(fieldKey)) next.delete(fieldKey); else next.add(fieldKey);
+                                return next;
+                              })}
+                              className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-surface-raised hover:bg-surface-overlay text-content-secondary flex items-center gap-1"
+                              title="Pick specific instances"
+                            >
+                              {pickedInstances.length > 0 ? `${pickedInstances.length}/${instanceCount}` : `× ${instanceCount}`}
+                              <svg className={`w-2.5 h-2.5 transition-transform ${isInstanceExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                          )}
+                        </div>
+                        {showInstancePicker && isInstanceExpanded && (
+                          <div className="ml-5 my-0.5 grid grid-cols-4 gap-1">
+                            {instances.map((inst) => {
+                              const compositeKey = `${field}[${inst}]`;
+                              const instChecked = selectedForType.includes(compositeKey);
+                              // seriesColorMap keys by the *stored* field name
+                              // (`field[N]`), not the human-readable chart label.
+                              const instLineColor = seriesColorMap.get(`${type}.${compositeKey}`);
+                              return (
+                                <label
+                                  key={inst}
+                                  className={`flex items-center gap-1 text-[10px] cursor-pointer rounded px-1.5 py-0.5 transition-colors ${
+                                    instChecked ? 'bg-surface' : 'hover:bg-surface-overlay-subtle'
+                                  }`}
+                                  title={`Plot only instance ${inst}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={instChecked}
+                                    onChange={() => handleFieldToggle(type, compositeKey)}
+                                    className="rounded border bg-surface-raised text-blue-500 w-2.5 h-2.5"
+                                  />
+                                  {instChecked && instLineColor && (
+                                    <span className="w-2 h-[2px] rounded-full flex-shrink-0" style={{ backgroundColor: instLineColor }} />
+                                  )}
+                                  <span className={instChecked ? 'text-content' : 'text-content-secondary'}>[{inst}]</span>
+                                </label>
+                              );
+                            })}
+                          </div>
                         )}
-                        <span className={isChecked ? 'text-content' : 'text-content-secondary'}>{field}</span>
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
@@ -1006,7 +1520,12 @@ function FieldPickerPanel() {
 // ============================================================================
 
 const dockviewComponents: Record<string, React.FC<IDockviewPanelProps>> = {
-  ChartPanel: () => <ChartPanel />,
+  ChartPanel: (props) => {
+    // Dockview hands params via props; default to 'chart' for the original panel
+    // and any panels in older saved layouts that pre-date the per-chart refactor.
+    const chartId = (props.params as { chartId?: string } | undefined)?.chartId ?? 'chart';
+    return <ChartPanel chartId={chartId} />;
+  },
   FlightPathPanel: () => <FlightPathPanel />,
   FieldPickerPanel: () => <FieldPickerPanel />,
 };
@@ -1038,7 +1557,7 @@ const DEFAULT_LAYOUT: SerializedDockview = {
   },
   panels: {
     map: { id: 'map', contentComponent: 'FlightPathPanel', title: 'Flight Path' },
-    chart: { id: 'chart', contentComponent: 'ChartPanel', title: 'Chart' },
+    chart: { id: 'chart', contentComponent: 'ChartPanel', title: 'Chart 1', params: { chartId: 'chart' } },
     fields: { id: 'fields', contentComponent: 'FieldPickerPanel', title: 'Fields' },
   },
   activeGroup: '1',
@@ -1058,6 +1577,9 @@ export function LogExplorerPanel() {
   const resolvedTheme = useResolvedTheme();
   const apiRef = useRef<DockviewApi | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(new Set(['chart', 'map', 'fields']));
+  const setActiveChartId = useLogStore((s) => s.setActiveChartId);
+  const removeChart = useLogStore((s) => s.removeChart);
+  const addChart = useLogStore((s) => s.addChart);
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     apiRef.current = event.api;
@@ -1072,6 +1594,11 @@ export function LogExplorerPanel() {
         if (def) next.delete(def.id);
         return next;
       });
+      // If a chart panel was closed, drop its store slot too. The store
+      // refuses to remove the last chart, which keeps the field picker from
+      // ever pointing at nothing.
+      const removedChartId = (e.params as { chartId?: string } | undefined)?.chartId;
+      if (removedChartId) removeChart(removedChartId);
     });
 
     event.api.onDidAddPanel((e) => {
@@ -1082,12 +1609,32 @@ export function LogExplorerPanel() {
         return next;
       });
     });
-  }, []);
+
+    // When the user focuses a chart panel, the field picker should now
+    // target that chart. Single source of truth = the dockview's active
+    // panel; the picker just reads activeChartId.
+    event.api.onDidActivePanelChange((p) => {
+      const cid = (p?.params as { chartId?: string } | undefined)?.chartId;
+      if (cid) setActiveChartId(cid);
+    });
+  }, [removeChart, setActiveChartId]);
 
   const handleAddPanel = useCallback((id: string, component: string, title: string) => {
     if (!apiRef.current) return;
     apiRef.current.addPanel({ id: `${id}-${Date.now()}`, component, title });
   }, []);
+
+  const handleAddChart = useCallback(() => {
+    if (!apiRef.current) return;
+    const newId = addChart();
+    const idx = useLogStore.getState().chartIds.indexOf(newId);
+    apiRef.current.addPanel({
+      id: newId,
+      component: 'ChartPanel',
+      title: `Chart ${idx + 1}`,
+      params: { chartId: newId },
+    });
+  }, [addChart]);
 
   const handleResetLayout = useCallback(() => {
     if (!apiRef.current) return;
@@ -1099,11 +1646,19 @@ export function LogExplorerPanel() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Toolbar: re-add panels + reset */}
+      {/* Toolbar: re-add panels + add comparison chart + reset */}
       <div className="flex items-center gap-2 px-4 pt-2 pb-1 flex-shrink-0">
+        <button
+          onClick={handleAddChart}
+          className="text-[10px] px-2 py-0.5 rounded bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 transition-colors flex items-center gap-1"
+          title="Add a comparison chart with its own field selection"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          Add Chart
+        </button>
         {closedPanels.length > 0 && (
           <>
-            <span className="text-[10px] text-content-secondary">Add panel:</span>
+            <span className="text-[10px] text-content-secondary ml-2">Add panel:</span>
             {closedPanels.map((def) => (
               <button
                 key={def.id}
