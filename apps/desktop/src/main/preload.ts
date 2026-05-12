@@ -105,8 +105,15 @@ const api = {
   mavlinkMissionStart: (firstItem?: number, lastItem?: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_MISSION_START, firstItem ?? 0, lastItem ?? 0),
 
+  /** Dev: forward one line to main stdout as [AUTO/MISSION] [ui] … */
+  autoMissionDiag: (line: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_MISSION_DIAG, line),
+
   mavlinkTakeoff: (altitude: number, pitchDeg?: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_TAKEOFF, altitude, pitchDeg),
+
+  mavlinkDoChangeClimbSpeed: (speedMs: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_DO_CHANGE_CLIMB_SPEED, speedMs),
 
   mavlinkVtolTakeoff: (altitude: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_VTOL_TAKEOFF, altitude),

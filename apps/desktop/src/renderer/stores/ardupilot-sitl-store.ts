@@ -787,7 +787,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         return persistedState as ArduPilotSitlStore;
       },
       // Persist configuration only
-      partialize: (state) => ({
+      partialize: (state): Partial<ArduPilotSitlStore> => ({
         vehicleType: state.vehicleType,
         model: state.model,
         releaseTrack: state.releaseTrack,

@@ -22,6 +22,8 @@ class ArduPilotRcSender {
   private socket: Socket | null = null;
   private sendInterval: NodeJS.Timeout | null = null;
   private _isRunning = false;
+  /** Last time we printed throttle to the main-process console (1 Hz while sending). */
+  private lastThrottleConsoleLogAt = 0;
   private rcState: VirtualRCState = {
     roll: 0,
     pitch: 0,
@@ -59,8 +61,6 @@ class ArduPilotRcSender {
     this.sendInterval = setInterval(() => {
       this.sendRcPacket();
     }, SEND_INTERVAL_MS);
-
-    console.log('[ArduPilot RC] Started RC sender');
   }
 
   /**
@@ -78,7 +78,6 @@ class ArduPilotRcSender {
     }
 
     this._isRunning = false;
-    console.log('[ArduPilot RC] Stopped RC sender');
   }
 
   /**
@@ -109,6 +108,7 @@ class ArduPilotRcSender {
       aux3: -1,
       aux4: -1,
     };
+    console.log('[ArduPilot RC] throttle variable = -1 (norm) | CH3 PWM = 1000 (reset)');
   }
 
   /**
@@ -144,6 +144,16 @@ class ArduPilotRcSender {
       this.normalizedToPwm(this.rcState.aux3),
       this.normalizedToPwm(this.rcState.aux4),
     ];
+
+    const now = Date.now();
+    if (now - this.lastThrottleConsoleLogAt >= 2000) {
+      this.lastThrottleConsoleLogAt = now;
+      const t = this.rcState.throttle;
+      const ch3 = channels[2]!;
+      console.log(
+        `[ArduPilot RC] throttle variable rcState.throttle = ${t} (norm -1…1) | CH3 PWM = ${ch3} (µs to SITL)`,
+      );
+    }
 
     // Write channels as little-endian uint16
     for (let i = 0; i < RC_CHANNELS; i++) {

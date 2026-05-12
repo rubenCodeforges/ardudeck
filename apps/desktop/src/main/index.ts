@@ -4,6 +4,7 @@
  */
 
 import { app, BrowserWindow, shell } from 'electron';
+import net from 'node:net';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
@@ -75,7 +76,9 @@ function buildCsp(): string {
   ];
 
   if (isDev) {
-    directives.push("connect-src 'self' http://localhost:* ws://localhost:* https: wss:");
+    directives.push(
+      "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https: wss:",
+    );
   } else {
     directives.push("connect-src 'self' https: wss:");
   }
@@ -96,43 +99,64 @@ function attachCsp(mainWindow: BrowserWindow): void {
   });
 }
 
+/** Wait until something accepts TCP on host:port (Vite dev server is up). */
+function waitForDevServerTcp(host: string, port: number, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const scheduleRetry = (): void => {
+      if (Date.now() >= deadline) {
+        reject(new Error(`Timed out waiting for dev server at ${host}:${port}`));
+        return;
+      }
+      setTimeout(tryConnect, 250);
+    };
+    const tryConnect = (): void => {
+      const socket = net.connect({ host, port }, () => {
+        socket.destroy();
+        resolve();
+      });
+      socket.on('error', () => {
+        socket.destroy();
+        scheduleRetry();
+      });
+    };
+    tryConnect();
+  });
+}
+
 async function loadRenderer(mainWindow: BrowserWindow): Promise<void> {
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
-    const fallbackUrls = [rendererUrl];
 
     try {
       const parsed = new URL(rendererUrl);
-      const port = Number(parsed.port || '80');
+      const defaultPort = parsed.protocol === 'https:' ? 443 : 80;
+      const port = Number(parsed.port || defaultPort);
       if (Number.isFinite(port) && port > 0) {
-        const nextPort = String(port + 1);
-        const thirdPort = String(port + 2);
-        fallbackUrls.push(rendererUrl.replace(`:${port}`, `:${nextPort}`));
-        fallbackUrls.push(rendererUrl.replace(`:${port}`, `:${thirdPort}`));
+        await waitForDevServerTcp(parsed.hostname, port, 60_000);
       }
-    } catch {
-      // Keep only the original URL if parsing fails.
+    } catch (e) {
+      console.warn('[Main] Could not wait for Vite dev server (will still try loadURL):', e);
     }
 
-    for (let attempt = 1; attempt <= 20; attempt += 1) {
-      for (const url of fallbackUrls) {
-        try {
-          await mainWindow.loadURL(url);
+    // Only load ELECTRON_RENDERER_URL — alternate ports are not other Vite instances and
+    // cause ERR_CONNECTION_REFUSED noise / blank window when the real server is on :5173.
+    const maxAttempts = 40;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await mainWindow.loadURL(rendererUrl);
+        return;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          console.error('[Main] Failed to load renderer URL:', rendererUrl, error);
+          await mainWindow.loadURL(
+            `data:text/html,${encodeURIComponent(
+              '<h2>Renderer failed to start</h2><p>Vite dev server is unavailable. Check terminal logs and restart dev command.</p>',
+            )}`,
+          );
           return;
-        } catch (error) {
-          if (attempt === 20 && url === fallbackUrls[fallbackUrls.length - 1]) {
-            console.error('[Main] Failed to load renderer URLs:', fallbackUrls, error);
-            await mainWindow.loadURL(
-              `data:text/html,${encodeURIComponent(
-                '<h2>Renderer failed to start</h2><p>Vite dev server is unavailable. Check terminal logs and restart dev command.</p>',
-              )}`,
-            );
-            return;
-          }
         }
       }
-
-      // Vite dev server can take a few seconds to become ready.
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 

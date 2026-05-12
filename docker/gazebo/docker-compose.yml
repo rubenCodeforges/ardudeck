@@ -1,0 +1,37 @@
+# Gazebo Harmonic (новый Gazebo с https://gazebosim.org — `gz sim`).
+# Тома: E:/Docker/gazebo. Одинаковый GZ_PARTITION у сервера и GUI — см. ответы ros_gz / transport.
+# Сервер: docker compose up -d gz-sim-server
+# С GUI:   docker compose --profile gui up -d  (нужен X-сервер на Windows, например VcXsrv, DISPLAY ниже)
+
+services:
+  gz-sim-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ardudeck-gz-harmonic:local
+    container_name: ardudeck-gz-sim-server
+    restart: unless-stopped
+    environment:
+      GZ_PARTITION: ardudeck_gz
+      # Пользовательские миры и модели с хоста
+      GZ_SIM_RESOURCE_PATH: /worlds:/root/.gz/models
+    volumes:
+      - E:/Docker/gazebo/worlds:/worlds:ro
+      - E:/Docker/gazebo/models:/root/.gz/models
+      - E:/Docker/gazebo/logs:/root/.gz/logs
+    command: ["gz", "sim", "-s", "-v", "4", "/worlds/empty.sdf"]
+
+  gz-sim-gui:
+    profiles: ["gui"]
+    image: ardudeck-gz-harmonic:local
+    container_name: ardudeck-gz-sim-gui
+    depends_on:
+      - gz-sim-server
+    environment:
+      GZ_PARTITION: ardudeck_gz
+      GZ_SIM_RESOURCE_PATH: /worlds:/root/.gz/models
+      DISPLAY: ${DISPLAY:-host.docker.internal:0.0}
+    volumes:
+      - E:/Docker/gazebo/worlds:/worlds:ro
+      - E:/Docker/gazebo/models:/root/.gz/models
+    command: ["gz", "sim", "-g", "-v", "4"]

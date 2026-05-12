@@ -100,7 +100,7 @@ import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type P
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
-import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
+import { MAV_MISSION_RESULT, MAV_MISSION_TYPE, getCommandName } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
@@ -804,12 +804,19 @@ let cachedAutopilotVersion: BoardDumpMavlink['autopilot_version'] | null = null;
 let statustextHistory: Array<{ ts: number; severity: number; severityLabel: string; text: string }> = [];
 const MAX_STATUSTEXT_HISTORY = 150;
 
+/** Last FC custom_mode from HEARTBEAT — for mode-change-only [AUTO/MISSION] lines */
+let lastMissionDiagCustomMode: number | undefined = undefined;
+
+let lastMissionDiagCurrentSeq: number | undefined = undefined;
+
 function resetMavlinkDiagCache(): void {
   cachedSysStatus = null;
   cachedHeartbeat = null;
   cachedAutopilotVersion = null;
   statustextHistory = [];
   lastReportedArmed = null;
+  lastMissionDiagCustomMode = undefined;
+  lastMissionDiagCurrentSeq = undefined;
   resetRcChannelState();
 }
 
@@ -832,6 +839,35 @@ let missionUploadState: {
 
 // Track pending clear operation
 let missionClearPending = false;
+
+/**
+ * Loud, grep-friendly trace for AUTO / mission upload / MISSION_START / takeoff issues.
+ * Always prints to the dev terminal (in addition to unified logger via console intercept).
+ */
+function missionAutoDiag(...parts: unknown[]): void {
+  const msg = parts
+    .map((p) => {
+      if (typeof p === 'object' && p !== null) {
+        try {
+          return JSON.stringify(p);
+        } catch {
+          return String(p);
+        }
+      }
+      return String(p);
+    })
+    .join(' ');
+  console.log(`[AUTO/MISSION] ${msg}`);
+}
+
+const MISSION_STATUSTEXT_DIAG_RE =
+  /\b(prearm|pre-arm|Arm:|mission|waypoint|takeoff|Takeoff|EKF|GPS|fence|geofence|RTL|denied|AUTO|NAV_|command|upload|altitude)\b/i;
+
+function missionStatustextDiag(severityLabel: string, text: string): void {
+  if (MISSION_STATUSTEXT_DIAG_RE.test(text)) {
+    missionAutoDiag(`STATUSTEXT [${severityLabel}] ${text}`);
+  }
+}
 
 // Fence download state
 let fenceDownloadState: {
@@ -1135,6 +1171,13 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       };
       queueMavlinkTelemetry(mainWindow, { flight });
 
+      if (lastMissionDiagCustomMode !== customMode) {
+        missionAutoDiag(
+          `HEARTBEAT mode → ${modeName} (custom_mode=${customMode}) armed=${armed} mav_type=${vehicleType} base_mode=0x${baseMode.toString(16)} sys_status=${systemStatus}`,
+        );
+        lastMissionDiagCustomMode = customMode;
+      }
+
       // Cache for bug report diagnostics
       cachedHeartbeat = { autopilot: autopilotType, type: vehicleType, base_mode: baseMode, custom_mode: customMode, system_status: payload[7]! };
       break;
@@ -1406,6 +1449,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
         mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity, severityLabel, text });
         pushStatustextHistory(severity, severityLabel, text);
+        missionStatustextDiag(severityLabel, text);
         // Forward to MAVLink calibration module if calibration is active
         if (isMavlinkCalibrationActive()) handleCalibrationStatusText(text, severity);
       } else {
@@ -1428,6 +1472,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           const severityLabel = SEVERITY_LABELS[entry.severity] ?? 'INFO';
           mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: entry.severity, severityLabel, text: fullText });
           pushStatustextHistory(entry.severity, severityLabel, fullText);
+          missionStatustextDiag(severityLabel, fullText);
           if (isMavlinkCalibrationActive()) handleCalibrationStatusText(fullText, entry.severity);
           statustextChunkBuffer.delete(chunkId);
         } else {
@@ -1439,6 +1484,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
               const severityLabel = SEVERITY_LABELS[buf.severity] ?? 'INFO';
               mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: buf.severity, severityLabel, text: fullText });
               pushStatustextHistory(buf.severity, severityLabel, fullText);
+              missionStatustextDiag(severityLabel, fullText);
               if (isMavlinkCalibrationActive()) handleCalibrationStatusText(fullText, buf.severity);
               statustextChunkBuffer.delete(chunkId);
             }
@@ -1471,8 +1517,14 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const MAV_RESULT_NAMES = ['ACCEPTED', 'TEMPORARILY_REJECTED', 'DENIED', 'UNSUPPORTED', 'FAILED', 'IN_PROGRESS'];
       const resultName = MAV_RESULT_NAMES[ackResult] ?? `UNKNOWN(${ackResult})`;
 
+      if (ackCommand === 176 || ackCommand === 300) {
+        const label = ackCommand === 176 ? 'DO_SET_MODE' : 'MISSION_START';
+        missionAutoDiag(`COMMAND_ACK ${label} cmd=${ackCommand} result=${ackResult} (${resultName})`);
+      }
+
       // Log arm/disarm command results prominently and forward to messages panel
       if (ackCommand === 400) {
+        missionAutoDiag(`COMMAND_ACK ARM/DISARM cmd=400 result=${ackResult} (${resultName})`);
         const severity = ackResult === 0 ? 6 : 4; // MAV_SEVERITY_INFO=6, WARNING=4
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
         const text = ackResult === 0 ? 'ARM/DISARM accepted' : `ARM/DISARM ${resultName}`;
@@ -1482,6 +1534,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
 
       // Log takeoff command results
       if (ackCommand === 22) {
+        missionAutoDiag(`COMMAND_ACK NAV_TAKEOFF cmd=22 result=${ackResult} (${resultName})`);
         const severity = ackResult === 0 ? 6 : 4;
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
         const text = ackResult === 0 ? 'Takeoff accepted' : `Takeoff ${resultName}`;
@@ -1730,6 +1783,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         }
         missionDownloadState.timeout = setTimeout(() => {
           if (missionDownloadState && missionDownloadState.received.size < missionDownloadState.expected) {
+            missionAutoDiag(
+              `MISSION download TIMEOUT got ${missionDownloadState.received.size}/${missionDownloadState.expected}`,
+            );
             safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR,
               `Timeout: received ${missionDownloadState.received.size}/${missionDownloadState.expected} mission items`);
             missionDownloadState = null;
@@ -1765,9 +1821,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_MISSION_REQUEST:
     case MSG_MISSION_REQUEST_INT: {
       // FC requesting mission item during upload
-      console.log(`[MISSION] Received MISSION_REQUEST (msg ${msgid}), uploadState=${!!missionUploadState}`);
       if (!missionUploadState) {
         sendLog(mainWindow, 'debug', `Received MISSION_REQUEST but no upload in progress`);
+        missionAutoDiag(`MISSION_REQUEST msg=${msgid} IGNORED (no upload in progress) raw0..7=${Array.from(payload.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')).join(' ')}`);
         break;
       }
 
@@ -1801,19 +1857,26 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           const altSeq = seq === seqAtOffset0 ? seqAtOffset2 : seqAtOffset0;
           if (altSeq <= maxSeq) {
             sendLog(mainWindow, 'debug', `MISSION_REQUEST seq remap ${seq} -> ${altSeq} (payload order mismatch)`);
+            missionAutoDiag(`MISSION_REQUEST seq remap ${seq} -> ${altSeq} (byte-order heuristic) msg=${msgid}`);
             seq = altSeq;
           }
         }
 
-        const responseUsesInt = msgid === MSG_MISSION_REQUEST_INT;
+        const fcAskedInt = msgid === MSG_MISSION_REQUEST_INT;
+        const rawHead = Array.from(payload.slice(0, Math.min(8, payload.length)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(' ');
+        missionAutoDiag(
+          `MISSION_REQUEST msg=${msgid} seq=${seq}/${maxSeq} total_items=${missionUploadState.items.length} fc_asked_int=${fcAskedInt} mav=${detectedMavlinkVersion} (v2 → always MISSION_ITEM_INT reply) v2_order_heur=${looksLikeV2Order} raw=${rawHead}`,
+        );
         sendLog(
           mainWindow,
           'debug',
-          `FC requesting mission item ${seq} (msg ${msgid}, respond=${responseUsesInt ? 'MISSION_ITEM_INT' : 'MISSION_ITEM'}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`,
+          `FC requesting mission item ${seq} (msg ${msgid}, MAVLink v${detectedMavlinkVersion}, raw: ${Array.from(payload.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')})`,
         );
 
         if (seq < missionUploadState.items.length) {
-          sendMissionItem(mainWindow, missionUploadState.items[seq]!, { forceIntFormat: responseUsesInt });
+          sendMissionItem(mainWindow, missionUploadState.items[seq]!);
           missionUploadState.currentSeq = seq;
 
           // Send progress
@@ -1829,9 +1892,14 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
             clearTimeout(missionUploadState.timeout);
           }
           missionUploadState.timeout = setTimeout(() => {
+            missionAutoDiag('MISSION upload TIMEOUT (FC stopped requesting items for 5s) — mission may be incomplete on FC');
             safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Upload timeout: FC stopped requesting items');
             missionUploadState = null;
           }, 5000);
+        } else {
+          missionAutoDiag(
+            `MISSION_REQUEST BAD seq=${seq} (max valid=${maxSeq}) — NOT sending item; check FC/GCS seq parsing. raw=${rawHead}`,
+          );
         }
       } catch (err) {
         sendLog(mainWindow, 'error', 'Failed to parse MISSION_REQUEST', String(err));
@@ -1846,12 +1914,17 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         // MAVLink v2: 4 bytes (adds mission_type)
         // type is at byte offset 2
         const ackType = payload.length >= 3 ? payload[2]! : 0;
+        const ackHex = Array.from(payload).map((b) => b.toString(16).padStart(2, '0')).join(' ');
         sendLog(mainWindow, 'debug', `Received MISSION_ACK type=${ackType} (${getMissionResultName(ackType)})`);
+        missionAutoDiag(
+          `MISSION_ACK type=${ackType} (${getMissionResultName(ackType)}) payload_len=${payload.length} hex=${ackHex} had_upload_state=${!!missionUploadState}`,
+        );
 
         if (ackType === MAV_MISSION_RESULT.ACCEPTED) {
           if (missionUploadState) {
             const itemCount = missionUploadState.items.length;
             sendLog(mainWindow, 'info', `Mission upload complete: ${itemCount} items`);
+            missionAutoDiag(`MISSION upload COMPLETE on FC (${itemCount} items)`);
             if (missionUploadState.timeout) {
               clearTimeout(missionUploadState.timeout);
             }
@@ -1868,6 +1941,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         } else {
           // Error
           const errorMsg = getMissionResultName(ackType);
+          missionAutoDiag(`MISSION_ACK REJECTED: ${errorMsg} — AUTO may not run this mission`);
           safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, `Mission error: ${errorMsg}`);
           sendLog(mainWindow, 'error', `Mission ACK error: ${errorMsg}`);
 
@@ -1897,6 +1971,10 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       let seq: number;
       if (payload.length >= 2) {
         seq = payload[0]! | (payload[1]! << 8); // Little-endian uint16
+        if (lastMissionDiagCurrentSeq !== seq) {
+          missionAutoDiag(`MISSION_CURRENT seq=${seq} (FC active mission index)`);
+          lastMissionDiagCurrentSeq = seq;
+        }
         safeSend(mainWindow, IPC_CHANNELS.MISSION_CURRENT, seq);
       }
       break;
@@ -2082,7 +2160,11 @@ async function sendMissionItem(
 
   let packet: Uint8Array;
   const targetSystem = connectionState.systemId ?? 1;
-  const preferIntFormat = opts?.forceIntFormat ?? (detectedMavlinkVersion === 2);
+  // Never send deprecated MISSION_ITEM when the link is MAVLink v2 — ArduPilot rejects
+  // the pattern (warns "GCS should send MISSION_ITEM_INT"). `forceIntFormat: false` must
+  // not override v2 (MISSION_REQUEST vs MISSION_REQUEST_INT both need INT on v2).
+  const preferIntFormat =
+    detectedMavlinkVersion === 2 ? true : (opts?.forceIntFormat ?? false);
 
   if (preferIntFormat) {
     // MAVLink v2: Use MISSION_ITEM_INT (preferred, higher precision)
@@ -2134,6 +2216,10 @@ async function sendMissionItem(
     mainWindow,
     'debug',
     `Sending mission item ${item.seq} (${preferIntFormat ? 'MISSION_ITEM_INT' : 'MISSION_ITEM'}, MAVLink v${detectedMavlinkVersion})`,
+  );
+
+  missionAutoDiag(
+    `TX MISSION_ITEM seq=${item.seq} cmd=${item.command} (${getCommandName(item.command)}) frame=${item.frame} z=${item.altitude} lat=${item.latitude} lon=${item.longitude} fmt=${preferIntFormat ? 'INT' : 'LEGACY'} mav=${detectedMavlinkVersion}`,
   );
 
   currentTransport.write(packet).catch(err => {
@@ -2195,6 +2281,9 @@ function getMissionResultName(result: number): string {
 }
 
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
+  ipcMain.handle(IPC_CHANNELS.AUTO_MISSION_DIAG, (_evt, line: string) => {
+    missionAutoDiag(`[ui] ${line}`);
+  });
   // Auto-load signing key now that app is ready (safeStorage requires app.whenReady)
   autoLoadSigningKey();
 
@@ -4591,6 +4680,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       connectionState.packetsSent++;
 
       sendLog(mainWindow, 'info', `Sent ${arm ? 'ARM' : 'DISARM'} command${shouldForceArm ? ' (FORCE)' : ''}`);
+      missionAutoDiag(`TX ARM/DISARM arm=${arm} force=${shouldForceArm} target_sys=${connectionState.systemId ?? 1}`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -4648,6 +4738,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       connectionState.packetsSent++;
 
       sendLog(mainWindow, 'info', `Sent SET_MODE customMode=${customMode} (DO_SET_MODE + legacy)`);
+      missionAutoDiag(
+        `TX DO_SET_MODE+legacy custom_mode=${customMode} base_mode=0x${baseMode.toString(16)} armed_bit=${lastReportedArmed ? 1 : 0} target_sys=${connectionState.systemId ?? 1}`,
+      );
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -4660,9 +4753,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Starts mission execution in AUTO mode.
   ipcMain.handle(IPC_CHANNELS.MAVLINK_MISSION_START, async (_, firstItem: number = 0, lastItem: number = 0): Promise<boolean> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      missionAutoDiag('TX MISSION_START ABORTED (not connected)');
       return false;
     }
     try {
+      missionAutoDiag(
+        `TX MISSION_START MAV_CMD=300 first=${firstItem} last=${lastItem} target_sys=${connectionState.systemId ?? 1} — expect COMMAND_ACK cmd=300`,
+      );
       const payload = serializeCommandLong({
         targetSystem: connectionState.systemId ?? 1,
         targetComponent: 1,
@@ -4739,40 +4836,94 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // MAV_CMD_NAV_TAKEOFF (command 22) - takeoff to altitude.
-  // param1 = minimum pitch angle (deg). Copter ignores it; plane uses it as
-  // initial climb pitch. 0° means "climb level" → plane won't lift off.
-  // Default 15° is a safe climb pitch for fixed-wing.
+  // param1 = minimum pitch (deg) for fixed-wing if this path is used; Copter ignores it.
+  // Default 0 — real plane launches use MAVLINK_COMMAND_TAKEOFF rarely (mode TAKEOFF instead).
+  //
+  // Must use COMMAND_INT (not LONG) so altitude has an explicit frame, and
+  // frame must be MAV_FRAME_GLOBAL_RELATIVE_ALT (3): ArduCopter's
+  // handle_MAV_CMD_NAV_TAKEOFF returns DENIED for any other frame (e.g. 6 =
+  // GLOBAL_RELATIVE_ALT_INT). Plane VTOL takeoff (cmd 84) still uses frame 6
+  // in its own handler — do not copy that here.
   ipcMain.handle(IPC_CHANNELS.MAVLINK_COMMAND_TAKEOFF, async (_, altitude: number, pitchDeg?: number): Promise<boolean> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
       return false;
     }
 
-    const pitch = typeof pitchDeg === 'number' ? pitchDeg : 15;
+    // Copter ignores param1; non‑NaN param4 avoids rare parser quirks. Pitch defaults 0.
+    const pitch = typeof pitchDeg === 'number' ? pitchDeg : 0;
+
+    const rawAlt = Number(altitude);
+    const altM = Number.isFinite(rawAlt)
+      ? Math.min(500, Math.max(0.5, rawAlt))
+      : 10;
+
+    try {
+      const payload = serializeCommandInt({
+        targetSystem: connectionState.systemId ?? 1,
+        targetComponent: 1,
+        frame: 3, // MAV_FRAME_GLOBAL_RELATIVE_ALT — only frame Copter accepts for this cmd
+        command: 22,
+        current: 0,
+        autocontinue: 0,
+        param1: pitch,
+        param2: 0,
+        // MAV_CMD_NAV_TAKEOFF param3: NAV_TAKEOFF_FLAGS_HORIZONTAL_POSITION_NOT_REQUIRED (enum value 1).
+        // Without it, AP may couple horizontal nav with x=y=0.
+        param3: 1,
+        // ArduCopter: yaw via param4 is documented as unsupported; use 0 (not NaN on the wire).
+        param4: 0,
+        x: 0,
+        y: 0,
+        z: altM,
+      });
+
+      const packet = await sendMavlinkPacket(COMMAND_INT_ID, payload, COMMAND_INT_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+
+      sendLog(mainWindow, 'info', `Sent TAKEOFF command, altitude=${altM}m pitch=${pitch}°`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to send takeoff command', message);
+      return false;
+    }
+  });
+
+  // MAV_CMD_DO_CHANGE_SPEED (178) — COMMAND_LONG. ArduCopter uses param1 = speed type;
+  // MAV_DO_CHANGE_SPEED_TYPE_CLIMB_SPEED = 2 sets wpnav climb rate (m/s). param3 = -1 leaves throttle unchanged.
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_DO_CHANGE_CLIMB_SPEED, async (_, speedMs: number): Promise<boolean> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) {
+      return false;
+    }
+
+    const raw = Number(speedMs);
+    const climb = Number.isFinite(raw) ? Math.min(8, Math.max(0.05, raw)) : 0.65;
 
     try {
       const payload = serializeCommandLong({
         targetSystem: connectionState.systemId ?? 1,
         targetComponent: 1,
-        command: 22,
+        command: 178, // MAV_CMD_DO_CHANGE_SPEED
         confirmation: 0,
-        param1: pitch,
-        param2: 0,
-        param3: 0,
+        param1: 2, // MAV_DO_CHANGE_SPEED_TYPE_CLIMB_SPEED
+        param2: climb,
+        param3: -1,
         param4: 0,
         param5: 0,
         param6: 0,
-        param7: altitude,
+        param7: 0,
       });
 
       const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
       await currentTransport.write(packet);
       connectionState.packetsSent++;
 
-      sendLog(mainWindow, 'info', `Sent TAKEOFF command, altitude=${altitude}m pitch=${pitch}°`);
+      sendLog(mainWindow, 'info', `Sent DO_CHANGE_SPEED climb=${climb.toFixed(2)} m/s`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      sendLog(mainWindow, 'error', 'Failed to send takeoff command', message);
+      sendLog(mainWindow, 'error', 'Failed to send DO_CHANGE_SPEED (climb)', message);
       return false;
     }
   });
@@ -4796,7 +4947,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param1: -1,         // groundspeed: -1 = use default
         param2: 1,          // MAV_DO_REPOSITION_FLAGS_CHANGE_MODE (auto-switch to GUIDED)
         param3: 0,          // reserved
-        param4: 0,          // yaw: 0 = north (NaN not reliable in float32)
+        // NaN = leave yaw unchanged (param4=0 forces north → lateral hunt / weave near target).
+        param4: Number.NaN,
         x: Math.round(lat * 1e7),  // latitude as int32 (degrees * 1e7)
         y: Math.round(lon * 1e7),  // longitude as int32 (degrees * 1e7)
         z: alt,             // altitude (meters, relative to home)
@@ -6018,10 +6170,19 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Set timeout waiting for FC to request first item
       missionUploadState.timeout = setTimeout(() => {
         if (missionUploadState && missionUploadState.currentSeq === 0) {
+          missionAutoDiag('MISSION upload TIMEOUT (no MISSION_REQUEST in 10s after MISSION_COUNT) — check link / FC');
           safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, 'Timeout: FC did not request mission items');
           missionUploadState = null;
         }
       }, 10000);
+
+      const summary = items
+        .slice(0, 6)
+        .map((it) => `s${it.seq}:${getCommandName(it.command)}`)
+        .join(', ');
+      missionAutoDiag(
+        `MISSION upload BEGIN count=${items.length} mav=${detectedMavlinkVersion} preview=[${summary}${items.length > 6 ? ',…' : ''}]`,
+      );
 
       return { success: true };
     } catch (error) {

@@ -4,11 +4,17 @@
  * Provides fallback location detection using IP-based geolocation.
  * Used when GPS is not available (disabled on FC, no fix, not connected).
  *
- * Falls back to:
- * 1. ip-api.com (free, no API key, 45 req/min)
- * 2. Browser geolocation API
- * 3. Default location (0, 0)
+ * Electron CSP allows https: for connect-src but not arbitrary http: (see main/index.ts).
+ * We therefore use HTTPS-only IP lookup endpoints (no API keys on free tier).
+ *
+ * Falls back in order:
+ * 1. ipwho.is (HTTPS)
+ * 2. geojs.io (HTTPS)
+ * 3. Browser geolocation API
+ * 4. Default location (0, 0)
  */
+
+import { useState, useEffect } from 'react';
 
 export interface GeoLocation {
   lat: number;
@@ -72,25 +78,41 @@ export function clearLocationCache(): void {
 }
 
 async function fetchLocation(): Promise<GeoLocation> {
-  // Try IP-based geolocation first (more reliable, works without permission)
-  try {
-    const response = await fetch('http://ip-api.com/json/?fields=lat,lon,status', {
-      signal: AbortSignal.timeout(5000), // 5 second timeout
-    });
+  const timeout = { signal: AbortSignal.timeout(5000) };
 
+  // 1) ipwho.is — HTTPS, CORS-friendly for browser/Electron renderer
+  try {
+    const response = await fetch('https://ipwho.is/', timeout);
     if (response.ok) {
-      const data = await response.json();
-      if (data.status === 'success' && data.lat && data.lon) {
-        console.log('[ip-geolocation] Got location from IP:', data.lat, data.lon);
-        return {
-          lat: data.lat,
-          lon: data.lon,
-          source: 'ip',
-        };
+      const data = (await response.json()) as {
+        success?: boolean;
+        latitude?: number;
+        longitude?: number;
+      };
+      if (data.success && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+        return { lat: data.latitude, lon: data.longitude, source: 'ip' };
       }
     }
-  } catch (err) {
-    console.log('[ip-geolocation] IP lookup failed:', err);
+  } catch {
+    /* try next provider */
+  }
+
+  // 2) geojs.io — HTTPS fallback
+  try {
+    const response = await fetch('https://get.geojs.io/v1/ip/geo.json', timeout);
+    if (response.ok) {
+      const data = (await response.json()) as {
+        latitude?: string;
+        longitude?: string;
+      };
+      const lat = data.latitude != null ? Number.parseFloat(data.latitude) : NaN;
+      const lon = data.longitude != null ? Number.parseFloat(data.longitude) : NaN;
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        return { lat, lon, source: 'ip' };
+      }
+    }
+  } catch {
+    /* try next provider */
   }
 
   // Fallback: try browser geolocation
@@ -108,19 +130,17 @@ async function fetchLocation(): Promise<GeoLocation> {
       });
     });
 
-    console.log('[ip-geolocation] Got location from browser:', position.coords.latitude, position.coords.longitude);
     return {
       lat: position.coords.latitude,
       lon: position.coords.longitude,
       source: 'browser',
       accuracy: position.coords.accuracy,
     };
-  } catch (err) {
-    console.log('[ip-geolocation] Browser geolocation failed:', err);
+  } catch {
+    /* fall through to default */
   }
 
   // Final fallback: return default (0, 0 - null island)
-  console.log('[ip-geolocation] Using default location');
   return {
     lat: 0,
     lon: 0,
@@ -132,8 +152,6 @@ async function fetchLocation(): Promise<GeoLocation> {
  * React hook for IP geolocation
  * Returns [location, isLoading]
  */
-import { useState, useEffect } from 'react';
-
 export function useIpLocation(): [GeoLocation | null, boolean] {
   const [location, setLocation] = useState<GeoLocation | null>(getCachedLocation());
   const [isLoading, setIsLoading] = useState(!cachedLocation);

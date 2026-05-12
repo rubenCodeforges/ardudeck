@@ -22,6 +22,8 @@ export const IPC_CHANNELS = {
   MAVLINK_SET_MODE: 'mavlink:set-mode',
   MAVLINK_MISSION_START: 'mavlink:mission-start',
   MAVLINK_COMMAND_TAKEOFF: 'mavlink:command-takeoff',
+  /** MAV_CMD_DO_CHANGE_SPEED (178): param1 = climb-speed type, param2 = m/s (COMMAND_LONG). */
+  MAVLINK_DO_CHANGE_CLIMB_SPEED: 'mavlink:do-change-climb-speed',
   MAVLINK_COMMAND_VTOL_TAKEOFF: 'mavlink:command-vtol-takeoff',
   MAVLINK_GOTO: 'mavlink:goto',
   MAVLINK_ORBIT: 'mavlink:orbit',
@@ -78,6 +80,8 @@ export const IPC_CHANNELS = {
 
   // Console/debug
   CONSOLE_LOG: 'console:log',
+  /** Renderer → main: one-line trace for AUTO/mission/takeoff diagnosis (stdout [AUTO/MISSION]) */
+  AUTO_MISSION_DIAG: 'dev:auto-mission-diag',
 
   // Telemetry
   TELEMETRY_UPDATE: 'telemetry:update',

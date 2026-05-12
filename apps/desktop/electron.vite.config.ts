@@ -29,6 +29,13 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    server: {
+      // Windows: `localhost` often resolves to ::1 first while Vite binds IPv4 only,
+      // causing ERR_CONNECTION_REFUSED when Electron loads the dev URL.
+      host: '127.0.0.1',
+      port: 5173,
+      strictPort: true,
+    },
     build: {
       target: 'esnext',
       rollupOptions: {
