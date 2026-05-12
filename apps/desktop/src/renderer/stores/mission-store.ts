@@ -195,7 +195,8 @@ interface MissionStore {
 
   // Actions
   fetchMission: () => Promise<void>;
-  uploadMission: () => Promise<boolean>;
+  /** When `overrideItems` is set, upload that list instead of store `missionItems` (same ACK flow). */
+  uploadMission: (overrideItems?: MissionItem[]) => Promise<boolean>;
   clearMissionFromFC: () => Promise<boolean>;
 
   // Home position
@@ -309,8 +310,8 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     }
   },
 
-  uploadMission: async () => {
-    const { missionItems } = get();
+  uploadMission: async (overrideItems?: MissionItem[]) => {
+    const missionItems = overrideItems ?? get().missionItems;
     const { connectionState } = useConnectionStore.getState();
     const isMsp = connectionState.protocol === 'msp';
     const isInav = connectionState.fcVariant === 'INAV';

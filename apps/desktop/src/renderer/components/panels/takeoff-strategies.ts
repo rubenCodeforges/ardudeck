@@ -147,6 +147,9 @@ export async function executeTakeoff(ctx: TakeoffContext): Promise<TakeoffOutcom
 const GPS_TIMEOUT_MS = 25_000;
 const ARM_TIMEOUT_MS = 5_000;
 const MODE_TIMEOUT_MS = 2_500;
+/** `mavlinkTakeoff` only means «packet sent» — wait for baro/GPS relative alt after that. */
+const TAKEOFF_CLIMB_TIMEOUT_MS = 120_000;
+const TAKEOFF_ALT_TOLERANCE_M = 1.0;
 
 /** GPS/EKF readiness wait with rolling status updates. Used by air vehicles
  *  that need a 3D fix to hold position (anything that hovers). */
@@ -207,13 +210,51 @@ async function armIfNeeded(ctx: TakeoffContext): Promise<TakeoffOutcome> {
     : { ok: false, reason: 'Arm timed out — check pre-arm' };
 }
 
+/**
+ * Block until `position.relativeAlt` (m above home, from GLOBAL_POSITION_INT etc.)
+ * reaches the takeoff target. The IPC `mavlinkTakeoff` returns as soon as the
+ * COMMAND_LONG is written — this is the actual «result» on the airframe.
+ */
+async function waitForTakeoffRelativeAlt(
+  ctx: TakeoffContext,
+  altitudeM: number,
+): Promise<TakeoffOutcome> {
+  const targetM = Math.max(1, altitudeM);
+  const reached = () => ctx.getPosition().relativeAlt >= targetM - TAKEOFF_ALT_TOLERANCE_M;
+  if (reached()) return { ok: true };
+
+  const start = Date.now();
+  let lastShown = -1;
+  const tick = setInterval(() => {
+    const waited = Math.round((Date.now() - start) / 1000);
+    if (waited !== lastShown) {
+      lastShown = waited;
+      const rel = ctx.getPosition().relativeAlt;
+      ctx.setStatus({
+        text: `Climbing… ${rel.toFixed(1)}m / ${targetM}m (${waited}s)`,
+        type: 'info',
+      });
+    }
+  }, 500);
+  const ok = await ctx.waitForState(reached, TAKEOFF_CLIMB_TIMEOUT_MS, 250);
+  clearInterval(tick);
+  const rel = ctx.getPosition().relativeAlt;
+  return ok
+    ? { ok: true }
+    : {
+        ok: false,
+        reason: `Takeoff climb timeout at ${rel.toFixed(1)}m (target ~${targetM}m)`,
+      };
+}
+
 // =============================================================================
 // Per-vehicle strategies
 // =============================================================================
 
 /**
  * Multirotor + helicopter takeoff:
- *   GPS ready → STABILIZE → ARM → GUIDED → verify armed → NAV_TAKEOFF.
+ *   GPS ready → STABILIZE → ARM → GUIDED → verify armed → NAV_TAKEOFF,
+ *   then wait until telemetry altitude reaches target (not just IPC success).
  * STABILIZE first because GUIDED arms can be rejected on the first try and
  * STABILIZE is the most permissive arm-from mode for copter.
  */
@@ -235,10 +276,9 @@ async function takeoffCopter(ctx: TakeoffContext): Promise<TakeoffOutcome> {
   }
 
   ctx.setStatus({ text: `Taking off to ${ctx.altitudeM}m...`, type: 'info' });
-  const ok = await ctx.api.mavlinkTakeoff(ctx.altitudeM);
-  return ok
-    ? { ok: true }
-    : { ok: false, reason: 'Takeoff command failed' };
+  const sent = await ctx.api.mavlinkTakeoff(ctx.altitudeM);
+  if (!sent) return { ok: false, reason: 'Takeoff command failed' };
+  return waitForTakeoffRelativeAlt(ctx, ctx.altitudeM);
 }
 
 /**

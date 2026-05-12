@@ -14,8 +14,11 @@
  */
 
 import { app, BrowserWindow } from 'electron';
+import { randomBytes } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, access, rm, rename, readdir, stat } from 'node:fs/promises';
+import { once } from 'node:events';
+import { mkdir, access, rm, rename, readdir, stat, copyFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type {
   ArduPilotVehicleType,
@@ -53,6 +56,65 @@ const TRACK_MAP: Record<ArduPilotReleaseTrack, string> = {
   dev: 'latest',
 };
 
+const DOWNLOAD_MAX_ATTEMPTS = 4;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientNetworkError(err: unknown): boolean {
+  const parts: string[] = [];
+  let e: unknown = err;
+  for (let i = 0; i < 5 && e; i++) {
+    if (e instanceof Error) {
+      parts.push(e.message, e.name);
+      e = e.cause;
+    } else {
+      parts.push(String(e));
+      break;
+    }
+  }
+  const text = parts.join(' ');
+  if (/ECONNRESET|ETIMEDOUT|EPIPE|EAI_AGAIN|ENOTFOUND|UND_ERR_SOCKET|terminated|socket|aborted|fetch failed/i.test(text)) {
+    return true;
+  }
+  const code = (err as NodeJS.ErrnoException)?.code;
+  return !!(code && /ECONNRESET|ETIMEDOUT|EPIPE|EAI_AGAIN|ENOTFOUND/.test(code));
+}
+
+function isRetriableDownloadAttempt(err: unknown): boolean {
+  if (isTransientNetworkError(err)) return true;
+  const msg = err instanceof Error ? err.message : '';
+  return /^HTTP 5\d\d/.test(msg);
+}
+
+async function fetchBinaryWithRetries(url: string): Promise<ArrayBuffer> {
+  let last: unknown;
+  for (let i = 0; i < DOWNLOAD_MAX_ATTEMPTS; i++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const err = new Error(`HTTP ${response.status}: ${response.statusText} — ${url}`);
+        if (response.status >= 500 && i < DOWNLOAD_MAX_ATTEMPTS - 1) {
+          last = err;
+          await delay(400 * 2 ** i);
+          continue;
+        }
+        throw err;
+      }
+      return await response.arrayBuffer();
+    } catch (e) {
+      last = e;
+      if (i < DOWNLOAD_MAX_ATTEMPTS - 1 && isRetriableDownloadAttempt(e)) {
+        await delay(400 * 2 ** i);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw last instanceof Error ? last : new Error('fetchBinaryWithRetries exhausted');
+}
+
 // ── URL builders ─────────────────────────────────────────────────────────────
 
 function getMacDownloadUrl(vehicleType: ArduPilotVehicleType): string {
@@ -72,8 +134,14 @@ function getWindowsDownloadUrl(vehicleType: ArduPilotVehicleType, releaseTrack: 
 
   let urlPath: string;
   if (releaseTrack === 'stable') {
-    const capitalizedType = vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1);
-    urlPath = `${capitalizedType}Stable/${vehicle.cygwinBinary}.elf`;
+    // Copter/Plane/Rover use CopterStable, PlaneStable, RoverStable. Sub has no
+    // SubStable/ on firmware.ardupilot.org — ArduSub.elf lives under Stable/.
+    if (vehicleType === 'sub') {
+      urlPath = `Stable/${vehicle.cygwinBinary}.elf`;
+    } else {
+      const capitalizedType = vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1);
+      urlPath = `${capitalizedType}Stable/${vehicle.cygwinBinary}.elf`;
+    }
   } else if (releaseTrack === 'beta') {
     urlPath = `Beta/${vehicle.cygwinBinary}.elf`;
   } else {
@@ -184,87 +252,129 @@ class ArduPilotSitlDownloader {
   ): Promise<{ success: boolean; path?: string; error?: string }> {
     const binaryPath = this.getBinaryPath(vehicleType, releaseTrack);
     const binaryDir = path.dirname(binaryPath);
-    const tempPath = `${binaryPath}.tmp`;
+    /** Legacy partial path under userData — remove so a stale lock can't block retries. */
+    const legacyTempPath = `${binaryPath}.tmp`;
 
-    this.abortController = new AbortController();
+    let lastErrorMessage = 'Unknown error';
 
-    try {
-      await mkdir(binaryDir, { recursive: true });
+    for (let attempt = 0; attempt < DOWNLOAD_MAX_ATTEMPTS; attempt++) {
+      /**
+       * Windows: stage in `%TEMP%` then rename/copy into userData (see class doc).
+       */
+      const stagingPath = path.join(
+        tmpdir(),
+        `ardudeck-sitl-${vehicleType}-${releaseTrack}-${randomBytes(8).toString('hex')}.part`,
+      );
+      this.abortController = new AbortController();
 
-      const url = getDownloadUrl(vehicleType, releaseTrack);
+      try {
+        await mkdir(binaryDir, { recursive: true });
+        await rm(legacyTempPath, { force: true }).catch(() => {});
 
-      this.sendProgress({
-        vehicleType, releaseTrack,
-        progress: 0, bytesDownloaded: 0, totalBytes: 0,
-        status: 'downloading',
-      });
+        const url = getDownloadUrl(vehicleType, releaseTrack);
 
-      const response = await fetch(url, {
-        signal: this.abortController.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText} — ${url}`);
-      }
-
-      const contentLength = response.headers.get('content-length');
-      const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
-      let bytesDownloaded = 0;
-
-      const writeStream = createWriteStream(tempPath);
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        bytesDownloaded += value.length;
-        writeStream.write(value);
-
-        const progress = totalBytes > 0 ? Math.round((bytesDownloaded / totalBytes) * 100) : 0;
         this.sendProgress({
           vehicleType, releaseTrack,
-          progress, bytesDownloaded, totalBytes,
+          progress: 0, bytesDownloaded: 0, totalBytes: 0,
           status: 'downloading',
         });
+
+        const response = await fetch(url, {
+          signal: this.abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText} — ${url}`);
+        }
+
+        const contentLength = response.headers.get('content-length');
+        const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+        let bytesDownloaded = 0;
+
+        const writeStream = createWriteStream(stagingPath);
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          bytesDownloaded += value.length;
+          const canContinue = writeStream.write(value);
+          if (!canContinue) {
+            await once(writeStream, 'drain');
+          }
+
+          const progress = totalBytes > 0 ? Math.round((bytesDownloaded / totalBytes) * 100) : 0;
+          this.sendProgress({
+            vehicleType, releaseTrack,
+            progress, bytesDownloaded, totalBytes,
+            status: 'downloading',
+          });
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          writeStream.on('finish', resolve);
+          writeStream.on('error', reject);
+          writeStream.end();
+        });
+
+        try { await rm(binaryPath, { force: true }); } catch { /* ignore */ }
+        try {
+          await rename(stagingPath, binaryPath);
+        } catch (renameErr) {
+          try {
+            await copyFile(stagingPath, binaryPath);
+          } catch (copyErr) {
+            const r = renameErr instanceof Error ? renameErr.message : String(renameErr);
+            const c = copyErr instanceof Error ? copyErr.message : String(copyErr);
+            throw new Error(`Could not move SITL binary into place (${r}; copy: ${c})`);
+          } finally {
+            await rm(stagingPath, { force: true }).catch(() => {});
+          }
+        }
+
+        this.sendProgress({
+          vehicleType, releaseTrack,
+          progress: 100, bytesDownloaded: totalBytes, totalBytes,
+          status: 'complete',
+        });
+
+        this.abortController = null;
+        return { success: true, path: binaryPath };
+      } catch (err) {
+        try { await rm(legacyTempPath, { force: true }); } catch { /* ignore */ }
+        try { await rm(stagingPath, { force: true }); } catch { /* ignore */ }
+
+        lastErrorMessage = err instanceof Error ? err.message : 'Unknown error';
+        const retriable =
+          attempt < DOWNLOAD_MAX_ATTEMPTS - 1 && isRetriableDownloadAttempt(err);
+
+        if (retriable) {
+          await delay(500 * 2 ** attempt);
+          continue;
+        }
+
+        this.sendProgress({
+          vehicleType, releaseTrack,
+          progress: 0, bytesDownloaded: 0, totalBytes: 0,
+          status: 'error', error: lastErrorMessage,
+        });
+        this.abortController = null;
+        return { success: false, error: lastErrorMessage };
       }
-
-      await new Promise<void>((resolve, reject) => {
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
-        writeStream.end();
-      });
-
-      try { await rm(binaryPath, { force: true }); } catch { /* ignore */ }
-      await rename(tempPath, binaryPath);
-
-      this.sendProgress({
-        vehicleType, releaseTrack,
-        progress: 100, bytesDownloaded: totalBytes, totalBytes,
-        status: 'complete',
-      });
-
-      return { success: true, path: binaryPath };
-    } catch (err) {
-      try { await rm(tempPath, { force: true }); } catch { /* ignore */ }
-
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      this.sendProgress({
-        vehicleType, releaseTrack,
-        progress: 0, bytesDownloaded: 0, totalBytes: 0,
-        status: 'error', error: errorMessage,
-      });
-      return { success: false, error: errorMessage };
-    } finally {
-      this.abortController = null;
     }
+
+    return { success: false, error: lastErrorMessage };
   }
 
-  async downloadCygwin(): Promise<{ success: boolean; error?: string }> {
+  async downloadCygwin(
+    vehicleType: ArduPilotVehicleType,
+    releaseTrack: ArduPilotReleaseTrack,
+  ): Promise<{ success: boolean; error?: string }> {
     if (process.platform !== 'win32') {
       return { success: true };
     }
@@ -291,25 +401,74 @@ class ArduPilotSitlDownloader {
         'cygssp-0.dll',
       ];
 
+      const needFetch: string[] = [];
+      for (const dll of dlls) {
+        const dllPath = path.join(cygwinDir, dll);
+        try {
+          await access(dllPath);
+        } catch {
+          needFetch.push(dll);
+        }
+      }
+
+      const totalToFetch = needFetch.length;
+      let fetched = 0;
+
+      this.sendProgress({
+        vehicleType,
+        releaseTrack,
+        progress: 0,
+        bytesDownloaded: 0,
+        totalBytes: totalToFetch || dlls.length,
+        status: 'preparing',
+      });
+
       for (const dll of dlls) {
         const url = `${CYGWIN_BASE_URL}/${dll}`;
         const dllPath = path.join(cygwinDir, dll);
 
-        try { await access(dllPath); continue; } catch { /* need download */ }
-
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`${dll}: HTTP ${response.status} ${response.statusText} — ${url}`);
+        try {
+          await access(dllPath);
+        } catch {
+          const arrayBuffer = await fetchBinaryWithRetries(url);
+          await writeFile(dllPath, Buffer.from(arrayBuffer));
+          fetched += 1;
+          const denom = totalToFetch || dlls.length;
+          this.sendProgress({
+            vehicleType,
+            releaseTrack,
+            progress: denom > 0 ? Math.round((fetched / denom) * 100) : 100,
+            bytesDownloaded: fetched,
+            totalBytes: denom,
+            status: 'preparing',
+          });
         }
+      }
 
-        const arrayBuffer = await response.arrayBuffer();
-        const { writeFile } = await import('node:fs/promises');
-        await writeFile(dllPath, Buffer.from(arrayBuffer));
+      if (totalToFetch === 0) {
+        this.sendProgress({
+          vehicleType,
+          releaseTrack,
+          progress: 100,
+          bytesDownloaded: dlls.length,
+          totalBytes: dlls.length,
+          status: 'preparing',
+        });
       }
 
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      this.sendProgress({
+        vehicleType,
+        releaseTrack,
+        progress: 0,
+        bytesDownloaded: 0,
+        totalBytes: 0,
+        status: 'error',
+        error: message,
+      });
+      return { success: false, error: message };
     }
   }
 

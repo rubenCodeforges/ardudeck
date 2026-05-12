@@ -58,6 +58,29 @@ function generateDefaultParams(
   if (vehicleType === 'copter') {
     const frameClass = COPTER_FRAME_CLASS[model] ?? 1; // Default to Quad
     lines.push(`FRAME_CLASS ${frameClass}`);
+    // SITL copter: avoid false PreArm from simulated battery / RC-loss failsafe /
+    // geofence altitude — users expect AUTO missions to arm without tuning parms.
+    // (Plane block below sets THR_FAILSAFE for fixed-wing; copter needs the same.)
+    //
+    // Battery: FS_BATT_ENABLE alone is not always enough — stale EEPROM or a
+    // user defaults file can leave ARMING_MIN_VOLT / BATT_LOW_VOLT high while
+    // the sim pack reads in the low-teens (Volts), triggering
+    // "Battery 1 low voltage failsafe". ARMING_MIN_VOLT=0 disables the arming
+    // voltage gate; BATT_* floors stay below SIM_BATT_VOLTAGE.
+    lines.push('BATT_MONITOR      4');
+    lines.push('FS_BATT_ENABLE    0');
+    lines.push('ARMING_MIN_VOLT   0');
+    lines.push('BATT_LOW_VOLT     6');
+    lines.push('BATT_CRT_VOLT     5');
+    lines.push('THR_FAILSAFE      0');
+    lines.push('FS_SHORT_ACTN     0');
+    lines.push('FS_LONG_ACTN      0');
+    lines.push('FENCE_ENABLE      0');
+    // Mission vertical rates: stock WPNAV_SPEED_DN is much slower than UP, so
+    // after a high takeoff leg the copter can appear to "keep climbing" toward
+    // the next item while descending is barely visible. Match up/down in SITL.
+    lines.push('WPNAV_SPEED_UP    250');
+    lines.push('WPNAV_SPEED_DN    250');
   }
 
   if (vehicleType === 'plane') {
@@ -190,10 +213,16 @@ function generateDefaultParams(
   // model on every boot. Runtime PARAM_SET on SIM_BATT_VOLTAGE alone does
   // NOT re-initialize the simulated battery; only SIM_BATT_CAP_AH change
   // resets state of charge. Writing both here forces a fresh init at boot.
-  // Default to a realistic 14S Li-Ion (heavy industrial multirotor). Override via
-  // simBattVoltage/simBattCapAh in the SITL config when we add UI fields.
-  const battV = typeof simBattVoltage === 'number' && simBattVoltage > 0 ? simBattVoltage : 60.9;
-  const battAh = typeof simBattCapAh === 'number' && simBattCapAh > 0 ? simBattCapAh : 56;
+  // Plane: default 14S pack. Copter/rover/sub: 4S nominal so BATT_* thresholds match
+  // typical multirotor defaults. Override via simBattVoltage/simBattCapAh in SITL UI.
+  // Copter SITL: use a 6S-class nominal voltage so even conservative BATT_*
+  // defaults from an upstream parm file sit below reported pack V.
+  const defaultBattV = vehicleType === 'plane' ? 60.9 : 22.2;
+  const defaultBattAh = vehicleType === 'plane' ? 56 : 5;
+  const battV =
+    typeof simBattVoltage === 'number' && simBattVoltage > 0 ? simBattVoltage : defaultBattV;
+  const battAh =
+    typeof simBattCapAh === 'number' && simBattCapAh > 0 ? simBattCapAh : defaultBattAh;
   lines.push(`SIM_BATT_VOLTAGE ${battV}`);
   lines.push(`SIM_BATT_CAP_AH ${battAh}`);
   // Disable SITL terrain model. If user picks a home location at a real-world
@@ -402,11 +431,14 @@ class ArduPilotSitlProcessManager {
         env.PATH = `${cygwinPath};${env.PATH}`;
       }
 
+      // Never use shell:true on Windows here: cmd.exe mangles non-ASCII paths
+      // (e.g. Cyrillic user profile) and breaks argv. CreateProcessW via spawn
+      // without shell handles Unicode paths correctly.
       this.process = spawn(spawnCmd, args, {
         cwd: path.dirname(binaryPath),
         env,
         stdio: ['pipe', 'pipe', 'pipe'],
-        shell: process.platform === 'win32',
+        shell: false,
       });
       this._isRunning = true;
       const launchedAt = Date.now();

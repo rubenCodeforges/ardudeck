@@ -124,6 +124,8 @@ export interface ArduPilotSitlStore {
   start: () => Promise<boolean>;
   stop: () => Promise<boolean>;
   download: () => Promise<boolean>;
+  /** Copy a local file into the SITL cache (Windows: also ensures Cygwin DLLs). */
+  importBinaryFromFile: () => Promise<boolean>;
   checkBinary: () => Promise<void>;
   checkPlatform: () => Promise<void>;
   loadFrames: () => Promise<void>;
@@ -410,27 +412,117 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
       download: async () => {
         const { vehicleType, releaseTrack, appendOutput } = get();
 
-        set({ isDownloading: true, lastError: null });
+        set({
+          isDownloading: true,
+          lastError: null,
+          downloadProgress: {
+            vehicleType,
+            releaseTrack,
+            progress: 0,
+            bytesDownloaded: 0,
+            totalBytes: 0,
+            status: 'preparing',
+          },
+        });
         appendOutput(`\n--- Downloading ArduPilot SITL binary (${vehicleType} ${releaseTrack}) ---\n`);
 
         try {
           const result = await window.electronAPI.ardupilotSitlDownload(vehicleType, releaseTrack);
 
           if (result.success) {
-            set({ isDownloading: false });
+            // Trust the main-process path immediately so Start unlocks without racing
+            // the progress IPC vs invoke return (or a slow AV scan on first access()).
+            if (result.path) {
+              set({
+                isDownloading: false,
+                downloadProgress: null,
+                binaryInfo: { vehicleType, releaseTrack, exists: true, path: result.path },
+              });
+            } else {
+              set({ isDownloading: false, downloadProgress: null });
+            }
             appendOutput(`Downloaded to: ${result.path}\n`);
-            // Refresh binary info
-            await get().checkBinary();
+            try {
+              const info = await window.electronAPI.ardupilotSitlCheckBinary(vehicleType, releaseTrack);
+              set({ binaryInfo: info });
+            } catch {
+              // Keep optimistic binaryInfo when the verify IPC fails
+            }
+            const verified = get().binaryInfo;
+            const verifyFailed =
+              result.path &&
+              verified &&
+              !verified.exists;
+            if (verifyFailed) {
+              const msg =
+                'Download finished but the binary was not found on disk. Check antivirus/quarantine or try downloading again.';
+              set({ lastError: msg });
+              appendOutput(`${msg}\n`, true);
+            }
             return true;
           } else {
-            set({ isDownloading: false, lastError: result.error ?? 'Download failed' });
+            set({
+              isDownloading: false,
+              lastError: result.error ?? 'Download failed',
+              downloadProgress: null,
+            });
             appendOutput(`Download failed: ${result.error}\n`, true);
             return false;
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown error';
-          set({ isDownloading: false, lastError: message });
+          set({ isDownloading: false, lastError: message, downloadProgress: null });
           appendOutput(`Download error: ${message}\n`, true);
+          return false;
+        }
+      },
+
+      importBinaryFromFile: async () => {
+        const { vehicleType, releaseTrack, appendOutput } = get();
+        const api = window.electronAPI as typeof window.electronAPI & {
+          ardupilotSitlImportBinary?: (
+            v: ArduPilotVehicleType,
+            t: ArduPilotReleaseTrack,
+          ) => Promise<{ success: boolean; path?: string; error?: string }>;
+        };
+        if (typeof api.ardupilotSitlImportBinary !== 'function') {
+          set({
+            lastError:
+              'Install from file is unavailable until the app loads the latest preload. Fully quit and restart ArduDeck (dev: stop and rerun `pnpm dev` in apps/desktop), or rebuild the packaged app.',
+          });
+          return false;
+        }
+        set({ lastError: null });
+        appendOutput(`\n--- Install SITL binary from file (${vehicleType} ${releaseTrack}) ---\n`);
+        try {
+          const result = await api.ardupilotSitlImportBinary(vehicleType, releaseTrack);
+          if (result.success && result.path) {
+            set({
+              binaryInfo: { vehicleType, releaseTrack, exists: true, path: result.path },
+              lastError: null,
+            });
+            appendOutput(`Installed to: ${result.path}\n`);
+            try {
+              const info = await window.electronAPI.ardupilotSitlCheckBinary(vehicleType, releaseTrack);
+              if (info.exists) {
+                set({ binaryInfo: info });
+              }
+            } catch {
+              /* keep optimistic binaryInfo */
+            }
+            return true;
+          }
+          if (result.error === 'Cancelled') {
+            appendOutput('Install from file cancelled.\n');
+            return false;
+          }
+          set({ lastError: result.error ?? 'Install from file failed' });
+          appendOutput(`Install from file failed: ${result.error}\n`, true);
+          return false;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          set({ lastError: message });
+          appendOutput(`Install from file error: ${message}\n`, true);
           return false;
         }
       },
@@ -515,13 +607,64 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
           set({ binaryInfo: info });
           if (!info.exists) {
             get().appendOutput(`Downloading ${recovery.suggestedTrack} ${recovery.vehicleType}…\n`);
-            set({ isDownloading: true });
-            await window.electronAPI.ardupilotSitlDownload(recovery.vehicleType, recovery.suggestedTrack);
-            const after = await window.electronAPI.ardupilotSitlCheckBinary(recovery.vehicleType, recovery.suggestedTrack);
-            set({ binaryInfo: after, isDownloading: false });
-            if (!after.exists) {
-              set({ lastError: `Failed to download ${recovery.suggestedTrack} binary` });
+            set({
+              isDownloading: true,
+              downloadProgress: {
+                vehicleType: recovery.vehicleType,
+                releaseTrack: recovery.suggestedTrack,
+                progress: 0,
+                bytesDownloaded: 0,
+                totalBytes: 0,
+                status: 'preparing',
+              },
+            });
+            const dl = await window.electronAPI.ardupilotSitlDownload(
+              recovery.vehicleType,
+              recovery.suggestedTrack,
+            );
+            set({ isDownloading: false, downloadProgress: null });
+
+            if (!dl.success) {
+              const detail = dl.error ?? 'Unknown error';
+              set({ lastError: `Failed to download ${recovery.suggestedTrack} binary: ${detail}` });
+              get().appendOutput(`Download failed (${recovery.suggestedTrack}): ${detail}\n`, true);
               return;
+            }
+
+            // Same as manual Download: trust main-process path so we do not bail when
+            // checkBinary races AV or returns false briefly after a successful invoke.
+            if (dl.path) {
+              set({
+                binaryInfo: {
+                  vehicleType: recovery.vehicleType,
+                  releaseTrack: recovery.suggestedTrack,
+                  exists: true,
+                  path: dl.path,
+                },
+              });
+              try {
+                const verified = await window.electronAPI.ardupilotSitlCheckBinary(
+                  recovery.vehicleType,
+                  recovery.suggestedTrack,
+                );
+                if (verified.exists) {
+                  set({ binaryInfo: verified });
+                }
+              } catch {
+                /* keep optimistic binaryInfo */
+              }
+            } else {
+              const after = await window.electronAPI.ardupilotSitlCheckBinary(
+                recovery.vehicleType,
+                recovery.suggestedTrack,
+              );
+              set({ binaryInfo: after });
+              if (!after.exists) {
+                const msg = `Failed to download ${recovery.suggestedTrack} binary: install path not returned`;
+                set({ lastError: msg });
+                get().appendOutput(`${msg}\n`, true);
+                return;
+              }
             }
           }
           await get().start();
@@ -720,11 +863,12 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         // Listen for download progress
         const unsubProgress = window.electronAPI.onArdupilotSitlDownloadProgress((progress) => {
           set({ downloadProgress: progress });
-          if (progress.status === 'complete') {
-            set({ isDownloading: false });
-            checkBinary();
-          } else if (progress.status === 'error') {
-            set({ isDownloading: false, lastError: progress.error ?? 'Download failed' });
+          if (progress.status === 'error') {
+            set({
+              isDownloading: false,
+              lastError: progress.error ?? 'Download failed',
+              downloadProgress: null,
+            });
           }
         });
 

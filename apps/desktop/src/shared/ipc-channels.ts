@@ -361,6 +361,8 @@ export const IPC_CHANNELS = {
   ARDUPILOT_SITL_STOP: 'ardupilot-sitl:stop',
   ARDUPILOT_SITL_STATUS: 'ardupilot-sitl:status',
   ARDUPILOT_SITL_DOWNLOAD: 'ardupilot-sitl:download',
+  /** Copy a user-selected local file into the SITL cache (e.g. when upstream download is blocked). */
+  ARDUPILOT_SITL_IMPORT_BINARY: 'ardupilot-sitl:import-binary',
   ARDUPILOT_SITL_DOWNLOAD_PROGRESS: 'ardupilot-sitl:download-progress',
   ARDUPILOT_SITL_CHECK_BINARY: 'ardupilot-sitl:check-binary',
   ARDUPILOT_SITL_CHECK_PLATFORM: 'ardupilot-sitl:check-platform',
@@ -1236,7 +1238,7 @@ export interface ArduPilotSitlDownloadProgress {
   progress: number;  // 0-100
   bytesDownloaded: number;
   totalBytes: number;
-  status: 'downloading' | 'extracting' | 'complete' | 'error';
+  status: 'preparing' | 'downloading' | 'extracting' | 'complete' | 'error';
   error?: string;
 }
 

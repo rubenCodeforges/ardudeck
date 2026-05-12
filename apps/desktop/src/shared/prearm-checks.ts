@@ -136,7 +136,10 @@ const PREARM_PATTERNS: PreArmPattern[] = [
   {
     pattern: /Battery.*(not healthy|too low|failsafe)/i,
     category: 'battery',
-    fix: { params: ['BATT_MONITOR', 'ARMING_VOLT_MIN'], hint: 'Battery monitor type / minimum voltage' },
+    fix: {
+      params: ['FS_BATT_ENABLE', 'ARMING_MIN_VOLT', 'BATT_LOW_VOLT', 'BATT_MONITOR', 'SIM_BATT_VOLTAGE', 'BATT_FS_LOW_ACT'],
+      hint: 'SITL: ArduDeck pushes battery/arming fixes over MAVLink after parameters load (EEPROM can override --defaults). If this still shows, reconnect once or use Wipe EEPROM when starting SITL.',
+    },
   },
   // System
   {

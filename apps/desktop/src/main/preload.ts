@@ -1262,6 +1262,9 @@ const api = {
   ardupilotSitlDownload: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD, vehicleType, releaseTrack),
 
+  ardupilotSitlImportBinary: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_IMPORT_BINARY, vehicleType, releaseTrack),
+
   ardupilotSitlCheckBinary: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_BINARY, vehicleType, releaseTrack),
 

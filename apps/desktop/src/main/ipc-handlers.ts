@@ -123,7 +123,8 @@ import {
   FILE_TRANSFER_PROTOCOL_CRC_EXTRA,
 } from '@ardudeck/mavlink-ts';
 import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
-import { writeFile, readFile } from 'node:fs/promises';
+import { writeFile, readFile, copyFile, mkdir, chmod, rm } from 'node:fs/promises';
+import path from 'node:path';
 import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
@@ -786,6 +787,8 @@ let paramDownloadStartTime = 0; // Timestamp for measuring download duration
 let ftpClient: MavlinkFtpClient | null = null;
 let paramRequestInFlight = false; // Guard against concurrent param download requests
 let logDownloadManager: LogDownloadManager | null = null;
+/** One-shot SITL copter battery/arming PARAM_SET pass after param download. */
+let sitlCopterBatteryTuneApplied = false;
 
 // In-flight one-shot PARAM_REQUEST_READ callbacks keyed by paramId. The
 // MSG_PARAM_VALUE handler invokes the matching callback when the FC's
@@ -811,6 +814,112 @@ function resetMavlinkDiagCache(): void {
   statustextHistory = [];
   lastReportedArmed = null;
   resetRcChannelState();
+  sitlCopterBatteryTuneApplied = false;
+}
+
+/** MAV_TYPE values that use ArduCopter-style battery / arming parameters in SITL. */
+function isCopterFamilyMavType(mavType: number): boolean {
+  switch (mavType) {
+    case 2: // QUADROTOR
+    case 3: // COAXIAL
+    case 4: // HELICOPTER
+    case 13: // HEXAROTOR
+    case 14: // OCTOROTOR
+    case 15: // TRICOPTER
+    case 29: // DODECAROTOR
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * After parameters are downloaded, push battery / arming tweaks over MAVLink so
+ * they win over stale SITL eeprom.bin (which overrides --defaults on boot).
+ * Only runs once per MAVLink session for ArduPilot SITL + copter-class vehicles.
+ */
+async function maybeApplySitlCopterBatteryTune(mainWindow: BrowserWindow): Promise<void> {
+  if (sitlCopterBatteryTuneApplied) return;
+  if (!connectionState.isSitl || !ardupilotSitlProcess.isRunning) return;
+  if (!connectionState.isConnected || !currentTransport?.isOpen) return;
+  const mav = connectionState.mavType ?? -1;
+  if (!isCopterFamilyMavType(mav)) return;
+  if (receivedParams.size === 0) return;
+
+  sitlCopterBatteryTuneApplied = true;
+
+  const targetSystem = connectionState.systemId ?? 1;
+  const targetComponent = 1;
+  const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const paramSetFromCache = async (paramId: string, value: number): Promise<boolean> => {
+    const cached = receivedParams.get(paramId);
+    if (!cached) return false;
+    try {
+      const setPayload = serializeParamSet({
+        targetSystem,
+        targetComponent,
+        paramId,
+        paramValue: value,
+        paramType: cached.paramType,
+      });
+      const packet = await sendMavlinkPacket(PARAM_SET_ID, setPayload, PARAM_SET_CRC_EXTRA);
+      await currentTransport!.write(packet);
+      connectionState.packetsSent++;
+      await delay(100);
+      return true;
+    } catch (err) {
+      sendLog(mainWindow, 'debug', `SITL tune: skipped ${paramId}`, err instanceof Error ? err.message : String(err));
+      return false;
+    }
+  };
+
+  /** Best-effort set when the name is missing from the param list (type guessed). */
+  const paramSetBlind = async (paramId: string, value: number, paramType: number): Promise<void> => {
+    try {
+      const setPayload = serializeParamSet({
+        targetSystem,
+        targetComponent,
+        paramId,
+        paramValue: value,
+        paramType,
+      });
+      const packet = await sendMavlinkPacket(PARAM_SET_ID, setPayload, PARAM_SET_CRC_EXTRA);
+      await currentTransport!.write(packet);
+      connectionState.packetsSent++;
+      await delay(100);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  sendLog(mainWindow, 'info', 'SITL: applying battery/arming MAVLink tweaks (overrides stale EEPROM for this session)…');
+
+  // Pack thresholds well below a healthy sim voltage; SIM_* nudged upward.
+  await paramSetFromCache('BATT_LOW_VOLT', 6);
+  await paramSetFromCache('BATT_CRT_VOLT', 5);
+  await paramSetFromCache('SIM_BATT_VOLTAGE', 25);
+
+  const cap = receivedParams.get('SIM_BATT_CAP_AH');
+  if (cap) {
+    await paramSetFromCache('SIM_BATT_CAP_AH', cap.paramValue + 0.02);
+  }
+
+  // Prefer cached names when the firmware exposes them.
+  await paramSetFromCache('FS_BATT_ENABLE', 0);
+  await paramSetFromCache('ARMING_MIN_VOLT', 0);
+  await paramSetFromCache('BATT_FS_LOW_ACT', 0);
+
+  // Builds that omit the above IDs — still try common alternates (FC ignores unknown ids).
+  if (!receivedParams.has('ARMING_MIN_VOLT')) {
+    await paramSetBlind('ARMING_MIN_VOLT', 0, 9); // REAL32
+    await paramSetBlind('ARMING_VOLT_MIN', 0, 9);
+  }
+  if (!receivedParams.has('FS_BATT_ENABLE')) {
+    await paramSetBlind('FS_BATT_ENABLE', 0, 2); // INT8
+  }
+
+  sendLog(mainWindow, 'info', 'SITL: battery/arming tweak pass complete');
 }
 
 // Parameter metadata cache (keyed by vehicle type)
@@ -1611,6 +1720,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         safeSend(mainWindow, IPC_CHANNELS.PARAM_COMPLETE);
         const elapsed = paramDownloadStartTime > 0 ? ((Date.now() - paramDownloadStartTime) / 1000).toFixed(1) : '?';
         sendLog(mainWindow, 'info', `Downloaded ${receivedParams.size} parameters via PARAM_REQUEST_LIST in ${elapsed}s`);
+        void maybeApplySitlCopterBatteryTune(mainWindow);
       }
       break;
     }
@@ -4017,6 +4127,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
     // Single IPC event with all params — renderer applies in one state update
     safeSend(mainWindow, IPC_CHANNELS.PARAM_BULK_LOAD, bulkPayload);
+
+    void maybeApplySitlCopterBatteryTune(mainWindow);
 
     return true;
   }
@@ -7719,13 +7831,66 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ): Promise<{ success: boolean; path?: string; error?: string }> => {
     // Download Cygwin DLLs first on Windows
     if (process.platform === 'win32') {
-      const cygwinResult = await ardupilotSitlDownloader.downloadCygwin();
+      const cygwinResult = await ardupilotSitlDownloader.downloadCygwin(vehicleType, releaseTrack);
       if (!cygwinResult.success) {
         return { success: false, error: `Failed to download Cygwin DLLs: ${cygwinResult.error}` };
       }
     }
 
     return ardupilotSitlDownloader.download(vehicleType, releaseTrack);
+  });
+
+  // Install SITL binary from a local file (same layout as download — e.g. Windows .exe).
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_IMPORT_BINARY, async (
+    _event,
+    vehicleType: ArduPilotVehicleType,
+    releaseTrack: ArduPilotReleaseTrack,
+  ): Promise<{ success: boolean; path?: string; error?: string }> => {
+    try {
+      const parent = BrowserWindow.getFocusedWindow() ?? mainWindow;
+      const { canceled, filePaths } = await dialog.showOpenDialog(parent ?? undefined, {
+        title: 'Select ArduPilot SITL binary',
+        properties: ['openFile'],
+        filters: [
+          {
+            name: process.platform === 'win32' ? 'SITL (exe / elf)' : 'SITL binary',
+            extensions: process.platform === 'win32' ? ['exe', 'elf'] : ['*'],
+          },
+          { name: 'All files', extensions: ['*'] },
+        ],
+      });
+      if (canceled || !filePaths[0]) {
+        return { success: false, error: 'Cancelled' };
+      }
+      const src = filePaths[0];
+      const dest = ardupilotSitlDownloader.getBinaryPath(vehicleType, releaseTrack);
+      await mkdir(path.dirname(dest), { recursive: true });
+      try {
+        await copyFile(src, dest);
+      } catch (e) {
+        const m = e instanceof Error ? e.message : String(e);
+        return { success: false, error: `Could not copy binary: ${m}` };
+      }
+      if (process.platform !== 'win32') {
+        try {
+          await chmod(dest, 0o755);
+        } catch { /* best-effort */ }
+      }
+      if (process.platform === 'win32') {
+        const cygwinResult = await ardupilotSitlDownloader.downloadCygwin(vehicleType, releaseTrack);
+        if (!cygwinResult.success) {
+          await rm(dest, { force: true }).catch(() => {});
+          return {
+            success: false,
+            error: `Cygwin DLLs required to run SITL could not be downloaded: ${cygwinResult.error}. Try again or use a better network/VPN.`,
+          };
+        }
+      }
+      return { success: true, path: dest };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
   });
 
   // Check if ArduPilot SITL binary exists

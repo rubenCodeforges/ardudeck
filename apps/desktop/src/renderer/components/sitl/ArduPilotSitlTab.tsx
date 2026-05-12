@@ -55,6 +55,7 @@ export default function ArduPilotSitlTab() {
     start,
     stop,
     download,
+    importBinaryFromFile,
     checkBinary,
     clearOutput,
     setVehicleType,
@@ -506,30 +507,70 @@ export default function ArduPilotSitlTab() {
               <p className="text-xs text-content-secondary">
                 {binaryInfo?.exists
                   ? `Ready at ${binaryInfo.path?.split('/').pop()}`
-                  : 'Binary not downloaded'}
+                  : 'Binary not installed'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {!binaryInfo?.exists && !isDownloading && (
-              <button
-                onClick={download}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
-              >
-                Download
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={download}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                >
+                  Download
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void importBinaryFromFile()}
+                  title="Use a file you downloaded separately (e.g. if the network download fails). On Windows, Cygwin DLLs are fetched automatically when needed."
+                  className="px-3 py-1.5 text-xs font-medium text-content bg-surface-inset border border-subtle hover:bg-surface-input rounded-lg transition-colors"
+                >
+                  Install from file…
+                </button>
+              </div>
             )}
 
-            {isDownloading && downloadProgress && (
-              <div className="flex items-center gap-2">
-                <div className="w-32 h-2 bg-surface-inset rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 transition-all"
-                    style={{ width: `${downloadProgress.progress}%` }}
-                  />
-                </div>
-                <span className="text-xs text-content-secondary">{downloadProgress.progress}%</span>
+            {isDownloading && (
+              <div className="flex flex-col items-end gap-0.5 min-w-[10rem]">
+                {downloadProgress ? (
+                  <>
+                    <div className="flex items-center gap-2 w-full justify-end">
+                      <div className="w-32 h-2 bg-surface-inset rounded-full overflow-hidden shrink-0">
+                        <div
+                          className="h-full bg-blue-500 transition-all"
+                          style={{ width: `${downloadProgress.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-content-secondary tabular-nums w-8 text-right">
+                        {downloadProgress.progress}%
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-content-secondary text-right leading-tight max-w-[11rem]">
+                      {downloadProgress.status === 'preparing'
+                        ? 'Preparing SITL runtime (Cygwin DLLs on Windows)…'
+                        : downloadProgress.status === 'downloading'
+                          ? 'Downloading vehicle binary…'
+                          : downloadProgress.status === 'extracting'
+                            ? 'Extracting…'
+                            : null}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-content-secondary">
+                    <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                    Starting download…
+                  </div>
+                )}
               </div>
             )}
 
@@ -537,6 +578,17 @@ export default function ArduPilotSitlTab() {
               <button
                 onClick={start}
                 disabled={!isStatusChecked || isStarting || !binaryInfo?.exists || connectionState.isConnected}
+                title={
+                  !isStatusChecked
+                    ? 'Checking SITL status…'
+                    : isStarting
+                      ? 'SITL is starting…'
+                      : !binaryInfo?.exists
+                        ? 'Install the SITL binary (Download or Install from file)'
+                        : connectionState.isConnected
+                          ? 'Disconnect the flight controller (MSP) to run local SITL'
+                          : undefined
+                }
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isStarting ? (
@@ -633,8 +685,8 @@ export default function ArduPilotSitlTab() {
 
           {/* Main sticks */}
           <div className="grid grid-cols-4 gap-3 mb-3">
-            {/* Throttle */}
-            <div>
+            {/* Throttle — RC input to SITL; AUTO/mission uses FC throttle, so this can stay low */}
+            <div title="RC channel to the simulator. In AUTO the flight stack commands motors; thrust is not shown here — use telemetry THR (VFR_HUD).">
               <label className="block text-xs text-content-secondary mb-1">
                 Throttle <span className="text-content-tertiary">{normalizedToPWM(rcState.throttle)}</span>
               </label>
