@@ -123,6 +123,7 @@ import {
   FILE_TRANSFER_PROTOCOL_CRC_EXTRA,
 } from '@ardudeck/mavlink-ts';
 import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
+import { decodeServoOutputRaw } from './servo-output-decode.js';
 import { writeFile, readFile } from 'node:fs/promises';
 import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
 import { sitlProcess } from './sitl/sitl-process.js';
@@ -1278,7 +1279,10 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_VIBRATION: {
       // VIBRATION (241) wire order: time_usec(8), vibration_x(4), vibration_y(4),
       //   vibration_z(4), clipping_0(4), clipping_1(4), clipping_2(4)
-      if (payload.length >= 32) {
+      // The clipping_* counts are usually 0, so MAVLink v2 truncates them away and
+      // the payload arrives ~20 bytes. Require only through vibration_z (offset 16);
+      // truncated clipping bytes read back as 0 (their real value).
+      if (payload.length >= 20) {
         const x = readFloat(payload, 8);
         const y = readFloat(payload, 12);
         const z = readFloat(payload, 16);
@@ -1293,28 +1297,15 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     }
 
     case MSG_SERVO_OUTPUT_RAW: {
-      // SERVO_OUTPUT_RAW (36) wire order: time_usec(4 U32), servo1-8(2 U16 each),
-      //   port(1 U8), servo9-16(2 U16 each, v2 extension fields)
-      // Min length is 21 (port included), max is 37 (all 16 servos).
-      // We only care about port 0 (MAIN outputs) where the motors live.
-      if (payload.length >= 21) {
-        const port = payload[20] ?? 0;
-        if (port === 0) {
-          const outputs: number[] = [];
-          // Servos 1-8 always present
-          for (let i = 0; i < 8; i++) {
-            outputs.push(readUint16(payload, 4 + i * 2));
-          }
-          // Servos 9-16 only present in v2 extension (offset 21+)
-          if (payload.length >= 37) {
-            for (let i = 0; i < 8; i++) {
-              outputs.push(readUint16(payload, 21 + i * 2));
-            }
-          }
-          queueMavlinkTelemetry(mainWindow, {
-            servoOutput: { outputs, timestamp: Date.now() },
-          });
-        }
+      // MAVLink v2 truncates trailing zero bytes and ArduPilot always sends
+      // port=0 for the MAIN outputs, so the payload routinely arrives far shorter
+      // than its nominal length. decodeServoOutputRaw handles the truncation and
+      // is unit-tested in servo-output-decode.test.ts.
+      const decoded = decodeServoOutputRaw(payload);
+      if (decoded) {
+        queueMavlinkTelemetry(mainWindow, {
+          servoOutput: { outputs: decoded.outputs, timestamp: Date.now() },
+        });
       }
       break;
     }
@@ -1325,7 +1316,10 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // ESC_TELEMETRY_N_TO_M wire order (size-sorted):
       //   voltage[4] U16, current[4] U16, totalcurrent[4] U16, rpm[4] U16, count[4] U16, temperature[4] U8
       // Total: 44 bytes. Voltage in cV, current in cA, rpm in eRPM.
-      if (payload.length >= 44) {
+      // temperature[] (the trailing field) is often 0 (ESC reports no temp), so
+      // MAVLink v2 truncates it and the payload arrives ~40 bytes. Require only
+      // through rpm (offset 24-31); truncated temperature bytes read back as 0.
+      if (payload.length >= 32) {
         const baseMotorIndex =
           msgid === MSG_ESC_TELEMETRY_1_TO_4 ? 0 :
           msgid === MSG_ESC_TELEMETRY_5_TO_8 ? 4 : 8;
@@ -1357,14 +1351,17 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_RC_CHANNELS_RAW: {
       // RC_CHANNELS_RAW (msg 35): 8 channels per port — fallback for FCs that don't populate msg 65 fully.
       // v2 wire order: time_boot_ms(U32), chan1-8(U16×8), port(U8), rssi(U8)
-      const rawPort = payload[20]!;
+      // port (offset 20) is 0 for the primary RC input. When port and rssi are
+      // both 0, v2 truncates them away, so `payload[20]` is undefined - treat a
+      // missing port byte as 0 (primary) rather than failing the === 0 check.
+      const rawPort = payload[20] ?? 0;
       if (rawPort === 0) {
         // Only use port 0 (primary RC input)
         const rawChannels: number[] = [];
         for (let i = 0; i < 8; i++) {
           rawChannels.push(readUint16(payload, 4 + i * 2));
         }
-        rcMsg35 = { channels: rawChannels, rssi: payload[21]! };
+        rcMsg35 = { channels: rawChannels, rssi: payload[21] ?? 0 };
         emitMergedRcChannels(mainWindow);
       }
       break;
@@ -1373,8 +1370,11 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_RC_CHANNELS: {
       // RC_CHANNELS (msg 65): up to 18 channels — primary source.
       // v2 wire order: time_boot_ms(U32), chan1-18(U16×18), chancount(U8), rssi(U8)
-      let chancount = payload[40]!;
-      const rssi = payload[41]!;
+      // chancount (offset 40) and rssi (offset 41) are the trailing bytes; v2 can
+      // truncate them to 0/absent. Default to 0 so the chancount===0 inference
+      // path below still runs instead of reading undefined.
+      let chancount = payload[40] ?? 0;
+      const rssi = payload[41] ?? 0;
       const channels: number[] = [];
       for (let i = 0; i < 18; i++) {
         channels.push(readUint16(payload, 4 + i * 2));
