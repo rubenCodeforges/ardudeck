@@ -125,18 +125,23 @@ export function createUlogParser(): DataFlashStreamParser {
   }
 
   // Decode one field into the flattened output map and return the number of
-  // bytes consumed. Supports nested message types by recursive expansion with a
-  // dotted prefix. char arrays decode to a single string value.
+  // bytes consumed, or -1 to signal the field could not be decoded safely (out
+  // of bounds, or an unresolved nested type). A negative return aborts decoding
+  // of the whole record so no misaligned garbage is emitted. Supports nested
+  // message types by recursive expansion with a dotted prefix. char arrays
+  // decode to a single string value.
   function decodeFieldInto(
     field: FieldDef,
     prefix: string,
     view: DataView,
     offset: number,
+    limit: number,
     out: Record<string, number | string>,
   ): number {
     const outName = prefix + field.name;
 
     if (field.type === 'char' && field.arrayLen > 1) {
+      if (offset + field.arrayLen > limit) return -1;
       if (!field.isPadding) {
         out[outName] = decodeCharArray(view, offset, field.arrayLen);
       }
@@ -145,6 +150,10 @@ export function createUlogParser(): DataFlashStreamParser {
 
     if (isPrimitive(field.type)) {
       const elemSize = primitiveSize(field.type);
+      const total = elemSize * field.arrayLen;
+      // PX4 logs are commonly truncated mid-write; refuse to read past the
+      // payload rather than letting DataView throw a RangeError.
+      if (offset + total > limit) return -1;
       if (field.arrayLen === 1) {
         if (!field.isPadding) {
           out[outName] = decodePrimitive(field.type, view, offset);
@@ -155,48 +164,62 @@ export function createUlogParser(): DataFlashStreamParser {
           if (!field.isPadding) out[`${outName}[${i}]`] = value;
         }
       }
-      return elemSize * field.arrayLen;
+      return total;
     }
 
     // Nested message type. Expand one level (recursively) so embedded structs
-    // appear as dotted/bracketed fields. If the nested format is unknown, skip
-    // its bytes (size 0 means we cannot advance reliably) and record it.
+    // appear as dotted/bracketed fields. If the nested format is unknown its
+    // size is unknown too, so we cannot advance reliably; record it and abort
+    // the record rather than emitting every following field misaligned.
     const nested = formatDefs.get(field.type);
     if (!nested) {
       skippedNestedTypes.add(field.type);
-      return 0;
+      return -1;
     }
     const oneSize = structSize(nested);
     if (field.arrayLen === 1) {
-      decodeStructInto(nested, `${outName}.`, view, offset, field.isPadding, out);
+      if (!decodeStructInto(nested, `${outName}.`, view, offset, limit, field.isPadding, out)) {
+        return -1;
+      }
     } else {
       for (let i = 0; i < field.arrayLen; i++) {
-        decodeStructInto(
-          nested,
-          `${outName}[${i}].`,
-          view,
-          offset + i * oneSize,
-          field.isPadding,
-          out,
-        );
+        if (
+          !decodeStructInto(
+            nested,
+            `${outName}[${i}].`,
+            view,
+            offset + i * oneSize,
+            limit,
+            field.isPadding,
+            out,
+          )
+        ) {
+          return -1;
+        }
       }
     }
     return oneSize * field.arrayLen;
   }
 
+  // Returns false if the struct could not be fully decoded within the limit, in
+  // which case the caller must drop the record.
   function decodeStructInto(
     fmt: FormatDef,
     prefix: string,
     view: DataView,
     startOffset: number,
+    limit: number,
     suppress: boolean,
     out: Record<string, number | string>,
-  ): void {
+  ): boolean {
     let offset = startOffset;
     for (const field of fmt.fields) {
       const effective = suppress ? { ...field, isPadding: true } : field;
-      offset += decodeFieldInto(effective, prefix, view, offset, out);
+      const consumed = decodeFieldInto(effective, prefix, view, offset, limit, out);
+      if (consumed < 0) return false;
+      offset += consumed;
     }
+    return true;
   }
 
   // Flattened output field names for a format (excludes padding). Built once per
@@ -317,14 +340,19 @@ export function createUlogParser(): DataFlashStreamParser {
     const sub = subscriptions.get(msgId);
     if (!sub || !sub.format) return undefined;
 
+    const structLen = payload.byteLength - 2;
     const structView = new DataView(
       payload.buffer,
       payload.byteOffset + 2,
-      payload.byteLength - 2,
+      structLen,
     );
 
     const fields: Record<string, number | string> = {};
-    decodeStructInto(sub.format, '', structView, 0, false, fields);
+    // A truncated or malformed record cannot be decoded fully; drop it rather
+    // than emitting partial/misaligned fields.
+    if (!decodeStructInto(sub.format, '', structView, 0, structLen, false, fields)) {
+      return undefined;
+    }
 
     // First field is uint64 timestamp by PX4 convention.
     let timeUs = 0;
