@@ -62,7 +62,9 @@ function getModeName(modeNum: number): string {
   return COPTER_MODES[modeNum] ?? `MODE_${modeNum}`;
 }
 
-const QUICK_PRESETS = [
+type ChartPreset = { label: string; desc: string; types: string[]; fields: Record<string, string[]> };
+
+const QUICK_PRESETS: ChartPreset[] = [
   { label: 'Attitude', desc: 'DesRoll vs Roll, DesPitch vs Pitch', types: ['ATT'], fields: { ATT: ['DesRoll', 'Roll', 'DesPitch', 'Pitch'] } },
   { label: 'Rate Tuning', desc: 'Desired vs actual body rates', types: ['RATE'], fields: { RATE: ['RDes', 'R', 'PDes', 'P', 'YDes', 'Y'] } },
   { label: 'Vibration', desc: 'X/Y/Z acceleration variance', types: ['VIBE'], fields: { VIBE: ['VibeX', 'VibeY', 'VibeZ'] } },
@@ -82,6 +84,19 @@ const QUICK_PRESETS = [
   { label: 'Rangefinder', desc: 'Distance per sensor (RFND)', types: ['RFND'], fields: { RFND: ['Dist'] } },
   { label: 'Wind Estimate', desc: 'Wind X/Y/Z (NKF2)', types: ['NKF2'], fields: { NKF2: ['VWN', 'VWE'] } },
   { label: 'Inputs vs Outputs', desc: 'RC in vs motor out', types: ['RCIN', 'RCOU'], fields: { RCIN: ['C1', 'C2', 'C3', 'C4'], RCOU: ['C1', 'C2', 'C3', 'C4'] } },
+];
+
+// PX4 ULog quick presets. Keyed by PX4 topic name with flattened array fields
+// (q[0], gyro_rad[0], ...). Preset-filtering by messageTypes.includes hides any
+// preset whose topic a given log lacks.
+const PX4_PRESETS: ChartPreset[] = [
+  { label: 'Attitude', desc: 'Attitude quaternion', types: ['vehicle_attitude'], fields: { vehicle_attitude: ['q[0]', 'q[1]', 'q[2]', 'q[3]'] } },
+  { label: 'Rates (gyro)', desc: 'Body angular rates', types: ['sensor_combined'], fields: { sensor_combined: ['gyro_rad[0]', 'gyro_rad[1]', 'gyro_rad[2]'] } },
+  { label: 'Vibration', desc: 'Accel & gyro vibration', types: ['vehicle_imu_status'], fields: { vehicle_imu_status: ['accel_vibration_metric', 'gyro_vibration_metric'] } },
+  { label: 'GPS', desc: 'Satellite count & fix type', types: ['vehicle_gps_position'], fields: { vehicle_gps_position: ['satellites_used', 'fix_type'] } },
+  { label: 'Battery', desc: 'Voltage & current draw', types: ['battery_status'], fields: { battery_status: ['voltage_v', 'current_a'] } },
+  { label: 'Local Position', desc: 'Local X/Y/Z position', types: ['vehicle_local_position'], fields: { vehicle_local_position: ['x', 'y', 'z'] } },
+  { label: 'EKF', desc: 'Estimator test ratios', types: ['estimator_status'], fields: { estimator_status: ['mag_test_ratio', 'vel_test_ratio', 'pos_test_ratio'] } },
 ];
 
 /**
@@ -113,19 +128,66 @@ function getModeTimeline(log: ReturnType<typeof useLogStore.getState>['currentLo
   return segments;
 }
 
+// Reject points before GPS lock (null island) or out of range so the track
+// doesn't draw a line to 0,0.
+function isValidLatLng(lat: number, lng: number): boolean {
+  if (lat === 0 && lng === 0) return false;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
+  return true;
+}
+
 function getFlightPath(log: ReturnType<typeof useLogStore.getState>['currentLog']): [number, number, number][] {
   if (!log) return [];
-  const gps = log.messages['GPS'];
-  if (!gps) return [];
   const path: [number, number, number][] = [];
-  for (const msg of gps) {
-    const lat = msg.fields['Lat'];
-    const lng = msg.fields['Lng'];
-    const alt = msg.fields['Alt'];
-    if (typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0) {
-      path.push([lat, lng, typeof alt === 'number' ? alt : 0]);
+
+  // ArduPilot dataflash: GPS message with Lat/Lng (degrees) and Alt (meters).
+  const gps = log.messages['GPS'];
+  if (gps) {
+    for (const msg of gps) {
+      const lat = msg.fields['Lat'];
+      const lng = msg.fields['Lng'];
+      const alt = msg.fields['Alt'];
+      if (typeof lat === 'number' && typeof lng === 'number' && isValidLatLng(lat, lng)) {
+        path.push([lat, lng, typeof alt === 'number' ? alt : 0]);
+      }
     }
+    return path;
   }
+
+  // PX4 ULog: vehicle_gps_position / sensor_gps carry int32 lat/lon scaled by
+  // 1e7 and alt in mm AMSL.
+  const px4Gps = log.messages['vehicle_gps_position'] ?? log.messages['sensor_gps'];
+  if (px4Gps) {
+    for (const msg of px4Gps) {
+      const rawLat = msg.fields['lat'];
+      const rawLon = msg.fields['lon'];
+      const rawAlt = msg.fields['alt'];
+      if (typeof rawLat === 'number' && typeof rawLon === 'number') {
+        const lat = rawLat / 1e7;
+        const lng = rawLon / 1e7;
+        if (isValidLatLng(lat, lng)) {
+          path.push([lat, lng, typeof rawAlt === 'number' ? rawAlt / 1000 : 0]);
+        }
+      }
+    }
+    return path;
+  }
+
+  // PX4 ULog fallback: vehicle_global_position carries lat/lon already in
+  // degrees (double) and alt already in meters.
+  const px4Global = log.messages['vehicle_global_position'];
+  if (px4Global) {
+    for (const msg of px4Global) {
+      const lat = msg.fields['lat'];
+      const lng = msg.fields['lon'];
+      const alt = msg.fields['alt'];
+      if (typeof lat === 'number' && typeof lng === 'number' && isValidLatLng(lat, lng)) {
+        path.push([lat, lng, typeof alt === 'number' ? alt : 0]);
+      }
+    }
+    return path;
+  }
+
   return path;
 }
 
@@ -194,6 +256,7 @@ function ChartPanel({ chartId }: { chartId: string }) {
   const [legendExpanded, setLegendExpanded] = useState(false);
 
   const messageTypes = currentLog?.messageTypes ?? [];
+  const presets = currentLog?.format === 'ulog' ? PX4_PRESETS : QUICK_PRESETS;
   const modeTimeline = useMemo(() => getModeTimeline(currentLog), [currentLog]);
   const totalTimeS = currentLog ? (currentLog.timeRange.endUs - currentLog.timeRange.startUs) / 1_000_000 : 0;
   const startTimeS = currentLog ? currentLog.timeRange.startUs / 1_000_000 : 0;
@@ -601,10 +664,10 @@ function ChartPanel({ chartId }: { chartId: string }) {
     if (selectedTypes.length > 0) return; // already has selection
     const preferred = ['Altitude', 'Attitude'];
     for (const name of preferred) {
-      const preset = QUICK_PRESETS.find((p) => p.label === name && p.types.some((t) => messageTypes.includes(t)));
+      const preset = presets.find((p) => p.label === name && p.types.some((t) => messageTypes.includes(t)));
       if (preset) { applyPreset(preset); return; }
     }
-    const first = QUICK_PRESETS.find((p) => p.types.some((t) => messageTypes.includes(t)));
+    const first = presets.find((p) => p.types.some((t) => messageTypes.includes(t)));
     if (first) applyPreset(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -620,7 +683,7 @@ function ChartPanel({ chartId }: { chartId: string }) {
         </div>
         <div className="text-content-secondary text-sm">Pick a quick plot or select fields</div>
         <div className="flex flex-wrap justify-center gap-2">
-          {QUICK_PRESETS.filter((p) => p.types.some((t) => messageTypes.includes(t))).map((preset) => (
+          {presets.filter((p) => p.types.some((t) => messageTypes.includes(t))).map((preset) => (
             <button
               key={preset.label}
               onClick={() => applyPreset(preset)}
@@ -1158,6 +1221,7 @@ function FieldPickerPanel() {
   const [expandedInstanceFields, setExpandedInstanceFields] = useState<Set<string>>(new Set());
 
   const messageTypes = currentLog?.messageTypes ?? [];
+  const presets = currentLog?.format === 'ulog' ? PX4_PRESETS : QUICK_PRESETS;
 
   const filteredTypes = useMemo(() => {
     if (!search.trim()) return messageTypes;
@@ -1348,7 +1412,7 @@ function FieldPickerPanel() {
         </div>
         {/* Quick presets + clear */}
         <div className="flex flex-wrap gap-1">
-          {QUICK_PRESETS.filter((p) => p.types.some((t) => messageTypes.includes(t))).map((preset) => (
+          {presets.filter((p) => p.types.some((t) => messageTypes.includes(t))).map((preset) => (
             <button
               key={preset.label}
               onClick={() => applyPreset(preset)}
