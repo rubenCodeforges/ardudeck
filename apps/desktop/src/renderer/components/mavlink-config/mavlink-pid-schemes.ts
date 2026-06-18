@@ -8,6 +8,10 @@
  * - ArduPlane (legacy): RLL2SRV_P, RLL2SRV_I, RLL2SRV_D (angle controller, not rate)
  * - QuadPlane VTOL: Q_A_RAT_RLL_P, Q_A_RAT_RLL_I, Q_A_RAT_RLL_D, Q_A_RAT_RLL_FF
  *
+ * PX4 uses an entirely separate naming convention (never coexists with ArduPilot params):
+ * - PX4 Multicopter: MC_ROLLRATE_P/I/D, MC_PITCHRATE_P/I/D, MC_YAWRATE_P/I/D (rate controller)
+ * - PX4 Fixed-wing: FW_RR_P/I/D/FF, FW_PR_P/I/D/FF, FW_YR_P/I/D/FF (rate controller)
+ *
  * This module auto-detects the scheme by probing the parameter store.
  */
 
@@ -15,7 +19,14 @@
 // PID Scheme Types
 // ---------------------------------------------------------------------------
 
-export type PidSchemeId = 'modern-copter' | 'legacy-copter' | 'plane' | 'quadplane' | 'unknown';
+export type PidSchemeId =
+  | 'modern-copter'
+  | 'legacy-copter'
+  | 'plane'
+  | 'quadplane'
+  | 'px4-multicopter'
+  | 'px4-fixedwing'
+  | 'unknown';
 
 export interface AxisParams {
   p: string;
@@ -182,6 +193,53 @@ export const QUADPLANE_SCHEME: PidScheme = {
   accelDefaults: { roll: 110000, pitch: 110000, yaw: 27000 },
 };
 
+/**
+ * PX4 Multicopter rate controller.
+ * PX4 rate gains are small decimals (P ~0.15, D ~0.003), similar magnitude to the
+ * modern ArduCopter ATC_RAT_ controller, so we reuse the same slider scales.
+ * The PX4 rate controller has no per-axis feedforward term; the overall-gain
+ * (MC_*RATE_K) and integrator-limit (MC_*_INT_LIM) terms have no slot in this
+ * P/I/D-only model and are intentionally omitted (edit them via All Parameters).
+ */
+export const PX4_MULTICOPTER_SCHEME: PidScheme = {
+  id: 'px4-multicopter',
+  label: 'PX4 Multicopter',
+  description: 'PX4 multicopter rate controller',
+  hasFF: false,
+  roll: { p: 'MC_ROLLRATE_P', i: 'MC_ROLLRATE_I', d: 'MC_ROLLRATE_D' },
+  pitch: { p: 'MC_PITCHRATE_P', i: 'MC_PITCHRATE_I', d: 'MC_PITCHRATE_D' },
+  yaw: { p: 'MC_YAWRATE_P', i: 'MC_YAWRATE_I', d: 'MC_YAWRATE_D' },
+  pScale: 1000, iScale: 1000, dScale: 10000, ffScale: 1,
+  pMax: 500, iMax: 500, dMax: 100, ffMax: 0,
+  defaults: {
+    roll: { p: 0.15, i: 0.2, d: 0.003 },
+    pitch: { p: 0.15, i: 0.2, d: 0.003 },
+    yaw: { p: 0.2, i: 0.1, d: 0 },
+  },
+};
+
+/**
+ * PX4 Fixed-wing rate controller.
+ * PX4 fixed-wing rate gains use small decimals (P ~0.05, FF ~0.5) and carry a
+ * genuine per-axis feedforward term (FW_*R_FF), mapped to the FF slider.
+ */
+export const PX4_FIXEDWING_SCHEME: PidScheme = {
+  id: 'px4-fixedwing',
+  label: 'PX4 Fixed-wing',
+  description: 'PX4 fixed-wing rate controller with feedforward',
+  hasFF: true,
+  roll: { p: 'FW_RR_P', i: 'FW_RR_I', d: 'FW_RR_D', ff: 'FW_RR_FF' },
+  pitch: { p: 'FW_PR_P', i: 'FW_PR_I', d: 'FW_PR_D', ff: 'FW_PR_FF' },
+  yaw: { p: 'FW_YR_P', i: 'FW_YR_I', d: 'FW_YR_D', ff: 'FW_YR_FF' },
+  pScale: 1000, iScale: 1000, dScale: 10000, ffScale: 100,
+  pMax: 500, iMax: 1000, dMax: 500, ffMax: 500,
+  defaults: {
+    roll: { p: 0.05, i: 0.1, d: 0, ff: 0.5 },
+    pitch: { p: 0.08, i: 0.1, d: 0, ff: 0.5 },
+    yaw: { p: 0.05, i: 0.1, d: 0, ff: 0.3 },
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Detection
 // ---------------------------------------------------------------------------
@@ -203,11 +261,26 @@ export function hasDualVtolControllers(parameters: Map<string, { value: number }
   return hasVtol && hasPlane;
 }
 
+/**
+ * True when the board is a PX4 VTOL exposing BOTH control-law sets: the
+ * multicopter rate controller (MC_*RATE_*) and the fixed-wing controller
+ * (FW_*R_*). VTOL pilots tune each set separately, mirroring the ArduPilot
+ * QuadPlane behaviour above.
+ */
+export function hasDualPx4Controllers(parameters: Map<string, { value: number }>): boolean {
+  return parameters.has('MC_ROLLRATE_P') && parameters.has('FW_RR_P');
+}
+
 export function detectPidScheme(parameters: Map<string, { value: number }>): PidScheme {
+  // ArduPilot schemes first (ArduPilot and PX4 param names never coexist).
   if (parameters.has('Q_A_RAT_RLL_P')) return QUADPLANE_SCHEME;
   if (parameters.has('ATC_RAT_RLL_P')) return MODERN_COPTER_SCHEME;
   if (parameters.has('RATE_RLL_P')) return LEGACY_COPTER_SCHEME;
   if (parameters.has('RLL_RATE_P') || parameters.has('RLL2SRV_P')) return buildPlaneScheme(parameters);
+  // PX4 schemes. A PX4 VTOL carries both sets; prefer the multicopter
+  // (multirotor-frame) controller, as the QuadPlane case prefers its VTOL set.
+  if (parameters.has('MC_ROLLRATE_P')) return PX4_MULTICOPTER_SCHEME;
+  if (parameters.has('FW_RR_P')) return PX4_FIXEDWING_SCHEME;
   return { ...MODERN_COPTER_SCHEME, id: 'unknown' as PidSchemeId };
 }
 

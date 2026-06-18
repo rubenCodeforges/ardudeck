@@ -6,7 +6,10 @@ import {
   buildPlaneScheme,
   getAllPidParamNames,
   hasDualVtolControllers,
+  hasDualPx4Controllers,
   QUADPLANE_SCHEME,
+  PX4_MULTICOPTER_SCHEME,
+  PX4_FIXEDWING_SCHEME,
   type PidScheme,
 } from './mavlink-pid-schemes';
 
@@ -46,6 +49,75 @@ describe('hasDualVtolControllers', () => {
     // The two schemes the toggle switches between target different params.
     expect(QUADPLANE_SCHEME.roll.p).toBe('Q_A_RAT_RLL_P');
     expect(buildPlaneScheme(params).roll.p).toBe('RLL_RATE_P');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PX4 scheme detection
+// ---------------------------------------------------------------------------
+
+describe('PX4 PID scheme detection', () => {
+  it('returns the PX4 multicopter scheme for MC_ROLLRATE_P (no ArduPilot params)', () => {
+    const scheme = detectPidScheme(makeParams(['MC_ROLLRATE_P']));
+    expect(scheme.id).toBe('px4-multicopter');
+    expect(scheme.roll.p).toBe('MC_ROLLRATE_P');
+    expect(scheme.roll.i).toBe('MC_ROLLRATE_I');
+    expect(scheme.roll.d).toBe('MC_ROLLRATE_D');
+    expect(scheme.pitch.p).toBe('MC_PITCHRATE_P');
+    expect(scheme.yaw.p).toBe('MC_YAWRATE_P');
+    // PX4 MC rate controller has no per-axis feedforward
+    expect(scheme.hasFF).toBe(false);
+    expect(scheme.roll.ff).toBeUndefined();
+  });
+
+  it('returns the PX4 fixed-wing scheme for FW_RR_P (no ArduPilot params)', () => {
+    const scheme = detectPidScheme(makeParams(['FW_RR_P']));
+    expect(scheme.id).toBe('px4-fixedwing');
+    expect(scheme.roll.p).toBe('FW_RR_P');
+    expect(scheme.roll.ff).toBe('FW_RR_FF');
+    expect(scheme.pitch.p).toBe('FW_PR_P');
+    expect(scheme.pitch.ff).toBe('FW_PR_FF');
+    expect(scheme.yaw.p).toBe('FW_YR_P');
+    expect(scheme.yaw.ff).toBe('FW_YR_FF');
+    expect(scheme.hasFF).toBe(true);
+  });
+
+  it('ArduPilot detection takes priority and is never shadowed by PX4', () => {
+    // A board exposing ArduPilot params resolves to its ArduPilot scheme even
+    // if PX4-named params were somehow also present.
+    expect(detectPidScheme(makeParams(['ATC_RAT_RLL_P', 'MC_ROLLRATE_P'])).id).toBe('modern-copter');
+    expect(detectPidScheme(makeParams(['Q_A_RAT_RLL_P', 'MC_ROLLRATE_P'])).id).toBe('quadplane');
+  });
+
+  it('prefers the multicopter scheme on a PX4 VTOL carrying both sets', () => {
+    expect(detectPidScheme(makeParams(['MC_ROLLRATE_P', 'FW_RR_P'])).id).toBe('px4-multicopter');
+  });
+
+  it('PX4 scheme param-name flattening has no duplicates and excludes accel', () => {
+    const mc = getAllPidParamNames(PX4_MULTICOPTER_SCHEME);
+    expect(new Set(mc).size).toBe(mc.length);
+    expect(mc.some((n) => n.includes('ACCEL'))).toBe(false);
+    expect(PX4_MULTICOPTER_SCHEME.accel).toBeUndefined();
+
+    const fw = getAllPidParamNames(PX4_FIXEDWING_SCHEME);
+    expect(new Set(fw).size).toBe(fw.length);
+    expect(fw).toContain('FW_RR_FF');
+  });
+
+  it('buildPresetParams maps PX4 fixed-wing values onto FW_* names including FF', () => {
+    const params = buildPresetParams(PX4_FIXEDWING_SCHEME, PX4_FIXEDWING_SCHEME.defaults);
+    expect(params['FW_RR_P']).toBe(0.05);
+    expect(params['FW_RR_FF']).toBe(0.5);
+    expect(params['FW_PR_P']).toBe(0.08);
+  });
+});
+
+describe('hasDualPx4Controllers', () => {
+  it('is true only when both MC_ROLLRATE_P and FW_RR_P exist', () => {
+    expect(hasDualPx4Controllers(makeParams(['MC_ROLLRATE_P', 'FW_RR_P']))).toBe(true);
+    expect(hasDualPx4Controllers(makeParams(['MC_ROLLRATE_P']))).toBe(false);
+    expect(hasDualPx4Controllers(makeParams(['FW_RR_P']))).toBe(false);
+    expect(hasDualPx4Controllers(makeParams(['ATC_RAT_RLL_P']))).toBe(false);
   });
 });
 

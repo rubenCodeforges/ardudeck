@@ -23,7 +23,7 @@ import { PresetSelector } from '../ui/PresetSelector';
 import { ProfileManager } from '../ui/ProfileManager';
 import { InfoCard } from '../ui/InfoCard';
 import { PID_PRESETS } from './presets/mavlink-presets';
-import { detectPidScheme, buildPresetParams, buildAccelParams, buildPlaneScheme, QUADPLANE_SCHEME, hasDualVtolControllers, type PidScheme, type AxisParams } from './mavlink-pid-schemes';
+import { detectPidScheme, buildPresetParams, buildAccelParams, buildPlaneScheme, QUADPLANE_SCHEME, hasDualVtolControllers, hasDualPx4Controllers, PX4_MULTICOPTER_SCHEME, PX4_FIXEDWING_SCHEME, type PidScheme, type AxisParams } from './mavlink-pid-schemes';
 
 /** Which control-law set a QuadPlane pilot is editing. */
 type ControllerSet = 'vtol' | 'fixedwing';
@@ -45,6 +45,13 @@ const PidTuningTab: React.FC = () => {
     () => hasParameters && hasDualVtolControllers(parameters),
     [hasParameters, parameters],
   );
+  // PX4 VTOL carries both a multicopter (MC_*) and a fixed-wing (FW_*) rate
+  // controller. As with ArduPilot QuadPlanes, expose a toggle so each set is
+  // reachable (detectPidScheme always resolves a PX4 VTOL to its MC set).
+  const dualPx4Controller = useMemo(
+    () => hasParameters && hasDualPx4Controllers(parameters),
+    [hasParameters, parameters],
+  );
   const [controllerSet, setControllerSet] = useState<ControllerSet>('vtol');
 
   // Auto-detect PID scheme from loaded parameters. On a dual-controller
@@ -57,8 +64,13 @@ const PidTuningTab: React.FC = () => {
         ? buildPlaneScheme(parameters)
         : QUADPLANE_SCHEME;
     }
+    if (dualPx4Controller) {
+      return controllerSet === 'fixedwing'
+        ? PX4_FIXEDWING_SCHEME
+        : PX4_MULTICOPTER_SCHEME;
+    }
     return detectPidScheme(parameters);
-  }, [hasParameters, parameters, dualController, controllerSet]);
+  }, [hasParameters, parameters, dualController, dualPx4Controller, controllerSet]);
 
   const isUnknown = scheme?.id === 'unknown';
 
@@ -244,8 +256,10 @@ const PidTuningTab: React.FC = () => {
                 Expected <span className="font-mono text-content">ATC_RAT_*</span>,
                 <span className="font-mono text-content"> RATE_RLL_*</span>,
                 <span className="font-mono text-content"> RLL_RATE_*</span>,
-                <span className="font-mono text-content"> RLL2SRV_*</span>, or
-                <span className="font-mono text-content"> Q_A_RAT_*</span> parameters.
+                <span className="font-mono text-content"> RLL2SRV_*</span>,
+                <span className="font-mono text-content"> Q_A_RAT_*</span>,
+                <span className="font-mono text-content"> MC_*RATE_*</span>, or
+                <span className="font-mono text-content"> FW_*R_*</span> parameters.
               </p>
               <p className="text-sm text-content-secondary mt-1">
                 Use the <span className="font-medium text-content">All Parameters</span> tab to find and edit your board's PID parameters directly.
@@ -263,13 +277,17 @@ const PidTuningTab: React.FC = () => {
 
       {/* VTOL / Fixed-wing controller switch — only on QuadPlanes that carry
           both control-law sets. Lets VTOL pilots tune each separately. */}
-      {dualController && (
+      {(dualController || dualPx4Controller) && (
         <div data-tour="tuning-vtol-toggle" className="bg-surface-raised/40 rounded-xl border border-subtle p-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-content">Controller set</p>
             <p className="text-xs text-content-secondary mt-0.5">
-              This QuadPlane runs separate VTOL and fixed-wing controllers. Choose which one to tune
-              {scheme ? <> — editing <span className="font-mono text-content">{controllerSet === 'vtol' ? 'Q_A_RAT_*' : (parameters.has('RLL_RATE_P') ? 'RLL_RATE_*' : 'RLL2SRV_*')}</span></> : null}.
+              This VTOL runs separate multicopter and fixed-wing controllers. Choose which one to tune
+              {scheme ? <> — editing <span className="font-mono text-content">{
+                dualPx4Controller
+                  ? (controllerSet === 'vtol' ? 'MC_*RATE_*' : 'FW_*R_*')
+                  : (controllerSet === 'vtol' ? 'Q_A_RAT_*' : (parameters.has('RLL_RATE_P') ? 'RLL_RATE_*' : 'RLL2SRV_*'))
+              }</span></> : null}.
             </p>
           </div>
           <div className="flex items-center rounded-lg overflow-hidden border border-subtle shrink-0">
@@ -278,7 +296,7 @@ const PidTuningTab: React.FC = () => {
               className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 controllerSet === 'vtol' ? 'bg-indigo-600 text-white' : 'text-content-secondary hover:bg-surface-raised'
               }`}
-              data-tip="Multicopter rate controller used in VTOL / hover (Q_A_RAT_*)"
+              data-tip={dualPx4Controller ? 'Multicopter rate controller used in VTOL / hover (MC_*RATE_*)' : 'Multicopter rate controller used in VTOL / hover (Q_A_RAT_*)'}
             >
               <RotateCw className="w-3.5 h-3.5" /> VTOL
             </button>
@@ -288,7 +306,7 @@ const PidTuningTab: React.FC = () => {
               className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 controllerSet === 'fixedwing' ? 'bg-indigo-600 text-white' : 'text-content-secondary hover:bg-surface-raised'
               }`}
-              data-tip="Fixed-wing controller used in forward flight (RLL_RATE_* / RLL2SRV_*)"
+              data-tip={dualPx4Controller ? 'Fixed-wing controller used in forward flight (FW_*R_*)' : 'Fixed-wing controller used in forward flight (RLL_RATE_* / RLL2SRV_*)'}
             >
               <Plane className="w-3.5 h-3.5" /> Fixed-wing
             </button>
