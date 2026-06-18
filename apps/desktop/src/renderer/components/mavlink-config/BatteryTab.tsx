@@ -16,8 +16,10 @@ import {
   Save,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
+import Px4ConfigNotice from './Px4ConfigNotice';
 import {
   BATTERY_MONITORS,
   getCellVoltages,
@@ -27,6 +29,7 @@ import {
 
 const BatteryTab: React.FC = () => {
   const { parameters, setParameter, modifiedCount } = useParameterStore();
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
 
   // Get current battery values
   const batteryValues = useMemo(() => ({
@@ -85,6 +88,12 @@ const BatteryTab: React.FC = () => {
   const maxVoltageSlider = Math.ceil(24 * chemInfo.cellFull * 10) + 10;
 
   const modified = modifiedCount();
+
+  if (firmware === 'px4') {
+    return (
+      <Px4ConfigNotice message="PX4 battery configuration is available in the Parameters tab (BAT1_* parameters)." />
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

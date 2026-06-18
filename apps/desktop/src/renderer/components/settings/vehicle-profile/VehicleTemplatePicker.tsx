@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, Search, Download } from 'lucide-react';
+import { X, Search, Download, Info } from 'lucide-react';
 import type { VehicleTemplate } from '../../../lib/vehicle-templates/types.js';
 import { VEHICLE_TEMPLATES } from '../../../lib/vehicle-templates/registry.js';
 import { useConnectionStore } from '../../../stores/connection-store.js';
@@ -34,8 +34,12 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   const isConnected = useConnectionStore(s => s.connectionState.isConnected);
+  const firmware = useConnectionStore(s => s.connectionState.firmware);
   const paramSize = useParameterStore(s => s.parameters.size);
   const canImport = isConnected && paramSize > 0;
+  // These templates emit ArduPilot FRAME_CLASS / FRAME_TYPE / Q_* parameters,
+  // which do not apply to PX4 (PX4 selects an airframe via SYS_AUTOSTART).
+  const isPx4 = firmware === 'px4';
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -53,6 +57,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onClose(); return; }
+      if (isPx4) return;
       if (e.key === 'Enter') {
         const t = filtered[focusedIndex];
         if (t) onSelect(t);
@@ -77,7 +82,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [filtered, focusedIndex, onClose, onSelect]);
+  }, [filtered, focusedIndex, onClose, onSelect, isPx4]);
 
   return (
     <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-[70] p-4">
@@ -95,6 +100,20 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
           </button>
         </div>
 
+        {isPx4 ? (
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-md mx-auto mt-6 bg-surface rounded-xl border border-subtle p-6 text-center">
+              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center mx-auto mb-4">
+                <Info className="w-5 h-5 text-content-secondary" />
+              </div>
+              <p className="text-sm text-content-secondary leading-relaxed">
+                These starter templates configure ArduPilot airframe parameters and do not apply to PX4.
+                On PX4, the airframe is selected via SYS_AUTOSTART and can be set from the Parameters tab.
+              </p>
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Filter bar */}
         <div className="px-5 py-3 border-b border-subtle flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1">
@@ -163,9 +182,11 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
             </div>
           )}
         </div>
+        </>
+        )}
 
         <div className="px-5 py-3 border-t border-subtle text-[10px] text-content-secondary flex items-center justify-between">
-          <span>{filtered.length} template{filtered.length === 1 ? '' : 's'}</span>
+          <span>{isPx4 ? 'PX4 airframe via SYS_AUTOSTART' : `${filtered.length} template${filtered.length === 1 ? '' : 's'}`}</span>
           <span>↑↓←→ navigate · Enter select · Esc cancel</span>
         </div>
       </div>

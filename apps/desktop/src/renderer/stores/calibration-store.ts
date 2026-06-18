@@ -377,8 +377,12 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
     //      whatever the post-cal read returns, so the diff can never silently
     //      compare against an empty snapshot.
     // Cost is one round-trip (~1-2s for ~18 params in parallel).
+    // Post-cal verification diffs ArduPilot INS_*/COMPASS_OFS_* params, which
+    // do not exist on PX4. Skip the snapshot for PX4 so verification is not
+    // attempted (otherwise it would report a misleading "silent failure").
+    const isPx4 = useConnectionStore.getState().connectionState.firmware === 'px4';
     let paramSnapshot: Record<string, number> | null = null;
-    if (protocol === 'mavlink') {
+    if (protocol === 'mavlink' && !isPx4) {
       const trackedParams = MAVLINK_CALIBRATION_PARAMS[calibrationType];
       if (trackedParams && trackedParams.length > 0) {
         try {

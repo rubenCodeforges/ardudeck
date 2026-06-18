@@ -14,6 +14,8 @@ import React, { useMemo } from 'react';
 import { Move, Lightbulb } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
+import { useConnectionStore } from '../../../stores/connection-store';
+import Px4ConfigNotice from '../Px4ConfigNotice';
 import { ServoRow } from './ServoRow';
 import { StickTestPanel } from './StickTestPanel';
 
@@ -26,6 +28,7 @@ const ServoOutputTab: React.FC = () => {
   const setParameter = useParameterStore((s) => s.setParameter);
   const servoOutput = useTelemetryStore((s) => s.servoOutput);
   const lastServoOutput = useTelemetryStore((s) => s.lastServoOutput);
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
 
   const hasParameters = parameters.size > 0;
 
@@ -45,6 +48,12 @@ const ServoOutputTab: React.FC = () => {
   }, [metadata]);
 
   const hasLiveOutput = lastServoOutput > 0 && Date.now() - lastServoOutput < 3000;
+
+  if (firmware === 'px4') {
+    return (
+      <Px4ConfigNotice message="PX4 actuator and servo output configuration is available in the Parameters tab (PWM_MAIN_* / PWM_AUX_* and the actuator parameters)." />
+    );
+  }
 
   return (
     <div className="p-6 space-y-4">

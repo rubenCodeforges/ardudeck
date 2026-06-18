@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useCalibrationStore, getAvailableCalibrationTypes, isCalibrationTypeAvailable } from '../../../stores/calibration-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
+import { useConnectionStore } from '../../../stores/connection-store';
 import { type CalibrationTypeId } from '../../../../shared/calibration-types';
 import { LargeVehicleMagCalDialog } from '../LargeVehicleMagCalDialog';
 import { LoadCalibrationFromFileDialog } from '../LoadCalibrationFromFileDialog';
@@ -203,6 +204,10 @@ const BackgroundPatterns: Record<CalibrationTypeId, React.ReactNode> = {
 export function SelectCalibrationStep() {
   const { protocol, sensors, isSensorsLoading, selectCalibrationType, error, completedCalibrations } = useCalibrationStore();
   const flight = useTelemetryStore((s) => s.flight);
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
+  // Large Vehicle MagCal and load-from-file rely on ArduPilot-specific params/
+  // commands, so only offer them on ArduPilot (not PX4) MAVLink connections.
+  const isArduPilotMavlink = protocol === 'mavlink' && firmware !== 'px4';
   const [showLargeVehicleMagCal, setShowLargeVehicleMagCal] = useState(false);
   const [showLoadCalFromFile, setShowLoadCalFromFile] = useState(false);
 
@@ -341,7 +346,7 @@ export function SelectCalibrationStep() {
       )}
 
       {/* Large Vehicle MagCal (ArduPilot only) */}
-      {protocol === 'mavlink' && !isSensorsLoading && (
+      {isArduPilotMavlink && !isSensorsLoading && (
         <div className="mt-2 space-y-2">
           <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-transparent to-orange-500/5">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 flex items-center justify-center shrink-0">

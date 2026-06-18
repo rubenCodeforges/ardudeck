@@ -24,7 +24,7 @@ export interface CalibrationTypeInfo {
   description: string;
   icon: string;
   protocols: CalibrationProtocol[];
-  variants: ('INAV' | 'BTFL' | 'ARDU')[]; // FC variants that support this
+  variants: ('INAV' | 'BTFL' | 'ARDU' | 'PX4')[]; // FC variants that support this
   requiresSensor?: string; // Sensor that must be present
   estimatedDuration: number; // Seconds
 }
@@ -39,7 +39,7 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
     description: 'Quick 1-position level calibration. Place your vehicle on a flat surface.',
     icon: 'level',
     protocols: ['msp', 'mavlink'],
-    variants: ['INAV', 'BTFL', 'ARDU'],
+    variants: ['INAV', 'BTFL', 'ARDU', 'PX4'],
     estimatedDuration: 5,
   },
   {
@@ -57,7 +57,7 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
     description: 'Rotate your vehicle in all directions to calibrate the compass.',
     icon: 'compass',
     protocols: ['msp', 'mavlink'],
-    variants: ['INAV', 'BTFL', 'ARDU'],
+    variants: ['INAV', 'BTFL', 'ARDU', 'PX4'],
     requiresSensor: 'hasCompass',
     estimatedDuration: 30,
   },
@@ -67,7 +67,7 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
     description: 'Quick gyro calibration. Keep your vehicle completely still.',
     icon: 'gyro',
     protocols: ['msp', 'mavlink'],
-    variants: ['INAV', 'BTFL', 'ARDU'],
+    variants: ['INAV', 'BTFL', 'ARDU', 'PX4'],
     estimatedDuration: 3,
   },
   {

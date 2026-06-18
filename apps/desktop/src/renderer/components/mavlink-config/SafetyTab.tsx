@@ -21,10 +21,12 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import { SigningSection } from '../settings/SigningSection';
+import Px4ConfigNotice from './Px4ConfigNotice';
 import {
   SAFETY_PRESETS,
   FENCE_TYPES,
@@ -59,6 +61,7 @@ const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
 
 const SafetyTab: React.FC = () => {
   const { parameters, setParameter, modifiedCount, fetchParameters, isLoading } = useParameterStore();
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
 
   // Check if parameters are loaded
   const hasParameters = parameters.size > 0;
@@ -121,6 +124,12 @@ const SafetyTab: React.FC = () => {
   }, [safetyValues.armingCheck, setParameter]);
 
   const modified = modifiedCount();
+
+  if (firmware === 'px4') {
+    return (
+      <Px4ConfigNotice message="PX4 failsafe, geofence, and arming configuration is available in the Parameters tab (COM_*, GF_*, NAV_* parameters)." />
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
