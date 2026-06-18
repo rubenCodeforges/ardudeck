@@ -125,6 +125,7 @@ import {
 } from '@ardudeck/mavlink-ts';
 import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
 import { decodeServoOutputRaw } from './servo-output-decode.js';
+import { decodePx4ParamValue, encodePx4ParamSetValue } from './px4-param-bytewise.js';
 import { writeFile, readFile } from 'node:fs/promises';
 import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
 import { createUlogParser, runPx4HealthChecks } from '@ardudeck/ulog-parser';
@@ -1609,6 +1610,15 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_PARAM_VALUE: {
       // Deserialize parameter value
       const param = deserializeParamValue(payload);
+
+      // PX4 transmits integer params bytewise: the param_value bytes hold the
+      // raw typed integer bits, not a float. Reinterpret from the raw wire
+      // bytes (not the already-decoded float, which is lossy for int bits)
+      // before the value is cached or forwarded. ArduPilot keeps the float
+      // (by-value) decoding from deserializeParamValue unchanged.
+      if (connectionState.firmware === 'px4') {
+        param.paramValue = decodePx4ParamValue(payload, param.paramType);
+      }
 
       // Track received parameters
       receivedParams.set(param.paramId, param);
@@ -4144,13 +4154,19 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
 
       // Build PARAM_SET message
+      const setType = resolveParamSetType(type);
       const payload = serializeParamSet({
         targetSystem: connectionState.systemId ?? 1,
         targetComponent: 1, // MAV_COMP_ID_AUTOPILOT1
         paramId,
         paramValue: value,
-        paramType: resolveParamSetType(type),
+        paramType: setType,
       });
+      // PX4 expects integer params bytewise (raw int bits in the value field);
+      // ArduPilot keeps the float32 (by-value) bytes written above.
+      if (connectionState.firmware === 'px4') {
+        encodePx4ParamSetValue(payload, value, setType);
+      }
 
       // Use detected MAVLink version for compatibility (with signing if enabled)
       const packet = await sendMavlinkPacket(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
@@ -4257,13 +4273,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
 
         try {
+          const setType = resolveParamSetType(p.type);
           const payload = serializeParamSet({
             targetSystem: connectionState.systemId ?? 1,
             targetComponent: 1,
             paramId: p.paramId,
             paramValue: p.value,
-            paramType: resolveParamSetType(p.type),
+            paramType: setType,
           });
+          if (connectionState.firmware === 'px4') {
+            encodePx4ParamSetValue(payload, p.value, setType);
+          }
 
           const packet = await sendMavlinkPacket(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
           await currentTransport.write(packet);
@@ -5058,6 +5078,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         const setPayload = serializeParamSet({
           targetSystem, targetComponent, paramId, paramValue: value, paramType,
         });
+        if (connectionState.firmware === 'px4') {
+          encodePx4ParamSetValue(setPayload, value, paramType);
+        }
         const packet = await sendMavlinkPacket(PARAM_SET_ID, setPayload, PARAM_SET_CRC_EXTRA);
         await currentTransport!.write(packet);
         connectionState.packetsSent++;
