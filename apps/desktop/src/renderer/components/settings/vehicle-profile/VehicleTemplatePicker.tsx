@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, Search, Download, Info } from 'lucide-react';
+import { X, Search, Download } from 'lucide-react';
 import type { VehicleTemplate } from '../../../lib/vehicle-templates/types.js';
 import { VEHICLE_TEMPLATES } from '../../../lib/vehicle-templates/registry.js';
 import { useConnectionStore } from '../../../stores/connection-store.js';
 import { useParameterStore } from '../../../stores/parameter-store.js';
 import { inferProfileFromParams } from '../../../lib/vehicle-templates/import.js';
+import { Px4AirframePicker } from './Px4AirframePicker.js';
 
 type CategoryFilter = 'all' | VehicleTemplate['category'];
 
@@ -90,9 +91,13 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
           <div>
-            <h2 className="text-base font-semibold text-content">Choose a vehicle template</h2>
+            <h2 className="text-base font-semibold text-content">
+              {isPx4 ? 'Choose a PX4 airframe' : 'Choose a vehicle template'}
+            </h2>
             <p className="text-xs text-content-secondary mt-0.5">
-              Pick the configuration that matches your aircraft — you can tweak fields after.
+              {isPx4
+                ? 'Pick the airframe that matches your aircraft. This writes SYS_AUTOSTART and needs a reboot.'
+                : 'Pick the configuration that matches your aircraft, you can tweak fields after.'}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-overlay-subtle text-content-secondary hover:text-content">
@@ -101,17 +106,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
         </div>
 
         {isPx4 ? (
-          <div className="flex-1 overflow-y-auto p-8">
-            <div className="max-w-md mx-auto mt-6 bg-surface rounded-xl border border-subtle p-6 text-center">
-              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center mx-auto mb-4">
-                <Info className="w-5 h-5 text-content-secondary" />
-              </div>
-              <p className="text-sm text-content-secondary leading-relaxed">
-                These starter templates configure ArduPilot airframe parameters and do not apply to PX4.
-                On PX4, the airframe is selected via SYS_AUTOSTART and can be set from the Parameters tab.
-              </p>
-            </div>
-          </div>
+          <Px4AirframePicker />
         ) : (
         <>
         {/* Filter bar */}
@@ -186,8 +181,8 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
         )}
 
         <div className="px-5 py-3 border-t border-subtle text-[10px] text-content-secondary flex items-center justify-between">
-          <span>{isPx4 ? 'PX4 airframe via SYS_AUTOSTART' : `${filtered.length} template${filtered.length === 1 ? '' : 's'}`}</span>
-          <span>↑↓←→ navigate · Enter select · Esc cancel</span>
+          <span>{isPx4 ? 'PX4 airframe via SYS_AUTOSTART · reboot to apply' : `${filtered.length} template${filtered.length === 1 ? '' : 's'}`}</span>
+          <span>{isPx4 ? 'Esc cancel' : '↑↓←→ navigate · Enter select · Esc cancel'}</span>
         </div>
       </div>
     </div>

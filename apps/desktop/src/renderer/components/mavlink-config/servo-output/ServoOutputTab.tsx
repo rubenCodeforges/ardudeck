@@ -15,9 +15,9 @@ import { Move, Lightbulb } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { useConnectionStore } from '../../../stores/connection-store';
-import Px4ConfigNotice from '../Px4ConfigNotice';
 import { ServoRow } from './ServoRow';
 import { StickTestPanel } from './StickTestPanel';
+import Px4ServoOutput from './Px4ServoOutput';
 
 const PWM_MIN = 800;
 const PWM_MAX = 2200;
@@ -51,7 +51,13 @@ const ServoOutputTab: React.FC = () => {
 
   if (firmware === 'px4') {
     return (
-      <Px4ConfigNotice message="PX4 actuator and servo output configuration is available in the Parameters tab (PWM_MAIN_* / PWM_AUX_* and the actuator parameters)." />
+      <Px4ServoOutput
+        parameters={parameters}
+        metadata={metadata}
+        setParameter={setParameter}
+        servoOutputs={servoOutput?.outputs}
+        hasLiveOutput={hasLiveOutput}
+      />
     );
   }
 
