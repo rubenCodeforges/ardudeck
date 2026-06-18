@@ -61,6 +61,7 @@ export function DebugConsole() {
   const messages = useMessagesStore((s) => s.messages);
   const clearMessages = useMessagesStore((s) => s.clear);
   const protocol = useConnectionStore((s) => s.connectionState.protocol);
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<Tab>('console');
@@ -254,7 +255,7 @@ export function DebugConsole() {
                 <div className="divide-y divide-subtle">
                   {messages.map((msg, i) => {
                     const msgKey = `${msg.text}-${msg.severity}-${i}`;
-                    const prearmMatch = matchPreArmError(msg.text);
+                    const prearmMatch = matchPreArmError(msg.text, firmware);
                     const isExpanded = expandedMessages.has(msgKey);
 
                     return (

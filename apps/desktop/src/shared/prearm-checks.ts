@@ -7,6 +7,8 @@
  * Sources: MissionPlanner PrearmStatus.cs, ParameterMetaDataBackup.xml, ArduPilot firmware
  */
 
+import type { FirmwareSource } from './firmware-types';
+
 export type PreArmCategory = 'motors' | 'sensors' | 'gps' | 'rc' | 'battery' | 'system' | 'mission';
 
 export interface PreArmFix {
@@ -167,7 +169,7 @@ const PREARM_PATTERNS: PreArmPattern[] = [
   },
 ];
 
-// Generic fallback for any unmatched PreArm: message
+// Generic fallback for any unmatched ArduPilot PreArm: message
 const GENERIC_FALLBACK: PreArmPattern = {
   pattern: /.*/,
   category: 'system',
@@ -175,18 +177,134 @@ const GENERIC_FALLBACK: PreArmPattern = {
 };
 
 /**
- * Check if a STATUSTEXT message is a pre-arm message.
+ * PX4 arming / preflight failure patterns. PX4 emits different STATUSTEXT
+ * wording than ArduPilot ("Arming denied:", "Preflight Fail:", "Preflight: ")
+ * and uses COM_/EKF2_/BAT_/GF_ parameter names. Kept separate from the
+ * ArduPilot array so a PX4 connection never matches an ArduPilot-only hint
+ * (and vice versa).
+ *
+ * Sources: PX4 commander/preflight check messages, PX4 parameter reference.
  */
-export function isPreArmMessage(text: string): boolean {
+const PX4_PREARM_PATTERNS: PreArmPattern[] = [
+  // GPS / position estimate
+  {
+    pattern: /(global position|position).*(not ready|denied|fail|estimate)|(estimator|position).*(not ready|fail)/i,
+    category: 'gps',
+    fix: {
+      params: ['COM_ARM_WO_GPS', 'EKF2_AID_MASK'],
+      hint: 'Position estimate not ready. Wait for a 3D fix / position lock, or set COM_ARM_WO_GPS to allow arming without GPS if intentional.',
+    },
+  },
+  {
+    pattern: /\b(gps|gnss)\b.*(fix|lock|not ready|fail)|need.*3d fix/i,
+    category: 'gps',
+    fix: { params: ['COM_ARM_WO_GPS'], hint: 'Waiting for GPS fix. Move to open sky, or set COM_ARM_WO_GPS if arming without GPS is intended.' },
+  },
+  // Sensors / calibration
+  {
+    pattern: /(compass|mag(netometer)?).*(not calibrated|inconsistent|fail|interference)/i,
+    category: 'sensors',
+    fix: { params: ['COM_ARM_MAG_ANG_DEG'], hint: 'Magnetometer not calibrated or inconsistent. Run compass calibration; COM_ARM_MAG_ANG_DEG sets the allowed tolerance.', action: 'calibrate-compass' },
+  },
+  {
+    pattern: /accel(erometer)?.*(not calibrated|inconsistent|fail)/i,
+    category: 'sensors',
+    fix: { params: [], hint: 'Accelerometer not calibrated or inconsistent. Run accelerometer calibration.', action: 'calibrate-accel' },
+  },
+  {
+    pattern: /gyro(scope)?.*(not calibrated|inconsistent|fail)/i,
+    category: 'sensors',
+    fix: { params: [], hint: 'Gyroscope not calibrated. Run gyro/sensor calibration and keep the vehicle still.' },
+  },
+  {
+    pattern: /(accelerometer.*clipping|high vibration|vibration)/i,
+    category: 'sensors',
+    fix: { params: [], hint: 'High vibration / accelerometer clipping. Improve flight controller mounting and isolation.' },
+  },
+  {
+    pattern: /(attitude|tilt).*(estimate|quality|too large|fail)|(estimator|quality).*(attitude|tilt)/i,
+    category: 'sensors',
+    fix: { params: [], hint: 'Attitude estimate not stable. Level the vehicle, reduce vibration, and let the estimator settle.' },
+  },
+  // RC / manual control
+  {
+    pattern: /(rc|radio|manual control).*(not calibrated|lost|fail|not configured)/i,
+    category: 'rc',
+    fix: {
+      params: ['COM_RC_IN_MODE'],
+      hint: 'RC not calibrated or signal lost. Calibrate RC, or set COM_RC_IN_MODE for joystick / RC-optional operation.',
+      action: 'calibrate-rc',
+    },
+  },
+  // Battery
+  {
+    pattern: /(battery).*(low|unhealthy|warning|critical|not connected)/i,
+    category: 'battery',
+    fix: { params: ['BAT_LOW_THR', 'BAT_CRIT_THR', 'COM_ARM_BAT_MIN_VOLT'], hint: 'Battery low or unhealthy. Charge the pack, or review BAT_LOW_THR / BAT_CRIT_THR / COM_ARM_BAT_MIN_VOLT thresholds.' },
+  },
+  // ESC / motors
+  {
+    pattern: /(esc|motor).*(fail|not|telemetry|unhealthy)/i,
+    category: 'motors',
+    fix: { params: [], hint: 'ESC / motor problem detected. Check ESC wiring, telemetry, and motor outputs.' },
+  },
+  // Geofence
+  {
+    pattern: /(geofence|\bgf\b)/i,
+    category: 'mission',
+    fix: { params: ['GF_ACTION'], hint: 'Geofence condition blocking arming. Review geofence setup or GF_ACTION.' },
+  },
+  // Home position
+  {
+    pattern: /(home position|home not set)/i,
+    category: 'mission',
+    fix: { params: ['COM_HOME_EN'], hint: 'Home position not set. Wait for a valid position so home can be captured.' },
+  },
+  // Kill switch / safety
+  {
+    pattern: /(kill switch|emergency)/i,
+    category: 'system',
+    fix: { params: [], hint: 'Kill switch engaged. Disengage the kill switch before arming.' },
+  },
+];
+
+/**
+ * Generic fallback for an unmatched PX4 arming/preflight message. PX4 has no
+ * single ARMING_CHECK bitmask, so this points at the relevant check params.
+ */
+const PX4_GENERIC_FALLBACK: PreArmPattern = {
+  pattern: /.*/,
+  category: 'system',
+  fix: { params: ['COM_ARM_WO_GPS', 'COM_PREARM_MODE'], hint: 'Arming/preflight check failed. Resolve the reported condition, or review the relevant COM_ARM_/COM_PREARM_ check parameters.' },
+};
+
+// PX4 STATUSTEXT prefixes for arming / preflight failures.
+const PX4_PREARM_PREFIX = /^(arming denied|preflight fail|preflight)\s*:/i;
+
+/**
+ * Check if a STATUSTEXT message is a pre-arm message.
+ *
+ * Defaults to ArduPilot detection ("PreArm:" / "Arm:") so existing callers are
+ * unchanged. Pass firmware 'px4' to also match PX4 prefixes ("Arming denied:",
+ * "Preflight Fail:", "Preflight:").
+ */
+export function isPreArmMessage(text: string, firmware?: FirmwareSource): boolean {
+  if (firmware === 'px4') {
+    return PX4_PREARM_PREFIX.test(text.trim());
+  }
   return /(?:PreArm|Arm):/i.test(text);
 }
 
 /**
  * Extract the reason part from a pre-arm or arm-time error message.
- * "PreArm: Motors: Check frame class" → "Motors: Check frame class"
- * "Arm: Motors: Check frame class" → "Motors: Check frame class"
+ * ArduPilot: "PreArm: Motors: Check frame class" -> "Motors: Check frame class"
+ * PX4:       "Arming denied: GPS not ready" -> "GPS not ready"
  */
-export function extractPreArmReason(text: string): string {
+export function extractPreArmReason(text: string, firmware?: FirmwareSource): string {
+  if (firmware === 'px4') {
+    const px4Match = text.trim().match(/^(?:arming denied|preflight fail|preflight)\s*:\s*(.+)/i);
+    return px4Match ? px4Match[1]!.trim() : text.trim();
+  }
   const match = text.match(/(?:PreArm|Arm):\s*(.+)/i);
   return match ? match[1]!.trim() : text;
 }
@@ -194,19 +312,28 @@ export function extractPreArmReason(text: string): string {
 /**
  * Match a STATUSTEXT message against known pre-arm patterns.
  * Returns null if the message is not a pre-arm message.
- * Returns the generic ARMING_CHECK fallback if it's a pre-arm message but no specific pattern matches.
+ * Returns a generic fallback if it's a pre-arm message but no specific pattern matches.
+ *
+ * Defaults to ArduPilot. Pass firmware 'px4' to match PX4 arming/preflight
+ * patterns instead. The two pattern sets never cross-match.
  */
-export function matchPreArmError(text: string): { pattern: PreArmPattern; reason: string } | null {
-  if (!isPreArmMessage(text)) return null;
+export function matchPreArmError(
+  text: string,
+  firmware?: FirmwareSource,
+): { pattern: PreArmPattern; reason: string } | null {
+  if (!isPreArmMessage(text, firmware)) return null;
 
-  const reason = extractPreArmReason(text);
+  const reason = extractPreArmReason(text, firmware);
 
-  for (const entry of PREARM_PATTERNS) {
+  const patterns = firmware === 'px4' ? PX4_PREARM_PATTERNS : PREARM_PATTERNS;
+  const fallback = firmware === 'px4' ? PX4_GENERIC_FALLBACK : GENERIC_FALLBACK;
+
+  for (const entry of patterns) {
     if (entry.pattern.test(reason)) {
       return { pattern: entry, reason };
     }
   }
 
-  // Fallback: it's a PreArm message but no specific pattern matched
-  return { pattern: GENERIC_FALLBACK, reason };
+  // Fallback: it's a pre-arm message but no specific pattern matched
+  return { pattern: fallback, reason };
 }

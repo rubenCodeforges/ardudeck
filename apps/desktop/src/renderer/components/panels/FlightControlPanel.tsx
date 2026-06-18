@@ -527,15 +527,15 @@ function MavlinkFlightControl() {
   const preArmReasons = useMemo(() => {
     if (flight.armed) return [];
     return messages
-      .filter((m) => isPreArmMessage(m.text))
+      .filter((m) => isPreArmMessage(m.text, connectionState.firmware))
       .map((m) => {
-        const match = matchPreArmError(m.text);
+        const match = matchPreArmError(m.text, connectionState.firmware);
         return match ? { reason: match.reason, fix: match.pattern.fix } : null;
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
       .filter((x, i, arr) => arr.findIndex((a) => a.reason === x.reason) === i)
       .slice(0, 10);
-  }, [messages, flight.armed]);
+  }, [messages, flight.armed, connectionState.firmware]);
 
   // Watch for ARM/DISARM command result in messages
   const lastArmResult = useMemo(() => {

@@ -75,13 +75,13 @@ export function ArmDisarmButton() {
     if (isArmed || !isConnected) return [];
     if (isMavlink) {
       return messages
-        .filter((m) => isPreArmMessage(m.text))
-        .map((m) => extractPreArmReason(m.text))
+        .filter((m) => isPreArmMessage(m.text, connectionState.firmware))
+        .map((m) => extractPreArmReason(m.text, connectionState.firmware))
         .filter((reason, i, arr) => arr.indexOf(reason) === i)
         .slice(0, 8);
     }
     return flight.armingDisabledReasons ?? [];
-  }, [isArmed, isConnected, isMavlink, messages, flight.armingDisabledReasons]);
+  }, [isArmed, isConnected, isMavlink, messages, flight.armingDisabledReasons, connectionState.firmware]);
 
   if (!isConnected) return null;
 

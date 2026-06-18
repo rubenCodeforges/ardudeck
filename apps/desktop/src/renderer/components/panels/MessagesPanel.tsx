@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMessagesStore } from '../../stores/messages-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { matchPreArmError } from '../../../shared/prearm-checks';
 import { PreArmParamFix } from '../prearm/PreArmParamFix';
 import { PanelContainer } from './panel-utils';
@@ -76,6 +77,7 @@ function formatTime(ts: number): string {
 export function MessagesPanel() {
   const messages = useMessagesStore((s) => s.messages);
   const clear = useMessagesStore((s) => s.clear);
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const listRef = useRef<HTMLDivElement>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
 
@@ -122,7 +124,7 @@ export function MessagesPanel() {
           <div className="divide-y divide-subtle">
             {messages.map((msg, i) => {
               const msgKey = `${msg.text}-${msg.severity}-${i}`;
-              const prearmMatch = matchPreArmError(msg.text);
+              const prearmMatch = matchPreArmError(msg.text, firmware);
               const isExpanded = expandedMessages.has(msgKey);
 
               return (
