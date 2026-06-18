@@ -476,7 +476,7 @@ function MavlinkFlightControl() {
   const capabilities = VEHICLE_CAPABILITIES[vehicleClass];
   // PX4 encodes the commanded mode as a custom_mode bitfield rather than a raw
   // ArduPilot mode number, and HEARTBEAT echoes back that same bitfield (so
-  // flight.modeNum is the encoded value too — the active-mode highlight still
+  // flight.modeNum is the encoded value too - the active-mode highlight still
   // compares equal). ArduPilot keeps its existing per-vehicle mode/mission
   // numbers unchanged.
   const isPx4 = connectionState.firmware === 'px4';
