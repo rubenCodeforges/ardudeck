@@ -283,7 +283,7 @@ const PidTuningTab: React.FC = () => {
             <p className="text-sm font-medium text-content">Controller set</p>
             <p className="text-xs text-content-secondary mt-0.5">
               This VTOL runs separate multicopter and fixed-wing controllers. Choose which one to tune
-              {scheme ? <> — editing <span className="font-mono text-content">{
+              {scheme ? <> - editing <span className="font-mono text-content">{
                 dualPx4Controller
                   ? (controllerSet === 'vtol' ? 'MC_*RATE_*' : 'FW_*R_*')
                   : (controllerSet === 'vtol' ? 'Q_A_RAT_*' : (parameters.has('RLL_RATE_P') ? 'RLL_RATE_*' : 'RLL2SRV_*'))
