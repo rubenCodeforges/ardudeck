@@ -98,7 +98,7 @@ import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from 
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
-import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES } from '../shared/telemetry-types.js';
+import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES, getPx4ModeName } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
 import { MAV_MISSION_RESULT, MAV_MISSION_TYPE } from '../shared/mission-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
@@ -1132,8 +1132,12 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         lastReportedArmed = armed;
       }
 
-      // Get mode name based on vehicle type
+      // Get mode name based on autopilot + vehicle type
       let modeName = `Mode ${customMode}`;
+      if (autopilotType === 12) {
+        // PX4 encodes the mode in a main/sub bitfield, not by vehicle type.
+        modeName = getPx4ModeName(customMode);
+      } else
       // Fixed wing and VTOL types use plane modes
       if (vehicleType === 1 || (vehicleType >= 19 && vehicleType <= 25)) {
         modeName = PLANE_MODES[customMode] || modeName;
@@ -2601,6 +2605,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 connectionState.systemId = packet.sysid;
                 connectionState.componentId = packet.compid;
                 connectionState.autopilot = AUTOPILOT_NAMES[autopilotType] || `Unknown (${autopilotType})`;
+                connectionState.autopilotType = autopilotType;
+                connectionState.firmware = autopilotType === 12 ? 'px4' : autopilotType === 3 ? 'ardupilot' : 'custom';
                 connectionState.vehicleType = VEHICLE_NAMES[vehicleType] || `Unknown (${vehicleType})`;
                 connectionState.mavType = vehicleType;
                 connectionState.mavlinkVersion = detectedMavlinkVersion;

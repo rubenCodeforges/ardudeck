@@ -212,6 +212,62 @@ export const SUB_MODES: Record<number, string> = {
   21: 'SurfTrak',
 };
 
+// PX4 flight modes. Unlike ArduPilot, PX4 encodes the mode in a bitfield:
+//   main_mode = (customMode >> 16) & 0xFF
+//   sub_mode  = (customMode >> 24) & 0xFF
+// Source: QGroundControl px4_custom_mode.h (PX4_CUSTOM_MAIN_MODE /
+// PX4_CUSTOM_SUB_MODE_AUTO / PX4_CUSTOM_SUB_MODE_POSCTL) and the name
+// mapping in PX4FirmwarePlugin.cc.
+export const PX4_MAIN_MODES: Record<number, string> = {
+  1: 'Manual',
+  2: 'Altitude',
+  3: 'Position',
+  4: 'Auto',
+  5: 'Acro',
+  6: 'Offboard',
+  7: 'Stabilized',
+  8: 'Rattitude',
+  9: 'Simple',
+};
+
+// sub_mode when main_mode === AUTO (4)
+const PX4_AUTO_SUB_MODES: Record<number, string> = {
+  1: 'Ready',
+  2: 'Takeoff',
+  3: 'Hold',
+  4: 'Mission',
+  5: 'Return',
+  6: 'Land',
+  7: 'Return to Groundstation',
+  8: 'Follow Me',
+  9: 'Precision Land',
+};
+
+// sub_mode when main_mode === POSCTL (3)
+const PX4_POSCTL_SUB_MODES: Record<number, string> = {
+  0: 'Position',
+  1: 'Orbit',
+};
+
+const PX4_MAIN_MODE_AUTO = 4;
+const PX4_MAIN_MODE_POSCTL = 3;
+
+/**
+ * Decode a PX4 HEARTBEAT.custom_mode into a human-readable flight-mode name.
+ * Mirrors the ArduPilot table lookups but follows PX4's main/sub bitfield.
+ */
+export function getPx4ModeName(customMode: number): string {
+  const mainMode = (customMode >> 16) & 0xff;
+  const subMode = (customMode >> 24) & 0xff;
+  if (mainMode === PX4_MAIN_MODE_AUTO) {
+    return PX4_AUTO_SUB_MODES[subMode] || `Auto ${subMode}`;
+  }
+  if (mainMode === PX4_MAIN_MODE_POSCTL) {
+    return PX4_POSCTL_SUB_MODES[subMode] || 'Position';
+  }
+  return PX4_MAIN_MODES[mainMode] || `Mode ${customMode}`;
+}
+
 // GPS fix type names
 export const GPS_FIX_TYPES: Record<number, string> = {
   0: 'No GPS',

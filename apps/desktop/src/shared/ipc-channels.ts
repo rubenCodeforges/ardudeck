@@ -2,6 +2,8 @@
  * IPC Channel definitions for main<->renderer communication
  */
 
+import type { FirmwareSource } from './firmware-types.js';
+
 export const IPC_CHANNELS = {
   // Port management
   COMMS_LIST_PORTS: 'comms:list-ports',
@@ -692,6 +694,14 @@ export interface ConnectionState {
   systemId?: number;
   componentId?: number;
   autopilot?: string;
+  /** Raw MAV_AUTOPILOT id from the HEARTBEAT (3=ArduPilot, 12=PX4, ...) */
+  autopilotType?: number;
+  /**
+   * Detected firmware family for MAVLink connections. Lets the renderer
+   * branch (e.g. PX4 vs ArduPilot) without parsing the display string.
+   * Unset on MSP connections, which use fcVariant instead.
+   */
+  firmware?: FirmwareSource;
   vehicleType?: string;
   mavType?: number; // Raw MAV_TYPE for metadata lookup
   // MSP-specific (Betaflight/iNav)
