@@ -3,6 +3,9 @@
 // map, AI tools, health report) can consume one model.
 export { createUlogParser, parseUlog } from './parser.js';
 
+// PX4 health-check suite, the ULog equivalent of dataflash runHealthChecks.
+export { runPx4HealthChecks, px4ModeName } from './px4-health-checks.js';
+
 export type {
   FMTMessage,
   DataFlashMessage,
