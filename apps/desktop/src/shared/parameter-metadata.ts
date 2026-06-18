@@ -51,6 +51,14 @@ export function getParameterDocsUrl(vehicleType: VehicleType, paramId: string): 
   return `https://ardupilot.org/${DOCS_SLUG[vehicleType]}/docs/parameters.html#${anchor}`;
 }
 
+// PX4 publishes a single generated parameter reference page. Its anchors are the
+// lowercased parameter name (e.g. MC_ROLLRATE_P → #mc-rollrate-p). Kept as a
+// separate helper so the ArduPilot signature (VehicleType) stays untouched.
+export function getPx4ParameterDocsUrl(paramId: string): string {
+  const anchor = paramId.toLowerCase().replace(/_/g, '-');
+  return `https://docs.px4.io/main/en/advanced_config/parameter_reference.html#${anchor}`;
+}
+
 // Map MAVLink MAV_TYPE to our VehicleType
 /**
  * Validation result for parameter values

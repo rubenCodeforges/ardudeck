@@ -97,6 +97,7 @@ import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionStat
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
+import { getPx4ParameterMetadata } from './px4-parameter-metadata.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES, getPx4ModeName } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
@@ -816,8 +817,8 @@ function resetMavlinkDiagCache(): void {
   resetRcChannelState();
 }
 
-// Parameter metadata cache (keyed by vehicle type)
-const metadataCache = new Map<VehicleType, ParameterMetadataStore>();
+// Parameter metadata cache (keyed by vehicle type, or 'px4' for bundled PX4 metadata)
+const metadataCache = new Map<VehicleType | 'px4', ParameterMetadataStore>();
 
 // Mission download state
 let missionDownloadState: {
@@ -4364,6 +4365,19 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Fetch parameter metadata from ArduPilot
   ipcMain.handle(IPC_CHANNELS.PARAM_METADATA_FETCH, async (_, mavType: number): Promise<{ success: boolean; metadata?: ParameterMetadataStore; error?: string }> => {
+    // PX4 has no live XML endpoint - serve the bundled QGC JSON instead.
+    // Metadata is per-firmware, not per-vehicle, so we key the cache on 'px4'.
+    if (connectionState.firmware === 'px4') {
+      const cached = metadataCache.get('px4');
+      if (cached) {
+        return { success: true, metadata: cached };
+      }
+      const metadata = getPx4ParameterMetadata();
+      metadataCache.set('px4', metadata);
+      sendLog(mainWindow, 'info', `Loaded ${Object.keys(metadata).length} PX4 parameter definitions from bundled metadata`);
+      return { success: true, metadata };
+    }
+
     const vehicleType = mavTypeToVehicleType(mavType);
     if (!vehicleType) {
       return { success: false, error: `Unknown vehicle type: ${mavType}` };

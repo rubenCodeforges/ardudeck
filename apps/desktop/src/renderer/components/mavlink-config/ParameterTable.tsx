@@ -12,7 +12,7 @@ import { useParameterStore, type SortColumn } from '../../stores/parameter-store
 import { useSettingsStore } from '../../stores/settings-store';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { useConnectionStore } from '../../stores/connection-store';
-import { getParameterDocsUrl, mavTypeToVehicleType } from '../../../shared/parameter-metadata';
+import { getParameterDocsUrl, getPx4ParameterDocsUrl, mavTypeToVehicleType } from '../../../shared/parameter-metadata';
 import { formatParamValue } from '../../../shared/parameter-types';
 import { classifySitlUnsafeParam } from '../../../shared/sitl-unsafe-params';
 import BitmaskEditor from './BitmaskEditor';
@@ -540,8 +540,11 @@ const ParameterTable: React.FC = () => {
   const nonDefaultCount = nonDefaultCountFn();
   const hasDefaults = hasDefaultsFn();
 
-  // Vehicle slug for the per-param ArduPilot docs link. Null when vehicle is unknown.
-  const docsVehicle = connectionState.mavType != null ? mavTypeToVehicleType(connectionState.mavType) : null;
+  // Per-param docs link. PX4 has a single generated reference page; ArduPilot
+  // resolves a per-vehicle page (null when vehicle is unknown).
+  const isPx4 = connectionState.firmware === 'px4';
+  const docsVehicle = !isPx4 && connectionState.mavType != null ? mavTypeToVehicleType(connectionState.mavType) : null;
+  const showDocsLink = isPx4 || docsVehicle != null;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
@@ -1099,15 +1102,18 @@ const ParameterTable: React.FC = () => {
                         {getDescription(param.id)}
                       </span>
                     </Tooltip>
-                    {docsVehicle && (
-                      <Tooltip content="Open ArduPilot docs" placement="top">
+                    {showDocsLink && (
+                      <Tooltip content={isPx4 ? 'Open PX4 docs' : 'Open ArduPilot docs'} placement="top">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.electronAPI?.openExternal(getParameterDocsUrl(docsVehicle, param.id));
+                            const url = isPx4
+                              ? getPx4ParameterDocsUrl(param.id)
+                              : getParameterDocsUrl(docsVehicle!, param.id);
+                            window.electronAPI?.openExternal(url);
                           }}
                           className="shrink-0 p-1 rounded text-content-tertiary hover:text-blue-400 hover:bg-surface-raised transition-colors"
-                          aria-label={`Open ArduPilot docs for ${param.id}`}
+                          aria-label={`Open ${isPx4 ? 'PX4' : 'ArduPilot'} docs for ${param.id}`}
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </button>
