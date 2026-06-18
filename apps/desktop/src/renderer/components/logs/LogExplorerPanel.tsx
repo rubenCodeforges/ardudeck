@@ -19,6 +19,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 maplibregl.setWorkerUrl('/maplibre-worker.js');
 import { createFlightPathThreeJsLayer } from './flight-threejs-layer';
 import { useLogStore } from '../../stores/log-store';
+import { px4ModeName } from '@ardudeck/ulog-parser';
 
 // Style uPlot - uses CSS variables for theme support
 const uplotStyle = document.createElement('style');
@@ -189,6 +190,88 @@ function getFlightPath(log: ReturnType<typeof useLogStore.getState>['currentLog'
   }
 
   return path;
+}
+
+/**
+ * Per-track-point timestamps (microseconds) parallel to getFlightPath's
+ * [lat,lng,alt] tuples. Same source-message selection and same validity
+ * filtering, so index i of this array is the timeUs of flight-path point i.
+ * Kept as an additive sibling so getFlightPath's tuple shape is unchanged.
+ */
+function getFlightPathTimes(log: ReturnType<typeof useLogStore.getState>['currentLog']): number[] {
+  if (!log) return [];
+  const times: number[] = [];
+
+  const gps = log.messages['GPS'];
+  if (gps) {
+    for (const msg of gps) {
+      const lat = msg.fields['Lat'];
+      const lng = msg.fields['Lng'];
+      if (typeof lat === 'number' && typeof lng === 'number' && isValidLatLng(lat, lng)) {
+        times.push(msg.timeUs);
+      }
+    }
+    return times;
+  }
+
+  const px4Gps = log.messages['vehicle_gps_position'] ?? log.messages['sensor_gps'];
+  if (px4Gps) {
+    for (const msg of px4Gps) {
+      const rawLat = msg.fields['lat'];
+      const rawLon = msg.fields['lon'];
+      if (typeof rawLat === 'number' && typeof rawLon === 'number') {
+        if (isValidLatLng(rawLat / 1e7, rawLon / 1e7)) times.push(msg.timeUs);
+      }
+    }
+    return times;
+  }
+
+  const px4Global = log.messages['vehicle_global_position'];
+  if (px4Global) {
+    for (const msg of px4Global) {
+      const lat = msg.fields['lat'];
+      const lng = msg.fields['lon'];
+      if (typeof lat === 'number' && typeof lng === 'number' && isValidLatLng(lat, lng)) {
+        times.push(msg.timeUs);
+      }
+    }
+    return times;
+  }
+
+  return times;
+}
+
+/**
+ * PX4 mode timeline derived from vehicle_status.nav_state, mirroring the
+ * ArduPilot getModeTimeline shape so the map legend/coloring can consume
+ * either. nav_state is sampled on its own timeline; each segment runs from
+ * its sample time to the next distinct sample (or log end).
+ */
+function getPx4ModeTimeline(log: ReturnType<typeof useLogStore.getState>['currentLog']) {
+  if (!log) return [];
+  const status = log.messages['vehicle_status'];
+  if (!status || status.length === 0) return [];
+  const endTimeS = log.timeRange.endUs / 1_000_000;
+  const segments: { startS: number; endS: number; name: string; color: string }[] = [];
+  let lastNav: number | null = null;
+  for (let i = 0; i < status.length; i++) {
+    const m = status[i]!;
+    const nav = m.fields['nav_state'];
+    if (typeof nav !== 'number') continue;
+    // Collapse consecutive identical nav_state samples into one segment, and
+    // extend the open segment's end as we walk forward.
+    const startS = m.timeUs / 1_000_000;
+    if (nav === lastNav && segments.length > 0) {
+      segments[segments.length - 1]!.endS = endTimeS;
+      continue;
+    }
+    const name = px4ModeName(nav);
+    segments.push({ startS, endS: endTimeS, name, color: MODE_COLORS[name.toUpperCase()] ?? '#6b7280' });
+    const prev = segments[segments.length - 2];
+    if (prev) prev.endS = startS;
+    lastNav = nav;
+  }
+  return segments;
 }
 
 // ============================================================================
@@ -900,8 +983,19 @@ type PathColorMode = 'solid' | 'mode' | 'altitude' | 'speed';
 
 function FlightPathPanel() {
   const currentLog = useLogStore((s) => s.currentLog);
+  const isUlog = currentLog?.format === 'ulog';
   const flightPath = useMemo(() => getFlightPath(currentLog), [currentLog]);
-  const modeTimeline = useMemo(() => getModeTimeline(currentLog), [currentLog]);
+  // ArduPilot colors by MODE records; PX4 ULogs color by vehicle_status.nav_state.
+  const modeTimeline = useMemo(
+    () => (isUlog ? getPx4ModeTimeline(currentLog) : getModeTimeline(currentLog)),
+    [currentLog, isUlog],
+  );
+  // Per-track-point times, only needed to align PX4 mode segments by timestamp
+  // (PX4 nav_state and the GPS track sample on independent clocks).
+  const flightPathTimes = useMemo(
+    () => (isUlog ? getFlightPathTimes(currentLog) : []),
+    [currentLog, isUlog],
+  );
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const threeLayerRef = useRef<ReturnType<typeof createFlightPathThreeJsLayer> | null>(null);
@@ -916,9 +1010,13 @@ function FlightPathPanel() {
 
     if (colorMode === 'mode' && modeTimeline.length > 0) {
       const colors: string[] = [];
+      // ArduPilot track points are the GPS records in order, so point i maps to
+      // GPS[i].timeUs. PX4 builds the track from a parallel timeUs array because
+      // the GPS topic and the mode source (vehicle_status) are sampled on their
+      // own independent clocks; align each point to the active mode by time.
+      const gps = currentLog?.messages['GPS'];
       for (let i = 0; i < flightPath.length - 1; i++) {
-        const gps = currentLog?.messages['GPS'];
-        const timeUs = gps?.[i]?.timeUs ?? 0;
+        const timeUs = isUlog ? (flightPathTimes[i] ?? 0) : (gps?.[i]?.timeUs ?? 0);
         const timeS = timeUs / 1_000_000;
         // Find which mode segment this point falls in
         let color = '#6b7280';
@@ -976,7 +1074,7 @@ function FlightPathPanel() {
     }
 
     return undefined;
-  }, [flightPath, colorMode, modeTimeline, currentLog]);
+  }, [flightPath, colorMode, modeTimeline, currentLog, isUlog, flightPathTimes]);
 
   const mapCenter = useMemo((): [number, number] => {
     if (flightPath.length === 0) return [0, 0];

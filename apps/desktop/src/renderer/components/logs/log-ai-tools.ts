@@ -165,17 +165,17 @@ export const CLAUDE_LOG_TOOLS = [
   {
     name: 'list_message_types',
     description:
-      "List every message/telemetry type in this flight log, with row count and field names. Call this first to discover what's available (e.g. ATT, RCOU, VIBE, GPS, BAT, ERR, MODE, RATE).",
+      "List every message/topic type in this flight log, with row count and field names. Call this first to discover what's available (ArduPilot dataflash uses names like ATT, RCOU, VIBE, GPS, BAT, MODE; PX4 ULogs use topics like vehicle_attitude, sensor_combined, battery_status, vehicle_gps_position).",
     input_schema: { type: 'object', properties: {} },
   },
   {
     name: 'get_field_stats',
     description:
-      'Summary statistics (count, min, max, mean, stddev, first, last) for numeric fields of a message type, optionally over a time window. Use for aggregate questions: vibration levels, attitude error, output saturation, voltage sag. Times are seconds from log start.',
+      'Summary statistics (count, min, max, mean, stddev, first, last) for numeric fields of a message/topic type, optionally over a time window. Use for aggregate questions: vibration levels, attitude error, output saturation, voltage sag. Times are seconds from log start.',
     input_schema: {
       type: 'object',
       properties: {
-        type: { type: 'string', description: 'Message type, e.g. "VIBE"' },
+        type: { type: 'string', description: 'Message/topic type, e.g. "VIBE" (dataflash) or "vehicle_imu_status" (ULog)' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Field names; omit for all numeric fields' },
         startS: { type: 'number', description: 'Window start, seconds from log start' },
         endS: { type: 'number', description: 'Window end, seconds from log start' },
@@ -186,7 +186,7 @@ export const CLAUDE_LOG_TOOLS = [
   {
     name: 'read_samples',
     description:
-      'Decimated time-series samples (default ~200 points, max 500) for a message type and fields over an optional window, so you can see the shape of a trend, spike, or oscillation. Each point has tS (seconds from log start) plus the requested fields. Prefer get_field_stats for aggregates; use this to inspect specific events.',
+      'Decimated time-series samples (default ~200 points, max 500) for a message/topic type and fields over an optional window, so you can see the shape of a trend, spike, or oscillation. Each point has tS (seconds from log start) plus the requested fields. Prefer get_field_stats for aggregates; use this to inspect specific events.',
     input_schema: {
       type: 'object',
       properties: {
@@ -202,7 +202,7 @@ export const CLAUDE_LOG_TOOLS = [
   {
     name: 'get_parameters',
     description:
-      'Look up ArduPilot parameter values recorded in this log (from PARM records). Provide names[] for exact params, or search for a substring (e.g. "INS_"). With neither, returns the total count.',
+      'Look up parameter values recorded in this log. Provide names[] for exact params, or search for a substring (e.g. "INS_"). With neither, returns the total count.',
     input_schema: {
       type: 'object',
       properties: {

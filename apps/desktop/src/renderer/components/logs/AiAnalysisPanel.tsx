@@ -356,6 +356,7 @@ export function AiAnalysisPanel() {
     if (!currentLog || !healthResults) return '';
     const stats = flightStats ?? { maxAlt: 0, maxSpd: 0, totalDist: 0, totalMah: 0 };
     const meta = currentLog.metadata;
+    const isUlog = currentLog.format === 'ulog';
     const dS = (currentLog.timeRange.endUs - currentLog.timeRange.startUs) / 1_000_000;
     const dist = stats.totalDist > 1000 ? `${(stats.totalDist / 1000).toFixed(2)} km` : `${stats.totalDist.toFixed(0)} m`;
 
@@ -377,11 +378,11 @@ export function AiAnalysisPanel() {
       ? `
 
 ## Reading the Log (IMPORTANT)
-You have tools to query the raw telemetry of THIS log on demand — you are not limited to the summary below. Use them to ground every claim in actual data instead of guessing:
-- list_message_types — discover what's recorded (ATT, RCOU, VIBE, GPS, BAT, ERR, MODE, RATE, …). Call this first if unsure what's available.
-- get_field_stats(type, fields?, startS?, endS?) — count/min/max/mean/stddev/first/last for numeric fields. Use for aggregate questions.
-- read_samples(type, fields?, startS?, endS?, maxPoints?) — decimated time-series to inspect the shape of a trend, spike, or oscillation.
-- get_parameters(names? | search?) — ArduPilot parameter values from the log.
+You have tools to query the raw telemetry of THIS log on demand, you are not limited to the summary below. Use them to ground every claim in actual data instead of guessing:
+- list_message_types: discover what's recorded (${isUlog ? 'vehicle_attitude, actuator_outputs, sensor_combined, vehicle_gps_position, battery_status, vehicle_status, …' : 'ATT, RCOU, VIBE, GPS, BAT, ERR, MODE, RATE, …'}). Call this first if unsure what's available.
+- get_field_stats(type, fields?, startS?, endS?): count/min/max/mean/stddev/first/last for numeric fields. Use for aggregate questions.
+- read_samples(type, fields?, startS?, endS?, maxPoints?): decimated time-series to inspect the shape of a trend, spike, or oscillation.
+- get_parameters(names? | search?): parameter values from the log.
 All time arguments (startS/endS) are SECONDS from log start. This flight is ${dS.toFixed(1)} s long. Prefer real values pulled from these tools over the summary, and cite specific numbers and timestamps.`
       : '';
 
