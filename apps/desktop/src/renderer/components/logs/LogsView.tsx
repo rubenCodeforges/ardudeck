@@ -24,9 +24,17 @@ export function LogsView() {
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 pt-3 pb-2 border-b border-subtle">
         <h2 className="text-lg font-semibold text-content mr-4">Flight Logs</h2>
-        <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 mr-4">
+        <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 mr-2">
           Experimental
         </span>
+        {currentLog && (
+          <span
+            className="text-xs font-medium px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30 mr-4"
+            title={currentLog.metadata.firmwareString || undefined}
+          >
+            {currentLog.format === 'ulog' ? 'PX4 ULog' : 'ArduPilot'}
+          </span>
+        )}
         {tabs.map((tab) => (
           <button
             key={tab.id}
