@@ -15,7 +15,7 @@ import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useConnectionStore } from '../../stores/connection-store';
-import Px4ConfigNotice from './Px4ConfigNotice';
+import Px4ReceiverConfig from './Px4ReceiverConfig';
 import { PRIMARY_CHANNEL_COUNT, getMavlinkChannelNames, reorderChannelsWithRcmap } from '../../utils/rc-channel-constants';
 
 // =============================================================================
@@ -228,9 +228,7 @@ const ReceiverTab: React.FC = () => {
     : { text: 'No Signal', color: 'red' };
 
   if (firmware === 'px4') {
-    return (
-      <Px4ConfigNotice message="PX4 receiver and RC configuration is available in the Parameters tab (RC_MAP_* and RC channel parameters)." />
-    );
+    return <Px4ReceiverConfig />;
   }
 
   return (
