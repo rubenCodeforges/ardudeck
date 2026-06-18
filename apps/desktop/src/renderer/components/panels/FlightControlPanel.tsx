@@ -662,6 +662,7 @@ function MavlinkFlightControl() {
       altitudeM:    takeoffAlt,
       forceArm,
       vehicleClass,
+      firmware:     connectionState.firmware,
       capabilities,
       isSitl: connectionState.isSitl ?? sitlIsRunning,
       getFlight:   () => store().flight,

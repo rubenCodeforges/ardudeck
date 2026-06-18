@@ -20,6 +20,8 @@
  */
 
 import type { ArduPilotVehicleClass, VehicleCapabilities, FlightState, GpsData, PositionData } from '../../../shared/telemetry-types';
+import type { FirmwareSource } from '../../../shared/firmware-types';
+import { encodePx4CustomMode } from '../../../shared/telemetry-types';
 
 type StatusType = 'info' | 'success' | 'error';
 
@@ -32,6 +34,10 @@ export interface TakeoffContext {
   altitudeM: number;
   forceArm: boolean;
   vehicleClass: ArduPilotVehicleClass;
+  /** Detected firmware family. PX4 takes a completely separate, standard-MAVLink
+   *  takeoff path (see takeoffPx4); ArduPilot and unknown fall through to the
+   *  per-vehicle ArduPilot strategies unchanged. */
+  firmware?: FirmwareSource;
   capabilities: VehicleCapabilities;
   /** True when we're driving the bundled SITL simulator (vs real FC). Lets
    *  strategies fall back to virtual-RC throttle ramping when upstream's
@@ -129,6 +135,12 @@ export function presentTakeoff(vehicleClass: ArduPilotVehicleClass): TakeoffPres
 export async function executeTakeoff(ctx: TakeoffContext): Promise<TakeoffOutcome> {
   if (!ctx.capabilities.takeoff.supported) {
     return { ok: false, reason: `${ctx.vehicleClass} does not support takeoff` };
+  }
+  // PX4 vehicles use a separate, standard-MAVLink takeoff path. The ArduPilot
+  // strategies below send ArduPilot mode numbers and AP-specific logic which is
+  // wrong (and unsafe) on a PX4 craft, so gate strictly on firmware first.
+  if (ctx.firmware === 'px4') {
+    return takeoffPx4(ctx);
   }
   switch (ctx.vehicleClass) {
     case 'copter': return takeoffCopter(ctx);
@@ -402,5 +414,65 @@ async function takeoffVtolSitl(ctx: TakeoffContext): Promise<TakeoffOutcome> {
       reason: `Did not reach ${ctx.altitudeM}m — vehicle still armed in QHover, take RC control`,
     };
   }
+  return { ok: true };
+}
+
+// =============================================================================
+// PX4 strategy
+// =============================================================================
+
+/**
+ * PX4 auto-takeoff (firmware-agnostic vehicle class). Standard PX4/MAVLink GCS
+ * takeoff, deliberately separate from the ArduPilot strategies above so none of
+ * the ArduPilot mode numbers or AP-specific logic ever touch a PX4 craft.
+ *
+ * Procedure (conservative, standard PX4):
+ *   1. GPS/EKF wait (PX4 auto-takeoff needs a position estimate to climb).
+ *   2. Set MIS_TAKEOFF_ALT to the UI-selected altitude so the climb target is
+ *      honored (PX4 AUTO_TAKEOFF reads this param, not a commanded altitude).
+ *      Non-fatal: falls back to the on-FC value if the write is rejected.
+ *   3. ARM via the generic, vendor-neutral MAV_CMD_COMPONENT_ARM_DISARM (400),
+ *      reusing the existing arm flow (forceArm honored).
+ *   4. Switch to AUTO_TAKEOFF (PX4 main mode AUTO=4, sub mode TAKEOFF=2) via the
+ *      generic mavlinkSetMode IPC, which carries the PX4 custom_mode bitfield.
+ *
+ * Why mode-switch instead of MAV_CMD_NAV_TAKEOFF (22): the only renderer-side
+ * takeoff IPC (mavlinkTakeoff) hard-codes ArduPilot-oriented params, pitch=15
+ * and lat/lon=0. On PX4 a NAV_TAKEOFF with lat/lon=0 is a valid coordinate
+ * (Gulf of Guinea), so the craft could try to fly there. PX4 expects NaN
+ * lat/lon for "use current position", which that IPC cannot express, and we are
+ * not allowed to touch the ArduPilot takeoff handler. AUTO_TAKEOFF mode is the
+ * documented PX4 trigger, takes off at the current position, and rides entirely
+ * on already-generic, vendor-neutral IPCs (no new main-process handler needed).
+ */
+async function takeoffPx4(ctx: TakeoffContext): Promise<TakeoffOutcome> {
+  const gps = await ensureGpsReady(ctx);
+  if (!gps.ok) return gps;
+
+  // PX4 AUTO_TAKEOFF climbs to MIS_TAKEOFF_ALT. Push the UI altitude there so
+  // the firmware-agnostic altitude selector stays meaningful. MAV_PARAM_TYPE
+  // for PX4 floats is REAL32 = 9.
+  ctx.setStatus({ text: `Setting MIS_TAKEOFF_ALT=${ctx.altitudeM}m...`, type: 'info' });
+  try {
+    await ctx.api.setParameter('MIS_TAKEOFF_ALT', ctx.altitudeM, 9);
+  } catch (err) {
+    // Non-fatal: PX4 falls back to the value already on the FC.
+    console.warn('[Takeoff] MIS_TAKEOFF_ALT write failed:', err);
+  }
+
+  const arm = await armIfNeeded(ctx);
+  if (!arm.ok) return arm;
+
+  if (!ctx.getFlight().armed) {
+    return { ok: false, reason: 'Auto-disarmed before takeoff, retry' };
+  }
+
+  // AUTO_TAKEOFF: PX4 main mode AUTO (4), sub mode TAKEOFF (2). The mode switch
+  // itself initiates the auto-takeoff on PX4.
+  const takeoffMode = encodePx4CustomMode(4, 2);
+  ctx.setStatus({ text: `PX4 auto-takeoff to ${ctx.altitudeM}m...`, type: 'info' });
+  const into = await switchMode(ctx, takeoffMode, 'Takeoff');
+  if (!into.ok) return into;
+
   return { ok: true };
 }
