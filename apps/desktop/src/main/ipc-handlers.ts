@@ -126,6 +126,7 @@ import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
 import { decodeServoOutputRaw } from './servo-output-decode.js';
 import { writeFile, readFile } from 'node:fs/promises';
 import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
+import { createUlogParser, runPx4HealthChecks } from '@ardudeck/ulog-parser';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { ardupilotSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
 import {
@@ -8436,7 +8437,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Open Flight Log',
       filters: [
-        { name: 'Flight Logs', extensions: ['bin', 'log'] },
+        { name: 'Flight Logs', extensions: ['bin', 'log', 'ulg'] },
         { name: 'All Files', extensions: ['*'] },
       ],
       properties: ['openFile'],
@@ -8450,6 +8451,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // model where the renderer received the file as `number[]` (100M JS Numbers
   // for a 100MB log) and then sent it back to main for parsing — that
   // double-IPC-marshal was the multi-minute "frozen UI" symptom users saw.
+  // Detect log format from the leading magic bytes. ULog files start with the
+  // ASCII bytes 'U','L','o','g' (0x55 0x4C 0x6F 0x67). Everything else defaults
+  // to dataflash so any non-ULog file behaves exactly as before (preserves
+  // ArduPilot logs and the All-Files-pick-anything behavior).
+  const detectLogFormat = (buf: Uint8Array): 'dataflash' | 'ulog' => {
+    if (buf.length >= 4 && buf[0] === 0x55 && buf[1] === 0x4c && buf[2] === 0x6f && buf[3] === 0x67) {
+      return 'ulog';
+    }
+    return 'dataflash';
+  };
+
   ipcMain.handle(IPC_CHANNELS.LOG_PARSE_FILE, async (_, filePath: string): Promise<unknown> => {
     if (!existsSync(filePath)) {
       // Stale recent — clean it up so the user doesn't keep seeing it.
@@ -8471,7 +8483,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // and yield the event loop between feeds. Without the yield, IPC events
     // queued by sendLogParseProgress would not flush to the renderer until
     // the entire parse completed, leaving the progress bar stuck at 0%.
-    const parser = createDataFlashParser();
+    const logFormat = detectLogFormat(buffer);
+    const parser = logFormat === 'ulog' ? createUlogParser() : createDataFlashParser();
     const CHUNK = 1024 * 1024;
     const yieldEventLoop = () => new Promise<void>((r) => setImmediate(r));
     const sendProgress = (bytesConsumed: number) => {
@@ -8490,7 +8503,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
     const log = parser.finalize();
 
-    const healthResults = runHealthChecks(log);
+    const healthResults = logFormat === 'ulog' ? runPx4HealthChecks(log) : runHealthChecks(log);
 
     // Serialize Maps to plain objects for IPC transfer
     const formats: Record<number, unknown> = {};

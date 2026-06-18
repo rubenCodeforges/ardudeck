@@ -1,16 +1,28 @@
 import { parentPort } from 'node:worker_threads';
 import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
+import { createUlogParser, runPx4HealthChecks } from '@ardudeck/ulog-parser';
 
 if (!parentPort) {
   throw new Error('log-worker must be run as a worker thread');
 }
 
+// Detect log format from the leading magic bytes. ULog files start with the
+// ASCII bytes 'U','L','o','g' (0x55 0x4C 0x6F 0x67). Everything else defaults
+// to dataflash so any non-ULog file behaves exactly as before.
+function detectLogFormat(buf: Uint8Array): 'dataflash' | 'ulog' {
+  if (buf.length >= 4 && buf[0] === 0x55 && buf[1] === 0x4c && buf[2] === 0x6f && buf[3] === 0x67) {
+    return 'ulog';
+  }
+  return 'dataflash';
+}
+
 parentPort.on('message', (msg: { type: string; data: Uint8Array }) => {
   if (msg.type === 'parse') {
     try {
-      const parser = createDataFlashParser();
       const buffer = new Uint8Array(msg.data);
       const totalBytes = buffer.length;
+      const logFormat = detectLogFormat(buffer);
+      const parser = logFormat === 'ulog' ? createUlogParser() : createDataFlashParser();
 
       // Feed in chunks to report progress
       const CHUNK_SIZE = 256 * 1024;
@@ -57,7 +69,7 @@ parentPort.on('message', (msg: { type: string; data: Uint8Array }) => {
       };
 
       // Run health checks while we have the parsed log with Maps
-      const healthResults = runHealthChecks(log);
+      const healthResults = logFormat === 'ulog' ? runPx4HealthChecks(log) : runHealthChecks(log);
 
       parentPort!.postMessage({ type: 'complete', log: serialized, healthResults });
     } catch (error) {
