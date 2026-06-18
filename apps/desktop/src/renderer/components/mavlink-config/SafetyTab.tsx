@@ -26,7 +26,6 @@ import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import { SigningSection } from '../settings/SigningSection';
-import Px4ConfigNotice from './Px4ConfigNotice';
 import {
   SAFETY_PRESETS,
   FENCE_TYPES,
@@ -59,8 +58,268 @@ const PRESET_SELECTOR_PRESETS: Record<string, Preset> = {
   },
 };
 
+// Fallback enum labels for PX4 failsafe/geofence params, used when bundled
+// metadata is unavailable. Labels mirror the PX4 parameter metadata values.
+const PX4_ENUM_FALLBACK: Record<string, Record<number, string>> = {
+  NAV_RCL_ACT: { 1: 'Hold mode', 2: 'Return mode', 3: 'Land mode', 5: 'Terminate', 6: 'Disarm' },
+  COM_RC_IN_MODE: {
+    0: 'RC only',
+    1: 'MAVLink only',
+    2: 'RC or MAVLink with fallback',
+    3: 'RC or MAVLink keep first',
+    4: 'Disable manual control',
+    5: 'Prio: RC > MAVL 1 > MAVL 2',
+    6: 'Prio: MAVL 1 > MAVL 2 > RC',
+    7: 'Prio: RC > MAVL 2 > MAVL 1',
+    8: 'Prio: MAVL 2 > MAVL 1 > RC',
+  },
+  NAV_DLL_ACT: { 0: 'Disabled', 1: 'Hold mode', 2: 'Return mode', 3: 'Land mode', 5: 'Terminate', 6: 'Disarm' },
+  COM_LOW_BAT_ACT: { 0: 'Warning', 2: 'Land mode', 3: 'Return at critical level, land at emergency level' },
+  GF_ACTION: { 0: 'None', 1: 'Warning', 2: 'Hold mode', 3: 'Return mode', 4: 'Terminate', 5: 'Land mode' },
+};
+
+const Px4SafetyConfig: React.FC<{
+  parameters: ReturnType<typeof useParameterStore.getState>['parameters'];
+  setParameter: (id: string, value: number) => void;
+  getParameterMetadata: ReturnType<typeof useParameterStore.getState>['getParameterMetadata'];
+}> = ({ parameters, setParameter, getParameterMetadata }) => {
+  // Resolve enum options from bundled metadata first, then fall back to known labels.
+  const enumOptions = useCallback((paramId: string): Array<{ value: number; label: string }> => {
+    const fromMeta = getParameterMetadata(paramId)?.values;
+    const source = fromMeta && Object.keys(fromMeta).length > 0 ? fromMeta : PX4_ENUM_FALLBACK[paramId];
+    if (!source) return [];
+    return Object.entries(source)
+      .map(([value, label]) => ({ value: Number(value), label }))
+      .sort((a, b) => a.value - b.value);
+  }, [getParameterMetadata]);
+
+  const num = useCallback((id: string, fallback: number) => parameters.get(id)?.value ?? fallback, [parameters]);
+
+  const renderEnum = (paramId: string, currentFallback: number) => {
+    const options = enumOptions(paramId);
+    const value = num(paramId, currentFallback);
+    return (
+      <select
+        value={value}
+        onChange={(e) => setParameter(paramId, Number(e.target.value))}
+        className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
+      >
+        {options.length > 0 ? (
+          options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))
+        ) : (
+          <option value={value}>{`Value ${value}`}</option>
+        )}
+      </select>
+    );
+  };
+
+  const px4Values = useMemo(() => ({
+    navRclAct: num('NAV_RCL_ACT', 2),
+    comRcLossT: num('COM_RC_LOSS_T', 0.5),
+    comRcInMode: num('COM_RC_IN_MODE', 3),
+    navDllAct: num('NAV_DLL_ACT', 0),
+    comDlLossT: num('COM_DL_LOSS_T', 10),
+    comLowBatAct: num('COM_LOW_BAT_ACT', 0),
+    gfAction: num('GF_ACTION', 2),
+    gfMaxHorDist: num('GF_MAX_HOR_DIST', 0),
+    gfMaxVerDist: num('GF_MAX_VER_DIST', 0),
+    comDisarmLand: num('COM_DISARM_LAND', 2),
+    comDisarmPrflt: num('COM_DISARM_PRFLT', 10),
+  }), [num]);
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {/* RC Loss Card */}
+      <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+            <Radio className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-content">RC Signal Lost</h3>
+            <p className="text-xs text-content-secondary">What happens when manual control signal is lost</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-content-secondary block mb-1.5">Failsafe Action (NAV_RCL_ACT)</label>
+            {renderEnum('NAV_RCL_ACT', px4Values.navRclAct)}
+          </div>
+
+          <DraggableSlider
+            label="Loss Timeout (s)"
+            value={Math.round(px4Values.comRcLossT * 10)}
+            onChange={(v) => setParameter('COM_RC_LOSS_T', v / 10)}
+            min={0}
+            max={350}
+            step={1}
+            color="#EF4444"
+            hint="COM_RC_LOSS_T: delay before declaring RC loss"
+            formatValue={(v) => (v / 10).toFixed(1)}
+          />
+
+          <div>
+            <label className="text-xs text-content-secondary block mb-1.5">Manual Control Source (COM_RC_IN_MODE)</label>
+            {renderEnum('COM_RC_IN_MODE', px4Values.comRcInMode)}
+          </div>
+        </div>
+      </div>
+
+      {/* Datalink Loss Card */}
+      <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+            <Monitor className="w-5 h-5 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-content">Datalink Lost</h3>
+            <p className="text-xs text-content-secondary">What happens when the GCS connection is lost</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-content-secondary block mb-1.5">Failsafe Action (NAV_DLL_ACT)</label>
+            {renderEnum('NAV_DLL_ACT', px4Values.navDllAct)}
+          </div>
+
+          <DraggableSlider
+            label="Loss Timeout (s)"
+            value={px4Values.comDlLossT}
+            onChange={(v) => setParameter('COM_DL_LOSS_T', v)}
+            min={5}
+            max={300}
+            step={1}
+            color="#A855F7"
+            hint="COM_DL_LOSS_T: delay before declaring datalink loss"
+          />
+        </div>
+
+        <div className="bg-surface-raised rounded-lg p-3">
+          <p className="text-xs text-content-secondary">
+            <span className="text-amber-400">Tip:</span> Datalink failsafe needs a telemetry
+            heartbeat. If flying without a GCS link, set the action to Disabled.
+          </p>
+        </div>
+      </div>
+
+      {/* Low Battery Card */}
+      <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+            <Battery className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-content">Low Battery</h3>
+            <p className="text-xs text-content-secondary">Protect against flying with a depleted battery</p>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-content-secondary block mb-1.5">Failsafe Action (COM_LOW_BAT_ACT)</label>
+          {renderEnum('COM_LOW_BAT_ACT', px4Values.comLowBatAct)}
+        </div>
+
+        <div className="bg-surface-raised rounded-lg p-3">
+          <p className="text-xs text-content-secondary">
+            Battery warning, critical, and emergency thresholds are configured on the Battery tab
+            (BAT_LOW_THR, BAT_CRIT_THR, BAT_EMERGEN_THR).
+          </p>
+        </div>
+      </div>
+
+      {/* Geofence Card */}
+      <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <Fence className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-content">Geofence</h3>
+            <p className="text-xs text-content-secondary">Limit how far the vehicle can travel from home</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-content-secondary block mb-1.5">Violation Action (GF_ACTION)</label>
+            {renderEnum('GF_ACTION', px4Values.gfAction)}
+          </div>
+
+          <DraggableSlider
+            label="Max Horizontal Distance (m)"
+            value={px4Values.gfMaxHorDist}
+            onChange={(v) => setParameter('GF_MAX_HOR_DIST', v)}
+            min={0}
+            max={10000}
+            step={10}
+            color="#3B82F6"
+            hint="GF_MAX_HOR_DIST: 0 disables the horizontal limit"
+          />
+
+          <DraggableSlider
+            label="Max Vertical Distance (m)"
+            value={px4Values.gfMaxVerDist}
+            onChange={(v) => setParameter('GF_MAX_VER_DIST', v)}
+            min={0}
+            max={10000}
+            step={10}
+            color="#3B82F6"
+            hint="GF_MAX_VER_DIST: 0 disables the altitude limit"
+          />
+        </div>
+      </div>
+
+      {/* Auto-Disarm Card */}
+      <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-content">Auto-Disarm</h3>
+            <p className="text-xs text-content-secondary">Automatically disarm after landing or idle on the ground</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <DraggableSlider
+            label="Disarm After Landing (s)"
+            value={Math.round(px4Values.comDisarmLand * 10)}
+            onChange={(v) => setParameter('COM_DISARM_LAND', v / 10)}
+            min={0}
+            max={200}
+            step={1}
+            color="#22C55E"
+            hint="COM_DISARM_LAND: 0 disables auto-disarm after landing"
+            formatValue={(v) => (v / 10).toFixed(1)}
+          />
+
+          <DraggableSlider
+            label="Disarm If Not Taking Off (s)"
+            value={Math.round(px4Values.comDisarmPrflt * 10)}
+            onChange={(v) => setParameter('COM_DISARM_PRFLT', v / 10)}
+            min={0}
+            max={300}
+            step={1}
+            color="#22C55E"
+            hint="COM_DISARM_PRFLT: 0 disables preflight idle auto-disarm"
+            formatValue={(v) => (v / 10).toFixed(1)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SafetyTab: React.FC = () => {
   const { parameters, setParameter, modifiedCount, fetchParameters, isLoading } = useParameterStore();
+  const getParameterMetadata = useParameterStore((s) => s.getParameterMetadata);
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
 
   // Check if parameters are loaded
@@ -127,7 +386,50 @@ const SafetyTab: React.FC = () => {
 
   if (firmware === 'px4') {
     return (
-      <Px4ConfigNotice message="PX4 failsafe, geofence, and arming configuration is available in the Parameters tab (COM_*, GF_*, NAV_* parameters)." />
+      <div className="p-6 space-y-6">
+        {!hasParameters && (
+          <div className="bg-amber-500/10 rounded-xl border-amber-500/30 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <Lightbulb className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
+                <p className="text-xs text-content-secondary">Fetch parameters from the FC to configure failsafes</p>
+              </div>
+            </div>
+            <button
+              onClick={() => fetchParameters()}
+              disabled={isLoading}
+              className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {isLoading ? 'Loading...' : 'Fetch Parameters'}
+            </button>
+          </div>
+        )}
+
+        <InfoCard title="Safety Features" variant="info">
+          Configure what PX4 does when things go wrong. Failsafes can save your aircraft
+          from flyaways and crashes. Each card maps directly to PX4 parameters.
+        </InfoCard>
+
+        <Px4SafetyConfig
+          parameters={parameters}
+          setParameter={setParameter}
+          getParameterMetadata={getParameterMetadata}
+        />
+
+        <SigningSection />
+
+        {modified > 0 && (
+          <div className="bg-amber-500/10 rounded-xl border-amber-500/30 p-4 flex items-center gap-3">
+            <Save className="w-5 h-5 text-amber-400" />
+            <p className="text-sm text-amber-400">
+              You have unsaved changes. Click <span className="font-medium">"Write to Flash"</span> in the header to save.
+            </p>
+          </div>
+        )}
+      </div>
     );
   }
 
