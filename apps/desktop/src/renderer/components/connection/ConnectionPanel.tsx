@@ -6,6 +6,7 @@ import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { useSigningStore, initSigningListener } from '../../stores/signing-store';
 import type { SerialPortInfo } from '@ardudeck/comms';
 import { formatPortDisplayName } from '../../utils/usb-device-names';
+import { firmwareLabel } from '../../../shared/firmware-types';
 import { DriverAssistant } from './DriverAssistant';
 import { RecentConnectionsButton } from './RecentConnectionsButton';
 import type { SavedConnection } from '../../stores/settings-store';
@@ -957,10 +958,10 @@ export function ConnectionPanel() {
                 <span className="text-content-secondary">Transport</span>
                 <span className="text-content font-medium">{connectionState.transport}</span>
               </div>
-              {connectionState.autopilot && (
+              {(connectionState.autopilot || connectionState.firmware) && (
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Autopilot</span>
-                  <span className="text-content font-medium">{connectionState.autopilot}</span>
+                  <span className="text-content font-medium">{firmwareLabel(connectionState)}</span>
                 </div>
               )}
               {connectionState.vehicleType && (

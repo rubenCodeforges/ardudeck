@@ -45,6 +45,7 @@ import {
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { formatParamValue } from '../../../shared/parameter-types';
+import { firmwareLabel } from '../../../shared/firmware-types';
 import PidTuningTab from './PidTuningTab';
 import RatesTab from './RatesTab';
 import FlightModesTab from './FlightModesTab';
@@ -436,7 +437,7 @@ export const MavlinkConfigView: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-content">
-                {connectionState.autopilot || 'ArduPilot'} Configuration
+                {firmwareLabel(connectionState)} Configuration
               </h2>
               <div className="flex items-center gap-2 text-sm text-content-secondary">
                 {connectionState.vehicleType && (

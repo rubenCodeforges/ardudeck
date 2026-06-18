@@ -363,6 +363,21 @@ export const FIRMWARE_SOURCE_NAMES: Record<FirmwareSource, string> = {
 };
 
 /**
+ * Human-readable firmware label for a detected MAVLink connection.
+ * Prefers the detected firmware family (so a PX4 vehicle reads "PX4"),
+ * then the raw autopilot display string, then a final ArduPilot default.
+ */
+export function firmwareLabel(cs: {
+  firmware?: FirmwareSource;
+  autopilot?: string;
+}): string {
+  if (cs.firmware) {
+    return FIRMWARE_SOURCE_NAMES[cs.firmware];
+  }
+  return cs.autopilot || 'ArduPilot';
+}
+
+/**
  * Vehicle type to ArduPilot firmware name mapping
  */
 export const VEHICLE_TO_FIRMWARE: Record<FirmwareVehicleType, string> = {

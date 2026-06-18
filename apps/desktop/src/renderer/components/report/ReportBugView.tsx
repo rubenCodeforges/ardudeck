@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
+import { firmwareLabel } from '../../../shared/firmware-types';
 
 interface ProgressState {
   stage: string;
@@ -41,7 +42,7 @@ export default function ReportBugView() {
   const boardInfo = isMspBoard
     ? `${connectionState.fcVariant} ${connectionState.fcVersion}`
     : isMavlinkBoard
-      ? `${connectionState.autopilot} ${connectionState.vehicleType}`
+      ? `${firmwareLabel(connectionState)} ${connectionState.vehicleType}`
       : 'Not connected';
 
   // Fetch encryption info on mount
