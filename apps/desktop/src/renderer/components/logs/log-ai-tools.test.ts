@@ -20,6 +20,7 @@ function makeLog(): ParsedLog {
     fields: { Roll: i, DesRoll: 0, Label: 'x' } as Record<string, number | string>,
   }));
   return {
+    format: 'dataflash',
     formats: {},
     messages: {
       ATT: att,

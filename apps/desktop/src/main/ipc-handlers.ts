@@ -8511,6 +8511,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
     return {
       log: {
+        format: log.format,
         formats,
         messages,
         metadata: log.metadata,

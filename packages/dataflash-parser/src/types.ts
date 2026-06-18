@@ -30,6 +30,9 @@ export interface LogMetadata {
 
 /** Complete parsed log */
 export interface DataFlashLog {
+  /** Which parser produced this log. 'dataflash' for ArduPilot .bin (this
+   *  package), 'ulog' for PX4 .ulg (the @ardudeck/ulog-parser package). */
+  format: 'dataflash' | 'ulog';
   formats: Map<number, FMTMessage>;
   messages: Map<string, DataFlashMessage[]>;
   metadata: LogMetadata;

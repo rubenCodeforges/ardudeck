@@ -46,6 +46,7 @@ parentPort.on('message', (msg: { type: string; data: Uint8Array }) => {
       }
 
       const serialized = {
+        format: log.format,
         formats,
         messages,
         metadata: log.metadata,

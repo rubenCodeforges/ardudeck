@@ -245,6 +245,7 @@ export function createDataFlashParser(): DataFlashStreamParser {
       processBuffer();
 
       return {
+        format: 'dataflash',
         formats,
         messages,
         metadata,

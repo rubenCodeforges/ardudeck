@@ -17,6 +17,8 @@ export interface LogListEntry {
 
 /** Serialized DataFlashLog from the worker (Maps serialized to plain objects) */
 export interface ParsedLog {
+  /** Which parser produced this log: 'dataflash' (ArduPilot .bin) or 'ulog' (PX4 .ulg). */
+  format: 'dataflash' | 'ulog';
   formats: Record<number, { id: number; name: string; length: number; format: string; fields: string[]; unitChars?: string[]; multChars?: string[] }>;
   messages: Record<string, { type: string; timeUs: number; fields: Record<string, number | string> }[]>;
   metadata: { vehicleType: string; firmwareVersion: string; firmwareString: string; boardType: string; gitHash: string };

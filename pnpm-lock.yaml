@@ -56,6 +56,9 @@ importers:
       '@ardudeck/stm32-dfu':
         specifier: workspace:*
         version: link:../../packages/stm32-dfu
+      '@ardudeck/ulog-parser':
+        specifier: workspace:^
+        version: link:../../packages/ulog-parser
       '@reactour/tour':
         specifier: ^3.8.0
         version: 3.8.0(react@18.3.1)
@@ -333,6 +336,19 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
+
+  packages/ulog-parser:
+    dependencies:
+      '@ardudeck/dataflash-parser':
+        specifier: workspace:^
+        version: link:../dataflash-parser
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.3)
 
   tools/mavlink-generator:
     dependencies:

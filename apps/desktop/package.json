@@ -31,6 +31,7 @@
     "@ardudeck/module-sdk": "workspace:*",
     "@ardudeck/msp-ts": "workspace:*",
     "@ardudeck/stm32-dfu": "workspace:*",
+    "@ardudeck/ulog-parser": "workspace:^",
     "@reactour/tour": "^3.8.0",
     "@tanstack/react-virtual": "^3.13.23",
     "@xterm/addon-fit": "^0.11.0",

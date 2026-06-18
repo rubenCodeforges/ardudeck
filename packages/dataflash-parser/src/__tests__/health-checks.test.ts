@@ -4,6 +4,7 @@ import type { DataFlashLog, DataFlashMessage } from '../types.js';
 
 function makeLog(messages: Record<string, DataFlashMessage[]>): DataFlashLog {
   return {
+    format: 'dataflash',
     formats: new Map(),
     messages: new Map(Object.entries(messages)),
     metadata: { vehicleType: 'copter', firmwareVersion: '4.5.1', firmwareString: '', boardType: '', gitHash: '' },
