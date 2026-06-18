@@ -196,11 +196,19 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
   }
   allNavItems.push(logsNavItem);
 
+  // OSD config and Lua scripting are ArduPilot-only features (no PX4 param
+  // equivalent / no Lua runtime on PX4). Hide them when connected to a PX4
+  // vehicle so a PX4 pilot does not land on a dead screen. Left visible when
+  // offline or on any other firmware to preserve existing behavior.
+  const isPx4 = connectionState.firmware === 'px4';
+  const arduPilotOnlyViews: ReadonlySet<string> = new Set(['osd', 'lua-graph']);
+
   // Hide views gated behind an activatable module that isn't enabled. With no
   // gated capabilities defined this is a no-op (every view stays visible).
   const enabledCapabilitySlugs = useEnabledCapabilitySlugs();
   const visibleNavItems = allNavItems.filter((item) =>
-    isViewAvailable(item.id, enabledCapabilitySlugs),
+    isViewAvailable(item.id, enabledCapabilitySlugs) &&
+    !(isPx4 && arduPilotOnlyViews.has(item.id)),
   );
 
   const handleClick = (viewId: ViewId) => {

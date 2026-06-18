@@ -1,3 +1,6 @@
+import { encodePx4CustomMode } from '../../../shared/telemetry-types';
+import type { FirmwareSource } from '../../../shared/firmware-types';
+
 /**
  * Map command types - extensible union for all commands issuable from the map.
  * Adding a new command: add to the union, add popup option, add IPC dispatch.
@@ -62,6 +65,13 @@ export interface DispatchOptions {
    * script-based path. Caller (popup) sets this based on script health.
    */
   preferScript?: boolean;
+  /**
+   * Firmware of the connected vehicle. PX4 does not honor ArduPilot's
+   * COMMAND_LONG NAV_LAND and has no ArduDeck Lua script, so the `land`
+   * command routes through a mode change to AUTO.LAND instead. ArduPilot
+   * (undefined / 'ardupilot') keeps its native/script land path.
+   */
+  firmware?: FirmwareSource;
   /**
    * When true, send a STOP to the script's MAV_CMD_USER_1 dispatcher BEFORE
    * issuing the actual command. Used when transitioning from a script-managed
@@ -187,6 +197,12 @@ export async function dispatchMapCommand(
       return { success: ok, path: 'script' };
     }
     case 'land': {
+      // PX4 ignores COMMAND_LONG NAV_LAND and has no ArduDeck Lua script, so
+      // land via a mode change to AUTO.LAND (main=4, sub=6). Lands in place.
+      if (options.firmware === 'px4') {
+        const ok = await window.electronAPI.mavlinkSetMode(encodePx4CustomMode(4, 6));
+        return { success: ok, path: 'native' };
+      }
       // ArduCopter's native MAV_CMD_NAV_LAND ignores the lat/lon and just
       // descends in place. Prefer the script's LAND_AT (fly-to-then-LAND)
       // when available; fall back to native NAV_LAND only if the script

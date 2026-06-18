@@ -1870,7 +1870,11 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
       command.type === 'land' ||
       (command.type === 'orbit' && !options?.preferScript);
     const stopScriptFirst = prevWasScriptHeld && newIsNative;
-    const result = await dispatchMapCommand(command, { ...options, stopScriptFirst });
+    const result = await dispatchMapCommand(command, {
+      ...options,
+      stopScriptFirst,
+      firmware: connectionState.firmware,
+    });
     if (result.success) {
       // ActiveTarget mirrors the issued command's variant for correct overlay rendering.
       if (command.type === 'goto') {
