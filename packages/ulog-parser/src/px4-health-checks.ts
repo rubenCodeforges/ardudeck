@@ -30,34 +30,67 @@ function num(msg: DataFlashMessage, field: string): number | undefined {
   return typeof val === 'number' ? val : undefined;
 }
 
+/** All instances of a multi-instance uORB topic, in instance order. Our parser
+ *  keys instance 0 as the bare `name` and instance N>0 as `name_N`, so we walk
+ *  consecutive suffixes until one is missing. Each entry carries the 1-based
+ *  instance label used in summaries (e.g. instance 0 -> "1", instance 1 -> "2"). */
+function collectInstances(
+  log: DataFlashLog,
+  name: string,
+): Array<{ label: number; messages: DataFlashMessage[] }> {
+  const out: Array<{ label: number; messages: DataFlashMessage[] }> = [];
+  const base = log.messages.get(name);
+  if (base && base.length > 0) out.push({ label: 1, messages: base });
+  for (let i = 1; ; i++) {
+    const arr = log.messages.get(`${name}_${i}`);
+    if (!arr || arr.length === 0) break;
+    out.push({ label: i + 1, messages: arr });
+  }
+  return out;
+}
+
 function checkBattery(log: DataFlashLog): HealthCheckResult {
-  const bat = log.messages.get('battery_status');
-  if (!bat || bat.length === 0) {
+  const instances = collectInstances(log, 'battery_status');
+  if (instances.length === 0) {
     return { id: 'battery', name: 'Battery', status: 'skip', summary: 'No battery data', details: 'battery_status messages not found in log' };
   }
 
-  let maxVolt = 0, minVolt = Infinity, maxCurr = 0, maxDischarged = 0;
-  for (const msg of bat) {
-    const volt = num(msg, 'voltage_v') ?? 0;
-    const curr = num(msg, 'current_a') ?? 0;
-    const disc = num(msg, 'discharged_mah') ?? 0;
-    if (volt > maxVolt) maxVolt = volt;
-    if (volt > 0 && volt < minVolt) minVolt = volt;
-    if (curr > maxCurr) maxCurr = curr;
-    if (disc > maxDischarged) maxDischarged = disc;
+  // Evaluate each pack and keep the worst by voltage sag, so a single failing
+  // pack on a dual-battery craft drives the result.
+  let worst: { label: number; maxVolt: number; minVolt: number; maxCurr: number; maxDischarged: number; sag: number } | undefined;
+  for (const { label, messages } of instances) {
+    let maxVolt = 0, minVolt = Infinity, maxCurr = 0, maxDischarged = 0;
+    for (const msg of messages) {
+      const volt = num(msg, 'voltage_v') ?? 0;
+      const curr = num(msg, 'current_a') ?? 0;
+      const disc = num(msg, 'discharged_mah') ?? 0;
+      if (volt > maxVolt) maxVolt = volt;
+      if (volt > 0 && volt < minVolt) minVolt = volt;
+      if (curr > maxCurr) maxCurr = curr;
+      if (disc > maxDischarged) maxDischarged = disc;
+    }
+    if (minVolt === Infinity) minVolt = 0;
+    const sag = maxVolt - minVolt;
+    if (!worst || sag > worst.sag) {
+      worst = { label, maxVolt, minVolt, maxCurr, maxDischarged, sag };
+    }
   }
-  if (minVolt === Infinity) minVolt = 0;
+  if (!worst) {
+    return { id: 'battery', name: 'Battery', status: 'skip', summary: 'No battery data', details: 'battery_status messages not found in log' };
+  }
 
-  const sag = maxVolt - minVolt;
+  const { maxVolt, minVolt, maxCurr, maxDischarged, sag } = worst;
+  // Only name the pack when more than one is present.
+  const where = instances.length > 1 ? ` (battery ${worst.label})` : '';
   let status: CheckStatus = 'pass';
   let summary = `${minVolt.toFixed(1)}V - ${maxVolt.toFixed(1)}V, peak ${maxCurr.toFixed(0)}A`;
 
   if (sag > 2.0) {
     status = 'fail';
-    summary = `Severe voltage sag: ${sag.toFixed(1)}V drop (${maxVolt.toFixed(1)}V → ${minVolt.toFixed(1)}V)`;
+    summary = `Severe voltage sag${where}: ${sag.toFixed(1)}V drop (${maxVolt.toFixed(1)}V → ${minVolt.toFixed(1)}V)`;
   } else if (sag > 1.0) {
     status = 'warn';
-    summary = `Voltage sag: ${sag.toFixed(1)}V drop under ${maxCurr.toFixed(0)}A load`;
+    summary = `Voltage sag${where}: ${sag.toFixed(1)}V drop under ${maxCurr.toFixed(0)}A load`;
   }
 
   const recommendation = status === 'fail'
@@ -66,9 +99,10 @@ function checkBattery(log: DataFlashLog): HealthCheckResult {
     ? 'Some voltage sag under load. Monitor battery health and consider a higher C-rating pack.'
     : undefined;
 
+  const packs = instances.length > 1 ? ` Worst of ${instances.length} packs: battery ${worst.label}.` : '';
   return {
     id: 'battery', name: 'Battery', status, summary,
-    details: `Range: ${minVolt.toFixed(1)}V - ${maxVolt.toFixed(1)}V. Sag: ${sag.toFixed(1)}V. Peak current: ${maxCurr.toFixed(1)}A. Discharged: ${maxDischarged.toFixed(0)} mAh.`,
+    details: `Range: ${minVolt.toFixed(1)}V - ${maxVolt.toFixed(1)}V. Sag: ${sag.toFixed(1)}V. Peak current: ${maxCurr.toFixed(1)}A. Discharged: ${maxDischarged.toFixed(0)} mAh.${packs}`,
     recommendation,
     explorerPreset: { types: ['battery_status'], fields: { battery_status: ['voltage_v', 'current_a'] } },
     values: { maxVolt, minVolt, sag, maxCurr, maxDischarged },
@@ -130,14 +164,21 @@ function checkGps(log: DataFlashLog): HealthCheckResult {
 }
 
 function checkVibration(log: DataFlashLog): HealthCheckResult {
-  const imu = log.messages.get('vehicle_imu_status');
-  if (imu && imu.length > 0) {
-    let peak = 0;
-    for (const msg of imu) {
-      const v = num(msg, 'accel_vibration_metric') ?? 0;
-      if (v > peak) peak = v;
+  const imuInstances = collectInstances(log, 'vehicle_imu_status');
+  if (imuInstances.length > 0) {
+    // Worst peak across all IMUs drives the result; name which one when more
+    // than a single IMU is present.
+    let peak = 0, worstLabel = imuInstances[0]?.label ?? 1;
+    for (const { label, messages } of imuInstances) {
+      let instPeak = 0;
+      for (const msg of messages) {
+        const v = num(msg, 'accel_vibration_metric') ?? 0;
+        if (v > instPeak) instPeak = v;
+      }
+      if (instPeak > peak) { peak = instPeak; worstLabel = label; }
     }
-    return vibrationResult(peak, 'vehicle_imu_status', 'accel_vibration_metric');
+    const where = imuInstances.length > 1 ? `IMU ${worstLabel}` : undefined;
+    return vibrationResult(peak, 'vehicle_imu_status', where, 'accel_vibration_metric');
   }
 
   // Fallback: derive a peak vibration metric from sensor_combined accelerometer
@@ -163,24 +204,25 @@ function checkVibration(log: DataFlashLog): HealthCheckResult {
         const dev = Math.hypot(x - mx, y - my, z - mz);
         if (dev > peak) peak = dev;
       }
-      return vibrationResult(peak, 'sensor_combined', 'accelerometer_m_s2[0]', 'accelerometer_m_s2[1]', 'accelerometer_m_s2[2]');
+      return vibrationResult(peak, 'sensor_combined', undefined, 'accelerometer_m_s2[0]', 'accelerometer_m_s2[1]', 'accelerometer_m_s2[2]');
     }
   }
 
   return { id: 'vibration', name: 'Vibration', status: 'skip', summary: 'No vibration data', details: 'vehicle_imu_status / sensor_combined messages not found in log' };
 }
 
-function vibrationResult(peak: number, topic: string, ...fields: string[]): HealthCheckResult {
+function vibrationResult(peak: number, topic: string, where: string | undefined, ...fields: string[]): HealthCheckResult {
   // Thresholds mirror the ArduPilot m/s^2 heuristic (warn >30, fail >60) and
   // may need tuning against real PX4 data once samples are available.
+  const tag = where ? ` (${where})` : '';
   let status: CheckStatus = 'pass';
   let summary = `Peak: ${peak.toFixed(1)} m/s²`;
   if (peak > 60) {
     status = 'fail';
-    summary = `Excessive vibration: ${peak.toFixed(1)} m/s²`;
+    summary = `Excessive vibration${tag}: ${peak.toFixed(1)} m/s²`;
   } else if (peak > 30) {
     status = 'warn';
-    summary = `Elevated vibration: ${peak.toFixed(1)} m/s²`;
+    summary = `Elevated vibration${tag}: ${peak.toFixed(1)} m/s²`;
   }
 
   const recommendation = status === 'fail'
@@ -199,8 +241,8 @@ function vibrationResult(peak: number, topic: string, ...fields: string[]): Heal
 }
 
 function checkEkf(log: DataFlashLog): HealthCheckResult {
-  const est = log.messages.get('estimator_status');
-  if (!est || est.length === 0) {
+  const instances = collectInstances(log, 'estimator_status');
+  if (instances.length === 0) {
     return { id: 'ekf', name: 'EKF Health', status: 'skip', summary: 'No EKF data', details: 'estimator_status messages not found in log' };
   }
 
@@ -208,32 +250,44 @@ function checkEkf(log: DataFlashLog): HealthCheckResult {
     'mag_test_ratio', 'vel_test_ratio', 'pos_test_ratio',
     'hgt_test_ratio', 'tas_test_ratio', 'hagl_test_ratio',
   ];
-  let worstRatio = 0, worstField = '';
-  // A ratio >= 1.0 is a failing innovation check. We require it to recur in a
-  // meaningful share of samples (>=10%) before failing, so a single transient
-  // spike does not flag the whole flight.
-  let failingSamples = 0;
-  for (const msg of est) {
-    let sampleMax = 0;
-    for (const f of ratioFields) {
-      const r = num(msg, f);
-      if (r === undefined) continue;
-      if (r > sampleMax) sampleMax = r;
-      if (r > worstRatio) { worstRatio = r; worstField = f; }
+
+  // Evaluate each estimator and keep the worst by peak test ratio. A ratio
+  // >= 1.0 is a failing innovation check; we require it to recur in a
+  // meaningful share of that estimator's samples (>=10%) before failing, so a
+  // single transient spike does not flag the whole flight.
+  let worst: { label: number; worstRatio: number; worstField: string; failingSamples: number; total: number } | undefined;
+  for (const { label, messages } of instances) {
+    let worstRatio = 0, worstField = '', failingSamples = 0;
+    for (const msg of messages) {
+      let sampleMax = 0;
+      for (const f of ratioFields) {
+        const r = num(msg, f);
+        if (r === undefined) continue;
+        if (r > sampleMax) sampleMax = r;
+        if (r > worstRatio) { worstRatio = r; worstField = f; }
+      }
+      if (sampleMax >= 1.0) failingSamples++;
     }
-    if (sampleMax >= 1.0) failingSamples++;
+    if (!worst || worstRatio > worst.worstRatio) {
+      worst = { label, worstRatio, worstField, failingSamples, total: messages.length };
+    }
+  }
+  if (!worst) {
+    return { id: 'ekf', name: 'EKF Health', status: 'skip', summary: 'No EKF data', details: 'estimator_status messages not found in log' };
   }
 
-  const failPct = (failingSamples / est.length) * 100;
+  const { worstRatio, worstField, failingSamples, total } = worst;
+  const failPct = (failingSamples / total) * 100;
+  const where = instances.length > 1 ? ` (EKF ${worst.label})` : '';
   let status: CheckStatus = 'pass';
   let summary = `EKF healthy (worst ratio ${worstRatio.toFixed(2)})`;
 
   if (worstRatio >= 1.0 && failPct >= 10) {
     status = 'fail';
-    summary = `EKF innovation failures: ${worstField} peaked at ${worstRatio.toFixed(2)} in ${failPct.toFixed(0)}% of samples`;
+    summary = `EKF innovation failures${where}: ${worstField} peaked at ${worstRatio.toFixed(2)} in ${failPct.toFixed(0)}% of samples`;
   } else if (worstRatio > 0.5) {
     status = 'warn';
-    summary = `Marginal EKF: ${worstField} peaked at ${worstRatio.toFixed(2)}`;
+    summary = `Marginal EKF${where}: ${worstField} peaked at ${worstRatio.toFixed(2)}`;
   }
 
   const recommendation = status !== 'pass'
@@ -242,7 +296,7 @@ function checkEkf(log: DataFlashLog): HealthCheckResult {
 
   return {
     id: 'ekf', name: 'EKF Health', status, summary,
-    details: `Worst test ratio: ${worstField || 'none'} = ${worstRatio.toFixed(2)}. Samples with a ratio >= 1.0: ${failingSamples}/${est.length} (${failPct.toFixed(1)}%).`,
+    details: `Worst test ratio: ${worstField || 'none'} = ${worstRatio.toFixed(2)}. Samples with a ratio >= 1.0: ${failingSamples}/${total} (${failPct.toFixed(1)}%).`,
     recommendation,
     explorerPreset: { types: ['estimator_status'], fields: { estimator_status: ['mag_test_ratio', 'vel_test_ratio', 'pos_test_ratio'] } },
     values: { worstRatio, failPct },

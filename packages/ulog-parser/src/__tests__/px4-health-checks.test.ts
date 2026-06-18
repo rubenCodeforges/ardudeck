@@ -146,6 +146,27 @@ describe('checkBattery', () => {
   it('skips when absent', () => {
     expect(find(runPx4HealthChecks(makeLog({})), 'battery').status).toBe('skip');
   });
+  it('surfaces a sagging secondary battery instance (battery_status_1)', () => {
+    const r = find(
+      runPx4HealthChecks(
+        makeLog({
+          battery_status: [
+            { voltage_v: 16.8, current_a: 5, discharged_mah: 0 },
+            { voltage_v: 16.5, current_a: 20, discharged_mah: 500 },
+          ],
+          battery_status_1: [
+            { voltage_v: 16.8, current_a: 5, discharged_mah: 0 },
+            { voltage_v: 14.0, current_a: 90, discharged_mah: 800 },
+          ],
+        }),
+      ),
+      'battery',
+    );
+    expect(r.status).toBe('fail');
+    expect(r.values?.sag).toBeCloseTo(2.8, 5);
+    // Worst pack is the second instance, named "battery 2" (1-based).
+    expect(r.summary).toContain('battery 2');
+  });
 });
 
 describe('checkGps', () => {
@@ -218,6 +239,27 @@ describe('checkGps', () => {
     expect(r.status).toBe('pass');
     expect(r.values?.maxHdop).toBeCloseTo(0.9, 5);
   });
+  it('warns in the marginal band (7 sats, hdop 2.5)', () => {
+    const r = find(
+      runPx4HealthChecks(
+        makeLog({
+          vehicle_gps_position: [
+            { fix_type: 3, satellites_used: 7, hdop: 2.5 },
+            { fix_type: 3, satellites_used: 9, hdop: 2.4 },
+          ],
+        }),
+      ),
+      'gps',
+    );
+    expect(r.status).toBe('warn');
+  });
+  it('warns when 3D fix is between 80% and 95% of samples', () => {
+    const rows = Array.from({ length: 10 }, () => ({ fix_type: 3, satellites_used: 12, hdop: 1.0 }));
+    rows[0] = { fix_type: 1, satellites_used: 12, hdop: 1.0 };
+    const r = find(runPx4HealthChecks(makeLog({ vehicle_gps_position: rows })), 'gps');
+    expect(r.values?.fix3dPct).toBeCloseTo(90, 5);
+    expect(r.status).toBe('warn');
+  });
   it('skips when absent', () => {
     expect(find(runPx4HealthChecks(makeLog({})), 'gps').status).toBe('skip');
   });
@@ -261,10 +303,10 @@ describe('checkVibration', () => {
     expect(r.status).toBe('fail');
     expect(r.values?.peak).toBe(70);
   });
-  it('falls back to sensor_combined accelerometer magnitude', () => {
-    // Magnitude of (0,0,9.8) variation. We feed accel vectors; check derives a
-    // vibration metric from the spread. Just confirm it does not skip and
-    // produces a sensible peak.
+  it('falls back to sensor_combined accelerometer magnitude with a numeric peak', () => {
+    // Two samples: mean accel is (20.25, 0.15, 4.9). Peak per-sample deviation
+    // from that mean is the larger of the two distances. Both samples are
+    // symmetric about the mean here, so the peak deviation is the half-spread.
     const r = find(
       runPx4HealthChecks(
         makeLog({
@@ -276,7 +318,28 @@ describe('checkVibration', () => {
       ),
       'vibration',
     );
-    expect(r.status).not.toBe('skip');
+    const mx = (0.5 + 40) / 2, my = (0.3 + 0) / 2, mz = (9.8 + 0) / 2;
+    const expectedPeak = Math.hypot(0.5 - mx, 0.3 - my, 9.8 - mz);
+    expect(typeof r.values?.peak).toBe('number');
+    expect(r.values?.peak).toBeCloseTo(expectedPeak, 5);
+    // expectedPeak ~ 20.3 m/s^2 -> below 30 warn threshold.
+    expect(r.status).toBe('pass');
+    expect(r.details).toContain('sensor_combined');
+  });
+  it('surfaces a high-vibe secondary IMU instance (vehicle_imu_status_1)', () => {
+    const r = find(
+      runPx4HealthChecks(
+        makeLog({
+          vehicle_imu_status: [{ accel_vibration_metric: 8 }],
+          vehicle_imu_status_1: [{ accel_vibration_metric: 70 }],
+        }),
+      ),
+      'vibration',
+    );
+    expect(r.status).toBe('fail');
+    expect(r.values?.peak).toBe(70);
+    // Worst is the second instance, named "IMU 2" (1-based).
+    expect(r.summary).toContain('IMU 2');
   });
   it('skips when absent', () => {
     expect(find(runPx4HealthChecks(makeLog({})), 'vibration').status).toBe('skip');
@@ -340,6 +403,27 @@ describe('checkEkf', () => {
     const r = find(runPx4HealthChecks(makeLog({ estimator_status: rows })), 'ekf');
     expect(r.status).not.toBe('fail');
   });
+  it('surfaces a failing secondary estimator instance (estimator_status_1)', () => {
+    const r = find(
+      runPx4HealthChecks(
+        makeLog({
+          estimator_status: [
+            { mag_test_ratio: 0.2, vel_test_ratio: 0.1, pos_test_ratio: 0.1 },
+            { mag_test_ratio: 0.2, vel_test_ratio: 0.1, pos_test_ratio: 0.1 },
+          ],
+          estimator_status_1: [
+            { mag_test_ratio: 1.5, vel_test_ratio: 0.1, pos_test_ratio: 0.1 },
+            { mag_test_ratio: 1.2, vel_test_ratio: 0.1, pos_test_ratio: 0.1 },
+          ],
+        }),
+      ),
+      'ekf',
+    );
+    expect(r.status).toBe('fail');
+    expect(r.values?.worstRatio).toBeCloseTo(1.5, 5);
+    // Worst is the second instance, named "EKF 2" (1-based).
+    expect(r.summary).toContain('EKF 2');
+  });
   it('skips when absent', () => {
     expect(find(runPx4HealthChecks(makeLog({})), 'ekf').status).toBe('skip');
   });
@@ -395,6 +479,24 @@ describe('checkArming', () => {
     expect(r.status).toBe('info');
     expect(r.values?.armCount).toBe(1);
     expect(r.values?.armedDurationS).toBeCloseTo(10, 1);
+  });
+  it('computes armed duration to the last timestamp when still armed at end of log', () => {
+    const r = find(
+      runPx4HealthChecks(
+        makeLog({
+          vehicle_status: [
+            { timestamp: 1_000_000, arming_state: 1 },
+            { timestamp: 2_000_000, arming_state: 2 },
+            { timestamp: 9_000_000, arming_state: 2 },
+          ],
+        }),
+      ),
+      'arming',
+    );
+    expect(r.values?.armCount).toBe(1);
+    expect(r.values?.disarmCount).toBe(0);
+    // Armed at 2s, never disarmed; tail-corrected to last sample at 9s = 7s.
+    expect(r.values?.armedDurationS).toBeCloseTo(7, 1);
   });
   it('skips when absent', () => {
     expect(find(runPx4HealthChecks(makeLog({})), 'arming').status).toBe('skip');
@@ -479,6 +581,28 @@ describe('checkFlightStats', () => {
     expect(r.values?.distance).toBeCloseTo(10, 5);
     // duration from timeRange
     expect(r.values?.durationS).toBeCloseTo(2, 5);
+  });
+  it('prefers local -z altitude over global alt when both are present', () => {
+    const r = find(
+      runPx4HealthChecks(
+        makeLog(
+          {
+            vehicle_local_position: [
+              { timestamp: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0 },
+              { timestamp: 1_000_000, x: 0, y: 0, z: -50, vx: 0, vy: 0 },
+            ],
+            vehicle_global_position: [
+              { timestamp: 0, lat: 1, lon: 2, alt: 500 },
+              { timestamp: 1_000_000, lat: 1, lon: 2, alt: 520 },
+            ],
+          },
+          { startUs: 0, endUs: 1_000_000 },
+        ),
+      ),
+      'flight-stats',
+    );
+    // Local -z (50) is used, not global AMSL alt (520).
+    expect(r.values?.maxAltitude).toBeCloseTo(50, 5);
   });
   it('uses vehicle_global_position alt when local absent', () => {
     const r = find(
