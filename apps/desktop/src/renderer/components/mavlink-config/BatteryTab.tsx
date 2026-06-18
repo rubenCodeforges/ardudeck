@@ -19,7 +19,7 @@ import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
-import Px4ConfigNotice from './Px4ConfigNotice';
+import Px4BatteryConfig from './Px4BatteryConfig';
 import {
   BATTERY_MONITORS,
   getCellVoltages,
@@ -90,9 +90,7 @@ const BatteryTab: React.FC = () => {
   const modified = modifiedCount();
 
   if (firmware === 'px4') {
-    return (
-      <Px4ConfigNotice message="PX4 battery configuration is available in the Parameters tab (BAT1_* parameters)." />
-    );
+    return <Px4BatteryConfig />;
   }
 
   return (
