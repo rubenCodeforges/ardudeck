@@ -43,8 +43,10 @@ import {
 } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useConnectionStore } from '../../stores/connection-store';
 
 import { InfoCard } from '../ui/InfoCard';
+import Px4FlightModesConfig from './Px4FlightModesConfig';
 import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import {
   FLIGHT_MODE_PRESETS,
@@ -232,6 +234,7 @@ interface FlightModesTabProps {
 
 const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copter' }) => {
   const isRover = vehicleCategory === 'rover';
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const { parameters, setParameter, modifiedCount } = useParameterStore();
 
   // --- Live RC from telemetry store (same pattern as ReceiverTab) ---
@@ -365,6 +368,10 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
   };
 
   const modified = modifiedCount();
+
+  if (firmware === 'px4') {
+    return <Px4FlightModesConfig />;
+  }
 
   return (
     <div className="p-6 space-y-6">
