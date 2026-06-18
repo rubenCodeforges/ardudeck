@@ -91,7 +91,21 @@ export interface TakeoffPresentation {
   dialogNote?: string;
 }
 
-export function presentTakeoff(vehicleClass: ArduPilotVehicleClass): TakeoffPresentation {
+export function presentTakeoff(
+  vehicleClass: ArduPilotVehicleClass,
+  firmware?: FirmwareSource,
+): TakeoffPresentation {
+  // PX4 vehicles run the separate takeoffPx4 path (AUTO_TAKEOFF mode +
+  // MIS_TAKEOFF_ALT), so the copy must not reference ArduPilot concepts like
+  // GUIDED or TKOFF_ALT. Surface vehicles still read "n/a" regardless.
+  if (firmware === 'px4' && vehicleClass !== 'rover' && vehicleClass !== 'sub') {
+    return {
+      buttonLabel: 'Auto Takeoff…',
+      buttonHint:  'Arm, switch to AUTO_TAKEOFF, climb to MIS_TAKEOFF_ALT',
+      dialogPrompt: 'Climb to',
+      dialogNote:  'PX4 auto-takeoff: sets MIS_TAKEOFF_ALT and switches to AUTO_TAKEOFF at the current position.',
+    };
+  }
   switch (vehicleClass) {
     case 'copter':
       return {

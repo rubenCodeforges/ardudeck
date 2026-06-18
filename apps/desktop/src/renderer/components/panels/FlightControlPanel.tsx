@@ -693,7 +693,10 @@ function MavlinkFlightControl() {
   };
 
   // Per-vehicle button + dialog copy comes from the strategy module.
-  const takeoffPresentation = useMemo(() => presentTakeoff(vehicleClass), [vehicleClass]);
+  const takeoffPresentation = useMemo(
+    () => presentTakeoff(vehicleClass, connectionState.firmware),
+    [vehicleClass, connectionState.firmware],
+  );
 
   // RTL/Land sourced from the per-vehicle capability matrix.
   const rtlModeNum = capabilities.rtlModeNum;

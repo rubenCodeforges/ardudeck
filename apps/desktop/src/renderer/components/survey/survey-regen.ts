@@ -11,6 +11,7 @@
  */
 
 import { useMissionStore } from '../../stores/mission-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { getSurveyGenerator } from './generator-registry';
 import { surveyToMissionItems } from './mission-builder';
 import { isSurveyGroup, type SurveyGroup } from '../../../shared/mission-group-types';
@@ -54,7 +55,8 @@ export function regenerateSurveyGroup(groupId: string): RegenerateResult {
     return { ok: false, reason: 'Generator returned no result' };
   }
 
-  const items = surveyToMissionItems(result, config);
+  const firmware = useConnectionStore.getState().connectionState.firmware;
+  const items = surveyToMissionItems(result, config, firmware);
   if (items.length === 0) {
     return { ok: false, reason: 'Generator produced no waypoints' };
   }

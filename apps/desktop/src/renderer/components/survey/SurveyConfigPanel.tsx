@@ -16,6 +16,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSurveyStore } from '../../stores/survey-store';
 import { useMissionStore } from '../../stores/mission-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { CameraPresetSelector } from './CameraPresetSelector';
@@ -263,7 +264,8 @@ export function SurveyConfigPanel() {
   const handleInsertSurvey = useCallback(() => {
     if (!result || !polygon) return;
     const fullConfig = { ...config, polygon };
-    let items = surveyToMissionItems(result, fullConfig);
+    const firmware = useConnectionStore.getState().connectionState.firmware;
+    let items = surveyToMissionItems(result, fullConfig, firmware);
     if (items.length === 0) return;
 
     // If the mission already contains a NAV_TAKEOFF (either auto-prepended
@@ -316,10 +318,11 @@ export function SurveyConfigPanel() {
     const sorties = splitIntoSorties(result.waypoints, config.speed, config.enduranceMinutes ?? 20);
     if (sorties.length <= 1) return;
     const fullConfig = { ...config, polygon };
+    const firmware = useConnectionStore.getState().connectionState.firmware;
     const baseName = `Survey ${existingGroups.filter((g) => g.kind === 'survey').length + 1}`;
     const entries = sorties.map((slice, i) => {
       // Each sortie is its own complete flight: takeoff -> slice -> RTL.
-      const items = surveyToMissionItems({ ...result, waypoints: slice }, fullConfig);
+      const items = surveyToMissionItems({ ...result, waypoints: slice }, fullConfig, firmware);
       const group = createManualGroup({
         name: `${baseName} · Flight ${i + 1}/${sorties.length}`,
         color: GROUP_COLOR_PALETTE[i % GROUP_COLOR_PALETTE.length]!,

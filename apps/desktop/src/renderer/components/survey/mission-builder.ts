@@ -20,14 +20,24 @@
  */
 import type { MissionItem } from '../../../shared/mission-types';
 import { MAV_CMD, MAV_FRAME } from '../../../shared/mission-types';
+import type { FirmwareSource } from '../../../shared/firmware-types';
 import type { SurveyConfig, SurveyResult } from './survey-types';
 
 /**
  * Convert survey result into a complete mission ready for upload.
+ *
+ * `firmware` only changes vendor-specific param conventions, never the command
+ * stream itself: all emitted MAV_CMDs (NAV_TAKEOFF, NAV_WAYPOINT,
+ * DO_CHANGE_SPEED, DO_SET_CAM_TRIGG_DIST, NAV_RETURN_TO_LAUNCH) are standard and
+ * accepted by both ArduPilot and PX4. The single divergence is DO_CHANGE_SPEED
+ * speed-type (param1): ArduPilot uses airspeed (0) for aircraft, but PX4 only
+ * acts on groundspeed (1) for that command, so we send 1 for PX4 aircraft.
+ * Omitting `firmware` (or any non-px4 value) preserves ArduPilot behavior.
  */
 export function surveyToMissionItems(
   result: SurveyResult,
   config: SurveyConfig,
+  firmware?: FirmwareSource,
 ): MissionItem[] {
   if (result.waypoints.length === 0) return [];
 
@@ -36,6 +46,7 @@ export function surveyToMissionItems(
 
   const isManual = !!(config.camera.manualCorridorWidth && config.camera.manualCorridorWidth > 0);
   const isReverseAlt = isManual && config.groundPattern === 'reverse-alternating';
+  const isPx4 = firmware === 'px4';
 
   // Camera-off-outside: trigger only along the scan lines and switch the camera
   // off during the turn-arounds. Grid/crosshatch emit waypoints as line
@@ -149,7 +160,9 @@ export function surveyToMissionItems(
         // Speed type: 0 = airspeed (aircraft), 1 = ground speed (rover).
         // ArduRover ignores type 0 and falls back to ground speed, so either works
         // for rovers in practice, but we set it correctly for clarity.
-        param1: isManual ? 1 : 0,
+        // PX4 aircraft only honor ground speed (1) for DO_CHANGE_SPEED, so use 1
+        // there too; ArduPilot aircraft keep airspeed (0) unchanged.
+        param1: isManual || isPx4 ? 1 : 0,
         param2: config.speed,
         param3: -1,               // Throttle: -1 = no change
         param4: 0,
