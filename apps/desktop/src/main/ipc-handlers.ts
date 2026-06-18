@@ -786,6 +786,16 @@ let paramDownloadTimeout: NodeJS.Timeout | null = null;
 let paramDownloadActive = false; // True only during bulk PARAM_REQUEST_LIST download
 let paramDownloadStartTime = 0; // Timestamp for measuring download duration
 
+// Resolve the MAV_PARAM_TYPE to put on the wire for a PARAM_SET.
+// ArduPilot stores all params as float32 over MAVLink and expects REAL32 (9)
+// for every PARAM_SET regardless of the param's native type, so we always
+// force REAL32 there. PX4 is strict: it rejects/misinterprets a PARAM_SET whose
+// param_type does not match the param's real type, so for PX4 we send the
+// actual per-param type (originating from the FC-reported PARAM_VALUE type).
+function resolveParamSetType(requestedType: number): number {
+  return connectionState.firmware === 'px4' ? requestedType : 9; // 9 = MAV_PARAM_TYPE_REAL32
+}
+
 // MAVLink FTP client for fast parameter download
 let ftpClient: MavlinkFtpClient | null = null;
 let paramRequestInFlight = false; // Guard against concurrent param download requests
@@ -4139,7 +4149,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         targetComponent: 1, // MAV_COMP_ID_AUTOPILOT1
         paramId,
         paramValue: value,
-        paramType: type,
+        paramType: resolveParamSetType(type),
       });
 
       // Use detected MAVLink version for compatibility (with signing if enabled)
@@ -4252,7 +4262,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             targetComponent: 1,
             paramId: p.paramId,
             paramValue: p.value,
-            paramType: p.type,
+            paramType: resolveParamSetType(p.type),
           });
 
           const packet = await sendMavlinkPacket(PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
@@ -5044,7 +5054,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         const targetComponent = 1;
         // Look up paramType from receivedParams cache, default to REAL32 (9).
         const cached = receivedParams.get(paramId);
-        const paramType = cached?.paramType ?? 9;
+        const paramType = resolveParamSetType(cached?.paramType ?? 9);
         const setPayload = serializeParamSet({
           targetSystem, targetComponent, paramId, paramValue: value, paramType,
         });
