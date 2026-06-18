@@ -18,7 +18,7 @@ import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { isPreArmMessage, extractPreArmReason, matchPreArmError } from '../../../shared/prearm-checks';
 import { PreArmParamFix } from '../prearm/PreArmParamFix';
 import { PanelContainer, SectionTitle } from './panel-utils';
-import { getVehicleClass, ARDUPILOT_COMMON_MODES, VEHICLE_CAPABILITIES, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
+import { getVehicleClass, ARDUPILOT_COMMON_MODES, VEHICLE_CAPABILITIES, PX4_FLIGHT_MODES, encodePx4CustomMode, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
 import { executeTakeoff, presentTakeoff } from './takeoff-strategies';
 
 // =============================================================================
@@ -473,13 +473,26 @@ function MavlinkFlightControl() {
     qEnable: typeof qEnable === 'number' ? qEnable : undefined,
     sitlFrame: sitlIsRunning ? sitlFrame : undefined,
   });
-  const availableModes = ARDUPILOT_COMMON_MODES[vehicleClass];
   const capabilities = VEHICLE_CAPABILITIES[vehicleClass];
+  // PX4 encodes the commanded mode as a custom_mode bitfield rather than a raw
+  // ArduPilot mode number, and HEARTBEAT echoes back that same bitfield (so
+  // flight.modeNum is the encoded value too — the active-mode highlight still
+  // compares equal). ArduPilot keeps its existing per-vehicle mode/mission
+  // numbers unchanged.
+  const isPx4 = connectionState.firmware === 'px4';
+  const availableModes = isPx4
+    ? PX4_FLIGHT_MODES.map((m) => ({ name: m.name, modeNum: encodePx4CustomMode(m.mainMode, m.subMode) }))
+    : ARDUPILOT_COMMON_MODES[vehicleClass];
   const missionItems = useMissionStore((s) => s.missionItems);
   const currentSeq = useMissionStore((s) => s.currentSeq);
   const fetchMission = useMissionStore((s) => s.fetchMission);
   const missionLoaded = missionItems.length > 0;
-  const missionModes = MISSION_MODES[vehicleClass];
+  // PX4 mission run = AUTO_MISSION (4,4); pause = AUTO_LOITER/Hold (4,3),
+  // which holds position without abandoning the mission, same intent as the
+  // ArduPilot pause modes.
+  const missionModes = isPx4
+    ? { auto: encodePx4CustomMode(4, 4), pause: encodePx4CustomMode(4, 3), pauseLabel: 'Hold' }
+    : MISSION_MODES[vehicleClass];
   const isInAuto = flight.modeNum === missionModes.auto;
   const isInPause = flight.modeNum === missionModes.pause;
 
