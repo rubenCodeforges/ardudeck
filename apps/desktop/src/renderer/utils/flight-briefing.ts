@@ -14,8 +14,10 @@ import {
   DEFAULT_USER_UNIT_PREFERENCES,
   formatAltitudeFromMeters,
   formatDistanceFromMeters,
+  formatWindSpeedFromMetersPerSecond,
   type AltitudeUnit,
   type DistanceUnit,
+  type WindSpeedUnit,
 } from '../../shared/user-units.js';
 import type { WeatherSummary } from './weather-api';
 
@@ -55,6 +57,8 @@ export interface BriefingInput {
   distanceUnit?: DistanceUnit;
   /** Display unit for altitude/depth strings. Native numeric values stay metres. */
   altitudeUnit?: AltitudeUnit;
+  /** Display unit for weather wind strings. Native numeric values stay metres/second. */
+  windSpeedUnit?: WindSpeedUnit;
   /** Legal AGL ceiling in metres. Defaults to 120 (EASA / 400ft). */
   ceilingM?: number;
 }
@@ -139,6 +143,7 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
   const ceilingM = input.ceilingM ?? 120;
   const distanceUnit = input.distanceUnit ?? DEFAULT_USER_UNIT_PREFERENCES.distance;
   const altitudeUnit = input.altitudeUnit ?? DEFAULT_USER_UNIT_PREFERENCES.altitude;
+  const windSpeedUnit = input.windSpeedUnit ?? DEFAULT_USER_UNIT_PREFERENCES.windSpeed;
   const weather = input.weather ?? null;
   const survey = input.survey
     ? {
@@ -230,6 +235,7 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
     ceilingM,
     distanceUnit,
     altitudeUnit,
+    windSpeedUnit,
     weather,
   });
 
@@ -265,6 +271,7 @@ interface CheckContext {
   ceilingM: number;
   distanceUnit: DistanceUnit;
   altitudeUnit: AltitudeUnit;
+  windSpeedUnit: WindSpeedUnit;
   weather: WeatherSummary | null;
 }
 
@@ -331,9 +338,9 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
     checks.push({
       id: 'wind',
       label: 'Wind',
-      value: `${ctx.weather.windSpeedMs.toFixed(1)} m/s`,
+      value: formatWindSpeedFromMetersPerSecond(ctx.weather.windSpeedMs, ctx.windSpeedUnit),
       severity: PASSIVE,
-      detail: `gusts ${ctx.weather.windGustMs.toFixed(1)} m/s`,
+      detail: `gusts ${formatWindSpeedFromMetersPerSecond(ctx.weather.windGustMs, ctx.windSpeedUnit)}`,
     });
   }
 

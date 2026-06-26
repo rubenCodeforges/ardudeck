@@ -24,7 +24,14 @@ import {
   type DaylightWindow,
 } from '../../utils/flight-briefing';
 import { getCurrentWeather, compassPoint, type WeatherSummary } from '../../utils/weather-api';
-import { formatAreaFromSquareMeters, formatSpeedFromMetersPerSecond } from '../../../shared/user-units.js';
+import {
+  formatAreaFromSquareMeters,
+  formatSpeedFromMetersPerSecond,
+  formatWindSpeedFromMetersPerSecond,
+  UNIT_LABELS,
+  windSpeedValueFromMetersPerSecond,
+  type WindSpeedUnit,
+} from '../../../shared/user-units.js';
 
 // Each section is a subtle raised card so the groups read as distinct blocks
 // instead of one continuous list. Header (small icon + title) over a divider,
@@ -97,8 +104,9 @@ function MeterStat({ label, value, detail, pct, tone = 'bg-blue-500/70' }: {
 
 // Compass showing the wind: an arrowhead on the rim at the bearing the wind
 // comes FROM, pointing inward (the way it pushes the aircraft). Speed reads in
-// the centre. Far faster to parse than "7.8 m/s W, from 288°".
-function WindRose({ dirDeg, speedMs }: { dirDeg: number; speedMs: number }) {
+// the centre. Far faster to parse than a sentence with bearing and speed.
+function WindRose({ dirDeg, speedMs, unit }: { dirDeg: number; speedMs: number; unit: WindSpeedUnit }) {
+  const displaySpeed = windSpeedValueFromMetersPerSecond(speedMs, unit).toFixed(1);
   return (
     <div className="relative w-14 h-14 shrink-0">
       <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -112,8 +120,8 @@ function WindRose({ dirDeg, speedMs }: { dirDeg: number; speedMs: number }) {
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-xs font-semibold text-content leading-none tabular-nums">{speedMs.toFixed(1)}</span>
-        <span className="text-[8px] text-content-tertiary leading-none mt-0.5">m/s</span>
+        <span className="text-xs font-semibold text-content leading-none tabular-nums">{displaySpeed}</span>
+        <span className="text-[8px] text-content-tertiary leading-none mt-0.5">{UNIT_LABELS.windSpeed[unit]}</span>
       </div>
     </div>
   );
@@ -152,6 +160,7 @@ export function FlightInfoPanel() {
   const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
   const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
+  const windSpeedUnit = useSettingsStore((s) => s.unitPreferences.windSpeed);
 
   const { cruiseSpeedMs, enduranceSec, vehicleName, isAerial } = useMemo(() => {
     const st = useSettingsStore.getState();
@@ -213,8 +222,8 @@ export function FlightInfoPanel() {
   );
 
   const briefing = useMemo(
-    () => computeMissionBriefing({ located, home, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit }),
-    [located, home, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit],
+    () => computeMissionBriefing({ located, home, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit, windSpeedUnit }),
+    [located, home, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit, windSpeedUnit],
   );
 
   if (!isAerial) {
@@ -313,14 +322,14 @@ export function FlightInfoPanel() {
         ) : weather ? (
           <>
             <div className="flex items-center gap-3 py-1">
-              <WindRose dirDeg={weather.windDirDeg} speedMs={weather.windSpeedMs} />
+              <WindRose dirDeg={weather.windDirDeg} speedMs={weather.windSpeedMs} unit={windSpeedUnit} />
               <div className="min-w-0">
                 <div className="text-sm text-content">
                   Wind from <span className="font-medium">{compassPoint(weather.windDirDeg)}</span>
                   <span className="text-content-secondary"> ({Math.round(weather.windDirDeg)}°)</span>
                 </div>
                 <div className="text-[11px] text-content-tertiary mt-0.5">
-                  gusting to {weather.windGustMs.toFixed(1)} m/s
+                  gusting to {formatWindSpeedFromMetersPerSecond(weather.windGustMs, windSpeedUnit)}
                   {cruiseSpeedMs > 0 && <> · {Math.round((weather.windSpeedMs / cruiseSpeedMs) * 100)}% of cruise</>}
                 </div>
               </div>

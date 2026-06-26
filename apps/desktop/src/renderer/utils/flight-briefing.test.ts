@@ -112,6 +112,19 @@ describe('computeMissionBriefing', () => {
     expect(feetBriefing.checks.find((c) => c.id === 'maxAlt')?.detail).toBe('ceiling 394 ft AGL');
   });
 
+  it('formats wind checks using the selected wind speed unit while keeping native meters per second', () => {
+    const weather = {
+      windSpeedMs: 10, windGustMs: 12, windDirDeg: 270, tempC: 18, precipMm: 0,
+      sunriseIso: null, sunsetIso: null, currentTimeIso: null, fetchedAtMs: 0,
+    };
+    const briefing = computeMissionBriefing({ ...base, located: legPoints(3), weather, windSpeedUnit: 'kt' });
+    const wind = briefing.checks.find((c) => c.id === 'wind');
+
+    expect(briefing.weather!.windSpeedMs).toBe(10);
+    expect(wind?.value).toBe('19.4 kt');
+    expect(wind?.detail).toBe('gusts 23.3 kt');
+  });
+
   it('reports altitude range, total climb and waypoint count', () => {
     const located = [
       { lat: 0, lng: 0, altM: 40 },
