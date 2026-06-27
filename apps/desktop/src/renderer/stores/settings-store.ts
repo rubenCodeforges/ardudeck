@@ -188,19 +188,6 @@ export const DEFAULT_SURVEY_PERFORMANCE: SurveyPerformance = {
 };
 
 /**
- * Display unit preferences for large vehicle support
- * 'small' = mm, g, mAh (default - racing/freestyle quads)
- * 'large' = m, kg, Ah (large aircraft, industrial drones)
- */
-export type DisplayUnits = 'small' | 'large';
-
-/**
- * Survey measurement system for the Area Editor briefing readouts.
- * 'metric' = hectares + m/km, 'imperial' = acres + ft/mi.
- */
-export type SurveyUnits = 'metric' | 'imperial';
-
-/**
  * Experience level controls visibility of educational UI elements
  */
 export type ExperienceLevel = 'beginner' | 'advanced';
@@ -353,15 +340,9 @@ interface SettingsStore {
   // Telemetry stream rate
   telemetrySpeed: TelemetrySpeed;
 
-  // Display units
-  displayUnits: DisplayUnits;
-  setDisplayUnits: (units: DisplayUnits) => void;
+  // Display unit preferences
   unitPreferences: UserUnitPreferences;
   setUnitPreference: <K extends keyof UserUnitPreferences>(kind: K, unit: UserUnitPreferences[K]) => void;
-
-  // Survey measurement system (Area Editor briefing)
-  surveyUnits: SurveyUnits;
-  setSurveyUnits: (units: SurveyUnits) => void;
 
   // Theme
   theme: ThemePreference;
@@ -799,9 +780,7 @@ export const useSettingsStore = create<SettingsStore>()(
   defaultSitlType: 'ardupilot',
   preferredFirmwareSource: 'ardupilot' as FirmwareSource,
   telemetrySpeed: 'normal' as TelemetrySpeed,
-  displayUnits: 'small' as DisplayUnits,
   unitPreferences: { ...DEFAULT_USER_UNIT_PREFERENCES },
-  surveyUnits: 'metric' as SurveyUnits,
   theme: 'dark' as ThemePreference,
   nonDefaultHighlightColor: DEFAULT_NON_DEFAULT_COLOR,
   experienceLevel: null as ExperienceLevel | null,
@@ -917,9 +896,7 @@ export const useSettingsStore = create<SettingsStore>()(
           defaultSitlType: settingsRecord.defaultSitlType as DefaultSitlType || 'ardupilot',
           preferredFirmwareSource: (settingsRecord.preferredFirmwareSource as FirmwareSource) || 'ardupilot',
           telemetrySpeed: (settingsRecord.telemetrySpeed as TelemetrySpeed) || 'normal',
-          displayUnits: (settingsRecord.displayUnits as DisplayUnits) || 'small',
           unitPreferences,
-          surveyUnits: (settingsRecord.surveyUnits as SurveyUnits) || 'metric',
           theme: (settingsRecord.theme as ThemePreference) || 'dark',
           nonDefaultHighlightColor: (settingsRecord.nonDefaultHighlightColor as NonDefaultColorKey) || DEFAULT_NON_DEFAULT_COLOR,
           experienceLevel: (settingsRecord.experienceLevel as ExperienceLevel) || null,
@@ -965,9 +942,7 @@ export const useSettingsStore = create<SettingsStore>()(
         defaultSitlType: state.defaultSitlType,
         preferredFirmwareSource: state.preferredFirmwareSource,
         telemetrySpeed: state.telemetrySpeed,
-        displayUnits: state.displayUnits,
         unitPreferences: state.unitPreferences,
-        surveyUnits: state.surveyUnits,
         theme: state.theme,
         nonDefaultHighlightColor: state.nonDefaultHighlightColor,
         ...(state.experienceLevel ? { experienceLevel: state.experienceLevel } : {}),
@@ -1206,18 +1181,10 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ telemetrySpeed: speed });
   },
 
-  setDisplayUnits: (units) => {
-    set({ displayUnits: units });
-  },
-
   setUnitPreference: (kind, unit) => {
     set((state) => ({
       unitPreferences: { ...state.unitPreferences, [kind]: unit },
     }));
-  },
-
-  setSurveyUnits: (units) => {
-    set({ surveyUnits: units });
   },
 
   setTheme: (theme) => {
@@ -1289,9 +1256,7 @@ useSettingsStore.subscribe(
     defaultSitlType: state.defaultSitlType,
     preferredFirmwareSource: state.preferredFirmwareSource,
     telemetrySpeed: state.telemetrySpeed,
-    displayUnits: state.displayUnits,
     unitPreferences: state.unitPreferences,
-    surveyUnits: state.surveyUnits,
     theme: state.theme,
     nonDefaultHighlightColor: state.nonDefaultHighlightColor,
     experienceLevel: state.experienceLevel,
@@ -1322,9 +1287,7 @@ useSettingsStore.subscribe(
         curr.defaultSitlType !== prev.defaultSitlType ||
         curr.preferredFirmwareSource !== prev.preferredFirmwareSource ||
         curr.telemetrySpeed !== prev.telemetrySpeed ||
-        curr.displayUnits !== prev.displayUnits ||
         curr.unitPreferences !== prev.unitPreferences ||
-        curr.surveyUnits !== prev.surveyUnits ||
         curr.theme !== prev.theme ||
         curr.experienceLevel !== prev.experienceLevel ||
         curr.experienceLevelVersion !== prev.experienceLevelVersion ||

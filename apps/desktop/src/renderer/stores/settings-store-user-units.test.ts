@@ -81,5 +81,8 @@ describe('settings store unit preferences', () => {
         unitPreferences: { ...DEFAULT_USER_UNIT_PREFERENCES, windSpeed: 'kt' },
       }),
     );
+    const payload = saveSettings.mock.calls[0]?.[0];
+    expect(payload).not.toHaveProperty('displayUnits');
+    expect(payload).not.toHaveProperty('surveyUnits');
   });
 });
