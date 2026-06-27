@@ -35,6 +35,15 @@ import {
 } from './survey-presets';
 import type { SurveyPattern, CameraPreset, AltitudeReference, GroundPattern, CorridorMode } from './survey-types';
 import type { PersistedSurveyPreset } from '../../../shared/ipc-channels';
+import {
+  altitudeValueFromMeters,
+  formatAltitudeFromMeters,
+  speedValueFromMetersPerSecond,
+  toMetersPerSecondFromSpeedUnit,
+  toMetersFromAltitudeUnit,
+  UNIT_LABELS,
+  UNIT_PRECISION,
+} from '../../../shared/user-units.js';
 
 // Pattern catalog. Each entry advertises which modes it applies to so the UI
 // can filter without scattering conditional logic across the component.
@@ -127,6 +136,7 @@ export function SurveyConfigPanel() {
   const clearSurvey = useSurveyStore((s) => s.clearSurvey);
   const deactivateSurvey = useSurveyStore((s) => s.deactivateSurvey);
   const applyPresetConfig = useSurveyStore((s) => s.applyPresetConfig);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
 
   const addSurveyGroup = useMissionStore((s) => s.addSurveyGroup);
   const addGroupsWithItems = useMissionStore((s) => s.addGroupsWithItems);
@@ -549,11 +559,11 @@ export function SurveyConfigPanel() {
                       unit="cm/px"
                     />
                     <p className="text-[10px] text-content-tertiary leading-snug">
-                      Altitude {Math.round(config.altitude)} m (derived from GSD and camera)
+                      Altitude {formatAltitudeFromMeters(config.altitude, altitudeUnit)} (derived from GSD and camera)
                     </p>
                   </>
                 ) : (
-                  <SliderInput label="Altitude" value={config.altitude} onChange={setAltitude} min={10} max={500} step={5} unit="m" />
+                  <AltitudeSliderInput label="Altitude" valueMeters={config.altitude} onChangeMeters={setAltitude} minMeters={10} maxMeters={500} stepMeters={5} />
                 )}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-content-secondary w-14 flex-shrink-0">Alt Ref</span>
@@ -576,7 +586,7 @@ export function SurveyConfigPanel() {
                 </div>
               </>
             )}
-            <SliderInput label="Speed" value={config.speed} onChange={setSpeed} min={1} max={30} step={0.5} unit="m/s" />
+            <SpeedSliderInput label="Speed" valueMps={config.speed} onChangeMps={setSpeed} minMps={1} maxMps={30} />
             <SliderInput
               label="Endurance"
               value={config.enduranceMinutes ?? 20}
@@ -681,7 +691,7 @@ export function SurveyConfigPanel() {
               />
               <p className="mt-1 text-[10px] text-content-tertiary leading-snug">
                 {(config.crossGridAltitudeOffset ?? 0) > 0
-                  ? `Perpendicular pass flies ${Math.round(config.altitude * (1 + (config.crossGridAltitudeOffset ?? 0) / 100))} m (+${config.crossGridAltitudeOffset}%) for better photogrammetry.`
+                  ? `Perpendicular pass flies ${formatAltitudeFromMeters(config.altitude * (1 + (config.crossGridAltitudeOffset ?? 0) / 100), altitudeUnit)} (+${config.crossGridAltitudeOffset}%) for better photogrammetry.`
                   : 'Both passes at the same altitude. Raise to fly the second pass higher.'}
               </p>
             </div>
@@ -1080,7 +1090,155 @@ function SliderInput({
           aria-label={label}
           className="w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
+        <span className="text-[10px] text-content-tertiary w-6">{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+function AltitudeSliderInput({
+  label,
+  valueMeters,
+  onChangeMeters,
+  minMeters,
+  maxMeters,
+  stepMeters,
+}: {
+  label: string;
+  valueMeters: number;
+  onChangeMeters: (v: number) => void;
+  minMeters: number;
+  maxMeters: number;
+  stepMeters: number;
+}) {
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
+  const min = altitudeValueFromMeters(minMeters, altitudeUnit);
+  const max = altitudeValueFromMeters(maxMeters, altitudeUnit);
+  const step = altitudeValueFromMeters(stepMeters, altitudeUnit);
+  const value = altitudeValueFromMeters(valueMeters, altitudeUnit);
+  const displayPrecision = altitudeUnit === 'km' ? 3 : 1;
+  const roundedDisplayValue = Number(value.toFixed(displayPrecision));
+  const unit = UNIT_LABELS.altitude[altitudeUnit];
+
+  const commitDisplay = (displayValue: number) => {
+    if (!Number.isFinite(displayValue) || displayValue < min || displayValue > max) return;
+    onChangeMeters(toMetersFromAltitudeUnit(displayValue, altitudeUnit));
+  };
+
+  const clampBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    if (rawValue.trim() === '') return;
+    const displayValue = Number(rawValue);
+    if (!Number.isFinite(displayValue)) return;
+    if (displayValue === roundedDisplayValue) return;
+    const clamped = Math.min(max, Math.max(min, displayValue));
+    const meters = toMetersFromAltitudeUnit(clamped, altitudeUnit);
+    if (meters !== valueMeters) onChangeMeters(meters);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-content-secondary w-14 flex-shrink-0">{label}</span>
+      <input
+        type="range"
+        value={value}
+        onChange={(e) => commitDisplay(Number(e.target.value))}
+        min={min}
+        max={max}
+        step={step}
+        className="flex-1 h-1 bg-surface-inset rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:cursor-grab"
+      />
+      <div className="flex items-center gap-0.5 w-14 flex-shrink-0 justify-end">
+        <input
+          type="number"
+          value={roundedDisplayValue}
+          onChange={(e) => {
+            const rawValue = e.target.value;
+            if (rawValue.trim() === '') return;
+            const displayValue = Number(rawValue);
+            commitDisplay(displayValue);
+          }}
+          onBlur={clampBlur}
+          min={min}
+          max={max}
+          step={step}
+          aria-label={label}
+          className="w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
         <span className="text-[10px] text-content-tertiary w-3">{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+function SpeedSliderInput({
+  label,
+  valueMps,
+  onChangeMps,
+  minMps,
+  maxMps,
+}: {
+  label: string;
+  valueMps: number;
+  onChangeMps: (v: number) => void;
+  minMps: number;
+  maxMps: number;
+}) {
+  const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
+  const precision = UNIT_PRECISION.speed[speedUnit];
+  const min = Number(speedValueFromMetersPerSecond(minMps, speedUnit).toFixed(precision));
+  const max = Number(speedValueFromMetersPerSecond(maxMps, speedUnit).toFixed(precision));
+  const step = 1 / (10 ** precision);
+  const value = speedValueFromMetersPerSecond(valueMps, speedUnit);
+  const roundedDisplayValue = Number(value.toFixed(precision));
+  const unit = UNIT_LABELS.speed[speedUnit];
+
+  const commitDisplay = (displayValue: number) => {
+    if (!Number.isFinite(displayValue) || displayValue < min || displayValue > max) return;
+    onChangeMps(toMetersPerSecondFromSpeedUnit(displayValue, speedUnit));
+  };
+
+  const clampBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    if (rawValue.trim() === '') return;
+    const displayValue = Number(rawValue);
+    if (!Number.isFinite(displayValue)) return;
+    if (displayValue === roundedDisplayValue) return;
+    const clamped = Math.min(max, Math.max(min, displayValue));
+    const mps = toMetersPerSecondFromSpeedUnit(clamped, speedUnit);
+    if (mps !== valueMps) onChangeMps(mps);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-content-secondary w-14 flex-shrink-0">{label}</span>
+      <input
+        type="range"
+        value={roundedDisplayValue}
+        onChange={(e) => commitDisplay(Number(e.target.value))}
+        min={min}
+        max={max}
+        step={step}
+        className="flex-1 h-1 bg-surface-inset rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:cursor-grab"
+      />
+      <div className="flex items-center gap-0.5 w-16 flex-shrink-0 justify-end">
+        <input
+          type="number"
+          value={roundedDisplayValue}
+          onChange={(e) => {
+            const rawValue = e.target.value;
+            if (rawValue.trim() === '') return;
+            const displayValue = Number(rawValue);
+            commitDisplay(displayValue);
+          }}
+          onBlur={clampBlur}
+          min={min}
+          max={max}
+          step={step}
+          aria-label={label}
+          className="w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <span className="text-[10px] text-content-tertiary w-5">{unit}</span>
       </div>
     </div>
   );

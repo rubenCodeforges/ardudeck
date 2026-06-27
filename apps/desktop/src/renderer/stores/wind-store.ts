@@ -9,7 +9,8 @@
 
 import { create } from 'zustand';
 import type { WindBBox, WindField, WindAltitude } from '../../shared/wind-types';
-import { nextUnit, type WindUnit } from '../components/map/wind/wind-field';
+import { nextUnit, windUnitFromPreference, type WindUnit } from '../components/map/wind/wind-field';
+import { useSettingsStore } from './settings-store';
 
 interface WindStore {
   field: WindField | null;
@@ -51,7 +52,7 @@ export const useWindStore = create<WindStore>((set, get) => ({
   altitudeM: 120,
   frameIndex: 0,
   speedScale: 1,
-  units: 'ms',
+  units: windUnitFromPreference(useSettingsStore.getState().unitPreferences.windSpeed),
   lastBounds: null,
   probe: null,
   _token: 0,

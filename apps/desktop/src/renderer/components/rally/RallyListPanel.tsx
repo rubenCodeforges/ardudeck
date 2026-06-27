@@ -11,7 +11,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRallyStore } from '../../stores/rally-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { RALLY_FLAGS, getRallyFlagsDescription } from '../../../shared/rally-types';
+import {
+  altitudeValueFromMeters,
+  formatAltitudeFromMeters,
+  toMetersFromAltitudeUnit,
+  UNIT_LABELS,
+  type AltitudeUnit,
+} from '../../../shared/user-units.js';
 
 interface RallyListPanelProps {
   readOnly?: boolean;
@@ -33,6 +41,7 @@ export function RallyListPanel({
     removeRallyPoint,
     clearLastSuccessMessage,
   } = useRallyStore();
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
 
   // Auto-dismiss success messages
   useEffect(() => {
@@ -129,6 +138,7 @@ export function RallyListPanel({
                 point={point}
                 isSelected={selectedSeq === point.seq}
                 readOnly={readOnly}
+                altitudeUnit={altitudeUnit}
                 onSelect={() => setSelectedSeq(selectedSeq === point.seq ? null : point.seq)}
                 onRemove={() => removeRallyPoint(point.seq)}
               />
@@ -141,6 +151,7 @@ export function RallyListPanel({
       {selectedPoint && !readOnly && (
         <RallyDetailsPanel
           point={selectedPoint}
+          altitudeUnit={altitudeUnit}
           onUpdate={(updates) => updateRallyPoint(selectedPoint.seq, updates)}
         />
       )}
@@ -178,11 +189,12 @@ interface RallyListItemProps {
   };
   isSelected: boolean;
   readOnly: boolean;
+  altitudeUnit: AltitudeUnit;
   onSelect: () => void;
   onRemove: () => void;
 }
 
-function RallyListItem({ point, isSelected, readOnly, onSelect, onRemove }: RallyListItemProps) {
+function RallyListItem({ point, isSelected, readOnly, altitudeUnit, onSelect, onRemove }: RallyListItemProps) {
   return (
     <div
       className={`flex items-center justify-between p-2 rounded cursor-pointer ${
@@ -206,7 +218,7 @@ function RallyListItem({ point, isSelected, readOnly, onSelect, onRemove }: Rall
           <div className="text-content">
             {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
           </div>
-          <div className="text-content-secondary">Alt: {point.altitude}m</div>
+          <div className="text-content-secondary">Alt: {formatAltitudeFromMeters(point.altitude, altitudeUnit)}</div>
         </div>
       </div>
       {!readOnly && (
@@ -238,32 +250,58 @@ interface RallyDetailsPanelProps {
     landDirection: number;
     flags: number;
   };
+  altitudeUnit: AltitudeUnit;
   onUpdate: (updates: Partial<RallyDetailsPanelProps['point']>) => void;
 }
 
-function RallyDetailsPanel({ point, onUpdate }: RallyDetailsPanelProps) {
-  const [localAlt, setLocalAlt] = useState(String(point.altitude));
-  const [localBreakAlt, setLocalBreakAlt] = useState(String(point.breakAltitude));
+function altitudeInputValue(meters: number, unit: AltitudeUnit): string {
+  const precision = unit === 'km' ? 3 : unit === 'm' ? 0 : 1;
+  return String(Number(altitudeValueFromMeters(meters, unit).toFixed(precision)));
+}
+
+function parseNumberDraft(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:e[+-]?\d+)?$/i.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function RallyDetailsPanel({ point, altitudeUnit, onUpdate }: RallyDetailsPanelProps) {
+  const [localAlt, setLocalAlt] = useState(() => altitudeInputValue(point.altitude, altitudeUnit));
+  const [localBreakAlt, setLocalBreakAlt] = useState(() => altitudeInputValue(point.breakAltitude, altitudeUnit));
   const [localDirection, setLocalDirection] = useState(String(point.landDirection));
+  const altitudeLabel = UNIT_LABELS.altitude[altitudeUnit];
 
   // Sync local state when point changes
   useEffect(() => {
-    setLocalAlt(String(point.altitude));
-    setLocalBreakAlt(String(point.breakAltitude));
+    setLocalAlt(altitudeInputValue(point.altitude, altitudeUnit));
+    setLocalBreakAlt(altitudeInputValue(point.breakAltitude, altitudeUnit));
     setLocalDirection(String(point.landDirection));
-  }, [point.seq, point.altitude, point.breakAltitude, point.landDirection]);
+  }, [altitudeUnit, point.seq, point.altitude, point.breakAltitude, point.landDirection]);
 
   const handleAltBlur = () => {
-    const val = parseFloat(localAlt);
-    if (!isNaN(val) && val !== point.altitude) {
-      onUpdate({ altitude: val });
+    const val = parseNumberDraft(localAlt);
+    if (val === null) {
+      setLocalAlt(altitudeInputValue(point.altitude, altitudeUnit));
+      return;
+    }
+    if (localAlt === altitudeInputValue(point.altitude, altitudeUnit)) return;
+    const meters = toMetersFromAltitudeUnit(val, altitudeUnit);
+    if (meters !== point.altitude) {
+      onUpdate({ altitude: meters });
     }
   };
 
   const handleBreakAltBlur = () => {
-    const val = parseFloat(localBreakAlt);
-    if (!isNaN(val) && val !== point.breakAltitude) {
-      onUpdate({ breakAltitude: val });
+    const val = parseNumberDraft(localBreakAlt);
+    if (val === null) {
+      setLocalBreakAlt(altitudeInputValue(point.breakAltitude, altitudeUnit));
+      return;
+    }
+    if (localBreakAlt === altitudeInputValue(point.breakAltitude, altitudeUnit)) return;
+    const meters = toMetersFromAltitudeUnit(val, altitudeUnit);
+    if (meters !== point.breakAltitude) {
+      onUpdate({ breakAltitude: meters });
     }
   };
 
@@ -296,33 +334,39 @@ function RallyDetailsPanel({ point, onUpdate }: RallyDetailsPanelProps) {
 
         {/* Altitude */}
         <div className="flex items-center justify-between">
-          <label className="text-xs text-content-secondary">Altitude (m)</label>
-          <input
-            type="number"
-            value={localAlt}
-            onChange={(e) => setLocalAlt(e.target.value)}
-            onBlur={handleAltBlur}
-            onKeyDown={(e) => e.key === 'Enter' && handleAltBlur()}
-            className="w-20 px-2 py-1 text-xs bg-surface-raised border border rounded text-right"
-          />
+          <label className="text-xs text-content-secondary">Altitude</label>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              value={localAlt}
+              onChange={(e) => setLocalAlt(e.target.value)}
+              onBlur={handleAltBlur}
+              onKeyDown={(e) => e.key === 'Enter' && handleAltBlur()}
+              className="w-20 px-2 py-1 text-xs bg-surface-raised border border rounded text-right"
+            />
+            <span className="w-6 text-[10px] text-content-tertiary">{altitudeLabel}</span>
+          </div>
         </div>
 
         {/* Break Altitude */}
         <div className="flex items-center justify-between">
           <label className="text-xs text-content-secondary">
-            Break Alt (m)
+            Break Alt
             <span className="ml-1 text-content-tertiary" title="Altitude to exit loiter and begin landing">
               ?
             </span>
           </label>
-          <input
-            type="number"
-            value={localBreakAlt}
-            onChange={(e) => setLocalBreakAlt(e.target.value)}
-            onBlur={handleBreakAltBlur}
-            onKeyDown={(e) => e.key === 'Enter' && handleBreakAltBlur()}
-            className="w-20 px-2 py-1 text-xs bg-surface-raised border border rounded text-right"
-          />
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              value={localBreakAlt}
+              onChange={(e) => setLocalBreakAlt(e.target.value)}
+              onBlur={handleBreakAltBlur}
+              onKeyDown={(e) => e.key === 'Enter' && handleBreakAltBlur()}
+              className="w-20 px-2 py-1 text-xs bg-surface-raised border border rounded text-right"
+            />
+            <span className="w-6 text-[10px] text-content-tertiary">{altitudeLabel}</span>
+          </div>
         </div>
 
         {/* Land Direction */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TileCacheCard } from './TileCacheCard';
-import { useSettingsStore, type VehicleProfile, type VehicleType, type DisplayUnits, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
+import { UnitSelectionCard } from './UnitSelectionCard';
+import { useSettingsStore, type VehicleProfile, type VehicleType, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -21,27 +22,112 @@ import { saveParmToFile } from '../../lib/vehicle-templates/export-parm';
 import { getTemplate, defaultTemplateForType } from '../../lib/vehicle-templates/registry';
 import { Download } from 'lucide-react';
 import type { VehicleTemplate } from '../../lib/vehicle-templates/types';
+import {
+  AREA_INPUT_PRECISION,
+  areaInputValueFromSquareCentimeters,
+  altitudeValueFromMeters,
+  capacityValueFromMah,
+  dimensionInputValueFromMillimeters,
+  formatAltitudeFromMeters,
+  formatCapacityFromMah,
+  formatDimensionFromMillimeters,
+  formatSpeedFromMetersPerSecond,
+  formatWeightFromGrams,
+  speedValueFromMetersPerSecond,
+  toGramsFromWeightUnit,
+  toMahFromCapacityUnit,
+  toMetersPerSecondFromSpeedUnit,
+  toMetersFromAltitudeUnit,
+  toMillimetersFromDimensionUnit,
+  toSquareCentimetersFromAreaUnit,
+  UNIT_LABELS,
+  UNIT_PRECISION,
+  weightInputValueFromGrams,
+  type AreaUnit,
+  type AltitudeUnit,
+  type DimensionUnit,
+  type ElectricCapacityUnit,
+  type SpeedUnit,
+  type WeightUnit,
+} from '../../../shared/user-units.js';
 
-// Display unit conversion helpers - storage is always mm/g/mAh
-function fmtWeight(g: number, units: DisplayUnits): string {
-  return units === 'large' ? `${+(g / 1000).toFixed(1)}kg` : `${g}g`;
+// Display unit conversion helpers - storage stays in each field's native unit.
+function fmtWeight(g: number, unit: WeightUnit): string {
+  return formatWeightFromGrams(g, unit);
 }
-function fmtLength(mm: number, units: DisplayUnits): string {
-  return units === 'large' ? `${+(mm / 1000).toFixed(2)}m` : `${mm}mm`;
+function fmtLength(mm: number, unit: DimensionUnit): string {
+  return formatDimensionFromMillimeters(mm, unit);
 }
-function fmtCapacity(mah: number, units: DisplayUnits): string {
-  return units === 'large' ? `${+(mah / 1000).toFixed(1)}Ah` : `${mah}mAh`;
-}
-function unitLabel(smallUnit: string, units: DisplayUnits): string {
-  if (units !== 'large') return smallUnit;
-  return ({ g: 'kg', mm: 'm', mAh: 'Ah' } as Record<string, string>)[smallUnit] ?? smallUnit;
+function fmtCapacity(mah: number, unit: ElectricCapacityUnit): string {
+  return formatCapacityFromMah(mah, unit);
 }
 
-// Fields that convert by ÷1000 when display units = 'large'
-const LARGE_UNIT_FIELDS: Record<string, number> = {
-  weight: 1000, wingspan: 1000, hullLength: 1000, wheelbase: 1000,
-  batteryCapacity: 1000, displacement: 1000,
+const MISSION_ALTITUDE_FIELDS = new Set([
+  'safeAltitudeBuffer',
+  'defaultWaypointAltitude',
+  'defaultTakeoffAltitude',
+]);
+
+const ALTITUDE_INPUT_PRECISION: Record<AltitudeUnit, number> = {
+  m: UNIT_PRECISION.altitude.m,
+  km: 3,
+  ft: 2,
 };
+
+function isMissionAltitudeField(field: string): boolean {
+  return MISSION_ALTITUDE_FIELDS.has(field);
+}
+
+function altitudeInputValueFromMeters(meters: number | undefined, unit: AltitudeUnit): string {
+  if (meters === undefined || !Number.isFinite(meters)) return '';
+  const decimals = ALTITUDE_INPUT_PRECISION[unit];
+  return String(Number(altitudeValueFromMeters(meters, unit).toFixed(decimals)));
+}
+
+function altitudeInputStep(unit: AltitudeUnit): string {
+  return unit === 'm' ? '1' : String(1 / (10 ** ALTITUDE_INPUT_PRECISION[unit]));
+}
+
+function clampAltitudeMetersToRules(meters: number, rules: FieldValidation): number {
+  let next = meters;
+  if (rules.min !== undefined) next = Math.max(rules.min, next);
+  if (rules.max !== undefined) next = Math.min(rules.max, next);
+  return next;
+}
+
+function speedInputValueFromMetersPerSecond(mps: number | undefined, unit: SpeedUnit): string {
+  if (mps === undefined || !Number.isFinite(mps)) return '';
+  return String(Number(speedValueFromMetersPerSecond(mps, unit).toFixed(UNIT_PRECISION.speed[unit])));
+}
+
+function speedInputStep(unit: SpeedUnit): string {
+  return String(1 / (10 ** UNIT_PRECISION.speed[unit]));
+}
+
+function clampSpeedMetersPerSecondToRules(mps: number, rules: FieldValidation): number {
+  let next = mps;
+  if (rules.min !== undefined) next = Math.max(rules.min, next);
+  if (rules.max !== undefined) next = Math.min(rules.max, next);
+  return next;
+}
+
+function validateSpeedField(value: string, rules: FieldValidation, unit: SpeedUnit): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return rules.required ? 'Required' : null;
+  }
+  const displayValue = Number(trimmed);
+  if (!Number.isFinite(displayValue)) return 'Invalid number';
+
+  const metersPerSecond = toMetersPerSecondFromSpeedUnit(displayValue, unit);
+  if (rules.min !== undefined && metersPerSecond < rules.min) {
+    return `Min: ${speedInputValueFromMetersPerSecond(rules.min, unit)} ${UNIT_LABELS.speed[unit]}`;
+  }
+  if (rules.max !== undefined && metersPerSecond > rules.max) {
+    return `Max: ${speedInputValueFromMetersPerSecond(rules.max, unit)} ${UNIT_LABELS.speed[unit]}`;
+  }
+  return null;
+}
 
 // Vehicle types supported by each firmware
 // Betaflight: Only multirotors (racing/freestyle focused)
@@ -999,8 +1085,7 @@ export function SettingsView() {
     getActiveVehicle,
     getEstimatedFlightTime,
     getEstimatedRange,
-    displayUnits,
-    setDisplayUnits,
+    unitPreferences,
     experienceLevel,
     setExperienceLevel,
     uiVisibility,
@@ -1033,6 +1118,13 @@ export function SettingsView() {
   const activeVehicle = getActiveVehicle();
   const estimatedFlightTime = getEstimatedFlightTime();
   const estimatedRange = getEstimatedRange();
+  const altitudeUnit = unitPreferences.altitude;
+  const altitudeUnitLabel = UNIT_LABELS.altitude[altitudeUnit];
+  const electricCapacityUnit = unitPreferences.electricCapacity;
+  const speedUnit = unitPreferences.speed;
+  const weightUnit = unitPreferences.weight;
+  const dimensionUnit = unitPreferences.dimensions;
+  const areaUnit = unitPreferences.area;
 
   // Auto-detect vehicle type from MAVLink connection (only once per connection session)
   // Uses module-level variable to survive component remounts
@@ -1109,14 +1201,34 @@ export function SettingsView() {
 
   const getMissionDisplayValue = (field: string): string | number => {
     if (field in missionLocalValues) return missionLocalValues[field]!;
-    return (missionDefaults as any)[field] as number;
+    const nativeValue = (missionDefaults as any)[field] as number;
+    if (isMissionAltitudeField(field)) {
+      return altitudeInputValueFromMeters(nativeValue, altitudeUnit);
+    }
+    return nativeValue;
+  };
+
+  const getMissionDisplayBound = (field: string, bound: 'min' | 'max'): string | undefined => {
+    const value = MISSION_FIELD_RULES[field]?.[bound];
+    if (value === undefined) return undefined;
+    return isMissionAltitudeField(field)
+      ? altitudeInputValueFromMeters(value, altitudeUnit)
+      : String(value);
+  };
+
+  const getMissionDisplayStep = (field: string): string | undefined => {
+    if (!isMissionAltitudeField(field)) return undefined;
+    return altitudeInputStep(altitudeUnit);
   };
 
   const handleMissionChange = (field: string, rawValue: string) => {
     setMissionLocalValues(prev => ({ ...prev, [field]: rawValue }));
     const rules = MISSION_FIELD_RULES[field];
     if (rules) {
-      setMissionErrors(prev => ({ ...prev, [field]: validateField(rawValue, rules) }));
+      const error = isMissionAltitudeField(field)
+        ? validateAltitudeField(rawValue, rules, altitudeUnit)
+        : validateField(rawValue, rules);
+      setMissionErrors(prev => ({ ...prev, [field]: error }));
     }
   };
 
@@ -1125,7 +1237,11 @@ export function SettingsView() {
     if (raw === undefined) return;
 
     const rules = MISSION_FIELD_RULES[field];
-    const error = rules ? validateField(raw, rules) : null;
+    const error = rules
+      ? isMissionAltitudeField(field)
+        ? validateAltitudeField(raw, rules, altitudeUnit)
+        : validateField(raw, rules)
+      : null;
 
     if (error) {
       setMissionLocalValues(prev => { const n = { ...prev }; delete n[field]; return n; });
@@ -1133,7 +1249,23 @@ export function SettingsView() {
       return;
     }
 
-    updateMissionDefaults({ [field]: Number(raw) });
+    if (isMissionAltitudeField(field)) {
+      const displayValue = Number(raw);
+      if (!Number.isFinite(displayValue)) {
+        setMissionLocalValues(prev => { const n = { ...prev }; delete n[field]; return n; });
+        setMissionErrors(prev => ({ ...prev, [field]: null }));
+        return;
+      }
+      const currentDisplayValue = Number(altitudeInputValueFromMeters((missionDefaults as any)[field] as number, altitudeUnit));
+      if (displayValue === currentDisplayValue) {
+        setMissionLocalValues(prev => { const n = { ...prev }; delete n[field]; return n; });
+        setMissionErrors(prev => ({ ...prev, [field]: null }));
+        return;
+      }
+      updateMissionDefaults({ [field]: clampAltitudeMetersToRules(toMetersFromAltitudeUnit(displayValue, altitudeUnit), rules ?? {}) });
+    } else {
+      updateMissionDefaults({ [field]: Number(raw) });
+    }
     setMissionLocalValues(prev => { const n = { ...prev }; delete n[field]; return n; });
     setMissionErrors(prev => ({ ...prev, [field]: null }));
   };
@@ -1220,23 +1352,23 @@ export function SettingsView() {
                         {activeVehicle.type === 'sub' && 'Depth'}
                       </div>
                       <div className="text-sm text-content font-medium">
-                        {activeVehicle.type === 'copter' && `${fmtLength(activeVehicle.frameSize || 127, displayUnits)} ${activeVehicle.motorCount === 6 ? 'Hex' : activeVehicle.motorCount === 8 ? 'Octo' : 'Quad'}`}
-                        {activeVehicle.type === 'plane' && fmtLength(activeVehicle.wingspan || 1200, displayUnits)}
-                        {activeVehicle.type === 'vtol' && fmtLength(activeVehicle.wingspan || 1500, displayUnits)}
+                        {activeVehicle.type === 'copter' && `${fmtLength(activeVehicle.frameSize || 127, dimensionUnit)} ${activeVehicle.motorCount === 6 ? 'Hex' : activeVehicle.motorCount === 8 ? 'Octo' : 'Quad'}`}
+                        {activeVehicle.type === 'plane' && fmtLength(activeVehicle.wingspan || 1200, dimensionUnit)}
+                        {activeVehicle.type === 'vtol' && fmtLength(activeVehicle.wingspan || 1500, dimensionUnit)}
                         {activeVehicle.type === 'rover' && (activeVehicle.driveType === 'ackermann' ? 'Car' : activeVehicle.driveType === 'skid' ? 'Skid' : 'Tank')}
                         {activeVehicle.type === 'boat' && (activeVehicle.hullType ? `${activeVehicle.hullType.charAt(0).toUpperCase()}${activeVehicle.hullType.slice(1)}` : 'Displacement')}
-                        {activeVehicle.type === 'sub' && `${activeVehicle.maxDepth || 100}m`}
+                        {activeVehicle.type === 'sub' && formatAltitudeFromMeters(activeVehicle.maxDepth ?? 100, altitudeUnit)}
                       </div>
                     </div>
                     {/* Weight */}
                     <div className="bg-black/20 rounded-lg p-2">
                       <div className="text-xs text-content-secondary">Weight</div>
-                      <div className="text-sm text-content font-medium">{fmtWeight(activeVehicle.weight, displayUnits)}</div>
+                      <div className="text-sm text-content font-medium">{fmtWeight(activeVehicle.weight, weightUnit)}</div>
                     </div>
                     {/* Battery */}
                     <div className="bg-black/20 rounded-lg p-2">
                       <div className="text-xs text-content-secondary">Battery</div>
-                      <div className="text-sm text-content font-medium">{activeVehicle.batteryCells}S{activeVehicle.batteryChemistry && activeVehicle.batteryChemistry !== 'lipo' ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[activeVehicle.batteryChemistry] ?? ''}` : ''} {fmtCapacity(activeVehicle.batteryCapacity, displayUnits)}</div>
+                      <div className="text-sm text-content font-medium">{activeVehicle.batteryCells}S{activeVehicle.batteryChemistry && activeVehicle.batteryChemistry !== 'lipo' ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[activeVehicle.batteryChemistry] ?? ''}` : ''} {fmtCapacity(activeVehicle.batteryCapacity, electricCapacityUnit)}</div>
                     </div>
                     {/* Type-specific secondary spec */}
                     <div className="bg-black/20 rounded-lg p-2">
@@ -1244,9 +1376,7 @@ export function SettingsView() {
                         {['copter', 'plane', 'vtol'].includes(activeVehicle.type) ? 'Est. Cruise' : 'Est. Speed'}
                       </div>
                       <div className="text-sm text-cyan-400 font-medium">
-                        {activeVehicle.type === 'boat'
-                          ? `${(cruiseSpeed * 1.944).toFixed(1)} kts`
-                          : `${cruiseSpeed.toFixed(1)} m/s`}
+                        {formatSpeedFromMetersPerSecond(cruiseSpeed, speedUnit)}
                       </div>
                     </div>
                   </div>
@@ -1376,42 +1506,7 @@ export function SettingsView() {
             <h2 className="text-sm font-medium text-content uppercase tracking-wider">Configuration</h2>
           </div>
 
-          {/* Display Units Toggle */}
-          <div className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4 mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-              </svg>
-              <div>
-                <div className="text-sm font-medium text-content">Display Units</div>
-                <div className="text-[11px] text-content-secondary">
-                  {displayUnits === 'small' ? 'mm, g, mAh - for small/racing builds' : 'm, kg, Ah - for large aircraft'}
-                </div>
-              </div>
-            </div>
-            <div className="flex bg-surface-input rounded-lg border border-subtle overflow-hidden">
-              <button
-                onClick={() => setDisplayUnits('small')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  displayUnits === 'small'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'text-content-secondary hover:text-content'
-                }`}
-              >
-                mm / g / mAh
-              </button>
-              <button
-                onClick={() => setDisplayUnits('large')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  displayUnits === 'large'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'text-content-secondary hover:text-content'
-                }`}
-              >
-                m / kg / Ah
-              </button>
-            </div>
-          </div>
+          <UnitSelectionCard />
 
           {/* Experience Level & UI Visibility */}
           <div className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4 mb-4">
@@ -1506,10 +1601,11 @@ export function SettingsView() {
                       className={`w-full px-2 py-1.5 bg-surface-input border rounded text-content text-sm focus:outline-none ${
                         missionErrors.safeAltitudeBuffer ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
                       }`}
-                      min="0"
-                      max="500"
+                      min={getMissionDisplayBound('safeAltitudeBuffer', 'min')}
+                      max={getMissionDisplayBound('safeAltitudeBuffer', 'max')}
+                      step={getMissionDisplayStep('safeAltitudeBuffer')}
                     />
-                    <span className="text-content-secondary text-xs">m</span>
+                    <span className="text-content-secondary text-xs">{altitudeUnitLabel}</span>
                   </div>
                   {missionErrors.safeAltitudeBuffer
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.safeAltitudeBuffer}</div>
@@ -1530,10 +1626,11 @@ export function SettingsView() {
                       className={`w-full px-2 py-1.5 bg-surface-input border rounded text-content text-sm focus:outline-none ${
                         missionErrors.defaultWaypointAltitude ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
                       }`}
-                      min="0"
-                      max="10000"
+                      min={getMissionDisplayBound('defaultWaypointAltitude', 'min')}
+                      max={getMissionDisplayBound('defaultWaypointAltitude', 'max')}
+                      step={getMissionDisplayStep('defaultWaypointAltitude')}
                     />
-                    <span className="text-content-secondary text-xs">m</span>
+                    <span className="text-content-secondary text-xs">{altitudeUnitLabel}</span>
                   </div>
                   {missionErrors.defaultWaypointAltitude
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultWaypointAltitude}</div>
@@ -1554,10 +1651,11 @@ export function SettingsView() {
                       className={`w-full px-2 py-1.5 bg-surface-input border rounded text-content text-sm focus:outline-none ${
                         missionErrors.defaultTakeoffAltitude ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
                       }`}
-                      min="0"
-                      max="1000"
+                      min={getMissionDisplayBound('defaultTakeoffAltitude', 'min')}
+                      max={getMissionDisplayBound('defaultTakeoffAltitude', 'max')}
+                      step={getMissionDisplayStep('defaultTakeoffAltitude')}
                     />
-                    <span className="text-content-secondary text-xs">m</span>
+                    <span className="text-content-secondary text-xs">{altitudeUnitLabel}</span>
                   </div>
                   {missionErrors.defaultTakeoffAltitude
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultTakeoffAltitude}</div>
@@ -2279,9 +2377,8 @@ function AboutSection() {
 
 // Input field component for vehicle forms
 /**
- * Frame size input with mm/inches toggle
- * Stores value in mm internally for consistency
- * Common frame sizes: 127mm (5"), 178mm (7"), 254mm (10"), 320mm, 450mm
+ * Vehicle profile values are stored in native units and converted only at the
+ * editable field boundary.
  */
 // ============================================
 // Validation
@@ -2298,6 +2395,7 @@ const VEHICLE_FIELD_RULES: Record<string, FieldValidation> = {
   name:             { required: true },
   weight:           { min: 1, max: 500_000, required: true, integer: true },
   batteryCapacity:  { min: 100, max: 100_000, required: true, integer: true },
+  frameSize:        { min: 0, max: 10_000, integer: true },
   wingspan:         { min: 100, max: 10_000, integer: true },
   wingArea:         { min: 100, max: 100_000, integer: true },
   stallSpeed:       { min: 0.1, max: 100 },
@@ -2330,6 +2428,26 @@ function validateField(value: string, rules: FieldValidation, isText?: boolean):
   if (rules.min !== undefined && num < rules.min) return `Min: ${rules.min}`;
   if (rules.max !== undefined && num > rules.max) return `Max: ${rules.max}`;
   if (rules.integer && !Number.isInteger(num)) return 'Must be whole number';
+  return null;
+}
+
+function validateAltitudeField(value: string, rules: FieldValidation, unit: AltitudeUnit): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return rules.required ? 'Required' : null;
+  }
+  const displayValue = Number(trimmed);
+  if (!Number.isFinite(displayValue)) return 'Invalid number';
+  if (rules.integer && unit === 'm' && !Number.isInteger(displayValue)) return 'Must be whole number';
+
+  const displayMin = rules.min === undefined ? undefined : Number(altitudeInputValueFromMeters(rules.min, unit));
+  const displayMax = rules.max === undefined ? undefined : Number(altitudeInputValueFromMeters(rules.max, unit));
+  if (displayMin !== undefined && displayValue < displayMin) {
+    return `Min: ${displayMin} ${UNIT_LABELS.altitude[unit]}`;
+  }
+  if (displayMax !== undefined && displayValue > displayMax) {
+    return `Max: ${displayMax} ${UNIT_LABELS.altitude[unit]}`;
+  }
   return null;
 }
 
@@ -2426,51 +2544,229 @@ function PropSizeInput({
   );
 }
 
-function FrameSizeInput({
-  value,
-  onChange,
+function dimensionInputStep(unit: DimensionUnit): string {
+  return String(1 / (10 ** UNIT_PRECISION.dimensions[unit]));
+}
+
+function clampDimensionMillimetersToRules(millimeters: number, rules: FieldValidation): number {
+  let next = millimeters;
+  if (rules.min !== undefined) next = Math.max(rules.min, next);
+  if (rules.max !== undefined) next = Math.min(rules.max, next);
+  return next;
+}
+
+function validateDimensionField(value: string, rules: FieldValidation, unit: DimensionUnit): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return rules.required ? 'Required' : null;
+  }
+  const displayValue = Number(trimmed);
+  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+
+  const millimeters = toMillimetersFromDimensionUnit(displayValue, unit);
+  if (rules.min !== undefined && millimeters < rules.min) {
+    return `Min: ${dimensionInputValueFromMillimeters(rules.min, unit)} ${UNIT_LABELS.dimensions[unit]}`;
+  }
+  if (rules.max !== undefined && millimeters > rules.max) {
+    return `Max: ${dimensionInputValueFromMillimeters(rules.max, unit)} ${UNIT_LABELS.dimensions[unit]}`;
+  }
+  if (unit === 'mm' && rules.integer && !Number.isInteger(displayValue)) {
+    return 'Must be a whole number';
+  }
+  return null;
+}
+
+function DimensionInputField({
+  label,
+  valueMillimeters,
+  onCommit,
+  unit,
+  placeholderMillimeters,
+  rules,
 }: {
-  value: number | undefined;
-  onChange: (mm: number | undefined) => void;
+  label: string;
+  valueMillimeters: number | undefined;
+  onCommit: (millimeters: number | undefined) => void;
+  unit: DimensionUnit;
+  placeholderMillimeters?: number;
+  rules: FieldValidation;
 }) {
-  const [unit, setUnit] = useState<'mm' | 'in'>('mm');
+  const displayValue = dimensionInputValueFromMillimeters(valueMillimeters, unit);
+  const [draft, setDraft] = useState(displayValue);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const displayValue = value !== undefined
-    ? unit === 'mm'
-      ? value
-      : Math.round(value / 25.4 * 10) / 10
-    : '';
+  useEffect(() => {
+    if (!focused) setDraft(displayValue);
+  }, [displayValue, focused]);
 
-  const handleChange = (inputVal: string) => {
-    if (inputVal === '') { onChange(undefined); return; }
-    const numVal = parseFloat(inputVal);
-    if (isNaN(numVal) || numVal < 0) return;
-    const mmValue = unit === 'mm' ? Math.round(numVal) : Math.round(numVal * 25.4);
-    onChange(mmValue);
-  };
+  const resetDraft = useCallback(() => {
+    setDraft(dimensionInputValueFromMillimeters(valueMillimeters, unit));
+    setError(null);
+  }, [unit, valueMillimeters]);
 
   return (
     <div>
-      <label className="block text-xs text-content-secondary mb-1">Frame Size</label>
+      <label className="block text-xs text-content-secondary mb-1">{label}</label>
       <div className="relative">
         <input
           type="number"
-          value={displayValue}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder={unit === 'mm' ? '450' : '5'}
-          min={0}
-          step={unit === 'mm' ? 10 : 0.5}
-          className="w-full px-3 py-2 pr-12 bg-surface-input border border-border rounded-lg text-content text-sm focus:outline-none focus:border-blue-500"
+          value={draft}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            setError(validateDimensionField(next, rules, unit));
+          }}
+          onBlur={() => {
+            setFocused(false);
+            const err = validateDimensionField(draft, rules, unit);
+            if (draft.trim() === '' && !rules.required) {
+              if (valueMillimeters !== undefined) onCommit(undefined);
+              resetDraft();
+              return;
+            }
+            if (draft.trim() === '' || err) {
+              resetDraft();
+              return;
+            }
+            const displayNumber = Number(draft);
+            if (!Number.isFinite(displayNumber)) {
+              resetDraft();
+              return;
+            }
+            if (displayNumber === Number(displayValue)) {
+              resetDraft();
+              return;
+            }
+            const millimeters = Math.round(toMillimetersFromDimensionUnit(displayNumber, unit));
+            onCommit(clampDimensionMillimetersToRules(millimeters, rules));
+          }}
+          placeholder={placeholderMillimeters !== undefined ? dimensionInputValueFromMillimeters(placeholderMillimeters, unit) : undefined}
+          min={rules.min !== undefined ? dimensionInputValueFromMillimeters(rules.min, unit) : undefined}
+          max={rules.max !== undefined ? dimensionInputValueFromMillimeters(rules.max, unit) : undefined}
+          step={dimensionInputStep(unit)}
+          className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
+          }`}
         />
-        <button
-          type="button"
-          onClick={() => setUnit(unit === 'mm' ? 'in' : 'mm')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-content-secondary text-xs hover:text-blue-400 transition-colors px-1"
-          title="Toggle mm / inches"
-        >
-          {unit}
-        </button>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">
+          {UNIT_LABELS.dimensions[unit]}
+        </span>
       </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
+    </div>
+  );
+}
+
+function areaInputStep(unit: AreaUnit): string {
+  return String(1 / (10 ** AREA_INPUT_PRECISION[unit]));
+}
+
+function clampAreaSquareCentimetersToRules(squareCentimeters: number, rules: FieldValidation): number {
+  let next = squareCentimeters;
+  if (rules.min !== undefined) next = Math.max(rules.min, next);
+  if (rules.max !== undefined) next = Math.min(rules.max, next);
+  return next;
+}
+
+function validateAreaSquareCentimetersField(value: string, rules: FieldValidation, unit: AreaUnit): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return rules.required ? 'Required' : null;
+  }
+  const displayValue = Number(trimmed);
+  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+
+  const squareCentimeters = toSquareCentimetersFromAreaUnit(displayValue, unit);
+  if (rules.min !== undefined && squareCentimeters < rules.min) {
+    return `Min: ${areaInputValueFromSquareCentimeters(rules.min, unit)} ${UNIT_LABELS.area[unit]}`;
+  }
+  if (rules.max !== undefined && squareCentimeters > rules.max) {
+    return `Max: ${areaInputValueFromSquareCentimeters(rules.max, unit)} ${UNIT_LABELS.area[unit]}`;
+  }
+  return null;
+}
+
+function AreaInputField({
+  label,
+  valueSquareCentimeters,
+  onCommit,
+  unit,
+  placeholderSquareCentimeters,
+  rules,
+}: {
+  label: string;
+  valueSquareCentimeters: number | undefined;
+  onCommit: (squareCentimeters: number | undefined) => void;
+  unit: AreaUnit;
+  placeholderSquareCentimeters?: number;
+  rules: FieldValidation;
+}) {
+  const displayValue = areaInputValueFromSquareCentimeters(valueSquareCentimeters, unit);
+  const [draft, setDraft] = useState(displayValue);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focused) setDraft(displayValue);
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(areaInputValueFromSquareCentimeters(valueSquareCentimeters, unit));
+    setError(null);
+  }, [unit, valueSquareCentimeters]);
+
+  return (
+    <div>
+      <label className="block text-xs text-content-secondary mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          value={draft}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            setError(validateAreaSquareCentimetersField(next, rules, unit));
+          }}
+          onBlur={() => {
+            setFocused(false);
+            const err = validateAreaSquareCentimetersField(draft, rules, unit);
+            if (draft.trim() === '' && !rules.required) {
+              if (valueSquareCentimeters !== undefined) onCommit(undefined);
+              resetDraft();
+              return;
+            }
+            if (draft.trim() === '' || err) {
+              resetDraft();
+              return;
+            }
+            const displayNumber = Number(draft);
+            if (!Number.isFinite(displayNumber)) {
+              resetDraft();
+              return;
+            }
+            if (displayNumber === Number(displayValue)) {
+              resetDraft();
+              return;
+            }
+            const squareCentimeters = Math.round(toSquareCentimetersFromAreaUnit(displayNumber, unit));
+            onCommit(clampAreaSquareCentimetersToRules(squareCentimeters, rules));
+          }}
+          placeholder={placeholderSquareCentimeters !== undefined ? areaInputValueFromSquareCentimeters(placeholderSquareCentimeters, unit) : undefined}
+          min={rules.min !== undefined ? areaInputValueFromSquareCentimeters(rules.min, unit) : undefined}
+          max={rules.max !== undefined ? areaInputValueFromSquareCentimeters(rules.max, unit) : undefined}
+          step={areaInputStep(unit)}
+          className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
+          }`}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">
+          {UNIT_LABELS.area[unit]}
+        </span>
+      </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
     </div>
   );
 }
@@ -2522,6 +2818,392 @@ function VehicleInputField({
         {unit && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">{unit}</span>
         )}
+      </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
+    </div>
+  );
+}
+
+function AltitudeInputField({
+  label,
+  valueMeters,
+  onCommit,
+  unit,
+  placeholderMeters,
+  rules,
+}: {
+  label: string;
+  valueMeters: number | undefined;
+  onCommit: (meters: number) => void;
+  unit: AltitudeUnit;
+  placeholderMeters?: number;
+  rules: FieldValidation;
+}) {
+  const displayValue = altitudeInputValueFromMeters(valueMeters, unit);
+  const [draft, setDraft] = useState(displayValue);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focused) setDraft(displayValue);
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(altitudeInputValueFromMeters(valueMeters, unit));
+    setError(null);
+  }, [unit, valueMeters]);
+
+  return (
+    <div>
+      <label className="block text-xs text-content-secondary mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          value={draft}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            setError(validateAltitudeField(next, rules, unit));
+          }}
+          onBlur={() => {
+            setFocused(false);
+            const err = validateAltitudeField(draft, rules, unit);
+            if (draft.trim() === '' || err) {
+              resetDraft();
+              return;
+            }
+            const displayNumber = Number(draft);
+            if (!Number.isFinite(displayNumber)) {
+              resetDraft();
+              return;
+            }
+            if (displayNumber === Number(displayValue)) {
+              resetDraft();
+              return;
+            }
+            onCommit(clampAltitudeMetersToRules(toMetersFromAltitudeUnit(displayNumber, unit), rules));
+          }}
+          placeholder={placeholderMeters !== undefined ? altitudeInputValueFromMeters(placeholderMeters, unit) : undefined}
+          min={rules.min !== undefined ? altitudeInputValueFromMeters(rules.min, unit) : undefined}
+          max={rules.max !== undefined ? altitudeInputValueFromMeters(rules.max, unit) : undefined}
+          step={altitudeInputStep(unit)}
+          className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
+          }`}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">
+          {UNIT_LABELS.altitude[unit]}
+        </span>
+      </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
+    </div>
+  );
+}
+
+function weightInputStep(unit: WeightUnit): string {
+  return String(1 / (10 ** UNIT_PRECISION.weight[unit]));
+}
+
+function clampWeightGramsToRules(grams: number, rules: FieldValidation): number {
+  let next = grams;
+  if (rules.min !== undefined) next = Math.max(rules.min, next);
+  if (rules.max !== undefined) next = Math.min(rules.max, next);
+  return next;
+}
+
+function validateWeightField(value: string, rules: FieldValidation, unit: WeightUnit): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return rules.required ? 'Required' : null;
+  }
+  const displayValue = Number(trimmed);
+  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+
+  const grams = toGramsFromWeightUnit(displayValue, unit);
+  if (rules.min !== undefined && grams < rules.min) {
+    return `Min: ${weightInputValueFromGrams(rules.min, unit)} ${UNIT_LABELS.weight[unit]}`;
+  }
+  if (rules.max !== undefined && grams > rules.max) {
+    return `Max: ${weightInputValueFromGrams(rules.max, unit)} ${UNIT_LABELS.weight[unit]}`;
+  }
+  if (unit === 'g' && rules.integer && !Number.isInteger(displayValue)) {
+    return 'Must be a whole number';
+  }
+  return null;
+}
+
+function WeightInputField({
+  label,
+  valueGrams,
+  onCommit,
+  unit,
+  placeholderGrams,
+  rules,
+}: {
+  label: string;
+  valueGrams: number | undefined;
+  onCommit: (grams: number | undefined) => void;
+  unit: WeightUnit;
+  placeholderGrams?: number;
+  rules: FieldValidation;
+}) {
+  const displayValue = weightInputValueFromGrams(valueGrams, unit);
+  const [draft, setDraft] = useState(displayValue);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focused) setDraft(displayValue);
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(weightInputValueFromGrams(valueGrams, unit));
+    setError(null);
+  }, [unit, valueGrams]);
+
+  return (
+    <div>
+      <label className="block text-xs text-content-secondary mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          value={draft}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            setError(validateWeightField(next, rules, unit));
+          }}
+          onBlur={() => {
+            setFocused(false);
+            const err = validateWeightField(draft, rules, unit);
+            if (draft.trim() === '' && !rules.required) {
+              if (valueGrams !== undefined) onCommit(undefined);
+              resetDraft();
+              return;
+            }
+            if (draft.trim() === '' || err) {
+              resetDraft();
+              return;
+            }
+            const displayNumber = Number(draft);
+            if (!Number.isFinite(displayNumber)) {
+              resetDraft();
+              return;
+            }
+            if (displayNumber === Number(displayValue)) {
+              resetDraft();
+              return;
+            }
+            const grams = Math.round(toGramsFromWeightUnit(displayNumber, unit));
+            onCommit(clampWeightGramsToRules(grams, rules));
+          }}
+          placeholder={placeholderGrams !== undefined ? weightInputValueFromGrams(placeholderGrams, unit) : undefined}
+          min={rules.min !== undefined ? weightInputValueFromGrams(rules.min, unit) : undefined}
+          max={rules.max !== undefined ? weightInputValueFromGrams(rules.max, unit) : undefined}
+          step={weightInputStep(unit)}
+          className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
+          }`}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">
+          {UNIT_LABELS.weight[unit]}
+        </span>
+      </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
+    </div>
+  );
+}
+
+function capacityInputValueFromMah(mah: number | undefined, unit: ElectricCapacityUnit): string {
+  const nativeValue = mah ?? 0;
+  const decimals = UNIT_PRECISION.electricCapacity[unit];
+  return String(Number(capacityValueFromMah(nativeValue, unit).toFixed(decimals)));
+}
+
+function capacityInputStep(unit: ElectricCapacityUnit): string {
+  return unit === 'ah' ? '0.01' : '1';
+}
+
+function validateCapacityField(value: string, rules: FieldValidation, unit: ElectricCapacityUnit): string | null {
+  if (value.trim() === '') {
+    return rules.required ? 'Required' : null;
+  }
+
+  const displayValue = Number(value);
+  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+
+  const mah = toMahFromCapacityUnit(displayValue, unit);
+  if (rules.min !== undefined && mah < rules.min) {
+    return `Min: ${capacityInputValueFromMah(rules.min, unit)} ${UNIT_LABELS.electricCapacity[unit]}`;
+  }
+  if (rules.max !== undefined && mah > rules.max) {
+    return `Max: ${capacityInputValueFromMah(rules.max, unit)} ${UNIT_LABELS.electricCapacity[unit]}`;
+  }
+  if (unit === 'mah' && rules.integer && !Number.isInteger(displayValue)) {
+    return 'Must be a whole number';
+  }
+  return null;
+}
+
+function CapacityInputField({
+  label,
+  valueMah,
+  onCommit,
+  unit,
+  placeholderMah,
+  rules,
+}: {
+  label: string;
+  valueMah: number | undefined;
+  onCommit: (mah: number) => void;
+  unit: ElectricCapacityUnit;
+  placeholderMah?: number;
+  rules: FieldValidation;
+}) {
+  const displayValue = capacityInputValueFromMah(valueMah, unit);
+  const [draft, setDraft] = useState(displayValue);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focused) setDraft(displayValue);
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(capacityInputValueFromMah(valueMah, unit));
+    setError(null);
+  }, [unit, valueMah]);
+
+  return (
+    <div>
+      <label className="block text-xs text-content-secondary mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          value={draft}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            setError(validateCapacityField(next, rules, unit));
+          }}
+          onBlur={() => {
+            setFocused(false);
+            const err = validateCapacityField(draft, rules, unit);
+            if (draft.trim() === '' || err) {
+              resetDraft();
+              return;
+            }
+            const displayNumber = Number(draft);
+            if (!Number.isFinite(displayNumber)) {
+              resetDraft();
+              return;
+            }
+            if (displayNumber === Number(displayValue)) {
+              resetDraft();
+              return;
+            }
+            onCommit(Math.round(toMahFromCapacityUnit(displayNumber, unit)));
+          }}
+          placeholder={placeholderMah !== undefined ? capacityInputValueFromMah(placeholderMah, unit) : undefined}
+          min={rules.min !== undefined ? capacityInputValueFromMah(rules.min, unit) : undefined}
+          max={rules.max !== undefined ? capacityInputValueFromMah(rules.max, unit) : undefined}
+          step={capacityInputStep(unit)}
+          className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
+          }`}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">
+          {UNIT_LABELS.electricCapacity[unit]}
+        </span>
+      </div>
+      {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
+    </div>
+  );
+}
+
+function SpeedInputField({
+  label,
+  valueMps,
+  onCommit,
+  unit,
+  placeholderMps,
+  rules,
+}: {
+  label?: string;
+  valueMps: number | undefined;
+  onCommit: (mps: number | undefined) => void;
+  unit: SpeedUnit;
+  placeholderMps?: number;
+  rules: FieldValidation;
+}) {
+  const displayValue = speedInputValueFromMetersPerSecond(valueMps, unit);
+  const [draft, setDraft] = useState(displayValue);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focused) setDraft(displayValue);
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(speedInputValueFromMetersPerSecond(valueMps, unit));
+    setError(null);
+  }, [unit, valueMps]);
+
+  return (
+    <div>
+      {label && <label className="block text-xs text-content-secondary mb-1">{label}</label>}
+      <div className="relative">
+        <input
+          type="number"
+          value={draft}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDraft(next);
+            setError(validateSpeedField(next, rules, unit));
+          }}
+          onBlur={() => {
+            setFocused(false);
+            if (draft.trim() === '') {
+              if (rules.required) {
+                resetDraft();
+                return;
+              }
+              if (valueMps !== undefined) onCommit(undefined);
+              resetDraft();
+              return;
+            }
+            const err = validateSpeedField(draft, rules, unit);
+            if (err) {
+              resetDraft();
+              return;
+            }
+            const displayNumber = Number(draft);
+            if (!Number.isFinite(displayNumber)) {
+              resetDraft();
+              return;
+            }
+            if (displayNumber === Number(displayValue)) {
+              resetDraft();
+              return;
+            }
+            onCommit(clampSpeedMetersPerSecondToRules(toMetersPerSecondFromSpeedUnit(displayNumber, unit), rules));
+          }}
+          placeholder={placeholderMps !== undefined ? speedInputValueFromMetersPerSecond(placeholderMps, unit) : undefined}
+          min={rules.min !== undefined ? speedInputValueFromMetersPerSecond(rules.min, unit) : undefined}
+          max={rules.max !== undefined ? speedInputValueFromMetersPerSecond(rules.max, unit) : undefined}
+          step={speedInputStep(unit)}
+          className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
+            error ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
+          }`}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">
+          {UNIT_LABELS.speed[unit]}
+        </span>
       </div>
       {error && <div className="text-[10px] text-red-400 mt-0.5">{error}</div>}
     </div>
@@ -2640,41 +3322,13 @@ function VehicleEditModal({
   onClose: () => void;
 }) {
   const { getDisplayValue, handleChange, handleBlur, getError } = useVehicleForm(vehicle, onUpdate);
-  const { displayUnits } = useSettingsStore();
-  const large = displayUnits === 'large';
-
-  // Conversion factor for current display units (1 = no conversion)
-  const factor = (field: string) => large ? (LARGE_UNIT_FIELDS[field] ?? 1) : 1;
-
-  // Wrap getDisplayValue to convert stored small-unit values for display
-  const getConvertedValue = (field: string) => {
-    const raw = getDisplayValue(field);
-    const f = factor(field);
-    if (f === 1 || raw === undefined || raw === '') return raw;
-    const num = typeof raw === 'string' ? parseFloat(raw) : raw;
-    if (typeof num !== 'number' || isNaN(num)) return raw;
-    return +(num / f).toFixed(3);
-  };
-
-  // Wrap handleChange to convert user input (large units) back to small units for storage
-  const handleConvertedChange = (field: string, value: string, isText?: boolean) => {
-    const f = factor(field);
-    if (f === 1 || isText) return handleChange(field, value, isText);
-    if (value === '') return handleChange(field, value);
-    const num = parseFloat(value);
-    if (isNaN(num)) return handleChange(field, value);
-    handleChange(field, String(Math.round(num * f)));
-  };
-
-  // Get unit label converted for large mode
-  const getUnit = (smallUnit: string) => unitLabel(smallUnit, displayUnits);
-
-  // Get placeholder converted for large mode
-  const getPlaceholder = (field: string, defaultVal: string) => {
-    const f = factor(field);
-    if (f === 1) return defaultVal;
-    return String(+(parseFloat(defaultVal) / f));
-  };
+  const { unitPreferences } = useSettingsStore();
+  const altitudeUnit = unitPreferences.altitude;
+  const electricCapacityUnit = unitPreferences.electricCapacity;
+  const speedUnit = unitPreferences.speed;
+  const weightUnit = unitPreferences.weight;
+  const dimensionUnit = unitPreferences.dimensions;
+  const areaUnit = unitPreferences.area;
 
   const isCopter = vehicle.type === 'copter';
   const isPlane = vehicle.type === 'plane';
@@ -2752,9 +3406,13 @@ function VehicleEditModal({
                 Airframe
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <FrameSizeInput
-                  value={vehicle.frameSize}
-                  onChange={(mm) => onUpdate({ frameSize: mm })}
+                <DimensionInputField
+                  label="Frame Size"
+                  valueMillimeters={vehicle.frameSize}
+                  onCommit={(millimeters) => onUpdate({ frameSize: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={127}
+                  rules={VEHICLE_FIELD_RULES.frameSize!}
                 />
                 <VehicleSelectField
                   label="Motor Count"
@@ -2767,14 +3425,13 @@ function VehicleEditModal({
                     { value: 8, label: 'Octocopter (8)' },
                   ]}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="All-Up Weight"
-                  value={getConvertedValue('weight')}
-                  onChange={(v) => handleConvertedChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('weight', '600')}
+                  valueGrams={vehicle.weight}
+                  onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
+                  unit={weightUnit}
+                  placeholderGrams={600}
+                  rules={VEHICLE_FIELD_RULES.weight!}
                 />
                 <PropSizeInput
                   value={vehicle.propSize}
@@ -2800,32 +3457,29 @@ function VehicleEditModal({
                 Airframe
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <VehicleInputField
+                <DimensionInputField
                   label="Wingspan"
-                  value={getConvertedValue('wingspan')}
-                  onChange={(v) => handleConvertedChange('wingspan', v)}
-                  onBlur={() => handleBlur('wingspan')}
-                  error={getError('wingspan')}
-                  unit={getUnit('mm')}
-                  placeholder={getPlaceholder('wingspan', '1200')}
+                  valueMillimeters={vehicle.wingspan}
+                  onCommit={(millimeters) => onUpdate({ wingspan: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={1200}
+                  rules={VEHICLE_FIELD_RULES.wingspan!}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="All-Up Weight"
-                  value={getConvertedValue('weight')}
-                  onChange={(v) => handleConvertedChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('weight', '1500')}
+                  valueGrams={vehicle.weight}
+                  onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
+                  unit={weightUnit}
+                  placeholderGrams={1500}
+                  rules={VEHICLE_FIELD_RULES.weight!}
                 />
-                <VehicleInputField
+                <AreaInputField
                   label="Wing Area"
-                  value={getDisplayValue('wingArea')}
-                  onChange={(v) => handleChange('wingArea', v)}
-                  onBlur={() => handleBlur('wingArea')}
-                  error={getError('wingArea')}
-                  unit="cm²"
-                  placeholder="2400"
+                  valueSquareCentimeters={vehicle.wingArea}
+                  onCommit={(squareCentimeters) => onUpdate({ wingArea: squareCentimeters })}
+                  unit={areaUnit}
+                  placeholderSquareCentimeters={2400}
+                  rules={VEHICLE_FIELD_RULES.wingArea!}
                 />
                 <div>
                   <div className="flex items-center justify-between mb-1 min-h-[18px]">
@@ -2835,24 +3489,14 @@ function VehicleEditModal({
                       onCompute={(mps) => onUpdate({ stallSpeed: mps })}
                     />
                   </div>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={getDisplayValue('stallSpeed') ?? ''}
-                      onChange={(e) => handleChange('stallSpeed', e.target.value)}
-                      onBlur={() => handleBlur('stallSpeed')}
-                      placeholder="8"
-                      className={`w-full px-3 py-2 pr-12 bg-surface-input border rounded-lg text-content text-sm focus:outline-none ${
-                        getError('stallSpeed')
-                          ? 'border-red-500/60 focus:border-red-500'
-                          : 'border-border focus:border-blue-500'
-                      }`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary text-xs pointer-events-none">m/s</span>
-                  </div>
-                  {getError('stallSpeed') && (
-                    <div className="text-[10px] text-red-400 mt-0.5">{getError('stallSpeed')}</div>
-                  )}
+                  <SpeedInputField
+                    label=""
+                    valueMps={vehicle.stallSpeed}
+                    onCommit={(mps) => onUpdate({ stallSpeed: mps })}
+                    unit={speedUnit}
+                    placeholderMps={8}
+                    rules={VEHICLE_FIELD_RULES.stallSpeed!}
+                  />
                 </div>
                 <PropSizeInput
                   value={vehicle.propSize}
@@ -2878,14 +3522,13 @@ function VehicleEditModal({
                 VTOL Airframe
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <VehicleInputField
+                <DimensionInputField
                   label="Wingspan"
-                  value={getConvertedValue('wingspan')}
-                  onChange={(v) => handleConvertedChange('wingspan', v)}
-                  onBlur={() => handleBlur('wingspan')}
-                  error={getError('wingspan')}
-                  unit={getUnit('mm')}
-                  placeholder={getPlaceholder('wingspan', '1500')}
+                  valueMillimeters={vehicle.wingspan}
+                  onCommit={(millimeters) => onUpdate({ wingspan: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={1500}
+                  rules={VEHICLE_FIELD_RULES.wingspan!}
                 />
                 <VehicleSelectField
                   label="VTOL Motors"
@@ -2897,23 +3540,21 @@ function VehicleEditModal({
                     { value: 6, label: 'Hexaplane (6)' },
                   ]}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="All-Up Weight"
-                  value={getConvertedValue('weight')}
-                  onChange={(v) => handleConvertedChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('weight', '3000')}
+                  valueGrams={vehicle.weight}
+                  onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
+                  unit={weightUnit}
+                  placeholderGrams={3000}
+                  rules={VEHICLE_FIELD_RULES.weight!}
                 />
-                <VehicleInputField
+                <SpeedInputField
                   label="Transition Speed"
-                  value={getDisplayValue('transitionSpeed')}
-                  onChange={(v) => handleChange('transitionSpeed', v)}
-                  onBlur={() => handleBlur('transitionSpeed')}
-                  error={getError('transitionSpeed')}
-                  unit="m/s"
-                  placeholder="15"
+                  valueMps={vehicle.transitionSpeed}
+                  onCommit={(mps) => onUpdate({ transitionSpeed: mps })}
+                  unit={speedUnit}
+                  placeholderMps={15}
+                  rules={VEHICLE_FIELD_RULES.transitionSpeed!}
                 />
                 <PropSizeInput
                   value={vehicle.propSize}
@@ -2948,41 +3589,37 @@ function VehicleEditModal({
                     { value: 'skid', label: 'Skid Steer' },
                   ]}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="Total Weight"
-                  value={getConvertedValue('weight')}
-                  onChange={(v) => handleConvertedChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('weight', '2000')}
+                  valueGrams={vehicle.weight}
+                  onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
+                  unit={weightUnit}
+                  placeholderGrams={2000}
+                  rules={VEHICLE_FIELD_RULES.weight!}
                 />
-                <VehicleInputField
+                <DimensionInputField
                   label="Wheelbase"
-                  value={getConvertedValue('wheelbase')}
-                  onChange={(v) => handleConvertedChange('wheelbase', v)}
-                  onBlur={() => handleBlur('wheelbase')}
-                  error={getError('wheelbase')}
-                  unit={getUnit('mm')}
-                  placeholder={getPlaceholder('wheelbase', '300')}
+                  valueMillimeters={vehicle.wheelbase}
+                  onCommit={(millimeters) => onUpdate({ wheelbase: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={300}
+                  rules={VEHICLE_FIELD_RULES.wheelbase!}
                 />
-                <VehicleInputField
+                <DimensionInputField
                   label="Wheel Diameter"
-                  value={getDisplayValue('wheelDiameter')}
-                  onChange={(v) => handleChange('wheelDiameter', v)}
-                  onBlur={() => handleBlur('wheelDiameter')}
-                  error={getError('wheelDiameter')}
-                  unit="mm"
-                  placeholder="100"
+                  valueMillimeters={vehicle.wheelDiameter}
+                  onCommit={(millimeters) => onUpdate({ wheelDiameter: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={100}
+                  rules={VEHICLE_FIELD_RULES.wheelDiameter!}
                 />
-                <VehicleInputField
+                <SpeedInputField
                   label="Max Speed"
-                  value={getDisplayValue('maxSpeed')}
-                  onChange={(v) => handleChange('maxSpeed', v)}
-                  onBlur={() => handleBlur('maxSpeed')}
-                  error={getError('maxSpeed')}
-                  unit="m/s"
-                  placeholder="5"
+                  valueMps={vehicle.maxSpeed}
+                  onCommit={(mps) => onUpdate({ maxSpeed: mps })}
+                  unit={speedUnit}
+                  placeholderMps={5}
+                  rules={VEHICLE_FIELD_RULES.maxSpeed!}
                 />
               </div>
             </div>
@@ -3019,41 +3656,37 @@ function VehicleEditModal({
                     { value: 'paddle', label: 'Paddle Wheel' },
                   ]}
                 />
-                <VehicleInputField
+                <DimensionInputField
                   label="Hull Length"
-                  value={getConvertedValue('hullLength')}
-                  onChange={(v) => handleConvertedChange('hullLength', v)}
-                  onBlur={() => handleBlur('hullLength')}
-                  error={getError('hullLength')}
-                  unit={getUnit('mm')}
-                  placeholder={getPlaceholder('hullLength', '600')}
+                  valueMillimeters={vehicle.hullLength}
+                  onCommit={(millimeters) => onUpdate({ hullLength: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={600}
+                  rules={VEHICLE_FIELD_RULES.hullLength!}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="Total Weight"
-                  value={getConvertedValue('weight')}
-                  onChange={(v) => handleConvertedChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('weight', '3000')}
+                  valueGrams={vehicle.weight}
+                  onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
+                  unit={weightUnit}
+                  placeholderGrams={3000}
+                  rules={VEHICLE_FIELD_RULES.weight!}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="Displacement"
-                  value={getConvertedValue('displacement')}
-                  onChange={(v) => handleConvertedChange('displacement', v)}
-                  onBlur={() => handleBlur('displacement')}
-                  error={getError('displacement')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('displacement', '3500')}
+                  valueGrams={vehicle.displacement}
+                  onCommit={(grams) => onUpdate({ displacement: grams })}
+                  unit={weightUnit}
+                  placeholderGrams={3500}
+                  rules={VEHICLE_FIELD_RULES.displacement!}
                 />
-                <VehicleInputField
+                <SpeedInputField
                   label="Max Speed"
-                  value={getDisplayValue('maxSpeed')}
-                  onChange={(v) => handleChange('maxSpeed', v)}
-                  onBlur={() => handleBlur('maxSpeed')}
-                  error={getError('maxSpeed')}
-                  unit="m/s"
-                  placeholder="3"
+                  valueMps={vehicle.maxSpeed}
+                  onCommit={(mps) => onUpdate({ maxSpeed: mps })}
+                  unit={speedUnit}
+                  placeholderMps={3}
+                  rules={VEHICLE_FIELD_RULES.maxSpeed!}
                 />
               </div>
             </div>
@@ -3069,14 +3702,13 @@ function VehicleEditModal({
                 Hull & Thrusters
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <VehicleInputField
+                <DimensionInputField
                   label="Hull Length"
-                  value={getConvertedValue('hullLength')}
-                  onChange={(v) => handleConvertedChange('hullLength', v)}
-                  onBlur={() => handleBlur('hullLength')}
-                  error={getError('hullLength')}
-                  unit={getUnit('mm')}
-                  placeholder={getPlaceholder('hullLength', '500')}
+                  valueMillimeters={vehicle.hullLength}
+                  onCommit={(millimeters) => onUpdate({ hullLength: millimeters })}
+                  unit={dimensionUnit}
+                  placeholderMillimeters={500}
+                  rules={VEHICLE_FIELD_RULES.hullLength!}
                 />
                 <VehicleSelectField
                   label="Thruster Count"
@@ -3089,23 +3721,21 @@ function VehicleEditModal({
                     { value: 8, label: '8 Thrusters' },
                   ]}
                 />
-                <VehicleInputField
+                <WeightInputField
                   label="Dry Weight"
-                  value={getConvertedValue('weight')}
-                  onChange={(v) => handleConvertedChange('weight', v)}
-                  onBlur={() => handleBlur('weight')}
-                  error={getError('weight')}
-                  unit={getUnit('g')}
-                  placeholder={getPlaceholder('weight', '5000')}
+                  valueGrams={vehicle.weight}
+                  onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
+                  unit={weightUnit}
+                  placeholderGrams={5000}
+                  rules={VEHICLE_FIELD_RULES.weight!}
                 />
-                <VehicleInputField
+                <AltitudeInputField
                   label="Max Depth Rating"
-                  value={getDisplayValue('maxDepth')}
-                  onChange={(v) => handleChange('maxDepth', v)}
-                  onBlur={() => handleBlur('maxDepth')}
-                  error={getError('maxDepth')}
-                  unit="m"
-                  placeholder="100"
+                  valueMeters={vehicle.maxDepth}
+                  onCommit={(meters) => onUpdate({ maxDepth: meters })}
+                  unit={altitudeUnit}
+                  placeholderMeters={100}
+                  rules={VEHICLE_FIELD_RULES.maxDepth!}
                 />
                 <VehicleSelectField
                   label="Buoyancy"
@@ -3117,14 +3747,13 @@ function VehicleEditModal({
                     { value: 'negative', label: 'Negative (sinks)' },
                   ]}
                 />
-                <VehicleInputField
+                <SpeedInputField
                   label="Max Speed"
-                  value={getDisplayValue('maxSpeed')}
-                  onChange={(v) => handleChange('maxSpeed', v)}
-                  onBlur={() => handleBlur('maxSpeed')}
-                  error={getError('maxSpeed')}
-                  unit="m/s"
-                  placeholder="2"
+                  valueMps={vehicle.maxSpeed}
+                  onCommit={(mps) => onUpdate({ maxSpeed: mps })}
+                  unit={speedUnit}
+                  placeholderMps={2}
+                  rules={VEHICLE_FIELD_RULES.maxSpeed!}
                 />
               </div>
             </div>
@@ -3167,14 +3796,13 @@ function VehicleEditModal({
                   { value: 14, label: '14S' },
                 ]}
               />
-              <VehicleInputField
+              <CapacityInputField
                 label="Capacity"
-                value={getConvertedValue('batteryCapacity')}
-                onChange={(v) => handleConvertedChange('batteryCapacity', v)}
-                onBlur={() => handleBlur('batteryCapacity')}
-                error={getError('batteryCapacity')}
-                unit={getUnit('mAh')}
-                placeholder={getPlaceholder('batteryCapacity', '1500')}
+                valueMah={vehicle.batteryCapacity}
+                onCommit={(mah) => onUpdate({ batteryCapacity: mah })}
+                unit={electricCapacityUnit}
+                placeholderMah={1500}
+                rules={VEHICLE_FIELD_RULES.batteryCapacity!}
               />
             </div>
           </div>
@@ -3347,32 +3975,36 @@ function VehicleCard({
   onDelete,
   canDelete,
 }: VehicleCardProps) {
-  const { displayUnits } = useSettingsStore();
+  const { unitPreferences } = useSettingsStore();
+  const altitudeUnit = unitPreferences.altitude;
+  const electricCapacityUnit = unitPreferences.electricCapacity;
+  const weightUnit = unitPreferences.weight;
+  const dimensionUnit = unitPreferences.dimensions;
   // Build vehicle-specific info string
   const getVehicleSpecs = () => {
     const parts: string[] = [];
     const chemLabel = vehicle.batteryChemistry && vehicle.batteryChemistry !== 'lipo'
       ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[vehicle.batteryChemistry] ?? ''}`
       : '';
-    const batteryStr = `${vehicle.batteryCells}S${chemLabel} ${fmtCapacity(vehicle.batteryCapacity, displayUnits)}`;
+    const batteryStr = `${vehicle.batteryCells}S${chemLabel} ${fmtCapacity(vehicle.batteryCapacity, electricCapacityUnit)}`;
 
     switch (vehicle.type) {
       case 'copter':
-        if (vehicle.frameSize) parts.push(fmtLength(vehicle.frameSize, displayUnits));
+        if (vehicle.frameSize) parts.push(fmtLength(vehicle.frameSize, dimensionUnit));
         if (vehicle.motorCount) {
           const motorNames: Record<number, string> = { 3: 'Tri', 4: 'Quad', 6: 'Hex', 8: 'Octo' };
           parts.push(motorNames[vehicle.motorCount] || `${vehicle.motorCount}M`);
         }
         parts.push(batteryStr);
-        parts.push(fmtWeight(vehicle.weight, displayUnits));
+        parts.push(fmtWeight(vehicle.weight, weightUnit));
         break;
       case 'plane':
-        if (vehicle.wingspan) parts.push(`${fmtLength(vehicle.wingspan, displayUnits)} span`);
+        if (vehicle.wingspan) parts.push(`${fmtLength(vehicle.wingspan, dimensionUnit)} span`);
         parts.push(batteryStr);
-        parts.push(fmtWeight(vehicle.weight, displayUnits));
+        parts.push(fmtWeight(vehicle.weight, weightUnit));
         break;
       case 'vtol':
-        if (vehicle.wingspan) parts.push(fmtLength(vehicle.wingspan, displayUnits));
+        if (vehicle.wingspan) parts.push(fmtLength(vehicle.wingspan, dimensionUnit));
         if (vehicle.vtolMotorCount) parts.push(`${vehicle.vtolMotorCount} VTOL motors`);
         parts.push(batteryStr);
         break;
@@ -3381,24 +4013,24 @@ function VehicleCard({
           const driveNames: Record<string, string> = { differential: 'Tank', ackermann: 'Car', skid: 'Skid' };
           parts.push(driveNames[vehicle.driveType] || vehicle.driveType);
         }
-        if (vehicle.wheelDiameter) parts.push(`${vehicle.wheelDiameter}mm wheels`);
+        if (vehicle.wheelDiameter) parts.push(`${fmtLength(vehicle.wheelDiameter, dimensionUnit)} wheels`);
         parts.push(batteryStr);
         break;
       case 'boat':
         if (vehicle.hullType) {
           parts.push(vehicle.hullType.charAt(0).toUpperCase() + vehicle.hullType.slice(1));
         }
-        if (vehicle.hullLength) parts.push(fmtLength(vehicle.hullLength, displayUnits));
+        if (vehicle.hullLength) parts.push(fmtLength(vehicle.hullLength, dimensionUnit));
         parts.push(batteryStr);
         break;
       case 'sub':
         if (vehicle.thrusterCount) parts.push(`${vehicle.thrusterCount}T`);
-        if (vehicle.maxDepth) parts.push(`${vehicle.maxDepth}m rated`);
+        if (vehicle.maxDepth) parts.push(`${formatAltitudeFromMeters(vehicle.maxDepth, altitudeUnit)} rated`);
         parts.push(batteryStr);
         break;
       default:
         parts.push(batteryStr);
-        parts.push(fmtWeight(vehicle.weight, displayUnits));
+        parts.push(fmtWeight(vehicle.weight, weightUnit));
     }
 
     return parts.join(' • ');

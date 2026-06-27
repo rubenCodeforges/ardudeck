@@ -34,6 +34,24 @@ import { computeItemColors, SEGMENT_COLORS } from '../../utils/mission-segment-c
 import { validateMission } from '../../../shared/mission-validation';
 import { MissionValidationBadge } from './MissionValidationBadge';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import {
+  formatAltitudeFromMeters,
+  formatDistanceFromMeters,
+  formatSpeedFromMetersPerSecond,
+  formatVerticalSpeedFromMetersPerSecond,
+  UNIT_LABELS,
+  type AltitudeUnit,
+  type DistanceUnit,
+  type SpeedUnit,
+  type VerticalSpeedUnit,
+} from '../../../shared/user-units.js';
+import {
+  waypointDisplayBound,
+  waypointDisplayStep,
+  waypointDisplayValue,
+  waypointNativeValue,
+  type WaypointUnitContext,
+} from './waypoint-unit-format';
 
 // Helper to get GPS state without subscribing (avoids re-renders)
 function getGpsState() {
@@ -478,13 +496,20 @@ function CommandDropdown({
 // Get description for a waypoint
 // advanced=false: friendly labels for beginners ("Fly here", "Circle here")
 // advanced=true: standard GCS labels ("WP", "Loiter Unlim")
-function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
-  const radiusSuffix = wp.param3 > 0 ? ` (${wp.param3}m radius)` : '';
+function getWaypointSummary(
+  wp: MissionItem,
+  advanced: boolean,
+  distanceUnit: DistanceUnit,
+  altitudeUnit: AltitudeUnit,
+  speedUnit: SpeedUnit,
+  verticalSpeedUnit: VerticalSpeedUnit,
+): string {
+  const radiusSuffix = wp.param3 > 0 ? ` (${formatDistanceFromMeters(wp.param3, distanceUnit)} radius)` : '';
 
   switch (wp.command) {
     // Navigation
     case MAV_CMD.NAV_TAKEOFF:
-      return `Takeoff to ${wp.altitude}m`;
+      return `Takeoff to ${formatAltitudeFromMeters(wp.altitude, altitudeUnit)}`;
     case MAV_CMD.NAV_WAYPOINT:
       if (advanced) return wp.param1 > 0 ? `WP (hold ${wp.param1}s)` : 'WP';
       return wp.param1 > 0 ? `Fly here, wait ${wp.param1}s` : 'Fly here';
@@ -501,7 +526,7 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
       if (advanced) return `Loiter ${wp.param1}x${radiusSuffix}`;
       return `Circle ${wp.param1}x${radiusSuffix}`;
     case MAV_CMD.NAV_LOITER_TO_ALT:
-      return `Loiter to ${wp.altitude}m${radiusSuffix}`;
+      return `Loiter to ${formatAltitudeFromMeters(wp.altitude, altitudeUnit)}${radiusSuffix}`;
     case MAV_CMD.NAV_LAND:
       if (advanced) return 'Land';
       return 'Land here';
@@ -509,21 +534,21 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
       if (advanced) return 'RTL';
       return 'Return to home';
     case MAV_CMD.NAV_VTOL_TAKEOFF:
-      return `VTOL Takeoff to ${wp.altitude}m`;
+      return `VTOL Takeoff to ${formatAltitudeFromMeters(wp.altitude, altitudeUnit)}`;
     case MAV_CMD.NAV_VTOL_LAND:
       if (advanced) return 'VTOL Land';
       return 'VTOL Land here';
     case MAV_CMD.NAV_DELAY:
       return `Wait ${wp.param1}s`;
     case MAV_CMD.NAV_PAYLOAD_PLACE:
-      return wp.param1 > 0 ? `Place payload (max ${wp.param1}m desc)` : 'Place payload';
+      return wp.param1 > 0 ? `Place payload (max ${formatAltitudeFromMeters(wp.param1, altitudeUnit)} desc)` : 'Place payload';
     case MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT:
-      return `Continue, change to ${wp.altitude}m`;
+      return `Continue, change to ${formatAltitudeFromMeters(wp.altitude, altitudeUnit)}`;
     case MAV_CMD.NAV_ARC_WAYPOINT:
       if (advanced) return 'Arc WP';
       return 'Curved path';
     case MAV_CMD.NAV_ALTITUDE_WAIT:
-      return `Wait at ${wp.altitude}m`;
+      return `Wait at ${formatAltitudeFromMeters(wp.altitude, altitudeUnit)}`;
     case MAV_CMD.NAV_GUIDED_ENABLE:
       return wp.param1 > 0 ? 'Enable guided mode' : 'Disable guided mode';
     case MAV_CMD.NAV_SCRIPT_TIME:
@@ -535,9 +560,9 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
     case MAV_CMD.CONDITION_DELAY:
       return `Wait ${wp.param1}s`;
     case MAV_CMD.CONDITION_CHANGE_ALT:
-      return `Climb/descend at ${wp.param1} m/s`;
+      return `Climb/descend at ${formatVerticalSpeedFromMetersPerSecond(wp.param1, verticalSpeedUnit)}`;
     case MAV_CMD.CONDITION_DISTANCE:
-      return `Wait until ${wp.param1}m from next WP`;
+      return `Wait until ${formatDistanceFromMeters(wp.param1, distanceUnit)} from next WP`;
     case MAV_CMD.CONDITION_YAW: {
       const isRelative = wp.param4 !== 0;
       return isRelative
@@ -547,8 +572,8 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
 
     // Camera / Gimbal
     case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
-      if (advanced) return wp.param1 > 0 ? `CAM_TRIGG_DIST ${wp.param1}m` : 'CAM_TRIGG off';
-      return wp.param1 > 0 ? `Camera every ${wp.param1}m` : 'Camera trigger off';
+      if (advanced) return wp.param1 > 0 ? `CAM_TRIGG_DIST ${formatDistanceFromMeters(wp.param1, distanceUnit)}` : 'CAM_TRIGG off';
+      return wp.param1 > 0 ? `Camera every ${formatDistanceFromMeters(wp.param1, distanceUnit)}` : 'Camera trigger off';
     case MAV_CMD.DO_DIGICAM_CONTROL:
       if (advanced) return 'DIGICAM_CONTROL';
       return 'Take photo';
@@ -596,7 +621,7 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
 
     // Actions
     case MAV_CMD.DO_CHANGE_SPEED:
-      return `Set speed to ${wp.param2} m/s`;
+      return `Set speed to ${formatSpeedFromMetersPerSecond(wp.param2, speedUnit)}`;
     case MAV_CMD.DO_SET_HOME:
       return wp.param1 === 1 ? 'Set home (current)' : 'Set home (location)';
     case MAV_CMD.DO_JUMP:
@@ -620,7 +645,7 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
     case MAV_CMD.DO_LAND_START:
       return 'Begin landing sequence';
     case MAV_CMD.DO_CHANGE_ALTITUDE:
-      return `Change alt to ${wp.param1}m`;
+      return `Change alt to ${formatAltitudeFromMeters(wp.param1, altitudeUnit)}`;
     case MAV_CMD.DO_SET_MODE:
       return `Set mode ${wp.param1}`;
     case MAV_CMD.DO_PAUSE_CONTINUE:
@@ -650,7 +675,7 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
     case MAV_CMD.SET_YAW_SPEED:
       return `Yaw ${wp.param1} at ${wp.param2} deg/s`;
     case MAV_CMD.DO_SET_RESUME_REPEAT_DIST:
-      return `Resume repeat ${wp.param1}m`;
+      return `Resume repeat ${formatDistanceFromMeters(wp.param1, distanceUnit)}`;
     case MAV_CMD.DO_AUX_FUNCTION:
       return `Aux function ${wp.param1}`;
 
@@ -659,31 +684,34 @@ function getWaypointSummary(wp: MissionItem, advanced: boolean): string {
   }
 }
 
-// Get the parameters config for each command type
-function getCommandParams(cmd: number): Array<{
+type CommandParamConfig = {
   key: keyof MissionItem;
   label: string;
   unit: string;
+  unitKind?: 'distance' | 'altitude' | 'speed' | 'verticalSpeed';
   min?: number;
   max?: number;
   step?: number;
   show: boolean;
-}> {
-  const baseLocation = [
-    { key: 'altitude' as const, label: 'Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+};
+
+// Get the parameters config for each command type
+export function getCommandParams(cmd: number): CommandParamConfig[] {
+  const baseLocation: CommandParamConfig[] = [
+    { key: 'altitude' as const, label: 'Altitude', unit: 'm', unitKind: 'altitude', min: 0, step: 5, show: true },
   ];
 
   switch (cmd) {
     case MAV_CMD.NAV_TAKEOFF:
       return [
-        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 1, max: 500, step: 5, show: true },
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', unitKind: 'altitude', min: 1, step: 5, show: true },
         { key: 'param1' as const, label: 'Pitch Angle', unit: '°', min: 0, max: 90, step: 5, show: true },
       ];
     case MAV_CMD.NAV_WAYPOINT:
       return [
         ...baseLocation,
         { key: 'param1' as const, label: 'Wait Time', unit: 's', min: 0, max: 300, step: 1, show: true },
-        { key: 'param2' as const, label: 'Acceptance Radius', unit: 'm', min: 0, max: 50, step: 1, show: false },
+        { key: 'param2' as const, label: 'Acceptance Radius', unit: 'm', unitKind: 'distance', min: 0, max: 50, step: 1, show: false },
       ];
     case MAV_CMD.NAV_SPLINE_WAYPOINT:
       return [
@@ -693,23 +721,23 @@ function getCommandParams(cmd: number): Array<{
     case MAV_CMD.NAV_LOITER_UNLIM:
       return [
         ...baseLocation,
-        { key: 'param3' as const, label: 'Radius', unit: 'm', min: 10, max: 500, step: 10, show: true },
+        { key: 'param3' as const, label: 'Radius', unit: 'm', unitKind: 'distance', min: 10, max: 500, step: 10, show: true },
       ];
     case MAV_CMD.NAV_LOITER_TIME:
       return [
         ...baseLocation,
         { key: 'param1' as const, label: 'Duration', unit: 's', min: 1, max: 600, step: 5, show: true },
-        { key: 'param3' as const, label: 'Radius', unit: 'm', min: 10, max: 500, step: 10, show: true },
+        { key: 'param3' as const, label: 'Radius', unit: 'm', unitKind: 'distance', min: 10, max: 500, step: 10, show: true },
       ];
     case MAV_CMD.NAV_LOITER_TURNS:
       return [
         ...baseLocation,
         { key: 'param1' as const, label: 'Number of Turns', unit: '', min: 1, max: 100, step: 1, show: true },
-        { key: 'param3' as const, label: 'Radius', unit: 'm', min: 10, max: 500, step: 10, show: true },
+        { key: 'param3' as const, label: 'Radius', unit: 'm', unitKind: 'distance', min: 10, max: 500, step: 10, show: true },
       ];
     case MAV_CMD.NAV_LAND:
       return [
-        { key: 'param1' as const, label: 'Abort Altitude', unit: 'm', min: 0, max: 100, step: 5, show: true },
+        { key: 'param1' as const, label: 'Abort Altitude', unit: 'm', unitKind: 'altitude', min: 0, max: 100, step: 5, show: true },
       ];
     case MAV_CMD.NAV_RETURN_TO_LAUNCH:
       return []; // No params needed
@@ -719,25 +747,25 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.DO_CHANGE_SPEED:
       return [
-        { key: 'param2' as const, label: 'Target Speed', unit: 'm/s', min: 1, max: 50, step: 1, show: true },
+        { key: 'param2' as const, label: 'Target Speed', unit: 'm/s', unitKind: 'speed', min: 1, max: 50, step: 1, show: true },
       ];
     case MAV_CMD.NAV_LOITER_TO_ALT:
       return [
         ...baseLocation,
-        { key: 'param3' as const, label: 'Radius', unit: 'm', min: 10, max: 500, step: 10, show: true },
+        { key: 'param3' as const, label: 'Radius', unit: 'm', unitKind: 'distance', min: 10, max: 500, step: 10, show: true },
       ];
     case MAV_CMD.NAV_VTOL_TAKEOFF:
       return [
-        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 1, max: 500, step: 5, show: true },
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', unitKind: 'altitude', min: 1, step: 5, show: true },
       ];
     case MAV_CMD.NAV_VTOL_LAND:
       return [
-        { key: 'param3' as const, label: 'Approach Alt', unit: 'm', min: 0, max: 200, step: 5, show: true },
+        { key: 'param3' as const, label: 'Approach Alt', unit: 'm', unitKind: 'altitude', min: 0, max: 200, step: 5, show: true },
       ];
     case MAV_CMD.NAV_PAYLOAD_PLACE:
       return [
         ...baseLocation,
-        { key: 'param1' as const, label: 'Max Descend', unit: 'm', min: 0, max: 50, step: 1, show: true },
+        { key: 'param1' as const, label: 'Max Descend', unit: 'm', unitKind: 'altitude', min: 0, max: 50, step: 1, show: true },
       ];
     case MAV_CMD.CONDITION_DELAY:
       return [
@@ -745,12 +773,12 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.CONDITION_CHANGE_ALT:
       return [
-        { key: 'param1' as const, label: 'Rate', unit: 'm/s', min: 0, max: 10, step: 0.5, show: true },
-        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+        { key: 'param1' as const, label: 'Rate', unit: 'm/s', unitKind: 'verticalSpeed', min: 0, max: 10, step: 0.5, show: true },
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', unitKind: 'altitude', min: 0, step: 5, show: true },
       ];
     case MAV_CMD.CONDITION_DISTANCE:
       return [
-        { key: 'param1' as const, label: 'Distance', unit: 'm', min: 0, max: 10000, step: 10, show: true },
+        { key: 'param1' as const, label: 'Distance', unit: 'm', unitKind: 'distance', min: 0, max: 10000, step: 10, show: true },
       ];
     case MAV_CMD.CONDITION_YAW:
       return [
@@ -766,7 +794,7 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.DO_SET_CAM_TRIGG_DIST:
       return [
-        { key: 'param1' as const, label: 'Distance', unit: 'm', min: 0, max: 1000, step: 1, show: true },
+        { key: 'param1' as const, label: 'Distance', unit: 'm', unitKind: 'distance', min: 0, max: 1000, step: 1, show: true },
       ];
     case MAV_CMD.DO_SET_SERVO:
       return [
@@ -813,7 +841,7 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.DO_CHANGE_ALTITUDE:
       return [
-        { key: 'param1' as const, label: 'Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+        { key: 'param1' as const, label: 'Altitude', unit: 'm', unitKind: 'altitude', min: 0, step: 5, show: true },
         { key: 'param2' as const, label: 'Frame', unit: '', min: 0, max: 10, step: 1, show: false },
       ];
     // New commands
@@ -823,8 +851,8 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.NAV_ALTITUDE_WAIT:
       return [
-        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
-        { key: 'param1' as const, label: 'Climb Rate', unit: 'm/s', min: 0, max: 10, step: 0.5, show: true },
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', unitKind: 'altitude', min: 0, step: 5, show: true },
+        { key: 'param1' as const, label: 'Climb Rate', unit: 'm/s', unitKind: 'verticalSpeed', min: 0, max: 10, step: 0.5, show: true },
       ];
     case MAV_CMD.NAV_SCRIPT_TIME:
       return [
@@ -902,7 +930,7 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.DO_SET_RESUME_REPEAT_DIST:
       return [
-        { key: 'param1' as const, label: 'Distance', unit: 'm', min: 0, max: 10000, step: 10, show: true },
+        { key: 'param1' as const, label: 'Distance', unit: 'm', unitKind: 'distance', min: 0, max: 10000, step: 10, show: true },
       ];
     case MAV_CMD.DO_ENGINE_CONTROL:
       return [
@@ -918,7 +946,7 @@ function getCommandParams(cmd: number): Array<{
       ];
     case MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT:
       return [
-        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', min: 0, max: 1000, step: 5, show: true },
+        { key: 'altitude' as const, label: 'Target Altitude', unit: 'm', unitKind: 'altitude', min: 0, step: 5, show: true },
       ];
     default:
       return baseLocation;
@@ -972,14 +1000,173 @@ export function WaypointTablePanel({ readOnly = false }: WaypointTablePanelProps
  * overflow menu (delete). Selective-upload checkbox + edit-survey shortcut
  * land in later steps.
  */
-function formatBlockDistance(m: number): string {
-  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
+function formatBlockDistance(m: number, unit: DistanceUnit): string {
+  return formatDistanceFromMeters(m, unit);
 }
 
 function formatBlockDuration(s: number): string {
   const mins = Math.floor(s / 60);
   const secs = Math.round(s % 60);
   return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
+function displayParamValue(
+  value: number,
+  param: CommandParamConfig,
+  unitContext: WaypointUnitContext,
+): number {
+  return param.unitKind ? waypointDisplayValue(value, param.unitKind, unitContext) : value;
+}
+
+function nativeParamValue(
+  value: number,
+  param: CommandParamConfig,
+  unitContext: WaypointUnitContext,
+): number {
+  return param.unitKind ? waypointNativeValue(value, param.unitKind, unitContext) : value;
+}
+
+function displayParamBound(
+  value: number | undefined,
+  param: CommandParamConfig,
+  unitContext: WaypointUnitContext,
+): number | undefined {
+  if (value === undefined) return undefined;
+  return param.unitKind ? waypointDisplayBound(value, param.unitKind, unitContext) : value;
+}
+
+function displayParamStep(
+  value: number | undefined,
+  param: CommandParamConfig,
+  unitContext: WaypointUnitContext,
+): number | undefined {
+  if (value === undefined) return undefined;
+  return param.unitKind ? waypointDisplayStep(param.unitKind, unitContext) : value;
+}
+
+function displayParamUnit(
+  param: CommandParamConfig,
+  distanceUnit: DistanceUnit,
+  altitudeUnit: AltitudeUnit,
+  speedUnit: SpeedUnit,
+  verticalSpeedUnit: VerticalSpeedUnit,
+): string {
+  if (param.unitKind === 'distance') return UNIT_LABELS.distance[distanceUnit];
+  if (param.unitKind === 'altitude') return UNIT_LABELS.altitude[altitudeUnit];
+  if (param.unitKind === 'speed') return UNIT_LABELS.speed[speedUnit];
+  if (param.unitKind === 'verticalSpeed') return UNIT_LABELS.verticalSpeed[verticalSpeedUnit];
+  return param.unit;
+}
+
+function isValidDisplayNumber(value: number, min?: number, max?: number): boolean {
+  return Number.isFinite(value) &&
+    (min === undefined || value >= min) &&
+    (max === undefined || value <= max);
+}
+
+function sameNativeParamValue(a: number, b: number): boolean {
+  return Math.abs(a - b) < 1e-9;
+}
+
+function UnitParamInput({
+  nativeValue,
+  param,
+  distanceUnit,
+  altitudeUnit,
+  speedUnit,
+  verticalSpeedUnit,
+  onCommit,
+}: {
+  nativeValue: number;
+  param: CommandParamConfig;
+  distanceUnit: DistanceUnit;
+  altitudeUnit: AltitudeUnit;
+  speedUnit: SpeedUnit;
+  verticalSpeedUnit: VerticalSpeedUnit;
+  onCommit: (nativeValue: number) => void;
+}) {
+  const unitContext = useMemo<WaypointUnitContext>(() => ({
+    distanceUnit,
+    altitudeUnit,
+    speedUnit,
+    verticalSpeedUnit,
+  }), [altitudeUnit, distanceUnit, speedUnit, verticalSpeedUnit]);
+  const displayValue = displayParamValue(nativeValue, param, unitContext);
+  const min = displayParamBound(param.min, param, unitContext);
+  const max = displayParamBound(param.max, param, unitContext);
+  const step = displayParamStep(param.step, param, unitContext);
+  const [draft, setDraft] = useState(() => String(displayValue));
+  const [focused, setFocused] = useState(false);
+  const skipBlurCommitRef = useRef(false);
+
+  useEffect(() => {
+    if (!focused) setDraft(String(displayValue));
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(String(displayParamValue(nativeValue, param, unitContext)));
+  }, [nativeValue, param, unitContext]);
+
+  const commitDisplayValue = useCallback((display: number) => {
+    if (!isValidDisplayNumber(display, min, max)) {
+      resetDraft();
+      return;
+    }
+    const nextNative = nativeParamValue(display, param, unitContext);
+    if (!sameNativeParamValue(nextNative, nativeValue)) {
+      onCommit(nextNative);
+    }
+    setDraft(String(display));
+  }, [max, min, nativeValue, onCommit, param, resetDraft, unitContext]);
+
+  return (
+    <input
+      type="number"
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => {
+        const nextDraft = e.target.value;
+        setDraft(nextDraft);
+        if (nextDraft.trim() === '') return;
+        const parsed = Number(nextDraft);
+        if (!isValidDisplayNumber(parsed, min, max)) return;
+        const nextNative = nativeParamValue(parsed, param, unitContext);
+        if (!sameNativeParamValue(nextNative, nativeValue)) {
+          onCommit(nextNative);
+        }
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (skipBlurCommitRef.current) {
+          skipBlurCommitRef.current = false;
+          return;
+        }
+        const parsed = Number(draft);
+        if (draft.trim() === '' || !Number.isFinite(parsed)) {
+          resetDraft();
+          return;
+        }
+        if (parsed === displayValue) {
+          resetDraft();
+          return;
+        }
+        commitDisplayValue(parsed);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          skipBlurCommitRef.current = true;
+          resetDraft();
+          e.currentTarget.blur();
+        }
+      }}
+      min={min}
+      max={max}
+      step={step}
+      className="w-full bg-surface-input text-content text-sm px-2 py-1.5 rounded border border-default focus:border-blue-500 focus:outline-none font-mono"
+    />
+  );
 }
 
 function GroupHeaderRow({
@@ -1000,6 +1187,7 @@ function GroupHeaderRow({
   onDelete,
   onRegenerate,
   onEdit,
+  distanceUnit,
 }: {
   group: Group;
   count: number;
@@ -1032,6 +1220,7 @@ function GroupHeaderRow({
   /** Re-open the survey panel and load this group's polygon + config back
       into the draft for live editing. Survey groups only. */
   onEdit?: () => void;
+  distanceUnit: DistanceUnit;
 }) {
   const isStaleSurvey = isSurveyGroup(group) && isSurveyGroupStale(group);
   const [editing, setEditing] = useState(false);
@@ -1298,7 +1487,7 @@ function GroupHeaderRow({
         <span className="uppercase tracking-wide">{group.kind}</span>
         {stats && stats.distanceM > 0 && (
           <>
-            <span>· {formatBlockDistance(stats.distanceM)}</span>
+            <span>· {formatBlockDistance(stats.distanceM, distanceUnit)}</span>
             {stats.timeS > 0 && <span>· {formatBlockDuration(stats.timeS)}</span>}
             {stats.gsd != null && stats.gsd > 0 && <span>· {stats.gsd.toFixed(1)} cm/px</span>}
           </>
@@ -1353,6 +1542,10 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   const advancedLabels = useSettingsStore((s) => s.missionDefaults.advancedMissionLabels);
   const settingsFirmware = useSettingsStore((s) => s.missionDefaults.missionFirmware);
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
+  const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
+  const verticalSpeedUnit = useSettingsStore((s) => s.unitPreferences.verticalSpeed);
   const connectionState = useConnectionStore((s) => s.connectionState);
 
   const showSegmentColors = useSettingsStore((s) => s.missionDefaults.showSegmentColors);
@@ -1410,8 +1603,8 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   // Pre-flight validation, recomputed on any mission/group change.
   const validation = useMemo(
-    () => validateMission(missionItems, groups, { isAir: true }),
-    [missionItems, groups],
+    () => validateMission(missionItems, groups, { isAir: true, altitudeUnit }),
+    [missionItems, groups, altitudeUnit],
   );
 
   // When connected, auto-detect firmware from protocol. When disconnected, use setting.
@@ -1840,6 +2033,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     onRename={(name) => renameGroup(group.id, name)}
                     onSetColor={(color) => setGroupColor(group.id, color)}
                     onDelete={() => deleteGroup(group.id)}
+                    distanceUnit={distanceUnit}
                     onRegenerate={
                       isSurveyGroup(group)
                         ? () => regenerateSurveyGroup(group.id)
@@ -1985,7 +2179,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     <div className={`flex items-center gap-1.5 ${
                       isChild ? 'text-xs text-content-secondary' : 'text-sm text-content'
                     }`}>
-                      <span className="truncate">{getWaypointSummary(wp, advancedLabels)}</span>
+                      <span className="truncate">{getWaypointSummary(wp, advancedLabels, distanceUnit, altitudeUnit, speedUnit, verticalSpeedUnit)}</span>
                       {wp.command === MAV_CMD.CONDITION_YAW && wp.param3 !== 0 && (
                         <span className={`px-1 py-0 text-[9px] font-bold rounded shrink-0 ${
                           wp.param3 < 0
@@ -2064,22 +2258,37 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
           <div className="grid grid-cols-2 gap-2">
             {getCommandParams(selectedWaypoint.command)
               .filter(p => p.show)
-              .map((param) => (
-                <div key={param.key}>
-                  <label className="block text-[11px] text-content-secondary mb-1">
-                    {param.label} {param.unit && <span className="text-content-tertiary">({param.unit})</span>}
-                  </label>
-                  <input
-                    type="number"
-                    value={selectedWaypoint[param.key] as number}
-                    onChange={(e) => handleParamChange(selectedWaypoint.seq, param.key, Number(e.target.value))}
-                    min={param.min}
-                    max={param.max}
-                    step={param.step}
-                    className="w-full bg-surface-input text-content text-sm px-2 py-1.5 rounded border border-default focus:border-blue-500 focus:outline-none font-mono"
-                  />
-                </div>
-              ))}
+              .map((param) => {
+                const displayUnit = displayParamUnit(param, distanceUnit, altitudeUnit, speedUnit, verticalSpeedUnit);
+                return (
+                  <div key={param.key}>
+                    <label className="block text-[11px] text-content-secondary mb-1">
+                      {param.label} {displayUnit && <span className="text-content-tertiary">({displayUnit})</span>}
+                    </label>
+                    {param.unitKind === 'distance' || param.unitKind === 'altitude' || param.unitKind === 'speed' || param.unitKind === 'verticalSpeed' ? (
+                      <UnitParamInput
+                        nativeValue={selectedWaypoint[param.key] as number}
+                        param={param}
+                        distanceUnit={distanceUnit}
+                        altitudeUnit={altitudeUnit}
+                        speedUnit={speedUnit}
+                        verticalSpeedUnit={verticalSpeedUnit}
+                        onCommit={(nativeValue) => handleParamChange(selectedWaypoint.seq, param.key, nativeValue)}
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        value={selectedWaypoint[param.key] as number}
+                        onChange={(e) => handleParamChange(selectedWaypoint.seq, param.key, Number(e.target.value))}
+                        min={param.min}
+                        max={param.max}
+                        step={param.step}
+                        className="w-full bg-surface-input text-content text-sm px-2 py-1.5 rounded border border-default focus:border-blue-500 focus:outline-none font-mono"
+                      />
+                    )}
+                  </div>
+                );
+              })}
 
             {/* Location fields for commands that have them */}
             {commandHasLocation(selectedWaypoint.command) && (

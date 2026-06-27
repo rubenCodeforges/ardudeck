@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeMissionBriefing,
+  formatAltitudeM,
   formatDistanceM,
   formatDurationSec,
   type BriefingInput,
@@ -19,10 +20,20 @@ const base: Omit<BriefingInput, 'located'> = {
 };
 
 describe('formatters', () => {
-  it('formats distance with km/m thresholds', () => {
+  it('formats distance using the default distance unit without autoscaling', () => {
     expect(formatDistanceM(450)).toBe('450 m');
-    expect(formatDistanceM(2500)).toBe('2.5 km');
-    expect(formatDistanceM(42000)).toBe('42 km');
+    expect(formatDistanceM(2500)).toBe('2500 m');
+  });
+
+  it('formats distance using an explicit distance unit', () => {
+    expect(formatDistanceM(2500, 'km')).toBe('2.50 km');
+    expect(formatDistanceM(1609.344, 'mi')).toBe('1.00 mi');
+  });
+
+  it('formats altitude and depth using an explicit altitude unit', () => {
+    expect(formatAltitudeM(120)).toBe('120 m');
+    expect(formatAltitudeM(120, 'ft')).toBe('394 ft');
+    expect(formatAltitudeM(1500, 'km')).toBe('1.50 km');
   });
 
   it('formats duration in min and h/min', () => {
@@ -73,6 +84,45 @@ describe('computeMissionBriefing', () => {
     const b = computeMissionBriefing({ ...base, located: legPoints(3) });
     expect(b.checks.length).toBeGreaterThan(0);
     expect(b.checks.every((c) => c.severity === 'info')).toBe(true);
+  });
+
+  it('formats distance checks using the selected distance unit while keeping native meters', () => {
+    const located = legPoints(3);
+    const defaultBriefing = computeMissionBriefing({ ...base, located });
+    const mileBriefing = computeMissionBriefing({ ...base, located, distanceUnit: 'mi' });
+
+    expect(defaultBriefing.distanceM).toBeCloseTo(mileBriefing.distanceM);
+    expect(defaultBriefing.maxFromHomeM).toBeCloseTo(mileBriefing.maxFromHomeM);
+    expect(defaultBriefing.checks.find((c) => c.id === 'distance')?.value).toBe('2224 m');
+    expect(defaultBriefing.checks.find((c) => c.id === 'maxFromHome')?.value).toBe('2224 m');
+    expect(mileBriefing.checks.find((c) => c.id === 'distance')?.value).toBe('1.38 mi');
+    expect(mileBriefing.checks.find((c) => c.id === 'maxFromHome')?.value).toBe('1.38 mi');
+  });
+
+  it('formats altitude checks using the selected altitude unit while keeping native meters', () => {
+    const located = legPoints(3, 120);
+    const defaultBriefing = computeMissionBriefing({ ...base, located, ceilingM: 120 });
+    const feetBriefing = computeMissionBriefing({ ...base, located, ceilingM: 120, altitudeUnit: 'ft' });
+
+    expect(defaultBriefing.maxAltM).toBe(feetBriefing.maxAltM);
+    expect(defaultBriefing.ceilingM).toBe(feetBriefing.ceilingM);
+    expect(defaultBriefing.checks.find((c) => c.id === 'maxAlt')?.value).toBe('120 m');
+    expect(defaultBriefing.checks.find((c) => c.id === 'maxAlt')?.detail).toBe('ceiling 120 m AGL');
+    expect(feetBriefing.checks.find((c) => c.id === 'maxAlt')?.value).toBe('394 ft');
+    expect(feetBriefing.checks.find((c) => c.id === 'maxAlt')?.detail).toBe('ceiling 394 ft AGL');
+  });
+
+  it('formats wind checks using the selected wind speed unit while keeping native meters per second', () => {
+    const weather = {
+      windSpeedMs: 10, windGustMs: 12, windDirDeg: 270, tempC: 18, precipMm: 0,
+      sunriseIso: null, sunsetIso: null, currentTimeIso: null, fetchedAtMs: 0,
+    };
+    const briefing = computeMissionBriefing({ ...base, located: legPoints(3), weather, windSpeedUnit: 'kt' });
+    const wind = briefing.checks.find((c) => c.id === 'wind');
+
+    expect(briefing.weather!.windSpeedMs).toBe(10);
+    expect(wind?.value).toBe('19.4 kt');
+    expect(wind?.detail).toBe('gusts 23.3 kt');
   });
 
   it('reports altitude range, total climb and waypoint count', () => {

@@ -8,7 +8,9 @@
 
 import { useEffect, useState } from 'react';
 import { useWindStore } from '../../../stores/wind-store';
+import { useSettingsStore } from '../../../stores/settings-store';
 import { WIND_ALTITUDES, type WindAltitude } from '../../../../shared/wind-types';
+import { formatAltitudeFromMeters } from '../../../../shared/user-units.js';
 import { windColor, convertSpeed, unitLabel } from '../wind/wind-field';
 
 const LEGEND_SAMPLES = [0, 5, 10, 15, 20, 28];
@@ -42,6 +44,7 @@ export function WindControls(): JSX.Element {
   const altitudeM = useWindStore((s) => s.altitudeM);
   const frameIndex = useWindStore((s) => s.frameIndex);
   const units = useWindStore((s) => s.units);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   const { setAltitude, setFrameIndex, cycleUnits } = useWindStore.getState();
   const [playing, setPlaying] = useState(false);
 
@@ -75,12 +78,11 @@ export function WindControls(): JSX.Element {
               'px-1.5 py-1 rounded text-[11px] font-medium transition-colors ' +
               (a === altitudeM ? 'bg-blue-600 text-white' : 'text-content-secondary hover:text-content')
             }
-            data-tip={`Wind at ${a} m AGL`}
+            data-tip={`Wind at ${formatAltitudeFromMeters(a, altitudeUnit)} AGL`}
           >
-            {a}
+            {formatAltitudeFromMeters(a, altitudeUnit)}
           </button>
         ))}
-        <span className="text-[10px] text-content-tertiary ml-0.5">m</span>
       </div>
 
       <div className="w-px h-6 bg-subtle shrink-0" />

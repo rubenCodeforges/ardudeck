@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Mountain, AlertTriangle, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { getElevations } from '../../utils/elevation-api';
+import { useSettingsStore } from '../../stores/settings-store';
+import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 import {
   planTerrainSafeAltitudes,
   haversine,
@@ -73,6 +75,7 @@ export function AutoAdjustAltitudeDialog({
   const [minSpacing, setMinSpacing] = useState(50);
   const [sampleStep, setSampleStep] = useState(25);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
 
   const [terrainSamples, setTerrainSamples] = useState<TerrainSample[] | null>(null);
   const [terrainError, setTerrainError] = useState<string | null>(null);
@@ -165,7 +168,7 @@ export function AutoAdjustAltitudeDialog({
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-content leading-tight">Auto Adjust Altitude</h2>
             <p className="text-xs text-content-secondary mt-0.5">
-              Keep the flight path {safeBuffer}m above terrain
+              Keep the flight path {formatAltitudeFromMeters(safeBuffer, altitudeUnit)} above terrain
             </p>
           </div>
         </div>
@@ -276,9 +279,9 @@ export function AutoAdjustAltitudeDialog({
                       <div key={wp.seq} className="flex items-center justify-between px-3 py-1.5 text-xs">
                         <span className="text-content-secondary">WP {idx + 1}</span>
                         <span className="font-mono">
-                          <span className="text-content-tertiary">{Math.round(wp.altitude)}m</span>
+                          <span className="text-content-tertiary">{formatAltitudeFromMeters(wp.altitude, altitudeUnit)}</span>
                           <span className="text-content-tertiary mx-1.5">→</span>
-                          <span className="text-amber-500 font-semibold">{newAlt}m</span>
+                          <span className="text-amber-500 font-semibold">{formatAltitudeFromMeters(newAlt, altitudeUnit)}</span>
                         </span>
                       </div>
                     );
@@ -288,7 +291,7 @@ export function AutoAdjustAltitudeDialog({
                       <span className="text-content-secondary">
                         + New WP after #{ins.afterSeq + 1}
                       </span>
-                      <span className="font-mono text-amber-500 font-semibold">{ins.altitude}m</span>
+                      <span className="font-mono text-amber-500 font-semibold">{formatAltitudeFromMeters(ins.altitude, altitudeUnit)}</span>
                     </div>
                   ))}
                 </div>

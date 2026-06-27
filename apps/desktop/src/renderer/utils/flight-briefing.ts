@@ -10,6 +10,15 @@
  * "start passive, design for advisor" decision.
  */
 import { estimateBatteryCount } from '../components/survey/survey-stats';
+import {
+  DEFAULT_USER_UNIT_PREFERENCES,
+  formatAltitudeFromMeters,
+  formatDistanceFromMeters,
+  formatWindSpeedFromMetersPerSecond,
+  type AltitudeUnit,
+  type DistanceUnit,
+  type WindSpeedUnit,
+} from '../../shared/user-units.js';
 import type { WeatherSummary } from './weather-api';
 
 export type CheckSeverity = 'ok' | 'warn' | 'crit' | 'info';
@@ -44,6 +53,12 @@ export interface BriefingInput {
   enduranceSec: number;
   survey?: BriefingSurvey | null;
   weather?: WeatherSummary | null;
+  /** Display unit for briefing distance strings. Native numeric values stay metres. */
+  distanceUnit?: DistanceUnit;
+  /** Display unit for altitude/depth strings. Native numeric values stay metres. */
+  altitudeUnit?: AltitudeUnit;
+  /** Display unit for weather wind strings. Native numeric values stay metres/second. */
+  windSpeedUnit?: WindSpeedUnit;
   /** Legal AGL ceiling in metres. Defaults to 120 (EASA / 400ft). */
   ceilingM?: number;
 }
@@ -106,9 +121,12 @@ function haversineM(aLat: number, aLng: number, bLat: number, bLng: number): num
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-export function formatDistanceM(m: number): string {
-  if (m >= 1000) return `${(m / 1000).toFixed(m >= 10_000 ? 0 : 1)} km`;
-  return `${Math.round(m)} m`;
+export function formatDistanceM(m: number, unit: DistanceUnit = DEFAULT_USER_UNIT_PREFERENCES.distance): string {
+  return formatDistanceFromMeters(m, unit);
+}
+
+export function formatAltitudeM(m: number, unit: AltitudeUnit = DEFAULT_USER_UNIT_PREFERENCES.altitude): string {
+  return formatAltitudeFromMeters(m, unit);
 }
 
 export function formatDurationSec(s: number): string {
@@ -123,6 +141,9 @@ export function formatDurationSec(s: number): string {
 export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
   const { located, home, cruiseSpeedMs, enduranceSec } = input;
   const ceilingM = input.ceilingM ?? 120;
+  const distanceUnit = input.distanceUnit ?? DEFAULT_USER_UNIT_PREFERENCES.distance;
+  const altitudeUnit = input.altitudeUnit ?? DEFAULT_USER_UNIT_PREFERENCES.altitude;
+  const windSpeedUnit = input.windSpeedUnit ?? DEFAULT_USER_UNIT_PREFERENCES.windSpeed;
   const weather = input.weather ?? null;
   const survey = input.survey
     ? {
@@ -212,6 +233,9 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
     reservePct,
     maxAltM,
     ceilingM,
+    distanceUnit,
+    altitudeUnit,
+    windSpeedUnit,
     weather,
   });
 
@@ -245,6 +269,9 @@ interface CheckContext {
   reservePct: number | null;
   maxAltM: number;
   ceilingM: number;
+  distanceUnit: DistanceUnit;
+  altitudeUnit: AltitudeUnit;
+  windSpeedUnit: WindSpeedUnit;
   weather: WeatherSummary | null;
 }
 
@@ -276,15 +303,15 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
     {
       id: 'distance',
       label: 'Distance',
-      value: formatDistanceM(ctx.distanceM),
+      value: formatDistanceM(ctx.distanceM, ctx.distanceUnit),
       severity: PASSIVE,
     },
     {
       id: 'maxAlt',
       label: 'Max altitude',
-      value: `${Math.round(ctx.maxAltM)} m`,
+      value: formatAltitudeM(ctx.maxAltM, ctx.altitudeUnit),
       severity: PASSIVE,
-      detail: `ceiling ${ctx.ceilingM} m AGL`,
+      detail: `ceiling ${formatAltitudeM(ctx.ceilingM, ctx.altitudeUnit)} AGL`,
     },
   ];
 
@@ -302,7 +329,7 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
     checks.push({
       id: 'maxFromHome',
       label: 'Max from home',
-      value: formatDistanceM(ctx.maxFromHomeM),
+      value: formatDistanceM(ctx.maxFromHomeM, ctx.distanceUnit),
       severity: PASSIVE,
     });
   }
@@ -311,9 +338,9 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
     checks.push({
       id: 'wind',
       label: 'Wind',
-      value: `${ctx.weather.windSpeedMs.toFixed(1)} m/s`,
+      value: formatWindSpeedFromMetersPerSecond(ctx.weather.windSpeedMs, ctx.windSpeedUnit),
       severity: PASSIVE,
-      detail: `gusts ${ctx.weather.windGustMs.toFixed(1)} m/s`,
+      detail: `gusts ${formatWindSpeedFromMetersPerSecond(ctx.weather.windGustMs, ctx.windSpeedUnit)}`,
     });
   }
 

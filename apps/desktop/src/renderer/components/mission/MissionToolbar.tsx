@@ -12,6 +12,7 @@ import { UploadPreviewModal } from './UploadPreviewModal';
 import { AutoAdjustAltitudeDialog } from './AutoAdjustAltitudeDialog';
 import type { PlanResult, PlannerWaypoint } from './terrain-altitude-planner';
 import { hasValidCoordinates } from '../../../shared/mission-types';
+import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -318,6 +319,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
   const [showNewConfirm, setShowNewConfirm] = useState(false);
 
   const safeAltitudeBuffer = useSettingsStore((s) => s.missionDefaults.safeAltitudeBuffer);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
 
   // Planner waypoints for the auto-adjust dialog. (0,0) sentinels are excluded
   // so a NAV_TAKEOFF "current position" marker doesn't sample Null Island.
@@ -749,7 +751,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
               <div>
                 <h3 className="text-lg font-semibold text-content mb-2">Terrain Collision Warning</h3>
                 <p className="text-content-secondary text-sm mb-4">
-                  The flight path goes below the safe altitude (terrain + 30m buffer) at one or more points.
+                  The flight path goes below the safe altitude (terrain + {formatAltitudeFromMeters(safeAltitudeBuffer, altitudeUnit)} buffer) at one or more points.
                   This could result in a collision with terrain.
                 </p>
                 <p className="text-amber-400 text-sm mb-4">

@@ -9,6 +9,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useMspTelemetryStore, setupMspTelemetryListeners } from '../../stores/msp-telemetry-store';
 import { PRIMARY_CHANNEL_COUNT, getChannelName, reorderChannels } from '../../utils/rc-channel-constants';
 import { useReceiverStore } from '../../stores/receiver-store';
+import { useSettingsStore } from '../../stores/settings-store';
+import { formatAltitudeFromMeters, formatCapacityFromMah, formatVerticalSpeedFromMetersPerSecond } from '../../../shared/user-units.js';
 
 interface SerialPortInfo {
   path: string;
@@ -37,6 +39,9 @@ export function BetaflightDashboard() {
   const motors = useMspTelemetryStore((s) => s.motors);
   const gps = useMspTelemetryStore((s) => s.gps);
   const lastUpdate = useMspTelemetryStore((s) => s.lastUpdate);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
+  const electricCapacityUnit = useSettingsStore((s) => s.unitPreferences.electricCapacity);
+  const verticalSpeedUnit = useSettingsStore((s) => s.unitPreferences.verticalSpeed);
 
   // Setup IPC listeners on mount
   useEffect(() => {
@@ -286,8 +291,8 @@ export function BetaflightDashboard() {
                   <span className="text-content font-mono">{(analog.current / 100).toFixed(1)}A</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-content-secondary">mAh Used</span>
-                  <span className="text-content font-mono">{analog.mAhDrawn}</span>
+                  <span className="text-content-secondary">Used</span>
+                  <span className="text-content font-mono">{formatCapacityFromMah(analog.mAhDrawn, electricCapacityUnit)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-content-secondary">RSSI</span>
@@ -348,11 +353,11 @@ export function BetaflightDashboard() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Altitude</span>
-                  <span className="text-content font-mono">{altitude.altitude.toFixed(1)}m</span>
+                  <span className="text-content font-mono">{formatAltitudeFromMeters(altitude.altitude, altitudeUnit)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Vario</span>
-                  <span className="text-content font-mono">{altitude.vario.toFixed(1)}m/s</span>
+                  <span className="text-content font-mono">{formatVerticalSpeedFromMetersPerSecond(altitude.vario, verticalSpeedUnit)}</span>
                 </div>
               </div>
             </div>

@@ -2,6 +2,8 @@
  * Survey Stats Panel - Compact stats bar showing GSD, flight time, photo count, etc.
  */
 import type { SurveyStats } from './survey-types';
+import { useSettingsStore } from '../../stores/settings-store';
+import { formatAreaFromSquareMeters, formatDistanceFromMeters } from '../../../shared/user-units.js';
 
 interface SurveyStatsPanelProps {
   stats: SurveyStats;
@@ -9,11 +11,6 @@ interface SurveyStatsPanelProps {
   batteries?: number;
   /** Rough captured-data size in GB (0/undefined = not shown). */
   dataSizeGb?: number;
-}
-
-function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
-  return `${Math.round(meters)} m`;
 }
 
 function formatTime(seconds: number): string {
@@ -28,17 +25,15 @@ function formatTime(seconds: number): string {
   return `${mins}m ${secs}s`;
 }
 
-function formatArea(sqMeters: number): string {
-  if (sqMeters >= 10000) return `${(sqMeters / 10000).toFixed(2)} ha`;
-  return `${Math.round(sqMeters)} m\u00B2`;
-}
-
 function formatDataSize(gb: number): string {
   if (gb >= 1) return `${gb.toFixed(1)} GB`;
   return `${Math.round(gb * 1024)} MB`;
 }
 
 export function SurveyStatsPanel({ stats, batteries, dataSizeGb }: SurveyStatsPanelProps) {
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
+
   // Hide stats only when there's nothing to show. Manual/ground-vehicle mode
   // has photoCount=0 but real lineCount/distance/area — still useful.
   if (stats.photoCount === 0 && stats.lineCount === 0) return null;
@@ -52,9 +47,9 @@ export function SurveyStatsPanel({ stats, batteries, dataSizeGb }: SurveyStatsPa
       {!isManualMode && <StatItem label="GSD" value={`${stats.gsd.toFixed(1)} cm/px`} />}
       {!isManualMode && <StatItem label="Photos" value={stats.photoCount.toLocaleString()} />}
       <StatItem label="Lines" value={stats.lineCount.toString()} />
-      <StatItem label="Distance" value={formatDistance(stats.flightDistance)} />
+      <StatItem label="Distance" value={formatDistanceFromMeters(stats.flightDistance, distanceUnit)} />
       <StatItem label="Time" value={formatTime(stats.flightTime)} />
-      <StatItem label="Area" value={formatArea(stats.areaCovered)} />
+      <StatItem label="Area" value={formatAreaFromSquareMeters(stats.areaCovered, areaUnit)} />
       {batteries !== undefined && batteries > 0 && (
         <StatItem label="Batteries" value={batteries.toString()} />
       )}

@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settings-store';
 import { FlightLogPanel } from './FlightLogPanel';
 import { TagInput } from '../ui/TagInput';
 import type { FlightStatus } from '../../../shared/mission-library-types';
+import { formatDistanceFromMeters } from '../../../shared/user-units.js';
 
 const STATUS_COLORS: Record<FlightStatus, string> = {
   planned: 'text-blue-400',
@@ -19,11 +20,6 @@ const STATUS_LABELS: Record<FlightStatus, string> = {
   aborted: 'Aborted',
 };
 
-function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)}m`;
-  return `${(meters / 1000).toFixed(1)} km`;
-}
-
 interface MissionDetailPanelProps {
   onLoadToEditor: () => void;
 }
@@ -31,6 +27,7 @@ interface MissionDetailPanelProps {
 export function MissionDetailPanel({ onLoadToEditor }: MissionDetailPanelProps) {
   const { selectedMission, clearSelection, deleteMission, duplicateMission, saveMission, selectMission, allTags } = useMissionLibraryStore();
   const { vehicles } = useSettingsStore();
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -169,7 +166,7 @@ export function MissionDetailPanel({ onLoadToEditor }: MissionDetailPanelProps) 
             </div>
             <div className="bg-surface-raised rounded-lg px-3 py-2">
               <span className="text-content-secondary block">Distance</span>
-              <span className="text-content font-medium">{formatDistance(selectedMission.totalDistanceMeters)}</span>
+              <span className="text-content font-medium">{formatDistanceFromMeters(selectedMission.totalDistanceMeters, distanceUnit)}</span>
             </div>
             <div className="bg-surface-raised rounded-lg px-3 py-2">
               <span className="text-content-secondary block">Vehicle</span>

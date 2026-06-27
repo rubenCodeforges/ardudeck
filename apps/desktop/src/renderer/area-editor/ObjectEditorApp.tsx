@@ -24,6 +24,12 @@ import { useSurveyStore } from '../stores/survey-store';
 import { objectWorldRing, objectWorldHoles } from './area-object';
 import { parseGisArea } from '../../shared/gis-area-import';
 import { useSettingsStore, type ThemePreference } from '../stores/settings-store';
+import {
+  distanceValueFromMeters,
+  toMetersFromDistanceUnit,
+  UNIT_LABELS,
+  type DistanceUnit,
+} from '../../shared/user-units.js';
 import logoImage from '../assets/logo.png';
 
 // ---- icons (16px line) ----
@@ -81,6 +87,91 @@ function ActionButton({ tip, onClick, disabled = false, primary = false, childre
   );
 }
 
+function clampMin(value: number, min: number): number {
+  return Math.max(min, value);
+}
+
+function DistanceDraftInput({
+  valueMeters,
+  distanceUnit,
+  minMeters,
+  stepMeters,
+  ariaLabel,
+  className,
+  onCommit,
+}: {
+  valueMeters: number;
+  distanceUnit: DistanceUnit;
+  minMeters: number;
+  stepMeters: number;
+  ariaLabel: string;
+  className: string;
+  onCommit: (meters: number) => void;
+}): JSX.Element {
+  const displayValue = distanceValueFromMeters(valueMeters, distanceUnit);
+  const minDisplay = distanceValueFromMeters(minMeters, distanceUnit);
+  const stepDisplay = distanceValueFromMeters(stepMeters, distanceUnit);
+  const [draft, setDraft] = useState(() => String(displayValue));
+  const [focused, setFocused] = useState(false);
+  const skipBlurCommitRef = useRef(false);
+
+  useEffect(() => {
+    if (!focused) setDraft(String(displayValue));
+  }, [displayValue, focused]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(String(distanceValueFromMeters(valueMeters, distanceUnit)));
+  }, [distanceUnit, valueMeters]);
+
+  const commitDisplay = useCallback((display: number) => {
+    const clamped = clampMin(display, minDisplay);
+    onCommit(toMetersFromDistanceUnit(clamped, distanceUnit));
+    setDraft(String(clamped));
+  }, [distanceUnit, minDisplay, onCommit]);
+
+  return (
+    <input
+      type="number"
+      min={minDisplay}
+      step={stepDisplay}
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => {
+        const nextDraft = e.target.value;
+        setDraft(nextDraft);
+        if (nextDraft.trim() === '') return;
+        const parsed = Number(nextDraft);
+        if (!Number.isFinite(parsed) || parsed < minDisplay) return;
+        onCommit(toMetersFromDistanceUnit(parsed, distanceUnit));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (skipBlurCommitRef.current) {
+          skipBlurCommitRef.current = false;
+          return;
+        }
+        const parsed = Number(draft);
+        if (draft.trim() === '' || !Number.isFinite(parsed)) {
+          resetDraft();
+          return;
+        }
+        commitDisplay(parsed);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          skipBlurCommitRef.current = true;
+          resetDraft();
+          e.currentTarget.blur();
+        }
+      }}
+      className={className}
+      aria-label={ariaLabel}
+    />
+  );
+}
+
 export function ObjectEditorApp(): JSX.Element {
   const cleanupRef = useRef<(() => void) | null>(null);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
@@ -93,6 +184,7 @@ export function ObjectEditorApp(): JSX.Element {
   const canRedo = useObjectsStore((s) => s.future.length > 0);
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const [sent, setSent] = useState(false);
   const [bufferM, setBufferM] = useState(10);
 
@@ -204,13 +296,16 @@ export function ObjectEditorApp(): JSX.Element {
           {(tool === 'corridor' || selectedIsCorridor) && (
             <div className="flex items-center gap-1.5" data-tip="Corridor swath width">
               <span className="text-content-tertiary"><ICorridor /></span>
-              <input
-                type="number" min={1} step={5} value={corridorWidthM}
-                onChange={(e) => setCorridorWidth(Number(e.target.value))}
+              <DistanceDraftInput
+                valueMeters={corridorWidthM}
+                distanceUnit={distanceUnit}
+                minMeters={1}
+                stepMeters={5}
+                onCommit={setCorridorWidth}
                 className="w-16 h-7 px-2 rounded bg-surface-input border border-subtle text-content text-xs"
-                aria-label="Corridor width in meters"
+                ariaLabel={`Corridor width in ${UNIT_LABELS.distance[distanceUnit]}`}
               />
-              <span className="text-xs text-content-tertiary">m</span>
+              <span className="text-xs text-content-tertiary">{UNIT_LABELS.distance[distanceUnit]}</span>
             </div>
           )}
           {tool === 'hole' && (
@@ -228,13 +323,16 @@ export function ObjectEditorApp(): JSX.Element {
               <span className="text-xs text-content-tertiary">Buffer</span>
               <button type="button" aria-label="Shrink" onClick={() => bufferSelected(-bufferM)}
                 className="w-6 h-7 inline-flex items-center justify-center rounded bg-surface-raised text-content hover:brightness-125">−</button>
-              <input
-                type="number" min={1} step={5} value={bufferM}
-                onChange={(e) => setBufferM(Math.max(1, Number(e.target.value)))}
+              <DistanceDraftInput
+                valueMeters={bufferM}
+                distanceUnit={distanceUnit}
+                minMeters={1}
+                stepMeters={5}
+                onCommit={setBufferM}
                 className="w-14 h-7 px-2 rounded bg-surface-input border border-subtle text-content text-xs"
-                aria-label="Buffer distance in meters"
+                ariaLabel={`Buffer distance in ${UNIT_LABELS.distance[distanceUnit]}`}
               />
-              <span className="text-xs text-content-tertiary">m</span>
+              <span className="text-xs text-content-tertiary">{UNIT_LABELS.distance[distanceUnit]}</span>
               <button type="button" aria-label="Grow" onClick={() => bufferSelected(bufferM)}
                 className="w-6 h-7 inline-flex items-center justify-center rounded bg-surface-raised text-content hover:brightness-125">+</button>
             </div>

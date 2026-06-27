@@ -1,33 +1,60 @@
 import { useState, useCallback } from 'react';
+import { useSettingsStore } from '../../stores/settings-store';
 import type { ElevationRange } from './TerrainOverlayLayer';
+import {
+  altitudeValueFromMeters,
+  formatAltitudeFromMeters,
+  toMetersFromAltitudeUnit,
+  UNIT_LABELS,
+  type AltitudeUnit,
+} from '../../../shared/user-units.js';
+
+function parseNumberDraft(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:e[+-]?\d+)?$/i.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 /** Inline editable elevation value - click to type, shows as text otherwise. */
 function EditableValue({
-  value,
+  valueMeters,
   onChange,
-  clampMin,
-  clampMax,
+  clampMinMeters,
+  clampMaxMeters,
+  altitudeUnit,
 }: {
-  value: number;
+  valueMeters: number;
   onChange: (v: number) => void;
-  clampMin: number;
-  clampMax: number;
+  clampMinMeters: number;
+  clampMaxMeters: number;
+  altitudeUnit: AltitudeUnit;
 }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const displayPrecision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
+  const displayValue = Number(altitudeValueFromMeters(valueMeters, altitudeUnit).toFixed(displayPrecision));
+  const displayMin = altitudeValueFromMeters(clampMinMeters, altitudeUnit);
+  const displayMax = altitudeValueFromMeters(clampMaxMeters, altitudeUnit);
 
   const startEdit = useCallback(() => {
-    setEditText(String(Math.round(value)));
+    setEditText(String(displayValue));
     setEditing(true);
-  }, [value]);
+  }, [displayValue]);
 
   const apply = useCallback(() => {
-    const parsed = parseInt(editText, 10);
-    if (!isNaN(parsed)) {
-      onChange(Math.max(clampMin, Math.min(clampMax, parsed)));
+    const parsed = parseNumberDraft(editText);
+    if (parsed !== null) {
+      if (parsed === displayValue) {
+        setEditing(false);
+        return;
+      }
+      const displayClamped = Math.max(displayMin, Math.min(displayMax, parsed));
+      const meters = toMetersFromAltitudeUnit(displayClamped, altitudeUnit);
+      onChange(Math.max(clampMinMeters, Math.min(clampMaxMeters, meters)));
     }
     setEditing(false);
-  }, [editText, onChange, clampMin, clampMax]);
+  }, [altitudeUnit, clampMaxMeters, clampMinMeters, displayMax, displayMin, displayValue, editText, onChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') apply();
@@ -36,16 +63,19 @@ function EditableValue({
 
   if (editing) {
     return (
-      <input
-        type="number"
-        value={editText}
-        onChange={(e) => setEditText(e.target.value)}
-        onBlur={apply}
-        onKeyDown={handleKeyDown}
-        // Hide native spinner: [appearance:textfield] + webkit pseudo handled via inline style
-        className="w-12 px-1 py-0 text-[10px] font-mono bg-surface-raised border border-blue-500/50 rounded text-content focus:outline-none leading-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        autoFocus
-      />
+      <span className="inline-flex items-center gap-0.5">
+        <input
+          type="number"
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          onBlur={apply}
+          onKeyDown={handleKeyDown}
+          // Hide native spinner: [appearance:textfield] + webkit pseudo handled via inline style
+          className="w-14 px-1 py-0 text-[10px] font-mono bg-surface-raised border border-blue-500/50 rounded text-content focus:outline-none leading-tight [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          autoFocus
+        />
+        <span className="text-[9px] text-content-tertiary leading-none">{UNIT_LABELS.altitude[altitudeUnit]}</span>
+      </span>
     );
   }
 
@@ -55,7 +85,7 @@ function EditableValue({
       className="font-mono text-content text-[10px] leading-none hover:text-blue-400 transition-colors border-b border-dashed border hover:border-blue-400/50"
       title="Click to edit"
     >
-      {Math.round(value)}m
+      {formatAltitudeFromMeters(valueMeters, altitudeUnit)}
     </button>
   );
 }
@@ -85,9 +115,10 @@ export function ElevationLegend({
   onRelativeModeChange,
   hasCraftPosition = false,
 }: ElevationLegendProps) {
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   const displayMin = autoRange ? minElevation : fixedRange.min;
   const displayMax = autoRange ? maxElevation : fixedRange.max;
-  const mid = Math.round((displayMin + displayMax) / 2);
+  const mid = (displayMin + displayMax) / 2;
 
   return (
     <div className="bg-surface-overlay backdrop-blur-sm rounded px-2 py-2 text-[10px] text-content select-none">
@@ -136,26 +167,28 @@ export function ElevationLegend({
         <div className="flex flex-col justify-between py-0.5">
           {!autoRange ? (
             <EditableValue
-              value={fixedRange.max}
+              valueMeters={fixedRange.max}
               onChange={(v) => onFixedRangeChange({ ...fixedRange, max: v })}
-              clampMin={fixedRange.min + 1}
-              clampMax={9000}
+              clampMinMeters={fixedRange.min + 1}
+              clampMaxMeters={9000}
+              altitudeUnit={altitudeUnit}
             />
           ) : (
-            <span className="font-mono text-content leading-none">{Math.round(displayMax)}m</span>
+            <span className="font-mono text-content leading-none">{formatAltitudeFromMeters(displayMax, altitudeUnit)}</span>
           )}
 
-          <span className="font-mono text-content-secondary leading-none">{mid}m</span>
+          <span className="font-mono text-content-secondary leading-none">{formatAltitudeFromMeters(mid, altitudeUnit)}</span>
 
           {!autoRange ? (
             <EditableValue
-              value={fixedRange.min}
+              valueMeters={fixedRange.min}
               onChange={(v) => onFixedRangeChange({ ...fixedRange, min: v })}
-              clampMin={0}
-              clampMax={fixedRange.max - 1}
+              clampMinMeters={0}
+              clampMaxMeters={fixedRange.max - 1}
+              altitudeUnit={altitudeUnit}
             />
           ) : (
-            <span className="font-mono text-content leading-none">{Math.round(displayMin)}m</span>
+            <span className="font-mono text-content leading-none">{formatAltitudeFromMeters(displayMin, altitudeUnit)}</span>
           )}
         </div>
       </div>

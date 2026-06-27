@@ -13,6 +13,11 @@ import { getIpLocation } from '../../utils/ip-geolocation';
 import SitlEnvironmentPanel from './SitlEnvironmentPanel';
 import SitlFailurePanel from './SitlFailurePanel';
 import { CustomFramePanel } from './CustomFramePanel';
+import {
+  altitudeValueFromMeters,
+  toMetersFromAltitudeUnit,
+  UNIT_LABELS,
+} from '../../../shared/user-units.js';
 
 const VEHICLE_TYPE_OPTIONS: Array<{ value: ArduPilotVehicleType; label: string; icon: string }> = [
   { value: 'copter', label: 'Copter', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
@@ -76,12 +81,22 @@ export default function ArduPilotSitlTab() {
   } = useArduPilotSitlStore();
 
   const { connectionState } = useConnectionStore();
-  const { setPendingSitlSwitch } = useSettingsStore();
+  const { setPendingSitlSwitch, unitPreferences } = useSettingsStore();
+  const altitudeUnit = unitPreferences.altitude;
+  const homeAltitudeDisplay = altitudeValueFromMeters(homeLocation.alt, altitudeUnit);
+  const [homeAltitudeDraft, setHomeAltitudeDraft] = useState(() => String(Number(homeAltitudeDisplay.toFixed(altitudeUnit === 'km' ? 3 : 1))));
   const outputRef = useRef<HTMLDivElement>(null);
 
   // Geolocation state
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [homeAltitudeFocused, setHomeAltitudeFocused] = useState(false);
+
+  useEffect(() => {
+    if (!homeAltitudeFocused) {
+      setHomeAltitudeDraft(String(Number(homeAltitudeDisplay.toFixed(altitudeUnit === 'km' ? 3 : 1))));
+    }
+  }, [altitudeUnit, homeAltitudeDisplay, homeAltitudeFocused]);
 
   // Resolve the user's approximate location via the shared fallback chain:
   // IP geolocation (no permission needed) → browser geolocation → default.
@@ -440,14 +455,38 @@ export default function ArduPilotSitlTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Altitude (m)</label>
-              <input
-                type="number"
-                value={homeLocation.alt}
-                onChange={(e) => setHomeLocation({ ...homeLocation, alt: parseFloat(e.target.value) || 0 })}
-                disabled={isRunning || isStarting}
-                className="w-full px-2 py-1.5 text-sm bg-surface-raised text-content border border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
-              />
+              <label className="block text-xs text-content-secondary mb-1">Altitude</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={homeAltitudeDraft}
+                  onFocus={() => setHomeAltitudeFocused(true)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setHomeAltitudeDraft(next);
+                    if (next.trim() === '') return;
+                    const displayValue = Number(next);
+                    if (!Number.isFinite(displayValue)) return;
+                    setHomeLocation({ ...homeLocation, alt: toMetersFromAltitudeUnit(displayValue, altitudeUnit) });
+                  }}
+                  onBlur={() => {
+                    setHomeAltitudeFocused(false);
+                    const displayValue = Number(homeAltitudeDraft);
+                    if (homeAltitudeDraft.trim() === '' || !Number.isFinite(displayValue)) {
+                      setHomeAltitudeDraft(String(Number(homeAltitudeDisplay.toFixed(altitudeUnit === 'km' ? 3 : 1))));
+                      return;
+                    }
+                    if (displayValue === Number(homeAltitudeDisplay.toFixed(altitudeUnit === 'km' ? 3 : 1))) return;
+                    setHomeLocation({ ...homeLocation, alt: toMetersFromAltitudeUnit(displayValue, altitudeUnit) });
+                  }}
+                  step={altitudeUnit === 'km' ? 0.001 : 1}
+                  disabled={isRunning || isStarting}
+                  className="w-full px-2 pr-10 py-1.5 text-sm bg-surface-raised text-content border border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-content-secondary pointer-events-none">
+                  {UNIT_LABELS.altitude[altitudeUnit]}
+                </span>
+              </div>
             </div>
             <div>
               <label className="block text-xs text-content-secondary mb-1">Heading</label>

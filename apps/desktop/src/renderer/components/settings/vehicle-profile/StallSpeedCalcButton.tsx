@@ -1,6 +1,12 @@
 import { Calculator } from 'lucide-react';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
+import { useSettingsStore } from '../../../stores/settings-store.js';
 import { Tooltip } from '../../ui/Tooltip.js';
+import {
+  formatAreaFromSquareCentimeters,
+  formatSpeedFromMetersPerSecond,
+  formatWeightFromGrams,
+} from '../../../../shared/user-units.js';
 
 interface StallSpeedCalcButtonProps {
   vehicle: VehicleProfile;
@@ -38,15 +44,16 @@ export function StallSpeedCalcButton({ vehicle, onCompute }: StallSpeedCalcButto
 }
 
 function StallExplanation({ vehicle, estimate }: { vehicle: VehicleProfile; estimate: number }) {
+  const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
+  const weightUnit = useSettingsStore((s) => s.unitPreferences.weight);
+  const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
   const clMax = getClMax(vehicle);
-  const weight_kg = (vehicle.weight ?? 0) / 1000;
-  const wingArea_m2 = (vehicle.wingArea ?? 0) / 10000;
 
   return (
     <div className="w-[260px] text-left p-1 space-y-2">
       <div className="flex items-baseline justify-between gap-3 pb-1.5 border-b border-subtle">
         <span className="text-[11px] text-content-secondary">Estimated stall speed</span>
-        <span className="text-sm font-semibold text-content">{estimate.toFixed(1)} m/s</span>
+        <span className="text-sm font-semibold text-content">{formatSpeedFromMetersPerSecond(estimate, speedUnit)}</span>
       </div>
 
       <div className="text-[11px] text-content-secondary leading-snug">
@@ -57,8 +64,8 @@ function StallExplanation({ vehicle, estimate }: { vehicle: VehicleProfile; esti
       </div>
 
       <div className="text-[11px] space-y-0.5">
-        <Row label="AUW (m)"       value={`${weight_kg.toFixed(2)} kg`} />
-        <Row label="Wing area (S)" value={`${wingArea_m2.toFixed(3)} m²`} />
+        <Row label="AUW"           value={formatWeightFromGrams(vehicle.weight ?? 0, weightUnit)} />
+        <Row label="Wing area (S)" value={formatAreaFromSquareCentimeters(vehicle.wingArea ?? 0, areaUnit)} />
         <Row label="Air density"   value="1.225 kg/m³" />
         <Row label="C Lmax"        value={`${clMax} (${wingShapeLabel(vehicle)})`} />
       </div>

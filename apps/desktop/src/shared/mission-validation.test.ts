@@ -66,4 +66,10 @@ describe('validateMission', () => {
     expect(res.checks.some((c) => c.id === 'alt-nonpositive')).toBe(true);
     expect(res.checks.some((c) => c.id === 'alt-high')).toBe(true);
   });
+
+  it('formats altitude warnings with the selected display unit', () => {
+    const items = [wp(0, { altitude: 9000 })];
+    const res = validateMission(items, [G1], { maxAltitude: 500, altitudeUnit: 'ft' });
+    expect(res.checks.find((c) => c.id === 'alt-high')?.message).toContain('1640 ft');
+  });
 });

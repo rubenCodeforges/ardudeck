@@ -1,4 +1,6 @@
 import { useMissionStore } from '../../stores/mission-store';
+import { useSettingsStore } from '../../stores/settings-store';
+import { formatDistanceFromMeters } from '../../../shared/user-units.js';
 
 export function MissionStatusBar() {
   const {
@@ -14,8 +16,8 @@ export function MissionStatusBar() {
 
   const waypointCount = getWaypointCount();
   const totalDistanceMeters = getTotalDistance();
-  const totalDistanceKm = totalDistanceMeters / 1000;
   const estimatedTimeSeconds = getEstimatedTime();
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5 bg-surface border-t border-subtle text-xs">
@@ -28,7 +30,7 @@ export function MissionStatusBar() {
           <>
             <span className="text-content-tertiary">|</span>
             <span>
-              <span className="text-content font-medium">{totalDistanceKm.toFixed(2)}</span> km
+              <span className="text-content font-medium">{formatDistanceFromMeters(totalDistanceMeters, distanceUnit)}</span>
             </span>
             <span className="text-content-tertiary">|</span>
             <span>

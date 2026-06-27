@@ -7,6 +7,7 @@
  */
 
 import type { WindField, WindFrame } from '../../../../shared/wind-types';
+import type { WindSpeedUnit } from '../../../../shared/user-units.js';
 
 export interface UV {
   u: number;
@@ -106,6 +107,18 @@ export function unitLabel(unit: WindUnit): string {
 export function nextUnit(unit: WindUnit): WindUnit {
   const i = WIND_UNITS.indexOf(unit);
   return WIND_UNITS[(i + 1) % WIND_UNITS.length]!;
+}
+export function windUnitFromPreference(unit: WindSpeedUnit): WindUnit {
+  switch (unit) {
+    case 'mps':
+      return 'ms';
+    case 'kph':
+      return 'kmh';
+    case 'mph':
+      return 'mph';
+    case 'kt':
+      return 'kt';
+  }
 }
 /** Format a m/s speed in the given unit (whole numbers except m/s to 0.1). */
 export function formatWindSpeed(ms: number, unit: WindUnit): string {

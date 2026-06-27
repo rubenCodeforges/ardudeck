@@ -1,9 +1,12 @@
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { GPS_FIX_TYPES, type GpsData } from '../../../shared/telemetry-types';
+import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 function GpsReadout({ gps, label }: { gps: GpsData; label?: string }) {
   const fixColor = gps.fixType >= 3 ? 'bg-emerald-400' : gps.fixType >= 2 ? 'bg-yellow-400' : 'bg-red-400';
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
 
   return (
     <div className="space-y-2">
@@ -17,7 +20,7 @@ function GpsReadout({ gps, label }: { gps: GpsData; label?: string }) {
         <StatRow label="Satellites" value={gps.satellites} />
         <StatRow label="HDOP" value={formatNumber(gps.hdop, 1)} />
         <StatRow label="VDOP" value={formatNumber(gps.vdop, 1)} />
-        <StatRow label="Altitude" value={formatNumber(gps.alt, 1)} unit="m" />
+        <StatRow label="Altitude" value={formatAltitudeFromMeters(gps.alt, altitudeUnit)} />
       </div>
     </div>
   );

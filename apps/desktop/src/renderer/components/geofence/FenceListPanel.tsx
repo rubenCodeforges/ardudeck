@@ -10,6 +10,8 @@
 import { useFenceStore } from '../../stores/fence-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { FENCE_BREACH } from '../../../shared/fence-types';
+import { useSettingsStore } from '../../stores/settings-store';
+import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 
 interface FenceListPanelProps {
   readOnly?: boolean;
@@ -38,6 +40,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
   // Check if connected to MSP board (iNav/Betaflight)
   const connectionState = useConnectionStore((state) => state.connectionState);
   const isMspProtocol = connectionState?.protocol === 'msp';
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
 
   const inclusionPolygons = polygons.filter((p) => p.type === 'inclusion');
   const exclusionPolygons = polygons.filter((p) => p.type === 'exclusion');
@@ -108,7 +111,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
             >
               <div className="text-xs">
                 <div>{returnPoint.lat.toFixed(6)}, {returnPoint.lon.toFixed(6)}</div>
-                <div className="text-content-secondary">Alt: {returnPoint.altitude}m</div>
+                <div className="text-content-secondary">Alt: {formatAltitudeFromMeters(returnPoint.altitude, altitudeUnit)}</div>
               </div>
               {!readOnly && (
                 <button

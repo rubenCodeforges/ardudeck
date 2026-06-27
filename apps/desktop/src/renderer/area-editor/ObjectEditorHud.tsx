@@ -18,8 +18,8 @@ import { objectWorldRing } from './area-object';
 import { colorForIndex } from './objects-geo';
 import { computeAreaHud, aggregateAreaHud, type AreaHud } from './area-editor-hud';
 import { formatDurationSec } from '../utils/flight-briefing';
-import { formatSurveyAreaHa, formatSurveyDistanceM, surveyAreaUnitLabel, nextSurveyUnits } from './survey-units';
-import type { SurveyUnits } from '../stores/settings-store';
+import { formatSurveyAreaHa, formatSurveyDistanceM } from './survey-units';
+import { UNIT_LABELS, type AreaUnit, type DistanceUnit } from '../../shared/user-units.js';
 import type { SurveyConfig, SurveyResult } from '../components/survey/survey-types';
 
 function runGeneratorSafe(config: SurveyConfig): SurveyResult | null {
@@ -49,11 +49,11 @@ function MetricRow({ label, value }: { label: string; value: string | null }): J
   );
 }
 
-function Metrics({ hud, units }: { hud: AreaHud; units: SurveyUnits }): JSX.Element {
+function Metrics({ hud, distanceUnit, areaUnit }: { hud: AreaHud; distanceUnit: DistanceUnit; areaUnit: AreaUnit }): JSX.Element {
   return (
     <>
-      <MetricRow label="Area" value={hud.areaHa !== null ? formatSurveyAreaHa(hud.areaHa, units) : null} />
-      <MetricRow label="Distance" value={hud.flightDistanceM !== null ? formatSurveyDistanceM(hud.flightDistanceM, units) : null} />
+      <MetricRow label="Area" value={hud.areaHa !== null ? formatSurveyAreaHa(hud.areaHa, areaUnit) : null} />
+      <MetricRow label="Distance" value={hud.flightDistanceM !== null ? formatSurveyDistanceM(hud.flightDistanceM, distanceUnit) : null} />
       <MetricRow label="Flight time" value={hud.flightTimeSec !== null ? formatDurationSec(hud.flightTimeSec) : null} />
       <MetricRow label="Batteries" value={hud.batteryCount !== null ? String(hud.batteryCount) : null} />
       <MetricRow label="GSD" value={hud.gsdCm !== null && hud.gsdCm > 0 ? `${hud.gsdCm.toFixed(1)} cm/px` : null} />
@@ -69,8 +69,8 @@ export function ObjectEditorHud(): JSX.Element {
   const surveyConfig = useSurveyStore((s) => s.config);
   const enduranceSec = useSettingsStore((s) => s.getEstimatedFlightTime());
   const activeVehicle = useSettingsStore((s) => s.getActiveVehicle());
-  const units = useSettingsStore((s) => s.surveyUnits);
-  const setSurveyUnits = useSettingsStore((s) => s.setSurveyUnits);
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
   const [scope, setScope] = useState<'all' | 'selected'>('all');
 
   const perObject = useMemo<PerObject[]>(() => {
@@ -116,14 +116,12 @@ export function ObjectEditorHud(): JSX.Element {
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold text-content">Flight Briefing</p>
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSurveyUnits(nextSurveyUnits(units))}
-              data-tip={units === 'metric' ? 'Switch to imperial (acres, ft)' : 'Switch to metric (hectares, km)'}
-              className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-input text-content-secondary hover:text-content transition-colors"
+            <span
+              className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-input text-content-secondary"
+              data-tip={`Area in ${UNIT_LABELS.area[areaUnit]}, distance in ${UNIT_LABELS.distance[distanceUnit]}`}
             >
-              {surveyAreaUnitLabel(units)}
-            </button>
+              {UNIT_LABELS.area[areaUnit]}
+            </span>
           {showScopeToggle && (
             <div className="flex items-center rounded-md bg-surface-input p-0.5">
               {(['all', 'selected'] as const).map((s) => (
@@ -157,7 +155,7 @@ export function ObjectEditorHud(): JSX.Element {
                 <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: (selectedEntry ?? perObject[0]!).color }} />
                 <span className="text-xs text-content truncate">{(selectedEntry ?? perObject[0]!).name}</span>
               </div>
-              <Metrics hud={(selectedEntry ?? perObject[0]!).hud} units={units} />
+              <Metrics hud={(selectedEntry ?? perObject[0]!).hud} distanceUnit={distanceUnit} areaUnit={areaUnit} />
             </>
           ) : (
             <p className="text-xs text-content-tertiary mt-2">Select an object to see its briefing, or switch to All.</p>
@@ -166,7 +164,7 @@ export function ObjectEditorHud(): JSX.Element {
           totals && (
             <>
               <p className="text-xs text-content-tertiary mb-2">{perObject.length} objects combined</p>
-              <Metrics hud={totals} units={units} />
+              <Metrics hud={totals} distanceUnit={distanceUnit} areaUnit={areaUnit} />
             </>
           )
         )}

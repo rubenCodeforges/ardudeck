@@ -14,6 +14,23 @@ import {
   type SitlCustomFrameMeta,
 } from '../../../shared/sitl-custom-frame';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
+import { useSettingsStore } from '../../stores/settings-store';
+import {
+  areaInputValueFromSquareMeters,
+  altitudeValueFromMeters,
+  capacityValueFromMah,
+  dimensionInputValueFromMillimeters,
+  speedValueFromMetersPerSecond,
+  toGramsFromWeightUnit,
+  toMahFromCapacityUnit,
+  toMetersPerSecondFromSpeedUnit,
+  toMetersFromAltitudeUnit,
+  toMillimetersFromDimensionUnit,
+  toSquareMetersFromAreaUnit,
+  UNIT_LABELS,
+  UNIT_PRECISION,
+  weightInputValueFromGrams,
+} from '../../../shared/user-units.js';
 
 type EditorMode =
   | { kind: 'closed' }
@@ -28,28 +45,36 @@ const FIELD_GROUPS: { title: string; fields: (keyof SitlCustomFrame)[] }[] = [
 ];
 
 const FIELD_HINTS: Partial<Record<keyof SitlCustomFrame, string>> = {
-  mass: 'kg',
-  diagonal_size: 'm (motor-to-motor)',
   maxVoltage: 'V (full-charge)',
-  battCapacityAh: 'Ah',
   refBatRes: 'Ω (internal)',
-  refSpd: 'm/s',
   refAngle: 'deg',
   refVoltage: 'V',
   refCurrent: 'A',
-  refAlt: 'm',
   refTempC: '°C',
   refRotRate: 'deg/s',
   hoverThrOut: '0–1',
-  disc_area: 'm² (total prop)',
   num_motors: '4 / 6 / 8',
 };
+
+function parseNumberDraft(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:e[+-]?\d+)?$/i.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 export function CustomFramePanel() {
   const customFramePath = useArduPilotSitlStore((s) => s.customFramePath);
   const customFrameMotors = useArduPilotSitlStore((s) => s.customFrameMotors);
   const setCustomFrame = useArduPilotSitlStore((s) => s.setCustomFrame);
   const setModel = useArduPilotSitlStore((s) => s.setModel);
+  const unitPreferences = useSettingsStore((s) => s.unitPreferences);
+  const altitudeUnit = unitPreferences.altitude;
+  const electricCapacityUnit = unitPreferences.electricCapacity;
+  const speedUnit = unitPreferences.speed;
+  const weightUnit = unitPreferences.weight;
+  const dimensionUnit = unitPreferences.dimensions;
+  const areaUnit = unitPreferences.area;
 
   const [expanded, setExpanded] = useState(false);
   const [list, setList] = useState<SitlCustomFrameMeta[]>([]);
@@ -181,6 +206,71 @@ export function CustomFramePanel() {
   const updateField = (key: keyof SitlCustomFrame, value: number) => {
     if (editor.kind === 'closed') return;
     setEditor({ ...editor, frame: { ...editor.frame, [key]: value } });
+  };
+
+  const getFieldHint = (field: keyof SitlCustomFrame): string | undefined => {
+    if (field === 'mass') return UNIT_LABELS.weight[weightUnit];
+    if (field === 'diagonal_size') return `${UNIT_LABELS.dimensions[dimensionUnit]} (motor-to-motor)`;
+    if (field === 'disc_area') return `${UNIT_LABELS.area[areaUnit]} (total prop)`;
+    if (field === 'refAlt') return UNIT_LABELS.altitude[altitudeUnit];
+    if (field === 'battCapacityAh') return UNIT_LABELS.electricCapacity[electricCapacityUnit];
+    if (field === 'refSpd') return UNIT_LABELS.speed[speedUnit];
+    return FIELD_HINTS[field];
+  };
+
+  const getFieldDisplayValue = (field: keyof SitlCustomFrame): number => {
+    if (editor.kind === 'closed') return 0;
+    const value = editor.frame[field];
+    if (field === 'refAlt') {
+      const precision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
+      return Number(altitudeValueFromMeters(value, altitudeUnit).toFixed(precision));
+    }
+    if (field === 'mass') {
+      return Number(weightInputValueFromGrams(value * 1000, weightUnit));
+    }
+    if (field === 'diagonal_size') {
+      return Number(dimensionInputValueFromMillimeters(value * 1000, dimensionUnit));
+    }
+    if (field === 'disc_area') {
+      return Number(areaInputValueFromSquareMeters(value, areaUnit));
+    }
+    if (field === 'battCapacityAh') {
+      return Number(capacityValueFromMah(value * 1000, electricCapacityUnit).toFixed(UNIT_PRECISION.electricCapacity[electricCapacityUnit]));
+    }
+    if (field === 'refSpd') {
+      return Number(speedValueFromMetersPerSecond(value, speedUnit).toFixed(UNIT_PRECISION.speed[speedUnit]));
+    }
+    return value;
+  };
+
+  const updateFieldFromDisplay = (field: keyof SitlCustomFrame, raw: string) => {
+    const v = parseNumberDraft(raw.replace(',', '.'));
+    if (v === null) return;
+    if (field === 'refAlt') {
+      updateField(field, toMetersFromAltitudeUnit(v, altitudeUnit));
+      return;
+    }
+    if (field === 'mass') {
+      updateField(field, toGramsFromWeightUnit(v, weightUnit) / 1000);
+      return;
+    }
+    if (field === 'diagonal_size') {
+      updateField(field, toMillimetersFromDimensionUnit(v, dimensionUnit) / 1000);
+      return;
+    }
+    if (field === 'disc_area') {
+      updateField(field, toSquareMetersFromAreaUnit(v, areaUnit));
+      return;
+    }
+    if (field === 'battCapacityAh') {
+      updateField(field, toMahFromCapacityUnit(v, electricCapacityUnit) / 1000);
+      return;
+    }
+    if (field === 'refSpd') {
+      updateField(field, toMetersPerSecondFromSpeedUnit(v, speedUnit));
+      return;
+    }
+    updateField(field, v);
   };
 
   return (
@@ -324,17 +414,13 @@ export function CustomFramePanel() {
                       <div key={field}>
                         <label className="block text-[11px] text-content-secondary">
                           {field}
-                          {FIELD_HINTS[field] && <span className="text-content-tertiary ml-1">({FIELD_HINTS[field]})</span>}
+                          {getFieldHint(field) && <span className="text-content-tertiary ml-1">({getFieldHint(field)})</span>}
                         </label>
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={editor.frame[field]}
-                          onChange={(e) => {
-                            const raw = e.target.value.replace(',', '.');
-                            const v = parseFloat(raw);
-                            if (Number.isFinite(v)) updateField(field, v);
-                          }}
+                          value={getFieldDisplayValue(field)}
+                          onChange={(e) => updateFieldFromDisplay(field, e.target.value)}
                           className="w-full px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content font-mono tabular-nums focus:outline-none focus:border-blue-500"
                         />
                       </div>

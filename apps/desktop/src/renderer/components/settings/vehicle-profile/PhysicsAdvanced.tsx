@@ -1,5 +1,13 @@
 import { Cpu } from 'lucide-react';
+import {
+  dimensionInputValueFromMillimeters,
+  toMillimetersFromDimensionUnit,
+  UNIT_LABELS,
+  UNIT_PRECISION,
+  type DimensionUnit,
+} from '../../../../shared/user-units.js';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
+import { useSettingsStore } from '../../../stores/settings-store.js';
 
 interface PhysicsAdvancedProps {
   vehicle: VehicleProfile;
@@ -12,6 +20,13 @@ interface PhysicsAdvancedProps {
  * Edit Vehicle modal (rotating chevron, icon, collapsed by default).
  */
 export function PhysicsAdvanced({ vehicle, onUpdate }: PhysicsAdvancedProps) {
+  const dimensionUnit = useSettingsStore((s) => s.unitPreferences.dimensions);
+  const dimensionUnitLabel = UNIT_LABELS.dimensions[dimensionUnit];
+  const toDisplayDimension = (millimeters: number | undefined) =>
+    millimeters === undefined ? undefined : Number(dimensionInputValueFromMillimeters(millimeters, dimensionUnit));
+  const toNativeMillimeters = (displayValue: number) =>
+    Math.round(toMillimetersFromDimensionUnit(displayValue, dimensionUnit));
+
   return (
     <details className="group">
       <summary className="text-sm font-medium text-content-secondary cursor-pointer hover:text-content flex items-center gap-2">
@@ -33,12 +48,12 @@ export function PhysicsAdvanced({ vehicle, onUpdate }: PhysicsAdvancedProps) {
         />
         <NumField
           label="Prop Diameter"
-          value={vehicle.propDiameter}
-          step={1}
-          unit="mm"
-          placeholder="127"
-          onChange={v => onUpdate({ propDiameter: v })}
-          hint="Prop diameter in millimetres"
+          value={toDisplayDimension(vehicle.propDiameter)}
+          step={dimensionInputStep(dimensionUnit)}
+          unit={dimensionUnitLabel}
+          placeholder={dimensionInputValueFromMillimeters(127, dimensionUnit)}
+          onChange={v => onUpdate({ propDiameter: toNativeMillimeters(v) })}
+          hint="Prop diameter"
         />
         <NumField
           label="Drag Coefficient"
@@ -61,24 +76,24 @@ export function PhysicsAdvanced({ vehicle, onUpdate }: PhysicsAdvancedProps) {
         <div className="col-span-2 grid grid-cols-3 gap-2">
           <NumField
             label="CG Offset X"
-            value={vehicle.cogOffset?.x}
-            step={1}
-            unit="mm"
-            onChange={v => onUpdate({ cogOffset: { ...(vehicle.cogOffset ?? { x: 0, y: 0, z: 0 }), x: v } })}
+            value={toDisplayDimension(vehicle.cogOffset?.x)}
+            step={dimensionInputStep(dimensionUnit)}
+            unit={dimensionUnitLabel}
+            onChange={v => onUpdate({ cogOffset: { ...(vehicle.cogOffset ?? { x: 0, y: 0, z: 0 }), x: toNativeMillimeters(v) } })}
           />
           <NumField
             label="CG Offset Y"
-            value={vehicle.cogOffset?.y}
-            step={1}
-            unit="mm"
-            onChange={v => onUpdate({ cogOffset: { ...(vehicle.cogOffset ?? { x: 0, y: 0, z: 0 }), y: v } })}
+            value={toDisplayDimension(vehicle.cogOffset?.y)}
+            step={dimensionInputStep(dimensionUnit)}
+            unit={dimensionUnitLabel}
+            onChange={v => onUpdate({ cogOffset: { ...(vehicle.cogOffset ?? { x: 0, y: 0, z: 0 }), y: toNativeMillimeters(v) } })}
           />
           <NumField
             label="CG Offset Z"
-            value={vehicle.cogOffset?.z}
-            step={1}
-            unit="mm"
-            onChange={v => onUpdate({ cogOffset: { ...(vehicle.cogOffset ?? { x: 0, y: 0, z: 0 }), z: v } })}
+            value={toDisplayDimension(vehicle.cogOffset?.z)}
+            step={dimensionInputStep(dimensionUnit)}
+            unit={dimensionUnitLabel}
+            onChange={v => onUpdate({ cogOffset: { ...(vehicle.cogOffset ?? { x: 0, y: 0, z: 0 }), z: toNativeMillimeters(v) } })}
           />
         </div>
       </div>
@@ -89,11 +104,15 @@ export function PhysicsAdvanced({ vehicle, onUpdate }: PhysicsAdvancedProps) {
 interface NumFieldProps {
   label: string;
   value: number | undefined;
-  step: number;
+  step: number | string;
   unit: string;
   placeholder?: string;
   hint?: string;
   onChange: (value: number) => void;
+}
+
+function dimensionInputStep(unit: DimensionUnit): string {
+  return String(1 / (10 ** UNIT_PRECISION.dimensions[unit]));
 }
 
 function NumField({ label, value, step, unit, placeholder, hint, onChange }: NumFieldProps) {

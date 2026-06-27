@@ -1,5 +1,7 @@
 import React from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useSettingsStore } from '../../stores/settings-store';
+import { formatAltitudeFromMeters, speedValueFromMetersPerSecond, UNIT_LABELS } from '../../../shared/user-units.js';
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 export const FlightModePanel = React.memo(function FlightModePanel() {
@@ -7,6 +9,8 @@ export const FlightModePanel = React.memo(function FlightModePanel() {
   const flight = useTelemetryStore((s) => s.flight);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
   const battery = useTelemetryStore((s) => s.battery);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
+  const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
 
   const batteryColor = battery.remaining < 0 ? 'text-content-secondary' : battery.remaining > 30 ? 'text-emerald-400' : battery.remaining > 15 ? 'text-yellow-400' : 'text-red-400';
 
@@ -26,8 +30,8 @@ export const FlightModePanel = React.memo(function FlightModePanel() {
         {/* Key stats */}
         <div className="space-y-1">
           <StatRow label="Heading" value={formatNumber(vfrHud.heading, 0)} unit="°" />
-          <StatRow label="Altitude" value={formatNumber(vfrHud.alt, 1)} unit="m" />
-          <StatRow label="Speed" value={formatNumber(vfrHud.groundspeed, 1)} unit="m/s" />
+          <StatRow label="Altitude" value={formatAltitudeFromMeters(vfrHud.alt, altitudeUnit)} />
+          <StatRow label="Speed" value={formatNumber(speedValueFromMetersPerSecond(vfrHud.groundspeed, speedUnit), 1)} unit={UNIT_LABELS.speed[speedUnit]} />
           <StatRow label="Throttle" value={vfrHud.throttle} unit="%" />
           <div className="flex justify-between items-baseline py-0.5">
             <span className="text-content-secondary text-xs">Battery</span>

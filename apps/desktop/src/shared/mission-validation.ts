@@ -9,6 +9,11 @@
 import type { MissionItem } from './mission-types';
 import { MAV_CMD, commandHasLocation, hasValidCoordinates, isNavigationCommand } from './mission-types';
 import type { Group } from './mission-group-types';
+import {
+  DEFAULT_USER_UNIT_PREFERENCES,
+  formatAltitudeFromMeters,
+  type AltitudeUnit,
+} from './user-units';
 
 export type ValidationSeverity = 'error' | 'warn';
 
@@ -31,6 +36,8 @@ export interface ValidateMissionOptions {
   isAir?: boolean;
   /** Soft maximum altitude (m) above which a waypoint looks suspect. */
   maxAltitude?: number;
+  /** Display unit for user-facing altitude warning text. Native values stay metres. */
+  altitudeUnit?: AltitudeUnit;
 }
 
 const DEFAULT_CEILING = 724;
@@ -43,6 +50,7 @@ export function validateMission(
 ): ValidationResult {
   const ceiling = opts.ceiling ?? DEFAULT_CEILING;
   const maxAlt = opts.maxAltitude ?? DEFAULT_MAX_ALT;
+  const altitudeUnit = opts.altitudeUnit ?? DEFAULT_USER_UNIT_PREFERENCES.altitude;
   const checks: ValidationCheck[] = [];
 
   // 1. Mission-item ceiling. ArduPilot rejects an over-size mission outright.
@@ -74,10 +82,10 @@ export function validateMission(
     else if (it.altitude > maxAlt) tooHighAlt++;
   }
   if (nonPositiveAlt > 0) {
-    checks.push({ id: 'alt-nonpositive', severity: 'warn', message: `${nonPositiveAlt} waypoint(s) at or below 0 m altitude.` });
+    checks.push({ id: 'alt-nonpositive', severity: 'warn', message: `${nonPositiveAlt} waypoint(s) at or below ${formatAltitudeFromMeters(0, altitudeUnit)} altitude.` });
   }
   if (tooHighAlt > 0) {
-    checks.push({ id: 'alt-high', severity: 'warn', message: `${tooHighAlt} waypoint(s) above ${maxAlt} m - check your altitude reference.` });
+    checks.push({ id: 'alt-high', severity: 'warn', message: `${tooHighAlt} waypoint(s) above ${formatAltitudeFromMeters(maxAlt, altitudeUnit)} - check your altitude reference.` });
   }
 
   // 4. DO_JUMP targets must point at a real sequence.

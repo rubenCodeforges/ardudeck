@@ -5,6 +5,7 @@ import type { CameraPreset } from '../components/survey/survey-types';
 import type { FirmwareSource } from '../../shared/firmware-types.js';
 import type { NonDefaultColorKey } from '../components/parameters/non-default-palette.js';
 import { DEFAULT_NON_DEFAULT_COLOR } from '../components/parameters/non-default-palette.js';
+import { DEFAULT_USER_UNIT_PREFERENCES, normalizeUserUnitPreferences, type UserUnitPreferences } from '../../shared/user-units.js';
 
 /**
  * Vehicle type for visualization
@@ -187,19 +188,6 @@ export const DEFAULT_SURVEY_PERFORMANCE: SurveyPerformance = {
 };
 
 /**
- * Display unit preferences for large vehicle support
- * 'small' = mm, g, mAh (default - racing/freestyle quads)
- * 'large' = m, kg, Ah (large aircraft, industrial drones)
- */
-export type DisplayUnits = 'small' | 'large';
-
-/**
- * Survey measurement system for the Area Editor briefing readouts.
- * 'metric' = hectares + m/km, 'imperial' = acres + ft/mi.
- */
-export type SurveyUnits = 'metric' | 'imperial';
-
-/**
  * Experience level controls visibility of educational UI elements
  */
 export type ExperienceLevel = 'beginner' | 'advanced';
@@ -352,13 +340,9 @@ interface SettingsStore {
   // Telemetry stream rate
   telemetrySpeed: TelemetrySpeed;
 
-  // Display units
-  displayUnits: DisplayUnits;
-  setDisplayUnits: (units: DisplayUnits) => void;
-
-  // Survey measurement system (Area Editor briefing)
-  surveyUnits: SurveyUnits;
-  setSurveyUnits: (units: SurveyUnits) => void;
+  // Display unit preferences
+  unitPreferences: UserUnitPreferences;
+  setUnitPreference: <K extends keyof UserUnitPreferences>(kind: K, unit: UserUnitPreferences[K]) => void;
 
   // Theme
   theme: ThemePreference;
@@ -796,8 +780,7 @@ export const useSettingsStore = create<SettingsStore>()(
   defaultSitlType: 'ardupilot',
   preferredFirmwareSource: 'ardupilot' as FirmwareSource,
   telemetrySpeed: 'normal' as TelemetrySpeed,
-  displayUnits: 'small' as DisplayUnits,
-  surveyUnits: 'metric' as SurveyUnits,
+  unitPreferences: { ...DEFAULT_USER_UNIT_PREFERENCES },
   theme: 'dark' as ThemePreference,
   nonDefaultHighlightColor: DEFAULT_NON_DEFAULT_COLOR,
   experienceLevel: null as ExperienceLevel | null,
@@ -894,39 +877,43 @@ export const useSettingsStore = create<SettingsStore>()(
     try {
       const settings = await window.electronAPI?.getSettings();
       if (settings) {
+        const settingsRecord = settings as unknown as Record<string, unknown>;
+        const unitPreferences = normalizeUserUnitPreferences(settingsRecord.unitPreferences, {
+          displayUnits: settingsRecord.displayUnits,
+          surveyUnits: settingsRecord.surveyUnits,
+        });
         set({
           missionDefaults: { ...DEFAULT_MISSION_DEFAULTS, ...settings.missionDefaults },
           surveyPerformance: {
             ...DEFAULT_SURVEY_PERFORMANCE,
-            ...((settings as unknown as Record<string, unknown>).surveyPerformance as Partial<SurveyPerformance> | undefined),
+            ...(settingsRecord.surveyPerformance as Partial<SurveyPerformance> | undefined),
           },
-          sidebarCollapsedByContext: ((settings as unknown as Record<string, unknown>).sidebarCollapsedByContext as Record<string, boolean> | undefined) ?? {},
+          sidebarCollapsedByContext: (settingsRecord.sidebarCollapsedByContext as Record<string, boolean> | undefined) ?? {},
           vehicles: settings.vehicles?.length ? settings.vehicles : [{ ...DEFAULT_VEHICLE }],
           activeVehicleId: settings.activeVehicleId || settings.vehicles?.[0]?.id || 'default',
           flightStats: settings.flightStats || { ...DEFAULT_FLIGHT_STATS },
           connectionMemory: settings.connectionMemory || { ...DEFAULT_CONNECTION_MEMORY },
-          defaultSitlType: (settings as unknown as Record<string, unknown>).defaultSitlType as DefaultSitlType || 'ardupilot',
-          preferredFirmwareSource: ((settings as unknown as Record<string, unknown>).preferredFirmwareSource as FirmwareSource) || 'ardupilot',
-          telemetrySpeed: ((settings as unknown as Record<string, unknown>).telemetrySpeed as TelemetrySpeed) || 'normal',
-          displayUnits: ((settings as unknown as Record<string, unknown>).displayUnits as DisplayUnits) || 'small',
-          surveyUnits: ((settings as unknown as Record<string, unknown>).surveyUnits as SurveyUnits) || 'metric',
-          theme: ((settings as unknown as Record<string, unknown>).theme as ThemePreference) || 'dark',
-          nonDefaultHighlightColor: ((settings as unknown as Record<string, unknown>).nonDefaultHighlightColor as NonDefaultColorKey) || DEFAULT_NON_DEFAULT_COLOR,
-          experienceLevel: ((settings as unknown as Record<string, unknown>).experienceLevel as ExperienceLevel) || null,
-          experienceLevelVersion: ((settings as unknown as Record<string, unknown>).experienceLevelVersion as string) || null,
+          defaultSitlType: settingsRecord.defaultSitlType as DefaultSitlType || 'ardupilot',
+          preferredFirmwareSource: (settingsRecord.preferredFirmwareSource as FirmwareSource) || 'ardupilot',
+          telemetrySpeed: (settingsRecord.telemetrySpeed as TelemetrySpeed) || 'normal',
+          unitPreferences,
+          theme: (settingsRecord.theme as ThemePreference) || 'dark',
+          nonDefaultHighlightColor: (settingsRecord.nonDefaultHighlightColor as NonDefaultColorKey) || DEFAULT_NON_DEFAULT_COLOR,
+          experienceLevel: (settingsRecord.experienceLevel as ExperienceLevel) || null,
+          experienceLevelVersion: (settingsRecord.experienceLevelVersion as string) || null,
           uiVisibility: {
             ...BEGINNER_UI_VISIBILITY,
-            ...((settings as unknown as Record<string, unknown>).uiVisibility as Partial<UiVisibility> | undefined),
+            ...(settingsRecord.uiVisibility as Partial<UiVisibility> | undefined),
           },
-          companionUnlocked: !!((settings as unknown as Record<string, unknown>).companionUnlocked),
-          advancedCommandsUnlocked: !!((settings as unknown as Record<string, unknown>).advancedCommandsUnlocked),
-          showDebugLogs: !!((settings as unknown as Record<string, unknown>).showDebugLogs),
-          aiProvider: ((settings as unknown as Record<string, unknown>).aiProvider as 'claude' | 'openai' | 'gemini' | null) ?? null,
-          aiWarningDismissed: !!((settings as unknown as Record<string, unknown>).aiWarningDismissed),
+          companionUnlocked: !!settingsRecord.companionUnlocked,
+          advancedCommandsUnlocked: !!settingsRecord.advancedCommandsUnlocked,
+          showDebugLogs: !!settingsRecord.showDebugLogs,
+          aiProvider: (settingsRecord.aiProvider as 'claude' | 'openai' | 'gemini' | null) ?? null,
+          aiWarningDismissed: !!settingsRecord.aiWarningDismissed,
           surveyPresets: (settings.surveyPresets ?? []) as PersistedSurveyPreset[],
           lastSurveyPresetId: settings.lastSurveyPresetId ?? null,
           surveySavedConfig: (settings.surveySavedConfig as Record<string, unknown> | undefined) ?? null,
-          userCameraPresets: ((settings as unknown as Record<string, unknown>).userCameraPresets as CameraPreset[] | undefined) ?? [],
+          userCameraPresets: (settingsRecord.userCameraPresets as CameraPreset[] | undefined) ?? [],
           _isInitialized: true,
         });
       } else {
@@ -955,8 +942,7 @@ export const useSettingsStore = create<SettingsStore>()(
         defaultSitlType: state.defaultSitlType,
         preferredFirmwareSource: state.preferredFirmwareSource,
         telemetrySpeed: state.telemetrySpeed,
-        displayUnits: state.displayUnits,
-        surveyUnits: state.surveyUnits,
+        unitPreferences: state.unitPreferences,
         theme: state.theme,
         nonDefaultHighlightColor: state.nonDefaultHighlightColor,
         ...(state.experienceLevel ? { experienceLevel: state.experienceLevel } : {}),
@@ -1195,12 +1181,10 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ telemetrySpeed: speed });
   },
 
-  setDisplayUnits: (units) => {
-    set({ displayUnits: units });
-  },
-
-  setSurveyUnits: (units) => {
-    set({ surveyUnits: units });
+  setUnitPreference: (kind, unit) => {
+    set((state) => ({
+      unitPreferences: { ...state.unitPreferences, [kind]: unit },
+    }));
   },
 
   setTheme: (theme) => {
@@ -1246,6 +1230,7 @@ export const useSettingsStore = create<SettingsStore>()(
       defaultSitlType: 'ardupilot',
       preferredFirmwareSource: 'ardupilot',
       telemetrySpeed: 'normal',
+      unitPreferences: { ...DEFAULT_USER_UNIT_PREFERENCES },
     });
   },
 })));
@@ -1271,8 +1256,7 @@ useSettingsStore.subscribe(
     defaultSitlType: state.defaultSitlType,
     preferredFirmwareSource: state.preferredFirmwareSource,
     telemetrySpeed: state.telemetrySpeed,
-    displayUnits: state.displayUnits,
-    surveyUnits: state.surveyUnits,
+    unitPreferences: state.unitPreferences,
     theme: state.theme,
     nonDefaultHighlightColor: state.nonDefaultHighlightColor,
     experienceLevel: state.experienceLevel,
@@ -1303,8 +1287,7 @@ useSettingsStore.subscribe(
         curr.defaultSitlType !== prev.defaultSitlType ||
         curr.preferredFirmwareSource !== prev.preferredFirmwareSource ||
         curr.telemetrySpeed !== prev.telemetrySpeed ||
-        curr.displayUnits !== prev.displayUnits ||
-        curr.surveyUnits !== prev.surveyUnits ||
+        curr.unitPreferences !== prev.unitPreferences ||
         curr.theme !== prev.theme ||
         curr.experienceLevel !== prev.experienceLevel ||
         curr.experienceLevelVersion !== prev.experienceLevelVersion ||

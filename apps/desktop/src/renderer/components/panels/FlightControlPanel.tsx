@@ -15,11 +15,18 @@ import { useMessagesStore } from '../../stores/messages-store';
 import { useMissionStore } from '../../stores/mission-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { isPreArmMessage, extractPreArmReason, matchPreArmError } from '../../../shared/prearm-checks';
 import { PreArmParamFix } from '../prearm/PreArmParamFix';
 import { PanelContainer, SectionTitle } from './panel-utils';
 import { getVehicleClass, ARDUPILOT_COMMON_MODES, VEHICLE_CAPABILITIES, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
 import { executeTakeoff, presentTakeoff } from './takeoff-strategies';
+import {
+  altitudeValueFromMeters,
+  formatAltitudeFromMeters,
+  toMetersFromAltitudeUnit,
+  UNIT_LABELS,
+} from '../../../shared/user-units.js';
 
 // =============================================================================
 // Visual Components
@@ -478,6 +485,7 @@ function MavlinkFlightControl() {
   const missionItems = useMissionStore((s) => s.missionItems);
   const currentSeq = useMissionStore((s) => s.currentSeq);
   const fetchMission = useMissionStore((s) => s.fetchMission);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   const missionLoaded = missionItems.length > 0;
   const missionModes = MISSION_MODES[vehicleClass];
   const isInAuto = flight.modeNum === missionModes.auto;
@@ -493,6 +501,18 @@ function MavlinkFlightControl() {
   const [modeLoading, setModeLoading] = useState<number | null>(null);
   const [showTakeoffDialog, setShowTakeoffDialog] = useState(false);
   const [takeoffAlt, setTakeoffAlt] = useState(10);
+  const takeoffAltitudePrecision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
+  const takeoffAltitudeDisplay = Number(altitudeValueFromMeters(takeoffAlt, altitudeUnit).toFixed(takeoffAltitudePrecision));
+  const takeoffAltitudeMin = altitudeValueFromMeters(1, altitudeUnit);
+  const takeoffAltitudeMax = altitudeValueFromMeters(100, altitudeUnit);
+  const takeoffAltitudeStep = altitudeUnit === 'km' ? 0.001 : 1;
+  const altitudeLabel = UNIT_LABELS.altitude[altitudeUnit];
+
+  const setTakeoffAltitudeFromDisplay = useCallback((displayValue: number) => {
+    if (!Number.isFinite(displayValue)) return;
+    const meters = toMetersFromAltitudeUnit(displayValue, altitudeUnit);
+    setTakeoffAlt(Math.max(1, Math.min(100, meters)));
+  }, [altitudeUnit]);
 
   // Detect panel orientation for responsive layout
   useEffect(() => {
@@ -647,6 +667,7 @@ function MavlinkFlightControl() {
     const store = useTelemetryStore.getState;
     const result = await executeTakeoff({
       altitudeM:    takeoffAlt,
+      formatAltitude: (meters) => formatAltitudeFromMeters(meters, altitudeUnit),
       forceArm,
       vehicleClass,
       capabilities,
@@ -671,7 +692,7 @@ function MavlinkFlightControl() {
       waitForState,
     });
     if (result.ok) {
-      setStatusMsg({ text: `Taking off to ${takeoffAlt}m...`, type: 'success' });
+      setStatusMsg({ text: `Taking off to ${formatAltitudeFromMeters(takeoffAlt, altitudeUnit)}...`, type: 'success' });
     } else {
       setStatusMsg({ text: result.reason, type: 'error' });
     }
@@ -958,13 +979,17 @@ function MavlinkFlightControl() {
                   </span>
                   <input
                     type="number"
-                    min={1}
-                    max={100}
-                    value={takeoffAlt}
-                    onChange={(e) => setTakeoffAlt(Math.max(1, Math.min(100, Number(e.target.value))))}
+                    min={takeoffAltitudeMin}
+                    max={takeoffAltitudeMax}
+                    step={takeoffAltitudeStep}
+                    value={takeoffAltitudeDisplay}
+                    onChange={(e) => {
+                      if (e.target.value.trim() === '') return;
+                      setTakeoffAltitudeFromDisplay(Number(e.target.value));
+                    }}
                     className="w-14 px-1.5 py-1 text-sm font-mono bg-surface-input border border-subtle rounded text-content"
                   />
-                  <span className="text-[11px] text-content-secondary shrink-0">m</span>
+                  <span className="text-[11px] text-content-secondary shrink-0">{altitudeLabel}</span>
                   <button
                     onClick={handleTakeoff}
                     className="ml-auto px-2.5 py-1 text-[11px] font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"

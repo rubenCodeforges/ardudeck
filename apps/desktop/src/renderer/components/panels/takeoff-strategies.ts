@@ -30,6 +30,7 @@ type StatusType = 'info' | 'success' | 'error';
  */
 export interface TakeoffContext {
   altitudeM: number;
+  formatAltitude?: (meters: number) => string;
   forceArm: boolean;
   vehicleClass: ArduPilotVehicleClass;
   capabilities: VehicleCapabilities;
@@ -69,6 +70,10 @@ export interface TakeoffContext {
 export type TakeoffOutcome =
   | { ok: true }
   | { ok: false; reason: string };
+
+function takeoffAltitudeLabel(ctx: TakeoffContext): string {
+  return ctx.formatAltitude?.(ctx.altitudeM) ?? `${ctx.altitudeM}m`;
+}
 
 /**
  * Surface-level metadata each vehicle exposes to the takeoff button + dialog
@@ -234,7 +239,7 @@ async function takeoffCopter(ctx: TakeoffContext): Promise<TakeoffOutcome> {
     return { ok: false, reason: 'Auto-disarmed before takeoff — retry' };
   }
 
-  ctx.setStatus({ text: `Taking off to ${ctx.altitudeM}m...`, type: 'info' });
+  ctx.setStatus({ text: `Taking off to ${takeoffAltitudeLabel(ctx)}...`, type: 'info' });
   const ok = await ctx.api.mavlinkTakeoff(ctx.altitudeM);
   return ok
     ? { ok: true }
@@ -260,7 +265,7 @@ async function takeoffPlane(ctx: TakeoffContext): Promise<TakeoffOutcome> {
   }
 
   if (cap.altParam) {
-    ctx.setStatus({ text: `Setting ${cap.altParam}=${ctx.altitudeM}m...`, type: 'info' });
+    ctx.setStatus({ text: `Setting ${cap.altParam}=${takeoffAltitudeLabel(ctx)}...`, type: 'info' });
     try {
       // MAV_PARAM_TYPE_REAL32 = 9
       await ctx.api.setParameter(cap.altParam, ctx.altitudeM, 9);
@@ -273,7 +278,7 @@ async function takeoffPlane(ctx: TakeoffContext): Promise<TakeoffOutcome> {
   const into = await switchMode(ctx, cap.modeNum, 'TAKEOFF');
   if (!into.ok) return into;
 
-  ctx.setStatus({ text: `Taking off to ${ctx.altitudeM}m...`, type: 'success' });
+  ctx.setStatus({ text: `Taking off to ${takeoffAltitudeLabel(ctx)}...`, type: 'success' });
   return { ok: true };
 }
 
@@ -331,7 +336,7 @@ async function takeoffVtolRealHw(ctx: TakeoffContext): Promise<TakeoffOutcome> {
     return { ok: false, reason: 'Auto-disarmed before takeoff — retry' };
   }
 
-  ctx.setStatus({ text: `Vertical takeoff to ${ctx.altitudeM}m…`, type: 'info' });
+  ctx.setStatus({ text: `Vertical takeoff to ${takeoffAltitudeLabel(ctx)}…`, type: 'info' });
   const ok = await ctx.api.mavlinkVtolTakeoff(ctx.altitudeM);
   return ok
     ? { ok: true }
@@ -380,7 +385,7 @@ async function takeoffVtolSitl(ctx: TakeoffContext): Promise<TakeoffOutcome> {
   }
 
   // Climb. ~0.7 normalized = ~1850 PWM = strong climb command in QHOVER.
-  ctx.setStatus({ text: `Climbing to ${ctx.altitudeM}m…`, type: 'info' });
+  ctx.setStatus({ text: `Climbing to ${takeoffAltitudeLabel(ctx)}…`, type: 'info' });
   await ctx.api.sitlRcSend(sticks({ throttle: 0.7 }));
 
   // Wait for relative altitude to reach 90% of target. Reads from
@@ -399,7 +404,7 @@ async function takeoffVtolSitl(ctx: TakeoffContext): Promise<TakeoffOutcome> {
   if (!reached) {
     return {
       ok: false,
-      reason: `Did not reach ${ctx.altitudeM}m — vehicle still armed in QHover, take RC control`,
+      reason: `Did not reach ${takeoffAltitudeLabel(ctx)} — vehicle still armed in QHover, take RC control`,
     };
   }
   return { ok: true };

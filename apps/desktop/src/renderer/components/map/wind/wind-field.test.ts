@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sampleWind, windColor, windVectorFromUV, compassPoint, computeWindRose, convertSpeed, nextUnit, formatWindSpeed } from './wind-field';
+import { sampleWind, windColor, windVectorFromUV, compassPoint, computeWindRose, convertSpeed, nextUnit, formatWindSpeed, windUnitFromPreference } from './wind-field';
 import type { WindField, WindFrame } from '../../../../shared/wind-types';
 
 // 2x2 grid over a 1x1 deg box, row 0 = south, col 0 = west.
@@ -109,6 +109,12 @@ describe('units', () => {
     expect(nextUnit('kt')).toBe('mph');
     expect(nextUnit('mph')).toBe('kmh');
     expect(nextUnit('kmh')).toBe('ms');
+  });
+  it('seeds the session unit from the saved wind speed preference', () => {
+    expect(windUnitFromPreference('mps')).toBe('ms');
+    expect(windUnitFromPreference('kph')).toBe('kmh');
+    expect(windUnitFromPreference('mph')).toBe('mph');
+    expect(windUnitFromPreference('kt')).toBe('kt');
   });
   it('formats with the right precision + label', () => {
     expect(formatWindSpeed(5.234, 'ms')).toBe('5.2 m/s');

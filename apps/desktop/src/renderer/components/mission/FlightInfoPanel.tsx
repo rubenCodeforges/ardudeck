@@ -16,6 +16,7 @@ import { commandHasLocation, hasValidCoordinates } from '../../../shared/mission
 import { estimateDataSizeGb } from '../survey/survey-stats';
 import {
   computeMissionBriefing,
+  formatAltitudeM,
   formatDistanceM,
   formatDurationSec,
   FC_WAYPOINT_SOFT_LIMIT,
@@ -23,6 +24,14 @@ import {
   type DaylightWindow,
 } from '../../utils/flight-briefing';
 import { getCurrentWeather, compassPoint, type WeatherSummary } from '../../utils/weather-api';
+import {
+  formatAreaFromSquareMeters,
+  formatSpeedFromMetersPerSecond,
+  formatWindSpeedFromMetersPerSecond,
+  UNIT_LABELS,
+  windSpeedValueFromMetersPerSecond,
+  type WindSpeedUnit,
+} from '../../../shared/user-units.js';
 
 // Each section is a subtle raised card so the groups read as distinct blocks
 // instead of one continuous list. Header (small icon + title) over a divider,
@@ -95,8 +104,9 @@ function MeterStat({ label, value, detail, pct, tone = 'bg-blue-500/70' }: {
 
 // Compass showing the wind: an arrowhead on the rim at the bearing the wind
 // comes FROM, pointing inward (the way it pushes the aircraft). Speed reads in
-// the centre. Far faster to parse than "7.8 m/s W, from 288°".
-function WindRose({ dirDeg, speedMs }: { dirDeg: number; speedMs: number }) {
+// the centre. Far faster to parse than a sentence with bearing and speed.
+function WindRose({ dirDeg, speedMs, unit }: { dirDeg: number; speedMs: number; unit: WindSpeedUnit }) {
+  const displaySpeed = windSpeedValueFromMetersPerSecond(speedMs, unit).toFixed(1);
   return (
     <div className="relative w-14 h-14 shrink-0">
       <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -110,8 +120,8 @@ function WindRose({ dirDeg, speedMs }: { dirDeg: number; speedMs: number }) {
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-xs font-semibold text-content leading-none tabular-nums">{speedMs.toFixed(1)}</span>
-        <span className="text-[8px] text-content-tertiary leading-none mt-0.5">m/s</span>
+        <span className="text-xs font-semibold text-content leading-none tabular-nums">{displaySpeed}</span>
+        <span className="text-[8px] text-content-tertiary leading-none mt-0.5">{UNIT_LABELS.windSpeed[unit]}</span>
       </div>
     </div>
   );
@@ -146,6 +156,11 @@ export function FlightInfoPanel() {
   // Recompute endurance/cruise only when the active vehicle profile changes.
   const activeVehicleId = useSettingsStore((s) => s.activeVehicleId);
   const vehicles = useSettingsStore((s) => s.vehicles);
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
+  const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
+  const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
+  const windSpeedUnit = useSettingsStore((s) => s.unitPreferences.windSpeed);
 
   const { cruiseSpeedMs, enduranceSec, vehicleName, isAerial } = useMemo(() => {
     const st = useSettingsStore.getState();
@@ -207,8 +222,8 @@ export function FlightInfoPanel() {
   );
 
   const briefing = useMemo(
-    () => computeMissionBriefing({ located, home, cruiseSpeedMs, enduranceSec, survey, weather }),
-    [located, home, cruiseSpeedMs, enduranceSec, survey, weather],
+    () => computeMissionBriefing({ located, home, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit, windSpeedUnit }),
+    [located, home, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit, windSpeedUnit],
   );
 
   if (!isAerial) {
@@ -245,7 +260,7 @@ export function FlightInfoPanel() {
         <Hero
           value={formatDurationSec(briefing.flightTimeSec)}
           unit="flight time"
-          sub={`at ~${cruiseSpeedMs.toFixed(1)} m/s cruise (${vehicleName})`}
+          sub={`at ~${formatSpeedFromMetersPerSecond(cruiseSpeedMs, speedUnit)} cruise (${vehicleName})`}
         />
         <Stat
           label="Batteries"
@@ -263,18 +278,22 @@ export function FlightInfoPanel() {
 
       {/* Route */}
       <Section icon={<Ruler className={ICON} />} title="Route">
-        <Stat label="Total distance" value={formatDistanceM(briefing.distanceM)} />
+        <Stat label="Total distance" value={formatDistanceM(briefing.distanceM, distanceUnit)} />
         {homePosition && (
-          <Stat label="Max from home" value={formatDistanceM(briefing.maxFromHomeM)} />
+          <Stat label="Max from home" value={formatDistanceM(briefing.maxFromHomeM, distanceUnit)} />
         )}
         <MeterStat
           label="Max altitude"
-          value={`${Math.round(briefing.maxAltM)} m AGL`}
-          detail={`ceiling ${briefing.ceilingM} m`}
+          value={`${formatAltitudeM(briefing.maxAltM, altitudeUnit)} AGL`}
+          detail={`ceiling ${formatAltitudeM(briefing.ceilingM, altitudeUnit)}`}
           pct={altPct}
           tone={altPct > 100 ? 'bg-amber-500/80' : 'bg-blue-500/70'}
         />
-        <Stat label="Total climb" value={`${Math.round(briefing.totalClimbM)} m`} detail={`from ${Math.round(briefing.minAltM)} m lowest`} />
+        <Stat
+          label="Total climb"
+          value={formatAltitudeM(briefing.totalClimbM, altitudeUnit)}
+          detail={`from ${formatAltitudeM(briefing.minAltM, altitudeUnit)} lowest`}
+        />
         <Stat
           label="Waypoints"
           value={briefing.waypointCount.toLocaleString()}
@@ -303,14 +322,14 @@ export function FlightInfoPanel() {
         ) : weather ? (
           <>
             <div className="flex items-center gap-3 py-1">
-              <WindRose dirDeg={weather.windDirDeg} speedMs={weather.windSpeedMs} />
+              <WindRose dirDeg={weather.windDirDeg} speedMs={weather.windSpeedMs} unit={windSpeedUnit} />
               <div className="min-w-0">
                 <div className="text-sm text-content">
                   Wind from <span className="font-medium">{compassPoint(weather.windDirDeg)}</span>
                   <span className="text-content-secondary"> ({Math.round(weather.windDirDeg)}°)</span>
                 </div>
                 <div className="text-[11px] text-content-tertiary mt-0.5">
-                  gusting to {weather.windGustMs.toFixed(1)} m/s
+                  gusting to {formatWindSpeedFromMetersPerSecond(weather.windGustMs, windSpeedUnit)}
                   {cruiseSpeedMs > 0 && <> · {Math.round((weather.windSpeedMs / cruiseSpeedMs) * 100)}% of cruise</>}
                 </div>
               </div>
@@ -347,7 +366,7 @@ export function FlightInfoPanel() {
       {/* Survey quality (only when a survey is active) */}
       {survey && (
         <Section icon={<Camera className={ICON} />} title="Survey">
-          <Stat label="Coverage" value={`${briefing.survey!.coverageHa.toFixed(1)} ha`} />
+          <Stat label="Coverage" value={formatAreaFromSquareMeters(survey.areaM2, areaUnit)} />
           <Stat label="GSD" value={survey.gsdCm > 0 ? `${survey.gsdCm.toFixed(1)} cm/px` : 'n/a'} />
           <Stat label="Photos" value={survey.photoCount.toLocaleString()} />
           <Stat label="Data" value={`~${survey.dataGb.toFixed(1)} GB`} detail="JPEG+RAW estimate" />

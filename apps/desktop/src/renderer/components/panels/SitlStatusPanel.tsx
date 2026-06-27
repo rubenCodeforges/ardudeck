@@ -9,8 +9,10 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSitlStore } from '../../stores/sitl-store';
 import { useFlightControlStore } from '../../stores/flight-control-store';
+import { useSettingsStore } from '../../stores/settings-store';
 import { useEffect, useState } from 'react';
 import { PanelContainer } from './panel-utils';
+import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 
 // Sensor status indicator
 function SensorBadge({ name, status }: { name: string; status: string }) {
@@ -66,6 +68,7 @@ export function SitlStatusPanel() {
   const sitlRunning = sitlStore.isRunning;
   const bridgeConnected = (sitlStore as unknown as Record<string, unknown>).bridgeConnected as boolean | undefined;
   const { channels: gcsChannels, isOverrideActive } = useFlightControlStore();
+  const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   // Channel order: RPTY (Roll, Pitch, Throttle, Yaw)
   const [rcChannels, setRcChannels] = useState<number[]>([1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]);
 
@@ -247,11 +250,11 @@ export function SitlStatusPanel() {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <span className="text-content-secondary">MSL: </span>
-              <span className="text-content">{position.alt.toFixed(1)}m</span>
+              <span className="text-content">{formatAltitudeFromMeters(position.alt, altitudeUnit)}</span>
             </div>
             <div>
               <span className="text-content-secondary">AGL: </span>
-              <span className="text-content">{(position as unknown as Record<string, number>).altAgl?.toFixed(1) || '0.0'}m</span>
+              <span className="text-content">{formatAltitudeFromMeters((position as unknown as Record<string, number>).altAgl ?? 0, altitudeUnit)}</span>
             </div>
           </div>
         </div>

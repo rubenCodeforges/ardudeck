@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { computeOffsetPosition } from '../../utils/geo-offset';
+import { useSettingsStore } from '../../stores/settings-store';
+import {
+  distanceValueFromMeters,
+  toMetersFromDistanceUnit,
+  UNIT_LABELS,
+} from '../../../shared/user-units.js';
 
 export type InsertWhere = 'before' | 'after' | 'end';
 
@@ -19,6 +25,10 @@ interface RelativeWaypointPopoverProps {
 const POPOVER_WIDTH = 280;
 const POPOVER_HEIGHT_ESTIMATE = 320;
 
+function clampNumber(value: number, min: number): number {
+  return Math.max(min, value);
+}
+
 export function RelativeWaypointPopover({
   refSeq,
   refLat,
@@ -34,6 +44,13 @@ export function RelativeWaypointPopover({
   const [distance, setDistance] = useState(50);
   const [where, setWhere] = useState<InsertWhere>('after');
   const bearingInputRef = useRef<HTMLInputElement>(null);
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const displayDistance = distanceValueFromMeters(distance, distanceUnit);
+  const minDisplayDistance = distanceValueFromMeters(1, distanceUnit);
+  const distanceStep = distanceUnit === 'm' || distanceUnit === 'ft' ? 10 : 0.01;
+  const [distanceDraft, setDistanceDraft] = useState(() => String(displayDistance));
+  const [distanceFocused, setDistanceFocused] = useState(false);
+  const skipDistanceBlurCommitRef = useRef(false);
 
   // Auto-clamped initial position derived from anchor coords
   const initialPosition = useMemo(() => {
@@ -127,8 +144,25 @@ export function RelativeWaypointPopover({
   };
 
   const stepDistance = (delta: number) => {
-    setDistance(prev => Math.max(1, prev + delta));
+    setDistance(prev => {
+      const nextDisplay = Math.max(minDisplayDistance, distanceValueFromMeters(prev, distanceUnit) + delta);
+      return toMetersFromDistanceUnit(nextDisplay, distanceUnit);
+    });
   };
+
+  useEffect(() => {
+    if (!distanceFocused) setDistanceDraft(String(displayDistance));
+  }, [displayDistance, distanceFocused]);
+
+  const resetDistanceDraft = useCallback(() => {
+    setDistanceDraft(String(distanceValueFromMeters(distance, distanceUnit)));
+  }, [distance, distanceUnit]);
+
+  const commitDisplayDistance = useCallback((display: number) => {
+    const clamped = clampNumber(display, minDisplayDistance);
+    setDistance(toMetersFromDistanceUnit(clamped, distanceUnit));
+    setDistanceDraft(String(clamped));
+  }, [distanceUnit, minDisplayDistance]);
 
   return createPortal(
     <>
@@ -234,22 +268,51 @@ export function RelativeWaypointPopover({
             <label className="block text-[11px] text-content-secondary mb-1">Distance</label>
             <div className="flex items-center bg-surface-raised border border-subtle rounded-lg overflow-hidden">
               <button
-                onClick={() => stepDistance(-10)}
+                onClick={() => stepDistance(-distanceStep)}
                 className="px-2 py-1.5 text-content-secondary hover:bg-surface hover:text-content border-r border-subtle"
               >-</button>
               <input
                 type="number"
-                min={1}
-                value={distance}
+                min={minDisplayDistance}
+                step={distanceStep}
+                value={distanceDraft}
+                onFocus={() => setDistanceFocused(true)}
                 onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (Number.isFinite(v) && v >= 1) setDistance(v);
+                  const nextDraft = e.target.value;
+                  setDistanceDraft(nextDraft);
+                  if (nextDraft.trim() === '') return;
+                  const v = Number(nextDraft);
+                  if (Number.isFinite(v) && v >= minDisplayDistance) {
+                    setDistance(toMetersFromDistanceUnit(v, distanceUnit));
+                  }
+                }}
+                onBlur={() => {
+                  setDistanceFocused(false);
+                  if (skipDistanceBlurCommitRef.current) {
+                    skipDistanceBlurCommitRef.current = false;
+                    return;
+                  }
+                  const parsed = Number(distanceDraft);
+                  if (distanceDraft.trim() === '' || !Number.isFinite(parsed)) {
+                    resetDistanceDraft();
+                    return;
+                  }
+                  commitDisplayDistance(parsed);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  } else if (e.key === 'Escape') {
+                    skipDistanceBlurCommitRef.current = true;
+                    resetDistanceDraft();
+                    e.currentTarget.blur();
+                  }
                 }}
                 className="flex-1 bg-transparent px-2 py-1.5 text-sm text-content outline-none text-center"
               />
-              <span className="px-1 text-xs text-content-secondary">m</span>
+              <span className="px-1 text-xs text-content-secondary">{UNIT_LABELS.distance[distanceUnit]}</span>
               <button
-                onClick={() => stepDistance(10)}
+                onClick={() => stepDistance(distanceStep)}
                 className="px-2 py-1.5 text-content-secondary hover:bg-surface hover:text-content border-l border-subtle"
               >+</button>
             </div>

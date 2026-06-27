@@ -1,5 +1,6 @@
 import type { MissionSummary, FlightStatus } from '../../../shared/mission-library-types';
 import { useSettingsStore } from '../../stores/settings-store';
+import { formatDistanceFromMeters } from '../../../shared/user-units.js';
 
 const STATUS_DOT_COLORS: Record<FlightStatus, string> = {
   planned: 'bg-blue-400',
@@ -45,11 +46,6 @@ function formatRelativeDate(iso: string): string {
   return date.toLocaleDateString();
 }
 
-function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)}m`;
-  return `${(meters / 1000).toFixed(1)}km`;
-}
-
 interface MissionCardProps {
   mission: MissionSummary;
   isSelected: boolean;
@@ -61,6 +57,7 @@ interface MissionCardProps {
 
 export function MissionCard({ mission, isSelected, onClick, onLoad, onDuplicate, onDelete }: MissionCardProps) {
   const { vehicles } = useSettingsStore();
+  const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const vehicle = vehicles.find(v => v.id === mission.vehicleProfileId);
   const status = mission.lastFlightStatus;
 
@@ -108,7 +105,7 @@ export function MissionCard({ mission, isSelected, onClick, onLoad, onDuplicate,
           </svg>
           {mission.waypointCount} WP
         </span>
-        <span>{formatDistance(mission.totalDistanceMeters)}</span>
+        <span>{formatDistanceFromMeters(mission.totalDistanceMeters, distanceUnit)}</span>
         {mission.flightCount > 0 && (
           <span className="flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
