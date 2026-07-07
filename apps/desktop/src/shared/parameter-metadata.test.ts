@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateParameterValue,
+  getParameterDocsUrl,
+  parseFirmwareVersionTag,
+  paramNameToDocFragment,
+  vehicleTypeToDocsSlug,
+  vehicleTypeToDocsTitle,
+  resolveArduPilotDocsContext,
+  vehicleNameToVehicleType,
+  firmwareVersionTagFromFlightSwVersion,
+  packFlightSwVersion,
+  FIRMWARE_VERSION_TYPE_OFFICIAL,
   type ParameterMetadata,
 } from './parameter-metadata';
 
@@ -158,5 +168,185 @@ describe('parseParameterXml value regex - negative code support', () => {
     const xml = '<value code="-1">GPIO</value>';
     const match = oldValueRegex.exec(xml);
     expect(match).toBeNull(); // Old regex cannot match negative codes
+  });
+});
+
+describe('vehicleTypeToDocsSlug / vehicleTypeToDocsTitle', () => {
+  it('maps all ArduPilot vehicles including tracker → antennatracker', () => {
+    expect(vehicleTypeToDocsSlug('copter')).toBe('copter');
+    expect(vehicleTypeToDocsSlug('plane')).toBe('plane');
+    expect(vehicleTypeToDocsSlug('rover')).toBe('rover');
+    expect(vehicleTypeToDocsSlug('sub')).toBe('sub');
+    expect(vehicleTypeToDocsSlug('tracker')).toBe('antennatracker');
+    expect(vehicleTypeToDocsTitle('copter')).toBe('Copter');
+    expect(vehicleTypeToDocsTitle('tracker')).toBe('AntennaTracker');
+  });
+});
+
+describe('parseFirmwareVersionTag', () => {
+  it('parses V-prefixed three-part semver', () => {
+    expect(parseFirmwareVersionTag('ArduCopter V4.6.3')).toBe('V4.6.3');
+  });
+
+  it('parses plain three-part semver', () => {
+    expect(parseFirmwareVersionTag('APM:Copter 4.5.7')).toBe('V4.5.7');
+  });
+
+  it('returns null for two-part versions (Sphinx pages need full V*.*.*)', () => {
+    expect(parseFirmwareVersionTag('V4.6')).toBeNull();
+    expect(parseFirmwareVersionTag('Copter 4.6')).toBeNull();
+  });
+
+  it('returns null for pre-release / custom builds', () => {
+    expect(parseFirmwareVersionTag('ArduCopter V4.6.3-dev')).toBeNull();
+    expect(parseFirmwareVersionTag('4.5.7-rc1')).toBeNull();
+    expect(parseFirmwareVersionTag('custom-build-xyz')).toBeNull();
+    expect(parseFirmwareVersionTag('beta 4.5.7')).toBeNull();
+  });
+
+  it('returns null when unparseable (caller uses parameters.html)', () => {
+    expect(parseFirmwareVersionTag('')).toBeNull();
+    expect(parseFirmwareVersionTag(null)).toBeNull();
+  });
+});
+
+describe('paramNameToDocFragment', () => {
+  it('lowercases and hyphenates underscores', () => {
+    expect(paramNameToDocFragment('AHRS_GPS_MINSATS')).toBe('ahrs-gps-minsats');
+    expect(paramNameToDocFragment('ARMING_CHECK')).toBe('arming-check');
+  });
+});
+
+describe('getParameterDocsUrl', () => {
+  it('builds versioned URL with hyphenated fragment', () => {
+    const url = getParameterDocsUrl('copter', 'AHRS_GPS_MINSATS', 'V4.5.7');
+    expect(url).toBe(
+      'https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.5.7.html#ahrs-gps-minsats',
+    );
+  });
+
+  it('uses unversioned parameters.html when version unknown', () => {
+    const url = getParameterDocsUrl('plane', 'FLTMODE1', null);
+    expect(url).toBe('https://ardupilot.org/plane/docs/parameters.html#fltmode1');
+  });
+
+  it('never emits parameters-*-stable-latest.html', () => {
+    const url = getParameterDocsUrl('copter', 'ARMING_CHECK', 'latest');
+    expect(url).not.toContain('stable-latest');
+    expect(url).toContain('/parameters.html#arming-check');
+  });
+
+  it('falls back to unversioned for incomplete version tags', () => {
+    const url = getParameterDocsUrl('copter', 'ARMING_CHECK', 'V4.6');
+    expect(url).toBe('https://ardupilot.org/copter/docs/parameters.html#arming-check');
+  });
+
+  it('uses antennatracker path for tracker', () => {
+    const url = getParameterDocsUrl('tracker', 'SERVO1_FUNCTION', null);
+    expect(url).toContain('/antennatracker/docs/parameters.html#');
+  });
+});
+
+describe('resolveArduPilotDocsContext', () => {
+  it('resolves ArduPilot copter with firmware version', () => {
+    const ctx = resolveArduPilotDocsContext({
+      protocol: 'mavlink',
+      autopilot: 'ArduPilot',
+      mavType: 2,
+      firmwareVersion: 'V4.6.3',
+    });
+    expect(ctx?.vehicleType).toBe('copter');
+    expect(ctx?.versionTag).toBe('V4.6.3');
+  });
+
+  it('returns null for msp', () => {
+    expect(
+      resolveArduPilotDocsContext({
+        protocol: 'msp',
+        autopilot: 'BTFL',
+        vehicleType: 'copter',
+      }),
+    ).toBeNull();
+  });
+
+  it('returns null for non-ArduPilot mavlink autopilot', () => {
+    expect(
+      resolveArduPilotDocsContext({
+        protocol: 'mavlink',
+        autopilot: 'PX4',
+        mavType: 2,
+        firmwareVersion: 'v1.15.0',
+      }),
+    ).toBeNull();
+  });
+
+  it('falls back to offline vehicle type without live autopilot', () => {
+    const ctx = resolveArduPilotDocsContext({
+      offlineVehicleType: 'Copter',
+    });
+    expect(ctx?.vehicleType).toBe('copter');
+    expect(ctx?.versionTag).toBeNull();
+  });
+
+  it('prefers offline vehicle type over stale live vehicleType', () => {
+    const ctx = resolveArduPilotDocsContext({
+      vehicleType: 'Plane',
+      offlineVehicleType: 'Rover',
+    });
+    expect(ctx?.vehicleType).toBe('rover');
+  });
+
+  it('returns null for non-ArduPilot offline labels', () => {
+    expect(
+      resolveArduPilotDocsContext({ offlineVehicleType: 'BTFL' }),
+    ).toBeNull();
+    expect(
+      resolveArduPilotDocsContext({ offlineVehicleType: 'PX4' }),
+    ).toBeNull();
+  });
+
+  it('rejects non-ArduPilot autopilot even without protocol', () => {
+    expect(
+      resolveArduPilotDocsContext({
+        autopilot: 'PX4',
+        mavType: 2,
+        vehicleType: 'Quadrotor',
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects bare vehicleType without AP context signal', () => {
+    expect(
+      resolveArduPilotDocsContext({ vehicleType: 'Copter' }),
+    ).toBeNull();
+  });
+});
+
+describe('vehicleNameToVehicleType', () => {
+  it('maps MAV type display names used in headers', () => {
+    expect(vehicleNameToVehicleType('Quadrotor')).toBe('copter');
+    expect(vehicleNameToVehicleType('Hexarotor')).toBe('copter');
+    expect(vehicleNameToVehicleType('Octorotor')).toBe('copter');
+    expect(vehicleNameToVehicleType('Fixed Wing')).toBe('plane');
+    expect(vehicleNameToVehicleType('Ground Rover')).toBe('rover');
+    expect(vehicleNameToVehicleType('Antenna Tracker')).toBe('tracker');
+  });
+});
+
+describe('firmwareVersionTagFromFlightSwVersion (vType packing)', () => {
+  it('emits Vmajor.minor.patch only for official/stable type 255', () => {
+    const official = packFlightSwVersion(4, 6, 3, FIRMWARE_VERSION_TYPE_OFFICIAL);
+    expect(firmwareVersionTagFromFlightSwVersion(official)).toBe('V4.6.3');
+  });
+
+  it('returns undefined for dev/beta/rc type bytes', () => {
+    expect(firmwareVersionTagFromFlightSwVersion(packFlightSwVersion(4, 6, 3, 0))).toBeUndefined(); // dev
+    expect(firmwareVersionTagFromFlightSwVersion(packFlightSwVersion(4, 6, 3, 64))).toBeUndefined(); // alpha
+    expect(firmwareVersionTagFromFlightSwVersion(packFlightSwVersion(4, 6, 3, 128))).toBeUndefined(); // beta
+    expect(firmwareVersionTagFromFlightSwVersion(packFlightSwVersion(4, 6, 3, 192))).toBeUndefined(); // rc
+  });
+
+  it('returns undefined for zero / invalid packed values', () => {
+    expect(firmwareVersionTagFromFlightSwVersion(0)).toBeUndefined();
   });
 });

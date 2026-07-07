@@ -598,13 +598,28 @@ const api = {
   writeParamsToFlash: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_WRITE_FLASH),
 
-  saveParamsToFile: (params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_FILE, params, vehicleType),
+  saveParamsToFile: (
+    params: Array<{ id: string; value: number; type?: number }>,
+    vehicleType?: string,
+    options?: { format?: 'mp' | 'qgc' },
+  ): Promise<{ success: boolean; error?: string; filePath?: string; format?: 'mp' | 'qgc' }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_FILE, params, vehicleType, options),
 
-  loadParamsFromFile: (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }>; vehicleType?: string; filePath?: string }> =>
+  loadParamsFromFile: (): Promise<{
+    success: boolean;
+    error?: string;
+    params?: Array<{ id: string; value: number; type?: number }>;
+    vehicleType?: string;
+    filePath?: string;
+    format?: 'mp' | 'qgc' | 'unknown';
+  }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_LOAD_FILE),
 
-  saveParamsToPath: (params: Array<{ id: string; value: number }>, filePath: string, vehicleType?: string): Promise<{ success: boolean; error?: string }> =>
+  saveParamsToPath: (
+    params: Array<{ id: string; value: number; type?: number }>,
+    filePath: string,
+    vehicleType?: string,
+  ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_TO_PATH, params, filePath, vehicleType),
 
   // Parameter history (version control)

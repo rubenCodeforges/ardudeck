@@ -3,6 +3,7 @@ import type { Parameter, ParameterWithMeta, ParameterProgress, ParamValuePayload
 import { isReadOnlyParameter, generateFallbackDescription } from '../../shared/parameter-types.js';
 import { parameterBelongsToGroup } from '../../shared/parameter-groups.js';
 import { validateParameterValue, vehicleTypeToMavType, type ParameterMetadataStore, type ValidationResult, type VehicleType } from '../../shared/parameter-metadata.js';
+import { offlineParamTypeFromParsed, shouldOpenParamCompareModal } from '../../shared/param-file-parser.js';
 import { createSearchRegex } from '../../shared/search-utils.js';
 
 export type SortColumn = 'name' | 'status';
@@ -95,7 +96,17 @@ interface ParameterStore {
   getDescription: (paramId: string) => string;
   hasOfficialDescription: (paramId: string) => boolean;
   validateParameter: (paramId: string, value: number) => ValidationResult;
-  getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; values?: Record<number, string>; units?: string; bitmask?: Record<number, string>; rebootRequired?: boolean } | null;
+  getParameterMetadata: (paramId: string) => {
+    name?: string;
+    humanName?: string;
+    description?: string;
+    range?: { min: number; max: number };
+    values?: Record<number, string>;
+    units?: string;
+    bitmask?: Record<number, string>;
+    increment?: number;
+    rebootRequired?: boolean;
+  } | null;
   isRebootRequired: (paramId: string) => boolean;
   isFavourite: (paramId: string) => boolean;
 
@@ -122,15 +133,19 @@ interface ParameterStore {
   reset: () => void;
 
   // Offline mode actions
-  loadOfflineFile: () => Promise<boolean>;
+  loadOfflineFile: () => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
   saveOfflineFile: () => Promise<boolean>;
-  saveOfflineFileAs: () => Promise<boolean>;
+  saveOfflineFileAs: (format?: 'mp' | 'qgc') => Promise<{ success: boolean; format?: 'mp' | 'qgc'; error?: string }>;
   setOfflineVehicleType: (vehicleType: string) => Promise<void>;
   closeOfflineMode: () => void;
   setOfflineParameter: (paramId: string, value: number) => void;
 
-  // File compare actions
-  loadFileForCompare: (fileParams: Array<{ id: string; value: number }>, fileVehicleType?: string) => void;
+  // File compare actions — returns counts; modal only opens when diffs or skipped remain
+  loadFileForCompare: (fileParams: Array<{ id: string; value: number }>, fileVehicleType?: string) => {
+    diffs: number;
+    skipped: number;
+    total: number;
+  };
   closeCompareModal: () => void;
   toggleDiffSelection: (paramId: string) => void;
   selectAllDiffs: () => void;
@@ -324,10 +339,14 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     const meta = metadata?.[paramId];
     if (!meta) return null;
     return {
+      name: meta.name,
+      humanName: meta.humanName,
+      description: meta.description,
       range: meta.range,
       values: meta.values,
       units: meta.units,
       bitmask: meta.bitmask,
+      increment: meta.increment,
       rebootRequired: meta.rebootRequired,
     };
   },
@@ -634,18 +653,30 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   // Offline mode actions
   loadOfflineFile: async () => {
     const result = await window.electronAPI?.loadParamsFromFile();
-    if (!result?.success || !result.params) return false;
+    if (!result) {
+      return { success: false, error: 'Parameter load API unavailable' };
+    }
+    if (!result.success) {
+      if (result.error === 'Cancelled') return { success: false, cancelled: true };
+      return { success: false, error: result.error ?? 'Failed to load parameter file' };
+    }
+    if (!result.params || result.params.length === 0) {
+      return {
+        success: false,
+        error: result.error ?? 'No parameters found in file',
+      };
+    }
 
     const filePath = result.filePath ?? null;
     const vehicleType = result.vehicleType ?? null;
 
-    // Build parameter map from file data
+    // Build parameter map from file data (preserve QGC MAV_PARAM_TYPE when present)
     const newParams = new Map<string, ParameterWithMeta>();
     for (const p of result.params) {
       newParams.set(p.id, {
         id: p.id,
         value: p.value,
-        type: 9, // REAL32 - standard ArduPilot param type
+        type: offlineParamTypeFromParsed(p.type) as ParameterWithMeta['type'],
         index: -1,
         originalValue: p.value,
         isModified: false,
@@ -676,14 +707,17 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       }
     }
 
-    return true;
+    return { success: true };
   },
 
   saveOfflineFile: async () => {
     const { offlineFilePath, parameters, offlineVehicleType } = get();
-    if (!offlineFilePath) return get().saveOfflineFileAs();
+    if (!offlineFilePath) {
+      const r = await get().saveOfflineFileAs();
+      return r.success;
+    }
 
-    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
+    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value, type: p.type }));
     const result = await window.electronAPI?.saveParamsToPath(params, offlineFilePath, offlineVehicleType ?? undefined);
 
     if (result?.success) {
@@ -702,10 +736,14 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     return false;
   },
 
-  saveOfflineFileAs: async () => {
+  saveOfflineFileAs: async (format: 'mp' | 'qgc' = 'mp') => {
     const { parameters, offlineVehicleType } = get();
-    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
-    const result = await window.electronAPI?.saveParamsToFile(params, offlineVehicleType ?? undefined);
+    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value, type: p.type }));
+    const result = await window.electronAPI?.saveParamsToFile(
+      params,
+      offlineVehicleType ?? undefined,
+      { format },
+    );
 
     if (result?.success && result.filePath) {
       // Update file path and reset modification tracking
@@ -723,9 +761,10 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
           offlineHasUnsavedChanges: false,
         };
       });
-      return true;
+      return { success: true, format: result.format ?? format };
     }
-    return false;
+    if (result?.error === 'Cancelled') return { success: false, error: 'Cancelled' };
+    return { success: false, error: result?.error ?? 'Failed to save' };
   },
 
   setOfflineVehicleType: async (vehicleType: string) => {
@@ -787,14 +826,21 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     // Sort alphabetically
     diffs.sort((a, b) => a.paramId.localeCompare(b.paramId));
 
+    // Open modal only when there are value diffs to review. Skipped-only is toast-only.
     set({
-      showCompareModal: true,
+      showCompareModal: shouldOpenParamCompareModal(diffs.length, skippedList.length),
       fileParamDiffs: diffs,
       fileSkippedParams: skippedList,
       fileSkippedCount: skippedList.length,
       fileTotalCount: fileParams.length,
       fileVehicleType: fileVehicleType ?? null,
     });
+
+    return {
+      diffs: diffs.length,
+      skipped: skippedList.length,
+      total: fileParams.length,
+    };
   },
 
   closeCompareModal: () => {

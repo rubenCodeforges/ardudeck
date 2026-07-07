@@ -114,7 +114,21 @@ import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionStat
 import { DEFAULT_USER_UNIT_PREFERENCES } from '../shared/user-units.js';
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
-import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
+import {
+  PARAMETER_METADATA_URLS,
+  mavTypeToVehicleType,
+  firmwareVersionTagFromFlightSwVersion,
+  type VehicleType,
+  type ParameterMetadata,
+  type ParameterMetadataStore,
+} from '../shared/parameter-metadata.js';
+import {
+  parseParamFile,
+  serializeParamFile,
+  extractVehicleTypeFromParamFile,
+  detectParamFileFormat,
+  type ParamFileFormat,
+} from '../shared/param-file-parser.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData, NavControllerData } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
@@ -2886,6 +2900,12 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
             const patch = (flightSwVersion >> 8) & 0xFF;
             const vType = flightSwVersion & 0xFF;
             const typeLabel = vType === 255 ? 'official' : vType >= 192 ? `rc${vType - 191}` : vType >= 128 ? `beta${vType - 127}` : vType >= 64 ? `alpha` : 'dev';
+            // Only expose stable official releases for versioned Sphinx docs URLs.
+            const versionTag = firmwareVersionTagFromFlightSwVersion(flightSwVersion);
+            if (connectionState.firmwareVersion !== versionTag) {
+              connectionState.firmwareVersion = versionTag;
+              sendConnectionState(mainWindow);
+            }
             sendLog(mainWindow, 'info', `Firmware: ${connectionState.vehicleType ?? 'ArduPilot'} v${major}.${minor}.${patch} (${typeLabel})`);
           }
 
@@ -7577,48 +7597,74 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
-  // Save parameters to file
-  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> => {
+  // Save parameters to file (Mission Planner .param or QGC .params)
+  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (
+    _,
+    params: Array<{ id: string; value: number; type?: number }>,
+    vehicleType?: string,
+    options?: { format?: 'mp' | 'qgc' },
+  ): Promise<{ success: boolean; error?: string; filePath?: string; format?: 'mp' | 'qgc' }> => {
     try {
+      const preferredFormat = options?.format ?? 'mp';
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Parameters',
-        defaultPath: 'parameters.param',
-        filters: [
-          { name: 'Parameter Files', extensions: ['param'] },
-          { name: 'Text Files', extensions: ['txt'] },
-          { name: 'All Files', extensions: ['*'] },
-        ],
+        title: preferredFormat === 'qgc' ? 'Save Parameters (QGroundControl)' : 'Save Parameters',
+        defaultPath: preferredFormat === 'qgc' ? 'parameters.params' : 'parameters.param',
+        filters: preferredFormat === 'qgc'
+          ? [
+              { name: 'QGroundControl Parameter Files', extensions: ['params'] },
+              { name: 'Mission Planner Parameter Files', extensions: ['param'] },
+              { name: 'Text Files', extensions: ['txt'] },
+              { name: 'All Files', extensions: ['*'] },
+            ]
+          : [
+              { name: 'Mission Planner Parameter Files', extensions: ['param'] },
+              { name: 'QGroundControl Parameter Files', extensions: ['params'] },
+              { name: 'Text Files', extensions: ['txt'] },
+              { name: 'All Files', extensions: ['*'] },
+            ],
       });
 
       if (result.canceled || !result.filePath) {
         return { success: false, error: 'Cancelled' };
       }
 
-      // Header with vehicle type and timestamp for cross-vehicle-type safety
-      const header = [
-        `# ArduDeck Parameter File`,
-        vehicleType ? `# Vehicle: ${vehicleType}` : null,
-        `# Date: ${new Date().toISOString()}`,
-        `# Parameters: ${params.length}`,
-        '',
-      ].filter(Boolean).join('\n');
+      // Choose format from extension when user overrides the filter
+      const lowerPath = result.filePath.toLowerCase();
+      let format: 'mp' | 'qgc' = preferredFormat;
+      if (lowerPath.endsWith('.params')) format = 'qgc';
+      else if (lowerPath.endsWith('.param')) format = 'mp';
 
-      // Format: PARAM_NAME,VALUE (one per line)
-      // MAVLink parameters are 32-bit floats. When decoded into JS 64-bit doubles
-      // they carry floating-point noise (e.g. 0.18000000715255737 instead of 0.18).
-      // toPrecision(6) recovers the original 6 significant digits; parseFloat strips
-      // trailing zeros so integers stored as floats still look clean (e.g. "1" not "1.00000").
-      const formatValue = (value: number): string => {
-        if (Number.isInteger(value)) return String(value);
-        return String(parseFloat(value.toPrecision(6)));
-      };
-      const content = header + '\n\n' + params.map(p => `${p.id},${formatValue(p.value)}`).join('\n');
+      const headerComments =
+        format === 'mp'
+          ? [
+              'ArduDeck Parameter File',
+              ...(vehicleType ? [`Vehicle: ${vehicleType}`] : []),
+              `Date: ${new Date().toISOString()}`,
+              `Parameters: ${params.length}`,
+            ]
+          : [
+              'Onboard parameters',
+              'VEHICLE_ID COMPONENT_ID NAME VALUE TYPE',
+              ...(vehicleType ? [`Vehicle: ${vehicleType}`] : []),
+              `Date: ${new Date().toISOString()}`,
+              `Parameters: ${params.length}`,
+            ];
+
+      const content = serializeParamFile(
+        params.map((p) => ({ name: p.id, value: p.value, type: p.type })),
+        {
+          format,
+          systemId: connectionState.systemId ?? 1,
+          componentId: connectionState.componentId ?? 1,
+          headerComments,
+        },
+      );
 
       const fs = await import('fs/promises');
       await fs.writeFile(result.filePath, content, 'utf-8');
 
-      sendLog(mainWindow, 'info', `Saved ${params.length} parameters to ${result.filePath}`);
-      return { success: true, filePath: result.filePath };
+      sendLog(mainWindow, 'info', `Saved ${params.length} parameters to ${result.filePath} (${format})`);
+      return { success: true, filePath: result.filePath, format };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to save parameters', message);
@@ -7696,12 +7742,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.PARAM_LOAD_FILE, async (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }>; vehicleType?: string; filePath?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_LOAD_FILE, async (): Promise<{
+    success: boolean;
+    error?: string;
+    params?: Array<{ id: string; value: number; type?: number }>;
+    vehicleType?: string;
+    filePath?: string;
+    format?: ParamFileFormat;
+  }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
         title: 'Load Parameters',
         filters: [
-          { name: 'Parameter Files', extensions: ['param'] },
+          { name: 'Parameter Files', extensions: ['param', 'params'] },
+          { name: 'Mission Planner', extensions: ['param'] },
+          { name: 'QGroundControl', extensions: ['params'] },
           { name: 'Text Files', extensions: ['txt'] },
           { name: 'All Files', extensions: ['*'] },
         ],
@@ -7716,43 +7771,26 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const fs = await import('fs/promises');
       const content = await fs.readFile(filePath, 'utf-8');
 
-      // Parse: PARAM_NAME,VALUE (one per line)
-      // Also supports PARAM_NAME VALUE (space-separated, like Mission Planner)
-      const params: Array<{ id: string; value: number }> = [];
-      let vehicleType: string | undefined;
-      const lines = content.split(/\r?\n/);
+      const format = detectParamFileFormat(content);
+      const parsed = parseParamFile(content);
+      const vehicleType = extractVehicleTypeFromParamFile(content);
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        // Parse header comments for metadata
-        if (trimmed.startsWith('#')) {
-          const vehicleMatch = trimmed.match(/^#\s*Vehicle:\s*(.+)/i);
-          if (vehicleMatch?.[1]) {
-            vehicleType = vehicleMatch[1].trim();
-          }
-          continue;
-        }
-
-        // Try comma-separated first, then space/tab
-        let parts = trimmed.split(',');
-        if (parts.length < 2) {
-          parts = trimmed.split(/\s+/);
-        }
-
-        if (parts.length >= 2) {
-          const id = parts[0]!.trim();
-          const value = parseFloat(parts[1]!.trim());
-
-          if (id && !isNaN(value)) {
-            params.push({ id, value });
-          }
-        }
+      if (parsed.length === 0) {
+        const hint =
+          format === 'unknown'
+            ? 'Unrecognized or empty parameter file (expected Mission Planner .param or QGC .params)'
+            : 'No parameters found in file';
+        sendLog(mainWindow, 'warn', hint, filePath);
+        return { success: false, error: hint, filePath, format };
       }
 
-      sendLog(mainWindow, 'info', `Loaded ${params.length} parameters from ${filePath}${vehicleType ? ` (${vehicleType})` : ''}`);
-      return { success: true, params, vehicleType, filePath };
+      const params = parsed.map((p) => ({ id: p.name, value: p.value, type: p.type }));
+      sendLog(
+        mainWindow,
+        'info',
+        `Loaded ${params.length} parameters from ${filePath}${vehicleType ? ` (${vehicleType})` : ''} [${format}]`,
+      );
+      return { success: true, params, vehicleType, filePath, format };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to load parameters', message);
@@ -7761,21 +7799,40 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Save parameters to a specific file path (offline mode - Save)
-  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_TO_PATH, async (_, params: Array<{ id: string; value: number }>, filePath: string, vehicleType?: string): Promise<{ success: boolean; error?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_TO_PATH, async (
+    _,
+    params: Array<{ id: string; value: number; type?: number }>,
+    filePath: string,
+    vehicleType?: string,
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const header = [
-        `# ArduDeck Parameter File`,
-        vehicleType ? `# Vehicle: ${vehicleType}` : null,
-        `# Date: ${new Date().toISOString()}`,
-        `# Parameters: ${params.length}`,
-        '',
-      ].filter(Boolean).join('\n');
+      const lowerPath = filePath.toLowerCase();
+      const format: 'mp' | 'qgc' = lowerPath.endsWith('.params') ? 'qgc' : 'mp';
+      const headerComments =
+        format === 'mp'
+          ? [
+              'ArduDeck Parameter File',
+              ...(vehicleType ? [`Vehicle: ${vehicleType}`] : []),
+              `Date: ${new Date().toISOString()}`,
+              `Parameters: ${params.length}`,
+            ]
+          : [
+              'Onboard parameters',
+              'VEHICLE_ID COMPONENT_ID NAME VALUE TYPE',
+              ...(vehicleType ? [`Vehicle: ${vehicleType}`] : []),
+              `Date: ${new Date().toISOString()}`,
+              `Parameters: ${params.length}`,
+            ];
 
-      const formatValue = (value: number): string => {
-        if (Number.isInteger(value)) return String(value);
-        return String(parseFloat(value.toPrecision(6)));
-      };
-      const content = header + '\n\n' + params.map(p => `${p.id},${formatValue(p.value)}`).join('\n');
+      const content = serializeParamFile(
+        params.map((p) => ({ name: p.id, value: p.value, type: p.type })),
+        {
+          format,
+          systemId: connectionState.systemId ?? 1,
+          componentId: connectionState.componentId ?? 1,
+          headerComments,
+        },
+      );
 
       const fs = await import('fs/promises');
       await fs.writeFile(filePath, content, 'utf-8');
