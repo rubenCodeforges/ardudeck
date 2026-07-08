@@ -96,7 +96,7 @@ function getModeTimeline(log: ReturnType<typeof useLogStore.getState>['currentLo
   for (let i = 0; i < modes.length; i++) {
     const m = modes[i]!;
     const modeNum = (typeof m.fields['ModeNum'] === 'number' ? m.fields['ModeNum'] : m.fields['Mode']) as number;
-    const name = getModeName(modeNum);
+    const name = getModeName(modeNum, log.metadata?.vehicleType);
     const startS = m.timeUs / 1_000_000;
     const endS = i + 1 < modes.length ? (modes[i + 1]!.timeUs / 1_000_000) : endTimeS;
     segments.push({ startS, endS, name, color: MODE_COLORS[name] ?? '#6b7280' });

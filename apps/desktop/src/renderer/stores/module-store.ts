@@ -11,6 +11,12 @@ interface ModuleState {
   updates: UpdateAvailable[];
   /** Slug currently being updated, or 'all' during an update-all sweep. */
   updating: string | null;
+  /** True while an update check is in flight. */
+  checkingUpdates: boolean;
+  /** When the last update check finished, or null before the first one. */
+  updatesCheckedAt: number | null;
+  /** Why the last update check failed, or null if it succeeded. */
+  updatesError: string | null;
 
   // Actions
   loadModules: () => Promise<void>;
@@ -33,6 +39,9 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
   progress: null,
   updates: [],
   updating: null,
+  checkingUpdates: false,
+  updatesCheckedAt: null,
+  updatesError: null,
 
   loadModules: async () => {
     set({ isLoading: true, error: null });
@@ -76,11 +85,18 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
   },
 
   checkUpdates: async () => {
+    set({ checkingUpdates: true });
     try {
-      const updates = await window.electronAPI.moduleCheckUpdates();
-      set({ updates });
+      const result = await window.electronAPI.moduleCheckUpdates();
+      set({
+        updates: result.updates,
+        updatesError: result.error ?? null,
+        checkingUpdates: false,
+        updatesCheckedAt: Date.now(),
+      });
     } catch (err) {
-      console.error('[ModuleStore] Update check failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      set({ updatesError: message, checkingUpdates: false, updatesCheckedAt: Date.now() });
     }
   },
 

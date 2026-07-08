@@ -309,13 +309,10 @@ export async function checkForUpdates(): Promise<UpdateAvailable[]> {
 
   const installed = modules.map((m) => ({ slug: m.slug, version: m.version }));
 
-  try {
-    const result = await hangar.checkUpdates(installed);
-    return result.updates;
-  } catch (err) {
-    console.error('[ModuleManager] Update check failed:', err);
-    return [];
-  }
+  // Errors propagate: the UI must be able to tell "up to date" from "the
+  // check never reached the server".
+  const result = await hangar.checkUpdates(installed);
+  return result.updates;
 }
 
 // --------------------------------------------------------------------------

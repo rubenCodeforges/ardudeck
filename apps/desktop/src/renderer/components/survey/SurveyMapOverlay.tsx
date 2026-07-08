@@ -6,6 +6,7 @@ import { useMemo, useCallback, useState, useEffect, memo, Fragment } from 'react
 import { Polygon, Polyline, CircleMarker, Marker, Tooltip, Pane, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { extractGeneratorOverlays } from './generator-overlays';
+import { cullPathForViewport } from './path-culling';
 import { useSurveyStore } from '../../stores/survey-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { LatLng } from './survey-types';
@@ -115,11 +116,12 @@ export function SurveyMapOverlay() {
   // 20k-point boundary is impossible (and would relag the map) if we drew a
   // marker for every vertex. Zoom to the stretch you want and nudge those.
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
+  const [zoom, setZoom] = useState<number | null>(null);
   const map = useMapEvents({
-    moveend: () => setBounds(map.getBounds()),
-    zoomend: () => setBounds(map.getBounds()),
+    moveend: () => { setBounds(map.getBounds()); setZoom(map.getZoom()); },
+    zoomend: () => { setBounds(map.getBounds()); setZoom(map.getZoom()); },
   });
-  useEffect(() => { setBounds(map.getBounds()); }, [map]);
+  useEffect(() => { setBounds(map.getBounds()); setZoom(map.getZoom()); }, [map]);
 
   const editableVertexIndices = useMemo<number[]>(() => {
     if (!polygon) return [];
@@ -154,11 +156,20 @@ export function SurveyMapOverlay() {
     [polygon],
   );
 
-  // Flight path
-  const flightPath = useMemo(
-    () => result?.waypoints.map(toLf) ?? [],
-    [result],
-  );
+  // Flight path: the result carries the full-fidelity plan (tens of
+  // thousands of points on large plans) - drawing is viewport-culled and
+  // zoom-simplified instead of ever thinning the data itself.
+  const flightPathRuns = useMemo(() => {
+    const wps = result?.waypoints ?? [];
+    if (wps.length < 2 || !bounds || zoom == null) return [];
+    const vb = {
+      west: bounds.getWest(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      north: bounds.getNorth(),
+    };
+    return cullPathForViewport(wps, vb, zoom).map((run) => run.map(toLf));
+  }, [result, bounds, zoom]);
 
   // Photo positions. Rendering one CircleMarker each is fine for a typical
   // survey but melts the map for a huge area; past a threshold we drop the dots
@@ -350,17 +361,18 @@ export function SurveyMapOverlay() {
         />
       ))}
 
-      {/* Flight path */}
-      {flightPath.length > 1 && (
+      {/* Flight path (visible runs only; re-culled on pan/zoom) */}
+      {flightPathRuns.map((run, i) => (
         <Polyline
-          positions={flightPath}
+          key={`fp-run-${i}`}
+          positions={run}
           pathOptions={{
             color: SURVEY_LINE_COLOR,
             weight: 2,
             opacity: 0.7,
           }}
         />
-      )}
+      ))}
 
       {/* Photo positions */}
       {photoPositions.map((p, i) => (

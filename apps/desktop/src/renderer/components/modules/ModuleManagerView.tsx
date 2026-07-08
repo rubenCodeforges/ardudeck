@@ -275,6 +275,9 @@ export function ModuleManagerView() {
     progress,
     updates,
     updating,
+    checkingUpdates,
+    updatesCheckedAt,
+    updatesError,
     loadModules,
     activateLicense,
     removeLicense,
@@ -457,13 +460,23 @@ export function ModuleManagerView() {
               )}
             </h2>
             {modules.length > 0 && (
-              <button
-                onClick={() => checkUpdates()}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-content-secondary hover:text-content bg-surface hover:bg-surface border border-subtle rounded-lg transition-colors"
-              >
-                <RefreshIcon className="w-3.5 h-3.5" />
-                Check Updates
-              </button>
+              <div className="flex items-center gap-2">
+                {updatesError ? (
+                  <span className="text-xs text-red-400" data-tip={updatesError}>
+                    Check failed
+                  </span>
+                ) : updatesCheckedAt && !checkingUpdates && updates.length === 0 ? (
+                  <span className="text-xs text-content-secondary">Up to date</span>
+                ) : null}
+                <button
+                  onClick={() => checkUpdates()}
+                  disabled={checkingUpdates}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-content-secondary hover:text-content bg-surface hover:bg-surface border border-subtle rounded-lg transition-colors disabled:opacity-60"
+                >
+                  <RefreshIcon className={`w-3.5 h-3.5 ${checkingUpdates ? 'animate-spin' : ''}`} />
+                  {checkingUpdates ? 'Checking…' : 'Check Updates'}
+                </button>
+              </div>
             )}
           </div>
 

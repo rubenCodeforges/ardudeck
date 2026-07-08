@@ -61,6 +61,7 @@ import { MapLayersControl } from '../map/overlays/MapLayersControl';
 import { WindParticleOverlay } from '../map/overlays/WindParticleOverlay';
 import { TrafficOverlay } from '../map/overlays/TrafficOverlay';
 import { CameraFootprintOverlay } from '../map/overlays/CameraFootprintOverlay';
+import { MissionWaypointDotsLayer } from '../map/overlays/MissionWaypointDotsLayer';
 import { TrafficAltitudeFilter } from '../map/overlays/TrafficAltitudeFilter';
 import { ZoneAlertBanner } from '../map/overlays/ZoneAlertBanner';
 import { WindControls } from '../map/overlays/WindControls';
@@ -1527,6 +1528,7 @@ function MapOverlayLayers({ baseLayer }: { baseLayer: string }) {
       {activeOverlays.has('wind') && <WindRoseCard />}
       {(activeOverlays.has('traffic') || activeOverlays.has('gliders') || activeOverlays.has('remoteid')) && <TrafficOverlay />}
       {activeOverlays.has('camera') && <CameraFootprintOverlay />}
+      {activeOverlays.has('waypointdots') && <MissionWaypointDotsLayer />}
     </>
   );
 }

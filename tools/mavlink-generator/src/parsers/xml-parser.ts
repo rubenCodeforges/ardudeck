@@ -70,6 +70,11 @@ export async function parseXmlFile(xmlPath: string): Promise<MavlinkDefinition> 
 export function parseXmlContent(content: string, basePath: string = '.'): MavlinkDefinition {
   const result = parser.parse(content);
   const mavlink = result.mavlink;
+  // fast-xml-parser drops element order, so the <extensions/> marker's position
+  // is unrecoverable from the parsed tree. Recover it from the raw XML: any
+  // field declared after the marker is a MAVLink2 extension and MUST be
+  // excluded from the crcExtra seed and kept out of the size-sorted wire order.
+  const extensionFields = extractExtensionFields(content);
 
   const definition: MavlinkDefinition = {
     version: parseInt(mavlink.version || '3', 10),
@@ -96,7 +101,7 @@ export function parseXmlContent(content: string, basePath: string = '.'): Mavlin
   // Parse messages
   if (mavlink.messages?.message) {
     for (const m of mavlink.messages.message) {
-      definition.messages.push(parseMessage(m));
+      definition.messages.push(parseMessage(m, extensionFields.get(m['@_name'] || '')));
     }
   }
 
@@ -136,30 +141,32 @@ function parseEnum(e: any): MavlinkEnum {
   };
 }
 
-function parseMessage(m: any): MavlinkMessage {
-  const fields: MavlinkField[] = [];
-  let hasExtensions = false;
-  let inExtensions = false;
-
-  // Check for extensions marker
-  if (m.extensions !== undefined) {
-    hasExtensions = true;
+/** Extension field names per message, recovered from raw XML (see parseXmlContent). */
+function extractExtensionFields(content: string): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  const msgRe = /<message\b[^>]*\bname="([^"]+)"[^>]*>([\s\S]*?)<\/message>/g;
+  for (let m; (m = msgRe.exec(content)) !== null; ) {
+    const body = m[2]!;
+    const marker = body.match(/<extensions\s*\/>/);
+    if (!marker || marker.index === undefined) continue;
+    const names = new Set<string>();
+    const fieldRe = /<field\b[^>]*\bname="([^"]+)"/g;
+    for (let f; (f = fieldRe.exec(body.slice(marker.index + marker[0].length))) !== null; ) {
+      names.add(f[1]!);
+    }
+    map.set(m[1]!, names);
   }
+  return map;
+}
+
+function parseMessage(m: any, extensionFieldNames?: Set<string>): MavlinkMessage {
+  const fields: MavlinkField[] = [];
+  const hasExtensions = m.extensions !== undefined;
 
   if (m.field) {
     for (const f of m.field) {
-      // Check if we've passed the extensions marker
-      // In the XML, extensions come after <extensions/>
-      const field = parseField(f, inExtensions);
-      fields.push(field);
+      fields.push(parseField(f, extensionFieldNames?.has(f['@_name'] || '') ?? false));
     }
-  }
-
-  // If there are extensions, mark fields after extension point
-  if (hasExtensions && m.extensions !== undefined) {
-    // Find the index where extensions start
-    // This is a simplification - in reality we'd need to track position in XML
-    // For now, we'll handle this in the raw parsing
   }
 
   return {
@@ -221,8 +228,11 @@ export function calculateCrcExtra(message: MavlinkMessage): number {
   const sortedFields = sortFieldsBySize(message.fields.filter(f => !f.isExtension));
 
   for (const field of sortedFields) {
-    // Add field type
-    const typeBytes = new TextEncoder().encode(field.type + ' ');
+    // Add field type. The XML alias uint8_t_mavlink_version seeds the CRC as
+    // its wire type uint8_t (pymavlink does the same); feeding the alias name
+    // produced a wrong crcExtra for HEARTBEAT.
+    const crcType = field.type === 'uint8_t_mavlink_version' ? 'uint8_t' : field.type;
+    const typeBytes = new TextEncoder().encode(crcType + ' ');
     for (const byte of typeBytes) {
       crc = crcAccumulate(byte, crc);
     }

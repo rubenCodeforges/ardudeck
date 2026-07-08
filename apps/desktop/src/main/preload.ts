@@ -1962,7 +1962,7 @@ const api = {
   moduleRemove: (key: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MODULE_REMOVE, key),
 
-  moduleCheckUpdates: (): Promise<UpdateAvailable[]> =>
+  moduleCheckUpdates: (): Promise<{ updates: UpdateAvailable[]; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MODULE_CHECK_UPDATES),
 
   moduleUpdate: (slug: string): Promise<{ success: boolean; error?: string }> =>

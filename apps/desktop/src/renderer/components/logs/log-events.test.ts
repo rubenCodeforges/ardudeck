@@ -76,4 +76,25 @@ describe('helpers', () => {
     expect(getModeName(6)).toBe('RTL');
     expect(getModeName(99)).toBe('MODE_99');
   });
+
+  it('maps mode numbers per vehicle type', () => {
+    // 10 = AUTO on plane and rover; the copter table has no 10.
+    expect(getModeName(10, 'plane')).toBe('AUTO');
+    expect(getModeName(10, 'rover')).toBe('AUTO');
+    expect(getModeName(10, 'copter')).toBe('MODE_10');
+    // 11 = copter DRIFT but plane/rover RTL.
+    expect(getModeName(11, 'copter')).toBe('DRIFT');
+    expect(getModeName(11, 'plane')).toBe('RTL');
+    expect(getModeName(11, 'rover')).toBe('RTL');
+    // No vehicle type falls back to the copter table.
+    expect(getModeName(3)).toBe('AUTO');
+  });
+
+  it('uses the log vehicle type for MODE events', () => {
+    const events = extractLogEvents({
+      metadata: { vehicleType: 'plane' },
+      messages: { MODE: [msg('MODE', 1_000_000, { ModeNum: 10 })] },
+    });
+    expect(events[0]!.label).toBe('Mode: AUTO');
+  });
 });

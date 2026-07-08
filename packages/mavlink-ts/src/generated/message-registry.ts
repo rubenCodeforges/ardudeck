@@ -469,7 +469,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [24, {
     msgid: 24,
     name: 'GPS_RAW_INT',
-    crcExtra: 103,
+    crcExtra: 24,
     minLength: 30,
     maxLength: 52,
     serialize: serializeGpsRawInt as (msg: unknown) => Uint8Array,
@@ -487,7 +487,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [26, {
     msgid: 26,
     name: 'SCALED_IMU',
-    crcExtra: 48,
+    crcExtra: 170,
     minLength: 24,
     maxLength: 24,
     serialize: serializeScaledImu as (msg: unknown) => Uint8Array,
@@ -496,7 +496,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [27, {
     msgid: 27,
     name: 'RAW_IMU',
-    crcExtra: 83,
+    crcExtra: 144,
     minLength: 29,
     maxLength: 29,
     serialize: serializeRawImu as (msg: unknown) => Uint8Array,
@@ -514,7 +514,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [29, {
     msgid: 29,
     name: 'SCALED_PRESSURE',
-    crcExtra: 107,
+    crcExtra: 115,
     minLength: 16,
     maxLength: 16,
     serialize: serializeScaledPressure as (msg: unknown) => Uint8Array,
@@ -532,7 +532,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [31, {
     msgid: 31,
     name: 'ATTITUDE_QUATERNION',
-    crcExtra: 92,
+    crcExtra: 246,
     minLength: 48,
     maxLength: 48,
     serialize: serializeAttitudeQuaternion as (msg: unknown) => Uint8Array,
@@ -586,7 +586,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [37, {
     msgid: 37,
     name: 'MISSION_REQUEST_PARTIAL_LIST',
-    crcExtra: 4,
+    crcExtra: 212,
     minLength: 7,
     maxLength: 7,
     serialize: serializeMissionRequestPartialList as (msg: unknown) => Uint8Array,
@@ -595,7 +595,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [38, {
     msgid: 38,
     name: 'MISSION_WRITE_PARTIAL_LIST',
-    crcExtra: 168,
+    crcExtra: 9,
     minLength: 7,
     maxLength: 7,
     serialize: serializeMissionWritePartialList as (msg: unknown) => Uint8Array,
@@ -631,7 +631,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [42, {
     msgid: 42,
     name: 'MISSION_CURRENT',
-    crcExtra: 218,
+    crcExtra: 28,
     minLength: 6,
     maxLength: 6,
     serialize: serializeMissionCurrent as (msg: unknown) => Uint8Array,
@@ -685,7 +685,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [48, {
     msgid: 48,
     name: 'SET_GPS_GLOBAL_ORIGIN',
-    crcExtra: 62,
+    crcExtra: 41,
     minLength: 21,
     maxLength: 21,
     serialize: serializeSetGpsGlobalOrigin as (msg: unknown) => Uint8Array,
@@ -694,7 +694,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [49, {
     msgid: 49,
     name: 'GPS_GLOBAL_ORIGIN',
-    crcExtra: 95,
+    crcExtra: 39,
     minLength: 20,
     maxLength: 20,
     serialize: serializeGpsGlobalOrigin as (msg: unknown) => Uint8Array,
@@ -811,7 +811,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [69, {
     msgid: 69,
     name: 'MANUAL_CONTROL',
-    crcExtra: 14,
+    crcExtra: 243,
     minLength: 30,
     maxLength: 30,
     serialize: serializeManualControl as (msg: unknown) => Uint8Array,
@@ -982,7 +982,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [100, {
     msgid: 100,
     name: 'OPTICAL_FLOW',
-    crcExtra: 145,
+    crcExtra: 175,
     minLength: 34,
     maxLength: 34,
     serialize: serializeOpticalFlow as (msg: unknown) => Uint8Array,
@@ -991,7 +991,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [101, {
     msgid: 101,
     name: 'GLOBAL_VISION_POSITION_ESTIMATE',
-    crcExtra: 18,
+    crcExtra: 102,
     minLength: 117,
     maxLength: 117,
     serialize: serializeGlobalVisionPositionEstimate as (msg: unknown) => Uint8Array,
@@ -1000,7 +1000,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [102, {
     msgid: 102,
     name: 'VISION_POSITION_ESTIMATE',
-    crcExtra: 152,
+    crcExtra: 158,
     minLength: 117,
     maxLength: 117,
     serialize: serializeVisionPositionEstimate as (msg: unknown) => Uint8Array,
@@ -1009,7 +1009,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [103, {
     msgid: 103,
     name: 'VISION_SPEED_ESTIMATE',
-    crcExtra: 153,
+    crcExtra: 208,
     minLength: 57,
     maxLength: 57,
     serialize: serializeVisionSpeedEstimate as (msg: unknown) => Uint8Array,
@@ -1018,7 +1018,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [104, {
     msgid: 104,
     name: 'VICON_POSITION_ESTIMATE',
-    crcExtra: 176,
+    crcExtra: 56,
     minLength: 116,
     maxLength: 116,
     serialize: serializeViconPositionEstimate as (msg: unknown) => Uint8Array,
@@ -1027,7 +1027,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [105, {
     msgid: 105,
     name: 'HIGHRES_IMU',
-    crcExtra: 253,
+    crcExtra: 93,
     minLength: 63,
     maxLength: 63,
     serialize: serializeHighresImu as (msg: unknown) => Uint8Array,
@@ -1045,7 +1045,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [107, {
     msgid: 107,
     name: 'HIL_SENSOR',
-    crcExtra: 207,
+    crcExtra: 108,
     minLength: 65,
     maxLength: 65,
     serialize: serializeHilSensor as (msg: unknown) => Uint8Array,
@@ -1054,7 +1054,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [108, {
     msgid: 108,
     name: 'SIM_STATE',
-    crcExtra: 205,
+    crcExtra: 32,
     minLength: 92,
     maxLength: 92,
     serialize: serializeSimState as (msg: unknown) => Uint8Array,
@@ -1099,7 +1099,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [113, {
     msgid: 113,
     name: 'HIL_GPS',
-    crcExtra: 204,
+    crcExtra: 124,
     minLength: 39,
     maxLength: 39,
     serialize: serializeHilGps as (msg: unknown) => Uint8Array,
@@ -1126,7 +1126,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [116, {
     msgid: 116,
     name: 'SCALED_IMU2',
-    crcExtra: 220,
+    crcExtra: 76,
     minLength: 24,
     maxLength: 24,
     serialize: serializeScaledImu2 as (msg: unknown) => Uint8Array,
@@ -1198,7 +1198,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [124, {
     msgid: 124,
     name: 'GPS2_RAW',
-    crcExtra: 57,
+    crcExtra: 87,
     minLength: 57,
     maxLength: 57,
     serialize: serializeGps2Raw as (msg: unknown) => Uint8Array,
@@ -1243,7 +1243,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [129, {
     msgid: 129,
     name: 'SCALED_IMU3',
-    crcExtra: 106,
+    crcExtra: 46,
     minLength: 24,
     maxLength: 24,
     serialize: serializeScaledImu3 as (msg: unknown) => Uint8Array,
@@ -1270,7 +1270,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [132, {
     msgid: 132,
     name: 'DISTANCE_SENSOR',
-    crcExtra: 40,
+    crcExtra: 85,
     minLength: 39,
     maxLength: 39,
     serialize: serializeDistanceSensor as (msg: unknown) => Uint8Array,
@@ -1315,7 +1315,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [137, {
     msgid: 137,
     name: 'SCALED_PRESSURE2',
-    crcExtra: 48,
+    crcExtra: 195,
     minLength: 16,
     maxLength: 16,
     serialize: serializeScaledPressure2 as (msg: unknown) => Uint8Array,
@@ -1324,7 +1324,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [138, {
     msgid: 138,
     name: 'ATT_POS_MOCAP',
-    crcExtra: 19,
+    crcExtra: 109,
     minLength: 120,
     maxLength: 120,
     serialize: serializeAttPosMocap as (msg: unknown) => Uint8Array,
@@ -1369,7 +1369,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [143, {
     msgid: 143,
     name: 'SCALED_PRESSURE3',
-    crcExtra: 69,
+    crcExtra: 131,
     minLength: 16,
     maxLength: 16,
     serialize: serializeScaledPressure3 as (msg: unknown) => Uint8Array,
@@ -1396,7 +1396,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [147, {
     msgid: 147,
     name: 'BATTERY_STATUS',
-    crcExtra: 11,
+    crcExtra: 154,
     minLength: 54,
     maxLength: 54,
     serialize: serializeBatteryStatus as (msg: unknown) => Uint8Array,
@@ -1405,7 +1405,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [148, {
     msgid: 148,
     name: 'AUTOPILOT_VERSION',
-    crcExtra: 39,
+    crcExtra: 178,
     minLength: 78,
     maxLength: 78,
     serialize: serializeAutopilotVersion as (msg: unknown) => Uint8Array,
@@ -1414,7 +1414,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [149, {
     msgid: 149,
     name: 'LANDING_TARGET',
-    crcExtra: 48,
+    crcExtra: 200,
     minLength: 60,
     maxLength: 60,
     serialize: serializeLandingTarget as (msg: unknown) => Uint8Array,
@@ -1423,25 +1423,25 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [150, {
     msgid: 150,
     name: 'FLEXIFUNCTION_SET',
-    crcExtra: 181,
+    crcExtra: 134,
     minLength: 2,
-    maxLength: 2,
+    maxLength: 42,
     serialize: serializeFlexifunctionSet as (msg: unknown) => Uint8Array,
     deserialize: deserializeFlexifunctionSet as (payload: Uint8Array) => unknown,
   }],
   [151, {
     msgid: 151,
     name: 'FLEXIFUNCTION_READ_REQ',
-    crcExtra: 26,
+    crcExtra: 219,
     minLength: 6,
-    maxLength: 6,
+    maxLength: 8,
     serialize: serializeFlexifunctionReadReq as (msg: unknown) => Uint8Array,
     deserialize: deserializeFlexifunctionReadReq as (payload: Uint8Array) => unknown,
   }],
   [152, {
     msgid: 152,
     name: 'FLEXIFUNCTION_BUFFER_FUNCTION',
-    crcExtra: 101,
+    crcExtra: 208,
     minLength: 58,
     maxLength: 58,
     serialize: serializeFlexifunctionBufferFunction as (msg: unknown) => Uint8Array,
@@ -1450,9 +1450,9 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [153, {
     msgid: 153,
     name: 'FLEXIFUNCTION_BUFFER_FUNCTION_ACK',
-    crcExtra: 109,
+    crcExtra: 188,
     minLength: 6,
-    maxLength: 6,
+    maxLength: 12,
     serialize: serializeFlexifunctionBufferFunctionAck as (msg: unknown) => Uint8Array,
     deserialize: deserializeFlexifunctionBufferFunctionAck as (payload: Uint8Array) => unknown,
   }],
@@ -1468,7 +1468,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [155, {
     msgid: 155,
     name: 'FLEXIFUNCTION_DIRECTORY',
-    crcExtra: 12,
+    crcExtra: 22,
     minLength: 53,
     maxLength: 53,
     serialize: serializeFlexifunctionDirectory as (msg: unknown) => Uint8Array,
@@ -1477,7 +1477,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [156, {
     msgid: 156,
     name: 'FLEXIFUNCTION_DIRECTORY_ACK',
-    crcExtra: 218,
+    crcExtra: 19,
     minLength: 7,
     maxLength: 7,
     serialize: serializeFlexifunctionDirectoryAck as (msg: unknown) => Uint8Array,
@@ -1486,18 +1486,18 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [157, {
     msgid: 157,
     name: 'FLEXIFUNCTION_COMMAND',
-    crcExtra: 133,
+    crcExtra: 21,
     minLength: 3,
-    maxLength: 3,
+    maxLength: 15,
     serialize: serializeFlexifunctionCommand as (msg: unknown) => Uint8Array,
     deserialize: deserializeFlexifunctionCommand as (payload: Uint8Array) => unknown,
   }],
   [158, {
     msgid: 158,
     name: 'FLEXIFUNCTION_COMMAND_ACK',
-    crcExtra: 208,
+    crcExtra: 134,
     minLength: 4,
-    maxLength: 4,
+    maxLength: 15,
     serialize: serializeFlexifunctionCommandAck as (msg: unknown) => Uint8Array,
     deserialize: deserializeFlexifunctionCommandAck as (payload: Uint8Array) => unknown,
   }],
@@ -1522,7 +1522,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [162, {
     msgid: 162,
     name: 'FENCE_STATUS',
-    crcExtra: 178,
+    crcExtra: 189,
     minLength: 9,
     maxLength: 9,
     serialize: serializeFenceStatus as (msg: unknown) => Uint8Array,
@@ -1594,7 +1594,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [170, {
     msgid: 170,
     name: 'SERIAL_UDB_EXTRA_F2_A',
-    crcExtra: 103,
+    crcExtra: 73,
     minLength: 61,
     maxLength: 61,
     serialize: serializeSerialUdbExtraF2A as (msg: unknown) => Uint8Array,
@@ -1603,7 +1603,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [171, {
     msgid: 171,
     name: 'SERIAL_UDB_EXTRA_F2_B',
-    crcExtra: 245,
+    crcExtra: 181,
     minLength: 108,
     maxLength: 108,
     serialize: serializeSerialUdbExtraF2B as (msg: unknown) => Uint8Array,
@@ -1612,16 +1612,16 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [172, {
     msgid: 172,
     name: 'SERIAL_UDB_EXTRA_F4',
-    crcExtra: 191,
+    crcExtra: 22,
     minLength: 10,
-    maxLength: 10,
+    maxLength: 98,
     serialize: serializeSerialUdbExtraF4 as (msg: unknown) => Uint8Array,
     deserialize: deserializeSerialUdbExtraF4 as (payload: Uint8Array) => unknown,
   }],
   [173, {
     msgid: 173,
     name: 'SERIAL_UDB_EXTRA_F5',
-    crcExtra: 54,
+    crcExtra: 83,
     minLength: 16,
     maxLength: 16,
     serialize: serializeSerialUdbExtraF5 as (msg: unknown) => Uint8Array,
@@ -1630,16 +1630,16 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [174, {
     msgid: 174,
     name: 'SERIAL_UDB_EXTRA_F6',
-    crcExtra: 54,
+    crcExtra: 167,
     minLength: 20,
-    maxLength: 20,
+    maxLength: 48,
     serialize: serializeSerialUdbExtraF6 as (msg: unknown) => Uint8Array,
     deserialize: deserializeSerialUdbExtraF6 as (payload: Uint8Array) => unknown,
   }],
   [175, {
     msgid: 175,
     name: 'SERIAL_UDB_EXTRA_F7',
-    crcExtra: 171,
+    crcExtra: 138,
     minLength: 24,
     maxLength: 24,
     serialize: serializeSerialUdbExtraF7 as (msg: unknown) => Uint8Array,
@@ -1648,7 +1648,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [176, {
     msgid: 176,
     name: 'SERIAL_UDB_EXTRA_F8',
-    crcExtra: 142,
+    crcExtra: 234,
     minLength: 28,
     maxLength: 28,
     serialize: serializeSerialUdbExtraF8 as (msg: unknown) => Uint8Array,
@@ -1657,25 +1657,25 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [177, {
     msgid: 177,
     name: 'SERIAL_UDB_EXTRA_F13',
-    crcExtra: 249,
+    crcExtra: 240,
     minLength: 14,
-    maxLength: 14,
+    maxLength: 20,
     serialize: serializeSerialUdbExtraF13 as (msg: unknown) => Uint8Array,
     deserialize: deserializeSerialUdbExtraF13 as (payload: Uint8Array) => unknown,
   }],
   [178, {
     msgid: 178,
     name: 'SERIAL_UDB_EXTRA_F14',
-    crcExtra: 123,
+    crcExtra: 47,
     minLength: 17,
-    maxLength: 17,
+    maxLength: 24,
     serialize: serializeSerialUdbExtraF14 as (msg: unknown) => Uint8Array,
     deserialize: deserializeSerialUdbExtraF14 as (payload: Uint8Array) => unknown,
   }],
   [179, {
     msgid: 179,
     name: 'SERIAL_UDB_EXTRA_F15',
-    crcExtra: 7,
+    crcExtra: 189,
     minLength: 60,
     maxLength: 60,
     serialize: serializeSerialUdbExtraF15 as (msg: unknown) => Uint8Array,
@@ -1684,7 +1684,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [180, {
     msgid: 180,
     name: 'SCRIPT_ITEM',
-    crcExtra: 231,
+    crcExtra: 52,
     minLength: 54,
     maxLength: 54,
     serialize: serializeScriptItem as (msg: unknown) => Uint8Array,
@@ -1693,7 +1693,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [181, {
     msgid: 181,
     name: 'SCRIPT_REQUEST',
-    crcExtra: 129,
+    crcExtra: 174,
     minLength: 4,
     maxLength: 4,
     serialize: serializeScriptRequest as (msg: unknown) => Uint8Array,
@@ -1702,16 +1702,16 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [182, {
     msgid: 182,
     name: 'SCRIPT_REQUEST_LIST',
-    crcExtra: 115,
+    crcExtra: 229,
     minLength: 2,
-    maxLength: 2,
+    maxLength: 40,
     serialize: serializeScriptRequestList as (msg: unknown) => Uint8Array,
     deserialize: deserializeScriptRequestList as (payload: Uint8Array) => unknown,
   }],
   [183, {
     msgid: 183,
     name: 'SCRIPT_COUNT',
-    crcExtra: 186,
+    crcExtra: 85,
     minLength: 4,
     maxLength: 4,
     serialize: serializeScriptCount as (msg: unknown) => Uint8Array,
@@ -1720,16 +1720,16 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [184, {
     msgid: 184,
     name: 'SCRIPT_CURRENT',
-    crcExtra: 40,
+    crcExtra: 159,
     minLength: 2,
-    maxLength: 2,
+    maxLength: 206,
     serialize: serializeScriptCurrent as (msg: unknown) => Uint8Array,
     deserialize: deserializeScriptCurrent as (payload: Uint8Array) => unknown,
   }],
   [185, {
     msgid: 185,
     name: 'SERIAL_UDB_EXTRA_F19',
-    crcExtra: 87,
+    crcExtra: 186,
     minLength: 8,
     maxLength: 8,
     serialize: serializeSerialUdbExtraF19 as (msg: unknown) => Uint8Array,
@@ -1738,9 +1738,9 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [186, {
     msgid: 186,
     name: 'SERIAL_UDB_EXTRA_F20',
-    crcExtra: 144,
+    crcExtra: 72,
     minLength: 25,
-    maxLength: 25,
+    maxLength: 29,
     serialize: serializeSerialUdbExtraF20 as (msg: unknown) => Uint8Array,
     deserialize: deserializeSerialUdbExtraF20 as (payload: Uint8Array) => unknown,
   }],
@@ -1774,7 +1774,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [192, {
     msgid: 192,
     name: 'MAG_CAL_REPORT',
-    crcExtra: 104,
+    crcExtra: 36,
     minLength: 54,
     maxLength: 54,
     serialize: serializeMagCalReport as (msg: unknown) => Uint8Array,
@@ -1783,7 +1783,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [193, {
     msgid: 193,
     name: 'EKF_STATUS_REPORT',
-    crcExtra: 203,
+    crcExtra: 71,
     minLength: 26,
     maxLength: 26,
     serialize: serializeEkfStatusReport as (msg: unknown) => Uint8Array,
@@ -1792,7 +1792,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [194, {
     msgid: 194,
     name: 'PID_TUNING',
-    crcExtra: 146,
+    crcExtra: 98,
     minLength: 33,
     maxLength: 33,
     serialize: serializePidTuning as (msg: unknown) => Uint8Array,
@@ -1927,7 +1927,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [225, {
     msgid: 225,
     name: 'EFI_STATUS',
-    crcExtra: 10,
+    crcExtra: 208,
     minLength: 73,
     maxLength: 73,
     serialize: serializeEfiStatus as (msg: unknown) => Uint8Array,
@@ -1963,7 +1963,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [232, {
     msgid: 232,
     name: 'GPS_INPUT',
-    crcExtra: 187,
+    crcExtra: 151,
     minLength: 65,
     maxLength: 65,
     serialize: serializeGpsInput as (msg: unknown) => Uint8Array,
@@ -2008,7 +2008,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [242, {
     msgid: 242,
     name: 'HOME_POSITION',
-    crcExtra: 1,
+    crcExtra: 104,
     minLength: 60,
     maxLength: 60,
     serialize: serializeHomePosition as (msg: unknown) => Uint8Array,
@@ -2017,7 +2017,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [243, {
     msgid: 243,
     name: 'SET_HOME_POSITION',
-    crcExtra: 57,
+    crcExtra: 85,
     minLength: 61,
     maxLength: 61,
     serialize: serializeSetHomePosition as (msg: unknown) => Uint8Array,
@@ -2107,7 +2107,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [253, {
     msgid: 253,
     name: 'STATUSTEXT',
-    crcExtra: 66,
+    crcExtra: 83,
     minLength: 51,
     maxLength: 54,
     serialize: serializeStatustext as (msg: unknown) => Uint8Array,
@@ -2143,7 +2143,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [258, {
     msgid: 258,
     name: 'PLAY_TUNE',
-    crcExtra: 139,
+    crcExtra: 187,
     minLength: 232,
     maxLength: 232,
     serialize: serializePlayTune as (msg: unknown) => Uint8Array,
@@ -2152,7 +2152,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [259, {
     msgid: 259,
     name: 'CAMERA_INFORMATION',
-    crcExtra: 160,
+    crcExtra: 92,
     minLength: 236,
     maxLength: 236,
     serialize: serializeCameraInformation as (msg: unknown) => Uint8Array,
@@ -2161,7 +2161,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [260, {
     msgid: 260,
     name: 'CAMERA_SETTINGS',
-    crcExtra: 8,
+    crcExtra: 146,
     minLength: 13,
     maxLength: 13,
     serialize: serializeCameraSettings as (msg: unknown) => Uint8Array,
@@ -2170,7 +2170,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [261, {
     msgid: 261,
     name: 'STORAGE_INFORMATION',
-    crcExtra: 114,
+    crcExtra: 179,
     minLength: 60,
     maxLength: 60,
     serialize: serializeStorageInformation as (msg: unknown) => Uint8Array,
@@ -2179,7 +2179,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [262, {
     msgid: 262,
     name: 'CAMERA_CAPTURE_STATUS',
-    crcExtra: 196,
+    crcExtra: 12,
     minLength: 22,
     maxLength: 22,
     serialize: serializeCameraCaptureStatus as (msg: unknown) => Uint8Array,
@@ -2206,7 +2206,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [265, {
     msgid: 265,
     name: 'MOUNT_ORIENTATION',
-    crcExtra: 77,
+    crcExtra: 26,
     minLength: 20,
     maxLength: 20,
     serialize: serializeMountOrientation as (msg: unknown) => Uint8Array,
@@ -2242,7 +2242,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [269, {
     msgid: 269,
     name: 'VIDEO_STREAM_INFORMATION',
-    crcExtra: 51,
+    crcExtra: 109,
     minLength: 214,
     maxLength: 214,
     serialize: serializeVideoStreamInformation as (msg: unknown) => Uint8Array,
@@ -2323,7 +2323,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [283, {
     msgid: 283,
     name: 'GIMBAL_DEVICE_INFORMATION',
-    crcExtra: 205,
+    crcExtra: 74,
     minLength: 145,
     maxLength: 145,
     serialize: serializeGimbalDeviceInformation as (msg: unknown) => Uint8Array,
@@ -2341,7 +2341,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [285, {
     msgid: 285,
     name: 'GIMBAL_DEVICE_ATTITUDE_STATUS',
-    crcExtra: 234,
+    crcExtra: 137,
     minLength: 49,
     maxLength: 49,
     serialize: serializeGimbalDeviceAttitudeStatus as (msg: unknown) => Uint8Array,
@@ -2350,7 +2350,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [286, {
     msgid: 286,
     name: 'AUTOPILOT_STATE_FOR_GIMBAL_DEVICE',
-    crcExtra: 31,
+    crcExtra: 210,
     minLength: 57,
     maxLength: 57,
     serialize: serializeAutopilotStateForGimbalDevice as (msg: unknown) => Uint8Array,
@@ -2467,7 +2467,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [330, {
     msgid: 330,
     name: 'OBSTACLE_DISTANCE',
-    crcExtra: 183,
+    crcExtra: 23,
     minLength: 167,
     maxLength: 167,
     serialize: serializeObstacleDistance as (msg: unknown) => Uint8Array,
@@ -2476,7 +2476,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [331, {
     msgid: 331,
     name: 'ODOMETRY',
-    crcExtra: 147,
+    crcExtra: 91,
     minLength: 233,
     maxLength: 233,
     serialize: serializeOdometry as (msg: unknown) => Uint8Array,
@@ -2539,7 +2539,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [350, {
     msgid: 350,
     name: 'DEBUG_FLOAT_ARRAY',
-    crcExtra: 68,
+    crcExtra: 232,
     minLength: 252,
     maxLength: 252,
     serialize: serializeDebugFloatArray as (msg: unknown) => Uint8Array,
@@ -2548,7 +2548,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [370, {
     msgid: 370,
     name: 'SMART_BATTERY_INFO',
-    crcExtra: 98,
+    crcExtra: 75,
     minLength: 109,
     maxLength: 109,
     serialize: serializeSmartBatteryInfo as (msg: unknown) => Uint8Array,
@@ -2899,7 +2899,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [11000, {
     msgid: 11000,
     name: 'DEVICE_OP_READ',
-    crcExtra: 187,
+    crcExtra: 134,
     minLength: 52,
     maxLength: 52,
     serialize: serializeDeviceOpRead as (msg: unknown) => Uint8Array,
@@ -2908,7 +2908,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [11001, {
     msgid: 11001,
     name: 'DEVICE_OP_READ_REPLY',
-    crcExtra: 206,
+    crcExtra: 15,
     minLength: 136,
     maxLength: 136,
     serialize: serializeDeviceOpReadReply as (msg: unknown) => Uint8Array,
@@ -2917,7 +2917,7 @@ export const MESSAGE_REGISTRY: Map<number, MessageInfo> = new Map([
   [11002, {
     msgid: 11002,
     name: 'DEVICE_OP_WRITE',
-    crcExtra: 71,
+    crcExtra: 234,
     minLength: 180,
     maxLength: 180,
     serialize: serializeDeviceOpWrite as (msg: unknown) => Uint8Array,

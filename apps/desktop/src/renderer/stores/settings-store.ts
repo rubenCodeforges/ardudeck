@@ -178,6 +178,14 @@ export interface SurveyPerformance {
    * the map on large survey missions.
    */
   maxWaypointMarkers: number;
+  /**
+   * Mission editor marker tier: real (draggable) waypoint markers materialize
+   * only while the number of waypoints in view is at or below this. Above it,
+   * waypoints stay on the batched canvas layer (every one still drawn as a
+   * dot) - zoom in until markers condense to edit. The selected waypoint
+   * always materializes regardless.
+   */
+  maxInteractiveWaypoints: number;
 }
 
 export const DEFAULT_SURVEY_PERFORMANCE: SurveyPerformance = {
@@ -185,6 +193,7 @@ export const DEFAULT_SURVEY_PERFORMANCE: SurveyPerformance = {
   maxEditableVertices: 200,
   maxPhotoMarkers: 1500,
   maxWaypointMarkers: 1000,
+  maxInteractiveWaypoints: 200,
 };
 
 /**

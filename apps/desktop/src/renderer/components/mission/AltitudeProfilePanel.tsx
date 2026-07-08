@@ -11,6 +11,14 @@ import {
   formatDistanceFromMeters,
   UNIT_LABELS,
 } from '../../../shared/user-units.js';
+import {
+  DEFAULT_LABEL_WIDTH_PX,
+  decimateForDrawing,
+  drawStride,
+  labelStride,
+  nearestIndexByX,
+  shouldShowInteractiveDots,
+} from './altitude-profile-density';
 
 // Terrain data point
 interface TerrainPoint {
@@ -159,6 +167,14 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
     return profileData.filter((_, i) => i % stride === 0 || i === profileData.length - 1);
   }, [profileData, maxWaypointMarkers]);
 
+  // Per-point interactive dots (drag-to-edit) only materialize when there are
+  // few enough points to actually grab one; above the threshold the chart is
+  // lines-only with a nearest-point hover readout.
+  const showDots = shouldShowInteractiveDots(displayProfile.length);
+
+  // Nearest-point hover readout for lines-only mode (index into displayProfile).
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   // Fetch terrain data when waypoints change
   useEffect(() => {
     if (waypoints.length < 2) {
@@ -245,6 +261,20 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
   const chartWidth = Math.max(100, dimensions.width - margin.left - margin.right);
   const chartHeight = Math.max(50, dimensions.height - margin.top - margin.bottom);
 
+  // Drawing-only thinning: at most ~one vertex per pixel column for the line,
+  // area, and collision paths. Identical to displayProfile (same reference)
+  // whenever everything already fits, so small missions are untouched.
+  const renderProfile = useMemo(
+    () => decimateForDrawing(displayProfile, drawStride(displayProfile.length, chartWidth)),
+    [displayProfile, chartWidth],
+  );
+
+  // Label every Nth dot so waypoint numbers never overlap.
+  const numberStride = useMemo(
+    () => labelStride(displayProfile.length, chartWidth, DEFAULT_LABEL_WIDTH_PX),
+    [displayProfile.length, chartWidth],
+  );
+
   // Calculate scales (including terrain in range)
   const { xScale, yScale, yScaleInverse, xTicks, yTicks, minAlt, maxAlt } = useMemo(() => {
     if (profileData.length === 0) {
@@ -316,22 +346,22 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
 
   // Build path for the altitude line (updates during drag)
   const pathD = useMemo(() => {
-    if (displayProfile.length < 2) return '';
+    if (renderProfile.length < 2) return '';
 
-    return displayProfile
+    return renderProfile
       .map((p, i) => {
         const x = xScale(p.distance);
         const y = yScale(getDisplayAltitude(p));
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
       })
       .join(' ');
-  }, [displayProfile, xScale, yScale, getDisplayAltitude]);
+  }, [renderProfile, xScale, yScale, getDisplayAltitude]);
 
   // Build area path (filled area under the line)
   const areaD = useMemo(() => {
-    if (displayProfile.length < 2) return '';
+    if (renderProfile.length < 2) return '';
 
-    const linePath = displayProfile
+    const linePath = renderProfile
       .map((p, i) => {
         const x = xScale(p.distance);
         const y = yScale(getDisplayAltitude(p));
@@ -339,12 +369,12 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
       })
       .join(' ');
 
-    const lastX = xScale(displayProfile[displayProfile.length - 1]!.distance);
-    const firstX = xScale(displayProfile[0]!.distance);
+    const lastX = xScale(renderProfile[renderProfile.length - 1]!.distance);
+    const firstX = xScale(renderProfile[0]!.distance);
     const bottomY = chartHeight;
 
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
-  }, [displayProfile, xScale, yScale, chartHeight, getDisplayAltitude]);
+  }, [renderProfile, xScale, yScale, chartHeight, getDisplayAltitude]);
 
   // Build terrain profile path (filled area)
   const terrainPathD = useMemo(() => {
@@ -398,14 +428,14 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
   // Check for collision segments (where flight path intersects terrain)
   // Sample along the path, not just at waypoints
   const collisionSegments = useMemo(() => {
-    if (terrainData.length === 0 || displayProfile.length < 2) return [];
+    if (terrainData.length === 0 || renderProfile.length < 2) return [];
 
     const segments: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
 
     // Check each flight path segment against terrain with fine sampling
-    for (let i = 0; i < displayProfile.length - 1; i++) {
-      const p1 = displayProfile[i]!;
-      const p2 = displayProfile[i + 1]!;
+    for (let i = 0; i < renderProfile.length - 1; i++) {
+      const p1 = renderProfile[i]!;
+      const p2 = renderProfile[i + 1]!;
       const alt1 = getDisplayAltitude(p1);
       const alt2 = getDisplayAltitude(p2);
       const dist1 = p1.distance;
@@ -455,7 +485,7 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
     }
 
     return segments;
-  }, [displayProfile, terrainData, xScale, yScale, getDisplayAltitude, getTerrainAtDistance]);
+  }, [renderProfile, terrainData, xScale, yScale, getDisplayAltitude, getTerrainAtDistance]);
 
   // Update store with collision status
   useEffect(() => {
@@ -522,6 +552,40 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
     }
   };
 
+  // X pixel position of every displayed point, for nearest-point hover lookup
+  // in lines-only mode (single svg listener instead of per-dot DOM events).
+  const displayXs = useMemo(
+    () => (showDots ? [] : displayProfile.map(p => xScale(p.distance))),
+    [showDots, displayProfile, xScale],
+  );
+
+  const handleSvgMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (showDots || !svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left - margin.left;
+    const idx = nearestIndexByX(displayXs, x);
+    setHoverIdx(idx >= 0 ? idx : null);
+  }, [showDots, displayXs, margin.left]);
+
+  const handleSvgMouseLeave = useCallback(() => setHoverIdx(null), []);
+
+  const handleSvgClick = useCallback(() => {
+    if (showDots || hoverIdx === null) return;
+    const p = displayProfile[hoverIdx];
+    if (p) setSelectedSeq(p.wp.seq);
+  }, [showDots, hoverIdx, displayProfile, setSelectedSeq]);
+
+  // In lines-only mode we still mark the selected and active waypoints (the
+  // dots that would normally carry that state are not rendered).
+  const selectedPoint = useMemo(
+    () => (showDots || selectedSeq === null ? null : displayProfile.find(p => p.wp.seq === selectedSeq) ?? null),
+    [showDots, displayProfile, selectedSeq],
+  );
+  const currentPoint = useMemo(
+    () => (showDots || currentSeq === null ? null : displayProfile.find(p => p.wp.seq === currentSeq) ?? null),
+    [showDots, displayProfile, currentSeq],
+  );
+
   // Build planner waypoints (seq + lat/lon/alt) for the auto-adjust dialog.
   // Exclude waypoints with (0,0) coords — ArduPilot's NAV_TAKEOFF uses
   // lat=0/lon=0 as a "take off from current position" sentinel, and sampling
@@ -585,12 +649,16 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
               Auto Adjust...
             </button>
           )}
-          {!readOnly && <span className="text-content-secondary pointer-events-none">Drag points to edit</span>}
+          {!readOnly && showDots && <span className="text-content-secondary pointer-events-none">Drag points to edit</span>}
+          {!showDots && <span className="text-content-secondary pointer-events-none">Hover to inspect, click to select</span>}
         </div>
         <svg
           ref={svgRef}
           width={dimensions.width}
           height={dimensions.height}
+          onMouseMove={showDots ? undefined : handleSvgMouseMove}
+          onMouseLeave={showDots ? undefined : handleSvgMouseLeave}
+          onClick={showDots ? undefined : handleSvgClick}
           className={`select-none ${!readOnly && draggingSeq !== null ? 'cursor-ns-resize' : ''}`}
         >
           <g transform={`translate(${margin.left}, ${margin.top})`}>
@@ -672,8 +740,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
               strokeLinejoin="round"
             />
 
-            {/* Waypoint markers */}
-            {displayProfile.map((p, i) => {
+            {/* Waypoint markers (interactive dots only at editable point counts) */}
+            {showDots && displayProfile.map((p, i) => {
               const x = xScale(p.distance);
               const isDragging = draggingSeq === p.wp.seq;
               const displayAlt = isDragging && dragAltitude !== null ? dragAltitude : p.altitude;
@@ -716,20 +784,22 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
                     strokeWidth={isDragging || isCurrent || isSelected ? 2 : 1}
                   />
 
-                  {/* Waypoint number */}
-                  <text
-                    x={x}
-                    y={y - (isDragging ? 16 : isCurrent ? 14 : 12)}
-                    textAnchor="middle"
-                    fill={isDragging ? '#fbbf24' : isCurrent ? '#f97316' : isBelowSafe ? '#ef4444' : 'var(--text-primary)'}
-                    fontSize={isDragging ? 11 : isCurrent ? 11 : 10}
-                    fontWeight={isDragging || isCurrent || isSelected ? 'bold' : 'normal'}
-                  >
-                    {i + 1}
-                  </text>
+                  {/* Waypoint number (density-limited so labels never overlap) */}
+                  {(i % numberStride === 0 || isDragging || isSelected || isCurrent || i === displayProfile.length - 1) && (
+                    <text
+                      x={x}
+                      y={y - (isDragging ? 16 : isCurrent ? 14 : 12)}
+                      textAnchor="middle"
+                      fill={isDragging ? '#fbbf24' : isCurrent ? '#f97316' : isBelowSafe ? '#ef4444' : 'var(--text-primary)'}
+                      fontSize={isDragging ? 11 : isCurrent ? 11 : 10}
+                      fontWeight={isDragging || isCurrent || isSelected ? 'bold' : 'normal'}
+                    >
+                      {i + 1}
+                    </text>
+                  )}
 
                   {/* Altitude label with AGL (show when dragging, selected, current, or first/last) */}
-                  {(isDragging || isSelected || isCurrent || i === 0 || i === profileData.length - 1) && (
+                  {(isDragging || isSelected || isCurrent || i === 0 || i === displayProfile.length - 1) && (
                     <text
                       x={x}
                       y={y + (y < chartHeight / 2 ? 20 : -20)}
@@ -757,6 +827,70 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
                 </g>
               );
             })}
+
+            {/* Lines-only mode: selected / current markers and nearest-point hover readout */}
+            {!showDots && currentPoint && (
+              <circle
+                cx={xScale(currentPoint.distance)}
+                cy={yScale(currentPoint.altitude)}
+                r={5}
+                fill="#f97316"
+                stroke="#fbbf24"
+                strokeWidth={2}
+              />
+            )}
+            {!showDots && selectedPoint && (
+              <circle
+                cx={xScale(selectedPoint.distance)}
+                cy={yScale(selectedPoint.altitude)}
+                r={5}
+                fill={getWaypointColor(selectedPoint.wp.command)}
+                stroke="var(--bg-base)"
+                strokeWidth={2}
+              />
+            )}
+            {!showDots && hoverIdx !== null && (() => {
+              const p = displayProfile[hoverIdx];
+              if (!p) return null;
+              const x = xScale(p.distance);
+              const y = yScale(p.altitude);
+              const groundElevation = waypointElevations.get(p.wp.seq);
+              const agl = groundElevation !== undefined ? p.altitude - groundElevation : null;
+              const isBelowSafe = agl !== null && agl < safeAltitudeBuffer;
+              // Keep the readout inside the chart near the edges
+              const labelX = Math.max(40, Math.min(chartWidth - 40, x));
+              const labelY = y < 24 ? y + 24 : y - 12;
+              return (
+                <g pointerEvents="none">
+                  <line
+                    x1={x}
+                    x2={x}
+                    y1={0}
+                    y2={chartHeight}
+                    stroke="var(--border-default)"
+                    strokeWidth={1}
+                    strokeDasharray="3,3"
+                    opacity={0.7}
+                  />
+                  <circle cx={x} cy={y} r={4} fill={getWaypointColor(p.wp.command)} stroke="var(--bg-base)" strokeWidth={1.5} />
+                  <text
+                    x={labelX}
+                    y={labelY}
+                    textAnchor="middle"
+                    fill={isBelowSafe ? '#ef4444' : 'var(--text-primary)'}
+                    fontSize={10}
+                    fontWeight="bold"
+                  >
+                    WP {p.wp.seq}: {formatAltitudeFromMeters(p.altitude, altitudeUnit)}
+                    {agl !== null && (
+                      <tspan fill={isBelowSafe ? '#ef4444' : '#22c55e'} fontSize={8}>
+                        {' '}({formatAltitudeFromMeters(agl, altitudeUnit)} AGL)
+                      </tspan>
+                    )}
+                  </text>
+                </g>
+              );
+            })()}
 
             {/* X-axis */}
             <line

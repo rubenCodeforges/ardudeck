@@ -56,6 +56,7 @@ import {
   waypointNativeValue,
   type WaypointUnitContext,
 } from './waypoint-unit-format';
+import { computeRenderableIndices, renderableIndexOfSeq } from './waypoint-list-window';
 
 // Helper to get GPS state without subscribing (avoids re-renders)
 function getGpsState() {
@@ -1947,17 +1948,10 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   // heights would be wrong). Below the threshold we render the list normally so
   // typical missions behave exactly as before.
   const VIRTUALIZE_THRESHOLD = 250;
-  const renderableIndices = useMemo(() => {
-    const out: number[] = [];
-    for (let idx = 0; idx < missionItems.length; idx++) {
-      const wp = missionItems[idx]!;
-      const isChild = !isNavigationCommand(wp.command) || wp.command === MAV_CMD.NAV_DELAY;
-      const parentSeq = groupInfo.parentOf.get(wp.seq);
-      if (isChild && parentSeq !== undefined && collapsedGroups.has(parentSeq)) continue;
-      out.push(idx);
-    }
-    return out;
-  }, [missionItems, groupInfo, collapsedGroups]);
+  const renderableIndices = useMemo(
+    () => computeRenderableIndices(missionItems, collapsedGroups),
+    [missionItems, collapsedGroups],
+  );
   const useVirtual = renderableIndices.length > VIRTUALIZE_THRESHOLD;
   // Dynamic DOM measurement (measureElement) gives pixel-perfect row heights and
   // is fine for normal missions. But at very large scale react-virtual corrects
@@ -1986,6 +1980,18 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     estimateSize: estimateRowSize,
     overscan: 15,
   });
+  // Keep the selection reachable when it comes from outside the list (map or
+  // profile click): in virtual mode off-window rows do not exist in the DOM,
+  // so move the window to the selected row. align 'auto' is a no-op when the
+  // row is already visible, so clicking a row in the list does not jump.
+  useEffect(() => {
+    if (!useVirtual || selectedSeq === null) return;
+    const vi = renderableIndexOfSeq(missionItems, renderableIndices, selectedSeq);
+    if (vi >= 0) rowVirtualizer.scrollToIndex(vi, { align: 'auto' });
+    // Only selection changes trigger a scroll; list edits and virtualizer
+    // updates must not re-run this or the list would fight user scrolling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSeq, useVirtual]);
   // Canonical react-virtual rendering: render ONLY the current window from
   // getVirtualItems(). The previous approach mapped over all items and null-ed
   // the off-window ones, which re-attached measureElement refs on every commit

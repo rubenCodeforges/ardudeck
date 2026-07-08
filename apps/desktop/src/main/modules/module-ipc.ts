@@ -53,10 +53,11 @@ export function setupModuleIpc(mainWindow: BrowserWindow): void {
   // Check for updates
   ipcMain.handle(IPC_CHANNELS.MODULE_CHECK_UPDATES, async () => {
     try {
-      return await checkForUpdates();
+      return { updates: await checkForUpdates() };
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       console.error('[ModuleIPC] Update check error:', err);
-      return [];
+      return { updates: [], error: message };
     }
   });
 

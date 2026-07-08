@@ -46,8 +46,8 @@ describe('extractGeneratorOverlays', () => {
   });
 
   it('caps overlay count', () => {
-    const out = extractGeneratorOverlays({ overlays: Array.from({ length: 500 }, () => cell) });
-    expect(out).toHaveLength(200);
+    const out = extractGeneratorOverlays({ overlays: Array.from({ length: 600 }, () => cell) });
+    expect(out).toHaveLength(480);
   });
 
   it('rejects oversized color strings', () => {

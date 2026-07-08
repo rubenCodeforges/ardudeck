@@ -2,21 +2,29 @@
 // human-readable, severity-graded event timeline. Pure (no DOM/store imports)
 // so it is unit-testable and shareable between the events panel and the chart.
 
-export const COPTER_MODES: Record<number, string> = {
-  0: 'STABILIZE', 1: 'ACRO', 2: 'ALT_HOLD', 3: 'AUTO', 4: 'GUIDED',
-  5: 'LOITER', 6: 'RTL', 7: 'CIRCLE', 9: 'LAND', 11: 'DRIFT',
-  13: 'SPORT', 14: 'FLIP', 15: 'AUTOTUNE', 16: 'POSHOLD', 17: 'BRAKE',
-  18: 'THROW', 21: 'SMART_RTL', 22: 'FLOWHOLD', 23: 'FOLLOW', 24: 'ZIGZAG', 27: 'AUTO_RTL',
-};
+import { COPTER_MODE_NAMES, PLANE_MODE_NAMES, ROVER_MODE_NAMES } from '@ardudeck/dataflash-parser';
 
-export function getModeName(modeNum: number): string {
-  return COPTER_MODES[modeNum] ?? `MODE_${modeNum}`;
+export const COPTER_MODES = COPTER_MODE_NAMES;
+
+/**
+ * Mode number -> name, using the log's vehicle type to pick the right table.
+ * The same number means different modes per vehicle (10 = plane/rover AUTO,
+ * 11 = copter DRIFT but plane/rover RTL), so defaulting to the copter table
+ * mislabels plane and rover logs.
+ */
+export function getModeName(modeNum: number, vehicleType?: string): string {
+  const map = vehicleType === 'plane' ? PLANE_MODE_NAMES
+    : vehicleType === 'rover' ? ROVER_MODE_NAMES
+    : COPTER_MODE_NAMES;
+  return map[modeNum] ?? `MODE_${modeNum}`;
 }
 
 export const MODE_COLORS: Record<string, string> = {
   STABILIZE: '#6b7280', ALT_HOLD: '#3b82f6', LOITER: '#10b981', AUTO: '#8b5cf6',
   RTL: '#f59e0b', LAND: '#ef4444', GUIDED: '#ec4899', POSHOLD: '#06b6d4',
   ACRO: '#f97316', CIRCLE: '#84cc16', BRAKE: '#6366f1', SMART_RTL: '#fbbf24',
+  MANUAL: '#6b7280', CRUISE: '#06b6d4', FBWA: '#3b82f6', FBWB: '#0ea5e9',
+  STEERING: '#3b82f6', HOLD: '#6366f1', TAKEOFF: '#84cc16', QLOITER: '#10b981',
 };
 
 /** ArduPilot LogErrorSubsystem ids (AP_Logger). */
@@ -94,12 +102,12 @@ export interface LogEventEntry {
 
 type LogMessages = Record<string, { type: string; timeUs: number; fields: Record<string, number | string> }[]>;
 
-export function decodeErr(subsys: number, ecode: number): { label: string; detail: string; severity: LogEventSeverity } {
+export function decodeErr(subsys: number, ecode: number, vehicleType?: string): { label: string; detail: string; severity: LogEventSeverity } {
   const label = ERR_SUBSYSTEMS[subsys] ?? `Subsystem ${subsys}`;
   let detail: string;
   if (subsys === 10) {
     // Flight mode subsystem: the code is the mode number that was refused.
-    detail = `cannot enter ${getModeName(ecode)}`;
+    detail = `cannot enter ${getModeName(ecode, vehicleType)}`;
   } else {
     detail = ERR_CODES_BY_SUBSYS[subsys]?.[ecode] ?? ERR_CODES_GENERIC[ecode] ?? `code ${ecode}`;
   }
@@ -115,13 +123,14 @@ export function decodeEv(id: number): { label: string; severity: LogEventSeverit
  * MP buries these in separate raw tabs; here they are one severity-graded
  * timeline the user can filter and click to jump the charts to.
  */
-export function extractLogEvents(log: { messages: LogMessages }): LogEventEntry[] {
+export function extractLogEvents(log: { messages: LogMessages; metadata?: { vehicleType?: string } }): LogEventEntry[] {
   const out: LogEventEntry[] = [];
+  const vehicleType = log.metadata?.vehicleType;
 
   for (const m of log.messages['ERR'] ?? []) {
     const subsys = typeof m.fields['Subsys'] === 'number' ? m.fields['Subsys'] : -1;
     const ecode = typeof m.fields['ECode'] === 'number' ? m.fields['ECode'] : -1;
-    const d = decodeErr(subsys, ecode);
+    const d = decodeErr(subsys, ecode, vehicleType);
     out.push({ timeS: m.timeUs / 1_000_000, kind: 'ERR', severity: d.severity, label: d.label, detail: d.detail });
   }
 
@@ -144,7 +153,7 @@ export function extractLogEvents(log: { messages: LogMessages }): LogEventEntry[
 
   for (const m of log.messages['MODE'] ?? []) {
     const modeNum = (typeof m.fields['ModeNum'] === 'number' ? m.fields['ModeNum'] : m.fields['Mode']);
-    const name = typeof modeNum === 'number' ? getModeName(modeNum) : String(m.fields['Mode'] ?? '?');
+    const name = typeof modeNum === 'number' ? getModeName(modeNum, vehicleType) : String(m.fields['Mode'] ?? '?');
     const rsn = m.fields['Rsn'];
     out.push({
       timeS: m.timeUs / 1_000_000,

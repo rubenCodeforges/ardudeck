@@ -83,6 +83,18 @@ export const OVERLAYS: Array<{ id: OverlayId; label: string; icon: JSX.Element }
       </svg>
     ),
   },
+  {
+    id: 'waypointdots',
+    label: 'Waypoints',
+    icon: (
+      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <circle cx="6" cy="17" r="1.6" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none" />
+        <circle cx="18" cy="15" r="1.6" fill="currentColor" stroke="none" />
+        <path strokeLinecap="round" d="M7.2 15.6l3.6-4.9m2.5.7l3.5 2.6" />
+      </svg>
+    ),
+  },
 ];
 
 export function OverlayToggles() {

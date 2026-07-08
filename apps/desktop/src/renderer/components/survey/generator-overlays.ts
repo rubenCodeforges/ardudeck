@@ -18,9 +18,11 @@ export interface GeneratorOverlay {
   label?: string;
 }
 
-// Rendering hundreds of decorations would drown the map and the React tree;
-// generators are expected to send a handful of cells, not raw geometry dumps.
-const MAX_OVERLAYS = 200;
+// Backstop against raw geometry dumps, sized so real plans fit: TOPAS
+// decomposes large areas into hundreds of cells (337 observed) plus up to
+// ~10 leading path chunks. Entries beyond the cap are dropped in order, so
+// generators emit their must-render overlays (the flight path) first.
+const MAX_OVERLAYS = 480;
 const MAX_POINTS = 2000;
 
 function isFiniteNumber(v: unknown): v is number {
