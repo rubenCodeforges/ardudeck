@@ -191,10 +191,18 @@ export function generateDefaultParams(
   // model on every boot. Runtime PARAM_SET on SIM_BATT_VOLTAGE alone does
   // NOT re-initialize the simulated battery; only SIM_BATT_CAP_AH change
   // resets state of charge. Writing both here forces a fresh init at boot.
-  // Default to a realistic 14S Li-Ion (heavy industrial multirotor). Override via
-  // simBattVoltage/simBattCapAh in the SITL config when we add UI fields.
-  const battV = typeof simBattVoltage === 'number' && simBattVoltage > 0 ? simBattVoltage : 60.9;
-  const battAh = typeof simBattCapAh === 'number' && simBattCapAh > 0 ? simBattCapAh : 56;
+  //
+  // CRITICAL: SIM_BATT_VOLTAGE feeds the SITL motor model — thrust scales with
+  // supply voltage relative to the frame's reference voltage. The built-in
+  // `-M<model>` frames (quad/hexa/plane/…) are calibrated around a ~12.6V (3S)
+  // reference, so a higher default over-drives them: hover throttle produces
+  // several times the intended thrust and the vehicle rockets past its takeoff
+  // target and oscillates (a 14S/60.9V default made a 10m NAV_TAKEOFF climb to
+  // >1200m). Keep the default matched to the built-in frames' reference. A high
+  // industrial-pack voltage is only safe when paired with a custom frame whose
+  // refVoltage matches — pass it explicitly via simBattVoltage in that case.
+  const battV = typeof simBattVoltage === 'number' && simBattVoltage > 0 ? simBattVoltage : 12.6;
+  const battAh = typeof simBattCapAh === 'number' && simBattCapAh > 0 ? simBattCapAh : 10;
   lines.push(`SIM_BATT_VOLTAGE ${battV}`);
   lines.push(`SIM_BATT_CAP_AH ${battAh}`);
   // Disable SITL terrain model. If user picks a home location at a real-world

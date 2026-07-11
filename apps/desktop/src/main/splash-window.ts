@@ -27,19 +27,22 @@ function resourcesPath(): string {
  * logged and swallowed so a broken splash can never block app boot.
  */
 export function createSplashWindow(): BrowserWindow | null {
-  // Windows regression: a transparent, always-on-top window created before the
-  // main window destabilises the app there and broke FC connection. Skip the
-  // splash on Windows until it has a Windows-safe (opaque) variant; every call
-  // site already treats a null splash as "no splash".
-  if (process.platform === 'win32') return null;
   try {
+    // Transparent, shadow-clipping-free window works on macOS/Linux. On Windows a
+    // transparent window uses a software-composited path that has historically
+    // been unstable, so there we render an OPAQUE variant instead: same window
+    // size, but painted the card's navy so the 20px margin around the card (where
+    // mac/linux show the desktop through the CSS drop-shadow) simply renders navy
+    // and stays seamless. Same splash, Windows-safe compositing.
+    const isWin = process.platform === 'win32';
     const win = new BrowserWindow({
-      // 40px larger than the 440x340 card so its drop-shadow isn't clipped
-      // by the (transparent) window bounds.
+      // 40px larger than the 440x340 card on every platform so the card keeps its
+      // 20px breathing room and its top radar rings/glow aren't clipped by the
+      // window edge. On Windows the surrounding margin is filled by backgroundColor.
       width: 480,
       height: 380,
       frame: false,
-      transparent: true,
+      transparent: !isWin,
       resizable: false,
       movable: false,
       minimizable: false,
@@ -49,8 +52,10 @@ export function createSplashWindow(): BrowserWindow | null {
       alwaysOnTop: true,
       center: true,
       show: false,
-      // Transparent windows need no background; keep it fully hands-off.
-      hasShadow: false,
+      // Transparent (mac/linux) needs no background/shadow. Opaque (Windows) gets
+      // the navy card colour to avoid a white flash, and the native OS shadow.
+      hasShadow: isWin,
+      backgroundColor: isWin ? '#0d1524' : undefined,
       webPreferences: {
         // No preload, no node - it is a static page driven via executeJavaScript.
         contextIsolation: true,
@@ -92,9 +97,12 @@ export function splashSetStatus(win: BrowserWindow | null, text: string): void {
 export function closeSplash(win: BrowserWindow | null): void {
   if (!win || win.isDestroyed()) return;
   splashRun(win, 'window.splash.fadeOut()');
+  // fadeOut() plays a completion beat (final check → OK, bar fills, ~140ms)
+  // then the 300ms card fade. Wait for the whole ~440ms before closing so the
+  // fade isn't cut off mid-animation.
   setTimeout(() => {
     if (!win.isDestroyed()) win.close();
-  }, 260);
+  }, 500);
 }
 
 function splashRun(win: BrowserWindow, code: string): void {
