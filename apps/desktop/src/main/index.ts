@@ -13,6 +13,7 @@ import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
 import { setupDeepLinks, handleStartupArgs, flushPendingDeepLink, deliverDeepLinkUrl } from './modules/deep-link.js';
 import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc } from './window-manager.js';
+import { createSplashWindow, splashSetStatus, closeSplash } from './splash-window.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -111,7 +112,7 @@ function maybeShowKeychainNotice(): void {
   });
 }
 
-function createWindow(): BrowserWindow {
+function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   // Get the icon path based on platform
   // In dev: __dirname is out/main/, resources is at ../../resources/
   // In prod: app.getAppPath() points to the app root
@@ -141,7 +142,25 @@ function createWindow(): BrowserWindow {
     },
   });
 
+  // Milestone: the renderer bundle has parsed and is executing.
+  mainWindow.webContents.once('did-finish-load', () => {
+    splashSetStatus(splash ?? null, 'Loading interface');
+  });
+
+  // Safety net: if ready-to-show never fires, don't leave the splash orphaned
+  // (or the main window forever hidden). Close splash and reveal main anyway.
+  const handoffTimeout = setTimeout(() => {
+    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.warn('[Main] ready-to-show timed out; forcing window handoff');
+      closeSplash(splash ?? null);
+      mainWindow.show();
+    }
+  }, 8000);
+
   mainWindow.on('ready-to-show', () => {
+    clearTimeout(handoffTimeout);
+    splashSetStatus(splash ?? null, 'Ready');
+    closeSplash(splash ?? null);
     mainWindow.show();
   });
 
@@ -185,7 +204,10 @@ app.whenReady().then(() => {
   // what triggers the Safe Storage keychain read on macOS.
   maybeShowKeychainNotice();
 
-  const mainWindow = createWindow();
+  // Instant branded launch card; covers the gap while the renderer boots hidden.
+  const splash = createSplashWindow();
+
+  const mainWindow = createWindow(splash);
   mainWindowRef = mainWindow;
 
   // Register the main window with the detachable-windows manager BEFORE any
@@ -197,6 +219,8 @@ app.whenReady().then(() => {
   setupIpcHandlers(mainWindow);
   setupModuleIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
+
+  splashSetStatus(splash, 'Initializing systems');
 
   // Restore any detached windows the user had open last time.
   // Defer until after the main window is ready so the renderer has subscribed

@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --navy: #0d1524;
+    --navy-2: #111c30;
+    --teal: #2dd4bf;
+    --teal-dim: #14b8a6;
+    --ink: #e6f4f1;
+    --muted: #5f7793;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+  body { display: flex; align-items: center; justify-content: center; }
+
+  .card {
+    position: relative;
+    width: 440px; height: 340px;
+    border-radius: 20px;
+    background:
+      radial-gradient(120% 120% at 50% 0%, var(--navy-2) 0%, var(--navy) 60%);
+    border: 1px solid rgba(45, 212, 191, 0.18);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transform: scale(0.965);
+    opacity: 0;
+    animation: cardIn 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes cardIn { to { transform: scale(1); opacity: 1; } }
+
+  /* Radar sweep + rings live inside .logo-wrap and are centered on the
+     aircraft's optical center (41.9% down the artwork), so the radar is always
+     concentric with the plane regardless of layout math. */
+  .sweep, .rings {
+    position: absolute;
+    left: 50%; top: 41.9%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .sweep {
+    width: 360px; height: 360px;
+    background: conic-gradient(
+      from 0deg,
+      rgba(45, 212, 191, 0.00) 0deg,
+      rgba(45, 212, 191, 0.00) 300deg,
+      rgba(45, 212, 191, 0.08) 344deg,
+      rgba(45, 212, 191, 0.24) 358deg,
+      rgba(45, 212, 191, 0.00) 360deg
+    );
+    animation: sweep 2.8s linear infinite;
+    filter: blur(1px);
+  }
+  @keyframes sweep {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  .rings {
+    width: 268px; height: 268px;
+    border: 1px solid rgba(45, 212, 191, 0.11);
+  }
+  .rings::before, .rings::after {
+    content: ""; position: absolute; inset: 38px;
+    border-radius: 50%; border: 1px solid rgba(45, 212, 191, 0.08);
+  }
+  .rings::after { inset: 84px; border-color: rgba(45, 212, 191, 0.06); }
+
+  .logo-wrap {
+    position: relative;
+    width: 200px; height: 200px;
+  }
+  .logo-wrap img {
+    position: relative;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 6px 22px rgba(45, 212, 191, 0.28));
+    opacity: 0;
+    animation: logoIn 700ms 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes logoIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.94); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+  .logo-wrap.fallback::after {
+    content: "ArduDeck";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--ink);
+  }
+
+  /* Scanning line crossing the logo */
+  .scan {
+    position: absolute; left: 0; right: 0; height: 2px;
+    top: 0;
+    background: linear-gradient(90deg,
+      transparent, var(--teal), transparent);
+    opacity: 0.7;
+    filter: blur(0.4px);
+    animation: scan 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes scan {
+    0%   { top: 6%;  opacity: 0; }
+    12%  { opacity: 0.75; }
+    50%  { top: 94%; opacity: 0.75; }
+    62%  { opacity: 0; }
+    100% { top: 94%; opacity: 0; }
+  }
+
+  .status-row {
+    display: flex; align-items: center; gap: 9px;
+    margin-top: 20px; height: 18px;
+  }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 10px var(--teal);
+    animation: blink 1.15s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .status {
+    font-size: 12.5px; font-weight: 500; letter-spacing: 0.4px;
+    color: var(--muted);
+    transition: opacity 220ms ease;
+  }
+  .status.swap { opacity: 0; }
+
+  .version {
+    position: absolute; bottom: 12px; right: 16px;
+    font-size: 10.5px; letter-spacing: 0.5px;
+    color: rgba(95, 119, 147, 0.7);
+  }
+
+  .card.out {
+    animation: cardOut 260ms ease forwards;
+  }
+  @keyframes cardOut { to { opacity: 0; transform: scale(0.985); } }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="logo-wrap" id="logoWrap">
+      <div class="sweep"></div>
+      <div class="rings"></div>
+      <img id="logo" src="logo-splash.png" alt="ArduDeck" />
+      <div class="scan"></div>
+    </div>
+    <div class="status-row">
+      <div class="dot"></div>
+      <div class="status" id="status">Starting ArduDeck</div>
+    </div>
+    <div class="version" id="version"></div>
+  </div>
+
+  <script>
+    // Called from the main process via webContents.executeJavaScript.
+    // No preload / IPC bridge on purpose - this stays a zero-dependency asset.
+    window.splash = {
+      setStatus(text) {
+        const el = document.getElementById('status');
+        if (!el || el.textContent === text) return;
+        el.classList.add('swap');
+        setTimeout(() => { el.textContent = text; el.classList.remove('swap'); }, 200);
+      },
+      setVersion(v) {
+        const el = document.getElementById('version');
+        if (el) el.textContent = v ? 'v' + v : '';
+      },
+      fadeOut() {
+        const card = document.getElementById('card');
+        if (card) card.classList.add('out');
+      },
+    };
+
+    // Graceful fallback to a text wordmark if the logo image is missing.
+    var logo = document.getElementById('logo');
+    logo.addEventListener('error', function () {
+      logo.style.display = 'none';
+      document.getElementById('logoWrap').classList.add('fallback');
+    });
+  </script>
+</body>
+</html>

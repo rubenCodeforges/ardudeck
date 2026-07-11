@@ -10,6 +10,7 @@ import { SettingsView } from './components/settings';
 import { FirmwareFlashView } from './components/firmware';
 import CliView from './components/cli/CliView';
 import { OsdView } from './components/osd/OsdView';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import ReportBugView from './components/report/ReportBugView';
 import SitlView from './components/sitl/SitlView';
 import { CalibrationView } from './components/calibration/CalibrationView';
@@ -954,7 +955,12 @@ function App() {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto">
-          {renderMainContent()}
+          {/* A crash in any single view must not unmount the whole tree (that
+              blacks out the entire window - sidebar and all). Keyed on the view
+              so navigating away from a crashed screen resets the boundary. */}
+          <ErrorBoundary key={currentView} label={`${currentView} screen`}>
+            {renderMainContent()}
+          </ErrorBoundary>
         </main>
       </div>
 
