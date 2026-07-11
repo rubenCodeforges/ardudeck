@@ -169,47 +169,52 @@ export function buildLiveTelemetry(
     }
   }
 
+  // A partial telemetry frame (e.g. GPS before lock) can leave individual
+  // fields undefined in the store. DemoTelemetry promises all-numbers, and the
+  // OSD element renderers call .toString()/.toFixed() on them directly, so any
+  // undefined that slips through crashes the whole OSD view. Coalesce every
+  // telemetry-derived numeric field to a number here, at the contract boundary.
   return {
     ...DEFAULT_DEMO_VALUES,
-    altitude: vfrHud.alt || position.relativeAlt,
-    mslAltitude: position.alt,
-    speed: vfrHud.groundspeed,
-    airspeed: vfrHud.airspeed,
-    maxSpeed: tracker.maxSpeedMs,
-    vario: vfrHud.climb,
-    heading: vfrHud.heading || attitude.yaw,
-    pitch: attitude.pitch,
-    roll: attitude.roll,
-    throttle: vfrHud.throttle,
+    altitude: (vfrHud.alt || position.relativeAlt) ?? 0,
+    mslAltitude: position.alt ?? 0,
+    speed: vfrHud.groundspeed ?? 0,
+    airspeed: vfrHud.airspeed ?? 0,
+    maxSpeed: tracker.maxSpeedMs ?? 0,
+    vario: vfrHud.climb ?? 0,
+    heading: (vfrHud.heading || attitude.yaw) ?? 0,
+    pitch: attitude.pitch ?? 0,
+    roll: attitude.roll ?? 0,
+    throttle: vfrHud.throttle ?? 0,
 
-    batteryVoltage: battery.voltage,
-    batteryCurrent: battery.current,
-    batteryPercent: battery.remaining,
+    batteryVoltage: battery.voltage ?? 0,
+    batteryCurrent: battery.current ?? 0,
+    batteryPercent: battery.remaining ?? 0,
     cellVoltage: battery.cellVoltage ?? 0,
     cellCount: battery.cellCount ?? 0,
     mahDrawn: battery.mahDrawn ?? 0,
-    powerWatts: battery.voltage * battery.current,
+    powerWatts: (battery.voltage ?? 0) * (battery.current ?? 0),
 
-    gpsSats: gps.satellites,
-    gpsHdop: gps.hdop,
-    latitude: lat,
-    longitude: lon,
+    gpsSats: gps.satellites ?? 0,
+    gpsHdop: gps.hdop ?? 0,
+    latitude: lat ?? 0,
+    longitude: lon ?? 0,
 
     distance,
     homeDirection,
 
     flightMode: flight.mode || '',
-    isArmed: flight.armed,
+    isArmed: flight.armed ?? false,
     craftName: snap.craftName ?? '',
 
     flightTime: tracker.lastFlightTimeS,
     onTime,
 
-    rssi: rssiToPercent(snap.rcChannels.rssi),
+    rssi: rssiToPercent(snap.rcChannels.rssi ?? 0),
 
-    windSpeed: wind.speed,
-    windDirection: wind.direction,
-    windVertical: wind.speedZ,
+    windSpeed: wind.speed ?? 0,
+    windDirection: wind.direction ?? 0,
+    windVertical: wind.speedZ ?? 0,
 
     escTemp,
     escRpm,

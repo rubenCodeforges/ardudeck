@@ -27,6 +27,11 @@ function resourcesPath(): string {
  * logged and swallowed so a broken splash can never block app boot.
  */
 export function createSplashWindow(): BrowserWindow | null {
+  // Windows regression: a transparent, always-on-top window created before the
+  // main window destabilises the app there and broke FC connection. Skip the
+  // splash on Windows until it has a Windows-safe (opaque) variant; every call
+  // site already treats a null splash as "no splash".
+  if (process.platform === 'win32') return null;
   try {
     const win = new BrowserWindow({
       // 40px larger than the 440x340 card so its drop-shadow isn't clipped

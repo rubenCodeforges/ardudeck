@@ -140,3 +140,35 @@ describe('buildLiveTelemetry', () => {
     expect(buildLiveTelemetry(snap({ rcChannels: { rssi: 127 } }), null, t, 0).rssi).toBeCloseTo(50, 0);
   });
 });
+
+describe('buildLiveTelemetry never emits undefined numeric fields (OSD crash regression)', () => {
+  // Repro: a Windows user connected to an FC opened the OSD tool and it crashed
+  // the whole view with "Cannot read properties of undefined (reading 'toString')".
+  // Cause: a partial telemetry frame (GPS before lock) left gps.satellites
+  // undefined; renderGpsSats did `sats.toString()` on it.
+  it('coalesces a partial GPS frame (undefined satellites/hdop) to numbers', () => {
+    const t = createOsdLiveTracker(0);
+    const partial = snap({
+      // @ts-expect-error simulate a partial frame the store can hold pre-lock
+      gps: { lat: 0, lon: 0 },
+    });
+    const v = buildLiveTelemetry(partial, null, t, 0);
+    expect(typeof v.gpsSats).toBe('number');
+    expect(typeof v.gpsHdop).toBe('number');
+    expect(Number.isNaN(v.gpsSats)).toBe(false);
+  });
+
+  it('renders the gps_sats OSD element without throwing on a partial frame', async () => {
+    const { OsdScreenBuffer } = await import('./font-renderer');
+    const { renderElement } = await import('./element-renderers');
+    const t = createOsdLiveTracker(0);
+    // @ts-expect-error partial frame: vfrHud/gps/battery fields absent
+    const partial = snap({ gps: {}, vfrHud: {}, battery: {}, wind: {}, position: {} });
+    const values = buildLiveTelemetry(partial, null, t, 0);
+    const buf = new OsdScreenBuffer('PAL');
+    // Would previously throw TypeError on undefined.toString()/.toFixed().
+    for (const id of ['gps_sats', 'gps_hdop', 'latitude', 'longitude', 'vario', 'altitude']) {
+      expect(() => renderElement(buf, id, 2, 2, values)).not.toThrow();
+    }
+  });
+});
