@@ -16,7 +16,7 @@ import type {
   CheckUpdatesResponse,
 } from '../../shared/module-types.js';
 
-const DEFAULT_BASE_URL = 'https://ardudeckapi-production.up.railway.app';
+const DEFAULT_BASE_URL = 'https://hangar.ardudeck.com';
 // 127.0.0.1, not localhost: the local API binds IPv4-only (0.0.0.0) and
 // Node's fetch resolves localhost to ::1 first on macOS without falling
 // back, which surfaces as "could not reach the Hangar".
