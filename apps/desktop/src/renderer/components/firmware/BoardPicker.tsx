@@ -229,7 +229,7 @@ export function BoardPicker({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-surface-raised border border rounded-md shadow-lg max-h-[400px] overflow-hidden flex flex-col">
+        <div className="absolute z-50 w-full mt-1 bg-surface-solid border border rounded-md shadow-lg max-h-[400px] overflow-hidden flex flex-col">
           {/* Search input */}
           <div className="p-2 border-b border">
             <div className="relative">
