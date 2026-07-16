@@ -765,10 +765,18 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
     if (!loaded) return;
 
     // Build the write list from the user's selection. Sensor-identity params
-    // (DEV_IDs / INS_*_ID) are validated at load time and never written —
-    // if the IDs already match the live FC there's nothing to do; if they
-    // don't, the user shouldn't be applying this file anyway (the dialog
-    // blocks Apply when validation fails).
+    // (DEV_IDs / INS_*_ID) are validated at load time AND written: ArduPilot
+    // only treats a calibration as accepted when the id SAVED in storage
+    // matches the detected chip (register_accel() re-loads INS_ACC*_ID from
+    // storage each boot; Compass::configured() does a dev_id.load() round
+    // trip). After a param wipe the FC sets the detected id in RAM only, so
+    // the live values match the file (validation passes) yet nothing is in
+    // storage; without writing the ids the "3D Accel calibration needed" /
+    // "Compass not calibrated" prearms persist forever (#16, Matek H743
+    // cross-flash report). The write is safe because validation guarantees
+    // file id == live-detected id, and it persists even when the value equals
+    // RAM: AP_Param::save() stores any value that differs from the compiled
+    // default (0 for all id params).
     //
     // No lock-in flags (INS_GYR_CAL, COMPASS_LEARN) are touched — those are
     // vehicle-config decisions, not cal data, and the previous auto-write
@@ -782,8 +790,6 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
       // when it hasn't, but defend in depth — caller could bypass via store API.
       const v = loaded.validation[p.info.category];
       if (!v.hasCalData || v.idStatus !== 'verified') continue;
-      // Skip dev-id params — they already match (validation enforced it).
-      if (p.info.kind === 'devid') continue;
       // Skip params that don't exist on the FC at all — PARAM_SET on a
       // missing param wastes a slot in the batch and the FC won't echo
       // PARAM_VALUE back, so it would hit the timeout.

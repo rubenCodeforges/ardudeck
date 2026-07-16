@@ -800,10 +800,11 @@ function SensorHealthWarning({ sensors }: { sensors: string[] }) {
 }
 
 // Telemetry speed selector labels
-const SPEED_OPTIONS: { value: TelemetrySpeed; label: string }[] = [
-  { value: 'eco', label: 'Eco' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'max', label: 'Max' },
+const SPEED_OPTIONS: { value: TelemetrySpeed; label: string; tip: string }[] = [
+  { value: 'fc', label: 'FC', tip: 'Hands off: ArduDeck never asks for different data rates. The vehicle keeps sending at the rates saved on the flight controller. Pick this if you tuned those rates yourself.' },
+  { value: 'eco', label: 'Eco', tip: 'Slow updates: easy on weak or long-range telemetry links' },
+  { value: 'normal', label: 'Normal', tip: 'Balanced update speed, good for most links' },
+  { value: 'max', label: 'Max', tip: 'Fastest updates, for fast links like USB or WiFi' },
 ];
 
 // Quick stats bar
@@ -893,6 +894,7 @@ function QuickStatsBar() {
                 <button
                   key={opt.value}
                   onClick={() => handleSpeedChange(opt.value)}
+                  data-tip={opt.tip}
                   className={`px-2 py-0.5 text-xs rounded transition-colors ${
                     telemetrySpeed === opt.value
                       ? 'bg-blue-500/20 text-blue-400'

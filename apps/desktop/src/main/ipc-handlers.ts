@@ -627,9 +627,17 @@ let gcsHeartbeatInterval: NodeJS.Timeout | null = null;
 
 // Stream rate retry: ArduPilot may not accept stream requests until it recognizes us as a GCS
 let streamRateRetryTimeout: NodeJS.Timeout | null = null;
+// Deferred legacy REQUEST_DATA_STREAM fallback (see sendStreamRateRequests)
+let legacyStreamFallbackTimeout: NodeJS.Timeout | null = null;
+// True once we've sent SET_MESSAGE_INTERVAL overrides this session, so
+// switching to 'fc' knows there is something to undo.
+let sessionRatesRequested = false;
+// Freshness marker for the primary link's ATTITUDE stream
+let lastAttitudeAtMs = 0;
 
-// Telemetry stream rate presets (Hz values per message category)
-const STREAM_RATE_PRESETS: Record<TelemetrySpeed, { attitude: number; position: number; other: number }> = {
+// Telemetry stream rate presets (Hz values per message category).
+// 'fc' has no preset on purpose: it means "send no rate requests at all".
+const STREAM_RATE_PRESETS: Record<Exclude<TelemetrySpeed, 'fc'>, { attitude: number; position: number; other: number }> = {
   eco:    { attitude: 10, position: 4,  other: 2 },
   normal: { attitude: 30, position: 10, other: 5 },
   max:    { attitude: 50, position: 15, other: 10 },
@@ -648,6 +656,7 @@ let currentTelemetrySpeed: TelemetrySpeed = 'normal';
  *   4=RAW_CONTROLLER, 6=POSITION, 10=EXTRA1, 11=EXTRA2, 12=EXTRA3
  */
 async function sendLegacyStreamRequests(mainWindow: BrowserWindow, speed: TelemetrySpeed): Promise<void> {
+  if (speed === 'fc') return;
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
   const rates = STREAM_RATE_PRESETS[speed];
@@ -686,69 +695,115 @@ async function sendLegacyStreamRequests(mainWindow: BrowserWindow, speed: Teleme
   }
 }
 
+// Messages whose rates the speed presets manage, with their preset category.
+// Shared by the request path and the 'fc' restore path so both cover the
+// exact same set.
+const TELEM_STREAM_MESSAGES: { msgId: number; cat: 'attitude' | 'position' | 'other'; hz?: number }[] = [
+  { msgId: 30, cat: 'attitude' },        // ATTITUDE
+  { msgId: 33, cat: 'position' },        // GLOBAL_POSITION_INT
+  { msgId: 24, cat: 'other' },           // GPS_RAW_INT
+  { msgId: 124, cat: 'other' },          // GPS2_RAW (FC only sends it when a 2nd GPS is present)
+  { msgId: 1,  cat: 'other' },           // SYS_STATUS
+  { msgId: 35, cat: 'other' },           // RC_CHANNELS_RAW (fallback for ELRS-over-MAVLink)
+  { msgId: 65, cat: 'other' },           // RC_CHANNELS
+  { msgId: 74, cat: 'other' },           // VFR_HUD
+  { msgId: 36, cat: 'other' },           // SERVO_OUTPUT_RAW
+  { msgId: 27, cat: 'other' },           // RAW_IMU
+  { msgId: 29, cat: 'other' },           // SCALED_PRESSURE
+  { msgId: 168, cat: 'other', hz: 1 },   // WIND (EKF wind estimation, 1Hz is plenty)
+  { msgId: 241, cat: 'other' },          // VIBRATION (for motor test view)
+  { msgId: 11030, cat: 'other' },        // ESC_TELEMETRY_1_TO_4
+  { msgId: 11031, cat: 'other' },        // ESC_TELEMETRY_5_TO_8
+  { msgId: 11032, cat: 'other' },        // ESC_TELEMETRY_9_TO_12
+];
+
 /**
- * Send MAV_CMD_SET_MESSAGE_INTERVAL for all telemetry streams,
- * then fall back to REQUEST_DATA_STREAM for broad compatibility.
- * Uses the preset rates for the given speed.
+ * Send MAV_CMD_SET_MESSAGE_INTERVAL for all telemetry streams.
+ *
+ * SET_MESSAGE_INTERVAL is transient (RAM only). The legacy REQUEST_DATA_STREAM
+ * is NOT: ArduPilot persists those rates into the user's SRx_* parameters
+ * (persist_streamrates), permanently overwriting rates tuned for a
+ * bandwidth-limited link. So legacy is a deferred last resort: it is only sent
+ * if no ATTITUDE is flowing a few seconds after the interval commands (very
+ * old firmware). If data flows - from our commands or the FC's own configured
+ * rates - we never emit it.
+ *
+ * speed 'fc' sends no requests; if we already overrode rates this session it
+ * hands them back to the FC via interval 0 ("restore default rate").
  */
 async function sendStreamRateRequests(mainWindow: BrowserWindow, speed: TelemetrySpeed): Promise<void> {
   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
 
-  const rates = STREAM_RATE_PRESETS[speed];
-  if (!rates) return;
+  if (legacyStreamFallbackTimeout) {
+    clearTimeout(legacyStreamFallbackTimeout);
+    legacyStreamFallbackTimeout = null;
+  }
 
   const targetSys = connectionState.systemId ?? 1;
   const targetComp = connectionState.componentId ?? 1;
 
-  const messageIntervals = [
-    { msgId: 30, hz: rates.attitude },  // ATTITUDE
-    { msgId: 33, hz: rates.position },  // GLOBAL_POSITION_INT
-    { msgId: 24, hz: rates.other },     // GPS_RAW_INT
-    { msgId: 1,  hz: rates.other },     // SYS_STATUS
-    { msgId: 35, hz: rates.other },     // RC_CHANNELS_RAW (fallback for ELRS-over-MAVLink)
-    { msgId: 65, hz: rates.other },     // RC_CHANNELS
-    { msgId: 74, hz: rates.other },     // VFR_HUD
-    { msgId: 36, hz: rates.other },     // SERVO_OUTPUT_RAW
-    { msgId: 27, hz: rates.other },     // RAW_IMU
-    { msgId: 29, hz: rates.other },     // SCALED_PRESSURE
-    { msgId: 168, hz: 1 },              // WIND (EKF wind estimation, 1Hz is plenty)
-    { msgId: 241, hz: rates.other },    // VIBRATION (for motor test view)
-    { msgId: 11030, hz: rates.other },  // ESC_TELEMETRY_1_TO_4
-    { msgId: 11031, hz: rates.other },  // ESC_TELEMETRY_5_TO_8
-    { msgId: 11032, hz: rates.other },  // ESC_TELEMETRY_9_TO_12
-  ];
-
-  let sent = 0;
-  for (const req of messageIntervals) {
-    if (!currentTransport?.isOpen) break;
+  const sendInterval = async (msgId: number, intervalUs: number): Promise<boolean> => {
+    if (!currentTransport?.isOpen) return false;
     try {
-      const intervalUs = Math.round(1_000_000 / req.hz);
       const cmdPayload = serializeCommandLong({
         targetSystem: targetSys,
         targetComponent: targetComp,
         command: 511, // MAV_CMD_SET_MESSAGE_INTERVAL
         confirmation: 0,
-        param1: req.msgId,
+        param1: msgId,
         param2: intervalUs,
         param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
       });
       const pkt = await sendMavlinkPacket(COMMAND_LONG_ID, cmdPayload, COMMAND_LONG_CRC_EXTRA);
       await currentTransport!.write(pkt);
-      sent++;
       // Small delay between commands so FC can process each one
       await new Promise(resolve => setTimeout(resolve, 30));
+      return true;
     } catch (err) {
-      console.error(`[StreamRate] Failed to send interval for msg #${req.msgId}:`, err);
+      console.error(`[StreamRate] Failed to send interval for msg #${msgId}:`, err);
+      return false;
     }
+  };
+
+  if (speed === 'fc') {
+    currentTelemetrySpeed = 'fc';
+    if (sessionRatesRequested) {
+      // Undo our session overrides: interval 0 = "restore default rate", so
+      // the FC falls back to its configured SRx_* rates immediately.
+      sessionRatesRequested = false;
+      let restored = 0;
+      for (const m of TELEM_STREAM_MESSAGES) {
+        if (await sendInterval(m.msgId, 0)) restored++;
+      }
+      sendLog(mainWindow, 'info', 'Telemetry rate: FC-controlled', `Handed rates back to the FC (${restored}/${TELEM_STREAM_MESSAGES.length} messages restored to FC defaults)`);
+    } else {
+      sendLog(mainWindow, 'info', 'Telemetry rate: FC-controlled', 'No rate requests sent; the FC streams at its configured SRx_* rates');
+    }
+    return;
   }
 
-  // Also send legacy REQUEST_DATA_STREAM as fallback for broader compatibility
-  // Some ArduPilot configurations only respond to the older stream group requests
-  await sendLegacyStreamRequests(mainWindow, speed);
+  const rates = STREAM_RATE_PRESETS[speed];
+  if (!rates) return;
+
+  let sent = 0;
+  for (const m of TELEM_STREAM_MESSAGES) {
+    const hz = m.hz ?? rates[m.cat];
+    if (await sendInterval(m.msgId, Math.round(1_000_000 / hz))) sent++;
+  }
+  if (sent > 0) sessionRatesRequested = true;
+
+  // Deferred legacy fallback (see doc comment above): only if nothing flows.
+  legacyStreamFallbackTimeout = setTimeout(async () => {
+    legacyStreamFallbackTimeout = null;
+    if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+    if (currentTelemetrySpeed === 'fc') return;
+    if (Date.now() - lastAttitudeAtMs < 3000) return; // Telemetry is flowing, don't touch SRx params
+    sendLog(mainWindow, 'warn', 'No telemetry after SET_MESSAGE_INTERVAL, falling back to legacy stream requests', 'Note: ArduPilot saves legacy-requested rates into the SRx_* parameters');
+    await sendLegacyStreamRequests(mainWindow, currentTelemetrySpeed);
+  }, 4000);
 
   currentTelemetrySpeed = speed;
-  const r = STREAM_RATE_PRESETS[speed]!;
-  sendLog(mainWindow, 'info', `Telemetry rate: ${speed}`, `${sent}/${messageIntervals.length} cmds sent - ATT ${r.attitude}Hz, POS ${r.position}Hz, OTHER ${r.other}Hz`);
+  sendLog(mainWindow, 'info', `Telemetry rate: ${speed}`, `${sent}/${TELEM_STREAM_MESSAGES.length} cmds sent - ATT ${rates.attitude}Hz, POS ${rates.position}Hz, OTHER ${rates.other}Hz`);
 }
 
 /**
@@ -770,6 +825,7 @@ async function requestStreamsOnTransport(
   compid: number,
   speed: TelemetrySpeed,
 ): Promise<void> {
+  if (speed === 'fc') return;
   const rates = STREAM_RATE_PRESETS[speed];
   if (!rates) return;
 
@@ -1383,6 +1439,16 @@ let receivedParams = new Map<string, ParamValue>();
 let paramDownloadTimeout: NodeJS.Timeout | null = null;
 let paramDownloadActive = false; // True only during bulk PARAM_REQUEST_LIST download
 let paramDownloadStartTime = 0; // Timestamp for measuring download duration
+// Indices seen during the bulk download, so a stalled stream can re-request
+// exactly the params that were dropped (SiK links lose PARAM_VALUEs routinely).
+let receivedParamIndices = new Set<number>();
+let paramListRetries = 0; // Re-sends of PARAM_REQUEST_LIST when nothing arrived at all
+let paramStalledRounds = 0; // Consecutive stall recoveries that yielded zero new params
+let paramProgressAtLastStall = 0;
+let paramInactivityMs = 10000; // Computed per-link at download start
+const PARAM_LIST_MAX_RETRIES = 3;
+const PARAM_MAX_STALLED_ROUNDS = 3;
+const PARAM_GAP_FILL_CHUNK = 30; // Reads per recovery round; keeps the uplink of slow radios breathable
 
 // MAVLink FTP client for fast parameter download
 let ftpClient: MavlinkFtpClient | null = null;
@@ -2226,6 +2292,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const yawSpeed = readFloat(payload, 24) * (180 / Math.PI);
 
       const attitude: AttitudeData = { roll, pitch, yaw, rollSpeed, pitchSpeed, yawSpeed };
+      lastAttitudeAtMs = Date.now();
       queueMavlinkTelemetry(mainWindow, { attitude });
       break;
     }
@@ -2607,6 +2674,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Track received parameters
       receivedParams.set(param.paramId, param);
       expectedParamCount = param.paramCount;
+      if (paramDownloadActive && param.paramIndex < 65535) {
+        receivedParamIndices.add(param.paramIndex);
+      }
 
       // Resolve any pending one-shot read for this paramId (PARAM_READ_BATCH).
       // Wrapped in try/catch because parseTelemetry runs inside a for-await
@@ -2623,15 +2693,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         console.error('[ipc-handlers] pending param read callback threw', err);
       }
 
-      // Reset timeout on each received param
-      if (paramDownloadTimeout) {
-        clearTimeout(paramDownloadTimeout);
-        paramDownloadTimeout = setTimeout(() => {
-          if (receivedParams.size < expectedParamCount) {
-            safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
-              `Timeout: received ${receivedParams.size}/${expectedParamCount} parameters`);
-          }
-        }, 10000); // 10 second timeout after last param
+      // Reset the stall timer on each received param during a bulk download
+      if (paramDownloadActive) {
+        armParamInactivityTimer(mainWindow);
       }
 
       // Send parameter to renderer
@@ -2928,6 +2992,119 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       break;
     }
   }
+}
+
+/**
+ * Inactivity window before the bulk param stream counts as stalled. Low-baud
+ * serial links (SiK radios at 57600) get a much longer window: ArduPilot
+ * throttles param streaming to a fraction of link bandwidth, so multi-second
+ * gaps between PARAM_VALUEs are normal there, not a failure.
+ */
+function paramInactivityTimeoutMs(link: { type?: string; baudRate?: number } | null): number {
+  if (link?.type === 'serial') {
+    const baud = link.baudRate ?? 115200;
+    if (baud <= 57600) return 30000;
+    if (baud <= 115200) return 15000;
+  }
+  return 10000;
+}
+
+function missingParamIndices(expected: number, seen: ReadonlySet<number>, limit: number): number[] {
+  const missing: number[] = [];
+  for (let i = 0; i < expected && missing.length < limit; i++) {
+    if (!seen.has(i)) missing.push(i);
+  }
+  return missing;
+}
+
+function armParamInactivityTimer(mainWindow: BrowserWindow): void {
+  if (paramDownloadTimeout) clearTimeout(paramDownloadTimeout);
+  paramDownloadTimeout = setTimeout(() => {
+    void recoverParamDownload(mainWindow);
+  }, paramInactivityMs);
+}
+
+/**
+ * The bulk param stream went quiet before completing. Instead of failing
+ * outright (the old behavior, which fired a scary PARAM_ERROR while the
+ * download was often still alive on slow links), try to recover:
+ * - nothing received at all -> the PARAM_REQUEST_LIST itself was probably
+ *   lost, re-send it (up to PARAM_LIST_MAX_RETRIES times)
+ * - stalled mid-stream -> re-request the missing indices directly via
+ *   PARAM_REQUEST_READ (lossy SiK links drop PARAM_VALUEs, and ArduPilot
+ *   never re-sends them on its own)
+ * Only gives up after PARAM_MAX_STALLED_ROUNDS consecutive rounds with zero
+ * new params.
+ */
+async function recoverParamDownload(mainWindow: BrowserWindow): Promise<void> {
+  paramDownloadTimeout = null;
+  if (!paramDownloadActive) return;
+  if (!currentTransport?.isOpen || !connectionState.isConnected) {
+    paramDownloadActive = false;
+    return;
+  }
+
+  const targetSystem = connectionState.systemId ?? 1;
+  const targetComponent = 1;
+
+  if (expectedParamCount === 0) {
+    if (paramListRetries >= PARAM_LIST_MAX_RETRIES) {
+      paramDownloadActive = false;
+      safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
+        `Timeout: no parameters received after ${PARAM_LIST_MAX_RETRIES + 1} requests`);
+      return;
+    }
+    paramListRetries++;
+    sendLog(mainWindow, 'warn',
+      `No parameters received yet, re-sending PARAM_REQUEST_LIST (attempt ${paramListRetries + 1}/${PARAM_LIST_MAX_RETRIES + 1})`);
+    try {
+      const payload = serializeParamRequestList({ targetSystem, targetComponent });
+      const packet = await sendMavlinkPacket(PARAM_REQUEST_LIST_ID, payload, PARAM_REQUEST_LIST_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+    } catch {
+      // Send failed; the re-armed timer below retries next round.
+    }
+    armParamInactivityTimer(mainWindow);
+    return;
+  }
+
+  if (receivedParamIndices.size <= paramProgressAtLastStall) {
+    paramStalledRounds++;
+  } else {
+    paramStalledRounds = 0;
+  }
+  paramProgressAtLastStall = receivedParamIndices.size;
+
+  if (paramStalledRounds >= PARAM_MAX_STALLED_ROUNDS) {
+    paramDownloadActive = false;
+    safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
+      `Timeout: received ${receivedParams.size}/${expectedParamCount} parameters`);
+    return;
+  }
+
+  const missing = missingParamIndices(expectedParamCount, receivedParamIndices, PARAM_GAP_FILL_CHUNK);
+  if (missing.length === 0) {
+    // Every index arrived but the by-name map is smaller (duplicate ids).
+    // Nothing left to fetch; call it complete.
+    paramDownloadActive = false;
+    safeSend(mainWindow, IPC_CHANNELS.PARAM_COMPLETE);
+    return;
+  }
+
+  sendLog(mainWindow, 'info',
+    `Parameter stream stalled at ${receivedParamIndices.size}/${expectedParamCount}, re-requesting ${missing.length} missing parameters`);
+  try {
+    for (const paramIndex of missing) {
+      const payload = serializeParamRequestRead({ targetSystem, targetComponent, paramId: '', paramIndex });
+      const packet = await sendMavlinkPacket(PARAM_REQUEST_READ_ID, payload, PARAM_REQUEST_READ_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+    }
+  } catch {
+    // Send failed; the re-armed timer below retries next round.
+  }
+  armParamInactivityTimer(mainWindow);
 }
 
 // Helper: Request a mission item from FC
@@ -4033,6 +4210,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
                 streamRateRetryTimeout = setTimeout(async () => {
                   streamRateRetryTimeout = null;
                   if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+                  if (currentTelemetrySpeed === 'fc') return; // Nothing to retry, we never ask
                   sendLog(mainWindow, 'debug', 'Retrying stream rate requests');
                   await sendStreamRateRequests(mainWindow, currentTelemetrySpeed);
                 }, 5000);
@@ -4127,6 +4305,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           clearTimeout(streamRateRetryTimeout);
           streamRateRetryTimeout = null;
         }
+        if (legacyStreamFallbackTimeout) {
+          clearTimeout(legacyStreamFallbackTimeout);
+          legacyStreamFallbackTimeout = null;
+        }
+        sessionRatesRequested = false; // Reboot resets the FC's in-RAM rates
         sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
         return;
       }
@@ -4145,6 +4328,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         mavlinkBatchTimer = null;
         mavlinkTelemetryBatches = {};
       }
+      if (legacyStreamFallbackTimeout) {
+        clearTimeout(legacyStreamFallbackTimeout);
+        legacyStreamFallbackTimeout = null;
+      }
+      sessionRatesRequested = false;
+      lastAttitudeAtMs = 0;
       currentTransport = null;
       mavlinkParser = null;
       resetMavlinkDiagCache();
@@ -4481,6 +4670,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           clearTimeout(streamRateRetryTimeout);
           streamRateRetryTimeout = null;
         }
+        if (legacyStreamFallbackTimeout) {
+          clearTimeout(legacyStreamFallbackTimeout);
+          legacyStreamFallbackTimeout = null;
+        }
+        sessionRatesRequested = false; // Reboot resets the FC's in-RAM rates
         sendLog(mainWindow, 'info', 'Connection closed for reboot, will reconnect...');
         return; // Don't update state - reconnect logic handles it
       }
@@ -5312,6 +5506,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       currentTransport = null;
       mavlinkParser = null;
       paramRequestInFlight = false;
+      if (legacyStreamFallbackTimeout) {
+        clearTimeout(legacyStreamFallbackTimeout);
+        legacyStreamFallbackTimeout = null;
+      }
+      sessionRatesRequested = false;
+      lastAttitudeAtMs = 0;
       resetMavlinkDiagCache();
       if (ftpClient) {
         ftpClient.cleanup().catch(() => {});
@@ -5729,12 +5929,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
    */
   async function requestParamsTraditional(): Promise<{ success: boolean; error?: string }> {
     receivedParams.clear();
+    receivedParamIndices.clear();
     expectedParamCount = 0;
+    paramListRetries = 0;
+    paramStalledRounds = 0;
+    paramProgressAtLastStall = 0;
+    paramInactivityMs = paramInactivityTimeoutMs(lastConnectOptions);
     paramDownloadActive = true;
     paramDownloadStartTime = Date.now();
 
     if (paramDownloadTimeout) {
       clearTimeout(paramDownloadTimeout);
+      paramDownloadTimeout = null;
     }
 
     try {
@@ -5752,12 +5958,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       sendLog(mainWindow, 'info', 'Requesting parameters (traditional PARAM_REQUEST_LIST)...');
 
-      paramDownloadTimeout = setTimeout(() => {
-        if (receivedParams.size === 0) {
-          safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR,
-            'Timeout: no parameters received after 30 seconds');
-        }
-      }, 30000);
+      armParamInactivityTimer(mainWindow);
 
       return { success: true };
     } catch (error) {

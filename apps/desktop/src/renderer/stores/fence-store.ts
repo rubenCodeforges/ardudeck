@@ -55,6 +55,7 @@ interface FenceStore {
   // Local editing - Polygons
   addPolygon: (type: 'inclusion' | 'exclusion', vertices: Array<{ lat: number; lon: number }>) => void;
   updatePolygonVertex: (polygonId: string, vertexIndex: number, lat: number, lon: number) => void;
+  translatePolygon: (polygonId: string, dLat: number, dLon: number) => void;
   addVertexToPolygon: (polygonId: string, afterIndex: number, lat: number, lon: number) => void;
   removeVertexFromPolygon: (polygonId: string, vertexIndex: number) => void;
   removePolygon: (polygonId: string) => void;
@@ -198,6 +199,20 @@ export const useFenceStore = create<FenceStore>((set, get) => ({
               vertices: p.vertices.map((v, i) =>
                 i === vertexIndex ? { ...v, lat, lon } : v
               ),
+            }
+          : p
+      ),
+      isDirty: true,
+    }));
+  },
+
+  translatePolygon: (polygonId, dLat, dLon) => {
+    set(state => ({
+      polygons: state.polygons.map(p =>
+        p.id === polygonId
+          ? {
+              ...p,
+              vertices: p.vertices.map(v => ({ ...v, lat: v.lat + dLat, lon: v.lon + dLon })),
             }
           : p
       ),

@@ -8,9 +8,14 @@
  *
  * This dialog filters a .param file down to accel+mag cal params, validates
  * the file against the live FC (sensor IDs match? offsets are non-zero?),
- * and only enables Apply for categories that pass. Gyro and lock-flag
- * automation were removed per operator feedback — gyros auto-cal at boot
- * reliably and silently mutating INS_GYR_CAL / COMPASS_LEARN was unwelcome.
+ * and only enables Apply for categories that pass. The verified sensor-ID
+ * params are then written along with the offsets: the saved id matching the
+ * detected chip IS ArduPilot's "calibration accepted" flag, and after a
+ * param wipe the detected ids exist only in RAM, so skipping the id write
+ * leaves the prearm error in place forever (the Matek H743 cross-flash
+ * report on #16). Gyro and lock-flag automation were removed per operator
+ * feedback: gyros auto-cal at boot reliably and silently mutating
+ * INS_GYR_CAL / COMPASS_LEARN was unwelcome.
  *
  * Flow:
  *   1. user clicks Open → file picker (uses existing PARAM_LOAD_FILE handler)
@@ -138,8 +143,6 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
       if (!enabled[p.info.category]) continue;
       const v = loadedCalibration.validation[p.info.category];
       if (getBlockedReason(v) !== null) continue;
-      // dev-id params are never written (validation-only)
-      if (p.info.kind === 'devid') continue;
       if (p.currentValue === undefined) continue;
       n++;
     }
@@ -162,7 +165,8 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
               <p className="text-sm text-content-secondary mt-1">
                 Restore ACC / MAG calibration from a .param file. The file is
                 verified against this flight controller's sensor IDs before any
-                values are written.
+                values are written, and the verified IDs are saved with the
+                offsets so ArduPilot accepts the calibration after reboot.
               </p>
               {loadedCalibration?.filePath && (
                 <div className="mt-2 flex items-center gap-2 text-xs text-content-tertiary">
@@ -274,7 +278,7 @@ function CategoryCard({
   title, accent, enabled, canToggle, onToggle, totalCount, validation, blockedReason, items,
 }: CategoryCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const writableCount = items.filter(p => p.info.kind !== 'devid').length;
+  const writableCount = items.length;
   return (
     <div className={`rounded-lg border ${accent.ring} ${enabled ? accent.bg : 'bg-surface-overlay-subtle opacity-60'}`}>
       <div className="flex items-center gap-3 px-4 py-3">
@@ -325,7 +329,7 @@ function CategoryCard({
                   <td className="py-1 text-content">
                     {p.paramId}
                     {p.info.kind === 'devid' && (
-                      <span className="text-content-tertiary"> (verified, not written)</span>
+                      <span className="text-content-tertiary"> (sensor ID, locks in the calibration)</span>
                     )}
                   </td>
                   <td className="py-1 text-right text-content-secondary">{formatValue(p.currentValue)}</td>

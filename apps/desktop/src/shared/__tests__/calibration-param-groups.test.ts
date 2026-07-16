@@ -55,6 +55,9 @@ describe('categorizeCalibrationParam', () => {
       ['COMPASS_DEV_ID', 'devid', 1],
       ['COMPASS_DEV_ID2', 'devid', 2],
       ['COMPASS_DEV_ID3', 'devid', 3],
+      ['COMPASS_PRIO1_ID', 'prio', 1],
+      ['COMPASS_PRIO2_ID', 'prio', 2],
+      ['COMPASS_PRIO3_ID', 'prio', 3],
       ['COMPASS_USE', 'enable', 1],
       ['COMPASS_USE2', 'enable', 2],
       ['COMPASS_USE3', 'enable', 3],
@@ -115,8 +118,6 @@ describe('categorizeCalibrationParam', () => {
       'COMPASS_ORIENT',
       'COMPASS_ORIENT2',
       'COMPASS_AUTO_ROT',
-      'COMPASS_PRIO1_ID',        // priority slot, not the live ID
-      'COMPASS_PRIO2_ID',
       'COMPASS_EXTERNAL',        // hardware-bus config, handled by sitl-unsafe filter
       // Unrelated families
       'BATT_MONITOR',

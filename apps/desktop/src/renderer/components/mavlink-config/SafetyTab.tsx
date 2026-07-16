@@ -268,11 +268,11 @@ const SafetyTab: React.FC = () => {
 
             <DraggableSlider
               label="Low Voltage (V)"
-              value={Math.round(safetyValues.battLowVolt * 10)}
-              onChange={(v) => setParameter('BATT_LOW_VOLT', v / 10)}
+              value={safetyValues.battLowVolt}
+              onChange={(v) => setParameter('BATT_LOW_VOLT', v)}
               min={0}
-              max={260}
-              step={1}
+              max={26}
+              step={0.1}
               color="#F59E0B"
               hint="Trigger when voltage drops below this"
             />
@@ -318,11 +318,11 @@ const SafetyTab: React.FC = () => {
 
             <DraggableSlider
               label="Critical Voltage (V)"
-              value={Math.round(safetyValues.battCrtVolt * 10)}
-              onChange={(v) => setParameter('BATT_CRT_VOLT', v / 10)}
+              value={safetyValues.battCrtVolt}
+              onChange={(v) => setParameter('BATT_CRT_VOLT', v)}
               min={0}
-              max={260}
-              step={1}
+              max={26}
+              step={0.1}
               color="#EF4444"
               hint="Emergency action when voltage drops below this"
             />

@@ -8,7 +8,13 @@
  *      "N accel + M mag" and let the user opt in per sensor.
  *   3. Identify which params are *hardware identity* (DEV_IDs) — these are
  *      cross-checked against the live FC at load time to refuse a param set
- *      from a different physical board.
+ *      from a different physical board, and then WRITTEN as part of apply.
+ *      Writing them is the actual force-accept mechanism: ArduPilot's
+ *      accel/compass "calibrated" checks compare the id SAVED in storage
+ *      against the detected chip (AP_InertialSensor::register_accel and
+ *      Compass::configured both re-load from storage). After a param wipe
+ *      (e.g. cross-flash) the FC only sets the detected id in RAM, so
+ *      restoring offsets alone leaves the cal rejected forever (#16).
  *
  * Why no gyro: gyros auto-cal at boot in ArduPilot (`INS_GYR_CAL=1`, the
  * default) and the resulting offsets are reliable enough that persisting
@@ -30,7 +36,8 @@ export type CalibrationParamKind =
   | 'scale'    // X/Y/Z scaling factors (accel only)
   | 'ellipsoid'// COMPASS_DIA_*/ODI_* — ellipsoid fit
   | 'mot'      // COMPASS_MOT_* — motor compensation
-  | 'devid'    // hardware identity (chip ID); validated, not written
+  | 'devid'    // hardware identity (chip ID); validated, then written to lock in the cal
+  | 'prio'     // COMPASS_PRIO*_ID: compass priority order; written, not identity-checked
   | 'enable';  // INS_USE* / COMPASS_USE — enables the instance
 
 export interface CalibrationParamInfo {
@@ -74,6 +81,11 @@ const RULES: ReadonlyArray<Rule> = [
   { test: id => id.match(/^COMPASS_MOT([23])?_[XYZ]$/), category: 'mag', kind: 'mot', instanceGroup: 1 },
   // COMPASS_DEV_ID, COMPASS_DEV_ID2, COMPASS_DEV_ID3
   { test: id => id.match(/^COMPASS_DEV_ID([23])?$/), category: 'mag', kind: 'devid', instanceGroup: 1 },
+  // COMPASS_PRIO1_ID..PRIO3_ID — priority slots. Written so multi-compass
+  // ordering survives the wipe, but NOT part of identity validation: a user
+  // may have reordered priorities since saving the file, and that must not
+  // block the restore (DEV_IDs alone prove it's the same board).
+  { test: id => id.match(/^COMPASS_PRIO([123])_ID$/), category: 'mag', kind: 'prio', instanceGroup: 1 },
   // COMPASS_USE, COMPASS_USE2, COMPASS_USE3
   { test: id => id.match(/^COMPASS_USE([23])?$/), category: 'mag', kind: 'enable', instanceGroup: 1 },
 ];

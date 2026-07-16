@@ -1749,7 +1749,13 @@ export interface StatusMessage {
  * Telemetry stream speed preset
  * Controls MAVLink SET_MESSAGE_INTERVAL rates
  */
-export type TelemetrySpeed = 'eco' | 'normal' | 'max';
+/**
+ * 'fc' sends NO rate requests at all (Mission Planner's "-1" / MAVProxy
+ * `set streamrate -1`): the FC streams at its own configured SRx_* rates.
+ * Important on bandwidth-tuned links, and avoids ArduPilot persisting our
+ * REQUEST_DATA_STREAM rates into the user's SRx_* parameters.
+ */
+export type TelemetrySpeed = 'fc' | 'eco' | 'normal' | 'max';
 
 // =============================================================================
 // Tile Cache Types (Offline Maps)

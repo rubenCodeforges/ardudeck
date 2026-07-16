@@ -207,6 +207,13 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
             </div>
           )}
         </div>
+
+        {/* Editing hint - shown while zones exist but none is selected */}
+        {!readOnly && (polygons.length > 0 || circles.length > 0) && !selectedFenceId && (
+          <div className="px-2 pb-2 text-[11px] text-content-tertiary">
+            Click a zone (here or on the map) to move, reshape, or delete it.
+          </div>
+        )}
       </div>
 
       {/* Status Bar */}

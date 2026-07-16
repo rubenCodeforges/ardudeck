@@ -82,9 +82,44 @@ const createVertexIcon = (isSelected: boolean) =>
     iconAnchor: [6, 6],
   });
 
-// Floating delete button shown at the centroid of the selected fence.
-// Renders as a small red pill with a trash glyph + label so it is obvious
-// even when the underlying zone fill is tinted similarly.
+// Drag handle at the centroid of the selected polygon: grab it to move the
+// whole zone at once (the alternative - dragging every vertex - is painful
+// for anything beyond a triangle).
+const createMoveHandleIcon = () =>
+  L.divIcon({
+    className: 'custom-div-icon',
+    html: `
+      <div style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        background-color: #ffffff;
+        color: #1e293b;
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        cursor: grab;
+      ">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="5 9 2 12 5 15"></polyline>
+          <polyline points="9 5 12 2 15 5"></polyline>
+          <polyline points="15 19 12 22 9 19"></polyline>
+          <polyline points="19 9 22 12 19 15"></polyline>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <line x1="12" y1="2" x2="12" y2="22"></line>
+        </svg>
+      </div>
+    `,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+
+// Floating delete button shown near the centroid of the selected fence
+// (offset below the move handle). Renders as a small red pill with a trash
+// glyph + label so it is obvious even when the underlying zone fill is
+// tinted similarly.
 const createDeleteButtonIcon = () =>
   L.divIcon({
     className: 'custom-div-icon',
@@ -114,7 +149,7 @@ const createDeleteButtonIcon = () =>
       </div>
     `,
     iconSize: [70, 22],
-    iconAnchor: [35, 11],
+    iconAnchor: [35, -8], // Below the centroid so the move handle stays grabbable
   });
 
 // Centroid of a polygon's vertices (simple average — good enough for placing
@@ -141,6 +176,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
     setSelectedFenceId,
     setDrawMode,
     updatePolygonVertex,
+    translatePolygon,
     removeVertexFromPolygon,
     updateCircle,
     setReturnPoint,
@@ -236,6 +272,16 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
       removeVertexFromPolygon(polygonId, vertexIndex);
     },
     [readOnly, removeVertexFromPolygon]
+  );
+
+  // Handle whole-polygon move via the centroid drag handle
+  const handlePolygonMove = useCallback(
+    (polygonId: string, renderedCentroid: [number, number], e: L.LeafletMouseEvent) => {
+      if (readOnly) return;
+      const { lat, lng } = e.target.getLatLng();
+      translatePolygon(polygonId, lat - renderedCentroid[0], lng - renderedCentroid[1]);
+    },
+    [readOnly, translatePolygon]
   );
 
   // Handle circle center drag
@@ -369,7 +415,13 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
               eventHandlers={{
                 click: (e) => handlePolygonClick(polygon, e as unknown as L.LeafletMouseEvent),
               }}
-            />
+            >
+              {!readOnly && !isSelected && drawMode === 'none' && (
+                <Tooltip sticky opacity={0.9}>
+                  <span style={{ fontSize: '10px' }}>Click to edit or delete this zone</span>
+                </Tooltip>
+              )}
+            </Polygon>
           );
         })}
 
@@ -394,9 +446,38 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
               eventHandlers={{
                 click: (e) => handlePolygonClick(polygon, e as unknown as L.LeafletMouseEvent),
               }}
-            />
+            >
+              {!readOnly && !isSelected && drawMode === 'none' && (
+                <Tooltip sticky opacity={0.9}>
+                  <span style={{ fontSize: '10px' }}>Click to edit or delete this zone</span>
+                </Tooltip>
+              )}
+            </Polygon>
           );
         })}
+
+      {/* Move handle at the centroid of the selected polygon - drag to move the whole zone */}
+      {!readOnly && drawMode === 'none' &&
+        polygons
+          .filter((p) => p.id === selectedFenceId)
+          .map((polygon) => {
+            const centroid = polygonCentroid(polygon.vertices);
+            return (
+              <Marker
+                key={`${polygon.id}-move-handle`}
+                position={centroid}
+                icon={createMoveHandleIcon()}
+                draggable
+                eventHandlers={{
+                  dragend: (e) => handlePolygonMove(polygon.id, centroid, e as unknown as L.LeafletMouseEvent),
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -14]} opacity={0.9}>
+                  <span style={{ fontSize: '10px' }}>Drag to move the whole zone</span>
+                </Tooltip>
+              </Marker>
+            );
+          })}
 
       {/* Draggable vertices for selected polygon - right-click to delete, hover for coordinates */}
       {!readOnly &&
@@ -448,7 +529,13 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
             eventHandlers={{
               click: (e) => handleCircleClick(circle, e as unknown as L.LeafletMouseEvent),
             }}
-          />
+          >
+            {!readOnly && !isSelected && drawMode === 'none' && (
+              <Tooltip sticky opacity={0.9}>
+                <span style={{ fontSize: '10px' }}>Click to edit or delete this zone</span>
+              </Tooltip>
+            )}
+          </Circle>
         );
       })}
 

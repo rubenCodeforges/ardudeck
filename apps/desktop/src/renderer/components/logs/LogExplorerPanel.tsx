@@ -141,6 +141,34 @@ function getFlightPathTimesS(log: ReturnType<typeof useLogStore.getState>['curre
   return times;
 }
 
+/**
+ * Build a (type, field) -> unit string lookup from the parsed log's UNIT/FMTU
+ * metadata. Falls back gracefully when the log has no unit records (older
+ * firmware): the returned function just yields undefined and labels render
+ * unitless. Shared by the chart series labels, the y axes, and the field
+ * picker so they always agree.
+ */
+function makeUnitLookup(log: ReturnType<typeof useLogStore.getState>['currentLog']): (type: string, field: string) => string | undefined {
+  if (!log) return () => undefined;
+  const unitLabels = log.unitLabels ?? {};
+  if (Object.keys(unitLabels).length === 0) return () => undefined;
+  const formatList = Object.values(log.formats);
+  return (type, field) => {
+    for (const fmt of formatList) {
+      if (fmt.name !== type) continue;
+      if (!fmt.unitChars) return undefined;
+      const idx = fmt.fields.indexOf(field);
+      if (idx === -1) return undefined;
+      const ch = fmt.unitChars[idx];
+      if (!ch || ch === '-') return undefined;
+      const label = unitLabels[ch];
+      if (!label || label === '-' || label === '') return undefined;
+      return label;
+    }
+    return undefined;
+  };
+}
+
 // ============================================================================
 // Chart Panel
 // ============================================================================
@@ -224,26 +252,7 @@ function ChartPanel({ chartId }: { chartId: string }) {
   const chartData = useMemo(() => {
     if (!currentLog) return null;
 
-    // Build a (type, field) → unit string lookup from the parsed log's UNIT/FMTU
-    // metadata. Falls back gracefully when the log has no unit records (older
-    // firmware) — the helper just returns undefined and labels render unitless.
-    const unitLabels = currentLog.unitLabels ?? {};
-    const formatList = Object.values(currentLog.formats);
-    const lookupUnit = (type: string, field: string): string | undefined => {
-      if (Object.keys(unitLabels).length === 0) return undefined;
-      for (const fmt of formatList) {
-        if (fmt.name !== type) continue;
-        if (!fmt.unitChars) return undefined;
-        const idx = fmt.fields.indexOf(field);
-        if (idx === -1) return undefined;
-        const ch = fmt.unitChars[idx];
-        if (!ch || ch === '-') return undefined;
-        const label = unitLabels[ch];
-        if (!label || label === '-' || label === '') return undefined;
-        return label;
-      }
-      return undefined;
-    };
+    const lookupUnit = makeUnitLookup(currentLog);
     const labelWithUnit = (base: string, type: string, field: string): string => {
       const u = lookupUnit(type, field);
       return u ? `${base} (${u})` : base;
@@ -497,6 +506,10 @@ function ChartPanel({ chartId }: { chartId: string }) {
     };
     const xAxis: uPlot.Axis = { label: 'Time (s)', ...axisTheme };
 
+    // Series labels carry a "(unit)" suffix from the log's UNIT records; pull
+    // it back out so the y axes can be labeled with the unit they display.
+    const unitOfLabel = (label: string): string | undefined => /\(([^()]+)\)$/.exec(label)?.[1];
+
     // In independent mode each series rides its own scale (y0..yN) so a signal
     // at 0-1 and one at 0-1000 are both full-height. Only the first two get a
     // drawn axis gutter (left = series 0, right = series 1), colour-matched to
@@ -508,15 +521,19 @@ function ChartPanel({ chartId }: { chartId: string }) {
     if (independent) {
       for (let i = 0; i < seriesCount; i++) scales[`y${i}`] = { auto: true };
       axes = [xAxis];
-      if (seriesCount > 0) axes.push({ ...axisTheme, scale: 'y0', side: 3, stroke: seriesColor(0) });
-      if (seriesCount > 1) axes.push({ ...axisTheme, scale: 'y1', side: 1, stroke: seriesColor(1), grid: { show: false, stroke: 'transparent', width: 0 } });
+      if (seriesCount > 0) axes.push({ ...axisTheme, scale: 'y0', side: 3, stroke: seriesColor(0), label: unitOfLabel(chartData.series[0]!.label) });
+      if (seriesCount > 1) axes.push({ ...axisTheme, scale: 'y1', side: 1, stroke: seriesColor(1), label: unitOfLabel(chartData.series[1]!.label), grid: { show: false, stroke: 'transparent', width: 0 } });
       seriesOpts = [
         { label: 'Time' },
         ...chartData.series.map((s, i) => ({ label: s.label, stroke: seriesColor(i), width: 1.5, scale: `y${i}`, points: { show: false } })),
       ];
     } else {
       scales.y = { auto: true };
-      axes = [xAxis, { ...axisTheme, scale: 'y', side: 3 }];
+      // Label the shared axis only when every series agrees on one unit;
+      // a mixed-unit axis would be labeled with a lie.
+      const units = chartData.series.map((s) => unitOfLabel(s.label));
+      const sharedUnit = units.length > 0 && units[0] && units.every((u) => u === units[0]) ? units[0] : undefined;
+      axes = [xAxis, { ...axisTheme, scale: 'y', side: 3, label: sharedUnit }];
       seriesOpts = [
         { label: 'Time' },
         ...chartData.series.map((s, i) => ({ label: s.label, stroke: seriesColor(i), width: 1.5, points: { show: false } })),
@@ -1508,6 +1525,7 @@ function FlightPathPanel() {
 
 function FieldPickerPanel() {
   const currentLog = useLogStore((s) => s.currentLog);
+  const unitFor = useMemo(() => makeUnitLookup(currentLog), [currentLog]);
   // Picker always operates on the active chart so writes go to the panel
   // the user just clicked. ChartPanel components read from their OWN chartId
   // (not activeChartId) so each chart updates independently.
@@ -1822,6 +1840,10 @@ function FieldPickerPanel() {
                             onClick={() => handleFieldToggle(type, field)}
                           >
                             {field}
+                            {(() => {
+                              const unit = unitFor(type, field);
+                              return unit ? <span className="text-content-tertiary ml-1 text-[10px]">({unit})</span> : null;
+                            })()}
                           </span>
                           {isEvent && (
                             <span className="text-[8px] uppercase tracking-wider text-content-tertiary">event</span>

@@ -82,7 +82,7 @@ const BatteryTab: React.FC = () => {
 
   // Max voltage for sliders - based on 24S full charge of current chemistry + margin.
   // 24S covers heavy-lift industrial multirotors up to ~108V (24S Li-Ion HV).
-  const maxVoltageSlider = Math.ceil(24 * chemInfo.cellFull * 10) + 10;
+  const maxVoltageSlider = Math.ceil(24 * chemInfo.cellFull) + 1;
 
   const modified = modifiedCount();
 
@@ -360,33 +360,33 @@ const BatteryTab: React.FC = () => {
         <div className="space-y-4">
           <DraggableSlider
             label="Minimum Arm Voltage (V)"
-            value={Math.round(batteryValues.battArmVolt * 10)}
-            onChange={(v) => setParameter('BATT_ARM_VOLT', v / 10)}
+            value={batteryValues.battArmVolt}
+            onChange={(v) => setParameter('BATT_ARM_VOLT', v)}
             min={0}
             max={maxVoltageSlider}
-            step={1}
+            step={0.1}
             color="#3B82F6"
             hint="Won't arm below this voltage"
           />
 
           <DraggableSlider
             label="Low Warning Voltage (V)"
-            value={Math.round(batteryValues.battLowVolt * 10)}
-            onChange={(v) => setParameter('BATT_LOW_VOLT', v / 10)}
+            value={batteryValues.battLowVolt}
+            onChange={(v) => setParameter('BATT_LOW_VOLT', v)}
             min={0}
             max={maxVoltageSlider}
-            step={1}
+            step={0.1}
             color="#F59E0B"
             hint="RTL warning triggers here"
           />
 
           <DraggableSlider
             label="Critical Voltage (V)"
-            value={Math.round(batteryValues.battCrtVolt * 10)}
-            onChange={(v) => setParameter('BATT_CRT_VOLT', v / 10)}
+            value={batteryValues.battCrtVolt}
+            onChange={(v) => setParameter('BATT_CRT_VOLT', v)}
             min={0}
             max={maxVoltageSlider}
-            step={1}
+            step={0.1}
             color="#EF4444"
             hint="Emergency land triggers here"
           />
