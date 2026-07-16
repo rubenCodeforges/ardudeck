@@ -10,6 +10,7 @@ export { FlightControlPanel } from './FlightControlPanel';
 export { MapPanel } from './MapPanel';
 export { MessagesPanel } from './MessagesPanel';
 export { SafetyMonitorPanel } from './SafetyMonitorPanel';
+export { NtripPanel } from './NtripPanel';
 export { PreflightCheckCard } from '../prearm/PreflightCheckCard';
 export { CameraPanel } from '../camera/CameraPanel';
 
@@ -38,6 +39,7 @@ export const PANEL_COMPONENTS = {
   camera: { component: 'CameraPanel', title: 'Vision' },
   messages: { component: 'MessagesPanel', title: 'Messages' },
   safetyMonitor: { component: 'SafetyMonitorPanel', title: 'Safety Monitor' },
+  rtk: { component: 'NtripPanel', title: 'RTK / NTRIP' },
   preflightCheck: { component: 'PreflightCheckCard', title: 'Pre-flight Checks' },
   // Mission panels (for monitoring during flight)
   // Note: missionMap removed - mission data now integrated into unified MapPanel

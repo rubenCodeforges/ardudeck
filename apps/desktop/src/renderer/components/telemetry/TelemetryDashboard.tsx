@@ -38,6 +38,7 @@ import {
   MapPanel,
   MessagesPanel,
   SafetyMonitorPanel,
+  NtripPanel,
   CameraPanel,
   PreflightCheckCard,
   // Mission panels (for monitoring during flight) - MissionMapPanel removed (merged into MapPanel)
@@ -77,6 +78,7 @@ const PANEL_ID_TO_DETACHED: Record<string, { componentId: string; defaultBounds?
   camera: { componentId: 'camera', defaultBounds: { width: 960, height: 600 } },
   messages: { componentId: 'messages' },
   safetyMonitor: { componentId: 'safety-monitor', defaultBounds: { width: 420, height: 520 } },
+  rtk: { componentId: 'rtk', defaultBounds: { width: 420, height: 560 } },
 };
 
 /**
@@ -140,6 +142,7 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   CameraPanel: () => <PanelWrapper component={CameraPanel} />,
   MessagesPanel: () => <PanelWrapper component={MessagesPanel} />,
   SafetyMonitorPanel: () => <PanelWrapper component={SafetyMonitorPanel} />,
+  NtripPanel: () => <PanelWrapper component={NtripPanel} />,
   PreflightCheckCard: () => <PanelWrapper component={PreflightCheckCard} />,
   // Mission panels (for monitoring during flight) - readOnly mode
   // Note: MissionMapPanel removed - mission data now integrated into MapPanel
@@ -370,7 +373,7 @@ const ALL_PANELS_LAYOUT: SerializedDockview = {
           type: 'branch',
           data: [
             { type: 'leaf', data: { views: ['battery'], activeView: 'battery', id: '7' }, size: 200 },
-            { type: 'leaf', data: { views: ['gps'], activeView: 'gps', id: '8' }, size: 160 },
+            { type: 'leaf', data: { views: ['gps', 'rtk'], activeView: 'gps', id: '8' }, size: 160 },
             { type: 'leaf', data: { views: ['position'], activeView: 'position', id: '9' }, size: 150 },
             { type: 'leaf', data: { views: ['velocity'], activeView: 'velocity', id: '10' }, size: 150 },
             { type: 'leaf', data: { views: ['flightMode'], activeView: 'flightMode', id: '11' }, size: 150 },
@@ -405,6 +408,7 @@ const ALL_PANELS_LAYOUT: SerializedDockview = {
     safetyMonitor: { id: 'safetyMonitor', contentComponent: 'SafetyMonitorPanel', title: 'Safety Monitor' },
     battery: { id: 'battery', contentComponent: 'BatteryPanel', title: 'Battery' },
     gps: { id: 'gps', contentComponent: 'GpsPanel', title: 'GPS' },
+    rtk: { id: 'rtk', contentComponent: 'NtripPanel', title: 'RTK / NTRIP' },
     position: { id: 'position', contentComponent: 'PositionPanel', title: 'Position' },
     velocity: { id: 'velocity', contentComponent: 'VelocityPanel', title: 'Velocity' },
     flightMode: { id: 'flightMode', contentComponent: 'FlightModePanel', title: 'Flight Mode' },
@@ -726,7 +730,7 @@ function LayoutToolbar({
 const MISSION_PANEL_IDS = ['waypoints', 'altitudeProfile'];
 
 // MAVLink-only panel IDs (STATUSTEXT doesn't exist in MSP)
-const MAVLINK_PANEL_IDS = ['messages', 'preflightCheck', 'safetyMonitor'];
+const MAVLINK_PANEL_IDS = ['messages', 'preflightCheck', 'safetyMonitor', 'rtk'];
 
 // SITL-only panel IDs (only shown when ArduPilot SITL is running)
 const SITL_PANEL_IDS = ['sitlEnvironment', 'sitlFailures'];
@@ -753,6 +757,7 @@ function AddPanelDropdown({ onAddPanel, supportsMissionPlanning, isMavlink, isSi
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        data-tour="add-panel"
         className="px-2 py-1 bg-surface-raised hover:bg-surface-raised text-content text-xs rounded transition-colors flex items-center gap-1"
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

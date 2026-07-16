@@ -19,6 +19,11 @@
 
 import WebSocket from 'ws';
 import { BaseTransport } from '@ardudeck/comms';
+import type {
+  NtripConfig,
+  NtripSourcetableResult,
+  NtripStatus,
+} from '../../shared/ntrip-types.js';
 
 /** Control-plane channel discriminator (first byte of each WS binary frame). */
 const CHANNEL_MAVLINK = 0x00;
@@ -55,8 +60,11 @@ export class OrchestrationServerLink extends BaseTransport {
   private _isOpen = false;
   private nextIntentId = 1;
   private nextLogJobId = 1;
+  private nextNtripReqId = 1;
   /** Reassembly buffers for in-flight log artifacts, keyed by jobId. */
   private logChunks = new Map<string, Buffer[]>();
+  /** Pending ntrip.sourcetable replies, keyed by request id. */
+  private ntripSourcetableWaiters = new Map<string, (result: NtripSourcetableResult) => void>();
   readonly portName: string;
   /** Populated once the server replies to `hello`. */
   serverInfo: OrchestrationServerInfo | null = null;
@@ -187,6 +195,46 @@ export class OrchestrationServerLink extends BaseTransport {
     this.sendControl({ v: 1, type: 'log.fetch.cancel', virtualSysid });
   }
 
+  // ── NTRIP / RTK corrections (server-owned client, fleet-wide injection) ────
+  // The orchestrator owns the caster connection and the GPS_RTCM_DATA fanout;
+  // the desktop only configures and monitors it. The password rides on this
+  // local control channel at connect time and is never persisted server-side.
+
+  /** Start (or restart) the server's NTRIP stream with the given config. */
+  ntripConnect(config: NtripConfig, password: string): void {
+    this.sendControl({ v: 1, type: 'ntrip.connect', config: { ...config, password } });
+  }
+
+  ntripDisconnect(): void {
+    this.sendControl({ v: 1, type: 'ntrip.disconnect' });
+  }
+
+  /** Ask for an immediate ntrip.status push (also pushed on change + 1 Hz). */
+  ntripRequestStatus(): void {
+    this.sendControl({ v: 1, type: 'ntrip.status.request' });
+  }
+
+  /** Subscribe to the server's NTRIP status pushes. */
+  onNtripStatus(cb: (status: NtripStatus) => void): void {
+    (this as { on(e: string, l: (...a: unknown[]) => void): unknown }).on('ntripStatus', cb as (...a: unknown[]) => void);
+  }
+
+  /** One-shot sourcetable fetch through the server. Resolves with the result. */
+  ntripFetchSourcetable(config: NtripConfig, password: string): Promise<NtripSourcetableResult> {
+    const id = `nt-${this.nextNtripReqId++}`;
+    this.sendControl({ v: 1, type: 'ntrip.sourcetable.request', id, config: { ...config, password } });
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.ntripSourcetableWaiters.delete(id);
+        resolve({ success: false, error: 'Sourcetable request timed out' });
+      }, 20000);
+      this.ntripSourcetableWaiters.set(id, (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      });
+    });
+  }
+
   /** Reassemble a channel-0x02 artifact frame: `[idLen][jobId][last][bytes...]`. */
   private handleLogArtifact(payload: Buffer): void {
     if (payload.length < 2) return;
@@ -246,6 +294,25 @@ export class OrchestrationServerLink extends BaseTransport {
       case 'log.job.ready':
         this.emit('logEvent', msg);
         break;
+      case 'ntrip.status':
+        if (msg.status && typeof msg.status === 'object') {
+          this.emit('ntripStatus', msg.status as NtripStatus);
+        }
+        break;
+      case 'ntrip.sourcetable': {
+        const waiter = this.ntripSourcetableWaiters.get(String(msg.id));
+        if (waiter) {
+          this.ntripSourcetableWaiters.delete(String(msg.id));
+          waiter({
+            success: msg.success === true,
+            mountpoints: Array.isArray(msg.mountpoints)
+              ? (msg.mountpoints as NtripSourcetableResult['mountpoints'])
+              : undefined,
+            error: typeof msg.error === 'string' ? msg.error : undefined,
+          });
+        }
+        break;
+      }
       default:
         break;
     }

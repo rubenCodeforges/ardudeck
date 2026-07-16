@@ -32,6 +32,12 @@ import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers
 import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-handlers.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
 import { setupTrafficHandlers } from './traffic/traffic-ipc-handlers.js';
+import {
+  setupNtripHandlers,
+  cleanupNtrip,
+  setNtripOrchestrator,
+  pushOrchestratorNtripStatus,
+} from './ntrip/ntrip-ipc-handlers.js';
 import { getAllWindows, getMainWindow } from './window-manager.js';
 import { connectionRegistry } from './connection/connection-registry.js';
 import { OrchestrationServerLink } from './connection/orchestration-link.js';
@@ -110,6 +116,9 @@ import {
   serializeRequestDataStream,
   REQUEST_DATA_STREAM_ID,
   REQUEST_DATA_STREAM_CRC_EXTRA,
+  serializeGpsRtcmData,
+  GPS_RTCM_DATA_ID,
+  GPS_RTCM_DATA_CRC_EXTRA,
   getAllMessageInfos,
   type ParamValue,
 } from '@ardudeck/mavlink-ts';
@@ -1468,6 +1477,9 @@ const statustextChunkBuffer = new Map<number, { severity: number; chunks: string
 // MAVLink diagnostic cache for bug reports
 let cachedSysStatus: BoardDumpMavlink['sys_status'] | null = null;
 let cachedHeartbeat: BoardDumpMavlink['heartbeat'] | null = null;
+// Last GPS_RAW_INT from the active vehicle, consumed by the NTRIP client's
+// GGA position uploads (issue #60). Timestamped so a dead link goes stale.
+let lastGpsRawForNtrip: { gps: GpsData; atMs: number } | null = null;
 let cachedAutopilotVersion: BoardDumpMavlink['autopilot_version'] | null = null;
 let statustextHistory: Array<{ ts: number; severity: number; severityLabel: string; text: string }> = [];
 const MAX_STATUSTEXT_HISTORY = 150;
@@ -2259,6 +2271,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const satellites = payload[29]!;
 
       const gps: GpsData = { fixType, satellites, hdop, vdop, lat, lon, alt };
+      // Cache for the NTRIP client's GGA uploads (issue #60)
+      lastGpsRawForNtrip = { gps, atMs: Date.now() };
       queueMavlinkTelemetry(mainWindow, { gps });
       break;
     }
@@ -3537,14 +3551,30 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     link.onLogArtifact(({ jobId, bytes }) => {
       void ingestFleetLogArtifact(jobId, bytes);
     });
+    // NTRIP status from the engine's fleet-wide client, relayed to the same
+    // renderer channel the local client uses (one unified RTK panel).
+    link.onNtripStatus((status) => pushOrchestratorNtripStatus(status));
 
     // Expose this link so the renderer's fleet-log IPC can drive it. There is one
     // orchestration link at a time (engine or manual server), so a single ref suffices.
     activeOrchestrationLink = link;
-    const clearRef = () => { if (activeOrchestrationLink === link) activeOrchestrationLink = null; };
+    const clearRef = () => {
+      if (activeOrchestrationLink === link) {
+        activeOrchestrationLink = null;
+        setNtripOrchestrator(null);
+      }
+    };
     link.on('close', clearRef);
 
     await link.open();
+    // Hand NTRIP ownership to the engine: it injects corrections fleet-wide,
+    // and exactly one injector may own RTCM per vehicle.
+    setNtripOrchestrator({
+      connect: (cfg, pw) => link.ntripConnect(cfg, pw),
+      disconnect: () => link.ntripDisconnect(),
+      requestStatus: () => link.ntripRequestStatus(),
+      fetchSourcetable: (cfg, pw) => link.ntripFetchSourcetable(cfg, pw),
+    });
     return transportId;
   }
 
@@ -10548,6 +10578,25 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Traffic overlays (ADS-B + glider/OGN)
   setupTrafficHandlers(mainWindow);
 
+  // NTRIP client for RTK corrections (issue #60)
+  setupNtripHandlers(mainWindow, {
+    sendGpsRtcm: async (fragment) => {
+      if (!currentTransport?.isOpen || !connectionState.isConnected) return false;
+      const payload = serializeGpsRtcmData(fragment);
+      const pkt = await sendMavlinkPacket(GPS_RTCM_DATA_ID, payload, GPS_RTCM_DATA_CRC_EXTRA);
+      await currentTransport.write(pkt);
+      connectionState.packetsSent++;
+      return true;
+    },
+    getGgaPosition: () => {
+      if (!lastGpsRawForNtrip) return null;
+      // A stale fix means the vehicle link is down; stop telling the caster
+      // we're still at the last known point.
+      if (Date.now() - lastGpsRawForNtrip.atMs > 10000) return null;
+      return lastGpsRawForNtrip.gps;
+    },
+  });
+
   // === Log Download & Diagnostics ===
 
   ipcMain.handle(IPC_CHANNELS.LOG_LIST_REQUEST, async (): Promise<LogListEntry[]> => {
@@ -11369,6 +11418,13 @@ export async function cleanupOnShutdown(): Promise<void> {
     shutdownLogger();
   } catch (err) {
     console.warn('[Shutdown] Error shutting down logger:', err);
+  }
+
+  try {
+    // Drop the NTRIP caster connection so it doesn't linger past the app
+    cleanupNtrip();
+  } catch (err) {
+    console.warn('[Shutdown] Error stopping NTRIP client:', err);
   }
 
   try {

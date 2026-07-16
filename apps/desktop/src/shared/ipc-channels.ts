@@ -673,6 +673,15 @@ export const IPC_CHANNELS = {
   TRAFFIC_GET_CONFIG: 'traffic:get-config',
   TRAFFIC_SET_CONFIG: 'traffic:set-config',
 
+  // NTRIP client for RTK corrections (issue #60)
+  NTRIP_GET_CONFIG: 'ntrip:get-config',
+  NTRIP_SET_CONFIG: 'ntrip:set-config',
+  NTRIP_CONNECT: 'ntrip:connect',
+  NTRIP_DISCONNECT: 'ntrip:disconnect',
+  NTRIP_GET_SOURCETABLE: 'ntrip:get-sourcetable',
+  NTRIP_GET_STATUS: 'ntrip:get-status',
+  NTRIP_STATUS: 'ntrip:status', // main -> renderer push of NtripStatus
+
   // Log download & diagnostics
   LOG_LIST_REQUEST: 'log:list-request',
   LOG_LIST_ITEM: 'log:list-item',

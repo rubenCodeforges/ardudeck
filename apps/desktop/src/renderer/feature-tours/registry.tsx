@@ -231,6 +231,33 @@ export const FEATURE_TOURS: FeatureTour[] = [
       },
     ],
   },
+  {
+    id: 'rtk-ntrip-034',
+    view: 'telemetry',
+    version: '0.34',
+    title: 'New: RTK corrections over NTRIP',
+    blurb:
+      'Stream centimeter-grade RTK correction data from any NTRIP caster straight to your vehicle - no radio link to a base station needed.',
+    steps: [
+      {
+        selector: '[data-tour="add-panel"]',
+        predicate: present('[data-tour="add-panel"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">RTK / NTRIP panel</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              Find the new <strong>RTK / NTRIP</strong> panel here (it is also part of the
+              {' '}<strong>All Panels</strong> layout, tabbed behind GPS). Point it at an NTRIP
+              caster, pick a mountpoint from the fetched list, and ArduDeck forwards the
+              {' '}<strong>RTCM corrections</strong> to your vehicle over MAVLink - with an
+              RTK-capable GPS the fix climbs to <strong>RTK Fixed</strong> (1-2 cm). In
+              multi-vehicle engine mode the corrections go to <strong>every vehicle</strong> at once.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
 ];
 
 export function getToursForView(view: string): FeatureTour[] {

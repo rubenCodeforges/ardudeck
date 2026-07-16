@@ -7,7 +7,7 @@
  * Errors should block upload; warnings are worth a look but not fatal.
  */
 import type { MissionItem } from './mission-types';
-import { MAV_CMD, commandHasLocation, hasValidCoordinates, isNavigationCommand } from './mission-types';
+import { MAV_CMD, commandHasLocation, hasValidCoordinates, isNavigationCommand, mavFrameToAltFrame } from './mission-types';
 import type { Group } from './mission-group-types';
 import {
   DEFAULT_USER_UNIT_PREFERENCES,
@@ -73,11 +73,18 @@ export function validateMission(
     }
   }
 
-  // 3. Altitude sanity on located waypoints.
+  // 3. Altitude sanity on located waypoints. The thresholds mean "height above
+  // the launch area": relative-frame values are exactly that and terrain-frame
+  // values (AGL) are close enough, but ASL values are dominated by the site's
+  // ground elevation (an 80m-AGL survey at a 1100m site bakes to ~1180m ASL).
+  // ASL-frame items are skipped rather than flagged - judging them needs a
+  // ground reference this pure check doesn't have (#106: every baked
+  // terrain-follow mission warned "above 500m").
   let nonPositiveAlt = 0;
   let tooHighAlt = 0;
   for (const it of items) {
     if (!commandHasLocation(it.command) || !hasValidCoordinates(it.latitude, it.longitude)) continue;
+    if (mavFrameToAltFrame(it.frame) === 'asl') continue;
     if (it.altitude <= 0) nonPositiveAlt++;
     else if (it.altitude > maxAlt) tooHighAlt++;
   }

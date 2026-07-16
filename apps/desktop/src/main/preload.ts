@@ -13,6 +13,7 @@ import type { DetachedWindowInfo, OpenDetachedRequest } from '../shared/window-t
 import type { ExportArea } from '../shared/kml-export.js';
 import type { AuthoredObstacle } from '../shared/sim-obstacle-types.js';
 import type { TrafficBatch, TrafficConfig, TrafficSource, ViewportBbox } from '../shared/traffic-types.js';
+import type { NtripConfig, NtripStatus, NtripSourcetableResult } from '../shared/ntrip-types.js';
 import type { SystemInfo, NetworkInfo, MetricsData, ProcessInfo, LogEntry, FileEntry, ServiceInfo, ServiceAction, ContainerInfo, ContainerAction, ExtensionInfo } from '@ardudeck/companion-types';
 import type { InstalledModule, ModuleProgress, UpdateAvailable } from '../shared/module-types.js';
 import type { ParamChange, ParamCheckpoint } from '../shared/param-history-types.js';
@@ -2231,6 +2232,26 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.TRAFFIC_GET_CONFIG),
   setTrafficConfig: (cfg: TrafficConfig): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.TRAFFIC_SET_CONFIG, cfg),
+
+  // ─── NTRIP client for RTK corrections (issue #60) ───
+  ntripGetConfig: (): Promise<NtripConfig> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NTRIP_GET_CONFIG),
+  ntripSetConfig: (cfg: NtripConfig): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NTRIP_SET_CONFIG, cfg),
+  ntripConnect: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NTRIP_CONNECT),
+  ntripDisconnect: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NTRIP_DISCONNECT),
+  ntripGetSourcetable: (): Promise<NtripSourcetableResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NTRIP_GET_SOURCETABLE),
+  ntripGetStatus: (): Promise<NtripStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NTRIP_GET_STATUS),
+  /** Subscribe to NTRIP status pushes. Returns an unsubscribe function. */
+  onNtripStatus: (callback: (status: NtripStatus) => void): (() => void) => {
+    const handler = (_: unknown, status: NtripStatus) => callback(status);
+    ipcRenderer.on(IPC_CHANNELS.NTRIP_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.NTRIP_STATUS, handler);
+  },
 
   // Area Editor (separate window)
   openAreaEditor: (): Promise<void> =>

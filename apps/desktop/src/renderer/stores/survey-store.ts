@@ -484,6 +484,11 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
 
   setAltitudeReference: (altitudeReference) => {
     set({ config: { ...get().config, altitudeReference } });
+    // Geometry is unchanged, but the reference decides the MAVLink frame the
+    // mission items are materialized with (relative/terrain/ASL), and the
+    // altitude profile + collision check read that frame (#106). Regenerate so
+    // the switch is reflected immediately instead of on the next unrelated edit.
+    get().requestRecompute({ immediate: true });
   },
 
   setTerrainFollow: (terrainFollow) => {
