@@ -112,3 +112,6 @@ reference/
 
 # Locally-built media/receiver binaries (bundled by CI, never committed)
 apps/desktop/resources/bin/*/ardudeck-wfb-rx*
+
+# Bundled multi-vehicle engine binary (fetched at package time, see engine.json)
+apps/desktop/engine/

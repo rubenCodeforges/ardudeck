@@ -20,7 +20,8 @@
     "prebuild": "pnpm build:sim-engine",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-builder",
+    "fetch:engine": "node scripts/fetch-engine.mjs",
+    "package": "node scripts/fetch-engine.mjs && electron-builder",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
@@ -109,6 +110,15 @@
     "directories": {
       "output": "release"
     },
+    "extraResources": [
+      {
+        "from": "engine",
+        "to": "orchestrator",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "files": [
       "out/**/*",
       "resources/**/*",
