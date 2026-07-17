@@ -234,7 +234,7 @@ export const FEATURE_TOURS: FeatureTour[] = [
   {
     id: 'rtk-ntrip-034',
     view: 'telemetry',
-    version: '0.34',
+    version: '0.1.0',
     title: 'New: RTK corrections over NTRIP',
     blurb:
       'Stream centimeter-grade RTK correction data from any NTRIP caster straight to your vehicle - no radio link to a base station needed.',
@@ -252,6 +252,150 @@ export const FEATURE_TOURS: FeatureTour[] = [
               {' '}<strong>RTCM corrections</strong> to your vehicle over MAVLink - with an
               RTK-capable GPS the fix climbs to <strong>RTK Fixed</strong> (1-2 cm). In
               multi-vehicle engine mode the corrections go to <strong>every vehicle</strong> at once.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    id: 'multi-vehicle-beta1',
+    view: 'telemetry',
+    version: '0.1.0',
+    title: 'New: fly a whole fleet',
+    blurb:
+      'Multi-vehicle is here: one switch starts the engine, vehicles appear as they come online, and ArduDeck commands them individually or together.',
+    steps: [
+      {
+        selector: '[data-tour="connection-multi-tab"]',
+        predicate: present('[data-tour="connection-multi-tab"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Multi-vehicle mode</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              Switch the connection sidebar to <strong>Multi-vehicle</strong> and flip it on:
+              ArduDeck starts its engine in the background and vehicles appear as their
+              heartbeats arrive - no ports, no URLs. <strong>Add a vehicle</strong> covers radio,
+              internet, cellular and second-ground-station links. Click a vehicle in the fleet
+              list and the telemetry, map and commands switch to it.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    id: 'log-explorer-beta1',
+    view: 'logs',
+    version: '0.1.0',
+    title: 'Log Explorer, rebuilt',
+    blurb:
+      'Multiple charts with independent y-axes, window-aware stats, events and FFT panels, and a flight path map that follows your cursor.',
+    steps: [
+      {
+        selector: '[data-tour="log-field-picker"]',
+        predicate: present('[data-tour="log-field-picker"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Pick any recorded field</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              Search every message the log contains and toggle fields onto the
+              {' '}<strong>active chart</strong> - add more charts and the picker targets whichever
+              one you focus. Multi-instance messages (two GPS units, four ESCs) expand per
+              instance, and units come straight from the log.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '[data-tour="log-chart-actions"]',
+        predicate: present('[data-tour="log-chart-actions"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Independent axes, live stats, CSV</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              Toggle between a shared y-axis and <strong>one axis per field</strong> so RPM and
+              attitude can share a chart. The legend's <strong>min / avg / max</strong> recompute
+              over the visible window as you zoom and pan, and the export button saves exactly
+              that window as CSV. Events, Params and <strong>FFT</strong> live in the panels menu.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    id: 'osd-tool-beta1',
+    view: 'osd',
+    version: '0.1.0',
+    title: 'OSD Tool: know where your overlay lives',
+    blurb:
+      'Compose a fully custom ground HUD, edit the FC Text OSD, or author a RubyFPV layout - the destination bar always shows where each one ends up.',
+    steps: [
+      {
+        selector: '[data-tour="osd-destination-bar"]',
+        predicate: present('[data-tour="osd-destination-bar"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Three OSDs, three destinations</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              This bar is the ground truth: the <strong>custom HUD</strong> is drawn by ArduDeck
+              over your screen and video feed and is <strong>never uploaded</strong> to the flight
+              controller; the <strong>Text OSD</strong> editor reads and writes the FC's real
+              OSDn_* layout; the <strong>RubyFPV</strong> designer exports a layout for RubyFPV
+              ground stations. All three preview over your live video feed.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    id: 'unit-preferences-beta1',
+    view: 'settings',
+    version: '0.1.0',
+    title: 'Plan in your own units',
+    blurb: 'Feet, mph, knots, acres - pick per-quantity display units and the whole app follows.',
+    steps: [
+      {
+        selector: '[data-tour="unit-preferences"]',
+        predicate: present('[data-tour="unit-preferences"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Display Units</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              Set distance, altitude, speed, area, weight and more independently - mission
+              planning, telemetry panels, the log explorer and survey estimates all render in
+              your choice. Values sent to the vehicle stay metric under the hood, so nothing
+              about the flight changes.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    id: 'altitude-planning-beta1',
+    view: 'mission',
+    version: '0.1.0',
+    title: 'Altitude profile that understands frames',
+    blurb:
+      'The profile now plots relative, terrain and ASL waypoints correctly against real terrain - with AGL labels, collision warnings you can trust, and zoom.',
+    steps: [
+      {
+        selector: '[data-tour="mission-altitude-panel"]',
+        predicate: present('[data-tour="mission-altitude-panel"]'),
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Altitude, in the frame you planned it</div>
+            <p className="text-xs leading-relaxed opacity-90">
+              Waypoints plot against terrain in their own altitude frame, so an 80m-relative
+              survey at a mountain site reads <strong>80m (80m AGL)</strong>, not a false
+              collision. The axis shows <strong>height above home</strong> with ASL alongside,
+              terrain-following segments hug the ground, and the dashed line is your safety
+              clearance. <strong>Scroll to zoom, drag to pan</strong>, drag a waypoint dot to
+              change its altitude, and let <strong>Auto Adjust</strong> fix real terrain
+              conflicts.
             </p>
           </div>
         ),

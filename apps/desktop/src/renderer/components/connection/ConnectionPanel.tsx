@@ -444,6 +444,7 @@ export function ConnectionPanel() {
           <button
             key={tab}
             onClick={() => setConnectionTab(tab)}
+            {...(tab === 'multi' ? { 'data-tour': 'connection-multi-tab' } : {})}
             className={`px-3 py-2 text-xs font-medium rounded-t-lg border-b-2 transition-colors ${
               connectionTab === tab
                 ? 'border-cyan-400 text-content'

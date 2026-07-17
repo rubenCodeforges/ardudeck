@@ -14,7 +14,7 @@ import { MonitorPlay, Video, Layers, Monitor, Cpu, ChevronRight, type LucideIcon
 
 export function HudDestinationBar() {
   return (
-    <div className="flex items-center gap-3 px-4 py-2 border-b border-subtle bg-gradient-to-r from-indigo-500/10 via-indigo-500/[0.04] to-transparent shrink-0 flex-wrap">
+    <div className="flex items-center gap-3 px-4 py-2 border-b border-subtle bg-gradient-to-r from-indigo-500/10 via-indigo-500/[0.04] to-transparent shrink-0 flex-wrap" data-tour="osd-destination-bar">
       {/* Identity pill - a live overlay, so a live dot, but plainly a screen target */}
       <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30">
         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden />

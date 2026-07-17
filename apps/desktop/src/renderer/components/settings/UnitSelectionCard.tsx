@@ -42,7 +42,7 @@ export function UnitSelectionCard() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4 mb-4">
+    <div className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4 mb-4" data-tour="unit-preferences">
       <div className="flex items-center gap-3 mb-4">
         <Ruler className="w-4 h-4 text-blue-400" aria-hidden="true" />
         <div className="text-sm font-medium text-content">Display Units</div>
