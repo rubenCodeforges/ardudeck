@@ -471,11 +471,25 @@ export async function flashWithArduPilotBootloader(
     let firmware: Uint8Array;
     let apjBoardId: number | undefined;
 
-    if (firmwarePath.toLowerCase().endsWith('.apj')) {
+    const lowerPath = firmwarePath.toLowerCase();
+    if (lowerPath.endsWith('.apj')) {
       const apj = await parseApjFile(firmwarePath);
       firmware = apj.image;
       apjBoardId = apj.boardId;
       sendLog(window, 'info', `APJ firmware: board_id=${apj.boardId}, image_size=${apj.imageSize}, padded=${firmware.length}`);
+    } else if (lowerPath.endsWith('.hex') || lowerPath.endsWith('.px4')) {
+      // The ArduPilot bootloader programs a flat application image; it cannot
+      // consume an Intel HEX (.hex) or a PX4 container (.px4) as-is. Reading
+      // either as raw bytes silently corrupts the flash: an Intel HEX is ASCII
+      // text, and a .hex built with the bootloader is addressed from the flash
+      // base, so it would program at the wrong offset (#118). Reject clearly
+      // instead of guessing.
+      const ext = lowerPath.endsWith('.hex') ? '.hex (Intel HEX)' : '.px4';
+      throw new Error(
+        `${ext} files are not supported for the ArduPilot bootloader flash. ` +
+        `Use the ArduPilot .apj build (or a raw .bin application image). ` +
+        `An Intel HEX that includes the bootloader must be flashed over USB DFU instead.`,
+      );
     } else {
       // Raw .bin file
       const buf = await fs.readFile(firmwarePath);
