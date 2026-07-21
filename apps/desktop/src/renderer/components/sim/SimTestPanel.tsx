@@ -243,7 +243,7 @@ export default function SimTestPanel() {
     >
       <div
         {...handleProps}
-        className="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface-overlay/95 backdrop-blur-sm cursor-move select-none"
+        className="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface-solid cursor-move select-none"
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">Test Conditions</span>

@@ -9,7 +9,7 @@
  * Mounted once at the app root (App.tsx); self-gates to the telemetry view + 2+ vehicles.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useFleetVehicles, selectActiveVehicle, type FleetVehicle } from '../../hooks/useFleet';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
@@ -17,42 +17,11 @@ import { useVehicleColor } from '../../stores/vehicle-appearance-store';
 import { useTelemMapBoundsStore } from '../../stores/telem-map-bounds-store';
 import { useMinimapStore } from '../../stores/minimap-store';
 import { useNavigationStore } from '../../stores/navigation-store';
+import { useDraggableSnap } from '../../hooks/useDraggableSnap';
 
 const SIZE = 148;
 const PAD = 14;
 const MARGIN = 12;
-/** Magnet pull distance (px) - the widget snaps to a panel/window edge within this range. */
-const SNAP = 14;
-
-interface SnapLines { v: number[]; h: number[] }
-
-/** Vertical (x) and horizontal (y) edge lines to magnet against: the window edges plus
- *  every dock-panel boundary on screen. Captured once at drag start (panels don't move). */
-function collectSnapLines(): SnapLines {
-  const v = [0, window.innerWidth];
-  const h = [0, window.innerHeight];
-  document.querySelectorAll('.dv-groupview').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width < 40 || r.height < 40) return;
-    v.push(r.left, r.right);
-    h.push(r.top, r.bottom);
-  });
-  return { v, h };
-}
-
-/** Nearest line within SNAP for one axis: try snapping both the near edge and the far
- *  edge (pos + size); returns the snapped coordinate, or the free coordinate if none pull. */
-function magnet(pos: number, size: number, lines: number[]): number {
-  let best = SNAP + 1;
-  let snapped = pos;
-  for (const line of lines) {
-    const dNear = Math.abs(pos - line);
-    if (dNear < best) { best = dNear; snapped = line; }
-    const dFar = Math.abs(pos + size - line);
-    if (dFar < best) { best = dFar; snapped = line - size; }
-  }
-  return best <= SNAP ? snapped : pos;
-}
 
 function MinimapBlip({ v, x, y, isActive, isLeader }: { v: FleetVehicle; x: number; y: number; isActive: boolean; isLeader: boolean }) {
   const color = useVehicleColor(v.key, v.sysid);
@@ -80,10 +49,9 @@ export function FleetMinimap(): JSX.Element | null {
   const y = useMinimapStore((s) => s.y);
 
   const panelRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ dx: number; dy: number; w: number; h: number; lines: SnapLines } | null>(null);
   const setPos = useMinimapStore((s) => s.setPos);
   const persist = useMinimapStore((s) => s.persist);
+  const { onHandlePointerDown } = useDraggableSnap(panelRef, { setPos, persist });
 
   // Default to lower-right on first show.
   useEffect(() => {
@@ -94,25 +62,6 @@ export function FleetMinimap(): JSX.Element | null {
       persist();
     }
   }, [x, y, setPos, persist]);
-
-  // Drag: free move with a magnet to nearby panel/window edges; persist on release.
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (e: PointerEvent) => {
-      const d = dragRef.current;
-      if (!d) return;
-      const px = e.clientX - d.dx;
-      const py = e.clientY - d.dy;
-      setPos(
-        Math.max(0, Math.min(magnet(px, d.w, d.lines.v), window.innerWidth - d.w)),
-        Math.max(0, Math.min(magnet(py, d.h, d.lines.h), window.innerHeight - d.h)),
-      );
-    };
-    const up = () => { setDragging(false); persist(); };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-  }, [dragging, setPos, persist]);
 
   if (currentView !== 'telemetry' || vehicles.length < 2) return null;
 
@@ -148,12 +97,7 @@ export function FleetMinimap(): JSX.Element | null {
     >
       <div
         className="flex items-center justify-between px-1 pb-1 cursor-move"
-        onPointerDown={(e) => {
-          const r = panelRef.current?.getBoundingClientRect();
-          if (r) dragRef.current = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height, lines: collectSnapLines() };
-          setDragging(true);
-          e.preventDefault();
-        }}
+        onPointerDown={onHandlePointerDown}
         data-tip="Drag to move - magnets to panel & window edges"
       >
         <div className="flex items-center gap-1.5">

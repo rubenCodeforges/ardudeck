@@ -28,6 +28,8 @@ import { getVehicleClass } from '../../../shared/telemetry-types';
 import { latLngToLocal, localToLatLng } from '../survey/geo-math';
 import { loadElevationGrid, buildTerrainGeometry, sampleElevation } from '../camera/svt/svt-terrain';
 import type { SimFence } from './sim-world-scene';
+import { useSimFlightControlPanelStore } from '../../stores/sim-flight-control-panel-store';
+import { useDraggableSnap } from '../../hooks/useDraggableSnap';
 
 /** Whether a vehicle's telemetry carries a usable GPS fix (matches useFleet). */
 function hasGpsFix(t: VehicleTelemetry | undefined): t is VehicleTelemetry & { gps: NonNullable<VehicleTelemetry['gps']> } {
@@ -684,13 +686,10 @@ export default function SimWorldView() {
 
       {/* Flight controls for the SELECTED vehicle — the exact telemetry-screen
           control panel (class-aware modes, per-class takeoff, mission, squad +
-          orchestrator routing), so commanding behaves identically here. Docked
-          bottom-right; the narrow/tall box gives it the full vertical layout. */}
-      {(isConnected || activeVehicleKey !== null) && (
-        <div className="absolute bottom-3 right-3 z-20 w-72 h-[460px] max-h-[78vh] rounded-xl border border-subtle shadow-2xl overflow-hidden pointer-events-auto">
-          <FlightControlPanel />
-        </div>
-      )}
+          orchestrator routing), so commanding behaves identically here. Draggable
+          (same magnet-snap-and-remember mechanics as the fleet radar), defaults to
+          the lower right on first show. */}
+      {(isConnected || activeVehicleKey !== null) && <DraggableFlightControlPanel />}
 
       {/* Empty state when there's no vehicle to show */}
       {!hud && (
@@ -821,6 +820,50 @@ function LegendDot({
       />
       {label}
     </span>
+  );
+}
+
+/** The flight-control panel, free-floating over the 3D world. Drag its header to
+ *  move it; the same magnet-snap-and-remember mechanics as the fleet radar
+ *  (useDraggableSnap), backed by its own position store. Defaults to the lower
+ *  right, matching where it used to sit fixed. */
+function DraggableFlightControlPanel() {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const x = useSimFlightControlPanelStore((s) => s.x);
+  const y = useSimFlightControlPanelStore((s) => s.y);
+  const setPos = useSimFlightControlPanelStore((s) => s.setPos);
+  const persist = useSimFlightControlPanelStore((s) => s.persist);
+  const { onHandlePointerDown } = useDraggableSnap(panelRef, { setPos, persist });
+
+  useEffect(() => {
+    if (x === null || y === null) {
+      const w = panelRef.current?.offsetWidth ?? 288; // w-72
+      const h = panelRef.current?.offsetHeight ?? 460;
+      setPos(window.innerWidth - w - 12, window.innerHeight - h - 12);
+      persist();
+    }
+  }, [x, y, setPos, persist]);
+
+  return (
+    <div
+      ref={panelRef}
+      className="absolute z-20 w-72 h-[460px] max-h-[78vh] rounded-xl border border-subtle shadow-2xl overflow-hidden pointer-events-auto flex flex-col"
+      style={{ left: x ?? -9999, top: y ?? -9999 }}
+    >
+      <div
+        className="flex items-center gap-1.5 px-2 py-1 bg-surface-solid border-b border-subtle cursor-move shrink-0"
+        onPointerDown={onHandlePointerDown}
+        data-tip="Drag to move - magnets to panel & window edges"
+      >
+        <svg width="9" height="11" viewBox="0 0 9 11" className="text-content-tertiary" aria-hidden="true">
+          {[2, 5.5, 9].map((cy) => [2, 7].map((cx) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1" fill="currentColor" />))}
+        </svg>
+        <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wide">Flight Control</span>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <FlightControlPanel />
+      </div>
+    </div>
   );
 }
 
