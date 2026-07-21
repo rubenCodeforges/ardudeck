@@ -22,6 +22,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { type ModelKey, FALLBACK_MODEL, CLASS_MODEL, modelKeyForClass } from './sim-models';
+import type { SimDiagnostics, SimLoad } from '../../stores/sim-state-store';
 
 /** Per-airframe 3D models (Tripo-generated, textured). Each model's spinnable
     rotors are grouped under `prop_*` pivot nodes so they spin in place; the spin
@@ -71,6 +72,12 @@ export interface SimVehicleFrame {
       it drives prop spin - scaling the rate and turning props even while
       disarmed (compassmot, motor test). Omit to fall back to the armed flag. */
   throttle01?: number;
+  /** Force-budget X-ray for this vehicle (engine-only). Rendered as thrust
+      arrows + net-thrust vector + CG markers when the X-ray overlay is on. */
+  diagnostics?: SimDiagnostics;
+  /** Suspended-load state (engine-only). Rendered as a cable line + load mesh,
+      tinted by tension. Always shown when present (it is real motion). */
+  load?: SimLoad;
 }
 
 /** A mission waypoint expressed in local NED metres from home. */
@@ -105,6 +112,9 @@ export interface SimWorldUpdate {
   waypoints?: SimWaypoint[];
   fences?: SimFence[];
   obstacles?: SimObstacle[];
+  /** "Physics X-ray": when true, engine vehicles show thrust arrows, the net
+      lift vector and CG markers. Off by default so the flight view stays clean. */
+  showDiagnostics?: boolean;
 }
 
 export interface SimWorldScene {
@@ -143,6 +153,21 @@ function nedToThree(pos: [number, number, number], out: THREE.Vector3): THREE.Ve
   return out.set(pos[1], -pos[2], -pos[0]);
 }
 
+/** Map a body-frame FRD vector (x fwd, y right, z down) into the vehicle group's
+    local three axes. Identical mapping to nedToThree: (right, -down, -fwd). The
+    diag overlay lives under `group`, so this feeds thrust arrows that inherit the
+    vehicle's attitude and tilt with it. */
+function bodyToThreeLocal(v: [number, number, number], out: THREE.Vector3): THREE.Vector3 {
+  return out.set(v[1], -v[2], -v[0]);
+}
+
+/** Cool (low load) -> hot (high load) ramp for the thrust arrows / arm colouring. */
+const DIAG_COOL = new THREE.Color(0x38bdf8);
+const DIAG_HOT = new THREE.Color(0xef4444);
+function loadColor(ratio: number, out: THREE.Color): THREE.Color {
+  return out.copy(DIAG_COOL).lerp(DIAG_HOT, Math.max(0, Math.min(1, ratio)));
+}
+
 /** Map an (north, east) NED pair to ground-plane three coords (y = 0). */
 function nedGroundToThree(north: number, east: number, out: THREE.Vector3): THREE.Vector3 {
   return out.set(east, 0, -north);
@@ -178,6 +203,27 @@ interface VehicleObjects {
   /** Ground ring drawn only under the active/selected vehicle. */
   selRing: THREE.Mesh;
   disposables: Array<{ dispose: () => void }>;
+  /** Physics X-ray overlay group (child of `group`, so it inherits attitude).
+      Lazily created on the first diagnostics frame; hidden when the toggle is off. */
+  diagGroup: THREE.Group | null;
+  /** One thrust arrow per motor, index-aligned to diagnostics.motors. */
+  motorArrows: THREE.ArrowHelper[];
+  /** Bold net-lift arrow through the CG. */
+  netArrow: THREE.ArrowHelper | null;
+  /** Force-budget arrows through the CG: weight (world down), aero+momentum drag
+      (body), and the net-force resultant (world). Built lazily with the X-ray. */
+  weightArrow: THREE.ArrowHelper | null;
+  dragArrow: THREE.ArrowHelper | null;
+  netForceArrow: THREE.ArrowHelper | null;
+  /** Thrust-weighted centroid marker (where lift is centred right now). */
+  cgHoverMarker: THREE.Mesh | null;
+  /** Slung-load cable line (world-space, hardpoint -> load). */
+  cableLine: THREE.Line | null;
+  cableGeom: THREE.BufferGeometry | null;
+  cableMat: THREE.LineBasicMaterial | null;
+  /** Slung-load mesh (world-space), tinted by tension. */
+  loadMesh: THREE.Mesh | null;
+  loadMat: THREE.MeshStandardMaterial | null;
   lastPos: THREE.Vector3;
   armed: boolean;
   /** Normalized motor activity 0..1 driving prop spin; -1 = unknown (fall back
@@ -499,6 +545,204 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
 
   const vehicles = new Map<string, VehicleObjects>();
 
+  // ─── Physics X-ray overlay (thrust arrows, net-lift vector, CG marker) ────
+  const cgMarkerGeom = new THREE.SphereGeometry(QUAD_SCALE * 0.13, 12, 10);
+  const cgHoverMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, depthTest: false });
+  const diagShared: Array<{ dispose: () => void }> = [cgMarkerGeom, cgHoverMat];
+  const tmpOrigin = new THREE.Vector3();
+  const tmpDir = new THREE.Vector3();
+  const tmpColor = new THREE.Color();
+  const tmpQuat = new THREE.Quaternion();
+  // Force-budget arrow colours.
+  const COLOR_WEIGHT = 0x9ca3af; // slate: gravity
+  const COLOR_DRAG = 0xf97316; // orange: aero + momentum drag
+  const COLOR_NETF = 0xffffff; // white: net resultant
+
+  /** Create-once / update an ArrowHelper under the (rotated) diag group. `dir` is
+      already in the group's local three frame; `len` is the world length. */
+  function setArrow(
+    arrow: THREE.ArrowHelper,
+    origin: THREE.Vector3,
+    dir: THREE.Vector3,
+    len: number,
+    color: number,
+  ): void {
+    arrow.position.copy(origin);
+    if (dir.lengthSq() > 1e-12) arrow.setDirection(dir);
+    arrow.setLength(Math.max(QUAD_SCALE * 0.15, len), QUAD_SCALE * 0.32, QUAD_SCALE * 0.18);
+    arrow.setColor(color);
+    arrow.visible = true;
+  }
+
+  /** Build/update/hide the X-ray overlay for one vehicle from its diagnostics.
+      Arrows and markers live under `v.group` so they inherit position + attitude. */
+  function updateDiagnostics(v: VehicleObjects, diag: SimDiagnostics | undefined, show: boolean): void {
+    if (!show || !diag) {
+      if (v.diagGroup) v.diagGroup.visible = false;
+      return;
+    }
+    if (!v.diagGroup) {
+      v.diagGroup = new THREE.Group();
+      v.group.add(v.diagGroup);
+    }
+    v.diagGroup.visible = true;
+
+    // Auto-range so the strongest rotor arrow reads at ~2x the frame scale.
+    let maxMag = 1e-6;
+    for (const m of diag.motors) maxMag = Math.max(maxMag, m.thrustMag);
+    const lenScale = (QUAD_SCALE * 2.2) / maxMag;
+
+    // Per-motor thrust arrows (create lazily to match the motor count).
+    for (let i = 0; i < diag.motors.length; i++) {
+      const m = diag.motors[i]!;
+      let arrow = v.motorArrows[i];
+      if (!arrow) {
+        arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xffffff, QUAD_SCALE * 0.28, QUAD_SCALE * 0.16);
+        v.diagGroup.add(arrow);
+        v.motorArrows[i] = arrow;
+      }
+      bodyToThreeLocal(m.position, tmpOrigin);
+      arrow.position.copy(tmpOrigin);
+      const dirLen = Math.hypot(m.thrust[0], m.thrust[1], m.thrust[2]);
+      if (dirLen > 1e-9) {
+        bodyToThreeLocal(m.thrust, tmpDir).multiplyScalar(1 / dirLen);
+        arrow.setDirection(tmpDir);
+      }
+      arrow.setLength(Math.max(QUAD_SCALE * 0.15, m.thrustMag * lenScale), QUAD_SCALE * 0.28, QUAD_SCALE * 0.16);
+      arrow.setColor(loadColor(m.armLoadRatio, tmpColor));
+      arrow.visible = true;
+    }
+    // Hide any surplus arrows (motor count shrank).
+    for (let i = diag.motors.length; i < v.motorArrows.length; i++) v.motorArrows[i]!.visible = false;
+
+    // Net-lift vector through the CG (fixed visible length; the tilt is the story).
+    const netMag = Math.hypot(diag.netThrustBody[0], diag.netThrustBody[1], diag.netThrustBody[2]);
+    if (!v.netArrow) {
+      v.netArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xfef08a, QUAD_SCALE * 0.5, QUAD_SCALE * 0.28);
+      v.diagGroup.add(v.netArrow);
+    }
+    bodyToThreeLocal(diag.cgBody, tmpOrigin);
+    v.netArrow.position.copy(tmpOrigin);
+    if (netMag > 1e-9) {
+      bodyToThreeLocal(diag.netThrustBody, tmpDir).multiplyScalar(1 / netMag);
+      v.netArrow.setDirection(tmpDir);
+    }
+    v.netArrow.setLength(QUAD_SCALE * 3.2, QUAD_SCALE * 0.5, QUAD_SCALE * 0.28);
+    v.netArrow.visible = true;
+
+    // Thrust-weighted centroid marker (diverges from CG under an imbalance).
+    if (!v.cgHoverMarker) {
+      v.cgHoverMarker = new THREE.Mesh(cgMarkerGeom, cgHoverMat);
+      v.cgHoverMarker.renderOrder = 998;
+      v.diagGroup.add(v.cgHoverMarker);
+    }
+    bodyToThreeLocal(diag.cgHoverEst, tmpOrigin);
+    v.cgHoverMarker.position.copy(tmpOrigin);
+    v.cgHoverMarker.visible = true;
+
+    // ─── Force budget through the CG: weight, drag, net resultant ────────────
+    // Scale referenced to weight so a full-length arrow ~= the vehicle's weight,
+    // making thrust/drag/net directly comparable to gravity. Weight + net force
+    // are world (NED); rotate them into the group's local frame via inverse-Q.
+    const forceScale = (QUAD_SCALE * 3.0) / Math.max(diag.weight, 1e-6);
+    const invQ = tmpQuat.copy(v.group.quaternion).invert();
+    bodyToThreeLocal(diag.cgBody, tmpOrigin);
+
+    // Weight (world down, NED [0,0,1]).
+    if (!v.weightArrow) {
+      v.weightArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, COLOR_WEIGHT, QUAD_SCALE * 0.32, QUAD_SCALE * 0.18);
+      v.diagGroup.add(v.weightArrow);
+    }
+    if (diag.weight > 1e-6) {
+      nedToThree([0, 0, 1], tmpDir).applyQuaternion(invQ);
+      setArrow(v.weightArrow, tmpOrigin, tmpDir, diag.weight * forceScale, COLOR_WEIGHT);
+    } else {
+      v.weightArrow.visible = false;
+    }
+
+    // Aero + rotor-momentum drag (body frame).
+    const dragX = diag.airframeDragBody[0] + diag.momentumDragBody[0];
+    const dragY = diag.airframeDragBody[1] + diag.momentumDragBody[1];
+    const dragZ = diag.airframeDragBody[2] + diag.momentumDragBody[2];
+    const dragMag = Math.hypot(dragX, dragY, dragZ);
+    if (!v.dragArrow) {
+      v.dragArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, COLOR_DRAG, QUAD_SCALE * 0.32, QUAD_SCALE * 0.18);
+      v.diagGroup.add(v.dragArrow);
+    }
+    if (dragMag > 1e-6) {
+      bodyToThreeLocal([dragX, dragY, dragZ], tmpDir).multiplyScalar(1 / dragMag);
+      setArrow(v.dragArrow, tmpOrigin, tmpDir, dragMag * forceScale, COLOR_DRAG);
+    } else {
+      v.dragArrow.visible = false;
+    }
+
+    // Net-force resultant (world). Near zero in a steady hover; grows under accel.
+    const nf = diag.netForceWorld;
+    const nfMag = Math.hypot(nf[0], nf[1], nf[2]);
+    if (!v.netForceArrow) {
+      v.netForceArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, COLOR_NETF, QUAD_SCALE * 0.4, QUAD_SCALE * 0.22);
+      v.diagGroup.add(v.netForceArrow);
+    }
+    if (nfMag > 1e-3) {
+      nedToThree(nf, tmpDir).multiplyScalar(1 / nfMag).applyQuaternion(invQ);
+      setArrow(v.netForceArrow, tmpOrigin, tmpDir, nfMag * forceScale, COLOR_NETF);
+    } else {
+      v.netForceArrow.visible = false;
+    }
+  }
+
+  // ─── Slung load (cable line + load mesh, world-space, tension-tinted) ─────
+  const loadGeom = new THREE.IcosahedronGeometry(QUAD_SCALE * 0.35, 0);
+  const diagSharedLoad: Array<{ dispose: () => void }> = [loadGeom];
+  const tmpLoad = new THREE.Vector3();
+  const tmpHard = new THREE.Vector3();
+
+  /** Build/update/hide the slung-load cable + mesh for one vehicle. World-space
+      (load position and hardpoint are world NED), so these live in the scene. */
+  function updateLoad(v: VehicleObjects, load: SimLoad | undefined): void {
+    if (!load) {
+      if (v.cableLine) v.cableLine.visible = false;
+      if (v.loadMesh) v.loadMesh.visible = false;
+      return;
+    }
+    nedToThree(load.hardpoint, tmpHard);
+    nedToThree(load.position, tmpLoad);
+    if (!v.cableLine) {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+      const mat = new THREE.LineBasicMaterial({ color: 0xd4d4d8, transparent: true, opacity: 0.9 });
+      const line = new THREE.Line(geom, mat);
+      line.frustumCulled = false;
+      scene.add(line);
+      v.cableGeom = geom;
+      v.cableMat = mat;
+      v.cableLine = line;
+    }
+    const cp = v.cableGeom!.getAttribute('position') as THREE.BufferAttribute;
+    cp.setXYZ(0, tmpHard.x, tmpHard.y, tmpHard.z);
+    cp.setXYZ(1, tmpLoad.x, tmpLoad.y, tmpLoad.z);
+    cp.needsUpdate = true;
+    // A released (detached) cable goes limp: dim it.
+    v.cableMat!.opacity = load.attached ? 0.9 : 0.2;
+    v.cableLine.visible = true;
+
+    if (!v.loadMesh) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.6, metalness: 0.2 });
+      const mesh = new THREE.Mesh(loadGeom, mat);
+      scene.add(mesh);
+      v.loadMat = mat;
+      v.loadMesh = mesh;
+    }
+    v.loadMesh.position.copy(tmpLoad);
+    v.loadMesh.visible = true;
+    // Tension tint: grey (slack/light) -> hot (heavily loaded). Normalise against
+    // the load's own weight (tension ~ m*g at a straight hang) via cableLength as
+    // a rough scale-free proxy; clamp so it reads without a calibrated limit.
+    const t = Math.max(0, Math.min(1, load.tension / 1500));
+    loadColor(t, tmpColor);
+    v.loadMat!.color.copy(load.attached ? tmpColor : DIAG_COOL.clone().multiplyScalar(0.5));
+  }
+
   function createVehicle(id: string, armed: boolean, colorHex: string, label: string, vehicleClass?: string): VehicleObjects {
     const group = new THREE.Group();
     group.rotation.order = 'YXZ';
@@ -593,6 +837,18 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
       selRing,
       disposables: [bodyMat, ledMat, shadowMat, shadow.geometry, trailMat, dropMat, trailGeom, dropGeom,
         labelMat, labelTexture, selRingGeom, selRingMat],
+      diagGroup: null,
+      motorArrows: [],
+      netArrow: null,
+      weightArrow: null,
+      dragArrow: null,
+      netForceArrow: null,
+      cgHoverMarker: null,
+      cableLine: null,
+      cableGeom: null,
+      cableMat: null,
+      loadMesh: null,
+      loadMat: null,
       lastPos: new THREE.Vector3(),
       armed,
       motorActivity: -1,
@@ -605,6 +861,15 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
   function disposeVehicle(v: VehicleObjects): void {
     const pi = pendingModels.indexOf(v);
     if (pi >= 0) pendingModels.splice(pi, 1); // don't swap a model into a disposed vehicle
+    // X-ray arrows own their geometry/material (CG marker uses shared assets).
+    for (const a of v.motorArrows) a.dispose();
+    v.netArrow?.dispose();
+    // Slung-load cable + mesh are world-space scene children.
+    if (v.cableLine) scene.remove(v.cableLine);
+    if (v.loadMesh) scene.remove(v.loadMesh);
+    v.cableGeom?.dispose();
+    v.cableMat?.dispose();
+    v.loadMat?.dispose();
     scene.remove(v.group, v.trail, v.dropLine, v.shadow, v.labelSprite, v.selRing);
     for (const d of v.disposables) d.dispose();
   }
@@ -837,6 +1102,11 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
         dp.setXYZ(0, posVec.x, posVec.y, posVec.z);
         dp.setXYZ(1, posVec.x, 0, posVec.z);
         dp.needsUpdate = true;
+
+        // Physics X-ray overlay (engine vehicles only carry diagnostics).
+        updateDiagnostics(v, f.diagnostics, data.showDiagnostics === true);
+        // Slung load: cable + payload mesh (always shown when present).
+        updateLoad(v, f.load);
       }
 
       for (const [id, v] of vehicles) {
@@ -917,6 +1187,8 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
       for (const g of sharedGeoms) g.dispose();
       for (const m of sharedMats) m.dispose();
       for (const g of modelSharedGeoms) g.dispose();
+      for (const d of diagShared) d.dispose();
+      for (const d of diagSharedLoad) d.dispose();
       // Release each loaded template's shared geometry/materials (cloned per vehicle).
       for (const { group } of templates.values()) {
         group.traverse((o) => {

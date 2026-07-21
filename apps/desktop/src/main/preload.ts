@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc } from '../shared/ipc-channels.js';
 import type { SigningAuditSnapshot } from '../shared/signing-audit-types.js';
 import type { StreamDiagnosis, ElrsModuleInfo, ElrsSetModeResult, ElrsProgressEvent } from '../shared/link-doctor-types.js';
 import type { WfbngStatus } from '../shared/camera-types.js';
@@ -1559,6 +1559,18 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CUSTOM_FRAME_IMPORT),
   ardupilotSitlCustomFrameExport: (id: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CUSTOM_FRAME_EXPORT, id),
+
+  // ArduPilot SITL -> FlightGear viewer (external-FDM, no bridge)
+  ardupilotFlightGearDetect: (customPath?: string): Promise<{ installed: boolean; path: string | null; version: string | null }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_FG_DETECT, customPath),
+  ardupilotFlightGearBrowse: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_FG_BROWSE),
+  ardupilotFlightGearLaunch: (config: ArduPilotFlightGearConfig, customPath?: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_FG_LAUNCH, config, customPath),
+  ardupilotFlightGearStop: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_FG_STOP),
+  ardupilotFlightGearStatus: (): Promise<{ running: boolean; pid: number | null; aircraft: string | null }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_FG_STATUS),
 
   onArdupilotSitlStdout: (callback: (data: string) => void) => {
     const handler = (_: unknown, data: string) => callback(data);

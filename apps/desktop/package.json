@@ -20,8 +20,9 @@
     "prebuild": "pnpm build:sim-engine",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "stage:sim-engine": "node scripts/stage-sim-engine.mjs",
     "fetch:engine": "node scripts/fetch-engine.mjs",
-    "package": "node scripts/fetch-engine.mjs && electron-builder",
+    "package": "node scripts/fetch-engine.mjs && node scripts/fetch-sim-engine.mjs && electron-builder",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
@@ -114,6 +115,13 @@
       {
         "from": "engine",
         "to": "orchestrator",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "sim-engine-bin",
+        "to": "sim-engine",
         "filter": [
           "**/*"
         ]

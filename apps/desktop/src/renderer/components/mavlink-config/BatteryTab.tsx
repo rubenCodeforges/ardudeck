@@ -74,11 +74,16 @@ const BatteryTab: React.FC = () => {
     setParameter('BATT_CRT_VOLT', recommended.critical);
   };
 
-  // Estimate cell count from arm voltage
+  // Estimate cell count from whichever threshold the FC actually has set.
+  // BATT_ARM_VOLT is 0 by default on most vehicles (arm-voltage check off), so
+  // fall back to the low/critical thresholds using their per-cell references.
+  // Without this, the tab shows no detected pack for a correctly-configured FC.
   const estimatedCells = useMemo(() => {
-    if (batteryValues.battArmVolt <= 0) return 0;
-    return Math.round(batteryValues.battArmVolt / chemInfo.cellNominal);
-  }, [batteryValues.battArmVolt, chemInfo.cellNominal]);
+    if (batteryValues.battArmVolt > 0) return Math.round(batteryValues.battArmVolt / chemInfo.cellNominal);
+    if (batteryValues.battLowVolt > 0) return Math.round(batteryValues.battLowVolt / chemInfo.cellLow);
+    if (batteryValues.battCrtVolt > 0) return Math.round(batteryValues.battCrtVolt / chemInfo.cellCritical);
+    return 0;
+  }, [batteryValues.battArmVolt, batteryValues.battLowVolt, batteryValues.battCrtVolt, chemInfo]);
 
   // Max voltage for sliders - based on 24S full charge of current chemistry + margin.
   // 24S covers heavy-lift industrial multirotors up to ~108V (24S Li-Ion HV).

@@ -1,0 +1,5 @@
+{
+  "comment": "Pins the ardudeck-sim-engine release the desktop app bundles when no local build is present. Built in-repo by .github/workflows/sim-engine-release.yml. scripts/fetch-sim-engine.mjs downloads and checksum-verifies the matching binary at package time.",
+  "repo": "rubenCodeforges/ardudeck",
+  "tag": "sim-engine-v0.1.0"
+}

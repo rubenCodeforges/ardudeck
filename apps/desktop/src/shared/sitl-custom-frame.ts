@@ -8,6 +8,39 @@
  * Source of truth: libraries/SITL/SIM_Frame.h (Model struct fields).
  */
 
+/**
+ * Optional suspended (slung) load block on the custom-frame JSON.
+ *
+ * Mirrors the engine's `SlungLoadFrame` (crates/ardudeck-sim-engine/src/frame.rs)
+ * key-for-key: the engine deserializes these exact camelCase keys. ArduPilot's
+ * frame parser ignores unknown keys, so carrying this block on the shared frame
+ * file is safe. `stiffness` and `damping` are required by the engine (no serde
+ * default), so they are non-optional here too, otherwise the engine's parse of
+ * the whole frame fails and the entire custom frame is silently dropped.
+ */
+export interface SitlSlungLoad {
+  /** Load point mass in kg. */
+  loadMass: number;
+  /** Natural (unstretched) cable length in metres. */
+  cableLength: number;
+  /** Hardpoint offset from CG, body FRD metres. Belly hook: +z (down). */
+  hardpoint: [number, number, number];
+  /** Axial cable stiffness k (N/m). */
+  stiffness: number;
+  /** Axial cable damping c (N.s/m). */
+  damping: number;
+  /** Load aero drag Cd*A (m^2). */
+  loadDragCda: number;
+  /** Minimum winch length (m). */
+  winchMin: number;
+  /** Maximum winch length (m). */
+  winchMax: number;
+  /** 1-based servo channel that pays out / reels the winch. */
+  winchChannel?: number;
+  /** 1-based servo channel that releases the load. */
+  releaseChannel?: number;
+}
+
 export interface SitlCustomFrame {
   /** Vehicle mass in kg. Drives thrust-to-weight, hover throttle, etc. */
   mass: number;
@@ -51,6 +84,11 @@ export interface SitlCustomFrame {
   mdrag_coef: number;
   /** Number of motors. Determines SITL --model type (quad=4, hexa=6, octa=8). */
   num_motors: number;
+  /**
+   * Optional suspended payload. Absent => no load (back-compatible). Consumed
+   * only by the ArduDeck engine; ArduPilot ignores it.
+   */
+  slungLoad?: SitlSlungLoad;
 }
 
 export interface SitlCustomFrameMeta {
@@ -154,6 +192,21 @@ export const SITL_FRAME_TEMPLATES: Record<string, { name: string; frame: SitlCus
       disc_area: 1.82,
       mdrag_coef: 0.10,
       num_motors: 8,
+      slungLoad: {
+        loadMass: 8,
+        cableLength: 3,
+        hardpoint: [0, 0, 0.15],
+        stiffness: 4000,
+        damping: 40,
+        loadDragCda: 0.1,
+        winchMin: 0.5,
+        winchMax: 8,
+        // No winchChannel by default: the cable holds at its fixed length so the
+        // load hangs and swings predictably. A live winch reads a servo channel,
+        // and an unassigned/rest servo output would silently reel the cable in or
+        // out. Users with a real winch add winchChannel to opt in.
+        releaseChannel: 10,
+      },
     },
   },
   heavy_industrial_14s: {
@@ -181,6 +234,19 @@ export const SITL_FRAME_TEMPLATES: Record<string, { name: string; frame: SitlCus
       disc_area: 2.5,
       mdrag_coef: 0.10,
       num_motors: 8,
+      slungLoad: {
+        loadMass: 15,
+        cableLength: 3,
+        hardpoint: [0, 0, 0.15],
+        stiffness: 6000,
+        damping: 60,
+        loadDragCda: 0.1,
+        winchMin: 0.5,
+        winchMax: 8,
+        // See heavy_octa: no default winchChannel so the cable holds at a fixed
+        // length. Opt into a live winch by adding winchChannel.
+        releaseChannel: 10,
+      },
     },
   },
 };
@@ -219,6 +285,37 @@ export function validateFrame(obj: unknown): { ok: true; frame: SitlCustomFrame 
       errors.push(`Missing or non-numeric field: ${key}`);
     }
   }
+  // slungLoad is optional. Absent => valid (unchanged physics). Present => it
+  // must be a well-formed object so the engine can deserialize it.
+  if (o.slungLoad !== undefined) {
+    validateSlungLoad(o.slungLoad, errors);
+  }
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, frame: o as unknown as SitlCustomFrame };
+}
+
+/** Validate an optional slungLoad block, pushing any problems onto `errors`. */
+function validateSlungLoad(value: unknown, errors: string[]): void {
+  if (!value || typeof value !== 'object') {
+    errors.push('slungLoad must be an object');
+    return;
+  }
+  const s = value as Record<string, unknown>;
+  const requiredNumeric: (keyof SitlSlungLoad)[] = [
+    'loadMass', 'cableLength', 'stiffness', 'damping', 'loadDragCda', 'winchMin', 'winchMax',
+  ];
+  for (const key of requiredNumeric) {
+    if (typeof s[key] !== 'number' || !Number.isFinite(s[key] as number)) {
+      errors.push(`slungLoad: missing or non-numeric field: ${key}`);
+    }
+  }
+  const hp = s.hardpoint;
+  if (!Array.isArray(hp) || hp.length !== 3 || hp.some((n) => typeof n !== 'number' || !Number.isFinite(n))) {
+    errors.push('slungLoad: hardpoint must be an array of three numbers');
+  }
+  for (const key of ['winchChannel', 'releaseChannel'] as const) {
+    if (s[key] !== undefined && (typeof s[key] !== 'number' || !Number.isInteger(s[key] as number))) {
+      errors.push(`slungLoad: ${key} must be an integer servo channel`);
+    }
+  }
 }

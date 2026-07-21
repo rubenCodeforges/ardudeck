@@ -1,0 +1,35 @@
+[package]
+name = "ardudeck-sim-engine"
+version = "0.1.0"
+edition = "2021"
+description = "ArduDeck SITL physics engine (SIM_JSON FDM backend)"
+license = "MIT"
+publish = false
+
+[lib]
+name = "ardudeck_sim_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ardudeck-sim-engine"
+path = "src/main.rs"
+
+[[bin]]
+name = "ardudeck-sim-batch"
+path = "src/bin/batch.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.23"
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+
+[dev-dependencies]
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1

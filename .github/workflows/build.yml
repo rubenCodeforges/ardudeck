@@ -68,6 +68,22 @@ jobs:
             fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
           "
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sim-engine binary
+        run: cargo build --release --manifest-path crates/ardudeck-sim-engine/Cargo.toml
+
+      - name: Stage sim-engine for packaging
+        run: |
+          mkdir -p apps/desktop/sim-engine-bin
+          cp crates/ardudeck-sim-engine/target/release/ardudeck-sim-engine apps/desktop/sim-engine-bin/ardudeck-sim-engine
+          chmod +x apps/desktop/sim-engine-bin/ardudeck-sim-engine
+          # macOS: copying a Mach-O invalidates its ad-hoc signature, so the
+          # kernel SIGKILLs it on run. Re-sign so it is launchable (and so
+          # electron-builder can re-sign it cleanly during notarization).
+          if [ "$(uname)" = "Darwin" ]; then codesign --force --sign - apps/desktop/sim-engine-bin/ardudeck-sim-engine; fi
+
       - name: Build packages
         run: pnpm build
 
@@ -142,6 +158,22 @@ jobs:
             desktop.version = '${{ env.VERSION }}';
             fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
           "
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sim-engine binary
+        run: cargo build --release --manifest-path crates/ardudeck-sim-engine/Cargo.toml
+
+      - name: Stage sim-engine for packaging
+        run: |
+          mkdir -p apps/desktop/sim-engine-bin
+          cp crates/ardudeck-sim-engine/target/release/ardudeck-sim-engine apps/desktop/sim-engine-bin/ardudeck-sim-engine
+          chmod +x apps/desktop/sim-engine-bin/ardudeck-sim-engine
+          # macOS: copying a Mach-O invalidates its ad-hoc signature, so the
+          # kernel SIGKILLs it on run. Re-sign so it is launchable (and so
+          # electron-builder can re-sign it cleanly during notarization).
+          if [ "$(uname)" = "Darwin" ]; then codesign --force --sign - apps/desktop/sim-engine-bin/ardudeck-sim-engine; fi
 
       - name: Build packages
         run: pnpm build
@@ -224,6 +256,22 @@ jobs:
             desktop.version = '${{ env.VERSION }}';
             fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
           "
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sim-engine binary
+        run: cargo build --release --manifest-path crates/ardudeck-sim-engine/Cargo.toml
+
+      - name: Stage sim-engine for packaging
+        run: |
+          mkdir -p apps/desktop/sim-engine-bin
+          cp crates/ardudeck-sim-engine/target/release/ardudeck-sim-engine apps/desktop/sim-engine-bin/ardudeck-sim-engine
+          chmod +x apps/desktop/sim-engine-bin/ardudeck-sim-engine
+          # macOS: copying a Mach-O invalidates its ad-hoc signature, so the
+          # kernel SIGKILLs it on run. Re-sign so it is launchable (and so
+          # electron-builder can re-sign it cleanly during notarization).
+          if [ "$(uname)" = "Darwin" ]; then codesign --force --sign - apps/desktop/sim-engine-bin/ardudeck-sim-engine; fi
 
       - name: Build packages
         run: pnpm build
@@ -311,6 +359,18 @@ jobs:
             desktop.version = '${{ env.VERSION }}';
             fs.writeFileSync('./apps/desktop/package.json', JSON.stringify(desktop, null, 2) + '\n');
           "
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sim-engine binary
+        run: cargo build --release --manifest-path crates/ardudeck-sim-engine/Cargo.toml
+
+      - name: Stage sim-engine for packaging
+        run: |
+          New-Item -ItemType Directory -Force -Path apps/desktop/sim-engine-bin | Out-Null
+          Copy-Item crates/ardudeck-sim-engine/target/release/ardudeck-sim-engine.exe apps/desktop/sim-engine-bin/ardudeck-sim-engine.exe
+        shell: pwsh
 
       - name: Build packages
         run: pnpm build

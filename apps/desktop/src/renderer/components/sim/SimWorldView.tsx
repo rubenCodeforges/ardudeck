@@ -130,6 +130,11 @@ export default function SimWorldView() {
 
   const [cameraMode, setCameraMode] = useState<SimCameraMode>('chase');
   const [showTerrain, setShowTerrain] = useState(false);
+  // Physics X-ray overlay: thrust arrows + net-lift vector + CG markers + load
+  // readouts. Off by default so the flight view stays clean. The rAF loop reads
+  // the ref (its closure is created once); the state drives the button + HUD.
+  const [showXray, setShowXray] = useState(false);
+  const showXrayRef = useRef(false);
   // HUD is driven from a ref-fed React state sampled in the rAF loop (throttled
   // to ~10Hz) so we don't re-render the whole tree at 60fps.
   const [hud, setHud] = useState<SimStateMessage | null>(null);
@@ -232,7 +237,14 @@ export default function SimWorldView() {
           position: m.position,
           quaternion: m.quaternion,
           euler: m.euler,
-          armed: false,
+          // The engine streams normalized motor output; use it to spin the props
+          // (and treat any real throttle as "active" so they turn while flying).
+          throttle01: m.throttle,
+          armed: (m.throttle ?? 0) > 0.02,
+          // Physics X-ray internals (engine-only; sticky in the store).
+          diagnostics: m.diagnostics,
+          // Slung-load cable + payload (engine-only).
+          load: m.load,
         }));
         const first = engine.values().next();
         primary = first.done ? null : first.value;
@@ -374,7 +386,7 @@ export default function SimWorldView() {
         if (out.length > 0) fences = out;
       }
 
-      scene.update({ vehicles: frames, obstacles, waypoints, fences });
+      scene.update({ vehicles: frames, obstacles, waypoints, fences, showDiagnostics: showXrayRef.current });
       scene.render();
 
       // Throttled HUD sample from the primary vehicle.
@@ -400,6 +412,11 @@ export default function SimWorldView() {
   useEffect(() => {
     sceneRef.current?.setCameraMode(cameraMode);
   }, [cameraMode]);
+
+  // Keep the rAF loop's X-ray flag in sync with the toggle.
+  useEffect(() => {
+    showXrayRef.current = showXray;
+  }, [showXray]);
 
   // Reactive trigger that changes once a position fix exists (and as the vehicle
   // moves), so the terrain effect can build as soon as the home origin is set.
@@ -523,6 +540,15 @@ export default function SimWorldView() {
         >
           Terrain
         </button>
+        <button
+          onClick={() => setShowXray((v) => !v)}
+          data-tip="Physics X-ray: force budget through the CG (thrust, weight, drag, net resultant), per-motor arrows, CG markers and g-load (ArduDeck sim engine only)"
+          className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
+            showXray ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
+          }`}
+        >
+          X-ray
+        </button>
         <div className="flex overflow-hidden rounded-lg border border-subtle shadow-lg">
           {CAMERA_MODES.map((m) => (
             <button
@@ -540,6 +566,19 @@ export default function SimWorldView() {
           ))}
         </div>
       </div>
+
+      {/* X-ray force-arrow legend: a single compact row (dot + label per force),
+          not a card, so it reads at a glance without covering the view. Tucked
+          in the bottom-left corner, clear of every other overlay. */}
+      {showXray && hud?.diagnostics && (
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2.5 rounded-md bg-surface-raised/80 backdrop-blur-sm px-2 py-1 text-[10px] text-content-tertiary pointer-events-none">
+          <LegendDot swatch="linear-gradient(90deg,#38bdf8,#ef4444)" label="Thrust" />
+          <LegendDot color="#fef08a" label="Lift" />
+          <LegendDot color="#9ca3af" label="Weight" />
+          <LegendDot color="#f97316" label="Drag" />
+          <LegendDot color="#ffffff" outline label="Net" />
+        </div>
+      )}
 
       {/* Connection status pill */}
       <div className="absolute top-3 left-3 z-10">
@@ -571,7 +610,8 @@ export default function SimWorldView() {
       {/* Fleet ops (multi-vehicle only) — synchronized takeoff + formations over the engine. */}
       <FleetOpsPanel />
 
-      {/* Live SITL test injection (wind / failures) */}
+      {/* Test Conditions bench: motor faults, payload, wind, GPS/nav, sensors.
+          Adapts to the active physics (engine live-control vs built-in SIM_*). */}
       <SimTestPanel />
 
       {/* Obstacle authoring + fence-hack */}
@@ -589,6 +629,54 @@ export default function SimWorldView() {
             <HudTile label="YAW" value={((rad2deg(hud.euler.yaw) + 360) % 360).toFixed(0)} unit="°" tip="Heading" />
             {typeof hud.batteryVoltage === 'number' && (
               <HudTile label="BATT" value={hud.batteryVoltage.toFixed(1)} unit="V" tip="Loaded battery voltage" />
+            )}
+            {hud.load && (
+              <HudTile
+                label="SLING"
+                value={hud.load.attached ? hud.load.tension.toFixed(0) : 'REL'}
+                unit={hud.load.attached ? 'N' : ''}
+                tip={hud.load.attached
+                  ? `Slung-load cable tension (cable ${hud.load.cableLength.toFixed(1)} m)`
+                  : 'Load released'}
+                accent={hud.load.attached ? undefined : 'amber'}
+              />
+            )}
+            {showXray && hud.diagnostics && (
+              <>
+                <HudTile
+                  label="LOAD"
+                  value={hud.diagnostics.loadFactor.toFixed(2)}
+                  unit="g"
+                  tip="Airframe load factor (specific force / g). 1.0 in level hover; higher in pull-ups / hard turns"
+                  accent={hud.diagnostics.loadFactor > 4 ? 'red' : hud.diagnostics.loadFactor > 2 ? 'amber' : undefined}
+                />
+                <HudTile label="ARM MAX" value={hud.diagnostics.maxArmMoment.toFixed(1)} unit="N·m" tip="Worst per-arm bending moment (thrust x arm length)" />
+                <HudTile
+                  label="THRUST"
+                  value={Math.hypot(...hud.diagnostics.netThrustBody).toFixed(0)}
+                  unit="N"
+                  tip="Total rotor thrust (cyan-to-red per-motor arrows)"
+                />
+                <HudTile label="WEIGHT" value={hud.diagnostics.weight.toFixed(0)} unit="N" tip="Gravity, m·g (grey arrow, straight down)" />
+                <HudTile
+                  label="DRAG"
+                  value={Math.hypot(
+                    hud.diagnostics.airframeDragBody[0] + hud.diagnostics.momentumDragBody[0],
+                    hud.diagnostics.airframeDragBody[1] + hud.diagnostics.momentumDragBody[1],
+                    hud.diagnostics.airframeDragBody[2] + hud.diagnostics.momentumDragBody[2],
+                  ).toFixed(0)}
+                  unit="N"
+                  tip="Airframe parasitic + rotor momentum drag (orange arrow)"
+                />
+                <HudTile
+                  label="NET"
+                  value={Math.hypot(...hud.diagnostics.netForceWorld).toFixed(0)}
+                  unit="N"
+                  tip="Net resultant force accelerating the airframe (white arrow); near zero in a steady hover"
+                  accent={Math.hypot(...hud.diagnostics.netForceWorld) > hud.diagnostics.weight * 0.5 ? 'amber' : undefined}
+                />
+                <MotorBars diag={hud.diagnostics} />
+              </>
             )}
           </div>
         )}
@@ -710,17 +798,66 @@ function FleetOpsPanel() {
   );
 }
 
-function HudTile({ label, value, unit, tip }: { label: string; value: string; unit: string; tip: string }) {
+/** One inline dot + label in the X-ray force legend row. `color` is a solid
+    dot; `swatch` is a raw CSS background (the thrust ramp gradient). `outline`
+    draws a ring instead of a fill, for the white dot to stay visible against
+    a light background. */
+function LegendDot({
+  color,
+  swatch,
+  outline,
+  label,
+}: {
+  color?: string;
+  swatch?: string;
+  outline?: boolean;
+  label: string;
+}) {
+  return (
+    <span className="flex items-center gap-1 whitespace-nowrap">
+      <span
+        className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${outline ? 'border border-content-tertiary' : ''}`}
+        style={{ background: swatch ?? (outline ? 'transparent' : color) }}
+      />
+      {label}
+    </span>
+  );
+}
+
+function HudTile({ label, value, unit, tip, accent }: { label: string; value: string; unit: string; tip: string; accent?: 'amber' | 'red' }) {
+  const valueClass = accent === 'red' ? 'text-red-400' : accent === 'amber' ? 'text-amber-400' : 'text-content';
   return (
     <div
       data-tip={tip}
       className="bg-surface-overlay backdrop-blur-sm border border-subtle rounded-lg px-3 py-2 min-w-[68px] text-center"
     >
       <div className="text-[10px] font-medium text-content-tertiary tracking-wide">{label}</div>
-      <div className="text-lg font-semibold text-content leading-tight tabular-nums">
+      <div className={`text-lg font-semibold leading-tight tabular-nums ${valueClass}`}>
         {value}
         <span className="text-xs text-content-secondary ml-0.5">{unit}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Per-motor thrust mini-bar strip: one bar per motor, height = normalized command,
+ * tinted cool->hot by its arm-load ratio (matching the 3D thrust arrows). An
+ * at-a-glance read of which corner is working hardest.
+ */
+function MotorBars({ diag }: { diag: NonNullable<SimStateMessage['diagnostics']> }) {
+  return (
+    <div
+      data-tip="Per-motor output (bar height = throttle command, colour = arm load)"
+      className="bg-surface-overlay backdrop-blur-sm border border-subtle rounded-lg px-3 py-2 flex items-end gap-1 h-[52px]"
+    >
+      {diag.motors.map((m, i) => {
+        const h = Math.max(6, Math.round(Math.max(0, Math.min(1, m.command)) * 34) + 2);
+        // Cool (#38bdf8) -> hot (#ef4444) by arm load ratio.
+        const r = Math.max(0, Math.min(1, m.armLoadRatio));
+        const color = `rgb(${Math.round(56 + (239 - 56) * r)}, ${Math.round(189 + (68 - 189) * r)}, ${Math.round(248 + (68 - 248) * r)})`;
+        return <div key={i} className="w-1.5 rounded-sm" style={{ height: `${h}px`, background: color }} />;
+      })}
     </div>
   );
 }

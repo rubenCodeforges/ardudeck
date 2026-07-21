@@ -11,6 +11,7 @@ import { spawn, ChildProcess } from 'node:child_process';
 import { app, BrowserWindow } from 'electron';
 import { chmod, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import Store from 'electron-store';
 import type {
   ArduPilotSitlConfig,
   ArduPilotSitlStatus,
@@ -18,8 +19,70 @@ import type {
   ArduPilotReleaseTrack,
 } from '../../shared/ipc-channels.js';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
+import type { AuthoredObstacle, SimObstacleStoreSchema } from '../../shared/sim-obstacle-types.js';
 import { ardupilotSitlDownloader } from './ardupilot-sitl-downloader.js';
 import { simEngineProcess } from '../sim/sim-engine-process.js';
+
+/**
+ * Engine `--obstacles` schema: one geographic obstacle. Matches the engine's
+ * serde struct `ObstacleFile` (crates/ardudeck-sim-engine/src/main.rs), which
+ * reads exactly these keys and ignores any extras (id/label). The engine
+ * projects lat/lon to local NED at load using --home.
+ */
+interface EngineObstacleFile {
+  lat: number;
+  lon: number;
+  shape: string;
+  radius: number;
+  height: number;
+}
+
+/**
+ * Site id for the authored-obstacle store, matching the renderer's
+ * `siteIdFromOrigin`: home lat/lon rounded to 3 decimal places so a field keeps
+ * one obstacle set.
+ */
+function siteIdFromOrigin(lat: number, lon: number): string {
+  return `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+}
+
+// The authored obstacles are persisted by ipc-handlers under the named
+// electron-store 'sim-obstacles'. A second Store with the same name reads the
+// same on-disk file, so the engine launch path can pick them up without
+// reaching into the renderer's store.
+let simObstaclesStore: Store<SimObstacleStoreSchema> | null = null;
+function readSiteObstacles(siteId: string): AuthoredObstacle[] {
+  if (!simObstaclesStore) {
+    simObstaclesStore = new Store<SimObstacleStoreSchema>({
+      name: 'sim-obstacles',
+      defaults: { sites: {} },
+    });
+  }
+  const sites = simObstaclesStore.get('sites', {});
+  return sites[siteId] ?? [];
+}
+
+/**
+ * Serialize the authored obstacles for the active site to a temp JSON file in
+ * the engine's expected geographic shape, returning its path. Returns undefined
+ * when there are none, so no --obstacles arg is passed. Uses a single
+ * deterministic file under userData, overwritten on each launch.
+ */
+async function writeObstaclesFileForSite(home: { lat: number; lng: number }): Promise<string | undefined> {
+  const siteId = siteIdFromOrigin(home.lat, home.lng);
+  const obstacles = readSiteObstacles(siteId);
+  if (obstacles.length === 0) return undefined;
+  const engineObstacles: EngineObstacleFile[] = obstacles.map((o) => ({
+    lat: o.lat,
+    lon: o.lon,
+    shape: o.shape,
+    radius: o.radius,
+    height: o.height,
+  }));
+  const filePath = path.join(app.getPath('userData'), 'sim-engine-obstacles.json');
+  await writeFile(filePath, JSON.stringify(engineObstacles), 'utf-8');
+  return filePath;
+}
 
 const DEFAULT_MODELS: Record<ArduPilotVehicleType, string> = {
   copter: 'quad',
@@ -285,6 +348,14 @@ class ArduPilotSitlProcessManager {
     // TCP MAVLink server on port 5760
     args.push('--serial0', 'tcp:0');
 
+    // Always stream FlightGear FGNetFDM packets to 127.0.0.1:5503. This is
+    // harmless when nothing is listening (plain outbound UDP), and it means the
+    // user can open the FlightGear viewer at any time AFTER launching SITL
+    // without restarting it. FlightGear attaches with `--fdm=external`; see
+    // simulators/ardupilot-flightgear.ts.
+    args.push('--enable-fgview');
+    args.push('--fg', '127.0.0.1');
+
     // Always specify speedup on macOS ARM64 to avoid crash (ArduPilot issue #19588)
     const speedup = config.speedup && config.speedup > 1 ? config.speedup : 1;
     args.push(`-s${speedup}`);
@@ -312,13 +383,13 @@ class ArduPilotSitlProcessManager {
       this.stop();
     }
 
-    // The custom JSON-FDM sim engine (the never-working WS experiment) is shelved:
-    // SITL always runs its own built-in physics. Force the engine path off so a
-    // stale persisted `useArduDeckSim=true` can't emit `-MJSON` and leave SITL
-    // waiting forever for a dead external FDM (→ no clock, no GPS, frozen battery).
-    // Custom frames are passed straight to `-M<type>:<file>` as before — they load
-    // fine in built-in SITL ("Loaded model params from ...").
-    config = { ...config, useArduDeckSim: false };
+    // Use the ArduDeck physics engine only when explicitly requested AND its
+    // binary is actually present; otherwise fall back to built-in physics so a
+    // missing engine can never strand SITL waiting for a dead FDM.
+    if (config.useArduDeckSim && !simEngineProcess.isBinaryAvailable()) {
+      console.warn('[SITL] ArduDeck engine requested but binary not found; using built-in physics.');
+      config = { ...config, useArduDeckSim: false };
+    }
 
     const platformCheck = this.isPlatformSupported();
     if (!platformCheck.supported) {
@@ -366,12 +437,63 @@ class ArduPilotSitlProcessManager {
         }
       }
 
-      const overlay = generateDefaultParams(
+      // Default the simulated pack to the active custom frame's own voltage and
+      // capacity, so SIM_BATT_VOLTAGE reflects the real airframe (e.g. a 14S
+      // 60.9V pack) instead of the built-in 12.6V default that looks wrong in
+      // the parameter tree. The engine path overrides battery voltage over the
+      // JSON FDM link anyway; this keeps the parameter honest and gives the
+      // built-in-physics fallback the right pack. An explicit user override
+      // (simBattVoltage > 0) still wins.
+      let effBattVoltage = config.simBattVoltage;
+      let effBattCapAh = config.simBattCapAh;
+      // FC battery params derived from the active frame (capacity + cell
+      // thresholds), so the Battery config tab reflects the real pack instead of
+      // ArduPilot's ~3S firmware defaults (which read as a 3S battery on a 14S
+      // airframe). These set thresholds only; failsafe actions stay at default.
+      const frameBattLines: string[] = [];
+      if (config.customFramePath) {
+        try {
+          const { readFile } = await import('node:fs/promises');
+          const raw = JSON.parse(await readFile(config.customFramePath, 'utf-8')) as {
+            maxVoltage?: number;
+            refVoltage?: number;
+            battCapacityAh?: number;
+          };
+          if ((effBattVoltage === undefined || effBattVoltage <= 0) &&
+              typeof raw.maxVoltage === 'number' && raw.maxVoltage > 0) {
+            effBattVoltage = raw.maxVoltage;
+          }
+          if ((effBattCapAh === undefined || effBattCapAh <= 0) &&
+              typeof raw.battCapacityAh === 'number' && raw.battCapacityAh > 0) {
+            effBattCapAh = raw.battCapacityAh;
+          }
+          if (typeof raw.battCapacityAh === 'number' && raw.battCapacityAh > 0) {
+            frameBattLines.push(`BATT_CAPACITY ${Math.round(raw.battCapacityAh * 1000)}`);
+          }
+          // refVoltage is the nominal pack voltage (cells * 3.7V for LiPo), so it
+          // gives an unambiguous cell count. Thresholds use the same LiPo per-cell
+          // references as the Battery tab (low 3.6, critical 3.5) so it detects.
+          const cells = typeof raw.refVoltage === 'number' && raw.refVoltage > 0
+            ? Math.round(raw.refVoltage / 3.7)
+            : 0;
+          if (cells > 0) {
+            frameBattLines.push(`BATT_LOW_VOLT ${(cells * 3.6).toFixed(1)}`);
+            frameBattLines.push(`BATT_CRT_VOLT ${(cells * 3.5).toFixed(1)}`);
+          }
+        } catch (err) {
+          console.warn('[SITL] could not read custom frame for battery defaults:', err);
+        }
+      }
+
+      const overlayBase = generateDefaultParams(
         config.vehicleType,
         model,
-        config.simBattVoltage,
-        config.simBattCapAh,
+        effBattVoltage,
+        effBattCapAh,
       );
+      const overlay = frameBattLines.length > 0
+        ? `${overlayBase}\n${frameBattLines.join('\n')}`
+        : overlayBase;
       if (overlay && !config.defaultsFile) {
         const overlayPath = path.join(path.dirname(binaryPath), 'ardudeck-defaults.parm');
         await writeFile(overlayPath, overlay, 'utf-8');
@@ -397,12 +519,24 @@ class ArduPilotSitlProcessManager {
           config.vehicleType === 'plane' ? 'plane' :
           config.vehicleType === 'rover' ? 'rover' : 'copter';
         const windIntensity = config.simWindIntensity ?? 0;
+        // Feed authored obstacles for the active site into the engine so it
+        // models real wake turbulence around them. None => no arg (unchanged).
+        const obstaclesPath = await writeObstaclesFileForSite(config.homeLocation).catch((err) => {
+          console.warn('[SITL] could not stage sim obstacles for engine:', err);
+          return undefined;
+        });
         const engineResult = await simEngineProcess.start({
           kind: engineKind,
           framePath: config.customFramePath,
           home: config.homeLocation,
           noise: config.simSensorNoise ?? false,
-          battery: config.simBatterySag ?? true,
+          obstaclesPath,
+          // Always model the battery in the engine path. It reports the frame's
+          // real pack voltage/current back to SITL; without it the firmware
+          // falls back to SITL's internal 12.6V default and the reported
+          // voltage is wrong for anything but a 3S frame. Battery sag is the
+          // headline of the engine, not an opt-in fidelity knob.
+          battery: true,
           wind: windIntensity > 0 ? `0,0,0,${windIntensity},1` : undefined,
         });
         if (!engineResult.success) {
@@ -444,6 +578,13 @@ class ArduPilotSitlProcessManager {
         const cygwinPath = this.getCygwinDllPath();
         env.PATH = `${cygwinPath};${env.PATH}`;
       }
+
+      // Reap any stale SITL still holding the MAVLink TCP port. A previous crash
+      // or a dev hot-reload can orphan an arducopter/plane/rover process that
+      // stop() never reached; it keeps port 5760 bound and the new SITL dies with
+      // "bind failed on port 5760 - Address already in use". Kill only an
+      // ArduPilot SITL binary, matched by name, so nothing unrelated is touched.
+      await this.reapStaleSitl(5760);
 
       this.process = spawn(spawnCmd, args, {
         cwd: path.dirname(binaryPath),
@@ -514,6 +655,42 @@ class ArduPilotSitlProcessManager {
         success: false,
         error: err instanceof Error ? err.message : 'Unknown error',
       };
+    }
+  }
+
+  /**
+   * Kill any stale ArduPilot SITL process still bound to the MAVLink TCP port.
+   * Matches by binary name (arducopter/arduplane/ardurover) so it never touches
+   * an unrelated process that happens to hold the port. macOS/Linux only (uses
+   * lsof); a no-op on Windows.
+   */
+  private async reapStaleSitl(tcpPort: number): Promise<void> {
+    if (process.platform === 'win32') return;
+    try {
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const run = promisify(execFile);
+      const { stdout } = await run('lsof', ['-ti', `TCP:${tcpPort}`]).catch(() => ({ stdout: '' }));
+      const pids = stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+      const SITL_BINARIES = ['arducopter', 'arduplane', 'ardurover', 'ardusub'];
+      let reaped = 0;
+      for (const pid of pids) {
+        const { stdout: cmd } = await run('ps', ['-o', 'command=', '-p', pid]).catch(() => ({ stdout: '' }));
+        if (!SITL_BINARIES.some((b) => cmd.includes(b))) continue;
+        try {
+          process.kill(Number(pid), 'SIGKILL');
+          reaped++;
+        } catch {
+          /* already gone */
+        }
+      }
+      if (reaped > 0) {
+        console.log(`[sitl] reaped ${reaped} stale SITL process(es) on TCP ${tcpPort}`);
+        // Give the OS a moment to release the port before SITL binds it.
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    } catch (err) {
+      console.warn('[sitl] reapStaleSitl failed (continuing):', err);
     }
   }
 

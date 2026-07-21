@@ -485,6 +485,12 @@ export const IPC_CHANNELS = {
   SIMULATOR_LAUNCH_XP: 'simulator:launch-xp',
   SIMULATOR_STOP_XP: 'simulator:stop-xp',
   SIMULATOR_XP_STATUS: 'simulator:xp-status',
+  // ArduPilot SITL -> FlightGear viewer (external-FDM, no bridge)
+  ARDUPILOT_FG_DETECT: 'ardupilot-fg:detect',
+  ARDUPILOT_FG_BROWSE: 'ardupilot-fg:browse',
+  ARDUPILOT_FG_LAUNCH: 'ardupilot-fg:launch',
+  ARDUPILOT_FG_STOP: 'ardupilot-fg:stop',
+  ARDUPILOT_FG_STATUS: 'ardupilot-fg:status',
   BRIDGE_START: 'bridge:start',
   BRIDGE_STOP: 'bridge:stop',
   BRIDGE_STATUS: 'bridge:status',
@@ -1540,6 +1546,39 @@ export interface ArduPilotSitlStatus {
    * world). Undefined when using built-in/external physics.
    */
   simStateWsPort?: number;
+}
+
+/**
+ * Config for viewing a running ArduPilot SITL inside FlightGear. FlightGear
+ * runs as a pure external-FDM viewer of the FGNetFDM stream SITL emits on
+ * 127.0.0.1:5503; the aircraft is a visual shell only (physics come from SITL).
+ */
+export interface ArduPilotFlightGearConfig {
+  /** Visual airframe shell shown in FlightGear. */
+  aircraft: string;
+  /** Start location so scenery loads near SITL home before FDM packets arrive. */
+  lat?: number;
+  lon?: number;
+  /** Initial altitude in feet (FDM overrides once packets flow). */
+  altitudeFt?: number;
+  /** Initial heading in degrees. */
+  headingDeg?: number;
+  /** FGNetFDM UDP port FlightGear listens on. Defaults to 5503. */
+  fdmPort?: number;
+  /** Expected input rate (Hz) for the native FDM socket. Defaults to 10. */
+  updateRate?: number;
+  /** Launch fullscreen instead of a window. */
+  fullscreen?: boolean;
+  /** Window geometry when not fullscreen. Defaults to 1280x720. */
+  geometry?: string;
+  /** Time of day for the scene. Defaults to noon. */
+  timeOfDay?: 'dawn' | 'morning' | 'noon' | 'afternoon' | 'dusk' | 'evening' | 'midnight';
+  /**
+   * Stream scenery for the vehicle's location via TerraSync (default true).
+   * Required for any home outside FlightGear's bundled San Francisco scenery,
+   * otherwise the world renders black. Set false to use only local scenery.
+   */
+  terraSync?: boolean;
 }
 
 /**

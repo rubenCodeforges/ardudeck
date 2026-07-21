@@ -37,14 +37,18 @@ type EditorMode =
   | { kind: 'new'; templateKey: string; name: string; frame: SitlCustomFrame }
   | { kind: 'edit'; id: string; name: string; frame: SitlCustomFrame };
 
-const FIELD_GROUPS: { title: string; fields: (keyof SitlCustomFrame)[] }[] = [
+// The editable grid only surfaces the scalar frame fields; slungLoad is an
+// object edited elsewhere, so exclude it from the numeric-field helpers.
+type SitlNumericFieldKey = Exclude<keyof SitlCustomFrame, 'slungLoad'>;
+
+const FIELD_GROUPS: { title: string; fields: SitlNumericFieldKey[] }[] = [
   { title: 'Physical', fields: ['mass', 'diagonal_size', 'num_motors', 'disc_area'] },
   { title: 'Battery', fields: ['maxVoltage', 'battCapacityAh', 'refBatRes'] },
   { title: 'Reference (tuning)', fields: ['refSpd', 'refAngle', 'refVoltage', 'refCurrent', 'refAlt', 'refTempC', 'refRotRate'] },
   { title: 'Motors', fields: ['hoverThrOut', 'pwmMin', 'pwmMax', 'spin_min', 'spin_max', 'slew_max', 'propExpo', 'mdrag_coef'] },
 ];
 
-const FIELD_HINTS: Partial<Record<keyof SitlCustomFrame, string>> = {
+const FIELD_HINTS: Partial<Record<SitlNumericFieldKey, string>> = {
   maxVoltage: 'V (full-charge)',
   refBatRes: 'Ω (internal)',
   refAngle: 'deg',
@@ -203,12 +207,12 @@ export function CustomFramePanel() {
     setCustomFrame(undefined, undefined);
   };
 
-  const updateField = (key: keyof SitlCustomFrame, value: number) => {
+  const updateField = (key: SitlNumericFieldKey, value: number) => {
     if (editor.kind === 'closed') return;
     setEditor({ ...editor, frame: { ...editor.frame, [key]: value } });
   };
 
-  const getFieldHint = (field: keyof SitlCustomFrame): string | undefined => {
+  const getFieldHint = (field: SitlNumericFieldKey): string | undefined => {
     if (field === 'mass') return UNIT_LABELS.weight[weightUnit];
     if (field === 'diagonal_size') return `${UNIT_LABELS.dimensions[dimensionUnit]} (motor-to-motor)`;
     if (field === 'disc_area') return `${UNIT_LABELS.area[areaUnit]} (total prop)`;
@@ -218,7 +222,7 @@ export function CustomFramePanel() {
     return FIELD_HINTS[field];
   };
 
-  const getFieldDisplayValue = (field: keyof SitlCustomFrame): number => {
+  const getFieldDisplayValue = (field: SitlNumericFieldKey): number => {
     if (editor.kind === 'closed') return 0;
     const value = editor.frame[field];
     if (field === 'refAlt') {
@@ -243,7 +247,7 @@ export function CustomFramePanel() {
     return value;
   };
 
-  const updateFieldFromDisplay = (field: keyof SitlCustomFrame, raw: string) => {
+  const updateFieldFromDisplay = (field: SitlNumericFieldKey, raw: string) => {
     const v = parseNumberDraft(raw.replace(',', '.'));
     if (v === null) return;
     if (field === 'refAlt') {

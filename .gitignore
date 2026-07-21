@@ -115,3 +115,12 @@ apps/desktop/resources/bin/*/ardudeck-wfb-rx*
 
 # Bundled multi-vehicle engine binary (fetched at package time, see engine.json)
 apps/desktop/engine/
+
+# Bundled physics engine binary (built/fetched at package time, see sim-engine.json)
+apps/desktop/sim-engine-bin/
+
+# graphify knowledge-graph output (local, regenerable)
+graphify-out/
+
+# Rust build artifacts (cargo target dirs, never committed)
+target/

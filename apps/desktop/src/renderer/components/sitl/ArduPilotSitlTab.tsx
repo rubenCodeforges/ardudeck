@@ -10,6 +10,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { VirtualRCState, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotFrameInfo, SwarmFormation, SwarmInstanceState } from '../../../shared/ipc-channels';
 import { getIpLocation } from '../../utils/ip-geolocation';
+import { getElevation } from '../../utils/elevation-api';
 import SitlEnvironmentPanel from './SitlEnvironmentPanel';
 import SitlFailurePanel from './SitlFailurePanel';
 import { CustomFramePanel } from './CustomFramePanel';
@@ -91,6 +92,8 @@ export default function ArduPilotSitlTab() {
     setHomeLocation,
     setSpeedup,
     setWipeOnStart,
+    useArduDeckSim,
+    setUseArduDeckSim,
     startRcSender,
     stopRcSender,
     setRcState,
@@ -101,6 +104,13 @@ export default function ArduPilotSitlTab() {
     refreshFrames,
     acceptCrashRecovery,
     dismissCrashRecovery,
+    flightGearInstalled,
+    flightGearRunning,
+    flightGearStarting,
+    flightGearError,
+    launchFlightGear,
+    stopFlightGear,
+    browseFlightGear,
   } = useArduPilotSitlStore();
 
   const {
@@ -136,6 +146,7 @@ export default function ArduPilotSitlTab() {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [homeAltitudeFocused, setHomeAltitudeFocused] = useState(false);
+  const [isMatchingTerrain, setIsMatchingTerrain] = useState(false);
 
   useEffect(() => {
     if (!homeAltitudeFocused) {
@@ -146,6 +157,14 @@ export default function ArduPilotSitlTab() {
   // Resolve the user's approximate location via the shared fallback chain:
   // IP geolocation (no permission needed) → browser geolocation → default.
   // Matches the behaviour used elsewhere in the app (map, telemetry).
+  //
+  // SITL's ground is a flat plane at this altitude (AMSL); FlightGear's viewer
+  // renders that same absolute altitude against its OWN real-world terrain
+  // (TerraSync). If the two don't match, the vehicle looks like it is floating
+  // or buried even though it is correctly resting on SITL's ground. We close
+  // that gap by looking up the real elevation for the new location (Open-Meteo,
+  // the same DEM source the survey/terrain-follow tooling already uses) and
+  // using it as the home altitude, so both "ground truths" agree.
   const getCurrentLocation = useCallback(async () => {
     setIsGettingLocation(true);
     setLocationError(null);
@@ -155,12 +174,16 @@ export default function ArduPilotSitlTab() {
         setLocationError('Unable to determine location');
         return;
       }
+      const lat = Math.round(loc.lat * 10000) / 10000;
+      const lng = Math.round(loc.lon * 10000) / 10000;
+      const elevation = await getElevation(lat, lng).catch(() => null);
       setHomeLocation({
-        lat: Math.round(loc.lat * 10000) / 10000,
-        lng: Math.round(loc.lon * 10000) / 10000,
-        // Preserve user's alt; 0 is valid (= ground at terrain). Don't coerce
-        // falsy → 10: that spawns planes airborne and they drift.
-        alt: homeLocation.alt,
+        lat,
+        lng,
+        // Prefer the real ground elevation at the new location; if the lookup
+        // fails, preserve the previous alt rather than coercing to 0/10 (0 is a
+        // valid "ground" value, and a nonzero fallback spawns planes airborne).
+        alt: elevation ?? homeLocation.alt,
         heading: homeLocation.heading,
       });
     } catch {
@@ -169,6 +192,26 @@ export default function ArduPilotSitlTab() {
       setIsGettingLocation(false);
     }
   }, [setHomeLocation, homeLocation.alt, homeLocation.heading]);
+
+  /** Re-fetch real elevation for the CURRENT lat/lng (manual edits, presets, or
+      a map pick can leave the altitude stale/arbitrary). Same terrain-match
+      rationale as getCurrentLocation, without touching lat/lng. */
+  const matchTerrainElevation = useCallback(async () => {
+    setIsMatchingTerrain(true);
+    setLocationError(null);
+    try {
+      const elevation = await getElevation(homeLocation.lat, homeLocation.lng);
+      if (elevation === null) {
+        setLocationError('Unable to look up terrain elevation');
+        return;
+      }
+      setHomeLocation({ ...homeLocation, alt: elevation });
+    } catch {
+      setLocationError('Unable to look up terrain elevation');
+    } finally {
+      setIsMatchingTerrain(false);
+    }
+  }, [setHomeLocation, homeLocation]);
 
   const openSimWindow = useCallback(() => {
     window.electronAPI?.openDetachedWindow?.({
@@ -180,7 +223,8 @@ export default function ArduPilotSitlTab() {
 
   // One-click: start standard SITL if it isn't already running (which auto-connects
   // MAVLink via the connection panel's retry), then open the telemetry-driven 3D
-  // world window. No special physics engine — the 3D world reads MAVLink.
+  // world window. The 3D world reads MAVLink, so it works whether physics is the
+  // built-in model or the ArduDeck engine.
   // EXACTLY the connection screen's working quick-start (handleSitlQuickStart):
   // start SITL, and on success arm the auto-connect. Then open the 3D window.
   // No extra guards — do the same thing that works.
@@ -481,6 +525,31 @@ export default function ArduPilotSitlTab() {
 
             <CustomFramePanel />
 
+            {/* Physics engine (copter only in v1) */}
+            {vehicleType === 'copter' && (
+              <div className="rounded-lg border border-subtle bg-surface p-3 mt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-content">Physics engine</div>
+                    <div className="text-xs text-content-secondary">
+                      Built-in uses ArduPilot's model. ArduDeck engine adds heavy-lift realism
+                      (battery sag, thrust fade) from your custom frame.
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useArduDeckSim}
+                      onChange={(e) => setUseArduDeckSim(e.target.checked)}
+                      disabled={isRunning || isStarting}
+                      className="w-4 h-4 rounded border bg-surface-raised text-blue-500 focus:ring-blue-500/50"
+                    />
+                    <span className="text-xs text-content-secondary">ArduDeck engine</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {/* Release Track */}
             <div>
               <label className="block text-xs text-content-secondary mb-1">Release Track</label>
@@ -511,7 +580,8 @@ export default function ArduPilotSitlTab() {
               </div>
               <p className="text-[11px] text-content-secondary mt-1 leading-snug">
                 A 3D view of the connected vehicle: fly, run missions, place obstacles (as exclusion
-                fences) and inject wind/failures live. Works with standard SITL - no special engine.
+                fences) and inject wind/failures live. Works with standard SITL, and shows richer
+                dynamics when the ArduDeck physics engine is enabled above.
               </p>
               <button
                 onClick={launchSim}
@@ -524,6 +594,58 @@ export default function ArduPilotSitlTab() {
                 </svg>
                 {isRunning ? 'Open 3D World' : isStarting ? 'Starting…' : 'Start SITL & Open 3D World'}
               </button>
+
+              {/* FlightGear viewer — the other "watch it" surface, so both live in
+                  one place instead of one being buried under Run 400 lines down.
+                  Single-vehicle only; SITL streams FGNetFDM on 127.0.0.1:5503. */}
+              {runMode === 'single' && (
+                <>
+                  <div className="mt-3 flex items-center gap-2 text-[10px] text-content-tertiary">
+                    <div className="h-px flex-1 bg-subtle" />
+                    or
+                    <div className="h-px flex-1 bg-subtle" />
+                  </div>
+                  {flightGearRunning ? (
+                    <button
+                      onClick={() => { void stopFlightGear(); }}
+                      data-tip="Close the FlightGear window"
+                      className="mt-2 w-full py-2 text-sm font-medium text-sky-200 bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Close FlightGear
+                    </button>
+                  ) : flightGearInstalled === false ? (
+                    <button
+                      onClick={() => { void browseFlightGear(); }}
+                      data-tip="FlightGear not detected. Install it from flightgear.org, then pick the executable."
+                      className="mt-2 w-full py-2 text-sm font-medium text-content-secondary bg-surface-input hover:bg-surface-raised border border-subtle rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                      Locate FlightGear…
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { void launchFlightGear(); }}
+                      disabled={flightGearStarting || !isRunning}
+                      data-tip={isRunning ? 'Open FlightGear as a 3D view of the running SITL mission' : 'Start SITL first, then view it in FlightGear'}
+                      className="mt-2 w-full py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
+                      </svg>
+                      {flightGearStarting ? 'Opening…' : isRunning ? 'View in FlightGear' : 'View in FlightGear (start SITL first)'}
+                    </button>
+                  )}
+                  {flightGearError && (
+                    <div className="mt-1.5 text-xs text-rose-400">{flightGearError}</div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -640,31 +762,56 @@ export default function ArduPilotSitlTab() {
               />
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex items-center justify-between gap-2">
             <p className="text-xs text-content-tertiary">Default: San Francisco Bay Area</p>
-            <button
-              onClick={getCurrentLocation}
-              disabled={isRunning || isStarting || isGettingLocation}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isGettingLocation ? (
-                <>
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Getting...
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Use My Location
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => void matchTerrainElevation()}
+                disabled={isRunning || isStarting || isMatchingTerrain}
+                data-tip="Look up the real ground elevation (AMSL) at this lat/lng and use it as home altitude, so FlightGear's real terrain and SITL's flat ground agree (fixes the vehicle appearing to float or sink)"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isMatchingTerrain ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Matching...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 001.7-9.7 6 6 0 00-11.6-1.5A4.5 4.5 0 003 15z" />
+                    </svg>
+                    Match Terrain
+                  </>
+                )}
+              </button>
+              <button
+                onClick={getCurrentLocation}
+                disabled={isRunning || isStarting || isGettingLocation}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGettingLocation ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Getting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Use My Location
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           {locationError && (
             <p className="mt-2 text-xs text-red-400">{locationError}</p>
@@ -909,6 +1056,7 @@ export default function ArduPilotSitlTab() {
                 {swarmStopping ? 'Stopping…' : 'Stop swarm'}
               </button>
             )}
+
           </div>
         </div>
 

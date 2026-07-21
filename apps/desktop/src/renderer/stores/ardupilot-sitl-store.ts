@@ -92,6 +92,25 @@ export interface ArduPilotSitlStore {
   isRcSending: boolean;
   rcState: VirtualRCState;
 
+  // FlightGear viewer. ArduPilot SITL streams FGNetFDM to 127.0.0.1:5503
+  // (always-on, see main/sitl); FlightGear attaches as a pure external-FDM
+  // viewer so the user can watch the SITL-flown mission in a 3D world. This is
+  // ArduPilot's native path — no protocol bridge, no X-Plane.
+  /** null = not yet probed; true/false = FlightGear install detected or not. */
+  flightGearInstalled: boolean | null;
+  flightGearRunning: boolean;
+  flightGearStarting: boolean;
+  flightGearError: string | null;
+  /** Visual airframe shell shown in FlightGear (persisted). */
+  flightGearAircraft: string;
+  /** User-picked FlightGear executable when auto-detect misses it (persisted). */
+  flightGearCustomPath?: string;
+  detectFlightGear: () => Promise<void>;
+  browseFlightGear: () => Promise<void>;
+  launchFlightGear: () => Promise<boolean>;
+  stopFlightGear: () => Promise<void>;
+  setFlightGearAircraft: (aircraft: string) => void;
+
   // Errors
   lastError: string | null;
 
@@ -289,6 +308,13 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
       isRcSending: false,
       rcState: DEFAULT_RC_STATE,
 
+      flightGearInstalled: null,
+      flightGearRunning: false,
+      flightGearStarting: false,
+      flightGearError: null,
+      flightGearAircraft: 'c172p',
+      flightGearCustomPath: undefined,
+
       lastError: null,
 
       framesLoading: false,
@@ -314,6 +340,10 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
           simBattCapAh,
           customFramePath,
           customFrameMotors,
+          useArduDeckSim,
+          simWindIntensity,
+          simSensorNoise,
+          simBatterySag,
           appendOutput,
           autoUpgradedFrames,
           crashedFrameTracks,
@@ -382,9 +412,11 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             simBattCapAh: simBattCapAh > 0 ? simBattCapAh : undefined,
             customFramePath,
             customFrameMotors,
-            // Custom sim engine is shelved — SITL always uses built-in physics.
-            // Never request the engine, even if a stale persisted flag is true.
-            useArduDeckSim: undefined,
+            // ArduDeck physics engine: only for copter in v1.
+            useArduDeckSim: useArduDeckSim && vehicleType === 'copter',
+            simWindIntensity,
+            simSensorNoise,
+            simBatterySag,
           };
 
           const result = await window.electronAPI.ardupilotSitlStart(config);
@@ -423,6 +455,11 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         try {
           // Stop RC sender first
           await stopRcSender();
+
+          // Tear down the FlightGear viewer alongside SITL (no-op if closed).
+          if (get().flightGearRunning) {
+            await get().stopFlightGear();
+          }
 
           await window.electronAPI.ardupilotSitlStop();
           set({ isRunning: false, isStopping: false });
@@ -654,6 +691,79 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         set({ rcState: DEFAULT_RC_STATE });
       },
 
+      // FlightGear viewer actions
+      detectFlightGear: async () => {
+        try {
+          const info = await window.electronAPI.ardupilotFlightGearDetect(get().flightGearCustomPath);
+          set({ flightGearInstalled: info.installed });
+          // Sync running state in case a viewer is already up (e.g. after a
+          // renderer reload while SITL + FlightGear kept running).
+          const status = await window.electronAPI.ardupilotFlightGearStatus();
+          set({ flightGearRunning: status.running });
+        } catch {
+          set({ flightGearInstalled: false });
+        }
+      },
+
+      browseFlightGear: async () => {
+        try {
+          const result = await window.electronAPI.ardupilotFlightGearBrowse();
+          if (result.success && result.path) {
+            set({ flightGearCustomPath: result.path, flightGearError: null });
+            await get().detectFlightGear();
+          }
+        } catch (err) {
+          set({ flightGearError: err instanceof Error ? err.message : 'Browse failed' });
+        }
+      },
+
+      launchFlightGear: async () => {
+        const { flightGearRunning, flightGearStarting, homeLocation, flightGearAircraft, flightGearCustomPath, appendOutput } = get();
+        if (flightGearRunning || flightGearStarting) return false;
+
+        set({ flightGearStarting: true, flightGearError: null });
+        appendOutput('\n--- Opening FlightGear viewer ---\n');
+        try {
+          const result = await window.electronAPI.ardupilotFlightGearLaunch(
+            {
+              // `ufo` is FlightGear's invisible camera object; coerce any stale
+              // persisted value to a visible airframe so the vehicle actually shows.
+              aircraft: (flightGearAircraft && flightGearAircraft !== 'ufo') ? flightGearAircraft : 'c172p',
+              lat: homeLocation.lat,
+              lon: homeLocation.lng,
+              // home.alt is AMSL metres; FlightGear --altitude wants feet.
+              altitudeFt: Math.round(homeLocation.alt * 3.28084),
+              headingDeg: homeLocation.heading,
+            },
+            flightGearCustomPath,
+          );
+          if (result.success) {
+            set({ flightGearRunning: true, flightGearStarting: false });
+            appendOutput('FlightGear launched — it will show the SITL vehicle once scenery finishes loading.\n');
+            return true;
+          }
+          set({ flightGearStarting: false, flightGearError: result.error ?? 'Failed to launch FlightGear' });
+          appendOutput(`FlightGear error: ${result.error}\n`, true);
+          return false;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          set({ flightGearStarting: false, flightGearError: message });
+          appendOutput(`FlightGear error: ${message}\n`, true);
+          return false;
+        }
+      },
+
+      stopFlightGear: async () => {
+        try {
+          await window.electronAPI.ardupilotFlightGearStop();
+        } catch {
+          // best-effort
+        }
+        set({ flightGearRunning: false, flightGearStarting: false });
+      },
+
+      setFlightGearAircraft: (aircraft) => set({ flightGearAircraft: aircraft }),
+
       // Initialize IPC listeners
       initListeners: () => {
         const { appendOutput, checkBinary, checkPlatform } = get();
@@ -661,6 +771,8 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         // Check platform and binary on init
         checkPlatform();
         checkBinary();
+        // Probe FlightGear so the viewer button can show install state.
+        void get().detectFlightGear();
 
         // Listen for stdout
         const unsubStdout = window.electronAPI.onArdupilotSitlStdout((data) => {
@@ -681,6 +793,11 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         // Listen for exit
         const unsubExit = window.electronAPI.onArdupilotSitlExit((data) => {
           set({ isRunning: false, isStarting: false, isStopping: false, isRcSending: false });
+          // FlightGear is driven purely by SITL's FGNetFDM stream; once SITL is
+          // gone the viewer just freezes, so close it too.
+          if (get().flightGearRunning) {
+            void get().stopFlightGear();
+          }
           if (data.code !== null) {
             appendOutput(`\nSITL exited with code ${data.code}\n`);
           } else if (data.signal) {
@@ -829,6 +946,9 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         // the app would re-offer a track we already know crashes for the
         // selected frame.
         crashedFrameTracks: state.crashedFrameTracks,
+        // FlightGear viewer preferences.
+        flightGearAircraft: state.flightGearAircraft,
+        flightGearCustomPath: state.flightGearCustomPath,
       }),
     }
   )

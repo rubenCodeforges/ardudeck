@@ -1,0 +1,136 @@
+name: Release sim-engine binaries
+
+# Builds the ardudeck-sim-engine physics engine for every supported platform
+# and publishes the binaries to this repo's releases under the pushed
+# `sim-engine-v<version>` tag. The binaries are not secret (they ship inside
+# every ArduDeck download). The desktop packaging step downloads the pinned
+# version (see apps/desktop/sim-engine.json) when no local build is present,
+# verifying each asset against checksums.txt.
+#
+# Trigger: push a `sim-engine-v*` tag, or run manually via workflow_dispatch
+# with the target tag. Publishes to the same public repo, so the default
+# GITHUB_TOKEN (contents: write) is all that is needed; no cross-repo secret.
+
+on:
+  push:
+    tags:
+      - 'sim-engine-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. sim-engine-v0.1.0).'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  BINARY_NAME: ardudeck-sim-engine
+
+jobs:
+  resolve:
+    name: Resolve release tag
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#sim-engine-v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: resolve
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, target: aarch64-apple-darwin, label: macos-arm64, asset: ardudeck-sim-engine-macos-arm64 }
+          - { os: macos-14, target: x86_64-apple-darwin, label: macos-x64, asset: ardudeck-sim-engine-macos-x64 }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, label: windows-x64, asset: ardudeck-sim-engine-windows-x64.exe }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, label: linux-x64, asset: ardudeck-sim-engine-linux-x64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-sim-engine-${{ matrix.target }}-${{ hashFiles('crates/ardudeck-sim-engine/Cargo.toml') }}
+          restore-keys: cargo-sim-engine-${{ matrix.target }}-
+
+      - name: Build release
+        run: cargo build --release --locked --manifest-path crates/ardudeck-sim-engine/Cargo.toml --target ${{ matrix.target }}
+
+      - name: Stage binary (unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp "crates/ardudeck-sim-engine/target/${{ matrix.target }}/release/${BINARY_NAME}" "dist/${{ matrix.asset }}"
+
+      - name: Stage binary (windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "crates/ardudeck-sim-engine/target/${{ matrix.target }}/release/${BINARY_NAME}.exe" "dist/${{ matrix.asset }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish ${{ needs.resolve.outputs.tag }}
+    needs: [resolve, build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: staged
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: staged
+        run: |
+          sha256sum ardudeck-sim-engine-* > checksums.txt
+          echo "Published assets:"
+          cat checksums.txt
+
+      - name: Publish sim-engine release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: ArduDeck physics engine ${{ needs.resolve.outputs.version }}
+          body: |
+            ArduDeck physics engine (sim-engine) binaries for ${{ needs.resolve.outputs.version }}.
+
+            These are bundled into the ArduDeck desktop app; they are not a
+            standalone download. Verify against `checksums.txt`.
+          prerelease: false
+          files: |
+            staged/ardudeck-sim-engine-*
+            staged/checksums.txt

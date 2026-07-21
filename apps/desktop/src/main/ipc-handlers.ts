@@ -201,7 +201,9 @@ import {
   type BridgeConfig,
   type VirtualRCState,
 } from './simulators/index.js';
-import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo, SwarmSitlConfig, SwarmSitlStatus } from '../shared/ipc-channels.js';
+import { ardupilotFlightGear } from './simulators/ardupilot-flightgear.js';
+import { detectFlightGear } from './simulators/simulator-detector.js';
+import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo, SwarmSitlConfig, SwarmSitlStatus, ArduPilotFlightGearConfig } from '../shared/ipc-channels.js';
 import { openAreaEditorWindow, setMainMapViewport } from './area-editor-window.js';
 
 // =============================================================================
@@ -300,6 +302,14 @@ let armAckWatchdog: ReturnType<typeof setTimeout> | null = null;
 // The ConnectionRegistry mirrors the active connection so vehicles are tracked
 // by (transport, sysid, compid). Single-vehicle reads stay on the legacy globals.
 let primaryTransportId: TransportId | null = null;
+// Single-flight guard for COMMS_CONNECT. Each invocation bumps this and captures
+// its own value; an older invocation still mid-connect (paused on the driver
+// settle delay, or a socket that is still opening) bails the instant it sees a
+// newer attempt. Without this, a connect retry storm during a slow SITL/engine
+// startup (the wipe reboot briefly drops the port) can leave two live sockets
+// on ArduPilot's single-client TCP serial port, one of which SITL never
+// services - so parameters and telemetry silently stall.
+let connectGeneration = 0;
 // Tracks last armed state reported to renderer so we only log on transitions
 let lastReportedArmed: boolean | null = null;
 let mavlinkParser: MAVLinkParser | null = null;
@@ -4833,6 +4843,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Connect to a device
   ipcMain.handle(IPC_CHANNELS.COMMS_CONNECT, async (_, options: ConnectOptions): Promise<boolean> => {
+    // Claim this connect attempt. Any older attempt still in flight will see a
+    // newer generation at its next checkpoint and abandon itself, so we never
+    // end up with two sockets racing to the same target.
+    const myConnectGeneration = ++connectGeneration;
+
     // Cancel any pending auto-reconnect (user is manually connecting)
     if (pendingReconnect) {
       if (reconnectTimer) {
@@ -4874,8 +4889,19 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     currentTransport = null;
 
     // BSOD FIX: Wait for driver to fully release port resources
-    // Windows USB-serial drivers (CH340, CP210x, FTDI) need time to cleanup
-    await new Promise(r => setTimeout(r, 500));
+    // Windows USB-serial drivers (CH340, CP210x, FTDI) need time to cleanup.
+    // TCP/UDP have no such driver, and adding the delay there only widens the
+    // window where a connect retry can race in against a slow-starting SITL.
+    if (options.type === 'serial') {
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    // A newer connect attempt arrived during the settle delay. Abandon this one
+    // before opening a socket, so only the latest attempt ever dials the target.
+    if (myConnectGeneration !== connectGeneration) {
+      sendLog(mainWindow, 'info', 'Connection attempt superseded by a newer request; abandoning the stale one.');
+      return false;
+    }
 
     try {
       // Create appropriate transport
@@ -4926,6 +4952,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (!currentTransport) {
         throw new Error('Failed to create transport - this should not happen');
       }
+
+      // Hold our own reference: a newer connect may reassign currentTransport
+      // while this socket is opening, and we must be able to tear down exactly
+      // the socket this attempt created (not the winner's).
+      const thisTransport = currentTransport;
 
       sendLog(mainWindow, 'info', `Opening ${transportName}...`);
 
@@ -4999,6 +5030,20 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // Open connection
       await currentTransport.open();
+
+      // A newer connect superseded us while this socket was opening. Tear this
+      // orphan down rather than leave a second live socket fighting for the FC's
+      // single-client TCP serial port. Detach listeners first so this close does
+      // not run the shared close handler and clobber the winner's module state.
+      if (myConnectGeneration !== connectGeneration) {
+        // BaseTransport extends EventEmitter; detach listeners so this orphan's
+        // close does not run the shared close handler against the winner's state.
+        const emitter = thisTransport as { removeAllListeners?: () => void };
+        try { emitter.removeAllListeners?.(); } catch { /* ignore */ }
+        try { await thisTransport.close(); } catch { /* ignore */ }
+        sendLog(mainWindow, 'info', 'Connection attempt superseded while opening; closed the stale socket.');
+        return false;
+      }
 
       // If protocol is forced to MSP, skip MAVLink detection entirely
       if (options.protocol === 'msp') {
@@ -10182,6 +10227,79 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.SIMULATOR_FG_STATUS, async (): Promise<{ running: boolean; pid?: number }> => {
     const status = flightGearLauncher.getStatus();
     return { running: status.running, pid: status.pid ?? undefined };
+  });
+
+  // -------------------------------------------------------------------------
+  // ArduPilot SITL -> FlightGear viewer (external-FDM, no bridge)
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_FG_DETECT, async (_event, customPath?: string): Promise<{ installed: boolean; path: string | null; version: string | null }> => {
+    const info = await detectFlightGear(customPath);
+    return { installed: info.installed, path: info.path, version: info.version };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_FG_BROWSE, async (): Promise<{ success: boolean; path?: string; error?: string }> => {
+    try {
+      const platform = process.platform;
+      let filters: { name: string; extensions: string[] }[];
+      let title: string;
+
+      if (platform === 'win32') {
+        filters = [
+          { name: 'FlightGear Executable', extensions: ['exe'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select FlightGear Executable (fgfs.exe)';
+      } else if (platform === 'darwin') {
+        filters = [
+          { name: 'Applications', extensions: ['app'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+        title = 'Select FlightGear Application';
+      } else {
+        filters = [{ name: 'All Files', extensions: ['*'] }];
+        title = 'Select FlightGear Executable (fgfs)';
+      }
+
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title,
+        filters,
+        properties: platform === 'darwin' ? ['openFile', 'treatPackageAsDirectory'] : ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false };
+      }
+      return { success: true, path: result.filePaths[0] };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[ArduPilot FlightGear] Browse failed:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_FG_LAUNCH, async (_event, config: ArduPilotFlightGearConfig, customPath?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      return await ardupilotFlightGear.launch(config, customPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[ArduPilot FlightGear] Failed to launch:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_FG_STOP, async (): Promise<{ success: boolean }> => {
+    try {
+      await ardupilotFlightGear.stop();
+      return { success: true };
+    } catch (error) {
+      console.error('[ArduPilot FlightGear] Failed to stop:', error);
+      return { success: false };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ARDUPILOT_FG_STATUS, async (): Promise<{ running: boolean; pid: number | null; aircraft: string | null }> => {
+    return ardupilotFlightGear.getStatus();
   });
 
   // Browse for X-Plane executable
