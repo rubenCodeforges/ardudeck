@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { type ModelKey, FALLBACK_MODEL, CLASS_MODEL, modelKeyForClass } from './sim-models';
 import type { SimDiagnostics, SimLoad } from '../../stores/sim-state-store';
+import { createWaypointSymbology } from '../camera/hud3d/waypoint-symbology';
 
 /** Per-airframe 3D models (Tripo-generated, textured). Each model's spinnable
     rotors are grouped under `prop_*` pivot nodes so they spin in place; the spin
@@ -128,6 +129,12 @@ export interface SimWorldScene {
    * sits at y = 0, matching the NED vehicle frame.
    */
   setTerrain: (geometry: THREE.BufferGeometry | null, yOffset?: number) => void;
+  /** Show/hide the reference grid (spatial-perception aid, over flat ground and
+      SVT terrain alike). Default on. */
+  setGrid: (on: boolean) => void;
+  /** Show/hide the conformal 3D waypoint markers (billboard target reticles at
+      each waypoint's true position + altitude). Default on. */
+  setWaypoints: (on: boolean) => void;
   /** Orbit-mode interaction: drag to orbit, wheel to zoom. */
   onPointerDown: (x: number, y: number) => void;
   onPointerMove: (x: number, y: number) => void;
@@ -327,11 +334,24 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
   ground.position.y = -0.05;
   scene.add(ground);
 
-  // Faint reference grid (10 m cells over 1 km).
-  const grid = new THREE.GridHelper(1000, 100, 0x6f7f57, 0x60704b);
+  // Reference grid — a spatial-perception aid the pilot can read at a glance
+  // (25 m cells over 2 km, brighter centre cross). Unlike the old faint ground
+  // grid this stays visible over BOTH the flat ground and the SVT terrain: it
+  // sits a hair above the home surface (y = 0) so on terrain it reads as a
+  // home-altitude reference plane, hills poking through where they rise above
+  // home. Independently toggleable via setGrid(); default on.
+  let gridEnabled = true;
+  const grid = new THREE.GridHelper(2000, 80, 0x9ec1e6, 0x5c7391);
   (grid.material as THREE.Material).transparent = true;
-  (grid.material as THREE.Material).opacity = 0.25;
+  (grid.material as THREE.Material).opacity = 0.34;
+  (grid.material as THREE.Material).depthWrite = false;
+  grid.position.y = 0.08;
   scene.add(grid);
+
+  function setGrid(on: boolean): void {
+    gridEnabled = on;
+    grid.visible = on;
+  }
 
   // ─── Optional synthetic-vision terrain (replaces the flat ground) ─────────
   const DEFAULT_FOG_FAR = (scene.fog as THREE.Fog).far;
@@ -350,13 +370,14 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
       terrainMesh.position.y = yOffset;
       scene.add(terrainMesh);
       ground.visible = false;
-      grid.visible = false;
+      // The reference grid stays (it drapes the home plane over the terrain);
+      // its visibility is owned by setGrid, not the terrain toggle.
       (scene.fog as THREE.Fog).far = 7000; // see across real terrain, not 2.6 km
     } else {
       ground.visible = true;
-      grid.visible = true;
       (scene.fog as THREE.Fog).far = DEFAULT_FOG_FAR;
     }
+    grid.visible = gridEnabled;
   }
 
   // Concentric range rings + home pad at the origin.
@@ -898,39 +919,32 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
     }
   }
 
-  const wpMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x0891b2, emissiveIntensity: 0.5, roughness: 0.4 });
-  const wpLineMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.8 });
   const fenceIncMat = new THREE.LineBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.85 });
   const fenceExcMat = new THREE.LineBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.85 });
   const obstacleMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, transparent: true, opacity: 0.4, roughness: 0.7 });
   const obstacleEdgeMat = new THREE.LineBasicMaterial({ color: 0xfca5a5, transparent: true, opacity: 0.9 });
-  const wpGeom = new THREE.SphereGeometry(QUAD_SCALE * 0.45, 12, 10);
-  const overlayMats = [wpMat, wpLineMat, fenceIncMat, fenceExcMat, obstacleMat, obstacleEdgeMat, wpGeom];
+  const overlayMats = [fenceIncMat, fenceExcMat, obstacleMat, obstacleEdgeMat];
 
   const tmpV = new THREE.Vector3();
 
+  // ─── Conformal waypoint markers ──────────────────────────────────────────────
+  // The "highway in the sky" (billboard target reticles at each waypoint's true
+  // position + altitude, captions with live slant-range, a threading route line
+  // and drop lines) is the shared HUD symbology — the exact same module the HUD
+  // world overlay paints over synthetic vision, so there is one implementation.
+  // The sim world passes no active-waypoint seq, so there is no active emphasis
+  // here (identical to the previous inline version).
+  const waypointSym = createWaypointSymbology();
+  scene.add(waypointSym.group);
+  let waypointsEnabled = true;
+
+  function setWaypoints(on: boolean): void {
+    waypointsEnabled = on;
+    waypointSym.setVisible(on);
+  }
+
   function rebuildOverlay(data: SimWorldUpdate): void {
     clearOverlay();
-
-    // Mission waypoints: markers + connecting polyline.
-    if (data.waypoints && data.waypoints.length > 0) {
-      const linePts: THREE.Vector3[] = [];
-      for (const wp of data.waypoints) {
-        nedToThree(wp.position, tmpV);
-        const m = new THREE.Mesh(wpGeom, wpMat);
-        m.position.copy(tmpV);
-        overlay.add(m);
-        const drop = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([tmpV.clone(), new THREE.Vector3(tmpV.x, 0, tmpV.z)]),
-          wpLineMat,
-        );
-        overlay.add(drop);
-        linePts.push(tmpV.clone());
-      }
-      if (linePts.length > 1) {
-        overlay.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePts), wpLineMat));
-      }
-    }
 
     // Geofences: closed ground polygons.
     for (const f of data.fences ?? []) {
@@ -1010,10 +1024,15 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
       camera.position.copy(p).addScaledVector(tmpForward, -18).add(tmp.set(0, 7, 0));
       camera.lookAt(p.x, p.y + 2, p.z);
     } else {
-      const yaw = v.group.rotation.y;
-      tmpForward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-      camera.position.copy(p).addScaledVector(tmpForward, 1.5).add(tmp.set(0, 0.8, 0));
-      camera.lookAt(p.clone().addScaledVector(tmpForward, 50));
+      // FPV: rigid nose-cam. Adopt the vehicle's FULL orientation (yaw + pitch +
+      // ROLL) so the view banks with the aircraft, instead of a yaw-only lookAt
+      // (which stayed level). A light slerp damps attitude jitter. Offsets use
+      // the vehicle's OWN body axes (forward = local -Z, up = local +Y) so the
+      // camera stays glued just ahead of the nose through the roll.
+      camera.quaternion.slerp(v.group.quaternion, 0.4);
+      tmpForward.set(0, 0, -1).applyQuaternion(v.group.quaternion);
+      tmp.set(0, 1, 0).applyQuaternion(v.group.quaternion);
+      camera.position.copy(p).addScaledVector(tmpForward, 1.5).addScaledVector(tmp, 0.6);
     }
   }
 
@@ -1117,6 +1136,12 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
       }
 
       rebuildOverlay(data);
+
+      // Conformal waypoint markers: the shared module rebuilds only when the
+      // mission changes and refreshes captions with live slant-range from the
+      // flown vehicle. No active-waypoint emphasis in the sim world (pass null).
+      waypointSym.update(data.waypoints ?? [], primaryVehicle()?.group.position ?? camera.position, null);
+      waypointSym.group.visible = waypointsEnabled;
     },
 
     render() {
@@ -1148,6 +1173,10 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
     },
 
     setTerrain,
+
+    setGrid,
+
+    setWaypoints,
 
     onPointerDown(x: number, y: number) {
       if (cameraMode !== 'orbit') return;
@@ -1184,6 +1213,7 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
       for (const v of vehicles.values()) disposeVehicle(v);
       vehicles.clear();
       clearOverlay();
+      waypointSym.dispose();
       for (const g of sharedGeoms) g.dispose();
       for (const m of sharedMats) m.dispose();
       for (const g of modelSharedGeoms) g.dispose();

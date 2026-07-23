@@ -111,6 +111,40 @@ export async function loadElevationGrid(
   return { centerLat, centerLon, halfSizeM, res, elev, mPerDegLon };
 }
 
+/**
+ * A reference grid of line segments draped ON the terrain surface (same vertices
+ * as the mesh, lifted `yOffset` m so it rides the elevation instead of hovering
+ * as a flat plane). `stride` picks every Nth grid vertex as a grid line, so the
+ * cell size is roughly `stride * 2*halfSizeM/(res-1)` metres. Gives the pilot a
+ * topographic reference that keeps spatial perception over a degraded feed and
+ * converges to the horizon (depth cue). Returns line-segment positions to feed a
+ * THREE.LineSegments.
+ */
+export function buildTerrainGridGeometry(grid: ElevationGrid, stride = 2, yOffset = 2): THREE.BufferGeometry {
+  const { res, halfSizeM, elev } = grid;
+  const yAt = (i: number, j: number): number => (elev[j * res + i] ?? 0) + yOffset;
+  const pos: number[] = [];
+  // Lines running east (constant row j).
+  for (let j = 0; j < res; j += stride) {
+    for (let i = 0; i + stride < res; i += stride) {
+      const a = vertexEastNorth(halfSizeM, res, i, j);
+      const b = vertexEastNorth(halfSizeM, res, i + stride, j);
+      pos.push(a.east, yAt(i, j), -a.north, b.east, yAt(i + stride, j), -b.north);
+    }
+  }
+  // Lines running north (constant col i).
+  for (let i = 0; i < res; i += stride) {
+    for (let j = 0; j + stride < res; j += stride) {
+      const a = vertexEastNorth(halfSizeM, res, i, j);
+      const b = vertexEastNorth(halfSizeM, res, i, j + stride);
+      pos.push(a.east, yAt(i, j), -a.north, a.east, yAt(i, j + stride), -b.north);
+    }
+  }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return geom;
+}
+
 /** Offline fallback: sample the per-point elevation API on a coarse grid. */
 async function loadElevationGridPointwise(
   centerLat: number,

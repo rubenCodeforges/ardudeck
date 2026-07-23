@@ -676,7 +676,7 @@ class ArduPilotSitlProcessManager {
       let reaped = 0;
       for (const pid of pids) {
         const { stdout: cmd } = await run('ps', ['-o', 'command=', '-p', pid]).catch(() => ({ stdout: '' }));
-        if (!SITL_BINARIES.some((b) => cmd.includes(b))) continue;
+        if (!SITL_BINARIES.some((b) => cmd.toLowerCase().includes(b))) continue;
         try {
           process.kill(Number(pid), 'SIGKILL');
           reaped++;
@@ -697,17 +697,20 @@ class ArduPilotSitlProcessManager {
   stop(): void {
     // Tear down the in-app sim engine alongside SITL (no-op if not running).
     simEngineProcess.stop();
-    if (this.process) {
+    // Capture the child in a LOCAL so the SIGKILL escalation still targets it
+    // after we null `this.process` below. Reading `this.process` inside the
+    // timer was always null by the time it fired, so SITL (which routinely
+    // ignores SIGTERM) never got SIGKILLed - it survived Stop, kept port 5760
+    // bound, and the next Start couldn't bind ("can't connect after restart").
+    const proc = this.process;
+    if (proc) {
       try {
-        this.process.kill('SIGTERM');
-
+        proc.kill('SIGTERM');
         setTimeout(() => {
-          if (this.process) {
-            try {
-              this.process.kill('SIGKILL');
-            } catch {
-              // Already dead
-            }
+          try {
+            proc.kill('SIGKILL');
+          } catch {
+            // Already dead
           }
         }, 2000);
       } catch (err) {

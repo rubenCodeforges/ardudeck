@@ -26,6 +26,7 @@ import {
 } from '../../shared/safety-monitor/types';
 import { useSafetyMonitorStore } from '../stores/safety-monitor-store';
 import { useActiveVehicleStore } from '../stores/active-vehicle-store';
+import { probeTime } from '../lib/perf-probe';
 
 const MSG = {
   HEARTBEAT: 0,
@@ -344,7 +345,8 @@ export function startSafetyMonitor(): void {
   const api = (window as unknown as { electronAPI?: ElectronParamApi }).electronAPI;
   unsubPacket = api?.onPacket?.((p) => {
     if (replayMode) return;
-    feedRawPacket({ msgid: p.msgid, sysid: p.sysid, compid: p.compid, payload: p.payload }, Date.now());
+    // TEMP perf probe: attribute per-packet safety-decode cost (remove with perf-probe).
+    probeTime('safety', () => feedRawPacket({ msgid: p.msgid, sysid: p.sysid, compid: p.compid, payload: p.payload }, Date.now()));
   }) ?? null;
   tickHandle = setInterval(() => {
     if (!replayMode) evaluateAt(Date.now());

@@ -29,6 +29,9 @@ export const FIXED_WIDGETS = [
   'altitudeTape',
   'vsi',
   'groundSpeed',
+  // Not an SVG instrument — toggles the world-locked 3D waypoint overlay
+  // (HudWorldOverlay). Lives here so it appears in the HUD instruments editor.
+  'waypoints',
 ] as const;
 
 /**
@@ -85,6 +88,7 @@ export const HUD_WIDGETS: HudWidgetMeta[] = [
   { id: 'airspeedTape', label: 'Airspeed tape', movable: false },
   { id: 'altitudeTape', label: 'Altitude tape', movable: false },
   { id: 'vsi', label: 'Vertical speed', movable: false },
+  { id: 'waypoints', label: 'Waypoints (3D)', movable: false },
   { id: 'status', label: 'Status (mode/sat/thr)', movable: true },
   { id: 'battery', label: 'Battery', movable: true },
   { id: 'home', label: 'Home arrow + distance', movable: true },
@@ -140,6 +144,7 @@ export const DEFAULT_GROUND_WIDGETS: Record<HudWidgetId, boolean> = {
   altitudeTape: false,
   vsi: false,
   groundSpeed: true,
+  waypoints: true,
   status: true,
   battery: true,
   home: true,
@@ -162,6 +167,7 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
     altitudeTape: true,
     vsi: true,
     groundSpeed: false,
+    waypoints: true,
     status: true,
     battery: true,
     home: true,

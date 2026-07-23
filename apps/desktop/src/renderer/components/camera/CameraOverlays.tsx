@@ -13,6 +13,7 @@ import type { OsdLayers } from '../../../shared/camera-types';
 import type { FleetVehicle } from '../../hooks/useFleet';
 import { CameraOsd } from './CameraOsd';
 import { LiveFighterHud } from './hud/LiveFighterHud';
+import { LiveHudWorldOverlay, type WorldOverlayPose } from './hud3d/LiveHudWorldOverlay';
 import { MountPoint } from '../../modules/MountPoint';
 import { useHudOverlayStore } from '../../stores/hud-overlay-store';
 
@@ -24,9 +25,16 @@ interface CameraOverlaysProps {
   attitude?: { roll: number; pitch: number } | null;
   /** Frame-center ground coordinate, when projectable (live gimbal views only). */
   frameCenter?: { lat: number; lon: number } | null;
+  /**
+   * Background camera pose + FOV for the world-locked 3D waypoint overlay. When
+   * supplied (Synthetic Vision passes its SVT camera's exact pose + fov), the
+   * overlay renders world-locked mission symbology that aligns with the terrain.
+   * Omitted for backgrounds without a known pose (e.g. an uncalibrated live feed).
+   */
+  worldOverlay?: WorldOverlayPose | null;
 }
 
-export function CameraOverlays({ vehicle, isPrimary, osd, attitude = null, frameCenter = null }: CameraOverlaysProps) {
+export function CameraOverlays({ vehicle, isPrimary, osd, attitude = null, frameCenter = null, worldOverlay = null }: CameraOverlaysProps) {
   const hudActive = isPrimary && osd.hud;
   const setHudOverlayActive = useHudOverlayStore((s) => s.setActive);
 
@@ -40,6 +48,12 @@ export function CameraOverlays({ vehicle, isPrimary, osd, attitude = null, frame
 
   return (
     <>
+      {/* World-locked 3D waypoint overlay — painted BETWEEN the background and
+          the 2D SVG HUD, so the mission symbology sits in the world while the
+          instruments stay screen-fixed. Primary vehicle only + needs a background
+          pose (Synthetic Vision); the on/off toggle is the HUD `waypoints` widget
+          (checked inside LiveHudWorldOverlay), which lives in the HUD editor. */}
+      {isPrimary && worldOverlay && <LiveHudWorldOverlay pose={worldOverlay} />}
       {hudActive && <LiveFighterHud />}
       {/* Module-contributed camera/HUD overlays. Drawn on
           the same viewport as the fighter HUD; modules self-gate via host.hud. */}

@@ -97,6 +97,22 @@ export interface ImportedGroup extends BaseGroup {
 
 export type Group = ManualGroup | SurveyGroup | ImportedGroup;
 
+/**
+ * Serializable snapshot of the mission store's authored content, mirrored from
+ * the primary window to detached pop-outs over IPC (see IPC_CHANNELS.MISSION_
+ * MIRROR). Carries everything a read-only view needs to render the mission;
+ * `currentSeq` is intentionally excluded (it flows live via MISSION_CURRENT and
+ * would otherwise flood the channel during AUTO). `items` is typed loosely as
+ * unknown[] here to avoid importing MissionItem (which would couple this
+ * import-free module); consumers cast to MissionItem[] at the boundary.
+ */
+export interface MissionMirrorSnapshot {
+  items: unknown[];
+  groups: Group[];
+  home: { lat: number; lon: number; alt: number } | null;
+  fcSeqOffset: number;
+}
+
 export function isManualGroup(g: Group): g is ManualGroup {
   return g.kind === 'manual';
 }

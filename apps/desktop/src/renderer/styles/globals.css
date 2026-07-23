@@ -71,6 +71,15 @@
   --mode-assisted: #facc15;
   --mode-auto: #4ade80;
   --mode-emergency: #f87171;
+
+  /* Semantic status colours (theme toggles via .light, NOT prefers-color-scheme,
+     so Tailwind's fixed emerald-300/red-300 etc. never adapt - use these on any
+     tinted state chip / dot / button so it reads in both themes). `-solid` = the
+     dot/accent, `-fg` = text on a tint, `-bg` = the tint fill. */
+  --status-success: #34d399;  --status-success-fg: #6ee7b7;  --status-success-bg: rgba(16, 185, 129, 0.15);
+  --status-warn:    #fbbf24;  --status-warn-fg:    #fcd34d;  --status-warn-bg:    rgba(245, 158, 11, 0.15);
+  --status-danger:  #f87171;  --status-danger-fg:  #fca5a5;  --status-danger-bg:  rgba(239, 68, 68, 0.15);
+  --status-info:    #60a5fa;  --status-info-fg:    #93c5fd;  --status-info-bg:    rgba(59, 130, 246, 0.15);
 }
 
 .light {
@@ -136,6 +145,12 @@
   --mode-assisted: #ca8a04;
   --mode-auto: #16a34a;
   --mode-emergency: #dc2626;
+
+  /* Darker, saturated status colours for light surfaces. */
+  --status-success: #16a34a;  --status-success-fg: #15803d;  --status-success-bg: rgba(22, 163, 74, 0.12);
+  --status-warn:    #d97706;  --status-warn-fg:    #b45309;  --status-warn-bg:    rgba(217, 119, 6, 0.12);
+  --status-danger:  #dc2626;  --status-danger-fg:  #b91c1c;  --status-danger-bg:  rgba(220, 38, 38, 0.10);
+  --status-info:    #2563eb;  --status-info-fg:    #1d4ed8;  --status-info-bg:    rgba(37, 99, 235, 0.10);
 }
 
 @layer base {

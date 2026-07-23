@@ -30,6 +30,13 @@ import { loadElevationGrid, buildTerrainGeometry, sampleElevation } from '../cam
 import type { SimFence } from './sim-world-scene';
 import { useSimFlightControlPanelStore } from '../../stores/sim-flight-control-panel-store';
 import { useDraggableSnap } from '../../hooks/useDraggableSnap';
+import { FighterHud, type FighterHudValues } from '../camera/hud/FighterHud';
+import { resolveHudProfile } from '../camera/hud/hud-config';
+import { useHudStore } from '../../stores/hud-store';
+import { useLinkHistory } from '../camera/hud/useLinkHistory';
+import { wrap180 } from '../camera/hud/hud-geometry';
+import { bearingDeg, haversineMeters } from '../../utils/osd/live-telemetry';
+import { MountPoint } from '../../modules/MountPoint';
 
 /** Whether a vehicle's telemetry carries a usable GPS fix (matches useFleet). */
 function hasGpsFix(t: VehicleTelemetry | undefined): t is VehicleTelemetry & { gps: NonNullable<VehicleTelemetry['gps']> } {
@@ -132,6 +139,13 @@ export default function SimWorldView() {
 
   const [cameraMode, setCameraMode] = useState<SimCameraMode>('chase');
   const [showTerrain, setShowTerrain] = useState(false);
+  // Reference grid (spatial-perception aid over ground + SVT terrain). Default on.
+  const [showGrid, setShowGrid] = useState(true);
+  // Conformal 3D waypoint markers (billboard target reticles). Default on.
+  const [showWaypoints, setShowWaypoints] = useState(true);
+  // FPV-goggles HUD overlay (crosshair + pitch/roll ladder + tapes). Default on;
+  // only rendered in FPV/Chase where a forward view makes it meaningful.
+  const [showHud, setShowHud] = useState(true);
   // Physics X-ray overlay: thrust arrows + net-lift vector + CG markers + load
   // readouts. Off by default so the flight view stays clean. The rAF loop reads
   // the ref (its closure is created once); the state drives the button + HUD.
@@ -420,6 +434,14 @@ export default function SimWorldView() {
     showXrayRef.current = showXray;
   }, [showXray]);
 
+  // Push the reference-grid + conformal-waypoint toggles to the scene.
+  useEffect(() => {
+    sceneRef.current?.setGrid(showGrid);
+  }, [showGrid]);
+  useEffect(() => {
+    sceneRef.current?.setWaypoints(showWaypoints);
+  }, [showWaypoints]);
+
   // Reactive trigger that changes once a position fix exists (and as the vehicle
   // moves), so the terrain effect can build as soon as the home origin is set.
   const fixSignal = useTelemetryStore((s) =>
@@ -531,6 +553,14 @@ export default function SimWorldView() {
         onWheel={onWheel}
       />
 
+      {/* FPV HUD overlay — the SAME green fighter HUD the telemetry Vision panel
+          uses (FighterHud), fed from the sampled sim `hud` state. Only in FPV/
+          Chase, where a forward view makes it meaningful; hidden in Orbit/Top.
+          Sits above the canvas but below the controls, and ignores pointer events. */}
+      {showHud && hud && (cameraMode === 'fpv' || cameraMode === 'chase') && (
+        <SimFighterHud hud={hud} />
+      )}
+
       {/* Top-right controls: synthetic-vision terrain toggle + camera mode */}
       <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
         <button
@@ -550,6 +580,33 @@ export default function SimWorldView() {
           }`}
         >
           X-ray
+        </button>
+        <button
+          onClick={() => setShowGrid((v) => !v)}
+          data-tip="Reference grid — a spatial-perception aid that stays visible over both the flat ground and the SVT terrain"
+          className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
+            showGrid ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
+          }`}
+        >
+          Grid
+        </button>
+        <button
+          onClick={() => setShowWaypoints((v) => !v)}
+          data-tip="Conformal 3D waypoint markers — target reticles floating at each waypoint's true position + altitude, with number and live slant-range"
+          className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
+            showWaypoints ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
+          }`}
+        >
+          Waypoints
+        </button>
+        <button
+          onClick={() => setShowHud((v) => !v)}
+          data-tip="FPV HUD overlay — boresight, pitch/roll horizon ladder, airspeed/altitude, heading and climb rate (FPV & Chase views)"
+          className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
+            showHud ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
+          }`}
+        >
+          HUD
         </button>
         <div className="flex overflow-hidden rounded-lg border border-subtle shadow-lg">
           {CAMERA_MODES.map((m) => (
@@ -831,23 +888,51 @@ function DraggableFlightControlPanel() {
   const panelRef = useRef<HTMLDivElement>(null);
   const x = useSimFlightControlPanelStore((s) => s.x);
   const y = useSimFlightControlPanelStore((s) => s.y);
+  const collapsed = useSimFlightControlPanelStore((s) => s.collapsed);
   const setPos = useSimFlightControlPanelStore((s) => s.setPos);
   const persist = useSimFlightControlPanelStore((s) => s.persist);
+  const toggleCollapsed = useSimFlightControlPanelStore((s) => s.toggleCollapsed);
   const { onHandlePointerDown } = useDraggableSnap(panelRef, { setPos, persist });
 
-  useEffect(() => {
-    if (x === null || y === null) {
-      const w = panelRef.current?.offsetWidth ?? 288; // w-72
-      const h = panelRef.current?.offsetHeight ?? 460;
-      setPos(window.innerWidth - w - 12, window.innerHeight - h - 12);
-      persist();
+  // Keep the panel on-screen: seed a default lower-right position on first show,
+  // and re-clamp into view on every window resize (and whenever it collapses /
+  // expands, since the height changes). Without this a position saved for one
+  // window size (a larger pop-out, the docked panel) leaves it parked off-screen.
+  const clampIntoView = useCallback(() => {
+    const w = panelRef.current?.offsetWidth ?? 288; // w-72
+    const h = panelRef.current?.offsetHeight ?? 460;
+    const maxX = Math.max(12, window.innerWidth - w - 12);
+    const maxY = Math.max(12, window.innerHeight - h - 12);
+    const store = useSimFlightControlPanelStore.getState();
+    if (store.x === null || store.y === null) {
+      store.setPos(maxX, maxY);
+      store.persist();
+      return;
     }
-  }, [x, y, setPos, persist]);
+    const nx = Math.min(Math.max(12, store.x), maxX);
+    const ny = Math.min(Math.max(12, store.y), maxY);
+    if (nx !== store.x || ny !== store.y) {
+      store.setPos(nx, ny);
+      store.persist();
+    }
+  }, []);
+
+  useEffect(() => {
+    clampIntoView();
+    window.addEventListener('resize', clampIntoView);
+    return () => window.removeEventListener('resize', clampIntoView);
+  }, [clampIntoView]);
+
+  // Re-clamp after a collapse/expand so expanding near the bottom edge doesn't
+  // push the body below the viewport.
+  useEffect(() => {
+    clampIntoView();
+  }, [collapsed, clampIntoView]);
 
   return (
     <div
       ref={panelRef}
-      className="absolute z-20 w-72 h-[460px] max-h-[78vh] rounded-xl border border-subtle shadow-2xl overflow-hidden pointer-events-auto flex flex-col"
+      className={`absolute z-20 w-72 rounded-xl border border-subtle shadow-2xl overflow-hidden pointer-events-auto flex flex-col ${collapsed ? '' : 'h-[460px] max-h-[78vh]'}`}
       style={{ left: x ?? -9999, top: y ?? -9999 }}
     >
       <div
@@ -859,10 +944,34 @@ function DraggableFlightControlPanel() {
           {[2, 5.5, 9].map((cy) => [2, 7].map((cx) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1" fill="currentColor" />))}
         </svg>
         <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wide">Flight Control</span>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={toggleCollapsed}
+          className="ml-auto -mr-0.5 flex h-5 w-5 items-center justify-center rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
+          data-tip={collapsed ? 'Expand' : 'Collapse'}
+          aria-label={collapsed ? 'Expand flight control panel' : 'Collapse flight control panel'}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform ${collapsed ? '' : 'rotate-180'}`}
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <FlightControlPanel />
-      </div>
+      {!collapsed && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <FlightControlPanel />
+        </div>
+      )}
     </div>
   );
 }
@@ -879,6 +988,95 @@ function HudTile({ label, value, unit, tip, accent }: { label: string; value: st
         {value}
         <span className="text-xs text-content-secondary ml-0.5">{unit}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * FPV HUD overlay for the sim world — renders the SAME green fighter HUD the
+ * telemetry Vision panel uses (FighterHud), so the sim view and the live camera
+ * view share one instrument set. It mirrors LiveFighterHud's data build: the
+ * CORE flight state (roll/pitch/heading/altitude/airspeed/vario/vx-vz/throttle)
+ * comes from the physics `hud` (sim-state, NED + radians) so the HUD tracks the
+ * engine, while every field sim-state lacks — battery, GPS, mode/armed, home,
+ * wind, nav solution and the RC-link sparkline — is pulled from the SAME real
+ * stores the Vision panel uses (populated in this window by
+ * useDetachedSubscriptions). Config comes from the shared hud-store so the
+ * operator's instrument selection + styling carry over identically. The
+ * cameraOverlay MountPoint hosts module HUD overlays (CCIP/CCRP) when a module
+ * runtime is present in the window (renders nothing otherwise). Full-screen
+ * overlay above the canvas, below the controls; ignores pointer events.
+ */
+function SimFighterHud({ hud }: { hud: SimStateMessage }) {
+  const t = useTelemetryStore();
+  const home = useMissionStore((s) => s.homePosition);
+  const config = useHudStore((s) => s.config);
+  const mavType = useConnectionStore((s) => s.connectionState.mavType);
+  const profile = resolveHudProfile(config.profile, mavType);
+  const widgets = profile === 'ground' ? config.widgetsGround : config.widgets;
+  const linkHistory = useLinkHistory(widgets.linkGraph);
+
+  // Core flight state from the physics engine (sim-state), radians → degrees.
+  const heading = ((rad2deg(hud.euler.yaw) % 360) + 360) % 360;
+  const speed = groundSpeed(hud.velocity);
+
+  // Home arrow + distance from the real telemetry fix (as the Vision panel does),
+  // taken relative to the sim heading the compass tape actually shows.
+  const lat = t.gps.lat || t.position.lat;
+  const lon = t.gps.lon || t.position.lon;
+  let distance = 0;
+  let homeDirection = 0;
+  if (home && (lat || lon)) {
+    distance = haversineMeters(lat, lon, home.lat, home.lon);
+    homeDirection = wrap180(bearingDeg(lat, lon, home.lat, home.lon) - heading);
+  }
+
+  // Rover steering (mirror LiveFighterHud) so a ground-profile sim reads right.
+  let steer: number | undefined;
+  const steerPwm = t.servoOutput?.outputs[0];
+  if (steerPwm && steerPwm >= 800 && steerPwm <= 2200) {
+    steer = Math.max(-100, Math.min(100, ((steerPwm - 1500) / 500) * 100));
+  }
+
+  const v: FighterHudValues = {
+    // ─ CORE flight state: physics engine (sim-state). FighterHud wants degrees.
+    roll: rad2deg(hud.euler.roll),
+    pitch: rad2deg(hud.euler.pitch),
+    heading,
+    airspeed: speed,
+    groundspeed: speed,
+    altitude: -hud.position[2], // NED down → up
+    vario: -hud.velocity[2],
+    throttle: (hud.throttle ?? 0) * 100, // normalized 0..1 → percent
+    vx: hud.velocity[0],
+    vy: hud.velocity[1],
+    vz: hud.velocity[2],
+    // ─ Everything sim-state lacks: the real telemetry store (like Vision panel).
+    batteryVoltage: hud.batteryVoltage ?? t.battery.voltage,
+    batteryPercent: t.battery.remaining,
+    current: t.battery.current,
+    mode: t.flight.mode,
+    armed: t.flight.armed,
+    distance,
+    homeDirection,
+    gpsSats: t.gps.satellites,
+    hdop: t.gps.hdop,
+    lat,
+    lon,
+    windSpeed: t.wind?.speed,
+    linkHistory,
+    linkLabel: 'RC LINK',
+    steer,
+    wpDistance: t.navController?.wpDist,
+    xtrackError: t.navController?.xtrackError,
+  };
+
+  return (
+    <div className="absolute inset-0 z-[5] pointer-events-none">
+      <FighterHud v={v} config={config} profile={profile} />
+      {/* Module-contributed HUD overlays (e.g. release-point CCIP/CCRP). Renders
+          nothing unless a module runtime is mounted in this window. */}
+      <MountPoint name="cameraOverlay" />
     </div>
   );
 }

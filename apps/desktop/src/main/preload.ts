@@ -22,6 +22,7 @@ import type { MotorTestStartRequest, MotorTestResponse } from '../shared/motor-t
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
 import type { ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import type { MissionItem, MissionProgress } from '../shared/mission-types.js';
+import type { MissionMirrorSnapshot } from '../shared/mission-group-types.js';
 import type { FenceItem, FenceStatus } from '../shared/fence-types.js';
 import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareVersion, FlashProgress, FlashResult, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FlashOptions } from '../shared/firmware-types.js';
@@ -672,6 +673,22 @@ const api = {
     const handler = (_: unknown, seq: number) => callback(seq);
     ipcRenderer.on(IPC_CHANNELS.MISSION_CURRENT, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_CURRENT, handler);
+  },
+
+  /**
+   * Mission mirror (primary window → detached pop-outs). The primary window
+   * publishes its authored mission snapshot; a detached window requests the
+   * cached one on mount and subscribes for live pushes. See IPC_CHANNELS.
+   * MISSION_MIRROR.
+   */
+  publishMissionMirror: (snapshot: MissionMirrorSnapshot): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_MIRROR, snapshot),
+  requestMissionMirror: (): Promise<MissionMirrorSnapshot | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_MIRROR_REQUEST),
+  onMissionMirror: (callback: (snapshot: MissionMirrorSnapshot) => void) => {
+    const handler = (_: unknown, snapshot: MissionMirrorSnapshot) => callback(snapshot);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_MIRROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_MIRROR, handler);
   },
 
   onMissionReached: (callback: (seq: number) => void) => {

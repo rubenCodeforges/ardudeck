@@ -9,7 +9,7 @@ import { useState, useSyncExternalStore } from 'react';
 import {
   Minus, Rows3, LocateFixed, Crosshair, RotateCw, Compass, Gauge, ArrowUpDown,
   TrendingUp, Activity, Battery, Home, Radio, LayoutGrid, Palette, Bookmark,
-  Trash2, RotateCcw, Layers, SlidersHorizontal, Car, Plane, Puzzle,
+  Trash2, RotateCcw, Layers, SlidersHorizontal, Car, Plane, Puzzle, Milestone,
   type LucideIcon,
 } from 'lucide-react';
 import { useHudStore } from '../../stores/hud-store';
@@ -30,6 +30,7 @@ const WIDGET_ICONS: Record<string, LucideIcon> = {
   airspeedTape: Gauge,
   altitudeTape: ArrowUpDown,
   vsi: TrendingUp,
+  waypoints: Milestone,
   status: Activity,
   battery: Battery,
   home: Home,

@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import {
   type ElevationGrid,
+  buildTerrainGridGeometry,
   lonLatToLocal,
   sampleElevation,
   SVT_HALF_SIZE_M,
@@ -51,6 +52,9 @@ export interface SvtScene {
   setTerrain: (geometry: THREE.BufferGeometry, grid: ElevationGrid) => void;
   /** Position + orient the camera from a vehicle pose. */
   setPose: (pose: SvtPose) => void;
+  /** The perspective camera's vertical FOV (degrees). The HUD world overlay uses
+      the SAME fov so its world-locked symbology aligns with the SVT terrain. */
+  getFov: () => number;
   hasTerrain: () => boolean;
   render: () => void;
   dispose: () => void;
@@ -125,6 +129,13 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
   let terrainMesh: THREE.Mesh | null = null;
   let grid: ElevationGrid | null = null;
 
+  // ─── Terrain-draped reference grid ────────────────────────────────────────
+  // Rebuilt from each ElevationGrid in setTerrain so the grid lines ride the
+  // hills (a flat plane grid just buries itself in the terrain). Gives the pilot
+  // a topographic reference and the lines converge to the horizon = depth cue.
+  const terrainGridMat = new THREE.LineBasicMaterial({ color: 0xbfe6c8, transparent: true, opacity: 0.3, depthWrite: false });
+  let terrainGrid: THREE.LineSegments | null = null;
+
   return {
     resize(width: number, height: number) {
       renderer.setSize(width, height, false);
@@ -141,6 +152,14 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       terrainMesh.frustumCulled = false;
       scene.add(terrainMesh);
       grid = nextGrid;
+
+      // Rebuild the draped reference grid so it conforms to (rides) the new
+      // terrain surface instead of hovering as a flat plane.
+      if (terrainGrid) { scene.remove(terrainGrid); terrainGrid.geometry.dispose(); }
+      terrainGrid = new THREE.LineSegments(buildTerrainGridGeometry(nextGrid), terrainGridMat);
+      terrainGrid.frustumCulled = false;
+      terrainGrid.renderOrder = 1;
+      scene.add(terrainGrid);
     },
 
     setPose(pose: SvtPose) {
@@ -150,6 +169,10 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       camera.rotation.set(pose.pitchDeg * DEG, -pose.headingDeg * DEG, -pose.rollDeg * DEG);
       // Keep the sky dome centred on the camera so it never crosses the far plane.
       sky.position.copy(camera.position);
+    },
+
+    getFov() {
+      return camera.fov;
     },
 
     hasTerrain() {
@@ -166,6 +189,8 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
         terrainMesh = null;
       }
       terrainMat.dispose();
+      if (terrainGrid) terrainGrid.geometry.dispose();
+      terrainGridMat.dispose();
       skyGeom.dispose();
       skyMat.dispose();
       renderer.dispose();

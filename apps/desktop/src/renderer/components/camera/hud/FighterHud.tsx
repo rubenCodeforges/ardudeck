@@ -313,6 +313,7 @@ export const FighterHud = memo(function FighterHud({ v, config, profile = 'air',
   );
 });
 
+
 function BankArc({ roll, c, lw }: { roll: number; c: string; lw: number }) {
   const R = 300;
   const marks = [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60];

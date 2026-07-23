@@ -312,8 +312,33 @@ export interface InspectorBroadcast {
   paused?: boolean;
 }
 
+/**
+ * Last mission snapshot published by the primary window. Cached so a detached
+ * window opening AFTER the mission was authored can pull it on mount (the push
+ * only reaches windows that already exist).
+ */
+let lastMissionMirror: unknown = null;
+
 /** Wire renderer→main IPC for the window manager. Idempotent. */
 export function setupWindowManagerIpc(): void {
+  // Mission mirror: the primary window publishes its authored mission; we cache
+  // it and push to every OTHER window (detached pop-outs). We skip echoing to
+  // the sender so the primary never re-applies its own snapshot (no loop).
+  ipcMain.handle(IPC_CHANNELS.MISSION_MIRROR, async (event, snapshot: unknown) => {
+    lastMissionMirror = snapshot;
+    for (const win of getAllWindows()) {
+      if (win.webContents === event.sender) continue;
+      try {
+        if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+          win.webContents.send(IPC_CHANNELS.MISSION_MIRROR, snapshot);
+        }
+      } catch {
+        // window destroyed between iteration and send; ignore
+      }
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.MISSION_MIRROR_REQUEST, async () => lastMissionMirror);
+
   ipcMain.handle(IPC_CHANNELS.INSPECTOR_BROADCAST, async (_, event: InspectorBroadcast) => {
     for (const win of getAllWindows()) {
       try {

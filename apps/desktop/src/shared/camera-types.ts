@@ -234,6 +234,14 @@ export interface OsdLayers {
    * it supersedes the simpler horizon/crosshair/telemetry layers.
    */
   hud: boolean;
+  /**
+   * World-locked 3D mission-waypoint symbology (gate reticles + captions + a
+   * "highway in the sky" route line) rendered by a real perspective camera in a
+   * transparent overlay over the background, so it sits in the world instead of
+   * being a screen projection. Active vehicle only; over Synthetic Vision the
+   * overlay camera matches the SVT camera exactly. Independent of the `hud` layer.
+   */
+  waypoints: boolean;
 }
 
 export const DEFAULT_OSD_LAYERS: OsdLayers = {
@@ -243,6 +251,7 @@ export const DEFAULT_OSD_LAYERS: OsdLayers = {
   frameCenterCoords: false,
   artificialHorizon: false,
   hud: false,
+  waypoints: true,
 };
 
 export type CameraViewMode = 'follow' | 'grid';

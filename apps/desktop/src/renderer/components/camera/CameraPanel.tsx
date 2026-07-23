@@ -22,7 +22,10 @@ import { SyntheticVisionView } from './SyntheticVisionView';
 import { CameraSourceMenu } from './CameraSourceMenu';
 import { GimbalPad } from './GimbalPad';
 
-const OSD_LABELS: Record<keyof OsdLayers, string> = {
+// Partial: the `waypoints` layer intentionally has no OSD toggle — the 3D
+// waypoint overlay is toggled from the HUD instruments editor (HudPanel) via the
+// `waypoints` HUD widget, so there is one control and no dead duplicate here.
+const OSD_LABELS: Partial<Record<keyof OsdLayers, string>> = {
   cornerTelemetry: 'Telemetry',
   crosshair: 'Crosshair',
   northIndicator: 'Compass',

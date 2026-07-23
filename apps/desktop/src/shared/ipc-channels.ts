@@ -201,6 +201,16 @@ export const IPC_CHANNELS = {
   MISSION_SAVE_FILE: 'mission:save-file',
   MISSION_LOAD_FILE: 'mission:load-file',
   MISSION_IMPORT_AREA: 'mission:import-area',
+  /**
+   * Cross-window mission mirror. The primary (main) window publishes a full
+   * snapshot of its mission store (items + groups + home + fcSeqOffset) on this
+   * channel; main caches the latest and re-broadcasts it to every DETACHED
+   * window so pop-outs (map, 3D world) render locally-authored / file-loaded /
+   * survey missions, not just FC downloads.
+   */
+  MISSION_MIRROR: 'mission:mirror',
+  /** Detached → main invoke: fetch the last cached mission mirror on mount. */
+  MISSION_MIRROR_REQUEST: 'mission:mirror-request',
 
   // Geofencing (mission_type = FENCE)
   FENCE_DOWNLOAD: 'fence:download',

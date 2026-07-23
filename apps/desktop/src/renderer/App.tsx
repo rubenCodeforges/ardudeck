@@ -25,6 +25,7 @@ import { LogsView } from './components/logs/LogsView';
 import { MavlinkInspectorView } from './components/inspector/MavlinkInspectorView';
 import { setupWorkspaceSync } from './stores/workspace-store';
 import { startInspector } from './stores/inspector-store';
+import { startPerfProbe, probeCount } from './lib/perf-probe';
 import { startSafetyMonitor, refreshContext as refreshSafetyMonitorContext } from './safety-monitor/source';
 import { useConnectionStore } from './stores/connection-store';
 import { useActiveVehicleSync } from './hooks/useActiveVehicleSync';
@@ -262,11 +263,33 @@ function App() {
   const activeVehicleKey = useActiveVehicleStore((s) => s.activeVehicleKey);
   const fleetVehicleCount = useActiveVehicleStore((s) => Object.keys(s.knownVehicles).length);
   const isConnected = connectionState.isConnected || activeVehicleKey !== null || fleetVehicleCount > 0;
-  const { updateAttitude, updatePosition, updateGps, updateBattery, updateVfrHud, updateFlight, updateBatch, reset } = useTelemetryStore();
+  // Select telemetry ACTIONS individually (not the whole store). Actions are
+  // referentially stable, so App no longer re-renders on every 10 Hz telemetry
+  // batch - which, with an unmemoised TelemetryDashboard below, was reconciling
+  // the entire telemetry page at packet rate and starving the main thread.
+  const updateAttitude = useTelemetryStore((s) => s.updateAttitude);
+  const updatePosition = useTelemetryStore((s) => s.updatePosition);
+  const updateGps = useTelemetryStore((s) => s.updateGps);
+  const updateBattery = useTelemetryStore((s) => s.updateBattery);
+  const updateVfrHud = useTelemetryStore((s) => s.updateVfrHud);
+  const updateFlight = useTelemetryStore((s) => s.updateFlight);
+  const updateBatch = useTelemetryStore((s) => s.updateBatch);
+  const reset = useTelemetryStore((s) => s.reset);
   const addStatusMessage = useMessagesStore((s) => s.addMessage);
   const clearMessages = useMessagesStore((s) => s.clear);
   const { currentView, setView } = useNavigationStore();
-  const { updateParameter, bulkLoadParameters, setProgress, setComplete, setError, reset: resetParameters, fetchParameters, fetchMetadata, paramCount } = useParameterStore();
+  // Parameter ACTIONS individually - whole-subscribing this store re-rendered
+  // App on every PARAM_VALUE during a download (hundreds/sec), the hard freeze
+  // on connect. `paramCount` is read live via getState() inside the effects
+  // below, so App never re-renders on it.
+  const updateParameter = useParameterStore((s) => s.updateParameter);
+  const bulkLoadParameters = useParameterStore((s) => s.bulkLoadParameters);
+  const setProgress = useParameterStore((s) => s.setProgress);
+  const setComplete = useParameterStore((s) => s.setComplete);
+  const setError = useParameterStore((s) => s.setError);
+  const resetParameters = useParameterStore((s) => s.reset);
+  const fetchParameters = useParameterStore((s) => s.fetchParameters);
+  const fetchMetadata = useParameterStore((s) => s.fetchMetadata);
   const {
     fetchMission,
     setMissionItems,
@@ -431,7 +454,11 @@ function App() {
     startInspector();
     startSafetyMonitor();
     const cleanup = setupWorkspaceSync();
-    return cleanup;
+    // TEMP perf probe (diagnosing in-flight telemetry freeze). Counts the raw
+    // packet rate reaching this window; the [PERF] summary logs every 2s.
+    startPerfProbe('telemetry-win');
+    const unsubProbe = window.electronAPI?.onPacket?.(() => probeCount('pkt.rx'));
+    return () => { cleanup?.(); unsubProbe?.(); };
   }, []);
 
   // Show experience level dialog on first launch or version change
@@ -470,15 +497,24 @@ function App() {
       // Small delay to ensure connection is stable
       const timer = setTimeout(() => {
         // Only fetch params on fresh connection (not reconnection after reboot)
-        if (paramCount === 0) {
+        if (useParameterStore.getState().paramCount === 0) {
           fetchParameters();
         }
         // Fetch metadata based on vehicle type
         if (connectionState.mavType !== undefined) {
           fetchMetadata(connectionState.mavType);
         }
-        // Auto-download mission from flight controller
-        fetchMission();
+        // Auto-download the vehicle's mission ONLY when we have nothing locally.
+        // The FC holds the flattened union of whatever was uploaded, so if the
+        // operator has been planning (surveys, hand-placed WPs, a loaded file),
+        // an auto-download drops a redundant flat "From vehicle" group on top of
+        // their work, duplicating every waypoint and inflating the group list.
+        // With local content present they can still pull it manually from the
+        // toolbar (which replaces the prior FC import rather than stacking).
+        const mission = useMissionStore.getState();
+        if (mission.missionItems.length === 0 && mission.groups.length === 0) {
+          fetchMission();
+        }
         // Refresh the safety monitor's parameter context (IMAX / AHRS_TRIM /
         // GCS_PID_MASK) so the integrator gauges and PID signals are scaled.
         void refreshSafetyMonitorContext();
@@ -492,10 +528,10 @@ function App() {
   const signingEnabled = useSigningStore((s) => s.enabled);
   const signingKeyMismatch = useSigningStore((s) => s.keyMismatch);
   useEffect(() => {
-    if (connectionState.isConnected && connectionState.protocol !== 'msp' && paramCount === 0) {
+    if (connectionState.isConnected && connectionState.protocol !== 'msp' && useParameterStore.getState().paramCount === 0) {
       // Signing state just changed - retry param fetch after short delay
       const timer = setTimeout(() => {
-        if (paramCount === 0) {
+        if (useParameterStore.getState().paramCount === 0) {
           fetchParameters();
         }
       }, 1000);
@@ -638,6 +674,35 @@ function App() {
       unsubClearComplete?.();
     };
   }, [setMissionItems, updateMissionProgress, setCurrentSeq, setMissionError, setUploadComplete, setClearComplete]);
+
+  // Mirror the authored mission (items + groups + home + fcSeqOffset) to any
+  // detached pop-out window (map, 3D world) so they render the SAME mission the
+  // main window holds — including survey / file-loaded / hand-placed missions,
+  // not just FC downloads. Only the primary window (App) publishes; pop-outs
+  // apply it via useDetachedSubscriptions. `currentSeq` is intentionally left
+  // out (it streams live over MISSION_CURRENT to every window already).
+  useEffect(() => {
+    const publish = () => {
+      const s = useMissionStore.getState();
+      window.electronAPI?.publishMissionMirror?.({
+        items: s.missionItems,
+        groups: s.groups,
+        home: s.homePosition,
+        fcSeqOffset: s.fcSeqOffset,
+      }).catch(() => {});
+    };
+    publish(); // seed the cache for pop-outs opened before the first edit
+    let prevItems = useMissionStore.getState().missionItems;
+    let prevGroups = useMissionStore.getState().groups;
+    let prevHome = useMissionStore.getState().homePosition;
+    return useMissionStore.subscribe((state) => {
+      if (state.missionItems === prevItems && state.groups === prevGroups && state.homePosition === prevHome) return;
+      prevItems = state.missionItems;
+      prevGroups = state.groups;
+      prevHome = state.homePosition;
+      publish();
+    });
+  }, []);
 
   // Fence events
   useEffect(() => {

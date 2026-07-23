@@ -28,8 +28,16 @@ const STAT_PARAMS: Record<string, keyof BoardStats> = {
  */
 export function useBoardProfileAssociation() {
   const { connectionState } = useConnectionStore();
-  const { associateBoard, updateBoardStats, _isInitialized } = useSettingsStore();
-  const { parameters, isLoading } = useParameterStore();
+  // Narrow selectors only. This hook runs in <App/>; whole-subscribing the
+  // parameter store here re-rendered the ENTIRE app on every PARAM_VALUE during
+  // a download (hundreds/sec over SITL localhost) - a primary cause of the
+  // telemetry page freezing on connect. We only need to know WHEN the download
+  // finishes (isLoading -> false); the params themselves are read via getState()
+  // in the effect below, so no per-param re-render.
+  const associateBoard = useSettingsStore((s) => s.associateBoard);
+  const updateBoardStats = useSettingsStore((s) => s.updateBoardStats);
+  const _isInitialized = useSettingsStore((s) => s._isInitialized);
+  const isLoading = useParameterStore((s) => s.isLoading);
 
   // Track which boardUid we've already handled this session to avoid re-running
   const lastAssociatedUid = useRef<string | null>(null);
@@ -71,6 +79,10 @@ export function useBoardProfileAssociation() {
     if (!_isInitialized) return;
     if (!connectionState.isConnected || !connectionState.boardUid) return;
     if (isLoading) return; // still loading
+    // Read the params snapshot lazily (no reactive subscription) - this effect
+    // runs when the download finishes (isLoading flips false), at which point
+    // the map is fully populated.
+    const parameters = useParameterStore.getState().parameters;
     if (parameters.size === 0) return; // no params yet
     if (statsSyncedForUid.current === connectionState.boardUid) return; // already synced
 
@@ -96,7 +108,6 @@ export function useBoardProfileAssociation() {
     connectionState,
     _isInitialized,
     isLoading,
-    parameters,
     updateBoardStats,
   ]);
 }

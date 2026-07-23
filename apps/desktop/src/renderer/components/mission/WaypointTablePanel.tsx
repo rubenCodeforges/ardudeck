@@ -1803,6 +1803,51 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     return s;
   }, [groups]);
 
+  // [MISSION DIAG] TEMP: one-shot structural dump of the grouped mission so we can
+  // tell WHY one group holds thousands of WPs and collapse spills across groups:
+  // duplicate group ids, orphaned items merged into one "Recovered" group,
+  // non-contiguous group runs (fragmented headers), or a flat FC import. Logs
+  // only when the structure signature changes (not on every telemetry tick).
+  const diagSigRef = useRef<string>('');
+  useEffect(() => {
+    const gIds = groups.map((g) => g.id);
+    const dupGroupIds = gIds.filter((id, i) => gIds.indexOf(id) !== i);
+    const idSet = new Set(gIds);
+    const counts = new Map<string, number>();
+    let noGroup = 0;
+    const orphanSeqs: number[] = [];
+    for (const it of missionItems) {
+      if (!it.groupId) { noGroup++; continue; }
+      counts.set(it.groupId, (counts.get(it.groupId) ?? 0) + 1);
+      if (!idSet.has(it.groupId)) orphanSeqs.push(it.seq);
+    }
+    // Count separate contiguous runs per groupId in array order (>1 = fragmented).
+    const runs = new Map<string, number>();
+    let prev: string | null = null;
+    for (const it of missionItems) {
+      const g = it.groupId ?? '(none)';
+      if (g !== prev) { runs.set(g, (runs.get(g) ?? 0) + 1); prev = g; }
+    }
+    const fragmented = [...runs.entries()].filter(([, n]) => n > 1).map(([id, n]) => ({ id: id.slice(0, 8), runs: n }));
+    const sig = `${missionItems.length}|${groups.length}|${gIds.join(',')}|${[...counts.values()].join(',')}`;
+    if (sig === diagSigRef.current) return;
+    diagSigRef.current = sig;
+    // eslint-disable-next-line no-console
+    console.log('[MISSION DIAG]', {
+      totalItems: missionItems.length,
+      groupCount: groups.length,
+      groups: groups
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((g) => ({ id: g.id.slice(0, 8), kind: g.kind, name: g.name, order: g.order, collapsed: g.collapsed === true, items: counts.get(g.id) ?? 0 })),
+      dupGroupIds,
+      itemsWithNoGroup: noGroup,
+      orphanItemSeqs: orphanSeqs.slice(0, 12),
+      orphanCount: orphanSeqs.length,
+      fragmentedGroups: fragmented,
+    });
+  }, [groups, missionItems]);
+
   const toggleCollapse = useCallback((parentSeq: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setCollapsedGroups(prev => {

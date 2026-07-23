@@ -31,7 +31,7 @@ export function useDetachedSubscriptions(): void {
   const updateFlight = useTelemetryStore((s) => s.updateFlight);
   const updateBatch = useTelemetryStore((s) => s.updateBatch);
   const addStatusMessage = useMessagesStore((s) => s.addMessage);
-  const setMissionItems = useMissionStore((s) => s.setMissionItems);
+  const applyMissionMirror = useMissionStore((s) => s.applyMissionMirror);
   const setCurrentSeq = useMissionStore((s) => s.setCurrentSeq);
   const setFenceItems = useFenceStore((s) => s.setFenceItems);
 
@@ -113,9 +113,14 @@ export function useDetachedSubscriptions(): void {
         addStatusMessage(msg.severity, msg.severityLabel as never, msg.text);
       }),
     );
-    // Mission waypoints reach pop-out views (e.g. the 3D sim world) so they can
-    // render the FC's mission. safeSend already broadcasts to every window.
-    cleanups.push(api.onMissionComplete((items) => setMissionItems(items)));
+    // Mission mirror: the primary window is the source of truth for the AUTHORED
+    // mission (survey / file / hand-placed / FC download alike). Pull the cached
+    // snapshot on mount (this window may have opened long after the mission was
+    // built) and apply every live push. This is what lets a popped-out Map / 3D
+    // world show the mission instead of an empty store.
+    void api.requestMissionMirror?.().then((snap) => { if (snap) applyMissionMirror(snap); }).catch(() => {});
+    cleanups.push(api.onMissionMirror?.((snap) => applyMissionMirror(snap)) ?? (() => {}));
+    // Live active-waypoint index still streams directly to every window.
     cleanups.push(api.onMissionCurrent((seq) => setCurrentSeq(seq)));
     cleanups.push(api.onFenceComplete((items) => setFenceItems(items)));
 
@@ -132,7 +137,7 @@ export function useDetachedSubscriptions(): void {
     updateFlight,
     updateBatch,
     addStatusMessage,
-    setMissionItems,
+    applyMissionMirror,
     setCurrentSeq,
     setFenceItems,
   ]);

@@ -215,7 +215,10 @@ export function CustomFramePanel() {
   const getFieldHint = (field: SitlNumericFieldKey): string | undefined => {
     if (field === 'mass') return UNIT_LABELS.weight[weightUnit];
     if (field === 'diagonal_size') return `${UNIT_LABELS.dimensions[dimensionUnit]} (motor-to-motor)`;
-    if (field === 'disc_area') return `${UNIT_LABELS.area[areaUnit]} (total prop)`;
+    // Rotor disc area is a physical property in m² - NEVER the user's general
+    // area unit (hectares/acres are for survey fields; a 2.5 m² disc showing as
+    // "2.5 ha" is nonsense).
+    if (field === 'disc_area') return 'm² (total prop)';
     if (field === 'refAlt') return UNIT_LABELS.altitude[altitudeUnit];
     if (field === 'battCapacityAh') return UNIT_LABELS.electricCapacity[electricCapacityUnit];
     if (field === 'refSpd') return UNIT_LABELS.speed[speedUnit];
@@ -235,9 +238,7 @@ export function CustomFramePanel() {
     if (field === 'diagonal_size') {
       return Number(dimensionInputValueFromMillimeters(value * 1000, dimensionUnit));
     }
-    if (field === 'disc_area') {
-      return Number(areaInputValueFromSquareMeters(value, areaUnit));
-    }
+    // disc_area stays in m² (see getFieldHint) - no unit conversion.
     if (field === 'battCapacityAh') {
       return Number(capacityValueFromMah(value * 1000, electricCapacityUnit).toFixed(UNIT_PRECISION.electricCapacity[electricCapacityUnit]));
     }
@@ -262,10 +263,7 @@ export function CustomFramePanel() {
       updateField(field, toMillimetersFromDimensionUnit(v, dimensionUnit) / 1000);
       return;
     }
-    if (field === 'disc_area') {
-      updateField(field, toSquareMetersFromAreaUnit(v, areaUnit));
-      return;
-    }
+    // disc_area is entered directly in m² (see getFieldHint).
     if (field === 'battCapacityAh') {
       updateField(field, toMahFromCapacityUnit(v, electricCapacityUnit) / 1000);
       return;

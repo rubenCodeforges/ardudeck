@@ -18,6 +18,7 @@ import {
   type Group,
   type ManualGroup,
   type SurveyGroup,
+  type MissionMirrorSnapshot,
 } from '../../shared/mission-group-types';
 import { useSettingsStore } from './settings-store';
 import { useConnectionStore } from './connection-store';
@@ -408,6 +409,13 @@ interface MissionStore {
   // replace (wipe local mission, accept FC mission as the new source of
   // truth), the caller should run clearMission() first.
   setMissionItems: (items: MissionItem[]) => void;
+  /**
+   * Apply a mission snapshot mirrored from the primary window (used by detached
+   * pop-outs so they render the SAME authored mission the main window holds,
+   * not just FC downloads). Replaces items / groups / home / fcSeqOffset
+   * verbatim — no FC-import re-stamping, no dirty flag.
+   */
+  applyMissionMirror: (snapshot: MissionMirrorSnapshot) => void;
   // For file loading (no success message - toolbar handles it).
   // When `groups` is supplied (e.g. mission-library load of a migrated v2
   // file), it is adopted wholesale and items must already carry valid
@@ -1259,25 +1267,35 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
     const { groups, missionItems: existingItems } = get();
 
-    // Create a fresh imported group for this download. Stamp items into
-    // it, append after any existing items, and renumber globally so the
-    // table seq stays contiguous.
+    // A fresh download from the FC REPLACES the previous FC-imported mission
+    // instead of stacking another copy. Every re-download (reconnect, re-fetch,
+    // AUTO progress) was appending ~N waypoints, growing the mission into the
+    // thousands and piling duplicate markers on the map until it lagged / OOM'd.
+    // Local edits and file-imported groups are preserved.
+    const isFcGroup = (g: Group): boolean => 'importedFrom' in g && g.importedFrom === 'fc';
+    const priorFcGroupIds = new Set(groups.filter(isFcGroup).map(g => g.id));
+    const keptGroups = groups.filter(g => !isFcGroup(g));
+    const keptItems = existingItems.filter(it => !it.groupId || !priorFcGroupIds.has(it.groupId));
+
+    // Create a fresh imported group for this download. Stamp items into it,
+    // append after any KEPT items, and renumber globally so the table seq stays
+    // contiguous.
     const now = new Date();
     const stamp = now.toLocaleString();
     const importedGroup = createImportedGroup({
       importedFrom: 'fc',
       sourceLabel: `Vehicle mission @ ${stamp}`,
       name: `From vehicle @ ${stamp}`,
-      color: nextGroupColor(groups),
+      color: nextGroupColor(keptGroups),
       // Place at order = -1 then renumber so the imported group sits at
       // the top of the table. The user can drag-reorder later.
       order: -1,
     });
-    const reorderedGroups = [importedGroup, ...groups]
+    const reorderedGroups = [importedGroup, ...keptGroups]
       .sort((a, b) => a.order - b.order)
       .map((g, i) => ({ ...g, order: i }));
 
-    const startSeq = existingItems.length;
+    const startSeq = keptItems.length;
     const stampedNewItems = filteredItems.map((it, i) => ({
       ...it,
       seq: startSeq + i,
@@ -1289,7 +1307,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     // the offset so setCurrentSeq can subtract it; otherwise the map would
     // highlight the wp AFTER the actual target.
     set({
-      missionItems: [...existingItems, ...stampedNewItems],
+      missionItems: [...keptItems, ...stampedNewItems],
       groups: reorderedGroups,
       fcSeqOffset: homeWasStripped ? 1 : 0,
       ...(homePosition ? { homePosition } : {}),
@@ -1302,6 +1320,15 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       error: null,
       lastSuccessMessage: `Downloaded ${stampedNewItems.length} waypoints from flight controller into "${importedGroup.name}"`,
       loadCounter: get().loadCounter + 1,
+    });
+  },
+
+  applyMissionMirror: (snapshot: MissionMirrorSnapshot) => {
+    set({
+      missionItems: snapshot.items as MissionItem[],
+      groups: snapshot.groups,
+      homePosition: snapshot.home,
+      fcSeqOffset: snapshot.fcSeqOffset,
     });
   },
 

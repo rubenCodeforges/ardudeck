@@ -22,7 +22,11 @@ import { useOrchestrationStore } from '../../stores/orchestration-store';
 import { isPreArmMessage, extractPreArmReason, matchPreArmError, PREARM_STALE_MS } from '../../../shared/prearm-checks';
 import { PreArmParamFix } from '../prearm/PreArmParamFix';
 import { PanelContainer, SectionTitle } from './panel-utils';
-import { getVehicleClass, ARDUPILOT_COMMON_MODES, VEHICLE_CAPABILITIES, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
+import { getVehicleClass, VEHICLE_CAPABILITIES, type ArduPilotVehicleClass } from '../../../shared/telemetry-types';
+import { useModeRequest } from '../../hooks/useModeRequest';
+import { ModeAnnunciator } from './flight-modes/ModeAnnunciator';
+import { ModePicker } from './flight-modes/ModePicker';
+import { modeMetaFor, modeSubline, isPilotThrottleMode } from '../../../shared/flight-mode-meta';
 import { executeTakeoff, presentTakeoff } from './takeoff-strategies';
 import {
   altitudeValueFromMeters,
@@ -471,6 +475,7 @@ const MISSION_MODES: Record<ArduPilotVehicleClass, { auto: number; pause: number
 
 function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number }) {
   const flight = useTelemetryStore((s) => s.flight);
+  const gps = useTelemetryStore((s) => s.gps);
   const messages = useMessagesStore((s) => s.messages);
   const connectionState = useConnectionStore((s) => s.connectionState);
   // Multi-signal VTOL detection: MAV_TYPE alone is unreliable on first
@@ -506,7 +511,6 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
     qEnable: typeof qEnable === 'number' ? qEnable : undefined,
     sitlFrame: sitlIsRunning ? sitlFrame : undefined,
   });
-  const availableModes = ARDUPILOT_COMMON_MODES[vehicleClass];
   const capabilities = VEHICLE_CAPABILITIES[vehicleClass];
   // Squad command: when a formation is active and the LEADER is selected, arm/disarm/mode
   // fan out to the whole formation (the leader leads the squad). Otherwise commands act on
@@ -539,6 +543,10 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'info' | 'error' | 'success' } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHorizontal, setIsHorizontal] = useState(false);
+  // Command-bar control height, scaled to the dock height so the controls fill
+  // the bar instead of floating at a fixed size (clamped to a sensible range).
+  const [barHeight, setBarHeight] = useState(0);
+  const controlH = Math.round(Math.max(38, Math.min(56, barHeight - 22)));
   const [expandedPreArm, setExpandedPreArm] = useState<Set<string>>(new Set());
   // Pre-arm reasons are derived from the (append-only) message log, so a failure
   // the FC reported once lingers even after it's fixed. Clearing stamps "now";
@@ -559,7 +567,8 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
     return () => clearInterval(id);
   }, []);
   const prevArmedRef = useRef(flight.armed);
-  const [modeLoading, setModeLoading] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const modeAnchorRef = useRef<HTMLDivElement>(null);
   const [showTakeoffDialog, setShowTakeoffDialog] = useState(false);
   const [takeoffAlt, setTakeoffAlt] = useState(10);
   const takeoffAltitudePrecision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
@@ -583,6 +592,7 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
       const entry = entries[0];
       if (entry) {
         setIsHorizontal(entry.contentRect.width > entry.contentRect.height * 1.5);
+        setBarHeight(entry.contentRect.height);
       }
     });
     observer.observe(el);
@@ -683,37 +693,129 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
     }
   };
 
-  // Mode switching
-  const handleSetMode = async (modeNum: number) => {
-    if (modeLoading !== null) return;
-    setModeLoading(modeNum);
+  // SITL hover-hold: flying a pilot-throttle mode (AltHold/AUTOTUNE/...) with no
+  // transmitter hands throttle to an idle RC stick, so the mode drops the copter
+  // or refuses to init. We stream a centered RC override (throttle mid) to hold
+  // the hover, and release it when we leave a pilot mode or disarm. Aux/mode
+  // channels stay at 65535 so this never hijacks the flight mode.
+  const rcHoldRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRcHold = useCallback(() => {
+    const send = () => { void window.electronAPI?.rcOverrideSet?.(1500, 1500, 1500, 1500); };
+    send();
+    if (rcHoldRef.current) clearInterval(rcHoldRef.current);
+    rcHoldRef.current = setInterval(send, 250);
+  }, []);
+  const stopRcHold = useCallback(() => {
+    if (!rcHoldRef.current) return;
+    clearInterval(rcHoldRef.current);
+    rcHoldRef.current = null;
+    void window.electronAPI?.rcOverrideRelease?.();
+  }, []);
+  // Release the hold on disarm and on unmount.
+  useEffect(() => { if (!flight.armed) stopRcHold(); }, [flight.armed, stopRcHold]);
+  useEffect(() => () => stopRcHold(), [stopRcHold]);
+  // CRITICAL: release the hold the moment the vehicle is actually in a mode that
+  // doesn't take pilot throttle (e.g. a map "Move" switches to GUIDED, or any
+  // FC-initiated change). A leaked RC override in GUIDED/AUTO makes ArduCopter
+  // treat the pilot as in control and ignore reposition/mission targets - i.e.
+  // "Move / right-click commands stop working". Track the LIVE heartbeat mode,
+  // not just the modes we command ourselves.
+  useEffect(() => {
+    if (flight.modeNum != null && !isPilotThrottleMode(vehicleClass, flight.modeNum)) {
+      stopRcHold();
+    }
+  }, [flight.modeNum, vehicleClass, stopRcHold]);
+
+  // Mode switching: the annunciator state machine sends the mode and only shows
+  // it engaged once the vehicle's heartbeat confirms it (see useModeRequest).
+  const sendMode = useCallback(async (modeNum: number): Promise<boolean> => {
     setStatusMsg(null);
     try {
-      const ok = squadKeys
-        ? (await Promise.all(squadKeys.map((k) => window.electronAPI.vehicleCommand(k, { kind: 'setmode', customMode: modeNum })))).some(Boolean)
-        : await window.electronAPI.mavlinkSetMode(modeNum);
-      if (!ok) {
-        setStatusMsg({ text: 'Not connected', type: 'error' });
-        setModeLoading(null);
-        setTimeout(() => setStatusMsg(null), 3000);
+      // In SITL, hold a hover before handing throttle to a pilot-throttle mode
+      // (else AUTOTUNE etc. see idle throttle and bail). Only when armed and
+      // actually airborne, so we never spin up on the ground.
+      const isSitl = connectionState.isSitl ?? sitlIsRunning;
+      const relAlt = useTelemetryStore.getState().position?.relativeAlt ?? 0;
+      const pilotMode = isPilotThrottleMode(vehicleClass, modeNum);
+      const wantHold = !squadKeys && isSitl && flight.armed && relAlt > 2 && pilotMode;
+      // TEMP diagnostic (remove with perf-probe): why did / didn't the SITL hover-hold fire.
+      console.log(`[AUTOTUNE DIAG] setmode=${modeNum} vClass=${vehicleClass} isSitl=${isSitl} armed=${flight.armed} relAlt=${relAlt.toFixed(1)} pilotThrottle=${pilotMode} squad=${!!squadKeys} -> ${wantHold ? 'HOLD HOVER' : 'no hold'}`);
+      if (!squadKeys && isSitl && flight.armed) {
+        if (wantHold) {
+          const r = await window.electronAPI?.rcOverrideSet?.(1500, 1500, 1500, 1500);
+          console.log('[AUTOTUNE DIAG] rcOverrideSet ->', JSON.stringify(r));
+          startRcHold();
+          setStatusMsg({ text: 'Holding hover (virtual RC)', type: 'info' });
+          setTimeout(() => setStatusMsg(null), 3000);
+          await new Promise((res) => setTimeout(res, 200)); // let the throttle override register before the mode inits
+        } else {
+          stopRcHold();
+        }
       }
-      // Mode confirmation comes via heartbeat - timeout clears loading
-      setTimeout(() => setModeLoading(null), 3000);
+      if (squadKeys) {
+        const results = await Promise.all(
+          squadKeys.map((k) => window.electronAPI.vehicleCommand(k, { kind: 'setmode', customMode: modeNum })),
+        );
+        return results.some(Boolean);
+      }
+      return await window.electronAPI.mavlinkSetMode(modeNum);
     } catch {
-      setStatusMsg({ text: 'Mode change failed', type: 'error' });
-      setModeLoading(null);
-      setTimeout(() => setStatusMsg(null), 3000);
+      return false;
     }
-  };
+  }, [squadKeys, connectionState.isSitl, sitlIsRunning, flight.armed, vehicleClass, startRcHold, stopRcHold]);
 
-  // Clear mode loading when heartbeat confirms the switch
-  useEffect(() => {
-    if (modeLoading !== null && flight.modeNum === modeLoading) {
-      setModeLoading(null);
-      setStatusMsg({ text: `Mode: ${flight.mode}`, type: 'success' });
-      setTimeout(() => setStatusMsg(null), 2000);
-    }
-  }, [flight.modeNum, modeLoading, flight.mode]);
+  const mode = useModeRequest(vehicleClass, flight.modeNum, sendMode);
+  const { requestMode, confirmCommit, cancelCommit } = mode;
+  // Memoised so the portaled picker (React.memo) doesn't reconcile on every
+  // telemetry frame - that per-frame churn is what made it flicker over the
+  // live sim canvas.
+  const gpsOk = (gps?.fixType ?? 0) >= 3;
+  const modeCtx = useMemo(() => ({ gpsOk, armed: flight.armed }), [gpsOk, flight.armed]);
+  const requestedModeName = mode.requestedMode != null ? modeMetaFor(vehicleClass, mode.requestedMode)?.name : undefined;
+  const currentSubline = modeSubline(modeMetaFor(vehicleClass, flight.modeNum)) || 'MAVLink';
+
+  const togglePicker = useCallback(() => setPickerOpen((o) => !o), []);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
+  const handlePickMode = useCallback((n: number) => {
+    const meta = modeMetaFor(vehicleClass, n);
+    requestMode(n);
+    if (!meta?.commit) setPickerOpen(false);
+  }, [vehicleClass, requestMode]);
+  const handleConfirmCommit = useCallback(() => { confirmCommit(); setPickerOpen(false); }, [confirmCommit]);
+
+  // Shared annunciator + picker block. `compact` = single-line pill for the
+  // horizontal command bar (matches the other controls' height); the tall dock
+  // uses the full two-line readout.
+  const renderModeControl = (compact: boolean) => (
+    <div className={`relative ${compact ? 'h-full' : ''}`} ref={modeAnchorRef}>
+      <ModeAnnunciator
+        compact={compact}
+        phase={mode.phase}
+        currentName={flight.mode || 'Unknown'}
+        currentSubline={currentSubline}
+        requestedName={requestedModeName}
+        rejectLabel={mode.rejectLabel}
+        justConfirmed={mode.justConfirmed}
+        open={pickerOpen}
+        onToggle={togglePicker}
+      />
+      {pickerOpen && (
+        <ModePicker
+          anchorRef={modeAnchorRef}
+          vehicleClass={vehicleClass}
+          currentModeNum={flight.modeNum}
+          requestedModeNum={mode.requestedMode}
+          pendingCommit={mode.pendingCommit}
+          ctx={modeCtx}
+          recents={mode.recents}
+          onPick={handlePickMode}
+          onConfirmCommit={handleConfirmCommit}
+          onCancelCommit={cancelCommit}
+          onClose={closePicker}
+        />
+      )}
+    </div>
+  );
 
   // Poll telemetry state until a condition is met, or timeout.
   // Reads directly from Zustand store (no re-renders).
@@ -809,225 +911,165 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
              across the available width instead of hiding them. A short, wide
              dock should expose the same actions as the tall dock (modes,
              takeoff, mission, force), just laid out left-to-right. */
-          <div className="relative h-full flex items-center justify-center">
-            <div className="flex items-stretch gap-3 max-w-full overflow-x-auto px-1">
-              {/* ARM cluster: state + mode, hero button, force toggle */}
-              <div className="shrink-0 flex flex-col justify-center gap-1.5">
+          /* Command bar: flight-critical group pinned LEFT (arm + mode),
+             mission ops pinned RIGHT (takeoff + mission), transient status /
+             pre-arm floats in the CENTER. justify-between fills the full width
+             instead of clustering everything on one side. */
+          <div className="relative h-full flex items-center gap-3 px-4">
+            {/* LEFT — flight-critical: armed chip, ARM, Force */}
+            <div className="flex items-center gap-3 shrink-0" style={{ height: controlH }}>
+              <div className="flex flex-col justify-center gap-0.5 pr-0.5">
                 <div className="flex items-center gap-1.5 text-xs">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${
-                    flight.armed ? 'bg-red-400 animate-pulse' : 'bg-content-tertiary'
-                  }`} />
-                  <span className={`font-medium ${flight.armed ? 'text-red-400' : 'text-content-secondary'}`}>
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${flight.armed ? 'bg-red-400 animate-pulse' : 'bg-content-tertiary'}`} />
+                  <span className={`font-semibold ${flight.armed ? 'text-red-400' : 'text-content-secondary'}`}>
                     {flight.armed ? 'ARMED' : 'DISARMED'}
                   </span>
-                  <span className="text-content-tertiary">·</span>
-                  <span className="text-content truncate max-w-[140px]">{flight.mode || 'Unknown'}</span>
-                  <span className="text-[10px] text-content-tertiary shrink-0">MAVLink</span>
                 </div>
-                <div className="flex items-stretch gap-2">
-                  <button
-                    onClick={() => handleArmDisarm()}
-                    disabled={isLoading}
-                    className={`
-                      flex items-center justify-center gap-3 min-w-[180px] px-7 py-3 rounded-xl
-                      font-bold text-base uppercase tracking-wider
-                      transition-all duration-200 select-none border-2
-                      ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
-                      ${flight.armed
-                        ? 'bg-red-500/15 border-red-500/50 text-red-400 hover:bg-red-500/25 shadow-lg shadow-red-500/10'
-                        : forceArm
-                          ? 'bg-amber-500/15 border-amber-500/50 text-amber-400 hover:bg-amber-500/25 shadow-lg shadow-amber-500/10'
-                          : 'bg-surface border-subtle text-content hover:bg-surface-raised hover:text-content hover:border-default'
-                      }
-                    `}
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        <span>{flight.armed ? 'Disarming...' : 'Arming...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`w-2.5 h-2.5 rounded-full ${
-                          flight.armed ? 'bg-red-400 animate-pulse' : forceArm ? 'bg-amber-400' : 'bg-content-tertiary'
-                        }`} />
-                        <span>{flight.armed ? 'Disarm' : forceArm ? 'Force Arm' : 'Arm'}</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Force toggle — compact, stacked label over switch */}
-                  <button
-                    onClick={() => setForceArm(!forceArm)}
-                    className={`
-                      shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 rounded-lg transition-all
-                      ${forceArm
-                        ? 'bg-amber-500/10 border border-amber-500/30'
-                        : 'bg-surface border border-subtle hover:border-default'
-                      }
-                    `}
-                    title="Force ARM bypasses pre-arm safety checks"
-                  >
-                    <span className={`text-[10px] font-medium ${forceArm ? 'text-amber-300' : 'text-content-secondary'}`}>Force</span>
-                    <div className={`w-7 h-3.5 rounded-full transition-colors relative ${forceArm ? 'bg-amber-500' : 'bg-surface-raised'}`}>
-                      <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${forceArm ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                    </div>
-                  </button>
-                </div>
+                <span className="text-[10px] text-content-tertiary pl-3.5">MAVLink</span>
               </div>
 
-              <div className="w-px self-stretch bg-subtle/60 shrink-0" />
-
-              {/* Flight modes — fill into 2 rows, flowing into columns so the
-                  grid grows horizontally to use the available width. */}
-              <div className="grid grid-rows-2 grid-flow-col gap-1 content-center shrink-0">
-                {availableModes.map((mode) => {
-                  const isActive = flight.modeNum === mode.modeNum;
-                  return (
-                    <button
-                      key={mode.modeNum}
-                      onClick={() => handleSetMode(mode.modeNum)}
-                      title={mode.name}
-                      className={`px-3 py-1.5 min-w-[72px] rounded-md text-[11px] font-medium truncate
-                        transition-colors duration-150
-                        ${isActive
-                          ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/30'
-                          : 'bg-surface-raised text-content hover:text-white border border-transparent hover:border-default'}
-                      `}
-                    >
-                      {mode.name}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="w-px self-stretch bg-subtle/60 shrink-0" />
-
-              {/* Takeoff + Mission — stacked in their own column */}
-              <div className="shrink-0 flex flex-col justify-center gap-1.5 min-w-[150px]">
-                {capabilities.takeoff.supported && (
-                  <button
-                    onClick={() => setShowTakeoffDialog(true)}
-                    disabled={flight.armed}
-                    className="w-full px-2 py-1.5 text-xs font-medium rounded-lg bg-surface border border-subtle hover:bg-surface-raised hover:border-default disabled:opacity-40 disabled:cursor-not-allowed text-content transition-all"
-                    title={flight.armed ? 'Already armed — click disarm first' : takeoffPresentation.buttonHint}
-                  >
-                    {takeoffPresentation.buttonLabel}
-                  </button>
+              <button
+                onClick={() => handleArmDisarm()}
+                disabled={isLoading}
+                className={`h-full flex items-center justify-center gap-2.5 min-w-[140px] px-6 rounded-lg
+                  font-bold text-sm uppercase tracking-wider transition-all duration-200 select-none border
+                  ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
+                  ${flight.armed
+                    ? 'bg-[var(--status-danger-bg)] border-[color:var(--status-danger)] text-[color:var(--status-danger-fg)] hover:brightness-110'
+                    : forceArm
+                      ? 'bg-[var(--status-warn-bg)] border-[color:var(--status-warn)] text-[color:var(--status-warn-fg)] hover:brightness-110'
+                      : 'bg-surface border-subtle text-content hover:bg-surface-raised hover:text-content hover:border-default'
+                  }`}
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span>{flight.armed ? 'Disarming...' : 'Arming...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className={`w-2.5 h-2.5 rounded-full ${flight.armed ? 'bg-red-400 animate-pulse' : forceArm ? 'bg-amber-400' : 'bg-content-tertiary'}`} />
+                    <span>{flight.armed ? 'Disarm' : forceArm ? 'Force Arm' : 'Arm'}</span>
+                  </>
                 )}
-                <div className="rounded-lg bg-surface border border-subtle p-1.5">
-                  <div className="flex items-center justify-between mb-1 px-1">
-                    <span className="text-[11px] text-content truncate">
-                      {missionLoaded
-                        ? <>
-                            {missionItems.length} wp
-                            <span className="text-content-tertiary"> · </span>
-                            <span className="font-mono text-content-secondary">
-                              {currentSeq != null
-                                ? `→ ${currentSeq + 1}/${missionItems.length}`
-                                : (isInAuto ? 'starting…' : 'idle')}
-                            </span>
-                          </>
-                        : <span className="text-content-secondary">No mission</span>}
-                    </span>
-                    <button
-                      onClick={() => { void fetchMission(); }}
-                      className="text-[11px] text-content-tertiary hover:text-content shrink-0"
-                      title="Reload mission from FC"
-                    >⟳</button>
-                  </div>
-                  {missionLoaded && (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleSetMode(missionModes.auto)}
-                        disabled={!flight.armed || isInAuto}
-                        className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 transition-all"
-                        title={!flight.armed ? 'Arm first' : 'Switch to AUTO'}
-                      >
-                        {isInAuto ? 'Running' : 'Start'}
-                      </button>
-                      {isInAuto ? (
-                        <button
-                          onClick={() => handleSetMode(missionModes.pause)}
-                          disabled={!flight.armed}
-                          className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 transition-all"
-                        >Pause</button>
-                      ) : (
-                        <button
-                          onClick={() => handleSetMode(missionModes.auto)}
-                          disabled={!flight.armed || !isInPause}
-                          className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 transition-all"
-                          title={isInPause ? `Resume from ${missionModes.pauseLabel}` : `Pause first`}
-                        >Resume</button>
-                      )}
-                    </div>
-                  )}
+              </button>
+
+              <button
+                onClick={() => setForceArm(!forceArm)}
+                className={`h-full shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 rounded-lg transition-all
+                  ${forceArm ? 'bg-[var(--status-warn-bg)] border border-subtle' : 'bg-surface border border-subtle hover:border-default'}`}
+                title="Force ARM bypasses pre-arm safety checks"
+              >
+                <span className={`text-[10px] font-medium ${forceArm ? 'text-[color:var(--status-warn-fg)]' : 'text-content-secondary'}`}>Force</span>
+                <div className={`w-7 h-3.5 rounded-full transition-colors relative ${forceArm ? 'bg-[var(--status-warn)]' : 'bg-surface-raised'}`}>
+                  <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${forceArm ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                 </div>
+              </button>
+
+            </div>
+
+            <div className="w-px self-stretch bg-subtle/60 shrink-0 my-2" />
+
+            {/* MODE — the hero readout; grows to fill the free space */}
+            <div className="flex-1 min-w-[200px] max-w-[480px]" style={{ height: controlH }}>{renderModeControl(true)}</div>
+
+            {/* transient status + pre-arm (only when present) */}
+            {(statusMsg || (!flight.armed && preArmReasons.length > 0)) && (
+              <div className="shrink-0 max-w-[280px] flex flex-col items-center justify-center gap-1">
+                {statusMsg && <div className={`text-xs font-medium text-center ${statusColor}`}>{statusMsg.text}</div>}
+                {!flight.armed && preArmReasons.length > 0 && (
+                  <div className="flex items-center justify-center gap-1 flex-wrap max-w-full">
+                    {preArmReasons.slice(0, 3).map(({ reason, fix }, i) => (
+                      <span
+                        key={i}
+                        {...(fix.hint ? { 'data-tip': fix.hint } : {})}
+                        className="px-2 py-0.5 bg-[var(--status-danger-bg)] border border-subtle rounded text-[color:var(--status-danger-fg)] text-[11px] truncate max-w-[200px]"
+                      >
+                        {reason}
+                      </span>
+                    ))}
+                    <button
+                      onClick={clearPreArm}
+                      title="Dismiss these. A check that's still failing reappears when the flight controller re-reports it."
+                      className="px-2 py-0.5 bg-surface border border-subtle rounded text-content-secondary hover:text-content text-[11px]"
+                    >Clear</button>
+                  </div>
+                )}
               </div>
-              {/* Contextual column — status, takeoff input, and pre-arm
-                  warnings ride in the horizontal flow as their own column.
-                  They add WIDTH (the bar scrolls sideways) rather than growing
-                  height or overlapping the controls, so a short strip never
-                  gets a vertical scrollbar and nothing ever covers a button. */}
-              {(statusMsg || showTakeoffDialog || (!flight.armed && preArmReasons.length > 0)) && (
-                <>
-                  <div className="w-px self-stretch bg-subtle/60 shrink-0" />
-                  <div className="shrink-0 flex flex-col justify-center gap-1">
-                    {statusMsg && (
-                      <div className={`text-xs font-medium ${statusColor}`}>{statusMsg.text}</div>
-                    )}
+            )}
 
-                    {showTakeoffDialog && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-content-secondary shrink-0">{takeoffPresentation.dialogPrompt}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          value={takeoffAlt}
-                          onChange={(e) => setTakeoffAlt(Math.max(1, Math.min(100, Number(e.target.value))))}
-                          className="w-14 px-1.5 py-1 text-sm font-mono bg-surface-input border border-subtle rounded text-content"
-                        />
-                        <span className="text-[11px] text-content-secondary shrink-0">m</span>
-                        <button
-                          onClick={handleTakeoff}
-                          className="px-2.5 py-1 text-[11px] font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-                        >Go</button>
-                        <button
-                          onClick={() => setShowTakeoffDialog(false)}
-                          className="px-1.5 py-1 text-content-secondary hover:text-content transition-colors text-sm leading-none"
-                          title="Cancel"
-                          aria-label="Cancel takeoff"
-                        >✕</button>
-                      </div>
-                    )}
+            {/* RIGHT — mission ops: takeoff + a single-row mission strip */}
+            <div className="flex items-center gap-2 shrink-0" style={{ height: controlH }}>
+              {showTakeoffDialog ? (
+                <div className="h-full flex items-center gap-1.5 px-2.5 rounded-lg bg-surface border border-default">
+                  <span className="text-[11px] text-content-secondary shrink-0">{takeoffPresentation.dialogPrompt}</span>
+                  <input
+                    type="number"
+                    min={takeoffAltitudeMin}
+                    max={takeoffAltitudeMax}
+                    step={takeoffAltitudeStep}
+                    value={takeoffAltitudeDisplay}
+                    onChange={(e) => { if (e.target.value.trim() !== '') setTakeoffAltitudeFromDisplay(Number(e.target.value)); }}
+                    className="w-14 px-1.5 py-1 text-sm font-mono bg-surface-input border border-subtle rounded text-content"
+                  />
+                  <span className="text-[11px] text-content-secondary shrink-0">{altitudeLabel}</span>
+                  <button onClick={handleTakeoff} className="px-2.5 py-1 text-[11px] font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">Go</button>
+                  <button onClick={() => setShowTakeoffDialog(false)} className="px-1 text-content-secondary hover:text-content text-sm leading-none" title="Cancel" aria-label="Cancel takeoff">✕</button>
+                </div>
+              ) : capabilities.takeoff.supported && (
+                <button
+                  onClick={() => setShowTakeoffDialog(true)}
+                  disabled={flight.armed}
+                  className="h-full px-4 text-xs font-medium rounded-lg bg-surface border border-subtle hover:bg-surface-raised hover:border-default disabled:opacity-40 disabled:cursor-not-allowed text-content transition-all"
+                  title={flight.armed ? 'Already armed — click disarm first' : takeoffPresentation.buttonHint}
+                >
+                  {takeoffPresentation.buttonLabel}
+                </button>
+              )}
 
-                    {!flight.armed && preArmReasons.length > 0 && (
-                      <div className="grid grid-rows-2 grid-flow-col gap-1">
-                        {preArmReasons.map(({ reason, fix }, i) => (
-                          <span
-                            key={i}
-                            {...(fix.hint ? { 'data-tip': fix.hint } : {})}
-                            className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-red-300 text-[11px] truncate max-w-[180px]"
-                          >
-                            {reason}
-                          </span>
-                        ))}
-                        <button
-                          onClick={clearPreArm}
-                          title="Dismiss these. A check that's still failing reappears when the flight controller re-reports it."
-                          className="px-2 py-0.5 bg-surface border border-subtle rounded text-content-secondary hover:text-content text-[11px]"
-                        >
-                          Clear
-                        </button>
-                      </div>
+              <div className="w-px self-stretch bg-subtle/60 shrink-0 my-0.5" />
+
+              {/* Mission — one row: status, reload, Start/Pause/Resume */}
+              <div className="h-full flex items-center gap-2 px-2.5 rounded-lg bg-surface border border-subtle">
+                <span className="text-[11px] text-content whitespace-nowrap">
+                  {missionLoaded
+                    ? <>{missionItems.length} wp
+                        <span className="text-content-tertiary"> · </span>
+                        <span className="font-mono text-content-secondary">
+                          {currentSeq != null ? `→ ${currentSeq + 1}/${missionItems.length}` : (isInAuto ? 'starting…' : 'idle')}
+                        </span>
+                      </>
+                    : <span className="text-content-secondary">No mission</span>}
+                </span>
+                <button onClick={() => { void fetchMission(); }} className="text-content-tertiary hover:text-content shrink-0" title="Reload mission from FC">⟳</button>
+                {missionLoaded && (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => mode.requestMode(missionModes.auto, { skipConfirm: true })}
+                      disabled={!flight.armed || isInAuto}
+                      className="px-2.5 py-1 text-[11px] font-medium rounded bg-[var(--status-success-bg)] border border-subtle hover:border-[color:var(--status-success)] disabled:opacity-40 disabled:cursor-not-allowed text-[color:var(--status-success-fg)] transition-all"
+                      title={!flight.armed ? 'Arm first' : 'Switch to AUTO'}
+                    >{isInAuto ? 'Running' : 'Start'}</button>
+                    {isInAuto ? (
+                      <button
+                        onClick={() => mode.requestMode(missionModes.pause, { skipConfirm: true })}
+                        disabled={!flight.armed}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded bg-[var(--status-warn-bg)] border border-subtle hover:border-[color:var(--status-warn)] disabled:opacity-40 disabled:cursor-not-allowed text-[color:var(--status-warn-fg)] transition-all"
+                      >Pause</button>
+                    ) : (
+                      <button
+                        onClick={() => mode.requestMode(missionModes.auto, { skipConfirm: true })}
+                        disabled={!flight.armed || !isInPause}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded bg-[var(--status-info-bg)] border border-subtle hover:border-[color:var(--status-info)] disabled:opacity-40 disabled:cursor-not-allowed text-[color:var(--status-info-fg)] transition-all"
+                        title={isInPause ? `Resume from ${missionModes.pauseLabel}` : `Pause first`}
+                      >Resume</button>
                     )}
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -1050,8 +1092,6 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
               <span className={`font-medium ${flight.armed ? 'text-red-400' : 'text-content-secondary'}`}>
                 {flight.armed ? 'ARMED' : 'DISARMED'}
               </span>
-              <span className="text-content-tertiary">·</span>
-              <span className="text-content truncate">{flight.mode || 'Unknown'}</span>
               <span className="ml-auto text-[10px] text-content-tertiary shrink-0">MAVLink</span>
             </div>
 
@@ -1063,9 +1103,9 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
                 font-bold text-sm uppercase tracking-wider transition-all border-2
                 ${isLoading ? 'cursor-wait opacity-70' : 'cursor-pointer'}
                 ${flight.armed
-                  ? 'bg-red-500/15 border-red-500/50 text-red-400 hover:bg-red-500/25'
+                  ? 'bg-[var(--status-danger-bg)] border-[color:var(--status-danger)] text-[color:var(--status-danger-fg)] hover:brightness-110'
                   : forceArm
-                    ? 'bg-amber-500/15 border-amber-500/50 text-amber-400 hover:bg-amber-500/25'
+                    ? 'bg-[var(--status-warn-bg)] border-[color:var(--status-warn)] text-[color:var(--status-warn-fg)] hover:brightness-110'
                     : 'bg-surface border-subtle text-content hover:bg-surface-raised hover:border-default'
                 }`}
             >
@@ -1078,30 +1118,11 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
               <div className={`text-center text-[11px] font-medium mb-2 ${statusColor}`}>{statusMsg.text}</div>
             )}
 
-            {/* Flight Modes — rounded-rectangle grid. Pills (rounded-full)
-                don't tile cleanly in a grid and need extra horizontal padding
-                that clipped longer names. Rectangles fill their cell so text
-                fits at any column count, and they match the visual language
-                of every other control on this panel. */}
-            <div className="grid grid-cols-3 gap-1 mb-2">
-              {availableModes.map((mode) => {
-                const isActive = flight.modeNum === mode.modeNum;
-                return (
-                  <button
-                    key={mode.modeNum}
-                    onClick={() => handleSetMode(mode.modeNum)}
-                    title={mode.name}
-                    className={`px-1 py-1.5 rounded-md text-[11px] font-medium truncate
-                      transition-colors duration-150
-                      ${isActive
-                        ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/30'
-                        : 'bg-surface-raised text-content hover:bg-surface-raised hover:text-white border border-transparent hover:border-default'}
-                    `}
-                  >
-                    {mode.name}
-                  </button>
-                );
-              })}
+            {/* Flight mode — annunciator (honest engaged/requested/rejected
+                state) that opens the grouped, searchable picker. Replaces the
+                old fixed grid so every mode is reachable without the clutter. */}
+            <div className="mb-2">
+              {renderModeControl(false)}
             </div>
 
             {/* Takeoff. Label, hint and dialog copy come from the per-vehicle
@@ -1147,24 +1168,24 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
               {missionLoaded && (
                 <div className="flex gap-1">
                   <button
-                    onClick={() => handleSetMode(missionModes.auto)}
+                    onClick={() => mode.requestMode(missionModes.auto, { skipConfirm: true })}
                     disabled={!flight.armed || isInAuto}
-                    className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 transition-all"
+                    className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-[var(--status-success-bg)] border border-subtle hover:border-[color:var(--status-success)] disabled:opacity-40 disabled:cursor-not-allowed text-[color:var(--status-success-fg)] transition-all"
                     title={!flight.armed ? 'Arm first' : 'Switch to AUTO'}
                   >
                     {isInAuto ? 'Running' : 'Start'}
                   </button>
                   {isInAuto ? (
                     <button
-                      onClick={() => handleSetMode(missionModes.pause)}
+                      onClick={() => mode.requestMode(missionModes.pause, { skipConfirm: true })}
                       disabled={!flight.armed}
-                      className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-amber-300 transition-all"
+                      className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-[var(--status-warn-bg)] border border-subtle hover:border-[color:var(--status-warn)] disabled:opacity-40 disabled:cursor-not-allowed text-[color:var(--status-warn-fg)] transition-all"
                     >Pause</button>
                   ) : (
                     <button
-                      onClick={() => handleSetMode(missionModes.auto)}
+                      onClick={() => mode.requestMode(missionModes.auto, { skipConfirm: true })}
                       disabled={!flight.armed || !isInPause}
-                      className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 transition-all"
+                      className="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-[var(--status-info-bg)] border border-subtle hover:border-[color:var(--status-info)] disabled:opacity-40 disabled:cursor-not-allowed text-[color:var(--status-info-fg)] transition-all"
                       title={isInPause ? `Resume from ${missionModes.pauseLabel}` : `Pause first`}
                     >Resume</button>
                   )}
@@ -1217,7 +1238,7 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
             )}
 
             {!flight.armed && preArmReasons.length > 0 && (
-              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div className="mb-4 bg-[var(--status-danger-bg)] border border-subtle rounded-lg">
                 <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
                   <span className="text-red-400 text-[10px] font-medium uppercase tracking-wider">Pre-arm Checks Failed</span>
                   <button
@@ -1246,7 +1267,7 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
                           <svg className="w-3 h-3 text-red-400 mt-px shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                          <span className="flex-1 text-red-300 text-[11px] leading-tight">{reason}</span>
+                          <span className="flex-1 text-[color:var(--status-danger-fg)] text-[11px] leading-tight">{reason}</span>
                           {hasFixContent && (
                             <span className="text-[10px] text-blue-400 shrink-0">{isExpanded ? '▾' : 'Fix ›'}</span>
                           )}
@@ -1271,16 +1292,16 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
               title="Bypass pre-arm checks — use only when the failing check is known-safe."
               className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg transition-all
                 ${forceArm
-                  ? 'bg-amber-500/10 border border-amber-500/30'
+                  ? 'bg-[var(--status-warn-bg)] border border-subtle'
                   : 'bg-surface border border-subtle hover:border-default'}`}
             >
               <div className="flex items-center gap-2">
                 <svg className={`w-3.5 h-3.5 ${forceArm ? 'text-amber-400' : 'text-content-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span className={`text-[11px] font-medium ${forceArm ? 'text-amber-300' : 'text-content'}`}>Force ARM</span>
+                <span className={`text-[11px] font-medium ${forceArm ? 'text-[color:var(--status-warn-fg)]' : 'text-content'}`}>Force ARM</span>
               </div>
-              <div className={`w-7 h-3.5 rounded-full transition-colors relative ${forceArm ? 'bg-amber-500' : 'bg-surface-raised'}`}>
+              <div className={`w-7 h-3.5 rounded-full transition-colors relative ${forceArm ? 'bg-[var(--status-warn)]' : 'bg-surface-raised'}`}>
                 <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${forceArm ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
               </div>
             </button>
@@ -1454,11 +1475,11 @@ export function FlightControlPanel() {
 
         {/* Arming Blocked Reasons */}
         {!flight.armed && flight.armingDisabledReasons && flight.armingDisabledReasons.length > 0 && (
-          <div className="mb-4 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <div className="mb-4 p-2 bg-[var(--status-danger-bg)] border border-subtle rounded-lg">
             <div className="text-red-400 text-[10px] font-medium uppercase tracking-wider mb-1">Arming Blocked</div>
             <div className="flex flex-wrap gap-1">
               {flight.armingDisabledReasons.map((reason, i) => (
-                <span key={i} className="px-1.5 py-0.5 bg-red-500/20 rounded text-red-300 text-[10px]">
+                <span key={i} className="px-1.5 py-0.5 bg-[var(--status-danger-bg)] rounded text-[color:var(--status-danger-fg)] text-[10px]">
                   {reason}
                 </span>
               ))}

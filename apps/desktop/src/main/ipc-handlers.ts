@@ -310,6 +310,10 @@ let primaryTransportId: TransportId | null = null;
 // on ArduPilot's single-client TCP serial port, one of which SITL never
 // services - so parameters and telemetry silently stall.
 let connectGeneration = 0;
+// TEMP perf probe: raw MAVLink packet broadcast rate to the renderer(s). REMOVE after diagnosis.
+let perfPktCount = 0;
+const perfMsgHist = new Map<number, number>();
+let perfLogTimer: ReturnType<typeof setInterval> | null = null;
 // Tracks last armed state reported to renderer so we only log on transitions
 let lastReportedArmed: boolean | null = null;
 let mavlinkParser: MAVLinkParser | null = null;
@@ -2649,6 +2653,15 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         sendLog(mainWindow, ackResult === 0 ? 'info' : 'warn', text);
       }
 
+      // Log DO_SET_MODE (176) results — the FC tells us WHY a mode change was
+      // refused (e.g. AUTOTUNE requested on the ground -> TEMPORARILY_REJECTED/
+      // FAILED). Without this the request just silently does nothing.
+      if (ackCommand === 176 && ackResult !== 0) {
+        const text = `Mode change rejected by FC: ${resultName}`;
+        mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity: 4, severityLabel: 'WARNING', text });
+        sendLog(mainWindow, 'warn', text, 'DO_SET_MODE was not accepted - the flight controller refused the requested mode (common for AUTOTUNE/AUTO/RTL when preconditions like being airborne or GPS lock are not met).');
+      }
+
       // Log NAV_LAND results
       if (ackCommand === 21) {
         const severity = ackResult === 0 ? 6 : 4;
@@ -4274,6 +4287,22 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               isMavlink2: packet.isMavlink2,
               isSigned: packet.isSigned,
             });
+
+            // TEMP perf probe (diagnosing in-flight telemetry freeze): measure the
+            // raw packet broadcast rate + top message ids. This is the "flood" the
+            // renderer's per-packet decoders chew on. REMOVE after diagnosis.
+            perfPktCount++;
+            perfMsgHist.set(packet.msgid, (perfMsgHist.get(packet.msgid) ?? 0) + 1);
+            if (!perfLogTimer) {
+              perfLogTimer = setInterval(() => {
+                const top = [...perfMsgHist.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
+                  .map(([id, c]) => `#${id}:${Math.round(c / 2)}`).join(' ');
+                const mem = process.memoryUsage();
+                sendLog(mainWindow, 'info', `[PERF main] mavlink-pkt/s=${Math.round(perfPktCount / 2)} rss=${Math.round(mem.rss / 1e6)}MB heap=${Math.round(mem.heapUsed / 1e6)}MB top6/s=[${top}]`);
+                perfPktCount = 0;
+                perfMsgHist.clear();
+              }, 2000);
+            }
 
             // Log packets (limit to not spam)
             if (connectionState.packetsReceived <= 10 || connectionState.packetsReceived % 100 === 0) {

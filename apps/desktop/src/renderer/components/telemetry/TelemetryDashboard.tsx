@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { memo, useEffect, useRef, useState, useCallback } from 'react';
 import {
   DockviewReact,
   DockviewReadyEvent,
@@ -917,7 +917,7 @@ function QuickStatsBar() {
   );
 }
 
-export function TelemetryDashboard() {
+function TelemetryDashboardImpl() {
   const resolvedTheme = useResolvedTheme();
   const apiRef = useRef<DockviewApi | null>(null);
   const { layouts, activeLayoutName, loadLayouts, saveLayout, setActiveLayout } = useLayoutStore();
@@ -1132,3 +1132,8 @@ export function TelemetryDashboard() {
     </div>
   );
 }
+
+// Memo boundary: App re-renders for many reasons (connection, params, nav);
+// this panel only depends on its own narrowed store selections, so it must not
+// reconcile just because the root did. Props are empty, so a plain memo suffices.
+export const TelemetryDashboard = memo(TelemetryDashboardImpl);

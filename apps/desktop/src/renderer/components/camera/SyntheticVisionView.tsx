@@ -66,8 +66,12 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
   // move enough to re-trigger).
   const loadTokenRef = useRef(0);
   const [terrainStatus, setTerrainStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  // The SVT camera's vertical FOV, captured on mount so the world-locked HUD
+  // overlay can drive its own camera with the exact same fov (zero calibration).
+  const [svtFov, setSvtFov] = useState(62);
 
   const flatAttitude = useTelemetryStore((s) => s.attitude);
+  const flatAltMsl = useTelemetryStore((s) => s.position.alt);
   const fleetAttitude = useFleetTelemetryStore((s) => (vehicle ? s.byVehicle[vehicle.key]?.attitude : undefined));
 
   const position = vehicle?.position ?? null;
@@ -93,6 +97,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
 
     const scene = createSvtScene(canvas);
     sceneRef.current = scene;
+    setSvtFov(scene.getFov());
 
     const sizeToContainer = () => {
       const r = container.getBoundingClientRect();
@@ -168,6 +173,21 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
   // The 3D scene already shows a true banked horizon — drop the flat cyan line.
   const svtOsd: OsdLayers = { ...osd, artificialHorizon: false };
 
+  // Drive the world-locked waypoint overlay with the SAME pose + fov the SVT
+  // camera uses, so the symbology lands on the terrain. altMsl is the primary's
+  // telemetry MSL (only the primary vehicle draws the overlay).
+  const worldOverlay = position
+    ? {
+        lat: position[0],
+        lon: position[1],
+        altMsl: flatAltMsl,
+        yawDeg: vehicle?.heading ?? 0,
+        pitchDeg: att?.pitch ?? 0,
+        rollDeg: att?.roll ?? 0,
+        fov: svtFov,
+      }
+    : null;
+
   return (
     <div
       ref={containerRef}
@@ -177,7 +197,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
     >
       <canvas ref={canvasRef} className="block h-full w-full" />
 
-      {position && <CameraOverlays vehicle={vehicle} isPrimary={isPrimary} osd={svtOsd} attitude={overlayAttitude} />}
+      {position && <CameraOverlays vehicle={vehicle} isPrimary={isPrimary} osd={svtOsd} attitude={overlayAttitude} worldOverlay={worldOverlay} />}
 
       {!position && (
         <Center>
