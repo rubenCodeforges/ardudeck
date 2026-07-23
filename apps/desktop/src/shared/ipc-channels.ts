@@ -989,6 +989,11 @@ export interface ConnectionState {
   autopilot?: string;
   vehicleType?: string;
   mavType?: number; // Raw MAV_TYPE for metadata lookup
+  /**
+   * ArduPilot flight software version from AUTOPILOT_VERSION (e.g. "V4.6.3").
+   * Used for versioned parameter documentation links.
+   */
+  firmwareVersion?: string;
   // MSP-specific (Betaflight/iNav)
   fcVariant?: string; // "BTFL", "INAV", "CLFL"
   fcVersion?: string; // "4.5.1"

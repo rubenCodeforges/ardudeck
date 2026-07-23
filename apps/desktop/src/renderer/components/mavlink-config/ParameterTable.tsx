@@ -12,12 +12,14 @@ import { useParameterStore, type SortColumn } from '../../stores/parameter-store
 import { useSettingsStore } from '../../stores/settings-store';
 import { PARAMETER_GROUPS } from '../../../shared/parameter-groups';
 import { useConnectionStore } from '../../stores/connection-store';
-import { getParameterDocsUrl, mavTypeToVehicleType } from '../../../shared/parameter-metadata';
+import { getParameterDocsUrl, resolveArduPilotDocsContext } from '../../../shared/parameter-metadata';
 import { formatParamValue } from '../../../shared/parameter-types';
+import { formatParamDisplayValue, isIntegerishParamValue, paramValueAsEnumKey } from '../../../shared/param-display';
 import { classifySitlUnsafeParam } from '../../../shared/sitl-unsafe-params';
 import BitmaskEditor from './BitmaskEditor';
 import ParamHistoryModal from './ParamHistoryModal';
 import { Tooltip } from '../ui/Tooltip';
+import { ParamNameTooltip } from '../ui/ParamNameTooltip';
 import { NON_DEFAULT_COLORS, getNonDefaultColor } from '../parameters/non-default-palette';
 
 // Toast notification state
@@ -413,20 +415,22 @@ const ParameterTable: React.FC = () => {
     closeCompareModal();
   }, [fileApplyResult, clearFileApplyResult, closeCompareModal]);
 
-  const handleSaveToFile = useCallback(async (changedOnly?: boolean) => {
+  const handleSaveToFile = useCallback(async (opts?: { changedOnly?: boolean; format?: 'mp' | 'qgc' }) => {
+    const changedOnly = opts?.changedOnly ?? false;
+    const format = opts?.format ?? 'mp';
     setIsSavingFile(true);
     setSaveDropdownOpen(false);
     try {
       let params = Array.from(parameters.values())
         .filter(p => !p.isReadOnly)
         .sort((a, b) => a.id.localeCompare(b.id))
-        .map(p => ({ id: p.id, value: p.value }));
+        .map(p => ({ id: p.id, value: p.value, type: p.type }));
 
       if (changedOnly) {
         params = Array.from(parameters.values())
           .filter(p => !p.isReadOnly && p.isModified)
           .sort((a, b) => a.id.localeCompare(b.id))
-          .map(p => ({ id: p.id, value: p.value }));
+          .map(p => ({ id: p.id, value: p.value, type: p.type }));
       }
 
       if (params.length === 0) {
@@ -435,9 +439,11 @@ const ParameterTable: React.FC = () => {
       }
 
       const vehicleType = connectionState.vehicleType || connectionState.fcVariant;
-      const result = await window.electronAPI?.saveParamsToFile(params, vehicleType);
+      const result = await window.electronAPI?.saveParamsToFile(params, vehicleType, { format });
       if (result?.success) {
-        showToast(`Saved ${params.length} parameter${params.length !== 1 ? 's' : ''} to file`, 'success');
+        const actual = result.format ?? format;
+        const fmtLabel = actual === 'qgc' ? 'QGC' : 'MP';
+        showToast(`Saved ${params.length} parameter${params.length !== 1 ? 's' : ''} (${fmtLabel})`, 'success');
       } else if (result?.error && result.error !== 'Cancelled') {
         showToast(result.error, 'error');
       }
@@ -451,7 +457,19 @@ const ParameterTable: React.FC = () => {
     try {
       const result = await window.electronAPI?.loadParamsFromFile();
       if (result?.success && result.params) {
-        loadFileForCompare(result.params, result.vehicleType);
+        if (result.params.length === 0) {
+          showToast('No parameters found in file', 'error');
+          return;
+        }
+        const { diffs, skipped } = loadFileForCompare(result.params, result.vehicleType);
+        if (diffs === 0 && skipped === 0) {
+          showToast('All parameters in file match current values (no differences)', 'info');
+        } else if (diffs === 0 && skipped > 0) {
+          showToast(
+            `No matching parameters to apply (${skipped} name${skipped !== 1 ? 's' : ''} not on vehicle)`,
+            'info',
+          );
+        }
       } else if (result?.error && result.error !== 'Cancelled') {
         showToast(result.error, 'error');
       }
@@ -540,8 +558,30 @@ const ParameterTable: React.FC = () => {
   const nonDefaultCount = nonDefaultCountFn();
   const hasDefaults = hasDefaultsFn();
 
-  // Vehicle slug for the per-param ArduPilot docs link. Null when vehicle is unknown.
-  const docsVehicle = connectionState.mavType != null ? mavTypeToVehicleType(connectionState.mavType) : null;
+  const offlineVehicleType = useParameterStore((s) => s.offlineVehicleType);
+  const offlineMode = useParameterStore((s) => s.offlineMode);
+
+  // ArduPilot-only docs context (vehicle + optional firmware version for Sphinx pages).
+  const docsContext = useMemo(
+    () =>
+      resolveArduPilotDocsContext({
+        protocol: offlineMode ? undefined : connectionState.protocol,
+        autopilot: offlineMode ? undefined : connectionState.autopilot,
+        mavType: offlineMode ? undefined : connectionState.mavType,
+        vehicleType: connectionState.vehicleType,
+        firmwareVersion: offlineMode ? undefined : connectionState.firmwareVersion,
+        offlineVehicleType: offlineVehicleType ?? undefined,
+      }),
+    [
+      offlineMode,
+      offlineVehicleType,
+      connectionState.protocol,
+      connectionState.autopilot,
+      connectionState.mavType,
+      connectionState.vehicleType,
+      connectionState.firmwareVersion,
+    ],
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
@@ -573,10 +613,10 @@ const ParameterTable: React.FC = () => {
           <div className="relative" ref={saveDropdownRef}>
             <div className="flex">
               <button
-                onClick={() => handleSaveToFile(false)}
+                onClick={() => handleSaveToFile({ format: 'mp' })}
                 disabled={isSavingFile || paramCount === 0}
                 className="px-3 py-2 bg-surface-raised hover:bg-surface-raised disabled:bg-surface text-content disabled:text-content-tertiary rounded-l-lg text-sm font-medium transition-colors flex items-center gap-2"
-                title="Save all parameters to file"
+                title="Save all parameters to Mission Planner .param file"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -595,19 +635,33 @@ const ParameterTable: React.FC = () => {
               </button>
             </div>
             {saveDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-52 bg-surface-solid border-subtle rounded-lg shadow-xl z-50 py-1">
+              <div className="absolute top-full left-0 mt-1 w-64 bg-surface-solid border border-subtle rounded-lg shadow-xl z-50 py-1">
                 <button
-                  onClick={() => handleSaveToFile(false)}
+                  onClick={() => handleSaveToFile({ format: 'mp' })}
                   className="w-full px-3 py-2 text-left text-sm text-content hover:bg-surface-raised transition-colors"
                 >
-                  Save All Parameters
+                  Save All (Mission Planner .param)
                 </button>
                 <button
-                  onClick={() => handleSaveToFile(true)}
+                  onClick={() => handleSaveToFile({ format: 'qgc' })}
+                  className="w-full px-3 py-2 text-left text-sm text-content hover:bg-surface-raised transition-colors"
+                >
+                  Save All (QGroundControl .params)
+                </button>
+                <button
+                  onClick={() => handleSaveToFile({ changedOnly: true, format: 'mp' })}
                   disabled={modified === 0}
                   className="w-full px-3 py-2 text-left text-sm text-content hover:bg-surface-raised disabled:text-content-tertiary disabled:hover:bg-transparent transition-colors"
                 >
-                  Save Changed Only
+                  Save Changed Only (.param)
+                  {modified > 0 && <span className="ml-1 text-xs text-yellow-400">({modified})</span>}
+                </button>
+                <button
+                  onClick={() => handleSaveToFile({ changedOnly: true, format: 'qgc' })}
+                  disabled={modified === 0}
+                  className="w-full px-3 py-2 text-left text-sm text-content hover:bg-surface-raised disabled:text-content-tertiary disabled:hover:bg-transparent transition-colors"
+                >
+                  Save Changed Only (.params)
                   {modified > 0 && <span className="ml-1 text-xs text-yellow-400">({modified})</span>}
                 </button>
               </div>
@@ -943,7 +997,17 @@ const ParameterTable: React.FC = () => {
                       >
                         <Star className={`w-3.5 h-3.5 ${isFavourite(param.id) ? 'fill-yellow-400 text-yellow-400' : 'text-content-tertiary hover:text-content-secondary'}`} />
                       </button>
-                      <span className="font-mono text-sm text-content truncate">{param.id}</span>
+                      <ParamNameTooltip
+                        meta={getParameterMetadata(param.id)}
+                        description={getDescription(param.id)}
+                        docUrl={
+                          docsContext
+                            ? getParameterDocsUrl(docsContext.vehicleType, param.id, docsContext.versionTag)
+                            : null
+                        }
+                      >
+                        <span className="font-mono text-sm text-content truncate cursor-help">{param.id}</span>
+                      </ParamNameTooltip>
                       {isRebootRequired(param.id) && (
                         <span className="shrink-0 px-1 py-0.5 text-[9px] leading-none bg-amber-500/15 text-amber-500/70 rounded border-amber-500/20" title="Requires reboot to take effect">
                           Reboot
@@ -954,7 +1018,7 @@ const ParameterTable: React.FC = () => {
                   <div className="px-4 py-2.5 min-w-0">
                     {param.isReadOnly ? (
                       <span className="font-mono text-sm text-content-secondary tabular-nums" title="Read-only parameter">
-                        {formatParamValue(param.value)}
+                        {formatParamDisplayValue(param.value, getParameterMetadata(param.id))}
                       </span>
                     ) : editingParam === param.id ? (
                       <div className="relative">
@@ -980,23 +1044,24 @@ const ParameterTable: React.FC = () => {
                     ) : (() => {
                       const meta = getParameterMetadata(param.id);
                       const hasBitmask = meta?.bitmask && Object.keys(meta.bitmask).length > 0;
-                      // Only show enum dropdown for integer-valued params (not float suggestions like expo)
-                      const isIntegerParam = Number.isInteger(param.value);
+                      // Only show enum dropdown for integer-like params (float32-aware; not float expo suggestions)
+                      const isIntegerParam = isIntegerishParamValue(param.value);
+                      const enumKey = paramValueAsEnumKey(param.value);
                       const hasEnumValues = !hasBitmask && isIntegerParam && meta?.values && Object.keys(meta.values).length > 0;
                       return (
                         <div className="relative flex items-center gap-1.5 min-w-0">
                           {hasEnumValues ? (
                             <div className="flex items-center gap-1 w-full">
                               <select
-                                value={Math.round(param.value)}
+                                value={enumKey}
                                 onChange={(e) => setParameter(param.id, Number(e.target.value))}
                                 className={`flex-1 min-w-0 h-7 px-2 bg-surface-input border rounded-md text-sm leading-none focus:outline-none focus:border-blue-500 truncate ${isNonDefault ? nonDefaultColor.textClass : 'text-content'}`}
                               >
                                 {Object.entries(meta!.values!).map(([code, label]) => (
-                                  <option key={code} value={code}>{code}: {label}</option>
+                                  <option key={code} value={code}>{code} — {label}</option>
                                 ))}
-                                {!(String(Math.round(param.value)) in meta!.values!) && (
-                                  <option value={Math.round(param.value)}>{Math.round(param.value)}: Custom</option>
+                                {!(String(enumKey) in meta!.values!) && (
+                                  <option value={enumKey}>{enumKey} — Custom</option>
                                 )}
                               </select>
                               <button
@@ -1011,7 +1076,7 @@ const ParameterTable: React.FC = () => {
                             <>
                               <button
                                 onClick={() => startEdit(param.id, param.value)}
-                                className={`font-mono text-sm hover:text-blue-400 transition-colors tabular-nums ${isNonDefault ? nonDefaultColor.textClass : 'text-content'}`}
+                                className={`font-mono text-sm hover:text-blue-400 transition-colors tabular-nums truncate ${isNonDefault ? nonDefaultColor.textClass : 'text-content'}`}
                                 title={(() => {
                                   const hints: string[] = [];
                                   if (isNonDefault && param.defaultValue !== undefined) {
@@ -1021,7 +1086,7 @@ const ParameterTable: React.FC = () => {
                                   return hints.join('\n') || `Click to edit`;
                                 })()}
                               >
-                                {formatParamValue(param.value)}
+                                {formatParamDisplayValue(param.value, meta)}
                               </button>
                               {meta?.units && (
                                 <span className="text-[11px] text-content-tertiary ml-1 truncate">{meta.units}</span>
@@ -1056,8 +1121,8 @@ const ParameterTable: React.FC = () => {
                       const meta = getParameterMetadata(param.id);
                       const hasVals = !meta?.bitmask && meta?.values && Object.keys(meta.values).length > 0;
                       if (!hasVals) return null;
-                      const isInt = Number.isInteger(param.value);
-                      const currentCode = String(isInt ? Math.round(param.value) : param.value);
+                      const isInt = isIntegerishParamValue(param.value);
+                      const currentCode = String(isInt ? paramValueAsEnumKey(param.value) : param.value);
                       return (
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] leading-snug max-h-[34px] overflow-hidden">
                           {Object.entries(meta!.values!).map(([code, label]) => {
@@ -1099,12 +1164,18 @@ const ParameterTable: React.FC = () => {
                         {getDescription(param.id)}
                       </span>
                     </Tooltip>
-                    {docsVehicle && (
+                    {docsContext && (
                       <Tooltip content="Open ArduPilot docs" placement="top">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.electronAPI?.openExternal(getParameterDocsUrl(docsVehicle, param.id));
+                            window.electronAPI?.openExternal(
+                              getParameterDocsUrl(
+                                docsContext.vehicleType,
+                                param.id,
+                                docsContext.versionTag,
+                              ),
+                            );
                           }}
                           className="shrink-0 p-1 rounded text-content-tertiary hover:text-blue-400 hover:bg-surface-raised transition-colors"
                           aria-label={`Open ArduPilot docs for ${param.id}`}
