@@ -1491,6 +1491,8 @@ const statustextChunkBuffer = new Map<number, { severity: number; chunks: string
 // MAVLink diagnostic cache for bug reports
 let cachedSysStatus: BoardDumpMavlink['sys_status'] | null = null;
 let cachedHeartbeat: BoardDumpMavlink['heartbeat'] | null = null;
+/** Last decoded flight-mode name from the primary heartbeat, for command logs. */
+let lastFlightModeName = 'Unknown';
 // Last GPS_RAW_INT from the active vehicle, consumed by the NTRIP client's
 // GGA position uploads (issue #60). Timestamped so a dead link goes stale.
 let lastGpsRawForNtrip: { gps: GpsData; atMs: number } | null = null;
@@ -2235,6 +2237,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         armed,
         isFlying: armed && (baseMode & 0x04) !== 0, // MAV_MODE_FLAG_CUSTOM_MODE_ENABLED as proxy
       };
+      lastFlightModeName = modeName;
       queueMavlinkTelemetry(mainWindow, { flight });
 
       // Cache for bug report diagnostics
@@ -2635,11 +2638,16 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         sendLog(mainWindow, ackResult === 0 ? 'info' : 'warn', text);
       }
 
-      // Log DO_REPOSITION (go-to) results
+      // Log DO_REPOSITION (go-to) results. FAILED almost always means the
+      // destination breached the geofence: ArduPilot's set_destination only
+      // fails for fence or missing terrain data, and sends no statustext
+      // (verified against SITL: FENCE_RADIUS breach = bare FAILED).
       if (ackCommand === 192) {
         const severity = ackResult === 0 ? 6 : 4;
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
-        const text = ackResult === 0 ? 'GO_TO accepted' : `GO_TO ${resultName}`;
+        const text = ackResult === 0 ? 'GO_TO accepted'
+          : ackResult === 4 ? 'GO_TO FAILED - FC refused: destination outside geofence, mode switch to GUIDED refused, or terrain data missing'
+          : `GO_TO ${resultName}`;
         mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity, severityLabel, text });
         sendLog(mainWindow, ackResult === 0 ? 'info' : 'warn', text);
       }
@@ -6881,7 +6889,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await target.transport.write(packet);
       connectionState.packetsSent++;
 
-      sendLog(mainWindow, 'info', `Sent DO_REPOSITION to ${lat.toFixed(7)}, ${lon.toFixed(7)}, alt=${alt.toFixed(1)}m`);
+      // Mode + target sysid at send time: a FAILED ack with fence off means
+      // either "not in GUIDED and the mode switch was refused" or the wrong
+      // vehicle got the command - this line discriminates.
+      sendLog(mainWindow, 'info', `Sent DO_REPOSITION to ${lat.toFixed(7)}, ${lon.toFixed(7)}, alt=${alt.toFixed(1)}m (mode=${lastFlightModeName}, sysid=${target.sysid})`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

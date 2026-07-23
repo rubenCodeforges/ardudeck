@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  RotateCw, Tornado, Eye, Film, MoveHorizontal, ArrowUpFromLine,
+  Navigation, Crosshair, RotateCw, Tornado, Eye, Film, MoveHorizontal,
+  ArrowUpFromLine, ArrowDownToLine,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { MapCommand } from './map-command-types';
@@ -10,10 +11,10 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { mavTypeToTacticalClass, type TacticalVehicleClass } from './tactical-icon-pool';
 import { ScriptInstallModal } from '../script-installer/ScriptInstallModal';
+import { fenceWarningForPoint } from '../../utils/fence-check';
 import {
   altitudeValueFromMeters,
   distanceValueFromMeters,
-  formatAltitudeFromMeters,
   formatDistanceFromMeters,
   speedValueFromMetersPerSecond,
   toMetersPerSecondFromSpeedUnit,
@@ -33,68 +34,88 @@ interface MapCommandPopupProps {
   currentMode: string;
   onConfirm: (command: MapCommand, options?: { preferScript?: boolean }) => void;
   onCancel: () => void;
+  /** Point the camera/gimbal at the clicked ground location (sets ROI). */
+  onSetRoi?: (lat: number, lon: number) => void;
+  /** Release the current ROI lock. */
+  onClearRoi?: () => void;
+  /** True when an ROI is currently active (enables the Clear button). */
+  hasRoi?: boolean;
 }
 
 /**
- * Top-level tabs:
- *   - move:    native DO_REPOSITION (always available)
- *   - lua:     ArduDeck-Lua-script-backed commands (Orbit, Spiral, ...).
- *              Only shown when the experimental flag is on. Hidden / shows
- *              install offer when the script isn't present on the FC.
- *   - land:    native NAV_LAND (gated by experimental flag for now since it
- *              changes mode, but kept simple).
+ * RTS-style command card (replaces the old tabbed dialog). Designed for
+ * in-flight use:
+ *  - Fixed spatial layout: tiles never move, reorder or disappear. A missing
+ *    script only DIMS a tile, so muscle memory always lands.
+ *  - Frequency hierarchy: Fly / Look / Orbit are the big top row; cinematic
+ *    tools are smaller; Return + Land live in a separated bottom zone.
+ *  - Two clicks max: click a tile, click it again (or Enter) to send with the
+ *    shown values. Parameter state persists, so repeat commands are instant.
+ *    Land is guarded: only its explicit confirm button fires it.
+ *  - Params unfold in a dock BELOW the grid so nothing above shifts.
+ *  - Hotkeys 1-9 by visible position.
  */
-type TabId = 'move' | 'lua' | 'land';
+type CommandId =
+  | 'fly' | 'look' | 'orbit' | 'spiral' | 'watchtower'
+  | 'reveal' | 'strafe' | 'climbRtl' | 'land';
 
-interface TabMeta {
-  id: TabId;
+type Zone = 'primary' | 'secondary' | 'escape';
+type Accent = 'cyan' | 'amber' | 'violet' | 'rose';
+
+interface ActionMeta {
+  id: CommandId;
+  zone: Zone;
   label: string;
-  activeClass: string;
-}
-
-const TABS: TabMeta[] = [
-  { id: 'move', label: 'Move',         activeClass: 'bg-cyan-600 text-white' },
-  { id: 'lua',  label: 'ArduDeck Lua', activeClass: 'bg-violet-600 text-white' },
-  { id: 'land', label: 'Land',         activeClass: 'bg-rose-600 text-white' },
-];
-
-/** Lua-tab sub-commands. Adding one: extend SUB_CMD in map-command-types and
- *  the dispatch table in ardudeck_commands.lua, then add an entry here. */
-type LuaCommandId = 'orbit' | 'spiral' | 'watchtower' | 'climbRtl' | 'reveal' | 'strafe';
-type LuaCategory = 'hold' | 'cinematic' | 'return';
-interface LuaCommandMeta {
-  id: LuaCommandId;
-  label: string;
-  hint: string;
-  confirmLabel: string;
-  /** True if the command needs a clicked map location (most do; CLIMB_RTL doesn't). */
-  needsLatLon: boolean;
-  category: LuaCategory;
+  accent: Accent;
   icon: LucideIcon;
-  /** Vehicle classes this command is meaningful for. Hover-based commands
-   *  (watchtower/reveal/strafe/climbRtl) need hover-capable platforms. */
+  /** Confirm button label. */
+  go: string;
+  hint: string;
+  /** Flight mode this command puts the FC into (pill shown when it differs). */
+  modeTo?: 'GUIDED' | 'LAND';
+  /** 'required' = Lua-script only; 'fallback' = script preferred, native works. */
+  script?: 'required' | 'fallback';
+  /** Gated behind the advanced-commands unlock (Fly + Look are always on). */
+  advanced?: boolean;
+  /** Vehicle classes this command is meaningful for. */
   supportedClasses: ReadonlyArray<TacticalVehicleClass>;
+  /** Requires the explicit confirm button (no re-click / Enter send). */
+  guarded?: boolean;
 }
-const LUA_COMMANDS: LuaCommandMeta[] = [
-  { id: 'orbit',      label: 'Orbit',      hint: 'Loiter around this point at fixed altitude',                   confirmLabel: 'Confirm Orbit',      needsLatLon: true,  category: 'hold',      icon: RotateCw,         supportedClasses: ['copter', 'vtol', 'plane'] },
-  { id: 'spiral',     label: 'Spiral',     hint: 'Orbit while climbing/descending to a target altitude',          confirmLabel: 'Confirm Spiral',     needsLatLon: true,  category: 'hold',      icon: Tornado,          supportedClasses: ['copter', 'vtol', 'plane'] },
-  { id: 'watchtower', label: 'Watchtower', hint: 'Hover at this point and slowly rotate yaw for a panoramic',     confirmLabel: 'Confirm Watchtower', needsLatLon: true,  category: 'hold',      icon: Eye,              supportedClasses: ['copter', 'vtol'] },
-  { id: 'reveal',     label: 'Reveal',     hint: 'Pull back + climb, camera locked on this target (cinematic)',   confirmLabel: 'Confirm Reveal',     needsLatLon: true,  category: 'cinematic', icon: Film,             supportedClasses: ['copter', 'vtol'] },
-  { id: 'strafe',     label: 'Strafe',     hint: 'Dolly past this target at perpendicular offset, looking at it', confirmLabel: 'Confirm Strafe',     needsLatLon: true,  category: 'cinematic', icon: MoveHorizontal,   supportedClasses: ['copter', 'vtol'] },
-  { id: 'climbRtl',   label: 'Climb+RTL',  hint: 'Climb in place to a safe altitude, then return home',           confirmLabel: 'Climb & RTL',        needsLatLon: false, category: 'return',    icon: ArrowUpFromLine,  supportedClasses: ['copter', 'vtol'] },
+
+const AIR: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane'];
+const HOVER: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol'];
+const ALL: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane', 'rover', 'boat', 'sub', 'antenna'];
+
+const ACTIONS: ActionMeta[] = [
+  { id: 'fly', zone: 'primary', label: 'Fly here', accent: 'cyan', icon: Navigation, go: 'Fly',
+    hint: 'Guided move to this point at the set altitude.', modeTo: 'GUIDED', supportedClasses: ALL },
+  { id: 'look', zone: 'primary', label: 'Look here', accent: 'amber', icon: Crosshair, go: 'Look here',
+    hint: 'Gimbal locks on and tracks this point as the vehicle moves. Flight path unchanged.', supportedClasses: ALL },
+  { id: 'orbit', zone: 'primary', label: 'Orbit', accent: 'violet', icon: RotateCw, go: 'Orbit',
+    hint: 'Circle this point at fixed altitude.', modeTo: 'GUIDED', script: 'fallback', advanced: true, supportedClasses: AIR },
+  { id: 'spiral', zone: 'secondary', label: 'Spiral', accent: 'violet', icon: Tornado, go: 'Spiral',
+    hint: 'Orbit while climbing or descending to a target altitude.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: AIR },
+  { id: 'watchtower', zone: 'secondary', label: 'Watch', accent: 'violet', icon: Eye, go: 'Watch',
+    hint: 'Hover at this point and rotate slowly for a panoramic view.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'reveal', zone: 'secondary', label: 'Reveal', accent: 'violet', icon: Film, go: 'Reveal',
+    hint: 'Pull back and climb with the camera locked on this target.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'strafe', zone: 'secondary', label: 'Strafe', accent: 'violet', icon: MoveHorizontal, go: 'Strafe',
+    hint: 'Dolly past the target at a perpendicular offset, camera locked on.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'climbRtl', zone: 'escape', label: 'Climb + RTL', accent: 'rose', icon: ArrowUpFromLine, go: 'Climb and return',
+    hint: 'Climb in place to a safe altitude, then return home.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'land', zone: 'escape', label: 'Land here', accent: 'rose', icon: ArrowDownToLine, go: 'Confirm Land',
+    hint: 'Fly to this point, then descend and land.', modeTo: 'LAND', advanced: true, guarded: true, supportedClasses: ALL },
 ];
 
-const CATEGORY_LABELS: Record<LuaCategory, string> = {
-  hold:      'Hold',
-  cinematic: 'Cinematic',
-  return:    'Return',
+/** Per-accent classes. Solid button colors read fine on both themes; the
+ *  tile/pill tints ride color-mix-free tailwind opacity variants. */
+const ACCENT: Record<Accent, { tile: string; icon: string; btn: string; pill: string }> = {
+  cyan:   { tile: 'border-cyan-500/70 bg-cyan-500/10',   icon: 'text-cyan-500',   btn: 'bg-cyan-600 hover:bg-cyan-500',     pill: 'border-cyan-500/50 text-cyan-500' },
+  amber:  { tile: 'border-amber-500/70 bg-amber-500/10', icon: 'text-amber-500',  btn: 'bg-amber-600 hover:bg-amber-500',   pill: 'border-amber-500/50 text-amber-500' },
+  violet: { tile: 'border-violet-500/70 bg-violet-500/10', icon: 'text-violet-500', btn: 'bg-violet-600 hover:bg-violet-500', pill: 'border-violet-500/50 text-violet-500' },
+  rose:   { tile: 'border-rose-500/70 bg-rose-500/10',   icon: 'text-rose-500',   btn: 'bg-rose-600 hover:bg-rose-500',     pill: 'border-rose-500/50 text-rose-500' },
 };
-const CATEGORY_ORDER: LuaCategory[] = ['hold', 'cinematic', 'return'];
-
-/** Vehicle classes for which the entire Lua tab is meaningless (no air craft). */
-const LUA_TAB_HIDDEN_CLASSES: ReadonlySet<TacticalVehicleClass> = new Set([
-  'rover', 'boat', 'sub', 'antenna',
-]);
 
 export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   lat,
@@ -104,48 +125,41 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   currentMode,
   onConfirm,
   onCancel,
+  onSetRoi,
+  onClearRoi,
+  hasRoi,
 }) => {
-  // Top-level tab + Lua sub-command
-  const [tabId, setTabId] = useState<TabId>('move');
-  const [luaCmd, setLuaCmd] = useState<LuaCommandId>('orbit');
+  const [selected, setSelected] = useState<CommandId>('fly');
 
-  // Move / orbit shared
+  // Parameter state persists while the popup is open, and defaults are sane,
+  // so Enter always fires with what the row summary shows.
   const [altitude, setAltitude] = useState(Math.max(Math.round(currentAltAgl), 10));
-  // Orbit + spiral shared
   const [radius, setRadius] = useState(50);
   const [direction, setDirection] = useState<'cw' | 'ccw'>('cw');
-  // Orbit-only
-  const [revolutions, setRevolutions] = useState(0); // 0 = infinite
-  // Spiral-only
+  const [revolutions, setRevolutions] = useState(0); // 0 = endless
   const [spiralTargetAlt, setSpiralTargetAlt] = useState(Math.max(Math.round(currentAltAgl) + 30, 40));
   const [climbRate, setClimbRate] = useState(1.5);
-  // Watchtower-only
   const [yawRate, setYawRate] = useState(30);
-  // Climb+RTL-only
   const [climbRtlAlt, setClimbRtlAlt] = useState(Math.max(Math.round(currentAltAgl) + 30, 50));
-  // Reveal-only
   const [revealPullback, setRevealPullback] = useState(40);
-  const [revealClimb, setRevealClimb]       = useState(15);
-  const [revealSpeed, setRevealSpeed]       = useState(3);
-  // Strafe-only
+  const [revealClimb, setRevealClimb] = useState(15);
+  const [revealSpeed, setRevealSpeed] = useState(3);
   const [strafeOffset, setStrafeOffset] = useState(20);
   const [strafeLength, setStrafeLength] = useState(40);
-  const [strafeSpeed, setStrafeSpeed]   = useState(3);
+  const [strafeSpeed, setStrafeSpeed] = useState(3);
 
   const [installModalOpen, setInstallModalOpen] = useState(false);
 
   const scriptHealth = useScriptHealth();
+  const scriptHealthy = scriptHealth.status === 'present';
   const advancedCommandsUnlocked = useSettingsStore(s => s.advancedCommandsUnlocked);
   const distanceUnit = useSettingsStore(s => s.unitPreferences.distance);
   const altitudeUnit = useSettingsStore(s => s.unitPreferences.altitude);
   const speedUnit = useSettingsStore(s => s.unitPreferences.speed);
   const verticalSpeedUnit = useSettingsStore(s => s.unitPreferences.verticalSpeed);
-  const scriptHealthy = scriptHealth.status === 'present';
 
-  // Vehicle-class gating. Prefer the ACTIVE/selected fleet vehicle's type so
-  // commanding a fixed-wing fleet marker offers plane commands, not the idle
-  // primary link's copter default. When unknown (early connect / no link),
-  // default to copter so power users on flaky links don't lose access.
+  // Vehicle-class gating: prefer the ACTIVE fleet vehicle's type; default to
+  // copter when unknown so power users on flaky links don't lose access.
   const activeMavType = useActiveVehicleStore(s => (s.activeVehicleKey ? s.knownVehicles[s.activeVehicleKey]?.mavType : undefined));
   const connMavType = useConnectionStore(s => s.connectionState.mavType);
   const mavType = activeMavType ?? connMavType;
@@ -153,82 +167,95 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
     () => mavType === undefined ? 'copter' : mavTypeToTacticalClass(mavType),
     [mavType],
   );
-  const luaTabHidden = LUA_TAB_HIDDEN_CLASSES.has(vehicleClass);
 
-  // Commands the current vehicle can actually perform.
-  const supportedLuaCommands = useMemo(
-    () => LUA_COMMANDS.filter(c => c.supportedClasses.includes(vehicleClass)),
-    [vehicleClass],
+  // Visible tiles: class support and the advanced unlock filter what EXISTS
+  // for this vehicle/user (a permanent property, so removal is fine). Script
+  // availability is transient, so it only dims (see disabled below).
+  const visible = useMemo(
+    () => ACTIONS.filter(a =>
+      a.supportedClasses.includes(vehicleClass) && (!a.advanced || advancedCommandsUnlocked)),
+    [vehicleClass, advancedCommandsUnlocked],
+  );
+  const hotkeyOf = useMemo(() => {
+    const m = new Map<CommandId, string>();
+    visible.forEach((a, i) => { if (i < 9) m.set(a.id, String(i + 1)); });
+    return m;
+  }, [visible]);
+
+  const isDisabled = useCallback(
+    (a: ActionMeta) => a.script === 'required' && !scriptHealthy,
+    [scriptHealthy],
   );
 
-  // Group supported commands by category, preserving CATEGORY_ORDER.
-  const commandsByCategory = useMemo(() => {
-    const groups: Array<{ category: LuaCategory; commands: LuaCommandMeta[] }> = [];
-    for (const cat of CATEGORY_ORDER) {
-      const commands = supportedLuaCommands.filter(c => c.category === cat);
-      if (commands.length > 0) groups.push({ category: cat, commands });
-    }
-    return groups;
-  }, [supportedLuaCommands]);
-
-  // Available top-level tabs - hide Lua + Land unless flag on; also hide Lua
-  // entirely on ground/water vehicles where every command is nonsensical.
-  const visibleTabs = useMemo(
-    () => {
-      if (!advancedCommandsUnlocked) return TABS.filter(t => t.id === 'move');
-      return luaTabHidden ? TABS.filter(t => t.id !== 'lua') : TABS;
-    },
-    [advancedCommandsUnlocked, luaTabHidden],
-  );
-
-  // Snap back if a now-hidden tab was active
+  // Snap selection back if the selected tile vanished (vehicle class change).
   useEffect(() => {
-    if (!visibleTabs.some(t => t.id === tabId)) setTabId('move');
-  }, [visibleTabs, tabId]);
+    if (!visible.some(a => a.id === selected)) setSelected('fly');
+  }, [visible, selected]);
 
-  // Snap back if the active Lua command is no longer supported on this vehicle
-  // (e.g. user reconnects to a plane while watchtower was selected).
-  useEffect(() => {
-    if (tabId !== 'lua') return;
-    if (supportedLuaCommands.length === 0) return;
-    if (!supportedLuaCommands.some(c => c.id === luaCmd)) {
-      setLuaCmd(supportedLuaCommands[0]!.id);
-    }
-  }, [tabId, luaCmd, supportedLuaCommands]);
+  const meta = ACTIONS.find(a => a.id === selected) ?? ACTIONS[0]!;
+  const blocked = isDisabled(meta);
+  const modeUpper = currentMode.toUpperCase();
+  const modePill = meta.modeTo && meta.modeTo !== modeUpper ? `to ${meta.modeTo}` : null;
 
-  const luaCmdMeta = useMemo(
-    () => LUA_COMMANDS.find(c => c.id === luaCmd) ?? LUA_COMMANDS[0]!,
-    [luaCmd],
+  // The FC rejects a destination outside the geofence with a bare FAILED and no
+  // reason. We know the fence GCS-side, so warn before the operator sends.
+  // Applies to actions that fly to the clicked point (not Look/Climb+RTL).
+  const usesClickedPoint = meta.id !== 'look' && meta.id !== 'climbRtl';
+  const fenceWarning = useMemo(
+    () => (usesClickedPoint ? fenceWarningForPoint(lat, lon) : null),
+    [usesClickedPoint, lat, lon],
   );
 
-  const needsModeSwitch = currentMode.toUpperCase() !== 'GUIDED' && tabId !== 'land';
-  const willSwitchToLand = tabId === 'land' && currentMode.toUpperCase() !== 'LAND';
+  // ── unit display helpers ──────────────────────────────────────────────────
+  const distanceStep = distanceUnit === 'm' || distanceUnit === 'ft' ? 5 : 0.01;
+  const distanceLabel = UNIT_LABELS.distance[distanceUnit];
+  const displayDistance = useCallback((m: number) => Number(distanceValueFromMeters(m, distanceUnit).toFixed(2)), [distanceUnit]);
+  const nativeDistance = useCallback((v: number) => toMetersFromDistanceUnit(v, distanceUnit), [distanceUnit]);
 
-  // Orbit has a native fallback; everything else under Lua tab is script-only.
-  const willUseScript = tabId === 'lua' && scriptHealthy;
-  const scriptOnlyCmd = tabId === 'lua' && luaCmd !== 'orbit';
-  const scriptBlocked = scriptOnlyCmd && !scriptHealthy;
+  const altitudePrecision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
+  const altitudeStep = altitudeUnit === 'km' ? 0.01 : 1;
+  const altitudeLabel = UNIT_LABELS.altitude[altitudeUnit];
+  const displayAltitude = useCallback(
+    (m: number) => Number(altitudeValueFromMeters(m, altitudeUnit).toFixed(altitudePrecision)),
+    [altitudePrecision, altitudeUnit],
+  );
+  const nativeAltitude = useCallback((v: number) => toMetersFromAltitudeUnit(v, altitudeUnit), [altitudeUnit]);
 
-  const handleConfirm = useCallback(() => {
-    if (tabId === 'move') {
-      onConfirm({ type: 'goto', lat, lon, alt: altitude });
-      return;
-    }
-    if (tabId === 'land') {
-      // Native NAV_LAND ignores lat/lon (descends in place); prefer the
-      // script's LAND_AT which flies to the point first, then switches to LAND.
-      onConfirm({ type: 'land', lat, lon }, { preferScript: scriptHealthy });
-      return;
-    }
-    // Lua tab
-    if (scriptBlocked) return;
+  const speedPrecision = UNIT_PRECISION.speed[speedUnit];
+  const speedStep = 1 / (10 ** speedPrecision);
+  const speedLabel = UNIT_LABELS.speed[speedUnit];
+  const displaySpeed = useCallback(
+    (mps: number) => Number(speedValueFromMetersPerSecond(mps, speedUnit).toFixed(speedPrecision)),
+    [speedPrecision, speedUnit],
+  );
+  const nativeSpeed = useCallback((v: number) => toMetersPerSecondFromSpeedUnit(v, speedUnit), [speedUnit]);
+
+  const verticalSpeedPrecision = UNIT_PRECISION.verticalSpeed[verticalSpeedUnit];
+  const verticalSpeedStep = 1 / (10 ** verticalSpeedPrecision);
+  const verticalSpeedLabel = UNIT_LABELS.verticalSpeed[verticalSpeedUnit];
+  const displayVerticalSpeed = useCallback(
+    (mps: number) => Number(verticalSpeedValueFromMetersPerSecond(mps, verticalSpeedUnit).toFixed(verticalSpeedPrecision)),
+    [verticalSpeedPrecision, verticalSpeedUnit],
+  );
+  const nativeVerticalSpeed = useCallback((v: number) => toMetersPerSecondFromVerticalSpeedUnit(v, verticalSpeedUnit), [verticalSpeedUnit]);
+
+  // ── send ──────────────────────────────────────────────────────────────────
+  const send = useCallback((id: CommandId) => {
+    const a = ACTIONS.find(x => x.id === id);
+    if (!a || (a.script === 'required' && !scriptHealthy)) return;
     const signedRadius = direction === 'cw' ? radius : -radius;
     const signedYawRate = direction === 'cw' ? Math.abs(yawRate) : -Math.abs(yawRate);
-    switch (luaCmd) {
+    switch (id) {
+      case 'fly':
+        onConfirm({ type: 'goto', lat, lon, alt: altitude });
+        break;
+      case 'look':
+        onSetRoi?.(lat, lon);
+        break;
       case 'orbit':
         onConfirm(
           { type: 'orbit', lat, lon, alt: altitude, radius: signedRadius, revolutions },
-          { preferScript: willUseScript },
+          { preferScript: scriptHealthy },
         );
         break;
       case 'spiral':
@@ -240,381 +267,270 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
       case 'watchtower':
         onConfirm({ type: 'watchtower', lat, lon, alt: altitude, yawRate: signedYawRate }, { preferScript: true });
         break;
-      case 'climbRtl':
-        onConfirm({ type: 'climbRtl', targetAlt: climbRtlAlt }, { preferScript: true });
-        break;
       case 'reveal':
         onConfirm(
-          { type: 'reveal', lat, lon, alt: altitude,
-            pullbackDist: revealPullback, climbAmount: revealClimb, speed: revealSpeed },
+          { type: 'reveal', lat, lon, alt: altitude, pullbackDist: revealPullback, climbAmount: revealClimb, speed: revealSpeed },
           { preferScript: true },
         );
         break;
       case 'strafe':
         onConfirm(
-          { type: 'strafe', lat, lon, alt: altitude,
-            offsetDist: strafeOffset, length: strafeLength, speed: strafeSpeed },
+          { type: 'strafe', lat, lon, alt: altitude, offsetDist: strafeOffset, length: strafeLength, speed: strafeSpeed },
           { preferScript: true },
         );
         break;
+      case 'climbRtl':
+        onConfirm({ type: 'climbRtl', targetAlt: climbRtlAlt }, { preferScript: true });
+        break;
+      case 'land':
+        // Script LAND_AT flies to the point first; native NAV_LAND descends in place.
+        onConfirm({ type: 'land', lat, lon }, { preferScript: scriptHealthy });
+        break;
     }
   }, [
-    tabId, luaCmd, lat, lon, altitude, radius, direction, revolutions,
-    spiralTargetAlt, climbRate, yawRate, climbRtlAlt,
-    revealPullback, revealClimb, revealSpeed,
-    strafeOffset, strafeLength, strafeSpeed,
-    currentAltAgl, willUseScript, scriptBlocked, onConfirm,
+    lat, lon, altitude, radius, direction, revolutions, spiralTargetAlt, climbRate,
+    yawRate, climbRtlAlt, revealPullback, revealClimb, revealSpeed,
+    strafeOffset, strafeLength, strafeSpeed, currentAltAgl, scriptHealthy,
+    onConfirm, onSetRoi,
   ]);
 
-  // Escape to cancel, Enter to confirm
+  const handleTileClick = useCallback((a: ActionMeta) => {
+    if (isDisabled(a)) { setSelected(a.id); return; } // dock shows the install CTA
+    if (selected === a.id && !a.guarded) { send(a.id); return; } // second click sends
+    setSelected(a.id);
+  }, [selected, send, isDisabled]);
+
+  // Keyboard: digit hotkeys select by visible position, Enter sends (except
+  // guarded Land), Esc closes. Digits are ignored while typing in an input.
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-      if (e.key === 'Enter') handleConfirm();
+      if (e.key === 'Escape') { onCancel(); return; }
+      if (e.key === 'Enter') {
+        if (!meta.guarded && !blocked) send(selected);
+        return;
+      }
+      if (e.target instanceof HTMLElement && e.target.tagName === 'INPUT') return;
+      const hit = visible.find(a => hotkeyOf.get(a.id) === e.key);
+      if (hit) setSelected(hit.id);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [onCancel, handleConfirm]);
+  }, [visible, hotkeyOf, selected, meta.guarded, blocked, send, onCancel]);
 
-  const distanceStep = distanceUnit === 'm' || distanceUnit === 'ft' ? 5 : 0.01;
-  const displayDistance = useCallback(
-    (meters: number) => distanceValueFromMeters(meters, distanceUnit),
-    [distanceUnit],
-  );
-  const nativeDistance = useCallback(
-    (value: number) => toMetersFromDistanceUnit(value, distanceUnit),
-    [distanceUnit],
-  );
-  const displayDistanceBound = useCallback(
-    (meters: number) => distanceValueFromMeters(meters, distanceUnit),
-    [distanceUnit],
-  );
-  const distanceLabel = UNIT_LABELS.distance[distanceUnit];
-  const altitudePrecision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
-  const altitudeStep = altitudeUnit === 'km' ? 0.01 : 1;
-  const altitudeLabel = UNIT_LABELS.altitude[altitudeUnit];
-  const displayAltitude = useCallback(
-    (meters: number) => Number(altitudeValueFromMeters(meters, altitudeUnit).toFixed(altitudePrecision)),
-    [altitudePrecision, altitudeUnit],
-  );
-  const nativeAltitude = useCallback(
-    (value: number) => toMetersFromAltitudeUnit(value, altitudeUnit),
-    [altitudeUnit],
-  );
-  const setAltitudeFromDisplay = useCallback((value: number) => {
-    if (value === displayAltitude(altitude)) return;
-    setAltitude(nativeAltitude(value));
-  }, [altitude, displayAltitude, nativeAltitude]);
-  const setSpiralTargetAltFromDisplay = useCallback((value: number) => {
-    if (value === displayAltitude(spiralTargetAlt)) return;
-    setSpiralTargetAlt(nativeAltitude(value));
-  }, [displayAltitude, nativeAltitude, spiralTargetAlt]);
-  const setRevealClimbFromDisplay = useCallback((value: number) => {
-    if (value === displayAltitude(revealClimb)) return;
-    setRevealClimb(nativeAltitude(value));
-  }, [displayAltitude, nativeAltitude, revealClimb]);
-  const setClimbRtlAltFromDisplay = useCallback((value: number) => {
-    if (value === displayAltitude(climbRtlAlt)) return;
-    setClimbRtlAlt(nativeAltitude(value));
-  }, [climbRtlAlt, displayAltitude, nativeAltitude]);
-  const speedPrecision = UNIT_PRECISION.speed[speedUnit];
-  const speedStep = 1 / (10 ** speedPrecision);
-  const speedLabel = UNIT_LABELS.speed[speedUnit];
-  const displaySpeed = useCallback(
-    (mps: number) => Number(speedValueFromMetersPerSecond(mps, speedUnit).toFixed(speedPrecision)),
-    [speedPrecision, speedUnit],
-  );
-  const nativeSpeed = useCallback(
-    (value: number) => toMetersPerSecondFromSpeedUnit(value, speedUnit),
-    [speedUnit],
-  );
-  const setRevealSpeedFromDisplay = useCallback((value: number) => {
-    if (value === displaySpeed(revealSpeed)) return;
-    setRevealSpeed(nativeSpeed(value));
-  }, [displaySpeed, nativeSpeed, revealSpeed]);
-  const setStrafeSpeedFromDisplay = useCallback((value: number) => {
-    if (value === displaySpeed(strafeSpeed)) return;
-    setStrafeSpeed(nativeSpeed(value));
-  }, [displaySpeed, nativeSpeed, strafeSpeed]);
-  const verticalSpeedPrecision = UNIT_PRECISION.verticalSpeed[verticalSpeedUnit];
-  const verticalSpeedStep = 1 / (10 ** verticalSpeedPrecision);
-  const verticalSpeedLabel = UNIT_LABELS.verticalSpeed[verticalSpeedUnit];
-  const displayVerticalSpeed = useCallback(
-    (mps: number) => Number(verticalSpeedValueFromMetersPerSecond(mps, verticalSpeedUnit).toFixed(verticalSpeedPrecision)),
-    [verticalSpeedPrecision, verticalSpeedUnit],
-  );
-  const nativeVerticalSpeed = useCallback(
-    (value: number) => toMetersPerSecondFromVerticalSpeedUnit(value, verticalSpeedUnit),
-    [verticalSpeedUnit],
-  );
-  const setClimbRateFromDisplay = useCallback((value: number) => {
-    if (value === displayVerticalSpeed(climbRate)) return;
-    setClimbRate(nativeVerticalSpeed(value));
-  }, [climbRate, displayVerticalSpeed, nativeVerticalSpeed]);
-
-  // Confirm button styling per tab
-  const confirmClass =
-    tabId === 'move'  ? 'bg-cyan-600 hover:bg-cyan-500'   :
-    tabId === 'land'  ? 'bg-rose-600 hover:bg-rose-500'   :
-                        'bg-violet-600 hover:bg-violet-500';
-  const confirmLabel =
-    tabId === 'move' ? 'Confirm Move' :
-    tabId === 'land' ? 'Confirm Land' :
-                       luaCmdMeta.confirmLabel;
-  const tabHint =
-    tabId === 'move' ? 'Fly to this location at the chosen altitude' :
-    tabId === 'land' ? 'Descend and land at this location' :
-                       luaCmdMeta.hint;
+  // ── render ────────────────────────────────────────────────────────────────
+  const zones: Zone[] = ['primary', 'secondary', 'escape'];
 
   return (
-    <div className="min-w-[260px] text-xs" onClick={(e) => e.stopPropagation()}>
-      {/* Top-level tabs */}
-      {visibleTabs.length > 1 && (
-        <div className="flex rounded overflow-hidden border border-gray-700 mb-2">
-          {visibleTabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTabId(t.id)}
-              className={`flex-1 px-2 py-1 text-[11px] font-medium transition-colors ${
-                tabId === t.id ? t.activeClass : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Lua sub-command picker — grouped by category so the list scales as
-          new commands are added without truncating labels. */}
-      {tabId === 'lua' && commandsByCategory.length > 0 && (
-        <div className="mb-2 space-y-1.5">
-          {commandsByCategory.map(({ category, commands }) => (
-            <div key={category} className="flex items-center gap-2">
-              <span className="text-[9px] font-semibold tracking-wider uppercase text-violet-300/70 w-14 shrink-0">
-                {CATEGORY_LABELS[category]}
-              </span>
-              <div className="flex flex-wrap gap-1 flex-1">
-                {commands.map(c => {
-                  const Icon = c.icon;
-                  const active = luaCmd === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setLuaCmd(c.id)}
-                      title={c.hint}
-                      className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border transition-colors ${
-                        active
-                          ? 'bg-violet-700/70 text-white border-violet-500'
-                          : 'bg-gray-800/70 text-gray-400 border-gray-700 hover:text-white hover:border-violet-700/60'
-                      }`}
-                    >
-                      <Icon className="w-3 h-3" />
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Hint */}
-      <div className="text-[10px] text-gray-400 mb-2 leading-tight">{tabHint}</div>
-
-      {/* Coordinates + distance — inline to save vertical space */}
-      <div className="flex items-baseline justify-between gap-2 mb-2">
-        <span className="font-mono text-[11px] text-gray-300 truncate">
-          {lat.toFixed(6)}, {lon.toFixed(6)}
-        </span>
-        <span className="text-[10px] text-gray-500 shrink-0">
-          <span className="font-mono text-gray-300">{formatDistanceFromMeters(distanceMeters, distanceUnit)}</span> away
+    <div className="w-full text-xs" onClick={(e) => e.stopPropagation()}>
+      {/* Header: coordinates + distance */}
+      <div className="flex items-baseline justify-between gap-2 border-b border-subtle px-1 pb-2 mb-2">
+        <span className="font-mono text-[11px] text-content truncate">{lat.toFixed(6)}, {lon.toFixed(6)}</span>
+        <span className="text-[10px] text-content-tertiary shrink-0">
+          <span className="font-mono text-content-secondary">{formatDistanceFromMeters(distanceMeters, distanceUnit)}</span> away
         </span>
       </div>
 
-      {/* === MOVE / ORBIT / WATCHTOWER / REVEAL / STRAFE shared: altitude === */}
-      {(
-        tabId === 'move' ||
-        (tabId === 'lua' && (
-          luaCmd === 'orbit' || luaCmd === 'watchtower' ||
-          luaCmd === 'reveal' || luaCmd === 'strafe'
-        ))
-      ) && (
-        <Field label="Alt">
-          <NumberInput value={displayAltitude(altitude)} onChange={setAltitudeFromDisplay} min={displayAltitude(2)} max={displayAltitude(5000)} step={altitudeStep} accent="cyan" autoFocus />
-          <Suffix>{altitudeLabel}</Suffix>
-        </Field>
-      )}
-
-      {/* === ORBIT === */}
-      {tabId === 'lua' && luaCmd === 'orbit' && (
-        <>
-          <Field label="Radius">
-            <NumberInput value={displayDistance(radius)} onChange={(n) => setRadius(nativeDistance(n))} min={displayDistanceBound(5)} max={displayDistanceBound(1000)} step={distanceStep} accent="violet" />
-            <Suffix>{distanceLabel}</Suffix>
-          </Field>
-          <DirectionToggle direction={direction} onChange={setDirection} />
-          <Field label="Orbits">
-            <NumberInput value={revolutions} onChange={setRevolutions} min={0} max={50} step={1} accent="violet" />
-            <Suffix>{revolutions === 0 ? '∞ (manual stop)' : revolutions === 1 ? 'circle' : 'circles'}</Suffix>
-          </Field>
-        </>
-      )}
-
-      {/* === SPIRAL === */}
-      {tabId === 'lua' && luaCmd === 'spiral' && (
-        <>
-          <Field label="Radius">
-            <NumberInput value={displayDistance(radius)} onChange={(n) => setRadius(nativeDistance(n))} min={displayDistanceBound(5)} max={displayDistanceBound(1000)} step={distanceStep} accent="violet" />
-            <Suffix>{distanceLabel}</Suffix>
-          </Field>
-          <DirectionToggle direction={direction} onChange={setDirection} />
-          <Field label="To alt">
-            <NumberInput value={displayAltitude(spiralTargetAlt)} onChange={setSpiralTargetAltFromDisplay} min={displayAltitude(2)} max={displayAltitude(5000)} step={altitudeStep} accent="violet" />
-            <Suffix>{altitudeLabel} {spiralTargetAlt > currentAltAgl ? `↑ from ${formatAltitudeFromMeters(currentAltAgl, altitudeUnit)}` : `↓ from ${formatAltitudeFromMeters(currentAltAgl, altitudeUnit)}`}</Suffix>
-          </Field>
-          <Field label="Climb">
-            <NumberInput value={displayVerticalSpeed(climbRate)} onChange={setClimbRateFromDisplay} min={displayVerticalSpeed(0.1)} max={displayVerticalSpeed(10)} step={verticalSpeedStep} accent="violet" />
-            <Suffix>{verticalSpeedLabel}</Suffix>
-          </Field>
-        </>
-      )}
-
-      {/* === WATCHTOWER === yaw rate + direction === */}
-      {tabId === 'lua' && luaCmd === 'watchtower' && (
-        <>
-          <DirectionToggle direction={direction} onChange={setDirection} />
-          <Field label="Yaw rate">
-            <NumberInput value={yawRate} onChange={setYawRate} min={5} max={180} step={5} accent="violet" />
-            <Suffix>°/s ({(360 / yawRate).toFixed(1)}s/rev)</Suffix>
-          </Field>
-        </>
-      )}
-
-      {/* === REVEAL === pullback distance + climb amount + speed === */}
-      {tabId === 'lua' && luaCmd === 'reveal' && (
-        <>
-          <Field label="Pullback">
-            <NumberInput value={displayDistance(revealPullback)} onChange={(n) => setRevealPullback(nativeDistance(n))} min={displayDistanceBound(5)} max={displayDistanceBound(500)} step={distanceStep} accent="violet" />
-            <Suffix>{distanceLabel} back from current pos</Suffix>
-          </Field>
-          <Field label="Climb">
-            <NumberInput value={displayAltitude(revealClimb)} onChange={setRevealClimbFromDisplay} min={displayAltitude(-100)} max={displayAltitude(200)} step={altitudeStep} accent="violet" />
-            <Suffix>{altitudeLabel} {revealClimb >= 0 ? '↑' : '↓'} during pullback</Suffix>
-          </Field>
-          <Field label="Speed">
-            <NumberInput value={displaySpeed(revealSpeed)} onChange={setRevealSpeedFromDisplay} min={displaySpeed(0.5)} max={displaySpeed(15)} step={speedStep} accent="violet" />
-            <Suffix>{speedLabel} ({(revealPullback / Math.max(revealSpeed, 0.1)).toFixed(1)}s total)</Suffix>
-          </Field>
-          <div className="mb-2 px-2 py-1 rounded text-[10px] text-violet-200 bg-violet-900/30 border border-violet-700/40">
-            Vehicle pulls back from its current position. Camera (yaw) stays locked on this target throughout.
+      {/* Command card */}
+      {zones.map(zone => {
+        const tiles = visible.filter(a => a.zone === zone);
+        if (tiles.length === 0) return null;
+        return (
+          <div
+            key={zone}
+            className={`grid gap-1.5 ${zone === 'escape' ? 'mt-2 border-t border-subtle pt-2' : 'mb-1.5'}`}
+            style={{ gridTemplateColumns: `repeat(${Math.max(tiles.length, zone === 'secondary' ? 4 : 2)}, minmax(0, 1fr))` }}
+          >
+            {tiles.map(a => {
+              const Icon = a.icon;
+              const sel = selected === a.id;
+              const dis = isDisabled(a);
+              const acc = ACCENT[a.accent];
+              const big = zone === 'primary';
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => handleTileClick(a)}
+                  className={`relative flex flex-col items-center justify-center gap-1 rounded-[10px] border transition-colors ${
+                    big ? 'min-h-[56px] py-2' : 'min-h-[46px] py-1.5'
+                  } ${dis ? 'opacity-40' : ''} ${
+                    sel && !dis ? acc.tile : 'border-subtle bg-surface-raised hover:border-strong'
+                  }`}
+                >
+                  {a.id === 'look' && hasRoi && (
+                    <span className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shadow-[0_0_5px] shadow-amber-500" />
+                  )}
+                  <span className={`absolute right-1.5 top-1 font-mono text-[8.5px] ${sel && !dis ? acc.icon : 'text-content-tertiary'}`}>
+                    {hotkeyOf.get(a.id)}
+                  </span>
+                  <Icon className={`${big ? 'w-[18px] h-[18px]' : 'w-4 h-4'} ${sel && !dis ? acc.icon : 'text-content-secondary'}`} />
+                  <span className={`${big ? 'text-[10.5px]' : 'text-[9.5px]'} leading-tight font-medium text-content text-center`}>
+                    {a.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </>
-      )}
+        );
+      })}
 
-      {/* === STRAFE === offset + length + speed === */}
-      {tabId === 'lua' && luaCmd === 'strafe' && (
-        <>
-          <Field label="Offset">
-            <NumberInput value={displayDistance(strafeOffset)} onChange={(n) => setStrafeOffset(nativeDistance(n))} min={displayDistanceBound(2)} max={displayDistanceBound(300)} step={distanceStep} accent="violet" />
-            <Suffix>{distanceLabel} clearance from target</Suffix>
-          </Field>
-          <Field label="Length">
-            <NumberInput value={displayDistance(strafeLength)} onChange={(n) => setStrafeLength(nativeDistance(n))} min={displayDistanceBound(5)} max={displayDistanceBound(500)} step={distanceStep} accent="violet" />
-            <Suffix>{distanceLabel} total dolly distance</Suffix>
-          </Field>
-          <Field label="Speed">
-            <NumberInput value={displaySpeed(strafeSpeed)} onChange={setStrafeSpeedFromDisplay} min={displaySpeed(0.5)} max={displaySpeed(15)} step={speedStep} accent="violet" />
-            <Suffix>{speedLabel} ({(strafeLength / Math.max(strafeSpeed, 0.1)).toFixed(1)}s total)</Suffix>
-          </Field>
-          <div className="mb-2 px-2 py-1 rounded text-[10px] text-violet-200 bg-violet-900/30 border border-violet-700/40">
-            Vehicle dollies past the target on the side it's already on. Camera locked on target.
-          </div>
-        </>
-      )}
-
-      {/* === CLIMB+RTL === target altitude only === */}
-      {tabId === 'lua' && luaCmd === 'climbRtl' && (
-        <>
-          <Field label="Climb to">
-            <NumberInput value={displayAltitude(climbRtlAlt)} onChange={setClimbRtlAltFromDisplay} min={displayAltitude(5)} max={displayAltitude(500)} step={altitudeStep} accent="violet" />
-            <Suffix>{altitudeLabel} AGL ({climbRtlAlt > currentAltAgl ? `↑ +${formatAltitudeFromMeters(climbRtlAlt - currentAltAgl, altitudeUnit)}` : 'already higher'})</Suffix>
-          </Field>
-          <div className="mb-2 px-2 py-1 rounded text-[10px] text-violet-200 bg-violet-900/30 border border-violet-700/40">
-            Vehicle climbs in place, then FC switches to RTL mode for return.
-          </div>
-        </>
-      )}
-
-      {/* === LUA tab status === Path indicator + install offer */}
-      {tabId === 'lua' && (
-        <>
-          <div className="mb-2 px-2 py-1 rounded text-[10px] flex items-center justify-between gap-2 bg-gray-800/60 border border-gray-700/60">
-            <span className="text-gray-400">Execution:</span>
-            {willUseScript ? (
-              <span className="text-emerald-300 font-medium">via ArduDeck script (link-resilient)</span>
-            ) : luaCmd === 'orbit' && scriptHealth.status === 'stale' ? (
-              <span className="text-amber-400 font-medium">native fallback (script silent)</span>
-            ) : luaCmd === 'orbit' ? (
-              <span className="text-gray-300 font-medium">native (DO_ORBIT)</span>
-            ) : scriptBlocked ? (
-              <span className="text-rose-400 font-medium">unavailable - script required</span>
-            ) : (
-              <span className="text-emerald-300 font-medium">via ArduDeck script</span>
+      {/* Params dock: below the grid so unfolding never shifts a tile */}
+      <div className="mt-2 rounded-lg border border-subtle bg-surface-raised px-2.5 pb-2.5 pt-2">
+        {blocked ? (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] leading-snug text-content-secondary">
+              {scriptHealth.status === 'stale'
+                ? 'ArduDeck Lua script installed but not responding.'
+                : 'Needs the ArduDeck Lua script on the flight controller.'}
+            </span>
+            {scriptHealth.status === 'missing' && (
+              <button
+                type="button"
+                onClick={() => setInstallModalOpen(true)}
+                className="shrink-0 rounded-md bg-violet-600 px-2.5 py-1 text-[10.5px] font-medium text-white hover:bg-violet-500"
+              >
+                Install
+              </button>
             )}
           </div>
-          {scriptHealth.status === 'missing' && (
-            <div className="mb-2 px-2 py-1 rounded bg-purple-900/40 border border-purple-600/40 text-[10px] text-purple-200 flex items-center justify-between gap-2">
-              <span className="leading-tight truncate">
-                <span className="font-semibold text-purple-300">Script not installed</span>
-                <span className="text-purple-300/70"> — link-resilient mode</span>
-              </span>
-              <button
-                onClick={() => setInstallModalOpen(true)}
-                className="text-[10px] font-medium underline text-purple-200 hover:text-white shrink-0"
-              >
-                Install →
-              </button>
+        ) : (
+          <>
+            <div className="mb-2 text-[10.5px] leading-snug text-content-secondary">
+              {meta.hint}
+              {meta.id === 'look' && hasRoi && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={onClearRoi}
+                    className="font-semibold text-amber-500 underline underline-offset-2 hover:text-amber-400"
+                  >
+                    Clear current ROI
+                  </button>
+                </>
+              )}
             </div>
-          )}
-        </>
-      )}
 
-      {/* Mode switch warnings */}
-      {needsModeSwitch && (
-        <div className="px-2 py-1 mb-2 bg-yellow-900/40 border border-yellow-600/50 rounded text-yellow-400 text-[10px]">
-          Will switch to GUIDED mode
-        </div>
-      )}
-      {willSwitchToLand && (
-        <div className="px-2 py-1 mb-2 bg-rose-900/40 border border-rose-600/50 rounded text-rose-400 text-[10px]">
-          Will switch to LAND mode and descend
-        </div>
-      )}
+            {/* Parameter rows: strict label rail + equal-width controls */}
+            <div className="grid grid-cols-[62px_1fr] items-center gap-x-2.5 gap-y-1.5">
+              {(meta.id === 'fly' || meta.id === 'orbit' || meta.id === 'watchtower' || meta.id === 'reveal' || meta.id === 'strafe') && (
+                <ParamRow label="Altitude">
+                  <Stepper value={displayAltitude(altitude)} onChange={(v) => setAltitude(nativeAltitude(v))}
+                    min={displayAltitude(2)} max={displayAltitude(5000)} step={altitudeStep} unit={altitudeLabel} autoFocus={meta.id === 'fly'} />
+                </ParamRow>
+              )}
+              {(meta.id === 'orbit' || meta.id === 'spiral') && (
+                <ParamRow label="Radius">
+                  <Stepper value={displayDistance(radius)} onChange={(v) => setRadius(nativeDistance(v))}
+                    min={displayDistance(5)} max={displayDistance(1000)} step={distanceStep} unit={distanceLabel} />
+                </ParamRow>
+              )}
+              {(meta.id === 'orbit' || meta.id === 'spiral' || meta.id === 'watchtower') && (
+                <ParamRow label="Direction">
+                  <DirSeg value={direction} onChange={setDirection} />
+                </ParamRow>
+              )}
+              {meta.id === 'orbit' && (
+                <ParamRow label="Orbits">
+                  <Stepper value={revolutions} onChange={setRevolutions} min={0} max={50} step={1}
+                    unit={revolutions === 0 ? 'endless' : revolutions === 1 ? 'circle' : 'circles'} showInfinityAtZero />
+                </ParamRow>
+              )}
+              {meta.id === 'spiral' && (
+                <>
+                  <ParamRow label="To alt">
+                    <Stepper value={displayAltitude(spiralTargetAlt)} onChange={(v) => setSpiralTargetAlt(nativeAltitude(v))}
+                      min={displayAltitude(2)} max={displayAltitude(5000)} step={altitudeStep} unit={altitudeLabel} />
+                  </ParamRow>
+                  <ParamRow label="Climb">
+                    <Stepper value={displayVerticalSpeed(climbRate)} onChange={(v) => setClimbRate(nativeVerticalSpeed(v))}
+                      min={displayVerticalSpeed(0.1)} max={displayVerticalSpeed(10)} step={verticalSpeedStep} unit={verticalSpeedLabel} />
+                  </ParamRow>
+                </>
+              )}
+              {meta.id === 'watchtower' && (
+                <ParamRow label="Yaw rate">
+                  <Stepper value={yawRate} onChange={setYawRate} min={5} max={180} step={5} unit={`°/s, ${(360 / Math.max(yawRate, 1)).toFixed(1)}s/rev`} />
+                </ParamRow>
+              )}
+              {meta.id === 'reveal' && (
+                <>
+                  <ParamRow label="Pullback">
+                    <Stepper value={displayDistance(revealPullback)} onChange={(v) => setRevealPullback(nativeDistance(v))}
+                      min={displayDistance(5)} max={displayDistance(500)} step={distanceStep} unit={distanceLabel} />
+                  </ParamRow>
+                  <ParamRow label="Climb">
+                    <Stepper value={displayAltitude(revealClimb)} onChange={(v) => setRevealClimb(nativeAltitude(v))}
+                      min={displayAltitude(-100)} max={displayAltitude(200)} step={altitudeStep} unit={altitudeLabel} />
+                  </ParamRow>
+                  <ParamRow label="Speed">
+                    <Stepper value={displaySpeed(revealSpeed)} onChange={(v) => setRevealSpeed(nativeSpeed(v))}
+                      min={displaySpeed(0.5)} max={displaySpeed(15)} step={speedStep} unit={speedLabel} />
+                  </ParamRow>
+                </>
+              )}
+              {meta.id === 'strafe' && (
+                <>
+                  <ParamRow label="Offset">
+                    <Stepper value={displayDistance(strafeOffset)} onChange={(v) => setStrafeOffset(nativeDistance(v))}
+                      min={displayDistance(2)} max={displayDistance(300)} step={distanceStep} unit={distanceLabel} />
+                  </ParamRow>
+                  <ParamRow label="Length">
+                    <Stepper value={displayDistance(strafeLength)} onChange={(v) => setStrafeLength(nativeDistance(v))}
+                      min={displayDistance(5)} max={displayDistance(500)} step={distanceStep} unit={distanceLabel} />
+                  </ParamRow>
+                  <ParamRow label="Speed">
+                    <Stepper value={displaySpeed(strafeSpeed)} onChange={(v) => setStrafeSpeed(nativeSpeed(v))}
+                      min={displaySpeed(0.5)} max={displaySpeed(15)} step={speedStep} unit={speedLabel} />
+                  </ParamRow>
+                </>
+              )}
+              {meta.id === 'climbRtl' && (
+                <ParamRow label="Climb to">
+                  <Stepper value={displayAltitude(climbRtlAlt)} onChange={(v) => setClimbRtlAlt(nativeAltitude(v))}
+                    min={displayAltitude(5)} max={displayAltitude(500)} step={altitudeStep} unit={`${altitudeLabel} AGL`} />
+                </ParamRow>
+              )}
+            </div>
 
-      {/* Buttons */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleConfirm}
-          disabled={scriptBlocked}
-          className={`flex-1 px-3 py-1.5 text-white rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${confirmClass}`}
-        >
-          {confirmLabel}
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-xs transition-colors"
-        >
-          Cancel
-        </button>
+            {/* Send row: consequence pills instead of warning boxes */}
+            <div className="mt-2.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => send(meta.id)}
+                className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-white transition-colors ${ACCENT[meta.accent].btn}`}
+              >
+                {meta.go}
+              </button>
+              {modePill && (
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide whitespace-nowrap ${ACCENT[meta.accent].pill}`}>
+                  {modePill}
+                </span>
+              )}
+            </div>
+
+            {fenceWarning && (
+              <div className="mt-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-[10px] leading-snug text-rose-500">
+                Vehicle will refuse this point: {fenceWarning}
+              </div>
+            )}
+
+            {meta.id === 'orbit' && !scriptHealthy && (
+              <div className="mt-1.5 text-[9.5px] text-content-tertiary">
+                {scriptHealth.status === 'stale'
+                  ? 'Script silent: native DO_ORBIT fallback, orbit count ignored.'
+                  : 'Script not installed: native DO_ORBIT, orbit count ignored.'}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Keyboard hint footer */}
-      <div className="mt-1.5 text-[9px] text-gray-500 text-center tracking-wide">
-        <kbd className="font-mono text-gray-400">Enter</kbd> to confirm
-        <span className="mx-1.5">·</span>
-        <kbd className="font-mono text-gray-400">Esc</kbd> to cancel
+      <div className="mt-1.5 flex items-center justify-center gap-3 text-[9px] text-content-tertiary">
+        <span><Kbd>1</Kbd>-<Kbd>9</Kbd> select</span>
+        <span><Kbd>Enter</Kbd> or click again to send</span>
+        <span><Kbd>Esc</Kbd> close</span>
       </div>
 
       <ScriptInstallModal open={installModalOpen} onClose={() => setInstallModalOpen(false)} />
@@ -622,117 +538,106 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   );
 };
 
-// ── Small UI helpers (kept inline; tied to popup styling) ────────────────────
+// ── Small UI helpers (tied to popup styling) ────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Kbd({ children }: { children: React.ReactNode }) {
+  return <kbd className="rounded border border-subtle px-1 font-mono text-content-secondary">{children}</kbd>;
+}
+
+function ParamRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 mb-2">
-      <label className="text-gray-400 w-16">{label}:</label>
+    <>
+      <span className="text-[10.5px] text-content-secondary">{label}</span>
       {children}
+    </>
+  );
+}
+
+/** Minus / editable value+unit / plus. Full-width so every row's control has
+ *  identical geometry; the unit lives inside the field, nothing dangles. */
+function Stepper({ value, onChange, min, max, step, unit, autoFocus, showInfinityAtZero }: {
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  autoFocus?: boolean;
+  showInfinityAtZero?: boolean;
+}) {
+  const clamp = useCallback((n: number) => Math.min(max, Math.max(min, Number(n.toFixed(3)))), [min, max]);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const commitDraft = () => {
+    setEditing(false);
+    const n = Number(draft);
+    if (Number.isFinite(n)) onChange(clamp(n));
+  };
+
+  return (
+    <div className="flex h-7 items-stretch overflow-hidden rounded-lg border border-subtle bg-surface-input">
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => onChange(clamp(value - step))}
+        className="w-8 flex-none text-sm leading-none text-content-secondary hover:bg-surface-raised hover:text-content"
+      >
+        &minus;
+      </button>
+      <div className="flex min-w-0 flex-1 items-baseline justify-center gap-1 self-center">
+        {showInfinityAtZero && value === 0 && !editing ? (
+          <button
+            type="button"
+            onClick={() => { setEditing(true); setDraft('0'); }}
+            className="font-mono text-xs text-content"
+          >
+            &infin;
+          </button>
+        ) : (
+          <input
+            type="number"
+            value={editing ? draft : String(value)}
+            onFocus={(e) => { setEditing(true); setDraft(String(value)); e.currentTarget.select(); }}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              const n = Number(e.target.value);
+              if (e.target.value !== '' && Number.isFinite(n)) onChange(clamp(n));
+            }}
+            onBlur={commitDraft}
+            autoFocus={autoFocus}
+            className="w-12 min-w-0 bg-transparent text-center font-mono text-xs text-content focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+        )}
+        {unit && <span className="truncate text-[9.5px] text-content-tertiary">{unit}</span>}
+      </div>
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => onChange(clamp(value + step))}
+        className="w-8 flex-none text-sm leading-none text-content-secondary hover:bg-surface-raised hover:text-content"
+      >
+        +
+      </button>
     </div>
   );
 }
 
-function Suffix({ children }: { children: React.ReactNode }) {
-  return <span className="text-[10px] text-gray-500">{children}</span>;
-}
-
-function NumberInput({
-  value, onChange, min, max, step, accent, autoFocus,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-  min: number; max: number; step: number;
-  accent: 'cyan' | 'violet';
-  autoFocus?: boolean;
-}) {
-  const focusBorder = accent === 'cyan' ? 'focus:border-cyan-400' : 'focus:border-violet-400';
-  const [draft, setDraft] = useState(() => String(value));
-  const [focused, setFocused] = useState(false);
-  const skipBlurCommitRef = useRef(false);
-
-  useEffect(() => {
-    if (!focused) setDraft(String(value));
-  }, [focused, value]);
-
-  const clamp = useCallback((n: number) => Math.min(max, Math.max(min, n)), [max, min]);
-  const resetDraft = useCallback(() => setDraft(String(value)), [value]);
-  const commit = useCallback((n: number) => {
-    const clamped = clamp(n);
-    onChange(clamped);
-    setDraft(String(clamped));
-  }, [clamp, onChange]);
-
+function DirSeg({ value, onChange }: { value: 'cw' | 'ccw'; onChange: (d: 'cw' | 'ccw') => void }) {
   return (
-    <input
-      type="number"
-      value={draft}
-      onFocus={() => setFocused(true)}
-      onChange={(e) => {
-        const nextDraft = e.target.value;
-        setDraft(nextDraft);
-        if (nextDraft.trim() === '') return;
-        const parsed = Number(nextDraft);
-        if (!Number.isFinite(parsed) || parsed < min || parsed > max) return;
-        onChange(parsed);
-      }}
-      onBlur={() => {
-        setFocused(false);
-        if (skipBlurCommitRef.current) {
-          skipBlurCommitRef.current = false;
-          return;
-        }
-        const parsed = Number(draft);
-        if (draft.trim() === '' || !Number.isFinite(parsed)) {
-          resetDraft();
-          return;
-        }
-        commit(parsed);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.currentTarget.blur();
-        } else if (e.key === 'Escape') {
-          skipBlurCommitRef.current = true;
-          resetDraft();
-          e.currentTarget.blur();
-        }
-      }}
-      min={min}
-      max={max}
-      step={step}
-      autoFocus={autoFocus}
-      className={`w-24 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white font-mono text-xs focus:outline-none ${focusBorder}`}
-    />
-  );
-}
-
-function DirectionToggle({ direction, onChange }: {
-  direction: 'cw' | 'ccw';
-  onChange: (d: 'cw' | 'ccw') => void;
-}) {
-  return (
-    <Field label="Direction">
-      <div className="flex rounded overflow-hidden border border-gray-600">
+    <div className="flex h-7 items-stretch overflow-hidden rounded-lg border border-subtle">
+      {(['cw', 'ccw'] as const).map((d, i) => (
         <button
-          onClick={() => onChange('cw')}
-          className={`px-2 py-1 text-[11px] font-medium transition-colors ${
-            direction === 'cw' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+          key={d}
+          type="button"
+          onClick={() => onChange(d)}
+          className={`flex-1 text-[10.5px] transition-colors ${i === 1 ? 'border-l border-subtle' : ''} ${
+            value === d ? 'bg-surface-raised font-semibold text-content' : 'bg-surface-input text-content-secondary hover:text-content'
           }`}
-          title="Clockwise (viewed from above)"
         >
-          ↻ CW
+          {d.toUpperCase()}
         </button>
-        <button
-          onClick={() => onChange('ccw')}
-          className={`px-2 py-1 text-[11px] font-medium transition-colors border-l border-gray-600 ${
-            direction === 'ccw' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
-          }`}
-          title="Counter-clockwise (viewed from above)"
-        >
-          ↺ CCW
-        </button>
-      </div>
-    </Field>
+      ))}
+    </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   type FlightModeMeta,
   type ModeGateContext,
 } from '../../../../shared/flight-mode-meta';
+import { GROUP_ICON, modeIcon } from './mode-icons';
 
 export interface ModePickerProps {
   /** The annunciator element the popover anchors under. */
@@ -149,6 +150,7 @@ function ModePickerImpl({
       : isCurrent ? statusChipStyle('info')
       : isRequested ? statusChipStyle('warn')
       : undefined;
+    const Icon = modeIcon(meta);
     return (
       <button
         onClick={() => { if (!reason) onPick(meta.modeNum); }}
@@ -160,6 +162,8 @@ function ModePickerImpl({
             : (isCurrent || isRequested) ? ''
             : 'border-subtle bg-surface text-content hover:border-content-secondary hover:bg-surface-raised'}`}
       >
+        {/* no color class: inherits the chip's text color (incl. status states) */}
+        <Icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
         <span className="truncate">{meta.name}</span>
         {tag && (
           <span
@@ -213,16 +217,18 @@ function ModePickerImpl({
             <div className="flex flex-wrap gap-1.5">
               {recentMetas.map((meta) => {
                 const reason = modeBlockedReason(meta, ctx);
+                const Icon = modeIcon(meta);
                 return (
                   <button
                     key={meta.modeNum}
                     onClick={() => { if (!reason) onPick(meta.modeNum); }}
                     disabled={!!reason}
                     {...(reason ? { 'data-tip': reason } : {})}
-                    className={`text-[11px] font-mono rounded-full px-2.5 py-1 border transition-colors
+                    className={`inline-flex items-center gap-1 text-[11px] font-mono rounded-full px-2.5 py-1 border transition-colors
                       ${reason ? 'opacity-40 cursor-not-allowed border-subtle text-content-tertiary'
                         : 'border-default text-content-secondary hover:text-content hover:border-content-secondary'}`}
                   >
+                    <Icon className="w-3 h-3 shrink-0 opacity-70" />
                     {meta.name}
                   </button>
                 );
@@ -234,7 +240,8 @@ function ModePickerImpl({
         {/* grouped */}
         {groups.map((section) => (
           <div key={section.group} className="mb-1">
-            <div className="flex items-center gap-2 px-1.5 pt-2 pb-1.5">
+            <div className="flex items-center gap-1.5 px-1.5 pt-2 pb-1.5">
+              {(() => { const GIcon = GROUP_ICON[section.group]; return <GIcon className="w-3 h-3 text-content-tertiary" />; })()}
               <span className="text-[9px] font-mono uppercase tracking-[0.14em] text-content-tertiary">{GROUP_LABEL[section.group]}</span>
               <span className="flex-1 h-px bg-subtle" />
             </div>

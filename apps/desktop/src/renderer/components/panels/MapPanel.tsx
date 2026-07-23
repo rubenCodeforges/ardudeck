@@ -30,6 +30,7 @@ import { useImperativeMapLayer } from '../map/ImperativeMapLayer';
 import { MapCommandPopup } from '../map/MapCommandPopup';
 import { createPortal } from 'react-dom';
 import { computeOffsetPosition } from '../../utils/geo-offset';
+import { getElevation } from '../../utils/elevation-api';
 import { formatAltitudeFromMeters, formatDistanceFromMeters, formatSpeedFromMetersPerSecond, type DistanceUnit } from '../../../shared/user-units.js';
 
 // Geofence and Rally overlays (read-only in telemetry view)
@@ -554,6 +555,27 @@ const LAND_TARGET_ICON = L.divIcon({
   iconAnchor: [14, 14],
 });
 
+// Camera ROI target: amber reticle with a small lens dot. Marks the ground
+// point the gimbal is locked onto (distinct from the cyan Move / violet Orbit
+// targets so it reads as "camera", not "fly here").
+const ROI_TARGET_ICON = L.divIcon({
+  className: '',
+  html: `
+    <div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 6px rgba(245,158,11,0.85));">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round">
+        <circle cx="13" cy="13" r="6" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+        <circle cx="13" cy="13" r="1.8" fill="#f59e0b"/>
+        <line x1="13" y1="1.5" x2="13" y2="5"/>
+        <line x1="13" y1="21" x2="13" y2="24.5"/>
+        <line x1="1.5" y1="13" x2="5" y2="13"/>
+        <line x1="21" y1="13" x2="24.5" y2="13"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
 // Per-command line styles. Color matches the command's accent color.
 const GOTO_LINE_OPTIONS: L.PolylineOptions = {
   color: '#22d3ee',
@@ -623,14 +645,20 @@ function CommandLayer({
   commandPopup,
   activeTarget,
   vehiclePosition,
+  roiTarget,
   onConfirm,
   onCancel,
+  onSetRoi,
+  onClearRoi,
 }: {
   commandPopup: { lat: number; lon: number } | null;
   activeTarget: ActiveCommandTarget | null;
   vehiclePosition: [number, number];
+  roiTarget: { lat: number; lon: number } | null;
   onConfirm: (command: MapCommand) => void;
   onCancel: () => void;
+  onSetRoi: (lat: number, lon: number) => void;
+  onClearRoi: () => void;
 }) {
   const layer = useImperativeMapLayer();
   const map = layer.map;
@@ -664,6 +692,16 @@ function CommandLayer({
     const mode = useTelemetryStore.getState().flight.mode;
     return { dist, altAgl, mode };
   }, [commandPopup, vehiclePosition]);
+
+  // --- Camera ROI marker (independent of the flight-command target) ---
+  useEffect(() => {
+    if (!roiTarget) {
+      layer.remove('cmd-roi');
+      return;
+    }
+    layer.marker('cmd-roi', [roiTarget.lat, roiTarget.lon], { icon: ROI_TARGET_ICON });
+    return () => layer.remove('cmd-roi');
+  }, [roiTarget, layer]);
 
   // --- Active target marker + line + orbit ring + direction arrows ---
   useEffect(() => {
@@ -746,6 +784,9 @@ function CommandLayer({
       currentMode={popupContext.mode}
       onConfirm={onConfirm}
       onCancel={onCancel}
+      onSetRoi={onSetRoi}
+      onClearRoi={onClearRoi}
+      hasRoi={roiTarget !== null}
     />
   );
 }
@@ -760,6 +801,9 @@ interface CommandPopupOverlayProps {
   currentMode: string;
   onConfirm: (command: MapCommand) => void;
   onCancel: () => void;
+  onSetRoi: (lat: number, lon: number) => void;
+  onClearRoi: () => void;
+  hasRoi: boolean;
 }
 
 function CommandPopupOverlay({
@@ -772,6 +816,9 @@ function CommandPopupOverlay({
   currentMode,
   onConfirm,
   onCancel,
+  onSetRoi,
+  onClearRoi,
+  hasRoi,
 }: CommandPopupOverlayProps) {
   // Two-pass positioning: render off-screen first, measure, then re-place with
   // viewport-edge collision avoidance. Default anchors above-and-right of the
@@ -834,7 +881,7 @@ function CommandPopupOverlay({
   return createPortal(
     <div
       ref={popupRef}
-      className="tactical-command-popup fixed z-[2000] pointer-events-auto rounded-lg shadow-2xl border border-cyan-700/40 bg-gray-900/95 backdrop-blur-sm p-3 max-w-[340px]"
+      className="tactical-command-popup fixed z-[2000] pointer-events-auto rounded-xl shadow-2xl border border-strong bg-surface-overlay backdrop-blur-md p-2 w-[300px]"
       style={{
         left: pos.left,
         top: pos.top,
@@ -849,6 +896,9 @@ function CommandPopupOverlay({
         currentMode={currentMode}
         onConfirm={onConfirm}
         onCancel={onCancel}
+        onSetRoi={onSetRoi}
+        onClearRoi={onClearRoi}
+        hasRoi={hasRoi}
       />
     </div>,
     document.body,
@@ -1896,6 +1946,12 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
 
   // Command popup is local UI state — only relevant while the popover is up.
   const [commandPopup, setCommandPopup] = useState<{ lat: number; lon: number } | null>(null);
+  // Ground point the camera/gimbal is currently locked onto (ROI). Marks the
+  // spot on the map; cleared by "Clear ROI" or on disconnect. Ref mirrors the
+  // state so empty-dep callbacks (handleCommandConfirm) read the live value.
+  const [roiTarget, setRoiTarget] = useState<{ lat: number; lon: number } | null>(null);
+  const roiTargetRef = useRef<{ lat: number; lon: number } | null>(null);
+  roiTargetRef.current = roiTarget;
   // Active target lives in a global store so it survives 2D ↔ 3D switches and
   // panel remounts, and so the 3D map can render the same overlay. Keyed by
   // vehicle id (currently always SELF) for future multi-vehicle support.
@@ -1925,6 +1981,24 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
     if (!useTelemetryStore.getState().flight.armed) return; // safety: no commands when disarmed
     setCommandPopup({ lat, lon });
   }, [selectedVehicleId, fleetActive]);
+
+  // Camera ROI: point the active vehicle's gimbal at a clicked ground point.
+  // This is a gimbal command (MAV_CMD_DO_SET_ROI_LOCATION), not a nav command,
+  // so it does not go through dispatchMapCommand / activeTarget.
+  const sendRoiCommand = useCallback(async (lat: number, lon: number): Promise<boolean> => {
+    const vehicleKey = useActiveVehicleStore.getState().activeVehicleKey ?? '';
+    // ROI needs the target's ground altitude (AMSL). Prefer the terrain DEM;
+    // fall back to the ground height under the vehicle (its AMSL minus AGL) when
+    // the elevation service is offline, matching the video-click ROI path.
+    let groundAmsl = await getElevation(lat, lon);
+    if (groundAmsl == null) {
+      const t = useTelemetryStore.getState();
+      groundAmsl = t.gps.alt - t.position.relativeAlt;
+    }
+    return window.electronAPI.cameraGimbalCommand(vehicleKey, {
+      kind: 'point-roi', lat, lon, alt: groundAmsl, deviceId: 0,
+    });
+  }, []);
 
   // Command confirm: dispatch the chosen MapCommand and visualize the target.
   // The popup decides the dispatch path (native vs script) and passes through
@@ -1958,6 +2032,12 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
       // ActiveTarget mirrors the issued command's variant for correct overlay rendering.
       if (command.type === 'goto') {
         setActiveTarget({ type: 'goto', lat: command.lat, lon: command.lon, alt: command.alt });
+        // ArduPilot resets guided yaw behaviour on every new destination, which
+        // silently cancels an active ROI (verified in SITL: yaw snapped from the
+        // ROI bearing to face-travel on DO_REPOSITION). Re-assert the lock so
+        // "look here" survives "fly here".
+        const roi = roiTargetRef.current;
+        if (roi) void sendRoiCommand(roi.lat, roi.lon);
       } else if (command.type === 'orbit') {
         setActiveTarget({ type: 'orbit', lat: command.lat, lon: command.lon, alt: command.alt, radius: command.radius });
       } else if (command.type === 'spiral') {
@@ -1984,11 +2064,29 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
       }
     }
     setCommandPopup(null);
-  }, []);
+  }, [sendRoiCommand]);
 
   const handleCommandCancel = useCallback(() => {
     setCommandPopup(null);
   }, []);
+
+  const handleSetRoi = useCallback(async (lat: number, lon: number) => {
+    const ok = await sendRoiCommand(lat, lon);
+    if (ok) setRoiTarget({ lat, lon });
+    setCommandPopup(null);
+  }, [sendRoiCommand]);
+
+  const handleClearRoi = useCallback(async () => {
+    const vehicleKey = useActiveVehicleStore.getState().activeVehicleKey ?? '';
+    await window.electronAPI.cameraGimbalCommand(vehicleKey, { kind: 'roi-none' });
+    setRoiTarget(null);
+    setCommandPopup(null);
+  }, []);
+
+  // Drop the ROI marker when the active link goes away (the lock is gone FC-side).
+  useEffect(() => {
+    if (!connectionState.isConnected && !fleetActive) setRoiTarget(null);
+  }, [connectionState.isConnected, fleetActive]);
 
   // Clear active target based on command type:
   //  - goto:  mode != GUIDED, OR vehicle within 5m of target (arrived)
@@ -2423,8 +2521,11 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           commandPopup={commandPopup}
           activeTarget={activeTarget}
           vehiclePosition={vehiclePosition}
+          roiTarget={roiTarget}
           onConfirm={handleCommandConfirm}
           onCancel={handleCommandCancel}
+          onSetRoi={handleSetRoi}
+          onClearRoi={handleClearRoi}
         />
       </MapContainer>
 

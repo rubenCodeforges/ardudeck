@@ -10,6 +10,8 @@ interface Props {
 
 interface State {
   error: Error | null;
+  /** First frame of the React component stack, so the fallback names the culprit. */
+  crashSite: string | null;
 }
 
 /**
@@ -19,17 +21,19 @@ interface State {
  * screen for the user with no way to recover but a restart.
  */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, crashSite: null };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info.componentStack);
+    const site = info.componentStack?.split('\n').map(s => s.trim()).filter(Boolean)[0] ?? null;
+    this.setState({ crashSite: site });
   }
 
-  reset = () => this.setState({ error: null });
+  reset = () => this.setState({ error: null, crashSite: null });
 
   render() {
     const { error } = this.state;
@@ -46,6 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
         <div className="text-[11px] text-content-tertiary font-mono max-w-[28rem] break-words">
           {error.message}
+          {this.state.crashSite && <div className="mt-1 opacity-70">{this.state.crashSite}</div>}
         </div>
         <button
           onClick={this.reset}

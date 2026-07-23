@@ -85,7 +85,26 @@ interface HudProps {
   onMovePosition?: (id: string, x: number, y: number) => void;
 }
 
-export const FighterHud = memo(function FighterHud({ v, config, profile = 'air', editable, onMovePosition }: HudProps) {
+export const FighterHud = memo(function FighterHud({ v: raw, config, profile = 'air', editable, onMovePosition }: HudProps) {
+  // Telemetry values are typed complete but partial frames leak undefined at
+  // runtime (untyped IPC/MSP boundaries, sim state before first report). A HUD
+  // must degrade to zeros, never crash the whole camera view on .toFixed.
+  const v: FighterHudValues = {
+    ...raw,
+    roll: raw.roll ?? 0,
+    pitch: raw.pitch ?? 0,
+    heading: raw.heading ?? 0,
+    airspeed: raw.airspeed ?? 0,
+    groundspeed: raw.groundspeed ?? 0,
+    altitude: raw.altitude ?? 0,
+    vario: raw.vario ?? 0,
+    throttle: raw.throttle ?? 0,
+    batteryVoltage: raw.batteryVoltage ?? 0,
+    batteryPercent: raw.batteryPercent ?? 0,
+    distance: raw.distance ?? 0,
+    homeDirection: raw.homeDirection ?? 0,
+    mode: raw.mode ?? 'Unknown',
+  };
   const svgRef = useRef<SVGSVGElement>(null);
   const C = HUD_COLORS[config.color];
   const lw = config.lineWeight;

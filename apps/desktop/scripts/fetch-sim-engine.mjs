@@ -3,13 +3,19 @@
  * electron-builder bundles it (extraResources: sim-engine-bin -> Resources/sim-engine).
  * If a locally built binary already exists at sim-engine-bin/<out>, it wins (skip).
  * Otherwise download the pinned release asset and verify its SHA-256.
- * Uses native fetch (no axios).
+ *
+ * Downloads go through `gh release download` (same as fetch-engine.mjs) so
+ * DRAFT releases work: the engine releases are kept as drafts on purpose so
+ * they never show up in the public releases list, and draft assets 404 on the
+ * plain releases/download URL. `gh` picks up GH_TOKEN/GITHUB_TOKEN in CI or
+ * the local `gh auth login` on a dev machine.
  */
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile, readFile, access, chmod } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile, readFile, access, chmod } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 import path from 'node:path';
 
 const execFileP = promisify(execFile);
@@ -50,12 +56,22 @@ function parseArgs() {
   return { force, key };
 }
 async function fileExists(p) { try { await access(p); return true; } catch { return false; } }
-async function fetchBuffer(url) {
-  const res = await fetch(url, { redirect: 'follow' });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
-  return Buffer.from(await res.arrayBuffer());
-}
 function sha256(buf) { return createHash('sha256').update(buf).digest('hex'); }
+
+// Downloads `patterns` from a release into `destDir` via the gh CLI, which
+// handles auth (and draft releases) uniformly - no manual API/token plumbing.
+async function ghReleaseDownload(repo, tag, patterns, destDir) {
+  const args = ['release', 'download', tag, '--repo', repo, '--dir', destDir, '--clobber'];
+  for (const p of patterns) args.push('--pattern', p);
+  try {
+    await execFileP('gh', args);
+  } catch (err) {
+    throw new Error(
+      `gh release download failed for ${repo}@${tag}: ${err.stderr || err.message}\n` +
+        'Is the gh CLI installed and authenticated (GH_TOKEN in CI, or `gh auth login` locally)?',
+    );
+  }
+}
 
 async function main() {
   const { force, key } = parseArgs();
@@ -70,21 +86,26 @@ async function main() {
     return;
   }
   const { repo, tag } = JSON.parse(await readFile(path.join(desktopRoot, 'sim-engine.json'), 'utf8'));
-  const base = `https://github.com/${repo}/releases/download/${tag}`;
   console.log(`[fetch-sim-engine] Fetching ${entry.asset} from ${repo}@${tag} ...`);
-  const [binary, checksumsText] = await Promise.all([
-    fetchBuffer(`${base}/${entry.asset}`),
-    fetchBuffer(`${base}/checksums.txt`).then((b) => b.toString('utf8')),
-  ]);
-  const expected = checksumsText.split('\n').map((l) => l.trim().split(/\s+/)).find((p) => p[1] === entry.asset)?.[0];
-  if (!expected) throw new Error(`checksums.txt has no entry for ${entry.asset}`);
-  const actual = sha256(binary);
-  if (actual !== expected) throw new Error(`Checksum mismatch for ${entry.asset}`);
-  await mkdir(binDir, { recursive: true });
-  await writeFile(outPath, binary);
-  if (process.platform !== 'win32') await chmod(outPath, 0o755);
-  await makeRunnableOnMac(outPath);
-  console.log(`[fetch-sim-engine] Verified and staged ${path.relative(desktopRoot, outPath)}.`);
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'ardudeck-sim-engine-'));
+  try {
+    await ghReleaseDownload(repo, tag, [entry.asset, 'checksums.txt'], tmpDir);
+    const [binary, checksumsText] = await Promise.all([
+      readFile(path.join(tmpDir, entry.asset)),
+      readFile(path.join(tmpDir, 'checksums.txt'), 'utf8'),
+    ]);
+    const expected = checksumsText.split('\n').map((l) => l.trim().split(/\s+/)).find((p) => p[1] === entry.asset)?.[0];
+    if (!expected) throw new Error(`checksums.txt has no entry for ${entry.asset}`);
+    const actual = sha256(binary);
+    if (actual !== expected) throw new Error(`Checksum mismatch for ${entry.asset}\n  expected ${expected}\n  actual   ${actual}`);
+    await mkdir(binDir, { recursive: true });
+    await writeFile(outPath, binary);
+    if (process.platform !== 'win32') await chmod(outPath, 0o755);
+    await makeRunnableOnMac(outPath);
+    console.log(`[fetch-sim-engine] Verified and staged ${path.relative(desktopRoot, outPath)} (sha256 ${actual.slice(0, 12)}...).`);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
 }
 main().catch((err) => {
   console.error(`[fetch-sim-engine] ${err.message}`);

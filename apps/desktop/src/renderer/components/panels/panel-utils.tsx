@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 
-export function formatNumber(value: number, decimals = 1): string {
-  return value.toFixed(decimals);
+// Tolerates undefined/NaN: telemetry objects are typed complete but a partial
+// frame (untyped IPC boundary, MSP deserializers) can leave holes at runtime.
+// A dash beats crashing the whole telemetry view (undefined.toFixed).
+export function formatNumber(value: number | null | undefined, decimals = 1): string {
+  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(decimals) : '--';
 }
 
 export function PanelContainer({ children, className = '' }: { children: ReactNode; className?: string }) {
