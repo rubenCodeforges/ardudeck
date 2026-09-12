@@ -852,6 +852,8 @@ export class MavlinkFtpClient {
     for (;;) {
       // Always a full-size read: ArduPilot's @PARAM files NAK any size but the first one used.
       const chunk = await this.readFileChunk(offset, this.readSize);
+      // A failed read once the reported size is covered is a server erroring instead of sending EOF.
+      if (!chunk && offset >= sizeHint) break;
       if (!chunk) {
         this.log('warn', `FTP: read failed at offset ${offset}/${sizeHint}`);
         return null;
@@ -912,7 +914,8 @@ export class MavlinkFtpClient {
     let loggedGaps = false;
     for (;;) {
       let holes = file.mask.holeRanges(file.size);
-      if (holes.length === 0) {
+      const probing = holes.length === 0;
+      if (probing) {
         if (file.eof !== null) break;
         // Everything up to the size hint arrived without a short packet; probe past it for the real end.
         holes = [{ start: file.size, end: file.size + this.readSize }];
@@ -928,7 +931,14 @@ export class MavlinkFtpClient {
         for (let off = hole.start; off < hole.end; off += this.readSize) {
           // Always a full-size read: ArduPilot's @PARAM files NAK any size but the first one used.
           const chunk = await this.readFileChunk(off, this.readSize);
-          if (!chunk) break;
+          if (!chunk) {
+            // A server that errors instead of sending EOF past the end: trust the reported size.
+            if (probing) {
+              file.markEof(off);
+              progressed = true;
+            }
+            break;
+          }
           const eofBefore = file.eof;
           if (chunk.length < this.readSize) file.markEof(off + chunk.length);
           if (file.store(off, chunk) > 0 || file.eof !== eofBefore) progressed = true;

@@ -29,6 +29,8 @@ interface FcOptions {
   reportedSize?: number;
   /** NAK reads whose size differs from the first one, as ArduPilot's @PARAM filesystem does. */
   lockReadSize?: boolean;
+  /** NAK reads past the end with Fail instead of EOF. */
+  failPastEnd?: boolean;
 }
 
 /**
@@ -84,7 +86,7 @@ function attachFc(file: Uint8Array, opts: FcOptions = {}) {
         case FtpOpcode.ReadFile: {
           stats.reads++;
           if (sizeRejected(req)) { nak(req, FtpError.FailErrno); return; }
-          if (req.offset >= served) { nak(req, FtpError.EOF); return; }
+          if (req.offset >= served) { nak(req, opts.failPastEnd ? FtpError.Fail : FtpError.EOF); return; }
           const end = Math.min(req.offset + req.size, served);
           reply(req, { offset: req.offset, size: end - req.offset, data: file.subarray(req.offset, end) });
           return;
@@ -202,6 +204,16 @@ describe('MavlinkFtpClient with an estimated file size (ArduPilot @PARAM/param.p
     expect(await client.downloadFile('@PARAM/param.pck')).toEqual(file);
     expect(stats.bursts).toBe(1);
     expect(stats.reads).toBeGreaterThan(0);
+  });
+
+  it('trusts the reported size when the FC errors instead of sending EOF past the end', async () => {
+    for (const burst of [true, false]) {
+      // An exact multiple of the read size, so no short packet marks the end.
+      const file = makeFile(320);
+      const { client } = attachFc(file, { burst, failPastEnd: true });
+
+      expect(await client.downloadFile('/APM/LOGS/1.BIN')).toEqual(file);
+    }
   });
 
   it('reads sequentially past a wrong size estimate', async () => {
