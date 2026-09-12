@@ -184,6 +184,9 @@ export function parseParamPack(data: Uint8Array): ParamPackResult | null {
       if (offset + valSize > data.length) break;
       defaultValue = toFloat32Value(readValue(view, offset, ptype), ptype);
       offset += valSize;
+    } else if (withDefaults) {
+      // The firmware omits the default only when the value equals it.
+      defaultValue = value;
     }
 
     params.push({
