@@ -19,6 +19,27 @@ function buildPack(names: string[], declaredCount = names.length, totalParams = 
   return new Uint8Array(bytes);
 }
 
+describe('param.pck defaults', () => {
+  it('reads stored defaults and treats an entry without one as at its default', () => {
+    const bytes = [
+      0x1c, 0x67, 2, 0, 2, 0, // magic with defaults, 2 of 2 params
+      0x11, 0x10, 0x41, 0x31, 7, 3, // int8 "A1", default flag: value 7, default 3
+      0x01, 0x01, 0x32, 5, // int8 "A2" (shares "A"), no default stored: value 5
+    ];
+    const result = parseParamPack(new Uint8Array(bytes));
+    expect(result!.withDefaults).toBe(true);
+    expect(result!.params).toEqual([
+      { name: 'A1', value: 7, type: expect.any(Number), defaultValue: 3 },
+      { name: 'A2', value: 5, type: expect.any(Number), defaultValue: 5 },
+    ]);
+  });
+
+  it('leaves defaults unknown for a file without them', () => {
+    const result = parseParamPack(buildPack(['RTL_ALT']));
+    expect(result!.params[0]!.defaultValue).toBeUndefined();
+  });
+});
+
 describe('param.pck truncation detection', () => {
   it('marks a fully decoded file complete', () => {
     const pack = buildPack(['WPNAV_SPD', 'RTL_ALT', 'ATC_RAT_X']);

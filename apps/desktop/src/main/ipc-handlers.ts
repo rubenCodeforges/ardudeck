@@ -3869,9 +3869,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
     case MSG_FILE_TRANSFER_PROTOCOL: {
       // FILE_TRANSFER_PROTOCOL (110) - route to FTP client
       // Payload: targetNetwork(1) + targetSystem(1) + targetComponent(1) + ftpPayload(251)
-      // MAVLink v2 trims trailing zeros, so payload can be much shorter than 254 bytes.
-      // Minimum useful FTP response: 3 (outer) + 12 (FTP header) = 15 bytes
-      if (ftpClient && payload.length >= 15) {
+      // MAVLink v2 trims trailing zeros: a bare ACK (ResetSessions, TerminateSession)
+      // arrives as ~9 bytes, so accept anything past the outer header and zero-pad.
+      if (ftpClient && payload.length > 3) {
         // Zero-pad to 251 bytes for the FTP parser (v2 trimming removed trailing zeros)
         const ftpPayload = new Uint8Array(251);
         const ftpBytes = payload.subarray(3);

@@ -47,8 +47,7 @@ export interface FtpClientOptions {
 
 /** In-flight BurstReadFile collection. */
 interface BurstState {
-  buffer: Uint8Array;
-  mask: Coverage;
+  file: DownloadBuffer;
   /** Bytes newly covered by this burst (repeats of already-held bytes don't count). */
   gained: number;
   /** Highest file offset the burst has delivered data up to. */
@@ -65,8 +64,19 @@ class Coverage {
   private bits: Uint8Array;
   filled = 0;
 
-  constructor(readonly size: number) {
+  constructor(public size: number) {
     this.bits = new Uint8Array((size + 7) >> 3);
+  }
+
+  grow(size: number): void {
+    if (size <= this.size) return;
+    const bytes = (size + 7) >> 3;
+    if (bytes > this.bits.length) {
+      const next = new Uint8Array(Math.max(bytes, this.bits.length * 2));
+      next.set(this.bits);
+      this.bits = next;
+    }
+    this.size = size;
   }
 
   has(i: number): boolean {
@@ -83,22 +93,18 @@ class Coverage {
     return true;
   }
 
-  get complete(): boolean {
-    return this.filled >= this.size;
-  }
-
-  /** First missing byte at or after `from`, or -1 if none. */
-  firstHoleFrom(from: number): number {
-    for (let i = from; i < this.size; i++) {
+  /** First missing byte in [from, limit), or -1 if none. */
+  firstHoleFrom(from: number, limit = this.size): number {
+    for (let i = from; i < limit; i++) {
       if (!this.has(i)) return i;
     }
     return -1;
   }
 
-  holeRanges(): Array<{ start: number; end: number }> {
+  holeRanges(limit = this.size): Array<{ start: number; end: number }> {
     const ranges: Array<{ start: number; end: number }> = [];
     let start = -1;
-    for (let i = 0; i < this.size; i++) {
+    for (let i = 0; i < limit; i++) {
       if (!this.has(i)) {
         if (start < 0) start = i;
       } else if (start >= 0) {
@@ -106,8 +112,59 @@ class Coverage {
         start = -1;
       }
     }
-    if (start >= 0) ranges.push({ start, end: this.size });
+    if (start >= 0) ranges.push({ start, end: limit });
     return ranges;
+  }
+}
+
+/**
+ * Download target that trusts the FC's end of file over OpenFileRO's size, which
+ * ArduPilot only estimates for @PARAM/param.pck (param count * 12).
+ */
+class DownloadBuffer {
+  private data: Uint8Array;
+  readonly mask: Coverage;
+  /** Real end of file, once a short read or EOF has revealed it. */
+  eof: number | null = null;
+
+  constructor(sizeHint: number) {
+    this.data = new Uint8Array(sizeHint);
+    this.mask = new Coverage(sizeHint);
+  }
+
+  /** Best current estimate of the file length. */
+  get size(): number {
+    return this.eof ?? this.mask.size;
+  }
+
+  get complete(): boolean {
+    return this.eof !== null && this.mask.firstHoleFrom(0, this.eof) < 0;
+  }
+
+  markEof(at: number): void {
+    this.eof = Math.min(this.eof ?? at, at);
+  }
+
+  /** Stores a chunk at `offset`; returns how many of its bytes were new. */
+  store(offset: number, bytes: Uint8Array): number {
+    const end = this.eof === null ? offset + bytes.length : Math.min(offset + bytes.length, this.eof);
+    if (end > this.data.length) {
+      const next = new Uint8Array(Math.max(end, this.data.length * 2));
+      next.set(this.data);
+      this.data = next;
+    }
+    this.mask.grow(end);
+    let gained = 0;
+    for (let i = offset; i < end; i++) {
+      if (!this.mask.add(i)) continue;
+      this.data[i] = bytes[i - offset]!;
+      gained++;
+    }
+    return gained;
+  }
+
+  result(): Uint8Array {
+    return this.data.slice(0, this.size);
   }
 }
 
@@ -783,38 +840,37 @@ export class MavlinkFtpClient {
 
   /**
    * Sequential download: send ReadFile, wait for ACK, advance offset, repeat.
-   * Simple and reliable. Fast on USB serial (<1ms round-trip per chunk).
+   * Reads until a short chunk or EOF, since `sizeHint` may only be an estimate.
    */
   private async sequentialDownload(
-    fileSize: number,
+    sizeHint: number,
     progress?: FtpProgressCallback,
   ): Promise<Uint8Array | null> {
-    const result = new Uint8Array(fileSize);
+    const file = new DownloadBuffer(sizeHint);
     let offset = 0;
 
-    while (offset < fileSize) {
-      const remaining = fileSize - offset;
-      const chunkSize = Math.min(this.readSize, remaining);
-
-      const chunk = await this.readFileChunk(offset, chunkSize);
+    for (;;) {
+      // Always a full-size read: ArduPilot's @PARAM files NAK any size but the first one used.
+      const chunk = await this.readFileChunk(offset, this.readSize);
+      // A failed read once the reported size is covered is a server erroring instead of sending EOF.
+      if (!chunk && offset >= sizeHint) break;
       if (!chunk) {
-        this.log('warn', `FTP: read failed at offset ${offset}/${fileSize}`);
+        this.log('warn', `FTP: read failed at offset ${offset}/${sizeHint}`);
         return null;
       }
 
-      // EOF before the declared size: return what we actually hold rather than a
-      // zero-padded buffer the caller can't tell from a full file.
-      if (chunk.length === 0) return result.slice(0, offset);
-
-      result.set(chunk, offset);
+      file.store(offset, chunk);
       offset += chunk.length;
+      if (chunk.length < this.readSize) break;
 
       if (progress) {
-        progress(offset, fileSize);
+        progress(offset, Math.max(sizeHint, offset));
       }
     }
 
-    return result;
+    file.markEof(offset);
+    if (progress) progress(offset, offset);
+    return file.result();
   }
 
   /**
@@ -824,11 +880,10 @@ export class MavlinkFtpClient {
    * the holes never fill, leaving the caller to fall back to plain reads.
    */
   private async burstDownload(
-    fileSize: number,
+    sizeHint: number,
     progress?: FtpProgressCallback,
   ): Promise<Uint8Array | null> {
-    const buffer = new Uint8Array(fileSize);
-    const mask = new Coverage(fileSize);
+    const file = new DownloadBuffer(sizeHint);
 
     // Sweep the file with bursts, each starting past the last one's coverage.
     // Restarting at the first hole instead would re-send the whole tail on
@@ -836,11 +891,11 @@ export class MavlinkFtpClient {
     let cursor = 0;
     let barren = 0;
     let anyBurstData = false;
-    while (cursor < fileSize && barren < 2) {
-      const start = mask.firstHoleFrom(cursor);
+    while (cursor < file.size && barren < 2) {
+      const start = file.mask.firstHoleFrom(cursor, file.size);
       if (start < 0) break;
 
-      const outcome = await this.runBurst(start, buffer, mask, progress, fileSize);
+      const outcome = await this.runBurst(start, file, progress);
       if (outcome.gained > 0) anyBurstData = true;
       // A silent first burst means the FC has no BurstReadFile; once bytes have
       // flowed, silence is just a lost request and the gap pass mops it up.
@@ -856,44 +911,55 @@ export class MavlinkFtpClient {
 
     // Whatever the bursts dropped is now a set of small holes; fetch each one
     // directly rather than replaying the stream.
-    for (let attempt = 0; attempt < FTP_MAX_RETRIES; attempt++) {
-      const holes = mask.holeRanges();
-      if (holes.length === 0) return buffer;
-      if (attempt === 0) {
+    let loggedGaps = false;
+    for (;;) {
+      let holes = file.mask.holeRanges(file.size);
+      const probing = holes.length === 0;
+      if (probing) {
+        if (file.eof !== null) break;
+        // Everything up to the size hint arrived without a short packet; probe past it for the real end.
+        holes = [{ start: file.size, end: file.size + this.readSize }];
+      } else if (!loggedGaps) {
+        loggedGaps = true;
         const missing = holes.reduce((n, h) => n + (h.end - h.start), 0);
         this.log('debug', `FTP: patching ${holes.length} burst gap(s), ${missing} bytes`);
       }
 
+      // Each round must gain bytes or find the end, so this terminates on a finite file.
       let progressed = false;
       for (const hole of holes) {
         for (let off = hole.start; off < hole.end; off += this.readSize) {
-          const size = Math.min(this.readSize, hole.end - off);
-          const chunk = await this.readFileChunk(off, size);
-          if (!chunk || chunk.length === 0) break;
-          for (let k = 0; k < chunk.length && off + k < fileSize; k++) {
-            if (!mask.add(off + k)) continue;
-            buffer[off + k] = chunk[k]!;
-            progressed = true;
+          // Always a full-size read: ArduPilot's @PARAM files NAK any size but the first one used.
+          const chunk = await this.readFileChunk(off, this.readSize);
+          if (!chunk) {
+            // A server that errors instead of sending EOF past the end: trust the reported size.
+            if (probing) {
+              file.markEof(off);
+              progressed = true;
+            }
+            break;
           }
-          if (progress) progress(mask.filled, fileSize);
+          const eofBefore = file.eof;
+          if (chunk.length < this.readSize) file.markEof(off + chunk.length);
+          if (file.store(off, chunk) > 0 || file.eof !== eofBefore) progressed = true;
+          if (progress) progress(file.mask.filled, file.size);
+          if (chunk.length < this.readSize) break;
         }
       }
       if (!progressed) break;
     }
 
-    if (!mask.complete) {
-      this.log('warn', `FTP: burst download incomplete (${mask.filled}/${fileSize} bytes)`);
+    if (!file.complete) {
+      this.log('warn', `FTP: burst download incomplete (${file.mask.filled}/${file.size} bytes)`);
       return null;
     }
-    return buffer;
+    return file.result();
   }
 
   private runBurst(
     offset: number,
-    buffer: Uint8Array,
-    mask: Coverage,
+    file: DownloadBuffer,
     progress: FtpProgressCallback | undefined,
-    fileSize: number,
   ): Promise<{ reason: BurstOutcome; gained: number; reachedEnd: number }> {
     return new Promise((resolve) => {
       let settled = false;
@@ -904,11 +970,11 @@ export class MavlinkFtpClient {
         const reachedEnd = this.burst?.reachedEnd ?? offset;
         if (this.burst?.timer) clearTimeout(this.burst.timer);
         this.burst = null;
-        if (progress) progress(mask.filled, fileSize);
+        if (progress) progress(file.mask.filled, file.size);
         resolve({ reason, gained, reachedEnd });
       };
 
-      this.burst = { buffer, mask, gained: 0, reachedEnd: offset, finish, timer: null, idleMs: FTP_TIMEOUT_MS };
+      this.burst = { file, gained: 0, reachedEnd: offset, finish, timer: null, idleMs: FTP_TIMEOUT_MS };
       this.armBurstTimer();
 
       const payload = this.buildPayload({
@@ -955,13 +1021,12 @@ export class MavlinkFtpClient {
 
     if (payload.opcode !== FtpOpcode.Ack) return;
 
-    const end = Math.min(payload.offset + payload.size, burst.buffer.length);
-    burst.reachedEnd = Math.max(burst.reachedEnd, end);
-    for (let i = payload.offset; i < end; i++) {
-      if (!burst.mask.add(i)) continue;
-      burst.buffer[i] = payload.data[i - payload.offset]!;
-      burst.gained++;
+    // A short packet is the file's last; OpenFileRO's size may have been only an estimate.
+    if (payload.size > 0 && payload.size < this.readSize) {
+      burst.file.markEof(payload.offset + payload.size);
     }
+    burst.gained += burst.file.store(payload.offset, payload.data.subarray(0, payload.size));
+    burst.reachedEnd = Math.max(burst.reachedEnd, payload.offset + payload.size);
 
     // After the first packet the FC is actively streaming, so a much shorter gap
     // means "burst is over" instead of another full round-trip timeout.

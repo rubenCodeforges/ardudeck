@@ -153,5 +153,5 @@ export const FTP_BURST_TIMEOUT_MS = 1500;
 /** Max retries per operation */
 export const FTP_MAX_RETRIES = 5;
 
-/** Virtual file path for packed parameters */
-export const PARAM_PCK_PATH = '@PARAM/param.pck';
+/** Virtual file path for packed parameters. Firmware without defaults support ignores the query (as Mission Planner relies on). */
+export const PARAM_PCK_PATH = '@PARAM/param.pck?withdefaults=1';
