@@ -1,3 +1,4 @@
+import type { SurveyAirframe, SurveyLaunch } from './survey-vehicle';
 /**
  * Survey Grid Planner Types
  * Types and interfaces for photogrammetry survey planning
@@ -162,6 +163,10 @@ export interface SurveyConfig {
   corridorSectionLengthM?: number;
   /** Fixed-wing vs multirotor turn strategy. */
   corridorMode?: CorridorMode;
+  /** Airframe the survey is planned for; 'auto' follows the connected vehicle. */
+  airframe?: SurveyAirframe;
+  /** How the mission starts and ends; 'auto' follows the airframe. */
+  launch?: SurveyLaunch;
   /** Lateral shift of the whole strip bundle off the centerline, in meters (e.g. to bias coverage to one side of a road). */
   corridorSideOffset?: number;
   /**
@@ -286,8 +291,10 @@ export const DEFAULT_SURVEY_CONFIG: Omit<SurveyConfig, 'polygon'> = {
   corridorWidth: 60,
   corridorStrips: 0,
   corridorMode: 'plane',
+  airframe: 'auto',
+  launch: 'auto',
   corridorSideOffset: 0,
-  maxTurnAngle: 15,
+  maxTurnAngle: 120,
   flipLegs: false,
   invertPath: false,
 };

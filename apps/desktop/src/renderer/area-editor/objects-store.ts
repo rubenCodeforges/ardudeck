@@ -93,6 +93,38 @@ function polylineLength(line: LatLng[]): number {
   return total;
 }
 
+/**
+ * Local-frame centrelines for every corridor in `others`, expressed in the
+ * trunk's frame and attached to the network by whichever end sits nearer.
+ *
+ * Absorbed corridors arrive through world coordinates: each carries its own
+ * origin and rotation, so its local frame means nothing to the trunk. The
+ * nearer end becomes the junction, so a spur drawn away from the line still
+ * attaches where it actually meets it.
+ */
+function absorbIntoTrunk(trunk: EditorObject, others: EditorObject[]): LocalPt[][] {
+  const added: LocalPt[][] = [];
+  for (const other of others) {
+    for (const line of [objectWorldRing(other), ...objectWorldBranches(other)]) {
+      if (line.length < 2) continue;
+      const local: LocalPt[] = line.map((p) => worldToLocal(trunk, p));
+      const lines = [trunk.base, ...(trunk.branches ?? []), ...added];
+      const head = snapToNearestPolyline(local[0]!, lines);
+      const tail = snapToNearestPolyline(local[local.length - 1]!, lines);
+      const dHead = (head.x - local[0]!.x) ** 2 + (head.y - local[0]!.y) ** 2;
+      const dTail = (tail.x - local[local.length - 1]!.x) ** 2 + (tail.y - local[local.length - 1]!.y) ** 2;
+      if (dTail < dHead) {
+        local.reverse();
+        local[0] = tail;
+      } else {
+        local[0] = head;
+      }
+      added.push(local);
+    }
+  }
+  return added;
+}
+
 /** What a right-click landed on; drives the context menu's available actions. */
 export type ContextTarget =
   | { kind: 'object'; id: string }
@@ -207,6 +239,12 @@ interface ObjectsActions {
   clearBranches: (id?: string) => void;
   /** Remove a single branch (by index) from a corridor. */
   removeBranch: (id: string, index: number) => void;
+  /**
+   * Fold every other visible corridor into this one as branches, so a network
+   * drawn as separate spurs becomes one routable survey. Returns how many were
+   * absorbed. The right-clicked corridor is the trunk.
+   */
+  mergeCorridors: (id?: string) => number;
   /**
    * Join corridors into ONE routable survey: the longest becomes the trunk,
    * the rest attach as branches at their nearest end, and the generator then
@@ -527,42 +565,54 @@ export const useObjectsStore = create<Store>()(
         (o) => o.id !== target.id && o.type === 'corridor' && o.visible && o.base.length >= 2,
       );
       if (others.length === 0) return 0;
-
-      // Each absorbed corridor comes in through world coordinates: they carry
-      // their own origin and rotation, so its local frame means nothing here.
-      const added: LocalPt[][] = [];
-      for (const other of others) {
-        for (const line of [objectWorldRing(other), ...objectWorldBranches(other)]) {
-          if (line.length < 2) continue;
-          const local: LocalPt[] = line.map((p) => worldToLocal(target, p));
-          // Attach at whichever end sits nearer the network, so the junction
-          // lands where the spur actually meets the line rather than at
-          // whichever end happened to be drawn first.
-          const lines = [target.base, ...(target.branches ?? []), ...added];
-          const head = snapToNearestPolyline(local[0]!, lines);
-          const tail = snapToNearestPolyline(local[local.length - 1]!, lines);
-          const dHead = (head.x - local[0]!.x) ** 2 + (head.y - local[0]!.y) ** 2;
-          const dTail = (tail.x - local[local.length - 1]!.x) ** 2 + (tail.y - local[local.length - 1]!.y) ** 2;
-          if (dTail < dHead) {
-            local.reverse();
-            local[0] = tail;
-          } else {
-            local[0] = head;
-          }
-          added.push(local);
-        }
-      }
+      const added = absorbIntoTrunk(target, others);
       if (added.length === 0) return 0;
 
-      const absorbed = new Set(others.map((o) => o.id));
+      const absorbedIds = new Set(others.map((o) => o.id));
       get().pushHistory();
       set((s) => ({
         objects: s.objects
-          .filter((o) => !absorbed.has(o.id))
+          .filter((o) => !absorbedIds.has(o.id))
           .map((o) => (o.id === target.id ? { ...o, branches: [...(o.branches ?? []), ...added] } : o)),
         selectedId: target.id,
+        checkedIds: [],
       }));
       return others.length;
+    },
+
+    autoConnectCorridors: (ids) => {
+      const objects = get().objects;
+      const pool = objects.filter(
+        (o) => o.type === 'corridor' && o.base.length >= 2 && (ids ? ids.includes(o.id) : o.visible),
+      );
+      if (pool.length < 2) return null;
+
+      // The longest run is the trunk: on a power line that is the line itself,
+      // and it is where a pilot expects the mission to start.
+      const lengthOf = (o: EditorObject) => polylineLength(objectWorldRing(o));
+      const trunk = pool.reduce((best, o) => (lengthOf(o) > lengthOf(best) ? o : best));
+      const others = pool.filter((o) => o.id !== trunk.id);
+
+      // Flying them as listed, entering each at its first point, is what the
+      // pilot does today with separate corridors; that is the comparison.
+      const before = [trunk, ...others].flatMap((o) => [objectWorldRing(o), ...objectWorldBranches(o)]);
+      const transitBeforeM = transitDistance(before, before.map((_, index) => ({ index, reversed: false })));
+
+      const added = absorbIntoTrunk(trunk, others);
+      if (added.length === 0) return null;
+
+      const merged: EditorObject = { ...trunk, branches: [...(trunk.branches ?? []), ...added] };
+      const after = [objectWorldRing(merged), ...objectWorldBranches(merged)];
+      const transitAfterM = transitDistance(after, orderCorridorRuns(after));
+
+      const absorbedIds = new Set(others.map((o) => o.id));
+      get().pushHistory();
+      set((s) => ({
+        objects: s.objects.filter((o) => !absorbedIds.has(o.id)).map((o) => (o.id === trunk.id ? merged : o)),
+        selectedId: trunk.id,
+        checkedIds: [],
+      }));
+      return { trunkId: trunk.id, absorbed: others.length, transitBeforeM, transitAfterM };
     },
 
     cancelDraft: () => set({ draftPoints: [], draftType: null }),

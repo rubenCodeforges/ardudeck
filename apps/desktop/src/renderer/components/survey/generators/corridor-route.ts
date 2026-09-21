@@ -77,10 +77,54 @@ function solveOrientations(
 }
 
 /**
- * Order and orient the runs so the transits between them are as short as this
- * can make them. Run 0 is the trunk and stays first.
+ * Split the trunk wherever a branch meets it, so the route can pick a spur up
+ * on the way past instead of flying the whole line and coming back.
+ *
+ * Measured on a 23 km power line with five spurs, this is the difference
+ * between 11.6 km and 3.8 km of dead legs. The junction vertex belongs to both
+ * neighbouring segments, so coverage is continuous across the cut.
  */
-export function orderCorridorRuns(runs: LatLng[][], pinFirst = true): RunOrder[] {
+export function splitTrunkAtJunctions(trunk: LatLng[], branches: readonly LatLng[][]): LatLng[][] {
+  if (trunk.length < 3 || branches.length === 0) return [trunk];
+
+  const cuts = new Set<number>();
+  for (const b of branches) {
+    if (b.length < 2) continue;
+    // A spur attaches by one of its ends; the nearer one is the junction.
+    let bestIdx = -1;
+    let bestD = Infinity;
+    for (const end of [b[0]!, b[b.length - 1]!]) {
+      for (let i = 0; i < trunk.length; i++) {
+        const d = distanceLatLng(trunk[i]!, end);
+        if (d < bestD) { bestD = d; bestIdx = i; }
+      }
+    }
+    // Cutting at an end of the trunk would only make a one-point segment.
+    if (bestIdx > 0 && bestIdx < trunk.length - 1) cuts.add(bestIdx);
+  }
+  if (cuts.size === 0) return [trunk];
+
+  const segments: LatLng[][] = [];
+  let start = 0;
+  for (const cut of [...cuts].sort((a, b) => a - b)) {
+    segments.push(trunk.slice(start, cut + 1));
+    start = cut;
+  }
+  segments.push(trunk.slice(start));
+  return segments.filter((s) => s.length >= 2);
+}
+
+/**
+ * Order and orient the runs so the transits between them are as short as this
+ * can make them.
+ *
+ * `pinFirst` holds run 0 first and forward. It is off by default because it is
+ * expensive: on the line above it forced "whole trunk, then every spur" and
+ * cost 7.8 km. Instead, of the two directions the finished plan can be flown
+ * (identical cost), the one starting nearer the trunk's own start is chosen,
+ * so the mission still begins where the line begins whenever that is free.
+ */
+export function orderCorridorRuns(runs: LatLng[][], pinFirst = false): RunOrder[] {
   const usable = runs.map((r, i) => ({ r, i })).filter((e) => e.r.length >= 2);
   if (usable.length <= 1) return usable.map((e) => ({ index: e.i, reversed: false }));
 
@@ -111,30 +155,59 @@ export function orderCorridorRuns(runs: LatLng[][], pinFirst = true): RunOrder[]
   let bestOrder = order;
   let bestSolved = solveOrientations(runs, bestOrder, pinFirst);
 
-  // 2-opt over the visiting order, scored with the exact orientation DP. The
-  // run count here is a handful of spurs, so the cubic worst case is nothing.
+  // 2-opt plus Or-opt over the visiting order, scored with the exact
+  // orientation DP. The run count here is a handful of spurs, so the cubic
+  // worst case is nothing.
+  //
+  // Or-opt is the one that matters on a split trunk: the trunk segments chain
+  // at zero cost, so reversing a block (all 2-opt can do) never separates
+  // them, and a spur can only get picked up on the way past if a single run
+  // can be lifted out and dropped between two segments.
   const start = pinFirst ? 1 : 0;
+  const tryCandidate = (candidate: number[]): boolean => {
+    const solved = solveOrientations(runs, candidate, pinFirst);
+    if (solved.cost < bestSolved.cost - 1e-6) {
+      bestOrder = candidate;
+      bestSolved = solved;
+      return true;
+    }
+    return false;
+  };
+
   for (let pass = 0; pass < 8; pass++) {
     let improved = false;
     for (let i = start; i < bestOrder.length - 1; i++) {
       for (let j = i + 1; j < bestOrder.length; j++) {
-        const candidate = [
+        if (tryCandidate([
           ...bestOrder.slice(0, i),
           ...bestOrder.slice(i, j + 1).reverse(),
           ...bestOrder.slice(j + 1),
-        ];
-        const solved = solveOrientations(runs, candidate, pinFirst);
-        if (solved.cost < bestSolved.cost - 1e-6) {
-          bestOrder = candidate;
-          bestSolved = solved;
+        ])) improved = true;
+      }
+    }
+    for (let i = start; i < bestOrder.length; i++) {
+      const without = [...bestOrder.slice(0, i), ...bestOrder.slice(i + 1)];
+      const moved = bestOrder[i]!;
+      for (let j = start; j <= without.length; j++) {
+        if (j === i) continue;
+        if (tryCandidate([...without.slice(0, j), moved, ...without.slice(j)])) {
           improved = true;
+          break;
         }
       }
     }
     if (!improved) break;
   }
 
-  return bestOrder.map((index, k) => ({ index, reversed: bestSolved.reversed[k] === true }));
+  const plan = bestOrder.map((index, k) => ({ index, reversed: bestSolved.reversed[k] === true }));
+  if (pinFirst) return plan;
+
+  // Flying the plan backwards costs exactly the same, so spend that freedom on
+  // starting near the head of the trunk rather than wherever greedy landed.
+  const anchor = runs[usable[0]!.i]![0]!;
+  const flipped = [...plan].reverse().map((r) => ({ index: r.index, reversed: !r.reversed }));
+  const startOf = (p: RunOrder[]) => entryOf(runs[p[0]!.index]!, p[0]!.reversed);
+  return distanceLatLng(startOf(flipped), anchor) < distanceLatLng(startOf(plan), anchor) ? flipped : plan;
 }
 
 /** Total transit flown between runs, for a given plan. Used by the tests. */

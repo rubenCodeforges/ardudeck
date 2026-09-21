@@ -15,6 +15,7 @@ import { simplifyPolygon, bufferPolygonLatLng, latLngBboxOverlap } from '../comp
 import { runWithActivity } from './activity-store';
 import { parseGisArea, parseGisLines } from '../../shared/gis-area-import';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
+import { TURN_LOOP_MIN_DEG } from '../components/survey/generators/corridor-generator';
 import { useSettingsStore } from './settings-store';
 import { useMissionStore } from './mission-store';
 import { useConnectionStore } from './connection-store';
@@ -188,6 +189,15 @@ interface SurveyStore {
    */
   geometryLocked: boolean;
   setGeometryLocked: (locked: boolean) => void;
+
+  /**
+   * True once the pilot picks the plane/copter mode by hand. Until then the
+   * planner follows whatever aircraft is connected, so a survey drawn for a
+   * quad does not arrive full of fixed-wing racetrack turns.
+   */
+  flightModeChosen: boolean;
+  /** Apply the mode the connected aircraft implies, unless it was chosen by hand. */
+  applyVehicleFlightMode: (mode: CorridorMode) => void;
 
   /**
    * Regenerate the preview/mission. `immediate` runs now (used by discrete
@@ -408,6 +418,14 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   pendingRecompute: false,
   editSnapshot: null,
   geometryLocked: false,
+  flightModeChosen: false,
+
+  applyVehicleFlightMode: (mode) => {
+    const { flightModeChosen, config } = get();
+    if (flightModeChosen || config.corridorMode === mode) return;
+    set({ config: { ...config, corridorMode: mode, gridMode: mode } });
+    get().requestRecompute({ immediate: true });
+  },
 
   setGeometryLocked: (locked) => {
     // Leaving edit mode on lock: the Done/Cancel affordances make no sense
@@ -675,7 +693,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   setCorridorMode: (corridorMode) => {
-    set({ config: { ...get().config, corridorMode } });
+    set({ config: { ...get().config, corridorMode }, flightModeChosen: true });
     get().requestRecompute({ immediate: true });
   },
 
@@ -685,7 +703,9 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   setMaxTurnAngle: (degrees) => {
-    const clamped = Math.max(1, Math.min(90, Math.round(degrees)));
+    // Floor at 120: below that a racetrack loop is sharper than the corner it
+    // replaces, so the generator ignores it anyway (see corridor-generator).
+    const clamped = Math.max(TURN_LOOP_MIN_DEG, Math.min(180, Math.round(degrees / 5) * 5));
     set({ config: { ...get().config, maxTurnAngle: clamped } });
     get().requestRecompute();
   },
@@ -984,6 +1004,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       generatorError: null,
       editingGroupId: null,
       geometryLocked: false,
+      flightModeChosen: false,
     });
   },
 
@@ -1003,6 +1024,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       generatorError: null,
       editingGroupId: null,
       geometryLocked: false,
+      flightModeChosen: false,
     });
   },
 
@@ -1019,6 +1041,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       isActive: true,
       editingGroupId: null,
       geometryLocked: false,
+      flightModeChosen: false,
       generating: false,
       generatorError: null,
     });
@@ -1038,6 +1061,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       isActive: true,
       editingGroupId: null,
       geometryLocked: false,
+      flightModeChosen: false,
       generating: false,
       generatorError: null,
     });

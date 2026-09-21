@@ -24,14 +24,27 @@ const svg = {
 export function ObjectsPanel(): JSX.Element {
   const objects = useObjectsStore((s) => s.objects);
   const selectedId = useObjectsStore((s) => s.selectedId);
+  const checkedIds = useObjectsStore((s) => s.checkedIds);
   const {
-    selectObject, renameObject, deleteObject, toggleVisible, reorderObject, convertSelectedToPolygon, setObjectColor, setObjectFenceType, setObjectRole, removeBranch, loadWorldRings, focusObject,
+    selectObject, renameObject, deleteObject, toggleVisible, reorderObject, convertSelectedToPolygon, setObjectColor, setObjectFenceType, setObjectRole, removeBranch, loadWorldRings, focusObject, toggleChecked, setChecked, clearChecked, autoConnectCorridors,
   } = useObjectsStore.getState();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [colorId, setColorId] = useState<string | null>(null);
   const [colorPos, setColorPos] = useState<{ top: number; left: number } | null>(null);
   const [fenceStatus, setFenceStatus] = useState<string | null>(null);
+  const [autoStatus, setAutoStatus] = useState<string | null>(null);
+
+  const checkedCorridors = objects.filter((o) => checkedIds.includes(o.id) && o.type === 'corridor');
+  const runAutoConnect = (): void => {
+    const res = autoConnectCorridors(checkedCorridors.map((o) => o.id));
+    if (!res) { setAutoStatus('Pick at least two corridors'); return; }
+    const saved = Math.max(0, res.transitBeforeM - res.transitAfterM);
+    setAutoStatus(
+      `Joined ${res.absorbed + 1} corridors` +
+      (saved > 1 ? ` · ${(saved / 1000).toFixed(1)} km less transit` : ''),
+    );
+  };
 
   const commitRename = (): void => {
     if (editingId && draft.trim()) renameObject(editingId, draft.trim());
@@ -94,7 +107,18 @@ export function ObjectsPanel(): JSX.Element {
     <div className="h-full flex flex-col overflow-hidden">
       <div className="flex-shrink-0 px-4 py-3 border-b border-subtle flex items-center justify-between">
         <p className="text-xs font-semibold text-content">Objects</p>
-        <span className="text-xs text-content-tertiary tabular-nums">{objects.length}</span>
+        <div className="flex items-center gap-2">
+          {objects.length > 1 && (
+            <button
+              type="button"
+              onClick={() => (checkedIds.length > 0 ? clearChecked() : setChecked(objects.map((o) => o.id)))}
+              className="text-[10px] text-content-tertiary hover:text-content transition-colors"
+            >
+              {checkedIds.length > 0 ? 'Clear' : 'Select all'}
+            </button>
+          )}
+          <span className="text-xs text-content-tertiary tabular-nums">{objects.length}</span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-1">
@@ -113,6 +137,15 @@ export function ObjectsPanel(): JSX.Element {
                   (active ? 'bg-blue-600/15' : 'hover:bg-surface-raised')
                 }
               >
+                <input
+                  type="checkbox"
+                  checked={checkedIds.includes(o.id)}
+                  onChange={() => toggleChecked(o.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select ${o.name}`}
+                  className="w-3 h-3 flex-shrink-0 accent-blue-500 cursor-pointer"
+                />
+
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggleVisible(o.id); }}
@@ -314,6 +347,25 @@ export function ObjectsPanel(): JSX.Element {
                   Convert to polygon
                 </button>
               </div>
+            )}
+
+            {checkedCorridors.length >= 2 && (
+              <div className="px-3 py-2 border-t border-subtle space-y-1.5">
+                <button
+                  type="button"
+                  onClick={runAutoConnect}
+                  className="w-full h-7 rounded-md text-[11px] font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+                  data-tip="Join the ticked corridors into one survey and order the branches so the aircraft stops crossing back"
+                >
+                  Auto-connect &amp; optimise ({checkedCorridors.length})
+                </button>
+                <div className="text-[10px] text-content-tertiary text-center">
+                  Longest becomes the trunk; the rest attach as branches
+                </div>
+              </div>
+            )}
+            {autoStatus && (
+              <div className="px-3 pb-2 text-[11px] text-emerald-400 text-center">{autoStatus}</div>
             )}
 
             <div className="px-3 py-2 border-t border-subtle space-y-1.5">

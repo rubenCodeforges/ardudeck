@@ -16,6 +16,7 @@ import { fenceWarningForPoint } from '../../utils/fence-check';
 import { useTerrainAvailable } from '../../stores/terrain-status-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useVehicleClass } from '../../hooks/useVehicleClass';
+import { guidedSpeedRange, speedRangeHint } from './guided-speed-range';
 import type { AltReferenceFrame } from '../../../shared/mission-types.js';
 import {
   altitudeValueFromMeters,
@@ -241,6 +242,21 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
     if (apClass === 'vtol') return 'vtol';
     return mavType === undefined ? 'copter' : mavTypeToTacticalClass(mavType);
   }, [mavType, apClass]);
+
+  // Speed bounds come from the vehicle, not a number picked by eye: ArduPlane
+  // refuses a DO_CHANGE_SPEED outside AIRSPEED_MIN..MAX instead of clamping.
+  const airspeedMin = useParameterStore((s) => s.parameters.get('AIRSPEED_MIN')?.value as number | undefined);
+  const airspeedMax = useParameterStore((s) => s.parameters.get('AIRSPEED_MAX')?.value as number | undefined);
+  const wpnavRangeCms = useParameterStore((s) => s.getParameterMetadata('WPNAV_SPEED')?.range);
+  const speedRange = useMemo(
+    () => guidedSpeedRange({
+      isFixedWing: apClass === 'plane' || apClass === 'vtol',
+      airspeedMin,
+      airspeedMax,
+      wpnavRangeCms,
+    }),
+    [apClass, airspeedMin, airspeedMax, wpnavRangeCms],
+  );
 
   // Visible tiles: class support and the advanced unlock filter what EXISTS
   // for this vehicle/user (a permanent property, so removal is fine). Script
@@ -530,12 +546,24 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                         value={cruiseSpeed > 0 ? Number(speedValueFromMetersPerSecond(cruiseSpeed, speedUnit).toFixed(UNIT_PRECISION.speed[speedUnit] ?? 0)) : 0}
                         onChange={(v) => setCruiseSpeed(v <= 0 ? 0 : toMetersPerSecondFromSpeedUnit(v, speedUnit))}
                         min={0}
-                        max={Number(speedValueFromMetersPerSecond(50, speedUnit).toFixed(0))}
+                        max={Number(speedValueFromMetersPerSecond(speedRange.max, speedUnit).toFixed(0))}
                         step={1}
                         unit={cruiseSpeed > 0 ? UNIT_LABELS.speed[speedUnit] : 'keep current'}
                       />
                     </ParamRow>
                   )}
+                  {(meta.id === 'fly' || meta.id === 'orbit') && (() => {
+                    const hint = speedRangeHint(speedRange, UNIT_LABELS.speed[speedUnit], displaySpeed);
+                    const belowMin = speedRange.enforced && cruiseSpeed > 0 && cruiseSpeed < speedRange.min;
+                    if (!hint) return null;
+                    return (
+                      <p className={`px-1 text-[10px] leading-snug ${belowMin ? 'text-amber-400' : 'text-content-tertiary'}`}>
+                        {belowMin
+                          ? `Below AIRSPEED_MIN (${displaySpeed(speedRange.min)} ${UNIT_LABELS.speed[speedUnit]}); the vehicle will refuse this speed`
+                          : hint}
+                      </p>
+                    );
+                  })()}
                   {altFrame === 'asl' && (() => {
                     // Sea-level altitudes are absolute: the same number that is a
                     // safe height at the beach is underground on a hill. Show what

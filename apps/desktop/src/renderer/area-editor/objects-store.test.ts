@@ -651,3 +651,92 @@ describe('mergeCorridors', () => {
     expect(objects.some((o) => o.type === 'polygon')).toBe(true);
   });
 });
+
+describe('autoConnectCorridors', () => {
+  const corridor = (name: string, pts: Array<[number, number]>): EditorObject =>
+    makeFromWorldRing('corridor', pts.map(([lat, lng]) => ({ lat, lng })), name, { corridorWidthM: 60 });
+
+  beforeEach(() => {
+    useObjectsStore.setState({ objects: [], selectedId: null, checkedIds: [], past: [], future: [] });
+  });
+
+  it('acts on the ticked corridors only', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.30]]);
+    const spur = corridor('Spur', [[53.505, 9.05], [53.51, 9.06]]);
+    const untouched = corridor('Elsewhere', [[54.0, 10.0], [54.0, 10.1]]);
+    useObjectsStore.setState({ objects: [trunk, spur, untouched] });
+
+    const res = useObjectsStore.getState().autoConnectCorridors([trunk.id, spur.id]);
+
+    expect(res?.absorbed).toBe(1);
+    const objects = useObjectsStore.getState().objects;
+    expect(objects).toHaveLength(2);
+    expect(objects.find((o) => o.id === untouched.id)).toBeDefined();
+  });
+
+  // The pilot ticks spurs in whatever order the list shows; the trunk must be
+  // the actual line, not whichever row happened to be first or selected.
+  it('picks the longest run as the trunk whatever the order', () => {
+    const spur = corridor('Spur', [[53.505, 9.05], [53.51, 9.06]]);
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.30]]);
+    useObjectsStore.setState({ objects: [spur, trunk] });
+
+    const res = useObjectsStore.getState().autoConnectCorridors([spur.id, trunk.id]);
+
+    expect(res?.trunkId).toBe(trunk.id);
+    expect(useObjectsStore.getState().objects[0]!.id).toBe(trunk.id);
+  });
+
+  it('reports the transit it saved', () => {
+    // Spurs alternate between the two ends, so as-listed order crosses back.
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.40]]);
+    const near = corridor('Near', [[53.505, 9.02], [53.51, 9.03]]);
+    const far = corridor('Far', [[53.505, 9.38], [53.51, 9.37]]);
+    const near2 = corridor('Near2', [[53.495, 9.04], [53.49, 9.05]]);
+    useObjectsStore.setState({ objects: [trunk, far, near, near2] });
+
+    const res = useObjectsStore.getState().autoConnectCorridors([trunk.id, far.id, near.id, near2.id])!;
+
+    expect(res.absorbed).toBe(3);
+    expect(res.transitAfterM).toBeLessThan(res.transitBeforeM);
+  });
+
+  it('needs two corridors', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.30]]);
+    useObjectsStore.setState({ objects: [trunk] });
+    expect(useObjectsStore.getState().autoConnectCorridors([trunk.id])).toBeNull();
+  });
+
+  it('clears the tick marks once it has run', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.30]]);
+    const spur = corridor('Spur', [[53.505, 9.05], [53.51, 9.06]]);
+    useObjectsStore.setState({ objects: [trunk, spur], checkedIds: [trunk.id, spur.id] });
+
+    useObjectsStore.getState().autoConnectCorridors([trunk.id, spur.id]);
+
+    expect(useObjectsStore.getState().checkedIds).toEqual([]);
+  });
+
+  it('falls back to every visible corridor when given no ids', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.30]]);
+    const spur = corridor('Spur', [[53.505, 9.05], [53.51, 9.06]]);
+    const hidden = { ...corridor('Hidden', [[53.6, 9.0], [53.6, 9.1]]), visible: false };
+    useObjectsStore.setState({ objects: [trunk, spur, hidden] });
+
+    const res = useObjectsStore.getState().autoConnectCorridors();
+
+    expect(res?.absorbed).toBe(1);
+    expect(useObjectsStore.getState().objects.some((o) => o.id === hidden.id)).toBe(true);
+  });
+
+  it('is undoable', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.30]]);
+    const spur = corridor('Spur', [[53.505, 9.05], [53.51, 9.06]]);
+    useObjectsStore.setState({ objects: [trunk, spur] });
+
+    useObjectsStore.getState().autoConnectCorridors([trunk.id, spur.id]);
+    useObjectsStore.getState().undo();
+
+    expect(useObjectsStore.getState().objects).toHaveLength(2);
+  });
+});

@@ -21,6 +21,8 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { getVehicleClass } from '../../../shared/telemetry-types';
+import { TURN_LOOP_MIN_DEG } from './generators/corridor-generator';
+import { surveyModeForVehicle, vehiclePlanningNote } from './survey-vehicle';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { CameraPresetSelector } from './CameraPresetSelector';
@@ -219,6 +221,13 @@ export function SurveyConfigPanel() {
   const sitlFrame = useArduPilotSitlStore((s) => (s.isRunning ? s.model : undefined));
   const vehicleClass = getVehicleClass(mavType, { qEnable, sitlFrame });
   const isFixedWing = vehicleClass === 'plane' || vehicleClass === 'vtol';
+  // Follow the connected aircraft until the pilot overrides the toggle.
+  const applyVehicleFlightMode = useSurveyStore((s) => s.applyVehicleFlightMode);
+  const flightModeChosen = useSurveyStore((s) => s.flightModeChosen);
+  const detectedMode = surveyModeForVehicle(mavType === undefined ? undefined : vehicleClass);
+  useEffect(() => {
+    applyVehicleFlightMode(detectedMode);
+  }, [detectedMode, applyVehicleFlightMode]);
   const turnRadiusField = engineFields.find(
     (f): f is Extract<GeneratorConfigField, { type: 'number' }> => f.type === 'number' && f.id === 'minTurnRadius',
   );
@@ -1102,6 +1111,12 @@ export function SurveyConfigPanel() {
                   </div>
                 </div>
               )}
+              {!isManualCamera && (
+                <p className="text-[10px] text-content-tertiary leading-snug -mt-1 pl-16">
+                  {vehiclePlanningNote(mavType === undefined ? undefined : vehicleClass)}
+                  {flightModeChosen && ' · set by hand'}
+                </p>
+              )}
 
               <SliderInput
                 label="Width"
@@ -1174,16 +1189,18 @@ export function SurveyConfigPanel() {
                 <>
                   <SliderInput label="Overshoot" value={config.overshoot} onChange={setOvershoot} min={0} max={150} step={5} unit="m" />
                   <SliderInput
-                    label="Max turn"
-                    value={config.maxTurnAngle ?? 15}
+                    label="Racetrack above"
+                    value={Math.max(config.maxTurnAngle ?? TURN_LOOP_MIN_DEG, TURN_LOOP_MIN_DEG)}
                     onChange={setMaxTurnAngle}
-                    min={5}
-                    max={90}
+                    min={TURN_LOOP_MIN_DEG}
+                    max={180}
                     step={5}
                     unit="°"
                   />
                   <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
-                    Bends sharper than this get racetrack turn waypoints so the plane re-enters the next leg aligned.
+                    Hairpins this sharp get racetrack waypoints so the plane re-enters the next leg
+                    aligned. Gentler bends are flown as they are: a loop below {TURN_LOOP_MIN_DEG}° turns
+                    tighter than the corner it replaces, so it would cost waypoints and make the turn worse.
                   </p>
                 </>
               )}

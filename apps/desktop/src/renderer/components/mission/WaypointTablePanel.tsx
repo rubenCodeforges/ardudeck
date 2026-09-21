@@ -59,7 +59,7 @@ import {
   waypointNativeValue,
   type WaypointUnitContext,
 } from './waypoint-unit-format';
-import { computeRenderableIndices, renderableIndexOfSeq } from './waypoint-list-window';
+import { computeRenderableIndices, renderableIndexOfSeq, estimateRowHeight } from './waypoint-list-window';
 
 // Helper to get GPS state without subscribing (avoids re-renders)
 function getGpsState() {
@@ -2317,9 +2317,13 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   // heights would be wrong). Below the threshold we render the list normally so
   // typical missions behave exactly as before.
   const VIRTUALIZE_THRESHOLD = 250;
+  const collapsedGroupIds = useMemo(
+    () => new Set(groups.filter((g) => g.collapsed).map((g) => g.id)),
+    [groups],
+  );
   const renderableIndices = useMemo(
-    () => computeRenderableIndices(missionItems, collapsedGroups),
-    [missionItems, collapsedGroups],
+    () => computeRenderableIndices(missionItems, collapsedGroups, collapsedGroupIds),
+    [missionItems, collapsedGroups, collapsedGroupIds],
   );
   const useVirtual = renderableIndices.length > VIRTUALIZE_THRESHOLD;
   // Rows are positioned purely from the deterministic per-row estimate - no
@@ -2335,12 +2339,15 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     const idx = renderableIndices[vi];
     const wp = idx === undefined ? undefined : missionItems[idx];
     if (!wp || idx === undefined) return 52;
-    const child = !isNavigationCommand(wp.command) || wp.command === MAV_CMD.NAV_DELAY;
-    const showHeader = wp.groupId !== undefined && headerSeqByGroup.get(wp.groupId) === wp.seq;
+    const group = wp.groupId ? groupById.get(wp.groupId) : undefined;
     // Generous so the estimate is >= the real height: a too-small estimate would
     // overlap rows, while a slightly large one just adds a little spacing.
     // Survey rows are uniform, so cumulative drift is negligible.
-    return (child ? 40 : 52) + (showHeader ? 48 : 0);
+    return estimateRowHeight({
+      isChild: !isNavigationCommand(wp.command) || wp.command === MAV_CMD.NAV_DELAY,
+      hasHeader: wp.groupId !== undefined && headerSeqByGroup.get(wp.groupId) === wp.seq,
+      inCollapsedGroup: group?.collapsed === true,
+    });
   };
   const rowVirtualizer = useVirtualizer({
     count: renderableIndices.length,

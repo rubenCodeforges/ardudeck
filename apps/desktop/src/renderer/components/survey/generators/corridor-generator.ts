@@ -24,18 +24,19 @@
  *
  * Branched corridors (a main axis with side spurs: forked roads, power-line
  * taps, river tributaries) are supported via `config.corridorBranches`: each
- * branch is a further open centerline, generated with this same strip algorithm
- * and flown after the main centerline, in the order and direction that keeps
- * the dead legs between runs shortest (see corridor-route). They share the
- * corridor's width/overlap/camera settings. Junctions are visual only and some overlap at a
- * fork is accepted, which matches every other corridor tool (UgCS, QGC,
- * DroneDeploy, Pix4D) - those force the operator to manage disconnected routes
- * by hand instead of keeping the branches in one corridor object.
+ * branch is a further open centerline generated with this same strip algorithm.
+ * The trunk is cut where the spurs meet it and every resulting run is ordered
+ * and oriented to keep the dead legs short (see corridor-route), so a spur is
+ * flown on the way past rather than after the whole line. They share the
+ * corridor's width/overlap/camera settings. Junctions are visual only and some
+ * overlap at a fork is accepted, which matches every other corridor tool (UgCS,
+ * QGC, DroneDeploy, Pix4D) - those force the operator to manage disconnected
+ * routes by hand instead of keeping the branches in one corridor object.
  */
 import type { LatLng, SurveyConfig, SurveyResult, SurveyStats } from '../survey-types';
 import { latLngToLocal, localToLatLng, polygonCentroid, distanceLatLng } from '../geo-math';
 import { getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
-import { orderCorridorRuns } from './corridor-route';
+import { orderCorridorRuns, splitTrunkAtJunctions } from './corridor-route';
 
 interface XY {
   x: number;
@@ -88,10 +89,21 @@ function offsetPath(path: XY[], normals: XY[], distance: number): XY[] {
  * overshoots, turns wide, and re-enters the next leg aligned instead of cutting
  * the corner. These are the "overlapping waypoints so the plane flies a loop
  * turn" a fixed wing needs at sharp corridor bends.
+ *
+ * Only past TURN_LOOP_MIN_DEG, though. Inserting the pair replaces one turn of
+ * θ with two of (180 - θ/2), which is only the gentler manoeuvre when
+ * 180 - θ/2 < θ, i.e. θ > 120°. Below that the loop is sharper than the corner
+ * it was meant to soften: on a power line surveyed with the setting at 10° it
+ * put a 10 m dog-leg on every gentle bend, 45 of them doubling back over 150°.
  */
+export const TURN_LOOP_MIN_DEG = 120;
+
+/** Consecutive waypoints closer than this are the same point twice. */
+const WAYPOINT_MERGE_M = 0.5;
+
 function applyTurnLoops(path: XY[], maxTurnDeg: number, radius: number): XY[] {
   if (path.length < 3 || radius <= 0) return path;
-  const maxTurnRad = (maxTurnDeg * Math.PI) / 180;
+  const maxTurnRad = (Math.max(maxTurnDeg, TURN_LOOP_MIN_DEG) * Math.PI) / 180;
   const out: XY[] = [path[0]!];
   for (let i = 1; i < path.length - 1; i++) {
     const prev = path[i - 1]!;
@@ -295,9 +307,13 @@ function generateOneCorridor(config: SurveyConfig, centerline: LatLng[]): Survey
  * With no branches this is byte-for-byte the old single-corridor behavior.
  */
 export function generateCorridor(config: SurveyConfig): SurveyResult {
-  const centerlines = [config.polygon, ...(config.corridorBranches ?? [])].filter(
+  const branches = (config.corridorBranches ?? []).filter(
     (c): c is LatLng[] => Array.isArray(c) && c.length >= 2,
   );
+  const trunk = Array.isArray(config.polygon) && config.polygon.length >= 2 ? config.polygon : null;
+  // Cut the trunk where the spurs meet it, so a spur can be flown on the way
+  // past rather than after the whole line. Coverage is identical either way.
+  const centerlines = [...(trunk ? splitTrunkAtJunctions(trunk, branches) : []), ...branches];
   if (centerlines.length === 0) {
     return { waypoints: [], photoPositions: [], footprints: [], stats: emptyStats(config) };
   }
@@ -311,7 +327,11 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
   });
   if (parts.length === 1) return parts[0]!;
 
-  const waypoints = parts.flatMap((p) => p.waypoints);
+  // A split trunk shares its junction vertex between the two segments, so
+  // flying them back to back lands the aircraft on the same point twice.
+  const waypoints = parts
+    .flatMap((p) => p.waypoints)
+    .filter((wp, i, all) => i === 0 || distanceLatLng(all[i - 1]!, wp) > WAYPOINT_MERGE_M);
   const photoPositions = parts.flatMap((p) => p.photoPositions);
   const footprints = parts.flatMap((p) => p.footprints);
 
