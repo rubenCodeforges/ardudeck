@@ -123,7 +123,39 @@ function parseGeoJsonLines(content: string): ImportedLine[] {
       if (path.length >= 2) lines.push(f.name ? { path, name: f.name } : { path });
     }
   }
-  return lines;
+  if (lines.length > 0) return lines;
+
+  // Same fallback as KML: a pylon-per-feature export carries no line geometry.
+  const points: NamedPoint[] = [];
+  for (const f of features) {
+    for (const p of geoJsonPoints(f.geometry)) {
+      points.push(f.name ? { ...p, name: f.name } : p);
+    }
+  }
+  return pointsToLines(points);
+}
+
+/** Collect every Point / MultiPoint position from any GeoJSON geometry. */
+function geoJsonPoints(geometry: unknown): NamedPoint[] {
+  if (!geometry || typeof geometry !== 'object') return [];
+  const g = geometry as { type?: string; coordinates?: unknown; geometries?: unknown };
+  const one = (pt: unknown): NamedPoint | null => {
+    if (!Array.isArray(pt) || pt.length < 2) return null;
+    const lng = Number(pt[0]);
+    const lat = Number(pt[1]);
+    return isValidLatLng(lat, lng) ? { lat, lng } : null;
+  };
+  if (g.type === 'Point') {
+    const p = one(g.coordinates);
+    return p ? [p] : [];
+  }
+  if (g.type === 'MultiPoint' && Array.isArray(g.coordinates)) {
+    return g.coordinates.map(one).filter((p): p is NamedPoint => p !== null);
+  }
+  if (g.type === 'GeometryCollection' && Array.isArray(g.geometries)) {
+    return g.geometries.flatMap((sub) => geoJsonPoints(sub));
+  }
+  return [];
 }
 
 function parseGeoJson(content: string): ImportedArea[] {
@@ -282,6 +314,128 @@ function placemarkName(el: Element): string | undefined {
   return undefined;
 }
 
+/**
+ * Chain scattered points into polylines.
+ *
+ * Utilities publish a power line as one Placemark per pylon, with no
+ * LineString anywhere, and in no useful document order (the sample that
+ * prompted this runs 46, 47, 48, 45, 51...). The points do lie along a path,
+ * so a nearest-neighbour walk recovers it: on that file the result matches the
+ * utility's own mast numbering exactly, end to end.
+ *
+ * Two stages, because geometry alone is not enough. Chaining every point in
+ * that file welds the main line to four unrelated marker clusters that happen
+ * to pass nearby, so points are grouped by name first (digits replaced, so
+ * "Mast 46_337" and "Mast 47_337" share a group) and chained within a group.
+ * A run then breaks wherever a hop dwarfs the group's typical spacing, which
+ * separates clusters that share a naming scheme.
+ */
+const POINT_CHAIN_MAX = 2000;
+const POINT_CHAIN_BREAK_FACTOR = 3;
+const POINT_CHAIN_MIN_BREAK_M = 200;
+
+interface NamedPoint {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+/** Equirectangular metres; the distances compared here are local. */
+function approxMetres(a: NamedPoint, b: NamedPoint): number {
+  const latM = (a.lat - b.lat) * 110_540;
+  const lngM = (a.lng - b.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(latM, lngM);
+}
+
+/** "Mast 46_337" and "Mast 47_337" share a stem; "P3" and "P4" do not split. */
+function nameStem(name: string | undefined): string {
+  if (!name) return '';
+  return name.replace(/\s+/g, '').replace(/\d+/, '#');
+}
+
+/** Greedy nearest-neighbour order, seeded from an end of the run. */
+function chainOrder(points: NamedPoint[]): number[] {
+  const sweep = (seed: number): number[] => {
+    const order = [seed];
+    const left = new Set(points.map((_, i) => i));
+    left.delete(seed);
+    while (left.size > 0) {
+      const cur = points[order[order.length - 1]!]!;
+      let best = -1;
+      let bestD = Infinity;
+      for (const i of left) {
+        const dd = approxMetres(cur, points[i]!);
+        if (dd < bestD) { bestD = dd; best = i; }
+      }
+      if (best < 0) break;
+      order.push(best);
+      left.delete(best);
+    }
+    return order;
+  };
+  // Double sweep: the farthest point from an arbitrary start is an end of the
+  // run, so the second pass walks the path instead of starting in its middle.
+  return sweep(sweep(0)[points.length - 1] ?? 0);
+}
+
+function pointsToLines(points: NamedPoint[]): ImportedLine[] {
+  if (points.length < 2 || points.length > POINT_CHAIN_MAX) return [];
+
+  const groups = new Map<string, NamedPoint[]>();
+  for (const p of points) {
+    const key = nameStem(p.name);
+    const arr = groups.get(key);
+    if (arr) arr.push(p);
+    else groups.set(key, [p]);
+  }
+
+  const lines: ImportedLine[] = [];
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const order = chainOrder(group);
+    const hops: number[] = [];
+    for (let i = 0; i < order.length - 1; i++) {
+      hops.push(approxMetres(group[order[i]!]!, group[order[i + 1]!]!));
+    }
+    const sorted = [...hops].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    const breakAt = Math.max(POINT_CHAIN_BREAK_FACTOR * median, POINT_CHAIN_MIN_BREAK_M);
+
+    let run: NamedPoint[] = [group[order[0]!]!];
+    const flush = () => {
+      if (run.length < 2) return;
+      const name = run[0]?.name;
+      const path = run.map((p) => ({ lat: p.lat, lng: p.lng }));
+      lines.push(name ? { path, name } : { path });
+    };
+    for (let i = 0; i < hops.length; i++) {
+      if (hops[i]! > breakAt) { flush(); run = []; }
+      run.push(group[order[i + 1]!]!);
+    }
+    flush();
+  }
+  return lines;
+}
+
+/** Standalone <Point> placemarks, for files that carry no line geometry. */
+function kmlPoints(doc: Document): NamedPoint[] {
+  const out: NamedPoint[] = [];
+  const els = doc.getElementsByTagName('Point');
+  for (let i = 0; i < els.length; i++) {
+    const el = els[i];
+    if (!el) continue;
+    const coordText = firstChildText(el, 'coordinates');
+    if (!coordText) continue;
+    const parts = coordText.trim().split(',');
+    const lng = Number(parts[0]);
+    const lat = Number(parts[1]);
+    if (!isValidLatLng(lat, lng)) continue;
+    const name = placemarkName(el);
+    out.push(name ? { lat, lng, name } : { lat, lng });
+  }
+  return out;
+}
+
 function parseKmlLines(content: string): ImportedLine[] {
   const parser = new DOMParser();
   let doc: Document;
@@ -311,6 +465,9 @@ function parseKmlLines(content: string): ImportedLine[] {
     const name = placemarkName(el);
     lines.push(name ? { path, name } : { path });
   }
+  // Only when the file draws no lines of its own: a survey with real
+  // LineStrings plus a few markers must not gain phantom centrelines.
+  if (lines.length === 0) return pointsToLines(kmlPoints(doc));
   return lines;
 }
 

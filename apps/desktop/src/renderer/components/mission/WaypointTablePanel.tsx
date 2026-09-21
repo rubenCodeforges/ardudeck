@@ -1394,6 +1394,7 @@ function GroupHeaderRow({
   assignedVehicleKey,
   onAssignVehicle,
   onDistribute,
+  onDuplicate,
   onSelectWaypoints,
   bulkSelected,
   onToggleBulkSelected,
@@ -1443,6 +1444,7 @@ function GroupHeaderRow({
   onAssignVehicle?: (vehicleKey: string | null) => void;
   /** Split this group into one mission per fleet vehicle (swarm survey). */
   onDistribute?: () => void;
+  onDuplicate?: () => void;
   /** Add all of this group's waypoints to the multi-selection. */
   onSelectWaypoints?: () => void;
   /** Ticked for bulk actions. Undefined hides the checkbox entirely. */
@@ -1814,6 +1816,17 @@ function GroupHeaderRow({
                       Distribute to fleet ({fleetVehicles?.length})
                     </button>
                   )}
+                  {onDuplicate && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onDuplicate();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
+                    >
+                      Duplicate as backup
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setMenuOpen(false);
@@ -1869,6 +1882,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     deleteGroups,
     toggleGroupCollapsed,
     setGroupVisible,
+    duplicateGroup,
     focusWaypoint,
     uploadGroup,
     uploadGroupToVehicle,
@@ -2673,6 +2687,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                         ? () => selectGroupWaypoints(group.id)
                         : undefined
                     }
+                    onDuplicate={() => duplicateGroup(group.id)}
                     onAssignVehicle={(vehicleKey) => {
                       setGroupVehicle(group.id, vehicleKey);
                       // Assigning a vehicle colours the group by that vehicle's

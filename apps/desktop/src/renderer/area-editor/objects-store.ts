@@ -33,7 +33,8 @@ const pcApi = ((polygonClippingModule as { default?: unknown }).default ?? polyg
 const pcUnion: PCGeomFn = (...args) => pcApi.union(...args);
 const pcIntersection: PCGeomFn = (...args) => pcApi.intersection(...args);
 import type { LatLng } from '../components/survey/survey-types';
-import { latLngToLocal } from '../components/survey/geo-math';
+import { latLngToLocal, distanceLatLng } from '../components/survey/geo-math';
+import { orderCorridorRuns, transitDistance } from '../components/survey/generators/corridor-route';
 import { catmullRomSpline } from '../components/survey/geo-edit';
 import {
   makeFromWorldRing,
@@ -48,6 +49,7 @@ import {
   clipRingToPolygon,
   snapToNearestPolyline,
   objectWorldRing,
+  objectWorldBranches,
   objectWorldHoles,
   type EditorObject,
   type EditorObjectType,
@@ -72,6 +74,23 @@ function localRingArea(ring: LocalPt[]): number {
     a += p.x * q.y - q.x * p.y;
   }
   return a / 2;
+}
+
+/** Outcome of autoConnectCorridors, so the UI can report what it saved. */
+export interface AutoConnectResult {
+  trunkId: string;
+  /** How many corridor objects were folded in. */
+  absorbed: number;
+  /** Dead legs between runs, flying them as listed, entering each at its start. */
+  transitBeforeM: number;
+  /** Dead legs after ordering and orienting the runs. */
+  transitAfterM: number;
+}
+
+function polylineLength(line: LatLng[]): number {
+  let total = 0;
+  for (let i = 1; i < line.length; i++) total += distanceLatLng(line[i - 1]!, line[i]!);
+  return total;
 }
 
 /** What a right-click landed on; drives the context menu's available actions. */
@@ -139,6 +158,8 @@ interface ObjectsState {
   corridorWidthM: number;
   /** Monotonic counter so auto-names stay unique even after deletes. */
   nameSeq: number;
+  /** Ticked rows in the objects list, for actions that run over several. */
+  checkedIds: string[];
   /** Open right-click context menu, or null. */
   contextMenu: ContextMenuState | null;
   /** Undo stack (most recent last) and redo stack. */
@@ -159,6 +180,10 @@ interface ObjectsActions {
   redo: () => void;
 
   // right-click context menu
+  toggleChecked: (id: string) => void;
+  setChecked: (ids: string[]) => void;
+  clearChecked: () => void;
+
   openContextMenu: (menu: ContextMenuState) => void;
   closeContextMenu: () => void;
 
@@ -182,6 +207,13 @@ interface ObjectsActions {
   clearBranches: (id?: string) => void;
   /** Remove a single branch (by index) from a corridor. */
   removeBranch: (id: string, index: number) => void;
+  /**
+   * Join corridors into ONE routable survey: the longest becomes the trunk,
+   * the rest attach as branches at their nearest end, and the generator then
+   * orders and orients every run to keep the dead legs short. Pass the ids to
+   * act on, or omit for every visible corridor.
+   */
+  autoConnectCorridors: (ids?: string[]) => AutoConnectResult | null;
   cancelDraft: () => void;
 
   // whole-object transforms (operate on the selected object)
@@ -286,6 +318,7 @@ export const useObjectsStore = create<Store>()(
     selectedMeasure: false,
     corridorWidthM: 60,
     nameSeq: 0,
+    checkedIds: [],
     contextMenu: null,
     past: [],
     future: [],
@@ -327,6 +360,13 @@ export const useObjectsStore = create<Store>()(
         if (!next) return {};
         return { ...next, ...NEUTRAL_TOOL_STATE, future: s.future.slice(0, -1), past: [...s.past, snapshot(s)].slice(-HISTORY_LIMIT) };
       }),
+
+    toggleChecked: (id) =>
+      set((s) => ({
+        checkedIds: s.checkedIds.includes(id) ? s.checkedIds.filter((x) => x !== id) : [...s.checkedIds, id],
+      })),
+    setChecked: (ids) => set({ checkedIds: [...ids] }),
+    clearChecked: () => set({ checkedIds: [] }),
 
     openContextMenu: (menu) => set({ contextMenu: menu }),
     closeContextMenu: () => set({ contextMenu: null }),
@@ -475,6 +515,54 @@ export const useObjectsStore = create<Store>()(
           return { ...o, branches };
         }),
       }));
+    },
+
+    mergeCorridors: (id) => {
+      const targetId = id ?? get().selectedId;
+      const objects = get().objects;
+      const target = objects.find((o) => o.id === targetId);
+      if (!target || target.type !== 'corridor') return 0;
+
+      const others = objects.filter(
+        (o) => o.id !== target.id && o.type === 'corridor' && o.visible && o.base.length >= 2,
+      );
+      if (others.length === 0) return 0;
+
+      // Each absorbed corridor comes in through world coordinates: they carry
+      // their own origin and rotation, so its local frame means nothing here.
+      const added: LocalPt[][] = [];
+      for (const other of others) {
+        for (const line of [objectWorldRing(other), ...objectWorldBranches(other)]) {
+          if (line.length < 2) continue;
+          const local: LocalPt[] = line.map((p) => worldToLocal(target, p));
+          // Attach at whichever end sits nearer the network, so the junction
+          // lands where the spur actually meets the line rather than at
+          // whichever end happened to be drawn first.
+          const lines = [target.base, ...(target.branches ?? []), ...added];
+          const head = snapToNearestPolyline(local[0]!, lines);
+          const tail = snapToNearestPolyline(local[local.length - 1]!, lines);
+          const dHead = (head.x - local[0]!.x) ** 2 + (head.y - local[0]!.y) ** 2;
+          const dTail = (tail.x - local[local.length - 1]!.x) ** 2 + (tail.y - local[local.length - 1]!.y) ** 2;
+          if (dTail < dHead) {
+            local.reverse();
+            local[0] = tail;
+          } else {
+            local[0] = head;
+          }
+          added.push(local);
+        }
+      }
+      if (added.length === 0) return 0;
+
+      const absorbed = new Set(others.map((o) => o.id));
+      get().pushHistory();
+      set((s) => ({
+        objects: s.objects
+          .filter((o) => !absorbed.has(o.id))
+          .map((o) => (o.id === target.id ? { ...o, branches: [...(o.branches ?? []), ...added] } : o)),
+        selectedId: target.id,
+      }));
+      return others.length;
     },
 
     cancelDraft: () => set({ draftPoints: [], draftType: null }),

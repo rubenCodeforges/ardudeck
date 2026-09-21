@@ -105,6 +105,7 @@ interface SurveyStore {
     id: string;
     polygon: Array<{ lat: number; lng: number }>;
     config: Record<string, unknown>;
+    locked?: boolean;
   }) => void;
 
   // Config actions
@@ -179,6 +180,14 @@ interface SurveyStore {
   editSnapshot: LatLng[] | null;
   enterPolygonEdit: () => void;
   exitPolygonEdit: (commit: boolean) => void;
+
+  /**
+   * Shape is pinned while the numbers are tuned: handles stop dragging and
+   * every geometry mutator refuses, so a stray drag over the map cannot move
+   * an area or corridor. Mirrors the editing group's `locked` flag.
+   */
+  geometryLocked: boolean;
+  setGeometryLocked: (locked: boolean) => void;
 
   /**
    * Regenerate the preview/mission. `immediate` runs now (used by discrete
@@ -398,6 +407,15 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   polygonEditMode: false,
   pendingRecompute: false,
   editSnapshot: null,
+  geometryLocked: false,
+
+  setGeometryLocked: (locked) => {
+    // Leaving edit mode on lock: the Done/Cancel affordances make no sense
+    // once nothing can be dragged.
+    set({ geometryLocked: locked, ...(locked ? { polygonEditMode: false } : {}) });
+    const id = get().editingGroupId;
+    if (id) useMissionStore.getState().setGroupLocked(id, locked);
+  },
 
   startDrawing: () => {
     set({ drawMode: 'polygon', drawingVertices: [], polygon: null, result: null });
@@ -636,7 +654,8 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   setPanoramaTangent: (index, tangent) => {
-    const { config } = get();
+    const { config, geometryLocked } = get();
+    if (geometryLocked) return;
     const rec = { ...(config.panoramaTangents ?? {}) };
     if (tangent) rec[index] = tangent;
     else delete rec[index];
@@ -682,8 +701,8 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   updateVertex: (index, lat, lng) => {
-    const { polygon, polygonEditMode } = get();
-    if (!polygon) return;
+    const { polygon, polygonEditMode, geometryLocked } = get();
+    if (!polygon || geometryLocked) return;
     const newPolygon = [...polygon];
     newPolygon[index] = { lat, lng };
     set({ polygon: newPolygon });
@@ -693,8 +712,8 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   insertVertexAfter: (index, lat, lng) => {
-    const { polygon, polygonEditMode, config } = get();
-    if (!polygon || index < 0 || index >= polygon.length) return;
+    const { polygon, polygonEditMode, config, geometryLocked } = get();
+    if (!polygon || geometryLocked || index < 0 || index >= polygon.length) return;
     const newPolygon = [...polygon.slice(0, index + 1), { lat, lng }, ...polygon.slice(index + 1)];
     // Dragged tangent handles are keyed by anchor index - shift the ones after
     // the insertion point so they stay attached to their anchors.
@@ -712,8 +731,8 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   removeVertex: (index) => {
-    const { polygon, polygonEditMode, config } = get();
-    if (!polygon || polygon.length <= 3) return; // Need at least 3 vertices
+    const { polygon, polygonEditMode, config, geometryLocked } = get();
+    if (!polygon || geometryLocked || polygon.length <= 3) return; // Need at least 3 vertices
     const newPolygon = polygon.filter((_, i) => i !== index);
     if (config.panoramaTangents) {
       const shifted: NonNullable<typeof config.panoramaTangents> = {};
@@ -730,10 +749,10 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   updateBranchVertex: (branchIndex, vertexIndex, lat, lng) => {
-    const { config, polygonEditMode } = get();
+    const { config, polygonEditMode, geometryLocked } = get();
     const branches = config.corridorBranches;
     const line = branches?.[branchIndex];
-    if (!branches || !line) return;
+    if (!branches || !line || geometryLocked) return;
     const newLine = line.map((p, i) => (i === vertexIndex ? { lat, lng } : p));
     const next = branches.map((b, bi) => (bi === branchIndex ? newLine : b));
     set({ config: { ...config, corridorBranches: next } });
@@ -742,10 +761,10 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   removeBranchVertex: (branchIndex, vertexIndex) => {
-    const { config, polygonEditMode } = get();
+    const { config, polygonEditMode, geometryLocked } = get();
     const branches = config.corridorBranches;
     const line = branches?.[branchIndex];
-    if (!branches || !line) return;
+    if (!branches || !line || geometryLocked) return;
     let next: LatLng[][];
     if (line.length <= 2) {
       next = branches.filter((_, bi) => bi !== branchIndex); // would degenerate -> drop branch
@@ -964,6 +983,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       generating: false,
       generatorError: null,
       editingGroupId: null,
+      geometryLocked: false,
     });
   },
 
@@ -982,6 +1002,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       generating: false,
       generatorError: null,
       editingGroupId: null,
+      geometryLocked: false,
     });
   },
 
@@ -997,6 +1018,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       result: null,
       isActive: true,
       editingGroupId: null,
+      geometryLocked: false,
       generating: false,
       generatorError: null,
     });
@@ -1015,6 +1037,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       result: null,
       isActive: true,
       editingGroupId: null,
+      geometryLocked: false,
       generating: false,
       generatorError: null,
     });
@@ -1052,6 +1075,8 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       config,
       isActive: true,
       editingGroupId: group.id,
+      geometryLocked: group.locked === true,
+      polygonEditMode: false,
     });
     // Build the preview only - do NOT sync, or merely opening a group would
     // overwrite its committed WPs (e.g. terrain-adjusted altitudes) before the

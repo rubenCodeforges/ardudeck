@@ -14,6 +14,7 @@ import {
 import {
   createManualGroup,
   createImportedGroup,
+  duplicateGroup,
   nextGroupColor,
   type Group,
   type ManualGroup,
@@ -343,6 +344,10 @@ interface MissionStore {
   toggleGroupCollapsed: (groupId: string) => void;
   /** Toggle whether a group is shown on the map. */
   setGroupVisible: (groupId: string, visible: boolean) => void;
+  /** Pin the group's geometry so its shape cannot be dragged. */
+  setGroupLocked: (groupId: string, locked: boolean) => void;
+  /** Copy a group and its waypoints; the copy lands hidden and locked. Returns its id. */
+  duplicateGroup: (groupId: string) => string | null;
   reorderGroups: (groupId: string, toOrder: number) => void;
   /**
    * Add a survey group together with its generated WPs atomically. Items
@@ -1234,6 +1239,35 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     set((s) => ({
       groups: s.groups.map((g) =>
         g.id === groupId ? { ...g, visible, updatedAt: Date.now() } : g,
+      ),
+      isDirty: true,
+    }));
+  },
+
+  duplicateGroup: (groupId) => {
+    const { missionItems, groups } = get();
+    const src = groups.find((g) => g.id === groupId);
+    if (!src) return null;
+
+    const taken = new Set(groups.map((g) => g.name));
+    const base = `${src.name} backup`;
+    let name = base;
+    for (let n = 2; taken.has(name); n++) name = `${base} ${n}`;
+
+    // Hidden and locked: a backup sitting visible on top of the original
+    // doubles the drawn path and the WP/distance totals, and the whole point
+    // is that it stays as it was.
+    const copy = { ...duplicateGroup(src, name, 0), visible: false, locked: true };
+    const [id] = get().addGroupsWithItems([
+      { group: copy, items: missionItems.filter((it) => it.groupId === groupId) },
+    ]);
+    return id ?? null;
+  },
+
+  setGroupLocked: (groupId, locked) => {
+    set((s) => ({
+      groups: s.groups.map((g) =>
+        g.id === groupId ? { ...g, locked, updatedAt: Date.now() } : g,
       ),
       isDirty: true,
     }));

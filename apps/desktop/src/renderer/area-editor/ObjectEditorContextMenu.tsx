@@ -74,7 +74,7 @@ export function ObjectEditorContextMenu(): JSX.Element | null {
 
   const {
     closeContextMenu, setTool, selectObject, deleteObject, duplicateObject, reorderObject,
-    convertSelectedToPolygon, setObjectRole, mergeOverlapping, clearBranches, clearMeasure, editMeasurement,
+    convertSelectedToPolygon, setObjectRole, mergeOverlapping, clearBranches, mergeCorridors, clearMeasure, editMeasurement,
     insertMeasurePointAt, deleteMeasurePoint, undo, redo,
   } = useObjectsStore.getState();
 
@@ -84,6 +84,9 @@ export function ObjectEditorContextMenu(): JSX.Element | null {
   const obj = target.kind === 'object' ? objects.find((o) => o.id === target.id) ?? null : null;
   const isCorridor = obj?.type === 'corridor';
   const isParametric = obj?.type === 'rectangle' || obj?.type === 'circle';
+  const otherCorridors = obj
+    ? objects.filter((o) => o.id !== obj.id && o.type === 'corridor' && o.visible && o.base.length >= 2).length
+    : 0;
 
   let body: ReactNode = null;
   if (obj) {
@@ -119,6 +122,13 @@ export function ObjectEditorContextMenu(): JSX.Element | null {
           <>
             <Divider />
             <Item label="Add branch" onClick={run(() => { selectObject(obj.id); setTool('branch'); })} />
+            {otherCorridors > 0 && (
+              <Item
+                label="Absorb other corridors"
+                hint={`${otherCorridors} into one route`}
+                onClick={run(() => mergeCorridors(obj.id))}
+              />
+            )}
             {(obj.branches?.length ?? 0) > 0 && (
               <Item label="Clear branches" hint={String(obj.branches!.length)} onClick={run(() => clearBranches(obj.id))} />
             )}

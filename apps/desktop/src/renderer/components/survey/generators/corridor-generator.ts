@@ -25,8 +25,9 @@
  * Branched corridors (a main axis with side spurs: forked roads, power-line
  * taps, river tributaries) are supported via `config.corridorBranches`: each
  * branch is a further open centerline, generated with this same strip algorithm
- * and flown in sequence after the main centerline. They share the corridor's
- * width/overlap/camera settings. Junctions are visual only and some overlap at a
+ * and flown after the main centerline, in the order and direction that keeps
+ * the dead legs between runs shortest (see corridor-route). They share the
+ * corridor's width/overlap/camera settings. Junctions are visual only and some overlap at a
  * fork is accepted, which matches every other corridor tool (UgCS, QGC,
  * DroneDeploy, Pix4D) - those force the operator to manage disconnected routes
  * by hand instead of keeping the branches in one corridor object.
@@ -34,6 +35,7 @@
 import type { LatLng, SurveyConfig, SurveyResult, SurveyStats } from '../survey-types';
 import { latLngToLocal, localToLatLng, polygonCentroid, distanceLatLng } from '../geo-math';
 import { getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
+import { orderCorridorRuns } from './corridor-route';
 
 interface XY {
   x: number;
@@ -300,7 +302,13 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
     return { waypoints: [], photoPositions: [], footprints: [], stats: emptyStats(config) };
   }
 
-  const parts = centerlines.map((c) => generateOneCorridor(config, c));
+  // Order and orient the runs before generating, so the aircraft works its way
+  // along the line instead of crossing back for every spur it was drawn after.
+  const plan = orderCorridorRuns(centerlines);
+  const parts = plan.map(({ index, reversed }) => {
+    const line = centerlines[index]!;
+    return generateOneCorridor(config, reversed ? [...line].reverse() : line);
+  });
   if (parts.length === 1) return parts[0]!;
 
   const waypoints = parts.flatMap((p) => p.waypoints);

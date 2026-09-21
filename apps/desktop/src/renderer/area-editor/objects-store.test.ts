@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { LatLng } from '../components/survey/survey-types';
 import { useObjectsStore } from './objects-store';
-import { makeRectangle, objectWorldRing } from './area-object';
+import { makeRectangle, objectWorldRing, makeFromWorldRing, type EditorObject } from './area-object';
 import { distanceLatLng } from '../components/survey/geo-math';
 
 const CENTER: LatLng = { lat: 42, lng: 19 };
@@ -575,5 +575,79 @@ describe('corridor branches', () => {
     expect(useObjectsStore.getState().objects.find((o) => o.id === id)!.branches![0]!.length).toBe(2);
     st.deleteVertex(1, 0); // 2 -> would be 1, so the branch is dropped
     expect(useObjectsStore.getState().objects.find((o) => o.id === id)!.branches).toBeUndefined();
+  });
+});
+
+/**
+ * A power-line network arrives as separate corridor objects (one per spur,
+ * from an import or from drawing). Flown that way it is several missions with
+ * transit legs between them.
+ */
+describe('mergeCorridors', () => {
+  const corridor = (name: string, pts: Array<[number, number]>): EditorObject =>
+    makeFromWorldRing('corridor', pts.map(([lat, lng]) => ({ lat, lng })), name, { corridorWidthM: 60 });
+
+  beforeEach(() => {
+    useObjectsStore.setState({ objects: [], selectedId: null, past: [], future: [] });
+  });
+
+  it('folds the other corridors in as branches and removes them', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.20]]);
+    const spurA = corridor('Spur A', [[53.505, 9.05], [53.51, 9.06]]);
+    const spurB = corridor('Spur B', [[53.505, 9.15], [53.51, 9.16]]);
+    useObjectsStore.setState({ objects: [trunk, spurA, spurB], selectedId: trunk.id });
+
+    const absorbed = useObjectsStore.getState().mergeCorridors(trunk.id);
+
+    expect(absorbed).toBe(2);
+    const objects = useObjectsStore.getState().objects;
+    expect(objects).toHaveLength(1);
+    expect(objects[0]!.branches).toHaveLength(2);
+  });
+
+  it('keeps the branches a spur already carried', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.20]]);
+    const spur = corridor('Spur', [[53.505, 9.05], [53.51, 9.06]]);
+    spur.branches = [[{ x: 0, y: 0 }, { x: 50, y: 50 }]];
+    useObjectsStore.setState({ objects: [trunk, spur], selectedId: trunk.id });
+
+    useObjectsStore.getState().mergeCorridors(trunk.id);
+
+    expect(useObjectsStore.getState().objects[0]!.branches).toHaveLength(2);
+  });
+
+  it('attaches each spur by whichever end is nearer the network', () => {
+    // Drawn running AWAY from the trunk, so its first point is the far end.
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.20]]);
+    const spur = corridor('Spur', [[53.60, 9.10], [53.501, 9.10]]);
+    useObjectsStore.setState({ objects: [trunk, spur], selectedId: trunk.id });
+
+    useObjectsStore.getState().mergeCorridors(trunk.id);
+
+    const merged = useObjectsStore.getState().objects[0]!;
+    const branch = merged.branches![0]!;
+    // The attached end sits on the trunk; the free end is the far one.
+    expect(Math.abs(branch[0]!.y)).toBeLessThan(Math.abs(branch[branch.length - 1]!.y));
+  });
+
+  it('does nothing without another corridor to absorb', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.20]]);
+    useObjectsStore.setState({ objects: [trunk], selectedId: trunk.id });
+    expect(useObjectsStore.getState().mergeCorridors(trunk.id)).toBe(0);
+    expect(useObjectsStore.getState().objects).toHaveLength(1);
+  });
+
+  it('leaves areas alone', () => {
+    const trunk = corridor('Trunk', [[53.50, 9.00], [53.50, 9.20]]);
+    const area = makeFromWorldRing('polygon', [
+      { lat: 53.6, lng: 9.0 }, { lat: 53.6, lng: 9.1 }, { lat: 53.61, lng: 9.1 },
+    ], 'Field');
+    useObjectsStore.setState({ objects: [trunk, area], selectedId: trunk.id });
+
+    useObjectsStore.getState().mergeCorridors(trunk.id);
+
+    const objects = useObjectsStore.getState().objects;
+    expect(objects).toHaveLength(2);
+    expect(objects.some((o) => o.type === 'polygon')).toBe(true);
   });
 });

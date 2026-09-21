@@ -48,6 +48,13 @@ interface BaseGroup {
   visible: boolean;
   /** UI collapse state. Persisted so reopening a mission feels stable. */
   collapsed: boolean;
+  /**
+   * Geometry is pinned: the polygon, corridor centreline and their vertex
+   * handles cannot be dragged or edited. Settings stay adjustable. Deliberately
+   * NOT part of the generator signature (see survey-group-signature.ts), so
+   * locking does not mark a survey stale.
+   */
+  locked?: boolean;
   /** Explicit ordering. Drag-reorder updates this. Lower values render first. */
   order: number;
   /**
@@ -164,6 +171,30 @@ function uuid(): string {
   // Fallback: time + random. Sufficient for in-memory group ids when crypto
   // is unavailable; never serialized as a security-bearing identifier.
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * A standalone copy of a group, safe to edit without touching the original.
+ *
+ * Deep-cloned on purpose: a survey carries polygon, holes and a config holding
+ * nested arrays (corridorBranches, panoramaTangents, engineParams), and a
+ * shallow spread would leave the two groups sharing them, so dragging one
+ * would move the "backup" too.
+ *
+ * `distribution` is dropped because it points at the original's fleet child
+ * group ids, which the copy does not own.
+ */
+export function duplicateGroup(group: Group, name: string, order: number): Group {
+  const { distribution: _dropped, ...rest } = group as Group & { distribution?: unknown };
+  const now = Date.now();
+  return {
+    ...(structuredClone(rest) as Group),
+    id: uuid(),
+    name,
+    order,
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 export interface CreateManualGroupOptions {

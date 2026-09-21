@@ -14,6 +14,7 @@
  */
 import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+import { Lock, LockOpen } from 'lucide-react';
 import { useSurveyStore } from '../../stores/survey-store';
 import { useMissionStore } from '../../stores/mission-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -120,6 +121,8 @@ export function SurveyConfigPanel() {
   const polygonEditMode = useSurveyStore((s) => s.polygonEditMode);
   const pendingRecompute = useSurveyStore((s) => s.pendingRecompute);
   const enterPolygonEdit = useSurveyStore((s) => s.enterPolygonEdit);
+  const geometryLocked = useSurveyStore((s) => s.geometryLocked);
+  const setGeometryLocked = useSurveyStore((s) => s.setGeometryLocked);
   const exitPolygonEdit = useSurveyStore((s) => s.exitPolygonEdit);
   const setEditingGroupId = useSurveyStore((s) => s.setEditingGroupId);
 
@@ -1416,10 +1419,32 @@ export function SurveyConfigPanel() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={enterPolygonEdit}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium bg-surface-raised text-content hover:text-purple-300 border border-purple-500/30 transition-colors"
-                  title="Edit the boundary - drag vertices on the map, then Done recomputes the waypoints"
+                  disabled={geometryLocked}
+                  className={
+                    'flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ' +
+                    (geometryLocked
+                      ? 'bg-surface-raised text-content-tertiary border-subtle cursor-not-allowed'
+                      : 'bg-surface-raised text-content hover:text-purple-300 border-purple-500/30')
+                  }
+                  title={geometryLocked
+                    ? 'Shape is locked - unlock to move vertices'
+                    : 'Edit the boundary - drag vertices on the map, then Done recomputes the waypoints'}
                 >
                   Edit polygon
+                </button>
+                <button
+                  onClick={() => setGeometryLocked(!geometryLocked)}
+                  data-tip={geometryLocked
+                    ? 'Unlock the shape so it can be dragged again'
+                    : 'Lock the shape so tuning the settings cannot move it'}
+                  className={
+                    'px-3 py-2 rounded-lg transition-colors ' +
+                    (geometryLocked
+                      ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40'
+                      : 'bg-surface-raised text-content-secondary hover:text-content hover:bg-surface-input border border-transparent')
+                  }
+                >
+                  {geometryLocked ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={deactivateSurvey}

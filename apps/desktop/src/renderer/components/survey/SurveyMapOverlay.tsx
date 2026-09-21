@@ -131,6 +131,7 @@ const VertexMarker = memo(function VertexMarker({
   selected,
   onSelect,
   live,
+  locked,
 }: {
   position: LatLng;
   index: number;
@@ -141,6 +142,7 @@ const VertexMarker = memo(function VertexMarker({
   onSelect?: (index: number) => void;
   /** Update on every drag frame (cheap patterns like panorama), not only on release. */
   live?: boolean;
+  locked?: boolean;
 }) {
   const handleDragEnd = useCallback((e: L.DragEndEvent | L.LeafletEvent) => {
     const latlng = (e.target as L.Marker).getLatLng();
@@ -149,10 +151,10 @@ const VertexMarker = memo(function VertexMarker({
 
   const handleContextMenu = useCallback((e: L.LeafletMouseEvent) => {
     e.originalEvent.preventDefault();
-    if (canDelete) {
+    if (canDelete && !locked) {
       onDelete(index);
     }
-  }, [index, canDelete, onDelete]);
+  }, [index, canDelete, locked, onDelete]);
 
   const handleClick = useCallback((e: L.LeafletMouseEvent) => {
     e.originalEvent.stopPropagation();
@@ -163,7 +165,7 @@ const VertexMarker = memo(function VertexMarker({
     <Marker
       position={[position.lat, position.lng]}
       icon={selected ? SELECTED_VERTEX_ICON : VERTEX_ICON}
-      draggable
+      draggable={!locked}
       // Above the boundary/curve lines (surveyEditPane, 640) - otherwise a
       // mouse-down aimed at a handle hits the line and pans the map instead.
       pane="surveyHandlePane"
@@ -177,7 +179,7 @@ const VertexMarker = memo(function VertexMarker({
       <Tooltip direction="top" offset={[0, -8]} opacity={0.9} pane="vertexTooltipPane">
         <span style={{ fontSize: '10px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
           {`P${index + 1}: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`}
-          {canDelete ? '\nRight-click to delete' : ''}
+          {locked ? '\nLocked' : canDelete ? '\nRight-click to delete' : ''}
         </span>
       </Tooltip>
     </Marker>
@@ -202,6 +204,7 @@ export function SurveyMapOverlay() {
   const maxEditableVertices = useSettingsStore((s) => s.surveyPerformance.maxEditableVertices);
   const maxPhotoMarkers = useSettingsStore((s) => s.surveyPerformance.maxPhotoMarkers);
   const polygonEditMode = useSurveyStore((s) => s.polygonEditMode);
+  const geometryLocked = useSurveyStore((s) => s.geometryLocked);
 
   // Track the map viewport so that, when editing a large polygon, we only
   // render drag handles for vertices currently on screen (capped) - editing a
@@ -484,6 +487,7 @@ export function SurveyMapOverlay() {
                         position={v}
                         index={vi}
                         canDelete
+                        locked={geometryLocked}
                         onDragEnd={(idx, lat, lng) => updateBranchVertex(bi, idx, lat, lng)}
                         onDelete={(idx) => removeBranchVertex(bi, idx)}
                       />
@@ -550,7 +554,7 @@ export function SurveyMapOverlay() {
                     key={`tangent-${arm}`}
                     position={toLf(pos)}
                     icon={TANGENT_ICON}
-                    draggable
+                    draggable={!geometryLocked}
                     pane="surveyHandlePane"
                     // `drag` fires every move so the curve reshapes in realtime;
                     // dragend is the final commit for the same math.
@@ -568,7 +572,7 @@ export function SurveyMapOverlay() {
           {/* Panorama: ghost midpoints appear on the two segments beside the
               SELECTED control point - click one to add a control point there,
               then drag it to bend the curve. */}
-          {pattern === 'panorama' && polygon && polygon.length >= 2 && selectedCtrl !== null &&
+          {pattern === 'panorama' && !geometryLocked && polygon && polygon.length >= 2 && selectedCtrl !== null &&
             [selectedCtrl - 1, selectedCtrl].map((i) => {
               if (i < 0 || i >= polygon.length - 1) return null;
               const v = polygon[i]!;
@@ -610,6 +614,7 @@ export function SurveyMapOverlay() {
               selected={pattern === 'panorama' && selectedCtrl === i}
               onSelect={pattern === 'panorama' ? setSelectedCtrl : undefined}
               live={pattern === 'panorama'}
+              locked={geometryLocked}
             />
           ))}
         </Pane>

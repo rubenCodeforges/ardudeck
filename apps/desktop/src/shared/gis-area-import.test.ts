@@ -313,3 +313,69 @@ describe('parseGisLines', () => {
     expect(parseGisLines('<kml', 'kml')).toEqual([]);
   });
 });
+
+/**
+ * Point-only exports: a utility publishes an overhead line as one Placemark
+ * per pylon, with no LineString anywhere, and in arbitrary document order.
+ */
+describe('lines chained from bare points', () => {
+  /** A straight run of `n` pylons ~350 m apart, emitted out of order. */
+  function pylonKml(prefix: string, n: number, lat0: number, lng0: number, shuffle = true): string {
+    const idx = Array.from({ length: n }, (_, i) => i);
+    if (shuffle) idx.sort((a, b) => ((a * 7) % n) - ((b * 7) % n));
+    const marks = idx
+      .map((i) => `<Placemark><name>${prefix} ${i + 1}_337</name>` +
+        `<Point><coordinates>${(lng0 + i * 0.005).toFixed(9)},${lat0.toFixed(9)},0</coordinates></Point></Placemark>`)
+      .join('');
+    return `<?xml version="1.0"?><kml><Document>${marks}</Document></kml>`;
+  }
+
+  it('recovers one ordered centreline from unordered pylons', () => {
+    const lines = parseGisLines(pylonKml('Mast', 20, 53.52, 9.28), 'kml');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.path).toHaveLength(20);
+    // Walking the recovered order must march monotonically along the run.
+    const lngs = lines[0]!.path.map((p) => p.lng);
+    const ascending = lngs.every((v, i) => i === 0 || v > lngs[i - 1]!);
+    const descending = lngs.every((v, i) => i === 0 || v < lngs[i - 1]!);
+    expect(ascending || descending).toBe(true);
+  });
+
+  it('splits runs that share a naming scheme but sit far apart', () => {
+    const a = pylonKml('Mast', 8, 53.52, 9.28);
+    const b = pylonKml('Mast', 8, 53.60, 9.90);
+    const merged = a.replace('</Document></kml>', '') + b.replace(/^.*<Document>/, '');
+    const lines = parseGisLines(merged, 'kml');
+    expect(lines).toHaveLength(2);
+    expect(lines.every((l) => l.path.length === 8)).toBe(true);
+  });
+
+  it('leaves files that carry real lines alone', () => {
+    const kml = `<?xml version="1.0"?><kml><Document>
+      <Placemark><name>Road</name><LineString><coordinates>9.1,53.1,0 9.2,53.2,0</coordinates></LineString></Placemark>
+      <Placemark><name>Marker 1</name><Point><coordinates>9.3,53.3,0</coordinates></Point></Placemark>
+      <Placemark><name>Marker 2</name><Point><coordinates>9.31,53.31,0</coordinates></Point></Placemark>
+    </Document></kml>`;
+    const lines = parseGisLines(kml, 'kml');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.name).toBe('Road');
+  });
+
+  it('needs two points before it invents a line', () => {
+    const kml = `<?xml version="1.0"?><kml><Document>
+      <Placemark><name>Solo</name><Point><coordinates>9.3,53.3,0</coordinates></Point></Placemark>
+    </Document></kml>`;
+    expect(parseGisLines(kml, 'kml')).toEqual([]);
+  });
+
+  it('chains GeoJSON point features the same way', () => {
+    const features = Array.from({ length: 6 }, (_, i) => ({
+      type: 'Feature',
+      properties: { name: `Mast ${i + 1}_337` },
+      geometry: { type: 'Point', coordinates: [9.28 + ((i * 5) % 6) * 0.005, 53.52] },
+    }));
+    const lines = parseGisLines(JSON.stringify({ type: 'FeatureCollection', features }), 'geojson');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.path).toHaveLength(6);
+  });
+});
