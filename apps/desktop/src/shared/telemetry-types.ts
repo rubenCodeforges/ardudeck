@@ -184,6 +184,33 @@ export interface TelemetryState {
   navController: NavControllerData | null;
   /** null until the vehicle broadcasts a guided target; age-gate on receivedAt. */
   guidedTarget: GuidedTargetData | null;
+  /** MAV_VTOL_STATE from EXTENDED_SYS_STATE. null on non-VTOL or before first report. */
+  vtolState: VtolState | null;
+}
+
+/** MAV_VTOL_STATE. A quadplane's mode name never says it is mid-transition. */
+export enum VtolState {
+  Undefined = 0,
+  TransitionToFixedWing = 1,
+  TransitionToMulticopter = 2,
+  Multicopter = 3,
+  FixedWing = 4,
+}
+
+/** True while the airframe is between hover and wingborne flight. */
+export function isTransitioning(state: VtolState | null | undefined): boolean {
+  return state === VtolState.TransitionToFixedWing || state === VtolState.TransitionToMulticopter;
+}
+
+/** Short label for a HUD or annunciator cell. */
+export function vtolStateLabel(state: VtolState | null | undefined): string | null {
+  switch (state) {
+    case VtolState.Multicopter: return 'HOVER';
+    case VtolState.FixedWing: return 'WING';
+    case VtolState.TransitionToFixedWing: return 'TO WING';
+    case VtolState.TransitionToMulticopter: return 'TO HOVER';
+    default: return null;
+  }
 }
 
 // Flight modes for ArduPilot Copter

@@ -77,6 +77,7 @@ import { VaultAutoSyncToggle } from '../vault/VaultAutoSyncToggle';
 import { useFleetRepoStore } from '../../stores/fleet-repo-store';
 import { emitParamsFlashed } from '../../modules/module-host-renderer';
 import { isCargoEnabled, VAULT_CARGO_SLUG } from '../../modules/capabilities';
+import PlaneTuningTab from './PlaneTuningTab';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -315,15 +316,12 @@ const ROVER_TABS: TabNode[] = [
   STORAGE_GROUP,
 ];
 
-// Tabs whose content speaks ArduPilot-only params/commands and has no PX4
-// variant yet: Rates (ACRO_RP_*), Tuning presets, Serial Ports (SERIALn_*),
-// Motor Test (DO_MOTOR_TEST, which PX4 rejects). Hidden on PX4 rather than
-// shown hunting for parameters that don't exist; the full parameter table
-// still exposes everything with PX4's own metadata.
-// Rates and Tuning are ArduPilot-parameter presets with no PX4 counterpart
-// (PX4 rate/tuning params live in the PID tab and parameter table). Serial
-// ports and motor test have dedicated PX4 implementations.
-const PX4_UNSUPPORTED_TABS: ReadonlySet<TabId> = new Set(['rates', 'tuning', 'autotune']);
+// ArduPilot-parameter presets with no PX4 counterpart. Hidden rather than
+// shown hunting for parameters that do not exist; the parameter table still
+// exposes everything with PX4's own metadata.
+const PX4_UNSUPPORTED_TABS: ReadonlySet<TabId> = new Set([
+  'rates', 'tuning', 'autotune', 'rover-tuning', 'rover-nav',
+]);
 
 function filterTabsForFirmware(nodes: TabNode[], isPx4: boolean): TabNode[] {
   if (!isPx4) return nodes;
@@ -546,7 +544,9 @@ export const MavlinkConfigView: React.FC = () => {
       case 'rates':
         return <RatesTab />;
       case 'tuning':
-        return <TuningTab />;
+        // The copter tab speaks ANGLE_MAX / WPNAV_* / LOIT_*, which a plane
+        // does not have, so it rendered fallbacks as if they were real.
+        return isPlane ? <PlaneTuningTab /> : <TuningTab />;
       case 'autotune':
         return <AutotuneTab vehicleCategory={vehicleCategory} />;
       // Rover tabs

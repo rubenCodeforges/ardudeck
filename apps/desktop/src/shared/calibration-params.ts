@@ -1,6 +1,6 @@
 /**
- * Classification of ArduPilot parameters that are per-unit calibration or
- * per-unit identity, as opposed to portable configuration.
+ * Classification of parameters that are per-unit calibration or per-unit
+ * identity, as opposed to portable configuration. ArduPilot and PX4 both.
  *
  * Used by the fleet vault: restoring a snapshot or applying another unit's
  * config must NEVER overwrite these by default. Compass offsets from a
@@ -51,6 +51,19 @@ const CAL_PATTERNS: RegExp[] = [
   // Board identity and stats
   /^SYSID_THISMAV$/,
   /^STAT_.+$/,
+
+  // PX4. Same danger, different names: CAL_* is the whole per-sensor
+  // calibration set, SENS_BOARD_* is this airframe's mounting.
+  /^CAL_(ACC|GYRO|MAG)\d+_(X|Y|Z)(OFF|SCALE|ODIAG|COMP)$/,
+  /^CAL_(ACC|GYRO|MAG)\d+_(ID|PRIO|ROT|ROLL|PITCH|YAW|TEMP)$/,
+  /^CAL_MAG_SIDES$/,
+  /^CAL_AIR_(TUBELEN|TUBED_MM|CMODEL)$/,
+  /^SENS_BOARD_(ROT|[XYZ]_OFF)$/,
+  /^ASPD_SCALE_\d$/,
+  /^BAT\d?_(V_DIV|A_PER_V|V_CHARGED|V_EMPTY)$/,
+  /^RC\d+_REV$/,
+  /^MAV_SYS_ID$/,
+  /^COM_FLIGHT_UUID$/,
 ];
 
 export type ParamClass = 'calibration' | 'config';

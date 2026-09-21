@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   shouldResetStoresOnDisconnect,
   vehicleIdentityOf,
@@ -41,6 +41,7 @@ import { useActiveVehicleSync } from './hooks/useActiveVehicleSync';
 import { useActiveVehicleIdentity } from './hooks/useFleet';
 import { useActiveVehicleStore } from './stores/active-vehicle-store';
 import { useFleetTelemetryStore } from './stores/fleet-telemetry-store';
+import { createCoalescer, startRenderGovernor } from './perf/render-governor';
 import { shouldMirrorToSharedStore } from './lib/telemetry-routing';
 import { useCalibrationStore } from './stores/calibration-store';
 import { useTelemetryStore } from './stores/telemetry-store';
@@ -712,6 +713,17 @@ function App() {
 
   // Batched telemetry handler (preferred - single IPC message, single store update)
   const firstSeenVehicleKeyRef = useRef<string | null>(null);
+
+  // Repainting the shared store is the expensive half of a telemetry batch:
+  // the fleet store is a map write, but this one wakes the map, HUD and every
+  // instrument. The governor thins it when the machine cannot keep up, and is
+  // a straight pass-through when it can.
+  const flushShared = useMemo(
+    () => createCoalescer<Parameters<typeof updateBatch>[0]>((b) => updateBatch(b)),
+    [updateBatch],
+  );
+  useEffect(() => { startRenderGovernor(); }, []);
+
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onTelemetryBatch((batch) => {
       const vehicleKey = batch.__vehicleKey ?? '__primary__';
@@ -733,11 +745,11 @@ function App() {
       }
       const activeKey = useActiveVehicleStore.getState().activeVehicleKey;
       if (shouldMirrorToSharedStore(vehicleKey, activeKey, firstSeenVehicleKeyRef.current)) {
-        updateBatch(batch);
+        flushShared(batch);
       }
     });
     return () => { unsubscribe?.(); };
-  }, [updateBatch]);
+  }, [flushShared]);
 
   // Legacy individual telemetry handler (for MAVLink or fallback)
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Download, Loader2, MonitorDown, RefreshCw, Trash2 } from 'lucide-react';
 import { useAppStore } from '../../stores/app-store';
+import { HangarAppCard } from './HangarAppCard';
 
 /**
  * Hangar APPS in the Cargo Bay.
@@ -75,44 +76,19 @@ export function HangarApps({ mode }: { mode: 'browse' | 'installed' }) {
         </button>
       </div>
 
-      {rows.map((a) => {
-        const busy = installing === a.slug;
-        return (
-          <div key={a.slug} className="card">
-            <div className="card-body flex items-start gap-4 py-3">
-              <MonitorDown className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-content truncate">{a.name}</h3>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                    App
-                  </span>
-                </div>
-                {a.description && (
-                  <p className="text-xs text-content-secondary leading-relaxed">{a.description}</p>
-                )}
-                <p className="text-[11px] text-content-tertiary">
-                  {a.latestVersion ?? 'unreleased'} · {a.authorName}
-                </p>
-                {busy && progress && (
-                  <p className="text-[11px] text-sky-300">
-                    {progress.message}
-                    {progress.percent !== undefined ? ` ${progress.percent}%` : ''}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => install(a.slug)}
-                disabled={busy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-black bg-sky-400 hover:bg-sky-300 rounded-lg transition-colors disabled:opacity-60 shrink-0"
-              >
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                {busy ? 'Installing' : 'Install'}
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      {rows.map((a) => (
+        <HangarAppCard
+          key={a.slug}
+          app={a}
+          installing={installing === a.slug}
+          progress={
+            installing === a.slug && progress
+              ? `${progress.message}${progress.percent !== undefined ? ` ${progress.percent}%` : ''}`
+              : null
+          }
+          onInstall={() => install(a.slug)}
+        />
+      ))}
     </div>
   );
 }

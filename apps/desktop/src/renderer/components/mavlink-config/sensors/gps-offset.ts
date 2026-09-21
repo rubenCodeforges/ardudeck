@@ -61,15 +61,20 @@ export function offsetsToSideView(x: number, z: number, pxPerMeter: number): { d
 }
 
 // ArduPilot 4.6 renamed the antenna offsets: GPS_POS1_X (legacy) became GPS1_POS_X (modern).
-export type OffsetScheme = 'modern' | 'legacy';
+export type OffsetScheme = 'modern' | 'legacy' | 'px4';
 
 export function resolveOffsetScheme(has: (id: string) => boolean): OffsetScheme | null {
   if (has('GPS1_POS_X')) return 'modern';
   if (has('GPS_POS1_X')) return 'legacy';
+  // PX4 keeps the lever arm on the estimator, and only for one receiver.
+  if (has('EKF2_GPS_POS_X')) return 'px4';
   return null;
 }
 
 export function offsetParamIds(scheme: OffsetScheme, instance: 1 | 2): { x: string; y: string; z: string } {
+  if (scheme === 'px4') {
+    return { x: 'EKF2_GPS_POS_X', y: 'EKF2_GPS_POS_Y', z: 'EKF2_GPS_POS_Z' };
+  }
   if (scheme === 'modern') {
     return {
       x: `GPS${instance}_POS_X`,

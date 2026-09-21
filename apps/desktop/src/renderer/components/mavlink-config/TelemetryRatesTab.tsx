@@ -18,6 +18,7 @@ import {
   mavlinkLinks, paramLookup, RATE_GROUPS, rateParamName, rateScheme, readRates,
   bandwidthCost, serialCapacity,
 } from '../../../shared/mavlink-channels';
+import Px4TelemetryRates from './Px4TelemetryRates';
 
 const PROTOCOL_LABEL: Record<number, string> = { 1: 'MAVLink1', 2: 'MAVLink2' };
 
@@ -27,6 +28,12 @@ function myLinkKey(sysId: number | undefined): string {
 }
 
 export default function TelemetryRatesTab() {
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
+  if (firmware === 'px4') return <Px4TelemetryRates />;
+  return <ArduPilotTelemetryRates />;
+}
+
+function ArduPilotTelemetryRates() {
   const { parameters, setParameter } = useParameterStore();
   const connectionState = useConnectionStore((s) => s.connectionState);
   // measured rates come from the inspector's per-message counters

@@ -7,47 +7,94 @@ import type { ExplorerPreset, HealthCheckResult } from '@ardudeck/dataflash-pars
 import { formatAltitudeFromMeters, formatCapacityFromMah, formatSpeedFromMetersPerSecond } from '../../../shared/user-units.js';
 import { ADVISOR_CARGO_SLUG, useCargoEnabled } from '../../modules/capabilities';
 
-function computeFlightStats(log: ReturnType<typeof useLogStore.getState>['currentLog']) {
+type ParsedLog = NonNullable<ReturnType<typeof useLogStore.getState>['currentLog']>;
+
+/** Where altitude, speed and position live, per log format. `scale` brings
+ *  lat/lon to degrees and altitude to metres. */
+const POSITION_SOURCES: Array<{
+  msg: string; lat: string; lon: string; alt: string; spd: string | null;
+  coordScale: number; altScale: number;
+}> = [
+  { msg: 'GPS', lat: 'Lat', lon: 'Lng', alt: 'Alt', spd: 'Spd', coordScale: 1, altScale: 1 },
+  { msg: 'vehicle_global_position', lat: 'lat', lon: 'lon', alt: 'alt', spd: null, coordScale: 1, altScale: 1 },
+  { msg: 'vehicle_gps_position', lat: 'lat', lon: 'lon', alt: 'alt', spd: 'vel_m_s', coordScale: 1e7, altScale: 1000 },
+  { msg: 'sensor_gps', lat: 'lat', lon: 'lon', alt: 'alt', spd: 'vel_m_s', coordScale: 1e7, altScale: 1000 },
+];
+
+const BATTERY_SOURCES: Array<{ msg: string; field: string }> = [
+  { msg: 'BAT', field: 'CurrTot' },
+  { msg: 'battery_status', field: 'discharged_mah' },
+];
+
+function computeFlightStats(log: ParsedLog | null) {
   if (!log) return null;
 
   let maxAlt = 0, maxSpd = 0, totalMah = 0;
   let lastLat = 0, lastLng = 0, totalDist = 0, hasLastPos = false;
+  let positionFound = false;
 
-  const gps = log.messages['GPS'];
-  if (gps) {
-    const altCol = gps.num['Alt'];
-    const spdCol = gps.num['Spd'];
-    const latCol = gps.num['Lat'];
-    const lngCol = gps.num['Lng'];
-    for (let i = 0; i < gps.count; i++) {
+  for (const src of POSITION_SOURCES) {
+    const rows = log.messages[src.msg];
+    if (!rows || rows.count === 0) continue;
+    const altCol = rows.num[src.alt];
+    const spdCol = src.spd ? rows.num[src.spd] : undefined;
+    const latCol = rows.num[src.lat];
+    const lngCol = rows.num[src.lon];
+    if (!latCol || !lngCol) continue;
+    for (let i = 0; i < rows.count; i++) {
       const alt = altCol?.[i];
       const spd = spdCol?.[i];
-      const lat = latCol?.[i];
-      const lng = lngCol?.[i];
-      if (typeof alt === 'number' && alt > maxAlt) maxAlt = alt;
+      const rawLat = latCol[i];
+      const rawLng = lngCol[i];
+      if (typeof alt === 'number' && alt / src.altScale > maxAlt) maxAlt = alt / src.altScale;
       if (typeof spd === 'number' && spd > maxSpd) maxSpd = spd;
-      if (typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0) {
-        if (hasLastPos) {
-          // Haversine approximation for short distances
-          const dLat = (lat - lastLat) * Math.PI / 180;
-          const dLng = (lng - lastLng) * Math.PI / 180;
-          const a = Math.sin(dLat / 2) ** 2 + Math.cos(lastLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-          totalDist += 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (typeof rawLat !== 'number' || typeof rawLng !== 'number') continue;
+      const lat = rawLat / src.coordScale;
+      const lng = rawLng / src.coordScale;
+      if (lat === 0 && lng === 0) continue;
+      if (hasLastPos) {
+        // Haversine approximation for short distances
+        const dLat = (lat - lastLat) * Math.PI / 180;
+        const dLng = (lng - lastLng) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lastLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        totalDist += 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+      lastLat = lat;
+      lastLng = lng;
+      hasLastPos = true;
+    }
+    positionFound = true;
+    break;
+  }
+
+  // PX4 global position carries no speed field, so take it from the local
+  // velocity estimate rather than reporting a confident zero.
+  if (maxSpd === 0) {
+    const local = log.messages['vehicle_local_position'];
+    if (local && local.count > 0) {
+      const vx = local.num['vx'], vy = local.num['vy'];
+      if (vx && vy) {
+        for (let i = 0; i < local.count; i++) {
+          const x = vx[i], y = vy[i];
+          if (typeof x !== 'number' || typeof y !== 'number') continue;
+          const speed = Math.hypot(x, y);
+          if (speed > maxSpd) maxSpd = speed;
         }
-        lastLat = lat;
-        lastLng = lng;
-        hasLastPos = true;
       }
     }
   }
 
-  const bat = log.messages['BAT'];
-  if (bat && bat.count > 0) {
-    const mah = bat.num['CurrTot']?.[bat.count - 1];
-    if (typeof mah === 'number') totalMah = mah;
+  for (const src of BATTERY_SOURCES) {
+    const rows = log.messages[src.msg];
+    if (!rows || rows.count === 0) continue;
+    const mah = rows.num[src.field]?.[rows.count - 1];
+    if (typeof mah === 'number') {
+      totalMah = mah;
+      break;
+    }
   }
 
-  return { maxAlt, maxSpd, totalDist, totalMah };
+  return { maxAlt, maxSpd, totalDist, totalMah, positionFound };
 }
 
 export function HealthReportPanel() {
@@ -75,6 +122,7 @@ export function HealthReportPanel() {
   }, [aiWarningDismissed]);
 
   const flightStats = useMemo(() => computeFlightStats(currentLog), [currentLog]);
+  const isUlog = currentLog?.format === 'ulog';
 
   const handleAiAnalyze = useCallback(async () => {
     if (!aiProvider || !currentLog || !healthResults) return;
@@ -82,12 +130,12 @@ export function HealthReportPanel() {
     store.setIsAiInsightLoading(true);
     store.setAiInsightError(null);
 
-    const stats = computeFlightStats(currentLog) ?? { maxAlt: 0, maxSpd: 0, totalDist: 0, totalMah: 0 };
+    const stats = computeFlightStats(currentLog) ?? { maxAlt: 0, maxSpd: 0, totalDist: 0, totalMah: 0, positionFound: false };
     const meta = currentLog.metadata;
     const dS = (currentLog.timeRange.endUs - currentLog.timeRange.startUs) / 1_000_000;
     const dist = stats.totalDist > 1000 ? `${(stats.totalDist / 1000).toFixed(2)} km` : `${stats.totalDist.toFixed(0)} m`;
 
-    const systemContext = `You are a flight log analyst for ArduPilot vehicles. Analyze this flight and return ONLY a JSON array of insight cards. No other text.
+    const systemContext = `You are a flight log analyst for ${isUlog ? 'PX4' : 'ArduPilot'} vehicles. Analyze this flight and return ONLY a JSON array of insight cards. No other text.
 
 ## This Flight
 - Vehicle: ${meta.vehicleType || 'Unknown'} running ${meta.firmwareString || meta.firmwareVersion || 'Unknown firmware'}
@@ -105,7 +153,7 @@ Return a JSON array of objects with these fields:
 - "status": one of "fail", "warn", "info", "pass"
 - "summary": one-line finding
 - "details": supporting data/numbers
-- "recommendation": actionable advice with ArduPilot parameter names where applicable
+- "recommendation": actionable advice with ${isUlog ? 'PX4' : 'ArduPilot'} parameter names where applicable
 
 Focus on insights the automated checks might miss:
 - Correlations between issues (e.g. vibration causing GPS problems)
@@ -134,7 +182,7 @@ Return 3-6 cards. Most important issues first.`;
     } else {
       store.setAiInsightError(result?.error ?? 'AI analysis failed');
     }
-  }, [aiProvider, altitudeUnit, currentLog, electricCapacityUnit, healthResults, speedUnit]);
+  }, [aiProvider, altitudeUnit, currentLog, electricCapacityUnit, healthResults, isUlog, speedUnit]);
 
   if (!healthResults || !currentLog) {
     return (

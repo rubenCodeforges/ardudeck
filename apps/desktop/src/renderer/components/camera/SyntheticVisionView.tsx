@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { OsdLayers } from '../../../shared/camera-types';
 import type { FleetVehicle } from '../../hooks/useFleet';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { useSmoothTelemetry } from '../../perf/render-governor';
 import { useConnectionStore } from '../../stores/connection-store';
 import { getVehicleClass } from '../../../shared/telemetry-types';
 import { useFleetTelemetryStore } from '../../stores/fleet-telemetry-store';
@@ -213,8 +214,12 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
   const [drapeGrid, setDrapeGrid] = useState<ElevationGrid | null>(null);
   const drapeTokenRef = useRef(0);
   // One imagery load at a time: overlapping runs hold several hundred MB of
-  // mosaics at once, and the next move re-triggers anyway.
+  // mosaics at once. A request that arrives during one is remembered and run
+  // after it, never dropped: a parked aircraft produces no further move to
+  // re-trigger on, so a dropped one left the drape blank until a remount.
   const drapeBusyRef = useRef(false);
+  const drapePendingRef = useRef(false);
+  const [drapeRetry, setDrapeRetry] = useState(0);
   // Quality the live mesh was built at: changing the level has to rebuild it
   // even though the vehicle has not moved.
   const terrainQualityRef = useRef<SvtQuality | null>(null);
@@ -226,6 +231,10 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
   // Read by the render loop, which never re-closes over props.
   const eyeFloorRef = useRef(ROVER_EYE_M);
   eyeFloorRef.current = onSurface ? ROVER_EYE_M : AIR_EYE_M;
+
+  // Flies the camera off the live position: a thinned store reads as the
+  // aircraft lurching backwards between samples.
+  useSmoothTelemetry();
 
   const flatArmed = useTelemetryStore((s) => s.flight.armed);
   const flatClimb = useTelemetryStore((s) => s.vfrHud.climb);
@@ -527,7 +536,10 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
       dirtyRef.current = true;
       return;
     }
-    if (drapeBusyRef.current) return;
+    if (drapeBusyRef.current) {
+      drapePendingRef.current = true;
+      return;
+    }
     const token = ++drapeTokenRef.current;
     drapeBusyRef.current = true;
     void (async () => {
@@ -543,10 +555,14 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate }: Syn
         // Imagery is optional; the elevation ramp stays.
       } finally {
         drapeBusyRef.current = false;
+        if (drapePendingRef.current) {
+          drapePendingRef.current = false;
+          setDrapeRetry((n) => n + 1);
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [satellite, quality, drapeGrid, drapeLatKey, drapeLonKey]);
+  }, [satellite, quality, drapeGrid, drapeLatKey, drapeLonKey, drapeRetry]);
 
   const overlayAttitude = att ? { roll: att.roll, pitch: att.pitch } : null;
   // The 3D scene already shows a true banked horizon — drop the flat cyan line.

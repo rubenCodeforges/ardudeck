@@ -7,15 +7,16 @@ import { app, BrowserWindow, dialog, shell } from 'electron';
 import { existsSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { setupIpcHandlers, cleanupOnShutdown } from './ipc-handlers.js';
+import { setupIpcHandlers, cleanupOnShutdown, isCleanExitSafe } from './ipc-handlers.js';
 import { setupModuleIpc } from './modules/module-ipc.js';
 import { setupAppIpc } from './apps/app-ipc.js';
 import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers } from './tile-cache.js';
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
 import { setupDeepLinks, handleStartupArgs, flushPendingDeepLink, deliverDeepLinkUrl } from './modules/deep-link.js';
-import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc } from './window-manager.js';
+import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc, getMainFullScreen, setMainFullScreen } from './window-manager.js';
 import { createSplashWindow, splashSetStatus, closeSplash } from './splash-window.js';
 import { Worker } from 'node:worker_threads';
+import Store from 'electron-store';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -78,6 +79,55 @@ app.name = 'ardudeck';
 // Desktop app, not a web page: voice alerts (incl. the boot greeting) must
 // play without waiting for a first click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
+/**
+ * Make Linux machines actually use the GPU they have.
+ *
+ * Two things stop them by default. Electron takes X11, so on a Wayland session
+ * everything goes through XWayland and composites on the CPU. And Chromium
+ * ships a conservative driver blocklist that disables GPU rasterization on a
+ * lot of perfectly good Mesa/Intel configurations, which is how an integrated
+ * GPU that could run this at 60 fps ends up drawing the map in software.
+ *
+ * `graphics.mode` in settings is the escape hatch for the machine where
+ * forcing it really does break: 'auto' is this, 'safe' is Chromium's defaults,
+ * 'off' is no acceleration at all.
+ */
+interface GraphicsPrefs {
+  graphicsMode: 'auto' | 'safe' | 'off';
+  lastLaunchUnclean: boolean;
+}
+const graphicsPrefs = new Store<GraphicsPrefs>({
+  name: 'graphics',
+  defaults: { graphicsMode: 'auto', lastLaunchUnclean: false },
+});
+const graphicsMode = graphicsPrefs.get('graphicsMode', 'auto');
+
+if (graphicsMode === 'off') {
+  app.disableHardwareAcceleration();
+} else if (process.platform === 'linux') {
+  if (!process.argv.some((a) => a.startsWith('--ozone-platform'))) {
+    app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+    app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
+  }
+  if (graphicsMode === 'auto') {
+    app.commandLine.appendSwitch('ignore-gpu-blocklist');
+    app.commandLine.appendSwitch('enable-gpu-rasterization');
+    app.commandLine.appendSwitch('enable-zero-copy');
+  }
+}
+
+/**
+ * A GPU that takes the app down with it must not take it down twice. The flag
+ * is written before the window opens and cleared once the renderer has painted,
+ * so a launch that never got that far drops to Chromium's defaults next time.
+ */
+if (graphicsMode === 'auto' && graphicsPrefs.get('lastLaunchUnclean') === true) {
+  console.warn('[Main] Previous launch did not reach first paint; falling back to safe graphics');
+  graphicsPrefs.set('graphicsMode', 'safe');
+  app.commandLine.appendSwitch('disable-gpu-rasterization');
+}
+graphicsPrefs.set('lastLaunchUnclean', true);
 
 // Register tile-cache:// scheme BEFORE app.ready (Electron requirement)
 registerTileCacheScheme();
@@ -173,10 +223,22 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   }, 20000);
 
   mainWindow.on('ready-to-show', () => {
+    graphicsPrefs.set('lastLaunchUnclean', false);
     clearTimeout(handoffTimeout);
     splashSetStatus(splash ?? null, 'Ready');
     closeSplash(splash ?? null);
     mainWindow.show();
+  });
+
+  // True fullscreen: on a field tablet the desktop's top bar and the title bar
+  // are wasted rows over the map. F11 toggles, and the choice is remembered.
+  if (getMainFullScreen()) mainWindow.setFullScreen(true);
+
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type !== 'keyDown' || input.key !== 'F11' || mainWindow.isDestroyed()) return;
+    const next = !mainWindow.isFullScreen();
+    mainWindow.setFullScreen(next);
+    setMainFullScreen(next);
   });
 
   // 'window-all-closed' needs EVERY window gone, so one detached panel left open
@@ -386,8 +448,16 @@ app.on('before-quit', async (event) => {
 
   await cleanupWithDeadline();
 
-  console.log('[Shutdown] cleanup done, exiting');
-  app.exit(0);
+  // app.exit() runs Node's environment teardown. That is only safe once the
+  // native serial handle is gone; with it still registered the teardown aborts
+  // and macOS reports a crash on every quit. A signal skips the teardown.
+  if (isCleanExitSafe()) {
+    console.log('[Shutdown] cleanup done, exiting');
+    app.exit(0);
+  } else {
+    console.log('[Shutdown] cleanup done, exiting by signal');
+    process.kill(process.pid, 'SIGKILL');
+  }
 });
 
 // Also handle SIGINT/SIGTERM for graceful shutdown in dev mode

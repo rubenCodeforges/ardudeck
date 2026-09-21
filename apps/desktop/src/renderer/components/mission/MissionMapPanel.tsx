@@ -8,6 +8,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { commandHasLocation, isNavigationCommand, hasValidCoordinates, computeGroupWaypointNumbers, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { useIpLocation } from '../../utils/ip-geolocation';
 import { SEGMENT_COLORS, getSegmentColor, computeItemColors } from '../../utils/mission-segment-colors';
+import { nearestLeg, type InsertTarget, type LegPoint, type Pt } from './insert-target';
 
 // Geofence and Rally overlays
 import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
@@ -224,11 +225,6 @@ import { EnginePlanLegend } from '../survey/EnginePlanLegend';
 const FALLBACK_CENTER: [number, number] = [51.505, -0.09];
 const DEFAULT_ZOOM_AIRCRAFT = 15;
 const DEFAULT_ZOOM_ROVER = 18; // Rovers need higher zoom for street-level detail
-
-// Above this many waypoints we stop rendering per-leg clickable insertion
-// segments — each is an interactive Leaflet layer and tens of thousands of them
-// exhaust memory. The (coalesced) visible path still draws.
-const MAX_CLICKABLE_SEGMENTS = 2000;
 
 // Create home marker icon - house shape
 function createHomeIcon(): L.DivIcon {
@@ -658,29 +654,44 @@ function GpsWarning() {
   );
 }
 
-// Clickable path segment for right-click insertion
-function ClickablePathSegment({
-  positions,
-  afterSeq,
-  onRightClick,
+/** How far from a leg a right-click still counts as being on it. */
+const INSERT_SNAP_PX = 14;
+
+/**
+ * Right-click anywhere on the map, resolved to the nearest mission leg.
+ *
+ * Per-leg invisible polylines used to do this, which meant Leaflet picked by
+ * z-order (wrong leg wherever a survey's legs run close together) and they had
+ * to be dropped past a few thousand waypoints to avoid OOM. One handler over a
+ * geometric search has neither problem.
+ */
+function PathContextMenu({
+  waypoints,
+  onPick,
+  enabled,
 }: {
-  positions: [number, number][];
-  afterSeq: number;
-  onRightClick: (e: L.LeafletMouseEvent, afterSeq: number) => void;
+  waypoints: readonly LegPoint[];
+  onPick: (target: InsertTarget, containerPoint: Pt) => void;
+  enabled: boolean;
 }) {
-  return (
-    <Polyline
-      positions={positions}
-      pathOptions={{
-        color: 'transparent',
-        weight: 20, // Wide invisible clickable area
-        opacity: 0,
-      }}
-      eventHandlers={{
-        contextmenu: (e) => onRightClick(e, afterSeq),
-      }}
-    />
-  );
+  const map = useMap();
+  useMapEvents({
+    contextmenu: (e) => {
+      if (!enabled) return;
+      // A marker's own menu wins; Leaflet routes those to the marker layer.
+      if ((e.originalEvent.target as HTMLElement | null)?.closest('.leaflet-marker-icon')) return;
+      const target = nearestLeg(
+        waypoints,
+        e.containerPoint,
+        (lat, lon) => map.latLngToContainerPoint([lat, lon]),
+        INSERT_SNAP_PX,
+      );
+      if (!target) return;
+      e.originalEvent.preventDefault();
+      onPick(target, e.containerPoint);
+    },
+  });
+  return null;
 }
 
 interface MissionMapPanelProps {
@@ -697,6 +708,8 @@ interface ContextMenuState {
   kind: 'path' | 'marker';
   refSeq?: number;
   refAlt?: number;
+  /** Path mode: the group the clicked leg belongs to, inherited by the insert. */
+  groupId?: string;
 }
 
 interface RelativeEditorState {
@@ -937,23 +950,18 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
     updateWaypoint(seq, { latitude: lat, longitude: lng });
   }, [updateWaypoint]);
 
-  // Handle right-click on path segment to insert waypoint
-  const handlePathRightClick = useCallback((e: L.LeafletMouseEvent, afterSeq: number) => {
-    if (readOnly) return;
-    e.originalEvent.preventDefault();
-
-    // Get screen position for context menu
-    const containerPoint = e.containerPoint;
-
+  // Right-click near a leg: the point is already snapped onto it.
+  const handlePathRightClick = useCallback((target: InsertTarget, at: Pt) => {
     setContextMenu({
-      x: containerPoint.x,
-      y: containerPoint.y,
-      lat: e.latlng.lat,
-      lon: e.latlng.lng,
-      afterSeq,
+      x: at.x,
+      y: at.y,
+      lat: target.lat,
+      lon: target.lon,
+      afterSeq: target.afterSeq,
       kind: 'path',
+      ...(target.groupId ? { groupId: target.groupId } : {}),
     });
-  }, [readOnly]);
+  }, []);
 
   // Relative-waypoint editor state (popover anchored to a reference WP)
   const [relativeEditor, setRelativeEditor] = useState<RelativeEditorState | null>(null);
@@ -988,9 +996,13 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
       ? Math.round((prevWp.altitude + nextWp.altitude) / 2)
       : prevWp?.altitude ?? 100;
 
-    insertWaypoint(contextMenu.afterSeq, contextMenu.lat, contextMenu.lon, alt);
+    insertWaypoint(contextMenu.afterSeq, contextMenu.lat, contextMenu.lon, alt, contextMenu.groupId);
     setContextMenu(null);
   }, [contextMenu, waypoints, insertWaypoint]);
+
+  const insertHost = contextMenu?.groupId
+    ? groups.find((g) => g.id === contextMenu.groupId)
+    : undefined;
 
   // Open relative waypoint editor from marker context menu
   const handleOpenRelativeEditor = useCallback(() => {
@@ -1133,26 +1145,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
           />
         ))}
 
-        {/* Clickable path segments for right-click insertion (hidden in readOnly
-            mode). Each is an interactive Leaflet layer, so for very large
-            missions we skip them entirely — rendering ~20k interactive layers
-            OOM'd the map. Per-segment insertion isn't a meaningful workflow on
-            an auto-generated survey of that size anyway. */}
-        {!readOnly && waypoints.length > 1 && waypoints.length <= MAX_CLICKABLE_SEGMENTS &&
-          waypoints.slice(0, -1).map((wp, i) => {
-          const nextWp = waypoints[i + 1]!;
-          return (
-            <ClickablePathSegment
-              key={`segment-${wp.seq}`}
-              positions={[
-                [wp.latitude, wp.longitude],
-                [nextWp.latitude, nextWp.longitude],
-              ]}
-              afterSeq={wp.seq}
-              onRightClick={handlePathRightClick}
-            />
-          );
-        })}
+        <PathContextMenu waypoints={waypoints} onPick={handlePathRightClick} enabled={!readOnly} />
 
         {/* Loiter radius circles - param3 is radius for all loiter commands */}
         {waypoints
@@ -1714,7 +1707,13 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                 </button>
                 <div className="px-3 py-1 text-[10px] text-content-secondary border-t border-default mt-1">
                   Between WP {contextMenu.afterSeq + 1} → {contextMenu.afterSeq + 2}
+                  {insertHost && <span className="text-content-tertiary"> · in {insertHost.name}</span>}
                 </div>
+                {insertHost?.kind === 'survey' && (
+                  <div className="px-3 pb-1 text-[10px] text-amber-500">
+                    Regenerating this survey rebuilds its path and drops the waypoint.
+                  </div>
+                )}
               </>
             ) : (
               <>

@@ -12,6 +12,7 @@ import { useNavigationStore } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { getVehicleClass } from '../../../shared/telemetry-types';
 import { readCompassSlots, summariseCompasses, type CompassSlot } from './compass-inventory';
+import { Px4CompassCard } from './Px4CompassCard';
 
 function place(slot: CompassSlot): string {
   if (slot.bus === 'DroneCAN') return `DroneCAN node, external (GPS or CAN module)`;
@@ -25,6 +26,12 @@ function place(slot: CompassSlot): string {
 }
 
 export function CompassCard(): JSX.Element {
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
+  if (firmware === 'px4') return <Px4CompassCard />;
+  return <ArduPilotCompassCard />;
+}
+
+function ArduPilotCompassCard(): JSX.Element {
   const { parameters, setParameter } = useParameterStore();
   const setView = useNavigationStore((s) => s.setView);
   const mavType = useConnectionStore((s) => s.connectionState.mavType);

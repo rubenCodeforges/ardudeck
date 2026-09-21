@@ -191,6 +191,8 @@ export interface SerialPortInfo {
   vendorId?: string;
   /** Friendly name (Windows only, from registry) */
   friendlyName?: string;
+  /** Board the autopilot reported over MAVLink last time this port was used. */
+  knownBoard?: string;
   /** Plug and Play ID (contains VID/PID info) */
   pnpId?: string;
   /** Location ID */

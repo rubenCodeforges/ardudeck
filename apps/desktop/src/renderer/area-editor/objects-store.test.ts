@@ -487,6 +487,17 @@ describe('measure selection + context menu', () => {
 });
 
 describe('loadWorldRings + reset', () => {
+
+  it('imports a bare centreline as a corridor', () => {
+    const st = useObjectsStore.getState();
+    st.loadWorldRings([
+      { ring: [{ lat: 53.566, lng: 9.0701 }, { lat: 53.5733, lng: 9.0999 }, { lat: 53.5722, lng: 9.1052 }], type: 'corridor' },
+    ]);
+    const objs = useObjectsStore.getState().objects;
+    expect(objs).toHaveLength(1);
+    expect(objs[0]!.type).toBe('corridor');
+    expect(objs[0]!.base.length).toBe(3);
+  });
   it('loads rings as objects and reset clears them', () => {
     const st = useObjectsStore.getState();
     st.loadWorldRings([{ ring: poly(4) }, { ring: poly(3), type: 'polygon' }]);

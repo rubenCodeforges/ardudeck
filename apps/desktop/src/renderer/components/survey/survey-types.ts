@@ -154,6 +154,12 @@ export interface SurveyConfig {
    * (an odd count puts one strip on the centerline; even straddles it).
    */
   corridorStrips?: number;
+  /**
+   * Length of one flight's stretch along the centreline, in meters. When >0 it
+   * overrides the endurance estimate when splitting along the route: the pilot
+   * who knows what they can actually fly sets the distance directly.
+   */
+  corridorSectionLengthM?: number;
   /** Fixed-wing vs multirotor turn strategy. */
   corridorMode?: CorridorMode;
   /** Lateral shift of the whole strip bundle off the centerline, in meters (e.g. to bias coverage to one side of a road). */

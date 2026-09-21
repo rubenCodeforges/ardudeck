@@ -399,7 +399,8 @@ interface MissionStore {
 
   // Local editing
   addWaypoint: (lat: number, lon: number, alt?: number) => void;
-  insertWaypoint: (afterSeq: number, lat: number, lon: number, alt?: number) => void;
+  /** `groupId` places the new item in that group; omitted, it is inferred from the neighbours. */
+  insertWaypoint: (afterSeq: number, lat: number, lon: number, alt?: number, groupId?: string) => void;
   updateWaypoint: (seq: number, updates: Partial<MissionItem>) => void;
   removeWaypoint: (seq: number) => void;
   removeWaypoints: (seqs: number[]) => void;
@@ -917,11 +918,22 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     });
   },
 
-  insertWaypoint: (afterSeq: number, lat: number, lon: number, alt: number = 100) => {
+  insertWaypoint: (afterSeq: number, lat: number, lon: number, alt: number = 100, groupId?: string) => {
     const { missionItems, groups } = get();
-    const { groups: nextGroups, group } = ensureDefaultManualGroup(groups);
+
     const newSeq = afterSeq + 1;
-    const newItem = createDefaultWaypoint(newSeq, lat, lon, alt, group.id);
+
+    // The waypoint goes where it was dropped, in the run it was dropped into,
+    // so the flown path runs through it instead of detouring to a stray item
+    // somewhere else in the sequence. Regenerating a survey does drop one of
+    // these, which the map menu says before you commit.
+    const inside = missionItems.find((i) => i.seq === afterSeq)?.groupId;
+    const host = groupId
+      ?? (inside && inside === missionItems.find((i) => i.seq === newSeq)?.groupId ? inside : undefined);
+    const known = groups.find((g) => g.id === host)?.id;
+
+    const { groups: nextGroups, group } = ensureDefaultManualGroup(groups);
+    const newItem = createDefaultWaypoint(newSeq, lat, lon, alt, known ?? group.id);
 
     // Insert and renumber
     const newItems = [

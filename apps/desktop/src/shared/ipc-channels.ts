@@ -89,6 +89,7 @@ export const IPC_CHANNELS = {
   MAVLINK_ARM_DISARM: 'mavlink:arm-disarm',
   MAVLINK_SET_MODE: 'mavlink:set-mode',
   MAVLINK_COMMAND_TAKEOFF: 'mavlink:command-takeoff',
+  MAVLINK_CHANGE_SPEED: 'mavlink:change-speed',
   MAVLINK_COMMAND_VTOL_TAKEOFF: 'mavlink:command-vtol-takeoff',
   MAVLINK_GOTO: 'mavlink:goto',
   MAVLINK_ORBIT: 'mavlink:orbit',
@@ -708,6 +709,8 @@ export const IPC_CHANNELS = {
 
   // App / Updates
   APP_GET_VERSION: 'app:get-version',
+  APP_GET_GRAPHICS_INFO: 'app:get-graphics-info',
+  APP_SET_GRAPHICS_MODE: 'app:set-graphics-mode',
   APP_CHECK_UPDATE: 'app:check-update',
   APP_DOWNLOAD_UPDATE: 'app:download-update',
   APP_INSTALL_UPDATE: 'app:install-update',

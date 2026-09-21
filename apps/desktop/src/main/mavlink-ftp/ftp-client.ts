@@ -133,7 +133,11 @@ class DownloadBuffer {
   /** Past `limit` the server is lying about the file; growth stops there. */
   overflowed = false;
 
+  /** What OpenFileRO claimed. A short read only proves EOF at or past it. */
+  readonly declaredSize: number;
+
   constructor(sizeHint: number, readonly limit: number) {
+    this.declaredSize = sizeHint;
     this.data = new Uint8Array(sizeHint);
     this.mask = new Coverage(sizeHint);
   }
@@ -871,13 +875,20 @@ export class MavlinkFtpClient {
         return null;
       }
 
+      // Zero bytes is an EOF NAK: the server saying so outright, which is
+      // authoritative wherever it lands.
+      if (chunk.length === 0) {
+        file.markEof(offset);
+        break;
+      }
+
       file.store(offset, chunk);
       offset += chunk.length;
       if (file.overflowed) {
         this.log('warn', `FTP: server streamed past ${file.limit} bytes without an EOF, aborting`);
         return null;
       }
-      if (chunk.length < this.readSize) break;
+      if (chunk.length < this.readSize && offset >= file.declaredSize) break;
 
       if (progress) {
         progress(offset, Math.max(sizeHint, offset));
@@ -960,10 +971,15 @@ export class MavlinkFtpClient {
             break;
           }
           const eofBefore = file.eof;
-          if (chunk.length < this.readSize) file.markEof(off + chunk.length);
+          const chunkEnd = off + chunk.length;
+          // Same rule as the burst path: an EOF NAK ends the file anywhere, a
+          // short read only at or past the declared size. Anything shorter
+          // leaves a hole for the next round rather than ending the download.
+          const ended = chunk.length === 0 || chunkEnd >= file.declaredSize;
+          if (chunk.length < this.readSize && ended) file.markEof(chunkEnd);
           if (file.store(off, chunk) > 0 || file.eof !== eofBefore) progressed = true;
           if (progress) progress(file.mask.filled, file.size);
-          if (chunk.length < this.readSize) break;
+          if (chunk.length < this.readSize && ended) break;
         }
       }
       if (!progressed) break;
@@ -1041,9 +1057,13 @@ export class MavlinkFtpClient {
 
     if (payload.opcode !== FtpOpcode.Ack) return;
 
-    // A short packet is the file's last; OpenFileRO's size may have been only an estimate.
-    if (payload.size > 0 && payload.size < this.readSize) {
-      burst.file.markEof(payload.offset + payload.size);
+    // A short packet is the file's last only when the FC closed the burst on
+    // it, or it lands at or past the declared size. A short packet mid-file is
+    // just a short packet, and calling it EOF truncates the download.
+    const end = payload.offset + payload.size;
+    if (payload.size > 0 && payload.size < this.readSize
+        && (payload.burstComplete !== 0 || end >= burst.file.declaredSize)) {
+      burst.file.markEof(end);
     }
     burst.gained += burst.file.store(payload.offset, payload.data.subarray(0, payload.size));
     burst.reachedEnd = Math.max(burst.reachedEnd, payload.offset + payload.size);

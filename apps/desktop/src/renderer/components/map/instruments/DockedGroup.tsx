@@ -21,6 +21,7 @@ import {
 } from '../../../stores/map-instruments-store';
 import { MAP_INSTRUMENTS, resolveInstrumentComponent, isRoundInMode } from './registry';
 import { variantGlyph } from './variant-glyphs';
+import { useGroupShapeStore } from '../../../stores/group-shape-store';
 import { GAUGE_COLORS } from './RoundGauge';
 import { DockedContext } from './dock-context';
 import { groupOverlayKey, isCluster, groupDisplayOptions, CLUSTER_ANCHOR, type DockGroup } from './dock-groups';
@@ -125,6 +126,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
   const setScale = useMapInstrumentsStore((s) => s.setScale);
   const globalOpacity = useMapInstrumentsStore((s) => s.opacity);
   const displayMode = useMapInstrumentsStore((s) => s.displayMode);
+  const groupShapeMode = useGroupShapeStore((s) => s.mode);
   const dockRemove = useMapInstrumentsStore((s) => s.dockRemove);
   const dockReorder = useMapInstrumentsStore((s) => s.dockReorder);
   const dockSetClusterOffset = useMapInstrumentsStore((s) => s.dockSetClusterOffset);
@@ -141,8 +143,10 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
   const [cellSizes, setCellSizes] = useState<Record<string, { x: number; y: number; w: number; h: number }> | null>(null);
   const [bodySize, setBodySize] = useState<{ w: number; h: number } | null>(null);
   const [panelExt, setPanelExt] = useState<{ before: number; after: number } | null>(null);
+  const [naturalCross, setNaturalCross] = useState<Record<string, number>>({});
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const cellRefs = useRef(new Map<string, HTMLElement>());
+  const innerRefs = useRef(new Map<string, HTMLElement>());
   const dragMain = useRef(0);
   const resize = useRef<{ startX: number; startY: number; startScale: number } | null>(null);
   const scale = liveScale ?? storedScale;
@@ -163,11 +167,43 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
   const members = group.members
     .map((id) => MAP_INSTRUMENTS.find((d) => d.id === id))
     .filter((d): d is NonNullable<typeof d> => !!d);
-  const ballInCard = !cluster && group.members.includes(CLUSTER_ANCHOR);
+  // Members that bulge the shared flat card, per groupShapeMode.
+  const isRoundNow = (id: string): boolean => {
+    const def = members.find((d) => d.id === id);
+    return !!def && isRoundInMode(def, displayMode[id] ?? 'analog');
+  };
+  const bulgeIds = (() => {
+    if (cluster || groupShapeMode === 'square') return new Set<string>();
+    const ids = group.members;
+    if (groupShapeMode === 'roundedAll') {
+      return new Set(ids.filter((id) => isRoundNow(id)));
+    }
+    const out = new Set<string>();
+    if (ids.includes(CLUSTER_ANCHOR) && isRoundNow(CLUSTER_ANCHOR)) out.add(CLUSTER_ANCHOR);
+    const first = ids[0];
+    const last = ids[ids.length - 1];
+    if (first !== undefined && isRoundNow(first)) out.add(first);
+    if (ids.length > 1 && last !== undefined && isRoundNow(last)) out.add(last);
+    return out;
+  })();
+  const shapedGroup = !cluster && bulgeIds.size > 0;
   const stretched = !cluster && group.stretch === true;
-  const tray = !cluster && !ballInCard && members.some((d) => isRoundInMode(d, displayMode[d.id] ?? 'analog'));
+  const tray = !cluster && !shapedGroup && members.some((d) => isRoundInMode(d, displayMode[d.id] ?? 'analog'));
   const row = group.orientation === 'row';
   const displayChoices = groupDisplayOptions(members);
+
+  // Cross-axis fit: the group is as wide (col) or tall (row) as its first
+  // non-bulging member, and a member that does not fit is zoomed down to it.
+  // Without this a single wide instrument (the flight-control card's
+  // min-w-[248px]) stretched every sibling and resized the whole group.
+  const fitAnchorId = !cluster ? members.find((d) => !bulgeIds.has(d.id))?.id ?? null : null;
+  const fitBasis = fitAnchorId ? naturalCross[fitAnchorId] ?? null : null;
+  const isFitted = (id: string): boolean => !cluster && !bulgeIds.has(id);
+  const fitOf = (id: string): number => {
+    if (!fitBasis || id === fitAnchorId || !isFitted(id)) return 1;
+    const n = naturalCross[id];
+    return n && n > fitBasis ? fitBasis / n : 1;
+  };
 
   const offsetOf = (id: string): { x: number; y: number } =>
     id === CLUSTER_ANCHOR ? { x: 0, y: 0 } : group.offsets?.[id] ?? { x: 0, y: 0 };
@@ -181,7 +217,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
   // The cluster body sizes itself to the union of its absolute cells so the
   // wrapper stays draggable/clampable and measurable by the arranger.
   useLayoutEffect(() => {
-    if (!cluster && !ballInCard) return;
+    if (!cluster && !shapedGroup) return;
     const measure = () => {
       const sizes: Record<string, { x: number; y: number; w: number; h: number }> = {};
       for (const id of group.members) {
@@ -212,7 +248,30 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
     for (const el of cellRefs.current.values()) ro.observe(el);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cluster, ballInCard, group, memberScales, displayMode]);
+  }, [cluster, shapedGroup, group, memberScales, displayMode]);
+
+  // offsetWidth/Height on the inner is pre-zoom, so a member already scaled
+  // down still reports its natural size and the factor stays stable.
+  useLayoutEffect(() => {
+    if (cluster) return;
+    const measure = () => {
+      const next: Record<string, number> = {};
+      for (const [id, el] of innerRefs.current) {
+        const v = row ? el.offsetHeight : el.offsetWidth;
+        if (v > 0) next[id] = v;
+      }
+      if (Object.keys(next).length === 0) return;
+      setNaturalCross((prev) => {
+        const keys = Object.keys(next);
+        if (keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k])) return prev;
+        return next;
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    for (const el of innerRefs.current.values()) ro.observe(el);
+    return () => ro.disconnect();
+  }, [cluster, row, group, memberScales, displayMode]);
 
   // Stretching never moves the members: the bar reaches the panel edges by
   // extending the chrome PAST the body on the main axis, and the group's
@@ -458,7 +517,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
     window.addEventListener('pointerup', onUp);
   };
 
-  const chromeStyle: CSSProperties = tray || cluster || ballInCard
+  const chromeStyle: CSSProperties = tray || cluster || shapedGroup
     ? {}
     : {
         background: GAUGE_COLORS.face,
@@ -469,17 +528,18 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
           : { border: `1.5px solid ${GAUGE_COLORS.bezelEdge}` }),
       };
 
-  // Card group holding the ball: ONE continuous card rectangle spans every
-  // non-ball member, passing BEHIND the ball, and the ball's circle is
-  // unioned on top so the card edge arcs around it (top and bottom bulge).
-  const trayish = ballInCard && members.some((d) => d.id !== CLUSTER_ANCHOR && isRoundInMode(d, displayMode[d.id] ?? 'analog'));
+  // One card rect spans every non-bulging member; each bulge's circle unions on top.
+  const trayish = bulgeIds.has(CLUSTER_ANCHOR) && members.some((d) => d.id !== CLUSTER_ANCHOR && isRoundInMode(d, displayMode[d.id] ?? 'analog'));
   const contour = (() => {
-    if (!ballInCard || !cellSizes) return null;
+    if (!shapedGroup || !cellSizes) return null;
     const PAD = 18;
     const INFLATE = 5;
     const shapes: Array<{ kind: 'circle'; cx: number; cy: number; r: number } | { kind: 'rect'; x: number; y: number; w: number; h: number; rx?: number }> = [];
-    const rest = members.filter((d) => d.id !== CLUSTER_ANCHOR).map((d) => cellSizes[d.id]).filter((c): c is NonNullable<typeof c> => !!c);
-    const ball = cellSizes[CLUSTER_ANCHOR];
+    const rest = members.filter((d) => !bulgeIds.has(d.id)).map((d) => cellSizes[d.id]).filter((c): c is NonNullable<typeof c> => !!c);
+    const bulging = members
+      .filter((d) => bulgeIds.has(d.id))
+      .map((d) => ({ id: d.id, cell: cellSizes[d.id] }))
+      .filter((e): e is { id: string; cell: NonNullable<typeof e.cell> } => !!e.cell);
     if (rest.length > 0) {
       let x = Math.min(...rest.map((r) => r.x)) - INFLATE;
       let y = Math.min(...rest.map((r) => r.y)) - INFLATE;
@@ -496,12 +556,10 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
           y2 = bodySize.h + panelExt.after / scale;
         }
       }
-      if (ball) {
-        // Run the card's straight edges all the way to the ball's center so
-        // they meet the arc cleanly; stopping at the last member leaves
-        // concave wedge notches where circle and rectangle barely touch.
-        const cx = ball.x + ball.w / 2;
-        const cy = ball.y + ball.h / 2;
+      // Extend to each bulge's center so the arc meets it flush, no wedge notch.
+      for (const { cell } of bulging) {
+        const cx = cell.x + cell.w / 2;
+        const cy = cell.y + cell.h / 2;
         x = Math.min(x, cx);
         x2 = Math.max(x2, cx);
         y = Math.min(y, cy);
@@ -509,10 +567,11 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
       }
       shapes.push({ kind: 'rect', x, y, w: x2 - x, h: y2 - y, rx: stretched ? 0 : 10 });
     }
-    if (ball) {
-      // Proud bulge: the arc must read even beside a card nearly as tall as
-      // the ball, so it clears the ball's own backdrop circle by a margin.
-      shapes.push({ kind: 'circle', cx: ball.x + ball.w / 2, cy: ball.y + ball.h / 2, r: Math.min(ball.w, ball.h) / 2 + 12 });
+    // Only the ball needs the extra proud margin; an edge gauge is the
+    // run's own size.
+    for (const { id, cell } of bulging) {
+      const margin = id === CLUSTER_ANCHOR ? 12 : INFLATE;
+      shapes.push({ kind: 'circle', cx: cell.x + cell.w / 2, cy: cell.y + cell.h / 2, r: Math.min(cell.w, cell.h) / 2 + margin });
     }
     if (shapes.length === 0) return null;
     const minX = Math.min(...shapes.map((sh) => (sh.kind === 'circle' ? sh.cx - sh.r : sh.x)));
@@ -523,9 +582,9 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
   })();
 
   overhangRef.current = (() => {
-    if (!ballInCard || !cellSizes || !bodySize) return null;
+    if (!shapedGroup || !cellSizes || !bodySize) return null;
     const rest = members
-      .filter((d) => d.id !== CLUSTER_ANCHOR)
+      .filter((d) => !bulgeIds.has(d.id))
       .map((d) => cellSizes[d.id])
       .filter((c): c is NonNullable<typeof c> => !!c);
     if (rest.length === 0) return null;
@@ -570,6 +629,8 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
         key={def.id}
         memberId={def.id}
         cellRefs={cellRefs.current}
+        innerRefs={innerRefs.current}
+        fit={isFitted(def.id) ? { axis: row ? 'height' : 'width', factor: fitOf(def.id), anchor: def.id === fitAnchorId } : null}
         divider={
           !tray && !cluster && i > 0
             && !isRoundInMode(def, displayMode[def.id] ?? 'analog')
@@ -649,7 +710,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
         </div>
       ) : (
         <>
-          {stretched && !ballInCard && panelExt && ([true, false] as const).map((before) => {
+          {stretched && !shapedGroup && panelExt && ([true, false] as const).map((before) => {
             const len = before ? panelExt.before : panelExt.after;
             if (len <= 0) return null;
             return (
@@ -679,11 +740,16 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
             className={
               (tray
                 ? `flex ${row ? 'flex-row items-center' : 'flex-col items-start'} gap-1.5 p-1.5 ${stretched ? '' : 'rounded-xl'} bg-surface-overlay-light shadow-xl select-none`
-                : ballInCard
+                : shapedGroup
                   ? `relative flex ${row ? 'flex-row items-center' : 'flex-col items-center'} ${trayish ? 'gap-1.5' : ''} select-none`
                   : `flex ${row ? 'flex-row items-stretch' : 'flex-col items-stretch'} ${stretched ? '' : 'rounded-lg'} shadow-xl select-none overflow-hidden`)
             }
-            style={chromeStyle}
+            style={{
+              ...chromeStyle,
+              // Bulging members are meant to sit proud, so a shaped group keeps
+              // sizing itself; a flat card is pinned to its anchor.
+              ...(!shapedGroup && fitBasis ? (row ? { height: fitBasis } : { width: fitBasis }) : {}),
+            }}
           >
             {contour && (
               <svg
@@ -737,12 +803,12 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
             : (row ? 'Stretch the group across the panel' : 'Stretch the group down the panel')}
           style={stretched && panelExt
             ? (row
-                ? { top: 6, right: 6 - panelExt.after }
-                : { top: 6 - panelExt.before, right: 6 })
+                ? { top: 6, left: 6 - panelExt.before }
+                : { top: 6 - panelExt.before, left: 6 })
             : undefined}
           className={
             'absolute p-1.5 rounded-full bg-surface-solid border shadow-lg transition-opacity pointer-events-auto ' +
-            (stretched ? '' : '-top-2 ' + (displayChoices ? 'right-5' : '-right-2')) + ' ' +
+            (stretched ? '' : '-top-2 ' + (displayChoices ? 'left-5' : '-left-2')) + ' ' +
             (stretched
               ? 'text-blue-400 border-blue-500 opacity-100'
               : 'text-content-secondary border-transparent hover:text-content hover:bg-surface-raised ') +
@@ -768,11 +834,11 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
           data-tip="Display mode for the whole group"
           style={stretched && panelExt
             ? (row
-                ? { top: 8, right: 38 - panelExt.after }
-                : { top: 38 - panelExt.before, right: 8 })
+                ? { top: 8, left: 38 - panelExt.before }
+                : { top: 38 - panelExt.before, left: 8 })
             : undefined}
           className={
-            `absolute ${stretched ? '' : '-top-1.5 -right-1.5'} p-1 rounded-full bg-surface-solid shadow-lg text-content-secondary ` +
+            `absolute ${stretched ? '' : '-top-1.5 -left-1.5'} p-1 rounded-full bg-surface-solid shadow-lg text-content-secondary ` +
             'hover:text-content hover:bg-surface-raised pointer-events-auto transition-opacity ' +
             (displayOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
           }
@@ -800,6 +866,8 @@ function MemberCell({
   children,
   memberId,
   cellRefs,
+  innerRefs,
+  fit,
   divider,
   position,
   slide,
@@ -813,6 +881,9 @@ function MemberCell({
   children: React.ReactNode;
   memberId: string;
   cellRefs: Map<string, HTMLElement>;
+  innerRefs: Map<string, HTMLElement>;
+  /** Cross-axis fit; the anchor measures free, the rest stretch or shrink to it. */
+  fit: { axis: 'width' | 'height'; factor: number; anchor: boolean } | null;
   divider?: CSSProperties;
   /** Cluster only: absolute placement inside the constellation body. */
   position?: { left: number; top: number };
@@ -829,6 +900,25 @@ function MemberCell({
     if (el) cellRefs.set(memberId, el);
     else cellRefs.delete(memberId);
   }, [cellRefs, memberId]);
+  const setInnerRef = useCallback((el: HTMLElement | null) => {
+    if (el) innerRefs.set(memberId, el);
+    else innerRefs.delete(memberId);
+  }, [innerRefs, memberId]);
+  const cross = fit?.axis === 'height' ? 'Height' : 'Width';
+  const body = fit ? (
+    // The zoom rides the outer box so the measured inner never carries it.
+    <div style={fit.factor < 1 ? ({ zoom: fit.factor, [fit.axis]: '100%' } as CSSProperties) : (fit.axis === 'height' ? { height: '100%' } : undefined)}>
+      <div
+        ref={setInnerRef}
+        style={{
+          [fit.axis]: 'max-content',
+          ...(fit.anchor ? {} : { [`min${cross}`]: '100%' }),
+        } as CSSProperties}
+      >
+        {children}
+      </div>
+    </div>
+  ) : children;
   return (
     <div
       ref={setCellRef}
@@ -849,7 +939,7 @@ function MemberCell({
       onPointerEnter={() => onHover(true)}
       onPointerLeave={() => onHover(false)}
     >
-      {children}
+      {body}
       <button
         type="button"
         onPointerDown={onPillPointerDown}

@@ -97,6 +97,7 @@ export const LiveFighterHud = memo(function LiveFighterHud() {
     lat,
     lon,
     windSpeed: t.wind.speed,
+    vtolState: t.vtolState,
     linkHistory,
     linkLabel: 'RC LINK',
     steer,
@@ -105,5 +106,14 @@ export const LiveFighterHud = memo(function LiveFighterHud() {
     contacts,
   };
 
-  return <FighterHud v={v} config={config} profile={profile} />;
+  // A transition is the least forgiving phase of a VTOL flight and the mode
+  // name never mentions it, so the cell appears on its own for an airframe
+  // that reports one. Other vehicles keep it off unless the user asks.
+  const hudConfig = t.vtolState == null || widgets.vtolState
+    ? config
+    : profile === 'ground'
+      ? { ...config, widgetsGround: { ...config.widgetsGround, vtolState: true } }
+      : { ...config, widgets: { ...config.widgets, vtolState: true } };
+
+  return <FighterHud v={v} config={hudConfig} profile={profile} />;
 });

@@ -46,4 +46,20 @@ export interface OpenDetachedRequest {
 /** Persisted workspace state — restored on app start. */
 export interface WorkspaceStoreSchema {
   detachedWindows: DetachedWindowInfo[];
+  /** Main window left fullscreen last session. Field tablets stay this way. */
+  mainFullScreen?: boolean;
+}
+
+/** What the GPU is actually doing for us, for field support. */
+export type GraphicsMode = 'auto' | 'safe' | 'off';
+
+export interface GraphicsInfo {
+  /** Chromium's own feature verdicts, e.g. { gpu_compositing: 'enabled' }. */
+  features: Record<string, string>;
+  /** Window system in use: 'wayland', 'x11' or '' off Linux. */
+  platform: string;
+  /** True when nothing is accelerated and Chromium is drawing on the CPU. */
+  softwareRendering: boolean;
+  /** Acceleration policy in force. Changing it needs a restart. */
+  mode: GraphicsMode;
 }

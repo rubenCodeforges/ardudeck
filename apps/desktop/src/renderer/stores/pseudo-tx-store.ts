@@ -28,6 +28,10 @@ import {
   detectMovedControl,
   devicesToChannels,
   looksLikeTransmitter,
+  virtualChannels,
+  mappingFromRcFunctions,
+  DEFAULT_RC_FUNCTIONS,
+  type RcFunctionMap,
 } from '../utils/pseudo-tx';
 import { packOverrideChannels } from '../utils/rc-vehicle-override';
 import {
@@ -38,6 +42,7 @@ import {
   setTrainerActive,
 } from '../utils/rc-source-arbiter';
 import { useConnectionStore } from './connection-store';
+import { useParameterStore } from './parameter-store';
 
 /** 50 Hz, matching a real receiver's frame rate. */
 const POLL_MS = 20;
@@ -46,6 +51,22 @@ let vehicleFrameCount = 0;
 let vehicleFpsWindowStart = 0;
 
 const EMPTY_DEVICE: RawDevice = { axes: [], buttons: [] };
+const VIRTUAL_DEVICE_NAME = 'On-screen sticks';
+
+/** RCMAP_* from the vehicle, so the sticks land on the channels it reads. */
+function rcFunctionsFromParams(): RcFunctionMap {
+  const p = useParameterStore.getState().parameters;
+  const read = (name: string, fallback: number) => {
+    const v = p.get(name)?.value;
+    return typeof v === 'number' && v >= 1 ? v : fallback;
+  };
+  return {
+    roll: read('RCMAP_ROLL', DEFAULT_RC_FUNCTIONS.roll),
+    pitch: read('RCMAP_PITCH', DEFAULT_RC_FUNCTIONS.pitch),
+    throttle: read('RCMAP_THROTTLE', DEFAULT_RC_FUNCTIONS.throttle),
+    yaw: read('RCMAP_YAW', DEFAULT_RC_FUNCTIONS.yaw),
+  };
+}
 
 /**
  * Shared across windows via localStorage, because every pop-out is a separate Electron
@@ -136,6 +157,12 @@ interface PseudoTxState {
   mappingMode: string;
 
   channels: number[];
+  /**
+   * On-screen stick axes in gamepad order [leftX, leftY, rightX, rightY], or
+   * null when a physical device is the source. Fed through the same mapping
+   * as a real pad so expo, deadband, reverse and channel assignment all apply.
+   */
+  virtualAxes: number[] | null;
   mapping: ChannelMap[];
   raw: RawDevice;
 
@@ -146,6 +173,8 @@ interface PseudoTxState {
 
   // Session-only by design (commands real aircraft): never persisted, never auto re-engaged.
   vehicleControl: boolean;
+  /** Switch to on-screen sticks (axes) or back to a physical pad (null). */
+  setVirtualAxes: (axes: number[] | null) => void;
   vehicleSendError: string | null;
   /** Override frames the vehicle acknowledged in the last second. */
   vehicleFps: number;
@@ -176,6 +205,7 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
   isTransmitter: false,
   mappingMode: '',
   channels: Array(RC_CHANNEL_COUNT).fill(RC_MID),
+  virtualAxes: null,
   mapping: readStoredMapping() ?? defaultMapping(),
   raw: EMPTY_DEVICE,
   sendError: null,
@@ -243,9 +273,27 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
     void api()?.rcOverrideRelease?.().catch(() => {});
   },
 
+  setVirtualAxes: (axes) => {
+    if (axes === null) {
+      // Leaving the on-screen sticks must not leave the vehicle holding the
+      // last commanded position: drop control and let the poll re-detect.
+      if (get().vehicleControl) get().disableVehicleControl();
+      set({ virtualAxes: null, connected: false, deviceName: '', deviceIndex: null });
+      return;
+    }
+    set({ virtualAxes: axes });
+  },
+
   poll: () => {
-    const { learning, learnBaseline, deviceIndex } = get();
-    const read = readGamepad(deviceIndex);
+    const { learning, learnBaseline, deviceIndex, virtualAxes } = get();
+
+    // On-screen sticks stand in for the device, but they do NOT go through the
+    // learned pad mapping: a pad needs one because its axis order is arbitrary,
+    // while here we know which pad is throttle and the FC publishes which
+    // channel each function lives on.
+    const read = virtualAxes
+      ? { dev: { axes: virtualAxes, buttons: [] as boolean[] }, id: VIRTUAL_DEVICE_NAME, index: -1, mapping: 'virtual' }
+      : readGamepad(deviceIndex);
     if (!read) {
       // No sticks means no valid override frames: release the vehicle immediately.
       if (get().vehicleControl) get().disableVehicleControl();
@@ -255,13 +303,20 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
     const { dev, id, index, mapping } = read;
 
     if (!get().connected || get().deviceIndex !== index) {
+      const isTx = looksLikeTransmitter(id, dev.axes.length);
       set({
         connected: true,
         deviceName: id,
         deviceIndex: index,
         mappingMode: mapping,
-        isTransmitter: looksLikeTransmitter(id, dev.axes.length),
+        isTransmitter: isTx,
       });
+      // Nothing taught yet and a console pad in hand: the vehicle already says
+      // which channel each stick belongs on, so there is nothing to ask for.
+      // A handset is left alone because it streams channels in order.
+      if (!isTx && !virtualAxes && readStoredMapping() === null) {
+        set({ mapping: mappingFromRcFunctions(rcFunctionsFromParams()) });
+      }
     }
 
     // Teaching a channel: watch for a control that moves clearly away from its rest state.
@@ -275,7 +330,9 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
 
     // Read the mapping AFTER any learn above, not from the snapshot taken at entry: a channel
     // taught this tick must respond on this tick, not on the next one.
-    const ch = devicesToChannels(dev, get().mapping);
+    const ch = virtualAxes
+      ? virtualChannels(virtualAxes, rcFunctionsFromParams())
+      : devicesToChannels(dev, get().mapping);
     set({ raw: dev, channels: ch });
 
     // Only the FOCUSED window may send.
@@ -371,7 +428,13 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
   },
 
   resetMapping: () => {
-    const mapping = defaultMapping();
+    // A handset streams its channels in order, so identity is right for it. A
+    // console pad uses the stick convention, so place it by the vehicle's
+    // RCMAP. With nothing plugged in yet we cannot tell, so keep identity and
+    // let the connect path place a pad when one shows up.
+    const mapping = get().connected && !get().isTransmitter
+      ? mappingFromRcFunctions(rcFunctionsFromParams())
+      : defaultMapping();
     set({ mapping });
     writeStoredMapping(mapping);
   },
@@ -463,3 +526,11 @@ export function preferredRcChannels(fcChannels: number[] | undefined): {
 
   return { channels: fcChannels ?? [], source: 'none' };
 }
+
+// A hot update leaves the old interval running against the old store, so the
+// sticks keep being written by code that no longer exists. Tear it down and
+// let the next module instance start its own.
+import.meta.hot?.dispose(() => {
+  const t = usePseudoTxStore.getState().pollTimer;
+  if (t) clearInterval(t);
+});

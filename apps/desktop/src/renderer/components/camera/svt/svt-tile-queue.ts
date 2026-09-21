@@ -15,15 +15,16 @@ export function acquireTileSlot(): Promise<void> {
     activeTileLoads++;
     return Promise.resolve();
   }
-  return new Promise<void>((resolve) => tileQueue.push(() => resolve())).then(() => {
-    activeTileLoads++;
-  });
+  return new Promise<void>((resolve) => tileQueue.push(resolve));
 }
 
 export function releaseTileSlot(): void {
-  activeTileLoads--;
+  // The slot passes straight to the next waiter. Freeing it first and letting
+  // the waiter re-take it in a microtask left a window a synchronous caller
+  // could claim, putting more loads in flight than the cap allows.
   const next = tileQueue.shift();
   if (next) next();
+  else activeTileLoads--;
 }
 
 /** Abandon a tile that hasn't loaded in this long (treat as missing). */

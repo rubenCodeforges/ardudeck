@@ -31,6 +31,8 @@ interface FcOptions {
   lockReadSize?: boolean;
   /** NAK reads past the end with Fail instead of EOF. */
   failPastEnd?: boolean;
+  /** Serve a partial chunk at these offsets without it being the end of the file. */
+  shortReadAt?: Set<number>;
   /** Serve full chunks at ANY offset and never signal EOF, like a runaway server. */
   endless?: boolean;
   /** Overrun cap handed to the client (production default is 8 MiB). */
@@ -96,7 +98,8 @@ function attachFc(file: Uint8Array, opts: FcOptions = {}) {
             return;
           }
           if (req.offset >= served) { nak(req, opts.failPastEnd ? FtpError.Fail : FtpError.EOF); return; }
-          const end = Math.min(req.offset + req.size, served);
+          const short = opts.shortReadAt?.has(req.offset) ? Math.floor(req.size / 2) : req.size;
+          const end = Math.min(req.offset + short, served);
           reply(req, { offset: req.offset, size: end - req.offset, data: file.subarray(req.offset, end) });
           return;
         }
@@ -111,8 +114,9 @@ function attachFc(file: Uint8Array, opts: FcOptions = {}) {
           const stopAt = Math.min(served, req.offset + cap * req.size);
           let n = 0;
           for (let off = req.offset; off < stopAt; off += req.size, n++) {
-            const end = Math.min(off + req.size, stopAt);
-            const last = end >= stopAt;
+            const short = opts.shortReadAt?.has(off) ? Math.floor(req.size / 2) : req.size;
+            const end = Math.min(off + short, stopAt);
+            const last = off + req.size >= stopAt;
             // The burst_complete packet always goes out: losing it only costs an
             // idle timeout, which is a separate concern from gap recovery.
             if (!last && opts.dropBurstPacket?.(n)) continue;
@@ -181,6 +185,32 @@ describe('MavlinkFtpClient burst download', () => {
 
     const data = await client.downloadFile('@PARAM/param.pck');
     expect(data).toEqual(file.subarray(0, 64));
+  });
+});
+
+describe('MavlinkFtpClient short reads mid-file', () => {
+  // A server may serve fewer bytes than asked for without the file having
+  // ended. Treating that as EOF silently truncates the download, which is how
+  // a log pulled through the file browser comes back short.
+  it('does not end a sequential download on a short read below the reported size', async () => {
+    const file = makeFile(400);
+    const { client } = attachFc(file, { burst: false, shortReadAt: new Set([READ_SIZE]) });
+
+    expect(await client.downloadFile('/APM/LOGS/1.BIN')).toEqual(file);
+  });
+
+  it('patches a short burst packet instead of stopping there', async () => {
+    const file = makeFile(400);
+    const { client } = attachFc(file, { burst: true, shortReadAt: new Set([READ_SIZE]) });
+
+    expect(await client.downloadFile('/APM/LOGS/1.BIN')).toEqual(file);
+  });
+
+  it('still ends on an EOF NAK wherever it lands', async () => {
+    const file = makeFile(400);
+    const { client } = attachFc(file, { burst: false, servedBytes: 128 });
+
+    expect(await client.downloadFile('/APM/LOGS/1.BIN')).toEqual(file.subarray(0, 128));
   });
 });
 

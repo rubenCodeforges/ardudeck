@@ -25,7 +25,7 @@ export function ObjectsPanel(): JSX.Element {
   const objects = useObjectsStore((s) => s.objects);
   const selectedId = useObjectsStore((s) => s.selectedId);
   const {
-    selectObject, renameObject, deleteObject, toggleVisible, reorderObject, convertSelectedToPolygon, setObjectColor, setObjectFenceType, setObjectRole, removeBranch, loadWorldRings,
+    selectObject, renameObject, deleteObject, toggleVisible, reorderObject, convertSelectedToPolygon, setObjectColor, setObjectFenceType, setObjectRole, removeBranch, loadWorldRings, focusObject,
   } = useObjectsStore.getState();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -193,6 +193,11 @@ export function ObjectsPanel(): JSX.Element {
                 )}
 
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button" data-tip="Zoom the map to this object"
+                    onClick={(e) => { e.stopPropagation(); focusObject(o.id); }}
+                    className="text-content-tertiary hover:text-content">
+                    <svg {...svg}><circle cx="12" cy="12" r="7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+                  </button>
                   <button type="button" data-tip="Move up" disabled={i === 0}
                     onClick={(e) => { e.stopPropagation(); reorderObject(o.id, -1); }}
                     className="text-content-tertiary hover:text-content disabled:opacity-30 disabled:cursor-not-allowed">

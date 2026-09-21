@@ -27,6 +27,7 @@ import {
   BATTERY_CHEMISTRIES,
   type BatteryChemistry,
 } from './presets/mavlink-presets';
+import { SitlBatteryCard } from './SitlBatteryCard';
 
 const BatteryTab: React.FC = () => {
   const { parameters, setParameter, modifiedCount } = useParameterStore();
@@ -292,6 +293,15 @@ const BatteryTab: React.FC = () => {
               Currently: ~{estimatedCells}S {chemInfo.name}
             </span>
           )}
+        </div>
+
+        {/* Renders itself away unless SIM_BATT_* exist, i.e. unless this is SITL. */}
+        <div className="mb-4">
+          <SitlBatteryCard
+            cells={estimatedCells}
+            cellFull={chemInfo.cellFull}
+            capacityMah={batteryValues.battCapacity as number}
+          />
         </div>
 
         {/* Chemistry Selector */}

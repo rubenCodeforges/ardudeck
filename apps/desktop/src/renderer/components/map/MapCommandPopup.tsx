@@ -14,6 +14,8 @@ import { mavTypeToTacticalClass, type TacticalVehicleClass } from './tactical-ic
 import { ScriptInstallModal } from '../script-installer/ScriptInstallModal';
 import { fenceWarningForPoint } from '../../utils/fence-check';
 import { useTerrainAvailable } from '../../stores/terrain-status-store';
+import { useParameterStore } from '../../stores/parameter-store';
+import { useVehicleClass } from '../../hooks/useVehicleClass';
 import type { AltReferenceFrame } from '../../../shared/mission-types.js';
 import {
   altitudeValueFromMeters,
@@ -90,6 +92,29 @@ const AIR: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane'];
 const HOVER: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol'];
 const ALL: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane', 'rover', 'boat', 'sub', 'antenna'];
 
+/**
+ * What a guided command really does to a quadplane.
+ *
+ * Verified against ArduPlane/quadplane.cpp: Q_GUIDED_MODE (default 0) does not
+ * mean "do guided in VTOL". It means "switch to VTOL when the destination is
+ * reached and hover there". So a guided move always transitions a hovering
+ * quadplane into forward flight first, which is nothing like the copter
+ * behaviour the same button has everywhere else.
+ */
+function vtolHint(
+  meta: ActionMeta,
+  vehicleClass: TacticalVehicleClass,
+  qGuidedMode: number | undefined,
+): string | null {
+  if (vehicleClass !== 'vtol' || meta.modeTo !== 'GUIDED') return null;
+  const arrival = qGuidedMode === undefined
+    ? 'On arrival it depends on Q_GUIDED_MODE, which has not been read yet.'
+    : qGuidedMode > 0
+      ? 'On arrival it transitions back and hovers there.'
+      : 'On arrival it circles as a plane; it will not hover (Q_GUIDED_MODE is off).';
+  return `Transitions to forward flight and flies there on the wing, not in hover. ${arrival}`;
+}
+
 const ACTIONS: ActionMeta[] = [
   { id: 'fly', zone: 'primary', label: 'Fly here', accent: 'cyan', icon: Navigation, go: 'Fly',
     hint: 'Guided move to this point at the set altitude.', modeTo: 'GUIDED', supportedClasses: ALL },
@@ -138,6 +163,8 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   // so Enter always fires with what the row summary shows.
   const [altitude, setAltitude] = useState(Math.max(Math.round(currentAltAgl), 10));
   const [radius, setRadius] = useState(50);
+  // 0 = leave the vehicle's configured cruise alone, which is the old behaviour.
+  const [cruiseSpeed, setCruiseSpeed] = useState(0);
   const [direction, setDirection] = useState<'cw' | 'ccw'>('cw');
   const [revolutions, setRevolutions] = useState(0); // 0 = endless
   const [spiralTargetAlt, setSpiralTargetAlt] = useState(Math.max(Math.round(currentAltAgl) + 30, 40));
@@ -199,10 +226,21 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   const activeMavType = useActiveVehicleStore(s => (s.activeVehicleKey ? s.knownVehicles[s.activeVehicleKey]?.mavType : undefined));
   const connMavType = useConnectionStore(s => s.connectionState.mavType);
   const mavType = activeMavType ?? connMavType;
-  const vehicleClass = useMemo<TacticalVehicleClass>(
-    () => mavType === undefined ? 'copter' : mavTypeToTacticalClass(mavType),
-    [mavType],
+  // ArduPlane GUIDED always navigates as a fixed wing; Q_GUIDED_MODE only
+  // decides whether it hovers once it arrives. Read it so the hint can say
+  // which of the two actually happens.
+  const qGuidedMode = useParameterStore(
+    (s) => s.parameters.get('Q_GUIDED_MODE')?.value as number | undefined,
   );
+
+  // Same derivation the flight-mode code uses: MAV_TYPE alone reports a
+  // quadplane as a plane, so the tiles and hints would offer copter behaviour
+  // to an aircraft that transitions.
+  const apClass = useVehicleClass();
+  const vehicleClass = useMemo<TacticalVehicleClass>(() => {
+    if (apClass === 'vtol') return 'vtol';
+    return mavType === undefined ? 'copter' : mavTypeToTacticalClass(mavType);
+  }, [mavType, apClass]);
 
   // Visible tiles: class support and the advanced unlock filter what EXISTS
   // for this vehicle/user (a permanent property, so removal is fine). Script
@@ -301,14 +339,14 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
     const signedYawRate = direction === 'cw' ? Math.abs(yawRate) : -Math.abs(yawRate);
     switch (id) {
       case 'fly':
-        onConfirm({ type: 'goto', lat, lon, alt: altitude, frame: altFrame });
+        onConfirm({ type: 'goto', lat, lon, alt: altitude, frame: altFrame, speed: cruiseSpeed > 0 ? cruiseSpeed : undefined });
         break;
       case 'look':
         onSetRoi?.(lat, lon);
         break;
       case 'orbit':
         onConfirm(
-          { type: 'orbit', lat, lon, alt: altitude, radius: signedRadius, revolutions, frame: altFrame },
+          { type: 'orbit', lat, lon, alt: altitude, radius: signedRadius, revolutions, frame: altFrame, speed: cruiseSpeed > 0 ? cruiseSpeed : undefined },
           { preferScript: scriptHealthy },
         );
         break;
@@ -457,7 +495,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
         ) : (
           <>
             <div className="mb-2 text-[10.5px] leading-snug text-content-secondary">
-              {meta.hint}
+              {vtolHint(meta, vehicleClass, qGuidedMode) ?? meta.hint}
               {meta.id === 'look' && hasRoi && (
                 <>
                   {' '}
@@ -484,6 +522,18 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                   {altFrameSelectable && (
                     <ParamRow label="Above">
                       <FrameSeg value={altFrame} onChange={chooseAltFrame} />
+                    </ParamRow>
+                  )}
+                  {(meta.id === 'fly' || meta.id === 'orbit') && (
+                    <ParamRow label="Speed">
+                      <Stepper
+                        value={cruiseSpeed > 0 ? Number(speedValueFromMetersPerSecond(cruiseSpeed, speedUnit).toFixed(UNIT_PRECISION.speed[speedUnit] ?? 0)) : 0}
+                        onChange={(v) => setCruiseSpeed(v <= 0 ? 0 : toMetersPerSecondFromSpeedUnit(v, speedUnit))}
+                        min={0}
+                        max={Number(speedValueFromMetersPerSecond(50, speedUnit).toFixed(0))}
+                        step={1}
+                        unit={cruiseSpeed > 0 ? UNIT_LABELS.speed[speedUnit] : 'keep current'}
+                      />
                     </ParamRow>
                   )}
                   {altFrame === 'asl' && (() => {

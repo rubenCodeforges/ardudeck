@@ -43,7 +43,8 @@
     "package": "pnpm sync-version && pnpm --filter @ardudeck/desktop package",
     "sitl:build": "./tools/build-sitl-mac-arm64.sh",
     "sitl:publish": "./tools/build-sitl-mac-arm64.sh --publish",
-    "prepare": "husky"
+    "prepare": "husky",
+    "sign:dev-electron": "bash tools/sign-dev-electron.sh"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.18.2",

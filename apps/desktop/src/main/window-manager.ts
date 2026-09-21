@@ -81,6 +81,14 @@ export function initWindowManager(main: BrowserWindow): void {
   });
 }
 
+export function getMainFullScreen(): boolean {
+  return workspaceStore.get('mainFullScreen', false) === true;
+}
+
+export function setMainFullScreen(on: boolean): void {
+  workspaceStore.set('mainFullScreen', on);
+}
+
 export function getMainWindow(): BrowserWindow | null {
   return mainWindow;
 }

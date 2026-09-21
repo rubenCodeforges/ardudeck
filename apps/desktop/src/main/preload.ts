@@ -258,6 +258,9 @@ const api = {
   mavlinkVtolTakeoff: (altitude: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_COMMAND_VTOL_TAKEOFF, altitude),
 
+  mavlinkChangeSpeed: (speedMs: number, speedType: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_CHANGE_SPEED, speedMs, speedType),
+
   mavlinkGoto: (lat: number, lon: number, alt: number, frame?: number, yawRad?: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_GOTO, lat, lon, alt, frame, yawRad),
 
@@ -2179,6 +2182,12 @@ const api = {
 
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.APP_GET_VERSION),
+
+  getGraphicsInfo: (): Promise<{ features: Record<string, string>; platform: string; softwareRendering: boolean; mode: 'auto' | 'safe' | 'off' }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_GET_GRAPHICS_INFO),
+
+  setGraphicsMode: (mode: 'auto' | 'safe' | 'off'): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_SET_GRAPHICS_MODE, mode),
 
   checkForUpdate: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.APP_CHECK_UPDATE),

@@ -232,6 +232,16 @@ function isLoadableParamFile(relPath: string): boolean {
   return relPath.startsWith('default_params/');
 }
 
+/**
+ * True for frames whose lift comes from rotors the fixed-wing model does not
+ * know about. ArduDeck's own physics engine has copter, plane and rover models
+ * and no VTOL one, so these have to fly on ArduPilot's built-in physics.
+ */
+export function isVtolFrame(frameName: string, vehicleType: ArduPilotVehicleType): boolean {
+  const c = categorize(frameName, vehicleType);
+  return c === 'Quadplane' || c === 'Tailsitter';
+}
+
 function categorize(frameName: string, vehicleType: ArduPilotVehicleType): FrameCategory {
   const n = frameName.toLowerCase();
   if (vehicleType === 'copter') {

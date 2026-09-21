@@ -45,13 +45,13 @@ export function CompassFitPanel({ results }: CompassFitPanelProps): JSX.Element 
     return hit ? hit.fitness : null;
   };
 
-  const useParam = (slot: CompassSlot) =>
+  const compassUseParam = (slot: CompassSlot) =>
     slot.index === 1 ? 'COMPASS_USE' : `COMPASS_USE${slot.index}`;
 
   const toggleUse = async (slot: CompassSlot) => {
     setBusy(true);
     try {
-      await setParameter(useParam(slot), slot.used ? 0 : 1);
+      await setParameter(compassUseParam(slot), slot.used ? 0 : 1);
     } finally {
       setBusy(false);
     }

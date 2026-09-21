@@ -10,6 +10,7 @@
  */
 
 import type { UnitProfile } from './hud-config';
+import { vtolStateLabel, type VtolState } from '../../../../shared/telemetry-types';
 
 export type HudReadoutId =
   | 'voltage'
@@ -33,7 +34,8 @@ export type HudReadoutId =
   | 'steer'
   | 'tilt'
   | 'wpDist'
-  | 'xtrack';
+  | 'xtrack'
+  | 'vtolState';
 
 export type HudReadoutCategory = 'Power' | 'Flight' | 'Speed' | 'Navigation' | 'Environment' | 'Status';
 
@@ -77,6 +79,8 @@ export interface ReadoutSource {
   /** Autopilot nav solution (NAV_CONTROLLER_OUTPUT) - only while navigating. */
   wpDistance?: number;
   xtrackError?: number;
+  /** MAV_VTOL_STATE. Absent on anything that is not a VTOL. */
+  vtolState?: VtolState | null;
 }
 
 export const HUD_READOUTS: HudReadoutMeta[] = [
@@ -97,6 +101,7 @@ export const HUD_READOUTS: HudReadoutMeta[] = [
   { id: 'lon', label: 'LON', description: 'Longitude', category: 'Navigation' },
   { id: 'windSpeed', label: 'WIND', description: 'Wind speed', category: 'Environment' },
   { id: 'mode', label: 'MODE', description: 'Flight mode', category: 'Status' },
+  { id: 'vtolState', label: 'VTOL', description: 'Hover, wingborne, or transitioning', category: 'Status' },
   { id: 'gforce', label: 'G', description: 'G-force', category: 'Status' },
   { id: 'steer', label: 'STEER', description: 'Steering output (ground vehicles)', category: 'Status' },
   { id: 'tilt', label: 'TILT', description: 'Roll/pitch tilt (rollover awareness)', category: 'Status' },
@@ -154,6 +159,12 @@ export function formatReadout(id: HudReadoutId, v: ReadoutSource, u: UnitProfile
       return { label, value: `${Math.round(u.speed(v.airspeed))} ${u.speedUnit}` };
     case 'heading':
       return { label, value: `${pad3(v.heading)}°` };
+    case 'vtolState': {
+      // Only a VTOL reports this, so on anything else the cell stays a dash
+      // rather than claiming the airframe is a fixed wing.
+      const s = vtolStateLabel(v.vtolState);
+      return s == null ? dash : { label, value: s };
+    }
     case 'distHome':
       return v.distance == null ? dash : { label, value: `${Math.round(u.dist(v.distance))} ${u.distUnit}` };
     case 'gpsSats': {

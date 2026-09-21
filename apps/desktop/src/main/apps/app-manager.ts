@@ -17,8 +17,19 @@ import { app } from 'electron';
 import Store from 'electron-store';
 import { extractAppArchive } from './app-extract.js';
 import type {
-  AppPlatform, AppProgress, HangarApp, InstalledApp,
+  AppPlatform, AppProgress, HangarApp, HangarAppDetail, InstalledApp,
 } from '../../shared/app-types.js';
+
+/** Same ordering the module installer uses, so the two cannot disagree about a version. */
+function compareSemver(a: string, b: string): number {
+  const pa = a.split('-')[0]!.split('.').map(Number);
+  const pb = b.split('-')[0]!.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
 
 interface AppStoreSchema {
   apps: InstalledApp[];
@@ -77,6 +88,27 @@ export async function installApp(
   onProgress: (p: AppProgress) => void = () => {},
 ): Promise<InstalledApp> {
   const platform = thisPlatform();
+
+  // Refuse a release this ArduDeck is too old to host, BEFORE downloading half a gigabyte.
+  //
+  // The module installer has always done this; the app installer never did, so a release could
+  // declare `minAppVersion` and be installed by a build with none of the integration it needs.
+  // The failure then arrives later and somewhere else: the app is on disk, the nav rail entry
+  // is missing, and nothing connects the two.
+  const detail = await fetch(`${baseUrl()}/public/apps/${encodeURIComponent(slug)}`)
+    .then((r) => (r.ok ? (r.json() as Promise<HangarAppDetail>) : null))
+    .catch(() => null);
+  const release = detail?.releases?.find(
+    (r) => r.version === detail.latestVersion && r.platform === platform && r.kind === 'archive',
+  );
+  const needs = release?.minAppVersion;
+  if (needs && compareSemver(app.getVersion(), needs) < 0) {
+    throw new Error(
+      `${detail?.name ?? slug} needs ArduDeck ${needs} or newer (this is ${app.getVersion()}). ` +
+        'Update ArduDeck first.',
+    );
+  }
+
   const url =
     `${baseUrl()}/public/apps/${encodeURIComponent(slug)}/download/latest` +
     `?platform=${platform}&kind=archive`;
@@ -131,10 +163,6 @@ export async function installApp(
   await extractAppArchive(zipPath, installPath);
   // Hundreds of megabytes that are now redundant; keeping it doubles what the app costs on disk.
   await rm(zipPath, { force: true });
-
-  const detail = await fetch(`${baseUrl()}/public/apps/${encodeURIComponent(slug)}`)
-    .then((r) => (r.ok ? r.json() : null))
-    .catch(() => null);
 
   const record: InstalledApp = {
     slug,

@@ -98,7 +98,8 @@ export const GpsOffsetSection: React.FC = () => {
 
   const scheme = useMemo(() => resolveOffsetScheme((id) => parameters.has(id)), [parameters]);
   const editable = isConnected && paramsLoaded && scheme !== null;
-  const gps2Available = scheme !== null && parameters.has(offsetParamIds(scheme, 2).x);
+  // PX4 has a single estimator lever arm, so there is no second receiver to offer.
+  const gps2Available = scheme !== null && scheme !== 'px4' && parameters.has(offsetParamIds(scheme, 2).x);
   const ids = offsetParamIds(scheme ?? 'modern', gps);
 
   const current: Offsets = useMemo(

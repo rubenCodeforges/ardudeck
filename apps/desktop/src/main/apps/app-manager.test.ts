@@ -12,6 +12,9 @@ const app = (slug: string, platforms: HangarApp['platforms']): HangarApp => ({
   downloads: 0,
   latestVersion: '0.1.0',
   platforms,
+  sizes: {},
+  standalone: true,
+  insideArduDeck: true,
 });
 
 describe('runnableHere', () => {

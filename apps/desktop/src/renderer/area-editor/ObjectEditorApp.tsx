@@ -26,7 +26,7 @@ import { corridorSwath } from '../components/survey/geo-edit';
 import { objectWorldBranches } from './area-object';
 import { useSurveyStore } from '../stores/survey-store';
 import { objectWorldRing, objectWorldHoles, buildCommitAreas } from './area-object';
-import { parseGisArea } from '../../shared/gis-area-import';
+import { parseGisArea, parseGisLines } from '../../shared/gis-area-import';
 import { useSettingsStore, type ThemePreference } from '../stores/settings-store';
 import {
   distanceValueFromMeters,
@@ -289,12 +289,36 @@ export function ObjectEditorApp(): JSX.Element {
       const result = await window.electronAPI.importSurveyArea();
       if (!result.success || !result.content || !result.format) return;
       const areas = parseGisArea(result.content, result.format);
-      if (areas.length === 0) return;
-      loadWorldRings(areas.map((a) => ({ ring: a.polygon, holes: a.holes ?? [], type: 'polygon' as const })));
+      // A survey export is often a bare centreline (pipeline, powerline, road)
+      // with no polygon at all. Those become corridors, not nothing.
+      const lines = parseGisLines(result.content, result.format).filter((l) => l.path.length >= 2);
+      if (areas.length === 0 && lines.length === 0) return;
+      loadWorldRings([
+        ...areas.map((a) => ({ ring: a.polygon, holes: a.holes ?? [], type: 'polygon' as const })),
+        ...lines.map((l) => ({ ring: l.path, holes: [], type: 'corridor' as const })),
+      ]);
     } catch (err) {
       console.warn('[ObjectEditor] import failed:', err);
     }
   }, [loadWorldRings]);
+
+  // Zoom to one object when the list asks. Keyed on seq so pressing focus on
+  // the same object twice still moves the map.
+  const focusRequest = useObjectsStore((s) => s.focusRequest);
+  useEffect(() => {
+    if (!map || !focusRequest) return;
+    const obj = useObjectsStore.getState().objects.find((o) => o.id === focusRequest.id);
+    if (!obj) return;
+    let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity;
+    for (const p of objectWorldRing(obj)) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    }
+    if (!Number.isFinite(minLat)) return;
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 80, maxZoom: 18 });
+  }, [map, focusRequest]);
 
   const handleFit = useCallback(() => {
     if (!map) return;

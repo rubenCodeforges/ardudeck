@@ -3,7 +3,9 @@ import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { TileCacheCard } from './TileCacheCard';
 import { UnitSelectionCard } from './UnitSelectionCard';
 import { TrafficSettingsCard } from './TrafficSettingsCard';
+import { GroupShapeCard } from './GroupShapeCard';
 import { useSettingsStore, type VehicleProfile, type VehicleType, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
+import { useRenderGovernor } from '../../perf/render-governor';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -1574,7 +1576,7 @@ export function SettingsView() {
           {/* Stats + Tips row */}
           {connectionState.protocol === 'mavlink' && connectionState.isConnected ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ArduPilotFlightStats />
+              {connectionState.firmware !== 'px4' && <ArduPilotFlightStats />}
               <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
                 <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Tips & Recommendations</h3>
                 <TipsSection vehicle={activeVehicle} />
@@ -1671,6 +1673,8 @@ export function SettingsView() {
               ))}
             </div>
           </div>
+
+          <GroupShapeCard />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Mission Defaults Section */}
@@ -2450,6 +2454,147 @@ function ScriptInstallerActions() {
   );
 }
 
+
+/**
+ * Whether Chromium is drawing on the GPU or on the CPU.
+ *
+ * "It feels slow" is unanswerable without this, and a packaged build has no
+ * address bar to reach about:gpu with.
+ */
+function GraphicsStatus() {
+  const [info, setInfo] = useState<{ features: Record<string, string>; platform: string; softwareRendering: boolean; mode: 'auto' | 'safe' | 'off' } | null>(null);
+  const [modeChanged, setModeChanged] = useState(false);
+  const level = useRenderGovernor((s) => s.level);
+  const pinned = useRenderGovernor((s) => s.pinned);
+  const slowShare = useRenderGovernor((s) => s.slowShare);
+  const setPinned = useRenderGovernor((s) => s.setPinned);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.electronAPI?.getGraphicsInfo?.().then((res) => {
+      if (!cancelled) setInfo(res);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!info) return null;
+
+  const headline = ['gpu_compositing', 'webgl', 'canvas_oop_rasterization', 'rasterization'];
+  const rows = headline
+    .filter((k) => info.features[k] !== undefined)
+    .map((k) => ({ key: k, value: info.features[k]! }));
+
+  return (
+    <section className="mt-4 bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider">Graphics</h3>
+        <span className={`rounded px-2 py-0.5 text-[10px] ${
+          info.softwareRendering
+            ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+            : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+        }`}>
+          {info.softwareRendering ? 'Software rendering' : 'Hardware accelerated'}
+        </span>
+      </div>
+
+      {info.softwareRendering && (
+        <p className="mb-3 text-xs text-amber-600 dark:text-amber-300">
+          The GPU is not being used, so the map and instruments are being drawn by the CPU. On a
+          laptop or tablet that is the difference between smooth and unusable.
+        </p>
+      )}
+
+      <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
+        <div className="mb-2 text-xs text-content">Hardware acceleration</div>
+        <div className="flex gap-2">
+          {([
+            { value: 'auto' as const, label: 'Force on', tip: 'Override the driver blocklist and use the GPU. The right answer on almost every machine.' },
+            { value: 'safe' as const, label: 'Default', tip: "Whatever Chromium decides on its own." },
+            { value: 'off' as const, label: 'Off', tip: 'Draw everything on the CPU. Only for a driver that crashes.' },
+          ]).map((opt) => (
+            <button
+              key={opt.value}
+              data-tip={opt.tip}
+              onClick={() => {
+                void window.electronAPI?.setGraphicsMode?.(opt.value);
+                setInfo((prev) => (prev ? { ...prev, mode: opt.value } : prev));
+                setModeChanged(true);
+              }}
+              className={`flex-1 rounded-md px-2 py-1.5 text-[11px] transition-colors ${
+                info.mode === opt.value
+                  ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 ring-1 ring-cyan-500/40'
+                  : 'bg-surface-overlay text-content-secondary hover:text-content'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-content-tertiary">
+          {modeChanged
+            ? 'Restart ArduDeck for this to take effect.'
+            : 'Chromium reads this before the first window opens, so a change needs a restart. If a launch never finishes painting, ArduDeck drops back to Default by itself.'}
+        </p>
+      </div>
+
+      <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-content">Screen update rate</span>
+          <span className="font-mono text-[10px] text-content-tertiary">
+            {Math.round(slowShare * 100)}% slow frames
+          </span>
+        </div>
+        <p className="mt-1 mb-2 text-[11px] text-content-tertiary">
+          ArduDeck measures how well this machine keeps up and thins the repaint when it cannot.
+          The link rate and the recorded data never change, only how often the screen is redrawn.
+        </p>
+        <div className="flex gap-2">
+          {([
+            { value: null, label: 'Automatic' },
+            { value: 'full' as const, label: 'Full' },
+            { value: 'reduced' as const, label: 'Reduced' },
+            { value: 'minimal' as const, label: 'Minimal' },
+          ]).map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => setPinned(opt.value)}
+              className={`flex-1 rounded-md px-2 py-1.5 text-[11px] transition-colors ${
+                pinned === opt.value
+                  ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 ring-1 ring-cyan-500/40'
+                  : 'bg-surface-overlay text-content-secondary hover:text-content'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {pinned === null && (
+          <p className="mt-2 text-[11px] text-content-tertiary">
+            Currently running at <span className="text-content">{level}</span>.
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        {rows.map((r) => (
+          <div key={r.key} className="flex items-center justify-between text-xs">
+            <span className="text-content-secondary">{r.key.replace(/_/g, ' ')}</span>
+            <span className={`font-mono ${r.value.startsWith('enabled') ? 'text-emerald-500' : 'text-content-tertiary'}`}>
+              {r.value}
+            </span>
+          </div>
+        ))}
+        {info.platform && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-content-secondary">window system</span>
+            <span className="font-mono text-content-tertiary">{info.platform}</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function AboutSection() {
   const {
     currentVersion,
@@ -2677,6 +2822,7 @@ function AboutSection() {
             : <p className="text-sm text-content-tertiary">This release has no notes.</p>
         )}
       </section>
+      <GraphicsStatus />
     </div>
   );
 }

@@ -122,6 +122,8 @@ function snapshot(s: ObjectsState): HistorySnapshot {
 interface ObjectsState {
   objects: EditorObject[];
   selectedId: string | null;
+  /** Object the map should zoom to. Bumped seq so the same id can re-fire. */
+  focusRequest: { id: string; seq: number } | null;
   tool: AreaTool;
   /** In-progress polygon/corridor outline (world points); empty when not drawing. */
   draftPoints: LatLng[];
@@ -237,6 +239,8 @@ interface ObjectsActions {
   reset: () => void;
   /** Load world rings as objects (used by import). */
   loadWorldRings: (rings: Array<{ ring: LatLng[]; holes?: LatLng[][]; type?: EditorObjectType; fenceType?: 'inclusion' | 'exclusion' }>) => void;
+  /** Ask the map to zoom to one object. */
+  focusObject: (id: string) => void;
 }
 
 type Store = ObjectsState & ObjectsActions;
@@ -272,6 +276,7 @@ export const useObjectsStore = create<Store>()(
   subscribeWithSelector((set, get) => ({
     objects: [],
     selectedId: null,
+    focusRequest: null,
     tool: 'select',
     draftPoints: [],
     draftType: null,
@@ -807,6 +812,10 @@ export const useObjectsStore = create<Store>()(
         past: [],
         future: [],
       }),
+
+    focusObject: (id) => {
+      set((s) => ({ focusRequest: { id, seq: (s.focusRequest?.seq ?? 0) + 1 } }));
+    },
 
     loadWorldRings: (rings) => {
       get().pushHistory();

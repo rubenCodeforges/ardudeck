@@ -169,3 +169,70 @@ export function looksLikeTransmitter(id: string, axisCount: number): boolean {
   // plus triggers.
   return axisCount >= 6;
 }
+
+/** Which RC channel carries each stick, as the flight controller sees it. */
+export interface RcFunctionMap {
+  roll: number;
+  pitch: number;
+  throttle: number;
+  yaw: number;
+}
+
+/** ArduPilot's RCMAP_* defaults. */
+export const DEFAULT_RC_FUNCTIONS: RcFunctionMap = { roll: 1, pitch: 2, throttle: 3, yaw: 4 };
+
+/**
+ * Channels for the on-screen sticks, placed by the vehicle's own RCMAP_*.
+ *
+ * A physical pad needs a learned mapping because its axis order is arbitrary.
+ * On-screen sticks do not: we know which pad is throttle, and the FC already
+ * publishes which channel it reads each function from. Assuming channel n maps
+ * to axis n instead puts yaw on the roll channel the moment RCMAP is anything
+ * but the default.
+ *
+ * `axes` is gamepad convention [leftX, leftY, rightX, rightY], y positive down.
+ */
+export function virtualChannels(axes: number[], fns: RcFunctionMap = DEFAULT_RC_FUNCTIONS): number[] {
+  const out = new Array<number>(RC_CHANNEL_COUNT).fill(RC_MID);
+  const [leftX = 0, leftY = 0, rightX = 0, rightY = 0] = axes;
+
+  const put = (channel: number, pwm: number) => {
+    const i = Math.round(channel) - 1;
+    if (i >= 0 && i < RC_CHANNEL_COUNT) out[i] = Math.round(pwm);
+  };
+  const bipolar = (v: number) => RC_MID + Math.min(1, Math.max(-1, v)) * (RC_MAX - RC_MID);
+
+  put(fns.roll, bipolar(rightX));
+  put(fns.pitch, bipolar(rightY));
+  put(fns.yaw, bipolar(leftX));
+  // Throttle is unipolar and the pad's up is negative, so stick-up is full.
+  put(fns.throttle, RC_MIN + ((1 - Math.min(1, Math.max(-1, leftY))) / 2) * (RC_MAX - RC_MIN));
+  return out;
+}
+
+/**
+ * A fresh pad mapping placed by the vehicle's own RCMAP_*, rather than
+ * channel-n-to-axis-n.
+ *
+ * A console pad's axis order is a known convention (left stick throttle/yaw,
+ * right stick pitch/roll), and the flight controller already publishes which
+ * channel it reads each function from. Between the two there is nothing for
+ * the pilot to teach for the four primaries. Identity mapping only happens to
+ * work when RCMAP is at its defaults, and silently swaps controls when it is
+ * not. Switches above channel 4 stay on the old axis-order assumption because
+ * nothing publishes where a handset puts them.
+ */
+export function mappingFromRcFunctions(fns: RcFunctionMap = DEFAULT_RC_FUNCTIONS): ChannelMap[] {
+  const out = defaultMapping();
+  const assign = (channel: number, axis: number) => {
+    const i = Math.round(channel) - 1;
+    if (i < 0 || i >= RC_CHANNEL_COUNT) return;
+    out[i] = { ...defaultChannelMap(), deadband: 0.02, source: { kind: 'axis', index: axis } };
+  };
+  // Gamepad convention: 0 leftX, 1 leftY, 2 rightX, 3 rightY.
+  assign(fns.yaw, 0);
+  assign(fns.throttle, 1);
+  assign(fns.roll, 2);
+  assign(fns.pitch, 3);
+  return out;
+}

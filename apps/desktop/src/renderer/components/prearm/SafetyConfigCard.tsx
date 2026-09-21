@@ -115,6 +115,7 @@ export function SafetyConfigCard() {
   const paramsLoaded = useParameterStore((s) => s.downloadState === 'complete');
   const boardUid = useConnectionStore((s) => s.connectionState.boardUid);
   const isConnected = useConnectionStore((s) => s.connectionState.isConnected);
+  const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const [records, setRecords] = useState<CalibrationRecordIpc[]>([]);
 
   useEffect(() => {
@@ -140,11 +141,12 @@ export function SafetyConfigCard() {
 
     return checkSafetyConfig({
       params: values,
+      firmware: firmware === 'px4' ? 'px4' : 'ardupilot',
       compassVerdict: compass?.verdict as CalibrationVerdict | undefined,
       calibrationLost: Boolean(lost),
       calibrationLostType: lost?.type,
     });
-  }, [parameters, paramsLoaded, records, isConnected]);
+  }, [parameters, paramsLoaded, records, isConnected, firmware]);
 
   // Nothing to say: show nothing at all.
   if (findings.length === 0) return null;

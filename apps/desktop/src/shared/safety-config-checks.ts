@@ -34,6 +34,8 @@ export interface SafetyFinding {
 export interface SafetyConfigContext {
   /** Live parameter values, by name. Missing entries are simply not checked. */
   params: Map<string, number> | Record<string, number>;
+  /** Which stack the vehicle runs. The parameters have nothing in common. */
+  firmware?: 'ardupilot' | 'px4';
   /** Worst recorded calibration verdict for this board, if any. */
   compassVerdict?: CalibrationVerdict;
   /** True when a stored calibration failed its post-reboot read-back. */
@@ -52,6 +54,8 @@ function read(params: SafetyConfigContext['params'], name: string): number | und
  * or an empty array when there is nothing worth saying.
  */
 export function checkSafetyConfig(ctx: SafetyConfigContext): SafetyFinding[] {
+  if (ctx.firmware === 'px4') return checkPx4SafetyConfig(ctx);
+
   const findings: SafetyFinding[] = [];
   const p = ctx.params;
 
@@ -116,6 +120,113 @@ export function checkSafetyConfig(ctx: SafetyConfigContext): SafetyFinding[] {
 
   // Weak calibration on its own, when nothing above already said it louder.
   if (compassSuspect && ekfAction !== 0 && !ctx.calibrationLost) {
+    findings.push({
+      id: 'compass-weak',
+      severity: 'advisory',
+      title: 'The compass calibration is weaker than it should be',
+      consequence: 'Position hold may wander or circle. Recalibrating away from metal and power wiring usually fixes it.',
+      params: [],
+    });
+  }
+
+  const rank: Record<SafetySeverity, number> = { critical: 0, warning: 1, advisory: 2 };
+  return findings.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
+
+/**
+ * PX4 has no FS_EKF_ACTION or FENCE_ACTION. The same questions are answered by
+ * NAV_*_ACT, COM_LOW_BAT_ACT and GF_ACTION, and the defaults are not all safe:
+ * GCS link loss and low battery both ship as "do nothing but tell me".
+ */
+function checkPx4SafetyConfig(ctx: SafetyConfigContext): SafetyFinding[] {
+  const findings: SafetyFinding[] = [];
+  const p = ctx.params;
+
+  const rcLoss = read(p, 'NAV_RCL_ACT');
+  const gcsLoss = read(p, 'NAV_DLL_ACT');
+  const lowBattery = read(p, 'COM_LOW_BAT_ACT');
+  const fenceAction = read(p, 'GF_ACTION');
+  const magCheck = read(p, 'COM_ARM_MAG_STR');
+
+  const compassSuspect = ctx.compassVerdict === 'marginal' || ctx.compassVerdict === 'bad';
+
+  if (ctx.calibrationLost) {
+    findings.push({
+      id: 'calibration-lost',
+      severity: 'critical',
+      title: `The last ${ctx.calibrationLostType ?? 'sensor'} calibration is not on the aircraft`,
+      consequence: 'It was written but did not survive the restart. The aircraft is flying on whatever was there before.',
+      params: [],
+    });
+  }
+
+  if (lowBattery === 0) {
+    findings.push({
+      id: 'px4-battery-warning-only',
+      severity: 'warning',
+      title: 'A flat battery will only produce a warning',
+      consequence: 'The aircraft will keep flying on an empty pack until it falls out of the sky. Nothing lands it for you.',
+      params: ['COM_LOW_BAT_ACT'],
+      recommend: { param: 'COM_LOW_BAT_ACT', value: 3, label: 'Return when critical, land when empty' },
+    });
+  }
+
+  if (gcsLoss === 0) {
+    findings.push({
+      id: 'px4-gcs-loss-disabled',
+      severity: 'warning',
+      title: 'Losing the ground station link does nothing',
+      consequence: 'If telemetry drops while the aircraft is out of RC range, it will carry on with no way to reach it.',
+      params: ['NAV_DLL_ACT'],
+      recommend: { param: 'NAV_DLL_ACT', value: 2, label: 'Return home on link loss' },
+    });
+  }
+
+  if (fenceAction === 0) {
+    findings.push({
+      id: 'px4-fence-no-action',
+      severity: 'warning',
+      title: 'Crossing the geofence does nothing',
+      consequence: 'The fence is set to take no action, so it will not hold, return or land the aircraft when it leaves the allowed area.',
+      params: ['GF_ACTION'],
+      recommend: { param: 'GF_ACTION', value: 2, label: 'Hold position at the fence' },
+    });
+  }
+
+  if (fenceAction === 3 && compassSuspect) {
+    findings.push({
+      id: 'px4-fence-rtl-with-weak-compass',
+      severity: 'warning',
+      title: 'On a fence breach the aircraft will try to fly home',
+      consequence: 'Flying home needs the same heading your compass calibration is weak on. Holding where it is does not.',
+      params: ['GF_ACTION'],
+      recommend: { param: 'GF_ACTION', value: 2, label: 'Hold position instead of flying home' },
+    });
+  }
+
+  if (rcLoss === undefined ? false : rcLoss === 5 || rcLoss === 6) {
+    findings.push({
+      id: 'px4-rc-loss-terminates',
+      severity: 'critical',
+      title: 'Losing the radio will cut the motors',
+      consequence: 'Flight termination and disarm both drop the aircraft where it is. A brief RC dropout becomes a crash.',
+      params: ['NAV_RCL_ACT'],
+      recommend: { param: 'NAV_RCL_ACT', value: 2, label: 'Return home on radio loss' },
+    });
+  }
+
+  if (magCheck === 0) {
+    findings.push({
+      id: 'px4-mag-check-disabled',
+      severity: 'critical',
+      title: 'The compass strength check is switched off',
+      consequence: 'Nothing will stop you arming next to steel or with a magnetometer reading nonsense.',
+      params: ['COM_ARM_MAG_STR'],
+      recommend: { param: 'COM_ARM_MAG_STR', value: 1, label: 'Refuse to arm on a bad compass' },
+    });
+  }
+
+  if (compassSuspect && !ctx.calibrationLost) {
     findings.push({
       id: 'compass-weak',
       severity: 'advisory',

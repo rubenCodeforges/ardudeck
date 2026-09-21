@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { useConnectionStore } from '../../stores/connection-store';
 import { useNavigationStore, isViewId, type ViewId } from '../../stores/navigation-store';
 import type { PreArmFix } from '../../../shared/prearm-checks';
 
@@ -51,6 +52,7 @@ function ParamLink({ paramId }: { paramId: string }) {
  */
 export function PreArmParamFix({ paramIds, hint, action, navigateTo }: PreArmParamFixProps) {
   const setParameter = useParameterStore((s) => s.setParameterImmediate);
+  const isPx4 = useConnectionStore((s) => s.connectionState.firmware) === 'px4';
   const [disabling, setDisabling] = useState(false);
   const [disabled, setDisabled] = useState(false);
 
@@ -70,7 +72,11 @@ export function PreArmParamFix({ paramIds, hint, action, navigateTo }: PreArmPar
   }, [navigateTo]);
 
   // Show "Disable Arming Checks" when there's no direct param fix
-  const showDisableButton = !disabled && (action || (paramIds.length === 0 && !navigateTo));
+  // PX4 has no ARMING_CHECK: writing it would fail while the UI claimed the
+  // checks were off. Its checks are individual COM_ARM_* / CBRK_* switches.
+  const showDisableButton =
+    !isPx4 && !disabled && (action || (paramIds.length === 0 && !navigateTo));
+  const showPx4CheckHint = isPx4 && (action || (paramIds.length === 0 && !navigateTo));
   const tabLabel = navigateTo ? navigateTo.charAt(0).toUpperCase() + navigateTo.slice(1) : '';
 
   return (
@@ -114,6 +120,18 @@ export function PreArmParamFix({ paramIds, hint, action, navigateTo }: PreArmPar
           className="w-full px-3 py-1.5 text-[11px] font-medium rounded bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 transition-colors disabled:opacity-50"
         >
           {disabling ? 'Disabling...' : 'Disable Arming Checks'}
+        </button>
+      )}
+
+      {showPx4CheckHint && (
+        <button
+          type="button"
+          onClick={() => useNavigationStore.getState().setView('parameters', 'COM_ARM_')}
+          className="w-full px-3 py-1.5 text-left text-[10px] rounded bg-surface-raised/50 hover:bg-surface-raised border border-subtle text-content-secondary transition-colors"
+        >
+          PX4 has no single arming-check switch. Each check has its own
+          parameter (COM_ARM_WO_GPS, COM_ARM_MAG_STR, COM_ARM_CHK_ESCS,
+          CBRK_SUPPLY_CHK). Open them in Parameters.
         </button>
       )}
 

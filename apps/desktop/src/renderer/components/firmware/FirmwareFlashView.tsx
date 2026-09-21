@@ -471,6 +471,7 @@ export function FirmwareFlashView() {
   const connectedBoardId = connectionState.boardId;
   const connectedProtocol = connectionState.protocol;
   const connectedFcVariant = connectionState.fcVariant;
+  const connectedFirmware = connectionState.firmware;
 
   // Auto-detect board from connection if already connected
   useEffect(() => {
@@ -479,7 +480,12 @@ export function FirmwareFlashView() {
       const boardInfo: BoardInfo = {
         id: connectedBoardId,
         name: connectedBoardId,
-        category: connectedProtocol === 'msp' ? 'Betaflight/iNav' : 'ArduPilot',
+        category:
+          connectedProtocol === 'msp'
+            ? 'Betaflight/iNav'
+            : connectedFirmware === 'px4'
+              ? 'PX4'
+              : 'ArduPilot',
       };
       setSelectedBoard(boardInfo);
 
@@ -493,11 +499,13 @@ export function FirmwareFlashView() {
             autoSetSource('inav');
           }
         } else if (connectedProtocol === 'mavlink') {
-          autoSetSource('ardupilot');
+          // The vehicle already said which stack it runs. Defaulting a PX4
+          // board to the ArduPilot firmware list is how you flash the wrong one.
+          autoSetSource(connectedFirmware === 'px4' ? 'px4' : 'ardupilot');
         }
       }
     }
-  }, [isConnected, connectedBoardId, connectedProtocol, connectedFcVariant, detectedBoard, sourceExplicitlySet, setSelectedBoard, autoSetSource]);
+  }, [isConnected, connectedBoardId, connectedProtocol, connectedFcVariant, connectedFirmware, detectedBoard, sourceExplicitlySet, setSelectedBoard, autoSetSource]);
 
   // Fetch boards on mount and when source changes
   // Board lists don't depend on vehicle type for any source

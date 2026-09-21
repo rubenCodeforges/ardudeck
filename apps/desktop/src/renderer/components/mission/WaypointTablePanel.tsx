@@ -2045,6 +2045,19 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     return m;
   }, [missionItems]);
 
+  // Header seq per group, so a group split by a foreign item (a hand-placed
+  // waypoint landing inside a survey's range) still gets one header. Keying
+  // off the previous row's groupId listed the group once per run, and each
+  // one showed the group's full totals, which reads as a duplicate.
+  const headerSeqByGroup = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const wp of missionItems) {
+      if (!wp.groupId || m.has(wp.groupId)) continue;
+      m.set(wp.groupId, wp.seq);
+    }
+    return m;
+  }, [missionItems]);
+
   // Survey groups whose generatorResult can drive the plan-replay animation.
   // hasReplayData fully validates the opaque blob, so compute once per groups
   // change instead of per header render.
@@ -2309,8 +2322,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     const wp = idx === undefined ? undefined : missionItems[idx];
     if (!wp || idx === undefined) return 52;
     const child = !isNavigationCommand(wp.command) || wp.command === MAV_CMD.NAV_DELAY;
-    const prev = idx > 0 ? missionItems[idx - 1] : undefined;
-    const showHeader = !prev || prev.groupId !== wp.groupId;
+    const showHeader = wp.groupId !== undefined && headerSeqByGroup.get(wp.groupId) === wp.seq;
     // Generous so the estimate is >= the real height: a too-small estimate would
     // overlap rows, while a slightly large one just adds a little spacing.
     // Survey rows are uniform, so cumulative drift is negligible.
@@ -2623,8 +2635,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
               // Group header detection. We show a header before the first WP
               // of each group. When the group is collapsed, only the header
               // renders for that span; subsequent items return null.
-              const prevWp = idx > 0 ? missionItems[idx - 1] : null;
-              const showGroupHeader = !prevWp || prevWp.groupId !== wp.groupId;
+              const showGroupHeader = wp.groupId !== undefined && headerSeqByGroup.get(wp.groupId) === wp.seq;
               const group = wp.groupId ? groupById.get(wp.groupId) : undefined;
               const hideByGroupCollapse = group?.collapsed === true;
               // Assignments store the vehicle key of the moment; transport ids

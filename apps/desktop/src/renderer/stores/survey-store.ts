@@ -13,7 +13,7 @@ import { computeTerrainFollowAltitudes } from '../components/survey/survey-terra
 import { calculateAltitudeForGSD } from '../components/survey/survey-stats';
 import { simplifyPolygon, bufferPolygonLatLng, latLngBboxOverlap } from '../components/survey/geo-math';
 import { runWithActivity } from './activity-store';
-import { parseGisArea } from '../../shared/gis-area-import';
+import { parseGisArea, parseGisLines } from '../../shared/gis-area-import';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
 import { useSettingsStore } from './settings-store';
 import { useMissionStore } from './mission-store';
@@ -142,6 +142,8 @@ interface SurveyStore {
   setCrossGridAltitudeOffset: (percent: number) => void;
   // Corridor pattern tuning
   setCorridorWidth: (meters: number) => void;
+  /** Length of one flight's stretch along the centreline, or null for auto. */
+  setCorridorSectionLength: (meters: number | null) => void;
   // Panorama pattern tuning
   setPanoramaSide: (side: 'left' | 'right') => void;
   setPanoramaStandoff: (meters: number) => void;
@@ -199,7 +201,7 @@ interface SurveyStore {
    * process, load the first area's outer ring into the draft, and generate.
    * Returns a small result so the UI can report success/empty/error.
    */
-  importArea: () => Promise<{ ok: boolean; areaCount: number; error?: string }>;
+  importArea: () => Promise<{ ok: boolean; areaCount: number; error?: string; importedAsCorridor?: boolean }>;
   clearSurvey: () => void;
   activateSurvey: () => void;
   deactivateSurvey: () => void;
@@ -614,6 +616,14 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     get().requestRecompute();
   },
 
+  setCorridorSectionLength: (meters) => {
+    // No recompute: this only changes how the finished plan is cut up.
+    const next = { ...get().config };
+    if (meters && meters > 0) next.corridorSectionLengthM = meters;
+    else delete next.corridorSectionLengthM;
+    set({ config: next });
+  },
+
   setPanoramaSide: (side) => {
     set({ config: { ...get().config, panoramaSide: side } });
     get().requestRecompute();
@@ -871,7 +881,21 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     if (!res.content || !res.format) return { ok: false, areaCount: 0, error: 'Empty file' };
     const areas = parseGisArea(res.content, res.format);
     if (areas.length === 0) {
-      return { ok: false, areaCount: 0, error: 'No polygon boundary found in the file' };
+      // A file with only a line is a corridor centreline, which is exactly what
+      // pipeline and powerline surveyors export. Refusing it and telling them
+      // to find a different import is the wrong answer.
+      const lines = parseGisLines(res.content, res.format);
+      const longest = lines
+        .filter((l) => l.path.length >= 2)
+        .sort((a, b) => b.path.length - a.path.length)[0];
+      if (longest) {
+        const toleranceM = useSettingsStore.getState().surveyPerformance.importSimplifyToleranceM;
+        get().loadDraftFromCenterline(
+          simplifyPolygon(longest.path.map((p) => ({ lat: p.lat, lng: p.lng })), toleranceM),
+        );
+        return { ok: true, areaCount: 1, importedAsCorridor: true };
+      }
+      return { ok: false, areaCount: 0, error: 'No polygon boundary or line found in the file' };
     }
 
     // The file defines the areas, so import creates one survey group per

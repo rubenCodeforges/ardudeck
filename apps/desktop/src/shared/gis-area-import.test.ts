@@ -204,6 +204,35 @@ describe('parseGisArea - KML', () => {
   });
 });
 
+describe('line-only KML from the field', () => {
+  // A powerline/pipeline axis export: one Placemark, one LineString, no
+  // polygon. This used to be rejected by the survey import.
+  const LEITUNGSACHSE = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+	<name>Leitungsachse.kml</name>
+	<Placemark>
+		<styleUrl>#style62</styleUrl>
+		<ExtendedData><SchemaData schemaUrl="#S_x"><SimpleData name="LAYER">Achse</SimpleData></SchemaData></ExtendedData>
+		<LineString>
+			<coordinates>
+				9.070184334257485,53.56601363043846,0 9.099981572850497,53.5733788493523,0 9.105222517649164,53.57224321553907,0 9.11863632958033,53.56933540233313,0
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>`;
+
+  it('yields the line and no areas', () => {
+    expect(parseGisArea(LEITUNGSACHSE, 'kml')).toEqual([]);
+    const lines = parseGisLines(LEITUNGSACHSE, 'kml');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.path).toHaveLength(4);
+    expect(lines[0]!.path[0]!.lat).toBeCloseTo(53.56601363, 6);
+    expect(lines[0]!.path[0]!.lng).toBeCloseTo(9.07018433, 6);
+  });
+});
+
 describe('parseGisLines', () => {
   it('reads a GeoJSON LineString with its feature name', () => {
     const geojson = JSON.stringify({

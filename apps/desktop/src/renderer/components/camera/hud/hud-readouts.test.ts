@@ -50,6 +50,28 @@ describe('HUD readouts catalog', () => {
   });
 });
 
+describe('formatReadout - VTOL state', () => {
+  // Only a VTOL reports MAV_VTOL_STATE. On anything else the cell must read as
+  // unknown rather than assert the airframe is a fixed wing.
+  it('shows a dash when the vehicle never reports one', () => {
+    expect(formatReadout('vtolState', V, metric).value).toBe('--');
+  });
+
+  it('names hover and wingborne flight', () => {
+    expect(formatReadout('vtolState', { ...V, vtolState: 3 }, metric).value).toBe('HOVER');
+    expect(formatReadout('vtolState', { ...V, vtolState: 4 }, metric).value).toBe('WING');
+  });
+
+  it('calls out a transition in progress, which the mode name never does', () => {
+    expect(formatReadout('vtolState', { ...V, vtolState: 1 }, metric).value).toBe('TO WING');
+    expect(formatReadout('vtolState', { ...V, vtolState: 2 }, metric).value).toBe('TO HOVER');
+  });
+
+  it('treats MAV_VTOL_STATE_UNDEFINED as no reading', () => {
+    expect(formatReadout('vtolState', { ...V, vtolState: 0 }, metric).value).toBe('--');
+  });
+});
+
 describe('formatReadout - values and units', () => {
   it('voltage: one decimal + V', () => {
     expect(formatReadout('voltage', V, metric).value).toBe('22.2 V');

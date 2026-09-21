@@ -1149,7 +1149,8 @@ function SplitDivider({
   return (
     <div
       onPointerDown={handlePointerDown}
-      className={`group relative z-[1200] w-1.5 h-full shrink-0 cursor-col-resize flex items-stretch justify-center ${
+      // Under the docked instruments (z-1000), which overhang the map pane.
+      className={`group relative z-[900] w-1.5 h-full shrink-0 cursor-col-resize flex items-stretch justify-center ${
         dragging ? 'bg-blue-500' : 'bg-subtle hover:bg-blue-500/60'
       } transition-colors`}
       data-tip="Drag to resize, or use the X to close the split"
@@ -1157,7 +1158,7 @@ function SplitDivider({
       <button
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onClose}
-        className="absolute top-2 left-1/2 -translate-x-1/2 z-[1201] w-5 h-5 rounded-full bg-surface-solid border border-subtle text-content-secondary hover:text-content hover:bg-surface-raised shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 left-1/2 -translate-x-1/2 z-[901] w-5 h-5 rounded-full bg-surface-solid border border-subtle text-content-secondary hover:text-content hover:bg-surface-raised shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         data-tip="Close split"
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

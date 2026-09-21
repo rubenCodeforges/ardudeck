@@ -38,6 +38,7 @@ import {
 } from './generator-registry';
 import { createSurveyGroup, createManualGroup, nextGroupColor, GROUP_COLOR_PALETTE } from '../../../shared/mission-group-types';
 import { splitIntoSorties } from './survey-sortie-split';
+import { splitCorridorIntoSections, sectionCountForEndurance, sectionCountForLength, centrelineLengthM } from './corridor-sections';
 import { computeSurveyGroupSignature } from './survey-group-signature';
 import { MAV_CMD } from '../../../shared/mission-types';
 import {
@@ -147,6 +148,7 @@ export function SurveyConfigPanel() {
   const setEnduranceMinutes = useSurveyStore((s) => s.setEnduranceMinutes);
   const setCrossGridAltitudeOffset = useSurveyStore((s) => s.setCrossGridAltitudeOffset);
   const setCorridorWidth = useSurveyStore((s) => s.setCorridorWidth);
+  const setCorridorSectionLength = useSurveyStore((s) => s.setCorridorSectionLength);
   const setCorridorStrips = useSurveyStore((s) => s.setCorridorStrips);
   const setCorridorMode = useSurveyStore((s) => s.setCorridorMode);
   const setPanoramaSide = useSurveyStore((s) => s.setPanoramaSide);
@@ -235,6 +237,7 @@ export function SurveyConfigPanel() {
   const smoothedOnCopter =
     externalEngine && vehicleClass === 'copter' && config.engineParams?.['waypointMode'] === 'smoothed';
   const [importError, setImportError] = useState<string | null>(null);
+  const [importNote, setImportNote] = useState<string | null>(null);
   // null = not naming; '' or text = inline camera-name entry open. (Electron has
   // no window.prompt, so naming is an inline field.)
   const [cameraNameDraft, setCameraNameDraft] = useState<string | null>(null);
@@ -262,8 +265,12 @@ export function SurveyConfigPanel() {
 
   const handleImportArea = useCallback(async () => {
     setImportError(null);
+    setImportNote(null);
     const res = await importArea();
     if (!res.ok && res.error) setImportError(res.error);
+    if (res.ok && res.importedAsCorridor) {
+      setImportNote('No polygon in that file, so the line was loaded as a corridor centreline.');
+    }
   }, [importArea]);
 
   // Combined preset list: built-ins first, user-defined below.
@@ -423,11 +430,43 @@ export function SurveyConfigPanel() {
     setTimeout(() => setInsertSuccess(false), 2000);
   }, [result, polygon, config, existingGroups, existingItems, addSurveyGroup, setEditingGroupId]);
 
+  // What "Split along the route" will actually produce, so the button and the
+  // length box agree with each other before the user commits.
+  const corridorSectionCount = useMemo(() => {
+    if (!result || !polygon || config.pattern !== 'corridor') return 1;
+    const override = config.corridorSectionLengthM ?? 0;
+    return override > 0
+      ? sectionCountForLength(polygon, override)
+      : sectionCountForEndurance(result.waypoints, config.speed, config.enduranceMinutes ?? 20);
+  }, [result, polygon, config.pattern, config.corridorSectionLengthM, config.speed, config.enduranceMinutes]);
+
+  const autoSectionLengthM = useMemo(() => {
+    if (!polygon || config.pattern !== 'corridor') return 0;
+    const auto = result
+      ? sectionCountForEndurance(result.waypoints, config.speed, config.enduranceMinutes ?? 20)
+      : 1;
+    return centrelineLengthM(polygon) / Math.max(1, auto);
+  }, [result, polygon, config.pattern, config.speed, config.enduranceMinutes]);
+
   // Split the survey into one battery-sized flight group per sortie, instead of
   // a single group. Each flight is independently uploadable from the table.
-  const handleSplitIntoFlights = useCallback(() => {
+  const handleSplitIntoFlights = useCallback((mode: 'sections' | 'lines' = 'sections') => {
     if (!result || !polygon) return;
-    const sorties = splitIntoSorties(result.waypoints, config.speed, config.enduranceMinutes ?? 20);
+    // A corridor's path is line-major, so slicing it by elapsed time hands each
+    // flight a few full-length passes over the whole route. Right for a swarm
+    // working side by side, wrong for one aircraft that wants this stretch
+    // finished before moving down the route.
+    const isCorridor = config.pattern === 'corridor';
+    const override = config.corridorSectionLengthM ?? 0;
+    const sorties = isCorridor && mode === 'sections'
+      ? splitCorridorIntoSections(
+          result.waypoints,
+          polygon,
+          override > 0
+            ? sectionCountForLength(polygon, override)
+            : sectionCountForEndurance(result.waypoints, config.speed, config.enduranceMinutes ?? 20),
+        )
+      : splitIntoSorties(result.waypoints, config.speed, config.enduranceMinutes ?? 20);
     if (sorties.length <= 1) return;
     const fullConfig = { ...config, polygon };
     const firmware = useConnectionStore.getState().connectionState.firmware;
@@ -436,7 +475,7 @@ export function SurveyConfigPanel() {
       // Each sortie is its own complete flight: takeoff -> slice -> RTL.
       const items = surveyToMissionItems({ ...result, waypoints: slice }, fullConfig, firmware);
       const group = createManualGroup({
-        name: `${baseName} · Flight ${i + 1}/${sorties.length}`,
+        name: `${baseName} · ${isCorridor && mode === 'sections' ? 'Section' : 'Flight'} ${i + 1}/${sorties.length}`,
         color: GROUP_COLOR_PALETTE[i % GROUP_COLOR_PALETTE.length]!,
       });
       return { group, items };
@@ -497,6 +536,7 @@ export function SurveyConfigPanel() {
             </button>
           </div>
           {importError && <span className="text-[10px] text-red-400 max-w-[14rem]">{importError}</span>}
+          {importNote && <span className="text-[10px] text-cyan-400 max-w-[14rem]">{importNote}</span>}
         </div>
       </div>
     );
@@ -1410,13 +1450,58 @@ export function SurveyConfigPanel() {
                     : `Insert Survey (${result.waypoints.length} WPs)`}
               </button>
               {!isManualCamera && estimateBatteryCount(result.stats.flightTime, config.enduranceMinutes ?? 20) > 1 && (
-                <button
-                  onClick={handleSplitIntoFlights}
-                  className="w-full py-1.5 rounded-lg text-xs font-medium bg-surface-raised text-content hover:text-purple-300 transition-colors"
-                  title="Split into one battery-sized flight group per sortie; upload each from the table"
-                >
-                  Split into {estimateBatteryCount(result.stats.flightTime, config.enduranceMinutes ?? 20)} flights
-                </button>
+                config.pattern === 'corridor' ? (
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => handleSplitIntoFlights('sections')}
+                      className="w-full py-1.5 rounded-lg text-xs font-medium bg-surface-raised text-content hover:text-purple-300 transition-colors"
+                      title="One aircraft: each flight is a continuous stretch of the route, all lines included, so you finish a section then move along"
+                    >
+                      Split along the route ({corridorSectionCount} {corridorSectionCount === 1 ? 'section' : 'sections'})
+                    </button>
+                    <div className="flex items-center gap-2 px-0.5">
+                      <label className="text-[10px] text-content-tertiary whitespace-nowrap">Section length</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={config.corridorSectionLengthM ? (config.corridorSectionLengthM / 1000).toFixed(1) : ''}
+                        placeholder={(autoSectionLengthM / 1000).toFixed(1)}
+                        onChange={(e) => {
+                          const km = Number(e.target.value);
+                          setCorridorSectionLength(Number.isFinite(km) && km > 0 ? km * 1000 : null);
+                        }}
+                        className="w-16 rounded bg-surface-input px-1.5 py-0.5 text-right text-[11px] text-content"
+                      />
+                      <span className="text-[10px] text-content-tertiary">km</span>
+                      {config.corridorSectionLengthM ? (
+                        <button
+                          onClick={() => setCorridorSectionLength(null)}
+                          className="ml-auto text-[10px] text-content-tertiary hover:text-content"
+                        >
+                          Auto
+                        </button>
+                      ) : (
+                        <span className="ml-auto text-[10px] text-content-tertiary">from endurance</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleSplitIntoFlights('lines')}
+                      className="w-full py-1.5 rounded-lg text-xs font-medium bg-surface-raised text-content-secondary hover:text-purple-300 transition-colors"
+                      title="Swarm: each flight takes some of the parallel lines over the whole route, so several aircraft work side by side"
+                    >
+                      Split by lines (swarm)
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleSplitIntoFlights()}
+                    className="w-full py-1.5 rounded-lg text-xs font-medium bg-surface-raised text-content hover:text-purple-300 transition-colors"
+                    title="Split into one battery-sized flight group per sortie; upload each from the table"
+                  >
+                    Split into {estimateBatteryCount(result.stats.flightTime, config.enduranceMinutes ?? 20)} flights
+                  </button>
+                )
               )}
             </div>
           )}

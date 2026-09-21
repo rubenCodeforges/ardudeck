@@ -9,6 +9,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import type { GraphicsInfo, GraphicsMode } from '../shared/window-types.js';
 import Store from 'electron-store';
 import {
   recordSigningEvent,
@@ -446,6 +447,40 @@ const calibrationRecordStore = new Store<{ boards: Record<string, CalibrationRec
   name: 'calibration-records',
   defaults: { boards: {} },
 });
+
+/**
+ * What board was really on the other end of a USB serial number.
+ *
+ * A VID/PID table cannot tell a Pixhawk 6C from a 6X when the board ships the
+ * 6X descriptor, but the autopilot names itself over MAVLink. Remember that
+ * and the port list is right from the second plug-in onwards.
+ */
+/** Written by main/index.ts before the first window; read back for the UI. */
+const graphicsModeStore = new Store<{ graphicsMode: GraphicsMode }>({
+  name: 'graphics',
+  defaults: { graphicsMode: 'auto' },
+});
+
+const boardIdentityStore = new Store<{ usb: Record<string, { board: string; seenAt: number }> }>({
+  name: 'usb-board-identity',
+  defaults: { usb: {} },
+});
+
+function usbIdentityKey(id: { serialNumber?: string; vendorId?: string; productId?: string }): string | null {
+  if (id.serialNumber) return `sn:${id.serialNumber}`;
+  if (id.vendorId && id.productId) return `vidpid:${id.vendorId}:${id.productId}`;
+  return null;
+}
+
+function rememberBoardForPort(board: string): void {
+  if (!lastSerialUsbId || !board) return;
+  const key = usbIdentityKey(lastSerialUsbId);
+  if (!key) return;
+  const usb = boardIdentityStore.get('usb');
+  if (usb[key]?.board === board) return;
+  usb[key] = { board, seenAt: Date.now() };
+  boardIdentityStore.set('usb', usb);
+}
 
 // AI chat conversation storage keyed by log file path
 const chatStore = new Store<{ conversations: Record<string, { messages: { role: string; content: string }[]; insightCards: unknown[] }> }>({
@@ -2611,6 +2646,7 @@ const MSG_RC_CHANNELS = 65;
 const MSG_RADIO_STATUS = 109;
 const MSG_NAV_CONTROLLER_OUTPUT = 62;
 const MSG_VFR_HUD = 74;
+const MSG_EXTENDED_SYS_STATE = 245;
 const MSG_POSITION_TARGET_GLOBAL_INT = 87;
 const MSG_COMMAND_ACK = 77;
 const MSG_TERRAIN_REPORT = 136;
@@ -2992,6 +3028,17 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
 
       const vfrHud: VfrHudData = { airspeed, groundspeed, heading, throttle, alt, climb };
       queueMavlinkTelemetry(mainWindow, { vfrHud });
+      break;
+    }
+
+    case MSG_EXTENDED_SYS_STATE: {
+      // EXTENDED_SYS_STATE (245): vtol_state(1), landed_state(1). The only
+      // place a VTOL reports whether it is hovering, flying on the wing, or
+      // mid-transition, which is the phase with the least margin and the one
+      // the mode name never shows.
+      if (payload.length >= 2) {
+        queueMavlinkTelemetry(mainWindow, { vtolState: payload[0] as number });
+      }
       break;
     }
 
@@ -3832,9 +3879,12 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
               const boardInfo = getBoardInfoFromVersion(boardVersion);
               if (boardInfo) {
                 connectionState.boardId = boardInfo.name;
+                rememberBoardForPort(boardInfo.displayName);
                 sendConnectionState(mainWindow);
                 sendLog(mainWindow, 'info', `Board type: ${boardInfo.name} (ID ${boardVersion})`);
               } else {
+                // Naming the firmware beats a VID/PID guess that is confidently wrong.
+                if (connectionState.firmware === 'px4') rememberBoardForPort('PX4 autopilot');
                 sendLog(mainWindow, 'debug', `Unknown board type ID: ${boardVersion}`);
               }
             }
@@ -4269,8 +4319,41 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     },
   );
 
+  // The in-app answer to "is this thing actually using the GPU". A packaged
+  // build has no address bar, so about:gpu is unreachable and field reports of
+  // "it feels slow" are otherwise unanswerable.
+  ipcMain.handle(IPC_CHANNELS.APP_GET_GRAPHICS_INFO, (): GraphicsInfo => {
+    let features: Record<string, string> = {};
+    try {
+      features = app.getGPUFeatureStatus() as unknown as Record<string, string>;
+    } catch {
+      features = {};
+    }
+    const accelerated = Object.entries(features)
+      .filter(([key]) => key !== 'skia_graphite')
+      .some(([, value]) => typeof value === 'string' && value.startsWith('enabled'));
+    return {
+      features,
+      platform: process.platform === 'linux' ? (process.env.XDG_SESSION_TYPE ?? '') : '',
+      softwareRendering: Object.keys(features).length > 0 && !accelerated,
+      mode: graphicsModeStore.get('graphicsMode', 'auto'),
+    };
+  });
+
+  // Takes effect at the next launch: Chromium reads these switches before the
+  // first window exists, so there is nothing to apply live.
+  ipcMain.handle(IPC_CHANNELS.APP_SET_GRAPHICS_MODE, (_e, mode: GraphicsMode) => {
+    graphicsModeStore.set('graphicsMode', mode);
+    return { success: true };
+  });
+
   ipcMain.handle(IPC_CHANNELS.COMMS_LIST_PORTS, async (): Promise<SerialPortInfo[]> => {
-    return listSerialPorts();
+    const usb = boardIdentityStore.get('usb');
+    return (await listSerialPorts()).map((p) => {
+      const key = usbIdentityKey(p);
+      const known = key ? usb[key]?.board : undefined;
+      return known ? { ...p, knownBoard: known } : p;
+    });
   });
 
   // Scan ports for MAVLink devices
@@ -8288,6 +8371,47 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       sendLog(mainWindow, 'error', 'Failed to send ORBIT command', message);
+      return false;
+    }
+  });
+
+  /**
+   * MAV_CMD_DO_CHANGE_SPEED (178) for a live guided move.
+   *
+   * speedType is not cosmetic: ArduPilot aircraft act on airspeed (0) while
+   * rovers and PX4 only act on ground speed (1), so the caller decides.
+   */
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_CHANGE_SPEED, async (_, speedMs: number, speedType: number): Promise<boolean> => {
+    const target = activeFlightTarget();
+    if (!target) return false;
+
+    try {
+      // COMMAND_INT, like the neighbouring guided commands: ArduPilot's
+      // handler signature is command_int and newer firmware is narrowing what
+      // it accepts as COMMAND_LONG.
+      const payload = serializeCommandInt({
+        targetSystem: target.sysid,
+        targetComponent: 1,
+        frame: 0,
+        command: 178,     // MAV_CMD_DO_CHANGE_SPEED
+        current: 0,
+        autocontinue: 0,
+        param1: speedType,
+        param2: speedMs,  // must be > 0 or ArduPilot denies it
+        param3: -1,       // throttle: unchanged
+        param4: 0,        // absolute value, not an offset
+        x: 0,
+        y: 0,
+        z: 0,
+      });
+      const packet = await sendMavlinkPacket(COMMAND_INT_ID, payload, COMMAND_INT_CRC_EXTRA, { link: target.transport });
+      await target.transport.write(packet);
+      connectionState.packetsSent++;
+      sendLog(mainWindow, 'info', `Sent DO_CHANGE_SPEED ${speedMs.toFixed(1)} m/s (type ${speedType})`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      sendLog(mainWindow, 'error', 'Failed to send DO_CHANGE_SPEED', message);
       return false;
     }
   });
@@ -13854,6 +13978,16 @@ function parseRallyFile(content: string): RallyItem[] {
 }
 
 /** A shutdown step that never settles must not hold the whole quit open. */
+/**
+ * False once a shutdown has left a native handle open, in which case running
+ * Node's environment teardown would abort rather than exit.
+ */
+let transportClosedCleanly = true;
+
+export function isCleanExitSafe(): boolean {
+  return transportClosedCleanly;
+}
+
 async function withDeadline(label: string, ms: number, work: Promise<unknown>): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
@@ -13959,16 +14093,23 @@ export async function cleanupOnShutdown(): Promise<void> {
   }
 
   try {
-    // Close transport if open
+    // The serial poll handle has to be gone before Node tears the environment
+    // down. Left registered, Poller::onData fires on the closing fd during
+    // CleanupHandles and throws where nothing can catch it, which aborts the
+    // process ("Electron quit unexpectedly") instead of exiting. Awaiting is
+    // bounded because the native close can block; if it does, the caller exits
+    // by signal rather than letting Node run that teardown.
     if (currentTransport?.isOpen) {
       console.log('[Shutdown] closing the vehicle link');
-      // Not awaited: a serial close can block inside the native binding, which
-      // freezes the event loop and with it every deadline in this file. Start
-      // it, let the OS reclaim the handle at exit, and keep going.
-      void Promise.resolve(currentTransport.close()).catch(() => { /* going away anyway */ });
+      await withDeadline('vehicle link close', 1500, Promise.resolve(currentTransport.close()));
+      transportClosedCleanly = currentTransport?.isOpen !== true;
+      if (!transportClosedCleanly) {
+        console.warn('[Shutdown] vehicle link still open; exiting by signal to skip native teardown');
+      }
     }
   } catch (err) {
     console.warn('[Shutdown] Error closing transport:', err);
+    transportClosedCleanly = false;
   }
 
   // Clear heartbeat timeout

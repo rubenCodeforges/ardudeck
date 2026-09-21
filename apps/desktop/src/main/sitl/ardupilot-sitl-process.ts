@@ -19,6 +19,7 @@ import type {
   ArduPilotReleaseTrack,
 } from '../../shared/ipc-channels.js';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
+import { isVtolFrame } from './frame-config.js';
 import type { AuthoredObstacle, SimObstacleStoreSchema } from '../../shared/sim-obstacle-types.js';
 import { resolveCopterFrame, sitlFrameForMotorCount } from '../../shared/sitl-frame-geometry.js';
 import { ardupilotSitlDownloader } from './ardupilot-sitl-downloader.js';
@@ -143,8 +144,19 @@ const DEFAULT_MODELS: Record<ArduPilotVehicleType, string> = {
  * rather than simulating internally, which is what makes the physics handover
  * to the Trainer game possible at all.
  */
+/** Frames ArduDeck's physics engine cannot fly, so the engine is bypassed. */
+export function sitlFrameIsVtol(config: ArduPilotSitlConfig): boolean {
+  if (config.vehicleType !== 'plane') return false;
+  const model = config.model || DEFAULT_MODELS[config.vehicleType];
+  return isVtolFrame(model, config.vehicleType);
+}
+
 export function simModelFor(config: ArduPilotSitlConfig): string {
-  if (config.useArduDeckSim) return 'JSON:127.0.0.1';
+  // ArduDeck's engine models copters, planes and rovers. A quadplane's lift
+  // rotors live on outputs the fixed-wing model never reads, so under the
+  // engine a QHover takeoff gets no lift and flips. ArduPilot's own quadplane
+  // physics does model them, so VTOL frames stay on it.
+  if (config.useArduDeckSim && !sitlFrameIsVtol(config)) return 'JSON:127.0.0.1';
   // Custom frame JSON overrides the built-in -M model when provided. SITL
   // expects `<frame>:<absolute path>`. The JSON carries mass / prop / battery
   // numbers but NOT the motor layout, so the layout still comes from this
@@ -583,11 +595,30 @@ class ArduPilotSitlProcessManager {
       const model = paramModelFor(config);
       const defaultsStack: string[] = [];
 
+      // Pin the VTOL mixer when the frame's own defaults do not.
+      //
+      // SITL keeps its EEPROM between runs. quadplane.parm sets only Q_ENABLE
+      // and leans on the firmware defaults (Q_FRAME_CLASS 1 / Q_FRAME_TYPE 1),
+      // while firefly.parm writes 5 / 11 for its Y6. Switch Firefly -> Quadplane
+      // without a wipe and the Y6 mix stays behind while SITL flies a quad
+      // layout, so the controller drives the wrong motors and it flips on the
+      // first QHover takeoff. Same trap the copter branch already guards with
+      // FRAME_CLASS + FRAME_TYPE.
+      const vtolMixerLines: string[] = [];
+
       if (!config.defaultsFile) {
         try {
           const { resolveDefaultsFile } = await import('./frame-config.js');
           const upstream = await resolveDefaultsFile(config.vehicleType, model);
-          if (upstream) defaultsStack.push(upstream);
+          if (upstream) {
+            defaultsStack.push(upstream);
+            if (sitlFrameIsVtol(config)) {
+              const { readFile } = await import('node:fs/promises');
+              const text = await readFile(upstream, 'utf-8').catch(() => '');
+              if (!/^\s*Q_FRAME_CLASS\b/m.test(text)) vtolMixerLines.push('Q_FRAME_CLASS   1');
+              if (!/^\s*Q_FRAME_TYPE\b/m.test(text)) vtolMixerLines.push('Q_FRAME_TYPE    1');
+            }
+          }
         } catch (err) {
           console.warn('[SITL] upstream defaults resolve failed, falling back to overlay only:', err);
         }
@@ -647,8 +678,9 @@ class ArduPilotSitlProcessManager {
         effBattVoltage,
         effBattCapAh,
       );
-      const overlay = frameBattLines.length > 0
-        ? `${overlayBase}\n${frameBattLines.join('\n')}`
+      const overlayExtras = [...frameBattLines, ...vtolMixerLines];
+      const overlay = overlayExtras.length > 0
+        ? `${overlayBase}\n${overlayExtras.join('\n')}`
         : overlayBase;
       if (overlay && !config.defaultsFile) {
         const overlayPath = path.join(path.dirname(binaryPath), 'ardudeck-defaults.parm');

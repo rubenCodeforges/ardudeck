@@ -17,6 +17,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { preflightForControl, channelPwm } from '../../utils/joystick-safety';
 import type { ChannelSource } from '../../utils/pseudo-tx';
+import { VirtualSticks } from './VirtualSticks';
 
 /** The four a pilot must bind before anything else is worth showing. */
 const PRIMARY = ['Roll', 'Pitch', 'Throttle', 'Yaw'];
@@ -33,6 +34,11 @@ function sourceLabel(src: ChannelSource): string {
 function ChannelRow({ index }: { index: number }): JSX.Element {
   const mapping = usePseudoTxStore((s) => s.mapping);
   const raw = usePseudoTxStore((s) => s.raw);
+  // On-screen sticks bypass the learned mapping, so recomputing the bar from
+  // it shows a number the vehicle is not being sent. Read what was actually
+  // put on the wire instead.
+  const sent = usePseudoTxStore((s) => s.channels[index]);
+  const usingVirtual = usePseudoTxStore((s) => s.virtualAxes !== null);
   const learning = usePseudoTxStore((s) => s.learning);
   const startLearn = usePseudoTxStore((s) => s.startLearn);
   const cancelLearn = usePseudoTxStore((s) => s.cancelLearn);
@@ -41,8 +47,8 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
 
   const map = mapping[index];
   if (!map) return <></>;
-  const pwm = channelPwm(mapping, raw, index);
-  const assigned = map.source.kind !== 'none';
+  const pwm = usingVirtual ? (sent ?? null) : channelPwm(mapping, raw, index);
+  const assigned = usingVirtual || map.source.kind !== 'none';
   const teaching = learning === index;
   // 1000-2000 over the bar's width; an unassigned channel shows no fill at all
   // rather than a neutral-looking centre it is not actually holding.
@@ -65,11 +71,12 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
       </div>
       <button
         onClick={() => (teaching ? cancelLearn() : startLearn(index))}
-        className={`w-20 shrink-0 rounded px-2 py-1 text-[11px] transition-colors ${
+        disabled={usingVirtual}
+        className={`w-20 shrink-0 rounded px-2 py-1 text-[11px] transition-colors disabled:opacity-40 ${
           teaching ? 'bg-amber-500/20 text-amber-300' : 'bg-surface-raised text-content-secondary hover:text-content'
         }`}
       >
-        {teaching ? 'Move it…' : assigned ? sourceLabel(map.source) : 'Assign'}
+        {usingVirtual ? 'on-screen' : teaching ? 'Move it…' : assigned ? sourceLabel(map.source) : 'Assign'}
       </button>
       <button
         onClick={() => updateMap(index, { reverse: !map.reverse })}
@@ -96,6 +103,8 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
 export function JoystickPanel(): JSX.Element {
   const enabled = usePseudoTxStore((s) => s.enabled);
   const connected = usePseudoTxStore((s) => s.connected);
+  const setVirtualAxes = usePseudoTxStore((s) => s.setVirtualAxes);
+  const usingVirtual = usePseudoTxStore((s) => s.virtualAxes !== null);
   const deviceName = usePseudoTxStore((s) => s.deviceName);
   const mappingMode = usePseudoTxStore((s) => s.mappingMode);
   const mapping = usePseudoTxStore((s) => s.mapping);
@@ -144,10 +153,14 @@ export function JoystickPanel(): JSX.Element {
           <Gamepad2 className={`w-4 h-4 ${connected ? 'text-emerald-400' : 'text-content-tertiary'}`} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm text-content">
-              {connected ? deviceName || 'Controller' : enabled ? 'Waiting for a controller…' : 'Controller off'}
+              1 &middot; {connected ? deviceName || 'Controller' : enabled ? 'Waiting for a controller…' : 'Joystick input is off'}
             </div>
             <div className="text-[11px] text-content-tertiary">
-              {connected ? `${raw.axes.length} axes · ${raw.buttons.length} buttons` : 'Plug in a gamepad or a handset in USB Joystick mode'}
+              {connected
+                ? `${raw.axes.length} axes · ${raw.buttons.length} buttons`
+                : enabled
+                  ? 'Plug in a gamepad and press a button so the browser sees it, or a handset in USB Joystick mode, or use the on-screen sticks below'
+                  : 'Everything below is switched off until this is on'}
             </div>
           </div>
           <button
@@ -175,13 +188,22 @@ export function JoystickPanel(): JSX.Element {
         <div className="rounded-xl border border-subtle bg-surface p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-medium text-content">Channels</span>
-            <button
-              onClick={resetMapping}
-              className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content"
-            >
-              <RotateCcw className="w-3 h-3" /> Reset
-            </button>
+            {!usingVirtual && (
+              <button
+                onClick={resetMapping}
+                className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content"
+              >
+                <RotateCcw className="w-3 h-3" /> Reset
+              </button>
+            )}
           </div>
+          {usingVirtual && (
+            <div className="mb-2 rounded-md bg-surface-raised px-2 py-1.5 text-[11px] text-content-tertiary">
+              The on-screen sticks do not use this mapping: they go to the channels the vehicle
+              names in RCMAP_ROLL / PITCH / THROTTLE / YAW. The bars below still show what is
+              being sent.
+            </div>
+          )}
           {[0, 1, 2, 3].map((i) => <ChannelRow key={i} index={i} />)}
           {showAll && Array.from({ length: 12 }, (_, k) => k + 4).map((i) => <ChannelRow key={i} index={i} />)}
           <button
@@ -193,18 +215,51 @@ export function JoystickPanel(): JSX.Element {
         </div>
       )}
 
+      {/* On-screen sticks: the fallback when there is no pad in the bag. */}
+      <div className="rounded-xl border border-subtle bg-surface p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <Hand className={`h-4 w-4 ${usingVirtual ? 'text-cyan-400' : 'text-content-tertiary'}`} />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm text-content">2 &middot; On-screen sticks</div>
+            <div className="text-[11px] text-content-tertiary">
+              {enabled
+                ? 'Where the stick positions come from, instead of a physical gamepad. Throttle holds where you leave it; the right stick springs back. Both centre if the window loses focus.'
+                : 'Turn joystick input on above to use these.'}
+            </div>
+          </div>
+          <button
+            onClick={() => setVirtualAxes(usingVirtual ? null : [0, 1, 0, 0])}
+            disabled={!enabled}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40 ${
+              usingVirtual
+                ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300'
+                : 'bg-surface-raised text-content-secondary hover:text-content'
+            }`}
+          >
+            {usingVirtual ? 'Using sticks' : 'Use sticks'}
+          </button>
+        </div>
+        {usingVirtual && <VirtualSticks onAxes={setVirtualAxes} disabled={!enabled} />}
+      </div>
+
       {/* Control */}
       <div className={`rounded-xl border p-3 ${vehicleControl ? 'border-blue-500/50 bg-blue-500/5' : 'border-subtle bg-surface'}`}>
         <div className="flex items-center gap-2">
           <Hand className={`w-4 h-4 ${vehicleControl ? 'text-blue-400' : 'text-content-tertiary'}`} />
           <div className="min-w-0 flex-1">
             <div className="text-sm text-content">
-              {vehicleControl ? 'Joystick has the sticks' : 'Vehicle flies on its own receiver'}
+              3 &middot; {vehicleControl ? 'Joystick has the sticks' : 'Vehicle flies on its own receiver'}
             </div>
             <div className="text-[11px] text-content-tertiary">
               {vehicleControl
                 ? `${vehicleFps} frames/s · stop sending and the vehicle returns to its receiver within a second`
-                : 'Only the channels you assigned are sent; everything else stays with the receiver'}
+                : !enabled
+                  ? 'Turn joystick input on above first.'
+                  : !connected
+                    ? 'Pick an input first: connect a gamepad or switch on the on-screen sticks.'
+                    : !isConnected
+                      ? 'No vehicle connected.'
+                      : 'Sends your sticks to the vehicle. Only the channels you assigned are sent; everything else stays with the receiver.'}
             </div>
           </div>
           <button

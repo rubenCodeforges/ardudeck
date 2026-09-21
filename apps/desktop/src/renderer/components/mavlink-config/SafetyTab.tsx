@@ -23,7 +23,6 @@ import {
 import { useParameterStore } from '../../stores/parameter-store';
 import { useMessagesStore } from '../../stores/messages-store';
 import { currentPrearmFailures } from './prearm-status';
-import { PrearmPanel } from './PrearmPanel';
 import {
   ARMING_CHECK_BITS,
   allChecksValue,

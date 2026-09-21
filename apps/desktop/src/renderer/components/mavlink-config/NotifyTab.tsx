@@ -433,13 +433,72 @@ export default function NotifyTab(): JSX.Element {
           />
         )}
 
-        {isPx4 && (
-          <p className="text-xs text-content-secondary">
-            PX4 silences the buzzer through the CBRK_BUZZER circuit breaker, which lives on the
-            Arming page with the other breakers.
-          </p>
+        {isPx4 && has('CBRK_BUZZER') && (
+          <div>
+            <div className="flex gap-2">
+              {([
+                { value: 0, label: 'All sounds on' },
+                { value: 782090, label: 'Silent startup only' },
+                { value: 782097, label: 'Buzzer off' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => write('CBRK_BUZZER', opt.value)}
+                  disabled={busy}
+                  className={`flex-1 rounded-md px-3 py-2 text-xs transition-colors disabled:opacity-40 ${
+                    num('CBRK_BUZZER', 0) === opt.value
+                      ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 ring-1 ring-cyan-500/40'
+                      : 'bg-surface-overlay text-content-secondary hover:text-content'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-content-tertiary">
+              PX4 silences the buzzer with a circuit breaker rather than a volume, so these are the
+              only three states it has.
+            </p>
+          </div>
         )}
       </div>
+
+      {isPx4 && has('CBRK_IO_SAFETY') && (
+        <div className="bg-surface rounded-xl border border-subtle p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <ShieldAlert className="h-4 w-4 text-content-tertiary" />
+            <h3 className="font-medium text-content">Safety button</h3>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => write('CBRK_IO_SAFETY', 0)}
+              disabled={busy}
+              className={`flex-1 rounded-md px-3 py-2 text-xs transition-colors disabled:opacity-40 ${
+                num('CBRK_IO_SAFETY', 0) === 0
+                  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40'
+                  : 'bg-surface-overlay text-content-secondary hover:text-content'
+              }`}
+            >
+              Safety button required
+            </button>
+            <button
+              onClick={() => write('CBRK_IO_SAFETY', 22027)}
+              disabled={busy}
+              className={`flex-1 rounded-md px-3 py-2 text-xs transition-colors disabled:opacity-40 ${
+                num('CBRK_IO_SAFETY', 0) === 22027
+                  ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40'
+                  : 'bg-surface-overlay text-content-secondary hover:text-content'
+              }`}
+            >
+              Safety disabled
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-content-tertiary">
+            With safety disabled the outputs go live the moment the vehicle arms, with nothing on
+            the airframe left to stop them. Keep the button unless the airframe has no room for one.
+          </p>
+        </div>
+      )}
 
       {!isPx4 && has('BRD_SAFETY_DEFLT') && (
         <div className="bg-surface rounded-xl border border-subtle p-5">

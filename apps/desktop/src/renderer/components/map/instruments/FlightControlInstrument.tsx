@@ -47,6 +47,7 @@ import { useModeRequest } from '../../../hooks/useModeRequest';
 import { getModeCategory } from '../tactical-icon-pool';
 import { GAUGE_COLORS } from './RoundGauge';
 import { useInDock } from './dock-context';
+import { useVehicleClass } from '../../../hooks/useVehicleClass';
 
 const PICKER_WIDTH = 188;
 
@@ -75,17 +76,12 @@ export function FlightControlInstrument({ variant = 'full' }: { variant?: Flight
   const connected = useInstrumentLinkUp();
   const flight = useTelemetryStore((s) => s.flight);
   const connectionState = useConnectionStore((s) => s.connectionState);
-  const qEnableParam = useParameterStore((s) => s.parameters.get('Q_ENABLE')?.value);
-  const sitlIsRunning = useArduPilotSitlStore((s) => s.isRunning);
-  const sitlFrame = useArduPilotSitlStore((s) => s.model);
   const missionDirty = useMissionStore((s) => s.isDirty);
   const missionCount = useMissionStore((s) => s.missionItems.length);
   const uploadMission = useMissionStore((s) => s.uploadMission);
 
-  const vehicleClass = getVehicleClass(connectionState.mavType, {
-    qEnable: typeof qEnableParam === 'number' ? qEnableParam : undefined,
-    sitlFrame: sitlIsRunning ? sitlFrame : undefined,
-  });
+  const vehicleClass = useVehicleClass();
+  const sitlIsRunning = useArduPilotSitlStore((s) => s.isRunning);
   // PX4 speaks its own mode vocabulary (encoded custom_mode values); every
   // mode list/lookup below must use it or the instrument commands ArduPilot
   // mode numbers at a PX4 and gets refused.

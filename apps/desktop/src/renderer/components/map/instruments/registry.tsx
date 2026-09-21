@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { create } from 'zustand';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
+import { useParameterStore } from '../../../stores/parameter-store';
 import { useMissionStore } from '../../../stores/mission-store';
 import { useSettingsStore } from '../../../stores/settings-store';
 import {
@@ -32,6 +33,9 @@ import { haversineMeters, bearingDeg } from '../traffic/proximity';
 import { getModeCategory } from '../tactical-icon-pool';
 import { AttitudeIndicator } from '../../panels/AttitudePanel';
 import { RoundGauge, GAUGE_COLORS, gaugeArcPath, gaugePoint, valueToAngle, type GaugeScale } from './RoundGauge';
+
+/** Inner consumption track, inside the 41 px charge arc. */
+const USED_TRACK_R = 33;
 import { InstrumentShell } from './InstrumentShell';
 import { InstrumentStrip } from './InstrumentStrip';
 import { FlightControlInstrument } from './FlightControlInstrument';
@@ -50,6 +54,8 @@ export interface MapInstrumentVariant {
   id: string;
   label: string;
   Component: () => JSX.Element;
+  /** This variant draws a round dial, so a docked group shapes around it. */
+  round?: boolean;
 }
 
 /** Which kind of vehicle an instrument is for. Untagged = both. */
@@ -92,6 +98,8 @@ export function resolveInstrumentComponent(def: MapInstrumentDef, mode: string):
 
 /** True when the instrument shows its round-gauge face in the given mode. */
 export function isRoundInMode(def: MapInstrumentDef, mode: string): boolean {
+  const variant = def.variants?.find((v) => v.id === mode);
+  if (variant) return variant.round === true;
   return def.round === true && mode === 'analog';
 }
 
@@ -237,6 +245,65 @@ function BatteryInstrument(): JSX.Element {
         {known ? `${Math.round(remaining)}%` : '--%'}
       </span>
       <BatteryMonitorBadge className="mt-1" />
+    </RoundGauge>
+  );
+}
+
+/**
+ * Battery with consumption as a second track.
+ *
+ * A gauge reads through pointer-against-scale and colour, with one numeral for
+ * precision. So charge keeps the rim pointer and the coloured arc, consumption
+ * gets its own inner track that fills as the pack is spent, and the only text
+ * is the voltage. Earlier revisions put the second value in 9 px type, which
+ * is unreadable at a glance and wastes the dial.
+ */
+function BatteryUsedInstrument(): JSX.Element {
+  const connected = useTelemetryFresh('battery');
+  const voltage = useTelemetryStore((s) => s.battery.voltage);
+  const remaining = useTelemetryStore((s) => s.battery.remaining);
+  const drawn = useTelemetryStore((s) => s.battery.mahDrawn);
+  const capacityMah = useParameterStore((s) => s.parameters.get('BATT_CAPACITY')?.value as number | undefined);
+
+  const known = connected && remaining >= 0;
+  const valueColor = !known
+    ? 'text-[var(--gauge-text)]'
+    : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
+
+  const usedPct = connected && typeof drawn === 'number' && drawn >= 0 && capacityMah && capacityMah > 0
+    ? Math.min(100, (drawn / capacityMah) * 100)
+    : null;
+
+  // Inner track: an unlit groove that fills from the empty end as capacity is
+  // spent, so "how much is gone" is a length, not a number to read.
+  const usedTrack = (
+    <>
+      <path
+        d={gaugeArcPath(USED_TRACK_R, BATTERY_SCALE.startAngle, BATTERY_SCALE.endAngle)}
+        fill="none"
+        stroke="var(--gauge-text-dim)"
+        strokeWidth="2.5"
+        opacity="0.25"
+      />
+      {usedPct !== null && usedPct > 0.5 && (
+        <path
+          d={gaugeArcPath(USED_TRACK_R, BATTERY_SCALE.startAngle, valueToAngle(usedPct, BATTERY_SCALE))}
+          fill="none"
+          stroke={GAUGE_COLORS.amber}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+      )}
+    </>
+  );
+
+  return (
+    <RoundGauge label="BAT" scale={BATTERY_SCALE} needleValue={known ? remaining : null} svgContent={usedTrack}>
+      <span className={`text-[19px] font-semibold leading-none ${valueColor}`}>
+        {connected ? voltage.toFixed(1) : '--'}
+        {connected && <span className="text-[9px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
+      </span>
+      <BatteryMonitorBadge className="mt-1.5" />
     </RoundGauge>
   );
 }
@@ -1201,7 +1268,7 @@ const BATTERY_INSTANCE_DEFAULT_POS = [
 export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
   { id: 'attitude', round: true, profiles: ['air'], label: 'Attitude ball', defaultClassName: 'absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]', defaultVisible: true, Component: AttitudeBallInstrument },
   { id: 'flight-data', label: 'Flight data', defaultClassName: 'absolute bottom-2 left-2 z-[1000]', defaultVisible: true, Component: FlightDataInstrument },
-  { id: 'battery', round: true, label: 'Battery', defaultClassName: 'absolute left-3 top-16 z-[1000]', defaultVisible: false, Component: BatteryInstrument, NumericComponent: BatteryNumeric, variants: compactVariants('battery') },
+  { id: 'battery', round: true, label: 'Battery', defaultClassName: 'absolute left-3 top-16 z-[1000]', defaultVisible: false, Component: BatteryInstrument, NumericComponent: BatteryNumeric, variants: [{ id: 'used', label: 'Battery + used', Component: BatteryUsedInstrument, round: true }, ...compactVariants('battery')] },
   // Fixed-monitor gauges (#126), one per possible ArduPilot instance: show a
   // specific pack regardless of the primary selection. The catalog surfaces
   // only the ones this vehicle actually streams.

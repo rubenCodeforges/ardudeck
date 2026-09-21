@@ -28,6 +28,7 @@ import {
   HUD_CENTER_Y,
   HUD_PX_PER_DEG,
 } from './hud-projection';
+import type { VtolState } from '../../../../shared/telemetry-types';
 
 /** Another fleet vehicle rendered as a HUD contact marker. */
 export interface HudContact {
@@ -77,6 +78,8 @@ export interface FighterHudValues {
   xtrackError?: number;
   /** Other fleet vehicles as HUD contacts (fleet mode; empty/absent = none). */
   contacts?: HudContact[];
+  /** MAV_VTOL_STATE, when the airframe reports one. */
+  vtolState?: VtolState | null;
 }
 
 const VB_W = HUD_VIEWBOX_W;

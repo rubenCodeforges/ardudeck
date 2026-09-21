@@ -62,11 +62,19 @@ function layoutPosKeys(groups: DockGroups): string[] {
 
 const INSTRUMENT_IDS = MAP_INSTRUMENTS.map((i) => i.id);
 
-/** The analog gauge, the numeric card, or one of the registry's extra
- * variants (the compact strip/cell/inline readouts). Missing = analog. */
-export type InstrumentDisplayMode = 'analog' | 'numeric' | 'strip' | 'cell' | 'inline';
+/** The analog gauge, the numeric card, or any variant id an instrument
+ * registers (strip/cell/inline, or a bespoke one like the battery's 'used').
+ * Missing = analog. The open string is deliberate: the registry owns the list. */
+export type InstrumentDisplayMode = 'analog' | 'numeric' | 'strip' | 'cell' | 'inline' | (string & {});
 
-const DISPLAY_MODES: readonly InstrumentDisplayMode[] = ['analog', 'numeric', 'strip', 'cell', 'inline'];
+const BUILTIN_DISPLAY_MODES = ['analog', 'numeric', 'strip', 'cell', 'inline'] as const;
+
+// Validating against the registry rather than a hardcoded union: a mode not
+// listed here is dropped on load, which silently reverted bespoke variants.
+const DISPLAY_MODES: ReadonlySet<string> = new Set<string>([
+  ...BUILTIN_DISPLAY_MODES,
+  ...MAP_INSTRUMENTS.flatMap((i) => (i.variants ?? []).map((v) => v.id)),
+]);
 
 export interface InstrumentLayoutSnapshot {
   visible: Record<string, boolean>;
@@ -132,7 +140,7 @@ function sanitizeDisplayMode(parsed: unknown): Record<string, InstrumentDisplayM
   const out: Record<string, InstrumentDisplayMode> = {};
   if (parsed && typeof parsed === 'object') {
     for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof v === 'string' && (DISPLAY_MODES as readonly string[]).includes(v)) out[k] = v as InstrumentDisplayMode;
+      if (typeof v === 'string' && DISPLAY_MODES.has(v)) out[k] = v;
     }
   }
   return out;

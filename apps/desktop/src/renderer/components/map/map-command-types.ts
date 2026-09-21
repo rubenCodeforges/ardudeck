@@ -49,8 +49,8 @@ export function altFrameToCommandIntFrame(frame: AltReferenceFrame | undefined):
 }
 
 export type MapCommand =
-  | { type: 'goto'; lat: number; lon: number; alt: number; frame: AltReferenceFrame }
-  | { type: 'orbit'; lat: number; lon: number; alt: number; radius: number; revolutions: number; frame: AltReferenceFrame }
+  | { type: 'goto'; lat: number; lon: number; alt: number; frame: AltReferenceFrame; speed?: number }
+  | { type: 'orbit'; lat: number; lon: number; alt: number; radius: number; revolutions: number; frame: AltReferenceFrame; speed?: number }
   | { type: 'spiral'; lat: number; lon: number; radius: number; startAlt: number; targetAlt: number; climbRate: number }
   | { type: 'watchtower'; lat: number; lon: number; alt: number; yawRate: number }
   | { type: 'climbRtl'; targetAlt: number }
@@ -152,6 +152,13 @@ export async function dispatchMapCommand(
   // the constant (it's exported semantically via the popup but not through TS
   // imports yet — this keeps the contract documented in one place).
   void SCRIPT_HOLDS_VEHICLE;
+
+  // Speed first: DO_CHANGE_SPEED sets the cruise the vehicle will use, so it
+  // has to land before the destination or the first leg flies at the old one.
+  if ((command.type === 'goto' || command.type === 'orbit') && command.speed && command.speed > 0) {
+    await sendChangeSpeed(command.speed, options);
+  }
+
   switch (command.type) {
     case 'goto': {
       const px4 = options.firmware === 'px4';
@@ -289,3 +296,19 @@ export type ActiveCommandTarget =
   | { type: 'reveal'; lat: number; lon: number; alt: number; pullbackDist: number }
   | { type: 'strafe'; lat: number; lon: number; alt: number; offsetDist: number; length: number }
   | { type: 'land'; lat: number; lon: number };
+
+/**
+ * MAV_CMD_DO_CHANGE_SPEED for a live guided move.
+ *
+ * param1 is the speed type, and it is not the same everywhere: ArduPilot
+ * aircraft take airspeed (0), while rovers and PX4 only act on ground speed
+ * (1). Same split the survey builder uses.
+ */
+async function sendChangeSpeed(speedMs: number, options: DispatchOptions): Promise<void> {
+  const groundSpeed = options.firmware === 'px4';
+  try {
+    await window.electronAPI.mavlinkChangeSpeed?.(speedMs, groundSpeed ? 1 : 0);
+  } catch {
+    // A refused speed must not cancel the move the pilot actually asked for.
+  }
+}

@@ -18,11 +18,10 @@ export interface PresetInstrumentLayout {
   layout: InstrumentLayoutSnapshot;
 }
 
-/** The default cockpit (baked from the field-tested "Groupped Default main
- * cockpit" layout): docked bottom rows flanking the attitude ball (flight
- * control + HOME/ALT/GPS left, SPD/VSI/BAT right; the ball's rose already
- * shows heading), the status strips docked as
- * one top row, flight data + annunciator stacked on the left rail. */
+/** The default cockpit (baked from the field-made "true new pilot"): the gauge
+ * bar along the bottom with the ball inline at its right end, the data /
+ * annunciator / flight-control rail down the left, mission and link top right.
+ * Battery runs the "used" gauge so charge and consumption share one dial. */
 const PILOT_COCKPIT: InstrumentLayoutSnapshot = {
   visible: {
     attitude: true,
@@ -34,26 +33,25 @@ const PILOT_COCKPIT: InstrumentLayoutSnapshot = {
     heading: false,
     vsi: true,
     home: true,
-    'flight-mode': true,
+    'flight-mode': false,
     link: true,
     mission: true,
     annunciator: true,
     rtk: false,
     controls: true,
   },
-  scale: {},
+  scale: { 'group:d1': 0.8, 'group:d2': 0.9, controls: 0.8 },
   opacity: 1,
   instrumentOpacity: {},
-  displayMode: {},
+  displayMode: { battery: 'used' },
   groups: {
-    d1: { members: ['controls', 'home', 'altitude', 'gps'], orientation: 'row' },
-    d2: { members: ['flight-data', 'annunciator'], orientation: 'col' },
-    d3: { members: ['flight-mode', 'mission', 'link'], orientation: 'row' },
-    d4: { members: ['speed', 'vsi', 'battery'], orientation: 'row' },
+    d1: { members: ['home', 'altitude', 'gps', 'attitude', 'speed', 'vsi', 'battery'], orientation: 'row' },
+    d2: { members: ['flight-data', 'annunciator', 'controls'], orientation: 'col' },
+    d3: { members: ['mission', 'link'], orientation: 'row' },
   },
   positions: {
-    'instrument:attitude': { ax: 'center', ay: 'bottom', dx: 0, dy: 4, v: 4 },
     // Solo anchors kept so an undocked member lands in a sensible spot.
+    'instrument:attitude': { ax: 'right', ay: 'bottom', dx: 0, dy: 15, v: 4 },
     'instrument:home': { ax: 'center', ay: 'bottom', dx: -356, dy: 19, v: 4 },
     'instrument:heading': { ax: 'center', ay: 'bottom', dx: -356, dy: 19, v: 4 },
     'instrument:altitude': { ax: 'center', ay: 'bottom', dx: -252, dy: 18, v: 4 },
@@ -61,16 +59,15 @@ const PILOT_COCKPIT: InstrumentLayoutSnapshot = {
     'instrument:speed': { ax: 'center', ay: 'bottom', dx: 148, dy: 19, v: 4 },
     'instrument:vsi': { ax: 'center', ay: 'bottom', dx: 252, dy: 18, v: 4 },
     'instrument:battery': { ax: 'center', ay: 'bottom', dx: 364, dy: 19, v: 4 },
-    'instrument:flight-mode': { ax: 'center', ay: 'top', dx: -200, dy: 8, v: 4 },
+    'instrument:flight-mode': { ax: 'center', ay: 'middle', dx: 48, dy: -150.5, v: 4 },
     'instrument:mission': { ax: 'center', ay: 'top', dx: 0, dy: 10, v: 4 },
     'instrument:link': { ax: 'center', ay: 'top', dx: 216, dy: 8, v: 4 },
     'instrument:flight-data': { ax: 'left', ay: 'middle', dx: 10, dy: -110, v: 4 },
     'instrument:annunciator': { ax: 'left', ay: 'middle', dx: 8, dy: 45.5, v: 4 },
-    'instrument:controls': { ax: 'left', ay: 'bottom', dx: 16, dy: 4, v: 4 },
-    'instrument:group:d1': { ax: 'left', ay: 'bottom', dx: 16, dy: 7, v: 4 },
-    'instrument:group:d2': { ax: 'left', ay: 'top', dx: 0, dy: 64, v: 4 },
-    'instrument:group:d3': { ax: 'center', ay: 'top', dx: -13.5, dy: 0, v: 4 },
-    'instrument:group:d4': { ax: 'center', ay: 'bottom', dx: 256, dy: 7, v: 4 },
+    'instrument:controls': { ax: 'left', ay: 'middle', dx: 8, dy: 22.5, v: 4 },
+    'instrument:group:d1': { ax: 'left', ay: 'bottom', dx: 40, dy: -5, v: 4 },
+    'instrument:group:d2': { ax: 'left', ay: 'middle', dx: 0, dy: -21, v: 4 },
+    'instrument:group:d3': { ax: 'right', ay: 'top', dx: 116, dy: 0, v: 4 },
   },
 };
 
@@ -266,7 +263,7 @@ const ROVER_COCKPIT: InstrumentLayoutSnapshot = {
 };
 
 export const PRESET_INSTRUMENT_LAYOUTS: PresetInstrumentLayout[] = [
-  { name: 'Pilot cockpit', description: 'Full cockpit: docked gauge rows around the ball.', accent: 'green', layout: PILOT_COCKPIT },
+  { name: 'Pilot cockpit', description: 'Gauge bar along the bottom, command rail down the left.', accent: 'green', layout: PILOT_COCKPIT },
   { name: 'Minimal', description: 'Just the ball, flight data and the status strips.', accent: 'blue', layout: MINIMAL },
   { name: 'Strips only', description: 'Compact readout bands, maximum map.', accent: 'amber', layout: STRIPS_ONLY },
   { name: 'Split cockpit', description: 'Slim set for the in-map split; applied automatically.', accent: 'violet', layout: SPLIT_COCKPIT },

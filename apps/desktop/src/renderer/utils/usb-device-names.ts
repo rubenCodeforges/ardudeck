@@ -79,6 +79,13 @@ const USB_DEVICE_NAMES: Record<string, string> = {
  * 3. Fallback → "path (manufacturer)" or just "path"
  */
 export function formatPortDisplayName(port: SerialPortInfo): string {
+  // Priority 0: what the autopilot called itself last time. Boards do ship a
+  // sibling's USB descriptor (a Pixhawk 6C answering as 6X), so the descriptor
+  // loses to the firmware's own answer.
+  if (port.knownBoard) {
+    return `${port.knownBoard} (${port.path})`;
+  }
+
   // Priority 1: OS-provided friendly name
   if (port.friendlyName) {
     return port.friendlyName;

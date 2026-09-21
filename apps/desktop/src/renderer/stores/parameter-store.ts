@@ -112,7 +112,7 @@ interface ParameterStore {
   getDescription: (paramId: string) => string;
   hasOfficialDescription: (paramId: string) => boolean;
   validateParameter: (paramId: string, value: number) => ValidationResult;
-  getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; values?: Record<number, string>; units?: string; bitmask?: Record<number, string>; rebootRequired?: boolean; volatile?: boolean } | null;
+  getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; increment?: number; values?: Record<number, string>; units?: string; bitmask?: Record<number, string>; rebootRequired?: boolean; volatile?: boolean } | null;
   isRebootRequired: (paramId: string) => boolean;
   isFavourite: (paramId: string) => boolean;
 
@@ -361,6 +361,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     if (!meta) return null;
     return {
       range: meta.range,
+      increment: meta.increment,
       values: meta.values,
       units: meta.units,
       bitmask: meta.bitmask,

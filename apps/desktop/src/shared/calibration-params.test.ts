@@ -23,6 +23,35 @@ describe('calibration param classification', () => {
     }
   });
 
+  it('flags PX4 per-unit calibration params', () => {
+    const cal = [
+      'CAL_ACC0_XOFF', 'CAL_ACC1_ZSCALE', 'CAL_ACC0_ID', 'CAL_ACC0_PRIO', 'CAL_ACC0_ROT',
+      'CAL_GYRO0_XOFF', 'CAL_GYRO2_ID',
+      'CAL_MAG0_XOFF', 'CAL_MAG0_YSCALE', 'CAL_MAG1_ZODIAG', 'CAL_MAG0_XCOMP',
+      'CAL_MAG0_ID', 'CAL_MAG0_PRIO', 'CAL_MAG0_ROT', 'CAL_MAG0_ROLL', 'CAL_MAG0_YAW',
+      'CAL_MAG_SIDES', 'CAL_AIR_TUBELEN',
+      'SENS_BOARD_ROT', 'SENS_BOARD_X_OFF',
+      'ASPD_SCALE_1', 'BAT1_V_DIV', 'BAT2_A_PER_V',
+      'RC1_REV', 'MAV_SYS_ID', 'COM_FLIGHT_UUID',
+    ];
+    for (const p of cal) {
+      expect(isCalibrationParam(p), p).toBe(true);
+    }
+  });
+
+  it('does not flag portable PX4 config params', () => {
+    const config = [
+      'MC_ROLLRATE_P', 'MPC_XY_VEL_MAX', 'COM_ARM_WO_GPS', 'COM_ARM_MAG_STR',
+      'NAV_RCL_ACT', 'NAV_DLL_ACT', 'GF_ACTION', 'SDLOG_MODE', 'SDLOG_PROFILE',
+      'EKF2_MAG_TYPE', 'EKF2_GPS_POS_X', 'CBRK_BUZZER', 'CBRK_IO_SAFETY',
+      'MAV_0_RATE', 'MAV_0_MODE', 'SYS_RGB_MAXBRT', 'CAL_MAG_ROT_AUTO',
+      'BAT1_N_CELLS', 'ASPD_PRIMARY', 'RC_MAP_ROLL',
+    ];
+    for (const p of config) {
+      expect(isCalibrationParam(p), p).toBe(false);
+    }
+  });
+
   it('does not flag portable config params', () => {
     const config = [
       'ATC_RAT_RLL_P', 'MOT_SPIN_MIN', 'MOT_PWM_TYPE', 'BATT_LOW_VOLT',

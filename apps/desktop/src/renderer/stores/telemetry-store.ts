@@ -22,6 +22,7 @@ export interface TelemetryBatch {
   sensorHealth?: SensorHealth;
   navController?: NavControllerData;
   guidedTarget?: GuidedTargetData;
+  vtolState?: number;
   /** Source vehicle key, tagged by the main process for per-vehicle routing. */
   __vehicleKey?: string;
 }
@@ -87,6 +88,7 @@ const initialState: TelemetryState = {
   sensorHealth: null,
   navController: null,
   guidedTarget: null,
+  vtolState: null,
 };
 
 export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
@@ -186,6 +188,9 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
     }
     if (batch.guidedTarget) {
       updates.guidedTarget = batch.guidedTarget;
+    }
+    if (batch.vtolState !== undefined) {
+      updates.vtolState = batch.vtolState as TelemetryState['vtolState'];
     }
 
     set(updates);

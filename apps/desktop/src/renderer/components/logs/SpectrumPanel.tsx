@@ -7,12 +7,18 @@ import { computeSpectrum, estimateSampleRate, resampleUniform, peakIndex, type S
 import { numericFieldNames } from '../../utils/log-columns';
 
 // Sensible defaults per message type: what a tuner actually wants to see first.
+// Dataflash names first, then the PX4 ULog topics that carry the same signal.
 const TYPE_PREFERENCE: { type: string; field: string }[] = [
   { type: 'IMU', field: 'GyrX' },
   { type: 'GYR', field: 'GyrX' },
   { type: 'ACC', field: 'AccX' },
   { type: 'VIBE', field: 'VibeX' },
   { type: 'RATE', field: 'R' },
+  { type: 'sensor_combined', field: 'gyro_rad[0]' },
+  { type: 'sensor_gyro_fifo', field: 'x[0]' },
+  { type: 'sensor_accel', field: 'x' },
+  { type: 'vehicle_imu_status', field: 'gyro_vibration_metric' },
+  { type: 'vehicle_angular_velocity', field: 'xyz[0]' },
 ];
 
 interface InstanceSpectrum {
@@ -246,7 +252,7 @@ export function SpectrumPanel() {
       </div>
       {spectra.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-content-tertiary text-xs px-6 text-center">
-          Not enough samples in this window - zoom out or pick a higher-rate message (IMU, ACC, GYR)
+          Not enough samples in this window - zoom out or pick a higher-rate message (IMU, ACC, GYR on ArduPilot; sensor_combined or sensor_gyro_fifo on PX4)
         </div>
       ) : (
         <div ref={chartRef} className="flex-1 min-h-0" />
