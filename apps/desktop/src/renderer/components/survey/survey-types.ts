@@ -185,6 +185,8 @@ export interface SurveyConfig {
    * next leg aligned instead of cutting the corner.
    */
   maxTurnAngle?: number;
+  /** Bank the plan assumes when working out the aircraft's turn radius. */
+  planBankDeg?: number;
   /** Reverse the order the strips are flown in (start from the far side). */
   flipLegs?: boolean;
   /** Reverse the travel direction along the centerline. */
@@ -295,6 +297,7 @@ export const DEFAULT_SURVEY_CONFIG: Omit<SurveyConfig, 'polygon'> = {
   launch: 'auto',
   corridorSideOffset: 0,
   maxTurnAngle: 120,
+  planBankDeg: 30,
   flipLegs: false,
   invertPath: false,
 };

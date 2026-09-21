@@ -221,12 +221,15 @@ export function SurveyConfigPanel() {
   const sitlFrame = useArduPilotSitlStore((s) => (s.isRunning ? s.model : undefined));
   const vehicleClass = getVehicleClass(mavType, { qEnable, sitlFrame });
   const isFixedWing = vehicleClass === 'plane' || vehicleClass === 'vtol';
-  // Follow the connected aircraft until the pilot overrides the toggle.
+  // Follow the connected aircraft until the pilot overrides the toggle. Only
+  // when one IS connected: "nothing detected" is not "multirotor", and taking
+  // it as such quietly strips the overshoot and racetracks out of a fixed-wing
+  // corridor that was already set up for a plane.
   const applyVehicleFlightMode = useSurveyStore((s) => s.applyVehicleFlightMode);
   const flightModeChosen = useSurveyStore((s) => s.flightModeChosen);
-  const detectedMode = surveyModeForVehicle(mavType === undefined ? undefined : vehicleClass);
+  const detectedMode = mavType === undefined ? null : surveyModeForVehicle(vehicleClass);
   useEffect(() => {
-    applyVehicleFlightMode(detectedMode);
+    if (detectedMode) applyVehicleFlightMode(detectedMode);
   }, [detectedMode, applyVehicleFlightMode]);
   const turnRadiusField = engineFields.find(
     (f): f is Extract<GeneratorConfigField, { type: 'number' }> => f.type === 'number' && f.id === 'minTurnRadius',

@@ -15,6 +15,7 @@ import { simplifyPolygon, bufferPolygonLatLng, latLngBboxOverlap } from '../comp
 import { runWithActivity } from './activity-store';
 import { parseGisArea, parseGisLines } from '../../shared/gis-area-import';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
+import { snapToNearestCenterline } from '../components/survey/generators/corridor-route';
 import { TURN_LOOP_MIN_DEG } from '../components/survey/generators/corridor-generator';
 import { useSettingsStore } from './settings-store';
 import { useMissionStore } from './mission-store';
@@ -769,11 +770,21 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   updateBranchVertex: (branchIndex, vertexIndex, lat, lng) => {
-    const { config, polygonEditMode, geometryLocked } = get();
+    const { config, polygon, polygonEditMode, geometryLocked } = get();
     const branches = config.corridorBranches;
     const line = branches?.[branchIndex];
     if (!branches || !line || geometryLocked) return;
-    const newLine = line.map((p, i) => (i === vertexIndex ? { lat, lng } : p));
+    // Vertex 0 is the junction: keep it on a centreline so the spur stays
+    // attached. It still slides freely ALONG the line; the far end is free.
+    const dropped: LatLng = { lat, lng };
+    const others = [
+      ...(polygon && polygon.length >= 2 ? [polygon] : []),
+      ...branches.filter((_, bi) => bi !== branchIndex).filter((b) => b.length >= 2),
+    ];
+    const placed = vertexIndex === 0 && others.length > 0
+      ? snapToNearestCenterline(dropped, others)
+      : dropped;
+    const newLine = line.map((p, i) => (i === vertexIndex ? placed : p));
     const next = branches.map((b, bi) => (bi === branchIndex ? newLine : b));
     set({ config: { ...config, corridorBranches: next } });
     if (polygonEditMode) set({ pendingRecompute: true });

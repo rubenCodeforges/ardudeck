@@ -84,6 +84,13 @@ jobs:
           # electron-builder can re-sign it cleanly during notarization).
           if [ "$(uname)" = "Darwin" ]; then codesign --force --sign - apps/desktop/sim-engine-bin/ardudeck-sim-engine; fi
 
+      # mediamtx is gitignored, so without this resources/bin ships empty and
+      # every RTSP/SRT/RTP feed fails with "Video engine not installed". ffmpeg
+      # stays an on-demand download: its builds are GPL and bundling one would
+      # put the whole app under GPL terms.
+      - name: Fetch mediamtx (linux x64)
+        run: node tools/fetch-mediamtx.mjs linux x64
+
       - name: Build packages
         run: pnpm build
 
@@ -179,6 +186,13 @@ jobs:
           # kernel SIGKILLs it on run. Re-sign so it is launchable (and so
           # electron-builder can re-sign it cleanly during notarization).
           if [ "$(uname)" = "Darwin" ]; then codesign --force --sign - apps/desktop/sim-engine-bin/ardudeck-sim-engine; fi
+
+      # mediamtx is gitignored, so without this resources/bin ships empty and
+      # every RTSP/SRT/RTP feed fails with "Video engine not installed". ffmpeg
+      # stays an on-demand download: its builds are GPL and bundling one would
+      # put the whole app under GPL terms.
+      - name: Fetch mediamtx (darwin arm64)
+        run: node tools/fetch-mediamtx.mjs darwin arm64
 
       - name: Build packages
         run: pnpm build
@@ -279,6 +293,13 @@ jobs:
           # electron-builder can re-sign it cleanly during notarization).
           if [ "$(uname)" = "Darwin" ]; then codesign --force --sign - apps/desktop/sim-engine-bin/ardudeck-sim-engine; fi
 
+      # mediamtx is gitignored, so without this resources/bin ships empty and
+      # every RTSP/SRT/RTP feed fails with "Video engine not installed". ffmpeg
+      # stays an on-demand download: its builds are GPL and bundling one would
+      # put the whole app under GPL terms.
+      - name: Fetch mediamtx (darwin x64)
+        run: node tools/fetch-mediamtx.mjs darwin x64
+
       - name: Build packages
         run: pnpm build
 
@@ -378,6 +399,13 @@ jobs:
           New-Item -ItemType Directory -Force -Path apps/desktop/sim-engine-bin | Out-Null
           Copy-Item crates/ardudeck-sim-engine/target/release/ardudeck-sim-engine.exe apps/desktop/sim-engine-bin/ardudeck-sim-engine.exe
         shell: pwsh
+
+      # mediamtx is gitignored, so without this resources/bin ships empty and
+      # every RTSP/SRT/RTP feed fails with "Video engine not installed". ffmpeg
+      # stays an on-demand download: its builds are GPL and bundling one would
+      # put the whole app under GPL terms.
+      - name: Fetch mediamtx (win32 x64)
+        run: node tools/fetch-mediamtx.mjs win32 x64
 
       - name: Build packages
         run: pnpm build

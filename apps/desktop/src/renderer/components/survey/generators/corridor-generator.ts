@@ -17,9 +17,9 @@
  * 5. Connect strips boustrophedon (alternate direction). flipLegs reverses the
  *    order the strips are flown in.
  * 6. Plane mode only: insert racetrack turn waypoints at centerline bends
- *    sharper than maxTurnAngle, and extend each strip's ends by the overshoot
- *    so the aircraft has room to turn. Copter mode turns on the spot, so it
- *    skips both.
+ *    sharper than maxTurnAngle. Strip ORDER also comes from the turn radius:
+ *    lines closer together than a turn diameter are flown with a stride
+ *    between them so each reversal fits. Copter mode skips both.
  * 7. Sample photo positions + footprints along each strip (camera mode).
  *
  * Branched corridors (a main axis with side spurs: forked roads, power-line
@@ -37,6 +37,8 @@ import type { LatLng, SurveyConfig, SurveyResult, SurveyStats } from '../survey-
 import { latLngToLocal, localToLatLng, polygonCentroid, distanceLatLng } from '../geo-math';
 import { getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
 import { orderCorridorRuns, splitTrunkAtJunctions } from './corridor-route';
+import { stripFlightOrder } from './strip-order';
+import { planTurnRadius } from './turn-radius';
 
 interface XY {
   x: number;
@@ -123,18 +125,21 @@ function applyTurnLoops(path: XY[], maxTurnDeg: number, radius: number): XY[] {
   return out;
 }
 
-/** Extend the first and last segment of a strip outward by `overshoot` meters. */
-function extendEnds(strip: XY[], overshoot: number): XY[] {
-  if (strip.length < 2 || overshoot <= 0) return strip;
-  const a0 = strip[0]!;
-  const a1 = strip[1]!;
-  const dStart = unit(a0.x - a1.x, a0.y - a1.y);
-  const start: XY = { x: a0.x + dStart.x * overshoot, y: a0.y + dStart.y * overshoot };
-  const bN = strip[strip.length - 1]!;
-  const bP = strip[strip.length - 2]!;
-  const dEnd = unit(bN.x - bP.x, bN.y - bP.y);
-  const end: XY = { x: bN.x + dEnd.x * overshoot, y: bN.y + dEnd.y * overshoot };
-  return [start, ...strip, end];
+/** Line spacing the strips are laid out on, ahead of generating any of them. */
+function effectiveLineSpacing(config: SurveyConfig): number {
+  const { width, height } = getEffectiveFootprint(config.camera, config.altitude);
+  return getEffectiveSpacing(config.camera, width, height, config.frontOverlap, config.sideOverlap).lineSpacing;
+}
+
+/**
+ * How many parallel strips a run is flown as. Shared with the pass scheduler,
+ * which needs it before any strip has been generated.
+ */
+function corridorStripCount(config: SurveyConfig, lineSpacing?: number): number {
+  const explicit = config.corridorStrips ?? 0;
+  if (explicit > 0) return Math.min(40, explicit);
+  if (lineSpacing === undefined || lineSpacing <= 0) return 1;
+  return Math.max(1, Math.min(40, Math.ceil((config.corridorWidth ?? 60) / lineSpacing)));
 }
 
 /** Sample a polyline at fixed spacing, returning each point and its heading. */
@@ -193,10 +198,17 @@ function emptyStats(config: SurveyConfig): SurveyStats {
 }
 
 /**
- * Generate strips for a SINGLE centerline. `generateCorridor` runs this over the
- * main centerline plus any branches and concatenates the results.
+ * Generate strips for a SINGLE centerline.
+ *
+ * `only` restricts it to one strip, flown in the given direction, so
+ * generateCorridor can run a pass across the whole network instead of
+ * finishing each run before moving on.
  */
-function generateOneCorridor(config: SurveyConfig, centerline: LatLng[]): SurveyResult {
+function generateOneCorridor(
+  config: SurveyConfig,
+  centerline: LatLng[],
+  only?: { stripIdx: number; reverse: boolean },
+): SurveyResult {
   const { camera, altitude, frontOverlap, sideOverlap, speed } = config;
 
   // A corridor needs at least two centerline points to define a direction.
@@ -222,11 +234,7 @@ function generateOneCorridor(config: SurveyConfig, centerline: LatLng[]): Survey
   }
 
   // Strip count: explicit override, otherwise derived from the swath width.
-  const width = config.corridorWidth ?? 60;
-  const explicit = config.corridorStrips ?? 0;
-  const nStrips = explicit > 0
-    ? Math.min(40, explicit)
-    : Math.max(1, Math.min(40, Math.ceil(width / lineSpacing)));
+  const nStrips = corridorStripCount(config, lineSpacing);
 
   // Lateral offsets, centered on the centerline (+ side-offset bias). An odd
   // count puts one strip on the centerline; an even count straddles it.
@@ -235,24 +243,29 @@ function generateOneCorridor(config: SurveyConfig, centerline: LatLng[]): Survey
   const offsets: number[] = [];
   for (let i = 0; i < nStrips; i++) offsets.push((i - half) * lineSpacing + sideOffset);
 
-  const order: number[] = [];
-  for (let i = 0; i < nStrips; i++) order.push(i);
-  if (config.flipLegs) order.reverse();
+  // Strip order comes from what the aircraft can turn, not from 1,2,3. Lines
+  // closer together than a turn diameter are flown with a stride between them
+  // so each reversal has room; that is what replaces bolting an overshoot
+  // waypoint onto every end.
+  const turnRadius = planeTurns ? planTurnRadius(config) : 0;
+  const stripPlan = stripFlightOrder(nStrips, lineSpacing, turnRadius);
+  const order = config.flipLegs ? [...stripPlan.order].reverse() : stripPlan.order;
 
   const normals = vertexNormals(centerLocal);
-  const overshoot = planeTurns ? config.overshoot : 0;
-  const turnRadius = Math.max(config.overshoot, 10);
 
   const waypointsLocal: XY[] = [];
   const photoSamples: { pt: XY; heading: number }[] = [];
 
-  order.forEach((stripIdx, k) => {
-    let strip = offsetPath(centerLocal, normals, offsets[stripIdx]!);
+  const passes: Array<{ stripIdx: number; reverse: boolean }> = only
+    ? [only]
+    : order.map((stripIdx, k) => ({ stripIdx, reverse: k % 2 === 1 }));
+
+  passes.forEach(({ stripIdx, reverse }) => {
+    let strip = offsetPath(centerLocal, normals, offsets[stripIdx] ?? offsets[0]!);
     // Boustrophedon: every other strip is flown in the opposite direction.
-    if (k % 2 === 1) strip = [...strip].reverse();
+    if (reverse) strip = [...strip].reverse();
     if (planeTurns) {
-      strip = applyTurnLoops(strip, config.maxTurnAngle ?? 15, turnRadius);
-      strip = extendEnds(strip, overshoot);
+      strip = applyTurnLoops(strip, config.maxTurnAngle ?? 15, Math.max(turnRadius, 10));
     }
     waypointsLocal.push(...strip);
     if (!isManual) {
@@ -279,7 +292,10 @@ function generateOneCorridor(config: SurveyConfig, centerline: LatLng[]): Survey
   for (let i = 1; i < centerSource.length; i++) {
     centerLength += distanceLatLng(centerSource[i - 1]!, centerSource[i]!);
   }
-  const coveredWidth = nStrips * lineSpacing;
+  // A part that generated a single strip must report a single strip, or the
+  // merged stats count each pass as the whole run's worth of lines and area.
+  const stripsGenerated = only ? 1 : nStrips;
+  const coveredWidth = stripsGenerated * lineSpacing;
   const gsd = isManual
     ? 0
     : (camera.sensorWidth * altitude * 100) / (camera.focalLength * camera.imageWidth);
@@ -289,7 +305,7 @@ function generateOneCorridor(config: SurveyConfig, centerline: LatLng[]): Survey
     flightDistance,
     flightTime: speed > 0 ? flightDistance / speed : 0,
     photoCount: photoPositions.length,
-    lineCount: nStrips,
+    lineCount: stripsGenerated,
     areaCovered: centerLength * coveredWidth,
     footprintWidth: footprintW,
     footprintHeight: footprintH,
@@ -313,25 +329,59 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
   const trunk = Array.isArray(config.polygon) && config.polygon.length >= 2 ? config.polygon : null;
   // Cut the trunk where the spurs meet it, so a spur can be flown on the way
   // past rather than after the whole line. Coverage is identical either way.
-  const centerlines = [...(trunk ? splitTrunkAtJunctions(trunk, branches) : []), ...branches];
+  const split = trunk ? splitTrunkAtJunctions(trunk, branches) : null;
+  const centerlines = split ? [...split.segments, ...split.branches] : [...branches];
   if (centerlines.length === 0) {
     return { waypoints: [], photoPositions: [], footprints: [], stats: emptyStats(config) };
   }
 
   // Order and orient the runs before generating, so the aircraft works its way
   // along the line instead of crossing back for every spur it was drawn after.
+  const stripCount = corridorStripCount(config, effectiveLineSpacing(config));
   const plan = orderCorridorRuns(centerlines);
-  const parts = plan.map(({ index, reversed }) => {
+  const oriented = plan.map(({ index, reversed }) => {
     const line = centerlines[index]!;
-    return generateOneCorridor(config, reversed ? [...line].reverse() : line);
+    return reversed ? [...line].reverse() : line;
   });
+
+  // Which way round to nest runs and strips, decided by parity.
+  //
+  // An ODD strip count leaves the aircraft at the far end of a run, so runs
+  // chain: finish every strip of one, move to the next, and the transit is
+  // paid once. An EVEN count brings it back to where it started, so chaining
+  // means retracing the run to reach the next one - about 15 km of dead legs
+  // on a 23 km line at two strips. There, fly one PASS across the whole
+  // network and the next pass back along it instead.
+  const stripOrder: number[] = [];
+  for (let i = 0; i < stripCount; i++) stripOrder.push(i);
+  if (config.flipLegs) stripOrder.reverse();
+
+  // Flatten the schedule first, so each leg knows what follows it and can
+  // tell a junction (the path runs straight on) from a turnaround.
+  interface Leg { line: LatLng[]; only?: { stripIdx: number; reverse: boolean } }
+  const legs: Leg[] = [];
+  if (stripCount % 2 === 1) {
+    for (const line of oriented) legs.push({ line });
+  } else {
+    stripOrder.forEach((stripIdx, pass) => {
+      const runs = pass % 2 === 1 ? [...oriented].reverse() : oriented;
+      for (const line of runs) legs.push({ line, only: { stripIdx, reverse: pass % 2 === 1 } });
+    });
+  }
+
+  const parts = legs.map((leg) => generateOneCorridor(config, leg.line, leg.only));
   if (parts.length === 1) return parts[0]!;
 
-  // A split trunk shares its junction vertex between the two segments, so
-  // flying them back to back lands the aircraft on the same point twice.
-  const waypoints = parts
-    .flatMap((p) => p.waypoints)
-    .filter((wp, i, all) => i === 0 || distanceLatLng(all[i - 1]!, wp) > WAYPOINT_MERGE_M);
+  // No arc waypoints here on purpose: ArduPlane's L1/NPFG controller starts
+  // the turn early and curves through on its own, with the radius set by
+  // airspeed and bank angle (WP_RADIUS bounds how early). Describing the turn
+  // in waypoints tells the autopilot nothing it does not already do, and the
+  // flown curve belongs on the map, not in the mission.
+  const joined = parts.flatMap((part) => part.waypoints);
+
+  const waypoints = joined.filter(
+    (wp, i, all) => i === 0 || distanceLatLng(all[i - 1]!, wp) > WAYPOINT_MERGE_M,
+  );
   const photoPositions = parts.flatMap((p) => p.photoPositions);
   const footprints = parts.flatMap((p) => p.footprints);
 
@@ -348,7 +398,10 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
     flightDistance,
     flightTime: config.speed > 0 ? flightDistance / config.speed : 0,
     photoCount: photoPositions.length,
-    lineCount: parts.reduce((n, p) => n + p.stats.lineCount, 0),
+    // Counted over the centrelines the OPERATOR drew, not the pieces the
+    // router cut them into: splitting the trunk at a junction is an internal
+    // routing step and must not inflate the line count they read.
+    lineCount: stripCount * ((trunk ? 1 : 0) + branches.length),
     areaCovered: parts.reduce((a, p) => a + p.stats.areaCovered, 0),
     footprintWidth: first.footprintWidth,
     footprintHeight: first.footprintHeight,

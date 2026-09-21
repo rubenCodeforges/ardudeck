@@ -8,11 +8,12 @@
  * and timeline live in the docked FlightPreviewPanel.
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { Marker, Polygon, Polyline } from 'react-leaflet';
+import { Marker, Polygon, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useMissionStore } from '../../stores/mission-store';
 import { useFlightPreviewStore } from '../../stores/flight-preview-store';
 import { buildFlightTimeline, sampleTimeline, type FlightTimeline } from './flight-preview';
+import { shouldRecenter, FollowState } from './preview-follow';
 
 const CAM_FOV_DEG = 62;
 const CAM_RANGE_M = 28;
@@ -75,6 +76,36 @@ export function FlightPreviewGizmo() {
   }, [isActive, playing, advance, timeline.durationMs]);
 
   const sample = isActive ? sampleTimeline(timeline, timeMs) : null;
+
+  // Keep the aircraft on screen, or the preview plays out beyond the edge of
+  // the map. Dragging the map hands control back to the pilot until they
+  // press play again.
+  const map = useMap();
+  const follow = useRef(new FollowState());
+  useEffect(() => {
+    if (playing) follow.current.restart();
+  }, [playing]);
+  useEffect(() => {
+    const onUserMove = (e: L.LeafletEvent & { hard?: boolean }) => {
+      // Ignore the programmatic pans this effect makes itself.
+      if ((e as { hard?: boolean }).hard !== true) follow.current.userMoved();
+    };
+    map.on('dragstart', onUserMove);
+    map.on('zoomstart', onUserMove);
+    return () => {
+      map.off('dragstart', onUserMove);
+      map.off('zoomstart', onUserMove);
+    };
+  }, [map]);
+  useEffect(() => {
+    if (!isActive || !playing || !sample || !follow.current.active) return;
+    const size = map.getSize();
+    const pt = map.latLngToContainerPoint([sample.lat, sample.lng]);
+    if (shouldRecenter(pt, { width: size.x, height: size.y }).recenter) {
+      map.panTo([sample.lat, sample.lng], { animate: true, duration: 0.4, noMoveStart: true });
+    }
+  }, [isActive, playing, sample, map]);
+
   const trail = useMemo(() => {
     if (!isActive || !sample) return null;
     const pts: [number, number][] = [];

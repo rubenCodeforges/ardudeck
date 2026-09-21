@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, useMap, Marker, Polyline, useMapEvents, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap, Marker, Polyline, useMapEvents, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useMissionStore } from '../../stores/mission-store';
@@ -9,6 +9,7 @@ import { commandHasLocation, isNavigationCommand, hasValidCoordinates, computeGr
 import { useIpLocation } from '../../utils/ip-geolocation';
 import { SEGMENT_COLORS, getSegmentColor, computeItemColors } from '../../utils/mission-segment-colors';
 import { nearestLeg, type InsertTarget, type LegPoint, type Pt } from './insert-target';
+import { predictFlownPath, turnRadiusFor, coverageGaps } from './flown-path';
 
 // Geofence and Rally overlays
 import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
@@ -1069,6 +1070,32 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
     return buildSegmentedPath(visibleMissionItems, colorByGroup ? groupColorOf : undefined);
   }, [visibleMissionItems, colorByGroup, groupColorOf]);
 
+  // The track the aircraft will actually fly. A plane turns early and cuts the
+  // corner, so at a sharp corridor bend the camera can miss the ground the
+  // plan says it covers; this shows that before the flight, not after it.
+  const showFlownPath = useSettingsStore((s) => s.missionDefaults.showFlownPath);
+  const flownPathBankDeg = useSettingsStore((s) => s.missionDefaults.flownPathBankDeg);
+  const surveySwathWidth = useSurveyStore((s) => s.config.corridorWidth ?? 60);
+  const surveySpeed = useSurveyStore((s) => s.config.speed);
+  const flown = useMemo(() => {
+    if (!showFlownPath || waypoints.length < 3) return null;
+    const speed = visibleMissionItems.find((i) => i.command === MAV_CMD.DO_CHANGE_SPEED && i.param2 > 0)?.param2
+      ?? surveySpeed
+      ?? 15;
+    const radius = turnRadiusFor(speed, flownPathBankDeg);
+    const result = predictFlownPath(waypoints.map((w) => ({ lat: w.latitude, lng: w.longitude })), radius);
+    return {
+      positions: result.path.map((q) => [q.lat, q.lng] as [number, number]),
+      gaps: coverageGaps(result.cuts, surveySwathWidth).map((c) => ({
+        ...c,
+        at: waypoints[c.index],
+      })).filter((g) => g.at !== undefined),
+      radius,
+      speed,
+    };
+  }, [showFlownPath, waypoints, visibleMissionItems, surveySpeed, flownPathBankDeg, surveySwathWidth]);
+
+
   // Segment colors per item (for marker tinting)
   const itemColors = useMemo(() => computeItemColors(missionItems), [missionItems]);
 
@@ -1146,6 +1173,26 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         ))}
 
         <PathContextMenu waypoints={waypoints} onPick={handlePathRightClick} enabled={!readOnly} />
+
+        {/* Predicted track, and the bends where cutting it costs coverage. */}
+        {flown && (
+          <>
+            <Polyline
+              positions={flown.positions}
+              interactive={false}
+              pathOptions={{ color: '#22d3ee', weight: 2, opacity: 0.9, dashArray: '6 4' }}
+            />
+            {flown.gaps.map((g) => (
+              <CircleMarker
+                key={`gap-${g.index}`}
+                center={[g.at!.latitude, g.at!.longitude]}
+                radius={9}
+                interactive={false}
+                pathOptions={{ color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.25 }}
+              />
+            ))}
+          </>
+        )}
 
         {/* Loiter radius circles - param3 is radius for all loiter commands */}
         {waypoints
@@ -1647,6 +1694,33 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               </div>
               <span className="text-content font-medium">Path colors</span>
             </button>
+            <button
+              onClick={() => updateMissionDefaults({ showFlownPath: !showFlownPath })}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 w-full hover:bg-surface-raised transition-colors border-t border-subtle"
+            >
+              <div className={`w-3 h-3 rounded-sm border transition-colors ${
+                showFlownPath ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-content-secondary'
+              }`}>
+                {showFlownPath && (
+                  <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-content font-medium">Predicted turns</span>
+            </button>
+            {flown && (
+              <div className="px-2.5 pb-2 pt-0.5 text-[11px] leading-snug">
+                <div className="text-content-secondary">
+                  {Math.round(flown.radius)} m turn radius at {flown.speed.toFixed(1)} m/s, {flownPathBankDeg}° bank
+                </div>
+                <div className={flown.gaps.length > 0 ? 'text-red-400' : 'text-content-tertiary'}>
+                  {flown.gaps.length > 0
+                    ? `${flown.gaps.length} bend${flown.gaps.length > 1 ? 's' : ''} cut past the swath - coverage gap`
+                    : 'Every bend stays inside the swath'}
+                </div>
+              </div>
+            )}
             {showSegmentColors && (
               <div className="px-2.5 pb-2 pt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
                 <div className="flex items-center gap-1.5">

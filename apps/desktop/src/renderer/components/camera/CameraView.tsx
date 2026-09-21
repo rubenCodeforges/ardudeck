@@ -125,7 +125,19 @@ export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onErro
           ) : (
             <>
               <div className="text-sm text-red-300">No video</div>
-              <div className="max-w-[80%] text-[11px] text-white/60">{error}</div>
+              {/* The reason is the only diagnostic a field user can report, and
+                  they report it by screenshot. Small grey text did not survive
+                  that trip, so it is readable and selectable here. */}
+              {error && (
+                <div className="max-w-[90%] select-text rounded-md bg-black/60 px-3 py-2 text-center text-xs leading-snug text-white/90">
+                  {error}
+                </div>
+              )}
+              <div className="max-w-[80%] text-[11px] text-white/45">
+                {source.kind === 'rtsp' || source.kind === 'mavlink'
+                  ? `${source.url ?? 'no url'} · ${source.rtspTransport ?? 'automatic'}`
+                  : source.kind}
+              </div>
             </>
           )}
         </div>

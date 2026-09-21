@@ -4783,7 +4783,19 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // ==================== Camera / video ====================
   ipcMain.handle(IPC_CHANNELS.CAMERA_START, async (_, source: CameraSourceConfig, resolvedUrl?: string) => {
-    return mediaEngine.start(source, resolvedUrl);
+    const result = await mediaEngine.start(source, resolvedUrl);
+    // A feed that fails in the field is reported by screenshot, so the reason
+    // and the hub's own log lines go to the console where they can be read.
+    if (!result.ok) {
+      const where = resolvedUrl ?? source.url ?? source.kind;
+      sendLog(
+        mainWindow,
+        'error',
+        `Camera "${source.label ?? source.id}" failed: ${result.error ?? 'unknown error'}`,
+        [`source: ${where}`, `transport: ${source.rtspTransport ?? 'automatic'}`, ...mediaEngine.recentHubLog()].join('\n'),
+      );
+    }
+    return result;
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_STOP, async (_, sourceId: string) => {
     await mediaEngine.stop(sourceId);

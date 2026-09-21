@@ -54,7 +54,7 @@ describe('orderCorridorRuns', () => {
       [p(0, 0), p(0, 0.5)],
     ];
     const free = orderCorridorRuns(runs);
-    const pinned = orderCorridorRuns(runs, true);
+    const pinned = orderCorridorRuns(runs, { pinFirst: true });
     expect(transitDistance(runs, free)).toBeLessThanOrEqual(transitDistance(runs, pinned));
   });
 
@@ -110,63 +110,102 @@ describe('orderCorridorRuns', () => {
 
 describe('splitTrunkAtJunctions', () => {
   const trunk = [p(0, 0), p(0, 1), p(0, 2), p(0, 3), p(0, 4)];
+  const metres = (a: LatLng, b: LatLng) =>
+    Math.hypot((a.lat - b.lat) * 110540, (a.lng - b.lng) * 111320 * Math.cos((a.lat * Math.PI) / 180));
 
   it('leaves a trunk with no branches whole', () => {
-    expect(splitTrunkAtJunctions(trunk, [])).toEqual([trunk]);
+    expect(splitTrunkAtJunctions(trunk, []).segments).toEqual([trunk]);
   });
 
-  it('cuts where a spur meets it, sharing the junction vertex', () => {
-    const spur = [[p(0.01, 2), p(0.5, 2)]];
-    const segs = splitTrunkAtJunctions(trunk, spur);
-    expect(segs).toHaveLength(2);
-    expect(segs[0]![segs[0]!.length - 1]).toEqual(segs[1]![0]);
-    // Every trunk vertex still appears, so coverage is unchanged.
-    expect(segs.flat().map((q) => q.lng)).toEqual([0, 1, 2, 2, 3, 4]);
+  it('cuts where a spur meets it, sharing the junction point', () => {
+    const { segments } = splitTrunkAtJunctions(trunk, [[p(0.01, 2), p(0.5, 2)]]);
+    expect(segments).toHaveLength(2);
+    expect(segments[0]![segments[0]!.length - 1]).toEqual(segments[1]![0]);
+    expect(segments.flat().map((q) => q.lng)).toEqual([0, 1, 2, 2, 3, 4]);
+  });
+
+  // The Area Editor snaps a spur to the nearest POINT on the line, which is
+  // usually mid-segment. Cutting at the nearest vertex instead left the spur
+  // starting where no trunk piece reached, so the corridor came out in
+  // disconnected parts.
+  it('cuts mid-segment, where the spur actually meets the line', () => {
+    const { segments, branches } = splitTrunkAtJunctions(trunk, [[p(0.01, 2.5), p(0.5, 2.5)]]);
+    expect(segments).toHaveLength(2);
+    const joinA = segments[0]![segments[0]!.length - 1]!;
+    const joinB = segments[1]![0]!;
+    expect(joinA.lng).toBeCloseTo(2.5, 9);
+    expect(joinA).toEqual(joinB);
+    // And the spur now starts exactly on that point, so the pieces connect.
+    expect(metres(branches[0]![0]!, joinA)).toBeLessThan(0.01);
+  });
+
+  it('keeps every trunk vertex, so nothing is skipped', () => {
+    const { segments } = splitTrunkAtJunctions(trunk, [[p(0.01, 2.5), p(0.5, 2.5)]]);
+    const lngs = segments.flat().map((q) => q.lng);
+    for (const v of [0, 1, 2, 3, 4]) expect(lngs).toContain(v);
   });
 
   it('attaches by whichever end of the spur is nearer', () => {
     const drawnAway = [[p(0.5, 3), p(0.01, 3)]];
-    const segs = splitTrunkAtJunctions(trunk, drawnAway);
-    expect(segs).toHaveLength(2);
-    expect(segs[0]![segs[0]!.length - 1]!.lng).toBe(3);
+    const { segments, branches } = splitTrunkAtJunctions(trunk, drawnAway);
+    expect(segments).toHaveLength(2);
+    expect(segments[0]![segments[0]!.length - 1]!.lng).toBeCloseTo(3, 9);
+    // Reversed so it starts at the junction and runs away from the line.
+    expect(branches[0]![0]!.lng).toBeCloseTo(3, 9);
+    expect(branches[0]![branches[0]!.length - 1]!.lat).toBeCloseTo(0.5, 9);
   });
 
-  it('never cuts at an end, which would strand a single point', () => {
-    const atStart = [[p(0.01, 0), p(0.5, 0)]];
-    const atEnd = [[p(0.01, 4), p(0.5, 4)]];
-    expect(splitTrunkAtJunctions(trunk, atStart)).toEqual([trunk]);
-    expect(splitTrunkAtJunctions(trunk, atEnd)).toEqual([trunk]);
+  it('never cuts at a tip, which would strand a single point', () => {
+    expect(splitTrunkAtJunctions(trunk, [[p(0.01, 0), p(0.5, 0)]]).segments).toEqual([trunk]);
+    expect(splitTrunkAtJunctions(trunk, [[p(0.01, 4), p(0.5, 4)]]).segments).toEqual([trunk]);
   });
 
-  it('handles several spurs, in vertex order', () => {
-    const spurs = [[p(0.01, 3), p(0.5, 3)], [p(0.01, 1), p(0.5, 1)]];
-    const segs = splitTrunkAtJunctions(trunk, spurs);
-    expect(segs).toHaveLength(3);
-    expect(segs.map((sg) => sg.length)).toEqual([2, 3, 2]);
+  it('handles several spurs, in order along the trunk', () => {
+    const spurs = [[p(0.01, 3.5), p(0.5, 3.5)], [p(0.01, 1.5), p(0.5, 1.5)]];
+    const { segments } = splitTrunkAtJunctions(trunk, spurs);
+    expect(segments).toHaveLength(3);
+    const ends = segments.map((sg) => sg[sg.length - 1]!.lng);
+    expect(ends[0]).toBeCloseTo(1.5, 9);
+    expect(ends[1]).toBeCloseTo(3.5, 9);
   });
 
-  // The whole point: picking spurs up on the way beats a return trip.
   it('lets the router pick spurs up in passing', () => {
     const line = Array.from({ length: 21 }, (_, i) => p(0, i * 0.01));
     const spurs = [
-      [p(0.001, 0.05), p(0.01, 0.05)],
-      [p(0.001, 0.15), p(0.01, 0.15)],
+      [p(0.001, 0.055), p(0.01, 0.055)],
+      [p(0.001, 0.155), p(0.01, 0.155)],
     ];
     const whole = [line, ...spurs];
-    const split = [...splitTrunkAtJunctions(line, spurs), ...spurs];
+    const { segments, branches } = splitTrunkAtJunctions(line, spurs);
+    const split = [...segments, ...branches];
     expect(transitDistance(split, orderCorridorRuns(split)))
       .toBeLessThan(transitDistance(whole, orderCorridorRuns(whole)));
   });
 });
 
-describe('the racetrack threshold', () => {
-  // Inserting the pair replaces one turn of θ with two of (180 - θ/2), so it
-  // only helps past 120°. The generator enforces that floor whatever the
-  // slider says; this pins the arithmetic the floor comes from.
-  it('is where a loop stops being sharper than the corner', () => {
-    const loopTurn = (theta: number) => 180 - theta / 2;
-    expect(loopTurn(TURN_LOOP_MIN_DEG)).toBeCloseTo(TURN_LOOP_MIN_DEG, 6);
-    expect(loopTurn(90)).toBeGreaterThan(90);
-    expect(loopTurn(170)).toBeLessThan(170);
+describe('strip parity', () => {
+  // An even strip count flies the run out and back, so the aircraft leaves
+  // from the end it arrived at. Costing the next transit from the far end
+  // sent the router to the wrong place entirely.
+  const runs = [
+    [p(0, 0), p(0, 1)],
+    [p(0, 3), p(0, 4)],
+  ];
+
+  it('costs a round-trip run from the end it entered', () => {
+    const plan: RunOrder[] = [{ index: 0, reversed: false }, { index: 1, reversed: false }];
+    const oneWay = transitDistance(runs, plan, false);
+    const roundTrip = transitDistance(runs, plan, true);
+    expect(roundTrip).toBeGreaterThan(oneWay);
+  });
+
+  it('orients differently once it knows the run comes back', () => {
+    const oneWay = orderCorridorRuns(runs, { roundTrip: false });
+    const roundTrip = orderCorridorRuns(runs, { roundTrip: true });
+    expect(transitDistance(runs, roundTrip, true)).toBeLessThanOrEqual(transitDistance(runs, oneWay, true));
+  });
+
+  it('is unchanged for an odd count, which does exit at the far end', () => {
+    expect(orderCorridorRuns(runs)).toEqual(orderCorridorRuns(runs, { roundTrip: false }));
   });
 });

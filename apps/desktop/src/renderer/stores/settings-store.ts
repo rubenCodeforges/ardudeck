@@ -158,6 +158,10 @@ export interface MissionDefaults {
   advancedMissionLabels: boolean;  // false = friendly labels ("Fly here"), true = standard ("WP")
   missionFirmware: MissionFirmware; // Which firmware's commands to show when disconnected
   showSegmentColors: boolean;      // Color-coded path segments on map (camera, ROI, speed, etc.)
+  /** Draw the track a fixed wing will actually fly, corners cut at its turn radius. */
+  showFlownPath: boolean;
+  /** Bank angle the predicted track is planned around, degrees. */
+  flownPathBankDeg: number;
 }
 
 /**
@@ -477,6 +481,8 @@ const DEFAULT_MISSION_DEFAULTS: MissionDefaults = {
   advancedMissionLabels: false,  // Friendly labels by default
   missionFirmware: 'ardupilot',  // Default firmware for offline mission planning
   showSegmentColors: true,       // Color-coded path segments on by default
+  showFlownPath: false,
+  flownPathBankDeg: 30,
 };
 
 const DEFAULT_VEHICLE: VehicleProfile = {

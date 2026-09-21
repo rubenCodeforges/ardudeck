@@ -27,8 +27,22 @@ export interface RunOrder {
   reversed: boolean;
 }
 
+export interface RouteOptions {
+  /** Hold run 0 first and forward. Expensive; see orderCorridorRuns. */
+  pinFirst?: boolean;
+  /**
+   * An even strip count flies the run out and back, so the aircraft leaves
+   * from the end it arrived at. Modelling every run as exiting at its far end
+   * made the router plan the next transit from the wrong place: on a 23 km
+   * line at two strips that was 27.5 km of dead legs, one of them 9.3 km.
+   */
+  roundTrip?: boolean;
+}
+
 const entryOf = (run: LatLng[], reversed: boolean): LatLng => (reversed ? run[run.length - 1]! : run[0]!);
-const exitOf = (run: LatLng[], reversed: boolean): LatLng => (reversed ? run[0]! : run[run.length - 1]!);
+const farEndOf = (run: LatLng[], reversed: boolean): LatLng => (reversed ? run[0]! : run[run.length - 1]!);
+const exitOf = (run: LatLng[], reversed: boolean, roundTrip = false): LatLng =>
+  (roundTrip ? entryOf(run, reversed) : farEndOf(run, reversed));
 
 /**
  * Cheapest orientations for a fixed visiting order, and what they cost.
@@ -40,6 +54,7 @@ function solveOrientations(
   runs: LatLng[][],
   order: number[],
   pinFirst: boolean,
+  roundTrip: boolean,
 ): { cost: number; reversed: boolean[] } {
   const n = order.length;
   if (n === 0) return { cost: 0, reversed: [] };
@@ -57,7 +72,7 @@ function solveOrientations(
       const entry = entryOf(cur, s === 1);
       for (const p of [0, 1] as const) {
         if (!Number.isFinite(best[p])) continue;
-        const c = best[p] + distanceLatLng(exitOf(prev, p === 1), entry);
+        const c = best[p] + distanceLatLng(exitOf(prev, p === 1, roundTrip), entry);
         if (c < next[s]) { next[s] = c; pick[s] = p; }
       }
     }
@@ -76,42 +91,130 @@ function solveOrientations(
   return { cost: Math.min(best[0], best[1]), reversed };
 }
 
+/** Where a spur meets the trunk: a point on a segment, not necessarily a vertex. */
+interface Junction {
+  /** Index of the trunk segment the junction lies on. */
+  segIndex: number;
+  /** Position along that segment, 0..1. */
+  t: number;
+  point: LatLng;
+  distanceM: number;
+}
+
+/** Nearest point on an open polyline to `p`, projected onto its segments. */
+function projectOntoPolyline(line: readonly LatLng[], p: LatLng): Junction | null {
+  if (line.length < 2) return null;
+  let best: Junction | null = null;
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i]!;
+    const b = line[i + 1]!;
+    // Local metres: lat/lng ratios differ, so project in a flat frame.
+    const kx = Math.cos((a.lat * Math.PI) / 180);
+    const ax = 0;
+    const ay = 0;
+    const bx = (b.lng - a.lng) * kx;
+    const by = b.lat - a.lat;
+    const px = (p.lng - a.lng) * kx;
+    const py = p.lat - a.lat;
+    const len2 = (bx - ax) ** 2 + (by - ay) ** 2;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / len2));
+    const point: LatLng = { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
+    const d = distanceLatLng(p, point);
+    if (!best || d < best.distanceM) best = { segIndex: i, t, point, distanceM: d };
+  }
+  return best;
+}
+
+/**
+ * Slide a point onto the nearest of several centrelines.
+ *
+ * A branch is attached at creation but was free to drift afterwards: dragging
+ * its junction vertex wrote the raw cursor position, so the spur came away
+ * from the line and the corridor generated in two disconnected pieces.
+ * Snapping keeps the junction on the line while still letting it slide along.
+ */
+export function snapToNearestCenterline(p: LatLng, lines: ReadonlyArray<readonly LatLng[]>): LatLng {
+  let best: LatLng = p;
+  let bestD = Infinity;
+  for (const line of lines) {
+    const j = projectOntoPolyline(line, p);
+    if (j && j.distanceM < bestD) { bestD = j.distanceM; best = j.point; }
+  }
+  return best;
+}
+
+export interface SplitTrunk {
+  /** Trunk pieces, cut at the junctions and sharing the junction point. */
+  segments: LatLng[][];
+  /** Branches with their junction end moved onto the trunk exactly. */
+  branches: LatLng[][];
+}
+
 /**
  * Split the trunk wherever a branch meets it, so the route can pick a spur up
  * on the way past instead of flying the whole line and coming back.
  *
- * Measured on a 23 km power line with five spurs, this is the difference
- * between 11.6 km and 3.8 km of dead legs. The junction vertex belongs to both
- * neighbouring segments, so coverage is continuous across the cut.
+ * The cut goes at the projected point on the trunk, not at the nearest
+ * vertex. A spur is snapped to the nearest point on the line, which is
+ * usually mid-segment, and on a power line the vertices are hundreds of
+ * metres apart: cutting at a vertex left the spur starting somewhere the
+ * trunk pieces never touch, so the corridor came out in disconnected parts.
+ *
+ * Measured on a 23 km power line with five spurs, splitting is the difference
+ * between 11.6 km and 3.8 km of dead legs. Both sides of a cut carry the
+ * junction point, and the branch end is moved onto it, so the pieces join.
  */
-export function splitTrunkAtJunctions(trunk: LatLng[], branches: readonly LatLng[][]): LatLng[][] {
-  if (trunk.length < 3 || branches.length === 0) return [trunk];
+export function splitTrunkAtJunctions(trunk: LatLng[], branches: readonly LatLng[][]): SplitTrunk {
+  const asIs = { segments: [trunk], branches: branches.map((b) => [...b]) };
+  if (trunk.length < 2 || branches.length === 0) return asIs;
 
-  const cuts = new Set<number>();
+  const junctions: Junction[] = [];
+  const adjusted: LatLng[][] = [];
+
   for (const b of branches) {
-    if (b.length < 2) continue;
+    if (b.length < 2) { adjusted.push([...b]); continue; }
+    const head = projectOntoPolyline(trunk, b[0]!);
+    const tail = projectOntoPolyline(trunk, b[b.length - 1]!);
+    if (!head || !tail) { adjusted.push([...b]); continue; }
     // A spur attaches by one of its ends; the nearer one is the junction.
-    let bestIdx = -1;
-    let bestD = Infinity;
-    for (const end of [b[0]!, b[b.length - 1]!]) {
-      for (let i = 0; i < trunk.length; i++) {
-        const d = distanceLatLng(trunk[i]!, end);
-        if (d < bestD) { bestD = d; bestIdx = i; }
-      }
-    }
-    // Cutting at an end of the trunk would only make a one-point segment.
-    if (bestIdx > 0 && bestIdx < trunk.length - 1) cuts.add(bestIdx);
+    const atHead = head.distanceM <= tail.distanceM;
+    const j = atHead ? head : tail;
+    const line = atHead ? [...b] : [...b].reverse();
+    line[0] = j.point;
+    adjusted.push(line);
+    junctions.push(j);
   }
-  if (cuts.size === 0) return [trunk];
 
+  if (junctions.length === 0) return { segments: [trunk], branches: adjusted };
+
+  // Cut in order along the trunk. A junction landing on an existing vertex
+  // needs no new point, and one at either tip would strand a single point.
+  const ordered = [...junctions].sort((a, b) => (a.segIndex - b.segIndex) || (a.t - b.t));
   const segments: LatLng[][] = [];
-  let start = 0;
-  for (const cut of [...cuts].sort((a, b) => a - b)) {
-    segments.push(trunk.slice(start, cut + 1));
-    start = cut;
+  // A junction landing exactly on a vertex is the same point twice; appending
+  // it anyway left a zero-length hop in the middle of the segment.
+  const push = (arr: LatLng[], q: LatLng) => {
+    const last = arr[arr.length - 1];
+    if (!last || distanceLatLng(last, q) > 1e-6) arr.push(q);
+  };
+  let current: LatLng[] = [trunk[0]!];
+  let cursor = 0;
+
+  for (const j of ordered) {
+    if (j.segIndex < cursor) continue;
+    for (let i = cursor + 1; i <= j.segIndex; i++) push(current, trunk[i]!);
+    cursor = j.segIndex;
+    const atStart = j.t <= 1e-9 && j.segIndex === 0;
+    const atEnd = j.t >= 1 - 1e-9 && j.segIndex === trunk.length - 2;
+    if (atStart || atEnd) continue;
+    push(current, j.point);
+    if (current.length >= 2) segments.push(current);
+    current = [j.point];
   }
-  segments.push(trunk.slice(start));
-  return segments.filter((s) => s.length >= 2);
+  for (let i = cursor + 1; i < trunk.length; i++) push(current, trunk[i]!);
+  if (current.length >= 2) segments.push(current);
+
+  return { segments: segments.length > 0 ? segments : [trunk], branches: adjusted };
 }
 
 /**
@@ -124,7 +227,8 @@ export function splitTrunkAtJunctions(trunk: LatLng[], branches: readonly LatLng
  * (identical cost), the one starting nearer the trunk's own start is chosen,
  * so the mission still begins where the line begins whenever that is free.
  */
-export function orderCorridorRuns(runs: LatLng[][], pinFirst = false): RunOrder[] {
+export function orderCorridorRuns(runs: LatLng[][], opts: RouteOptions = {}): RunOrder[] {
+  const { pinFirst = false, roundTrip = false } = opts;
   const usable = runs.map((r, i) => ({ r, i })).filter((e) => e.r.length >= 2);
   if (usable.length <= 1) return usable.map((e) => ({ index: e.i, reversed: false }));
 
@@ -135,7 +239,7 @@ export function orderCorridorRuns(runs: LatLng[][], pinFirst = false): RunOrder[
   // nearest endpoint. 2-opt below repairs the corners greedy paints itself into.
   const order: number[] = [idx[0]!];
   const left = new Set(idx.slice(1));
-  let cursor = exitOf(at(idx[0]!), false);
+  let cursor = exitOf(at(idx[0]!), false, roundTrip);
   while (left.size > 0) {
     let bestId = -1;
     let bestD = Infinity;
@@ -149,11 +253,11 @@ export function orderCorridorRuns(runs: LatLng[][], pinFirst = false): RunOrder[
     if (bestId < 0) break;
     order.push(bestId);
     left.delete(bestId);
-    cursor = exitOf(at(bestId), bestRev);
+    cursor = exitOf(at(bestId), bestRev, roundTrip);
   }
 
   let bestOrder = order;
-  let bestSolved = solveOrientations(runs, bestOrder, pinFirst);
+  let bestSolved = solveOrientations(runs, bestOrder, pinFirst, roundTrip);
 
   // 2-opt plus Or-opt over the visiting order, scored with the exact
   // orientation DP. The run count here is a handful of spurs, so the cubic
@@ -165,7 +269,7 @@ export function orderCorridorRuns(runs: LatLng[][], pinFirst = false): RunOrder[
   // can be lifted out and dropped between two segments.
   const start = pinFirst ? 1 : 0;
   const tryCandidate = (candidate: number[]): boolean => {
-    const solved = solveOrientations(runs, candidate, pinFirst);
+    const solved = solveOrientations(runs, candidate, pinFirst, roundTrip);
     if (solved.cost < bestSolved.cost - 1e-6) {
       bestOrder = candidate;
       bestSolved = solved;
@@ -211,12 +315,15 @@ export function orderCorridorRuns(runs: LatLng[][], pinFirst = false): RunOrder[
 }
 
 /** Total transit flown between runs, for a given plan. Used by the tests. */
-export function transitDistance(runs: LatLng[][], plan: RunOrder[]): number {
+export function transitDistance(runs: LatLng[][], plan: RunOrder[], roundTrip = false): number {
   let total = 0;
   for (let i = 1; i < plan.length; i++) {
     const prev = plan[i - 1]!;
     const cur = plan[i]!;
-    total += distanceLatLng(exitOf(runs[prev.index]!, prev.reversed), entryOf(runs[cur.index]!, cur.reversed));
+    total += distanceLatLng(
+      exitOf(runs[prev.index]!, prev.reversed, roundTrip),
+      entryOf(runs[cur.index]!, cur.reversed),
+    );
   }
   return total;
 }

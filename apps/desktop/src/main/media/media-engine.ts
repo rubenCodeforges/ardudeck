@@ -586,6 +586,19 @@ export class MediaEngine {
     return dir;
   }
 
+  /**
+   * Recent media-hub log lines, newest last. The failure reason for a feed
+   * lives here and nowhere the operator can reach: field builds cannot be
+   * debugged live, so this is what gets mirrored into the app console.
+   */
+  recentHubLog(lines = 12): string[] {
+    return this.hubLog
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .slice(-lines);
+  }
+
   /** Tear everything down — called on app quit. */
   shutdown(): void {
     if (this.watchdog) { clearInterval(this.watchdog); this.watchdog = null; }
