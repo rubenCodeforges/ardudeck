@@ -202,6 +202,13 @@ export function applyFlightBreaks(
     const first = byGroup.get(id)?.[0];
     return !!first && isTakeoffCommand(first.command);
   });
+  // Same rule for the ending: a plan that returns nowhere is one the pilot
+  // built that way, and reordering it must not hand it an RTL.
+  const returnsInUse = [...surveys.keys()].some((id) => {
+    const own = byGroup.get(id);
+    const last = own?.[own.length - 1];
+    return !!last && isReturnCommand(last.command);
+  });
   const out: MissionItem[] = [];
 
   for (const it of [...items].sort((a, b) => a.seq - b.seq)) {
@@ -237,7 +244,8 @@ export function applyFlightBreaks(
 
     // Trailing return: present exactly when the flight ends at this group.
     if (isLast) {
-      const wanted = wantsEnd(group)
+      const stated = ends.finish !== undefined;
+      const wanted = wantsEnd(group) && (returnsInUse || stated)
         ? finishCommand(ends.finish === 'none' ? 'rtl' : ends.finish ?? 'rtl', ends.launch, airframe)
         : null;
       if (isReturnCommand(it.command)) {

@@ -54,6 +54,7 @@ import {
 } from './survey-presets';
 import type { SurveyPattern, CameraPreset, AltitudeReference, GroundPattern, CorridorMode } from './survey-types';
 import { asOwnFlight } from './survey-types';
+import { DraftNumberField } from '../ui/DraftNumberField';
 import type { PersistedSurveyPreset } from '../../../shared/ipc-channels';
 import {
   altitudeValueFromMeters,
@@ -142,6 +143,7 @@ export function SurveyConfigPanel() {
   const setCamera = useSurveyStore((s) => s.setCamera);
   const setGridAngle = useSurveyStore((s) => s.setGridAngle);
   const setOvershoot = useSurveyStore((s) => s.setOvershoot);
+  const setLeadIn = useSurveyStore((s) => s.setLeadIn);
   const setMargin = useSurveyStore((s) => s.setMargin);
   const setCameraOffOutside = useSurveyStore((s) => s.setCameraOffOutside);
   const setGridMode = useSurveyStore((s) => s.setGridMode);
@@ -470,6 +472,14 @@ export function SurveyConfigPanel() {
 
   // Bends sharp enough to earn a racetrack, so "the slider does nothing" reads
   // as "this line has no hairpin that sharp" instead of as a broken control.
+  // Typed section length, so the box can be emptied back to auto.
+  const [sectionLengthDraft, setSectionLengthDraft] = useState('');
+  useEffect(() => {
+    setSectionLengthDraft(
+      config.corridorSectionLengthM ? (config.corridorSectionLengthM / 1000).toFixed(1) : '',
+    );
+  }, [config.corridorSectionLengthM]);
+
   const hairpinCount = useMemo(
     () => (config.pattern === 'corridor'
       ? countHairpins([polygon, ...(config.corridorBranches ?? [])], config.maxTurnAngle ?? 15)
@@ -572,18 +582,14 @@ export function SurveyConfigPanel() {
               map stays responsive; 0 disables simplification. */}
           <div className="flex items-center gap-1.5 mt-2 text-[10px] text-content-tertiary">
             <span>Simplify</span>
-            <input
-              type="number"
+            <DraftNumberField
               value={simplifyToleranceM}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (Number.isFinite(n)) updateSurveyPerformance({ importSimplifyToleranceM: Math.max(0, Math.min(50, n)) });
-              }}
+              onCommit={(n) => updateSurveyPerformance({ importSimplifyToleranceM: n })}
               className="w-12 px-1.5 py-0.5 bg-surface-input border border-border rounded text-content text-[10px] focus:outline-none focus:border-blue-500"
-              min="0"
-              max="50"
-              step="0.5"
-              title="RDP tolerance in meters for imported boundaries (0 = off)"
+              aria-label="Simplify tolerance"
+              min={0}
+              max={50}
+              step={0.5}
             />
             <span>m</span>
             <button
@@ -1240,6 +1246,11 @@ export function SurveyConfigPanel() {
                     Flies this far past each strip end before turning, so the turn happens off the
                     mapped line. Junctions are left alone. It also sets the size of the turn waypoints below.
                   </p>
+                  <SliderInput label="Lead-in" value={config.leadIn ?? 0} onChange={setLeadIn} min={0} max={300} step={10} unit="m" />
+                  <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
+                    A straight run onto the first line, so the aircraft is lined up before it starts
+                    rather than still turning across the first photos.
+                  </p>
                   <SliderInput
                     label="Max turn"
                     value={config.maxTurnAngle ?? 15}
@@ -1420,7 +1431,10 @@ export function SurveyConfigPanel() {
                   <div className="space-y-2">
                     <SliderInput label="Angle" value={config.gridAngle} onChange={setGridAngle} min={0} max={359} step={1} unit="°" />
                     {!isManualCamera && (
-                      <SliderInput label="Overshoot" value={config.overshoot} onChange={setOvershoot} min={0} max={100} step={5} unit="m" />
+                      <>
+                        <SliderInput label="Overshoot" value={config.overshoot} onChange={setOvershoot} min={0} max={100} step={5} unit="m" />
+                        <SliderInput label="Lead-in" value={config.leadIn ?? 0} onChange={setLeadIn} min={0} max={300} step={10} unit="m" />
+                      </>
                     )}
                     <SliderInput label="Margin" value={config.margin ?? 0} onChange={setMargin} min={-50} max={50} step={1} unit="m" />
                     <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
@@ -1634,15 +1648,20 @@ export function SurveyConfigPanel() {
                     <div className="flex items-center gap-2 px-0.5">
                       <label className="text-[10px] text-content-tertiary whitespace-nowrap">Section length</label>
                       <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={config.corridorSectionLengthM ? (config.corridorSectionLengthM / 1000).toFixed(1) : ''}
+                        type="text"
+                        inputMode="decimal"
+                        value={sectionLengthDraft}
                         placeholder={(autoSectionLengthM / 1000).toFixed(1)}
-                        onChange={(e) => {
-                          const km = Number(e.target.value);
-                          setCorridorSectionLength(Number.isFinite(km) && km > 0 ? km * 1000 : null);
+                        onChange={(e) => setSectionLengthDraft(e.target.value)}
+                        onBlur={() => {
+                          const km = Number(sectionLengthDraft.replace(',', '.'));
+                          // Empty means auto, which is the whole point of being
+                          // able to clear it.
+                          setCorridorSectionLength(
+                            sectionLengthDraft.trim() !== '' && Number.isFinite(km) && km > 0 ? km * 1000 : null,
+                          );
                         }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                         className="w-16 rounded bg-surface-input px-1.5 py-0.5 text-right text-[11px] text-content"
                       />
                       <span className="text-[10px] text-content-tertiary">km</span>
@@ -1769,21 +1788,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** One look for every number box in this panel. */
+const NUMBER_FIELD_CLASS =
+  'w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500';
+
 function SliderInput({
   label, value, onChange, min, max, step, unit,
 }: {
   label: string; value: number; onChange: (v: number) => void;
   min: number; max: number; step: number; unit: string;
 }) {
-  // The value is both a slider AND a directly-editable number field (power
-  // users asked to type exact values). Out-of-range keystrokes are ignored
-  // mid-type (matches NumberInput); blur snaps back into range.
-  const clampBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const v = Number(e.target.value);
-    if (!Number.isFinite(v)) { onChange(min); return; }
-    const clamped = Math.min(max, Math.max(min, v));
-    if (clamped !== value) onChange(clamped);
-  };
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-content-secondary w-14 flex-shrink-0">{label}</span>
@@ -1797,16 +1811,14 @@ function SliderInput({
         className="flex-1 h-1 bg-surface-inset rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:cursor-grab"
       />
       <div className="flex items-center gap-0.5 w-14 flex-shrink-0 justify-end">
-        <input
-          type="number"
+        <DraftNumberField
           value={value}
-          onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v >= min && v <= max) onChange(v); }}
-          onBlur={clampBlur}
+          onCommit={onChange}
           min={min}
           max={max}
           step={step}
           aria-label={label}
-          className="w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className={NUMBER_FIELD_CLASS}
         />
         <span className="text-[10px] text-content-tertiary w-6">{unit}</span>
       </div>
@@ -1867,21 +1879,14 @@ function AltitudeSliderInput({
         className="flex-1 h-1 bg-surface-inset rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:cursor-grab"
       />
       <div className="flex items-center gap-0.5 w-14 flex-shrink-0 justify-end">
-        <input
-          type="number"
+        <DraftNumberField
           value={roundedDisplayValue}
-          onChange={(e) => {
-            const rawValue = e.target.value;
-            if (rawValue.trim() === '') return;
-            const displayValue = Number(rawValue);
-            commitDisplay(displayValue);
-          }}
-          onBlur={clampBlur}
+          onCommit={commitDisplay}
+          aria-label={label}
+          className={NUMBER_FIELD_CLASS}
           min={min}
           max={max}
           step={step}
-          aria-label={label}
-          className="w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <span className="text-[10px] text-content-tertiary w-3">{unit}</span>
       </div>
@@ -1940,21 +1945,14 @@ function SpeedSliderInput({
         className="flex-1 h-1 bg-surface-inset rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:cursor-grab"
       />
       <div className="flex items-center gap-0.5 w-16 flex-shrink-0 justify-end">
-        <input
-          type="number"
+        <DraftNumberField
           value={roundedDisplayValue}
-          onChange={(e) => {
-            const rawValue = e.target.value;
-            if (rawValue.trim() === '') return;
-            const displayValue = Number(rawValue);
-            commitDisplay(displayValue);
-          }}
-          onBlur={clampBlur}
+          onCommit={commitDisplay}
+          aria-label={label}
+          className={NUMBER_FIELD_CLASS}
           min={min}
           max={max}
           step={step}
-          aria-label={label}
-          className="w-10 px-1 py-0.5 text-xs text-right tabular-nums font-medium bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <span className="text-[10px] text-content-tertiary w-5">{unit}</span>
       </div>

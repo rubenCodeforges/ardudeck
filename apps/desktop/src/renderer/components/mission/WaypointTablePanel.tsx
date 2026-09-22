@@ -2212,7 +2212,18 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     () => new Map(boundaries.map((b) => [b.groupId, b])),
     [boundaries],
   );
-  const detachable = useMemo(() => boundaries.filter((b) => !b.ends).length, [boundaries]);
+  // Connect needs two surveys that are not already on the same flight.
+  // Disconnect needs a flight carrying more than one survey. Anything else
+  // and the button has nothing to do, so it is off.
+  const flightsPresent = useMemo(
+    () => new Set(boundaries.map((b) => b.flight)).size,
+    [boundaries],
+  );
+  const connectable = boundaries.length >= 2 && flightsPresent >= 2;
+  const detachable = useMemo(
+    () => boundaries.filter((b) => b.legs > 1).length,
+    [boundaries],
+  );
   // A group whose waypoints are not contiguous: the route jumps between two
   // survey areas leg after leg, which is never what anyone planned.
   const interleaved = useMemo(() => {
@@ -2903,13 +2914,17 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     <span className="text-content-tertiary text-[10px]">|</span>
                     <button
                       onClick={() => { setLinkPicks([]); setLinkMode('connect'); }}
-                      disabled={surveyGroupCount < 2}
+                      disabled={!connectable}
                       className={`text-[10px] transition-colors ${
-                        surveyGroupCount < 2
+                        !connectable
                           ? 'text-content-tertiary cursor-default'
                           : 'text-purple-300 hover:text-purple-200'
                       }`}
-                      title="Pick surveys in the order they should be flown, then Done"
+                      title={!connectable
+                        ? boundaries.length < 2
+                          ? 'Only one survey in the plan'
+                          : 'Every survey is already on the same flight'
+                        : 'Pick surveys in the order they should be flown, then Done'}
                     >
                       Connect
                     </button>
@@ -2923,7 +2938,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                           : 'text-purple-300 hover:text-purple-200'
                       }`}
                       title={detachable === 0
-                        ? 'Every survey already has its own takeoff and ending'
+                        ? 'No survey is connected to another: each already flies on its own'
                         : 'Click surveys to split each one off as its own flight'}
                     >
                       Disconnect surveys

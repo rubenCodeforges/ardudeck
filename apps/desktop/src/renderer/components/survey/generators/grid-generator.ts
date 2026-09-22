@@ -19,6 +19,7 @@ import { latLngToLocal, localToLatLng, polygonCentroid, rotatePoint, offsetPolyg
 import type { ClippedSegment } from '../polygon-clip';
 import { clipScanLines, routeScanSegments, routeTransitAroundHoles, legEntersRing } from '../polygon-clip';
 import { computeSurveyStats, getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
+import { withLeadIn } from '../survey-leadin';
 
 /**
  * Generate a camera footprint polygon at a given position and angle.
@@ -216,10 +217,12 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
   }
 
   // Rotate back and convert to lat/lng
-  const waypoints: LatLng[] = waypointsLocal.map(p => {
+  const placed: LatLng[] = waypointsLocal.map(p => {
     const rotated = rotatePoint(p, reverseAngleRad);
     return localToLatLng(origin, rotated.x, rotated.y);
   });
+  const waypoints = isManual ? placed : withLeadIn(placed, config.leadIn ?? 0);
+  const leadShift = waypoints.length - placed.length;
 
   const photoPositions: LatLng[] = photoLocal.map(p => {
     const rotated = rotatePoint(p, reverseAngleRad);
@@ -234,7 +237,7 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
 
   const stats = computeSurveyStats(config, waypoints, photoPositions, clippedLines.length);
 
-  return { waypoints, photoPositions, footprints, stats, legStarts };
+  return { waypoints, photoPositions, footprints, stats, legStarts: legStarts.map((i) => i + leadShift) };
 }
 
 /** Shoelace signed area of a local ring; sign indicates winding. */

@@ -39,6 +39,7 @@ import { getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
 import { orderCorridorRuns, splitTrunkAtJunctions } from './corridor-route';
 import { stripFlightOrder } from './strip-order';
 import { planTurnRadius } from './turn-radius';
+import { withLeadIn } from '../survey-leadin';
 
 interface XY {
   x: number;
@@ -336,7 +337,11 @@ function generateOneCorridor(
     }
   });
 
-  const waypoints: LatLng[] = waypointsLocal.map((p) => localToLatLng(origin, p.x, p.y));
+  const placed: LatLng[] = waypointsLocal.map((p) => localToLatLng(origin, p.x, p.y));
+  // `only` is one pass of a multi-run plan; the lead-in belongs to the whole
+  // route and is added once, when the parts are merged.
+  const waypoints = only ? placed : withLeadIn(placed, config.leadIn ?? 0);
+  const leadShift = waypoints.length - placed.length;
   const photoPositions: LatLng[] = photoSamples.map((s) => localToLatLng(origin, s.pt.x, s.pt.y));
   const footprints: LatLng[][] = isManual
     ? []
@@ -376,7 +381,13 @@ function generateOneCorridor(
     photoSpacing,
   };
 
-  return { waypoints, photoPositions, footprints, stats, legStarts };
+  return {
+    waypoints,
+    photoPositions,
+    footprints,
+    stats,
+    legStarts: legStarts.map((i) => i + leadShift),
+  };
 }
 
 /**
@@ -464,14 +475,19 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
     offset += part.waypoints.length;
   }
 
-  const waypoints: LatLng[] = [];
-  const legStarts: number[] = [];
+  const merged: LatLng[] = [];
+  const mergedLegStarts: number[] = [];
   joined.forEach((wp, i) => {
-    const previous = waypoints[waypoints.length - 1];
+    const previous = merged[merged.length - 1];
     if (previous && distanceLatLng(previous, wp) <= WAYPOINT_MERGE_M) return;
-    if (joinedLegStarts.has(i)) legStarts.push(waypoints.length);
-    waypoints.push(wp);
+    if (joinedLegStarts.has(i)) mergedLegStarts.push(merged.length);
+    merged.push(wp);
   });
+
+  // The lead-in shifts every index by one, legStarts included.
+  const waypoints = withLeadIn(merged, config.leadIn ?? 0);
+  const shift = waypoints.length - merged.length;
+  const legStarts = mergedLegStarts.map((i) => i + shift);
   const photoPositions = parts.flatMap((p) => p.photoPositions);
   const footprints = parts.flatMap((p) => p.footprints);
 

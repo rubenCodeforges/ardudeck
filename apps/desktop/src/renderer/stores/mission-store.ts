@@ -23,7 +23,7 @@ import {
 } from '../../shared/mission-group-types';
 import { splitMissionForFleet } from '../components/mission/distribute-fleet';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
-import { applyFlightBreaks, groupEndsFlight, inFlightOrder } from '../components/mission/mission-end';
+import { applyFlightBreaks, groupEndsFlight, inFlightOrder, flightBoundaries } from '../components/mission/mission-end';
 import { bulkSetAltitude, bulkSetSpeed } from '../components/mission/bulk-edit';
 import { buildArduPilotWireMission, shiftJumpTargets } from '../../shared/mission-wire';
 import { useSettingsStore } from './settings-store';
@@ -1468,7 +1468,25 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         out.push({ ...it, seq: nextSeq++ });
       }
 
-      return { groups: renumbered, missionItems: out, isDirty: true };
+      // Which surveys were flying together, captured before the move: the
+      // reorder must keep them together. Without this the return stays on the
+      // survey that used to be last, lands mid-flight, and the connected run
+      // reads as two separate flights.
+      const flightOf = new Map(
+        flightBoundaries(s.missionItems, s.groups).map((b) => [b.groupId, b.flight]),
+      );
+      const tidied = normalizeItemOrder(out, renumbered);
+      const lastOfFlight = new Map<number, string>();
+      for (const g of renumbered) {
+        const flight = flightOf.get(g.id);
+        if (flight !== undefined) lastOfFlight.set(flight, g.id);
+      }
+      const missionItems = applyFlightBreaks(tidied, renumbered, (g) => {
+        const flight = flightOf.get(g.id);
+        return flight === undefined || lastOfFlight.get(flight) === g.id;
+      });
+
+      return { groups: renumbered, missionItems, isDirty: true };
     });
   },
 

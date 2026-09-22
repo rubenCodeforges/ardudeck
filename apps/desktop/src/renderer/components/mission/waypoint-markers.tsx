@@ -132,23 +132,47 @@ export function createWaypointIcon(wp: MissionItem, isSelected: boolean, isCurre
 // this map. Used when a survey waypoint materializes as a real (draggable)
 // marker - a full numbered pin per turn point would stack into an unreadable
 // cluster, so survey dots stay dots even when interactive.
-function createDotIcon(wp: MissionItem, isSelected: boolean, isCurrent: boolean, segmentColor?: string): L.DivIcon {
+/**
+ * Survey waypoints. The number goes on the dot as well, because the canvas
+ * tier stops drawing labels for a waypoint the moment it is materialized as a
+ * marker: without this the numbers flash past while zooming and then vanish.
+ */
+function createDotIcon(
+  wp: MissionItem,
+  isSelected: boolean,
+  isCurrent: boolean,
+  segmentColor?: string,
+  displayNumber?: number,
+): L.DivIcon {
   const fill = isCurrent
     ? '#f59e0b'
     : isSelected
       ? '#22d3ee'
       : (segmentColor ?? DEFAULT_WAYPOINT_COLOR);
   const size = isSelected || isCurrent ? 12 : 8;
+  const label = displayNumber ?? wp.seq + 1;
   return L.divIcon({
     className: 'waypoint-dot-marker',
     html: `
-      <div style="
-        width: ${size}px;
-        height: ${size}px;
-        border-radius: 50%;
-        background: ${fill};
-        border: 1px solid rgba(255,255,255,0.95);
-      "></div>
+      <div style="position:relative;width:${size}px;height:${size}px">
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          background: ${fill};
+          border: 1px solid rgba(255,255,255,0.95);
+        "></div>
+        <span style="
+          position:absolute;
+          left:${size + 3}px;
+          bottom:${size / 2 - 1}px;
+          font:600 10px/1 system-ui,sans-serif;
+          color:#fff;
+          text-shadow:0 0 3px rgba(0,0,0,.95),0 0 3px rgba(0,0,0,.95);
+          pointer-events:none;
+          white-space:nowrap;
+        ">${label}</span>
+      </div>
     `,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
@@ -223,7 +247,7 @@ export const DraggableMarker = memo(function DraggableMarker({
   const icon = useMemo(
     () =>
       variant === 'dot'
-        ? createDotIcon(wp, isSelected, isCurrent, segmentColor)
+        ? createDotIcon(wp, isSelected, isCurrent, segmentColor, displayNumber)
         : createWaypointIcon(wp, isSelected, isCurrent, segmentColor, displayNumber, groupColor),
     [wp.command, wp.seq, isSelected, isCurrent, segmentColor, displayNumber, groupColor, variant]
   );

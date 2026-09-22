@@ -127,6 +127,8 @@ interface SurveyStore {
   setCamera: (camera: CameraPreset) => void;
   setGridAngle: (angle: number) => void;
   setOvershoot: (overshoot: number) => void;
+  /** Straight run onto the first line, metres. */
+  setLeadIn: (meters: number) => void;
   setMargin: (margin: number) => void;
   setCameraOffOutside: (v: boolean) => void;
   setGridMode: (mode: 'plane' | 'copter') => void;
@@ -571,6 +573,11 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
 
   setGridAngle: (gridAngle) => {
     set({ config: { ...get().config, gridAngle } });
+    get().requestRecompute();
+  },
+
+  setLeadIn: (meters) => {
+    set({ config: { ...get().config, leadIn: Math.max(0, Math.round(meters)) } });
     get().requestRecompute();
   },
 

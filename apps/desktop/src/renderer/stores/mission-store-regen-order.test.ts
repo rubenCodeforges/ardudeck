@@ -113,10 +113,11 @@ describe('interleaved groups', () => {
     expect(useMissionStore.getState().missionItems).toBe(before);
   });
 
-  // Connect has to repair first, or it hangs the returns off the wrong item.
+  // Connect has to repair the order first, or it hangs the returns off the
+  // wrong item. It adds no return here: this plan has none to move.
   it('connect untangles before it decides where the returns go', () => {
     interleave();
     useMissionStore.getState().connectSurveys();
-    expect(order()).toEqual(['A', 'A', 'A', 'B', 'B', 'B', 'B']);
+    expect(order()).toEqual(['A', 'A', 'A', 'B', 'B', 'B']);
   });
 });

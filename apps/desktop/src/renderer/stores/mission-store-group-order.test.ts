@@ -182,3 +182,40 @@ describe('connecting a chosen set, in a chosen order', () => {
     expect(items.map((i) => i.seq)).toEqual(items.map((_, i) => i));
   });
 });
+
+describe('reordering connected surveys', () => {
+  const returns = () =>
+    useMissionStore.getState().missionItems.filter((i) => i.command === MAV_CMD.NAV_RETURN_TO_LAUNCH);
+  const idOf = (name: string) => useMissionStore.getState().groups.find((g) => g.name === name)!.id;
+
+  beforeEach(() => {
+    const store = useMissionStore.getState();
+    store.reset();
+    store.addSurveyGroup(withFinish('A'), [wp(-0.10), wp(-0.11)]);
+    store.addSurveyGroup(withFinish('B'), [wp(-0.20), wp(-0.21)]);
+    store.addSurveyGroup(withFinish('C'), [wp(-0.30), wp(-0.31), rtl()]);
+    // One flight: A, then B, then C, which carries the single return.
+  });
+
+  // Dragging a leg used to leave the return on the survey that happened to be
+  // last before the move, which split the flight in two.
+  it('keeps them one flight when a leg is dragged to the front', () => {
+    useMissionStore.getState().moveGroup(idOf('C'), 'up');
+    expect(returns()).toHaveLength(1);
+    expect(flownOrder()).toEqual(['A', 'A', 'C', 'C', 'B', 'B', 'B']);
+  });
+
+  it('moves the return onto whichever survey now flies last', () => {
+    useMissionStore.getState().moveGroup(idOf('A'), 'down');
+    const last = [...useMissionStore.getState().missionItems].sort((a, b) => a.seq - b.seq).at(-1)!;
+    expect(last.command).toBe(MAV_CMD.NAV_RETURN_TO_LAUNCH);
+    expect(returns()).toHaveLength(1);
+  });
+
+  it('leaves separate flights separate', () => {
+    useMissionStore.getState().disconnectSurveys();
+    expect(returns()).toHaveLength(3);
+    useMissionStore.getState().moveGroup(idOf('C'), 'up');
+    expect(returns()).toHaveLength(3);
+  });
+});

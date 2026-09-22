@@ -887,6 +887,34 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
     () => new Map(groups.map((g) => [g.id, g.color])),
     [groups],
   );
+  /**
+   * Where each group's flying starts and ends, so a plan with several surveys
+   * on the map can be read: which shape is which, and which way round it runs.
+   */
+  const surveyEnds = useMemo(() => {
+    if (groups.length < 2) return [];
+    const byGroup = new Map<string, MissionItem[]>();
+    for (const it of [...visibleMissionItems].sort((a, b) => a.seq - b.seq)) {
+      if (!it.groupId) continue;
+      if (!commandHasLocation(it.command) || (it.latitude === 0 && it.longitude === 0)) continue;
+      const list = byGroup.get(it.groupId);
+      if (list) list.push(it);
+      else byGroup.set(it.groupId, [it]);
+    }
+    return [...byGroup.entries()].flatMap(([groupId, items]) => {
+      const group = groups.find((g) => g.id === groupId);
+      if (!group || items.length === 0) return [];
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      const numberOf = (it: MissionItem) => groupWaypointNumbers.get(it.seq) ?? it.seq + 1;
+      const marks: Array<{ kind: 'start' | 'end'; at: MissionItem; n: number }> = [
+        { kind: 'start', at: first, n: numberOf(first) },
+      ];
+      if (last !== first) marks.push({ kind: 'end', at: last, n: numberOf(last) });
+      return marks.map((m) => ({ ...m, groupId, name: group.name, color: group.color }));
+    });
+  }, [groups, visibleMissionItems, groupWaypointNumbers]);
+
   const groupColorOf = useMemo(
     () => (groupId: string | undefined) => (groupId ? groupColorById.get(groupId) : undefined),
     [groupColorById],
@@ -1247,6 +1275,28 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         ))}
 
         <PathContextMenu waypoints={waypoints} onPick={handlePathRightClick} enabled={!readOnly} />
+
+        {/* Where each survey begins and ends, named and numbered, so several
+            on one map can be told apart and read in the right direction. */}
+        {surveyEnds.map((m) => (
+          <Marker
+            key={`end-${m.groupId}-${m.kind}`}
+            position={[m.at.latitude, m.at.longitude]}
+            interactive={false}
+            zIndexOffset={600}
+            icon={L.divIcon({
+              className: '',
+              html: `<div style="display:flex;align-items:center;gap:4px;transform:translate(10px,-50%)">
+                <div style="width:14px;height:14px;border-radius:${m.kind === 'start' ? '7px' : '3px'};background:${m.kind === 'start' ? '#22c55e' : '#ef4444'};border:2px solid ${m.color};box-shadow:0 1px 3px rgba(0,0,0,.6)"></div>
+                <div style="white-space:nowrap;font:600 10px/1 system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.65);padding:2px 5px;border-radius:3px;border-left:3px solid ${m.color}">
+                  ${m.name} · ${m.kind === 'start' ? 'start' : 'end'} · WP ${m.n}
+                </div>
+              </div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0],
+            })}
+          />
+        ))}
 
         {/* Predicted track, and the bends where cutting it costs coverage. */}
         {flown && (

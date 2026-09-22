@@ -88,6 +88,12 @@ export interface SurveyConfig {
   gridAngle: number;         // degrees, 0=north-south lines
   overshoot: number;         // meters past polygon edge for turns
   /**
+   * Straight run onto the first line, in metres. The aircraft arrives at a
+   * survey from an arbitrary heading; this gives it room to line up before
+   * the first line starts. 0 = start on the line.
+   */
+  leadIn?: number;
+  /**
    * Buffer applied to the polygon before generating the grid, in meters.
    * Positive grows the surveyed area outward (so footprints cover past the
    * boundary); negative shrinks it inward (keep the flight lines inside).
@@ -306,6 +312,7 @@ export const DEFAULT_SURVEY_CONFIG: Omit<SurveyConfig, 'polygon'> = {
   },
   gridAngle: 0,
   overshoot: 20,
+  leadIn: 0,
   margin: 0,
   cameraOffOutside: false,
   gridMode: 'copter',
