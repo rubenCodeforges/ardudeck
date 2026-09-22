@@ -6,7 +6,7 @@ import { useMemo, useCallback, useState, useEffect, memo, Fragment } from 'react
 import { Polygon, Polyline, CircleMarker, Marker, Tooltip, Pane, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { extractGeneratorOverlays } from './generator-overlays';
-import { bezierSpline, defaultSplineTangent, type SplineTangent } from './geo-edit';
+import { bezierSpline, defaultSplineTangent, nearestEdgeIndex, type SplineTangent } from './geo-edit';
 import { latLngToLocal, localToLatLng } from './geo-math';
 import { cullPathForViewport } from './path-culling';
 import { useSurveyStore } from '../../stores/survey-store';
@@ -33,6 +33,46 @@ function toLf(p: LatLng): [number, number] {
  * geo-edit treats the input as a closed ring, which would let a click near the
  * two ends insert a point on a nonexistent last-to-first edge.
  */
+/**
+ * Stop a click on a survey line from reaching the map.
+ *
+ * Leaflet propagates a layer click to the map through its own mechanism, so a
+ * plain DOM stopPropagation is not enough: the map handler still fires and
+ * SurveyDrawTool treats it as a click on empty map, which exits edit mode.
+ */
+function stopMapClick(e: L.LeafletMouseEvent): void {
+  L.DomEvent.stopPropagation(e.originalEvent);
+  L.DomEvent.preventDefault(e.originalEvent);
+  e.originalEvent.stopPropagation();
+}
+
+/** Metres from `p` to the nearest edge of a closed ring. */
+function distanceToRingM(ring: LatLng[], p: LatLng): number {
+  let best = Infinity;
+  for (let i = 0; i < ring.length; i++) {
+    const a = latLngToLocal(p, ring[i]!);
+    const b = latLngToLocal(p, ring[(i + 1) % ring.length]!);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 > 0 ? -(a.x * dx + a.y * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    best = Math.min(best, Math.hypot(a.x + t * dx, a.y + t * dy));
+  }
+  return best;
+}
+
+/** Ground metres one screen pixel covers, for a px-sized click tolerance. */
+function metresPerPixel(lat: number, zoom: number): number {
+  return (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+}
+
+/**
+ * A polygon is filled, so a click anywhere inside it reaches the handler.
+ * Only a click ON the boundary should add a vertex.
+ */
+const BOUNDARY_GRAB_PX = 12;
+
 function nearestEdgeIndexOpen(line: LatLng[], p: LatLng): number {
   if (line.length < 2) return -1;
   let bestIdx = -1;
@@ -71,6 +111,17 @@ function createVertexIcon(isDrawing: boolean): L.DivIcon {
 
 const VERTEX_ICON = createVertexIcon(false);
 const DRAWING_VERTEX_ICON = createVertexIcon(true);
+
+/** Numbered badge at the start of a flown line, so the order is readable. */
+const legIcon = (n: number) => L.divIcon({
+  className: '',
+  html: `<div style="display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;background:#7c3aed;color:#fff;font:600 10px/1 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.5)">${n}</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
+
+/** Past this many lines the badges are noise, and the map slows down. */
+const MAX_LEG_BADGES = 40;
 
 const SELECTED_VERTEX_ICON = L.divIcon({
   className: 'survey-vertex',
@@ -194,11 +245,13 @@ export function SurveyMapOverlay() {
   const corridorBranches = useSurveyStore((s) => s.config.corridorBranches);
   const result = useSurveyStore((s) => s.result);
   const showFootprints = useSurveyStore((s) => s.showFootprints);
+  const showLegOrder = useSettingsStore((s) => s.missionDefaults.showLineOrder);
   const updateVertex = useSurveyStore((s) => s.updateVertex);
   const removeVertex = useSurveyStore((s) => s.removeVertex);
   const updateDrawingVertex = useSurveyStore((s) => s.updateDrawingVertex);
   const removeDrawingVertex = useSurveyStore((s) => s.removeDrawingVertex);
   const insertVertexAfter = useSurveyStore((s) => s.insertVertexAfter);
+  const insertBranchVertexAfter = useSurveyStore((s) => s.insertBranchVertexAfter);
   const updateBranchVertex = useSurveyStore((s) => s.updateBranchVertex);
   const removeBranchVertex = useSurveyStore((s) => s.removeBranchVertex);
   const maxEditableVertices = useSettingsStore((s) => s.surveyPerformance.maxEditableVertices);
@@ -292,6 +345,17 @@ export function SurveyMapOverlay() {
     };
     return cullPathForViewport(wps, vb, zoom).map((run) => run.map(toLf));
   }, [result, bounds, zoom]);
+
+  // Numbered badge per flown line. Only worth drawing while the plan is small
+  // enough to read, and only when the generator said where the lines start.
+  const legBadges = useMemo(() => {
+    const starts = result?.legStarts ?? [];
+    const wps = result?.waypoints ?? [];
+    if (starts.length < 2 || starts.length > MAX_LEG_BADGES) return [];
+    return starts
+      .map((index, i) => ({ n: i + 1, at: wps[index] }))
+      .filter((b): b is { n: number; at: LatLng } => b.at !== undefined);
+  }, [result]);
 
   // Photo positions. Rendering one CircleMarker each is fine for a typical
   // survey but melts the map for a huge area; past a threshold we drop the dots
@@ -457,17 +521,22 @@ export function SurveyMapOverlay() {
                 pathOptions={{ color: SURVEY_POLYGON_COLOR, weight: 4, dashArray: '10, 6' }}
                 eventHandlers={{
                   click: (e) => {
-                    e.originalEvent.stopPropagation();
-                    // Panorama: clicking the curve adds a control point on the
-                    // nearest segment - that's how curvature is refined.
-                    if (pattern === 'panorama' && polygon && polygon.length >= 2) {
-                      const p = { lat: e.latlng.lat, lng: e.latlng.lng };
-                      const edge = nearestEdgeIndexOpen(polygon, p);
-                      if (edge >= 0) insertVertexAfter(edge, p.lat, p.lng);
-                    }
+                    stopMapClick(e);
+                    // Clicking the line adds a point there: a control point on
+                    // a panorama curve, a bend on a corridor centreline.
+                    if (geometryLocked || !polygon || polygon.length < 2) return;
+                    const p = { lat: e.latlng.lat, lng: e.latlng.lng };
+                    const edge = nearestEdgeIndexOpen(polygon, p);
+                    if (edge >= 0) insertVertexAfter(edge, p.lat, p.lng);
                   },
                 }}
-              />
+              >
+                {!geometryLocked && (
+                  <Tooltip sticky opacity={0.9} pane="vertexTooltipPane">
+                    <span style={{ fontSize: '10px' }}>Click to add a point</span>
+                  </Tooltip>
+                )}
+              </Polyline>
               {/* Branch centerlines forked off the corridor, with draggable
                   vertex handles (right-click a handle to delete). */}
               {(corridorBranches ?? []).map((br, bi) => {
@@ -479,8 +548,22 @@ export function SurveyMapOverlay() {
                     <Polyline
                       positions={brPos}
                       pathOptions={{ color: SURVEY_POLYGON_COLOR, weight: 4, dashArray: '10, 6' }}
-                      eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
-                    />
+                      eventHandlers={{
+                        click: (e) => {
+                          stopMapClick(e);
+                          if (geometryLocked) return;
+                          const p = { lat: e.latlng.lat, lng: e.latlng.lng };
+                          const edge = nearestEdgeIndexOpen(br, p);
+                          if (edge >= 0) insertBranchVertexAfter(bi, edge, p.lat, p.lng);
+                        },
+                      }}
+                    >
+                      {!geometryLocked && (
+                        <Tooltip sticky opacity={0.9} pane="vertexTooltipPane">
+                          <span style={{ fontSize: '10px' }}>Click to add a point</span>
+                        </Tooltip>
+                      )}
+                    </Polyline>
                     {br.map((v, vi) => (
                       <VertexMarker
                         key={`branch-${bi}-v${vi}`}
@@ -513,8 +596,19 @@ export function SurveyMapOverlay() {
                   fillOpacity: 0.05,
                 }}
                 // Clicking the polygon you're editing shouldn't count as an
-                // "empty map" click that exits edit mode.
-                eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
+                // "empty map" click that exits edit mode. On the boundary
+                // itself it adds a vertex, which is how the shape is refined.
+                eventHandlers={{
+                  click: (e) => {
+                    stopMapClick(e);
+                    if (geometryLocked || !polygon || polygon.length < 3) return;
+                    const p = { lat: e.latlng.lat, lng: e.latlng.lng };
+                    const grab = BOUNDARY_GRAB_PX * metresPerPixel(p.lat, zoom ?? 17);
+                    if (distanceToRingM(polygon, p) > grab) return;
+                    const edge = nearestEdgeIndex(polygon, p);
+                    if (edge >= 0) insertVertexAfter(edge, p.lat, p.lng);
+                  },
+                }}
               />
             </>
           )}
@@ -586,7 +680,7 @@ export function SurveyMapOverlay() {
                   pane="surveyHandlePane"
                   eventHandlers={{
                     click: (e) => {
-                      e.originalEvent.stopPropagation();
+                      stopMapClick(e);
                       insertVertexAfter(i, e.latlng.lat, e.latlng.lng);
                       setSelectedCtrl(i + 1);
                     },
@@ -645,6 +739,18 @@ export function SurveyMapOverlay() {
             weight: 2,
             opacity: 0.7,
           }}
+        />
+      ))}
+
+      {/* Line order: 1, 2, 3 at the start of each line as it is flown, so the
+          skip order is something the pilot can read off the map. */}
+      {showLegOrder && legBadges.map(({ n, at }) => (
+        <Marker
+          key={`leg-${n}`}
+          position={[at.lat, at.lng]}
+          icon={legIcon(n)}
+          interactive={false}
+          zIndexOffset={400}
         />
       ))}
 

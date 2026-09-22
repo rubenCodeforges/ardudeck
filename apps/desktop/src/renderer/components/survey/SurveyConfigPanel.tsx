@@ -21,7 +21,9 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { getVehicleClass } from '../../../shared/telemetry-types';
-import { TURN_LOOP_MIN_DEG } from './generators/corridor-generator';
+import { TURN_LOOP_MIN_DEG, countHairpins } from './generators/corridor-generator';
+import { stripFlightOrder } from './generators/strip-order';
+import { planTurnRadius } from './generators/turn-radius';
 import { surveyModeForVehicle, vehiclePlanningNote } from './survey-vehicle';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useNavigationStore } from '../../stores/navigation-store';
@@ -51,6 +53,7 @@ import {
   type SurveyPreset,
 } from './survey-presets';
 import type { SurveyPattern, CameraPreset, AltitudeReference, GroundPattern, CorridorMode } from './survey-types';
+import { asOwnFlight } from './survey-types';
 import type { PersistedSurveyPreset } from '../../../shared/ipc-channels';
 import {
   altitudeValueFromMeters,
@@ -164,6 +167,7 @@ export function SurveyConfigPanel() {
   const clearCorridorBranches = useSurveyStore((s) => s.clearCorridorBranches);
   const drawMode = useSurveyStore((s) => s.drawMode);
   const setMaxTurnAngle = useSurveyStore((s) => s.setMaxTurnAngle);
+  const setStripOrder = useSurveyStore((s) => s.setStripOrder);
   const setFlipLegs = useSurveyStore((s) => s.setFlipLegs);
   const setInvertPath = useSurveyStore((s) => s.setInvertPath);
   const startDrawing = useSurveyStore((s) => s.startDrawing);
@@ -231,6 +235,16 @@ export function SurveyConfigPanel() {
   useEffect(() => {
     if (detectedMode) applyVehicleFlightMode(detectedMode);
   }, [detectedMode, applyVehicleFlightMode]);
+  // The aircraft's own cruise, so the planned turn is the one it can fly and
+  // not one derived from a survey speed it would refuse.
+  const cruiseAirspeed = useParameterStore((s) => {
+    const p = s.parameters.get('AIRSPEED_CRUISE');
+    return typeof p?.value === 'number' ? p.value : undefined;
+  });
+  const applyVehicleCruise = useSurveyStore((s) => s.applyVehicleCruise);
+  useEffect(() => {
+    if (isFixedWing && cruiseAirspeed && cruiseAirspeed > 0) applyVehicleCruise(cruiseAirspeed);
+  }, [isFixedWing, cruiseAirspeed, applyVehicleCruise]);
   const turnRadiusField = engineFields.find(
     (f): f is Extract<GeneratorConfigField, { type: 'number' }> => f.type === 'number' && f.id === 'minTurnRadius',
   );
@@ -397,7 +411,7 @@ export function SurveyConfigPanel() {
     if (!result || !polygon) return;
     const fullConfig = { ...config, polygon };
     const firmware = useConnectionStore.getState().connectionState.firmware;
-    let items = surveyToMissionItems(result, fullConfig, firmware);
+    let items = surveyToMissionItems(result, asOwnFlight(fullConfig), firmware);
     if (items.length === 0) return;
 
     // If the mission already contains a NAV_TAKEOFF (either auto-prepended
@@ -405,10 +419,9 @@ export function SurveyConfigPanel() {
     // survey), strip the leading NAV_TAKEOFF that surveyToMissionItems
     // always emits. Otherwise we'd end up with two takeoff commands and
     // the flight controller would refuse the mission or behave oddly.
-    const missionAlreadyHasTakeoff = existingItems.some(
-      (it) => it.command === MAV_CMD.NAV_TAKEOFF,
-    );
-    if (missionAlreadyHasTakeoff && items[0]?.command === MAV_CMD.NAV_TAKEOFF) {
+    const isTakeoff = (cmd: number) => cmd === MAV_CMD.NAV_TAKEOFF || cmd === MAV_CMD.NAV_VTOL_TAKEOFF;
+    const missionAlreadyHasTakeoff = existingItems.some((it) => isTakeoff(it.command));
+    if (missionAlreadyHasTakeoff && items[0] && isTakeoff(items[0].command)) {
       items = items.slice(1).map((it, i) => ({ ...it, seq: i }));
     }
 
@@ -424,7 +437,7 @@ export function SurveyConfigPanel() {
       generatorVersion: reg?.version ?? '1.0.0',
       polygon: polygon.map((p) => ({ lat: p.lat, lng: p.lng })),
       workspace: fullConfig.workspace,
-      config: fullConfig as unknown as Record<string, unknown>,
+      config: asOwnFlight(fullConfig) as unknown as Record<string, unknown>,
       color: nextGroupColor(existingGroups),
     });
     survey.generatorResult = result.generatorResult ?? null;
@@ -454,6 +467,37 @@ export function SurveyConfigPanel() {
       ? sectionCountForLength(polygon, override)
       : sectionCountForEndurance(result.waypoints, config.speed, config.enduranceMinutes ?? 20);
   }, [result, polygon, config.pattern, config.corridorSectionLengthM, config.speed, config.enduranceMinutes]);
+
+  // Bends sharp enough to earn a racetrack, so "the slider does nothing" reads
+  // as "this line has no hairpin that sharp" instead of as a broken control.
+  const hairpinCount = useMemo(
+    () => (config.pattern === 'corridor'
+      ? countHairpins([polygon, ...(config.corridorBranches ?? [])], config.maxTurnAngle ?? 15)
+      : 0),
+    [polygon, config.pattern, config.corridorBranches, config.maxTurnAngle],
+  );
+
+  // What the chosen order actually does, so the trade is on screen: how many
+  // lines it skips, and whether the turn then fits.
+  const stripPlan = useMemo(() => {
+    if (config.pattern !== 'corridor' || !result) return null;
+    const spacing = result.stats.lineSpacing;
+    const lines = config.corridorStrips && config.corridorStrips > 0
+      ? config.corridorStrips
+      : result.stats.lineCount;
+    if (!spacing || lines < 2) return null;
+    const radius = planTurnRadius({ ...config, polygon: polygon ?? [] });
+    const auto = stripFlightOrder(lines, spacing, radius);
+    const inOrder = stripFlightOrder(lines, spacing, 0);
+    return {
+      radius,
+      needed: 2 * radius,
+      auto,
+      inOrder,
+      chosen: (config.stripOrder ?? 'auto') === 'sequential' ? inOrder : auto,
+      spacing,
+    };
+  }, [config, polygon, result]);
 
   const autoSectionLengthM = useMemo(() => {
     if (!polygon || config.pattern !== 'corridor') return 0;
@@ -493,7 +537,7 @@ export function SurveyConfigPanel() {
         name: `${baseName} · ${isCorridor && mode === 'sections' ? 'Section' : 'Flight'} ${i + 1}/${sorties.length}`,
         color: GROUP_COLOR_PALETTE[i % GROUP_COLOR_PALETTE.length]!,
       });
-      return { group, items };
+      return { group: { ...group, separateFlight: true }, items };
     });
     addGroupsWithItems(entries);
     clearSurvey();
@@ -1036,6 +1080,7 @@ export function SurveyConfigPanel() {
             <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
               Usable flight time per battery (after your reserve). Drives the battery estimate.
             </p>
+
           </div>
         </Section>
 
@@ -1191,21 +1236,72 @@ export function SurveyConfigPanel() {
               {!isManualCamera && (config.corridorMode ?? 'plane') === 'plane' && (
                 <>
                   <SliderInput label="Overshoot" value={config.overshoot} onChange={setOvershoot} min={0} max={150} step={5} unit="m" />
+                  <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
+                    Flies this far past each strip end before turning, so the turn happens off the
+                    mapped line. Junctions are left alone. It also sets the size of the turn waypoints below.
+                  </p>
                   <SliderInput
-                    label="Racetrack above"
-                    value={Math.max(config.maxTurnAngle ?? TURN_LOOP_MIN_DEG, TURN_LOOP_MIN_DEG)}
+                    label="Max turn"
+                    value={config.maxTurnAngle ?? 15}
                     onChange={setMaxTurnAngle}
-                    min={TURN_LOOP_MIN_DEG}
-                    max={180}
+                    min={5}
+                    max={90}
                     step={5}
                     unit="°"
                   />
                   <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
-                    Hairpins this sharp get racetrack waypoints so the plane re-enters the next leg
-                    aligned. Gentler bends are flown as they are: a loop below {TURN_LOOP_MIN_DEG}° turns
-                    tighter than the corner it replaces, so it would cost waypoints and make the turn worse.
+                    Bends sharper than this get racetrack turn waypoints so the plane re-enters the
+                    next leg aligned.
+                    {' '}{hairpinCount === 0
+                      ? 'No bend on this centreline is that sharp, so none are added.'
+                      : `${hairpinCount} bend${hairpinCount === 1 ? '' : 's'} qualify.`}
                   </p>
+                  {(config.maxTurnAngle ?? 15) < TURN_LOOP_MIN_DEG && hairpinCount > 0 && (
+                    <p className="text-[10px] text-amber-400/90 leading-snug -mt-1">
+                      Below {TURN_LOOP_MIN_DEG}° each loop replaces a {config.maxTurnAngle ?? 15}° corner with two
+                      turns of about {Math.round(180 - (config.maxTurnAngle ?? 15) / 2)}°, which is the tighter
+                      manoeuvre. Raise it if the plane is overshooting the line.
+                    </p>
+                  )}
                 </>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs text-content-secondary w-14 flex-shrink-0">Line order</span>
+                <div className="flex gap-1 flex-1">
+                  {([
+                    ['auto', 'Skip'],
+                    ['sequential', 'In order'],
+                  ] as const).map(([id, label]) => (
+                    <button
+                      key={id}
+                      onClick={() => setStripOrder(id)}
+                      className={`flex-1 px-1.5 py-1 text-[10px] rounded-md transition-colors ${
+                        (config.stripOrder ?? 'auto') === id
+                          ? 'bg-purple-600/80 text-white'
+                          : 'bg-surface-raised text-content-secondary hover:text-content'
+                      }`}
+                      title={id === 'auto'
+                        ? 'Skip lines so each 180° turn has room: 1, 3, 5 then 2, 4'
+                        : 'Fly them 1, 2, 3 in order, whether or not the turn fits'}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {stripPlan && (
+                <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
+                  {stripPlan.chosen.order.slice(0, 6).map((i) => i + 1).join(', ')}
+                  {stripPlan.chosen.order.length > 6 ? ' ...' : ''}
+                  {' · '}each turn gets {Math.round(stripPlan.chosen.tightestTurnM)} m,
+                  {' '}needs {Math.round(stripPlan.needed)} m at {Math.round(stripPlan.radius)} m turn radius.
+                  {!stripPlan.chosen.turnsFit && (
+                    <span className="text-amber-400/90">
+                      {' '}The plane will roll out wide and miss the start of each line.
+                    </span>
+                  )}
+                </p>
               )}
 
               <div className="flex gap-1 pt-1">
@@ -1353,6 +1449,37 @@ export function SurveyConfigPanel() {
                         </div>
                       </div>
                     )}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs text-content-secondary w-14 flex-shrink-0">Start</span>
+                      <div className="flex gap-1 flex-1">
+                        <button
+                          onClick={() => setInvertPath(!config.invertPath)}
+                          className={`flex-1 px-1.5 py-1 text-[10px] rounded-md transition-colors ${
+                            config.invertPath
+                              ? 'bg-purple-600/80 text-white'
+                              : 'bg-surface-raised text-content-secondary hover:text-content'
+                          }`}
+                          title="Enter every line from its other end"
+                        >
+                          Invert path
+                        </button>
+                        <button
+                          onClick={() => setFlipLegs(!config.flipLegs)}
+                          className={`flex-1 px-1.5 py-1 text-[10px] rounded-md transition-colors ${
+                            config.flipLegs
+                              ? 'bg-purple-600/80 text-white'
+                              : 'bg-surface-raised text-content-secondary hover:text-content'
+                          }`}
+                          title="Fly the lines in the opposite order, starting from the far side"
+                        >
+                          Flip legs
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-content-tertiary leading-snug -mt-1">
+                      Moves the start corner. With the grid angle, these two reach all four
+                      corners, so the first line is the one nearest your launch point.
+                    </p>
                   </div>
                 </Section>
               )}

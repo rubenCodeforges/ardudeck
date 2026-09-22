@@ -8,6 +8,9 @@
  * → optional DO_SET_REVERSE between line pairs → NAV_WAYPOINT× →
  * NAV_RETURN_TO_LAUNCH. No takeoff, no camera trigger.
  *
+ * Both ends are optional (config.start / config.finish): a mission that neither
+ * takes off nor returns is what a second survey in the same flight needs.
+ *
  * DO_CHANGE_SPEED / DO_SET_CAM_TRIGG_DIST follow the first waypoint because
  * ArduPilot does not execute DO_* commands placed before the first
  * NAV_WAYPOINT (issue #83).
@@ -22,6 +25,7 @@ import type { MissionItem } from '../../../shared/mission-types';
 import { MAV_CMD, MAV_FRAME } from '../../../shared/mission-types';
 import type { FirmwareSource } from '../../../shared/firmware-types';
 import type { SurveyConfig, SurveyResult } from './survey-types';
+import { resolveAirframe, startCommand, finishCommand } from './survey-vehicle';
 
 /**
  * Convert survey result into a complete mission ready for upload.
@@ -40,6 +44,12 @@ export function surveyToMissionItems(
   firmware?: FirmwareSource,
 ): MissionItem[] {
   if (result.waypoints.length === 0) return [];
+
+  // From the survey's own airframe, never the live connection: the mission has
+  // to rebuild the same way on regen, at the desk, with nothing plugged in.
+  const airframe = resolveAirframe(config.airframe, undefined);
+  const openWith = startCommand(config.start, config.launch, airframe);
+  const closeWith = finishCommand(config.finish, config.launch, airframe);
 
   const items: MissionItem[] = [];
   let seq = 0;
@@ -73,12 +83,12 @@ export function surveyToMissionItems(
     altitude: 0,
   });
 
-  // 0. NAV_TAKEOFF — aircraft only. Rovers/mowers skip this.
-  if (!isManual) {
+  // 0. Takeoff — aircraft only, and only when the mission opens itself.
+  if (!isManual && openWith !== null) {
     items.push({
       seq: seq++,
       frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
-      command: MAV_CMD.NAV_TAKEOFF,
+      command: openWith,
       current: false,
       autocontinue: true,
       param1: 15,               // Minimum pitch (degrees)
@@ -298,21 +308,26 @@ export function surveyToMissionItems(
     });
   }
 
-  // 5. NAV_RETURN_TO_LAUNCH — fly/drive home after survey.
-  items.push({
-    seq: seq++,
-    frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
-    command: MAV_CMD.NAV_RETURN_TO_LAUNCH,
-    current: false,
-    autocontinue: true,
-    param1: 0,
-    param2: 0,
-    param3: 0,
-    param4: 0,
-    latitude: 0,
-    longitude: 0,
-    altitude: 0,
-  });
+  // 5. Finish. 'none' ends on the last line so another survey can follow in
+  // the same mission; a Land item sits where the survey ended.
+  if (closeWith !== null) {
+    const last = result.waypoints[result.waypoints.length - 1]!;
+    const landsHere = closeWith === MAV_CMD.NAV_LAND || closeWith === MAV_CMD.NAV_VTOL_LAND;
+    items.push({
+      seq: seq++,
+      frame: MAV_FRAME.GLOBAL_RELATIVE_ALT,
+      command: closeWith,
+      current: false,
+      autocontinue: true,
+      param1: 0,
+      param2: 0,
+      param3: 0,
+      param4: 0,
+      latitude: landsHere ? last.lat : 0,
+      longitude: landsHere ? last.lng : 0,
+      altitude: 0,
+    });
+  }
 
   return items;
 }

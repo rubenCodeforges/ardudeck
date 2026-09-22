@@ -21,6 +21,8 @@ export interface ValidationCheck {
   id: string;
   severity: ValidationSeverity;
   message: string;
+  /** A one-press fix the panel offers next to the message. */
+  action?: 'connect-surveys';
 }
 
 export interface ValidationResult {
@@ -38,6 +40,8 @@ export interface ValidateMissionOptions {
   maxAltitude?: number;
   /** Display unit for user-facing altitude warning text. Native values stay metres. */
   altitudeUnit?: AltitudeUnit;
+  /** How many surveys end with a return that something else flies after. */
+  midMissionReturns?: number;
 }
 
 const DEFAULT_CEILING = 724;
@@ -116,6 +120,18 @@ export function validateMission(
     if (hasNav && !hasTakeoff) {
       checks.push({ id: 'no-takeoff', severity: 'warn', message: 'No takeoff command - the vehicle will fly to the first waypoint from its current state.' });
     }
+  }
+
+  // 6. Surveys that each fly home, so the aircraft returns mid-mission. The
+  // fix is offered as a button rather than applied: it deletes waypoints.
+  if (opts.midMissionReturns && opts.midMissionReturns > 0) {
+    const n = opts.midMissionReturns;
+    checks.push({
+      id: 'mid-mission-return',
+      severity: 'warn',
+      message: `${n} survey${n === 1 ? '' : 's'} return${n === 1 ? 's' : ''} home before the mission ends. Connect them to fly straight on.`,
+      action: 'connect-surveys',
+    });
   }
 
   const errorCount = checks.filter((c) => c.severity === 'error').length;

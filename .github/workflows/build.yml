@@ -120,6 +120,24 @@ jobs:
             apps/desktop/release/*.yml
             apps/desktop/release/*.blockmap
 
+      # Attach this platform as soon as IT succeeds. The aggregate release job
+      # needed all four, so a transient failure on one runner (a 504 from
+      # electron-builder's downloader on the Intel mac) skipped the upload
+      # entirely and left the release with no assets at all.
+      - name: Attach Linux to release
+        if: github.event_name == 'release' || inputs.release_tag != ''
+        shell: bash
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          shopt -s nullglob
+          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
+          printf 'uploading: %s\n' "${files[@]}"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+
   build-mac-arm64:
     # Pinned: the macos-26-arm64 image build 20260831.0337 (current macos-latest)
     # breaks electron-builder's temp keychain (SecKeychainUnlock on
@@ -228,6 +246,24 @@ jobs:
           path: |
             apps/desktop/release/*.yml
             apps/desktop/release/*.blockmap
+
+      # Attach this platform as soon as IT succeeds. The aggregate release job
+      # needed all four, so a transient failure on one runner (a 504 from
+      # electron-builder's downloader on the Intel mac) skipped the upload
+      # entirely and left the release with no assets at all.
+      - name: Attach macOS arm64 to release
+        if: github.event_name == 'release' || inputs.release_tag != ''
+        shell: bash
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          shopt -s nullglob
+          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
+          printf 'uploading: %s\n' "${files[@]}"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
 
   build-mac-x64:
     runs-on: macos-15-intel
@@ -342,6 +378,24 @@ jobs:
             apps/desktop/release/*.yml
             apps/desktop/release/*.blockmap
 
+      # Attach this platform as soon as IT succeeds. The aggregate release job
+      # needed all four, so a transient failure on one runner (a 504 from
+      # electron-builder's downloader on the Intel mac) skipped the upload
+      # entirely and left the release with no assets at all.
+      - name: Attach macOS x64 to release
+        if: github.event_name == 'release' || inputs.release_tag != ''
+        shell: bash
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          shopt -s nullglob
+          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
+          printf 'uploading: %s\n' "${files[@]}"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -437,40 +491,20 @@ jobs:
             apps/desktop/release/*.blockmap
 
   # Upload artifacts to a release
-  release:
-    needs: [build-linux, build-mac-arm64, build-mac-x64, build-windows]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release' || inputs.release_tag != ''
-    permissions:
-      contents: write
-    steps:
-      - name: Determine release tag
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-          else
-            echo "TAG=${{ inputs.release_tag }}" >> $GITHUB_ENV
-          fi
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Display artifacts
-        run: ls -R artifacts
-
-      - name: Upload artifacts to release
+      # Attach this platform as soon as IT succeeds. The aggregate release job
+      # needed all four, so a transient failure on one runner (a 504 from
+      # electron-builder's downloader on the Intel mac) skipped the upload
+      # entirely and left the release with no assets at all.
+      - name: Attach Windows to release
+        if: github.event_name == 'release' || inputs.release_tag != ''
+        shell: bash
+        working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
         run: |
-          gh release upload "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --clobber \
-            artifacts/**/*.AppImage \
-            artifacts/**/*.deb \
-            artifacts/**/*.dmg \
-            artifacts/**/*.zip \
-            artifacts/**/*.exe \
-            artifacts/**/latest*.yml \
-            artifacts/**/*.blockmap
+          shopt -s nullglob
+          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
+          printf 'uploading: %s\n' "${files[@]}"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"

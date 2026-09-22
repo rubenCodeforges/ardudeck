@@ -13,7 +13,7 @@ import { expoStick } from './rate-response';
 import { stickPercent } from './throttle-response';
 
 interface SteeringResponsePlotProps {
-  /** MANUAL_STR_EXPO, -0.5 to 0.95. */
+  /** MANUAL_STR_EXPO. ArduPilot declares -0.5 to 0.95, but 0.95 disables expo. */
   expo: number;
 }
 

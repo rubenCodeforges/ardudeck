@@ -176,3 +176,49 @@ describe('crosshatch no-fly holes', () => {
     assertNoLegCrossesHole(SQUARE, TALL_SLOT, result.waypoints);
   });
 });
+
+describe('area survey start corner', () => {
+  const start = (over: Partial<SurveyConfig>) => {
+    const o = polygonCentroid(SQUARE);
+    const wps = generateGrid(cfg(SQUARE, { gridAngle: 0, ...over })).waypoints;
+    return latLngToLocal(o, wps[0]!);
+  };
+
+  it('starts in the same corner every time by default', () => {
+    const a = start({});
+    const b = start({});
+    expect(a).toEqual(b);
+  });
+
+  // The pilot launches from a corner of their choosing, not the one the
+  // router happens to pick.
+  it('reaches all four corners with the two toggles', () => {
+    const corners = [
+      start({}),
+      start({ invertPath: true }),
+      start({ flipLegs: true }),
+      start({ flipLegs: true, invertPath: true }),
+    ];
+    const keys = new Set(corners.map((p) => `${Math.round(p.x / 10)},${Math.round(p.y / 10)}`));
+    expect(keys.size).toBe(4);
+  });
+
+  it('inverting the path starts the first line at its other end', () => {
+    const plain = start({});
+    const inverted = start({ invertPath: true });
+    expect(inverted.y).toBeCloseTo(plain.y, 3);
+    expect(Math.sign(inverted.x)).toBe(-Math.sign(plain.x));
+  });
+
+  it('flipping the legs starts on the far side', () => {
+    const plain = start({});
+    const flipped = start({ flipLegs: true });
+    expect(Math.sign(flipped.y)).toBe(-Math.sign(plain.y));
+  });
+
+  it('covers the same ground whichever corner it starts from', () => {
+    const counts = [{}, { invertPath: true }, { flipLegs: true }, { flipLegs: true, invertPath: true }]
+      .map((over) => generateGrid(cfg(SQUARE, { gridAngle: 0, ...over })).waypoints.length);
+    expect(new Set(counts).size).toBe(1);
+  });
+});

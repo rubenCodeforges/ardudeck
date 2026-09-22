@@ -16,6 +16,9 @@ import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
 import { ThrottleResponsePlot } from './ThrottleResponsePlot';
 import { SteeringResponsePlot } from './SteeringResponsePlot';
+import { OutputVisual } from './servo-output/OutputVisual';
+import { classifyOutput, travelFromEndpoints, isTravelEditable } from './servo-output/output-shape';
+import { useParamBounds } from '../../hooks/useParamBounds';
 
 /** Starting points for the parameters that shape how the stick feels.
  * Expo is NEGATIVE for a softer low end: ArduPilot's curve raises low-throttle
@@ -38,6 +41,11 @@ const STEERING_PRESETS = [
 
 /** Below this the ramp is long enough to feel as delay rather than smoothing. */
 const SLUGGISH_SLEW = 200;
+
+/** SERVOn_FUNCTION for GroundSteering; skid-steer rovers have no such output. */
+const K_GROUND_STEERING = 26;
+
+const SERVO_TRAVEL_MAX_US = 500;
 
 interface RoverTuningTabProps {
   section?: 'speed-steering' | 'navigation';
@@ -89,6 +97,42 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
   const handleChange = useCallback((param: string, value: number) => {
     setParameter(param, value);
   }, [setParameter]);
+
+  const metadata = useParameterStore((s) => s.metadata);
+
+  const steering = useMemo(() => {
+    for (let ch = 1; ch <= 16; ch++) {
+      const fn = parameters.get(`SERVO${ch}_FUNCTION`)?.value;
+      if (fn !== K_GROUND_STEERING) continue;
+      const min = parameters.get(`SERVO${ch}_MIN`)?.value;
+      const max = parameters.get(`SERVO${ch}_MAX`)?.value;
+      const trim = parameters.get(`SERVO${ch}_TRIM`)?.value;
+      if (min === undefined || max === undefined || trim === undefined) return null;
+      const functionName = metadata?.[`SERVO${ch}_FUNCTION`]?.values?.[fn];
+      return {
+        ch,
+        min,
+        max,
+        trim,
+        functionName,
+        travel: travelFromEndpoints(min, trim, max),
+        ...classifyOutput({ functionName, min, trim, max }),
+      };
+    }
+    return null;
+  }, [parameters, metadata]);
+
+  const strExpoBounds = useParamBounds('MANUAL_STR_EXPO', -0.5, 0.9, 0.05);
+  const thstExpoBounds = useParamBounds('MOT_THST_EXPO', -1, 1, 0.05);
+  const acroRateBounds = useParamBounds('ACRO_TURN_RATE', 10, 360, 5);
+  const turnRadiusBounds = useParamBounds('TURN_RADIUS', 0.1, 10, 0.1);
+
+  const handleSteeringTravel = useCallback((percent: number) => {
+    if (!steering) return;
+    const t = Math.round((percent / 100) * SERVO_TRAVEL_MAX_US);
+    setParameter(`SERVO${steering.ch}_MIN`, steering.trim - t);
+    setParameter(`SERVO${steering.ch}_MAX`, steering.trim + t);
+  }, [steering, setParameter]);
 
   if (section === 'navigation') {
     return (
@@ -343,9 +387,9 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
             label="Stick curve"
             value={values.MOT_THST_EXPO}
             onChange={(v) => handleChange('MOT_THST_EXPO', v)}
-            min={-1}
-            max={1}
-            step={0.05}
+            min={thstExpoBounds.min}
+            max={thstExpoBounds.max}
+            step={thstExpoBounds.step}
             color="#F59E0B"
             hint={values.MOT_THST_EXPO < -0.05
               ? 'Soft low end: half stick gives well under half power'
@@ -437,6 +481,44 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
           asks for a turn rate instead.
         </p>
 
+        {steering && isTravelEditable(steering.shape) && (
+          <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
+            <OutputVisual
+              channel={steering.ch}
+              shape={steering.shape}
+              functionName={steering.functionName}
+              min={steering.min}
+              trim={steering.trim}
+              max={steering.max}
+              maxUs={SERVO_TRAVEL_MAX_US}
+            />
+            <div className="space-y-2 self-center">
+              <DraggableSlider
+                label="Steering travel"
+                value={Math.round((steering.travel / SERVO_TRAVEL_MAX_US) * 100)}
+                onChange={handleSteeringTravel}
+                min={10}
+                max={100}
+                step={1}
+                color="#10B981"
+                hint={`Full stick puts servo ${steering.ch} at ${Math.round((steering.travel / SERVO_TRAVEL_MAX_US) * 100)}% travel (${steering.trim - steering.travel}–${steering.trim + steering.travel} µs)`}
+              />
+              <p className="text-[11px] text-content-tertiary">
+                100% is the full ±500 µs a servo accepts. This scales the whole range rather than
+                clipping it: at 40%, full stick gives 40% and half stick gives 20%. Turn it down
+                when the wheels reach full lock before the stick does, so the travel you have left
+                is travel that still steers.
+              </p>
+              {steering.trim - steering.min !== steering.max - steering.trim && (
+                <p className="text-[11px] text-amber-400">
+                  Endpoints are uneven around trim ({steering.min}/{steering.trim}/{steering.max} µs),
+                  so it steers further one way than the other. Moving the slider evens them up.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {parameters.has('MANUAL_STR_EXPO') && (
           <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
             <SteeringResponsePlot expo={values.MANUAL_STR_EXPO} />
@@ -479,25 +561,15 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
                 label="Steering curve (Manual)"
                 value={values.MANUAL_STR_EXPO}
                 onChange={(v) => handleChange('MANUAL_STR_EXPO', v)}
-                min={-0.5}
-                max={0.95}
-                step={0.05}
+                min={strExpoBounds.min}
+                max={strExpoBounds.max}
+                step={strExpoBounds.step}
                 color="#10B981"
                 hint={values.MANUAL_STR_EXPO > 0.05
                   ? 'Calm around centre, full lock still reaches full lock'
                   : values.MANUAL_STR_EXPO < -0.05
                     ? 'Sharper around centre: twitchy, rarely what you want on a car'
                     : 'Linear: stick angle is steering angle'}
-              />
-              <DraggableSlider
-                label="Turn rate at full stick (Acro)"
-                value={values.ACRO_TURN_RATE}
-                onChange={(v) => handleChange('ACRO_TURN_RATE', v)}
-                min={10}
-                max={360}
-                step={5}
-                color="#10B981"
-                hint={`A full turn takes ${(360 / Math.max(1, values.ACRO_TURN_RATE)).toFixed(1)} s at full lock`}
               />
             </div>
           </div>
@@ -508,21 +580,21 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
             label="Turn Radius"
             value={values.TURN_RADIUS}
             onChange={(v) => handleChange('TURN_RADIUS', v)}
-            min={0.1}
-            max={10}
-            step={0.1}
+            min={turnRadiusBounds.min}
+            max={turnRadiusBounds.max}
+            step={turnRadiusBounds.step}
             color="#10B981"
             hint="Minimum turn radius at low speeds (m)"
           />
           <DraggableSlider
-            label="Acro Turn Rate"
+            label="Turn rate at full stick (Acro)"
             value={values.ACRO_TURN_RATE}
             onChange={(v) => handleChange('ACRO_TURN_RATE', v)}
-            min={30}
-            max={360}
-            step={10}
+            min={acroRateBounds.min}
+            max={acroRateBounds.max}
+            step={acroRateBounds.step}
             color="#10B981"
-            hint="Maximum turn rate in Acro mode (deg/s)"
+            hint={`A full turn takes ${(360 / Math.max(1, values.ACRO_TURN_RATE)).toFixed(1)} s at full lock`}
           />
         </div>
       </div>

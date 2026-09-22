@@ -47,31 +47,30 @@ describe('generateCorridor', () => {
     expect(even.stats.lineCount).toBe(2);
   });
 
-  // Plane mode no longer pads the ends with overshoot waypoints. What it does
-  // instead is fly the strips in an order whose turns the aircraft can make.
+  // Plane mode flies the strips in an order whose turns the aircraft can make,
+  // on top of the end overshoot.
   it('plane mode reorders the strips; copter mode flies them in sequence', () => {
-    const many = { corridorStrips: 9, corridorWidth: 300, speed: 20 };
+    const many = { corridorStrips: 9, corridorWidth: 300, speed: 20, overshoot: 0 };
     const plane = generateCorridor(config(STRAIGHT, { ...many, corridorMode: 'plane' }));
     const copter = generateCorridor(config(STRAIGHT, { ...many, corridorMode: 'copter' }));
-    // Same ground, same lines, no extra waypoints bolted on.
     expect(plane.stats.lineCount).toBe(copter.stats.lineCount);
     expect(plane.waypoints.length).toBe(copter.waypoints.length);
     // But flown in a different order, so the reversals fit.
     expect(plane.waypoints).not.toEqual(copter.waypoints);
   });
 
-  // Only a hairpin earns a racetrack. At 90° the loop would turn tighter than
-  // the corner it replaces, so the bend is flown as drawn.
-  it('inserts racetrack waypoints at a hairpin, not at a 90 degree bend', () => {
-    const HAIRPIN: LatLng[] = [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.003 }, { lat: 0.0002, lng: 0 }];
-    const bend = generateCorridor(config(BENT, { corridorStrips: 1, corridorMode: 'plane' }));
-    const bendCopter = generateCorridor(config(BENT, { corridorStrips: 1, corridorMode: 'copter' }));
-    expect(bend.waypoints.length).toBe(bendCopter.waypoints.length);
+  // Max turn is the bend the aircraft can take unaided; anything sharper gets
+  // the turn pair. 15° is the default, so a 90° bend qualifies.
+  it('inserts turn waypoints at bends sharper than Max turn', () => {
+    const opts = { corridorStrips: 1, corridorMode: 'plane', overshoot: 0 } as const;
+    const bendCopter = generateCorridor(config(BENT, { ...opts, corridorMode: 'copter' }));
+    const looped = generateCorridor(config(BENT, opts));
+    expect(looped.waypoints.length).toBeGreaterThan(bendCopter.waypoints.length);
+    expect(allFinite(looped.waypoints)).toBe(true);
 
-    const hairpin = generateCorridor(config(HAIRPIN, { corridorStrips: 1, corridorMode: 'plane' }));
-    const hairpinCopter = generateCorridor(config(HAIRPIN, { corridorStrips: 1, corridorMode: 'copter' }));
-    expect(hairpin.waypoints.length).toBeGreaterThan(hairpinCopter.waypoints.length);
-    expect(allFinite(hairpin.waypoints)).toBe(true);
+    // Raise it past the 90° bend and the corner is flown as drawn.
+    const straightened = generateCorridor(config(BENT, { ...opts, maxTurnAngle: 120 }));
+    expect(straightened.waypoints.length).toBe(bendCopter.waypoints.length);
   });
 
   it('reports a swath area, not the enclosed-polygon area', () => {
@@ -194,14 +193,42 @@ describe('turn radius drives the plan', () => {
 
   const line: LatLng[] = [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.02 }];
 
-  // Overshoot used to append a waypoint past every strip end. It fixed
-  // nothing: the turn still did not fit. Nothing is appended now.
-  it('adds no waypoints beyond the ends of the lines', () => {
-    const r = generateCorridor(config(line, { corridorStrips: 4, corridorMode: 'plane', corridorWidth: 300, speed: 20 }));
+  it('stops exactly on the line ends with no overshoot set', () => {
+    const r = generateCorridor(config(line, { corridorStrips: 4, corridorMode: 'plane', corridorWidth: 300, speed: 20, overshoot: 0 }));
     const east = Math.max(...r.waypoints.map((w) => w.lng));
     const west = Math.min(...r.waypoints.map((w) => w.lng));
     expect(east).toBeCloseTo(0.02, 6);
     expect(west).toBeCloseTo(0, 6);
+  });
+
+  // The turn has to happen off the mapped line, or the last photo of every
+  // strip is taken in a bank.
+  it('flies the set overshoot past each end', () => {
+    const r = generateCorridor(config(line, { corridorStrips: 4, corridorMode: 'plane', corridorWidth: 300, speed: 20, overshoot: 60 }));
+    const east = Math.max(...r.waypoints.map((w) => w.lng));
+    const west = Math.min(...r.waypoints.map((w) => w.lng));
+    expect(metres({ lat: 0, lng: east }, { lat: 0, lng: 0.02 })).toBeCloseTo(60, 0);
+    expect(metres({ lat: 0, lng: west }, { lat: 0, lng: 0 })).toBeCloseTo(60, 0);
+  });
+
+  it('leaves the overshoot off a copter plan', () => {
+    const r = generateCorridor(config(line, { corridorStrips: 4, corridorMode: 'copter', corridorWidth: 300, overshoot: 60 }));
+    expect(Math.max(...r.waypoints.map((w) => w.lng))).toBeCloseTo(0.02, 6);
+  });
+
+  // A spur meets the trunk mid-line: the aircraft flies through the junction,
+  // so a stub past it and back would be pure dead distance.
+  it('does not overshoot where a branch meets the trunk', () => {
+    const trunk: LatLng[] = [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.02 }];
+    const branch: LatLng[] = [{ lat: 0, lng: 0.01 }, { lat: 0.004, lng: 0.01 }];
+    const r = generateCorridor(config(trunk, {
+      corridorStrips: 1, corridorMode: 'plane', corridorWidth: 60, speed: 20, overshoot: 60,
+      corridorBranches: [branch],
+    }));
+    // Nothing should sit meaningfully south of the trunk, which is where a
+    // stub past the junction would land.
+    const south = Math.min(...r.waypoints.map((w) => w.lat));
+    expect(south * 110540).toBeGreaterThan(-5);
   });
 
   // A faster aircraft turns wider, so it has to skip further between lines.

@@ -459,13 +459,13 @@ export const MavlinkConfigView: React.FC = () => {
         );
       }
 
-      // PX4 persists PARAM_SET immediately, so the staged edits are sent here
-      // (post-confirm) instead of asking the FC to flush RAM to flash.
-      const result = connectionState.firmware === 'px4'
-        ? await commitStagedParams().then(r => r.failed.length === 0
-            ? { success: true as const }
-            : { success: false as const, error: `Failed to write ${r.failed.join(', ')}` })
-        : await window.electronAPI?.writeParamsToFlash();
+      // PX4 persists each PARAM_SET on receipt; ArduPilot needs a flash flush.
+      const staged = await commitStagedParams();
+      const result = staged.failed.length > 0
+        ? { success: false as const, error: `Failed to write ${staged.failed.join(', ')}` }
+        : connectionState.firmware === 'px4'
+          ? { success: true as const }
+          : await window.electronAPI?.writeParamsToFlash();
       if (result?.success) {
         // Vault backup: full param snapshot after a successful flash write.
         // Auto-sync pushes it to the remote from the main side.

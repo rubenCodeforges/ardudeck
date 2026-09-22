@@ -162,6 +162,10 @@ export interface MissionDefaults {
   showFlownPath: boolean;
   /** Bank angle the predicted track is planned around, degrees. */
   flownPathBankDeg: number;
+  /** Map legend folded away to a corner button. */
+  mapLegendCollapsed: boolean;
+  /** Number each survey line on the map in the order it is flown. */
+  showLineOrder: boolean;
 }
 
 /**
@@ -483,6 +487,8 @@ const DEFAULT_MISSION_DEFAULTS: MissionDefaults = {
   showSegmentColors: true,       // Color-coded path segments on by default
   showFlownPath: false,
   flownPathBankDeg: 30,
+  mapLegendCollapsed: false,
+  showLineOrder: true,
 };
 
 const DEFAULT_VEHICLE: VehicleProfile = {

@@ -502,10 +502,8 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       return true;
     }
 
-    // PX4 UI edits stage locally; commitStagedParams sends them after the
-    // Write Parameters to Flash confirm. Unknown params (not in cache) fall
-    // through to an immediate write since there is nothing to diff against.
-    if (useConnectionStore.getState().connectionState.firmware === 'px4' && param) {
+    // Uncached params have nothing to diff, so they fall through to a write.
+    if (param) {
       set(state => {
         const params = new Map(state.parameters);
         const existing = params.get(paramId)!;

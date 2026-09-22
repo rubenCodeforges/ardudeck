@@ -4,9 +4,20 @@
  */
 import { useState } from 'react';
 import { AlertTriangle, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
-import type { ValidationResult } from '../../../shared/mission-validation';
+import type { ValidationCheck, ValidationResult } from '../../../shared/mission-validation';
 
-export function MissionValidationBadge({ result }: { result: ValidationResult }) {
+const ACTION_LABELS: Record<NonNullable<ValidationCheck['action']>, string> = {
+  'connect-surveys': 'Connect surveys',
+};
+
+export function MissionValidationBadge({
+  result,
+  onAction,
+}: {
+  result: ValidationResult;
+  /** Runs a check's offered fix. Absent, the button is not shown. */
+  onAction?: (action: NonNullable<ValidationCheck['action']>) => void;
+}) {
   const [open, setOpen] = useState(false);
   const { checks, errorCount, warnCount } = result;
 
@@ -20,12 +31,15 @@ export function MissionValidationBadge({ result }: { result: ValidationResult })
   }
 
   const tone = errorCount > 0 ? 'text-red-300' : 'text-amber-300';
+  // A fix worth offering is worth offering without expanding the list first.
+  const actionable = onAction ? checks.filter((c) => c.action) : [];
 
   return (
     <div className="px-2 py-1">
+      <div className="flex items-center gap-2">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 text-[11px] ${tone} hover:brightness-110 w-full`}
+        className={`flex items-center gap-1.5 text-[11px] ${tone} hover:brightness-110 flex-1 min-w-0`}
       >
         <ChevronRight className={`w-3 h-3 transition-transform ${open ? 'rotate-90' : ''}`} />
         {errorCount > 0 ? <AlertCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
@@ -35,6 +49,17 @@ export function MissionValidationBadge({ result }: { result: ValidationResult })
           {warnCount > 0 && `${warnCount} warning${warnCount === 1 ? '' : 's'}`}
         </span>
       </button>
+      {actionable.map((c) => (
+        <button
+          key={`fix-${c.id}`}
+          onClick={() => onAction!(c.action!)}
+          className="shrink-0 px-2 py-0.5 text-[10px] rounded-md bg-purple-600/80 text-white hover:bg-purple-600 transition-colors"
+          title={c.message}
+        >
+          {ACTION_LABELS[c.action!]}
+        </button>
+      ))}
+      </div>
       {open && (
         <ul className="mt-1 ml-4 space-y-0.5">
           {checks.map((c) => (
@@ -47,7 +72,17 @@ export function MissionValidationBadge({ result }: { result: ValidationResult })
               ) : (
                 <AlertTriangle className="w-3 h-3 mt-px shrink-0" />
               )}
-              <span className="text-content-secondary">{c.message}</span>
+              <span className="text-content-secondary">
+                {c.message}
+                {c.action && onAction && (
+                  <button
+                    onClick={() => onAction(c.action!)}
+                    className="ml-1.5 px-1.5 py-px rounded bg-purple-600/80 text-white hover:bg-purple-600 transition-colors"
+                  >
+                    {ACTION_LABELS[c.action]}
+                  </button>
+                )}
+              </span>
             </li>
           ))}
         </ul>

@@ -1,4 +1,4 @@
-import type { SurveyAirframe, SurveyLaunch } from './survey-vehicle';
+import type { SurveyAirframe, SurveyLaunch, SurveyStart, SurveyFinish } from './survey-vehicle';
 /**
  * Survey Grid Planner Types
  * Types and interfaces for photogrammetry survey planning
@@ -25,6 +25,9 @@ export type CorridorMode = 'plane' | 'copter';
  *   between line pairs. Needed for Ackermann/car-like mowers that can't turn in place.
  */
 export type GroundPattern = 'boustrophedon' | 'reverse-alternating';
+
+/** Order the parallel strips of a corridor are flown in. */
+export type StripOrderMode = 'auto' | 'sequential';
 
 /**
  * Altitude reference frame for survey waypoints.
@@ -167,6 +170,13 @@ export interface SurveyConfig {
   airframe?: SurveyAirframe;
   /** How the mission starts and ends; 'auto' follows the airframe. */
   launch?: SurveyLaunch;
+  /** Whether the mission opens with a takeoff item. */
+  start?: SurveyStart;
+  /**
+   * What the mission does after the last line. 'none' leaves the survey open
+   * so a second survey, or hand-placed waypoints, can follow it in one mission.
+   */
+  finish?: SurveyFinish;
   /** Lateral shift of the whole strip bundle off the centerline, in meters (e.g. to bias coverage to one side of a road). */
   corridorSideOffset?: number;
   /**
@@ -187,6 +197,19 @@ export interface SurveyConfig {
   maxTurnAngle?: number;
   /** Bank the plan assumes when working out the aircraft's turn radius. */
   planBankDeg?: number;
+  /**
+   * Cruise airspeed the turns are sized around, m/s. Read from the vehicle's
+   * AIRSPEED_CRUISE when one is connected; a survey speed below it is a
+   * camera-trigger speed the aircraft will not actually fly.
+   */
+  planAirspeed?: number;
+  /**
+   * Which order the parallel strips are flown in.
+   * - 'auto' (default): skip strips so each 180° turn has room for the
+   *   aircraft's turn diameter, e.g. 1, 3, 5 then 2, 4.
+   * - 'sequential': 1, 2, 3 in order, whether the turn fits or not.
+   */
+  stripOrder?: StripOrderMode;
   /** Reverse the order the strips are flown in (start from the far side). */
   flipLegs?: boolean;
   /** Reverse the travel direction along the centerline. */
@@ -225,6 +248,12 @@ export interface SurveyResult {
    * waypoint so the camera holds on the subject (panorama pattern).
    */
   waypointYaws?: number[];
+  /**
+   * Index into `waypoints` where each flown line begins, in flight order. Lets
+   * the map number the lines 1, 2, 3 so the pilot can see which one is flown
+   * when, which matters once the strips are not flown in their drawn order.
+   */
+  legStarts?: number[];
   /**
    * Optional per-waypoint look-at target on the subject, aligned 1:1 with
    * `waypoints`. When present the mission builder emits ROI commands so the
@@ -295,9 +324,22 @@ export const DEFAULT_SURVEY_CONFIG: Omit<SurveyConfig, 'polygon'> = {
   corridorMode: 'plane',
   airframe: 'auto',
   launch: 'auto',
+  start: 'takeoff',
+  finish: 'rtl',
   corridorSideOffset: 0,
-  maxTurnAngle: 120,
+  maxTurnAngle: 15,
   planBankDeg: 30,
+  stripOrder: 'auto',
   flipLegs: false,
   invertPath: false,
 };
+/**
+ * A survey is inserted as a complete flight, always. Whether it runs on into
+ * the next one is decided afterwards, per group, in the waypoint list: it is
+ * never inherited from the last draft, which is how two surveys ended up
+ * silently connected.
+ */
+export function asOwnFlight(config: SurveyConfig): SurveyConfig {
+  const finish = config.finish === 'land' ? 'land' : 'rtl';
+  return config.finish === finish ? config : { ...config, finish };
+}

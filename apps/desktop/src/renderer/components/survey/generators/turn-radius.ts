@@ -20,9 +20,51 @@ export function turnRadiusFor(speedMs: number, bankDeg = DEFAULT_PLAN_BANK_DEG):
   return (v * v) / (9.81 * Math.tan((bank * Math.PI) / 180));
 }
 
-/** Turn radius for a survey config, from its planned speed and bank. */
-export function planTurnRadius(config: SurveyConfig): number {
+/** ArduPlane's AIRSPEED_CRUISE default, used when no vehicle has told us. */
+export const PLANE_CRUISE_FALLBACK_MS = 12;
+
+export interface PlanSpeed {
+  speedMs: number;
+  /** 'survey' = the planned speed; otherwise the airspeed it will really fly. */
+  source: 'survey' | 'cruise';
+  /** True when the cruise came from the vehicle rather than the fallback. */
+  fromVehicle: boolean;
+}
+
+/**
+ * The speed the turns are actually flown at.
+ *
+ * A survey speed is a camera-trigger speed, and on a plane it is often set
+ * below anything the aircraft can fly. ArduPlane refuses a DO_CHANGE_SPEED
+ * below AIRSPEED_MIN rather than clamping it, so the aircraft holds its cruise
+ * and the turn is far wider than a radius computed from the requested number.
+ * At 6.7 m/s that reads as an 8 m radius, which no fixed wing can fly.
+ */
+export function planSpeed(config: SurveyConfig, cruiseMs?: number): PlanSpeed {
+  const isManual = !!(config.camera.manualCorridorWidth && config.camera.manualCorridorWidth > 0);
+  const flyingAsPlane = !isManual && (
+    config.pattern === 'corridor'
+      ? (config.corridorMode ?? 'plane') === 'plane'
+      : config.gridMode === 'plane'
+  );
+  if (!flyingAsPlane) return { speedMs: config.speed, source: 'survey', fromVehicle: false };
+
+  // The caller's value first, then whatever the vehicle told the survey when
+  // it was planned, so the readout and the generator agree on one number.
+  const vehicle = cruiseMs && cruiseMs > 0 ? cruiseMs : config.planAirspeed;
+  const fromVehicle = !!vehicle && vehicle > 0;
+  const cruise = fromVehicle ? vehicle! : PLANE_CRUISE_FALLBACK_MS;
+  return config.speed >= cruise
+    ? { speedMs: config.speed, source: 'survey', fromVehicle }
+    : { speedMs: cruise, source: 'cruise', fromVehicle };
+}
+
+/** Turn radius for a survey config, from the speed it will fly and its bank. */
+export function planTurnRadius(config: SurveyConfig, cruiseMs?: number): number {
   const explicit = config.engineParams?.['minTurnRadius'];
   if (typeof explicit === 'number' && explicit > 1) return explicit;
-  return turnRadiusFor(config.speed, config.planBankDeg ?? DEFAULT_PLAN_BANK_DEG);
+  return turnRadiusFor(
+    planSpeed(config, cruiseMs ?? config.planAirspeed).speedMs,
+    config.planBankDeg ?? DEFAULT_PLAN_BANK_DEG,
+  );
 }

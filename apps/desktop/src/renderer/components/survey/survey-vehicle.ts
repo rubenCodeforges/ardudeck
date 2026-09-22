@@ -69,6 +69,51 @@ export function launchCommands(
     : { takeoff: MAV_CMD.NAV_TAKEOFF, land: MAV_CMD.NAV_RETURN_TO_LAUNCH };
 }
 
+/** Whether the mission opens with a takeoff, and whether it closes itself. */
+export type SurveyStart = 'takeoff' | 'none';
+export type SurveyFinish = 'rtl' | 'land' | 'none';
+
+export const START_OPTIONS: Array<{ id: SurveyStart; label: string; description: string }> = [
+  { id: 'takeoff', label: 'Takeoff', description: 'Mission opens with a takeoff to the survey altitude' },
+  { id: 'none', label: 'None', description: 'Launch manually, then switch to Auto. Also what a follow-on survey needs' },
+];
+
+export const FINISH_OPTIONS: Array<{ id: SurveyFinish; label: string; description: string }> = [
+  { id: 'rtl', label: 'RTL', description: 'Return to launch after the last line' },
+  { id: 'land', label: 'Land', description: 'Land where the survey ends' },
+  { id: 'none', label: 'None', description: 'Stop at the last line, so another survey or waypoint can follow' },
+];
+
+/** The command that opens the mission, or null when the pilot launches it. */
+export function startCommand(
+  start: SurveyStart | undefined,
+  launch: SurveyLaunch | undefined,
+  vehicleClass: ArduPilotVehicleClass | undefined,
+): number | null {
+  if (start === 'none') return null;
+  return launchCommands(launch, vehicleClass).takeoff;
+}
+
+/**
+ * The command that closes the mission, or null to end on the last line.
+ *
+ * RTL is one item whatever the airframe (a VTOL lands vertically on Q_RTL);
+ * only an explicit Land has to pick between the two landing commands.
+ */
+export function finishCommand(
+  finish: SurveyFinish | undefined,
+  launch: SurveyLaunch | undefined,
+  vehicleClass: ArduPilotVehicleClass | undefined,
+): number | null {
+  if (finish === 'none') return null;
+  if (finish === 'land') {
+    return launchCommands(launch, vehicleClass).takeoff === MAV_CMD.NAV_VTOL_TAKEOFF
+      ? MAV_CMD.NAV_VTOL_LAND
+      : MAV_CMD.NAV_LAND;
+  }
+  return MAV_CMD.NAV_RETURN_TO_LAUNCH;
+}
+
 /** How the detected aircraft is named in the planner. */
 export function vehicleClassLabel(vehicleClass: ArduPilotVehicleClass | undefined): string {
   switch (vehicleClass) {

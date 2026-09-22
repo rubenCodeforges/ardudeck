@@ -81,9 +81,28 @@ describe('parameter-store PX4 staged writes', () => {
     expect(setParameterIpc).toHaveBeenCalledWith('NAV_RCL_ACT', 3, REAL32);
   });
 
-  it('ardupilot: setParameter keeps the immediate write-through behavior', async () => {
+  it('ardupilot: setParameter stages locally and sends NOTHING to the vehicle', async () => {
+    setFirmware('ardupilot');
+    const ok = await useParameterStore.getState().setParameter('NAV_RCL_ACT', 3);
+    expect(ok).toBe(true);
+    expect(setParameterIpc).not.toHaveBeenCalled();
+    const p = useParameterStore.getState().parameters.get('NAV_RCL_ACT');
+    expect(p?.value).toBe(3);
+    expect(p?.isModified).toBe(true);
+    expect(p?.originalValue).toBe(2);
+  });
+
+  it('ardupilot: commitStagedParams sends the staged PARAM_SETs', async () => {
     setFirmware('ardupilot');
     await useParameterStore.getState().setParameter('NAV_RCL_ACT', 3);
+    const result = await useParameterStore.getState().commitStagedParams();
     expect(setParameterIpc).toHaveBeenCalledWith('NAV_RCL_ACT', 3, REAL32);
+    expect(result.failed).toEqual([]);
+  });
+
+  it('uncached params still write immediately: nothing to diff against', async () => {
+    setFirmware('ardupilot');
+    await useParameterStore.getState().setParameter('NOT_IN_CACHE', 7);
+    expect(setParameterIpc).toHaveBeenCalledWith('NOT_IN_CACHE', 7, REAL32);
   });
 });

@@ -10,6 +10,9 @@ import { useIpLocation } from '../../utils/ip-geolocation';
 import { SEGMENT_COLORS, getSegmentColor, computeItemColors } from '../../utils/mission-segment-colors';
 import { nearestLeg, type InsertTarget, type LegPoint, type Pt } from './insert-target';
 import { predictFlownPath, turnRadiusFor, coverageGaps } from './flown-path';
+import { planSpeed } from '../survey/generators/turn-radius';
+import { isReturnCommand, isTakeoffCommand } from './mission-end';
+import type { LatLng } from '../survey/survey-types';
 
 // Geofence and Rally overlays
 import { FenceMapOverlay } from '../geofence/FenceMapOverlay';
@@ -133,6 +136,7 @@ function buildSegmentedPath(allItems: MissionItem[], groupColorOf?: (groupId: st
   const raw: PathSegment[] = [];
   let prevNav: MissionItem | null = null;
   let prevNavIdx = -1;
+  let brokeFlight = false;
 
   for (const item of allItems) {
     const isLocatedNav =
@@ -142,10 +146,11 @@ function buildSegmentedPath(allItems: MissionItem[], groupColorOf?: (groupId: st
 
     if (isLocatedNav) {
       const idx = navIndexBySeq.get(item.seq)!;
-      // Skip the connecting leg across group boundaries — a line from the last
-      // WP of one group to the first of the next isn't a real flight leg.
-      const crossesGroup = !!(prevNav && prevNav.groupId && item.groupId && prevNav.groupId !== item.groupId);
-      if (prevNav && !crossesGroup) {
+      // A leg between two groups is real when they share a flight: connected
+      // surveys are flown one into the next. It is not a leg when a return or
+      // a takeoff sits between them, because that is two separate flights.
+      const crossesFlight = brokeFlight && !!prevNav;
+      if (prevNav && !crossesFlight) {
         const color = groupColorOf?.(item.groupId) ?? getSegmentColor(item.command, cameraActive, roiActive, speedOverride);
         const isSpline =
           prevNav.command === MAV_CMD.NAV_SPLINE_WAYPOINT ||
@@ -160,7 +165,16 @@ function buildSegmentedPath(allItems: MissionItem[], groupColorOf?: (groupId: st
       }
       prevNav = item;
       prevNavIdx = idx;
+      brokeFlight = false;
       continue;
+    }
+
+    if (item.command === MAV_CMD.NAV_RETURN_TO_LAUNCH
+      || item.command === MAV_CMD.NAV_LAND
+      || item.command === MAV_CMD.NAV_VTOL_LAND
+      || item.command === MAV_CMD.NAV_TAKEOFF
+      || item.command === MAV_CMD.NAV_VTOL_TAKEOFF) {
+      brokeFlight = true;
     }
 
     // Match the original windowed behavior: DO_* commands only take effect once
@@ -1075,25 +1089,85 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
   // plan says it covers; this shows that before the flight, not after it.
   const showFlownPath = useSettingsStore((s) => s.missionDefaults.showFlownPath);
   const flownPathBankDeg = useSettingsStore((s) => s.missionDefaults.flownPathBankDeg);
+  const legendCollapsed = useSettingsStore((s) => s.missionDefaults.mapLegendCollapsed);
+  const showLineOrder = useSettingsStore((s) => s.missionDefaults.showLineOrder);
   const surveySwathWidth = useSurveyStore((s) => s.config.corridorWidth ?? 60);
-  const surveySpeed = useSurveyStore((s) => s.config.speed);
+  const surveyConfig = useSurveyStore((s) => s.config);
+  const surveyDraft = useSurveyStore((s) => s.result);
+
+  // The draft the panel is showing, when there is one: a pilot judges the
+  // turns before pressing Insert, not after.
+  const draftPoints = useMemo(
+    () => (surveyPolygon && surveyDraft && surveyDraft.waypoints.length >= 3
+      ? surveyDraft.waypoints
+      : null),
+    [surveyPolygon, surveyDraft],
+  );
+
+  const plannedSpeed = useMemo(
+    () => planSpeed({ ...surveyConfig, polygon: surveyPolygon ?? [] }),
+    [surveyConfig, surveyPolygon],
+  );
+
+  /**
+   * The mission split into the runs the aircraft actually flies: a return
+   * ends one, and so does a group boundary. Predicting across those drew a
+   * leg from the end of one survey to the start of the next, which is exactly
+   * the flight the plan says it will not make.
+   */
+  const flownRuns = useMemo(() => {
+    if (draftPoints) return [draftPoints];
+    const runs: LatLng[][] = [];
+    let current: LatLng[] = [];
+    let prevGroup: string | undefined;
+    for (const it of visibleMissionItems) {
+      if (isReturnCommand(it.command) || isTakeoffCommand(it.command)) {
+        if (current.length) runs.push(current);
+        current = [];
+        prevGroup = undefined;
+        continue;
+      }
+      if (!commandHasLocation(it.command) || (it.latitude === 0 && it.longitude === 0)) continue;
+      if (current.length && prevGroup !== undefined && it.groupId !== prevGroup) {
+        runs.push(current);
+        current = [];
+      }
+      current.push({ lat: it.latitude, lng: it.longitude });
+      prevGroup = it.groupId;
+    }
+    if (current.length) runs.push(current);
+    return runs.filter((r) => r.length >= 3);
+  }, [draftPoints, visibleMissionItems]);
+
   const flown = useMemo(() => {
-    if (!showFlownPath || waypoints.length < 3) return null;
-    const speed = visibleMissionItems.find((i) => i.command === MAV_CMD.DO_CHANGE_SPEED && i.param2 > 0)?.param2
-      ?? surveySpeed
-      ?? 15;
+    if (!showFlownPath || flownRuns.length === 0) return null;
+    // A DO_CHANGE_SPEED in the mission wins, but only if the aircraft would
+    // actually hold it: below cruise a plane flies its cruise instead.
+    const commanded = visibleMissionItems.find((i) => i.command === MAV_CMD.DO_CHANGE_SPEED && i.param2 > 0)?.param2;
+    const speed = draftPoints
+      ? plannedSpeed.speedMs
+      : Math.max(commanded ?? plannedSpeed.speedMs, plannedSpeed.source === 'cruise' ? plannedSpeed.speedMs : 0);
     const radius = turnRadiusFor(speed, flownPathBankDeg);
-    const result = predictFlownPath(waypoints.map((w) => ({ lat: w.latitude, lng: w.longitude })), radius);
+    const runs: Array<[number, number][]> = [];
+    const gaps: Array<{ index: number; deviationM: number; turnDeg: number; at: LatLng }> = [];
+    flownRuns.forEach((run, r) => {
+      const result = predictFlownPath(run, radius);
+      runs.push(result.path.map((q) => [q.lat, q.lng] as [number, number]));
+      for (const c of coverageGaps(result.cuts, surveySwathWidth)) {
+        const at = run[c.index];
+        if (at) gaps.push({ ...c, index: r * 100000 + c.index, at });
+      }
+    });
     return {
-      positions: result.path.map((q) => [q.lat, q.lng] as [number, number]),
-      gaps: coverageGaps(result.cuts, surveySwathWidth).map((c) => ({
-        ...c,
-        at: waypoints[c.index],
-      })).filter((g) => g.at !== undefined),
+      runs,
+      gaps,
       radius,
       speed,
+      fromCruise: plannedSpeed.source === 'cruise',
+      cruiseFromVehicle: plannedSpeed.fromVehicle,
+      isDraft: !!draftPoints,
     };
-  }, [showFlownPath, waypoints, visibleMissionItems, surveySpeed, flownPathBankDeg, surveySwathWidth]);
+  }, [showFlownPath, flownRuns, draftPoints, visibleMissionItems, plannedSpeed, flownPathBankDeg, surveySwathWidth]);
 
 
   // Segment colors per item (for marker tinting)
@@ -1177,15 +1251,18 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         {/* Predicted track, and the bends where cutting it costs coverage. */}
         {flown && (
           <>
-            <Polyline
-              positions={flown.positions}
-              interactive={false}
-              pathOptions={{ color: '#22d3ee', weight: 2, opacity: 0.9, dashArray: '6 4' }}
-            />
+            {flown.runs.map((positions, i) => (
+              <Polyline
+                key={`flown-${i}`}
+                positions={positions}
+                interactive={false}
+                pathOptions={{ color: '#22d3ee', weight: 2, opacity: 0.9, dashArray: '6 4' }}
+              />
+            ))}
             {flown.gaps.map((g) => (
               <CircleMarker
                 key={`gap-${g.index}`}
-                center={[g.at!.latitude, g.at!.longitude]}
+                center={[g.at!.lat, g.at!.lng]}
                 radius={9}
                 interactive={false}
                 pathOptions={{ color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.25 }}
@@ -1676,7 +1753,31 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
       {/* Segment color legend + toggle */}
       {activeMode === 'mission' && waypoints.length > 1 && (
         <div className="absolute bottom-3 right-3 z-[1000]">
-          <div className="bg-surface-solid border border-subtle shadow-sm rounded-lg overflow-hidden text-xs">
+          {legendCollapsed ? (
+            <button
+              onClick={() => updateMissionDefaults({ mapLegendCollapsed: false })}
+              className="bg-surface-solid border border-subtle shadow-sm rounded-lg px-2 py-1.5 text-xs text-content-secondary hover:text-content transition-colors flex items-center gap-1.5"
+              title="Show the map legend"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M1.5 3h9M1.5 6h9M1.5 9h9" strokeLinecap="round" />
+              </svg>
+              Legend
+            </button>
+          ) : (
+          <div className="bg-surface-solid border border-subtle shadow-sm rounded-lg overflow-hidden text-xs max-w-[280px]">
+            <div className="flex items-center justify-between pl-2.5 pr-1 py-1 border-b border-subtle">
+              <span className="text-[10px] uppercase tracking-wider text-content-tertiary">Legend</span>
+              <button
+                onClick={() => updateMissionDefaults({ mapLegendCollapsed: true })}
+                className="p-1 rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
+                title="Hide the map legend"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M3 3l6 6M9 3l-6 6" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
             <button
               onClick={() => updateMissionDefaults({ showSegmentColors: !showSegmentColors })}
               className="flex items-center gap-1.5 px-2.5 py-1.5 w-full hover:bg-surface-raised transition-colors"
@@ -1693,6 +1794,21 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                 )}
               </div>
               <span className="text-content font-medium">Path colors</span>
+            </button>
+            <button
+              onClick={() => updateMissionDefaults({ showLineOrder: !showLineOrder })}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 w-full hover:bg-surface-raised transition-colors border-t border-subtle"
+            >
+              <div className={`w-3 h-3 rounded-sm border transition-colors ${
+                showLineOrder ? 'bg-purple-500 border-purple-400' : 'bg-transparent border-content-secondary'
+              }`}>
+                {showLineOrder && (
+                  <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-content font-medium">Line order</span>
             </button>
             <button
               onClick={() => updateMissionDefaults({ showFlownPath: !showFlownPath })}
@@ -1713,7 +1829,15 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               <div className="px-2.5 pb-2 pt-0.5 text-[11px] leading-snug">
                 <div className="text-content-secondary">
                   {Math.round(flown.radius)} m turn radius at {flown.speed.toFixed(1)} m/s, {flownPathBankDeg}° bank
+                  {flown.isDraft && <span className="text-content-tertiary"> · survey draft</span>}
                 </div>
+                {flown.fromCruise && (
+                  <div className="text-content-tertiary">
+                    {flown.cruiseFromVehicle
+                      ? "Sized on the vehicle's AIRSPEED_CRUISE, not the slower survey speed a plane will not hold."
+                      : 'Sized on a 12 m/s cruise (no vehicle connected), not the slower survey speed a plane will not hold.'}
+                  </div>
+                )}
                 <div className={flown.gaps.length > 0 ? 'text-red-400' : 'text-content-tertiary'}>
                   {flown.gaps.length > 0
                     ? `${flown.gaps.length} bend${flown.gaps.length > 1 ? 's' : ''} cut past the swath - coverage gap`
@@ -1750,6 +1874,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               </div>
             )}
           </div>
+          )}
         </div>
       )}
 

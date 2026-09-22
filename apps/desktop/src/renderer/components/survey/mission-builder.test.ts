@@ -167,3 +167,54 @@ describe('surveyToMissionItems', () => {
     });
   });
 });
+
+describe('mission ends', () => {
+  const result = makeSurveyResult();
+  const last = (items: ReturnType<typeof surveyToMissionItems>) => items[items.length - 1]!;
+
+  it('closes with RTL by default', () => {
+    expect(last(surveyToMissionItems(result, makeConfig('relative'))).command)
+      .toBe(MAV_CMD.NAV_RETURN_TO_LAUNCH);
+  });
+
+  // Without this a second survey cannot be planned in the same mission: the
+  // first one flies home in the middle of the flight.
+  it('ends on the last line when the finish is None', () => {
+    const items = surveyToMissionItems(result, { ...makeConfig('relative'), finish: 'none' });
+    expect(last(items).command).toBe(MAV_CMD.DO_SET_CAM_TRIGG_DIST);
+    expect(items.some((i) => i.command === MAV_CMD.NAV_RETURN_TO_LAUNCH)).toBe(false);
+  });
+
+  it('lands where the survey ended when the finish is Land', () => {
+    const items = surveyToMissionItems(result, { ...makeConfig('relative'), finish: 'land' });
+    const end = last(items);
+    expect(end.command).toBe(MAV_CMD.NAV_LAND);
+    expect(end.latitude).toBeCloseTo(-35.363, 5);
+    expect(end.longitude).toBeCloseTo(149.166, 5);
+  });
+
+  it('omits the takeoff when the pilot launches by hand', () => {
+    const items = surveyToMissionItems(result, { ...makeConfig('relative'), start: 'none' });
+    expect(items.some((i) => i.command === MAV_CMD.NAV_TAKEOFF)).toBe(false);
+    expect(items[0]!.command).toBe(MAV_CMD.NAV_WAYPOINT);
+    expect(items.map((i) => i.seq)).toEqual(items.map((_, i) => i));
+  });
+
+  it('a chained survey carries neither end', () => {
+    const items = surveyToMissionItems(result, { ...makeConfig('relative'), start: 'none', finish: 'none' });
+    expect(items.some((i) => i.command === MAV_CMD.NAV_TAKEOFF)).toBe(false);
+    expect(items.some((i) => i.command === MAV_CMD.NAV_RETURN_TO_LAUNCH)).toBe(false);
+  });
+
+  it('a VTOL takes off and lands vertically', () => {
+    const vtol = { ...makeConfig('relative'), airframe: 'vtol' as const, finish: 'land' as const };
+    const items = surveyToMissionItems(result, vtol);
+    expect(items[0]!.command).toBe(MAV_CMD.NAV_VTOL_TAKEOFF);
+    expect(last(items).command).toBe(MAV_CMD.NAV_VTOL_LAND);
+  });
+
+  it('a VTOL still returns with a plain RTL', () => {
+    const items = surveyToMissionItems(result, { ...makeConfig('relative'), airframe: 'vtol' });
+    expect(last(items).command).toBe(MAV_CMD.NAV_RETURN_TO_LAUNCH);
+  });
+});

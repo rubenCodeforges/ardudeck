@@ -16,6 +16,7 @@
  */
 import type { LatLng, SurveyConfig, SurveyResult } from '../survey-types';
 import { latLngToLocal, localToLatLng, polygonCentroid, rotatePoint, offsetPolygon } from '../geo-math';
+import type { ClippedSegment } from '../polygon-clip';
 import { clipScanLines, routeScanSegments, routeTransitAroundHoles, legEntersRing } from '../polygon-clip';
 import { computeSurveyStats, getEffectiveFootprint, getEffectiveSpacing } from '../survey-stats';
 
@@ -41,6 +42,26 @@ function computeFootprintRect(
     const rotated = rotatePoint(c, angleRad, position);
     return localToLatLng(origin, rotated.x, rotated.y);
   });
+}
+
+/**
+ * Move the start of the route to another corner of the area.
+ *
+ * The router picks the lowest-leftmost corner, which is rarely where the pilot
+ * launches from. `invertPath` enters every line from its other end, `flipLegs`
+ * flies the whole route backwards, so the two together with the grid angle
+ * reach all four corners. Both keep the serpentine intact: the turns stay
+ * between neighbouring line ends.
+ */
+export function applyStartCorner(
+  lines: ClippedSegment[],
+  flipLegs?: boolean,
+  invertPath?: boolean,
+): ClippedSegment[] {
+  const swap = (s: ClippedSegment): ClippedSegment => ({ x1: s.x2, x2: s.x1, y: s.y });
+  let out = invertPath ? lines.map(swap) : lines;
+  if (flipLegs) out = [...out].reverse().map(swap);
+  return out;
 }
 
 export function generateGrid(config: SurveyConfig): SurveyResult {
@@ -106,9 +127,13 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
   // routeScanSegments groups the spans into connected components (arms) and
   // serpentines within each, so a branching/concave boundary doesn't produce a
   // flight path that deadheads across the empty interior on every row.
-  const clippedLines = routeScanSegments(
-    clipScanLines(localPoly, lineSpacing, effectiveOvershoot, localHoles),
-    lineSpacing,
+  const clippedLines = applyStartCorner(
+    routeScanSegments(
+      clipScanLines(localPoly, lineSpacing, effectiveOvershoot, localHoles),
+      lineSpacing,
+    ),
+    config.flipLegs,
+    config.invertPath,
   );
 
   // Plane mode: make every turn a clean 180°. Each turn joins one line's exit
@@ -142,6 +167,7 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
   // entry, x2 = exit) for the chosen traversal direction, so we follow it
   // directly instead of alternating by index.
   const waypointsLocal: { x: number; y: number }[] = [];
+  const legStarts: number[] = [];
   const photoLocal: { x: number; y: number }[] = [];
   const reverseAngleRad = -angleRad;
   const halfW = footprintW / 2;
@@ -165,6 +191,7 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
     }
 
     // Line start point
+    legStarts.push(waypointsLocal.length);
     waypointsLocal.push({ x: startX, y });
 
     // Photo positions along the line — skipped in manual/ground-vehicle mode
@@ -207,7 +234,7 @@ export function generateGrid(config: SurveyConfig): SurveyResult {
 
   const stats = computeSurveyStats(config, waypoints, photoPositions, clippedLines.length);
 
-  return { waypoints, photoPositions, footprints, stats };
+  return { waypoints, photoPositions, footprints, stats, legStarts };
 }
 
 /** Shoelace signed area of a local ring; sign indicates winding. */

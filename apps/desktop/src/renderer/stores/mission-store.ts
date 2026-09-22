@@ -22,6 +22,8 @@ import {
   type MissionMirrorSnapshot,
 } from '../../shared/mission-group-types';
 import { splitMissionForFleet } from '../components/mission/distribute-fleet';
+import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
+import { applyFlightBreaks, groupEndsFlight, inFlightOrder } from '../components/mission/mission-end';
 import { bulkSetAltitude, bulkSetSpeed } from '../components/mission/bulk-edit';
 import { buildArduPilotWireMission, shiftJumpTargets } from '../../shared/mission-wire';
 import { useSettingsStore } from './settings-store';
@@ -349,6 +351,28 @@ interface MissionStore {
   /** Copy a group and its waypoints; the copy lands hidden and locked. Returns its id. */
   duplicateGroup: (groupId: string) => string | null;
   reorderGroups: (groupId: string, toOrder: number) => void;
+  /** Move a group one place earlier or later in the flight. */
+  moveGroup: (groupId: string, direction: 'up' | 'down') => void;
+  /**
+   * Drop the returns that sit between surveys, so they run on into one
+   * another as a single flight. Only ever on the pilot's say-so.
+   */
+  /**
+   * Put every group's waypoints back together, in group order. For a plan
+   * whose stored list drifted into an interleaved mess.
+   */
+  regroupItems: () => void;
+  connectSurveys: (only?: string[]) => void;
+  /**
+   * Give every survey its own takeoff and ending back, so each one is a
+   * complete flight again. Only ever on the pilot's say-so.
+   */
+  disconnectSurveys: (only?: string[]) => void;
+  /**
+   * Whether the flight ends at this group or runs on into the next. Adds or
+   * removes that group's return, and the following group's takeoff.
+   */
+  setGroupEndsFlight: (groupId: string, ends: boolean) => void;
   /**
    * Add a survey group together with its generated WPs atomically. Items
    * are stamped with the new group's id and appended to the mission.
@@ -474,6 +498,121 @@ interface MissionStore {
   redo: () => void;
 }
 
+
+/**
+ * One path for every connect/disconnect: rebuild the items from the answer,
+ * and write that answer onto each group so a regenerate does not undo it.
+ */
+function applyBreaks(
+  state: { missionItems: MissionItem[]; groups: Group[] },
+  wantsEnd: (group: SurveyGroup, index: number, all: SurveyGroup[]) => boolean,
+): { missionItems: MissionItem[]; groups: Group[]; isDirty: true } {
+  const surveys = inFlightOrder(state.missionItems, state.groups)
+    .filter((g): g is SurveyGroup => g.kind === 'survey');
+  const ends = new Map(surveys.map((g, i) => [g.id, wantsEnd(g, i, surveys)]));
+  // Repair the stored order first: on an interleaved list, "the group's last
+  // waypoint" is meaningless and the returns land in the wrong places.
+  const tidy = normalizeItemOrder(state.missionItems, state.groups);
+  const missionItems = applyFlightBreaks(tidy, state.groups, (g) => ends.get(g.id) ?? true);
+  const anySeparate = [...ends.values()].filter(Boolean).length > 1;
+  const groups = state.groups.map((g) => {
+    if (g.kind !== 'survey') return g;
+    const endsHere = ends.get(g.id) ?? true;
+    const config = { ...(g.config ?? {}) } as Record<string, unknown>;
+    const finish = config.finish;
+    config.finish = endsHere ? (finish === 'land' ? 'land' : 'rtl') : 'none';
+    // Joining two surveys changes no geometry, so the group must not come out
+    // of it looking like it needs regenerating.
+    const next = { ...g, config, separateFlight: anySeparate, updatedAt: Date.now() };
+    return { ...next, lastGeneratedSignature: computeSurveyGroupSignature(next) };
+  });
+  return { missionItems, groups, isDirty: true };
+}
+
+
+
+
+/**
+ * Move `picked` into the given sequence, using the slots those groups already
+ * occupy. Everything else stays where it is, so connecting two surveys does
+ * not shuffle the rest of the plan.
+ */
+function reorderInto(groups: Group[], picked: string[]): Group[] {
+  const sorted = [...groups].sort((a, b) => a.order - b.order);
+  const isPicked = (g: Group) => picked.includes(g.id);
+  const firstSlot = sorted.findIndex(isPicked);
+  if (firstSlot < 0 || sorted.filter(isPicked).length < 2) return groups;
+
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  // Contiguous, or they are not one flight: the run lands where the earliest
+  // picked group already sat, and the rest close up around it.
+  const sequence = picked.map((id) => byId.get(id)).filter((g): g is Group => !!g);
+  const others = sorted.filter((g) => !isPicked(g));
+  const before = sorted.slice(0, firstSlot).filter((g) => !isPicked(g)).length;
+  const next = [...others.slice(0, before), ...sequence, ...others.slice(before)];
+  return next.map((g, i) => (g.order === i ? g : { ...g, order: i }));
+}
+
+/**
+ * Mission items, stored the way they are flown and uploaded: each group's
+ * waypoints contiguous, groups in their own order, orphans last, seqs 0..n.
+ *
+ * Without this the two can drift into an interleaved mess. Two groups whose
+ * items each got renumbered from 0 and were then merged by seq alternate
+ * waypoint by waypoint, and the flown route jumps between two survey areas on
+ * every leg. Every write that rebuilds the list goes through here.
+ */
+function normalizeItemOrder(items: MissionItem[], groups: Group[]): MissionItem[] {
+  const ordered = [...groups].sort((a, b) => a.order - b.order);
+  const known = new Set(ordered.map((g) => g.id));
+  const out: MissionItem[] = [];
+  for (const g of ordered) {
+    for (const it of items.filter((x) => x.groupId === g.id)) out.push(it);
+  }
+  for (const it of items) {
+    if (!it.groupId || !known.has(it.groupId)) out.push(it);
+  }
+  // Same list, same order, same numbering: hand back the original so callers
+  // can treat an untouched plan as untouched.
+  const settled = out.every((it, i) => it === items[i] && it.seq === i);
+  return settled ? items : out.map((it, i) => (it.seq === i ? it : { ...it, seq: i }));
+}
+
+/**
+ * Put a group's regenerated items back WHERE THE GROUP WAS, not at the end.
+ *
+ * The old code stamped them `others.length + i` and appended, so editing a
+ * survey moved it to the end of the mission and left the array out of seq
+ * order. Everything downstream then disagreed: the list rendered one order,
+ * the flight labels computed another, and the upload a third.
+ */
+function spliceGroupItems(
+  allItems: MissionItem[],
+  replaced: Set<string>,
+  fresh: MissionItem[],
+): MissionItem[] {
+  const ordered = [...allItems].sort((a, b) => a.seq - b.seq);
+  const out: MissionItem[] = [];
+  let placed = false;
+  for (const it of ordered) {
+    if (it.groupId && replaced.has(it.groupId)) {
+      if (!placed) {
+        out.push(...fresh);
+        placed = true;
+      }
+      continue;
+    }
+    out.push(it);
+  }
+  if (!placed) out.push(...fresh);
+  return out.map((it, i) => (it.seq === i ? it : { ...it, seq: i }));
+}
+
+/** True when the stored list has drifted from the order above. */
+function needsRegroup(items: MissionItem[], groups: Group[]): boolean {
+  return normalizeItemOrder(items, groups) !== items;
+}
+
 // With a distribution, fresh survey items re-split into the recorded chunk groups.
 function applySurveyItems(
   state: { groups: Group[]; missionItems: MissionItem[] },
@@ -482,16 +621,12 @@ function applySurveyItems(
 ): { groups: Group[]; missionItems: MissionItem[] } {
   const dist = updatedGroup.distribution;
   const childIds = new Set(dist?.chunks.map((c) => c.groupId) ?? []);
-  const others = state.missionItems.filter(
-    (it) => it.groupId !== updatedGroup.id && !(it.groupId && childIds.has(it.groupId)),
-  );
   let groups = state.groups.map((g) => (g.id === updatedGroup.id ? (updatedGroup as Group) : g));
 
   if (dist && dist.chunks.length >= 2) {
     const chunks = splitMissionForFleet(freshItems, dist.chunks.length);
     if (chunks.length === dist.chunks.length) {
       const now = Date.now();
-      let seq = others.length;
       let order = groups.reduce((m, g) => Math.max(m, g.order), -1);
       const newItems: MissionItem[] = [];
       for (let i = 0; i < dist.chunks.length; i++) {
@@ -510,18 +645,20 @@ function applySurveyItems(
               id: c.groupId,
               order,
               assignedVehicleKey: c.vehicleKey,
+              separateFlight: true,
             } as Group,
           ];
         }
-        for (const it of chunks[i]!) newItems.push({ ...it, seq: seq++, groupId: c.groupId });
+        for (const it of chunks[i]!) newItems.push({ ...it, groupId: c.groupId });
       }
-      return { groups, missionItems: [...others, ...newItems] };
+      const spliced = spliceGroupItems(state.missionItems, new Set([updatedGroup.id, ...childIds]), newItems);
+      return { groups, missionItems: normalizeItemOrder(spliced, groups) };
     }
   }
 
-  const startSeq = others.length;
-  const stamped = freshItems.map((it, i) => ({ ...it, seq: startSeq + i, groupId: updatedGroup.id }));
-  return { groups, missionItems: [...others, ...stamped] };
+  const stamped = freshItems.map((it) => ({ ...it, groupId: updatedGroup.id }));
+  const spliced = spliceGroupItems(state.missionItems, new Set([updatedGroup.id, ...childIds]), stamped);
+  return { groups, missionItems: normalizeItemOrder(spliced, groups) };
 }
 
 export const useMissionStore = create<MissionStore>((set, get) => ({
@@ -1220,7 +1357,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       }
       return {
         groups: remainingGroups,
-        missionItems: renumbered,
+        missionItems: normalizeItemOrder(renumbered, remainingGroups),
         selectedSeq: nextSelected,
         isDirty: true,
       };
@@ -1273,6 +1410,40 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     }));
   },
 
+  regroupItems: () => {
+    set((s) => {
+      if (!needsRegroup(s.missionItems, s.groups)) return {};
+      return { missionItems: normalizeItemOrder(s.missionItems, s.groups), isDirty: true };
+    });
+  },
+
+  connectSurveys: (only) => {
+    const picked = only?.filter((id, i, a) => a.indexOf(id) === i) ?? [];
+    const chosen = picked.length > 0 ? new Set(picked) : null;
+    set((s) => {
+      // The pick is a sequence: the surveys are flown in the order they were
+      // ticked, so the groups move into that order before they are joined.
+      const groups = chosen ? reorderInto(s.groups, picked) : s.groups;
+      const state = { ...s, groups, missionItems: normalizeItemOrder(s.missionItems, groups) };
+      return applyBreaks(state, (g, i, all) => {
+        if (chosen && !chosen.has(g.id)) return groupEndsFlight(g, state.missionItems);
+        const run = chosen ? all.filter((x) => chosen.has(x.id)) : all;
+        return g.id === run[run.length - 1]?.id;
+      });
+    });
+  },
+
+  disconnectSurveys: (only) => {
+    const chosen = only && only.length > 0 ? new Set(only) : null;
+    set((s) => applyBreaks(s, (g) =>
+      (chosen && !chosen.has(g.id) ? groupEndsFlight(g, s.missionItems) : true)));
+  },
+
+  setGroupEndsFlight: (groupId, ends) => {
+    set((s) => applyBreaks(s, (g) =>
+      g.id === groupId ? ends : groupEndsFlight(g, s.missionItems)));
+  },
+
   reorderGroups: (groupId, toOrder) => {
     set((s) => {
       const sorted = [...s.groups].sort((a, b) => a.order - b.order);
@@ -1282,8 +1453,32 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       const clamped = Math.max(0, Math.min(toOrder, sorted.length));
       sorted.splice(clamped, 0, moved!);
       const renumbered = sorted.map((g, i) => ({ ...g, order: i }));
-      return { groups: renumbered, isDirty: true };
+
+      // Restamp the waypoints to match, or the table, the map and the flight
+      // would keep the old order while only the upload followed the new one.
+      const out: MissionItem[] = [];
+      let nextSeq = 0;
+      for (const g of renumbered) {
+        const groupItems = s.missionItems
+          .filter((it) => it.groupId === g.id)
+          .sort((a, b) => a.seq - b.seq);
+        for (const it of groupItems) out.push({ ...it, seq: nextSeq++ });
+      }
+      for (const it of s.missionItems.filter((it) => !it.groupId)) {
+        out.push({ ...it, seq: nextSeq++ });
+      }
+
+      return { groups: renumbered, missionItems: out, isDirty: true };
     });
+  },
+
+  moveGroup: (groupId, direction) => {
+    const sorted = [...get().groups].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex((g) => g.id === groupId);
+    if (idx === -1) return;
+    const target = direction === 'up' ? idx - 1 : idx + 1;
+    if (target < 0 || target >= sorted.length) return;
+    get().reorderGroups(groupId, target);
   },
 
   addSurveyGroup: (group, items) => {
@@ -1298,9 +1493,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     // appears at the bottom of the table by default.
     const maxOrder = groups.reduce((m, g) => Math.max(m, g.order), -1);
     const placedGroup: SurveyGroup = { ...group, order: maxOrder + 1 };
+    const nextGroups = [...groups, placedGroup];
     set({
-      groups: [...groups, placedGroup],
-      missionItems: [...missionItems, ...stampedItems],
+      groups: nextGroups,
+      missionItems: normalizeItemOrder([...missionItems, ...stampedItems], nextGroups),
       isDirty: true,
     });
     return placedGroup.id;
@@ -1322,9 +1518,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         newItems.push({ ...it, seq: seq++, groupId: placed.id });
       }
     }
+    const merged = [...groups, ...newGroups];
     set({
-      groups: [...groups, ...newGroups],
-      missionItems: [...missionItems, ...newItems],
+      groups: merged,
+      missionItems: normalizeItemOrder([...missionItems, ...newItems], merged),
       isDirty: true,
     });
     return ids;
@@ -1341,7 +1538,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     const entries = chunks.map((chunk, i) => {
       const v = vehicles[i]!;
       const group = createManualGroup({ name: `${source.name} ${i + 1}/${vehicles.length} - ${v.label}`, color: v.color });
-      return { group: { ...group, assignedVehicleKey: v.key } as Group, items: chunk };
+      return { group: { ...group, assignedVehicleKey: v.key, separateFlight: true } as Group, items: chunk };
     });
     if (source.kind === 'survey') {
       const distribution = {
@@ -1379,7 +1576,12 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       ...(generatorResult !== undefined ? { generatorResult } : {}),
       updatedAt: Date.now(),
     };
-    set({ ...applySurveyItems({ groups, missionItems }, updatedGroup, items), isDirty: true });
+    const synced = applySurveyItems({ groups, missionItems }, updatedGroup, items);
+    set({
+      ...synced,
+      missionItems: synced.missionItems,
+      isDirty: true,
+    });
   },
 
   syncSurveyGroupFromDraft: (groupId, polygon, config, items, signature, generatorResult) => {

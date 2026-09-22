@@ -38,6 +38,12 @@ export const REBOOT_REQUIRED_OVERRIDES: ReadonlySet<string> = new Set([
   'LOG_BACKEND_TYPE',
 ]);
 
+/** Declared @Range ends that the firmware treats as "off". Quote the guard. */
+export const PARAM_RANGE_OVERRIDES: Readonly<Record<string, { min?: number; max?: number }>> = {
+  // input_expo(): `if (expo < 0.95)` returns the input unchanged at 0.95.
+  MANUAL_STR_EXPO: { max: 0.9 },
+};
+
 export type VehicleType = 'copter' | 'plane' | 'rover' | 'sub' | 'tracker';
 
 export interface ParameterMetadataStore {

@@ -92,20 +92,63 @@ function offsetPath(path: XY[], normals: XY[], distance: number): XY[] {
  * the corner. These are the "overlapping waypoints so the plane flies a loop
  * turn" a fixed wing needs at sharp corridor bends.
  *
- * Only past TURN_LOOP_MIN_DEG, though. Inserting the pair replaces one turn of
- * θ with two of (180 - θ/2), which is only the gentler manoeuvre when
- * 180 - θ/2 < θ, i.e. θ > 120°. Below that the loop is sharper than the corner
- * it was meant to soften: on a power line surveyed with the setting at 10° it
- * put a 10 m dog-leg on every gentle bend, 45 of them doubling back over 150°.
+ * Below TURN_LOOP_MIN_DEG the pair replaces one turn of θ with two of
+ * (180 - θ/2), which is the sharper manoeuvre, so the panel warns there. It is
+ * still the operator's call: the threshold is theirs to set, not ours to clamp.
  */
 export const TURN_LOOP_MIN_DEG = 120;
 
 /** Consecutive waypoints closer than this are the same point twice. */
 const WAYPOINT_MERGE_M = 0.5;
 
+/**
+ * How many bends in the drawn centrelines are sharp enough to earn a racetrack
+ * at `thresholdDeg`. Zero is the honest answer to "the racetrack does nothing":
+ * the line has no hairpin that sharp.
+ */
+export function countHairpins(centrelines: (LatLng[] | null | undefined)[], thresholdDeg: number): number {
+  const limit = (Math.max(thresholdDeg, 1) * Math.PI) / 180;
+  let count = 0;
+  for (const line of centrelines) {
+    if (!Array.isArray(line) || line.length < 3) continue;
+    const origin = polygonCentroid(line);
+    const pts = line.map((v) => latLngToLocal(origin, v));
+    for (let i = 1; i < pts.length - 1; i++) {
+      const di = unit(pts[i]!.x - pts[i - 1]!.x, pts[i]!.y - pts[i - 1]!.y);
+      const dout = unit(pts[i + 1]!.x - pts[i]!.x, pts[i + 1]!.y - pts[i]!.y);
+      const dot = Math.max(-1, Math.min(1, di.x * dout.x + di.y * dout.y));
+      if (Math.acos(dot) > limit) count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Fly `overshoot` metres past a strip end before turning back, so the turn is
+ * outside the mapped line. Only at ends where it turns around: extending at a
+ * junction would fly a stub past the fork and back again.
+ */
+function extendEnds(strip: XY[], overshoot: number, atStart: boolean, atEnd: boolean): XY[] {
+  if (strip.length < 2 || overshoot <= 0) return strip;
+  const out = [...strip];
+  if (atStart) {
+    const a = out[0]!;
+    const b = out[1]!;
+    const d = unit(a.x - b.x, a.y - b.y);
+    out.unshift({ x: a.x + d.x * overshoot, y: a.y + d.y * overshoot });
+  }
+  if (atEnd) {
+    const z = out[out.length - 1]!;
+    const y = out[out.length - 2]!;
+    const d = unit(z.x - y.x, z.y - y.y);
+    out.push({ x: z.x + d.x * overshoot, y: z.y + d.y * overshoot });
+  }
+  return out;
+}
+
 function applyTurnLoops(path: XY[], maxTurnDeg: number, radius: number): XY[] {
   if (path.length < 3 || radius <= 0) return path;
-  const maxTurnRad = (Math.max(maxTurnDeg, TURN_LOOP_MIN_DEG) * Math.PI) / 180;
+  const maxTurnRad = (Math.max(maxTurnDeg, 1) * Math.PI) / 180;
   const out: XY[] = [path[0]!];
   for (let i = 1; i < path.length - 1; i++) {
     const prev = path[i - 1]!;
@@ -208,6 +251,7 @@ function generateOneCorridor(
   config: SurveyConfig,
   centerline: LatLng[],
   only?: { stripIdx: number; reverse: boolean },
+  freeEnds: { start: boolean; end: boolean } = { start: true, end: true },
 ): SurveyResult {
   const { camera, altitude, frontOverlap, sideOverlap, speed } = config;
 
@@ -248,12 +292,21 @@ function generateOneCorridor(
   // so each reversal has room; that is what replaces bolting an overshoot
   // waypoint onto every end.
   const turnRadius = planeTurns ? planTurnRadius(config) : 0;
-  const stripPlan = stripFlightOrder(nStrips, lineSpacing, turnRadius);
+  // The loop is sized by the operator's overshoot alone. Feeding the computed
+  // radius in here let one vehicle's AIRSPEED_CRUISE of 100 m/s put a 1766 m
+  // loop on every bend: 2.9 km of corridor came out as 95 km.
+  const loopRadius = Math.max(config.overshoot, 10);
+  const stripPlan = stripFlightOrder(
+    nStrips,
+    lineSpacing,
+    (config.stripOrder ?? 'auto') === 'sequential' ? 0 : turnRadius,
+  );
   const order = config.flipLegs ? [...stripPlan.order].reverse() : stripPlan.order;
 
   const normals = vertexNormals(centerLocal);
 
   const waypointsLocal: XY[] = [];
+  const legStarts: number[] = [];
   const photoSamples: { pt: XY; heading: number }[] = [];
 
   const passes: Array<{ stripIdx: number; reverse: boolean }> = only
@@ -265,8 +318,18 @@ function generateOneCorridor(
     // Boustrophedon: every other strip is flown in the opposite direction.
     if (reverse) strip = [...strip].reverse();
     if (planeTurns) {
-      strip = applyTurnLoops(strip, config.maxTurnAngle ?? 15, Math.max(turnRadius, 10));
+      strip = applyTurnLoops(strip, config.maxTurnAngle ?? 15, loopRadius);
+      // invertPath already reversed the source, so the strip's first point is
+      // the centerline's last whenever exactly one of the two flips applied.
+      const flipped = !!config.invertPath !== reverse;
+      strip = extendEnds(
+        strip,
+        config.overshoot,
+        flipped ? freeEnds.end : freeEnds.start,
+        flipped ? freeEnds.start : freeEnds.end,
+      );
     }
+    legStarts.push(waypointsLocal.length);
     waypointsLocal.push(...strip);
     if (!isManual) {
       photoSamples.push(...samplePolyline(strip, photoSpacing > 0 ? photoSpacing : lineSpacing));
@@ -313,7 +376,7 @@ function generateOneCorridor(
     photoSpacing,
   };
 
-  return { waypoints, photoPositions, footprints, stats };
+  return { waypoints, photoPositions, footprints, stats, legStarts };
 }
 
 /**
@@ -358,6 +421,20 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
 
   // Flatten the schedule first, so each leg knows what follows it and can
   // tell a junction (the path runs straight on) from a turnaround.
+  // A terminal shared with another run is a junction: the aircraft flies
+  // through it, so it must not get an overshoot stub.
+  const key = (p: LatLng) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+  const terminalUses = new Map<string, number>();
+  for (const line of oriented) {
+    for (const p of [line[0]!, line[line.length - 1]!]) {
+      terminalUses.set(key(p), (terminalUses.get(key(p)) ?? 0) + 1);
+    }
+  }
+  const freeEndsOf = (line: LatLng[]) => ({
+    start: (terminalUses.get(key(line[0]!)) ?? 0) < 2,
+    end: (terminalUses.get(key(line[line.length - 1]!)) ?? 0) < 2,
+  });
+
   interface Leg { line: LatLng[]; only?: { stripIdx: number; reverse: boolean } }
   const legs: Leg[] = [];
   if (stripCount % 2 === 1) {
@@ -369,7 +446,7 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
     });
   }
 
-  const parts = legs.map((leg) => generateOneCorridor(config, leg.line, leg.only));
+  const parts = legs.map((leg) => generateOneCorridor(config, leg.line, leg.only, freeEndsOf(leg.line)));
   if (parts.length === 1) return parts[0]!;
 
   // No arc waypoints here on purpose: ArduPlane's L1/NPFG controller starts
@@ -379,9 +456,22 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
   // flown curve belongs on the map, not in the mission.
   const joined = parts.flatMap((part) => part.waypoints);
 
-  const waypoints = joined.filter(
-    (wp, i, all) => i === 0 || distanceLatLng(all[i - 1]!, wp) > WAYPOINT_MERGE_M,
-  );
+  // Leg starts are indices, so they have to survive the duplicate merge below.
+  const joinedLegStarts = new Set<number>();
+  let offset = 0;
+  for (const part of parts) {
+    for (const start of part.legStarts ?? []) joinedLegStarts.add(offset + start);
+    offset += part.waypoints.length;
+  }
+
+  const waypoints: LatLng[] = [];
+  const legStarts: number[] = [];
+  joined.forEach((wp, i) => {
+    const previous = waypoints[waypoints.length - 1];
+    if (previous && distanceLatLng(previous, wp) <= WAYPOINT_MERGE_M) return;
+    if (joinedLegStarts.has(i)) legStarts.push(waypoints.length);
+    waypoints.push(wp);
+  });
   const photoPositions = parts.flatMap((p) => p.photoPositions);
   const footprints = parts.flatMap((p) => p.footprints);
 
@@ -409,5 +499,5 @@ export function generateCorridor(config: SurveyConfig): SurveyResult {
     photoSpacing: first.photoSpacing,
   };
 
-  return { waypoints, photoPositions, footprints, stats };
+  return { waypoints, photoPositions, footprints, stats, legStarts };
 }

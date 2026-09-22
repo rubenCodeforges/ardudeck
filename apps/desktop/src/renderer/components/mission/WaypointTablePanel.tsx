@@ -40,6 +40,9 @@ import { useVehicleAppearanceStore, resolveVehicleColor } from '../../stores/veh
 import { computeItemColors, SEGMENT_COLORS } from '../../utils/mission-segment-colors';
 import { validateMission } from '../../../shared/mission-validation';
 import { MissionValidationBadge } from './MissionValidationBadge';
+import { midMissionReturns, flownSeparately, flightBoundaries } from './mission-end';
+import { predictFlownPath, turnRadiusFor, coverageGaps, type CornerCut } from './flown-path';
+import { planSpeed } from '../survey/generators/turn-radius';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   formatAltitudeFromMeters,
@@ -1395,8 +1398,23 @@ function GroupHeaderRow({
   onAssignVehicle,
   onDistribute,
   onDuplicate,
+  onMoveUp,
+  onMoveDown,
+  flightEnd,
+  onSetEndsFlight,
   onSelectWaypoints,
   bulkSelected,
+  pickIndex,
+  linkMode,
+  linkPick,
+  onLinkClick,
+  flightColor,
+  dragging,
+  dropBefore,
+  onGroupDragStart,
+  onGroupDragOver,
+  onGroupDrop,
+  onGroupDragEnd,
   onToggleBulkSelected,
 }: {
   group: Group;
@@ -1445,10 +1463,47 @@ function GroupHeaderRow({
   /** Split this group into one mission per fleet vehicle (swarm survey). */
   onDistribute?: () => void;
   onDuplicate?: () => void;
+  /** Move this group one place earlier/later in the flight. Undefined at the ends. */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  /**
+   * Whether the flight ends at this group, and what it ends with. Undefined
+   * when the plan holds a single survey, where the question does not arise.
+   */
+  flightEnd?: {
+    ends: boolean;
+    label: string;
+    /** Which flight this group is part of, and where in it. */
+    flight: number;
+    leg: number;
+    legs: number;
+    flights: number;
+    /** Last in the plan with no return: says so instead of "continues". */
+    dangling: boolean;
+    color: string;
+  };
+  onSetEndsFlight?: (ends: boolean) => void;
   /** Add all of this group's waypoints to the multi-selection. */
   onSelectWaypoints?: () => void;
   /** Ticked for bulk actions. Undefined hides the checkbox entirely. */
   bulkSelected?: boolean;
+  /** 1-based position in the connect order, when more than one is ticked. */
+  pickIndex?: number;
+  /** Survey-pick mode: the whole row becomes the target. */
+  linkMode?: null | 'connect' | 'disconnect';
+  /** Its place in the pick so far, when picked. */
+  linkPick?: number;
+  onLinkClick?: () => void;
+  /** The flight's colour, so every survey on one flight reads as one block. */
+  flightColor?: string;
+  /** Drag to reorder: this row is the one being dragged. */
+  dragging?: boolean;
+  /** Drop line above this row. */
+  dropBefore?: boolean;
+  onGroupDragStart?: () => void;
+  onGroupDragOver?: (e: React.DragEvent) => void;
+  onGroupDrop?: () => void;
+  onGroupDragEnd?: () => void;
   onToggleBulkSelected?: (additive: boolean) => void;
 }) {
   const isStaleSurvey = isSurveyGroup(group) && isSurveyGroupStale(group);
@@ -1490,13 +1545,80 @@ function GroupHeaderRow({
   return (
     <div
       data-tour="mission-group"
-      className={`flex flex-col select-none cursor-pointer transition-colors ${
-        isSelected ? 'bg-surface-raised/80' : 'bg-surface-raised/40 hover:bg-surface-raised/60'
+      className={`relative flex flex-col select-none cursor-pointer transition-colors ${
+        linkMode
+          ? linkPick
+            ? 'bg-purple-500/25 ring-1 ring-inset ring-purple-400'
+            : 'bg-surface-raised/40 hover:bg-purple-500/20 hover:ring-1 hover:ring-inset hover:ring-purple-400/60'
+          : isSelected ? 'bg-surface-raised/80' : 'bg-surface-raised/40 hover:bg-surface-raised/60'
       }`}
-      style={{ borderLeft: `3px solid ${group.color}` }}
+      style={{
+        borderLeft: `3px solid ${flightColor ?? group.color}`,
+        opacity: dragging ? 0.4 : undefined,
+        outline: dragging ? '1px dashed rgba(167,139,250,.9)' : undefined,
+      }}
+      onDragOver={onGroupDragOver}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onGroupDrop?.();
+      }}
+      onDragEnd={onGroupDragEnd}
       onClick={onSelect}
     >
+      {dropBefore && (
+        <div className="absolute -top-px left-0 right-0 h-0.5 bg-purple-400 z-30 pointer-events-none">
+          <span className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-purple-400" />
+        </div>
+      )}
+      {/* In pick mode the whole row is one target. An overlay, because the
+          controls inside the row all stop propagation, so a click on any of
+          them would never reach the row itself. */}
+      {linkMode && onLinkClick && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onLinkClick();
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="absolute inset-0 z-20 w-full h-full cursor-pointer"
+          title={linkMode === 'connect'
+            ? 'Click to add this survey to the flight'
+            : 'Click to split this survey off as its own flight'}
+        >
+          {linkPick !== undefined && (
+            <span className="absolute left-1 top-1 w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center">
+              {linkPick}
+            </span>
+          )}
+        </button>
+      )}
       <div className="flex items-center gap-2 px-2 pt-1.5 pb-0.5">
+      {!readOnly && !linkMode && onGroupDragStart && (
+        <div
+          draggable
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.effectAllowed = 'move';
+            // Firefox refuses to start a drag without payload.
+            e.dataTransfer.setData('text/plain', group.id);
+            onGroupDragStart();
+          }}
+          onDragEnd={onGroupDragEnd}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="shrink-0 w-3.5 h-5 flex items-center justify-center text-content-tertiary hover:text-content cursor-grab active:cursor-grabbing"
+          data-tip="Drag to reorder the flight"
+        >
+          <svg viewBox="0 0 10 16" className="w-2.5 h-4" fill="currentColor">
+            <circle cx="3" cy="3" r="1.2" /><circle cx="7" cy="3" r="1.2" />
+            <circle cx="3" cy="8" r="1.2" /><circle cx="7" cy="8" r="1.2" />
+            <circle cx="3" cy="13" r="1.2" /><circle cx="7" cy="13" r="1.2" />
+          </svg>
+        </div>
+      )}
       {!readOnly && onToggleBulkSelected && (
         <div
           onClick={(e) => {
@@ -1505,14 +1627,22 @@ function GroupHeaderRow({
           }}
           onMouseDown={(e) => e.stopPropagation()}
           className="shrink-0 flex items-center justify-center w-5 h-5"
-          data-tip="Select this group for bulk actions"
+          data-tip={pickIndex
+            ? `Picked ${pickIndex}. Connect flies them in the order you tick them.`
+            : 'Select this group for bulk actions'}
         >
-          <input
-            type="checkbox"
-            checked={!!bulkSelected}
-            onChange={() => { /* handled by wrapper onClick */ }}
-            className="w-3.5 h-3.5 rounded border-subtle bg-surface-raised text-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
-          />
+          {pickIndex ? (
+            <span className="w-4 h-4 rounded-full bg-purple-600 text-white text-[9px] font-semibold flex items-center justify-center">
+              {pickIndex}
+            </span>
+          ) : (
+            <input
+              type="checkbox"
+              checked={!!bulkSelected}
+              onChange={() => { /* handled by wrapper onClick */ }}
+              className="w-3.5 h-3.5 rounded border-subtle bg-surface-raised text-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            />
+          )}
         </div>
       )}
       {!readOnly && (
@@ -1805,6 +1935,39 @@ function GroupHeaderRow({
                       Select waypoints
                     </button>
                   )}
+                  {flightEnd && onSetEndsFlight && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onSetEndsFlight(!flightEnd.ends);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
+                    >
+                      {flightEnd.ends ? 'Continue into next survey' : 'End the flight here'}
+                    </button>
+                  )}
+                  {onMoveUp && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onMoveUp();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
+                    >
+                      Move earlier
+                    </button>
+                  )}
+                  {onMoveDown && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onMoveDown();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
+                    >
+                      Move later
+                    </button>
+                  )}
                   {onDistribute && (
                     <button
                       onClick={() => {
@@ -1845,6 +2008,36 @@ function GroupHeaderRow({
       </div>
       <div className="px-2 pb-1.5 pl-12 -mt-0.5 flex items-center gap-1.5 text-[10px] text-content-tertiary tabular-nums">
         <span className="uppercase tracking-wide">{group.kind}</span>
+        {flightEnd && (
+          <>
+            <span
+              className="px-1 rounded bg-purple-500/15 text-purple-300"
+              title={flightEnd.legs > 1
+                ? `Flight ${flightEnd.flight}: survey ${flightEnd.leg} of the ${flightEnd.legs} flown on it`
+                : `Flight ${flightEnd.flight}, flown on its own`}
+            >
+              {flightEnd.legs > 1
+                ? `leg ${flightEnd.leg} of ${flightEnd.legs}`
+                : 'own flight'}
+            </span>
+            <span
+              className={
+                flightEnd.dangling
+                  ? 'text-amber-400'
+                  : flightEnd.ends ? 'text-content-tertiary' : 'text-purple-300'
+              }
+              title={flightEnd.dangling
+                ? 'Nothing follows this survey and it has no return: the mission just stops here'
+                : flightEnd.ends
+                  ? 'The flight ends here; the next survey takes off again'
+                  : 'Runs straight on into the next survey, same flight'}
+            >
+              {flightEnd.dangling
+                ? 'no ending'
+                : flightEnd.ends ? `ends · ${flightEnd.label}` : 'continues →'}
+            </span>
+          </>
+        )}
         {stats && stats.distanceM > 0 && (
           <>
             <span>· {formatBlockDistance(stats.distanceM, distanceUnit)}</span>
@@ -1856,6 +2049,9 @@ function GroupHeaderRow({
     </div>
   );
 }
+
+/** One tint per flight, so consecutive flights read as separate blocks. */
+const FLIGHT_BAND_COLORS = ['#a78bfa', '#38bdf8', '#34d399', '#fbbf24', '#f472b6', '#22d3ee'];
 
 // Extracted waypoint list content (original WaypointTablePanel content)
 function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
@@ -1883,6 +2079,12 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     toggleGroupCollapsed,
     setGroupVisible,
     duplicateGroup,
+    moveGroup,
+    reorderGroups,
+    connectSurveys,
+    disconnectSurveys,
+    regroupItems,
+    setGroupEndsFlight,
     focusWaypoint,
     uploadGroup,
     uploadGroupToVehicle,
@@ -1987,9 +2189,189 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   }, [missionItems, groups]);
 
   // Pre-flight validation, recomputed on any mission/group change.
+  const strandedReturns = useMemo(
+    () => midMissionReturns(missionItems, groups).length,
+    [missionItems, groups],
+  );
+  const surveyGroupCount = useMemo(() => groups.filter((g) => g.kind === 'survey').length, [groups]);
+  // Group-level selection, independent of the per-waypoint one: deleting three
+  // survey groups meant opening three overflow menus.
+  // Ordered, not a Set: ticking is how the pilot says what to connect AND in
+  // what order, so the sequence of clicks has to survive.
+  const [bulkGroupOrder, setBulkGroupOrder] = useState<string[]>([]);
+  /**
+   * Picking surveys straight off the list. 'connect' collects them in click
+   * order and applies on Done; 'disconnect' acts on each click at once.
+   */
+  const [linkMode, setLinkMode] = useState<null | 'connect' | 'disconnect'>(null);
+  const [linkPicks, setLinkPicks] = useState<string[]>([]);
+  const bulkGroups = useMemo(() => new Set(bulkGroupOrder), [bulkGroupOrder]);
+
+  const boundaries = useMemo(() => flightBoundaries(missionItems, groups), [missionItems, groups]);
+  const endsByGroup = useMemo(
+    () => new Map(boundaries.map((b) => [b.groupId, b])),
+    [boundaries],
+  );
+  const detachable = useMemo(() => boundaries.filter((b) => !b.ends).length, [boundaries]);
+  // A group whose waypoints are not contiguous: the route jumps between two
+  // survey areas leg after leg, which is never what anyone planned.
+  const interleaved = useMemo(() => {
+    const seen = new Set<string>();
+    let last: string | undefined;
+    for (const it of [...missionItems].sort((a, b) => a.seq - b.seq)) {
+      if (!it.groupId || it.groupId === last) continue;
+      if (seen.has(it.groupId)) return true;
+      seen.add(it.groupId);
+      last = it.groupId;
+    }
+    return false;
+  }, [missionItems]);
+  const flightCount = useMemo(
+    () => new Set(boundaries.map((b) => b.flight)).size,
+    [boundaries],
+  );
+  // Tick some group rows and the buttons act on those only; tick none and they
+  // act on the whole plan.
+  const pickedSurveyIds = useMemo(
+    () => bulkGroupOrder.filter((id) => boundaries.some((b) => b.groupId === id)),
+    [boundaries, bulkGroupOrder],
+  );
+
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  const [groupDropTarget, setGroupDropTarget] = useState<string | null>(null);
+
+  /** Which flight a group belongs to, for constraining a drag to one of them. */
+  const flightOf = useCallback(
+    (id: string) => endsByGroup.get(id)?.flight,
+    [endsByGroup],
+  );
+
+  /**
+   * Reordering is within one flight: dragging a survey into another flight
+   * would change what is connected to what, which is Connect's job.
+   */
+  const canDropOn = useCallback(
+    (targetId: string) => {
+      if (!draggedGroupId || draggedGroupId === targetId) return false;
+      const from = flightOf(draggedGroupId);
+      const to = flightOf(targetId);
+      // Groups outside any flight (manual, imported) reorder freely.
+      if (from === undefined || to === undefined) return true;
+      return from === to;
+    },
+    [draggedGroupId, flightOf],
+  );
+
+  /** Drop the dragged group into the slot the hovered row occupies. */
+  const dropGroupOn = useCallback((targetId: string) => {
+    const dragged = draggedGroupId;
+    setDraggedGroupId(null);
+    setGroupDropTarget(null);
+    if (!dragged || dragged === targetId || !canDropOn(targetId)) return;
+    const sorted = [...groups].sort((a, b) => a.order - b.order);
+    const from = sorted.findIndex((g) => g.id === dragged);
+    const to = sorted.findIndex((g) => g.id === targetId);
+    if (from < 0 || to < 0) return;
+    // Dropping downward lands it after the row it was dropped on, which is
+    // what the drop line above the next row already showed.
+    reorderGroups(dragged, from < to ? to : to);
+  }, [draggedGroupId, groups, reorderGroups, canDropOn]);
+
+  const linkPickOf = useCallback(
+    (id: string) => {
+      const i = linkPicks.indexOf(id);
+      return i >= 0 ? i + 1 : undefined;
+    },
+    [linkPicks],
+  );
+
+  const handleLinkClick = useCallback((groupId: string) => {
+    if (linkMode === 'disconnect') {
+      setGroupEndsFlight(groupId, true);
+      return;
+    }
+    setLinkPicks((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]);
+  }, [linkMode, setGroupEndsFlight]);
+
+  const exitLinkMode = useCallback(() => {
+    setLinkMode(null);
+    setLinkPicks([]);
+  }, []);
+
+  const applyLinkPicks = useCallback(() => {
+    if (linkPicks.length >= 2) connectSurveys(linkPicks);
+    exitLinkMode();
+  }, [linkPicks, connectSurveys, exitLinkMode]);
+
+  useEffect(() => {
+    if (!linkMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') exitLinkMode();
+      if (e.key === 'Enter' && linkMode === 'connect') applyLinkPicks();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [linkMode, exitLinkMode, applyLinkPicks]);
+
+  const pickOrderOf = useCallback(
+    (id: string) => {
+      if (pickedSurveyIds.length < 2) return undefined;
+      const i = pickedSurveyIds.indexOf(id);
+      return i >= 0 ? i + 1 : undefined;
+    },
+    [pickedSurveyIds],
+  );
+
+  const flightEndFor = useCallback((group: Group) => {
+    if (group.kind !== 'survey' || boundaries.length < 2) return undefined;
+    const b = endsByGroup.get(group.id);
+    if (!b) return undefined;
+    return {
+      ends: b.ends,
+      label: b.endCommand ? (COMMAND_NAMES[b.endCommand] ?? 'RTL') : 'RTL',
+      flight: b.flight,
+      leg: b.leg,
+      legs: b.legs,
+      flights: flightCount,
+      dangling: b.danglingEnd,
+      color: FLIGHT_BAND_COLORS[(b.flight - 1) % FLIGHT_BAND_COLORS.length]!,
+    };
+  }, [boundaries, endsByGroup, flightCount]);
+
+  const showFlownPath = useSettingsStore((s) => s.missionDefaults.showFlownPath);
+  const flownPathBankDeg = useSettingsStore((s) => s.missionDefaults.flownPathBankDeg);
+  const surveyConfig = useSurveyStore((s) => s.config);
+  const surveySwathWidth = useSurveyStore((s) => s.config.corridorWidth ?? 60);
+
+  // Bends the aircraft cuts so deep the camera misses the ground: the red
+  // rings on the map, named here so a waypoint says why it is circled.
+  const coverageGapBySeq = useMemo(() => {
+    const byIndex = new Map<number, CornerCut>();
+    if (!showFlownPath) return byIndex;
+    const placed = missionItems
+      .filter((it) => commandHasLocation(it.command) && (it.latitude !== 0 || it.longitude !== 0))
+      .sort((a, b) => a.seq - b.seq);
+    if (placed.length < 3) return byIndex;
+    const { speedMs } = planSpeed({ ...surveyConfig, polygon: [] });
+    const { cuts } = predictFlownPath(
+      placed.map((it) => ({ lat: it.latitude, lng: it.longitude })),
+      turnRadiusFor(speedMs, flownPathBankDeg),
+    );
+    for (const cut of coverageGaps(cuts, surveySwathWidth)) {
+      const at = placed[cut.index];
+      if (at) byIndex.set(at.seq, cut);
+    }
+    return byIndex;
+  }, [showFlownPath, missionItems, surveyConfig, surveySwathWidth, flownPathBankDeg]);
+  const coverageGapAt = useCallback((seq: number) => coverageGapBySeq.get(seq), [coverageGapBySeq]);
   const validation = useMemo(
-    () => validateMission(missionItems, groups, { isAir: true, altitudeUnit }),
-    [missionItems, groups, altitudeUnit],
+    () => validateMission(missionItems, groups, {
+      isAir: true,
+      altitudeUnit,
+      midMissionReturns: flownSeparately(groups) ? 0 : strandedReturns,
+    }),
+    [missionItems, groups, altitudeUnit, strandedReturns],
   );
 
   const effectiveFirmware = effectiveMissionFirmware(connectionState, settingsFirmware);
@@ -1998,9 +2380,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   const [dropTargetSeq, setDropTargetSeq] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const [multiSelected, setMultiSelected] = useState<Set<number>>(new Set());
-  // Group-level selection, independent of the per-waypoint one: deleting three
-  // survey groups meant opening three overflow menus.
-  const [bulkGroups, setBulkGroups] = useState<Set<string>>(new Set());
+
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [lastCheckedSeq, setLastCheckedSeq] = useState<number | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -2058,6 +2438,18 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     }
     return m;
   }, [missionItems]);
+
+  const groupOrder = useMemo(
+    () => [...groups].sort((a, b) => a.order - b.order).map((g) => g.id),
+    [groups],
+  );
+  const groupPosition = useCallback(
+    (id: string) => {
+      const i = groupOrder.indexOf(id);
+      return { canMoveUp: i > 0, canMoveDown: i >= 0 && i < groupOrder.length - 1 };
+    },
+    [groupOrder],
+  );
 
   // Header seq per group, so a group split by a foreign item (a hand-placed
   // waypoint landing inside a survey's range) still gets one header. Keying
@@ -2233,19 +2625,15 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   const [coordsCopied, setCoordsCopied] = useState(false);
   const [wpCoordCopied, setWpCoordCopied] = useState(false);
   const toggleBulkGroup = useCallback((groupId: string) => {
-    setBulkGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
+    setBulkGroupOrder((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]);
   }, []);
 
   const handleDeleteBulkGroups = useCallback(() => {
-    if (bulkGroups.size === 0) return;
-    deleteGroups([...bulkGroups]);
-    setBulkGroups(new Set());
-  }, [bulkGroups, deleteGroups]);
+    if (bulkGroupOrder.length === 0) return;
+    deleteGroups(bulkGroupOrder);
+    setBulkGroupOrder([]);
+  }, [bulkGroupOrder, deleteGroups]);
 
   const handleCopyCoords = () => {
     const source = multiSelected.size > 0
@@ -2390,10 +2778,19 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
             <>
               <span className="text-[10px] text-content-secondary">
                 {bulkGroups.size} group{bulkGroups.size === 1 ? '' : 's'} selected
+                {pickedSurveyIds.length > 1 && (
+                  <span className="text-purple-300">
+                    {' '}· connect order {pickedSurveyIds
+                      .map((id) => groups.find((g) => g.id === id)?.name ?? '?')
+                      .join(' → ')}
+                  </span>
+                )}
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setBulkGroups(new Set(groups.map((g) => g.id)))}
+                  onClick={() => setBulkGroupOrder(
+                    [...groups].sort((a, b) => a.order - b.order).map((g) => g.id),
+                  )}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title="Select every group"
                 >
@@ -2401,7 +2798,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
                 <button
-                  onClick={() => setBulkGroups(new Set())}
+                  onClick={() => setBulkGroupOrder([])}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title="Clear group selection"
                 >
@@ -2489,6 +2886,50 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 >
                   {coordsCopied ? 'Copied' : 'Copy coords'}
                 </button>
+                {interleaved && !readOnly && (
+                  <>
+                    <span className="text-content-tertiary text-[10px]">|</span>
+                    <button
+                      onClick={() => regroupItems()}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 transition-colors"
+                      title="This plan's waypoints are interleaved between groups, so the route jumps between survey areas. This puts each group's waypoints back together."
+                    >
+                      Repair order
+                    </button>
+                  </>
+                )}
+                {surveyGroupCount >= 2 && !readOnly && (
+                  <>
+                    <span className="text-content-tertiary text-[10px]">|</span>
+                    <button
+                      onClick={() => { setLinkPicks([]); setLinkMode('connect'); }}
+                      disabled={surveyGroupCount < 2}
+                      className={`text-[10px] transition-colors ${
+                        surveyGroupCount < 2
+                          ? 'text-content-tertiary cursor-default'
+                          : 'text-purple-300 hover:text-purple-200'
+                      }`}
+                      title="Pick surveys in the order they should be flown, then Done"
+                    >
+                      Connect
+                    </button>
+                    <span className="text-content-tertiary text-[10px]">/</span>
+                    <button
+                      onClick={() => { setLinkPicks([]); setLinkMode('disconnect'); }}
+                      disabled={detachable === 0}
+                      className={`text-[10px] transition-colors ${
+                        detachable === 0
+                          ? 'text-content-tertiary cursor-default'
+                          : 'text-purple-300 hover:text-purple-200'
+                      }`}
+                      title={detachable === 0
+                        ? 'Every survey already has its own takeoff and ending'
+                        : 'Click surveys to split each one off as its own flight'}
+                    >
+                      Disconnect surveys
+                    </button>
+                  </>
+                )}
                 <span className="text-content-tertiary text-[10px]">|</span>
                 <button
                   onClick={collapseAll}
@@ -2584,10 +3025,48 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
         </div>
       )}
 
+      {linkMode && (
+        <div className="border-b border-subtle shrink-0 px-2 py-1.5 bg-purple-500/10 flex items-center gap-2">
+          <span className="text-[11px] text-purple-200 flex-1 min-w-0 truncate">
+            {linkMode === 'connect'
+              ? linkPicks.length === 0
+                ? 'Click the surveys in the order they should be flown'
+                : linkPicks
+                    .map((id, i) => `${i + 1}. ${groups.find((g) => g.id === id)?.name ?? '?'}`)
+                    .join('   →   ')
+              : 'Click a survey to split it off as its own flight'}
+          </span>
+          {linkMode === 'connect' && (
+            <button
+              onClick={applyLinkPicks}
+              disabled={linkPicks.length < 2}
+              className={`shrink-0 px-2 py-0.5 text-[10px] rounded-md transition-colors ${
+                linkPicks.length < 2
+                  ? 'bg-surface-raised text-content-tertiary cursor-default'
+                  : 'bg-purple-600 text-white hover:bg-purple-500'
+              }`}
+            >
+              Done
+            </button>
+          )}
+          <button
+            onClick={exitLinkMode}
+            className="shrink-0 px-2 py-0.5 text-[10px] rounded-md bg-surface-raised text-content-secondary hover:text-content transition-colors"
+          >
+            {linkMode === 'connect' ? 'Cancel' : 'Finish'}
+          </button>
+        </div>
+      )}
+
       {/* Pre-flight validation strip */}
       {!readOnly && missionItems.length > 0 && (
         <div className="border-b border-subtle shrink-0">
-          <MissionValidationBadge result={validation} />
+          <MissionValidationBadge
+            result={validation}
+            onAction={(action) => {
+              if (action === 'connect-surveys') connectSurveys();
+            }}
+          />
         </div>
       )}
 
@@ -2666,8 +3145,36 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 ? fleetVehicles.find((v) => isAssignedToVehicle(group.assignedVehicleKey, v))?.key
                   ?? group.assignedVehicleKey
                 : undefined;
+              const band = group ? flightEndFor(group) : undefined;
+              const banded = !!band && boundaries.length > 1;
+              const startsFlight = banded && band!.leg === 1;
               const headerNode =
                 showGroupHeader && group ? (
+                  <div
+                    className={banded ? 'border-l-[3px] pl-2' : undefined}
+                    style={banded
+                      ? { borderLeftColor: band!.color, background: `${band!.color}1f` }
+                      : undefined}
+                  >
+                    {startsFlight && (
+                      <div
+                        className="flex items-center gap-1.5 px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider"
+                        style={{ color: band!.color }}
+                      >
+                        <span
+                          className="w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px]"
+                          style={{ background: band!.color }}
+                        >
+                          {band!.flight}
+                        </span>
+                        <span>Flight {band!.flight}</span>
+                        <span className="text-content-tertiary normal-case tracking-normal font-normal">
+                          {band!.legs === 1
+                            ? 'on its own'
+                            : `${band!.legs} surveys connected, flown as one`}
+                        </span>
+                      </div>
+                    )}
                   <GroupHeaderRow
                     group={group}
                     count={itemCountByGroup.get(group.id) ?? 0}
@@ -2695,6 +3202,27 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                         : undefined
                     }
                     onDuplicate={() => duplicateGroup(group.id)}
+                    onMoveUp={groupPosition(group.id).canMoveUp ? () => moveGroup(group.id, 'up') : undefined}
+                    onMoveDown={groupPosition(group.id).canMoveDown ? () => moveGroup(group.id, 'down') : undefined}
+                    flightEnd={flightEndFor(group)}
+                    flightColor={(flightEndFor(group)?.legs ?? 0) > 1 ? flightEndFor(group)?.color : undefined}
+                    dragging={draggedGroupId === group.id}
+                    dropBefore={groupDropTarget === group.id && draggedGroupId !== group.id}
+                    onGroupDragStart={() => setDraggedGroupId(group.id)}
+                    onGroupDragOver={(e) => {
+                      if (!draggedGroupId) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const ok = canDropOn(group.id);
+                      e.dataTransfer.dropEffect = ok ? 'move' : 'none';
+                      setGroupDropTarget(ok ? group.id : null);
+                    }}
+                    onGroupDrop={() => dropGroupOn(group.id)}
+                    onGroupDragEnd={() => { setDraggedGroupId(null); setGroupDropTarget(null); }}
+                  linkMode={group.kind === 'survey' ? linkMode : null}
+                    linkPick={linkPickOf(group.id)}
+                    onLinkClick={() => handleLinkClick(group.id)}
+                    onSetEndsFlight={(ends) => setGroupEndsFlight(group.id, ends)}
                     onAssignVehicle={(vehicleKey) => {
                       setGroupVehicle(group.id, vehicleKey);
                       // Assigning a vehicle colours the group by that vehicle's
@@ -2716,6 +3244,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     onSetColor={(color) => setGroupColor(group.id, color)}
                     onDelete={() => deleteGroup(group.id)}
                     bulkSelected={bulkGroups.has(group.id)}
+                    pickIndex={pickOrderOf(group.id)}
                     onToggleBulkSelected={() => toggleBulkGroup(group.id)}
                     distanceUnit={distanceUnit}
                     onRegenerate={
@@ -2746,6 +3275,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                         : undefined
                     }
                   />
+                  </div>
                 ) : null;
 
               if (hideByGroupCollapse) {
@@ -2971,7 +3501,29 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   onRename={(name) => renameGroup(group.id, name)}
                   onSetColor={(color) => setGroupColor(group.id, color)}
                   onDelete={() => deleteGroup(group.id)}
+                  onMoveUp={groupPosition(group.id).canMoveUp ? () => moveGroup(group.id, 'up') : undefined}
+                  onMoveDown={groupPosition(group.id).canMoveDown ? () => moveGroup(group.id, 'down') : undefined}
+                  flightEnd={flightEndFor(group)}
+                  flightColor={(flightEndFor(group)?.legs ?? 0) > 1 ? flightEndFor(group)?.color : undefined}
+                  dragging={draggedGroupId === group.id}
+                  dropBefore={groupDropTarget === group.id && draggedGroupId !== group.id}
+                  onGroupDragStart={() => setDraggedGroupId(group.id)}
+                  onGroupDragOver={(e) => {
+                    if (!draggedGroupId) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const ok = canDropOn(group.id);
+                    e.dataTransfer.dropEffect = ok ? 'move' : 'none';
+                    setGroupDropTarget(ok ? group.id : null);
+                  }}
+                  onGroupDrop={() => dropGroupOn(group.id)}
+                  onGroupDragEnd={() => { setDraggedGroupId(null); setGroupDropTarget(null); }}
+                  linkMode={group.kind === 'survey' ? linkMode : null}
+                  linkPick={linkPickOf(group.id)}
+                  onLinkClick={() => handleLinkClick(group.id)}
+                  onSetEndsFlight={(ends) => setGroupEndsFlight(group.id, ends)}
                   bulkSelected={bulkGroups.has(group.id)}
+                  pickIndex={pickOrderOf(group.id)}
                   onToggleBulkSelected={() => toggleBulkGroup(group.id)}
                   distanceUnit={distanceUnit}
                   onRegenerate={
@@ -3026,6 +3578,14 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
             </button>
             </div>
           </div>
+
+          {coverageGapAt(selectedWaypoint.seq) && (
+            <div className="mb-3 px-2 py-1.5 rounded-md bg-red-500/10 border border-red-500/30 text-[11px] text-red-300 leading-snug">
+              Coverage gap: the aircraft cuts about {Math.round(coverageGapAt(selectedWaypoint.seq)!.deviationM)} m
+              inside this {Math.round(coverageGapAt(selectedWaypoint.seq)!.turnDeg)}° bend, further than half the
+              camera swath, so the ground here is not photographed. Widen the bend, slow the turn, or add a strip.
+            </div>
+          )}
 
           {/* Command selector */}
           <div className="mb-3">

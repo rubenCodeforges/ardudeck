@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern, AltitudeReference, GroundPattern, CorridorMode } from '../components/survey/survey-types';
-import { DEFAULT_SURVEY_CONFIG } from '../components/survey/survey-types';
+import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern, AltitudeReference, GroundPattern, CorridorMode, StripOrderMode } from '../components/survey/survey-types';
+import { DEFAULT_SURVEY_CONFIG, asOwnFlight } from '../components/survey/survey-types';
 import type { CameraPreset } from '../components/survey/survey-types';
 // Importing the generators barrel triggers self-registration of every
 // built-in generator against the registry. Survey-store then dispatches
@@ -16,7 +16,7 @@ import { runWithActivity } from './activity-store';
 import { parseGisArea, parseGisLines } from '../../shared/gis-area-import';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
 import { snapToNearestCenterline } from '../components/survey/generators/corridor-route';
-import { TURN_LOOP_MIN_DEG } from '../components/survey/generators/corridor-generator';
+import type { SurveyStart, SurveyFinish } from '../components/survey/survey-vehicle';
 import { useSettingsStore } from './settings-store';
 import { useMissionStore } from './mission-store';
 import { useConnectionStore } from './connection-store';
@@ -156,6 +156,12 @@ interface SurveyStore {
   setCorridorMode: (mode: CorridorMode) => void;
   setCorridorSideOffset: (meters: number) => void;
   setMaxTurnAngle: (degrees: number) => void;
+  /** Whether the mission opens with a takeoff item. */
+  setStart: (start: SurveyStart) => void;
+  /** What follows the last survey line: RTL, Land, or nothing. */
+  setFinish: (finish: SurveyFinish) => void;
+  /** Order the corridor strips are flown in: skip for the turn, or 1,2,3. */
+  setStripOrder: (mode: StripOrderMode) => void;
   setFlipLegs: (flip: boolean) => void;
   setInvertPath: (invert: boolean) => void;
 
@@ -166,6 +172,8 @@ interface SurveyStore {
   removeVertex: (index: number) => void;
   /** Move a vertex of a corridor branch centerline (live edit). */
   updateBranchVertex: (branchIndex: number, vertexIndex: number, lat: number, lng: number) => void;
+  /** Add a point to a branch, after `vertexIndex` (click the branch line). */
+  insertBranchVertexAfter: (branchIndex: number, vertexIndex: number, lat: number, lng: number) => void;
   /** Delete a vertex of a corridor branch (drops the branch if it would fall below 2 points). */
   removeBranchVertex: (branchIndex: number, vertexIndex: number) => void;
 
@@ -199,6 +207,8 @@ interface SurveyStore {
   flightModeChosen: boolean;
   /** Apply the mode the connected aircraft implies, unless it was chosen by hand. */
   applyVehicleFlightMode: (mode: CorridorMode) => void;
+  /** Size the planned turns around the connected aircraft's AIRSPEED_CRUISE. */
+  applyVehicleCruise: (airspeedMs: number) => void;
 
   /**
    * Regenerate the preview/mission. `immediate` runs now (used by discrete
@@ -336,7 +346,7 @@ async function buildSurveyGroupEntry(
   const result = await runGenerator(fullConfig);
   if (!result || result.waypoints.length === 0) return null;
   const firmware = useConnectionStore.getState().connectionState.firmware;
-  const items = surveyToMissionItems(result, fullConfig, firmware);
+  const items = surveyToMissionItems(result, asOwnFlight(fullConfig), firmware);
   const generatorId = resolveGeneratorId(fullConfig);
   const reg = getSurveyGenerator(generatorId);
   const group = createSurveyGroup({
@@ -346,7 +356,7 @@ async function buildSurveyGroupEntry(
     polygon,
     holes: holes.length > 0 ? holes : undefined,
     workspace: fullConfig.workspace,
-    config: fullConfig as unknown as Record<string, unknown>,
+    config: asOwnFlight(fullConfig) as unknown as Record<string, unknown>,
     color: GROUP_COLOR_PALETTE[colorIndex % GROUP_COLOR_PALETTE.length]!,
   });
   group.generatorResult = result.generatorResult ?? null;
@@ -369,10 +379,11 @@ function syncResultToEditingGroup(
   const firmware = useConnectionStore.getState().connectionState.firmware;
   let items = surveyToMissionItems(result, fullConfig, firmware);
   const missionStore = useMissionStore.getState();
+  const isTakeoff = (cmd: number) => cmd === MAV_CMD.NAV_TAKEOFF || cmd === MAV_CMD.NAV_VTOL_TAKEOFF;
   const externalTakeoff = missionStore.missionItems.some(
-    (it) => it.command === MAV_CMD.NAV_TAKEOFF && it.groupId !== editingGroupId,
+    (it) => isTakeoff(it.command) && it.groupId !== editingGroupId,
   );
-  if (externalTakeoff && items[0]?.command === MAV_CMD.NAV_TAKEOFF) {
+  if (externalTakeoff && items[0] && isTakeoff(items[0].command)) {
     items = items.slice(1);
   }
   const currentGroup = missionStore.groups.find((g) => g.id === editingGroupId);
@@ -380,7 +391,7 @@ function syncResultToEditingGroup(
     const probe: SurveyGroup = {
       ...currentGroup,
       polygon: polygon.map((p) => ({ lat: p.lat, lng: p.lng })),
-      config: fullConfig as unknown as Record<string, unknown>,
+      config: asOwnFlight(fullConfig) as unknown as Record<string, unknown>,
     };
     const signature = computeSurveyGroupSignature(probe);
     missionStore.syncSurveyGroupFromDraft(
@@ -425,6 +436,14 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     const { flightModeChosen, config } = get();
     if (flightModeChosen || config.corridorMode === mode) return;
     set({ config: { ...config, corridorMode: mode, gridMode: mode } });
+    get().requestRecompute({ immediate: true });
+  },
+
+  applyVehicleCruise: (airspeedMs) => {
+    const { config } = get();
+    const cruise = airspeedMs > 0 ? airspeedMs : undefined;
+    if (config.planAirspeed === cruise) return;
+    set({ config: { ...config, planAirspeed: cruise } });
     get().requestRecompute({ immediate: true });
   },
 
@@ -704,11 +723,24 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
   },
 
   setMaxTurnAngle: (degrees) => {
-    // Floor at 120: below that a racetrack loop is sharper than the corner it
-    // replaces, so the generator ignores it anyway (see corridor-generator).
-    const clamped = Math.max(TURN_LOOP_MIN_DEG, Math.min(180, Math.round(degrees / 5) * 5));
+    const clamped = Math.max(5, Math.min(180, Math.round(degrees / 5) * 5));
     set({ config: { ...get().config, maxTurnAngle: clamped } });
     get().requestRecompute();
+  },
+
+  setStart: (start) => {
+    set({ config: { ...get().config, start } });
+    get().requestRecompute({ immediate: true });
+  },
+
+  setFinish: (finish) => {
+    set({ config: { ...get().config, finish } });
+    get().requestRecompute({ immediate: true });
+  },
+
+  setStripOrder: (stripOrder) => {
+    set({ config: { ...get().config, stripOrder } });
+    get().requestRecompute({ immediate: true });
   },
 
   setFlipLegs: (flipLegs) => {
@@ -767,6 +799,18 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     set({ polygon: newPolygon });
     if (polygonEditMode) set({ pendingRecompute: true });
     else get().requestRecompute({ immediate: true });
+  },
+
+  insertBranchVertexAfter: (branchIndex, vertexIndex, lat, lng) => {
+    const { config, geometryLocked } = get();
+    if (geometryLocked) return;
+    const branches = config.corridorBranches ?? [];
+    const branch = branches[branchIndex];
+    if (!branch || vertexIndex < 0 || vertexIndex >= branch.length) return;
+    const next = [...branch.slice(0, vertexIndex + 1), { lat, lng }, ...branch.slice(vertexIndex + 1)];
+    const corridorBranches = branches.map((b, i) => (i === branchIndex ? next : b));
+    set({ config: { ...config, corridorBranches } });
+    get().requestRecompute({ immediate: true });
   },
 
   updateBranchVertex: (branchIndex, vertexIndex, lat, lng) => {

@@ -64,6 +64,13 @@ interface BaseGroup {
    * own colour and uploads to the active/primary vehicle).
    */
   assignedVehicleKey?: string;
+  /**
+   * This group is flown on its own (a sortie off one battery, or one vehicle's
+   * share of a swarm), not as a leg of the same flight as its neighbours. It
+   * keeps its own return: only groups that share a flight hand their ending to
+   * whichever one goes last.
+   */
+  separateFlight?: boolean;
   createdAt: number;
   updatedAt: number;
 }

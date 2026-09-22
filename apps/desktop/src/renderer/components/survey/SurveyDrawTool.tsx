@@ -24,10 +24,11 @@ export function SurveyDrawTool() {
         return;
       }
       // Clicking empty map while editing a committed survey exits edit mode,
-      // like clicking away from a selection. The polygon's own click handler
-      // stops propagation, so this only fires for genuinely-empty clicks. We
-      // gate on editingGroupId so an un-inserted draft isn't discarded by a
-      // stray click.
+      // like clicking away from a selection. The survey's own layers call
+      // L.DomEvent.stopPropagation, which is what keeps this to genuinely
+      // empty clicks: a plain DOM stopPropagation does not stop Leaflet
+      // propagating a layer click to the map. We gate on editingGroupId so an
+      // un-inserted draft isn't discarded by a stray click.
       if (editingGroupId) {
         deactivateSurvey();
       }

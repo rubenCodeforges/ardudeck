@@ -10,7 +10,7 @@
  * parameter metadata XML (ParameterMetadata.values).
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Move, Lightbulb, AlertTriangle } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
@@ -18,6 +18,7 @@ import { useConnectionStore } from '../../../stores/connection-store';
 import { ServoRow } from './ServoRow';
 import { StickTestPanel } from './StickTestPanel';
 import Px4ServoOutput from './Px4ServoOutput';
+import OutputCards from './OutputCards';
 
 const PWM_MIN = 800;
 const PWM_MAX = 2200;
@@ -31,6 +32,7 @@ const ServoOutputTab: React.FC = () => {
   const servoOutput = useTelemetryStore((s) => s.servoOutput);
   const lastServoOutput = useTelemetryStore((s) => s.lastServoOutput);
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
+  const [view, setView] = useState<'cards' | 'table'>('cards');
 
   // A completed download, not just whatever parameters happen to be present.
   const hasParameters = paramsLoaded && parameters.size > 0;
@@ -136,9 +138,36 @@ const ServoOutputTab: React.FC = () => {
               )}
             </p>
           </div>
+          <div className="ml-auto flex rounded-lg border border-subtle overflow-hidden text-xs">
+            {([
+              { id: 'cards', label: 'In use', title: 'The functions this vehicle has, with their travel' },
+              { id: 'table', label: 'All outputs', title: 'Every channel, assigned or not, with raw values and per-output test' },
+            ] as const).map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setView(v.id)}
+                title={v.title}
+                className={`px-3 py-1.5 transition-colors ${
+                  view === v.id
+                    ? 'bg-surface-overlay text-content'
+                    : 'bg-surface-raised text-content-secondary hover:text-content'
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="rounded-lg border border-subtle overflow-hidden">
+        {view === 'cards' && (
+          <OutputCards
+            channelCount={channelCount}
+            functionOptions={functionOptions}
+            onAssignOutputs={() => setView('table')}
+          />
+        )}
+
+        <div className={`rounded-lg border border-subtle overflow-hidden ${view === 'cards' ? 'hidden' : ''}`}>
           <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_70px_70px_70px_180px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary bg-surface-raised/40 border-b border-subtle">
             <div className="text-center">#</div>
             <div>Position</div>

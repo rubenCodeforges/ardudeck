@@ -549,9 +549,12 @@ export function calculateDistance(
  */
 export function calculateMissionDistance(items: MissionItem[]): number {
   let total = 0;
-  const locItems = items.filter(item =>
-    commandHasLocation(item.command) && hasValidCoordinates(item.latitude, item.longitude)
-  );
+  // By seq, not array position: the vehicle flies the sequence. An array left
+  // out of order by an edit would otherwise zig-zag the whole mission and
+  // report a total many times the real one.
+  const locItems = items
+    .filter(item => commandHasLocation(item.command) && hasValidCoordinates(item.latitude, item.longitude))
+    .sort((a, b) => a.seq - b.seq);
 
   for (let i = 1; i < locItems.length; i++) {
     const prev = locItems[i - 1];

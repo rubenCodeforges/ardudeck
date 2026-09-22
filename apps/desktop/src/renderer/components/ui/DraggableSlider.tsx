@@ -1,24 +1,10 @@
-/**
- * Draggable Slider Component
- *
- * A reusable slider with proper drag support that updates values in real-time
- * while dragging, not just on release.
- *
- * Features:
- * - Pointer events for touch/mouse support
- * - Real-time value updates during drag
- * - Visible thumb handle
- * - Optional +/- buttons
- * - Number input for precise values
- */
-
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, useState } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 
 export interface DraggableSliderProps {
   /** Current value */
   value: number;
-  /** Called on value change (during drag and on click) */
+  /** Called per step during a drag, and on click / +/- / input edit. Stages, never writes. */
   onChange: (value: number) => void;
   /** Minimum value */
   min?: number;
@@ -46,6 +32,67 @@ export interface DraggableSliderProps {
   formatValue?: (value: number) => string;
 }
 
+/** Thumb follows the pointer locally; onChange still fires per step so charts track the drag. */
+function useSliderDrag(
+  value: number,
+  onChange: (v: number) => void,
+  calculateValue: (clientX: number) => number,
+  disabled = false
+) {
+  const isDragging = useRef(false);
+  const lastSent = useRef<number | null>(null);
+  const [dragValue, setDragValue] = useState<number | null>(null);
+
+  const apply = useCallback(
+    (v: number) => {
+      setDragValue(v);
+      if (lastSent.current === v) return;
+      lastSent.current = v;
+      onChange(v);
+    },
+    [onChange]
+  );
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      e.preventDefault();
+      isDragging.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      apply(calculateValue(e.clientX));
+    },
+    [apply, calculateValue, disabled]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled || !isDragging.current) return;
+      apply(calculateValue(e.clientX));
+    },
+    [apply, calculateValue, disabled]
+  );
+
+  const endDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    lastSent.current = null;
+    setDragValue(null);
+  }, []);
+
+  return {
+    displayValue: dragValue ?? value,
+    dragHandlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp: endDrag,
+      onPointerCancel: endDrag,
+    },
+  };
+}
+
 export function DraggableSlider({
   value,
   onChange,
@@ -61,9 +108,6 @@ export function DraggableSlider({
   disabled = false,
 }: DraggableSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   // Muted color for disabled state
   const effectiveColor = disabled ? '#52525b' : color;
@@ -97,35 +141,8 @@ export function DraggableSlider({
     [min, max, step, value, roundToStep]
   );
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (disabled) return;
-      e.preventDefault();
-      isDragging.current = true;
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      const newValue = calculateValue(e.clientX);
-      if (newValue !== value) {
-        onChange(newValue);
-      }
-    },
-    [calculateValue, onChange, value, disabled]
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (disabled || !isDragging.current) return;
-      const newValue = calculateValue(e.clientX);
-      if (newValue !== value) {
-        onChange(newValue);
-      }
-    },
-    [calculateValue, onChange, value, disabled]
-  );
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    isDragging.current = false;
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-  }, []);
+  const { displayValue, dragHandlers } = useSliderDrag(value, onChange, calculateValue, disabled);
+  const percentage = Math.max(0, Math.min(100, ((displayValue - min) / (max - min)) * 100));
 
   const handleIncrement = useCallback(() => {
     if (disabled) return;
@@ -176,7 +193,7 @@ export function DraggableSlider({
               <input
                 type="text"
                 inputMode="decimal"
-                value={roundToStep(value).toFixed(stepDecimals)}
+                value={roundToStep(displayValue).toFixed(stepDecimals)}
                 onChange={handleInputChange}
                 disabled={disabled}
                 className={`min-w-[5rem] w-auto px-2 py-1 text-center text-sm border rounded tabular-nums ${
@@ -184,7 +201,7 @@ export function DraggableSlider({
                     ? 'bg-surface-input border-subtle text-content-secondary cursor-not-allowed'
                     : 'bg-surface-input border-border text-content'
                 }`}
-                style={{ width: `${Math.max(5, roundToStep(value).toFixed(stepDecimals).length + 2)}ch` }}
+                style={{ width: `${Math.max(5, roundToStep(displayValue).toFixed(stepDecimals).length + 2)}ch` }}
               />
               <button
                 onClick={handleIncrement}
@@ -209,10 +226,7 @@ export function DraggableSlider({
           disabled ? 'cursor-not-allowed' : 'cursor-pointer'
         }`}
         style={{ height }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        {...dragHandlers}
       >
         {/* Progress fill */}
         <div
@@ -253,9 +267,6 @@ export function CompactSlider({
   label,
 }: Omit<DraggableSliderProps, 'hint' | 'showControls' | 'height' | 'showThumb'>) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   const calculateValue = useCallback(
     (clientX: number): number => {
@@ -269,34 +280,8 @@ export function CompactSlider({
     [min, max, step, value]
   );
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      isDragging.current = true;
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      const newValue = calculateValue(e.clientX);
-      if (newValue !== value) {
-        onChange(newValue);
-      }
-    },
-    [calculateValue, onChange, value]
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging.current) return;
-      const newValue = calculateValue(e.clientX);
-      if (newValue !== value) {
-        onChange(newValue);
-      }
-    },
-    [calculateValue, onChange, value]
-  );
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    isDragging.current = false;
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-  }, []);
+  const { displayValue, dragHandlers } = useSliderDrag(value, onChange, calculateValue);
+  const percentage = Math.max(0, Math.min(100, ((displayValue - min) / (max - min)) * 100));
 
   return (
     <div className="space-y-1">
@@ -314,10 +299,10 @@ export function CompactSlider({
               min={min}
               max={max}
               integer
-              value={value}
+              value={displayValue}
               onCommit={onChange}
               className="min-w-[5rem] w-auto px-2 py-0.5 text-center text-sm bg-surface-input border border-border rounded text-content tabular-nums"
-              style={{ width: `${Math.max(5, String(value).length + 2)}ch` }}
+              style={{ width: `${Math.max(5, String(displayValue).length + 2)}ch` }}
             />
             <button
               onClick={() => onChange(Math.min(max, value + step))}
@@ -333,10 +318,7 @@ export function CompactSlider({
       <div
         ref={trackRef}
         className="relative h-2 bg-surface-inset rounded-full cursor-pointer touch-none select-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        {...dragHandlers}
       >
         {/* Progress fill */}
         <div
