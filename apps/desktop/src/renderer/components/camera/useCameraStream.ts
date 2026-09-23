@@ -14,15 +14,42 @@ import type { CameraSourceConfig } from '../../../shared/camera-types';
 import { useCameraStore } from '../../stores/camera-store';
 import { playWhep } from './whep';
 import { createStallTracker, nextRetryDelayMs } from './stream-stall';
+import { sampleFromReport, healthBetween, type StreamHealth, type StreamSample } from './stream-health';
 
 export type CameraStreamStatus = 'starting' | 'live' | 'stalled' | 'error';
+
+/** The scheme each engine-backed source kind speaks, for a bare host:port URL. */
+const DEFAULT_SCHEME: Partial<Record<CameraSourceConfig['kind'], string>> = {
+  rtsp: 'rtsp://',
+  // A vehicle advertising a bare address means RTSP in practice.
+  mavlink: 'rtsp://',
+  srt: 'srt://',
+  'rtp-udp': 'udp://',
+  rubyfpv: 'udp://',
+  wfbng: 'udp://',
+};
+
+/**
+ * Add the scheme when the operator typed a bare `host:port/path`.
+ *
+ * Every other GCS accepts that, and the hub does not: it answers with a flat
+ * "Hub rejected the source path", which reads as a broken camera rather than a
+ * missing six characters.
+ */
+export function withScheme(kind: CameraSourceConfig['kind'], url: string): string {
+  const trimmed = url.trim();
+  if (trimmed === '' || /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+  const scheme = DEFAULT_SCHEME[kind];
+  return scheme ? `${scheme}${trimmed}` : trimmed;
+}
 
 /** The stream URL to hand the engine: mavlink resolves to the advertised URI. */
 export function resolveStreamUrl(
   source: CameraSourceConfig,
   advertisedUri: string | undefined,
 ): string | undefined {
-  return source.kind === 'mavlink' ? advertisedUri : source.url;
+  const raw = source.kind === 'mavlink' ? advertisedUri : source.url;
+  return raw === undefined ? undefined : withScheme(source.kind, raw);
 }
 
 /**
@@ -36,9 +63,10 @@ export function useCameraStream(
   source: CameraSourceConfig,
   videoRef: RefObject<HTMLVideoElement>,
   onError?: (error: string) => void,
-): { status: CameraStreamStatus; error: string | null } {
+): { status: CameraStreamStatus; error: string | null; health: StreamHealth | null } {
   const [status, setStatus] = useState<CameraStreamStatus>('starting');
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<StreamHealth | null>(null);
   const [restartNonce, setRestartNonce] = useState(0);
   const retryAttemptRef = useRef(0);
   const onErrorRef = useRef(onError);
@@ -52,6 +80,8 @@ export function useCameraStream(
     let stalled = false;
     let rvfcHandle: number | null = null;
     let stallInterval: ReturnType<typeof setInterval> | null = null;
+    let statsInterval: ReturnType<typeof setInterval> | null = null;
+    let lastSample: StreamSample | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const tracker = createStallTracker();
 
@@ -84,6 +114,23 @@ export function useCameraStream(
       setStatus('stalled');
       setError(null);
       scheduleRestart();
+    };
+
+    // The receiver counts loss, freezes and decode drops already. Sampling it
+    // once a second is what turns "it looks like it is degrading" into a number.
+    const watchHealth = (connection: RTCPeerConnection) => {
+      statsInterval = setInterval(() => {
+        void connection.getStats().then((report) => {
+          if (cancelled) return;
+          const sample = sampleFromReport(report, Date.now());
+          if (!sample) return;
+          if (lastSample) {
+            const next = healthBetween(lastSample, sample);
+            if (next) setHealth(next);
+          }
+          lastSample = sample;
+        }).catch(() => { /* connection closing: the interval is about to go */ });
+      }, 1000);
     };
 
     const watchFrames = (video: HTMLVideoElement) => {
@@ -140,6 +187,7 @@ export function useCameraStream(
           if (cancelled) { pc.close(); return; }
           setStatus('live');
           watchFrames(video);
+          watchHealth(pc);
         } else if (playback.kind === 'uvc') {
           fail('Unexpected playback descriptor');
         }
@@ -163,6 +211,7 @@ export function useCameraStream(
       navigator.mediaDevices?.removeEventListener?.('devicechange', onDeviceChange);
       if (retryTimer) clearTimeout(retryTimer);
       if (stallInterval) clearInterval(stallInterval);
+      if (statsInterval) clearInterval(statsInterval);
       const video = videoRef.current;
       if (rvfcHandle !== null && video) video.cancelVideoFrameCallback(rvfcHandle);
       if (pc) pc.close();
@@ -172,5 +221,5 @@ export function useCameraStream(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source.id, source.kind, source.url, source.deviceId, source.rtspTransport, advertisedUri, restartNonce]);
 
-  return { status, error };
+  return { status, error, health };
 }

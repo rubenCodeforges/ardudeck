@@ -16,6 +16,7 @@ import type { FleetVehicle } from '../../hooks/useFleet';
 import { useCameraStore } from '../../stores/camera-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { CameraOverlays } from './CameraOverlays';
+import { StreamHealthReadout } from './StreamHealthReadout';
 import { useCameraStream } from './useCameraStream';
 import { projectPixelToGround, projectFrameCenter, type CameraPose } from './geolocation';
 
@@ -33,7 +34,8 @@ interface CameraViewProps {
 
 export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onError }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { status, error } = useCameraStream(source, videoRef, onError);
+  const { status, error, health } = useCameraStream(source, videoRef, onError);
+  const showStats = useCameraStore((s) => s.showStats);
   const gimbal = useCameraStore((s) => s.gimbalAttitude[source.vehicleKey]);
   const gimbalCfg = useCameraStore((s) => s.gimbalByVehicle[source.vehicleKey]);
   const attitude = useTelemetryStore((s) => s.attitude);
@@ -102,6 +104,10 @@ export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onErro
         attitude={{ roll: attitude.roll, pitch: attitude.pitch }}
         frameCenter={frameCenter}
       />
+
+      {showStats && health && status === 'live' && (
+        <StreamHealthReadout health={health} />
+      )}
 
       {status !== 'live' && (
         <div

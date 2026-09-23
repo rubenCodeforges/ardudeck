@@ -39,6 +39,9 @@ interface CameraState {
   selectedByVehicle: Record<string, string>;
 
   viewMode: CameraViewMode;
+  /** Live link numbers over the feed (bitrate, fps, loss). */
+  showStats: boolean;
+  setShowStats: (showStats: boolean) => void;
   /** Live camera feed vs. synthetic-vision world. */
   renderMode: CameraRenderMode;
   /** Auto-show synthetic vision when a live feed fails / has no feed configured. */
@@ -94,6 +97,8 @@ export const useCameraStore = create<CameraState>()(
       sources: {},
       selectedByVehicle: {},
       viewMode: 'follow',
+      showStats: false,
+      setShowStats: (showStats) => set({ showStats }),
       renderMode: 'live',
       syntheticFallback: true,
       svtSatellite: false,
@@ -224,6 +229,7 @@ export const useCameraStore = create<CameraState>()(
         sources: s.sources,
         selectedByVehicle: s.selectedByVehicle,
         viewMode: s.viewMode,
+        showStats: s.showStats,
         renderMode: s.renderMode,
         syntheticFallback: s.syntheticFallback,
         svtSatellite: s.svtSatellite,

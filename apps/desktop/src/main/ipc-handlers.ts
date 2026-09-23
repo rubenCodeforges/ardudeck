@@ -4792,7 +4792,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         mainWindow,
         'error',
         `Camera "${source.label ?? source.id}" failed: ${result.error ?? 'unknown error'}`,
-        [`source: ${where}`, `transport: ${source.rtspTransport ?? 'automatic'}`, ...mediaEngine.recentHubLog()].join('\n'),
+        [
+          `source: ${where}`,
+          `transport: ${source.rtspTransport ?? 'automatic'}`,
+          ...mediaEngine.recentHubLog(),
+          ...(mediaEngine.recentFfmpegLog().length
+            ? ['--- ffmpeg ---', ...mediaEngine.recentFfmpegLog()]
+            : []),
+        ].join('\n'),
       );
     }
     return result;
@@ -4805,6 +4812,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_RECORD_TOGGLE, async (_, sourceId: string) => {
     return mediaEngine.toggleRecord(sourceId);
+  });
+  ipcMain.handle(IPC_CHANNELS.CAMERA_DIAGNOSTICS, async () => {
+    return mediaEngine.diagnostics();
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_ENGINE_STATUS, async () => {
     return mediaEngine.getStatus();

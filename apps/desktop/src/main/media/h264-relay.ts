@@ -29,20 +29,49 @@ export function needsH264Relay(tracks: string[]): boolean {
 }
 
 /**
+ * H.264 encoders to try, best first, per platform.
+ *
+ * One encoder is one point of failure: a build without libx264, a machine
+ * whose hardware encoder is missing or busy, a driver that refuses. Trying
+ * them in turn means a camera keeps working without anyone having to work out
+ * which encoder this particular machine was unhappy with.
+ */
+export function encoderChain(platform: NodeJS.Platform): string[] {
+  if (platform === 'darwin') return ['h264_videotoolbox', 'libx264'];
+  if (platform === 'win32') return ['libx264', 'h264_mf', 'h264_qsv', 'h264_nvenc'];
+  return ['libx264', 'h264_vaapi', 'h264_nvenc'];
+}
+
+/** Encoder-specific low-latency flags. Only libx264 takes preset/tune. */
+function encoderArgs(encoder: string): string[] {
+  if (encoder === 'libx264') {
+    return ['-preset', 'ultrafast', '-tune', 'zerolatency', '-bf', '0'];
+  }
+  if (encoder === 'h264_videotoolbox') return ['-realtime', '1', '-allow_sw', '1'];
+  return [];
+}
+
+/**
  * ffmpeg arguments for the relay: pull the hub's own RTSP output (single
  * connection to the camera - many, e.g. SIYI, cap concurrent RTSP clients),
  * transcode to low-latency H.264, publish back into the hub. Audio is
  * dropped, same as the wfbng bridge - camera audio is rarely WebRTC-playable
  * and never flight-relevant.
  */
-export function buildH264RelayArgs(inputUrl: string, publishUrl: string): string[] {
+export function buildH264RelayArgs(
+  inputUrl: string,
+  publishUrl: string,
+  encoder = 'libx264',
+): string[] {
   return [
     '-rtsp_transport', 'tcp',
     '-fflags', 'nobuffer',
     '-flags', 'low_delay',
     '-i', inputUrl,
     '-an',
-    '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-pix_fmt', 'yuv420p', '-g', '60', '-bf', '0',
+    '-c:v', encoder,
+    ...encoderArgs(encoder),
+    '-pix_fmt', 'yuv420p', '-g', '60',
     '-f', 'rtsp', '-rtsp_transport', 'tcp',
     publishUrl,
   ];

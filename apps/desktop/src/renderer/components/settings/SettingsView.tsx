@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { TileCacheCard } from './TileCacheCard';
 import { UnitSelectionCard } from './UnitSelectionCard';
@@ -1174,6 +1174,16 @@ export function SettingsView() {
 
   const { connectionState } = useConnectionStore();
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  // Opening the editor from the hero card scrolls to the profile it expands,
+  // which sits further down the same tab.
+  const editingCardRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!editingVehicleId) return;
+    const id = requestAnimationFrame(() => {
+      editingCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [editingVehicleId]);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [missionLocalValues, setMissionLocalValues] = useState<Record<string, string>>({});
   const [missionErrors, setMissionErrors] = useState<Record<string, string | null>>({});
@@ -1421,7 +1431,7 @@ export function SettingsView() {
                       <button
                         onClick={() => setEditingVehicleId(activeVehicle.id)}
                         className="p-1.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
-                        title="Edit vehicle"
+                        title="Edit vehicle in Vehicle Profiles"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -1588,6 +1598,87 @@ export function SettingsView() {
               <TipsSection vehicle={activeVehicle} />
             </section>
           )}
+
+          <div className="mt-4">
+            {/* Vehicle Profiles: full width on its own tab. */}
+              <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-medium text-content flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    Vehicle Profiles
+                  </h2>
+                  <button
+                    onClick={() => setShowTemplatePicker(true)}
+                    className="px-2.5 py-1 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Vehicle
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-[32rem] overflow-y-auto">
+                  {vehicles.map((vehicle) => (
+                    <div
+                      key={vehicle.id}
+                      ref={vehicle.id === editingVehicleId ? editingCardRef : undefined}
+                    >
+                    <VehicleCard
+                      vehicle={vehicle}
+                      isActive={vehicle.id === activeVehicleId}
+                      isEditing={vehicle.id === editingVehicleId}
+                      onSelect={() => setActiveVehicle(vehicle.id)}
+                      onEdit={() => setEditingVehicleId(vehicle.id)}
+                      onSave={() => setEditingVehicleId(null)}
+                      onUpdate={(updates) => updateVehicle(vehicle.id, updates)}
+                      onDelete={() => removeVehicle(vehicle.id)}
+                      canDelete={vehicles.length > 1}
+                    />
+                    </div>
+                  ))}
+                </div>
+
+                {showTemplatePicker && (
+                  <VehicleTemplatePicker
+                    onClose={() => setShowTemplatePicker(false)}
+                    onSelect={(tpl: VehicleTemplate) => {
+                      const newId = addVehicle({
+                        ...tpl.defaults,
+                        name: tpl.name,
+                        type: tpl.vehicleType,
+                        templateSlug: tpl.slug,
+                        weight: tpl.defaults.weight ?? 500,
+                        batteryCells: tpl.defaults.batteryCells ?? 4,
+                        batteryCapacity: tpl.defaults.batteryCapacity ?? 1500,
+                      });
+                      setShowTemplatePicker(false);
+                      setEditingVehicleId(newId);
+                      setActiveVehicle(newId);
+                    }}
+                    onImportFromConnected={() => {
+                      const paramMap = new Map<string, number>();
+                      for (const [k, v] of useParameterStore.getState().parameters) paramMap.set(k, v.value);
+                      const inferred = inferProfileFromParams(paramMap);
+                      if (!inferred) {
+                        return;
+                      }
+                      const newId = addVehicle({
+                        ...inferred.profile,
+                        weight: inferred.profile.weight ?? 500,
+                        batteryCells: inferred.profile.batteryCells ?? 4,
+                        batteryCapacity: inferred.profile.batteryCapacity ?? 1500,
+                      });
+                      setShowTemplatePicker(false);
+                      setEditingVehicleId(newId);
+                      setActiveVehicle(newId);
+                    }}
+                  />
+                )}
+              </section>
+          </div>
         </div>
         </>
         )}
@@ -1597,7 +1688,7 @@ export function SettingsView() {
         {/* ============================================ */}
         {/* SECTION: Configuration */}
         {/* ============================================ */}
-        <div>
+        <div className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
             <h2 className="text-sm font-medium text-content uppercase tracking-wider">Configuration</h2>
@@ -1676,7 +1767,7 @@ export function SettingsView() {
 
           <GroupShapeCard />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {/* Mission Defaults Section */}
             <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
               <h2 className="text-sm font-medium text-content mb-4 flex items-center gap-2">
@@ -1863,80 +1954,6 @@ export function SettingsView() {
               </div>
             </section>
 
-            {/* Vehicles Section */}
-            <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-medium text-content flex items-center gap-2">
-                  <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  Vehicle Profiles
-                </h2>
-                <button
-                  onClick={() => setShowTemplatePicker(true)}
-                  className="px-2.5 py-1 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs rounded-lg transition-colors flex items-center gap-1"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Vehicle
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-[32rem] overflow-y-auto">
-                {vehicles.map((vehicle) => (
-                  <VehicleCard
-                    key={vehicle.id}
-                    vehicle={vehicle}
-                    isActive={vehicle.id === activeVehicleId}
-                    isEditing={vehicle.id === editingVehicleId}
-                    onSelect={() => setActiveVehicle(vehicle.id)}
-                    onEdit={() => setEditingVehicleId(vehicle.id)}
-                    onSave={() => setEditingVehicleId(null)}
-                    onUpdate={(updates) => updateVehicle(vehicle.id, updates)}
-                    onDelete={() => removeVehicle(vehicle.id)}
-                    canDelete={vehicles.length > 1}
-                  />
-                ))}
-              </div>
-
-              {showTemplatePicker && (
-                <VehicleTemplatePicker
-                  onClose={() => setShowTemplatePicker(false)}
-                  onSelect={(tpl: VehicleTemplate) => {
-                    const newId = addVehicle({
-                      ...tpl.defaults,
-                      name: tpl.name,
-                      type: tpl.vehicleType,
-                      templateSlug: tpl.slug,
-                      weight: tpl.defaults.weight ?? 500,
-                      batteryCells: tpl.defaults.batteryCells ?? 4,
-                      batteryCapacity: tpl.defaults.batteryCapacity ?? 1500,
-                    });
-                    setShowTemplatePicker(false);
-                    setEditingVehicleId(newId);
-                    setActiveVehicle(newId);
-                  }}
-                  onImportFromConnected={() => {
-                    const paramMap = new Map<string, number>();
-                    for (const [k, v] of useParameterStore.getState().parameters) paramMap.set(k, v.value);
-                    const inferred = inferProfileFromParams(paramMap);
-                    if (!inferred) {
-                      return;
-                    }
-                    const newId = addVehicle({
-                      ...inferred.profile,
-                      weight: inferred.profile.weight ?? 500,
-                      batteryCells: inferred.profile.batteryCells ?? 4,
-                      batteryCapacity: inferred.profile.batteryCapacity ?? 1500,
-                    });
-                    setShowTemplatePicker(false);
-                    setEditingVehicleId(newId);
-                    setActiveVehicle(newId);
-                  }}
-                />
-              )}
-            </section>
           </div>
         </div>
         </>
@@ -4505,29 +4522,29 @@ function VehicleCard({
         }`}
         onClick={onSelect}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 ${isActive ? 'text-emerald-400' : 'text-content-secondary'}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className={`w-8 h-8 shrink-0 ${isActive ? 'text-emerald-400' : 'text-content-secondary'}`}>
               {VEHICLE_ICONS[vehicle.type]}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-content font-medium text-sm">{vehicle.name}</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-content font-medium text-sm truncate" title={vehicle.name}>{vehicle.name}</span>
                 {isActive && (
-                  <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">Active</span>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded shrink-0">Active</span>
                 )}
                 {vehicle.boardUid && (
-                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded" title={`Board UID: ${vehicle.boardUid}`}>
+                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0 max-w-[8rem] truncate" title={`Board UID: ${vehicle.boardUid}`}>
                     {vehicle.boardId || vehicle.boardName || vehicle.boardUid.slice(0, 8)}
                   </span>
                 )}
               </div>
-              <div className="text-content-secondary text-xs">
+              <div className="text-content-secondary text-xs truncate" title={getVehicleSpecs()}>
                 {getVehicleSpecs()}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <ApplyProfileButton profile={vehicle} />
             <button
               onClick={async () => {

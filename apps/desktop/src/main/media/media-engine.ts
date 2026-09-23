@@ -20,11 +20,11 @@
 
 import { spawn, type ChildProcess, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { app } from 'electron';
 import { mediaBinariesDownloader } from './media-binaries-downloader.js';
 import { buildWfbngSdp, buildWfbngFfmpegArgs, wfbngPort, wfbngShouldTranscode } from './wfbng.js';
-import { needsH264Relay, buildH264RelayArgs } from './h264-relay.js';
+import { needsH264Relay, buildH264RelayArgs, encoderChain } from './h264-relay.js';
 import { wfbngReceiver } from './wfbng-receiver.js';
 import type {
   CameraSourceConfig,
@@ -81,6 +81,14 @@ export class MediaEngine {
   private lastHubError: string | null = null;
   /** Rolling tail of mediamtx stdout+stderr, for surfacing source-pull errors. */
   private hubLog = '';
+  /**
+   * ffmpeg's own output. It was piped and never read, so a relay that failed
+   * said only "failed to start", and once the pipe buffer filled ffmpeg would
+   * block on its next write.
+   */
+  private ffmpegLog = '';
+  /** Encoder the last relay actually started with, for diagnostics. */
+  private relayEncoder: string | null = null;
   /** Periodic stall check for bridged (wfb-ng) sessions. */
   private watchdog: ReturnType<typeof setInterval> | null = null;
   logSink?: (level: 'info' | 'warn' | 'error', msg: string) => void;
@@ -163,7 +171,6 @@ export class MediaEngine {
     const append = (d: Buffer) => { this.hubLog = (this.hubLog + d.toString()).slice(-4000); };
     this.hub = spawn(this.mediamtxPath, [cfgPath], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
     });
     this.hub.stderr?.on('data', append);
     this.hub.stdout?.on('data', append);
@@ -296,10 +303,31 @@ export class MediaEngine {
     }
   }
 
-  /** Poll the hub API until the named path is publishing, or time out. */
-  private async waitPathReady(name: string, timeoutMs: number): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs;
+  /**
+   * Poll the hub API until the named path is publishing, or time out.
+   *
+   * `aliveCheck` separates a dead process from a slow one: a software H.265
+   * decode plus an H.264 encode on a modest laptop can take longer than the
+   * base deadline, and killing that is indistinguishable, to the pilot, from
+   * the transcode being broken. A process that has exited fails immediately
+   * instead of burning the whole timeout.
+   */
+  private async waitPathReady(
+    name: string,
+    timeoutMs: number,
+    aliveCheck?: () => boolean,
+    maxMs = timeoutMs,
+  ): Promise<boolean> {
+    const start = Date.now();
+    let deadline = start + timeoutMs;
     while (Date.now() < deadline) {
+      if (aliveCheck) {
+        if (!aliveCheck()) return false;
+        // Still working: let it run on, up to the hard ceiling.
+        if (Date.now() + 1000 > deadline && deadline < start + maxMs) {
+          deadline = Math.min(start + maxMs, deadline + 5000);
+        }
+      }
       try {
         const res = await fetch(`http://${HOST}:${API_PORT}/v3/paths/get/${encodeURIComponent(name)}`);
         if (res.ok) {
@@ -398,7 +426,10 @@ export class MediaEngine {
           this.rtspUrl(name),
         ];
       }
-      ingest = spawn(this.ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'], shell: process.platform === 'win32' });
+      // No shell. On Windows a shell spawn hands cmd.exe one unquoted command
+      // string, so a space anywhere in the path (a username with a space is
+      // enough) splits the command and the process never starts.
+      ingest = spawn(this.ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
       this.superviseIngest(source, resolvedUrl, ingest);
     } else {
       // rtsp / srt / mavlink-rtsp — hub pulls directly.
@@ -440,16 +471,39 @@ export class MediaEngine {
           };
         }
         const relayName = `${name}h264`;
-        ingest = spawn(this.ffmpegPath, buildH264RelayArgs(this.rtspUrl(name), this.rtspUrl(relayName)), {
-          stdio: ['ignore', 'ignore', 'pipe'],
-          shell: process.platform === 'win32',
-        });
-        this.superviseIngest(source, resolvedUrl, ingest);
-        const relayReady = await this.waitPathReady(relayName, 12000);
-        if (!relayReady) {
-          killProc(ingest);
+        const attempts: string[] = [];
+        let started = false;
+        for (const encoder of encoderChain(process.platform)) {
+          this.ffmpegLog = '';
+          // No shell. On Windows a shell spawn hands cmd.exe one unquoted
+          // command string, so a space or a non-ASCII character anywhere in
+          // the path is enough to stop the process ever starting.
+          const proc = spawn(
+            this.ffmpegPath,
+            buildH264RelayArgs(this.rtspUrl(name), this.rtspUrl(relayName), encoder),
+            { stdio: ['ignore', 'ignore', 'pipe'] },
+          );
+          let exited = false;
+          proc.once('exit', () => { exited = true; });
+          this.superviseIngest(source, resolvedUrl, proc);
+          const ready = await this.waitPathReady(relayName, 12000, () => !exited, 40000);
+          if (ready) {
+            ingest = proc;
+            started = true;
+            this.relayEncoder = encoder;
+            this.logSink?.('info', `H.264 relay started with ${encoder}`);
+            break;
+          }
+          killProc(proc);
+          const why = this.ffmpegFailureReason();
+          attempts.push(`${encoder}: ${why ?? 'no output'}`);
+        }
+        if (!started) {
           await this.removeHubPath(name);
-          return { ok: false, error: `Camera is sending ${tracks.join('+')} and the H.264 conversion failed to start` };
+          return {
+            ok: false,
+            error: `Camera is sending ${tracks.join('+')} and no H.264 encoder worked (${attempts.join('; ')})`,
+          };
         }
         playPath = relayName;
       }
@@ -480,6 +534,14 @@ export class MediaEngine {
    * it rebuilds the receiver, SDP, ffmpeg and hub path) after a capped backoff.
    */
   private superviseIngest(source: CameraSourceConfig, resolvedUrl: string | undefined, ingest: ChildProcess): void {
+    ingest.stderr?.on('data', (d: Buffer) => {
+      this.ffmpegLog = (this.ffmpegLog + d.toString()).slice(-4000);
+    });
+    // A spawn that never starts (missing or half-downloaded binary) emits
+    // 'error', and with no listener Node throws it on the main process.
+    ingest.on('error', (err: Error) => {
+      this.ffmpegLog = `${this.ffmpegLog}\nffmpeg could not start: ${err.message}`.slice(-4000);
+    });
     ingest.on('exit', () => {
       const a = this.sessions.get(source.id);
       if (!a || a.session.status === 'stopped') return; // intentional stop / gone
@@ -552,7 +614,7 @@ export class MediaEngine {
       const p = spawn(this.ffmpegPath as string, [
         '-y', '-rtsp_transport', 'tcp', '-i', this.rtspUrl(active.session.path as string),
         '-frames:v', '1', '-q:v', '2', filePath,
-      ], { stdio: 'ignore', shell: process.platform === 'win32' });
+      ], { stdio: 'ignore' });
       p.on('exit', (code) => resolve(code === 0 ? { ok: true, filePath } : { ok: false, error: 'Snapshot failed' }));
       p.on('error', (e) => resolve({ ok: false, error: e.message }));
     });
@@ -574,7 +636,7 @@ export class MediaEngine {
     const p = spawn(this.ffmpegPath, [
       '-rtsp_transport', 'tcp', '-i', this.rtspUrl(active.session.path),
       '-c', 'copy', '-f', 'mp4', filePath,
-    ], { stdio: ['pipe', 'ignore', 'ignore'], shell: process.platform === 'win32' });
+    ], { stdio: ['pipe', 'ignore', 'ignore'] });
     active.record = p;
     active.recordPath = filePath;
     return { ok: true, filePath };
@@ -591,6 +653,69 @@ export class MediaEngine {
    * lives here and nowhere the operator can reach: field builds cannot be
    * debugged live, so this is what gets mirrored into the app console.
    */
+  /** The line ffmpeg complained on, for a relay failure message. */
+  private ffmpegFailureReason(): string | null {
+    const lines = this.ffmpegLog.split('\n').map((l) => l.trim()).filter(Boolean);
+    const notable = [...lines].reverse().find((l) =>
+      /error|unable|invalid|failed|not found|no such|denied|unknown encoder|refused/i.test(l));
+    return notable ?? lines[lines.length - 1] ?? null;
+  }
+
+  /**
+   * Everything needed to explain a video failure, in one block the operator can
+   * paste. Assembled here because half of it (binary paths, versions, the logs)
+   * only exists in the main process, and asking a pilot to run PowerShell and
+   * screenshot File Explorer costs a day per round trip.
+   */
+  async diagnostics(): Promise<string> {
+    const lines: string[] = [];
+    lines.push(`ArduDeck media engine diagnostics  ${new Date().toISOString()}`);
+    lines.push(`platform: ${process.platform} ${process.arch}`);
+    this.resolveBinaries();
+
+    for (const [name, path] of [['ffmpeg', this.ffmpegPath], ['mediamtx', this.mediamtxPath]] as const) {
+      if (!path) {
+        lines.push(`${name}: NOT FOUND`);
+        continue;
+      }
+      let size = 'unknown size';
+      try {
+        size = `${Math.round(statSync(path).size / 1024)} KB`;
+      } catch { /* a path that resolved from PATH has no stat here */ }
+      lines.push(`${name}: ${path} (${size})`);
+      const probe = spawnSync(path, ['-version'], { encoding: 'utf8' });
+      const first = (probe.stdout ?? '').split('\n')[0]?.trim();
+      lines.push(`  ${probe.error ? `spawn failed: ${probe.error.message}` : first ?? 'no version output'}`);
+    }
+
+    lines.push(`hub ready: ${this.hubReady}${this.lastHubError ? ` (last error: ${this.lastHubError})` : ''}`);
+    lines.push(`relay encoder in use: ${this.relayEncoder ?? 'none'}`);
+    lines.push(`encoder chain: ${encoderChain(process.platform).join(' -> ')}`);
+
+    for (const [id, active] of this.sessions) {
+      const s = active.session;
+      const src = active.source;
+      lines.push(`session ${id}: kind=${src?.kind ?? '-'} status=${s.status} path=${s.path ?? '-'}`);
+      lines.push(`  url: ${active.resolvedUrl ?? src?.url ?? '-'}  transport: ${src?.rtspTransport ?? 'automatic'}`);
+      if (s.error) lines.push(`  error: ${s.error}`);
+    }
+
+    const hub = this.recentHubLog(30);
+    if (hub.length) lines.push('--- mediamtx ---', ...hub);
+    const ff = this.recentFfmpegLog(30);
+    if (ff.length) lines.push('--- ffmpeg ---', ...ff);
+    return lines.join('\n');
+  }
+
+  /** ffmpeg's recent output, for the console entry beside the hub log. */
+  recentFfmpegLog(lines = 12): string[] {
+    return this.ffmpegLog
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(-lines);
+  }
+
   recentHubLog(lines = 12): string[] {
     return this.hubLog
       .split('\n')

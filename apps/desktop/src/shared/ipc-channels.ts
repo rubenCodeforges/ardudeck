@@ -896,6 +896,8 @@ export const IPC_CHANNELS = {
   CAMERA_RECORD_TOGGLE: 'camera:record-toggle',
   /** Renderer → main: query MediaEngineStatus. */
   CAMERA_ENGINE_STATUS: 'camera:engine-status',
+  /** Renderer → main: one pasteable block explaining a video failure. */
+  CAMERA_DIAGNOSTICS: 'camera:diagnostics',
   /** Renderer → main: download the media-engine binaries on demand; returns MediaEngineStatus. */
   CAMERA_ENGINE_INSTALL: 'camera:engine-install',
   /** Main → renderer: media-engine install progress log line. */

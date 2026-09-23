@@ -179,7 +179,7 @@ export function CameraPanel() {
 
         {/* Synthetic-vision terrain options */}
         {renderMode === 'synthetic' && (
-          <div className="relative">
+          <div className="relative flex items-center">
             <button
               onClick={() => setShowTerrainMenu((v) => !v)}
               className="rounded px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-raised"
@@ -220,8 +220,30 @@ export function CameraPanel() {
           </div>
         )}
 
+        <button
+          onClick={async () => {
+            const text = await window.electronAPI.cameraDiagnostics();
+            await navigator.clipboard.writeText(text);
+            flash('Video diagnostics copied');
+          }}
+          className="rounded px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-raised"
+          data-tip="Copy binary paths, versions, the hub and ffmpeg logs, and the active sessions, for a bug report"
+        >
+          Diag
+        </button>
+
+        <button
+          onClick={() => store.setShowStats(!store.showStats)}
+          className={`rounded px-1.5 py-0.5 text-[11px] hover:bg-surface-raised ${
+            store.showStats ? 'text-emerald-300' : 'text-content-secondary'
+          }`}
+          data-tip="Live link numbers over the feed: bitrate, framerate, packet loss, dropped frames"
+        >
+          Stats
+        </button>
+
         {/* OSD layers */}
-        <div className="relative">
+        <div className="relative flex items-center">
           <button onClick={() => setShowOsdMenu((v) => !v)} className="rounded px-1.5 py-0.5 text-[11px] text-content-secondary hover:bg-surface-raised" title="OSD layers">OSD</button>
           {showOsdMenu && (
             <>

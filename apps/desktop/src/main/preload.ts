@@ -188,6 +188,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SNAPSHOT, sourceId),
   cameraRecordToggle: (sourceId: string): Promise<CameraMediaActionResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_RECORD_TOGGLE, sourceId),
+  cameraDiagnostics: (): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_DIAGNOSTICS),
   cameraEngineStatus: (): Promise<MediaEngineStatus> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_ENGINE_STATUS),
   cameraEngineInstall: (): Promise<MediaEngineStatus> =>
