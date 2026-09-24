@@ -76,6 +76,83 @@ export interface SurveyGeneratorRegistration {
   generate(config: unknown): unknown | Promise<unknown>;
 }
 
+
+// --- Map layer extension point --------------------------------------------
+// A module contributes DECLARATIVE features and the host draws them. The host
+// owns the map library, the layer control and the z-order, for the same reason
+// it owns the panel dock: two modules drawing straight onto the map would
+// fight over stacking and neither could be turned off independently.
+//
+// Nothing here can change what the aircraft does. A layer is drawing only.
+
+/** WGS84 degrees, the same shape the survey seam uses for rings. */
+export interface MapPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface MapPolygonFeature {
+  kind: 'polygon';
+  /** Outer ring. Closing point optional; the host closes it. */
+  points: MapPoint[];
+  /** Rings cut out of the outer one. */
+  holes?: MapPoint[][];
+  /** CSS colour. Required: a feature with no stroke is invisible. */
+  stroke: string;
+  strokeWidth?: number;
+  /** Dash pattern in pixels, for a fill that must not read as solid ground. */
+  dash?: number[];
+  fill?: string;
+  /** 0..1. Kept separate from `fill` so a colour can be reused at two weights. */
+  fillOpacity?: number;
+}
+
+export interface MapPolylineFeature {
+  kind: 'polyline';
+  points: MapPoint[];
+  stroke: string;
+  strokeWidth?: number;
+  dash?: number[];
+}
+
+export interface MapMarkerFeature {
+  kind: 'marker';
+  at: MapPoint;
+  /** Host-drawn glyph, so markers from different modules stay consistent. */
+  icon: 'dot' | 'takeoff' | 'land' | 'home' | 'warning' | 'flag';
+  color: string;
+  /** Short label under the glyph. Long strings are truncated, not wrapped. */
+  label?: string;
+}
+
+export type MapFeature =
+  | MapPolygonFeature
+  | MapPolylineFeature
+  | MapMarkerFeature;
+
+export interface MapLayerRegistration {
+  /** Stable id within this module. Re-registering the same id replaces it. */
+  id: string;
+  /** Shown in the host's layer control. */
+  name: string;
+  /** Whether it starts switched on. The pilot's choice wins afterwards. */
+  defaultVisible?: boolean;
+  /**
+   * Draw order between module layers, low first. The host keeps every module
+   * layer under its own mission and vehicle drawing regardless, so a module
+   * cannot hide the aircraft.
+   */
+  order?: number;
+  /** Current features. Called when the host redraws, so keep it cheap. */
+  features(): MapFeature[];
+  /**
+   * Tell the host the features changed. Return an unsubscribe. Without this
+   * the layer is redrawn only when the map itself changes, which is right for
+   * static geometry and wrong for anything live.
+   */
+  subscribe?(onChange: () => void): () => void;
+}
+
 // --- HUD overlay extension point ------------------------------------------
 // Geometry of the first-party fighter HUD's SVG viewBox, so a `cameraOverlay`
 // module can draw reticles (pippers, steering lines) in the SAME coordinate
@@ -388,6 +465,16 @@ export interface RendererHostApi {
   commandTarget: {
     get(): unknown;
     subscribe(listener: (target: unknown) => void): () => void;
+  };
+  /**
+   * Draw on the live map. Registration only: the host renders the features,
+   * owns the layer control, and never lets a module layer cover the vehicle
+   * or the mission.
+   */
+  map: {
+    registerLayer(reg: MapLayerRegistration): void;
+    /** Remove a layer this module registered. Other modules' ids are ignored. */
+    unregisterLayer(id: string): void;
   };
   survey: {
     /**

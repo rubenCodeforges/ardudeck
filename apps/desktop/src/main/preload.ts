@@ -34,6 +34,8 @@ import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareVersion, FlashProgress, FlashResult, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FlashOptions } from '../shared/firmware-types.js';
 import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEvent } from '../shared/calibration-types.js';
 import type { MissionSummary, StoredMission, SaveMissionPayload, FlightLog, MissionListFilter, MissionSortOptions } from '../shared/mission-library-types.js';
+import type { SurveyDocument, SurveyDocumentSummary, SaveSurveyAreaPayload } from '../shared/survey-document-types.js';
+import type { VaultMission, VaultSurveyArea } from '../shared/ipc-channels.js';
 import type { DroneBridgeInfo, DroneBridgeStats, DroneBridgeSettings, DroneBridgeClients, DroneBridgeDetected } from '../shared/dronebridge-types.js';
 import type { RainViewerMeta, AirspaceData, AirportData, GeocodeResult } from '../shared/overlay-types.js';
 import type {
@@ -744,6 +746,18 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_MISSION, site, missionName, items),
   fleetRepoSnapshotArea: (site: string, kmlContent: string): Promise<{ success: boolean; changed?: boolean; oid?: string; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_AREA, site, kmlContent),
+  fleetRepoSnapshotSurveyArea: (site: string, doc: SurveyDocument): Promise<{ success: boolean; changed?: boolean; oid?: string; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_SURVEY_AREA, site, doc),
+  fleetRepoListSurveyAreas: (site?: string): Promise<VaultSurveyArea[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_LIST_SURVEY_AREAS, site),
+  fleetRepoReadSurveyArea: (path: string): Promise<SurveyDocument | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_READ_SURVEY_AREA, path),
+  fleetRepoSnapshotMissionDoc: (site: string, mission: StoredMission): Promise<{ success: boolean; changed?: boolean; oid?: string; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_MISSION_DOC, site, mission),
+  fleetRepoListMissionDocs: (site?: string): Promise<VaultMission[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_LIST_MISSION_DOCS, site),
+  fleetRepoReadMissionDoc: (path: string): Promise<StoredMission | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_READ_MISSION_DOC, path),
   fleetRepoHistory: (limit?: number): Promise<import('../shared/ipc-channels').FleetRepoHistoryEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_HISTORY, limit),
   fleetRepoReadFile: (filepath: string, oid?: string): Promise<string | null> =>
@@ -2245,6 +2259,46 @@ const api = {
 
   missionLibraryDeleteLog: (missionId: string, logId: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_DELETE_LOG, missionId, logId),
+
+  missionLibraryExportFile: (id: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_EXPORT_FILE, id),
+
+  missionLibraryImportFile: (): Promise<{ success: boolean; mission?: MissionSummary; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_IMPORT_FILE),
+
+  missionLibraryImportDoc: (mission: StoredMission): Promise<MissionSummary | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_LIBRARY_IMPORT_DOC, mission),
+
+  // =============================================================================
+  // Saved survey areas (polygon + generator settings, no waypoints)
+  // =============================================================================
+
+  surveyAreaList: (filter?: { search?: string; tags?: string[]; site?: string }): Promise<SurveyDocumentSummary[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_LIST, filter),
+
+  surveyAreaGet: (id: string): Promise<SurveyDocument | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_GET, id),
+
+  surveyAreaSave: (payload: SaveSurveyAreaPayload): Promise<SurveyDocument> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_SAVE, payload),
+
+  surveyAreaDelete: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_DELETE, id),
+
+  surveyAreaDuplicate: (id: string, newName: string): Promise<SurveyDocument | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_DUPLICATE, id, newName),
+
+  surveyAreaGetTags: (): Promise<string[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_GET_TAGS),
+
+  surveyAreaImportDoc: (doc: SurveyDocument): Promise<SurveyDocument | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_IMPORT_DOC, doc),
+
+  surveyAreaExportFile: (id: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_EXPORT_FILE, id),
+
+  surveyAreaImportFile: (): Promise<{ success: boolean; area?: SurveyDocument; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SURVEY_AREA_IMPORT_FILE),
 
   /** Send log entry from renderer to main process */
   logEntry: (level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string): void => {

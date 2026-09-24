@@ -22,6 +22,10 @@ import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node';
 import Store from 'electron-store';
 import { formatParamFile } from '../../shared/param-file';
+import { isSurveyDocument, type SurveyDocument } from '../../shared/survey-document-types';
+import type { VaultMission, VaultSurveyArea } from '../../shared/ipc-channels';
+import { isStoredMission, type StoredMission } from '../../shared/mission-library-types';
+import { syncErrorMessage } from './sync-error.js';
 
 // ArduDeck community OAuth app (device flow enabled, no client secret needed).
 // Overridable for development.
@@ -332,6 +336,149 @@ export async function snapshotArea(
 ): Promise<{ changed: boolean; oid?: string }> {
   const s = sanitizeSegment(site);
   return commitFiles([{ path: `sites/${s}/boundary.kml`, content: kmlContent }], `area ${s}`);
+}
+
+/**
+ * A survey area as a document under its site, keyed by its own id so the same
+ * area lands on the same path from every machine and a revision shows up as a
+ * diff. The KML boundary stays for other tools; this is the file that can be
+ * opened and edited again.
+ */
+export async function snapshotSurveyArea(
+  site: string,
+  doc: SurveyDocument,
+): Promise<{ changed: boolean; oid?: string; path: string }> {
+  const s = sanitizeSegment(site);
+  const path = `sites/${s}/areas/${sanitizeSegment(doc.id)}.json`;
+  const result = await commitFiles(
+    [{ path, content: JSON.stringify({ ...doc, site: s }, null, 2) }],
+    `area ${s}/${doc.name} rev ${doc.revision}`,
+  );
+  return { ...result, path };
+}
+
+const AREA_PATH = /^sites\/[A-Za-z0-9._-]+\/areas\/[A-Za-z0-9._-]+\.json$/;
+
+export async function listSurveyAreas(site?: string): Promise<VaultSurveyArea[]> {
+  await ensureRepo();
+  const sitesDir = join(repoDir(), 'sites');
+  let siteDirs: string[] = [];
+  try {
+    siteDirs = await fsp.readdir(sitesDir);
+  } catch {
+    return [];
+  }
+  const out: VaultSurveyArea[] = [];
+  for (const dirName of siteDirs) {
+    if (dirName.startsWith('.')) continue;
+    if (site && dirName !== sanitizeSegment(site)) continue;
+    let files: string[] = [];
+    try {
+      files = (await fsp.readdir(join(sitesDir, dirName, 'areas'))).filter((f) => f.endsWith('.json'));
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      try {
+        const raw: unknown = JSON.parse(await fsp.readFile(join(sitesDir, dirName, 'areas', file), 'utf-8'));
+        if (!isSurveyDocument(raw)) continue;
+        out.push({
+          site: dirName,
+          path: `sites/${dirName}/areas/${file}`,
+          id: raw.id,
+          name: raw.name,
+          revision: raw.revision,
+          generatorId: raw.area.generatorId,
+          updatedAt: raw.updatedAt,
+        });
+      } catch {
+        // A file someone hand-edited into invalid JSON is skipped, not fatal.
+      }
+    }
+  }
+  return out.sort((a, b) => a.site.localeCompare(b.site) || a.name.localeCompare(b.name));
+}
+
+/**
+ * The mission as ArduDeck holds it, groups and surveys intact, next to the
+ * .waypoints file other tools read. The waypoints alone cannot be edited back
+ * into a plan, which is what makes them useless for picking a job up elsewhere.
+ */
+export async function snapshotMissionDocument(
+  site: string,
+  mission: StoredMission,
+): Promise<{ changed: boolean; oid?: string; path: string }> {
+  const s = sanitizeSegment(site);
+  const path = `sites/${s}/missions/${sanitizeSegment(mission.id)}.mission.json`;
+  const result = await commitFiles(
+    [{ path, content: JSON.stringify({ ...mission, site: s }, null, 2) }],
+    `mission ${s}/${mission.name}`,
+  );
+  return { ...result, path };
+}
+
+const MISSION_PATH = /^sites\/[A-Za-z0-9._-]+\/missions\/[A-Za-z0-9._-]+\.mission\.json$/;
+
+export async function listVaultMissions(site?: string): Promise<VaultMission[]> {
+  await ensureRepo();
+  const sitesDir = join(repoDir(), 'sites');
+  let siteDirs: string[] = [];
+  try {
+    siteDirs = await fsp.readdir(sitesDir);
+  } catch {
+    return [];
+  }
+  const out: VaultMission[] = [];
+  for (const dirName of siteDirs) {
+    if (dirName.startsWith('.')) continue;
+    if (site && dirName !== sanitizeSegment(site)) continue;
+    let files: string[] = [];
+    try {
+      files = (await fsp.readdir(join(sitesDir, dirName, 'missions'))).filter((f) => f.endsWith('.mission.json'));
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      try {
+        const raw: unknown = JSON.parse(await fsp.readFile(join(sitesDir, dirName, 'missions', file), 'utf-8'));
+        if (!isStoredMission(raw)) continue;
+        out.push({
+          site: dirName,
+          path: `sites/${dirName}/missions/${file}`,
+          id: raw.id,
+          name: raw.name,
+          waypointCount: raw.items.length,
+          updatedAt: raw.updatedAt,
+        });
+      } catch {
+        // Skip a file someone hand-edited into invalid JSON.
+      }
+    }
+  }
+  return out.sort((a, b) => a.site.localeCompare(b.site) || a.name.localeCompare(b.name));
+}
+
+export async function readVaultMission(path: string): Promise<StoredMission | null> {
+  if (!MISSION_PATH.test(path) || path.includes('..')) return null;
+  await ensureRepo();
+  try {
+    const raw: unknown = JSON.parse(await fsp.readFile(join(repoDir(), path), 'utf-8'));
+    return isStoredMission(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read one area back out of the repo. The path is checked, never trusted. */
+export async function readSurveyArea(path: string): Promise<SurveyDocument | null> {
+  if (!AREA_PATH.test(path) || path.includes('..')) return null;
+  await ensureRepo();
+  try {
+    const raw: unknown = JSON.parse(await fsp.readFile(join(repoDir(), path), 'utf-8'));
+    return isSurveyDocument(raw) ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 // ── History / reads ─────────────────────────────────────────────
@@ -757,6 +904,18 @@ export async function githubUseExistingRepo(
   }
 }
 
+/** True when the remote already has this branch, so a pull makes sense. */
+async function remoteHasBranch(dir: string, ref: string, onAuth: () => { username: string; password: string }): Promise<boolean> {
+  try {
+    const url = await git.getConfig({ fs, dir, path: 'remote.origin.url' });
+    if (!url) return false;
+    const refs = await git.listServerRefs({ http, url, prefix: `refs/heads/${ref}`, onAuth });
+    return refs.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function githubSync(): Promise<{ success: boolean; error?: string }> {
   const token = getToken();
   const mode = vaultStore.get('remoteMode') ?? 'github';
@@ -777,36 +936,13 @@ export async function githubSync(): Promise<{ success: boolean; error?: string }
   const onAuth = () => ({ username, password: token });
 
   try {
-    // Pull first (remote may not have the branch yet on first sync)
-    try {
-      await git.pull({
-        fs,
-        http,
-        dir,
-        ref,
-        singleBranch: true,
-        author: COMMITTER,
-        onAuth,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      // Empty remote / unborn remote branch is fine on first push
-      const benign = /could not find|no.*ref|404/i.test(msg);
-      if (!benign) {
-        if (/merge|conflict/i.test(msg)) {
-          return {
-            success: false,
-            error: 'Sync conflict: this vault and the remote changed the same files. Resolve in the repo folder with a git client, then sync again.',
-          };
-        }
-        throw err;
-      }
+    if (await remoteHasBranch(dir, ref, onAuth)) {
+      await git.pull({ fs, http, dir, ref, singleBranch: true, author: COMMITTER, onAuth });
     }
     await git.push({ fs, http, dir, remote: 'origin', ref, onAuth });
     vaultStore.set('lastSyncAt', Date.now());
     return { success: true };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Sync failed';
-    return { success: false, error: msg };
+    return { success: false, error: syncErrorMessage(err) };
   }
 }

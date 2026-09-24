@@ -1,6 +1,7 @@
 import { GuidesButton } from './GuidesButton';
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { FileCode, Globe, Library, ListOrdered } from 'lucide-react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSurveyStore } from '../../stores/survey-store';
@@ -215,47 +216,75 @@ function SaveMenu({
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-[9999] w-[260px] bg-surface-raised backdrop-blur-xl border border-default rounded-lg shadow-2xl py-1"
+            className="fixed z-[9999] w-[288px] bg-surface-solid border border-default rounded-lg shadow-2xl py-1"
             style={{ top: pos.top, right: pos.right }}
           >
             {showLibrary && (
               <>
-                <button
+                <ExportMenuItem
+                  icon={<Library className="w-3.5 h-3.5" />}
+                  tint="bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                  title="Save project"
+                  titleClass="text-purple-700 dark:text-purple-300"
+                  detail="The whole plan in ArduDeck: waypoint groups, every survey area and its settings, all editable later"
                   onClick={() => { onLibrary(); setOpen(false); }}
-                  className="w-full text-left px-3 py-2 text-xs text-content hover:bg-surface-input transition-colors"
-                >
-                  <span className="font-medium text-purple-300">Save to Library</span>
-                  <span className="block text-[10px] text-content-tertiary mt-0.5">Keep the whole plan in ArduDeck (groups + surveys, editable)</span>
-                </button>
+                />
                 <div className="my-1 h-px bg-subtle" />
               </>
             )}
-            <button
+            <ExportMenuItem
+              icon={<ListOrdered className="w-3.5 h-3.5" />}
+              tint="bg-sky-500/10 text-sky-700 dark:text-sky-300"
+              title="Waypoints file (.waypoints)"
+              detail={`QGC WPL · ArduPilot / Mission Planner${multipleGroups ? ' · flattens groups' : ''}`}
               onClick={() => { onExport('waypoints'); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-xs text-content hover:bg-surface-input transition-colors"
-            >
-              Waypoints file (.waypoints)
-              <span className="block text-[10px] text-content-tertiary mt-0.5">QGC WPL · ArduPilot / Mission Planner{multipleGroups ? ' · flattens groups' : ''}</span>
-            </button>
-            <button
+            />
+            <ExportMenuItem
+              icon={<FileCode className="w-3.5 h-3.5" />}
+              tint="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              title="QGC Plan (.plan)"
+              detail={`QGroundControl${multipleGroups ? ' · flattens groups' : ''}`}
               onClick={() => { onExport('plan'); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-xs text-content hover:bg-surface-input transition-colors"
-            >
-              QGC Plan (.plan)
-              <span className="block text-[10px] text-content-tertiary mt-0.5">QGroundControl{multipleGroups ? ' · flattens groups' : ''}</span>
-            </button>
-            <button
+            />
+            <ExportMenuItem
+              icon={<Globe className="w-3.5 h-3.5" />}
+              tint="bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              title="DJI KMZ (.kmz)"
+              detail="DJI Fly waypoint mission · plain waypoints only"
               onClick={() => { onExport('kmz'); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-xs text-content hover:bg-surface-input transition-colors"
-            >
-              DJI KMZ (.kmz)
-              <span className="block text-[10px] text-content-tertiary mt-0.5">DJI Fly waypoint mission · plain waypoints only</span>
-            </button>
+            />
           </div>
         </>,
         document.body,
       )}
     </div>
+  );
+}
+
+/** One export target: its own icon and tint, so the list reads by shape. */
+function ExportMenuItem({
+  icon, tint, title, titleClass, detail, onClick,
+}: {
+  icon: React.ReactNode;
+  tint: string;
+  title: string;
+  titleClass?: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-start gap-2.5 px-3 py-2 text-left text-xs text-content hover:bg-surface-raised transition-colors"
+    >
+      <span className={`mt-0.5 w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${tint}`}>
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className={`block font-medium ${titleClass ?? ''}`}>{title}</span>
+        <span className="block text-[10px] text-content-secondary mt-0.5">{detail}</span>
+      </span>
+    </button>
   );
 }
 

@@ -69,6 +69,7 @@ function buildSummary(
     id,
     name: payload.name,
     description: payload.description,
+    ...(payload.site ? { site: payload.site } : {}),
     vehicleProfileId: payload.vehicleProfileId,
     tags: payload.tags,
     waypointCount: payload.items.length,

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSurveyStore } from '../../stores/survey-store';
+import { useSurveyAreaStore } from '../../stores/survey-area-store';
+import { useCargoEnabled, MISSION_LIBRARY_CARGO_SLUG } from '../../modules/capabilities';
 import { type Group, isSurveyGroup, type SurveyGroup, GROUP_COLOR_PALETTE, isAssignedToVehicle } from '../../../shared/mission-group-types';
 import { isSurveyGroupStale } from '../survey/survey-group-signature';
 import { regenerateSurveyGroup } from '../survey/survey-regen';
@@ -1398,6 +1400,7 @@ function GroupHeaderRow({
   onAssignVehicle,
   onDistribute,
   onDuplicate,
+  onSaveArea,
   onMoveUp,
   onMoveDown,
   flightEnd,
@@ -1463,6 +1466,8 @@ function GroupHeaderRow({
   /** Split this group into one mission per fleet vehicle (swarm survey). */
   onDistribute?: () => void;
   onDuplicate?: () => void;
+  /** Survey groups only: keep this area on its own, without opening the editor. */
+  onSaveArea?: () => void;
   /** Move this group one place earlier/later in the flight. Undefined at the ends. */
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -1979,6 +1984,17 @@ function GroupHeaderRow({
                       Distribute to fleet ({fleetVehicles?.length})
                     </button>
                   )}
+                  {onSaveArea && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onSaveArea();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
+                    >
+                      Save area to library
+                    </button>
+                  )}
                   {onDuplicate && (
                     <button
                       onClick={() => {
@@ -2093,6 +2109,22 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     lastUploadedAt,
     lastUploadedGroupIds,
   } = useMissionStore();
+
+  const libraryEnabled = useCargoEnabled(MISSION_LIBRARY_CARGO_SLUG);
+  const saveGroupAsArea = useSurveyAreaStore((s) => s.saveGroupAsArea);
+  const setSurveyGroupSource = useMissionStore((s) => s.setSurveyGroupSource);
+
+  // Keep one survey on its own, straight from the group list: opening the
+  // editor to reach a save button is not what "save this area" should cost.
+  const saveSurveyGroupAsArea = useCallback(async (groupId: string) => {
+    const group = useMissionStore.getState().groups.find((g) => g.id === groupId);
+    if (!group || group.kind !== 'survey') return;
+    const doc = await saveGroupAsArea(group, {
+      name: group.name,
+      ...(group.source ? { id: group.source.docId } : {}),
+    });
+    if (doc) setSurveyGroupSource(groupId, { docId: doc.id, revision: doc.revision, name: doc.name });
+  }, [saveGroupAsArea, setSurveyGroupSource]);
 
   const surveyEditingGroupId = useSurveyStore((s) => s.editingGroupId);
   const surveyLoadFromGroup = useSurveyStore((s) => s.loadFromGroup);
@@ -3217,6 +3249,9 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                         : undefined
                     }
                     onDuplicate={() => duplicateGroup(group.id)}
+                    {...(libraryEnabled && group.kind === 'survey'
+                      ? { onSaveArea: () => void saveSurveyGroupAsArea(group.id) }
+                      : {})}
                     onMoveUp={groupPosition(group.id).canMoveUp ? () => moveGroup(group.id, 'up') : undefined}
                     onMoveDown={groupPosition(group.id).canMoveDown ? () => moveGroup(group.id, 'down') : undefined}
                     flightEnd={flightEndFor(group)}

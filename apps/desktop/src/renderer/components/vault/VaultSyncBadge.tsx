@@ -1,10 +1,11 @@
 /**
- * GitHub sync indicator for surfaces whose data the Fleet Vault covers
- * (parameters, missions, areas). Shows backup state; clicking always leads
- * to the Vault view, where setup and sync live.
+ * Backup state for surfaces the vault covers (parameters, missions, areas),
+ * and the actions that belong with it. Planning a mission should not have to
+ * detour through another screen to copy the work online.
  */
-import { Github } from 'lucide-react';
-import { useEffect } from 'react';
+import { CloudCheck, CloudOff, RefreshCw, Settings2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFleetRepoStore } from '../../stores/fleet-repo-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useCargoEnabled, VAULT_CARGO_SLUG } from '../../modules/capabilities';
@@ -29,8 +30,15 @@ interface VaultSyncBadgeProps {
 export function VaultSyncBadge({ variant = 'icon' }: VaultSyncBadgeProps) {
   const status = useFleetRepoStore((s) => s.status);
   const refresh = useFleetRepoStore((s) => s.refresh);
+  const sync = useFleetRepoStore((s) => s.sync);
+  const syncBusy = useFleetRepoStore((s) => s.syncBusy);
+  const lastError = useFleetRepoStore((s) => s.lastError);
   const setView = useNavigationStore((s) => s.setView);
   const vaultEnabled = useCargoEnabled(VAULT_CARGO_SLUG);
+
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (vaultEnabled && !status) refresh();
@@ -43,42 +51,97 @@ export function VaultSyncBadge({ variant = 'icon' }: VaultSyncBadgeProps) {
 
   const tip = connected
     ? lastSyncAt
-      ? `Backed up to GitHub, synced ${timeAgo(lastSyncAt)}. Click to open the vault.`
-      : 'GitHub connected, not synced yet. Click to open the vault.'
-    : 'Not backed up. Click to set up GitHub backup in the vault.';
+      ? `Backup is on. Last copied online ${timeAgo(lastSyncAt)}.`
+      : 'Backup is on, but nothing has been copied online yet.'
+    : 'Backup is off: your saves stay on this computer only.';
 
-  // Navigate the local window's view directly (works in the main window even
-  // with a stale preload) AND ask main to focus + navigate the main window,
-  // which is what does the job from secondary windows like the area editor.
   const openVault = () => {
+    setOpen(false);
     setView('vault');
     window.electronAPI?.navOpenView?.('vault');
   };
 
-  if (variant === 'button') {
-    return (
-      <button
-        onClick={openVault}
-        title={tip}
-        className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
-      >
-        <Github className={`w-4 h-4 ${connected ? 'text-emerald-500' : 'text-content-secondary'}`} />
-        Backup
-      </button>
-    );
-  }
+  const toggle = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    }
+    setOpen((v) => !v);
+  };
+
+  const Icon = connected ? CloudCheck : CloudOff;
 
   return (
-    <button
-      onClick={openVault}
-      title={tip}
-      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-        connected
-          ? 'text-emerald-500 hover:bg-surface-raised'
-          : 'text-content-tertiary hover:text-content hover:bg-surface-raised'
-      }`}
-    >
-      <Github className="w-4 h-4" />
-    </button>
+    <>
+      {variant === 'button' ? (
+        <button
+          ref={btnRef}
+          onClick={toggle}
+          data-tip={tip}
+          className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
+        >
+          <Icon className={`w-4 h-4 ${connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-content-secondary'}`} />
+          {connected ? 'Backup on' : 'Set up backup'}
+        </button>
+      ) : (
+        <button
+          ref={btnRef}
+          onClick={toggle}
+          data-tip={tip}
+          className={`h-7 px-2 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-colors ${
+            connected
+              ? 'text-emerald-600 dark:text-emerald-400 hover:bg-surface-raised'
+              : 'text-content-secondary hover:text-content hover:bg-surface-raised'
+          }`}
+        >
+          <Icon className={`w-4 h-4 ${syncBusy ? 'animate-pulse' : ''}`} />
+          Backup
+        </button>
+      )}
+
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9999] w-[260px] bg-surface-solid border border-default rounded-lg shadow-2xl py-1"
+            style={{ top: pos.top, right: pos.right }}
+          >
+            <div className="px-3 py-2 border-b border-subtle">
+              <div className="text-xs font-medium text-content">
+                {connected ? 'Backup is on' : 'Backup is off'}
+              </div>
+              <div className="text-[11px] text-content-secondary mt-0.5">
+                {connected
+                  ? lastSyncAt
+                    ? `Last copied online ${timeAgo(lastSyncAt)}.`
+                    : 'Nothing has been copied online yet.'
+                  : 'Saves stay on this computer until you set it up.'}
+              </div>
+              {lastError && <div className="text-[11px] text-red-500 mt-1">{lastError}</div>}
+            </div>
+
+            {connected && (
+              <button
+                onClick={() => { void sync(); }}
+                disabled={syncBusy}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs text-content hover:bg-surface-raised transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncBusy ? 'animate-spin' : ''}`} />
+                {syncBusy ? 'Copying online...' : 'Copy online now'}
+              </button>
+            )}
+
+            <button
+              onClick={openVault}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs text-content hover:bg-surface-raised transition-colors"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              {connected ? 'Open Backup & Sync' : 'Set up backup'}
+            </button>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   );
 }

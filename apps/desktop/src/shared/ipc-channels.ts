@@ -208,6 +208,12 @@ export const IPC_CHANNELS = {
   FLEET_REPO_SNAPSHOT_PARAMS: 'fleet-repo:snapshot-params',
   FLEET_REPO_SNAPSHOT_MISSION: 'fleet-repo:snapshot-mission',
   FLEET_REPO_SNAPSHOT_AREA: 'fleet-repo:snapshot-area',
+  FLEET_REPO_SNAPSHOT_SURVEY_AREA: 'fleet-repo:snapshot-survey-area',
+  FLEET_REPO_LIST_SURVEY_AREAS: 'fleet-repo:list-survey-areas',
+  FLEET_REPO_READ_SURVEY_AREA: 'fleet-repo:read-survey-area',
+  FLEET_REPO_SNAPSHOT_MISSION_DOC: 'fleet-repo:snapshot-mission-doc',
+  FLEET_REPO_LIST_MISSION_DOCS: 'fleet-repo:list-mission-docs',
+  FLEET_REPO_READ_MISSION_DOC: 'fleet-repo:read-mission-doc',
   FLEET_REPO_HISTORY: 'fleet-repo:history',
   FLEET_REPO_READ_FILE: 'fleet-repo:read-file',
   FLEET_REPO_LIST_UNITS: 'fleet-repo:list-units',
@@ -656,6 +662,20 @@ export const IPC_CHANNELS = {
   MISSION_LIBRARY_ADD_LOG: 'mission-library:add-log',
   MISSION_LIBRARY_UPDATE_LOG: 'mission-library:update-log',
   MISSION_LIBRARY_DELETE_LOG: 'mission-library:delete-log',
+  MISSION_LIBRARY_EXPORT_FILE: 'mission-library:export-file',
+  MISSION_LIBRARY_IMPORT_FILE: 'mission-library:import-file',
+  MISSION_LIBRARY_IMPORT_DOC: 'mission-library:import-doc',
+
+  // Saved survey areas: the polygon and generator settings, without waypoints
+  SURVEY_AREA_LIST: 'survey-area:list',
+  SURVEY_AREA_GET: 'survey-area:get',
+  SURVEY_AREA_SAVE: 'survey-area:save',
+  SURVEY_AREA_DELETE: 'survey-area:delete',
+  SURVEY_AREA_DUPLICATE: 'survey-area:duplicate',
+  SURVEY_AREA_GET_TAGS: 'survey-area:get-tags',
+  SURVEY_AREA_IMPORT_DOC: 'survey-area:import-doc',
+  SURVEY_AREA_EXPORT_FILE: 'survey-area:export-file',
+  SURVEY_AREA_IMPORT_FILE: 'survey-area:import-file',
 
   // Lua Graph Editor
   LUA_GRAPH_SAVE: 'lua-graph:save',
@@ -2238,6 +2258,27 @@ export interface FleetRepoSite {
   site: string;
   hasBoundary: boolean;
   missions: string[];
+}
+
+/** A mission stored in the vault in ArduDeck's own format, groups intact. */
+export interface VaultMission {
+  site: string;
+  path: string;
+  id: string;
+  name: string;
+  waypointCount: number;
+  updatedAt: string;
+}
+
+/** A survey area document stored in the vault, as listed from the repo. */
+export interface VaultSurveyArea {
+  site: string;
+  path: string;
+  id: string;
+  name: string;
+  revision: number;
+  generatorId: string;
+  updatedAt: string;
 }
 
 export interface GithubDeviceStart {

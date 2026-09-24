@@ -22,6 +22,7 @@ import { useMissionStore } from './mission-store';
 import { useConnectionStore } from './connection-store';
 import { MAV_CMD } from '../../shared/mission-types';
 import { isSurveyGroup, createSurveyGroup, GROUP_COLOR_PALETTE, type SurveyGroup } from '../../shared/mission-group-types';
+import type { SurveyDocument } from '../../shared/survey-document-types';
 
 type DrawMode = 'none' | 'polygon' | 'branch';
 
@@ -258,6 +259,20 @@ interface SurveyStore {
     polygon: LatLng[],
     opts?: { holes?: LatLng[][]; name?: string },
   ) => Promise<string | null>;
+
+  /**
+   * Add a saved survey area to the mission: its own polygon and its own
+   * generator settings, not the panel's current ones, and a link back to the
+   * document it came from. Returns the new group id.
+   */
+  addSavedArea: (doc: SurveyDocument) => Promise<string | null>;
+
+  /**
+   * Pull the newest revision of the saved area this survey came from over the
+   * top of it: shape and settings, then a regeneration. Returns false when the
+   * group has no source or the area is gone.
+   */
+  reloadSavedArea: () => Promise<boolean>;
 
   /**
    * Turn multiple polygons (each with optional holes) into persistent SurveyGroups
@@ -1199,6 +1214,63 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     if (!id) return null;
     get().loadFromGroup({ id, polygon: entry.group.polygon, config: entry.group.config });
     return id;
+  },
+
+  addSavedArea: async (doc) => {
+    const missionStore = useMissionStore.getState();
+    const simplifyToleranceM = useSettingsStore.getState().surveyPerformance.importSimplifyToleranceM;
+    const baseCount = missionStore.groups.filter(isSurveyGroup).length;
+    const polygon: LatLng[] = doc.area.polygon.map((p) => ({ lat: p.lat, lng: p.lng }));
+    if (polygon.length < 3) return null;
+    const holes = (doc.area.holes ?? []).map((ring) => ring.map((p) => ({ lat: p.lat, lng: p.lng })));
+    // The document's own settings, not whatever the panel currently holds.
+    const { polygon: _polygon, holes: _holes, ...storedConfig } = doc.area.config as Record<string, unknown>;
+    const config = {
+      ...DEFAULT_SURVEY_CONFIG,
+      ...(storedConfig as Partial<typeof DEFAULT_SURVEY_CONFIG>),
+    };
+
+    let entry: Awaited<ReturnType<typeof buildSurveyGroupEntry>>;
+    try {
+      entry = await buildSurveyGroupEntry(polygon, holes, config, doc.name, baseCount, simplifyToleranceM);
+    } catch (err) {
+      set({ generatorError: err instanceof Error ? err.message : String(err) });
+      return null;
+    }
+    if (!entry) return null;
+    entry.group.source = { docId: doc.id, revision: doc.revision, name: doc.name };
+
+    const ids = missionStore.addGroupsWithItems([entry]);
+    const id = ids[0];
+    if (!id) return null;
+    get().loadFromGroup({ id, polygon: entry.group.polygon, config: entry.group.config });
+    return id;
+  },
+
+  reloadSavedArea: async () => {
+    const groupId = get().editingGroupId;
+    if (!groupId) return false;
+    const group = useMissionStore.getState().groups.find((g) => g.id === groupId);
+    if (!group || group.kind !== 'survey' || !group.source) return false;
+    const doc = await window.electronAPI?.surveyAreaGet(group.source.docId);
+    if (!doc) return false;
+
+    const { polygon: _stored, ...configWithoutPolygon } = doc.area.config as Record<string, unknown>;
+    set({
+      polygon: doc.area.polygon.map((p) => ({ lat: p.lat, lng: p.lng })),
+      config: {
+        ...DEFAULT_SURVEY_CONFIG,
+        ...(configWithoutPolygon as Partial<typeof DEFAULT_SURVEY_CONFIG>),
+      },
+      polygonEditMode: false,
+    });
+    await runWithActivity('Reloading saved area...', () => get().generateSurvey({ sync: true }));
+    useMissionStore.getState().setSurveyGroupSource(groupId, {
+      docId: doc.id,
+      revision: doc.revision,
+      name: doc.name,
+    });
+    return true;
   },
 
   addSurveyAreasFromPolygons: async (areas) => {

@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  CloudOff,
   GitBranch,
   Github,
   Camera,
@@ -672,8 +673,9 @@ export function VaultView() {
         <div className="min-w-0">
           <h1 className="text-sm font-semibold text-content leading-tight">Fleet Vault</h1>
           <p className="text-[10px] text-content-secondary">
-            {status ? `${status.commitCount} snapshot${status.commitCount === 1 ? '' : 's'}` : 'Loading...'}
-            {status?.github.lastSyncAt ? ` - synced ${timeAgo(status.github.lastSyncAt)}` : ''}
+            Backup and history for settings, missions and survey areas ·{' '}
+            {status ? `${status.commitCount} save${status.commitCount === 1 ? '' : 's'}` : 'Loading...'}
+            {status?.github.lastSyncAt ? ` · copied online ${timeAgo(status.github.lastSyncAt)}` : ''}
           </p>
         </div>
         <div className="flex-1" />
@@ -709,6 +711,22 @@ export function VaultView() {
           {ghConnected ? status?.github.login ?? 'Backup on' : 'Set up backup'}
         </button>
       </div>
+
+      {!ghConnected && (
+        <div className="flex items-center gap-2 px-5 py-2 border-b border-subtle bg-amber-500/10">
+          <CloudOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="text-[11px] text-content-secondary">
+            Everything here is saved on this computer only. Turn on online backup to keep a copy off the machine and
+            open the same missions and areas on another computer.
+          </span>
+          <button
+            onClick={() => setGhOpen(true)}
+            className="ml-auto px-2 py-1 rounded-md text-[11px] font-medium bg-amber-500/20 text-amber-700 dark:text-amber-200 hover:brightness-110 transition-colors"
+          >
+            Set up backup
+          </button>
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 flex min-h-0">

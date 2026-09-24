@@ -127,6 +127,7 @@ export async function registerAllStores(): Promise<void> {
     'signing': () => import('../stores/signing-store'),
     'sitl': () => import('../stores/sitl-store'),
     'survey': () => import('../stores/survey-store'),
+    'survey-area': () => import('../stores/survey-area-store'),
     'telemetry': () => import('../stores/telemetry-store'),
     'tile-cache': () => import('../stores/tile-cache-store'),
     'update': () => import('../stores/update-store'),

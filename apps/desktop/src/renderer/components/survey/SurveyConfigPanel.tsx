@@ -14,8 +14,11 @@
  */
 import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { Lock, LockOpen } from 'lucide-react';
+import { Lock, LockOpen, Save } from 'lucide-react';
 import { useSurveyStore } from '../../stores/survey-store';
+import { useSurveyAreaStore } from '../../stores/survey-area-store';
+import { sourceIsBehind } from '../../../shared/survey-document-types';
+import { useCargoEnabled, MISSION_LIBRARY_CARGO_SLUG } from '../../modules/capabilities';
 import { useMissionStore } from '../../stores/mission-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
@@ -131,6 +134,45 @@ export function SurveyConfigPanel() {
   const setGeometryLocked = useSurveyStore((s) => s.setGeometryLocked);
   const exitPolygonEdit = useSurveyStore((s) => s.exitPolygonEdit);
   const setEditingGroupId = useSurveyStore((s) => s.setEditingGroupId);
+
+  // Saving the area keeps the survey after the mission it was planned in. It
+  // lands in the Mission Library, so the button follows that cargo: without it
+  // there is nowhere to browse what was saved.
+  const libraryEnabled = useCargoEnabled(MISSION_LIBRARY_CARGO_SLUG);
+  const saveGroupAsArea = useSurveyAreaStore((s) => s.saveGroupAsArea);
+  const setSurveyGroupSource = useMissionStore((s) => s.setSurveyGroupSource);
+  const [areaSaveState, setAreaSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  const savedAreas = useSurveyAreaStore((s) => s.areas);
+  const loadAreas = useSurveyAreaStore((s) => s.loadAreas);
+  const reloadSavedArea = useSurveyStore((s) => s.reloadSavedArea);
+  const editingGroup = useMissionStore((s) => s.groups.find((g) => g.id === editingGroupId));
+  const source = editingGroup?.kind === 'survey' ? editingGroup.source : undefined;
+  const latestRevision = source ? savedAreas.find((a) => a.id === source.docId)?.revision : undefined;
+  const sourceBehind = sourceIsBehind(source, latestRevision);
+
+  useEffect(() => {
+    if (editingGroupId && savedAreas.length === 0) void loadAreas();
+  }, [editingGroupId]);
+
+  const handleSaveArea = useCallback(async () => {
+    if (!editingGroupId) return;
+    const group = useMissionStore.getState().groups.find((g) => g.id === editingGroupId);
+    if (!group || group.kind !== 'survey') return;
+    setAreaSaveState('saving');
+    const doc = await saveGroupAsArea(group, {
+      name: group.name,
+      ...(group.source ? { id: group.source.docId } : {}),
+    });
+    if (!doc) {
+      setAreaSaveState('error');
+      setTimeout(() => setAreaSaveState('idle'), 3000);
+      return;
+    }
+    setSurveyGroupSource(editingGroupId, { docId: doc.id, revision: doc.revision, name: doc.name });
+    setAreaSaveState('saved');
+    setTimeout(() => setAreaSaveState('idle'), 2000);
+  }, [editingGroupId, saveGroupAsArea, setSurveyGroupSource]);
 
   const setPattern = useSurveyStore((s) => s.setPattern);
   const setGeneratorId = useSurveyStore((s) => s.setGeneratorId);
@@ -1552,6 +1594,19 @@ export function SurveyConfigPanel() {
           which resets editingGroupId. */}
       {result && result.waypoints.length > 0 && (
         <div className="p-3 pt-0 flex-shrink-0">
+          {sourceBehind && source && (
+            <div className="mb-1.5 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1.5">
+              <span className="flex-1 text-[11px] text-amber-300 leading-snug">
+                The saved area &quot;{source.name}&quot; is now at rev {latestRevision}; this survey was built from rev {source.revision}.
+              </span>
+              <button
+                onClick={() => void reloadSavedArea()}
+                className="px-2 py-1 rounded-md text-[11px] font-medium bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 transition-colors"
+              >
+                Reload
+              </button>
+            </div>
+          )}
           {editingGroupId ? (
             polygonEditMode ? (
               <div className="space-y-1.5">
@@ -1607,6 +1662,23 @@ export function SurveyConfigPanel() {
                 >
                   {geometryLocked ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
                 </button>
+                {libraryEnabled && <button
+                  onClick={handleSaveArea}
+                  disabled={areaSaveState === 'saving'}
+                  data-tip={areaSaveState === 'error'
+                    ? 'Could not save the area'
+                    : 'Save this area (shape and settings, no waypoints) so it can be reused in another mission or on another machine'}
+                  className={
+                    'px-3 py-2 rounded-lg transition-colors border ' +
+                    (areaSaveState === 'saved'
+                      ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/40'
+                      : areaSaveState === 'error'
+                        ? 'bg-red-500/15 text-red-400 border-red-500/40'
+                        : 'bg-surface-raised text-content-secondary hover:text-content hover:bg-surface-input border-transparent')
+                  }
+                >
+                  <Save className="w-4 h-4" />
+                </button>}
                 <button
                   onClick={deactivateSurvey}
                   className="px-3 py-2 rounded-lg text-sm font-medium bg-surface-raised text-content hover:text-white hover:bg-surface-input transition-colors"

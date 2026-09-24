@@ -100,6 +100,17 @@ export interface SurveyGroup extends BaseGroup {
    * an uninstalled module's data survives.
    */
   generatorResult: unknown;
+  /**
+   * The saved survey document this group was built from, when it came from
+   * one. Carrying the revision is what lets the planner say the saved area has
+   * moved on since. Not part of the generator signature: relinking a group
+   * changes no geometry and must not mark it stale.
+   */
+  source?: {
+    docId: string;
+    revision: number;
+    name: string;
+  };
   /** While set, generated WPs live in these chunk groups (this group stays
       empty) and every regeneration re-splits into the same chunks. */
   distribution?: {

@@ -1,3 +1,4 @@
+import { CloudUpload, Download } from 'lucide-react';
 import type { MissionSummary, FlightStatus } from '../../../shared/mission-library-types';
 import { useSettingsStore } from '../../stores/settings-store';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
@@ -54,9 +55,15 @@ interface MissionCardProps {
   onLoad: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  /** Write the whole mission to a file. */
+  onExport: () => void;
+  /** Save a copy into the backup so other computers can open it. */
+  onBackup: () => void;
+  /** True when this mission is already in the backup. */
+  inBackup: boolean;
 }
 
-export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoad, onDuplicate, onDelete }: MissionCardProps) {
+export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoad, onDuplicate, onDelete, onExport, onBackup, inBackup }: MissionCardProps) {
   const { vehicles } = useSettingsStore();
   const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const vehicle = vehicles.find(v => v.id === mission.vehicleProfileId);
@@ -144,6 +151,26 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onExport(); }}
+          className="p-1.5 rounded-md bg-surface-raised hover:brightness-125 text-content-secondary transition-colors"
+          data-tip="Save this mission to a file (keeps groups and surveys)"
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onBackup(); }}
+          className={`p-1.5 rounded-md transition-colors ${
+            inBackup
+              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+              : 'bg-surface-raised hover:brightness-125 text-content-secondary'
+          }`}
+          data-tip={inBackup
+            ? 'Already in your backup. Save the current version again.'
+            : 'Save a copy to your backup so your other computers can open it'}
+        >
+          <CloudUpload className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDuplicate(); }}

@@ -11,6 +11,7 @@ import type {
   FlightStatus,
   AbortReason,
 } from '../../shared/mission-library-types';
+import type { VaultMission } from '../../shared/ipc-channels';
 
 type ViewMode = 'grid' | 'list';
 
@@ -43,6 +44,16 @@ interface MissionLibraryStore {
   updateFlightLog: (log: FlightLog) => Promise<void>;
   deleteFlightLog: (missionId: string, logId: string) => Promise<boolean>;
 
+  // Actions - Files and backup
+  /** Write the whole mission to a file, groups and surveys intact. */
+  exportMissionFile: (id: string) => Promise<string | null>;
+  importMissionFile: () => Promise<MissionSummary | null>;
+  /** Vault: missions committed under a project, from this or another machine. */
+  vaultMissions: VaultMission[];
+  loadVaultMissions: () => Promise<void>;
+  pushMissionToVault: (id: string, site: string) => Promise<boolean>;
+  pullMissionFromVault: (path: string) => Promise<MissionSummary | null>;
+
   // Actions - Filter/Sort/View
   setFilter: (filter: Partial<MissionListFilter>) => void;
   setSort: (field: MissionSortField, direction: MissionSortDirection) => void;
@@ -61,6 +72,61 @@ export const useMissionLibraryStore = create<MissionLibraryStore>((set, get) => 
   viewMode: 'grid',
   isLoading: false,
   error: null,
+  vaultMissions: [],
+
+  exportMissionFile: async (id) => {
+    const result = await window.electronAPI?.missionLibraryExportFile(id);
+    if (!result?.success) {
+      if (result?.error && result.error !== 'Cancelled') set({ error: result.error });
+      return null;
+    }
+    return result.filePath ?? null;
+  },
+
+  importMissionFile: async () => {
+    const result = await window.electronAPI?.missionLibraryImportFile();
+    if (!result?.success) {
+      if (result?.error && result.error !== 'Cancelled') set({ error: result.error });
+      return null;
+    }
+    await get().loadMissions();
+    return result.mission ?? null;
+  },
+
+  loadVaultMissions: async () => {
+    try {
+      const vaultMissions = (await window.electronAPI?.fleetRepoListMissionDocs()) ?? [];
+      set({ vaultMissions });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    }
+  },
+
+  pushMissionToVault: async (id, site) => {
+    const mission = await window.electronAPI?.missionLibraryGet(id);
+    if (!mission) return false;
+    const result = await window.electronAPI?.fleetRepoSnapshotMissionDoc(site, { ...mission, site });
+    if (!result?.success) {
+      set({ error: result?.error ?? 'Could not write to the backup' });
+      return false;
+    }
+    // Remember the project on the local copy so the next save goes to the same
+    // folder without asking again.
+    await window.electronAPI?.missionLibraryImportDoc({ ...mission, site });
+    await Promise.all([get().loadMissions(), get().loadVaultMissions()]);
+    return true;
+  },
+
+  pullMissionFromVault: async (path) => {
+    const mission = await window.electronAPI?.fleetRepoReadMissionDoc(path);
+    if (!mission) {
+      set({ error: 'Could not read that mission from the backup' });
+      return null;
+    }
+    const stored = await window.electronAPI?.missionLibraryImportDoc(mission);
+    await get().loadMissions();
+    return stored ?? null;
+  },
 
   // ---------------------------------------------------------------------------
   // Missions

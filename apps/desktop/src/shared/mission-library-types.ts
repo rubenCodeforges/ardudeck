@@ -35,6 +35,8 @@ export interface MissionSummary {
   id: string;
   name: string;
   description: string;
+  /** Project/site this mission belongs to, matching the vault's sites/<site>. */
+  site?: string;
   vehicleProfileId: string | null;
   tags: string[];
   waypointCount: number;
@@ -102,6 +104,7 @@ export interface FlightLog {
 export interface SaveMissionPayload {
   name: string;
   description: string;
+  site?: string;
   vehicleProfileId: string | null;
   tags: string[];
   /**
@@ -150,4 +153,19 @@ export interface MissionLibraryProvider {
   updateFlightLog(log: FlightLog): Promise<FlightLog>;
   deleteFlightLog(missionId: string, logId: string): Promise<boolean>;
   getAllTags(): Promise<string[]>;
+}
+
+/**
+ * Validate a mission file that came from disk, a repo or another machine.
+ * Items and groups stay loosely typed here; the mission store and migration
+ * own their shapes, and a file that gets this far is one of ours.
+ */
+export function isStoredMission(value: unknown): value is StoredMission {
+  if (typeof value !== 'object' || value === null) return false;
+  const m = value as Partial<StoredMission>;
+  if (typeof m.id !== 'string' || m.id.length === 0) return false;
+  if (typeof m.name !== 'string') return false;
+  if (!Array.isArray(m.items)) return false;
+  if (m.groups !== undefined && !Array.isArray(m.groups)) return false;
+  return true;
 }

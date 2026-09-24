@@ -337,6 +337,8 @@ interface MissionStore {
 
   // Group management
   renameGroup: (groupId: string, name: string) => void;
+  /** Point a survey group at the saved area it was stored as, or came from. */
+  setSurveyGroupSource: (groupId: string, source: SurveyGroup['source']) => void;
   setGroupColor: (groupId: string, color: string) => void;
   /** Assign (or clear with null) the fleet vehicle this group uploads to / is coloured by. */
   setGroupVehicle: (groupId: string, vehicleKey: string | null) => void;
@@ -1289,6 +1291,15 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     set((s) => ({
       groups: s.groups.map((g) =>
         g.id === groupId ? { ...g, name, updatedAt: Date.now() } : g,
+      ),
+      isDirty: true,
+    }));
+  },
+
+  setSurveyGroupSource: (groupId, source) => {
+    set((s) => ({
+      groups: s.groups.map((g) =>
+        g.id === groupId && g.kind === 'survey' ? { ...g, source, updatedAt: Date.now() } : g,
       ),
       isDirty: true,
     }));

@@ -6,7 +6,12 @@ import { useSettingsStore } from '../../stores/settings-store';
 import { MissionCard } from './MissionCard';
 import { MissionDetailPanel } from './MissionDetailPanel';
 import { SaveMissionModal } from './SaveMissionModal';
-import type { MissionSortField } from '../../../shared/mission-library-types';
+import { SurveyAreaBrowser } from './SurveyAreaBrowser';
+import { ProjectsBrowser } from './ProjectsBrowser';
+import type { MissionSortField, MissionSummary } from '../../../shared/mission-library-types';
+import { CloudUpload, Download, Upload } from 'lucide-react';
+import { useSurveyAreaStore } from '../../stores/survey-area-store';
+import { BackupTargetDialog } from './BackupTargetDialog';
 import type { MissionItem } from '../../../shared/mission-types';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
 
@@ -25,14 +30,20 @@ export function MissionLibraryView() {
   const { setView } = useNavigationStore();
   const { vehicles } = useSettingsStore();
   const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const vaultSites = useSurveyAreaStore((s) => s.vaultSites);
+  const loadVault = useSurveyAreaStore((s) => s.loadVault);
 
+  const [tab, setTab] = useState<'missions' | 'areas' | 'projects'>('missions');
   const [searchInput, setSearchInput] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [importData, setImportData] = useState<{ items: MissionItem[]; home: { lat: number; lon: number; alt: number } | null } | null>(null);
+  const [backupTarget, setBackupTarget] = useState<MissionSummary | null>(null);
 
   // Load missions on mount
   useEffect(() => {
     store.loadMissions();
+    void store.loadVaultMissions();
+    void loadVault();
   }, []);
 
   // Debounced search
@@ -109,6 +120,25 @@ export function MissionLibraryView() {
     setImportData({ items: renumbered, home });
   };
 
+  const tabs = (
+    <div className="flex items-center bg-surface border border-subtle rounded-lg overflow-hidden">
+      {(['missions', 'areas', 'projects'] as const).map((t) => (
+        <button
+          key={t}
+          onClick={() => setTab(t)}
+          className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+            tab === t ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'
+          }`}
+        >
+          {t === 'missions' ? 'Missions' : t === 'areas' ? 'Survey areas' : 'Projects'}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (tab === 'areas') return <SurveyAreaBrowser tabs={tabs} />;
+  if (tab === 'projects') return <ProjectsBrowser tabs={tabs} />;
+
   return (
     <div className="h-full flex flex-col">
       {/* Top bar */}
@@ -127,6 +157,8 @@ export function MissionLibraryView() {
             </div>
           </div>
 
+          {tabs}
+
           {/* Import from file */}
           <button
             onClick={handleImportFile}
@@ -136,6 +168,15 @@ export function MissionLibraryView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Import File
+          </button>
+
+          <button
+            onClick={() => void store.importMissionFile()}
+            data-tip="Open an ArduDeck mission file (.mission.json), groups and surveys intact"
+            className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:brightness-125 text-content rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Open mission file
           </button>
 
           {/* Search */}
@@ -287,6 +328,9 @@ export function MissionLibraryView() {
                   onLoad={() => handleLoadToEditor(m.id)}
                   onDuplicate={() => handleDuplicate(m.id, m.name)}
                   onDelete={() => handleDelete(m.id)}
+                  onExport={() => void store.exportMissionFile(m.id)}
+                  onBackup={() => setBackupTarget(m)}
+                  inBackup={store.vaultMissions.some((v) => v.id === m.id)}
                 />
               ))}
             </div>
@@ -380,6 +424,24 @@ export function MissionLibraryView() {
                               </svg>
                             </button>
                             <button
+                              onClick={(e) => { e.stopPropagation(); void store.exportMissionFile(m.id); }}
+                              className="p-1 rounded hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"
+                              data-tip="Save this mission to a file (keeps groups and surveys)"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setBackupTarget(m); }}
+                              className={`p-1 rounded transition-colors ${
+                                store.vaultMissions.some((v) => v.id === m.id)
+                                  ? 'text-emerald-600 dark:text-emerald-400 hover:bg-surface-raised'
+                                  : 'text-content-secondary hover:text-content hover:bg-surface-raised'
+                              }`}
+                              data-tip="Save a copy to your backup so your other computers can open it"
+                            >
+                              <CloudUpload className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={(e) => { e.stopPropagation(); handleDuplicate(m.id, m.name); }}
                               className="p-1 rounded hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"
                               title="Duplicate"
@@ -417,6 +479,21 @@ export function MissionLibraryView() {
           </div>
         )}
       </div>
+
+      {backupTarget && (
+        <BackupTargetDialog
+          title="Save mission to backup"
+          itemName={backupTarget.name}
+          kind="mission"
+          sites={vaultSites}
+          initialSite={backupTarget.site ?? ''}
+          onCancel={() => setBackupTarget(null)}
+          onConfirm={async (site) => {
+            await store.pushMissionToVault(backupTarget.id, site);
+            setBackupTarget(null);
+          }}
+        />
+      )}
 
       {/* Import modal */}
       {importData && (

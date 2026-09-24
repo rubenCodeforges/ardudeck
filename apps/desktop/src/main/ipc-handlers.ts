@@ -185,6 +185,8 @@ import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
 import { classifyStream, classifyDatagrams } from './link-doctor/stream-classifier.js';
 import { detectElrsModule, setElrsLinkMode, cancelElrsOperation } from './link-doctor/elrs-service.js';
 import { CrsfReceiver } from './crsf/crsf-receiver.js';
+import { isSurveyDocument, type SurveyDocument } from '../shared/survey-document-types.js';
+import { isStoredMission, type StoredMission } from '../shared/mission-library-types.js';
 import { wfbngReceiver } from './media/wfbng-receiver.js';
 import { decodeServoOutputRaw } from './servo-output-decode.js';
 import { decodePx4ParamValue, encodePx4ParamSetValue } from './px4-param-bytewise.js';
@@ -9986,6 +9988,66 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: true, ...result };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_SURVEY_AREA, async (
+    _,
+    site: string,
+    doc: SurveyDocument,
+  ) => {
+    try {
+      if (!isSurveyDocument(doc)) return { success: false, error: 'Not a survey area document' };
+      const result = await (await vault()).snapshotSurveyArea(site, doc);
+      return { success: true, ...result };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_LIST_SURVEY_AREAS, async (_, site?: string) => {
+    try {
+      return await (await vault()).listSurveyAreas(site);
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_READ_SURVEY_AREA, async (_, path: string) => {
+    try {
+      return await (await vault()).readSurveyArea(path);
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_MISSION_DOC, async (
+    _,
+    site: string,
+    mission: StoredMission,
+  ) => {
+    try {
+      if (!isStoredMission(mission)) return { success: false, error: 'Not a mission document' };
+      const result = await (await vault()).snapshotMissionDocument(site, mission);
+      return { success: true, ...result };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_LIST_MISSION_DOCS, async (_, site?: string) => {
+    try {
+      return await (await vault()).listVaultMissions(site);
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_READ_MISSION_DOC, async (_, path: string) => {
+    try {
+      return await (await vault()).readVaultMission(path);
+    } catch {
+      return null;
     }
   });
 
