@@ -984,8 +984,11 @@ export interface ConnectOptions {
    * letting the OS pick an ephemeral port (0) breaks reconnect.
    */
   udpClientLocalPort?: number;
-  /** Force a specific protocol, skipping auto-detection */
-  protocol?: 'mavlink' | 'msp';
+  /**
+   * Force a specific protocol, skipping auto-detection. 'crsf' is the one-way
+   * telemetry an ELRS TX backpack broadcasts over WiFi.
+   */
+  protocol?: 'mavlink' | 'msp' | 'crsf';
 }
 
 /**
@@ -1165,7 +1168,7 @@ export interface CompanionDiscoveryResult {
 export interface ConnectionState {
   isConnected: boolean;
   isWaitingForHeartbeat?: boolean;
-  protocol?: 'mavlink' | 'msp'; // Auto-detected protocol
+  protocol?: 'mavlink' | 'msp' | 'crsf'; // Auto-detected protocol
   transport?: string;
   portPath?: string; // Serial port path for reconnection
   // MAVLink-specific

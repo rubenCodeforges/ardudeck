@@ -184,6 +184,7 @@ import {
 import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
 import { classifyStream, classifyDatagrams } from './link-doctor/stream-classifier.js';
 import { detectElrsModule, setElrsLinkMode, cancelElrsOperation } from './link-doctor/elrs-service.js';
+import { CrsfReceiver } from './crsf/crsf-receiver.js';
 import { wfbngReceiver } from './media/wfbng-receiver.js';
 import { decodeServoOutputRaw } from './servo-output-decode.js';
 import { decodePx4ParamValue, encodePx4ParamSetValue } from './px4-param-bytewise.js';
@@ -798,6 +799,24 @@ let mavlinkDataHandler: ((data: Uint8Array) => Promise<void>) | null = null;
 let transportErrorHandler: ((err: Error) => void) | null = null;
 let transportCloseHandler: (() => void) | null = null;
 
+// CRSF telemetry link (ELRS backpack over WiFi). Null on every other link.
+const CRSF_BATCH_INTERVAL_MS = 200;
+let crsfReceiver: CrsfReceiver | null = null;
+let crsfTimer: NodeJS.Timeout | null = null;
+let crsfDataHandler: ((data: Uint8Array) => void) | null = null;
+
+function stopCrsfLink(): void {
+  if (crsfTimer) {
+    clearInterval(crsfTimer);
+    crsfTimer = null;
+  }
+  if (crsfDataHandler && currentTransport) {
+    currentTransport.off('data', crsfDataHandler as (...args: unknown[]) => void);
+  }
+  crsfDataHandler = null;
+  crsfReceiver = null;
+}
+
 // GCS heartbeat: ArduPilot requires GCS heartbeats to recognize us as a valid GCS
 let gcsHeartbeatInterval: NodeJS.Timeout | null = null;
 
@@ -1335,6 +1354,7 @@ function cleanupTransportListeners(): void {
       currentTransport.off('close', transportCloseHandler as (...args: unknown[]) => void);
     }
   }
+  stopCrsfLink();
   mavlinkDataHandler = null;
   transportErrorHandler = null;
   transportCloseHandler = null;
@@ -5953,6 +5973,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
    */
   const scheduleAutoReconnect = (reason: string): void => {
     if (!lastConnectOptions || suppressAutoReconnect || isReconnectPending()) return;
+    // A CRSF link has no protocol handshake to redo: the listening socket stays
+    // bound and the link comes back by itself when frames resume. Running it
+    // through the MAVLink/MSP reconnect machinery would only probe MSP at it.
+    if (lastConnectOptions.protocol === 'crsf') return;
     const o = lastConnectOptions;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
@@ -6205,6 +6229,64 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         try { await thisTransport.close(); } catch { /* ignore */ }
         sendLog(mainWindow, 'info', 'Connection attempt superseded while opening; closed the stale socket.');
         return false;
+      }
+
+      // CRSF: the one-way telemetry stream an ELRS TX backpack broadcasts over
+      // WiFi. There is nothing to detect and nothing to ask for, so the link is
+      // "up" exactly while the aircraft's frames keep arriving.
+      if (options.protocol === 'crsf') {
+        if (mavlinkDataHandler) {
+          currentTransport.off('data', mavlinkDataHandler as (...args: unknown[]) => void);
+        }
+        mavlinkParser = null;
+        mavlinkDataHandler = null;
+
+        const receiver = new CrsfReceiver();
+        crsfReceiver = receiver;
+        crsfDataHandler = (data: Uint8Array) => {
+          const decoded = receiver.feed(data, Date.now());
+          if (decoded > 0) connectionState.packetsReceived = (connectionState.packetsReceived ?? 0) + decoded;
+        };
+        currentTransport.on('data', crsfDataHandler);
+
+        connectionState = {
+          isConnected: false,
+          isWaitingForHeartbeat: true,
+          protocol: 'crsf',
+          transport: transportName,
+          connectionType: options.type,
+          packetsReceived: 0,
+          packetsSent: 0,
+        };
+        sendConnectionState(mainWindow);
+        sendLog(
+          mainWindow,
+          'info',
+          'Listening for CRSF telemetry...',
+          `${transportName}. Read-only link: no missions, parameters or commands. For two-way control switch the ELRS link mode to MAVLink and connect as MAVLink.`,
+        );
+
+        crsfTimer = setInterval(() => {
+          if (crsfReceiver !== receiver) return;
+          const live = !receiver.isStale(Date.now());
+          if (live !== connectionState.isConnected) {
+            connectionState.isConnected = live;
+            connectionState.isWaitingForHeartbeat = !live;
+            sendConnectionState(mainWindow);
+            sendLog(
+              mainWindow,
+              live ? 'info' : 'warn',
+              live ? 'CRSF telemetry received' : 'CRSF telemetry stopped',
+              receiver.linkLine() ?? undefined,
+            );
+          }
+          const batch = receiver.batch();
+          if (Object.keys(batch).length > 0) {
+            safeSend(mainWindow, IPC_CHANNELS.TELEMETRY_BATCH, batch);
+          }
+        }, CRSF_BATCH_INTERVAL_MS);
+
+        return true;
       }
 
       // If protocol is forced to MSP, skip MAVLink detection entirely

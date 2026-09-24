@@ -260,9 +260,10 @@ const FIRMWARE_NAMES: Record<string, string> = {
 function checkProfileCompatibility(
   profileType: VehicleType | undefined,
   fcVariant: string | undefined,
-  protocol: 'mavlink' | 'msp' | undefined
+  protocol: 'mavlink' | 'msp' | 'crsf' | undefined
 ): { compatible: boolean; message?: string; supportedTypes?: VehicleType[] } {
-  if (!profileType || !protocol) return { compatible: true };
+  // A CRSF telemetry link says nothing about the firmware, so it constrains nothing.
+  if (!profileType || !protocol || protocol === 'crsf') return { compatible: true };
 
   // MAVLink (ArduPilot) supports all vehicle types
   if (protocol === 'mavlink') return { compatible: true };

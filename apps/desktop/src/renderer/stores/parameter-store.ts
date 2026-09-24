@@ -55,6 +55,8 @@ interface ParameterStore {
   parameters: Map<string, ParameterWithMeta>;
   downloadState: ParamDownloadState;
   metadata: ParameterMetadataStore | null;
+  /** MAV_TYPE the loaded metadata describes, so a vehicle change refetches. */
+  metadataMavType: number | null;
   isLoading: boolean;
   isLoadingMetadata: boolean;
   progress: ParameterProgress | null;
@@ -83,6 +85,17 @@ interface ParameterStore {
   fileApplyResult: {
     applied: number;
     failed: number;
+    rebootRequired: string[];
+    skippedParams: Array<{ id: string; value: number }>;
+  } | null;
+
+  // Outcome of the last apply, kept after the modal closes. fileApplyResult is
+  // cleared on close and is never set by a clean apply, so it cannot be read
+  // back by anything waiting on the dialog (MCP propose_parameters).
+  lastFileApplyOutcome: {
+    applied: number;
+    failed: number;
+    failedParams: string[];
     rebootRequired: string[];
     skippedParams: Array<{ id: string; value: number }>;
   } | null;
@@ -210,6 +223,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   paramCount: 0,
   downloadState: 'idle',
   metadata: null,
+  metadataMavType: null,
   isLoading: false,
   isLoadingMetadata: false,
   progress: null,
@@ -240,6 +254,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   isApplyingFileParams: false,
   applyProgress: null,
   fileApplyResult: null,
+  lastFileApplyOutcome: null,
   pendingRetryParams: [],
 
   filteredParameters: () => {
@@ -464,29 +479,36 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   },
 
   fetchMetadata: async (mavType: number) => {
-    // Skip if already loaded or loading
-    if (get().metadata || get().isLoadingMetadata) return;
+    // Already have this vehicle's definitions, or a fetch is in flight. The
+    // type is part of the test: a rover must not keep the copter's lists.
+    if (get().isLoadingMetadata) return;
+    if (get().metadata && get().metadataMavType === mavType) return;
 
     set({ isLoadingMetadata: true });
 
-    const result = await window.electronAPI?.fetchParameterMetadata(mavType);
+    try {
+      const result = await window.electronAPI?.fetchParameterMetadata(mavType);
+      if (result?.success && result.metadata) {
+        set({ metadata: result.metadata, metadataMavType: mavType });
 
-    if (result?.success && result.metadata) {
-      set({ metadata: result.metadata, isLoadingMetadata: false });
-
-      // Re-scan existing params for newly-discovered readonly flags from metadata
-      const params = new Map(get().parameters);
-      let changed = false;
-      for (const [id, param] of params) {
-        if (!param.isReadOnly && result.metadata[id]?.readOnly) {
-          params.set(id, { ...param, isReadOnly: true });
-          changed = true;
+        // Re-scan existing params for newly-discovered readonly flags from metadata
+        const params = new Map(get().parameters);
+        let changed = false;
+        for (const [id, param] of params) {
+          if (!param.isReadOnly && result.metadata[id]?.readOnly) {
+            params.set(id, { ...param, isReadOnly: true });
+            changed = true;
+          }
         }
+        if (changed) set({ parameters: params });
+      } else {
+        console.warn('Failed to load parameter metadata:', result?.error);
       }
-      if (changed) set({ parameters: params });
-    } else {
-      // Non-fatal - just log and continue without metadata
-      console.warn('Failed to load parameter metadata:', result?.error);
+    } catch (e) {
+      // Without the finally below this threw with the flag still set, and every
+      // later attempt returned early: no dropdowns, for the rest of the session.
+      console.warn('Parameter metadata request failed:', e);
+    } finally {
       set({ isLoadingMetadata: false });
     }
   },
@@ -1012,6 +1034,13 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
           fileSkippedCount: 0,
           fileTotalCount: 0,
           fileVehicleType: null,
+          lastFileApplyOutcome: {
+            applied: selected.length,
+            failed: 0,
+            failedParams: [],
+            rebootRequired: [],
+            skippedParams: fileSkippedParams,
+          },
         };
       });
       return { applied: selected.length, failed: 0, rebootRequired: [], skippedParams: fileSkippedParams };
@@ -1059,6 +1088,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     const appliedParamIds = selected
       .filter(d => !failedSet.has(d.paramId))
       .map(d => d.paramId);
+    const failedParams = selected.filter(d => failedSet.has(d.paramId)).map(d => d.paramId);
 
     // Update local state for all confirmed params in one batch
     set(state => {
@@ -1084,16 +1114,19 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     // Collect params that require reboot
     const rebootRequired = appliedParamIds.filter(id => metadata?.[id]?.rebootRequired === true);
 
+    const outcome = { applied, failed, failedParams, rebootRequired, skippedParams: fileSkippedParams };
+
     if (rebootRequired.length > 0 || fileSkippedParams.length > 0) {
       // Show summary dialog instead of closing
       set({
         isApplyingFileParams: false,
         applyProgress: null,
         fileApplyResult: { applied, failed, rebootRequired, skippedParams: fileSkippedParams },
+        lastFileApplyOutcome: outcome,
       });
     } else {
       // Clean apply — close modal
-      set({ isApplyingFileParams: false, showCompareModal: false, fileParamDiffs: [], fileSkippedParams: [], fileSkippedCount: 0, fileTotalCount: 0, fileVehicleType: null, applyProgress: null });
+      set({ isApplyingFileParams: false, showCompareModal: false, fileParamDiffs: [], fileSkippedParams: [], fileSkippedCount: 0, fileTotalCount: 0, fileVehicleType: null, applyProgress: null, lastFileApplyOutcome: outcome });
     }
 
     return { applied, failed, rebootRequired, skippedParams: fileSkippedParams };
@@ -1204,6 +1237,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     isApplyingFileParams: false,
     applyProgress: null,
     fileApplyResult: null,
+    lastFileApplyOutcome: null,
     pendingRetryParams: [],
   }); },
 }));

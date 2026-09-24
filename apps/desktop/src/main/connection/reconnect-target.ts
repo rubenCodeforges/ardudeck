@@ -22,7 +22,8 @@ import type { ConnectOptions } from '../../shared/ipc-channels';
 export interface LiveConnection {
   connectionType?: 'serial' | 'tcp' | 'udp';
   portPath?: string;
-  protocol?: 'msp' | 'mavlink';
+  /** 'crsf' links never reconnect through here; it resolves like a cleared protocol. */
+  protocol?: 'msp' | 'mavlink' | 'crsf';
   isSitl?: boolean;
 }
 
@@ -57,7 +58,8 @@ export function resolveReconnectTarget(
     // A cleared protocol used to fall through to MSP, so a MAVLink link scheduled after its drop
     // was re-dialled as MSP: the socket opens, no heartbeat ever parses, and it reads as a dead
     // board rather than as the wrong protocol.
-    protocol: live.protocol ?? (last ? (last.protocol === 'msp' ? 'msp' : 'mavlink') : 'msp'),
+    protocol: (live.protocol === 'crsf' ? undefined : live.protocol)
+      ?? (last ? (last.protocol === 'msp' ? 'msp' : 'mavlink') : 'msp'),
     // The baud actually connected with, never a hardcoded default: reconnecting at 115200 to a
     // 1,500,000-baud board opens the port fine and then parses nothing.
     baudRate: (last?.type === 'serial' ? last.baudRate : undefined) ?? DEFAULT_BAUD,

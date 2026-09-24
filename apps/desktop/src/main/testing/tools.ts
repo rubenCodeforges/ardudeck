@@ -24,7 +24,7 @@ export function setMainWindow(win: BrowserWindow): void {
   mainWindow = win;
 }
 
-async function callRenderer(channel: string, params: any = {}): Promise<any> {
+async function callRenderer(channel: string, params: any = {}, timeoutMs = 30000): Promise<any> {
   if (!mainWindow || mainWindow.isDestroyed()) {
     throw new Error('Main window not available');
   }
@@ -35,8 +35,8 @@ async function callRenderer(channel: string, params: any = {}): Promise<any> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       ipcMain.removeListener(responseChannel, handler);
-      reject(new Error(`Renderer timeout (30s) for ${channel}`));
-    }, 30000);
+      reject(new Error(`Renderer timeout (${timeoutMs}ms) for ${channel}`));
+    }, timeoutMs);
 
     const handler = (_event: any, id: string, result: any) => {
       if (id !== requestId) return;
@@ -272,7 +272,9 @@ export async function proposeParametersTool(params: {
   proposals: Array<{ name: string; value: number; reason?: string }>;
   timeout?: number;
 }): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.PROPOSE_PARAMETERS, params);
+  // Outlive the renderer's own review deadline: this call blocks on a human.
+  const reviewMs = params.timeout ?? 5 * 60 * 1000;
+  return callRenderer(TESTING_CHANNELS.PROPOSE_PARAMETERS, params, reviewMs + 10_000);
 }
 
 // --- Control flow -----------------------------------------------------------

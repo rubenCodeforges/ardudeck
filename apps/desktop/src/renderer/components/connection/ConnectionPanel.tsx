@@ -48,8 +48,8 @@ export function ConnectionPanel() {
   const [udpRemoteHost, setUdpRemoteHost] = useState('192.168.1.1');
   const [udpRemotePort, setUdpRemotePort] = useState(14550);
   const [udpClientLocalPort, setUdpClientLocalPort] = useState(14550);
-  const [tcpProtocol, setTcpProtocol] = useState<'mavlink' | 'msp'>('mavlink');
-  const [udpProtocol, setUdpProtocol] = useState<'mavlink' | 'msp'>('mavlink');
+  const [tcpProtocol, setTcpProtocol] = useState<'mavlink' | 'msp' | 'crsf'>('mavlink');
+  const [udpProtocol, setUdpProtocol] = useState<'mavlink' | 'msp' | 'crsf'>('mavlink');
   const [showDriverHelp, setShowDriverHelp] = useState(false);
   const [diagnosis, setDiagnosis] = useState<StreamDiagnosis | null>(null);
   const [showRadioWizard, setShowRadioWizard] = useState(false);
@@ -1070,7 +1070,7 @@ export function ConnectionPanel() {
             <div>
               <label className="label">Protocol</label>
               <div className="flex rounded-lg overflow-hidden border border-subtle">
-                {(['mavlink', 'msp'] as const).map((proto) => (
+                {(['mavlink', 'msp', 'crsf'] as const).map((proto) => (
                   <button
                     key={proto}
                     onClick={() => setUdpProtocol(proto)}
@@ -1079,12 +1079,31 @@ export function ConnectionPanel() {
                       udpProtocol === proto
                         ? 'bg-blue-600/30 text-blue-300'
                         : 'text-content-secondary hover:text-content hover:bg-surface-raised'
-                    } ${proto === 'mavlink' ? 'border-r border-subtle' : ''}`}
+                    } ${proto !== 'crsf' ? 'border-r border-subtle' : ''}`}
                   >
-                    {proto === 'mavlink' ? 'MAVLink' : 'MSP'}
+                    {proto === 'mavlink' ? 'MAVLink' : proto === 'msp' ? 'MSP' : 'CRSF'}
                   </button>
                 ))}
               </div>
+              {udpProtocol === 'crsf' && (
+                <div className="mt-2 rounded-xl border border-subtle bg-surface p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                    </svg>
+                    <span className="text-xs font-medium">CRSF telemetry from an ExpressLRS backpack</span>
+                  </div>
+                  <p className="text-xs text-content-secondary">
+                    The telemetry an ExpressLRS transmitter broadcasts over WiFi. Set Telemetry Mode to WiFi in the ELRS Lua script and join the backpack network, then listen here on port 14550. Works behind any CRSF receiver, INAV included, with nothing changed on the aircraft.
+                  </p>
+                  <p className="text-xs text-content-secondary">
+                    Read-only: position, attitude, altitude, battery, flight mode and link quality. No missions, parameters, mode changes or commands, because the link only goes one way.
+                  </p>
+                  <p className="text-xs text-content-secondary">
+                    For a two-way link, switch the ELRS Link Mode to MAVLink and connect with the MAVLink option instead. That needs an ESP-based transmitter on ELRS 3.5 or newer (backpack 1.5+), a fast packet rate, and INAV 8+ with the receiver UART set to MAVLink at 460800 (Receiver: SERIAL, protocol MAVLINK). INAV is still configured over USB either way.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

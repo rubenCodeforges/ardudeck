@@ -360,6 +360,7 @@ async function init(): Promise<void> {
       showCompareModal: true,
       applyProgress: null,
       fileApplyResult: null,
+      lastFileApplyOutcome: null,
     } as any);
 
     // No navigation: ParameterCompareModalRoot is mounted at App root exactly so
@@ -367,29 +368,38 @@ async function init(): Promise<void> {
     // Parameters screen to approve a change moves them away from what they were
     // doing, mid-flight included.
 
-    // Wait for the modal to close (apply or cancel). Resolve with outcome.
+    // Wait for the user to apply or cancel. The outcome is read from
+    // lastFileApplyOutcome, not fileApplyResult: the latter is null on a clean
+    // apply and is cleared again when the summary dialog is dismissed, so
+    // waiting for the modal to close and reading it reported every successful
+    // apply as a cancellation.
     return new Promise<any>((resolve, reject) => {
       const started = Date.now();
       const tick = () => {
+        const s = pStore.getState() as any;
+        const outcome = s.lastFileApplyOutcome;
+        if (outcome) {
+          const failedParams: string[] = outcome.failedParams ?? [];
+          resolve({
+            ok: outcome.failed === 0,
+            applied: outcome.applied,
+            failed: outcome.failed,
+            failedParams,
+            rebootRequired: outcome.rebootRequired,
+            rejected,
+            ...(outcome.failed > 0
+              ? { reason: `${outcome.failed} of ${outcome.applied + outcome.failed} parameters failed to write` }
+              : {}),
+          });
+          return;
+        }
+        if (!s.showCompareModal && !s.isApplyingFileParams) {
+          resolve({ ok: false, reason: 'user cancelled', rejected });
+          return;
+        }
         if (Date.now() - started > TIMEOUT_MS) {
           pStore.setState({ showCompareModal: false, fileParamDiffs: [] } as any);
           reject(new Error('Timeout waiting for user to review proposed parameters'));
-          return;
-        }
-        const s = pStore.getState() as any;
-        if (!s.showCompareModal && !s.isApplyingFileParams) {
-          const result = s.fileApplyResult;
-          if (result) {
-            resolve({
-              ok: true,
-              applied: result.applied,
-              failed: result.failed,
-              rebootRequired: result.rebootRequired,
-              rejected,
-            });
-          } else {
-            resolve({ ok: false, reason: 'user cancelled', rejected });
-          }
           return;
         }
         setTimeout(tick, 200);

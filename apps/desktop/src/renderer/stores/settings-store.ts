@@ -248,7 +248,7 @@ export interface SavedConnection {
   label: string;  // e.g. "217.154.114.45:20001 (MAVLink)"
   host?: string;
   port: number;
-  protocol: 'mavlink' | 'msp';
+  protocol: 'mavlink' | 'msp' | 'crsf';
   udpMode?: 'listen' | 'client';
   udpRemoteHost?: string;
   udpRemotePort?: number;
@@ -264,13 +264,13 @@ export interface ConnectionMemory {
   lastBaudRate?: number;
   lastTcpHost?: string;
   lastTcpPort?: number;
-  lastTcpProtocol?: 'mavlink' | 'msp';
+  lastTcpProtocol?: 'mavlink' | 'msp' | 'crsf';
   lastUdpPort?: number;
   lastUdpMode?: 'listen' | 'client';
   lastUdpRemoteHost?: string;
   lastUdpRemotePort?: number;
   lastUdpClientLocalPort?: number;
-  lastUdpProtocol?: 'mavlink' | 'msp';
+  lastUdpProtocol?: 'mavlink' | 'msp' | 'crsf';
   lastConnectionType?: 'serial' | 'tcp' | 'udp';
   /** Recent TCP/UDP connections for quick reconnect */
   recentConnections?: SavedConnection[];

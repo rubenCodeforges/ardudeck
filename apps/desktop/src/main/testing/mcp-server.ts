@@ -172,7 +172,7 @@ function buildServer(): McpServer {
 
   server.tool(
     'propose_parameters',
-    'Propose one or more ArduPilot parameter changes. The user sees a review modal in ArduDeck and must click Apply. Returns { ok, applied, failed, rebootRequired, rejected } once they act. Blocked while vehicle is armed. Certain identity/motor-topology params are denylisted. Use this for tuning suggestions — NOT for arming, mode changes, or any mid-flight action.',
+    'Propose one or more ArduPilot parameter changes. The user sees a review modal in ArduDeck and must click Apply. Returns { ok, applied, failed, failedParams, rebootRequired, rejected } once they act; ok is false with reason "user cancelled" if they dismiss it. Blocked while vehicle is armed. Certain identity/motor-topology params are denylisted. Use this for tuning suggestions — NOT for arming, mode changes, or any mid-flight action.',
     {
       proposals: z.array(
         z.object({
