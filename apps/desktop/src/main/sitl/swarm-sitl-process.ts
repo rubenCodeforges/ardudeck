@@ -19,7 +19,6 @@
 import { spawn, ChildProcess } from 'node:child_process';
 import { app, BrowserWindow } from 'electron';
 import { chmod, mkdir, writeFile, access } from 'node:fs/promises';
-import net from 'node:net';
 import path from 'node:path';
 import type {
   SwarmSitlConfig,
@@ -102,24 +101,33 @@ function computeHomes(config: SwarmSitlConfig): Array<{ lat: number; lng: number
 }
 
 /**
- * Resolve once when the port begins accepting connections. SITL takes a couple
- * of seconds to open its TCP server after spawn; we poll until it answers (or
- * the deadline passes) so the renderer's auto-connect succeeds first try.
+ * Readiness is detected from the SITL's own stdout ("SERIAL0 on TCP port …")
+ * instead of probing the TCP port. Probing (connect then immediately destroy)
+ * kills the Windows Cygwin SITL build: it treats a SERIAL0 client disconnect
+ * as a reason to exit cleanly (code 0), so a successful probe deleted the
+ * instance it was probing. The stdout announcement is emitted before the
+ * server accepts connections, and the engine's tcpout sources retry until the
+ * port is actually open, so announcing on stdout costs nothing.
  */
-function waitForPort(port: number, timeoutMs: number): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve) => {
-    const attempt = () => {
-      const sock = net.connect({ host: '127.0.0.1', port });
-      sock.once('connect', () => { sock.destroy(); resolve(true); });
-      sock.once('error', () => {
-        sock.destroy();
-        if (Date.now() >= deadline) { resolve(false); return; }
-        setTimeout(attempt, 400);
-      });
-    };
-    attempt();
-  });
+function watchStdoutReady(inst: Instance, child: ChildProcess, onReady: () => void, timeoutMs: number): void {
+  const timer = setTimeout(() => {
+    if (inst.state === 'spawning') {
+      inst.state = 'error';
+      inst.error = 'SITL did not announce its MAVLink port in time';
+      onReady(); // flush state
+    }
+  }, timeoutMs);
+  const onData = (d: Buffer) => {
+    if (d.toString().includes('SERIAL0 on TCP port')) {
+      clearTimeout(timer);
+      child.stdout?.off('data', onData);
+      if (inst.state === 'spawning') {
+        inst.state = 'ready';
+        onReady(); // flush state
+      }
+    }
+  };
+  child.stdout?.on('data', onData);
 }
 
 class SwarmSitlProcessManager {
@@ -292,15 +300,12 @@ class SwarmSitlProcessManager {
 
         this.emitInstance(inst);
 
-        // Probe for readiness without blocking the spawn loop, then announce.
-        void waitForPort(tcpPort, 20_000).then((ready) => {
-          // Don't override a process that already died.
-          if (inst.state === 'exited' || inst.state === 'error') return;
-          inst.state = ready ? 'ready' : 'error';
-          if (!ready) inst.error = 'SITL did not open its MAVLink port in time';
+        // Detect readiness from stdout (see watchStdoutReady) — never probe
+        // the TCP port, a probe's instant disconnect kills the Cygwin SITL.
+        watchStdoutReady(inst, child, () => {
           this.emitInstance(inst);
           this.emitState();
-        });
+        }, 20_000);
       } catch (err) {
         inst.state = 'error';
         inst.error = err instanceof Error ? err.message : 'spawn failed';
