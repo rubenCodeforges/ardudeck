@@ -184,7 +184,9 @@ export function composeSurveyDocument(
     name: payload.name,
     description: payload.description ?? '',
     tags: payload.tags ?? [],
-    ...(payload.site ? { site: payload.site } : {}),
+    // A save that does not name a project keeps the one this area already had:
+    // re-saving from the group list must not quietly unfile it.
+    ...(payload.site ?? previous?.site ? { site: payload.site ?? previous?.site } : {}),
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
     ...(appVersion ? { appVersion } : {}),

@@ -13,6 +13,11 @@ import {
   getCurrentVaultUnit,
   subscribeCurrentVaultUnit,
 } from '../stores/fleet-repo-store';
+import {
+  registerModuleMapLayer,
+  unregisterModuleMapLayer,
+  unregisterModuleMapLayersFor,
+} from './module-map-registry';
 import { useHudStore } from '../stores/hud-store';
 import { useHudOverlayStore } from '../stores/hud-overlay-store';
 import { buildHudProjection } from '../components/camera/hud/hud-projection';
@@ -61,6 +66,11 @@ function currentHudProjection(): HudProjection | null {
 // Which generator ids each module registered, so a module can only remove its
 // own and a future module-unload path can sweep them all.
 const surveyGeneratorsBySlug = new Map<string, Set<string>>();
+
+/** Remove every map layer a module registered (module unload/reload). */
+export function unregisterModuleMapLayersForSlug(slug: string): void {
+  unregisterModuleMapLayersFor(slug);
+}
 
 /** Remove every survey generator a module registered (module unload/reload). */
 export function unregisterModuleSurveyGenerators(slug: string): void {
@@ -206,6 +216,11 @@ export function createRendererHostApi(
         useCommandTargetStore.subscribe((s) =>
           listener(s.targets[commandTargetKey()] ?? null),
         ),
+    },
+
+    map: {
+      registerLayer: (reg) => registerModuleMapLayer(slug, reg),
+      unregisterLayer: (id) => unregisterModuleMapLayer(slug, id),
     },
 
     survey: {

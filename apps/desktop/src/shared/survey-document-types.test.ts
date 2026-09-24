@@ -6,7 +6,9 @@ import {
   isSurveyDocument,
   normalizeSurveyDocument,
   sourceIsBehind,
+  composeSurveyDocument,
   summarizeSurveyDocument,
+  surveyAreaFromGroup,
   surveyBoundingBox,
   surveyGroupToDocument,
   type SurveyDocument,
@@ -140,6 +142,37 @@ describe('mission group from a survey document', () => {
     expect(back.workspace).toEqual(original.workspace);
     expect(back.config).toEqual(original.config);
     expect(back.generatorResult).toEqual(original.generatorResult);
+  });
+});
+
+describe('saving over an existing area', () => {
+  const first = composeSurveyDocument(
+    { name: 'North field', site: 'north-farm', ...surveyAreaFromGroup(group(), 1000) },
+    null,
+    '2026-09-24T10:00:00.000Z',
+    () => 'doc-1',
+  );
+
+  it('keeps the project when the save does not name one', () => {
+    const second = composeSurveyDocument(
+      { name: 'North field', ...surveyAreaFromGroup(group(), 1000) },
+      first,
+      '2026-09-24T11:00:00.000Z',
+      () => 'unused',
+    );
+    expect(second.site).toBe('north-farm');
+    expect(second.revision).toBe(2);
+    expect(second.id).toBe('doc-1');
+  });
+
+  it('moves the area when the save names a different project', () => {
+    const second = composeSurveyDocument(
+      { name: 'North field', site: 'south-farm', ...surveyAreaFromGroup(group(), 1000) },
+      first,
+      '2026-09-24T11:00:00.000Z',
+      () => 'unused',
+    );
+    expect(second.site).toBe('south-farm');
   });
 });
 

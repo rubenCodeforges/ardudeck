@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents, Circle } from 'react-leaflet';
+import { ModuleMapLayers } from './ModuleMapLayers';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -2801,6 +2802,9 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           containerRef={containerRef}
         />
         <TrailAndHomeUpdater setTrail={setTrail} setHomePosition={setHomePosition} />
+
+        {/* Module layers first, so nothing a module draws covers the aircraft. */}
+        <ModuleMapLayers />
 
         {/* Flight trail */}
         {trail.length > 1 && (
