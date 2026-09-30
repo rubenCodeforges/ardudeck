@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ShieldAlert, FileDown, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useSigningStore } from '../../stores/signing-store';
 import type { SigningAuditEntry, SigningAuditEvent, ChainVerification } from '../../../shared/signing-audit-types';
@@ -35,6 +36,7 @@ const EVENT_TONE: Record<SigningAuditEvent, string> = {
  * ground station, never the airframe.
  */
 export function SecureLinkCompliance() {
+  const { t } = useTranslation('settings');
   // Re-fetch whenever live signing state changes so the log stays current.
   const signingSignature = useSigningStore((s) => `${s.enabled}/${s.sentToFc}/${s.keyMismatch}/${s.keyFingerprint ?? ''}`);
 
@@ -84,23 +86,23 @@ export function SecureLinkCompliance() {
           <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
         )}
         <div className="min-w-0">
-          <div className="text-xs font-medium text-content">Compliance &amp; audit</div>
+          <div className="text-xs font-medium text-content">{t('secureLink.heading')}</div>
           <div className="text-[10px] text-content-secondary">
             {chain
               ? chainOk
                 ? `${chain.count} signing event${chain.count === 1 ? '' : 's'} logged, hash chain verified`
                 : `Hash chain broken at entry ${chain.brokenAtSeq} - log may be tampered`
-              : 'Tamper-evident log of signing state changes'}
+              : t('secureLink.logDescription')}
           </div>
         </div>
         <button
           onClick={handleExport}
           disabled={exporting}
           className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-700/70 hover:bg-cyan-600 disabled:opacity-50 text-white text-[11px] rounded-lg transition-colors shrink-0"
-          title="Export a secure-link evidence pack (JSON) + posture report (Markdown) for procurement review"
+          title={t('secureLink.exportTooltip')}
         >
           <FileDown className="w-3.5 h-3.5" />
-          {exporting ? 'Exporting...' : 'Export evidence'}
+          {exporting ? t('secureLink.exporting') : t('secureLink.export')}
         </button>
       </div>
 

@@ -9,6 +9,12 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+
+/** Prefer the i18n key; falls back to the literal. */
+function acText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ShieldOff, Sparkles, AlertTriangle, CheckCircle2, MinusCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import Px4ArmingConfig from './Px4ArmingConfig';
@@ -36,6 +42,7 @@ interface ArmingTabProps {
 }
 
 export default function ArmingTab({ onGoTo }: ArmingTabProps): JSX.Element {
+  const { t } = useTranslation('mavlink');
   const { parameters, setParameter } = useParameterStore();
   const mavType = useConnectionStore((s) => s.connectionState.mavType);
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
@@ -163,7 +170,7 @@ export default function ArmingTab({ onGoTo }: ArmingTabProps): JSX.Element {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className={`text-sm ${on ? 'text-content' : 'text-content-secondary line-through decoration-content-tertiary/50'}`}>
-                      {b.name}
+                      {acText(t, b.nameKey, b.name)}
                     </span>
                     {blocking && (
                       <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-300">
@@ -171,7 +178,7 @@ export default function ArmingTab({ onGoTo }: ArmingTabProps): JSX.Element {
                       </span>
                     )}
                   </div>
-                  <div className="mt-0.5 text-[11px] text-content-tertiary">{b.description}</div>
+                  <div className="mt-0.5 text-[11px] text-content-tertiary">{acText(t, b.descriptionKey, b.description)}</div>
                 </div>
                 <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                   on

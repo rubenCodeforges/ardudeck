@@ -16,6 +16,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Gauge,
   Activity,
@@ -90,20 +91,22 @@ type TabId = 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'telemetr
 
 interface Tab {
   id: TabId;
-  name: string;
+  /** Keys under `mavlink.tabs.*` / `mavlink.tabDescriptions.*`. */
+  nameKey: string;
+  descKey: string;
   Icon: React.FC<{ className?: string }>;
   color: string;
-  description: string;
   badge?: string;
 }
 
 interface TabGroup {
   kind: 'group';
   id: string;
-  name: string;
+  /** Key under `mavlink.tabs.*`; there is no group description, the group
+   *  header only shows a name. */
+  nameKey: string;
   Icon: React.FC<{ className?: string }>;
   color: string;
-  description: string;
   children: Tab[];
 }
 
@@ -130,15 +133,14 @@ function isRoverType(mavType: number | undefined): boolean {
 const TUNING_GROUP: TabGroup = {
   kind: 'group',
   id: 'tuning-group',
-  name: 'Tuning',
+  nameKey: 'tuning-group',
   Icon: Sliders,
   color: 'text-emerald-400',
-  description: 'PID gains, rate curves, and performance presets',
   children: [
-    { id: 'pid', name: 'PID', Icon: Gauge, color: 'text-blue-400', description: 'Fine-tune PID gains for each axis' },
-    { id: 'rates', name: 'Rates', Icon: Activity, color: 'text-purple-400', description: 'Configure rate curves and expo' },
-    { id: 'tuning', name: 'Tuning', Icon: Sliders, color: 'text-emerald-400', description: 'Performance presets and basic tuning' },
-    { id: 'autotune', name: 'AutoTune', Icon: Wrench, color: 'text-orange-400', description: 'Set up an autotune without parameter hunting' },
+    { id: 'pid', nameKey: 'pid', Icon: Gauge, color: 'text-blue-400', descKey: 'pid' },
+    { id: 'rates', nameKey: 'rates', Icon: Activity, color: 'text-purple-400', descKey: 'rates' },
+    { id: 'tuning', nameKey: 'tuning', Icon: Sliders, color: 'text-emerald-400', descKey: 'tuning' },
+    { id: 'autotune', nameKey: 'autotune', Icon: Wrench, color: 'text-orange-400', descKey: 'autotune' },
   ],
 };
 
@@ -148,13 +150,12 @@ const TUNING_GROUP: TabGroup = {
 const RC_GROUP: TabGroup = {
   kind: 'group',
   id: 'rc-group',
-  name: 'RC',
+  nameKey: 'rc-group',
   Icon: Radio,
   color: 'text-teal-400',
-  description: 'RC receiver protocol + flight-mode switch mapping',
   children: [
-    { id: 'receiver', name: 'Receiver',     Icon: Radio,    color: 'text-teal-400',  description: 'RC receiver protocol and live channel monitor' },
-    { id: 'modes',    name: 'Flight Modes', Icon: Settings, color: 'text-green-400', description: 'Configure your transmitter switch positions' },
+    { id: 'receiver', nameKey: 'receiver',     Icon: Radio,    color: 'text-teal-400',  descKey: 'receiver' },
+    { id: 'modes',    nameKey: 'modes', Icon: Settings, color: 'text-green-400', descKey: 'modes' },
   ],
 };
 
@@ -164,13 +165,12 @@ const RC_GROUP: TabGroup = {
 const ROVER_RC_GROUP: TabGroup = {
   kind: 'group',
   id: 'rc-group',
-  name: 'RC',
+  nameKey: 'rc-group',
   Icon: Radio,
   color: 'text-teal-400',
-  description: 'RC receiver protocol + drive-mode switch mapping',
   children: [
-    { id: 'receiver', name: 'Receiver',    Icon: Radio,    color: 'text-teal-400',  description: 'RC receiver protocol and live channel monitor' },
-    { id: 'modes',    name: 'Drive Modes', Icon: Settings, color: 'text-green-400', description: 'Configure your transmitter switch positions' },
+    { id: 'receiver', nameKey: 'receiver',    Icon: Radio,    color: 'text-teal-400',  descKey: 'receiver' },
+    { id: 'modes',    nameKey: 'modes-drive', Icon: Settings, color: 'text-green-400', descKey: 'modes-drive' },
   ],
 };
 
@@ -180,13 +180,12 @@ const ROVER_RC_GROUP: TabGroup = {
 const OUTPUTS_GROUP: TabGroup = {
   kind: 'group',
   id: 'outputs-group',
-  name: 'Outputs',
+  nameKey: 'outputs-group',
   Icon: Fan,
   color: 'text-yellow-400',
-  description: 'Motor test + servo output mapping',
   children: [
-    { id: 'motor-test',   name: 'Motor Test',   Icon: Fan,  color: 'text-yellow-400', description: 'Spin individual motors with live vibration monitoring' },
-    { id: 'servo-output', name: 'Servo Output', Icon: Move, color: 'text-pink-400',   description: 'Per-channel servo function, range, and live output' },
+    { id: 'motor-test',   nameKey: 'motor-test',   Icon: Fan,  color: 'text-yellow-400', descKey: 'motor-test' },
+    { id: 'servo-output', nameKey: 'servo-output', Icon: Move, color: 'text-pink-400',   descKey: 'servo-output' },
   ],
 };
 
@@ -196,14 +195,13 @@ const OUTPUTS_GROUP: TabGroup = {
 const STORAGE_GROUP: TabGroup = {
   kind: 'group',
   id: 'storage-group',
-  name: 'Storage',
+  nameKey: 'storage-group',
   Icon: HardDrive,
   color: 'text-content-secondary',
-  description: 'Raw parameter table + FC filesystem browser',
   children: [
-    { id: 'parameters', name: 'Parameters', Icon: Table,      color: 'text-content-secondary', description: 'Full parameter list for experts' },
-    { id: 'files',      name: 'Files',      Icon: FolderOpen, color: 'text-content-secondary', description: 'Browse and download files from the FC via MAVLink-FTP' },
-    { id: 'logging',    name: 'Logging',    Icon: HardDrive,  color: 'text-sky-400', description: 'What the flight controller records, and whether it records at all' },
+    { id: 'parameters', nameKey: 'parameters', Icon: Table,      color: 'text-content-secondary', descKey: 'parameters' },
+    { id: 'files',      nameKey: 'files',      Icon: FolderOpen, color: 'text-content-secondary', descKey: 'files' },
+    { id: 'logging',    nameKey: 'logging',    Icon: HardDrive,  color: 'text-sky-400', descKey: 'logging' },
   ],
 };
 
@@ -214,13 +212,12 @@ const STORAGE_GROUP: TabGroup = {
 const LINKS_GROUP: TabGroup = {
   kind: 'group',
   id: 'links-group',
-  name: 'Links',
+  nameKey: 'links-group',
   Icon: Radio,
   color: 'text-sky-400',
-  description: 'Serial port protocols and what each link carries',
   children: [
-    { id: 'serial-ports', name: 'Serial Ports', Icon: Cable, color: 'text-sky-400', description: 'Configure serial port protocols and baud rates' },
-    { id: 'telemetry-rates', name: 'Telemetry Rates', Icon: Gauge, color: 'text-teal-400', description: 'How often each kind of data is sent, and what it costs on the link' },
+    { id: 'serial-ports', nameKey: 'serial-ports', Icon: Cable, color: 'text-sky-400', descKey: 'serial-ports' },
+    { id: 'telemetry-rates', nameKey: 'telemetry-rates', Icon: Gauge, color: 'text-teal-400', descKey: 'telemetry-rates' },
   ],
 };
 
@@ -230,13 +227,12 @@ const LINKS_GROUP: TabGroup = {
 const SAFETY_GROUP: TabGroup = {
   kind: 'group',
   id: 'safety-group',
-  name: 'Safety',
+  nameKey: 'safety-group',
   Icon: Shield,
   color: 'text-amber-400',
-  description: 'Pre-arm checks, failsafes and geofence',
   children: [
-    { id: 'arming', name: 'Arming', Icon: ShieldCheck, color: 'text-emerald-400', description: 'Pre-arm checks, why it will not arm, and how it arms' },
-    { id: 'safety', name: 'Failsafes & fence', Icon: Shield, color: 'text-amber-400', description: 'What happens on link loss, low battery and fence breach' },
+    { id: 'arming', nameKey: 'arming', Icon: ShieldCheck, color: 'text-emerald-400', descKey: 'arming' },
+    { id: 'safety', nameKey: 'safety', Icon: Shield, color: 'text-amber-400', descKey: 'safety' },
   ],
 };
 
@@ -249,14 +245,13 @@ const SAFETY_GROUP: TabGroup = {
 const HARDWARE_GROUP: TabGroup = {
   kind: 'group',
   id: 'hardware-group',
-  name: 'Sensors',
+  nameKey: 'hardware-group',
   Icon: Cpu,
   color: 'text-cyan-400',
-  description: 'Sensor health, orientation, GPS wiring and the indicators',
   children: [
-    { id: 'sensors', name: 'Health', Icon: Cpu, color: 'text-cyan-400', description: 'Live telemetry and sensor health' },
-    { id: 'sensor-config', name: 'Configuration', Icon: Satellite, color: 'text-emerald-400', description: 'Board orientation, compasses and GPS wiring' },
-    { id: 'notify', name: 'LEDs & Sound', Icon: Lightbulb, color: 'text-amber-400', description: 'Status LED, buzzer and the safety button' },
+    { id: 'sensors', nameKey: 'sensors', Icon: Cpu, color: 'text-cyan-400', descKey: 'sensors' },
+    { id: 'sensor-config', nameKey: 'sensor-config', Icon: Satellite, color: 'text-emerald-400', descKey: 'sensor-config' },
+    { id: 'notify', nameKey: 'notify', Icon: Lightbulb, color: 'text-amber-400', descKey: 'notify' },
   ],
 };
 
@@ -266,7 +261,7 @@ const COPTER_TABS: TabNode[] = [
   RC_GROUP,
   OUTPUTS_GROUP,
   SAFETY_GROUP,
-  { kind: 'item', id: 'battery', name: 'Battery', Icon: Battery, color: 'text-orange-400', description: 'Battery monitor configuration' },
+  { kind: 'item', id: 'battery', nameKey: 'battery', Icon: Battery, color: 'text-orange-400', descKey: 'battery' },
   HARDWARE_GROUP,
   LINKS_GROUP,
   STORAGE_GROUP,
@@ -277,10 +272,10 @@ const COPTER_TABS: TabNode[] = [
 // since control surfaces are fundamental to plane setup.
 const PLANE_TABS: TabNode[] = [
   TUNING_GROUP,
-  { kind: 'item', id: 'servo-output', name: 'Servo Output', Icon: Move, color: 'text-pink-400', description: 'Per-channel servo function, range, and live output' },
+  { kind: 'item', id: 'servo-output', nameKey: 'servo-output', Icon: Move, color: 'text-pink-400', descKey: 'servo-output' },
   RC_GROUP,
   SAFETY_GROUP,
-  { kind: 'item', id: 'battery', name: 'Battery', Icon: Battery, color: 'text-orange-400', description: 'Battery monitor configuration' },
+  { kind: 'item', id: 'battery', nameKey: 'battery', Icon: Battery, color: 'text-orange-400', descKey: 'battery' },
   HARDWARE_GROUP,
   LINKS_GROUP,
   STORAGE_GROUP,
@@ -294,23 +289,22 @@ const PLANE_TABS: TabNode[] = [
 const ROVER_TUNING_GROUP: TabGroup = {
   kind: 'group',
   id: 'rover-tuning-group',
-  name: 'Tuning',
+  nameKey: 'rover-tuning-group',
   Icon: Gauge,
   color: 'text-blue-400',
-  description: 'Steering and speed controllers, limits and behaviour',
   children: [
-    { id: 'pid', name: 'PID', Icon: Activity, color: 'text-blue-400', description: 'Steering rate and speed controller gains' },
-    { id: 'rover-tuning', name: 'Speed & Steering', Icon: Car, color: 'text-blue-400', description: 'Configure speed limits and steering behavior' },
-    { id: 'rover-nav', name: 'Navigation', Icon: Navigation, color: 'text-purple-400', description: 'Waypoint following and loiter settings' },
+    { id: 'pid', nameKey: 'pid-rover', Icon: Activity, color: 'text-blue-400', descKey: 'pid-rover' },
+    { id: 'rover-tuning', nameKey: 'rover-tuning', Icon: Car, color: 'text-blue-400', descKey: 'rover-tuning' },
+    { id: 'rover-nav', nameKey: 'rover-nav', Icon: Navigation, color: 'text-purple-400', descKey: 'rover-nav' },
   ],
 };
 
 const ROVER_TABS: TabNode[] = [
   ROVER_TUNING_GROUP,
   ROVER_RC_GROUP,
-  { kind: 'item', id: 'servo-output', name: 'Servo Output', Icon: Move, color: 'text-pink-400', description: 'Per-channel servo function, range, and live output' },
+  { kind: 'item', id: 'servo-output', nameKey: 'servo-output', Icon: Move, color: 'text-pink-400', descKey: 'servo-output' },
   SAFETY_GROUP,
-  { kind: 'item', id: 'battery', name: 'Battery', Icon: Battery, color: 'text-orange-400', description: 'Battery monitor configuration' },
+  { kind: 'item', id: 'battery', nameKey: 'battery', Icon: Battery, color: 'text-orange-400', descKey: 'battery' },
   HARDWARE_GROUP,
   LINKS_GROUP,
   STORAGE_GROUP,
@@ -354,6 +348,7 @@ function findGroupForTab(nodes: TabNode[], tabId: TabId): TabGroup | undefined {
 }
 
 export const MavlinkConfigView: React.FC = () => {
+  const { t } = useTranslation('mavlink');
   const paramCount = useParameterStore((s) => s.paramCount);
   const isLoading = useParameterStore((s) => s.isLoading);
   const fetchParameters = useParameterStore((s) => s.fetchParameters);
@@ -630,7 +625,7 @@ export const MavlinkConfigView: React.FC = () => {
             {isLoading && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border-blue-500/30 rounded-lg">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <span className="text-sm text-blue-400">Loading...</span>
+                <span className="text-sm text-blue-400">{t('view.loading')}</span>
               </div>
             )}
 
@@ -652,7 +647,7 @@ export const MavlinkConfigView: React.FC = () => {
               onClick={() => setShowRebootConfirm(true)}
               disabled={rebooting}
               className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
-              title="Reboot flight controller"
+              title={t('view.rebootTooltip')}
             >
               <RotateCw className={`w-4 h-4 ${rebooting ? 'animate-spin' : ''}`} />
               {rebooting ? 'Rebooting...' : 'Reboot'}
@@ -661,7 +656,7 @@ export const MavlinkConfigView: React.FC = () => {
             <button
               onClick={() => setShowHistory(true)}
               className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
-              title="View parameter change history"
+              title={t('view.historyTooltip')}
             >
               <History className="w-4 h-4" />
               History
@@ -675,7 +670,7 @@ export const MavlinkConfigView: React.FC = () => {
                   ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white'
                   : 'bg-surface-raised text-content-tertiary cursor-not-allowed'
               }`}
-              title="Save parameters to flight controller's permanent storage"
+              title={t('view.saveToFlashTooltip')}
             >
               <Save className={`w-4 h-4 ${isWritingFlash ? 'animate-pulse' : ''}`} />
               {isWritingFlash ? 'Saving...' : 'Save All Changes'}
@@ -696,7 +691,7 @@ export const MavlinkConfigView: React.FC = () => {
                 <div key={node.id} className="relative" data-tour={`mavlink-tab-group-${node.id}`}>
                   <button
                     onClick={() => setOpenGroupId(isOpen ? null : node.id)}
-                    title={node.description}
+                    title={t(node.nameKey)}
                     className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
                       isActive
                         ? 'bg-surface-raised text-content'
@@ -704,7 +699,7 @@ export const MavlinkConfigView: React.FC = () => {
                     }`}
                   >
                     <DisplayIcon className={`w-4 h-4 ${isActive ? displayColor : `${displayColor} opacity-50`}`} />
-                    <span className="text-sm font-medium">{node.name}</span>
+                    <span className="text-sm font-medium">{t(node.nameKey)}</span>
                     <ChevronDown className={`w-3.5 h-3.5 text-content-tertiary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isOpen && (
@@ -723,8 +718,8 @@ export const MavlinkConfigView: React.FC = () => {
                           >
                             <child.Icon className={`w-4 h-4 ${child.color} ${childActive ? '' : 'opacity-70'}`} />
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium">{child.name}</div>
-                              <div className="text-[11px] text-content-secondary truncate">{child.description}</div>
+                              <div className="text-sm font-medium">{t(child.nameKey)}</div>
+                              <div className="text-[11px] text-content-secondary truncate">{t(child.descKey)}</div>
                             </div>
                           </button>
                         );
@@ -746,7 +741,7 @@ export const MavlinkConfigView: React.FC = () => {
                 }`}
               >
                 <node.Icon className={`w-4 h-4 ${isActive ? node.color : `${node.color} opacity-50`}`} />
-                <span className="text-sm font-medium">{node.name}</span>
+                <span className="text-sm font-medium">{t(node.nameKey)}</span>
                 {node.badge && (
                   <span className="ml-0.5 px-1.5 py-0.5 text-[10px] bg-surface-raised rounded text-content-secondary">
                     {node.badge}
@@ -787,7 +782,7 @@ export const MavlinkConfigView: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <span className="text-sm text-amber-300 font-medium">Reboot Required</span>
+                  <span className="text-sm text-amber-300 font-medium">{t('view.rebootRequired')}</span>
                   <span className="text-sm text-amber-400/70 ml-2">
                     {rebootRequiredParams.length} parameter{rebootRequiredParams.length !== 1 ? 's' : ''} need a reboot to take effect:
                     {' '}<span className="font-mono text-xs">{rebootRequiredParams.join(', ')}</span>
@@ -861,7 +856,7 @@ export const MavlinkConfigView: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-surface-solid border rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
             <div className="px-6 py-4 border-b border-subtle">
-              <h3 className="text-lg font-semibold text-content">Write Parameters to Flash</h3>
+              <h3 className="text-lg font-semibold text-content">{t('view.writeToFlash')}</h3>
               <p className="text-sm text-content-secondary mt-1">
                 The following {modifiedParameters().length} parameter(s) will be saved permanently to the flight controller.
               </p>
@@ -877,10 +872,10 @@ export const MavlinkConfigView: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-content-secondary uppercase">
-                    <th className="pb-2">Parameter</th>
-                    <th className="pb-2 text-right">Original</th>
+                    <th className="pb-2">{t('view.colParameter')}</th>
+                    <th className="pb-2 text-right">{t('view.colOriginal')}</th>
                     <th className="pb-2 text-center px-2">→</th>
-                    <th className="pb-2">New</th>
+                    <th className="pb-2">{t('view.colNew')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-subtle">

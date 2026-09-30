@@ -5,6 +5,7 @@
  * Modern UI with visual mode cards and range sliders.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useLegacyConfigStore, type LegacyAuxMode } from '../../stores/legacy-config-store';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import {
@@ -14,32 +15,37 @@ import {
   HelpCircle, type LucideIcon,
 } from 'lucide-react';
 
+/** Prefer the i18n key; falls back to the literal. */
+function lmText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+
 // iNav mode IDs with icons and colors
-const MODE_INFO: Record<number, { name: string; icon: LucideIcon; color: string; description: string }> = {
-  0: { name: 'ARM', icon: Zap, color: 'bg-red-500', description: 'Enable motors' },
-  1: { name: 'ANGLE', icon: Ruler, color: 'bg-blue-500', description: 'Self-leveling mode' },
-  2: { name: 'HORIZON', icon: Sunrise, color: 'bg-cyan-500', description: 'Hybrid self-level + acro' },
-  3: { name: 'NAV ALTHOLD', icon: SlidersHorizontal, color: 'bg-purple-500', description: 'Hold altitude' },
-  5: { name: 'HEADING HOLD', icon: Compass, color: 'bg-indigo-500', description: 'Hold compass heading' },
-  6: { name: 'HEADFREE', icon: Target, color: 'bg-orange-500', description: 'Headless mode' },
-  7: { name: 'HEADADJ', icon: RefreshCw, color: 'bg-orange-400', description: 'Adjust headfree reference' },
-  10: { name: 'NAV RTH', icon: Home, color: 'bg-green-500', description: 'Return to home' },
-  11: { name: 'NAV POSHOLD', icon: MapPin, color: 'bg-teal-500', description: 'Hold GPS position' },
-  12: { name: 'MANUAL', icon: Hand, color: 'bg-gray-500', description: 'Direct passthrough' },
-  13: { name: 'BEEPER', icon: Volume2, color: 'bg-yellow-500', description: 'Find my quad' },
-  19: { name: 'OSD SW', icon: Monitor, color: 'bg-surface-raised', description: 'Toggle OSD' },
-  20: { name: 'TELEMETRY', icon: Radio, color: 'bg-blue-400', description: 'Enable telemetry' },
-  26: { name: 'BLACKBOX', icon: Package, color: 'bg-pink-500', description: 'Log flight data' },
-  27: { name: 'FAILSAFE', icon: ShieldAlert, color: 'bg-red-600', description: 'Emergency failsafe' },
-  28: { name: 'NAV WP', icon: Map, color: 'bg-emerald-500', description: 'Waypoint mission' },
-  35: { name: 'FLAPERON', icon: Plane, color: 'bg-sky-500', description: 'Flaperon control' },
-  36: { name: 'TURN ASSIST', icon: CornerDownLeft, color: 'bg-violet-500', description: 'Coordinated turns' },
-  38: { name: 'SERVO AUTOTRIM', icon: Settings, color: 'bg-amber-500', description: 'Auto trim servos' },
-  39: { name: 'CAMERA 1', icon: Camera, color: 'bg-rose-500', description: 'Camera control 1' },
-  40: { name: 'CAMERA 2', icon: Camera, color: 'bg-rose-400', description: 'Camera control 2' },
-  41: { name: 'CAMERA 3', icon: Camera, color: 'bg-rose-300', description: 'Camera control 3' },
-  45: { name: 'NAV CRUISE', icon: Rocket, color: 'bg-lime-500', description: 'Cruise control' },
-  46: { name: 'MC BRAKING', icon: OctagonX, color: 'bg-red-400', description: 'Multi-rotor braking' },
+const MODE_INFO: Record<number, { name: string; icon: LucideIcon; color: string; description: string; descriptionKey?: string }> = {
+  0: { name: 'ARM', icon: Zap, color: 'bg-red-500', description: 'Enable motors', descriptionKey: 'legacyModes.mode.arm.description' },
+  1: { name: 'ANGLE', icon: Ruler, color: 'bg-blue-500', description: 'Self-leveling mode', descriptionKey: 'legacyModes.mode.angle.description' },
+  2: { name: 'HORIZON', icon: Sunrise, color: 'bg-cyan-500', description: 'Hybrid self-level + acro', descriptionKey: 'legacyModes.mode.horizon.description' },
+  3: { name: 'NAV ALTHOLD', icon: SlidersHorizontal, color: 'bg-purple-500', description: 'Hold altitude', descriptionKey: 'legacyModes.mode.nav-althold.description' },
+  5: { name: 'HEADING HOLD', icon: Compass, color: 'bg-indigo-500', description: 'Hold compass heading', descriptionKey: 'legacyModes.mode.heading-hold.description' },
+  6: { name: 'HEADFREE', icon: Target, color: 'bg-orange-500', description: 'Headless mode', descriptionKey: 'legacyModes.mode.headfree.description' },
+  7: { name: 'HEADADJ', icon: RefreshCw, color: 'bg-orange-400', description: 'Adjust headfree reference', descriptionKey: 'legacyModes.mode.headadj.description' },
+  10: { name: 'NAV RTH', icon: Home, color: 'bg-green-500', description: 'Return to home', descriptionKey: 'legacyModes.mode.nav-rth.description' },
+  11: { name: 'NAV POSHOLD', icon: MapPin, color: 'bg-teal-500', description: 'Hold GPS position', descriptionKey: 'legacyModes.mode.nav-poshold.description' },
+  12: { name: 'MANUAL', icon: Hand, color: 'bg-gray-500', description: 'Direct passthrough', descriptionKey: 'legacyModes.mode.manual.description' },
+  13: { name: 'BEEPER', icon: Volume2, color: 'bg-yellow-500', description: 'Find my quad', descriptionKey: 'legacyModes.mode.beeper.description' },
+  19: { name: 'OSD SW', icon: Monitor, color: 'bg-surface-raised', description: 'Toggle OSD', descriptionKey: 'legacyModes.mode.osd-sw.description' },
+  20: { name: 'TELEMETRY', icon: Radio, color: 'bg-blue-400', description: 'Enable telemetry', descriptionKey: 'legacyModes.mode.telemetry.description' },
+  26: { name: 'BLACKBOX', icon: Package, color: 'bg-pink-500', description: 'Log flight data', descriptionKey: 'legacyModes.mode.blackbox.description' },
+  27: { name: 'FAILSAFE', icon: ShieldAlert, color: 'bg-red-600', description: 'Emergency failsafe', descriptionKey: 'legacyModes.mode.failsafe.description' },
+  28: { name: 'NAV WP', icon: Map, color: 'bg-emerald-500', description: 'Waypoint mission', descriptionKey: 'legacyModes.mode.nav-wp.description' },
+  35: { name: 'FLAPERON', icon: Plane, color: 'bg-sky-500', description: 'Flaperon control', descriptionKey: 'legacyModes.mode.flaperon.description' },
+  36: { name: 'TURN ASSIST', icon: CornerDownLeft, color: 'bg-violet-500', description: 'Coordinated turns', descriptionKey: 'legacyModes.mode.turn-assist.description' },
+  38: { name: 'SERVO AUTOTRIM', icon: Settings, color: 'bg-amber-500', description: 'Auto trim servos', descriptionKey: 'legacyModes.mode.servo-autotrim.description' },
+  39: { name: 'CAMERA 1', icon: Camera, color: 'bg-rose-500', description: 'Camera control 1', descriptionKey: 'legacyModes.mode.camera-1.description' },
+  40: { name: 'CAMERA 2', icon: Camera, color: 'bg-rose-400', description: 'Camera control 2', descriptionKey: 'legacyModes.mode.camera-2.description' },
+  41: { name: 'CAMERA 3', icon: Camera, color: 'bg-rose-300', description: 'Camera control 3', descriptionKey: 'legacyModes.mode.camera-3.description' },
+  45: { name: 'NAV CRUISE', icon: Rocket, color: 'bg-lime-500', description: 'Cruise control', descriptionKey: 'legacyModes.mode.nav-cruise.description' },
+  46: { name: 'MC BRAKING', icon: OctagonX, color: 'bg-red-400', description: 'Multi-rotor braking', descriptionKey: 'legacyModes.mode.mc-braking.description' },
 };
 
 const AUX_CHANNELS = [
@@ -158,6 +164,7 @@ function RangeSlider({
 }
 
 export default function LegacyModesTab() {
+  const { t } = useTranslation('views');
   const { auxModes, updateAuxMode } = useLegacyConfigStore();
 
   const handleChange = (mode: LegacyAuxMode) => {
@@ -178,7 +185,7 @@ export default function LegacyModesTab() {
   const inactiveModes = auxModes.filter((m) => m.rangeStart === 900 && m.rangeEnd === 900);
 
   const renderModeCard = (mode: LegacyAuxMode) => {
-    const info = MODE_INFO[mode.modeId] || { name: `Mode ${mode.modeId}`, icon: HelpCircle, color: 'bg-gray-500', description: 'Unknown mode' } as { name: string; icon: LucideIcon; color: string; description: string };
+    const info = MODE_INFO[mode.modeId] || { name: t('legacyModes.mode.fallback-name', { id: mode.modeId }), icon: HelpCircle, color: 'bg-gray-500', description: 'Unknown mode', descriptionKey: 'legacyModes.mode.unknown-description' } as { name: string; icon: LucideIcon; color: string; description: string; descriptionKey?: string };
     const isActive = !(mode.rangeStart === 900 && mode.rangeEnd === 900);
     const channel = AUX_CHANNELS.find((c) => c.value === mode.auxChannel);
 
@@ -203,12 +210,12 @@ export default function LegacyModesTab() {
                   <span className="font-semibold text-content">{info.name}</span>
                   <span className="text-xs text-content-secondary font-mono">#{mode.index}</span>
                 </div>
-                <p className="text-xs text-content-secondary">{info.description}</p>
+                <p className="text-xs text-content-secondary">{lmText(t, info.descriptionKey, info.description)}</p>
               </div>
             </div>
             {isActive && (
               <span className="px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
-                Active
+                {t('legacyModes.badge.active')}
               </span>
             )}
           </div>
@@ -219,7 +226,7 @@ export default function LegacyModesTab() {
           <div className="grid grid-cols-2 gap-4">
             {/* Mode selector */}
             <div>
-              <label className="block text-xs text-content-secondary mb-1.5">Mode</label>
+              <label className="block text-xs text-content-secondary mb-1.5">{t('legacyModes.label.mode')}</label>
               <select
                 value={mode.modeId}
                 onChange={(e) => handleChange({ ...mode, modeId: parseInt(e.target.value) })}
@@ -235,7 +242,7 @@ export default function LegacyModesTab() {
 
             {/* Channel selector */}
             <div>
-              <label className="block text-xs text-content-secondary mb-1.5">Switch Channel</label>
+              <label className="block text-xs text-content-secondary mb-1.5">{t('legacyModes.label.switch-channel')}</label>
               <select
                 value={mode.auxChannel}
                 onChange={(e) => handleChange({ ...mode, auxChannel: parseInt(e.target.value) })}
@@ -253,7 +260,7 @@ export default function LegacyModesTab() {
           {/* Range slider */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-content-secondary">Activation Range</label>
+              <label className="text-xs text-content-secondary">{t('legacyModes.label.activation-range')}</label>
               <div className="flex items-center gap-2 text-xs">
                 <DraftNumberInput
                   min={900}
@@ -291,7 +298,7 @@ export default function LegacyModesTab() {
               onClick={() => handleChange({ ...mode, rangeStart: 900, rangeEnd: 900 })}
               className="w-full py-2 text-sm text-content-secondary hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
             >
-              Disable Mode
+              {t('legacyModes.button.disable-mode')}
             </button>
           )}
         </div>
@@ -306,10 +313,9 @@ export default function LegacyModesTab() {
         <div className="flex items-start gap-3">
           <Lightbulb className="w-6 h-6 text-amber-400 shrink-0" />
           <div>
-            <p className="text-sm text-amber-300 font-medium">Flight Mode Configuration</p>
+            <p className="text-sm text-amber-300 font-medium">{t('legacyModes.banner.title')}</p>
             <p className="text-xs text-amber-300/70 mt-1">
-              Set which AUX switch positions activate each flight mode.
-              Drag the range handles or enter values directly. Set both to 900 to disable.
+              {t('legacyModes.banner.description')}
             </p>
           </div>
         </div>
@@ -318,8 +324,8 @@ export default function LegacyModesTab() {
       {auxModes.length === 0 ? (
         <div className="text-center py-12 text-content-secondary">
           <SlidersHorizontal className="w-10 h-10 text-content-secondary mb-3" />
-          <p>No aux mode rules found.</p>
-          <p className="text-sm mt-1">Run the dump command to load configuration.</p>
+          <p>{t('legacyModes.empty.title')}</p>
+          <p className="text-sm mt-1">{t('legacyModes.empty.hint')}</p>
         </div>
       ) : (
         <>
@@ -328,7 +334,7 @@ export default function LegacyModesTab() {
             <div>
               <h3 className="text-sm font-medium text-content mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500" />
-                Active Modes ({activeModes.length})
+                {t('legacyModes.section.active', { n: activeModes.length })}
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {activeModes.map(renderModeCard)}
@@ -341,11 +347,11 @@ export default function LegacyModesTab() {
             <div>
               <h3 className="text-sm font-medium text-content-secondary mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-surface-raised" />
-                Disabled ({inactiveModes.length})
+                {t('legacyModes.section.disabled', { n: inactiveModes.length })}
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                 {inactiveModes.map((mode) => {
-                  const info = MODE_INFO[mode.modeId] || { name: `Mode ${mode.modeId}`, icon: HelpCircle, color: 'bg-gray-500' };
+                  const info = MODE_INFO[mode.modeId] || { name: t('legacyModes.mode.fallback-name', { id: mode.modeId }), icon: HelpCircle, color: 'bg-gray-500' };
                   return (
                     <div
                       key={mode.index}
@@ -360,7 +366,7 @@ export default function LegacyModesTab() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-content-secondary truncate">{info.name}</div>
-                        <div className="text-xs text-content-tertiary">#{mode.index} - Click to enable</div>
+                        <div className="text-xs text-content-tertiary">{t('legacyModes.hint.click-to-enable', { index: mode.index })}</div>
                       </div>
                     </div>
                   );

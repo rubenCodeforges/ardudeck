@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { calculateMissionDistance, estimateMissionTime } from '../../../shared/mission-types';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
 
 export function MissionStatusBar() {
+  const { t } = useTranslation('mission');
   const {
     missionItems,
     groups,
@@ -58,7 +60,7 @@ export function MissionStatusBar() {
                 </span>
               </>
             ) : (
-              <span className="text-content-tertiary">select a mission for its distance/time</span>
+              <span className="text-content-tertiary">{t('statusBar.selectMission')}</span>
             )}
           </>
         ) : (

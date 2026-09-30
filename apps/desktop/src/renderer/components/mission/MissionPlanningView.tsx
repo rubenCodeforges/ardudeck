@@ -1,4 +1,6 @@
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   DockviewReact,
   DockviewReadyEvent,
@@ -80,13 +82,13 @@ const FLIGHT_PREVIEW_PANEL_ID = 'flightPreview';
 // Ensure the Flight Info tab exists next to Waypoints. Called for fresh layouts
 // and after restoring a saved one (older layouts predate this panel), so the
 // panel shows up without forcing a layout reset.
-function ensureFlightInfoPanel(api: DockviewApi): void {
+function ensureFlightInfoPanel(api: DockviewApi, t: TFunction): void {
   if (api.getPanel('flightInfo')) return;
   const refGroup = api.getPanel('waypointTable')?.group;
   api.addPanel({
     id: 'flightInfo',
     component: 'FlightInfoPanel',
-    title: 'Flight Info',
+    title: t('panelTitles.flightInfo'),
     ...(refGroup ? { position: { referenceGroup: refGroup } } : {}),
   });
   // Keep Waypoints as the visible tab; Flight Info is a sibling.
@@ -98,13 +100,13 @@ function ensureFlightInfoPanel(api: DockviewApi): void {
 const SURVEY_PANEL_ID = 'surveyConfig';
 
 // Default layout configuration - Map top-left, Waypoints top-right, Altitude Profile bottom
-function createDefaultLayout(api: DockviewApi): void {
+function createDefaultLayout(api: DockviewApi, t: TFunction): void {
   // Main group - Mission Map
   const mainGroup = api.addGroup();
   api.addPanel({
     id: 'missionMap',
     component: 'MissionMapPanel',
-    title: 'Mission Map',
+    title: t('panelTitles.missionMap'),
     position: { referenceGroup: mainGroup },
   });
 
@@ -113,7 +115,7 @@ function createDefaultLayout(api: DockviewApi): void {
   api.addPanel({
     id: 'waypointTable',
     component: 'WaypointTablePanel',
-    title: 'Waypoints',
+    title: t('panelTitles.waypoints'),
     position: { referenceGroup: rightGroup },
   });
 
@@ -126,16 +128,17 @@ function createDefaultLayout(api: DockviewApi): void {
   api.addPanel({
     id: 'altitudeProfile',
     component: 'AltitudeProfilePanel',
-    title: 'Altitude Profile',
+    title: t('panelTitles.altitudeProfile'),
     position: { referenceGroup: bottomGroup },
   });
 
   // Flight Info as a sibling tab of Waypoints.
-  ensureFlightInfoPanel(api);
+  ensureFlightInfoPanel(api, t);
 }
 
 // Component for when mission planning is not available
 function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardId: string }) {
+  const { t } = useTranslation('mission');
   const { setView } = useNavigationStore();
   const { setSelectedSource, setPendingBoardMatch } = useFirmwareStore();
 
@@ -196,7 +199,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
           {/* Note about limitations */}
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
             <p className="text-yellow-400/90 text-sm">
-              <strong>Note:</strong> iNav 2.6.1 supports waypoint missions but lacks newer features like safehome and advanced failsafes available in modern iNav 7.x on F4+ boards.
+              <strong>{t('planningNote.note')}</strong> iNav 2.6.1 supports waypoint missions but lacks newer features like safehome and advanced failsafes available in modern iNav 7.x on F4+ boards.
             </p>
           </div>
 
@@ -243,7 +246,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
 
           {/* Upgrade suggestions */}
           <div className="bg-surface rounded-xl border border-subtle p-4 text-left mb-6">
-            <p className="text-sm text-content-secondary mb-3">Recommended upgrades:</p>
+            <p className="text-sm text-content-secondary mb-3">{t('planningNote.recommendedUpgrades')}</p>
             <div className="flex flex-wrap gap-2">
               {['SpeedyBee F405 V3', 'Matek F405-SE', 'Kakute F7'].map((board) => (
                 <span key={board} className="px-2 py-1 bg-surface-raised rounded text-content text-xs">
@@ -298,10 +301,10 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
                 <RefreshCw className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <h4 className="font-medium text-blue-400">Flash iNav Firmware</h4>
+                <h4 className="font-medium text-blue-400">{t('planningNote.flashInav')}</h4>
                 <p className="text-sm text-content-secondary">
                   iNav is a fork of Betaflight with full GPS navigation and mission planning support.
-                  Same board, different firmware. Go to <span className="text-content-secondary">Firmware Flash</span> and select iNav.
+                  Same board, different firmware. Go to <span className="text-content-secondary">{t('planningNote.firmwareFlash')}</span> and select iNav.
                 </p>
               </div>
             </div>
@@ -310,7 +313,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
                 <Plane className="w-5 h-5 text-green-400" />
               </div>
               <div>
-                <h4 className="font-medium text-green-400">Use ArduPilot Hardware</h4>
+                <h4 className="font-medium text-green-400">{t('planningNote.useArduPilotHardware')}</h4>
                 <p className="text-sm text-content-secondary">
                   For the most advanced mission planning, consider a Pixhawk or compatible board running ArduPilot.
                   Supports copters, planes, VTOLs, rovers, boats, and submarines.
@@ -322,7 +325,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
 
         {/* Supported boards */}
         <div className="text-sm text-content-secondary">
-          <p className="mb-2">Boards that support mission planning:</p>
+          <p className="mb-2">{t('planningNote.supportedBoards')}</p>
           <div className="flex flex-wrap justify-center gap-2">
             {['Pixhawk', 'Cube', 'Matek F405-WSE', 'Kakute F7', 'Any iNav board'].map((board) => (
               <span key={board} className="px-2 py-1 bg-surface-raised rounded text-content-secondary text-xs">
@@ -353,6 +356,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
 }
 
 export function MissionPlanningView() {
+  const { t } = useTranslation('mission');
   const apiRef = useRef<DockviewApi | null>(null);
   const resolvedTheme = useResolvedTheme();
   const { connectionState } = useConnectionStore();
@@ -424,7 +428,7 @@ export function MissionPlanningView() {
       api.addPanel({
         id: SURVEY_PANEL_ID,
         component: 'SurveyConfigPanel',
-        title: 'Survey',
+        title: t('panelTitles.survey'),
         ...(refGroup ? { position: { referenceGroup: refGroup } } : {}),
       });
       // Focus the new tab so the user lands on it after starting survey mode.
@@ -432,7 +436,7 @@ export function MissionPlanningView() {
     } else if (!surveyIsActive && existing) {
       api.removePanel(existing);
     }
-  }, [surveyIsActive, layoutLoaded]);
+  }, [surveyIsActive, layoutLoaded, t]);
 
   // Cargo panels: the registry can change at any time (a module installed or
   // removed), so the dockview component map is rebuilt with it.
@@ -493,14 +497,14 @@ export function MissionPlanningView() {
       api.addPanel({
         id: FLIGHT_PREVIEW_PANEL_ID,
         component: 'FlightPreviewPanel',
-        title: 'Flight Preview',
+        title: t('panelTitles.flightPreview'),
         ...(refGroup ? { position: { referenceGroup: refGroup } } : {}),
       });
       api.getPanel(FLIGHT_PREVIEW_PANEL_ID)?.api.setActive();
     } else if (!flightPreviewActive && existing) {
       api.removePanel(existing);
     }
-  }, [flightPreviewActive, layoutLoaded]);
+  }, [flightPreviewActive, layoutLoaded, t]);
 
   // The Flight Info tour highlights that panel, but dockview drops inactive tab
   // content from the DOM, so bring the tab forward when its tour starts.
@@ -565,7 +569,7 @@ export function MissionPlanningView() {
       if (savedLayout?.data) {
         event.api.fromJSON(savedLayout.data as SerializedDockview);
         // Saved layouts from before this panel existed won't include it.
-        ensureFlightInfoPanel(event.api);
+        ensureFlightInfoPanel(event.api, t);
         setLayoutLoaded(true);
         return;
       }
@@ -574,18 +578,18 @@ export function MissionPlanningView() {
     }
 
     // Create default layout if no saved layout
-    createDefaultLayout(event.api);
+    createDefaultLayout(event.api, t);
     setLayoutLoaded(true);
-  }, []);
+  }, [t]);
 
   const handleResetLayout = useCallback(() => {
     if (!apiRef.current) return;
     apiRef.current.clear();
-    createDefaultLayout(apiRef.current);
+    createDefaultLayout(apiRef.current, t);
     // Save the reset layout
     const data = apiRef.current.toJSON();
     window.electronAPI?.saveLayout(MISSION_LAYOUT_NAME, data);
-  }, []);
+  }, [t]);
 
   // Show toast for file operations
   const showToast = useCallback((message: string, type: ToastType) => {

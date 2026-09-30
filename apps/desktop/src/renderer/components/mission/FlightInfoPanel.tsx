@@ -8,6 +8,7 @@
  * go/no-go advisor later with no change here.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plane, Clock, Ruler, Wind, Camera, RefreshCw } from 'lucide-react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSurveyStore } from '../../stores/survey-store';
@@ -136,19 +137,21 @@ function clockFromMin(min: number): string {
 // thin tick = now, blue tick = when the mission would finish if launched now.
 // Makes "will I land before dark" obvious without reading clock times.
 function DaylightBar({ d }: { d: DaylightWindow }) {
+  const { t } = useTranslation('mission');
   const pct = (min: number) => Math.max(0, Math.min(100, (min / 1440) * 100));
   const left = pct(d.sunriseMin);
   const width = Math.max(0, pct(d.sunsetMin) - left);
   return (
     <div className="relative h-2 rounded-full bg-surface-input overflow-hidden mt-1">
       <div className="absolute inset-y-0 bg-amber-400/50" style={{ left: `${left}%`, width: `${width}%` }} />
-      <div className="absolute inset-y-0 w-0.5 bg-content/70" style={{ left: `${pct(d.nowMin)}%` }} title="now" />
-      <div className="absolute inset-y-0 w-0.5 bg-sky-400" style={{ left: `${pct(d.endMin)}%` }} title="mission end" />
+      <div className="absolute inset-y-0 w-0.5 bg-content/70" style={{ left: `${pct(d.nowMin)}%` }} title={t('flightInfo.nowTooltip')} />
+      <div className="absolute inset-y-0 w-0.5 bg-sky-400" style={{ left: `${pct(d.endMin)}%` }} title={t('flightInfo.missionEndTooltip')} />
     </div>
   );
 }
 
 export function FlightInfoPanel() {
+  const { t } = useTranslation('mission');
   const missionItems = useMissionStore((s) => s.missionItems);
   const homePosition = useMissionStore((s) => s.homePosition);
   const surveyResult = useSurveyStore((s) => s.result);
@@ -241,7 +244,7 @@ export function FlightInfoPanel() {
     return (
       <div data-tour="flight-info-panel" className="h-full flex flex-col items-center justify-center text-center p-6 text-content-secondary bg-surface">
         <Plane className="w-10 h-10 mb-3 text-content-tertiary" />
-        <p className="text-sm font-medium mb-1 text-content">Aerial vehicles only</p>
+        <p className="text-sm font-medium mb-1 text-content">{t('flightInfo.aerialOnly')}</p>
         <p className="text-xs text-content-tertiary max-w-[14rem]">
           The flight briefing (endurance, altitude, daylight) applies to copters, planes and VTOL. Switch the active vehicle to an aerial type to use it.
         </p>
@@ -253,7 +256,7 @@ export function FlightInfoPanel() {
     return (
       <div data-tour="flight-info-panel" className="h-full flex flex-col items-center justify-center text-center p-6 text-content-secondary bg-surface">
         <Plane className="w-10 h-10 mb-3 text-content-tertiary" />
-        <p className="text-sm font-medium mb-1 text-content">No mission to brief</p>
+        <p className="text-sm font-medium mb-1 text-content">{t('flightInfo.noMissionToBrief')}</p>
         <p className="text-xs text-content-tertiary max-w-[14rem]">
           Plan or load a mission to see flight time, distance, batteries and site weather.
         </p>
@@ -267,7 +270,7 @@ export function FlightInfoPanel() {
   return (
     <div data-tour="flight-info-panel" className="h-full overflow-y-auto bg-surface p-2 space-y-2">
       {/* Endurance - the number a pilot opens this for. */}
-      <Section icon={<Clock className={ICON} />} title="Endurance">
+      <Section icon={<Clock className={ICON} />} title={t('flightInfo.enduranceTooltip')}>
         <Hero
           value={formatDurationSec(briefing.flightTimeSec)}
           unit="flight time"
@@ -288,7 +291,7 @@ export function FlightInfoPanel() {
       </Section>
 
       {/* Route */}
-      <Section icon={<Ruler className={ICON} />} title="Route">
+      <Section icon={<Ruler className={ICON} />} title={t('flightInfo.routeTooltip')}>
         <Stat label="Total distance" value={formatDistanceM(briefing.distanceM, distanceUnit)} />
         {homePosition && (
           <Stat label="Max from home" value={formatDistanceM(briefing.maxFromHomeM, distanceUnit)} />
@@ -315,13 +318,13 @@ export function FlightInfoPanel() {
       {/* Weather */}
       <Section
         icon={<Wind className={ICON} />}
-        title="Site weather"
+        title={t('flightInfo.siteWeatherTooltip')}
         action={
           weather && (
             <button
               onClick={() => setRefreshTick((t) => t + 1)}
               className="p-1 text-content-secondary hover:text-content transition-colors"
-              title="Refresh forecast"
+              title={t('flightInfo.refreshForecastTooltip')}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${weatherLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -329,7 +332,7 @@ export function FlightInfoPanel() {
         }
       >
         {weatherLoading && !weather ? (
-          <p className="text-xs text-content-tertiary">Fetching forecast...</p>
+          <p className="text-xs text-content-tertiary">{t('flightInfo.fetchingForecast')}</p>
         ) : weather ? (
           <>
             <div className="flex items-center gap-3 py-1">
@@ -370,13 +373,13 @@ export function FlightInfoPanel() {
             </div>
           </>
         ) : (
-          <p className="text-xs text-content-tertiary">Weather unavailable for this site.</p>
+          <p className="text-xs text-content-tertiary">{t('flightInfo.weatherUnavailable')}</p>
         )}
       </Section>
 
       {/* Survey quality (only when a survey is active) */}
       {survey && (
-        <Section icon={<Camera className={ICON} />} title="Survey">
+        <Section icon={<Camera className={ICON} />} title={t('flightInfo.surveyTooltip')}>
           <Stat label="Coverage" value={formatAreaFromSquareMeters(survey.areaM2, areaUnit)} />
           <Stat label="GSD" value={survey.gsdCm > 0 ? `${survey.gsdCm.toFixed(1)} cm/px` : 'n/a'} />
           <Stat label="Photos" value={survey.photoCount.toLocaleString()} />

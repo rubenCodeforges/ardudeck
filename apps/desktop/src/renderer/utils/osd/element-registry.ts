@@ -89,6 +89,13 @@ export interface OsdElementDefinition {
   name: string;
   category: OsdElementCategory;
   description: string;
+  /**
+   * Keys under `osd.auto.*`, added by tools/i18n-codemod.mjs. Optional because
+   * strings needing no translation are skipped, so consumers fall back to the
+   * literal when a key is absent.
+   */
+  nameKey?: string;
+  descriptionKey?: string;
   /** Primary symbol character index for inline preview in element browser */
   previewSymbol: number;
   /** Sample text shown in preview (e.g. "11.8V") */
@@ -107,9 +114,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── General ───────────────────────────────────────────────────────────
   {
     id: 'flymode',
-    name: 'Flight Mode',
+    name: 'Flight Mode', nameKey: 'osd.auto.flight-mode',
     category: 'general',
-    description: 'Current flight mode name (ANGLE, HORIZON, etc.)',
+    description: 'Current flight mode name (ANGLE, HORIZON, etc.)', descriptionKey: 'osd.auto.current-flight-mode-name-angle-horizon-etc',
     previewSymbol: SYM.HEADING,
     previewText: 'ANGLE',
     size: { width: 8, height: 1 },
@@ -118,9 +125,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'armed_status',
-    name: 'Armed Status',
+    name: 'Armed Status', nameKey: 'osd.auto.armed-status',
     category: 'general',
-    description: 'Shows ARMED or DISARMED state',
+    description: 'Shows ARMED or DISARMED state', descriptionKey: 'osd.auto.shows-armed-or-disarmed-state',
     previewSymbol: SYM.ALERT,
     previewText: 'ARMED',
     size: { width: 8, height: 1 },
@@ -129,9 +136,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'craft_name',
-    name: 'Craft Name',
+    name: 'Craft Name', nameKey: 'osd.auto.craft-name',
     category: 'general',
-    description: 'User-configured aircraft name',
+    description: 'User-configured aircraft name', descriptionKey: 'osd.auto.user-configured-aircraft-name',
     previewSymbol: SYM.HEADING,
     previewText: 'ARDUDECK',
     size: { width: 10, height: 1 },
@@ -140,9 +147,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'warnings',
-    name: 'Warnings',
+    name: 'Warnings', nameKey: 'osd.auto.warnings',
     category: 'general',
-    description: 'System warnings (low battery, GPS lost, etc.)',
+    description: 'System warnings (low battery, GPS lost, etc.)', descriptionKey: 'osd.auto.system-warnings-low-battery-gps-lost-etc',
     previewSymbol: SYM.ALERT,
     previewText: 'LOW BATT',
     size: { width: 12, height: 1 },
@@ -151,9 +158,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'messages',
-    name: 'Messages',
+    name: 'Messages', nameKey: 'osd.auto.messages',
     category: 'general',
-    description: 'FC status messages and notifications',
+    description: 'FC status messages and notifications', descriptionKey: 'osd.auto.fc-status-messages-and-notifications',
     previewSymbol: SYM.HEADING,
     previewText: 'MSG',
     size: { width: 12, height: 1 },
@@ -163,9 +170,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Battery & Power ───────────────────────────────────────────────────
   {
     id: 'battery_voltage',
-    name: 'Battery Voltage',
+    name: 'Battery Voltage', nameKey: 'osd.auto.battery-voltage',
     category: 'battery',
-    description: 'Total battery pack voltage',
+    description: 'Total battery pack voltage', descriptionKey: 'osd.auto.total-battery-pack-voltage',
     previewSymbol: SYM.BATT,
     previewText: '11.8V',
     size: { width: 6, height: 1 },
@@ -174,9 +181,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'battery_cell_voltage',
-    name: 'Cell Voltage',
+    name: 'Cell Voltage', nameKey: 'osd.auto.cell-voltage',
     category: 'battery',
-    description: 'Average voltage per cell',
+    description: 'Average voltage per cell', descriptionKey: 'osd.auto.average-voltage-per-cell',
     previewSymbol: SYM.BATT,
     previewText: '3.95V',
     size: { width: 6, height: 1 },
@@ -185,9 +192,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'battery_percent',
-    name: 'Battery Percent',
+    name: 'Battery Percent', nameKey: 'osd.auto.battery-percent',
     category: 'battery',
-    description: 'Battery charge remaining percentage',
+    description: 'Battery charge remaining percentage', descriptionKey: 'osd.auto.battery-charge-remaining-percentage',
     previewSymbol: SYM.BATT,
     previewText: ' 75%',
     size: { width: 5, height: 1 },
@@ -196,9 +203,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'current_draw',
-    name: 'Current Draw',
+    name: 'Current Draw', nameKey: 'osd.auto.current-draw',
     category: 'battery',
-    description: 'Instantaneous current draw in amps',
+    description: 'Instantaneous current draw in amps', descriptionKey: 'osd.auto.instantaneous-current-draw-in-amps',
     previewSymbol: SYM.AMP,
     previewText: ' 8.5A',
     size: { width: 6, height: 1 },
@@ -207,9 +214,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'mah_drawn',
-    name: 'mAh Drawn',
+    name: 'mAh Drawn', nameKey: 'osd.auto.mah-drawn',
     category: 'battery',
-    description: 'Total milliamp-hours consumed',
+    description: 'Total milliamp-hours consumed', descriptionKey: 'osd.auto.total-milliamp-hours-consumed',
     previewSymbol: SYM.MAH,
     previewText: ' 850',
     size: { width: 6, height: 1 },
@@ -218,9 +225,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'power_watts',
-    name: 'Power (Watts)',
+    name: 'Power (Watts)', nameKey: 'osd.auto.power-watts',
     category: 'battery',
-    description: 'Instantaneous power consumption',
+    description: 'Instantaneous power consumption', descriptionKey: 'osd.auto.instantaneous-power-consumption',
     previewSymbol: SYM.WATT,
     previewText: '100W',
     size: { width: 5, height: 1 },
@@ -228,9 +235,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'efficiency',
-    name: 'Efficiency',
+    name: 'Efficiency', nameKey: 'osd.auto.efficiency',
     category: 'battery',
-    description: 'mAh per km efficiency indicator',
+    description: 'mAh per km efficiency indicator', descriptionKey: 'osd.auto.mah-per-km-efficiency-indicator',
     previewSymbol: SYM.MAH_KM_0,
     previewText: '120',
     size: { width: 6, height: 1 },
@@ -240,9 +247,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Altitude & Vario ──────────────────────────────────────────────────
   {
     id: 'altitude',
-    name: 'Altitude (AGL)',
+    name: 'Altitude (AGL)', nameKey: 'osd.auto.altitude-agl',
     category: 'altitude',
-    description: 'Altitude above ground level / home',
+    description: 'Altitude above ground level / home', descriptionKey: 'osd.auto.altitude-above-ground-level-home',
     previewSymbol: SYM.ALT_M,
     previewText: ' 120m',
     size: { width: 6, height: 1 },
@@ -251,9 +258,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'msl_altitude',
-    name: 'MSL Altitude',
+    name: 'MSL Altitude', nameKey: 'osd.auto.msl-altitude',
     category: 'altitude',
-    description: 'Altitude above mean sea level',
+    description: 'Altitude above mean sea level', descriptionKey: 'osd.auto.altitude-above-mean-sea-level',
     previewSymbol: SYM.ALT_M,
     previewText: ' 450m',
     size: { width: 6, height: 1 },
@@ -261,9 +268,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'vario',
-    name: 'Variometer',
+    name: 'Variometer', nameKey: 'osd.auto.variometer',
     category: 'altitude',
-    description: 'Vertical speed indicator (climb/sink)',
+    description: 'Vertical speed indicator (climb/sink)', descriptionKey: 'osd.auto.vertical-speed-indicator-climb-sink',
     previewSymbol: SYM.VARIO_UP_2A,
     previewText: '+2.5',
     size: { width: 5, height: 1 },
@@ -273,9 +280,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Speed & Distance ──────────────────────────────────────────────────
   {
     id: 'speed',
-    name: 'Ground Speed',
+    name: 'Ground Speed', nameKey: 'osd.auto.ground-speed',
     category: 'speed',
-    description: 'Speed over ground',
+    description: 'Speed over ground', descriptionKey: 'osd.auto.speed-over-ground',
     previewSymbol: SYM.KMH,
     previewText: ' 54',
     size: { width: 4, height: 1 },
@@ -284,9 +291,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'airspeed',
-    name: 'Airspeed',
+    name: 'Airspeed', nameKey: 'osd.auto.airspeed',
     category: 'speed',
-    description: 'Indicated airspeed from pitot tube',
+    description: 'Indicated airspeed from pitot tube', descriptionKey: 'osd.auto.indicated-airspeed-from-pitot-tube',
     previewSymbol: SYM.AIR,
     previewText: ' 65',
     size: { width: 5, height: 1 },
@@ -294,9 +301,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'max_speed',
-    name: 'Max Speed',
+    name: 'Max Speed', nameKey: 'osd.auto.max-speed',
     category: 'speed',
-    description: 'Maximum speed achieved in flight',
+    description: 'Maximum speed achieved in flight', descriptionKey: 'osd.auto.maximum-speed-achieved-in-flight',
     previewSymbol: SYM.MAX,
     previewText: ' 72',
     size: { width: 5, height: 1 },
@@ -304,9 +311,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'distance',
-    name: 'Home Distance',
+    name: 'Home Distance', nameKey: 'osd.auto.home-distance',
     category: 'speed',
-    description: 'Distance from home point',
+    description: 'Distance from home point', descriptionKey: 'osd.auto.distance-from-home-point',
     previewSymbol: SYM.HOME,
     previewText: ' 350m',
     size: { width: 6, height: 1 },
@@ -315,9 +322,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'home_direction',
-    name: 'Home Direction',
+    name: 'Home Direction', nameKey: 'osd.auto.home-direction',
     category: 'speed',
-    description: 'Arrow pointing towards home',
+    description: 'Arrow pointing towards home', descriptionKey: 'osd.auto.arrow-pointing-towards-home',
     previewSymbol: SYM.DIR_TO_HOME,
     previewText: '',
     size: { width: 2, height: 1 },
@@ -328,9 +335,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── GPS ───────────────────────────────────────────────────────────────
   {
     id: 'gps_sats',
-    name: 'GPS Satellites',
+    name: 'GPS Satellites', nameKey: 'osd.auto.gps-satellites',
     category: 'gps',
-    description: 'Number of GPS satellites in view',
+    description: 'Number of GPS satellites in view', descriptionKey: 'osd.auto.number-of-gps-satellites-in-view',
     previewSymbol: SYM.GPS_SAT1,
     previewText: '12',
     size: { width: 4, height: 1 },
@@ -341,7 +348,7 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
     id: 'gps_hdop',
     name: 'GPS HDOP',
     category: 'gps',
-    description: 'Horizontal dilution of precision',
+    description: 'Horizontal dilution of precision', descriptionKey: 'osd.auto.horizontal-dilution-of-precision',
     previewSymbol: SYM.GPS_HDP1,
     previewText: '0.9',
     size: { width: 5, height: 1 },
@@ -349,9 +356,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'latitude',
-    name: 'Latitude',
+    name: 'Latitude', nameKey: 'osd.auto.latitude',
     category: 'gps',
-    description: 'Current latitude coordinate',
+    description: 'Current latitude coordinate', descriptionKey: 'osd.auto.current-latitude-coordinate',
     previewSymbol: SYM.LAT,
     previewText: '37.7749',
     size: { width: 10, height: 1 },
@@ -360,9 +367,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'longitude',
-    name: 'Longitude',
+    name: 'Longitude', nameKey: 'osd.auto.longitude',
     category: 'gps',
-    description: 'Current longitude coordinate',
+    description: 'Current longitude coordinate', descriptionKey: 'osd.auto.current-longitude-coordinate',
     previewSymbol: SYM.LON,
     previewText: '-122.42',
     size: { width: 10, height: 1 },
@@ -371,9 +378,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'coordinates',
-    name: 'Coordinates',
+    name: 'Coordinates', nameKey: 'osd.auto.coordinates',
     category: 'gps',
-    description: 'Latitude and longitude on two lines',
+    description: 'Latitude and longitude on two lines', descriptionKey: 'osd.auto.latitude-and-longitude-on-two-lines',
     previewSymbol: SYM.LAT,
     previewText: '37.77/-122.4',
     size: { width: 11, height: 2 },
@@ -383,9 +390,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Attitude ──────────────────────────────────────────────────────────
   {
     id: 'crosshairs',
-    name: 'Crosshairs',
+    name: 'Crosshairs', nameKey: 'osd.auto.crosshairs',
     category: 'attitude',
-    description: 'Center screen aircraft indicator',
+    description: 'Center screen aircraft indicator', descriptionKey: 'osd.auto.center-screen-aircraft-indicator',
     previewSymbol: SYM.AH_AIRCRAFT2,
     previewText: '',
     size: { width: 3, height: 1 },
@@ -394,9 +401,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'artificial_horizon',
-    name: 'Artificial Horizon',
+    name: 'Artificial Horizon', nameKey: 'osd.auto.artificial-horizon',
     category: 'attitude',
-    description: 'Attitude horizon line indicator',
+    description: 'Attitude horizon line indicator', descriptionKey: 'osd.auto.attitude-horizon-line-indicator',
     previewSymbol: SYM.AH_BAR9_0,
     previewText: '',
     size: { width: 9, height: 1 },
@@ -405,9 +412,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'horizon_sidebars',
-    name: 'Horizon Sidebars',
+    name: 'Horizon Sidebars', nameKey: 'osd.auto.horizon-sidebars',
     category: 'attitude',
-    description: 'Side markers for artificial horizon',
+    description: 'Side markers for artificial horizon', descriptionKey: 'osd.auto.side-markers-for-artificial-horizon',
     previewSymbol: SYM.AH_LEFT,
     previewText: '',
     size: { width: 15, height: 7 },
@@ -416,9 +423,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'pitch',
-    name: 'Pitch Angle',
+    name: 'Pitch Angle', nameKey: 'osd.auto.pitch-angle',
     category: 'attitude',
-    description: 'Aircraft pitch angle in degrees',
+    description: 'Aircraft pitch angle in degrees', descriptionKey: 'osd.auto.aircraft-pitch-angle-in-degrees',
     previewSymbol: SYM.PITCH_UP,
     previewText: '  5',
     size: { width: 5, height: 1 },
@@ -427,9 +434,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'roll',
-    name: 'Roll Angle',
+    name: 'Roll Angle', nameKey: 'osd.auto.roll-angle',
     category: 'attitude',
-    description: 'Aircraft roll/bank angle in degrees',
+    description: 'Aircraft roll/bank angle in degrees', descriptionKey: 'osd.auto.aircraft-roll-bank-angle-in-degrees',
     previewSymbol: SYM.ROLL_LEVEL,
     previewText: ' -3',
     size: { width: 5, height: 1 },
@@ -438,9 +445,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'heading',
-    name: 'Heading',
+    name: 'Heading', nameKey: 'osd.auto.heading',
     category: 'attitude',
-    description: 'Compass heading in degrees',
+    description: 'Compass heading in degrees', descriptionKey: 'osd.auto.compass-heading-in-degrees',
     previewSymbol: SYM.HEADING,
     previewText: '270',
     size: { width: 5, height: 1 },
@@ -449,9 +456,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'heading_graph',
-    name: 'Heading Graph',
+    name: 'Heading Graph', nameKey: 'osd.auto.heading-graph',
     category: 'attitude',
-    description: 'Graphical compass heading tape',
+    description: 'Graphical compass heading tape', descriptionKey: 'osd.auto.graphical-compass-heading-tape',
     previewSymbol: SYM.HEADING_N,
     previewText: 'N--E--S',
     size: { width: 9, height: 1 },
@@ -461,9 +468,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Timers ────────────────────────────────────────────────────────────
   {
     id: 'flight_time',
-    name: 'Flight Time',
+    name: 'Flight Time', nameKey: 'osd.auto.flight-time',
     category: 'timers',
-    description: 'Time since arming',
+    description: 'Time since arming', descriptionKey: 'osd.auto.time-since-arming',
     previewSymbol: SYM.FLY_M,
     previewText: '03:05',
     size: { width: 6, height: 1 },
@@ -472,9 +479,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'on_time',
-    name: 'On Time',
+    name: 'On Time', nameKey: 'osd.auto.on-time',
     category: 'timers',
-    description: 'Time since power on',
+    description: 'Time since power on', descriptionKey: 'osd.auto.time-since-power-on',
     previewSymbol: SYM.ON_M,
     previewText: '12:30',
     size: { width: 6, height: 1 },
@@ -483,9 +490,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'rtc_time',
-    name: 'RTC Time',
+    name: 'RTC Time', nameKey: 'osd.auto.rtc-time',
     category: 'timers',
-    description: 'Real-time clock (current time)',
+    description: 'Real-time clock (current time)', descriptionKey: 'osd.auto.real-time-clock-current-time',
     previewSymbol: SYM.CLOCK,
     previewText: '14:23',
     size: { width: 6, height: 1 },
@@ -493,9 +500,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'remaining_flight_time',
-    name: 'Remaining Time',
+    name: 'Remaining Time', nameKey: 'osd.auto.remaining-time',
     category: 'timers',
-    description: 'Estimated remaining flight time',
+    description: 'Estimated remaining flight time', descriptionKey: 'osd.auto.estimated-remaining-flight-time',
     previewSymbol: SYM.FLIGHT_MINS_REMAINING,
     previewText: '08:15',
     size: { width: 6, height: 1 },
@@ -507,7 +514,7 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
     id: 'rssi',
     name: 'RSSI',
     category: 'radio',
-    description: 'Received signal strength indicator (%)',
+    description: 'Received signal strength indicator (%)', descriptionKey: 'osd.auto.received-signal-strength-indicator',
     previewSymbol: SYM.RSSI,
     previewText: ' 85',
     size: { width: 4, height: 1 },
@@ -516,9 +523,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'rssi_dbm',
-    name: 'RSSI (dBm)',
+    name: 'RSSI (dBm)', nameKey: 'osd.auto.rssi-dbm',
     category: 'radio',
-    description: 'Signal strength in dBm (ELRS, Crossfire)',
+    description: 'Signal strength in dBm (ELRS, Crossfire)', descriptionKey: 'osd.auto.signal-strength-in-dbm-elrs-crossfire',
     previewSymbol: SYM.DBM,
     previewText: '-62',
     size: { width: 5, height: 1 },
@@ -526,9 +533,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'throttle',
-    name: 'Throttle',
+    name: 'Throttle', nameKey: 'osd.auto.throttle',
     category: 'radio',
-    description: 'Current throttle position percentage',
+    description: 'Current throttle position percentage', descriptionKey: 'osd.auto.current-throttle-position-percentage',
     previewSymbol: SYM.THR,
     previewText: ' 45%',
     size: { width: 5, height: 1 },
@@ -537,9 +544,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'throttle_gauge',
-    name: 'Throttle Gauge',
+    name: 'Throttle Gauge', nameKey: 'osd.auto.throttle-gauge',
     category: 'radio',
-    description: 'Visual throttle bar gauge',
+    description: 'Visual throttle bar gauge', descriptionKey: 'osd.auto.visual-throttle-bar-gauge',
     previewSymbol: SYM.THROTTLE_GAUGE_FULL,
     previewText: '',
     size: { width: 1, height: 5 },
@@ -549,9 +556,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Sensors ───────────────────────────────────────────────────────────
   {
     id: 'baro_temp',
-    name: 'Baro Temperature',
+    name: 'Baro Temperature', nameKey: 'osd.auto.baro-temperature',
     category: 'sensors',
-    description: 'Barometer sensor temperature',
+    description: 'Barometer sensor temperature', descriptionKey: 'osd.auto.barometer-sensor-temperature',
     previewSymbol: SYM.BARO_TEMP,
     previewText: '32C',
     size: { width: 5, height: 1 },
@@ -559,9 +566,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'imu_temp',
-    name: 'IMU Temperature',
+    name: 'IMU Temperature', nameKey: 'osd.auto.imu-temperature',
     category: 'sensors',
-    description: 'IMU/gyro sensor temperature',
+    description: 'IMU/gyro sensor temperature', descriptionKey: 'osd.auto.imu-gyro-sensor-temperature',
     previewSymbol: SYM.IMU_TEMP,
     previewText: '45C',
     size: { width: 5, height: 1 },
@@ -569,9 +576,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'esc_temp',
-    name: 'ESC Temperature',
+    name: 'ESC Temperature', nameKey: 'osd.auto.esc-temperature',
     category: 'sensors',
-    description: 'Electronic speed controller temperature',
+    description: 'Electronic speed controller temperature', descriptionKey: 'osd.auto.electronic-speed-controller-temperature',
     previewSymbol: SYM.ESC_TEMPERATURE,
     previewText: '55C',
     size: { width: 5, height: 1 },
@@ -579,9 +586,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'g_force',
-    name: 'G-Force',
+    name: 'G-Force', nameKey: 'osd.auto.g-force',
     category: 'sensors',
-    description: 'Current G-force loading',
+    description: 'Current G-force loading', descriptionKey: 'osd.auto.current-g-force-loading',
     previewSymbol: SYM.GFORCE,
     previewText: '1.2G',
     size: { width: 5, height: 1 },
@@ -591,7 +598,7 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
     id: 'esc_rpm',
     name: 'ESC RPM',
     category: 'sensors',
-    description: 'Motor RPM from ESC telemetry',
+    description: 'Motor RPM from ESC telemetry', descriptionKey: 'osd.auto.motor-rpm-from-esc-telemetry',
     previewSymbol: SYM.RPM,
     previewText: '12500',
     size: { width: 7, height: 1 },
@@ -601,9 +608,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Mission ───────────────────────────────────────────────────────────
   {
     id: 'vtx_channel',
-    name: 'VTX Channel',
+    name: 'VTX Channel', nameKey: 'osd.auto.vtx-channel',
     category: 'mission',
-    description: 'Video transmitter band/channel/power',
+    description: 'Video transmitter band/channel/power', descriptionKey: 'osd.auto.video-transmitter-band-channel-power',
     previewSymbol: SYM.VTX_POWER,
     previewText: 'R:4:25',
     size: { width: 7, height: 1 },
@@ -612,9 +619,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'wind_horizontal',
-    name: 'Wind (Horizontal)',
+    name: 'Wind (Horizontal)', nameKey: 'osd.auto.wind-horizontal',
     category: 'mission',
-    description: 'Horizontal wind speed and direction',
+    description: 'Horizontal wind speed and direction', descriptionKey: 'osd.auto.horizontal-wind-speed-and-direction',
     previewSymbol: SYM.WIND_SPEED_HORIZONTAL,
     previewText: '12',
     size: { width: 5, height: 1 },
@@ -622,9 +629,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'wind_vertical',
-    name: 'Wind (Vertical)',
+    name: 'Wind (Vertical)', nameKey: 'osd.auto.wind-vertical',
     category: 'mission',
-    description: 'Vertical wind component',
+    description: 'Vertical wind component', descriptionKey: 'osd.auto.vertical-wind-component',
     previewSymbol: SYM.WIND_SPEED_VERTICAL,
     previewText: '+2',
     size: { width: 5, height: 1 },

@@ -3,10 +3,12 @@ import { Rocket, Plug, X, AlertTriangle, Download } from 'lucide-react';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { useSitlStore } from '../../stores/sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
-import type { FeatureTour } from '../../feature-tours';
+import { useTranslation } from 'react-i18next';
+import { useTourText } from '../../feature-tours';
+import type { LocalizedFeatureTour } from '../../feature-tours';
 
 interface TourLaunchGateProps {
-  tour: FeatureTour;
+  tour: LocalizedFeatureTour;
   onLaunched: () => void;
   onUseOwnFc: () => void;
   onInstallSitl: () => void;
@@ -16,6 +18,8 @@ interface TourLaunchGateProps {
 type LaunchStatus = 'idle' | 'starting-sitl' | 'connecting' | 'error';
 
 export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, onCancel }: TourLaunchGateProps) {
+  const { t } = useTranslation('views');
+  const tr = useTourText();
   const [status, setStatus] = useState<LaunchStatus>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -53,7 +57,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
           sitlKind === 'ardupilot'
             ? useArduPilotSitlStore.getState().lastError
             : useSitlStore.getState().lastError;
-        throw new Error(err ?? 'Failed to start SITL');
+        throw new Error(err ?? t('tours.ui.failed-to-start-sitl'));
       }
 
       setStatus('connecting');
@@ -66,12 +70,12 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
         protocol: 'mavlink',
       });
       if (!connectOk) {
-        throw new Error('SITL started but TCP connection failed');
+        throw new Error(t('tours.ui.tcp-failed'));
       }
 
       onLaunched();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : t('tours.ui.unknown-error');
       setErrorMsg(msg);
       setStatus('error');
     }
@@ -94,10 +98,10 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgb(37 99 235)' }}>
-                Tour needs a vehicle
+                {t('tours.ui.tour-needs-vehicle')}
               </div>
               <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {tour.title}
+                {tr(tour.titleKey, tour.title)}
               </h2>
             </div>
             <button
@@ -105,15 +109,16 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               disabled={busy}
               className="p-1 rounded-md transition-colors disabled:opacity-40"
               style={{ color: 'var(--text-tertiary)' }}
-              aria-label="Cancel"
+              aria-label={t('tours.ui.cancel')}
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
-            This walkthrough demonstrates features that need a live flight controller. You can spin
-            up a safe <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{sitlLabel}</span> simulation to try it, or connect your own FC.
+            {t('tours.ui.needs-fc-lead')}{' '}
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{sitlLabel}</span>{' '}
+            {t('tours.ui.needs-fc-tail')}
           </p>
 
           {errorMsg && (
@@ -141,8 +146,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
             >
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>
-                {apPlatformError ?? 'ArduPilot SITL is not supported on this platform.'} Connect
-                your own FC to continue the tour.
+                {apPlatformError ?? t('tours.ui.ap-unsupported')} {t('tours.ui.ap-unsupported-tail')}
               </span>
             </div>
           )}
@@ -158,8 +162,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
             >
               <Download className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>
-                ArduPilot SITL isn&apos;t installed yet. Head to the SITL view to download the
-                binary - the tour will pick up automatically once you connect.
+                {t('tours.ui.ap-not-installed')}
               </span>
             </div>
           )}
@@ -172,7 +175,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
                 style={{ background: 'rgb(37 99 235)', color: '#fff' }}
               >
                 <Download className="w-4 h-4" />
-                Go to SITL to install
+                {t('tours.ui.go-to-sitl')}
               </button>
             ) : (
               <button
@@ -183,10 +186,10 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               >
                 <Rocket className="w-4 h-4" />
                 {status === 'starting-sitl'
-                  ? 'Starting SITL...'
+                  ? t('tours.ui.starting-sitl')
                   : status === 'connecting'
-                    ? 'Connecting...'
-                    : `Launch ${sitlLabel}`}
+                    ? t('tours.ui.connecting')
+                    : t('tours.ui.launch-sim', { sim: sitlLabel })}
               </button>
             )}
             <button
@@ -200,7 +203,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               }}
             >
               <Plug className="w-3.5 h-3.5" />
-              I&apos;ll connect my own FC
+              {t('tours.ui.use-own-fc')}
             </button>
             <button
               onClick={onCancel}
@@ -208,7 +211,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               className="w-full px-4 py-1.5 text-xs transition-colors disabled:opacity-50"
               style={{ color: 'var(--text-tertiary)' }}
             >
-              Not now
+              {t('tours.ui.not-now')}
             </button>
           </div>
         </div>

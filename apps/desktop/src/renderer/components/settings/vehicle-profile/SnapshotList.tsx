@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Clock, X, RotateCcw, Trash2 } from 'lucide-react';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
 import { useSettingsStore } from '../../../stores/settings-store.js';
@@ -10,6 +11,7 @@ interface SnapshotListProps {
 }
 
 export function SnapshotList({ profile }: SnapshotListProps) {
+  const { t } = useTranslation('settings');
   const updateVehicle = useSettingsStore(s => s.updateVehicle);
   const [open, setOpen] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -22,10 +24,10 @@ export function SnapshotList({ profile }: SnapshotListProps) {
       <button
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-content-secondary hover:text-content hover:bg-surface-overlay-subtle"
-        title="View apply history / snapshots"
+        title={t('vehicleProfile.snapshots.buttonTooltip')}
       >
         <Clock className="w-3 h-3" />
-        {snapshots.length} snapshot{snapshots.length === 1 ? '' : 's'}
+        {t('vehicleProfile.snapshots.buttonCount', { count: snapshots.length })}
       </button>
 
       {open && (
@@ -36,9 +38,9 @@ export function SnapshotList({ profile }: SnapshotListProps) {
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
               <div>
-                <h3 className="text-sm font-semibold text-content">Apply history</h3>
+                <h3 className="text-sm font-semibold text-content">{t('vehicleProfile.snapshots.heading')}</h3>
                 <p className="text-[11px] text-content-secondary mt-0.5">
-                  Every time you apply this profile, a snapshot is saved so you can roll back.
+                  {t('vehicleProfile.snapshots.intro')}
                 </p>
               </div>
               <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-surface-overlay-subtle text-content-secondary">
@@ -48,7 +50,7 @@ export function SnapshotList({ profile }: SnapshotListProps) {
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {snapshots.length === 0 ? (
                 <div className="text-center py-12 text-content-secondary text-sm">
-                  No snapshots yet. Apply this profile to create one.
+                  {t('vehicleProfile.snapshots.empty')}
                 </div>
               ) : snapshots.map(s => (
                 <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-subtle bg-surface-inset">
@@ -60,11 +62,13 @@ export function SnapshotList({ profile }: SnapshotListProps) {
                           ? 'bg-blue-500/10 text-blue-400'
                           : 'bg-amber-500/10 text-amber-400'
                       }`}>
-                        {s.target.isSitl ? 'SITL' : 'FC'}
+                        {s.target.isSitl
+                          ? t('vehicleProfile.snapshots.targetSitl')
+                          : t('vehicleProfile.snapshots.targetFc')}
                       </span>
                     </div>
                     <div className="text-[10px] text-content-secondary mt-0.5">
-                      {new Date(s.createdAt).toLocaleString()} · {Object.keys(s.applied).length} params
+                      {new Date(s.createdAt).toLocaleString()} · {t('vehicleProfile.snapshots.params', { count: Object.keys(s.applied).length })}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -73,12 +77,12 @@ export function SnapshotList({ profile }: SnapshotListProps) {
                       className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-blue-600 hover:bg-blue-500 text-white"
                     >
                       <RotateCcw className="w-3 h-3" />
-                      Restore
+                      {t('vehicleProfile.snapshots.restore')}
                     </button>
                     <button
                       onClick={() => { deleteSnapshot(profile.id, s.id); setRefresh(n => n + 1); }}
                       className="p-1 rounded text-content-secondary hover:text-red-300 hover:bg-red-500/10"
-                      title="Delete snapshot"
+                      title={t('vehicleProfile.snapshots.deleteTooltip')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

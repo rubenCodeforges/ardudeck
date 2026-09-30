@@ -9,6 +9,12 @@
  */
 
 import { useMemo } from 'react';
+
+/** Prefer the i18n key; falls back to the literal. */
+function acText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useMessagesStore } from '../../stores/messages-store';
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
@@ -55,6 +61,7 @@ const ADVICE: Record<number, { fix: string; tab?: string; view?: string; tabLabe
 };
 
 export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps): JSX.Element {
+  const { t } = useTranslation('mavlink');
   const statusMessages = useMessagesStore((s) => s.messages);
   const armed = useTelemetryStore((s) => s.flight.armed);
   const setView = useNavigationStore((s) => s.setView);
@@ -66,7 +73,10 @@ export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps)
 
   const blocked = failures.length > 0 && !armed;
   const nameFor = (bit: number | null) =>
-    ARMING_CHECK_BITS.find((b) => b.bit === bit)?.name ?? null;
+    (() => {
+      const b = ARMING_CHECK_BITS.find((x) => x.bit === bit);
+      return b ? acText(t, b.nameKey, b.name) : null;
+    })();
 
   return (
     <div className={`rounded-xl border p-5 ${

@@ -1,5 +1,6 @@
 import { GuidesButton } from './GuidesButton';
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { FileCode, Globe, Library, ListOrdered } from 'lucide-react';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -50,6 +51,7 @@ function ModeButton({
   color: 'blue' | 'green' | 'orange';
   hasModified?: boolean;
 }) {
+  const { t } = useTranslation('mission');
   const isActive = activeMode === mode;
   const colorClasses = {
     blue: isActive ? 'bg-blue-600 text-white' : 'text-blue-400 hover:bg-blue-600/20',
@@ -74,10 +76,15 @@ function ModeButton({
 
 /** Offline mission-planning targets. One accent colour per flight stack. */
 const MISSION_FIRMWARE_OPTIONS = [
-  { id: 'ardupilot', label: 'ArduPilot', title: 'ArduPilot mission commands' },
-  { id: 'px4', label: 'PX4', title: 'PX4 mission commands' },
-  { id: 'inav', label: 'iNav', title: 'iNav mission commands (8 waypoint types)' },
-] as const satisfies ReadonlyArray<{ id: MissionFirmware; label: string; title: string }>;
+  { id: 'ardupilot', labelKey: 'toolbar.arduPilot', titleKey: 'toolbar.arduPilotCommandsTooltip' },
+  { id: 'px4', labelKey: null, labelText: 'PX4', titleKey: 'toolbar.px4CommandsTooltip' },
+  { id: 'inav', labelKey: 'toolbar.iNav', titleKey: 'toolbar.iNavCommandsTooltip' },
+] as const satisfies ReadonlyArray<{
+  id: MissionFirmware;
+  labelKey: string | null;
+  labelText?: string;
+  titleKey: string;
+}>;
 
 const MISSION_FIRMWARE_ACCENT: Record<MissionFirmware, { border: string; divider: string; active: string }> = {
   ardupilot: { border: 'border-sky-500/40', divider: 'bg-sky-500/30', active: 'bg-sky-600/80 text-white' },
@@ -86,6 +93,7 @@ const MISSION_FIRMWARE_ACCENT: Record<MissionFirmware, { border: string; divider
 };
 
 function MissionModeControls() {
+  const { t } = useTranslation('mission');
   const advancedLabels = useSettingsStore((s) => s.missionDefaults.advancedMissionLabels);
   const missionFirmware = useSettingsStore((s) => s.missionDefaults.missionFirmware);
   const updateMissionDefaults = useSettingsStore((s) => s.updateMissionDefaults);
@@ -151,9 +159,9 @@ function MissionModeControls() {
                     ? MISSION_FIRMWARE_ACCENT[option.id].active
                     : 'text-content-secondary hover:bg-surface-raised'
                 }`}
-                title={option.title}
+                title={t(option.titleKey)}
               >
-                {option.label}
+                {option.labelKey ? t(option.labelKey) : option.labelText}
               </button>
             </Fragment>
           ))}
@@ -186,6 +194,7 @@ function SaveMenu({
   onLibrary: () => void;
   onExport: (format: 'waypoints' | 'plan' | 'kmz') => void;
 }) {
+  const { t } = useTranslation('mission');
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -229,7 +238,7 @@ function SaveMenu({
                 <ExportMenuItem
                   icon={<Library className="w-3.5 h-3.5" />}
                   tint="bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                  title="Save project"
+                  title={t('toolbar.saveProjectTooltip')}
                   titleClass="text-purple-700 dark:text-purple-300"
                   detail="The whole plan in ArduDeck: waypoint groups, every survey area and its settings, all editable later"
                   onClick={() => { onLibrary(); setOpen(false); }}
@@ -240,21 +249,21 @@ function SaveMenu({
             <ExportMenuItem
               icon={<ListOrdered className="w-3.5 h-3.5" />}
               tint="bg-sky-500/10 text-sky-700 dark:text-sky-300"
-              title="Waypoints file (.waypoints)"
+              title={t('toolbar.waypointsFileTooltip')}
               detail={`QGC WPL · ArduPilot / Mission Planner${multipleGroups ? ' · flattens groups' : ''}`}
               onClick={() => { onExport('waypoints'); setOpen(false); }}
             />
             <ExportMenuItem
               icon={<FileCode className="w-3.5 h-3.5" />}
               tint="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              title="QGC Plan (.plan)"
+              title={t('toolbar.qgcPlanTooltip')}
               detail={`QGroundControl${multipleGroups ? ' · flattens groups' : ''}`}
               onClick={() => { onExport('plan'); setOpen(false); }}
             />
             <ExportMenuItem
               icon={<Globe className="w-3.5 h-3.5" />}
               tint="bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              title="DJI KMZ (.kmz)"
+              title={t('toolbar.djiKmzTooltip')}
               detail="DJI Fly waypoint mission · plain waypoints only"
               onClick={() => { onExport('kmz'); setOpen(false); }}
             />
@@ -294,6 +303,7 @@ function ExportMenuItem({
 }
 
 export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps) {
+  const { t } = useTranslation('mission');
   const { connectionState } = useConnectionStore();
   const isConnected = connectionState.isConnected;
   const isMspProtocol = connectionState?.protocol === 'msp';
@@ -838,7 +848,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
                 ? 'bg-surface-raised text-content'
                 : 'text-content-secondary hover:bg-surface-raised'
             }`}
-            title="2D Map"
+            title={t('toolbar.map2dTooltip')}
           >
             2D
           </button>
@@ -850,7 +860,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
                 ? 'bg-indigo-600 text-white'
                 : 'text-content-secondary hover:bg-surface-raised'
             }`}
-            title="3D Terrain View"
+            title={t('toolbar.terrain3dTooltip')}
           >
             3D
           </button>
@@ -861,7 +871,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       <button
         onClick={onResetLayout}
         className="px-2 py-1 bg-surface-raised hover:bg-surface border border-subtle text-content-secondary text-xs rounded transition-colors shrink-0"
-        title="Reset panel layout"
+        title={t('toolbar.resetLayoutTooltip')}
       >
         Reset Layout
       </button>
@@ -877,7 +887,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-content mb-2">Terrain Collision Warning</h3>
+                <h3 className="text-lg font-semibold text-content mb-2">{t('toolbar.terrainCollisionWarning')}</h3>
                 <p className="text-content-secondary text-sm mb-4">
                   The flight path goes below the safe altitude (terrain + {formatAltitudeFromMeters(safeAltitudeBuffer, altitudeUnit)} buffer) at one or more points.
                   This could result in a collision with terrain.
@@ -915,7 +925,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       {showNewConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-surface-raised rounded-lg shadow-xl border border-default p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-content mb-2">Clear mission?</h3>
+            <h3 className="text-lg font-semibold text-content mb-2">{t('toolbar.clearMission')}</h3>
             <p className="text-content-secondary text-sm mb-4">
               This removes all {missionStore.missionItems.length} waypoint{missionStore.missionItems.length === 1 ? '' : 's'} and every group from the working plan. Saved library missions and exported files are not affected.
             </p>

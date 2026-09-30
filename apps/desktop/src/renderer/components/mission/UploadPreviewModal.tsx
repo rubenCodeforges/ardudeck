@@ -9,6 +9,7 @@
  * Spec: docs/superpowers/specs/2026-05-28-mission-groups-design.md
  */
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
@@ -31,6 +32,7 @@ interface UploadPreviewModalProps {
 }
 
 export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewModalProps) {
+  const { t } = useTranslation('mission');
   const groups = useMissionStore((s) => s.groups);
   const missionItems = useMissionStore((s) => s.missionItems);
   const getUploadItems = useMissionStore((s) => s.getUploadItems);
@@ -76,7 +78,7 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div className="bg-surface-solid rounded-xl border border-subtle w-full max-w-lg mx-4 overflow-hidden shadow-2xl">
         <div className="px-6 py-4 border-b border-subtle">
-          <h2 className="text-lg font-semibold text-content">Upload to vehicle</h2>
+          <h2 className="text-lg font-semibold text-content">{t('uploadPreview.heading')}</h2>
           <p className="text-xs text-content-secondary mt-1">
             This will replace the existing mission on the vehicle.
           </p>
@@ -119,7 +121,7 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
 
           {/* Included groups */}
           {summary.includedGroups.length > 0 && (
-            <Section title="Included">
+            <Section title={t('uploadPreview.includedTooltip')}>
               {summary.includedGroups.map((g) => {
                 const count = missionItems.filter((it) => it.groupId === g.id).length;
                 return (

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { TileCacheCard } from './TileCacheCard';
 import { UnitSelectionCard } from './UnitSelectionCard';
+import { LanguageCard } from './LanguageCard';
 import { TrafficSettingsCard } from './TrafficSettingsCard';
 import { GroupShapeCard } from './GroupShapeCard';
 import { useSettingsStore, type VehicleProfile, type VehicleType, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
@@ -297,6 +299,7 @@ function ProfileCompatibilityBanner({
   supportedTypes: VehicleType[];
   onCreateNewProfile: (type: VehicleType) => void;
 }) {
+  const { t } = useTranslation('settings');
   return (
     <div className="mb-6 bg-gradient-to-r from-amber-900/40 to-orange-900/30 border border-amber-500/40 rounded-xl p-4">
       <div className="flex items-start gap-4">
@@ -309,7 +312,7 @@ function ProfileCompatibilityBanner({
 
         {/* Message Content */}
         <div className="flex-1">
-          <h3 className="text-lg font-medium text-amber-300">Profile Compatibility Issue</h3>
+          <h3 className="text-lg font-medium text-amber-300">{t('profileCompat.heading')}</h3>
           <p className="text-sm text-content mt-1">
             Your current profile is configured for <span className="font-medium text-amber-400">{VEHICLE_TYPE_NAMES[profileType]}</span>,
             but you're connected to a <span className="font-medium text-blue-400">{FIRMWARE_NAMES[fcVariant] || fcVariant}</span> board
@@ -469,6 +472,7 @@ const WEATHER_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 const WEATHER_LOCATION_THRESHOLD = 0.01; // ~1km movement before refetch
 
 function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
+  const { t } = useTranslation('settings');
   const gps = useTelemetryStore((s) => s.gps);
   const [weather, setWeather] = useState<WeatherData | null>(weatherCache.data);
   const [loading, setLoading] = useState(false);
@@ -653,15 +657,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
-          <span className="text-sm font-medium text-content-secondary">Weather</span>
+          <span className="text-sm font-medium text-content-secondary">{t('weather.heading')}</span>
         </div>
         <div className="text-center py-6">
           <svg className="w-12 h-12 text-content-tertiary mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <div className="text-content-secondary text-sm">Getting location...</div>
-          <div className="text-content-tertiary text-xs mt-1">Connect vehicle or allow location access</div>
+          <div className="text-content-secondary text-sm">{t('weather.gettingLocation')}</div>
+          <div className="text-content-tertiary text-xs mt-1">{t('weather.locationHint')}</div>
         </div>
       </div>
     );
@@ -674,11 +678,11 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
-          <span className="text-sm font-medium text-content-secondary">Weather</span>
+          <span className="text-sm font-medium text-content-secondary">{t('weather.heading')}</span>
         </div>
         <div className="text-center py-6">
           <div className="animate-spin w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full mx-auto mb-2" />
-          <div className="text-content-secondary text-sm">Loading weather...</div>
+          <div className="text-content-secondary text-sm">{t('weather.loading')}</div>
         </div>
       </div>
     );
@@ -691,10 +695,10 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
-          <span className="text-sm font-medium text-content-secondary">Weather</span>
+          <span className="text-sm font-medium text-content-secondary">{t('weather.heading')}</span>
         </div>
         <div className="text-center py-6">
-          <div className="text-content-secondary text-sm">Unavailable</div>
+          <div className="text-content-secondary text-sm">{t('weather.unavailable')}</div>
         </div>
       </div>
     );
@@ -839,7 +843,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
             <div>
               {isMaritime ? (
                 <>
-                  <div className="text-lg font-semibold text-content">{kmhToKnots(weather.windSpeed)} <span className="text-sm font-normal text-content-secondary">kts</span></div>
+                  <div className="text-lg font-semibold text-content">{kmhToKnots(weather.windSpeed)} <span className="text-sm font-normal text-content-secondary">{t('weather.knots')}</span></div>
                   <div className="text-xs text-content-secondary">Wind from {getWindDirection(weather.windDir)}</div>
                 </>
               ) : (
@@ -854,9 +858,9 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
             {isMaritime ? (
               <>
                 <div className={`text-lg font-semibold ${weather.windGusts > weather.windSpeed * 1.3 ? 'text-amber-400' : 'text-content'}`}>
-                  {kmhToKnots(weather.windGusts)} <span className="text-sm font-normal text-content-secondary">kts</span>
+                  {kmhToKnots(weather.windGusts)} <span className="text-sm font-normal text-content-secondary">{t('weather.knots')}</span>
                 </div>
-                <div className="text-xs text-content-secondary">Gusts</div>
+                <div className="text-xs text-content-secondary">{t('weather.gusts')}</div>
               </>
             ) : (
               <>
@@ -865,7 +869,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                   unit={speedUnit}
                   className={`text-lg font-semibold ${weather.windGusts > weather.windSpeed * 1.3 ? 'text-amber-400' : 'text-content'}`}
                 />
-                <div className="text-xs text-content-secondary">Gusts</div>
+                <div className="text-xs text-content-secondary">{t('weather.gusts')}</div>
               </>
             )}
           </div>
@@ -885,7 +889,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                 <div className={`text-lg font-semibold ${(weather.waveHeight || 0) > 1.5 ? 'text-amber-400' : 'text-content'}`}>
                   {weather.waveHeight?.toFixed(1) || '-'} <span className="text-sm font-normal text-content-secondary">m</span>
                 </div>
-                <div className="text-xs text-content-secondary">Wave Height</div>
+                <div className="text-xs text-content-secondary">{t('weather.waveHeight')}</div>
               </div>
             </div>
             {weather.swellHeight !== undefined && (
@@ -911,15 +915,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
               <div className={`text-sm font-semibold ${weather.visibility < 5 ? 'text-amber-400' : 'text-content'}`}>
                 {weather.visibility}km
               </div>
-              <div className="text-[10px] text-content-secondary uppercase">Visibility</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('weather.visibility')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.pressure}</div>
-              <div className="text-[10px] text-content-secondary uppercase">hPa</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('weather.hectopascals')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.temp}°</div>
-              <div className="text-[10px] text-content-secondary uppercase">Air Temp</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('weather.airTemp')}</div>
             </div>
           </>
         ) : (
@@ -928,15 +932,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
               <div className={`text-sm font-semibold ${weather.visibility < 5 ? 'text-amber-400' : 'text-content'}`}>
                 {weather.visibility}km
               </div>
-              <div className="text-[10px] text-content-secondary uppercase">Visibility</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('weather.visibility')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.cloudCover}%</div>
-              <div className="text-[10px] text-content-secondary uppercase">Clouds</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('weather.clouds')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.pressure}</div>
-              <div className="text-[10px] text-content-secondary uppercase">hPa</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('weather.hectopascals')}</div>
             </div>
           </>
         )}
@@ -1064,6 +1068,7 @@ function formatDistance(meters: number): string {
  * Only shown when connected via MAVLink (ArduPilot stores cumulative stats on-board)
  */
 function ArduPilotFlightStats() {
+  const { t } = useTranslation('settings');
   const { parameters } = useParameterStore();
 
   const statFlightTime = parameters.get('STAT_FLTTIME')?.value ?? 0;
@@ -1072,7 +1077,7 @@ function ArduPilotFlightStats() {
 
   return (
     <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
-      <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Flight Statistics (from FC)</h3>
+      <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">{t('weather.flightStats')}</h3>
       <div className="grid grid-cols-2 gap-2">
         <StatCard
           icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
@@ -1108,12 +1113,14 @@ function ArduPilotFlightStats() {
  */
 type SettingsCategoryId = 'vehicle' | 'configuration' | 'maps' | 'advanced' | 'about';
 
-const SETTINGS_CATEGORIES: { id: SettingsCategoryId; label: string; icon: LucideIcon }[] = [
-  { id: 'vehicle', label: 'Vehicle', icon: Gauge },
-  { id: 'configuration', label: 'Configuration', icon: SlidersHorizontal },
-  { id: 'maps', label: 'Maps', icon: MapIcon },
-  { id: 'advanced', label: 'Advanced', icon: FlaskConical },
-  { id: 'about', label: 'About', icon: Info },
+// Tab id doubles as the translation key under `settings.categories.*`, so the
+// labels follow the active language without a second lookup table.
+const SETTINGS_CATEGORIES: { id: SettingsCategoryId; icon: LucideIcon }[] = [
+  { id: 'vehicle', icon: Gauge },
+  { id: 'configuration', icon: SlidersHorizontal },
+  { id: 'maps', icon: MapIcon },
+  { id: 'advanced', icon: FlaskConical },
+  { id: 'about', icon: Info },
 ];
 
 // Per-tab colour coding, same convention as the Parameters group tabs: the icon
@@ -1128,6 +1135,7 @@ const CATEGORY_COLORS: Record<SettingsCategoryId, { active: string; icon: string
 };
 
 export function SettingsView() {
+  const { t } = useTranslation('settings');
   const {
     missionDefaults,
     vehicles,
@@ -1348,9 +1356,9 @@ export function SettingsView() {
       {/* Header */}
       <div className="shrink-0 px-6 pt-6 pb-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-2xl font-semibold text-content">Settings</h1>
+          <h1 className="text-2xl font-semibold text-content">{t('title')}</h1>
           <p className="text-content-secondary text-sm mt-1">
-            Configure mission defaults and vehicle profiles
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -1373,7 +1381,7 @@ export function SettingsView() {
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${colors.icon}${isActive ? '' : ' opacity-50'}`} />
-                {cat.label}
+                {t(`categories.${cat.id}`)}
               </button>
             );
           })}
@@ -1402,7 +1410,7 @@ export function SettingsView() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Vehicle & Status</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('vehicleSection.heading')}</h2>
           </div>
 
           {/* Top row - Active Vehicle + Performance + Weather */}
@@ -1432,7 +1440,7 @@ export function SettingsView() {
                       <button
                         onClick={() => setEditingVehicleId(activeVehicle.id)}
                         className="p-1.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
-                        title="Edit vehicle in Vehicle Profiles"
+                        title={t('vehicleSection.editTooltip')}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -1466,12 +1474,12 @@ export function SettingsView() {
                     </div>
                     {/* Weight */}
                     <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                      <div className="text-xs text-content-secondary">Weight</div>
+                      <div className="text-xs text-content-secondary">{t('vehicleSection.weight')}</div>
                       <div className="text-sm text-content font-medium">{fmtWeight(activeVehicle.weight, weightUnit)}</div>
                     </div>
                     {/* Battery */}
                     <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                      <div className="text-xs text-content-secondary">Battery</div>
+                      <div className="text-xs text-content-secondary">{t('vehicleSection.battery')}</div>
                       <div className="text-sm text-content font-medium">{activeVehicle.batteryCells}S{activeVehicle.batteryChemistry && activeVehicle.batteryChemistry !== 'lipo' ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[activeVehicle.batteryChemistry] ?? ''}` : ''} {fmtCapacity(activeVehicle.batteryCapacity, electricCapacityUnit)}</div>
                     </div>
                     {/* Type-specific secondary spec */}
@@ -1487,35 +1495,35 @@ export function SettingsView() {
                   {/* Board Stats (from STAT_* parameters) */}
                   {activeVehicle.boardStats && (activeVehicle.boardStats.totalFlightCount != null || activeVehicle.boardStats.totalFlightTime != null) && (
                     <div className="mt-3 pt-3 border-t border-subtle">
-                      <div className="text-[10px] text-content-secondary uppercase tracking-wider mb-2">Board Stats</div>
+                      <div className="text-[10px] text-content-secondary uppercase tracking-wider mb-2">{t('vehicleSection.boardStats')}</div>
                       <div className="grid grid-cols-3 gap-2">
                         {activeVehicle.boardStats.totalFlightCount != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Flights</div>
+                            <div className="text-[10px] text-content-secondary">{t('vehicleSection.flights')}</div>
                             <div className="text-xs text-content font-medium">{activeVehicle.boardStats.totalFlightCount}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.totalFlightTime != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Flight Time</div>
+                            <div className="text-[10px] text-content-secondary">{t('vehicleSection.flightTime')}</div>
                             <div className="text-xs text-content font-medium">{formatTime(activeVehicle.boardStats.totalFlightTime)}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.totalRunTime != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Run Time</div>
+                            <div className="text-[10px] text-content-secondary">{t('vehicleSection.runTime')}</div>
                             <div className="text-xs text-content font-medium">{formatTime(activeVehicle.boardStats.totalRunTime)}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.totalDistance != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Distance</div>
+                            <div className="text-[10px] text-content-secondary">{t('vehicleSection.distance')}</div>
                             <div className="text-xs text-content font-medium">{formatDistance(activeVehicle.boardStats.totalDistance)}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.bootCount != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Boots</div>
+                            <div className="text-[10px] text-content-secondary">{t('vehicleSection.boots')}</div>
                             <div className="text-xs text-content font-medium">{activeVehicle.boardStats.bootCount}</div>
                           </div>
                         )}
@@ -1549,9 +1557,9 @@ export function SettingsView() {
               {/* Multi-level estimates table */}
               <div className="bg-surface-overlay-subtle rounded-lg overflow-hidden">
                 <div className="grid grid-cols-3 text-[10px] text-content-secondary uppercase tracking-wider px-2 py-1.5 border-b border-subtle">
-                  <span>Usage</span>
-                  <span className="text-center">Time</span>
-                  <span className="text-right">Range</span>
+                  <span>{t('vehicleSection.usage')}</span>
+                  <span className="text-center">{t('vehicleSection.time')}</span>
+                  <span className="text-right">{t('vehicleSection.range')}</span>
                 </div>
                 {[
                   { pct: 60, label: '60%', color: 'text-green-400', note: 'Safe' },
@@ -1589,13 +1597,13 @@ export function SettingsView() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {connectionState.firmware !== 'px4' && <ArduPilotFlightStats />}
               <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
-                <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Tips & Recommendations</h3>
+                <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">{t('vehicleSection.tips')}</h3>
                 <TipsSection vehicle={activeVehicle} />
               </section>
             </div>
           ) : (
             <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
-              <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Tips & Recommendations</h3>
+              <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">{t('vehicleSection.tips')}</h3>
               <TipsSection vehicle={activeVehicle} />
             </section>
           )}
@@ -1692,8 +1700,10 @@ export function SettingsView() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Configuration</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.heading')}</h2>
           </div>
+
+          <LanguageCard />
 
           <UnitSelectionCard />
 
@@ -1706,8 +1716,8 @@ export function SettingsView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
                 <div>
-                  <div className="text-sm font-medium text-content">Experience Level</div>
-                  <div className="text-[11px] text-content-secondary">Presets control all options below</div>
+                  <div className="text-sm font-medium text-content">{t('configuration.experienceLevel')}</div>
+                  <div className="text-[11px] text-content-secondary">{t('configuration.presetsHint')}</div>
                 </div>
               </div>
               <div className="flex bg-surface-input rounded-lg border border-subtle overflow-hidden">
@@ -1800,7 +1810,7 @@ export function SettingsView() {
                   </div>
                   {missionErrors.safeAltitudeBuffer
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.safeAltitudeBuffer}</div>
-                    : <div className="text-[10px] text-content-tertiary mt-1">Above terrain for warnings</div>
+                    : <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.aboveTerrainForWarnings')}</div>
                   }
                 </div>
 
@@ -1825,7 +1835,7 @@ export function SettingsView() {
                   </div>
                   {missionErrors.defaultWaypointAltitude
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultWaypointAltitude}</div>
-                    : <div className="text-[10px] text-content-tertiary mt-1">Default for new waypoints</div>
+                    : <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.defaultForNewWaypoints')}</div>
                   }
                 </div>
 
@@ -1850,7 +1860,7 @@ export function SettingsView() {
                   </div>
                   {missionErrors.defaultTakeoffAltitude
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultTakeoffAltitude}</div>
-                    : <div className="text-[10px] text-content-tertiary mt-1">Altitude after launch</div>
+                    : <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.altitudeAfterLaunch')}</div>
                   }
                 </div>
 
@@ -1865,11 +1875,11 @@ export function SettingsView() {
                     })}
                     className="w-full px-2 py-1.5 bg-surface-input border border-border rounded text-content text-sm focus:outline-none focus:border-blue-500"
                   >
-                    <option value="relative">Relative to Home</option>
-                    <option value="terrain">Above Terrain (AGL)</option>
-                    <option value="asl">Above Sea Level</option>
+                    <option value="relative">{t('configuration.relativeToHome')}</option>
+                    <option value="terrain">{t('configuration.aboveTerrainAgl')}</option>
+                    <option value="asl">{t('configuration.aboveSeaLevel')}</option>
                   </select>
-                  <div className="text-[10px] text-content-tertiary mt-1">Default altitude reference</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.defaultAltitudeReference')}</div>
                 </div>
               </div>
             </section>
@@ -1902,7 +1912,7 @@ export function SettingsView() {
                     min={0}
                     max={5000}
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Above this, drag handles are hidden</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.dragHandlesHiddenAbove')}</div>
                 </div>
 
                 <div>
@@ -1917,7 +1927,7 @@ export function SettingsView() {
                     min={0}
                     max={50000}
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Above this, photo dots aren't drawn</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.photoDotsHiddenAbove')}</div>
                 </div>
 
                 <div>
@@ -1932,7 +1942,7 @@ export function SettingsView() {
                     min={0}
                     max={50000}
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Markers thinned above this (path still drawn)</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.markersThinnedAbove')}</div>
                 </div>
 
                 <div>
@@ -1950,7 +1960,7 @@ export function SettingsView() {
                     min="0"
                     max="2000"
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Draggable markers appear when this few waypoints are in view</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('configuration.draggableMarkersBelow')}</div>
                 </div>
               </div>
             </section>
@@ -1968,7 +1978,7 @@ export function SettingsView() {
         <div className="mt-8 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Offline Maps</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.offlineMaps')}</h2>
           </div>
           <TileCacheCard />
         </div>
@@ -1979,7 +1989,7 @@ export function SettingsView() {
         <div className="mt-8 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Map Overlays</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.mapOverlays')}</h2>
           </div>
           <div className="bg-surface rounded-xl border border-subtle p-5">
             <div className="flex items-center gap-3 mb-4">
@@ -1989,8 +1999,8 @@ export function SettingsView() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-content">Map Overlays</h3>
-                <p className="text-xs text-content-secondary">API keys for airspace and airport data</p>
+                <h3 className="text-sm font-medium text-content">{t('configuration.mapOverlays')}</h3>
+                <p className="text-xs text-content-secondary">{t('configuration.mapOverlaysHint')}</p>
               </div>
             </div>
 
@@ -2022,6 +2032,7 @@ export function SettingsView() {
 }
 
 function OpenAipKeyInput() {
+  const { t } = useTranslation('settings');
   const [key, setKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -2046,7 +2057,7 @@ function OpenAipKeyInput() {
     <div>
       <label className="block text-xs text-content-secondary mb-1.5">
         OpenAIP API Key
-        <span className="text-content-tertiary ml-1">- free at</span>{' '}
+        <span className="text-content-tertiary ml-1">{t('configuration.freeAt')}</span>{' '}
         <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
           openaip.net
         </a>
@@ -2067,13 +2078,14 @@ function OpenAipKeyInput() {
         </button>
       </div>
       {hasKey && !saved && (
-        <p className="text-xs text-emerald-400 mt-1">Key configured</p>
+        <p className="text-xs text-emerald-400 mt-1">{t('configuration.keyConfigured')}</p>
       )}
     </div>
   );
 }
 
 function MavlinkSettingsSection() {
+  const { t } = useTranslation('settings');
   const gcsSysid = useSettingsStore((s) => s.gcsSysid);
   const setGcsSysid = useSettingsStore((s) => s.setGcsSysid);
   const [draft, setDraft] = useState(String(gcsSysid));
@@ -2090,14 +2102,14 @@ function MavlinkSettingsSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">MAVLink</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.mavlink')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
             <div className="flex-1 mr-3">
-              <div className="text-sm text-content font-medium">GCS System ID</div>
+              <div className="text-sm text-content font-medium">{t('configuration.gcsSystemId')}</div>
               <div className="text-xs text-content-secondary mt-0.5">
                 The MAVLink system id this station transmits as (1 to 255, default 255).
                 Give each station on a shared link its own id, or parameter and mission
@@ -2129,6 +2141,7 @@ function MavlinkSettingsSection() {
 }
 
 function ConsoleSettingsSection() {
+  const { t } = useTranslation('settings');
   const showDebugLogs = useSettingsStore((s) => s.showDebugLogs);
   const setShowDebugLogs = useSettingsStore((s) => s.setShowDebugLogs);
 
@@ -2136,14 +2149,14 @@ function ConsoleSettingsSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">Console</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.console')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
             <div className="flex-1 mr-3">
-              <div className="text-sm text-content font-medium">Verbose Logging</div>
+              <div className="text-sm text-content font-medium">{t('configuration.verboseLogging')}</div>
               <div className="text-xs text-content-secondary mt-0.5">
                 Show debug and packet-level messages in the console. When off, only info, warnings, and errors are shown.
               </div>
@@ -2166,6 +2179,7 @@ function ConsoleSettingsSection() {
 }
 
 function AiAnalysisSection() {
+  const { t } = useTranslation('settings');
   const advisorEnabled = useCargoEnabled(ADVISOR_CARGO_SLUG);
   const aiProvider = useSettingsStore((s) => s.aiProvider);
   const setAiProvider = useSettingsStore((s) => s.setAiProvider);
@@ -2216,7 +2230,7 @@ function AiAnalysisSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-purple-500 rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">AI Flight Analysis</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.aiAnalysis')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
@@ -2230,15 +2244,15 @@ function AiAnalysisSection() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div className="text-[11px] text-amber-300/80 leading-relaxed space-y-1">
-              <p><strong className="text-amber-300">Experimental feature.</strong></p>
-              <p>AI suggestions are not a substitute for your own judgement.</p>
-              <p>Always verify recommendations against ArduPilot documentation and your vehicle's specific configuration before applying changes. Incorrect parameters can cause loss of control.</p>
+              <p><strong className="text-amber-300">{t('configuration.aiExperimental')}</strong></p>
+              <p>{t('configuration.aiDisclaimer')}</p>
+              <p>{t('configuration.aiWarning')}</p>
             </div>
           </div>
 
           {/* Provider selection */}
           <div>
-            <div className="text-xs text-content-secondary mb-2">Provider</div>
+            <div className="text-xs text-content-secondary mb-2">{t('configuration.provider')}</div>
             <div className="flex gap-2">
               {providers.map((p) => (
                 <button
@@ -2260,13 +2274,13 @@ function AiAnalysisSection() {
           {/* API key input */}
           {aiProvider && (
             <div>
-              <div className="text-xs text-content-secondary mb-2">API Key</div>
+              <div className="text-xs text-content-secondary mb-2">{t('configuration.apiKey')}</div>
               {hasKey ? (
                 <div className="flex items-center gap-2 bg-surface-input rounded-lg p-3">
                   <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <span className="text-sm text-content flex-1">Key configured and encrypted</span>
+                  <span className="text-sm text-content flex-1">{t('configuration.keyConfiguredEncrypted')}</span>
                   <button
                     onClick={handleRemoveKey}
                     className="text-xs text-red-400 hover:text-red-300 transition-colors"
@@ -2302,6 +2316,7 @@ function AiAnalysisSection() {
 }
 
 function ExperimentalFeaturesSection() {
+  const { t } = useTranslation('settings');
   const companionUnlocked = useSettingsStore((s) => s.companionUnlocked);
   const setCompanionUnlocked = useSettingsStore((s) => s.setCompanionUnlocked);
   const advancedCommandsUnlocked = useSettingsStore((s) => s.advancedCommandsUnlocked);
@@ -2315,7 +2330,7 @@ function ExperimentalFeaturesSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-purple-500 rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">Experimental</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('configuration.experimental')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
@@ -2333,7 +2348,7 @@ function ExperimentalFeaturesSection() {
           {/* Companion Computer */}
           <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
             <div className="flex-1 mr-3">
-              <div className="text-sm text-content font-medium">Companion Computer</div>
+              <div className="text-sm text-content font-medium">{t('configuration.companionComputer')}</div>
               <div className="text-xs text-content-secondary mt-0.5">
                 Monitor and manage companion boards (Raspberry Pi, ESP32, Jetson) with remote terminal, metrics, and service control
               </div>
@@ -2355,14 +2370,14 @@ function ExperimentalFeaturesSection() {
             <div className="flex items-center justify-between">
               <div className="flex-1 mr-3">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <div className="text-sm text-content font-medium">Advanced map commands</div>
+                  <div className="text-sm text-content font-medium">{t('configuration.advancedMapCommands')}</div>
                   <span className="px-1.5 py-0 text-[9px] font-bold tracking-wider rounded bg-rose-600/20 text-rose-400 border border-rose-600/40">
                     RISKY
                   </span>
                 </div>
                 <div className="text-xs text-content-secondary mt-0.5">
-                  Unlocks <strong>Orbit</strong> and <strong>Land at point</strong> in the map command popup
-                  (the popup defaults to <strong>Move</strong> only). Also enables the optional <strong>Lua script
+                  Unlocks <strong>{t('configuration.orbit')}</strong> {t('configuration.and')} <strong>{t('configuration.landAtPoint')}</strong> {t('configuration.inMapCommandPopup')}
+                  ({t('configuration.popupDefaultsTo')} <strong>{t('configuration.move')}</strong>{t('configuration.moveOnlySuffix')} <strong>Lua script
                   installer</strong> for flight controllers that lack native CIRCLE mode - ArduDeck can write a
                   small script to the FC's SD card after explicit consent and source-code preview.
                   <span className="block mt-1 text-rose-400">
@@ -2389,7 +2404,7 @@ function ExperimentalFeaturesSection() {
           <div className="bg-surface-input rounded-lg p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1">
-                <div className="text-sm text-content font-medium mb-0.5">Feature tour prompts</div>
+                <div className="text-sm text-content font-medium mb-0.5">{t('configuration.featureTourPrompts')}</div>
                 <div className="text-xs text-content-secondary">
                   Offer guided walkthroughs when opening a view for the first time.
                 </div>
@@ -2416,7 +2431,7 @@ function ExperimentalFeaturesSection() {
           <div className="bg-surface-input rounded-lg p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1">
-                <div className="text-sm text-content font-medium mb-0.5">Default altitude reference</div>
+                <div className="text-sm text-content font-medium mb-0.5">{t('configuration.defaultAltitudeReference')}</div>
                 <div className="text-xs text-content-secondary">
                   What the altitude you enter in the map command popup is measured against. Terrain needs
                   terrain data or a rangefinder on the vehicle.
@@ -2480,6 +2495,7 @@ function ScriptInstallerActions() {
  * address bar to reach about:gpu with.
  */
 function GraphicsStatus() {
+  const { t } = useTranslation('settings');
   const [info, setInfo] = useState<{ features: Record<string, string>; platform: string; softwareRendering: boolean; mode: 'auto' | 'safe' | 'off' } | null>(null);
   const [modeChanged, setModeChanged] = useState(false);
   const level = useRenderGovernor((s) => s.level);
@@ -2505,7 +2521,7 @@ function GraphicsStatus() {
   return (
     <section className="mt-4 bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider">Graphics</h3>
+        <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('configuration.graphics')}</h3>
         <span className={`rounded px-2 py-0.5 text-[10px] ${
           info.softwareRendering
             ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
@@ -2523,7 +2539,7 @@ function GraphicsStatus() {
       )}
 
       <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
-        <div className="mb-2 text-xs text-content">Hardware acceleration</div>
+        <div className="mb-2 text-xs text-content">{t('configuration.hardwareAcceleration')}</div>
         <div className="flex gap-2">
           {([
             { value: 'auto' as const, label: 'Force on', tip: 'Override the driver blocklist and use the GPU. The right answer on almost every machine.' },
@@ -2557,7 +2573,7 @@ function GraphicsStatus() {
 
       <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-content">Screen update rate</span>
+          <span className="text-xs text-content">{t('configuration.screenUpdateRate')}</span>
           <span className="font-mono text-[10px] text-content-tertiary">
             {Math.round(slowShare * 100)}% slow frames
           </span>
@@ -2604,7 +2620,7 @@ function GraphicsStatus() {
         ))}
         {info.platform && (
           <div className="flex items-center justify-between text-xs">
-            <span className="text-content-secondary">window system</span>
+            <span className="text-content-secondary">{t('configuration.windowSystem')}</span>
             <span className="font-mono text-content-tertiary">{info.platform}</span>
           </div>
         )}
@@ -2614,6 +2630,7 @@ function GraphicsStatus() {
 }
 
 function AboutSection() {
+  const { t } = useTranslation('settings');
   const {
     currentVersion,
     status,
@@ -2669,13 +2686,13 @@ function AboutSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">About</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('about.heading')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-content">ArduDeck</h3>
+            <h3 className="text-lg font-semibold text-content">{t('about.productName')}</h3>
             <p className="text-sm text-content-secondary mt-0.5">
               {currentVersion ? betaLabel(currentVersion) : '...'}
             </p>
@@ -2821,10 +2838,10 @@ function AboutSection() {
           )}
         </div>
         {notesState === 'loading' && (
-          <p className="text-sm text-content-tertiary">Loading release notes…</p>
+          <p className="text-sm text-content-tertiary">{t('about.loadingReleaseNotes')}</p>
         )}
         {notesState === 'empty' && (
-          <p className="text-sm text-content-tertiary">No published releases yet.</p>
+          <p className="text-sm text-content-tertiary">{t('about.noReleases')}</p>
         )}
         {notesState === 'error' && (
           <p className="text-sm text-content-tertiary">
@@ -2837,7 +2854,7 @@ function AboutSection() {
         {notesState === 'ready' && notes && (
           notes.body
             ? <div className="max-w-none">{renderMarkdown(notes.body)}</div>
-            : <p className="text-sm text-content-tertiary">This release has no notes.</p>
+            : <p className="text-sm text-content-tertiary">{t('about.releaseNoNotes')}</p>
         )}
       </section>
       <GraphicsStatus />
@@ -2931,6 +2948,7 @@ function PropSizeInput({
   onChange: (val: string | undefined) => void;
   presets: { size: string; label?: string }[];
 }) {
+  const { t } = useTranslation('settings');
   // customMode is pure UI state - no useEffect needed
   const [customMode, setCustomMode] = useState(false);
   const [customValue, setCustomValue] = useState('');
@@ -2984,17 +3002,17 @@ function PropSizeInput({
 
   return (
     <div>
-      <label className="block text-xs text-content-secondary mb-1">Propeller</label>
+      <label className="block text-xs text-content-secondary mb-1">{t('vehicleEditor.propeller')}</label>
       <select
         value={showCustomInput ? '__custom__' : (value || '')}
         onChange={(e) => handleSelect(e.target.value)}
         className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content text-sm focus:outline-none focus:border-blue-500"
       >
-        <option value="">None</option>
+        <option value="">{t('vehicleEditor.none')}</option>
         {presets.map((p) => (
           <option key={p.size} value={p.size}>{p.label || `${p.size}"`}</option>
         ))}
-        <option value="__custom__">Custom size...</option>
+        <option value="__custom__">{t('vehicleEditor.customSize')}</option>
       </select>
       {showCustomInput && (
         <input
@@ -3002,7 +3020,7 @@ function PropSizeInput({
           value={customMode ? customValue : (value || '')}
           onChange={(e) => handleCustom(e.target.value)}
           onBlur={handleCustomBlur}
-          placeholder="DxP (e.g. 9.5x4.7)"
+          placeholder="{t('vehicleEditor.propSizePlaceholder')}"
           autoFocus={customMode}
           className={`w-full mt-1.5 px-3 py-2 bg-surface-input border rounded-lg text-sm focus:outline-none ${
             error ? 'border-red-500/60 text-content' : 'border-border text-content focus:border-blue-500'
@@ -3791,6 +3809,7 @@ function VehicleEditModal({
   onUpdate: (updates: Partial<VehicleProfile>) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('settings');
   const { getDisplayValue, handleChange, handleBlur, getError } = useVehicleForm(vehicle, onUpdate);
   const { unitPreferences } = useSettingsStore();
   const altitudeUnit = unitPreferences.altitude;
@@ -3836,13 +3855,13 @@ function VehicleEditModal({
           {/* Basic Info - Common to all */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium text-content mb-1.5">Vehicle Name</label>
+              <label className="block text-sm font-medium text-content mb-1.5">{t('vehicleEditor.vehicleName')}</label>
               <input
                 type="text"
                 value={nameValue}
                 onChange={(e) => handleChange('name', e.target.value.slice(0, 50), true)}
                 onBlur={() => handleBlur('name', true)}
-                placeholder="My Vehicle"
+                placeholder="{t('vehicleEditor.vehicleNamePlaceholder')}"
                 className={`w-full px-3 py-2 bg-surface-input border rounded-lg text-content focus:outline-none ${
                   nameError ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
                 }`}
@@ -3850,7 +3869,7 @@ function VehicleEditModal({
               {nameError && <div className="text-[10px] text-red-400 mt-0.5">{nameError}</div>}
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium text-content mb-1.5">Vehicle Type</label>
+              <label className="block text-sm font-medium text-content mb-1.5">{t('vehicleEditor.vehicleType')}</label>
               <select
                 value={vehicle.type}
                 onChange={(e) => onUpdate({ type: e.target.value as VehicleType })}
@@ -3953,7 +3972,7 @@ function VehicleEditModal({
                 />
                 <div>
                   <div className="flex items-center justify-between mb-1 min-h-[18px]">
-                    <label className="text-xs text-content-secondary">Stall Speed</label>
+                    <label className="text-xs text-content-secondary">{t('vehicleEditor.stallSpeed')}</label>
                     <StallSpeedCalcButton
                       vehicle={vehicle}
                       onCompute={(mps) => onUpdate({ stallSpeed: mps })}
@@ -4370,11 +4389,11 @@ function VehicleEditModal({
 
               {/* Notes - Common to all */}
               <div>
-                <label className="block text-xs text-content-secondary mb-1">Notes</label>
+                <label className="block text-xs text-content-secondary mb-1">{t('vehicleEditor.notes')}</label>
                 <textarea
                   value={vehicle.notes || ''}
                   onChange={(e) => onUpdate({ notes: e.target.value || undefined })}
-                  placeholder="Additional notes about this vehicle..."
+                  placeholder="{t('vehicleEditor.notesPlaceholder')}"
                   rows={2}
                   className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content text-sm focus:outline-none focus:border-blue-500 resize-none"
                 />
@@ -4397,7 +4416,7 @@ function VehicleEditModal({
               className="mt-1"
             />
             <span>
-              <span className="text-content">Auto-apply to SITL on start</span>
+              <span className="text-content">{t('vehicleEditor.autoApplySitl')}</span>
               <span className="block text-xs text-content-tertiary mt-0.5">
                 When you launch SITL, this profile's params are reapplied automatically.
               </span>
@@ -4445,6 +4464,7 @@ function VehicleCard({
   onDelete,
   canDelete,
 }: VehicleCardProps) {
+  const { t } = useTranslation('settings');
   const { unitPreferences } = useSettingsStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => {
@@ -4532,7 +4552,7 @@ function VehicleCard({
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-content font-medium text-sm truncate" title={vehicle.name}>{vehicle.name}</span>
                 {isActive && (
-                  <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded shrink-0">Active</span>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded shrink-0">{t('vehicleEditor.active')}</span>
                 )}
                 {vehicle.boardUid && (
                   <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0 max-w-[8rem] truncate" title={`Board UID: ${vehicle.boardUid}`}>
@@ -4553,11 +4573,11 @@ function VehicleCard({
                 await saveParmToFile(vehicle, tpl, { includeSim: false });
               }}
               className="p-1.5 text-content-secondary hover:text-content transition-colors"
-              title="Export .parm file"
+              title={t('vehicleEditor.exportParmTooltip')}
             >
               <Download className="w-4 h-4" />
             </button>
-            <button onClick={onEdit} className="p-1.5 text-content-secondary hover:text-content transition-colors" title="Edit">
+            <button onClick={onEdit} className="p-1.5 text-content-secondary hover:text-content transition-colors" title={t('vehicleEditor.editTooltip')}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>

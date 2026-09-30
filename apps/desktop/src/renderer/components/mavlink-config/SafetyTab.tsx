@@ -6,6 +6,7 @@
  */
 
 import React, { useMemo, useCallback, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Shield,
   Scale,
@@ -96,6 +97,7 @@ const Px4SafetyConfig: React.FC<{
   setParameter: (id: string, value: number) => void;
   getParameterMetadata: ReturnType<typeof useParameterStore.getState>['getParameterMetadata'];
 }> = ({ parameters, setParameter, getParameterMetadata }) => {
+  const { t } = useTranslation('mavlink');
   // Edits stage in the parameter store (PX4 setParameter stages instead of
   // writing) and are reviewed in the standard Write Parameters to Flash
   // dialog via Save All Changes, exactly like the ArduPilot tabs.
@@ -157,14 +159,14 @@ const Px4SafetyConfig: React.FC<{
             <Radio className="w-5 h-5 text-red-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">RC Signal Lost</h3>
-            <p className="text-xs text-content-secondary">What happens when manual control signal is lost</p>
+            <h3 className="text-sm font-medium text-content">{t('safety.rcSignalLost.heading')}</h3>
+            <p className="text-xs text-content-secondary">{t('safety.presets.rcSignalLostDesc')}</p>
           </div>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Failsafe Action (NAV_RCL_ACT)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('safety.labels.rcAction')}</label>
             {renderEnum('NAV_RCL_ACT', px4Values.navRclAct)}
           </div>
 
@@ -181,7 +183,7 @@ const Px4SafetyConfig: React.FC<{
           />
 
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Manual Control Source (COM_RC_IN_MODE)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('safety.labels.rcSource')}</label>
             {renderEnum('COM_RC_IN_MODE', px4Values.comRcInMode)}
           </div>
         </div>
@@ -194,14 +196,14 @@ const Px4SafetyConfig: React.FC<{
             <Monitor className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Datalink Lost</h3>
-            <p className="text-xs text-content-secondary">What happens when the GCS connection is lost</p>
+            <h3 className="text-sm font-medium text-content">{t('safety.datalinkLost.heading')}</h3>
+            <p className="text-xs text-content-secondary">{t('safety.presets.datalinkLostDesc')}</p>
           </div>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Failsafe Action (NAV_DLL_ACT)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('safety.labels.dllAction')}</label>
             {renderEnum('NAV_DLL_ACT', px4Values.navDllAct)}
           </div>
 
@@ -219,7 +221,7 @@ const Px4SafetyConfig: React.FC<{
 
         <div className="bg-surface-raised rounded-lg p-3">
           <p className="text-xs text-content-secondary">
-            <span className="text-amber-400">Tip:</span> Datalink failsafe needs a telemetry
+            <span className="text-amber-400">{t('safety.common.tip')}</span> Datalink failsafe needs a telemetry
             heartbeat. If flying without a GCS link, set the action to Disabled.
           </p>
         </div>
@@ -232,13 +234,13 @@ const Px4SafetyConfig: React.FC<{
             <Battery className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Low Battery</h3>
-            <p className="text-xs text-content-secondary">Protect against flying with a depleted battery</p>
+            <h3 className="text-sm font-medium text-content">{t('safety.lowBattery.heading')}</h3>
+            <p className="text-xs text-content-secondary">{t('safety.presets.lowBatteryDesc')}</p>
           </div>
         </div>
 
         <div>
-          <label className="text-xs text-content-secondary block mb-1.5">Failsafe Action (COM_LOW_BAT_ACT)</label>
+          <label className="text-xs text-content-secondary block mb-1.5">{t('safety.labels.lowBatAction')}</label>
           {renderEnum('COM_LOW_BAT_ACT', px4Values.comLowBatAct)}
         </div>
 
@@ -257,14 +259,14 @@ const Px4SafetyConfig: React.FC<{
             <Fence className="w-5 h-5 text-blue-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Geofence</h3>
-            <p className="text-xs text-content-secondary">Limit how far the vehicle can travel from home</p>
+            <h3 className="text-sm font-medium text-content">{t('safety.geofence.heading')}</h3>
+            <p className="text-xs text-content-secondary">{t('safety.presets.geofenceDesc')}</p>
           </div>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Violation Action (GF_ACTION)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('safety.labels.gfAction')}</label>
             {renderEnum('GF_ACTION', px4Values.gfAction)}
           </div>
 
@@ -299,8 +301,8 @@ const Px4SafetyConfig: React.FC<{
             <CheckCircle className="w-5 h-5 text-green-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Auto-Disarm</h3>
-            <p className="text-xs text-content-secondary">Automatically disarm after landing or idle on the ground</p>
+            <h3 className="text-sm font-medium text-content">{t('safety.autoDisarm.heading')}</h3>
+            <p className="text-xs text-content-secondary">{t('safety.autoDisarm.desc')}</p>
           </div>
         </div>
 
@@ -340,6 +342,7 @@ interface SafetyTabProps {
 }
 
 const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
+  const { t } = useTranslation('mavlink');
   const { parameters, setParameter, modifiedCount, fetchParameters, isLoading, downloadState } = useParameterStore();
   const getParameterMetadata = useParameterStore((s) => s.getParameterMetadata);
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
@@ -447,8 +450,8 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
                 <Lightbulb className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
-                <p className="text-xs text-content-secondary">Fetch parameters from the FC to configure failsafes</p>
+                <p className="text-amber-300 font-medium">{t('safety.states.parametersNotLoaded')}</p>
+                <p className="text-xs text-content-secondary">{t('safety.states.fetchForFailsafes')}</p>
               </div>
             </div>
             <button
@@ -461,7 +464,7 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
           </div>
         )}
 
-        <InfoCard title="Safety Features" variant="info">
+        <InfoCard title={t('safety.states.safetyFeatures')} variant="info">
           Configure what PX4 does when things go wrong. Failsafes can save your aircraft
           from flyaways and crashes. Each card maps directly to PX4 parameters.
         </InfoCard>
@@ -478,7 +481,7 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
           <div className="bg-amber-500/10 rounded-xl border-amber-500/30 p-4 flex items-center gap-3">
             <Save className="w-5 h-5 text-amber-400" />
             <p className="text-sm text-amber-400">
-              You have unsaved changes. Click <span className="font-medium">"Save All Changes"</span> in the header to save.
+              You have unsaved changes. Click <span className="font-medium">{t('safety.states.saveAllChanges')}</span> in the header to save.
             </p>
           </div>
         )}
@@ -496,8 +499,8 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
               <Lightbulb className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
-              <p className="text-xs text-content-secondary">Fetch parameters from the FC to use presets</p>
+              <p className="text-amber-300 font-medium">{t('safety.states.parametersNotLoaded')}</p>
+              <p className="text-xs text-content-secondary">{t('safety.states.fetchForPresets')}</p>
             </div>
           </div>
           <button
@@ -519,7 +522,7 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
       )}
 
       {/* Help Card */}
-      <InfoCard title="Safety Features" variant="info">
+      <InfoCard title={t('safety.states.safetyFeatures')} variant="info">
         Configure what happens when things go wrong. Failsafes can save your aircraft
         from flyaways and crashes. Beginners should use the Maximum Safety preset.
       </InfoCard>
@@ -541,25 +544,25 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
               <Radio className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-content">RC Signal Lost</h3>
-              <p className="text-xs text-content-secondary">What happens when transmitter signal is lost</p>
+              <h3 className="text-sm font-medium text-content">{t('safety.rcSignalLost.heading')}</h3>
+              <p className="text-xs text-content-secondary">{t('safety.rcSignalLost.desc')}</p>
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">Action</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('safety.common.action')}</label>
               <select
                 value={safetyValues.fsThrEnable}
                 onChange={(e) => setParameter('FS_THR_ENABLE', Number(e.target.value))}
                 className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
               >
-                <option value={0}>Disabled (Not Recommended)</option>
-                <option value={1}>RTL - Return to Launch</option>
-                <option value={2}>Continue Mission</option>
-                <option value={3}>Land Immediately</option>
-                <option value={4}>SmartRTL or RTL</option>
-                <option value={5}>SmartRTL or Land</option>
+                <option value={0}>{t('safety.options.disabledNotRecommended')}</option>
+                <option value={1}>{t('safety.options.rtl')}</option>
+                <option value={2}>{t('safety.options.continueMission')}</option>
+                <option value={3}>{t('safety.options.landImmediately')}</option>
+                <option value={4}>{t('safety.options.smartRtlOrRtl')}</option>
+                <option value={5}>{t('safety.options.smartRtlOrLand')}</option>
               </select>
             </div>
 
@@ -583,30 +586,30 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
               <Monitor className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-content">GCS Connection Lost</h3>
-              <p className="text-xs text-content-secondary">What happens when ground station disconnects</p>
+              <h3 className="text-sm font-medium text-content">{t('safety.datalinkLost.desc')}</h3>
+              <p className="text-xs text-content-secondary">{t('safety.datalinkLost.descAlt')}</p>
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Action</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('safety.common.action')}</label>
             <select
               value={safetyValues.fsGcsEnable}
               onChange={(e) => setParameter('FS_GCS_ENABLE', Number(e.target.value))}
               className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
             >
-              <option value={0}>Disabled</option>
-              <option value={1}>RTL - Return to Launch</option>
-              <option value={2}>Continue Mission</option>
-              <option value={3}>SmartRTL or RTL</option>
-              <option value={4}>SmartRTL or Land</option>
-              <option value={5}>Land Immediately</option>
+              <option value={0}>{t('safety.options.disabled')}</option>
+              <option value={1}>{t('safety.options.rtl')}</option>
+              <option value={2}>{t('safety.options.continueMission')}</option>
+              <option value={3}>{t('safety.options.smartRtlOrRtl')}</option>
+              <option value={4}>{t('safety.options.smartRtlOrLand')}</option>
+              <option value={5}>{t('safety.options.landImmediately')}</option>
             </select>
           </div>
 
           <div className="bg-surface-raised rounded-lg p-3">
             <p className="text-xs text-content-secondary">
-              <span className="text-amber-400">Tip:</span> GCS failsafe requires heartbeat
+              <span className="text-amber-400">{t('safety.common.tip')}</span> GCS failsafe requires heartbeat
               from ground station. If flying without GCS, leave disabled.
             </p>
           </div>
@@ -619,26 +622,26 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
               <Battery className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-content">Low Battery</h3>
-              <p className="text-xs text-content-secondary">Protect against flying home with dead battery</p>
+              <h3 className="text-sm font-medium text-content">{t('safety.lowBattery.heading')}</h3>
+              <p className="text-xs text-content-secondary">{t('safety.lowBattery.desc')}</p>
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">Action</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('safety.common.action')}</label>
               <select
                 value={safetyValues.battFsLowAct}
                 onChange={(e) => setParameter('BATT_FS_LOW_ACT', Number(e.target.value))}
                 className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
               >
-                <option value={0}>Disabled</option>
-                <option value={1}>Land Immediately</option>
-                <option value={2}>RTL - Return to Launch</option>
-                <option value={3}>SmartRTL or RTL</option>
-                <option value={4}>SmartRTL or Land</option>
-                <option value={5}>Terminate</option>
-                <option value={6}>Auto DO_LAND_START or RTL</option>
+                <option value={0}>{t('safety.options.disabled')}</option>
+                <option value={1}>{t('safety.options.landImmediately')}</option>
+                <option value={2}>{t('safety.options.rtl')}</option>
+                <option value={3}>{t('safety.options.smartRtlOrRtl')}</option>
+                <option value={4}>{t('safety.options.smartRtlOrLand')}</option>
+                <option value={5}>{t('safety.options.terminate')}</option>
+                <option value={6}>{t('safety.options.autoLandStartRtl')}</option>
               </select>
             </div>
 
@@ -673,26 +676,26 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
               <AlertTriangle className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-content">Critical Battery</h3>
-              <p className="text-xs text-content-secondary">Last resort when battery is dangerously low</p>
+              <h3 className="text-sm font-medium text-content">{t('safety.criticalBattery.heading')}</h3>
+              <p className="text-xs text-content-secondary">{t('safety.criticalBattery.desc')}</p>
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">Action</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('safety.common.action')}</label>
               <select
                 value={safetyValues.battFsCrtAct}
                 onChange={(e) => setParameter('BATT_FS_CRT_ACT', Number(e.target.value))}
                 className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
               >
-                <option value={0}>Disabled</option>
-                <option value={1}>Land Immediately</option>
-                <option value={2}>RTL - Return to Launch</option>
-                <option value={3}>SmartRTL or RTL</option>
-                <option value={4}>SmartRTL or Land</option>
-                <option value={5}>Terminate</option>
-                <option value={6}>Auto DO_LAND_START or RTL</option>
+                <option value={0}>{t('safety.options.disabled')}</option>
+                <option value={1}>{t('safety.options.landImmediately')}</option>
+                <option value={2}>{t('safety.options.rtl')}</option>
+                <option value={3}>{t('safety.options.smartRtlOrRtl')}</option>
+                <option value={4}>{t('safety.options.smartRtlOrLand')}</option>
+                <option value={5}>{t('safety.options.terminate')}</option>
+                <option value={6}>{t('safety.options.autoLandStartRtl')}</option>
               </select>
             </div>
 
@@ -721,7 +724,7 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
 
           <div className="bg-surface-raised rounded-lg p-3">
             <p className="text-xs text-content-secondary">
-              <span className="text-red-400">Warning:</span> Critical battery should trigger a more
+              <span className="text-red-400">{t('safety.common.warning')}</span> Critical battery should trigger a more
               aggressive action than low battery (e.g. Land vs RTL). Set voltage lower than the low battery threshold.
             </p>
           </div>
@@ -735,8 +738,8 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
                 <Fence className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <h3 className="text-sm font-medium text-content">Geofence</h3>
-                <p className="text-xs text-content-secondary">Prevent flying out of bounds</p>
+                <h3 className="text-sm font-medium text-content">{t('safety.geofence.heading')}</h3>
+                <p className="text-xs text-content-secondary">{t('safety.geofence.desc')}</p>
               </div>
             </div>
             <button
@@ -759,7 +762,7 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
           {safetyValues.fenceEnable ? (
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-content-secondary block mb-1.5">Fence Type</label>
+                <label className="text-xs text-content-secondary block mb-1.5">{t('safety.geofence.fenceType')}</label>
                 <select
                   value={safetyValues.fenceType}
                   onChange={(e) => setParameter('FENCE_TYPE', Number(e.target.value))}
@@ -794,17 +797,17 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
               />
 
               <div>
-                <label className="text-xs text-content-secondary block mb-1.5">Breach Action</label>
+                <label className="text-xs text-content-secondary block mb-1.5">{t('safety.geofence.breachAction')}</label>
                 <select
                   value={safetyValues.fenceAction}
                   onChange={(e) => setParameter('FENCE_ACTION', Number(e.target.value))}
                   className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
                 >
-                  <option value={0}>Report Only</option>
-                  <option value={1}>RTL or Land</option>
-                  <option value={2}>Always Land</option>
-                  <option value={3}>SmartRTL or RTL</option>
-                  <option value={4}>Brake or Land</option>
+                  <option value={0}>{t('safety.options.reportOnly')}</option>
+                  <option value={1}>{t('safety.options.rtlOrLand')}</option>
+                  <option value={2}>{t('safety.options.alwaysLand')}</option>
+                  <option value={3}>{t('safety.options.smartRtlOrRtl')}</option>
+                  <option value={4}>{t('safety.options.brakeOrLand')}</option>
                 </select>
               </div>
             </div>
@@ -829,7 +832,7 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
         <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-center gap-3">
           <Save className="w-5 h-5 text-amber-400" />
           <p className="text-sm text-amber-400">
-            You have unsaved changes. Click <span className="font-medium">"Save All Changes"</span> in the header to save.
+            You have unsaved changes. Click <span className="font-medium">{t('safety.states.saveAllChanges')}</span> in the header to save.
           </p>
         </div>
       )}
@@ -852,10 +855,10 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-content-secondary uppercase">
-                        <th className="pb-2">Parameter</th>
-                        <th className="pb-2 text-right">Current</th>
+                        <th className="pb-2">{t('safety.table.parameter')}</th>
+                        <th className="pb-2 text-right">{t('safety.table.current')}</th>
                         <th className="pb-2 text-center px-2">→</th>
-                        <th className="pb-2">New</th>
+                        <th className="pb-2">{t('safety.table.new')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-subtle">

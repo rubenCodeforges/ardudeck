@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNumericDraft } from '../../hooks/useNumericDraft';
 import { createPortal } from 'react-dom';
 import { computeOffsetPosition } from '../../utils/geo-offset';
@@ -41,6 +42,7 @@ export function RelativeWaypointPopover({
   onConfirm,
   onCancel,
 }: RelativeWaypointPopoverProps) {
+  const { t } = useTranslation('mission');
   const [bearing, setBearing] = useState(0);
   const bearingDraft = useNumericDraft(bearing, (v) => setBearing(((v % 360) + 360) % 360));
   const [distance, setDistance] = useState(50);
@@ -195,7 +197,7 @@ export function RelativeWaypointPopover({
               <circle cx="15" cy="18" r="1.2" />
             </svg>
             <div>
-              <div className="text-sm font-medium text-content">Relative waypoint</div>
+              <div className="text-sm font-medium text-content">{t('relativeWaypoint.heading')}</div>
               <div className="text-[11px] text-content-secondary">
                 From WP {refSeq + 1}
               </div>
@@ -205,7 +207,7 @@ export function RelativeWaypointPopover({
             onClick={onCancel}
             onMouseDown={(e) => e.stopPropagation()}
             className="p-1 rounded hover:bg-surface-raised text-content-secondary"
-            aria-label="Close"
+            aria-label={t('relativeWaypoint.closeAriaLabel')}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -216,7 +218,7 @@ export function RelativeWaypointPopover({
         <div className="px-4 py-3 space-y-3">
           {/* Bearing row: compass icon + number input + steppers */}
           <div>
-            <label className="block text-[11px] text-content-secondary mb-1">Bearing</label>
+            <label className="block text-[11px] text-content-secondary mb-1">{t('relativeWaypoint.bearing')}</label>
             <div className="flex items-center gap-2">
               <CompassDial bearing={bearing} />
               <div className="flex-1 h-8 flex items-stretch bg-surface-input border border-default rounded overflow-hidden">
@@ -261,7 +263,7 @@ export function RelativeWaypointPopover({
 
           {/* Distance row */}
           <div>
-            <label className="block text-[11px] text-content-secondary mb-1">Distance</label>
+            <label className="block text-[11px] text-content-secondary mb-1">{t('relativeWaypoint.distance')}</label>
             <div className="h-8 flex items-stretch bg-surface-input border border-default rounded overflow-hidden">
               <button
                 onClick={() => stepDistance(-distanceStep)}
@@ -316,7 +318,7 @@ export function RelativeWaypointPopover({
 
           {/* Insert position */}
           <div>
-            <label className="block text-[11px] text-content-secondary mb-1">Insert</label>
+            <label className="block text-[11px] text-content-secondary mb-1">{t('relativeWaypoint.insert')}</label>
             <div className="flex items-center rounded overflow-hidden border border-subtle">
               <InsertButton
                 active={where === 'before'}

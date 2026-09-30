@@ -3,6 +3,18 @@
  * Rich visual design with category colors, per-template icons, and stat badges.
  */
 import { useCallback, useState } from 'react';
+
+/**
+ * Prefer the i18n key when the codemod added one, else fall back to the literal.
+ * The codemod skips strings that need no translation (all-caps acronyms like
+ * 'AND'), so the key is optional. Kept as a plain function rather than a
+ * `useX`-named hook because it does no hook work and is called from callbacks;
+ * `t` is threaded in by the calling component.
+ */
+function luaText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import {
   X,
   Search,
@@ -101,6 +113,7 @@ interface TemplateDialogProps {
 }
 
 export function TemplateDialog({ onClose }: TemplateDialogProps) {
+  const { t } = useTranslation('lua');
   const { loadGraph, isDirty } = useLuaGraphStore();
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -131,10 +144,12 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
   const q = query.trim().toLowerCase();
   const visibleTemplates = q
     ? GRAPH_TEMPLATES.filter(
-        (t) =>
-          t.name.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q),
+        // `tpl`, not `t`: the callback parameter would otherwise shadow the
+        // translator returned by useTranslation.
+        (tpl) =>
+          luaText(t, tpl.nameKey, tpl.name).toLowerCase().includes(q) ||
+          luaText(t, tpl.descriptionKey, tpl.description).toLowerCase().includes(q) ||
+          tpl.category.toLowerCase().includes(q),
       )
     : GRAPH_TEMPLATES;
 
@@ -233,10 +248,10 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
                               </div>
                               <div className="min-w-0">
                                 <div className="text-[13px] font-medium text-content group-hover:text-content transition-colors leading-tight">
-                                  {template.name}
+                                  {luaText(t, template.nameKey, template.name)}
                                 </div>
                                 <div className="text-[11px] text-content-secondary leading-relaxed mt-1">
-                                  {template.description}
+                                  {luaText(t, template.descriptionKey, template.description)}
                                 </div>
                               </div>
                             </div>

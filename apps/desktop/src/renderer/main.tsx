@@ -5,6 +5,7 @@ import { DetachedRoot } from './detached/DetachedRoot';
 // Subpath, not the barrel: the barrel re-exports core/signing.js (node:crypto),
 // which Vite externalizes in the renderer.
 import { registerArduDeckDialect } from '@ardudeck/mavlink-ts/dialect';
+import { initI18n } from './i18n';
 import { initPseudoTx } from './stores/pseudo-tx-store';
 import { initVehicleProfiles } from './stores/vehicle-profile-store';
 import { initVehicleCalibration } from './stores/vehicle-calibration-store';
@@ -16,6 +17,10 @@ import './styles/globals.css';
 // entry and keeps Zustand/Tailwind/etc. cached between windows.
 // The inspector names and decodes messages straight from MESSAGE_REGISTRY, so the
 // renderer needs the dialect too, not just the main process.
+// i18next has to exist before the first render: components call `useTranslation`
+// during it. `initI18n` also seeds the language from the fast-start mirror, and
+// `initializeSettings` in App refreshes it once the settings file has loaded.
+initI18n();
 registerArduDeckDialect();
 initVehicleProfiles();
 initVehicleCalibration();

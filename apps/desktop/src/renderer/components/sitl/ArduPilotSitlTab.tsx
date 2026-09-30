@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { useArduPilotSitlStore, ARDUPILOT_MODELS } from '../../stores/ardupilot-sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -26,6 +27,11 @@ import {
 } from '../../../shared/user-units.js';
 import { TrainerQuickAction } from '../trainer/TrainerQuickAction';
 
+/** Prefer the i18n key; falls back to the literal. */
+function sText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+
 const VEHICLE_TYPE_OPTIONS: Array<{ value: ArduPilotVehicleType; label: string; icon: string }> = [
   { value: 'copter', label: 'Copter', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
   { value: 'plane', label: 'Plane', icon: 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z' },
@@ -35,33 +41,34 @@ const VEHICLE_TYPE_OPTIONS: Array<{ value: ArduPilotVehicleType; label: string; 
 
 // One-click home presets for the in-app simulator. CMAC is ArduPilot's canonical
 // SITL home (Canberra Model Aircraft Club); the rest are well-known open spaces.
-const HOME_PRESETS: Array<{ name: string; lat: number; lng: number; alt: number; heading: number }> = [
-  { name: 'CMAC (default)', lat: -35.3632621, lng: 149.1652374, alt: 584, heading: 353 },
-  { name: 'SF Bay', lat: 37.7749, lng: -122.4194, alt: 0, heading: 270 },
-  { name: 'Nevada Desert', lat: 39.5296, lng: -119.8138, alt: 1370, heading: 0 },
-  { name: 'Swiss Alps', lat: 46.5197, lng: 7.9628, alt: 1800, heading: 90 },
+const HOME_PRESETS: Array<{ name: string; nameKey: string; lat: number; lng: number; alt: number; heading: number }> = [
+  { name: 'CMAC (default)', nameKey: 'sitl.ardupilot.home.preset.cmac', lat: -35.3632621, lng: 149.1652374, alt: 584, heading: 353 },
+  { name: 'SF Bay', nameKey: 'sitl.ardupilot.home.preset.sf-bay', lat: 37.7749, lng: -122.4194, alt: 0, heading: 270 },
+  { name: 'Nevada Desert', nameKey: 'sitl.ardupilot.home.preset.nevada', lat: 39.5296, lng: -119.8138, alt: 1370, heading: 0 },
+  { name: 'Swiss Alps', nameKey: 'sitl.ardupilot.home.preset.alps', lat: 46.5197, lng: 7.9628, alt: 1800, heading: 90 },
 ];
 
-const RELEASE_TRACK_OPTIONS: Array<{ value: ArduPilotReleaseTrack; label: string; description: string }> = [
-  { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
-  { value: 'beta', label: 'Beta', description: 'Release candidates and testing' },
-  { value: 'dev', label: 'Dev', description: 'Latest development builds' },
+const RELEASE_TRACK_OPTIONS: Array<{ value: ArduPilotReleaseTrack; label: string; labelKey: string; description: string; descriptionKey: string }> = [
+  { value: 'stable', label: 'Stable', labelKey: 'sitl.ardupilot.release.stable', description: 'Recommended for most users', descriptionKey: 'sitl.ardupilot.release.stable-desc' },
+  { value: 'beta', label: 'Beta', labelKey: 'sitl.ardupilot.release.beta', description: 'Release candidates and testing', descriptionKey: 'sitl.ardupilot.release.beta-desc' },
+  { value: 'dev', label: 'Dev', labelKey: 'sitl.ardupilot.release.dev', description: 'Latest development builds', descriptionKey: 'sitl.ardupilot.release.dev-desc' },
 ];
 
-const SWARM_FORMATIONS: Array<{ value: SwarmFormation; label: string }> = [
-  { value: 'grid', label: 'Grid' },
-  { value: 'line', label: 'Line' },
-  { value: 'circle', label: 'Circle' },
+const SWARM_FORMATIONS: Array<{ value: SwarmFormation; label: string; labelKey: string }> = [
+  { value: 'grid', label: 'Grid', labelKey: 'sitl.ardupilot.formation.grid' },
+  { value: 'line', label: 'Line', labelKey: 'sitl.ardupilot.formation.line' },
+  { value: 'circle', label: 'Circle', labelKey: 'sitl.ardupilot.formation.circle' },
 ];
 
-const SWARM_STATE_STYLE: Record<SwarmInstanceState, { dot: string; label: string }> = {
-  spawning: { dot: 'bg-amber-400 animate-pulse', label: 'spawning' },
-  ready: { dot: 'bg-emerald-400', label: 'ready' },
-  exited: { dot: 'bg-content-tertiary', label: 'exited' },
-  error: { dot: 'bg-rose-400', label: 'error' },
+const SWARM_STATE_STYLE: Record<SwarmInstanceState, { dot: string; label: string; labelKey: string }> = {
+  spawning: { dot: 'bg-amber-400 animate-pulse', label: 'spawning', labelKey: 'sitl.ardupilot.swarm.state.spawning' },
+  ready: { dot: 'bg-emerald-400', label: 'ready', labelKey: 'sitl.ardupilot.swarm.state.ready' },
+  exited: { dot: 'bg-content-tertiary', label: 'exited', labelKey: 'sitl.ardupilot.swarm.state.exited' },
+  error: { dot: 'bg-rose-400', label: 'error', labelKey: 'sitl.ardupilot.swarm.state.error' },
 };
 
 export default function ArduPilotSitlTab() {
+  const { t } = useTranslation('views');
   const {
     platformSupported,
     platformError,
@@ -186,7 +193,7 @@ export default function ArduPilotSitlTab() {
     try {
       const loc = await getIpLocation();
       if (loc.source === 'default') {
-        setLocationError('Unable to determine location');
+        setLocationError(t('sitl.ardupilot.location.error-determine'));
         return;
       }
       const lat = Math.round(loc.lat * 10000) / 10000;
@@ -202,11 +209,11 @@ export default function ArduPilotSitlTab() {
         heading: homeLocation.heading,
       });
     } catch {
-      setLocationError('Unable to get location');
+      setLocationError(t('sitl.ardupilot.location.error-get'));
     } finally {
       setIsGettingLocation(false);
     }
-  }, [setHomeLocation, homeLocation.alt, homeLocation.heading]);
+  }, [setHomeLocation, homeLocation.alt, homeLocation.heading, t]);
 
   // Map-first spawn placement: pick the home point on a map instead of typing
   // coordinates. Confirming also fetches the real ground elevation so SITL's
@@ -231,24 +238,24 @@ export default function ArduPilotSitlTab() {
     try {
       const elevation = await getElevation(homeLocation.lat, homeLocation.lng);
       if (elevation === null) {
-        setLocationError('Unable to look up terrain elevation');
+        setLocationError(t('sitl.ardupilot.location.error-terrain'));
         return;
       }
       setHomeLocation({ ...homeLocation, alt: elevation });
     } catch {
-      setLocationError('Unable to look up terrain elevation');
+      setLocationError(t('sitl.ardupilot.location.error-terrain'));
     } finally {
       setIsMatchingTerrain(false);
     }
-  }, [setHomeLocation, homeLocation]);
+  }, [setHomeLocation, homeLocation, t]);
 
   const openSimWindow = useCallback(() => {
     window.electronAPI?.openDetachedWindow?.({
       componentId: 'sim-world',
-      title: '3D Sim World',
+      title: t('sitl.ardupilot.sim-world.title'),
       initialBounds: { width: 1280, height: 800 },
     });
-  }, []);
+  }, [t]);
 
   // One-click: start standard SITL if nothing is simulating yet (which
   // auto-connects MAVLink via the connection panel's retry), then open the
@@ -394,7 +401,7 @@ export default function ArduPilotSitlTab() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <h3 className="text-sm font-medium text-red-400">Platform Error</h3>
+              <h3 className="text-sm font-medium text-red-400">{t('sitl.ardupilot.platform-error')}</h3>
               <p className="text-xs text-red-300/80 mt-1">{platformError}</p>
             </div>
           </div>
@@ -412,16 +419,18 @@ export default function ArduPilotSitlTab() {
             </svg>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium text-amber-400">
-                SITL crashed during init ({crashRecovery.uptimeMs}ms{crashRecovery.signal ? ` · ${crashRecovery.signal}` : ''})
+                {t('sitl.ardupilot.crash.heading', { uptime: crashRecovery.uptimeMs })}{crashRecovery.signal ? ` · ${crashRecovery.signal}` : ''}
               </h3>
               {crashRecovery.kind === 'switch-track' ? (
                 <>
                   <p className="text-xs text-content-secondary mt-1 leading-snug">
-                    The <span className="font-mono text-content">{crashRecovery.failedTrack}</span> binary
-                    doesn't run <span className="font-mono text-content">{crashRecovery.model}</span> on
-                    this platform. The <span className="font-mono text-content">{crashRecovery.suggestedTrack}</span> track
-                    is rebuilt nightly and ships fixes that haven't landed yet -
-                    same SITL, just a newer build.
+                    {t('sitl.ardupilot.crash.track.p1')}{' '}
+                    <span className="font-mono text-content">{crashRecovery.failedTrack}</span>{' '}
+                    {t('sitl.ardupilot.crash.track.p2')}{' '}
+                    <span className="font-mono text-content">{crashRecovery.model}</span>{' '}
+                    {t('sitl.ardupilot.crash.track.p3')}{' '}
+                    <span className="font-mono text-content">{crashRecovery.suggestedTrack}</span>{' '}
+                    {t('sitl.ardupilot.crash.track.p4')}
                   </p>
                   <div className="mt-3 flex items-center gap-2">
                     <button
@@ -429,24 +438,24 @@ export default function ArduPilotSitlTab() {
                       disabled={isStarting || isDownloading}
                       className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Switch to {crashRecovery.suggestedTrack} & retry
+                      {t('sitl.ardupilot.crash.switch-track', { track: crashRecovery.suggestedTrack })}
                     </button>
                     <button
                       onClick={dismissCrashRecovery}
                       className="px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content rounded-lg transition-colors"
                     >
-                      Dismiss
+                      {t('sitl.ardupilot.crash.dismiss')}
                     </button>
                   </div>
                 </>
               ) : (
                 <>
                   <p className="text-xs text-content-secondary mt-1 leading-snug">
-                    Both stable and dev binaries crash on{' '}
-                    <span className="font-mono text-content">{crashRecovery.failedModel}</span> for this platform -
-                    looks like an upstream physics bug specific to that frame.
-                    Try <span className="font-mono text-content">{crashRecovery.suggestedModel}</span> instead;
-                    it's the safe-default frame for this vehicle and is well-tested across builds.
+                    {t('sitl.ardupilot.crash.frame.p1')}{' '}
+                    <span className="font-mono text-content">{crashRecovery.failedModel}</span>{' '}
+                    {t('sitl.ardupilot.crash.frame.p2')}{' '}
+                    <span className="font-mono text-content">{crashRecovery.suggestedModel}</span>{' '}
+                    {t('sitl.ardupilot.crash.frame.p3')}
                   </p>
                   <div className="mt-3 flex items-center gap-2">
                     <button
@@ -454,13 +463,13 @@ export default function ArduPilotSitlTab() {
                       disabled={isStarting || isDownloading}
                       className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Switch to {crashRecovery.suggestedModel} & retry
+                      {t('sitl.ardupilot.crash.switch-frame', { model: crashRecovery.suggestedModel })}
                     </button>
                     <button
                       onClick={dismissCrashRecovery}
                       className="px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content rounded-lg transition-colors"
                     >
-                      Dismiss
+                      {t('sitl.ardupilot.crash.dismiss')}
                     </button>
                   </div>
                 </>
@@ -479,8 +488,8 @@ export default function ArduPilotSitlTab() {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-content">Vehicle Type</h3>
-            <p className="text-xs text-content-secondary">Choose the airframe class to simulate</p>
+            <h3 className="text-sm font-semibold text-content">{t('sitl.ardupilot.vehicle-type.title')}</h3>
+            <p className="text-xs text-content-secondary">{t('sitl.ardupilot.vehicle-type.subtitle')}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -516,8 +525,8 @@ export default function ArduPilotSitlTab() {
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-content">Physics &amp; Frame</h3>
-              <p className="text-xs text-content-secondary">Flight dynamics model and airframe</p>
+              <h3 className="text-sm font-semibold text-content">{t('sitl.ardupilot.physics.title')}</h3>
+              <p className="text-xs text-content-secondary">{t('sitl.ardupilot.physics.subtitle')}</p>
             </div>
           </div>
 
@@ -525,7 +534,7 @@ export default function ArduPilotSitlTab() {
             {/* Frame/Model */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-content-secondary">Frame/Model</label>
+                <label className="text-xs text-content-secondary">{t('sitl.ardupilot.frame.label')}</label>
                 <FrameCatalogStatus
                   source={framesCatalog?.source}
                   fetchedAt={framesCatalog?.fetchedAt}
@@ -564,10 +573,9 @@ export default function ArduPilotSitlTab() {
               <div className="rounded-lg border border-subtle bg-surface p-3 mt-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium text-content">Physics engine</div>
+                    <div className="text-sm font-medium text-content">{t('sitl.ardupilot.physics-engine.title')}</div>
                     <div className="text-xs text-content-secondary">
-                      Built-in uses ArduPilot's model. ArduDeck engine adds heavy-lift realism
-                      (battery sag, thrust fade) from your custom frame.
+                      {t('sitl.ardupilot.physics-engine.description')}
                     </div>
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -578,7 +586,7 @@ export default function ArduPilotSitlTab() {
                       disabled={isRunning || isStarting}
                       className="w-4 h-4 rounded border bg-surface-raised text-blue-500 focus:ring-blue-500/50"
                     />
-                    <span className="text-xs text-content-secondary">ArduDeck engine</span>
+                    <span className="text-xs text-content-secondary">{t('sitl.ardupilot.physics-engine.ardudeck')}</span>
                   </label>
                 </div>
               </div>
@@ -586,7 +594,7 @@ export default function ArduPilotSitlTab() {
 
             {/* Release Track */}
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Release Track</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.release.label')}</label>
               <div className="grid grid-cols-3 gap-1">
                 {RELEASE_TRACK_OPTIONS.map((opt) => (
                   <button
@@ -598,9 +606,9 @@ export default function ArduPilotSitlTab() {
                         ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                         : 'bg-surface border text-content-secondary hover:bg-surface'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title={opt.description}
+                    title={sText(t, opt.descriptionKey, opt.description)}
                   >
-                    {opt.label}
+                    {sText(t, opt.labelKey, opt.label)}
                   </button>
                 ))}
               </div>
@@ -609,24 +617,22 @@ export default function ArduPilotSitlTab() {
             {/* 3D Sim World — telemetry-driven view over standard SITL */}
             <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/[0.04] p-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-content">3D Sim World</span>
-                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-500/15 text-indigo-300">pop-out</span>
+                <span className="text-xs font-semibold text-content">{t('sitl.ardupilot.sim-world.card-title')}</span>
+                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-500/15 text-indigo-300">{t('sitl.ardupilot.sim-world.popout')}</span>
               </div>
               <p className="text-[11px] text-content-secondary mt-1 leading-snug">
-                A 3D view of the connected vehicle: fly, run missions, place obstacles (as exclusion
-                fences) and inject wind/failures live. Works with standard SITL, and shows richer
-                dynamics when the ArduDeck physics engine is enabled above.
+                {t('sitl.ardupilot.sim-world.description')}
               </p>
               <button
                 onClick={launchSim}
                 disabled={isStarting}
-                data-tip={isRunning || swarmRunning ? 'Open the 3D sim world window' : 'Start SITL, connect, and open the 3D world'}
+                data-tip={isRunning || swarmRunning ? t('sitl.ardupilot.sim-world.tip-open') : t('sitl.ardupilot.sim-world.tip-start')}
                 className="mt-3 w-full py-2 text-sm font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 3h7m0 0v7m0-7L10 14M19 14v5a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h5" />
                 </svg>
-                {isRunning || swarmRunning ? 'Open 3D World' : isStarting ? 'Starting…' : 'Start SITL & Open 3D World'}
+                {isRunning || swarmRunning ? t('sitl.ardupilot.sim-world.open') : isStarting ? t('sitl.ardupilot.sim-world.starting') : t('sitl.ardupilot.sim-world.start-open')}
               </button>
 
               {/* The third "watch it" surface, and the only one that keeps THIS flight
@@ -641,43 +647,43 @@ export default function ArduPilotSitlTab() {
                 <>
                   <div className="mt-3 flex items-center gap-2 text-[10px] text-content-tertiary">
                     <div className="h-px flex-1 bg-subtle" />
-                    or
+                    {t('sitl.ardupilot.sim-world.or')}
                     <div className="h-px flex-1 bg-subtle" />
                   </div>
                   {flightGearRunning ? (
                     <button
                       onClick={() => { void stopFlightGear(); }}
-                      data-tip="Close the FlightGear window"
+                      data-tip={t('sitl.ardupilot.flightgear.tip-close')}
                       className="mt-2 w-full py-2 text-sm font-medium text-sky-200 bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      Close FlightGear
+                      {t('sitl.ardupilot.flightgear.close')}
                     </button>
                   ) : flightGearInstalled === false ? (
                     <button
                       onClick={() => { void browseFlightGear(); }}
-                      data-tip="FlightGear not detected. Install it from flightgear.org, then pick the executable."
+                      data-tip={t('sitl.ardupilot.flightgear.tip-locate')}
                       className="mt-2 w-full py-2 text-sm font-medium text-content-secondary bg-surface-input hover:bg-surface-raised border border-subtle rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                       </svg>
-                      Locate FlightGear…
+                      {t('sitl.ardupilot.flightgear.locate')}
                     </button>
                   ) : (
                     <button
                       onClick={() => { void launchFlightGear(); }}
                       disabled={flightGearStarting || !isRunning}
-                      data-tip={isRunning ? 'Open FlightGear as a 3D view of the running SITL mission' : 'Start SITL first, then view it in FlightGear'}
+                      data-tip={isRunning ? t('sitl.ardupilot.flightgear.tip-view') : t('sitl.ardupilot.flightgear.tip-start')}
                       className="mt-2 w-full py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
                       </svg>
-                      {flightGearStarting ? 'Opening…' : isRunning ? 'View in FlightGear' : 'View in FlightGear (start SITL first)'}
+                      {flightGearStarting ? t('sitl.ardupilot.flightgear.opening') : isRunning ? t('sitl.ardupilot.flightgear.view') : t('sitl.ardupilot.flightgear.view-start-first')}
                     </button>
                   )}
                   {flightGearError && (
@@ -699,28 +705,28 @@ export default function ArduPilotSitlTab() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-content">Home &amp; Scenarios</h3>
-              <p className="text-xs text-content-secondary">Spawn location for the simulated vehicle</p>
+              <h3 className="text-sm font-semibold text-content">{t('sitl.ardupilot.home.title')}</h3>
+              <p className="text-xs text-content-secondary">{t('sitl.ardupilot.home.subtitle')}</p>
             </div>
             <button
               onClick={() => setShowMapPicker(true)}
               disabled={isRunning || isStarting}
-              data-tip="Pick the spawn point on a map (ground elevation is filled in automatically)"
+              data-tip={t('sitl.ardupilot.home.pick-on-map-tip')}
               className="shrink-0 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Pick on map
+              {t('sitl.ardupilot.home.pick-on-map')}
             </button>
           </div>
           {showMapPicker && (
             <MapPointPickerDialog
-              title="SITL spawn location"
-              subtitle="Click where the simulated vehicle should spawn. Ground elevation is looked up automatically."
+              title={t('sitl.ardupilot.map-picker.title')}
+              subtitle={t('sitl.ardupilot.map-picker.subtitle')}
               initial={{ lat: homeLocation.lat, lng: homeLocation.lng }}
-              confirmLabel="Set spawn point"
+              confirmLabel={t('sitl.ardupilot.map-picker.confirm')}
               onConfirm={(lat, lng) => { void handleMapPick(lat, lng); }}
               onClose={() => setShowMapPicker(false)}
             />
@@ -728,7 +734,7 @@ export default function ArduPilotSitlTab() {
 
           {/* Scenario presets — populate the home fields below */}
           <div className="mb-4">
-            <label className="block text-xs text-content-secondary mb-1.5">Scenario presets</label>
+            <label className="block text-xs text-content-secondary mb-1.5">{t('sitl.ardupilot.home.scenario-presets')}</label>
             <div className="grid grid-cols-2 gap-2">
               {HOME_PRESETS.map((p) => {
                 const active =
@@ -745,7 +751,7 @@ export default function ArduPilotSitlTab() {
                         : 'bg-surface border text-content-secondary hover:bg-surface hover:text-content'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {p.name}
+                    {sText(t, p.nameKey, p.name)}
                   </button>
                 );
               })}
@@ -755,7 +761,7 @@ export default function ArduPilotSitlTab() {
           {/* Home location fields — populated by presets above */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Latitude</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.home.latitude')}</label>
               <DraftNumberInput
                 step="0.0001"
                 min={-90}
@@ -767,7 +773,7 @@ export default function ArduPilotSitlTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Longitude</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.home.longitude')}</label>
               <DraftNumberInput
                 step="0.0001"
                 min={-180}
@@ -779,7 +785,7 @@ export default function ArduPilotSitlTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Altitude</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.home.altitude')}</label>
               <div className="relative">
                 <input
                   type="number"
@@ -813,7 +819,7 @@ export default function ArduPilotSitlTab() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Heading</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.home.heading')}</label>
               <DraftNumberInput
                 value={homeLocation.heading}
                 onCommit={(v) => setHomeLocation({ ...homeLocation, heading: v })}
@@ -825,12 +831,12 @@ export default function ArduPilotSitlTab() {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-xs text-content-tertiary">Default: CMAC (Canberra Model Aircraft Club)</p>
+            <p className="text-xs text-content-tertiary">{t('sitl.ardupilot.home.default-preset')}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void matchTerrainElevation()}
                 disabled={isRunning || isStarting || isMatchingTerrain}
-                data-tip="Look up the real ground elevation (AMSL) at this lat/lng and use it as home altitude, so FlightGear's real terrain and SITL's flat ground agree (fixes the vehicle appearing to float or sink)"
+                data-tip={t('sitl.ardupilot.home.match-terrain-tip')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isMatchingTerrain ? (
@@ -839,14 +845,14 @@ export default function ArduPilotSitlTab() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Matching...
+                    {t('sitl.ardupilot.home.matching')}
                   </>
                 ) : (
                   <>
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 001.7-9.7 6 6 0 00-11.6-1.5A4.5 4.5 0 003 15z" />
                     </svg>
-                    Match Terrain
+                    {t('sitl.ardupilot.home.match-terrain')}
                   </>
                 )}
               </button>
@@ -861,7 +867,7 @@ export default function ArduPilotSitlTab() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Getting...
+                    {t('sitl.ardupilot.home.getting')}
                   </>
                 ) : (
                   <>
@@ -869,7 +875,7 @@ export default function ArduPilotSitlTab() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Use My Location
+                    {t('sitl.ardupilot.home.use-my-location')}
                   </>
                 )}
               </button>
@@ -892,9 +898,9 @@ export default function ArduPilotSitlTab() {
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-content">Run</h3>
+              <h3 className="text-sm font-semibold text-content">{t('sitl.ardupilot.run.title')}</h3>
               <p className="text-xs text-content-secondary">
-                {runMode === 'swarm' ? 'Launch a fleet of vehicles' : 'Launch settings and SITL control'}
+                {runMode === 'swarm' ? t('sitl.ardupilot.run.subtitle-swarm') : t('sitl.ardupilot.run.subtitle-single')}
               </p>
             </div>
           </div>
@@ -910,7 +916,7 @@ export default function ArduPilotSitlTab() {
                   runMode === m ? 'bg-green-500/20 text-green-300' : 'text-content-secondary hover:text-content'
                 }`}
               >
-                {m === 'single' ? 'Single' : 'Swarm'}
+                {m === 'single' ? t('sitl.ardupilot.run.single') : t('sitl.ardupilot.run.swarm')}
               </button>
             ))}
           </div>
@@ -921,9 +927,9 @@ export default function ArduPilotSitlTab() {
           <div className="w-28">
             <label
               className="flex items-center gap-1 text-xs text-content-secondary mb-1 cursor-help"
-              data-tip="How fast the simulation runs vs. real time. 1x = real-time. Higher finishes flights quicker but uses more CPU - leave at 1x if unsure."
+              data-tip={t('sitl.ardupilot.run.sim-speed-tip')}
             >
-              Sim speed
+              {t('sitl.ardupilot.run.sim-speed')}
               <svg className="w-3 h-3 text-content-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -949,14 +955,14 @@ export default function ArduPilotSitlTab() {
               disabled={isRunning || isStarting || swarmRunning || swarmStarting}
               className="w-4 h-4 rounded border bg-surface-raised text-blue-500 focus:ring-blue-500/50"
             />
-            <span className="text-xs text-content-secondary">Wipe EEPROM</span>
+            <span className="text-xs text-content-secondary">{t('sitl.ardupilot.run.wipe-eeprom')}</span>
           </label>
 
           {/* Swarm-only settings */}
           {runMode === 'swarm' && (
             <>
               <div className="w-24">
-                <label className="block text-xs text-content-secondary mb-1">Vehicles</label>
+                <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.run.vehicles')}</label>
                 <input
                   type="number"
                   min={2}
@@ -975,7 +981,7 @@ export default function ArduPilotSitlTab() {
                 />
               </div>
               <div className="w-24">
-                <label className="block text-xs text-content-secondary mb-1">Spacing (m)</label>
+                <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.run.spacing')}</label>
                 <input
                   type="number"
                   min={1}
@@ -993,7 +999,7 @@ export default function ArduPilotSitlTab() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-content-secondary mb-1">Formation</label>
+                <label className="block text-xs text-content-secondary mb-1">{t('sitl.ardupilot.run.formation')}</label>
                 <div className="grid grid-cols-3 gap-1">
                   {SWARM_FORMATIONS.map((f) => (
                     <button
@@ -1006,7 +1012,7 @@ export default function ArduPilotSitlTab() {
                           : 'bg-surface border text-content-secondary hover:bg-surface'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {f.label}
+                      {sText(t, f.labelKey, f.label)}
                     </button>
                   ))}
                 </div>
@@ -1025,10 +1031,10 @@ export default function ArduPilotSitlTab() {
               </span>
               <p className="text-xs text-content-secondary">
                 {!binaryInfo?.exists
-                  ? 'Binary not downloaded'
+                  ? t('sitl.ardupilot.run.binary-missing')
                   : runMode === 'swarm'
-                    ? `Spawns ${swarmCount} vehicles on tcp 5760, 5770, 5780, …`
-                    : `Ready at ${binaryInfo.path?.split('/').pop()}`}
+                    ? t('sitl.ardupilot.run.spawns', { n: swarmCount })
+                    : t('sitl.ardupilot.run.ready-at', { name: binaryInfo.path?.split('/').pop() })}
               </p>
             </div>
           </div>
@@ -1039,7 +1045,7 @@ export default function ArduPilotSitlTab() {
                 onClick={download}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
               >
-                Download
+                {t('sitl.ardupilot.run.download')}
               </button>
             )}
 
@@ -1069,14 +1075,14 @@ export default function ArduPilotSitlTab() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Starting...
+                      {t('sitl.ardupilot.run.starting')}
                     </>
                   ) : (
                     <>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       </svg>
-                      Start
+                      {t('sitl.ardupilot.run.start')}
                     </>
                   )}
                 </button>
@@ -1092,7 +1098,7 @@ export default function ArduPilotSitlTab() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Stopping...
+                      {t('sitl.ardupilot.run.stopping')}
                     </>
                   ) : (
                     <>
@@ -1100,7 +1106,7 @@ export default function ArduPilotSitlTab() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                       </svg>
-                      Stop
+                      {t('sitl.ardupilot.run.stop')}
                     </>
                   )}
                 </button>
@@ -1117,10 +1123,10 @@ export default function ArduPilotSitlTab() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Launching…
+                    {t('sitl.ardupilot.run.launching')}
                   </>
                 ) : (
-                  `Launch ${swarmCount} vehicles`
+                  t('sitl.ardupilot.run.launch-vehicles', { n: swarmCount })
                 )}
               </button>
             ) : (
@@ -1129,7 +1135,7 @@ export default function ArduPilotSitlTab() {
                 disabled={swarmStopping}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {swarmStopping ? 'Stopping…' : 'Stop swarm'}
+                {swarmStopping ? t('sitl.ardupilot.run.swarm-stopping') : t('sitl.ardupilot.run.swarm-stop')}
               </button>
             )}
 
@@ -1149,9 +1155,9 @@ export default function ArduPilotSitlTab() {
                 >
                   <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
                   <div className="min-w-0">
-                    <div className="text-xs text-content font-medium">SYS {inst.sysid}</div>
+                    <div className="text-xs text-content font-medium">{t('sitl.ardupilot.swarm.sys', { id: inst.sysid })}</div>
                     <div className="text-[10px] text-content-tertiary font-mono truncate">
-                      tcp {inst.tcpPort} · {style.label}
+                      {t('sitl.ardupilot.swarm.instance-line', { port: inst.tcpPort, state: sText(t, style.labelKey, style.label) })}
                     </div>
                     {inst.state === 'error' && inst.error && (
                       <div className="text-[10px] text-rose-400 truncate">{inst.error}</div>
@@ -1175,8 +1181,8 @@ export default function ArduPilotSitlTab() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="text-sm text-blue-300">
-            <span className="font-medium">SITL is running!</span>{' '}
-            Connect via TCP - <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:5760</code>
+            <span className="font-medium">{t('sitl.ardupilot.hint.running-title')}</span>{' '}
+            {t('sitl.ardupilot.hint.connect-before')} <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:5760</code>
           </div>
         </div>
       )}
@@ -1188,8 +1194,8 @@ export default function ArduPilotSitlTab() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="text-sm text-purple-300">
-            <span className="font-medium">Swarm is running!</span>{' '}
-            Start the multi-vehicle engine from the connection screen to fly the whole fleet together.
+            <span className="font-medium">{t('sitl.ardupilot.hint.swarm-title')}</span>{' '}
+            {t('sitl.ardupilot.hint.swarm-body')}
           </div>
         </div>
       )}
@@ -1202,9 +1208,9 @@ export default function ArduPilotSitlTab() {
               <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              <h3 className="text-sm font-medium text-content">Virtual RC Control (UDP)</h3>
+              <h3 className="text-sm font-medium text-content">{t('sitl.ardupilot.rc.heading')}</h3>
               <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${isRcSending || txLive ? 'bg-green-500/20 text-green-400' : 'bg-surface-raised text-content-secondary'}`}>
-                {txLive ? 'USB TX' : isRcSending ? '50Hz' : 'Off'}
+                {txLive ? t('sitl.ardupilot.rc.usb-tx') : isRcSending ? '50Hz' : t('sitl.ardupilot.rc.off')}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -1216,13 +1222,13 @@ export default function ArduPilotSitlTab() {
                     : 'text-green-400 bg-green-500/10 hover:bg-green-500/20'
                 }`}
               >
-                {isRcSending ? 'Stop' : 'Start'} RC
+                {isRcSending ? t('sitl.ardupilot.rc.stop') : t('sitl.ardupilot.rc.start')}
               </button>
               <button
                 onClick={resetRcState}
                 className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors"
               >
-                Reset
+                {t('sitl.ardupilot.rc.reset')}
               </button>
             </div>
           </div>
@@ -1238,7 +1244,7 @@ export default function ArduPilotSitlTab() {
             {/* Throttle */}
             <div>
               <label className="block text-xs text-content-secondary mb-1">
-                Throttle <span className="text-content-tertiary">{normalizedToPWM(rcState.throttle)}</span>
+                {t('sitl.ardupilot.rc.throttle')} <span className="text-content-tertiary">{normalizedToPWM(rcState.throttle)}</span>
               </label>
               <input
                 type="range"
@@ -1252,7 +1258,7 @@ export default function ArduPilotSitlTab() {
             </div>
             <div>
               <label className="block text-xs text-content-secondary mb-1">
-                Roll <span className="text-content-tertiary">{normalizedToPWM(rcState.roll)}</span>
+                {t('sitl.ardupilot.rc.roll')} <span className="text-content-tertiary">{normalizedToPWM(rcState.roll)}</span>
               </label>
               <input
                 type="range"
@@ -1266,7 +1272,7 @@ export default function ArduPilotSitlTab() {
             </div>
             <div>
               <label className="block text-xs text-content-secondary mb-1">
-                Pitch <span className="text-content-tertiary">{normalizedToPWM(rcState.pitch)}</span>
+                {t('sitl.ardupilot.rc.pitch')} <span className="text-content-tertiary">{normalizedToPWM(rcState.pitch)}</span>
               </label>
               <input
                 type="range"
@@ -1280,7 +1286,7 @@ export default function ArduPilotSitlTab() {
             </div>
             <div>
               <label className="block text-xs text-content-secondary mb-1">
-                Yaw <span className="text-content-tertiary">{normalizedToPWM(rcState.yaw)}</span>
+                {t('sitl.ardupilot.rc.yaw')} <span className="text-content-tertiary">{normalizedToPWM(rcState.yaw)}</span>
               </label>
               <input
                 type="range"
@@ -1299,7 +1305,7 @@ export default function ArduPilotSitlTab() {
             {(['aux1', 'aux2', 'aux3', 'aux4'] as const).map((key, idx) => (
               <div key={key}>
                 <label className={`block text-xs mb-1 ${key === 'aux4' ? 'text-amber-400 font-medium' : 'text-content-secondary'}`}>
-                  {key === 'aux4' ? 'AUX4 (ARM)' : `AUX${idx + 1}`}{' '}
+                  {key === 'aux4' ? t('sitl.ardupilot.rc.aux4-arm') : `AUX${idx + 1}`}{' '}
                   <span className={key === 'aux4' ? 'text-amber-500' : 'text-content-tertiary'}>{normalizedToPWM(rcState[key])}</span>
                 </label>
                 <input
@@ -1339,7 +1345,7 @@ export default function ArduPilotSitlTab() {
       {/* Output log */}
       <div className="flex-1 flex flex-col overflow-hidden bg-surface-input border border-subtle rounded-lg min-h-[200px]">
         <div className="flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface-input">
-          <span className="text-xs font-medium text-content-secondary">Console Output</span>
+          <span className="text-xs font-medium text-content-secondary">{t('sitl.ardupilot.output.heading')}</span>
           <div className="flex items-center gap-2">
             {lastCommand && (
               <span className="text-xs text-content-secondary font-mono truncate max-w-md" title={lastCommand}>
@@ -1351,7 +1357,7 @@ export default function ArduPilotSitlTab() {
               disabled={output.length === 0}
               className="px-2 py-1 text-xs text-content-secondary hover:text-content transition-colors disabled:opacity-50"
             >
-              Clear
+              {t('sitl.ardupilot.output.clear')}
             </button>
           </div>
         </div>
@@ -1361,7 +1367,7 @@ export default function ArduPilotSitlTab() {
         >
           {output.length === 0 ? (
             <div className="text-content-tertiary italic">
-              No output yet. Start SITL to see process output.
+              {t('sitl.ardupilot.output.empty')}
             </div>
           ) : (
             output.map((line, idx) => (
@@ -1409,18 +1415,26 @@ function FrameCatalogStatus({
   error: string | undefined;
   onRefresh: () => void;
 }) {
-  const ageLabel = useMemo(() => relativeAge(fetchedAt), [fetchedAt]);
+  const { t } = useTranslation('views');
+  const ageLabel = useMemo(() => {
+    const age = relativeAge(fetchedAt);
+    if (!age) return null;
+    if (age.kind === 'just-now') return t('sitl.ardupilot.frames.age.just-now');
+    if (age.kind === 'minutes') return t('sitl.ardupilot.frames.age.minutes', { n: age.n });
+    if (age.kind === 'hours') return t('sitl.ardupilot.frames.age.hours', { n: age.n });
+    return t('sitl.ardupilot.frames.age.days', { n: age.n });
+  }, [fetchedAt, t]);
 
   const variant =
-    loading              ? { dot: 'bg-blue-400 animate-pulse',   text: 'text-content-tertiary', label: 'syncing…' } :
-    source === 'fresh'   ? { dot: 'bg-emerald-400',              text: 'text-content-tertiary', label: ageLabel ? `synced ${ageLabel}` : 'synced' } :
-    source === 'cached'  ? { dot: 'bg-amber-400',                text: 'text-amber-400',        label: ageLabel ? `cached · ${ageLabel}` : 'cached' } :
-    source === 'fallback'? { dot: 'bg-rose-400',                 text: 'text-rose-400',         label: 'offline · default list' } :
-                           { dot: 'bg-content-tertiary',         text: 'text-content-tertiary', label: 'pending' };
+    loading              ? { dot: 'bg-blue-400 animate-pulse',   text: 'text-content-tertiary', label: t('sitl.ardupilot.frames.status.syncing') } :
+    source === 'fresh'   ? { dot: 'bg-emerald-400',              text: 'text-content-tertiary', label: ageLabel ? t('sitl.ardupilot.frames.status.synced-age', { age: ageLabel }) : t('sitl.ardupilot.frames.status.synced') } :
+    source === 'cached'  ? { dot: 'bg-amber-400',                text: 'text-amber-400',        label: ageLabel ? t('sitl.ardupilot.frames.status.cached-age', { age: ageLabel }) : t('sitl.ardupilot.frames.status.cached') } :
+    source === 'fallback'? { dot: 'bg-rose-400',                 text: 'text-rose-400',         label: t('sitl.ardupilot.frames.status.offline') } :
+                           { dot: 'bg-content-tertiary',         text: 'text-content-tertiary', label: t('sitl.ardupilot.frames.status.pending') };
 
   const tooltip = error
-    ? `Couldn't reach upstream: ${error}\nClick to retry.`
-    : 'Frame list mirrors ArduPilot upstream `vehicleinfo.py`. Click to refresh.';
+    ? t('sitl.ardupilot.frames.tooltip-error', { error })
+    : t('sitl.ardupilot.frames.tooltip');
 
   return (
     <div className="flex items-center gap-1.5">
@@ -1452,11 +1466,12 @@ function FrameCatalogStatus({
  * that the frame's defaults are real (esp. for tailsitter / VTOL).
  */
 function FrameDefaultsHint({ frame }: { frame: ArduPilotFrameInfo | null }) {
+  const { t } = useTranslation('views');
   if (!frame) return null;
   if (frame.defaultParamFiles.length === 0) {
     return (
       <p className="mt-1.5 text-[10px] text-content-tertiary leading-tight">
-        No upstream defaults - ArduDeck baseline only.
+        {t('sitl.ardupilot.frames.no-defaults')}
       </p>
     );
   }
@@ -1464,24 +1479,25 @@ function FrameDefaultsHint({ frame }: { frame: ArduPilotFrameInfo | null }) {
   const names = frame.defaultParamFiles.map(f => f.replace(/^default_params\//, ''));
   const list = names.length === 1
     ? names[0]
-    : `${names.length} files (${names.join(' + ')})`;
+    : t('sitl.ardupilot.frames.file-count', { n: names.length, names: names.join(' + ') });
   return (
     <p className="mt-1.5 text-[10px] text-content-tertiary leading-tight" title={frame.defaultParamFiles.join('\n')}>
-      Loads <span className="font-mono text-content-secondary">{list}</span> on start.
+      {t('sitl.ardupilot.frames.loads-before')} <span className="font-mono text-content-secondary">{list}</span>{t('sitl.ardupilot.frames.loads-after')}
     </p>
   );
 }
 
-/** Format a relative age like "2h ago", "3d ago" — for the catalog status pill. */
-function relativeAge(iso: string | undefined): string | null {
+/** Classify a relative age; the caller formats it so the copy stays translatable. */
+type RelativeAge = { kind: 'just-now' } | { kind: 'minutes' | 'hours' | 'days'; n: number };
+
+function relativeAge(iso: string | undefined): RelativeAge | null {
   if (!iso) return null;
   const ms = Date.now() - new Date(iso).getTime();
   if (Number.isNaN(ms) || ms < 0) return null;
-  if (ms < 60_000) return 'just now';
+  if (ms < 60_000) return { kind: 'just-now' };
   const mins = Math.round(ms / 60_000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return { kind: 'minutes', n: mins };
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
+  if (hours < 24) return { kind: 'hours', n: hours };
+  return { kind: 'days', n: Math.round(hours / 24) };
 }

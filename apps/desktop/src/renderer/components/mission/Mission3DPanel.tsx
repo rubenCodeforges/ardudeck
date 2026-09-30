@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -185,6 +186,7 @@ export function Mission3DPanel({
   headingLineLength,
   useRealVehicleSize = true,
 }: Mission3DPanelProps = {}) {
+  const { t } = useTranslation('mission');
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const threeLayerRef = useRef<MissionThreeJsLayer | null>(null);
@@ -824,7 +826,7 @@ export function Mission3DPanel({
           <button
             onClick={handleFitWaypoints}
             className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface-raised text-content hover:bg-surface-raised transition-colors flex items-center gap-1.5"
-            title="Fit map to show all waypoints"
+            title={t('map3d.fitWaypointsTooltip')}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -836,7 +838,7 @@ export function Mission3DPanel({
         <button
           onClick={handleCenterOnGps}
           className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface-raised text-content hover:bg-surface-raised transition-colors flex items-center gap-1.5"
-          title="Center map on vehicle GPS position"
+          title={t('map3d.centerOnVehicleTooltip')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -851,8 +853,8 @@ export function Mission3DPanel({
       {navWaypoints.length === 0 && !isTelemetryMode && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-surface-overlay backdrop-blur-sm px-6 py-4 rounded-xl text-center">
-            <div className="text-content-secondary text-sm mb-2">No waypoints yet</div>
-            <div className="text-content-secondary text-xs">Add waypoints in 2D view to see them in 3D</div>
+            <div className="text-content-secondary text-sm mb-2">{t('map3d.noWaypointsYet')}</div>
+            <div className="text-content-secondary text-xs">{t('map3d.addWaypointsIn2d')}</div>
           </div>
         </div>
       )}

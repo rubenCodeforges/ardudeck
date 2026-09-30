@@ -6,6 +6,9 @@ import type { FirmwareSource } from '../../shared/firmware-types.js';
 import type { NonDefaultColorKey } from '../components/parameters/non-default-palette.js';
 import { DEFAULT_NON_DEFAULT_COLOR } from '../components/parameters/non-default-palette.js';
 import { DEFAULT_USER_UNIT_PREFERENCES, normalizeUserUnitPreferences, type UserUnitPreferences } from '../../shared/user-units.js';
+import { isAppLanguage, normalizeAppLanguage, type AppLanguage } from '../../shared/app-language.js';
+import { readStoredAppLanguage } from '../../shared/app-language-storage.js';
+import { applyAppLanguage, i18n } from '../i18n';
 import type { AltReferenceFrame } from '../../shared/mission-types.js';
 
 /**
@@ -387,6 +390,10 @@ interface SettingsStore {
   // Theme
   theme: ThemePreference;
   setTheme: (theme: ThemePreference) => void;
+
+  // UI language (renderer i18n)
+  language: AppLanguage;
+  setLanguage: (language: AppLanguage) => void;
 
   // Parameter view: color used to highlight non-default param values
   nonDefaultHighlightColor: NonDefaultColorKey;
@@ -853,6 +860,10 @@ export const useSettingsStore = create<SettingsStore>()(
   telemetrySpeed: 'normal' as TelemetrySpeed,
   unitPreferences: { ...DEFAULT_USER_UNIT_PREFERENCES },
   theme: 'dark' as ThemePreference,
+  // Mirrors what `initI18n()` picked for the first paint, so the language
+  // selector never shows English while the UI renders Chinese (and vice versa).
+  // `loadSettings` then overwrites it with the persisted settings-file value.
+  language: normalizeAppLanguage(readStoredAppLanguage() ?? (i18n.isInitialized ? i18n.language : null)) as AppLanguage,
   nonDefaultHighlightColor: DEFAULT_NON_DEFAULT_COLOR,
   experienceLevel: null as ExperienceLevel | null,
   experienceLevelVersion: null as string | null,
@@ -977,6 +988,11 @@ export const useSettingsStore = create<SettingsStore>()(
           telemetrySpeed: (settingsRecord.telemetrySpeed as TelemetrySpeed) || 'normal',
           unitPreferences,
           theme: (settingsRecord.theme as ThemePreference) || 'dark',
+          // No stored language means "follow the OS locale" (already active from
+          // the fast-start value), so keep the current one instead of forcing 'en'.
+          language: isAppLanguage(settingsRecord.language)
+            ? settingsRecord.language
+            : get().language,
           nonDefaultHighlightColor: (settingsRecord.nonDefaultHighlightColor as NonDefaultColorKey) || DEFAULT_NON_DEFAULT_COLOR,
           experienceLevel: (settingsRecord.experienceLevel as ExperienceLevel) || null,
           experienceLevelVersion: (settingsRecord.experienceLevelVersion as string) || null,
@@ -1008,6 +1024,9 @@ export const useSettingsStore = create<SettingsStore>()(
       } else {
         set({ _isInitialized: true });
       }
+      // Sync i18next with whatever the settings file resolved to (it may differ
+      // from the locale used for the first paint).
+      await applyAppLanguage(get().language);
     } catch (error) {
       console.error('[Settings] Failed to load:', error);
       set({ _isInitialized: true });
@@ -1033,6 +1052,7 @@ export const useSettingsStore = create<SettingsStore>()(
         telemetrySpeed: state.telemetrySpeed,
         unitPreferences: state.unitPreferences,
         theme: state.theme,
+        language: state.language,
         nonDefaultHighlightColor: state.nonDefaultHighlightColor,
         ...(state.experienceLevel ? { experienceLevel: state.experienceLevel } : {}),
         ...(state.experienceLevelVersion ? { experienceLevelVersion: state.experienceLevelVersion } : {}),
@@ -1295,6 +1315,14 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ theme });
   },
 
+  setLanguage: (language) => {
+    const next = normalizeAppLanguage(language);
+    set({ language: next });
+    // i18next switch is async; the store value is the source of truth and the
+    // subscription above persists it.
+    void applyAppLanguage(next);
+  },
+
   setNonDefaultHighlightColor: (color) => {
     set({ nonDefaultHighlightColor: color });
   },
@@ -1362,6 +1390,7 @@ useSettingsStore.subscribe(
     telemetrySpeed: state.telemetrySpeed,
     unitPreferences: state.unitPreferences,
     theme: state.theme,
+    language: state.language,
     nonDefaultHighlightColor: state.nonDefaultHighlightColor,
     experienceLevel: state.experienceLevel,
     experienceLevelVersion: state.experienceLevelVersion,
@@ -1397,6 +1426,7 @@ useSettingsStore.subscribe(
         curr.telemetrySpeed !== prev.telemetrySpeed ||
         curr.unitPreferences !== prev.unitPreferences ||
         curr.theme !== prev.theme ||
+        curr.language !== prev.language ||
         curr.experienceLevel !== prev.experienceLevel ||
         curr.experienceLevelVersion !== prev.experienceLevelVersion ||
         curr.uiVisibility !== prev.uiVisibility ||

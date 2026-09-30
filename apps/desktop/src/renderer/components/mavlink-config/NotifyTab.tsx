@@ -10,6 +10,12 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+
+/** Prefer the i18n key; falls back to the literal. */
+function ntText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { Lightbulb, Volume2, ShieldAlert, Cpu, ChevronDown } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -17,15 +23,15 @@ import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
 
 const PRESETS = [
-  { name: 'Red', hex: '#ef4444' },
-  { name: 'Orange', hex: '#f97316' },
-  { name: 'Yellow', hex: '#eab308' },
-  { name: 'Green', hex: '#22c55e' },
-  { name: 'Cyan', hex: '#06b6d4' },
-  { name: 'Blue', hex: '#3b82f6' },
-  { name: 'Violet', hex: '#8b5cf6' },
-  { name: 'White', hex: '#ffffff' },
-  { name: 'Off', hex: '#000000' },
+  { name: 'Red', nameKey: 'presetColours.red', hex: '#ef4444' },
+  { name: 'Orange', nameKey: 'presetColours.orange', hex: '#f97316' },
+  { name: 'Yellow', nameKey: 'presetColours.yellow', hex: '#eab308' },
+  { name: 'Green', nameKey: 'presetColours.green', hex: '#22c55e' },
+  { name: 'Cyan', nameKey: 'presetColours.cyan', hex: '#06b6d4' },
+  { name: 'Blue', nameKey: 'presetColours.blue', hex: '#3b82f6' },
+  { name: 'Violet', nameKey: 'presetColours.violet', hex: '#8b5cf6' },
+  { name: 'White', nameKey: 'presetColours.white', hex: '#ffffff' },
+  { name: 'Off', nameKey: 'presetColours.off', hex: '#000000' },
 ];
 
 function hexToRgb(hex: string): { red: number; green: number; blue: number } {
@@ -38,11 +44,11 @@ function hexToRgb(hex: string): { red: number; green: number; blue: number } {
 }
 
 const LED_STATES = [
-  { colour: 'bg-red-500', label: 'Initialising', hint: 'Red and blue alternating at boot' },
-  { colour: 'bg-blue-500', label: 'No GPS lock', hint: 'Disarmed, waiting for a fix' },
-  { colour: 'bg-emerald-500', label: 'GPS lock', hint: 'Disarmed and ready to arm' },
-  { colour: 'bg-emerald-600', label: 'Armed', hint: 'Solid, no blink' },
-  { colour: 'bg-amber-500', label: 'Failsafe', hint: 'Radio or battery' },
+  { colour: 'bg-red-500', label: 'Initialising', labelKey: 'ledStates.initialising.label', hint: 'Red and blue alternating at boot', hintKey: 'ledStates.initialising.hint' },
+  { colour: 'bg-blue-500', label: 'No GPS lock', labelKey: 'ledStates.no-gps-lock.label', hint: 'Disarmed, waiting for a fix', hintKey: 'ledStates.no-gps-lock.hint' },
+  { colour: 'bg-emerald-500', label: 'GPS lock', labelKey: 'ledStates.gps-lock.label', hint: 'Disarmed and ready to arm', hintKey: 'ledStates.gps-lock.hint' },
+  { colour: 'bg-emerald-600', label: 'Armed', labelKey: 'ledStates.armed.label', hint: 'Solid, no blink', hintKey: 'ledStates.armed.hint' },
+  { colour: 'bg-amber-500', label: 'Failsafe', labelKey: 'ledStates.failsafe.label', hint: 'Radio or battery', hintKey: 'ledStates.failsafe.hint' },
 ];
 
 /** NTF_LED_TYPES bits, from AP_Notify.cpp. Used when metadata is absent. */
@@ -61,10 +67,10 @@ const BUZZ_TYPE_FALLBACK: Record<number, string> = {
 };
 
 const AP_BRIGHTNESS = [
-  { value: 0, label: 'Off' },
-  { value: 1, label: 'Low' },
-  { value: 2, label: 'Medium' },
-  { value: 3, label: 'High' },
+  { value: 0, label: 'Off', labelKey: 'brightness.off' },
+  { value: 1, label: 'Low', labelKey: 'brightness.low' },
+  { value: 2, label: 'Medium', labelKey: 'brightness.medium' },
+  { value: 3, label: 'High', labelKey: 'brightness.high' },
 ];
 
 /** Serial-LED strips ride a servo output set to one of these functions. */
@@ -74,6 +80,7 @@ const STRIP_FUNCTIONS: Record<number, string> = {
 };
 
 export default function NotifyTab(): JSX.Element {
+  const { t } = useTranslation('notify');
   const { parameters, setParameter, getParameterMetadata } = useParameterStore();
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const [busy, setBusy] = useState(false);
@@ -150,15 +157,15 @@ export default function NotifyTab(): JSX.Element {
   if (!supported) {
     return (
       <div className="p-6">
-        <InfoCard title="LEDs and sound" variant="info">
-          This board does not expose the notify parameters.
+        <InfoCard title={t('ui.ledsAndSound')} variant="info">
+          {t('ui.boardUnsupported')}
         </InfoCard>
       </div>
     );
   }
 
   const ledTypeMask = num('NTF_LED_TYPES', 0);
-  const enabledDrivers = ledTypes.filter((t) => (ledTypeMask & (1 << t.bit)) !== 0).length;
+  const enabledDrivers = ledTypes.filter((drv) => (ledTypeMask & (1 << drv.bit)) !== 0).length;
   const buzzTypeMask = num('NTF_BUZZ_TYPES', 0);
   const override = num('NTF_LED_OVERRIDE', 0);
   const safetyDeflt = num('BRD_SAFETY_DEFLT', 1);
@@ -171,9 +178,9 @@ export default function NotifyTab(): JSX.Element {
             <Lightbulb className="w-5 h-5 text-amber-500 dark:text-amber-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium text-content">Status LED</h3>
+            <h3 className="font-medium text-content">{t('ui.statusLed')}</h3>
             <p className="text-xs text-content-secondary">
-              On most builds the ring is in the GPS puck, not on the autopilot
+              {t('ui.ringLocation')}
             </p>
           </div>
         </div>
@@ -181,18 +188,18 @@ export default function NotifyTab(): JSX.Element {
         <div className="flex flex-col gap-4 lg:flex-row">
           <div className="shrink-0 min-w-[190px] rounded-xl border border-subtle bg-surface-raised p-4">
             <div className="mb-2 text-[11px] uppercase tracking-wide text-content-tertiary">
-              What the colours mean
+              {t('ui.colourMeaning')}
             </div>
             <div className="space-y-1.5">
               {LED_STATES.map((s) => (
-                <div key={s.label} className="flex items-center gap-2" data-tip={s.hint}>
+                <div key={s.label} className="flex items-center gap-2" data-tip={ntText(t, s.hintKey, s.hint)}>
                   <span className={`h-2.5 w-2.5 rounded-full ${s.colour}`} />
-                  <span className="text-[11px] text-content-secondary">{s.label}</span>
+                  <span className="text-[11px] text-content-secondary">{ntText(t, s.labelKey, s.label)}</span>
                 </div>
               ))}
-              <div className="flex items-center gap-2" data-tip="Outputs inhibited until the button is held">
+              <div className="flex items-center gap-2" data-tip={t('ui.outputsInhibited')}>
                 <span className="h-2.5 w-2.5 rounded-full bg-content-tertiary ring-2 ring-inset ring-red-500/60" />
-                <span className="text-[11px] text-content-secondary">Double blink: safety on</span>
+                <span className="text-[11px] text-content-secondary">{t('ui.doubleBlinkSafetyOn')}</span>
               </div>
             </div>
           </div>
@@ -200,7 +207,7 @@ export default function NotifyTab(): JSX.Element {
           <div className="flex-1 space-y-4">
             {!isPx4 && has('NTF_LED_BRIGHT') && (
               <div>
-                <div className="mb-2 text-xs text-content-secondary">Brightness</div>
+                <div className="mb-2 text-xs text-content-secondary">{t('ui.brightness')}</div>
                 <div className="flex gap-2">
                   {AP_BRIGHTNESS.map((b) => {
                     const active = num('NTF_LED_BRIGHT', 3) === b.value;
@@ -215,7 +222,7 @@ export default function NotifyTab(): JSX.Element {
                             : 'bg-surface-overlay text-content-secondary hover:text-content'
                         }`}
                       >
-                        {b.label}
+                        {ntText(t, b.labelKey, b.label)}
                       </button>
                     );
                   })}
@@ -225,7 +232,7 @@ export default function NotifyTab(): JSX.Element {
 
             {isPx4 && has('SYS_RGB_MAXBRT') && (
               <DraggableSlider
-                label="Brightness"
+                label={t('ui.brightness')}
                 value={num('SYS_RGB_MAXBRT', 1)}
                 min={0}
                 max={1}
@@ -238,9 +245,9 @@ export default function NotifyTab(): JSX.Element {
             {!isPx4 && has('NTF_LED_OVERRIDE') && (
               <div className="flex items-center gap-3 rounded-lg border border-subtle bg-surface-raised px-3 py-2">
                 <span className="flex-1 text-sm text-content">
-                  Let a script or ground station drive the colour
+                  {t('ui.overrideTitle')}
                   <span className="block text-[11px] text-content-tertiary">
-                    NTF_LED_OVERRIDE. The firmware stops showing flight status on the ring.
+                    {t('ui.overrideHint')}
                   </span>
                 </span>
                 <button
@@ -252,7 +259,7 @@ export default function NotifyTab(): JSX.Element {
                       : 'bg-content-tertiary/15 text-content-secondary ring-1 ring-inset ring-content-tertiary/30'
                   }`}
                 >
-                  {override ? 'Override on' : 'Firmware drives it'}
+                  {override ? t('ui.overrideOn') : t('ui.firmwareDrivesIt')}
                 </button>
               </div>
             )}
@@ -262,7 +269,7 @@ export default function NotifyTab(): JSX.Element {
         {!isPx4 && (
           <div className="mt-4 border-t border-subtle pt-4">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs text-content-secondary">Drive the colour yourself</span>
+              <span className="text-xs text-content-secondary">{t('ui.driveColourYourself')}</span>
               {ledNote && <span className="text-[11px] text-emerald-600 dark:text-emerald-400">{ledNote}</span>}
             </div>
 
@@ -272,8 +279,8 @@ export default function NotifyTab(): JSX.Element {
                   key={p.name}
                   onClick={() => { setColour(p.hex); void applyColour(p.hex, rateHz); }}
                   disabled={busy}
-                  data-tip={p.name}
-                  aria-label={p.name}
+                  data-tip={ntText(t, p.nameKey, p.name)}
+                  aria-label={ntText(t, p.nameKey, p.name)}
                   className={`h-8 w-8 rounded-full border transition-transform hover:scale-110 disabled:opacity-40 ${
                     colour.toLowerCase() === p.hex ? 'border-content ring-2 ring-content/30' : 'border-subtle'
                   }`}
@@ -282,7 +289,7 @@ export default function NotifyTab(): JSX.Element {
               ))}
 
               <label className="ml-1 flex items-center gap-2 text-[11px] text-content-secondary">
-                Custom
+                {t('ui.custom')}
                 <input
                   type="color"
                   value={colour}
@@ -294,7 +301,7 @@ export default function NotifyTab(): JSX.Element {
             </div>
 
             <div className="mt-3 flex items-center gap-3">
-              <span className="text-[11px] text-content-secondary whitespace-nowrap">Blink</span>
+              <span className="text-[11px] text-content-secondary whitespace-nowrap">{t('ui.blink')}</span>
               <div className="flex gap-1">
                 {[0, 1, 2, 5, 10].map((r) => (
                   <button
@@ -307,15 +314,14 @@ export default function NotifyTab(): JSX.Element {
                         : 'bg-surface-overlay text-content-secondary hover:text-content'
                     }`}
                   >
-                    {r === 0 ? 'Solid' : `${r} Hz`}
+                    {r === 0 ? t('ui.solid') : t('ui.hertz', { rate: r })}
                   </button>
                 ))}
               </div>
             </div>
 
             <p className="mt-2 text-[11px] text-content-tertiary">
-              Picking a colour switches the override on for you, so the ring stops showing flight
-              status. Set it back to "Firmware drives it" above to get the status colours back.
+              {t('ui.colourSwitchesOverride')}
             </p>
           </div>
         )}
@@ -329,11 +335,10 @@ export default function NotifyTab(): JSX.Element {
           >
             <Cpu className="h-4 w-4 shrink-0 text-content-tertiary" />
             <div className="min-w-0 flex-1">
-              <h3 className="font-medium text-content">LED hardware</h3>
+              <h3 className="font-medium text-content">{t('ui.ledHardware')}</h3>
               <p className="text-xs text-content-secondary">
-                {enabledDrivers} of {ledTypes.length} drivers enabled.
-                {' '}The firmware probes them all and uses whichever is fitted, so this normally
-                needs no attention.
+                {t('ui.driversEnabled', { enabled: enabledDrivers, total: ledTypes.length })}{' '}
+                {t('ui.driversProbeHint')}
               </p>
             </div>
             <ChevronDown className={`h-4 w-4 shrink-0 text-content-tertiary transition-transform ${showDrivers ? 'rotate-180' : ''}`} />
@@ -342,16 +347,15 @@ export default function NotifyTab(): JSX.Element {
           {showDrivers && (
             <div className="mt-4">
               <p className="mb-3 text-xs text-content-secondary">
-                Only worth touching if a fitted LED stays dark, or to silence one you do not want.
-                Enabling a driver for hardware the vehicle does not have costs nothing.
+                {t('ui.driversWarning')}
               </p>
               <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
-                {ledTypes.map((t) => {
-                  const on = (ledTypeMask & (1 << t.bit)) !== 0;
+                {ledTypes.map((drv) => {
+                  const on = (ledTypeMask & (1 << drv.bit)) !== 0;
                   return (
                     <button
-                      key={t.bit}
-                      onClick={() => write('NTF_LED_TYPES', ledTypeMask ^ (1 << t.bit))}
+                      key={drv.bit}
+                      onClick={() => write('NTF_LED_TYPES', ledTypeMask ^ (1 << drv.bit))}
                       disabled={busy}
                       className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors disabled:opacity-40 ${
                         on
@@ -360,7 +364,7 @@ export default function NotifyTab(): JSX.Element {
                       }`}
                     >
                       <span className="w-3">{on ? '\u2713' : ''}</span>
-                      <span className="min-w-0 truncate">{t.label}</span>
+                      <span className="min-w-0 truncate">{drv.label}</span>
                     </button>
                   );
                 })}
@@ -370,14 +374,14 @@ export default function NotifyTab(): JSX.Element {
 
           {stripOutputs.length > 0 && (
             <div className="mt-4 rounded-lg border border-subtle bg-surface-raised p-3">
-              <div className="text-xs text-content">LED strip</div>
+              <div className="text-xs text-content">{t('ui.ledStrip')}</div>
               <div className="mt-1 text-[11px] text-content-tertiary">
-                Driven from {stripOutputs.map((o) => `SERVO${o.channel} (${o.label})`).join(', ')}
+                {t('ui.drivenFrom', { outputs: stripOutputs.map((o) => `SERVO${o.channel} (${o.label})`).join(', ') })}
               </div>
               {has('NTF_LED_LEN') && (
                 <div className="mt-3">
                   <DraggableSlider
-                    label="Pixels per strip"
+                    label={t('ui.pixelsPerStrip')}
                     value={num('NTF_LED_LEN', 1)}
                     min={1}
                     max={32}
@@ -395,17 +399,17 @@ export default function NotifyTab(): JSX.Element {
       <div className="bg-surface rounded-xl border border-subtle p-5 space-y-4">
         <div className="flex items-center gap-3">
           <Volume2 className="h-4 w-4 text-content-tertiary" />
-          <h3 className="font-medium text-content">Buzzer</h3>
+          <h3 className="font-medium text-content">{t('ui.buzzer')}</h3>
         </div>
 
         {!isPx4 && has('NTF_BUZZ_TYPES') && (
           <div className="flex flex-wrap gap-2">
-            {buzzTypes.map((t) => {
-              const on = (buzzTypeMask & (1 << t.bit)) !== 0;
+            {buzzTypes.map((bz) => {
+              const on = (buzzTypeMask & (1 << bz.bit)) !== 0;
               return (
                 <button
-                  key={t.bit}
-                  onClick={() => write('NTF_BUZZ_TYPES', buzzTypeMask ^ (1 << t.bit))}
+                  key={bz.bit}
+                  onClick={() => write('NTF_BUZZ_TYPES', buzzTypeMask ^ (1 << bz.bit))}
                   disabled={busy}
                   className={`rounded-md px-3 py-2 text-xs transition-colors disabled:opacity-40 ${
                     on
@@ -413,7 +417,7 @@ export default function NotifyTab(): JSX.Element {
                       : 'bg-surface-overlay text-content-secondary hover:text-content'
                   }`}
                 >
-                  {t.label}
+                  {bz.label}
                 </button>
               );
             })}
@@ -422,7 +426,7 @@ export default function NotifyTab(): JSX.Element {
 
         {!isPx4 && has('NTF_BUZZ_VOLUME') && (
           <DraggableSlider
-            label="Volume"
+            label={t('ui.volume')}
             value={num('NTF_BUZZ_VOLUME', 100)}
             min={0}
             max={100}
@@ -437,9 +441,9 @@ export default function NotifyTab(): JSX.Element {
           <div>
             <div className="flex gap-2">
               {([
-                { value: 0, label: 'All sounds on' },
-                { value: 782090, label: 'Silent startup only' },
-                { value: 782097, label: 'Buzzer off' },
+                { value: 0, label: 'All sounds on', labelKey: 'buzzer.all-sounds-on' },
+                { value: 782090, label: 'Silent startup only', labelKey: 'buzzer.silent-startup-only' },
+                { value: 782097, label: 'Buzzer off', labelKey: 'buzzer.buzzer-off' },
               ] as const).map((opt) => (
                 <button
                   key={opt.value}
@@ -451,13 +455,12 @@ export default function NotifyTab(): JSX.Element {
                       : 'bg-surface-overlay text-content-secondary hover:text-content'
                   }`}
                 >
-                  {opt.label}
+                  {ntText(t, opt.labelKey, opt.label)}
                 </button>
               ))}
             </div>
             <p className="mt-2 text-[11px] text-content-tertiary">
-              PX4 silences the buzzer with a circuit breaker rather than a volume, so these are the
-              only three states it has.
+              {t('ui.px4BuzzerNote')}
             </p>
           </div>
         )}
@@ -467,7 +470,7 @@ export default function NotifyTab(): JSX.Element {
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <div className="flex items-center gap-3 mb-3">
             <ShieldAlert className="h-4 w-4 text-content-tertiary" />
-            <h3 className="font-medium text-content">Safety button</h3>
+            <h3 className="font-medium text-content">{t('ui.safetyButton')}</h3>
           </div>
           <div className="flex gap-2">
             <button
@@ -479,7 +482,7 @@ export default function NotifyTab(): JSX.Element {
                   : 'bg-surface-overlay text-content-secondary hover:text-content'
               }`}
             >
-              Safety button required
+              {t('ui.safetyRequired')}
             </button>
             <button
               onClick={() => write('CBRK_IO_SAFETY', 22027)}
@@ -490,12 +493,11 @@ export default function NotifyTab(): JSX.Element {
                   : 'bg-surface-overlay text-content-secondary hover:text-content'
               }`}
             >
-              Safety disabled
+              {t('ui.safetyDisabled')}
             </button>
           </div>
           <p className="mt-2 text-[11px] text-content-tertiary">
-            With safety disabled the outputs go live the moment the vehicle arms, with nothing on
-            the airframe left to stop them. Keep the button unless the airframe has no room for one.
+            {t('ui.safetyDisabledWarning')}
           </p>
         </div>
       )}
@@ -504,7 +506,7 @@ export default function NotifyTab(): JSX.Element {
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <div className="flex items-center gap-3 mb-3">
             <ShieldAlert className="h-4 w-4 text-content-tertiary" />
-            <h3 className="font-medium text-content">Safety button</h3>
+            <h3 className="font-medium text-content">{t('ui.safetyButton')}</h3>
           </div>
           <div className="flex gap-2">
             <button
@@ -516,7 +518,7 @@ export default function NotifyTab(): JSX.Element {
                   : 'bg-surface-overlay text-content-secondary hover:text-content'
               }`}
             >
-              Safety on, press to release
+              {t('ui.safetyOnPressToRelease')}
             </button>
             <button
               onClick={() => write('BRD_SAFETY_DEFLT', 0)}
@@ -527,13 +529,13 @@ export default function NotifyTab(): JSX.Element {
                   : 'bg-surface-overlay text-content-secondary hover:text-content'
               }`}
             >
-              No safety, live at boot
+              {t('ui.noSafetyLiveAtBoot')}
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-content-tertiary">
             {safetyDeflt === 1
-              ? 'Outputs stay inhibited until the button is held for about two seconds. This is what "PreArm: Hardware safety switch" means.'
-              : 'Outputs are live as soon as the vehicle is armed, with no button press. Only sensible when no button is fitted.'}
+              ? t('ui.safetyOnNote')
+              : t('ui.safetyOffNote')}
           </p>
         </div>
       )}

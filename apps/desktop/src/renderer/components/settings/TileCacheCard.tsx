@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MAP_LAYERS, type LayerKey } from '../../../shared/map-layers';
 import type { TileCacheStats, TileCacheDownloadProgress, TileCacheSettings, TileCacheDownloadRegion } from '../../../shared/ipc-channels';
 import { useTileCacheStore } from '../../stores/tile-cache-store';
@@ -45,6 +46,7 @@ function BoundsInput({ label, value, placeholder, onCommit }: {
 }
 
 export function TileCacheCard() {
+  const { t } = useTranslation('settings');
   const [stats, setStats] = useState<TileCacheStats | null>(null);
   const [settings, setSettings] = useState<TileCacheSettings | null>(null);
   const [showPerLayer, setShowPerLayer] = useState(false);
@@ -314,39 +316,39 @@ export function TileCacheCard() {
       {/* Download Region Panel */}
       {showDownload && (
         <div className="rounded-lg border border-subtle p-4 mb-4 space-y-3">
-          <h4 className="text-xs font-medium text-content uppercase tracking-wider">Download Region for Offline Use</h4>
+          <h4 className="text-xs font-medium text-content uppercase tracking-wider">{t('tileCache.downloadHeading')}</h4>
 
           {/* Bounding box inputs */}
           <div className="grid grid-cols-2 gap-2">
             <BoundsInput
-              label="North Lat"
+              label={t('tileCache.northLat')}
               value={dlBounds.north}
-              placeholder="e.g. 51.52"
+              placeholder={t('tileCache.latMaxPlaceholder')}
               onCommit={(v) => setDlBounds((b) => ({ ...b, north: v }))}
             />
             <BoundsInput
-              label="South Lat"
+              label={t('tileCache.southLat')}
               value={dlBounds.south}
-              placeholder="e.g. 51.49"
+              placeholder={t('tileCache.latMinPlaceholder')}
               onCommit={(v) => setDlBounds((b) => ({ ...b, south: v }))}
             />
             <BoundsInput
-              label="West Lon"
+              label={t('tileCache.westLon')}
               value={dlBounds.west}
-              placeholder="e.g. -0.12"
+              placeholder={t('tileCache.lonMinPlaceholder')}
               onCommit={(v) => setDlBounds((b) => ({ ...b, west: v }))}
             />
             <BoundsInput
-              label="East Lon"
+              label={t('tileCache.eastLon')}
               value={dlBounds.east}
-              placeholder="e.g. -0.07"
+              placeholder={t('tileCache.lonMaxPlaceholder')}
               onCommit={(v) => setDlBounds((b) => ({ ...b, east: v }))}
             />
           </div>
 
           {/* Layer selection */}
           <div>
-            <label className="text-[10px] text-content-secondary block mb-1">Layers to download</label>
+            <label className="text-[10px] text-content-secondary block mb-1">{t('tileCache.layersLabel')}</label>
             <div className="flex flex-wrap gap-1.5">
               {DOWNLOADABLE_LAYERS.map((key) => (
                 <button
@@ -460,11 +462,11 @@ export function TileCacheCard() {
       {/* Settings */}
       {settings && (
         <div className="space-y-3 pt-3 border-t border-subtle">
-          <h4 className="text-xs font-medium text-content-secondary uppercase tracking-wider">Cache Settings</h4>
+          <h4 className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('tileCache.settingsHeading')}</h4>
 
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs text-content">Max cache size</span>
+              <span className="text-xs text-content">{t('tileCache.maxCacheSize')}</span>
               <span className="text-xs text-content-secondary ml-1.5">{settings.maxCacheSizeGB} GB</span>
             </div>
             <input
@@ -478,7 +480,7 @@ export function TileCacheCard() {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-xs text-content">Auto-cache tiles while browsing</span>
+            <span className="text-xs text-content">{t('tileCache.autoCache')}</span>
             <button
               onClick={() => handleSettingChange('enableAutoCache', !settings.enableAutoCache)}
               className={`relative w-8 h-4 rounded-full transition-colors ${
@@ -495,7 +497,7 @@ export function TileCacheCard() {
 
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs text-content">Max auto-cache zoom</span>
+              <span className="text-xs text-content">{t('tileCache.maxAutoCacheZoom')}</span>
               <span className="text-xs text-content-secondary ml-1.5">{settings.maxZoomAutoCache}</span>
             </div>
             <input
@@ -518,6 +520,7 @@ function formatBounds(b: TileCacheDownloadRegion['bounds']): string {
 }
 
 function SavedRegions() {
+  const { t } = useTranslation('settings');
   const regions = useTileCacheStore(s => s.regions);
   const fetchRegions = useTileCacheStore(s => s.fetchRegions);
   const deleteRegion = useTileCacheStore(s => s.deleteRegion);
@@ -553,7 +556,7 @@ function SavedRegions() {
               <button
                 onClick={() => deleteRegion(r.id)}
                 className="text-red-400/60 hover:text-red-400 transition-colors shrink-0 ml-2"
-                title="Remove this saved region"
+                title={t('tileCache.removeRegionTooltip')}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

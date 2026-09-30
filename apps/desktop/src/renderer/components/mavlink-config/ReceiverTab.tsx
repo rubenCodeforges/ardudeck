@@ -10,6 +10,12 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+
+/** Prefer the i18n key; falls back to the literal. */
+function rcText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { Radio, Signal, SignalZero, Activity, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -26,22 +32,22 @@ import { PRIMARY_CHANNEL_COUNT, getMavlinkChannelNames, reorderChannelsWithRcmap
 // =============================================================================
 
 /** ArduPilot RC_PROTOCOLS bitmask values (bit positions → power of 2) */
-const RC_PROTOCOL_OPTIONS: { value: number; label: string; description: string }[] = [
-  { value: 0, label: 'Auto-Detect', description: 'Auto-detect all protocols (value 0)' },
-  { value: 1, label: 'All', description: 'Enable all protocols' },
-  { value: 2, label: 'PPM', description: 'PPM sum signal' },
-  { value: 4, label: 'IBUS', description: 'FlySky IBUS' },
-  { value: 8, label: 'SBus', description: 'Futaba SBus (inverted serial)' },
-  { value: 16, label: 'SBus (NI)', description: 'SBus non-inverted' },
-  { value: 32, label: 'DSM/Spektrum', description: 'DSM2/DSMX satellite' },
-  { value: 64, label: 'SUMD', description: 'Graupner SUMD' },
-  { value: 128, label: 'SRXL', description: 'Multiplex SRXL' },
-  { value: 256, label: 'SRXL2', description: 'Spektrum SRXL2' },
-  { value: 512, label: 'CRSF/ELRS', description: 'TBS Crossfire / ExpressLRS' },
-  { value: 1024, label: 'ST24', description: 'Yuneec ST24' },
-  { value: 2048, label: 'FPORT', description: 'FrSky FPort' },
-  { value: 4096, label: 'FPORT2', description: 'FrSky FPort 2.0' },
-  { value: 8192, label: 'FastSBUS', description: 'Fast SBus' },
+const RC_PROTOCOL_OPTIONS: { value: number; label: string; description: string; /** Key under `receiver.rcProtocols.*`. */ descriptionKey?: string }[] = [
+  { value: 0, label: 'Auto-Detect', description: 'Auto-detect all protocols (value 0)', descriptionKey: 'rcProtocols.auto-detect-all-protocols-value-0' },
+  { value: 1, label: 'All', description: 'Enable all protocols', descriptionKey: 'rcProtocols.enable-all-protocols' },
+  { value: 2, label: 'PPM', description: 'PPM sum signal', descriptionKey: 'rcProtocols.ppm-sum-signal' },
+  { value: 4, label: 'IBUS', description: 'FlySky IBUS', descriptionKey: 'rcProtocols.flysky-ibus' },
+  { value: 8, label: 'SBus', description: 'Futaba SBus (inverted serial)', descriptionKey: 'rcProtocols.futaba-sbus-inverted-serial' },
+  { value: 16, label: 'SBus (NI)', description: 'SBus non-inverted', descriptionKey: 'rcProtocols.sbus-non-inverted' },
+  { value: 32, label: 'DSM/Spektrum', description: 'DSM2/DSMX satellite', descriptionKey: 'rcProtocols.dsm2-dsmx-satellite' },
+  { value: 64, label: 'SUMD', description: 'Graupner SUMD', descriptionKey: 'rcProtocols.graupner-sumd' },
+  { value: 128, label: 'SRXL', description: 'Multiplex SRXL', descriptionKey: 'rcProtocols.multiplex-srxl' },
+  { value: 256, label: 'SRXL2', description: 'Spektrum SRXL2', descriptionKey: 'rcProtocols.spektrum-srxl2' },
+  { value: 512, label: 'CRSF/ELRS', description: 'TBS Crossfire / ExpressLRS', descriptionKey: 'rcProtocols.tbs-crossfire-expresslrs' },
+  { value: 1024, label: 'ST24', description: 'Yuneec ST24', descriptionKey: 'rcProtocols.yuneec-st24' },
+  { value: 2048, label: 'FPORT', description: 'FrSky FPort', descriptionKey: 'rcProtocols.frsky-fport' },
+  { value: 4096, label: 'FPORT2', description: 'FrSky FPort 2.0', descriptionKey: 'rcProtocols.frsky-fport-2-0' },
+  { value: 8192, label: 'FastSBUS', description: 'Fast SBus', descriptionKey: 'rcProtocols.fast-sbus' },
 ];
 
 // =============================================================================
@@ -112,6 +118,7 @@ const CompactChannelBar: React.FC<{
 // =============================================================================
 
 function InfoBanner({ children, color = 'teal' }: { children: React.ReactNode; color?: string }) {
+  const { t } = useTranslation('receiver');
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
   if (!showTips) return null;
 
@@ -125,7 +132,7 @@ function InfoBanner({ children, color = 'teal' }: { children: React.ReactNode; c
     <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl ${s.bg} ${s.border} border`}>
       <HelpCircle className={`w-4 h-4 ${s.icon} shrink-0 mt-0.5`} />
       <p className="text-xs text-content leading-relaxed">
-        <span className={`font-semibold ${s.label}`}>How this works: </span>
+        <span className={`font-semibold ${s.label}`}>{t('howItWorks')}</span>
         {children}
       </p>
     </div>
@@ -137,6 +144,7 @@ function InfoBanner({ children, color = 'teal' }: { children: React.ReactNode; c
 // =============================================================================
 
 const ReceiverTab: React.FC = () => {
+  const { t } = useTranslation('receiver');
   const { parameters, setParameter } = useParameterStore();
   const fcRc = useTelemetryStore((s) => s.rcChannels);
   const rcChannels = useEffectiveRc(fcRc);
@@ -301,8 +309,8 @@ const ReceiverTab: React.FC = () => {
             <Radio className="w-5 h-5 text-teal-400" />
           </div>
           <div>
-            <h3 className="font-medium text-content">Receiver Protocol</h3>
-            <p className="text-xs text-content-secondary">Select the receiver protocol used by your RC receiver</p>
+            <h3 className="font-medium text-content">{t('receiverProtocol')}</h3>
+            <p className="text-xs text-content-secondary">{t('receiverProtocolHint')}</p>
           </div>
         </div>
         <div className="space-y-4">
@@ -312,7 +320,7 @@ const ReceiverTab: React.FC = () => {
           </InfoBanner>
           {/* Quick select buttons */}
           <div>
-            <label className="text-xs text-content-secondary mb-2 block">Quick Select</label>
+            <label className="text-xs text-content-secondary mb-2 block">{t('quickSelect')}</label>
             <div className="flex flex-wrap gap-2">
               {[
                 { label: 'Auto-Detect', value: 0 },
@@ -337,7 +345,7 @@ const ReceiverTab: React.FC = () => {
 
           {/* Full dropdown */}
           <div>
-            <label className="text-xs text-content-secondary mb-2 block">All Protocols</label>
+            <label className="text-xs text-content-secondary mb-2 block">{t('allProtocols')}</label>
             <select
               value={Number(rcProtocols)}
               onChange={(e) => setParameter('RC_PROTOCOLS', Number(e.target.value))}
@@ -363,7 +371,7 @@ const ReceiverTab: React.FC = () => {
               ? <Activity className="w-5 h-5 text-amber-400" />
               : <SignalZero className="w-5 h-5 text-red-400" />}
           </div>
-          <span className="flex-1 font-medium text-content">Live RC Channels</span>
+          <span className="flex-1 font-medium text-content">{t('liveChannels')}</span>
           <span className={`px-2 py-0.5 text-xs rounded-full bg-${signalBadge.color}-500/20 text-${signalBadge.color}-400`}>
             {signalBadge.text}
           </span>
@@ -412,12 +420,12 @@ const ReceiverTab: React.FC = () => {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-300">No RC signal detected</p>
-                <p className="text-xs text-content-secondary mt-1">Check that:</p>
+                <p className="text-sm font-medium text-amber-300">{t('noSignal')}</p>
+                <p className="text-xs text-content-secondary mt-1">{t('checkThat')}</p>
                 <ul className="text-xs text-content-secondary mt-1 space-y-0.5 list-disc list-inside">
-                  <li>Receiver is powered and bound to transmitter</li>
-                  <li>Correct SERIAL port has RCIN protocol set</li>
-                  <li>RC_PROTOCOLS matches your receiver hardware</li>
+                  <li>{t('check1')}</li>
+                  <li>{t('check2')}</li>
+                  <li>{t('check3')}</li>
                 </ul>
               </div>
             </div>
@@ -434,8 +442,8 @@ const ReceiverTab: React.FC = () => {
             <Activity className="w-5 h-5 text-blue-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium text-content">RC Calibration</h3>
-            <p className="text-xs text-content-secondary">Current calibration values stored on the flight controller</p>
+            <h3 className="font-medium text-content">{t('rcCalibration')}</h3>
+            <p className="text-xs text-content-secondary">{t('calibrationHint')}</p>
           </div>
           {!isCalibratingRc ? (
             <button
@@ -478,10 +486,10 @@ const ReceiverTab: React.FC = () => {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-surface text-content-secondary">
-                <th className="px-3 py-2 text-left font-medium">Channel</th>
-                <th className="px-3 py-2 text-right font-medium">Min</th>
-                <th className="px-3 py-2 text-right font-medium">Trim</th>
-                <th className="px-3 py-2 text-right font-medium">Max</th>
+                <th className="px-3 py-2 text-left font-medium">{t('col.channel')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('col.min')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('col.trim')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('col.max')}</th>
               </tr>
             </thead>
             <tbody>

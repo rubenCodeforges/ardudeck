@@ -63,6 +63,15 @@ export interface NodeDefinition {
   type: string;
   label: string;
   description: string;
+  /**
+   * Keys under `lua.auto.*`, added by tools/i18n-codemod.mjs. Optional on
+   * purpose: strings needing no translation (all-caps acronyms like 'AND',
+   * unit-only labels) are skipped, so a component must fall back to the literal
+   * when the key is absent. `label`/`description` stay until every consumer is
+   * migrated to the keys.
+   */
+  labelKey?: string;
+  descriptionKey?: string;
   category: NodeCategory;
   inputs: PortDefinition[];
   outputs: PortDefinition[];

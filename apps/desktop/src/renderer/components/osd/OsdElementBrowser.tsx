@@ -7,6 +7,12 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
+
+/** Prefer the i18n key when the codemod added one, else the literal. */
+function osdText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { useOsdStore, type OsdElementId, type OsdElementKey, type OsdElementPosition } from '../../stores/osd-store';
 import { ELEMENT_CATEGORIES, type OsdElementCategory } from '../../utils/osd/element-categories';
 import { getAllOsdElements, type AnyOsdElementDef } from '../../utils/osd/element-registry';
@@ -31,6 +37,7 @@ function useModuleOsdRevision(): number {
 }
 
 export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
+  const { t } = useTranslation('osd');
   const elementPositions = useOsdStore((s) => s.elementPositions);
   const toggleElement = useOsdStore((s) => s.toggleElement);
   const currentFont = useOsdStore((s) => s.currentFont);
@@ -80,8 +87,9 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
     for (const [cat, elements] of groupedElements) {
       const matching = elements.filter(
         (el) =>
-          el.name.toLowerCase().includes(query) ||
-          el.description.toLowerCase().includes(query) ||
+          // Match what the user sees, not the source literal.
+          osdText(t, el.nameKey, el.name).toLowerCase().includes(query) ||
+          osdText(t, el.descriptionKey, el.description).toLowerCase().includes(query) ||
           el.id.includes(query)
       );
       if (matching.length > 0) {
@@ -90,7 +98,9 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
     }
 
     return filtered;
-  }, [groupedElements, searchQuery]);
+    // `t` belongs here: the filter matches on translated names/descriptions, so
+    // the memo must recompute when the language changes.
+  }, [groupedElements, searchQuery, t]);
 
   // Auto-expand categories when searching
   useEffect(() => {
@@ -134,7 +144,7 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
       <div className="p-3 border-b border-subtle">
         <input
           type="text"
-          placeholder="Search elements..."
+          placeholder={t('browser.search-placeholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-surface-raised text-content text-xs rounded px-2.5 py-1.5 border border-subtle focus:border-blue-500 focus:outline-none placeholder-content-tertiary"
@@ -236,6 +246,7 @@ function ElementRow({
   onSelect: (id: OsdElementKey) => void;
   onToggle: (id: OsdElementKey) => void;
 }) {
+  const { t } = useTranslation('osd');
   // Get font preview data URL
   const previewSrc = useMemo(() => {
     if (!currentFont || !def.previewSymbol) return null;
@@ -254,7 +265,7 @@ function ElementRow({
         ${unsupported ? 'opacity-45' : ''}
       `}
       onClick={() => onSelect(def.id)}
-      data-tip={unsupported ? 'Not available on the connected board' : def.description}
+      data-tip={unsupported ? t('unsupported') : osdText(t, def.descriptionKey, def.description)}
     >
       <input
         type="checkbox"
@@ -283,7 +294,7 @@ function ElementRow({
       <span
         className={`flex-1 text-[11px] truncate ${position.enabled ? 'text-content' : 'text-content-secondary'}`}
       >
-        {def.name}
+        {osdText(t, def.nameKey, def.name)}
       </span>
 
       {position.enabled && (

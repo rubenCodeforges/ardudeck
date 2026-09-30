@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TourProvider, useTour } from '@reactour/tour';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
-import type { FeatureTour } from '../../feature-tours';
+import type { LocalizedFeatureTour } from '../../feature-tours';
 import { FEATURE_TOURS } from '../../feature-tours';
 import { useToursStore, isTourEligible } from '../../stores/tours-store';
 
 interface ActiveTourProps {
-  tour: FeatureTour;
+  tour: LocalizedFeatureTour;
   onFinish: () => void;
   onAdvanceToTour: (nextTourId: string) => void;
 }
@@ -27,6 +28,9 @@ function CloseWatcher({ onFinish }: { onFinish: () => void }) {
 }
 
 export function ActiveTour({ tour, onFinish, onAdvanceToTour }: ActiveTourProps) {
+  const { t, i18n } = useTranslation('views');
+  const isEnglish = i18n.language.startsWith('en');
+
   const nextEligibleTour = (() => {
     const state = useToursStore.getState();
     return FEATURE_TOURS.find(
@@ -34,7 +38,24 @@ export function ActiveTour({ tour, onFinish, onAdvanceToTour }: ActiveTourProps)
     );
   })();
 
-  const activeSteps = tour.steps.filter((s) => !s.predicate || s.predicate());
+  const activeSteps = tour.steps
+    .filter((s) => !s.predicate || s.predicate())
+    .map((step) => {
+      // English keeps the original JSX so its inline <strong> emphasis survives;
+      // every other language renders the translated plain text instead.
+      if (isEnglish || !step.titleKey || !step.bodyKey) return step;
+      return {
+        ...step,
+        content: (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">{t(step.titleKey)}</div>
+            <p className="text-xs leading-relaxed opacity-90 whitespace-pre-line">
+              {t(step.bodyKey)}
+            </p>
+          </div>
+        ),
+      };
+    });
 
   return (
     <TourProvider
@@ -58,7 +79,7 @@ export function ActiveTour({ tour, onFinish, onAdvanceToTour }: ActiveTourProps)
               border: '1px solid var(--border-default)',
             }}
           >
-            Back
+            {t('tours.ui.back')}
           </button>
         )
       }
@@ -71,7 +92,7 @@ export function ActiveTour({ tour, onFinish, onAdvanceToTour }: ActiveTourProps)
               className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors inline-flex items-center gap-1 whitespace-nowrap"
               style={{ background: 'rgb(37 99 235)', color: '#fff' }}
             >
-              Next
+              {t('tours.ui.next')}
               <ArrowRight className="w-3 h-3" />
             </button>
           );
@@ -85,10 +106,10 @@ export function ActiveTour({ tour, onFinish, onAdvanceToTour }: ActiveTourProps)
               }}
               className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors inline-flex items-center gap-1 whitespace-nowrap"
               style={{ background: 'rgb(37 99 235)', color: '#fff' }}
-              title={`Next: ${nextEligibleTour.title}`}
+              title={t('tours.ui.next-tour-tooltip', { title: t(nextEligibleTour.titleKey ?? '', { defaultValue: nextEligibleTour.title }) })}
             >
               <Sparkles className="w-3 h-3" />
-              Next feature
+              {t('tours.ui.next-feature')}
               <ArrowRight className="w-3 h-3" />
             </button>
           );
@@ -100,7 +121,7 @@ export function ActiveTour({ tour, onFinish, onAdvanceToTour }: ActiveTourProps)
             style={{ background: 'rgb(37 99 235)', color: '#fff' }}
           >
             <Check className="w-3 h-3" />
-            Done
+            {t('tours.ui.done')}
           </button>
         );
       }}

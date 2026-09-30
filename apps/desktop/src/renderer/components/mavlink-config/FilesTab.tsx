@@ -12,6 +12,12 @@
  * surfaces a banner explaining the divergence when running on SITL.
  */
 import React, { useCallback, useEffect, useState } from 'react';
+
+/** Prefer the i18n key; falls back to the literal. */
+function ftText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import {
   FolderOpen,
   Folder,
@@ -40,9 +46,17 @@ interface DirEntry {
 
 type RowBusy = { state: 'downloading' | 'done' | 'error' | 'deleting' | 'renaming'; detail?: string };
 
+/** In-flight row chips: the label keeps its literal alongside the i18n key. */
+const ROW_BUSY_LABELS: { state: string; label: string; labelKey: string }[] = [
+  { state: 'downloading', label: 'Downloading…', labelKey: 'filesTab.row.downloading' },
+  { state: 'deleting', label: 'Deleting…', labelKey: 'filesTab.row.deleting' },
+  { state: 'renaming', label: 'Renaming…', labelKey: 'filesTab.row.renaming' },
+];
+
 const DEFAULT_PATH = '/';
 
 export const FilesTab: React.FC = () => {
+  const { t } = useTranslation('mavlink');
   const isConnected = useConnectionStore((s) => s.connectionState.isConnected);
   const protocol = useConnectionStore((s) => s.connectionState.protocol);
   const isSitl = useConnectionStore((s) => s.connectionState.isSitl);
@@ -78,7 +92,7 @@ export const FilesTab: React.FC = () => {
     const result = await window.electronAPI.mavlinkFtpList(target);
     setLoading(false);
     if (!result.success || !result.entries) {
-      setError(result.error ?? 'Unknown error');
+      setError(result.error ?? t('filesTab.error.unknown'));
       return;
     }
     const sorted = [...result.entries].sort((a, b) => {
@@ -86,7 +100,7 @@ export const FilesTab: React.FC = () => {
       return a.name.localeCompare(b.name);
     });
     setEntries(sorted);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (isConnected && protocol === 'mavlink') {
@@ -189,11 +203,11 @@ export const FilesTab: React.FC = () => {
     setUploading(false);
     if (result.cancelled) return;
     if (!result.success) {
-      setUploadError(result.error ?? 'Upload failed');
+      setUploadError(result.error ?? t('filesTab.upload.failed'));
       return;
     }
     void refresh(path);
-  }, [path, refresh]);
+  }, [path, refresh, t]);
 
   const handleConfirmDelete = useCallback(async () => {
     const entry = confirmDelete;
@@ -223,7 +237,7 @@ export const FilesTab: React.FC = () => {
       return;
     }
     if (trimmed.includes('/')) {
-      setRowState(d => ({ ...d, [fcPathFor(entry)]: { state: 'error', detail: 'Name cannot contain "/"' } }));
+      setRowState(d => ({ ...d, [fcPathFor(entry)]: { state: 'error', detail: t('filesTab.rename.invalid-name') } }));
       setRenameTarget(null);
       return;
     }
@@ -242,14 +256,14 @@ export const FilesTab: React.FC = () => {
       return next;
     });
     void refresh(path);
-  }, [renameTarget, fcPathFor, path, refresh]);
+  }, [renameTarget, fcPathFor, path, refresh, t]);
 
   if (!isConnected) {
     return (
       <ChromedShell>
         <EmptyState
-          title="Not connected"
-          message="Connect to a flight controller to browse its filesystem."
+          title={t('filesTab.empty.not-connected-title')}
+          message={t('filesTab.empty.not-connected-message')}
         />
       </ChromedShell>
     );
@@ -259,8 +273,8 @@ export const FilesTab: React.FC = () => {
     return (
       <ChromedShell>
         <EmptyState
-          title="MAVLink only"
-          message="The FC file browser uses MAVLink-FTP. It is not available on MSP / iNav connections."
+          title={t('filesTab.empty.mavlink-only-title')}
+          message={t('filesTab.empty.mavlink-only-message')}
         />
       </ChromedShell>
     );
@@ -270,8 +284,10 @@ export const FilesTab: React.FC = () => {
     <ChromedShell>
       {isSitl && (
         <div className="mb-3 px-3 py-2 rounded text-xs bg-blue-500/10 border border-blue-500/30 text-blue-400">
-          <div className="font-semibold mb-0.5">SITL note</div>
-          ArduPilot SITL exposes the FTP-virtual <code className="font-mono text-[11px]">/APM/</code> tree. Files SITL actually loads (e.g. scripts) live on the host disk under the SITL working directory. They may not match what is shown here.
+          <div className="font-semibold mb-0.5">{t('filesTab.sitl.title')}</div>
+          {t('filesTab.sitl.body-before')}{' '}
+          <code className="font-mono text-[11px]">/APM/</code>{' '}
+          {t('filesTab.sitl.body-after')}
         </div>
       )}
 
@@ -301,7 +317,7 @@ export const FilesTab: React.FC = () => {
         <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
           <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <div>
-            <div className="font-semibold mb-0.5">Upload failed</div>
+            <div className="font-semibold mb-0.5">{t('filesTab.upload.failed')}</div>
             <div>{uploadError}</div>
           </div>
           <button onClick={() => setUploadError(null)} className="ml-auto text-content-secondary hover:text-content">
@@ -314,22 +330,22 @@ export const FilesTab: React.FC = () => {
         <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
           <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <div>
-            <div className="font-semibold mb-0.5">Could not list {path}</div>
+            <div className="font-semibold mb-0.5">{t('filesTab.error.list-title', { path })}</div>
             <div>{error}</div>
           </div>
         </div>
       )}
 
       {!error && entries !== null && entries.length === 0 && !loading && (
-        <div className="mt-6 text-center text-sm text-content-secondary">Directory is empty.</div>
+        <div className="mt-6 text-center text-sm text-content-secondary">{t('filesTab.table.empty-dir')}</div>
       )}
 
       {entries !== null && entries.length > 0 && (
         <div className="mt-3 rounded-lg border border-default bg-surface overflow-hidden">
           <div className="grid grid-cols-[1fr_100px_180px] text-[10px] font-semibold tracking-wider text-content-secondary uppercase border-b border-default px-3 py-2">
-            <div>Name</div>
-            <div className="text-right">Size</div>
-            <div className="text-right">Actions</div>
+            <div>{t('filesTab.table.name')}</div>
+            <div className="text-right">{t('filesTab.table.size')}</div>
+            <div className="text-right">{t('filesTab.table.actions')}</div>
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
             {entries.map(entry => {
@@ -403,13 +419,14 @@ export const FilesTab: React.FC = () => {
 };
 
 function ChromedShell({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation('mavlink');
   return (
     <div className="h-full flex flex-col p-4 gap-3 overflow-y-auto">
       <div className="flex items-center gap-3 flex-shrink-0">
         <FolderOpen className="w-6 h-6 text-content-secondary" />
         <div>
-          <h2 className="text-lg font-semibold text-content">FC Files</h2>
-          <p className="text-xs text-content-secondary">Browse, download, upload, and manage files on the flight controller via MAVLink-FTP.</p>
+          <h2 className="text-lg font-semibold text-content">{t('filesTab.header.title')}</h2>
+          <p className="text-xs text-content-secondary">{t('filesTab.header.desc')}</p>
         </div>
       </div>
       {children}
@@ -438,13 +455,14 @@ interface PathBarProps {
 }
 
 function PathBar({ path, loading, uploading, onNavigate, onRefresh, onUpload }: PathBarProps) {
+  const { t } = useTranslation('mavlink');
   const parts = path.split('/').filter(Boolean);
   return (
     <div className="flex items-center gap-1 flex-wrap text-xs" data-tour="ftp-path-bar">
       <button
         onClick={() => onNavigate('/')}
         className="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-raised text-content-secondary hover:text-content"
-        title="Go to root"
+        title={t('filesTab.path.go-root')}
       >
         <Home className="w-3.5 h-3.5" />
       </button>
@@ -474,18 +492,18 @@ function PathBar({ path, loading, uploading, onNavigate, onRefresh, onUpload }: 
         onClick={onUpload}
         disabled={uploading}
         className="flex items-center gap-1 px-2 py-1 rounded text-content hover:bg-surface-raised disabled:opacity-50"
-        title="Upload file to this directory"
+        title={t('filesTab.path.upload-tip')}
       >
         {uploading
           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
           : <Upload className="w-3.5 h-3.5" />}
-        <span>{uploading ? 'Uploading…' : 'Upload'}</span>
+        <span>{uploading ? t('filesTab.path.uploading') : t('filesTab.path.upload')}</span>
       </button>
       <button
         onClick={onRefresh}
         disabled={loading}
         className="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-raised text-content-secondary hover:text-content disabled:opacity-50"
-        title="Refresh listing"
+        title={t('filesTab.path.refresh-tip')}
       >
         {loading
           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -508,23 +526,19 @@ function RowActions({
   onRename: () => void;
   onDelete: () => void;
 }) {
-  if (busy?.state === 'downloading') {
-    return <BusyChip icon={<Loader2 className="w-3 h-3 animate-spin" />} label="Downloading…" />;
-  }
-  if (busy?.state === 'deleting') {
-    return <BusyChip icon={<Loader2 className="w-3 h-3 animate-spin" />} label="Deleting…" />;
-  }
-  if (busy?.state === 'renaming') {
-    return <BusyChip icon={<Loader2 className="w-3 h-3 animate-spin" />} label="Renaming…" />;
+  const { t } = useTranslation('mavlink');
+  const inFlight = ROW_BUSY_LABELS.find(row => row.state === busy?.state);
+  if (inFlight) {
+    return <BusyChip icon={<Loader2 className="w-3 h-3 animate-spin" />} label={ftText(t, inFlight.labelKey, inFlight.label)} />;
   }
   if (busy?.state === 'error') {
     return (
       <div className="flex items-center justify-end gap-2">
-        <span className="text-rose-400 text-[11px] truncate" title={busy.detail ?? 'Failed'}>Failed</span>
-        <IconAction title="Rename" onClick={onRename}><Pencil className="w-3 h-3" /></IconAction>
-        <IconAction title="Delete" onClick={onDelete} variant="danger"><Trash2 className="w-3 h-3" /></IconAction>
+        <span className="text-rose-400 text-[11px] truncate" title={busy.detail ?? t('filesTab.row.failed')}>{t('filesTab.row.failed')}</span>
+        <IconAction title={t('filesTab.action.rename')} onClick={onRename}><Pencil className="w-3 h-3" /></IconAction>
+        <IconAction title={t('filesTab.action.delete')} onClick={onDelete} variant="danger"><Trash2 className="w-3 h-3" /></IconAction>
         {entry.kind === 'file' && (
-          <IconAction title="Download" onClick={onDownload}><Download className="w-3 h-3" /></IconAction>
+          <IconAction title={t('filesTab.action.download')} onClick={onDownload}><Download className="w-3 h-3" /></IconAction>
         )}
       </div>
     );
@@ -532,19 +546,19 @@ function RowActions({
   if (busy?.state === 'done' && entry.kind === 'file') {
     return (
       <div className="flex items-center justify-end gap-2">
-        <span className="text-emerald-400 text-[11px] truncate" title={`Saved to ${busy.detail}`}>Saved</span>
-        <IconAction title="Rename" onClick={onRename}><Pencil className="w-3 h-3" /></IconAction>
-        <IconAction title="Delete" onClick={onDelete} variant="danger"><Trash2 className="w-3 h-3" /></IconAction>
-        <IconAction title="Re-download" onClick={onDownload}><Download className="w-3 h-3" /></IconAction>
+        <span className="text-emerald-400 text-[11px] truncate" title={t('filesTab.row.saved-to', { path: busy.detail ?? '' })}>{t('filesTab.row.saved')}</span>
+        <IconAction title={t('filesTab.action.rename')} onClick={onRename}><Pencil className="w-3 h-3" /></IconAction>
+        <IconAction title={t('filesTab.action.delete')} onClick={onDelete} variant="danger"><Trash2 className="w-3 h-3" /></IconAction>
+        <IconAction title={t('filesTab.action.redownload')} onClick={onDownload}><Download className="w-3 h-3" /></IconAction>
       </div>
     );
   }
   return (
     <div className="flex items-center justify-end gap-2" data-tour="ftp-row-actions">
-      <IconAction title="Rename" onClick={onRename}><Pencil className="w-3 h-3" /></IconAction>
-      <IconAction title="Delete" onClick={onDelete} variant="danger"><Trash2 className="w-3 h-3" /></IconAction>
+      <IconAction title={t('filesTab.action.rename')} onClick={onRename}><Pencil className="w-3 h-3" /></IconAction>
+      <IconAction title={t('filesTab.action.delete')} onClick={onDelete} variant="danger"><Trash2 className="w-3 h-3" /></IconAction>
       {entry.kind === 'file' && (
-        <IconAction title="Download" onClick={onDownload}><Download className="w-3 h-3" /></IconAction>
+        <IconAction title={t('filesTab.action.download')} onClick={onDownload}><Download className="w-3 h-3" /></IconAction>
       )}
     </div>
   );
@@ -610,6 +624,7 @@ function SdStorageCard({
   formatDone: boolean;
   onFormat: () => void;
 }) {
+  const { t } = useTranslation('mavlink');
   const hasInfo = storageInfo !== null && storageInfo.totalBytes > 0;
   const pct = hasInfo ? Math.min(100, (storageInfo.usedBytes / storageInfo.totalBytes) * 100) : 0;
   const barColor = pct >= 90 ? 'bg-red-500' : pct >= 75 ? 'bg-amber-500' : 'bg-blue-500';
@@ -630,11 +645,11 @@ function SdStorageCard({
             <>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs text-content-secondary">
-                  SD card: <span className="text-content font-medium">{formatSize(storageInfo.usedBytes)}</span>{' '}
-                  of {formatSize(storageInfo.totalBytes)} used
+                  {t('filesTab.storage.sd-card')}<span className="text-content font-medium">{formatSize(storageInfo.usedBytes)}</span>
+                  {t('filesTab.storage.of-total-used', { total: formatSize(storageInfo.totalBytes) })}
                 </span>
                 <span className={`text-xs font-medium ${low ? 'text-red-400' : 'text-content-secondary'}`}>
-                  {formatSize(storageInfo.availableBytes)} free
+                  {t('filesTab.storage.free', { size: formatSize(storageInfo.availableBytes) })}
                 </span>
               </div>
               <div className="w-full bg-surface-inset rounded-full h-1.5">
@@ -642,7 +657,7 @@ function SdStorageCard({
               </div>
               {low && (
                 <p className="text-[11px] text-red-400 mt-1.5">
-                  Logging stops mid-flight when free space runs out. Erase old logs before flying.
+                  {t('filesTab.storage.low-warning')}
                 </p>
               )}
             </>
@@ -650,11 +665,13 @@ function SdStorageCard({
             <>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs text-content-secondary">
-                  Flight logs: <span className="text-content font-medium">{formatSize(cardUsage.logBytes)}</span>
-                  {' '}in {cardUsage.logCount} file{cardUsage.logCount === 1 ? '' : 's'}
+                  {t('filesTab.storage.flight-logs')}<span className="text-content font-medium">{formatSize(cardUsage.logBytes)}</span>
+                  {cardUsage.logCount === 1
+                    ? t('filesTab.storage.in-file-one', { count: cardUsage.logCount })
+                    : t('filesTab.storage.in-file-other', { count: cardUsage.logCount })}
                 </span>
                 <span className="text-xs text-content-secondary">
-                  Other data: <span className="text-content font-medium">{formatSize(cardUsage.otherBytes)}</span>
+                  {t('filesTab.storage.other-data')}<span className="text-content font-medium">{formatSize(cardUsage.otherBytes)}</span>
                 </span>
               </div>
               <div className="flex w-full bg-surface-inset rounded-full h-1.5 overflow-hidden">
@@ -662,29 +679,29 @@ function SdStorageCard({
                 <div className="bg-amber-500 h-1.5" style={{ width: `${barSplit.otherPct}%` }} />
               </div>
               <p className="text-[11px] text-content-tertiary mt-1.5">
-                {formatSize(cardUsage.logBytes + cardUsage.otherBytes)} seen on the card. Capacity is not
-                reported over MAVLink, so subtract this from your card size for free space.
-                {cardUsage.otherBytes > 0 && ' Amber is data log rotation can never delete.'}
+                {t('filesTab.storage.seen-on-card', { size: formatSize(cardUsage.logBytes + cardUsage.otherBytes) })}
+                {cardUsage.otherBytes > 0 && <>{' '}{t('filesTab.storage.amber-note')}</>}
               </p>
               {cardUsage.unreadable.length > 0 && (
                 <p className="text-[11px] text-amber-400 mt-1">
-                  {cardUsage.unreadable.length} folder{cardUsage.unreadable.length === 1 ? '' : 's'} could not be
-                  read, so the real total is higher.
+                  {cardUsage.unreadable.length === 1
+                    ? t('filesTab.storage.unreadable-one', { count: cardUsage.unreadable.length })
+                    : t('filesTab.storage.unreadable-other', { count: cardUsage.unreadable.length })}
                 </p>
               )}
             </>
           ) : (
             <div className="flex items-center gap-3">
               <span className="text-xs text-content-tertiary">
-                SD card capacity is not reported by ArduPilot.
+                {t('filesTab.storage.no-capacity')}
               </span>
               <button
                 onClick={onScan}
                 disabled={scanning}
                 className="px-2 py-1 rounded text-xs text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 disabled:opacity-50 transition-colors"
-                data-tip="Walk the card over MAVLink-FTP and total what is on it"
+                data-tip={t('filesTab.storage.scan-tip')}
               >
-                {scanning ? 'Scanning…' : 'Scan card'}
+                {scanning ? t('filesTab.storage.scanning') : t('filesTab.storage.scan')}
               </button>
             </div>
           )}
@@ -692,20 +709,20 @@ function SdStorageCard({
         <button
           onClick={onEraseLogs}
           disabled={erasing || formatting}
-          data-tip="Erase all flight logs on the SD card"
+          data-tip={t('filesTab.storage.erase-tip')}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 disabled:opacity-50 transition-colors"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          {erasing ? 'Erasing...' : eraseDone ? 'Logs erased' : 'Erase flight logs'}
+          {erasing ? t('filesTab.storage.erasing') : eraseDone ? t('filesTab.storage.erase-done') : t('filesTab.storage.erase-logs')}
         </button>
         <button
           onClick={onFormat}
           disabled={formatting || erasing}
-          data-tip="Reformat the entire SD card (erases everything, including non-log files)"
+          data-tip={t('filesTab.storage.format-tip')}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 disabled:opacity-50 transition-colors"
         >
           <Eraser className="w-3.5 h-3.5" />
-          {formatting ? 'Formatting...' : formatDone ? 'Formatted' : 'Format card'}
+          {formatting ? t('filesTab.storage.formatting') : formatDone ? t('filesTab.storage.format-done') : t('filesTab.storage.format-card')}
         </button>
       </div>
     </div>
@@ -719,19 +736,19 @@ function ConfirmFormatModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation('mavlink');
   return (
     <ModalShell onCancel={onCancel}>
-      <div className="text-content font-medium mb-1">Reformat the SD card?</div>
+      <div className="text-content font-medium mb-1">{t('filesTab.format-confirm.title')}</div>
       <div className="text-xs text-content-secondary mb-4">
-        This erases <span className="text-content font-medium">everything</span> on the card, flight logs
-        and any other files, and lays down a fresh filesystem. Use it to clear a corrupt card or leftover
-        files from another device.
+        {t('filesTab.format-confirm.body-before')}{' '}
+        <span className="text-content font-medium">{t('filesTab.format-confirm.everything')}</span>{' '}
+        {t('filesTab.format-confirm.body-after')}
         <span className="block mt-1 text-content-secondary">
-          Your parameters are safe: they live in the flight controller, not on the card. Lua scripts and
-          terrain data on the card will be lost.
+          {t('filesTab.format-confirm.params-safe')}
         </span>
         <span className="block mt-1 text-amber-400">
-          The vehicle stops logging until this finishes (a few seconds). Do not do this while armed.
+          {t('filesTab.format-confirm.armed-warning')}
         </span>
       </div>
       <div className="flex justify-end gap-2">
@@ -739,13 +756,13 @@ function ConfirmFormatModal({
           onClick={onCancel}
           className="px-3 py-1.5 rounded text-xs text-content hover:bg-surface-raised"
         >
-          Cancel
+          {t('filesTab.action.cancel')}
         </button>
         <button
           onClick={onConfirm}
           className="px-3 py-1.5 rounded text-xs bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30"
         >
-          Format card
+          {t('filesTab.storage.format-card')}
         </button>
       </div>
     </ModalShell>
@@ -759,14 +776,14 @@ function ConfirmEraseLogsModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation('mavlink');
   return (
     <ModalShell onCancel={onCancel}>
-      <div className="text-content font-medium mb-1">Erase all flight logs?</div>
+      <div className="text-content font-medium mb-1">{t('filesTab.erase-confirm.title')}</div>
       <div className="text-xs text-content-secondary mb-4">
-        Every flight log on the flight controller's SD card will be permanently deleted.
-        Logs that were never downloaded cannot be recovered.
+        {t('filesTab.erase-confirm.body')}
         <span className="block mt-1 text-amber-400">
-          Download anything you still need before erasing.
+          {t('filesTab.erase-confirm.download-warning')}
         </span>
       </div>
       <div className="flex justify-end gap-2">
@@ -774,13 +791,13 @@ function ConfirmEraseLogsModal({
           onClick={onCancel}
           className="px-3 py-1.5 rounded text-xs text-content hover:bg-surface-raised"
         >
-          Cancel
+          {t('filesTab.action.cancel')}
         </button>
         <button
           onClick={onConfirm}
           className="px-3 py-1.5 rounded text-xs bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30"
         >
-          Erase all logs
+          {t('filesTab.erase-confirm.confirm')}
         </button>
       </div>
     </ModalShell>
@@ -796,13 +813,19 @@ function ConfirmDeleteModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation('mavlink');
   return (
     <ModalShell onCancel={onCancel}>
-      <div className="text-content font-medium mb-1">Delete {entry.kind === 'dir' ? 'directory' : 'file'}?</div>
+      <div className="text-content font-medium mb-1">
+        {entry.kind === 'dir'
+          ? t('filesTab.delete-confirm.title-dir')
+          : t('filesTab.delete-confirm.title-file')}
+      </div>
       <div className="text-xs text-content-secondary mb-4 break-all">
-        <span className="font-mono">{entry.name}</span> will be removed from the flight controller. This cannot be undone.
+        <span className="font-mono">{entry.name}</span>{' '}
+        {t('filesTab.delete-confirm.body-after')}
         {entry.kind === 'dir' && (
-          <span className="block mt-1 text-amber-400">Directories must be empty - non-empty directories will be rejected by the FC.</span>
+          <span className="block mt-1 text-amber-400">{t('filesTab.delete-confirm.dir-warning')}</span>
         )}
       </div>
       <div className="flex justify-end gap-2">
@@ -810,13 +833,13 @@ function ConfirmDeleteModal({
           onClick={onCancel}
           className="px-3 py-1.5 rounded text-xs text-content hover:bg-surface-raised"
         >
-          Cancel
+          {t('filesTab.action.cancel')}
         </button>
         <button
           onClick={onConfirm}
           className="px-3 py-1.5 rounded text-xs bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30"
         >
-          Delete
+          {t('filesTab.action.delete')}
         </button>
       </div>
     </ModalShell>
@@ -832,12 +855,15 @@ function RenameModal({
   onCancel: () => void;
   onSubmit: (newName: string) => void;
 }) {
+  const { t } = useTranslation('mavlink');
   const [name, setName] = useState(entry.name);
   return (
     <ModalShell onCancel={onCancel}>
-      <div className="text-content font-medium mb-1">Rename {entry.kind === 'dir' ? 'directory' : 'file'}</div>
+      <div className="text-content font-medium mb-1">
+        {entry.kind === 'dir' ? t('filesTab.rename.title-dir') : t('filesTab.rename.title-file')}
+      </div>
       <div className="text-xs text-content-secondary mb-3 break-all">
-        Current name: <span className="font-mono">{entry.name}</span>
+        {t('filesTab.rename.current-name')} <span className="font-mono">{entry.name}</span>
       </div>
       <input
         type="text"
@@ -849,21 +875,21 @@ function RenameModal({
         }}
         autoFocus
         className="w-full px-2 py-1.5 mb-4 rounded bg-surface-raised border border-default text-content text-xs font-mono focus:outline-none focus:border-blue-500/60"
-        placeholder="new name"
+        placeholder={t('filesTab.rename.placeholder')}
       />
       <div className="flex justify-end gap-2">
         <button
           onClick={onCancel}
           className="px-3 py-1.5 rounded text-xs text-content hover:bg-surface-raised"
         >
-          Cancel
+          {t('filesTab.action.cancel')}
         </button>
         <button
           onClick={() => onSubmit(name)}
           disabled={!name.trim() || name.trim() === entry.name}
           className="px-3 py-1.5 rounded text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Rename
+          {t('filesTab.action.rename')}
         </button>
       </div>
     </ModalShell>

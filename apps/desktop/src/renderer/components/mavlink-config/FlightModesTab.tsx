@@ -6,6 +6,12 @@
  */
 
 import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
+
+/** Prefer the i18n key; fall back to the literal (mode tables keep both). */
+function fmText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import {
   Settings,
   Shield,
@@ -60,19 +66,19 @@ import {
 
 // PWM ranges for each mode slot (standard 3-position switch mapping)
 const MODE_PWM_RANGES = [
-  { slot: 1, min: 900, max: 1230, label: 'Position 1 (Low)', position: 'low', group: 1 },
-  { slot: 2, min: 1231, max: 1360, label: 'Position 2', position: 'low', group: 1 },
-  { slot: 3, min: 1361, max: 1490, label: 'Position 3 (Mid)', position: 'mid', group: 2 },
-  { slot: 4, min: 1491, max: 1620, label: 'Position 4', position: 'mid', group: 2 },
-  { slot: 5, min: 1621, max: 1749, label: 'Position 5', position: 'high', group: 3 },
-  { slot: 6, min: 1750, max: 2100, label: 'Position 6 (High)', position: 'high', group: 3 },
+  { slot: 1, min: 900, max: 1230, label: 'Position 1 (Low)', labelKey: 'modePwmRanges.1.position-1-low', position: 'low', group: 1 },
+  { slot: 2, min: 1231, max: 1360, label: 'Position 2', labelKey: 'modePwmRanges.2.position-2', position: 'low', group: 1 },
+  { slot: 3, min: 1361, max: 1490, label: 'Position 3 (Mid)', labelKey: 'modePwmRanges.3.position-3-mid', position: 'mid', group: 2 },
+  { slot: 4, min: 1491, max: 1620, label: 'Position 4', labelKey: 'modePwmRanges.4.position-4', position: 'mid', group: 2 },
+  { slot: 5, min: 1621, max: 1749, label: 'Position 5', labelKey: 'modePwmRanges.5.position-5', position: 'high', group: 3 },
+  { slot: 6, min: 1750, max: 2100, label: 'Position 6 (High)', labelKey: 'modePwmRanges.6.position-6-high', position: 'high', group: 3 },
 ];
 
 // Switch position groupings (for 3-position switch), ordered top-to-bottom to match physical switch
 const SWITCH_POSITIONS = [
-  { name: 'High', label: 'Switch Up', slots: [5, 6], color: 'bg-orange-500' },
-  { name: 'Mid', label: 'Switch Center', slots: [3, 4], color: 'bg-purple-500' },
-  { name: 'Low', label: 'Switch Down', slots: [1, 2], color: 'bg-blue-500' },
+  { name: 'High', label: 'Switch Up', labelKey: 'switchPositions.high', slots: [5, 6], color: 'bg-orange-500' },
+  { name: 'Mid', label: 'Switch Center', labelKey: 'switchPositions.mid', slots: [3, 4], color: 'bg-purple-500' },
+  { name: 'Low', label: 'Switch Down', labelKey: 'switchPositions.low', slots: [1, 2], color: 'bg-blue-500' },
 ];
 
 // Primary slots for simple mode (most commonly used with 3-position switch)
@@ -84,62 +90,62 @@ const AUX_END = 12;
 const DETECT_THRESHOLD = 150; // PWM movement to trigger detection
 
 // ArduCopter flight modes with proper icons
-const COPTER_MODES: Record<number, { name: string; description: string; icon: React.ElementType; safe: boolean }> = {
-  0: { name: 'Stabilize', description: 'Manual flight with self-leveling', icon: Hand, safe: true },
-  1: { name: 'Acro', description: 'Full manual control, no self-leveling', icon: Gamepad2, safe: false },
-  2: { name: 'AltHold', description: 'Altitude hold with manual position', icon: Ruler, safe: true },
-  3: { name: 'Auto', description: 'Follow mission waypoints', icon: Map, safe: true },
-  4: { name: 'Guided', description: 'Fly to GCS-commanded points', icon: Navigation, safe: true },
-  5: { name: 'Loiter', description: 'Hold position and altitude', icon: Lock, safe: true },
-  6: { name: 'RTL', description: 'Return to launch point', icon: Home, safe: true },
-  7: { name: 'Circle', description: 'Circle around a point', icon: Circle, safe: true },
-  9: { name: 'Land', description: 'Automatic landing', icon: PlaneLanding, safe: true },
-  11: { name: 'Drift', description: 'Like Stabilize but with drift', icon: Wind, safe: false },
-  13: { name: 'Sport', description: 'Stabilize with higher rates', icon: Dumbbell, safe: false },
-  14: { name: 'Flip', description: 'Automatic flip maneuver', icon: RotateCcw, safe: false },
-  15: { name: 'AutoTune', description: 'Automatic PID tuning', icon: Wrench, safe: true },
-  16: { name: 'PosHold', description: 'Position hold like Loiter', icon: Pin, safe: true },
-  17: { name: 'Brake', description: 'Stop immediately', icon: Octagon, safe: true },
-  18: { name: 'Throw', description: 'Throw to start', icon: Rocket, safe: false },
-  19: { name: 'Avoid_ADSB', description: 'Avoid other aircraft', icon: Plane, safe: true },
-  20: { name: 'Guided_NoGPS', description: 'Guided without GPS', icon: Navigation, safe: false },
-  21: { name: 'Smart_RTL', description: 'Return via original path', icon: Home, safe: true },
-  22: { name: 'FlowHold', description: 'Position hold with optical flow', icon: Move, safe: true },
-  23: { name: 'Follow', description: 'Follow another vehicle', icon: Users, safe: true },
-  24: { name: 'ZigZag', description: 'Zigzag survey pattern', icon: Zap, safe: true },
-  25: { name: 'SystemID', description: 'System identification', icon: Activity, safe: false },
+const COPTER_MODES: Record<number, { name: string; description: string; /** Key under `mavlink.modes.*`. */ descKey?: string; icon: React.ElementType; safe: boolean }> = {
+  0: { name: 'Stabilize', description: 'Manual flight with self-leveling', descKey: 'copterModes.0.manual-flight-with-self-leveling', icon: Hand, safe: true },
+  1: { name: 'Acro', description: 'Full manual control, no self-leveling', descKey: 'copterModes.1.full-manual-control-no-self-leveling', icon: Gamepad2, safe: false },
+  2: { name: 'AltHold', description: 'Altitude hold with manual position', descKey: 'copterModes.2.altitude-hold-with-manual-position', icon: Ruler, safe: true },
+  3: { name: 'Auto', description: 'Follow mission waypoints', descKey: 'copterModes.3.follow-mission-waypoints', icon: Map, safe: true },
+  4: { name: 'Guided', description: 'Fly to GCS-commanded points', descKey: 'copterModes.4.fly-to-gcs-commanded-points', icon: Navigation, safe: true },
+  5: { name: 'Loiter', description: 'Hold position and altitude', descKey: 'copterModes.5.hold-position-and-altitude', icon: Lock, safe: true },
+  6: { name: 'RTL', description: 'Return to launch point', descKey: 'copterModes.6.return-to-launch-point', icon: Home, safe: true },
+  7: { name: 'Circle', description: 'Circle around a point', descKey: 'copterModes.7.circle-around-a-point', icon: Circle, safe: true },
+  9: { name: 'Land', description: 'Automatic landing', descKey: 'copterModes.9.automatic-landing', icon: PlaneLanding, safe: true },
+  11: { name: 'Drift', description: 'Like Stabilize but with drift', descKey: 'copterModes.11.like-stabilize-but-with-drift', icon: Wind, safe: false },
+  13: { name: 'Sport', description: 'Stabilize with higher rates', descKey: 'copterModes.13.stabilize-with-higher-rates', icon: Dumbbell, safe: false },
+  14: { name: 'Flip', description: 'Automatic flip maneuver', descKey: 'copterModes.14.automatic-flip-maneuver', icon: RotateCcw, safe: false },
+  15: { name: 'AutoTune', description: 'Automatic PID tuning', descKey: 'copterModes.15.automatic-pid-tuning', icon: Wrench, safe: true },
+  16: { name: 'PosHold', description: 'Position hold like Loiter', descKey: 'copterModes.16.position-hold-like-loiter', icon: Pin, safe: true },
+  17: { name: 'Brake', description: 'Stop immediately', descKey: 'copterModes.17.stop-immediately', icon: Octagon, safe: true },
+  18: { name: 'Throw', description: 'Throw to start', descKey: 'copterModes.18.throw-to-start', icon: Rocket, safe: false },
+  19: { name: 'Avoid_ADSB', description: 'Avoid other aircraft', descKey: 'copterModes.19.avoid-other-aircraft', icon: Plane, safe: true },
+  20: { name: 'Guided_NoGPS', description: 'Guided without GPS', descKey: 'copterModes.20.guided-without-gps', icon: Navigation, safe: false },
+  21: { name: 'Smart_RTL', description: 'Return via original path', descKey: 'copterModes.21.return-via-original-path', icon: Home, safe: true },
+  22: { name: 'FlowHold', description: 'Position hold with optical flow', descKey: 'copterModes.22.position-hold-with-optical-flow', icon: Move, safe: true },
+  23: { name: 'Follow', description: 'Follow another vehicle', descKey: 'copterModes.23.follow-another-vehicle', icon: Users, safe: true },
+  24: { name: 'ZigZag', description: 'Zigzag survey pattern', descKey: 'copterModes.24.zigzag-survey-pattern', icon: Zap, safe: true },
+  25: { name: 'SystemID', description: 'System identification', descKey: 'copterModes.25.system-identification', icon: Activity, safe: false },
 };
 
 // ArduPlane flight modes with proper icons
-const PLANE_MODES: Record<number, { name: string; description: string; icon: React.ElementType; safe: boolean }> = {
-  0: { name: 'Manual', description: 'Full manual control', icon: Hand, safe: false },
-  1: { name: 'Circle', description: 'Circle around a point', icon: Circle, safe: true },
-  2: { name: 'Stabilize', description: 'Level flight with manual throttle', icon: Hand, safe: true },
-  3: { name: 'Training', description: 'Limits roll/pitch but allows recovery', icon: Dumbbell, safe: true },
-  4: { name: 'Acro', description: 'Rate-controlled aerobatics', icon: Gamepad2, safe: false },
-  5: { name: 'FBWA', description: 'Fly By Wire A - stabilized manual', icon: Plane, safe: true },
-  6: { name: 'FBWB', description: 'Fly By Wire B - speed/altitude hold', icon: Plane, safe: true },
-  7: { name: 'Cruise', description: 'Throttle and roll hold heading/alt', icon: Navigation, safe: true },
-  8: { name: 'AutoTune', description: 'Automatic PID tuning', icon: Wrench, safe: true },
-  10: { name: 'Auto', description: 'Follow mission waypoints', icon: Map, safe: true },
-  11: { name: 'RTL', description: 'Return to launch point', icon: Home, safe: true },
-  12: { name: 'Loiter', description: 'Circle and hold position', icon: Lock, safe: true },
-  13: { name: 'Takeoff', description: 'Automatic takeoff', icon: Rocket, safe: true },
-  14: { name: 'Avoid_ADSB', description: 'Avoid other aircraft', icon: AlertTriangle, safe: true },
-  15: { name: 'Guided', description: 'Fly to GCS-commanded points', icon: Navigation, safe: true },
-  17: { name: 'QStabilize', description: 'VTOL stabilize mode', icon: Hand, safe: true },
-  18: { name: 'QHover', description: 'VTOL hover in place', icon: Pin, safe: true },
-  19: { name: 'QLoiter', description: 'VTOL position hold', icon: Lock, safe: true },
-  20: { name: 'QLand', description: 'VTOL automatic landing', icon: PlaneLanding, safe: true },
-  21: { name: 'QRTL', description: 'VTOL return to launch', icon: Home, safe: true },
-  22: { name: 'QAutotune', description: 'VTOL automatic PID tuning', icon: Wrench, safe: true },
-  23: { name: 'QAcro', description: 'VTOL rate-controlled aerobatics', icon: Gamepad2, safe: false },
-  24: { name: 'Thermal', description: 'Soaring thermal detection', icon: Wind, safe: true },
-  25: { name: 'Loiter to QLand', description: 'Loiter then VTOL land', icon: PlaneLanding, safe: true },
+const PLANE_MODES: Record<number, { name: string; description: string; /** Key under `mavlink.modes.*`. */ descKey?: string; icon: React.ElementType; safe: boolean }> = {
+  0: { name: 'Manual', description: 'Full manual control', descKey: 'planeModes.0.full-manual-control', icon: Hand, safe: false },
+  1: { name: 'Circle', description: 'Circle around a point', descKey: 'planeModes.1.circle-around-a-point', icon: Circle, safe: true },
+  2: { name: 'Stabilize', description: 'Level flight with manual throttle', descKey: 'planeModes.2.level-flight-with-manual-throttle', icon: Hand, safe: true },
+  3: { name: 'Training', description: 'Limits roll/pitch but allows recovery', descKey: 'planeModes.3.limits-roll-pitch-but-allows-recovery', icon: Dumbbell, safe: true },
+  4: { name: 'Acro', description: 'Rate-controlled aerobatics', descKey: 'planeModes.4.rate-controlled-aerobatics', icon: Gamepad2, safe: false },
+  5: { name: 'FBWA', description: 'Fly By Wire A - stabilized manual', descKey: 'planeModes.5.fly-by-wire-a-stabilized-manual', icon: Plane, safe: true },
+  6: { name: 'FBWB', description: 'Fly By Wire B - speed/altitude hold', descKey: 'planeModes.6.fly-by-wire-b-speed-altitude-hold', icon: Plane, safe: true },
+  7: { name: 'Cruise', description: 'Throttle and roll hold heading/alt', descKey: 'planeModes.7.throttle-and-roll-hold-heading-alt', icon: Navigation, safe: true },
+  8: { name: 'AutoTune', description: 'Automatic PID tuning', descKey: 'planeModes.8.automatic-pid-tuning', icon: Wrench, safe: true },
+  10: { name: 'Auto', description: 'Follow mission waypoints', descKey: 'planeModes.10.follow-mission-waypoints', icon: Map, safe: true },
+  11: { name: 'RTL', description: 'Return to launch point', descKey: 'planeModes.11.return-to-launch-point', icon: Home, safe: true },
+  12: { name: 'Loiter', description: 'Circle and hold position', descKey: 'planeModes.12.circle-and-hold-position', icon: Lock, safe: true },
+  13: { name: 'Takeoff', description: 'Automatic takeoff', descKey: 'planeModes.13.automatic-takeoff', icon: Rocket, safe: true },
+  14: { name: 'Avoid_ADSB', description: 'Avoid other aircraft', descKey: 'planeModes.14.avoid-other-aircraft', icon: AlertTriangle, safe: true },
+  15: { name: 'Guided', description: 'Fly to GCS-commanded points', descKey: 'planeModes.15.fly-to-gcs-commanded-points', icon: Navigation, safe: true },
+  17: { name: 'QStabilize', description: 'VTOL stabilize mode', descKey: 'planeModes.17.vtol-stabilize-mode', icon: Hand, safe: true },
+  18: { name: 'QHover', description: 'VTOL hover in place', descKey: 'planeModes.18.vtol-hover-in-place', icon: Pin, safe: true },
+  19: { name: 'QLoiter', description: 'VTOL position hold', descKey: 'planeModes.19.vtol-position-hold', icon: Lock, safe: true },
+  20: { name: 'QLand', description: 'VTOL automatic landing', descKey: 'planeModes.20.vtol-automatic-landing', icon: PlaneLanding, safe: true },
+  21: { name: 'QRTL', description: 'VTOL return to launch', descKey: 'planeModes.21.vtol-return-to-launch', icon: Home, safe: true },
+  22: { name: 'QAutotune', description: 'VTOL automatic PID tuning', descKey: 'planeModes.22.vtol-automatic-pid-tuning', icon: Wrench, safe: true },
+  23: { name: 'QAcro', description: 'VTOL rate-controlled aerobatics', descKey: 'planeModes.23.vtol-rate-controlled-aerobatics', icon: Gamepad2, safe: false },
+  24: { name: 'Thermal', description: 'Soaring thermal detection', descKey: 'planeModes.24.soaring-thermal-detection', icon: Wind, safe: true },
+  25: { name: 'Loiter to QLand', description: 'Loiter then VTOL land', descKey: 'planeModes.25.loiter-then-vtol-land', icon: PlaneLanding, safe: true },
 };
 
 // ArduRover drive modes
-const ROVER_MODES: Record<number, { name: string; description: string; icon: React.ElementType; safe: boolean }> = {
+const ROVER_MODES: Record<number, { name: string; description: string; /** Key under `mavlink.modes.*`. */ descKey?: string; icon: React.ElementType; safe: boolean }> = {
   0: { name: 'Manual', description: 'Full manual throttle and steering', icon: Hand, safe: true },
   1: { name: 'Acro', description: 'Manual with turn rate control', icon: Gamepad2, safe: false },
   3: { name: 'Steering', description: 'Manual steering, speed controlled', icon: Navigation, safe: true },
@@ -229,7 +235,7 @@ function getModesForCategory(category: VehicleCategory) {
 
 function getModeInfo(modeNum: number, category: VehicleCategory = 'copter') {
   const modes = getModesForCategory(category);
-  return modes[modeNum] ?? { name: 'Unknown', description: 'Unknown mode', icon: HelpCircle, safe: false };
+  return modes[modeNum] ?? { name: 'Unknown', description: 'Unknown mode', descKey: 'modes.unknown', icon: HelpCircle, safe: false };
 }
 
 interface FlightModesTabProps {
@@ -237,6 +243,7 @@ interface FlightModesTabProps {
 }
 
 const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copter' }) => {
+  const { t } = useTranslation('mavlink');
   const isRover = vehicleCategory === 'rover';
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const { parameters, setParameter, modifiedCount } = useParameterStore();
@@ -403,7 +410,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
           /* Default state: dropdown + detect button */
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium text-content">Mode Switch Channel</h3>
+              <h3 className="text-sm font-medium text-content">{t('fm.ui.modeSwitchChannel')}</h3>
               <p className="text-xs text-content-secondary mt-0.5">Which RC channel controls {isRover ? 'drive modes' : 'flight modes'}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -438,7 +445,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-cyan-300">Detecting Mode Switch Channel</h3>
+                <h3 className="text-sm font-medium text-cyan-300">{t('fm.ui.detectingChannel')}</h3>
                 <p className="text-xs text-content-secondary mt-0.5">
                   {detectedChannel
                     ? `Channel ${detectedChannel} detected: use this channel?`
@@ -516,14 +523,14 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
       {/* Visual Switch Position Diagram */}
       <div className="bg-surface rounded-xl border border-subtle p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-content">Switch Position Diagram</h3>
+          <h3 className="text-sm font-medium text-content">{t('fm.ui.switchDiagram')}</h3>
           {signalStatus === 'active' ? (
             <span className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] bg-green-500/20 text-green-400 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               LIVE
             </span>
           ) : (
-            <span className="text-[10px] text-content-tertiary">Connect to see live data</span>
+            <span className="text-[10px] text-content-tertiary">{t('fm.ui.connectForLiveData')}</span>
           )}
         </div>
         <div className="flex items-center justify-center gap-8">
@@ -561,7 +568,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                 )}
               </div>
             )}
-            <span className="text-xs text-content-secondary mt-2">Mode Switch</span>
+            <span className="text-xs text-content-secondary mt-2">{t('fm.ui.modeSwitch')}</span>
           </div>
 
           {/* Position to modes mapping */}
@@ -629,7 +636,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                       <div className={`text-sm font-medium ${isPositionActive ? 'text-cyan-400' : 'text-content'}`}>
                         {pos.name}
                       </div>
-                      <div className="text-[10px] text-content-secondary">{pos.label}</div>
+                      <div className="text-[10px] text-content-secondary">{fmText(t, pos.labelKey, pos.label)}</div>
                     </div>
                     <div className="flex-1 flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
@@ -691,7 +698,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                         <div className={`w-2 h-2 rounded-full ${pos.color}`} />
                         <span className="text-sm font-medium text-content">{pos.name}</span>
                       </div>
-                      <div className="text-xs text-content-secondary">{pos.label}</div>
+                      <div className="text-xs text-content-secondary">{fmText(t, pos.labelKey, pos.label)}</div>
                     </div>
                     {isActive && (
                       <span className="ml-auto px-2 py-0.5 text-[10px] bg-cyan-500/20 text-cyan-400 rounded-full">
@@ -718,7 +725,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                   </select>
 
                   {/* Mode Description */}
-                  <p className="text-xs text-content-secondary">{modeInfo.description}</p>
+                  <p className="text-xs text-content-secondary">{fmText(t, modeInfo.descKey, modeInfo.description)}</p>
                 </div>
               );
             })}
@@ -765,7 +772,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                             <span className={`w-2 h-2 rounded-full ${positionInfo.color}`} />
                           )}
                         </div>
-                        <div className="text-xs text-content-secondary">{range.label}</div>
+                        <div className="text-xs text-content-secondary">{fmText(t, range.labelKey, range.label)}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -813,7 +820,7 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
                   </select>
 
                   {/* Mode Description */}
-                  <p className="text-xs text-content-secondary">{modeInfo.description}</p>
+                  <p className="text-xs text-content-secondary">{fmText(t, modeInfo.descKey, modeInfo.description)}</p>
                 </div>
               );
             })}
@@ -826,14 +833,14 @@ const FlightModesTab: React.FC<FlightModesTabProps> = ({ vehicleCategory = 'copt
         <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-400" />
           <p className="text-sm text-amber-400">
-            You have unsaved changes. Click <span className="font-medium">"Save All Changes"</span> in the header to save.
+            You have unsaved changes. Click <span className="font-medium">{t('fm.ui.saveAllChanges')}</span> in the header to save.
           </p>
         </div>
       )}
 
       {/* Mode Reference */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-content">Mode Reference</h3>
+        <h3 className="text-sm font-medium text-content">{t('fm.ui.modeReference')}</h3>
         <div className="bg-surface rounded-xl border border-subtle p-4">
           <div className="grid grid-cols-3 gap-3">
             {Object.entries(getModesForCategory(vehicleCategory))

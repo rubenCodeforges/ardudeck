@@ -4,6 +4,7 @@
 
 import type { UserUnitPreferences } from './user-units.js';
 import type { FirmwareSource } from './firmware-types.js';
+import type { AppLanguage } from './app-language.js';
 
 export const IPC_CHANNELS = {
   // Port management
@@ -1447,6 +1448,8 @@ export interface SettingsStoreSchema {
   connectionMemory?: SettingsConnectionMemory;
   telemetrySpeed?: TelemetrySpeed;
   unitPreferences?: UserUnitPreferences;
+  /** UI language for the renderer. Absent means "match the OS locale". */
+  language?: AppLanguage;
   experienceLevel?: 'beginner' | 'advanced';
   experienceLevelVersion?: string;
   uiVisibility?: UiVisibilitySettings;

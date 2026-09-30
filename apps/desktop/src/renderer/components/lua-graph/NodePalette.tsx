@@ -3,6 +3,18 @@
  * Drag a node from here onto the canvas to add it.
  */
 import { useState, useCallback } from 'react';
+
+/**
+ * Prefer the i18n key when the codemod added one, else fall back to the literal.
+ * The codemod skips strings that need no translation (all-caps acronyms like
+ * 'AND'), so the key is optional. Kept as a plain function rather than a
+ * `useX`-named hook because it does no hook work and is called from callbacks;
+ * `t` is threaded in by the calling component.
+ */
+function luaText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import {
   Search,
   // Sensors
@@ -154,6 +166,7 @@ const CATEGORY_ICONS: Record<NodeCategory, LucideIcon> = {
 const CATEGORIES: NodeCategory[] = ['sensors', 'logic', 'math', 'actions', 'timing', 'variables', 'flow'];
 
 export function NodePalette() {
+  const { t } = useTranslation('lua');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategory, setExpandedCategory] = useState<NodeCategory | null>('sensors');
   const addNode = useLuaGraphStore((s) => s.addNode);
@@ -182,8 +195,9 @@ export function NodePalette() {
   const filteredBySearch = searchQuery.trim()
     ? NODE_LIBRARY.filter(
         (n) =>
-          n.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          n.description.toLowerCase().includes(searchQuery.toLowerCase()),
+          // Match against what the user actually sees, not the source literal.
+          luaText(t, n.labelKey, n.label).toLowerCase().includes(searchQuery.toLowerCase()) ||
+          luaText(t, n.descriptionKey, n.description).toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : null;
 
@@ -215,8 +229,8 @@ export function NodePalette() {
               <NodeItem
                 key={node.type}
                 definitionType={node.type}
-                label={node.label}
-                description={node.description}
+                label={luaText(t, node.labelKey, node.label)}
+                description={luaText(t, node.descriptionKey, node.description)}
                 color={CATEGORY_COLORS[node.category]}
                 onDragStart={onDragStart}
                 onDoubleClick={onDoubleClick}
@@ -256,8 +270,8 @@ export function NodePalette() {
                       <NodeItem
                         key={node.type}
                         definitionType={node.type}
-                        label={node.label}
-                        description={node.description}
+                        label={luaText(t, node.labelKey, node.label)}
+                        description={luaText(t, node.descriptionKey, node.description)}
                         color={color}
                         onDragStart={onDragStart}
                         onDoubleClick={onDoubleClick}

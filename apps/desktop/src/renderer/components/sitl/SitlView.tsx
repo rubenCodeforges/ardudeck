@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSitlStore } from '../../stores/sitl-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { usePx4SitlStore } from '../../stores/px4-sitl-store';
@@ -14,6 +15,11 @@ import { useSettingsStore } from '../../stores/settings-store';
 import ArduPilotSitlTab from './ArduPilotSitlTab';
 import Px4SitlTab from './Px4SitlTab';
 import type { VirtualRCState } from '../../../shared/ipc-channels';
+
+/** Prefer the i18n key; falls back to the literal. */
+function sText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
 
 type SitlTab = 'inav' | 'ardupilot' | 'px4';
 
@@ -27,14 +33,15 @@ const AIRCRAFT_OPTIONS = [
 
 // Common airports
 const AIRPORT_OPTIONS = [
-  { value: 'KSFO', label: 'San Francisco (KSFO)' },
-  { value: 'KLAX', label: 'Los Angeles (KLAX)' },
-  { value: 'KJFK', label: 'New York JFK (KJFK)' },
-  { value: 'EGLL', label: 'London Heathrow (EGLL)' },
-  { value: 'LFPG', label: 'Paris CDG (LFPG)' },
+  { value: 'KSFO', label: 'San Francisco (KSFO)', labelKey: 'sitl.view.airport.ksfo' },
+  { value: 'KLAX', label: 'Los Angeles (KLAX)', labelKey: 'sitl.view.airport.klax' },
+  { value: 'KJFK', label: 'New York JFK (KJFK)', labelKey: 'sitl.view.airport.kjfk' },
+  { value: 'EGLL', label: 'London Heathrow (EGLL)', labelKey: 'sitl.view.airport.egll' },
+  { value: 'LFPG', label: 'Paris CDG (LFPG)', labelKey: 'sitl.view.airport.lfpg' },
 ];
 
 export default function SitlView() {
+  const { t } = useTranslation('views');
   const {
     isRunning,
     isStarting,
@@ -206,9 +213,9 @@ export default function SitlView() {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-content">SITL Simulator</h1>
+            <h1 className="text-lg font-semibold text-content">{t('sitl.view.title')}</h1>
             <p className="text-xs text-content-secondary">
-              Test flight controller firmware without hardware
+              {t('sitl.view.subtitle')}
             </p>
           </div>
         </div>
@@ -225,7 +232,7 @@ export default function SitlView() {
                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                   : 'text-content-secondary hover:text-content hover:bg-surface'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title={anyRunning && activeRunningTab !== 'inav' ? 'Stop the running SITL first' : undefined}
+              title={anyRunning && activeRunningTab !== 'inav' ? t('sitl.view.tab.locked-tooltip') : undefined}
             >
               iNav (MSP)
             </button>
@@ -237,7 +244,7 @@ export default function SitlView() {
                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                   : 'text-content-secondary hover:text-content hover:bg-surface'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title={anyRunning && activeRunningTab !== 'ardupilot' ? 'Stop the running SITL first' : undefined}
+              title={anyRunning && activeRunningTab !== 'ardupilot' ? t('sitl.view.tab.locked-tooltip') : undefined}
             >
               ArduPilot (MAVLink)
             </button>
@@ -249,7 +256,7 @@ export default function SitlView() {
                   ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
                   : 'text-content-secondary hover:text-content hover:bg-surface'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title={anyRunning && activeRunningTab !== 'px4' ? 'Stop the running SITL first' : undefined}
+              title={anyRunning && activeRunningTab !== 'px4' ? t('sitl.view.tab.locked-tooltip') : undefined}
             >
               PX4 (MAVLink)
             </button>
@@ -266,8 +273,8 @@ export default function SitlView() {
               anyRunning ? 'bg-green-400' : 'bg-zinc-500'
             }`} />
             {anyRunning
-              ? `${activeRunningTab === 'inav' ? 'iNav' : activeRunningTab === 'px4' ? 'PX4' : 'ArduPilot'} Running`
-              : 'Stopped'}
+              ? t('sitl.view.status.running', { name: activeRunningTab === 'inav' ? 'iNav' : activeRunningTab === 'px4' ? 'PX4' : 'ArduPilot' })
+              : t('sitl.view.status.stopped')}
           </div>
         </div>
       </div>
@@ -289,7 +296,7 @@ export default function SitlView() {
             {/* Profile info */}
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <label className="text-sm font-medium text-content">Profile</label>
+                <label className="text-sm font-medium text-content">{t('sitl.view.profile.label')}</label>
                 <select
                   value={currentProfileName ?? ''}
                   onChange={(e) => selectProfile(e.target.value)}
@@ -298,7 +305,7 @@ export default function SitlView() {
                 >
                   {profiles.map((profile) => (
                     <option key={profile.name} value={profile.name}>
-                      {profile.name} {profile.isStandard ? '' : '(custom)'}
+                      {profile.name} {profile.isStandard ? '' : t('sitl.view.profile.custom-suffix')}
                     </option>
                   ))}
                 </select>
@@ -308,7 +315,7 @@ export default function SitlView() {
                   onClick={() => setShowNewProfile(true)}
                   disabled={isRunning || isStarting}
                   className="px-2 py-1.5 text-xs font-medium text-content bg-surface-raised hover:bg-surface-raised border border rounded-lg transition-colors disabled:opacity-50"
-                  title="Create new profile"
+                  title={t('sitl.view.profile.create-tooltip')}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -321,7 +328,7 @@ export default function SitlView() {
                     onClick={() => setShowDeleteConfirm(true)}
                     disabled={isRunning || isStarting}
                     className="px-2 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-colors disabled:opacity-50"
-                    title="Delete profile"
+                    title={t('sitl.view.profile.delete-tooltip')}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -333,14 +340,14 @@ export default function SitlView() {
               {/* Profile description */}
               {currentProfile && (
                 <div className="text-xs text-content-secondary mb-3">
-                  {currentProfile.description || 'Custom profile with its own EEPROM file.'}
+                  {currentProfile.description || t('sitl.view.profile.default-description')}
                 </div>
               )}
 
               {/* What is a profile? */}
               <div className="text-xs text-content-tertiary border-t border-subtle pt-3">
-                <span className="text-content-secondary">What's a profile?</span> Each profile has its own EEPROM file that stores
-                your FC config (PIDs, rates, modes, mixer, etc.). Configs persist across SITL restarts, just like a real board.
+                <span className="text-content-secondary">{t('sitl.view.profile.what-is-title')}</span>{' '}
+                {t('sitl.view.profile.what-is-body')}
               </div>
             </div>
 
@@ -358,7 +365,7 @@ export default function SitlView() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Checking...
+                      {t('sitl.view.action.checking')}
                     </>
                   ) : isStarting || isFlightGearStarting ? (
                     <>
@@ -366,7 +373,7 @@ export default function SitlView() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Starting...
+                      {t('sitl.view.action.starting')}
                     </>
                   ) : (
                     <>
@@ -374,7 +381,7 @@ export default function SitlView() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {simulatorEnabled ? 'Launch Simulation' : 'Start SITL'}
+                      {simulatorEnabled ? t('sitl.view.action.launch-simulation') : t('sitl.view.action.start-sitl')}
                     </>
                   )}
                 </button>
@@ -390,7 +397,7 @@ export default function SitlView() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Stopping...
+                      {t('sitl.view.action.stopping')}
                     </>
                   ) : (
                     <>
@@ -398,7 +405,7 @@ export default function SitlView() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                       </svg>
-                      Stop {simulatorEnabled ? 'Simulation' : 'SITL'}
+                      {simulatorEnabled ? t('sitl.view.action.stop-simulation') : t('sitl.view.action.stop-sitl')}
                     </>
                   )}
                 </button>
@@ -414,13 +421,13 @@ export default function SitlView() {
               <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
-              <h3 className="text-sm font-medium text-content">Visual Simulator</h3>
+              <h3 className="text-sm font-medium text-content">{t('sitl.view.simulator.heading')}</h3>
             </div>
 
             {/* Simulator selection dropdown - temporarily disabled */}
             <div className="flex items-center gap-2">
               <span className="px-1.5 py-0.5 text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded">
-                Coming Soon
+                {t('sitl.view.simulator.coming-soon')}
               </span>
               <select
                 value="none"
@@ -428,8 +435,8 @@ export default function SitlView() {
                 disabled={true}
                 className="px-2 py-1 text-xs bg-surface-raised text-content border border rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="none">None</option>
-                <option value="xplane">X-Plane (Recommended)</option>
+                <option value="none">{t('sitl.view.simulator.none')}</option>
+                <option value="xplane">{t('sitl.view.simulator.xplane-recommended')}</option>
                 <option value="flightgear">FlightGear</option>
               </select>
             </div>
@@ -451,12 +458,12 @@ export default function SitlView() {
                         <div className={`w-2 h-2 rounded-full ${isInstalled ? 'bg-green-400' : 'bg-amber-400'}`} />
                         <span className="text-xs text-content-secondary">
                           {isInstalled ? (
-                            <>X-Plane detected{xplane?.version ? ` (v${xplane.version})` : ''}</>
+                            <>{t('sitl.view.xplane.detected')}{xplane?.version ? ` (v${xplane.version})` : ''}</>
                           ) : (
                             <>
-                              X-Plane not found.{' '}
+                              {t('sitl.view.xplane.not-found')}{' '}
                               <a href="https://www.x-plane.com/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
-                                Get X-Plane
+                                {t('sitl.view.xplane.get')}
                               </a>
                             </>
                           )}
@@ -464,11 +471,11 @@ export default function SitlView() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={browseXPlane} disabled={isRunning} className="px-2 py-1 text-xs text-content bg-surface-raised hover:bg-surface-raised border border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                          Browse...
+                          {t('sitl.view.action.browse')}
                         </button>
                         {customXPlanePath && (
                           <button onClick={() => setCustomXPlanePath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            Clear
+                            {t('sitl.view.action.clear')}
                           </button>
                         )}
                       </div>
@@ -476,18 +483,18 @@ export default function SitlView() {
 
                     {customXPlanePath && (
                       <div className="mb-3 px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
-                        <span className="text-blue-400">Custom path:</span>{' '}
+                        <span className="text-blue-400">{t('sitl.view.custom-path')}</span>{' '}
                         <span className="font-mono text-blue-200 break-all">{customXPlanePath}</span>
                       </div>
                     )}
 
                     {/* X-Plane setup instructions */}
                     <div className="p-3 bg-surface border border rounded text-xs text-content-secondary mb-3">
-                      <div className="font-medium text-content mb-2">X-Plane Setup:</div>
+                      <div className="font-medium text-content mb-2">{t('sitl.view.xplane.setup-heading')}</div>
                       <ol className="list-decimal list-inside space-y-1">
-                        <li>Settings → Data Output → enable network output</li>
-                        <li>Send to: <span className="font-mono text-blue-300">127.0.0.1:49000</span></li>
-                        <li>Enable: Speeds, Pitch/Roll/Heading, Lat/Lon/Alt</li>
+                        <li>{t('sitl.view.xplane.step-output')}</li>
+                        <li>{t('sitl.view.xplane.step-send-to')} <span className="font-mono text-blue-300">127.0.0.1:49000</span></li>
+                        <li>{t('sitl.view.xplane.step-enable')}</li>
                       </ol>
                     </div>
 
@@ -495,7 +502,7 @@ export default function SitlView() {
                     {(isXPlaneRunning || isXPlaneStarting) && (
                       <div className="flex items-center gap-2 mb-3">
                         <div className={`w-2 h-2 rounded-full ${isXPlaneRunning ? 'bg-green-400' : 'bg-amber-400'}`} />
-                        <span className="text-xs text-content-secondary">{isXPlaneStarting ? 'Starting X-Plane...' : 'X-Plane Running'}</span>
+                        <span className="text-xs text-content-secondary">{isXPlaneStarting ? t('sitl.view.xplane.starting') : t('sitl.view.xplane.running')}</span>
                       </div>
                     )}
                   </>
@@ -515,12 +522,12 @@ export default function SitlView() {
                         <div className={`w-2 h-2 rounded-full ${isInstalled ? 'bg-green-400' : 'bg-amber-400'}`} />
                         <span className="text-xs text-content-secondary">
                           {isInstalled ? (
-                            <>FlightGear detected{flightGear?.path ? ` at ${flightGear.path}` : ''}</>
+                            <>{t('sitl.view.flightgear.detected')}{flightGear?.path ? ` at ${flightGear.path}` : ''}</>
                           ) : (
                             <>
-                              FlightGear not found.{' '}
+                              {t('sitl.view.flightgear.not-found')}{' '}
                               <a href="https://www.flightgear.org/download/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
-                                Download here
+                                {t('sitl.view.flightgear.download')}
                               </a>
                             </>
                           )}
@@ -528,11 +535,11 @@ export default function SitlView() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={browseFlightGear} disabled={isRunning} className="px-2 py-1 text-xs text-content bg-surface-raised hover:bg-surface-raised border border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                          Browse...
+                          {t('sitl.view.action.browse')}
                         </button>
                         {customFlightGearPath && (
                           <button onClick={() => setCustomFlightGearPath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            Clear
+                            {t('sitl.view.action.clear')}
                           </button>
                         )}
                       </div>
@@ -540,7 +547,7 @@ export default function SitlView() {
 
                     {customFlightGearPath && (
                       <div className="mb-3 px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
-                        <span className="text-blue-400">Custom path:</span>{' '}
+                        <span className="text-blue-400">{t('sitl.view.custom-path')}</span>{' '}
                         <span className="font-mono text-blue-200 break-all">{customFlightGearPath}</span>
                       </div>
                     )}
@@ -549,34 +556,34 @@ export default function SitlView() {
                     {isInstalled && (
                       <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle">
                         <div>
-                          <label className="block text-xs text-content-secondary mb-1">Aircraft</label>
+                          <label className="block text-xs text-content-secondary mb-1">{t('sitl.view.flightgear.aircraft')}</label>
                           <select value={flightGearConfig.aircraft} onChange={(e) => setFlightGearConfig({ aircraft: e.target.value })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-surface-raised text-content border border rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
                             {AIRCRAFT_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs text-content-secondary mb-1">Airport</label>
+                          <label className="block text-xs text-content-secondary mb-1">{t('sitl.view.flightgear.airport')}</label>
                           <select value={flightGearConfig.airport} onChange={(e) => setFlightGearConfig({ airport: e.target.value })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-surface-raised text-content border border rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
-                            {AIRPORT_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                            {AIRPORT_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{sText(t, opt.labelKey, opt.label)}</option>))}
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs text-content-secondary mb-1">Time of Day</label>
+                          <label className="block text-xs text-content-secondary mb-1">{t('sitl.view.flightgear.time-of-day')}</label>
                           <select value={flightGearConfig.timeOfDay} onChange={(e) => setFlightGearConfig({ timeOfDay: e.target.value as typeof flightGearConfig.timeOfDay })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-surface-raised text-content border border rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
-                            <option value="dawn">Dawn</option>
-                            <option value="morning">Morning</option>
-                            <option value="noon">Noon</option>
-                            <option value="afternoon">Afternoon</option>
-                            <option value="dusk">Dusk</option>
-                            <option value="night">Night</option>
+                            <option value="dawn">{t('sitl.view.flightgear.time.dawn')}</option>
+                            <option value="morning">{t('sitl.view.flightgear.time.morning')}</option>
+                            <option value="noon">{t('sitl.view.flightgear.time.noon')}</option>
+                            <option value="afternoon">{t('sitl.view.flightgear.time.afternoon')}</option>
+                            <option value="dusk">{t('sitl.view.flightgear.time.dusk')}</option>
+                            <option value="night">{t('sitl.view.flightgear.time.night')}</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs text-content-secondary mb-1">Weather</label>
+                          <label className="block text-xs text-content-secondary mb-1">{t('sitl.view.flightgear.weather')}</label>
                           <select value={flightGearConfig.weather} onChange={(e) => setFlightGearConfig({ weather: e.target.value as typeof flightGearConfig.weather })} disabled={isRunning} className="w-full px-2 py-1.5 text-xs bg-surface-raised text-content border border rounded focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50">
-                            <option value="clear">Clear</option>
-                            <option value="cloudy">Cloudy</option>
-                            <option value="rain">Rain</option>
+                            <option value="clear">{t('sitl.view.flightgear.weather.clear')}</option>
+                            <option value="cloudy">{t('sitl.view.flightgear.weather.cloudy')}</option>
+                            <option value="rain">{t('sitl.view.flightgear.weather.rain')}</option>
                           </select>
                         </div>
                       </div>
@@ -591,7 +598,7 @@ export default function SitlView() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${isBridgeRunning ? 'bg-green-400' : 'bg-zinc-500'}`} />
-                          <span className="text-xs text-content-secondary">Bridge</span>
+                          <span className="text-xs text-content-secondary">{t('sitl.view.flightgear.bridge')}</span>
                         </div>
                       </div>
                     )}
@@ -610,12 +617,12 @@ export default function SitlView() {
 
           {/* Help text */}
           <div className="mt-3 pt-3 border-t border-subtle text-xs text-content-tertiary">
-            <span className="text-content-secondary">What's this?</span>{' '}
+            <span className="text-content-secondary">{t('sitl.view.help.title')}</span>{' '}
             {selectedSimulator === 'xplane'
-              ? 'X-Plane connects directly to iNav SITL for realistic flight physics.'
+              ? t('sitl.view.help.xplane')
               : selectedSimulator === 'flightgear'
-              ? 'FlightGear provides free visual simulation via a protocol bridge.'
-              : 'Select a visual simulator to see your aircraft fly in 3D.'}
+              ? t('sitl.view.help.flightgear')
+              : t('sitl.view.help.default')}
           </div>
         </div>
 
@@ -627,19 +634,18 @@ export default function SitlView() {
                 <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <h3 className="text-sm font-medium text-content">Virtual RC Control</h3>
+                <h3 className="text-sm font-medium text-content">{t('sitl.view.rc.heading')}</h3>
               </div>
               <button
                 onClick={resetVirtualRC}
                 className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors"
               >
-                Reset
+                {t('sitl.view.action.reset')}
               </button>
             </div>
 
             <div className="text-xs text-content-secondary mb-3">
-              When using <code className="px-1 py-0.5 bg-surface-raised rounded text-content-secondary">receiver_type = SIM</code>,
-              control RC inputs here. Set AUX4 high to arm.
+              {t('sitl.view.rc.sim-intro-before')} <code className="px-1 py-0.5 bg-surface-raised rounded text-content-secondary">receiver_type = SIM</code>{t('sitl.view.rc.sim-intro-after')}
             </div>
 
             {/* Main sticks */}
@@ -647,7 +653,7 @@ export default function SitlView() {
               {/* Throttle */}
               <div>
                 <label className="block text-xs text-content-secondary mb-1">
-                  Throttle <span className="text-content-tertiary">{normalizedToPWM(virtualRC.throttle)}</span>
+                  {t('sitl.view.rc.throttle')} <span className="text-content-tertiary">{normalizedToPWM(virtualRC.throttle)}</span>
                 </label>
                 <input
                   type="range"
@@ -662,7 +668,7 @@ export default function SitlView() {
               {/* Roll */}
               <div>
                 <label className="block text-xs text-content-secondary mb-1">
-                  Roll <span className="text-content-tertiary">{normalizedToPWM(virtualRC.roll)}</span>
+                  {t('sitl.view.rc.roll')} <span className="text-content-tertiary">{normalizedToPWM(virtualRC.roll)}</span>
                 </label>
                 <input
                   type="range"
@@ -677,7 +683,7 @@ export default function SitlView() {
               {/* Pitch */}
               <div>
                 <label className="block text-xs text-content-secondary mb-1">
-                  Pitch <span className="text-content-tertiary">{normalizedToPWM(virtualRC.pitch)}</span>
+                  {t('sitl.view.rc.pitch')} <span className="text-content-tertiary">{normalizedToPWM(virtualRC.pitch)}</span>
                 </label>
                 <input
                   type="range"
@@ -692,7 +698,7 @@ export default function SitlView() {
               {/* Yaw */}
               <div>
                 <label className="block text-xs text-content-secondary mb-1">
-                  Yaw <span className="text-content-tertiary">{normalizedToPWM(virtualRC.yaw)}</span>
+                  {t('sitl.view.rc.yaw')} <span className="text-content-tertiary">{normalizedToPWM(virtualRC.yaw)}</span>
                 </label>
                 <input
                   type="range"
@@ -756,7 +762,7 @@ export default function SitlView() {
               {/* AUX4 (ARM) - highlighted */}
               <div>
                 <label className="block text-xs text-amber-400 font-medium mb-1">
-                  AUX4 (ARM) <span className="text-amber-500">{normalizedToPWM(virtualRC.aux4)}</span>
+                  {t('sitl.view.rc.aux4-arm')} <span className="text-amber-500">{normalizedToPWM(virtualRC.aux4)}</span>
                 </label>
                 <input
                   type="range"
@@ -781,7 +787,7 @@ export default function SitlView() {
                 }}
                 className="w-full py-2 text-sm font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
               >
-                Set ARM (AUX4 High + Throttle Low)
+                {t('sitl.view.rc.set-arm')}
               </button>
             </div>
 
@@ -789,9 +795,9 @@ export default function SitlView() {
             <div className="mt-3 pt-3 border-t border-subtle">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-medium text-content">GPS MSP Sender</div>
+                  <div className="text-xs font-medium text-content">{t('sitl.view.rc.gps-sender')}</div>
                   <div className="text-xs text-content-secondary">
-                    Send FlightGear position via MSP (set <code className="px-1 bg-surface-raised rounded">gps_provider = MSP</code>)
+                    {t('sitl.view.rc.gps-sender-help-before')} <code className="px-1 bg-surface-raised rounded">gps_provider = MSP</code>{t('sitl.view.rc.gps-sender-help-after')}
                   </div>
                 </div>
                 <button
@@ -827,8 +833,8 @@ export default function SitlView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="text-sm text-blue-300">
-              <span className="font-medium">SITL is running!</span>{' '}
-              Connect via TCP in the sidebar - <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:5760</code>
+              <span className="font-medium">{t('sitl.view.hint.running-title')}</span>{' '}
+              {t('sitl.view.hint.connect-before')} <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:5760</code>
             </div>
           </div>
         )}
@@ -846,7 +852,7 @@ export default function SitlView() {
         {/* Output log */}
         <div className="flex-1 flex flex-col overflow-hidden bg-surface-input border border-subtle rounded-lg">
           <div className="flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface-input">
-            <span className="text-xs font-medium text-content-secondary">Console Output</span>
+            <span className="text-xs font-medium text-content-secondary">{t('sitl.view.output.heading')}</span>
             <div className="flex items-center gap-2">
               {lastCommand && (
                 <span className="text-xs text-content-secondary font-mono truncate max-w-md" title={lastCommand}>
@@ -857,9 +863,9 @@ export default function SitlView() {
                 onClick={clearOutput}
                 disabled={output.length === 0}
                 className="px-2 py-1 text-xs text-content-secondary hover:text-content transition-colors disabled:opacity-50"
-                title="Clear output"
+                title={t('sitl.view.output.clear-tooltip')}
               >
-                Clear
+                {t('sitl.view.output.clear')}
               </button>
             </div>
           </div>
@@ -869,7 +875,7 @@ export default function SitlView() {
           >
             {output.length === 0 ? (
               <div className="text-content-tertiary italic">
-                No output yet. Start SITL to see process output.
+                {t('sitl.view.output.empty')}
               </div>
             ) : (
               output.map((line, idx) => {
@@ -908,19 +914,19 @@ export default function SitlView() {
       {showNewProfile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-surface-input border border rounded-xl p-6 w-[420px] shadow-xl">
-            <h3 className="text-lg font-semibold text-content mb-1">Create New Profile</h3>
+            <h3 className="text-lg font-semibold text-content mb-1">{t('sitl.view.new-profile.title')}</h3>
             <p className="text-xs text-content-secondary mb-4">
-              Each profile has its own EEPROM file for storing your FC configuration.
+              {t('sitl.view.new-profile.description')}
             </p>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-sm text-content-secondary mb-1">Profile Name</label>
+                <label className="block text-sm text-content-secondary mb-1">{t('sitl.view.new-profile.name')}</label>
                 <input
                   type="text"
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
-                  placeholder="e.g., My Quad Setup"
+                  placeholder={t('sitl.view.new-profile.name-placeholder')}
                   className="w-full px-3 py-2 bg-surface-raised text-content border border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   autoFocus
                   onKeyDown={(e) => {
@@ -931,12 +937,12 @@ export default function SitlView() {
               </div>
 
               <div>
-                <label className="block text-sm text-content-secondary mb-1">Description (optional)</label>
+                <label className="block text-sm text-content-secondary mb-1">{t('sitl.view.new-profile.desc')}</label>
                 <input
                   type="text"
                   value={newProfileDesc}
                   onChange={(e) => setNewProfileDesc(e.target.value)}
-                  placeholder="e.g., Testing GPS rescue settings"
+                  placeholder={t('sitl.view.new-profile.desc-placeholder')}
                   className="w-full px-3 py-2 bg-surface-raised text-content border border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCreateProfile();
@@ -955,14 +961,14 @@ export default function SitlView() {
                 }}
                 className="px-4 py-2 text-sm text-content-secondary hover:text-content transition-colors"
               >
-                Cancel
+                {t('sitl.view.action.cancel')}
               </button>
               <button
                 onClick={handleCreateProfile}
                 disabled={!newProfileName.trim()}
                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors disabled:opacity-50"
               >
-                Create Profile
+                {t('sitl.view.new-profile.submit')}
               </button>
             </div>
           </div>
@@ -973,23 +979,22 @@ export default function SitlView() {
       {showDeleteConfirm && currentProfile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-surface-input border border rounded-xl p-6 w-96 shadow-xl">
-            <h3 className="text-lg font-semibold text-content mb-2">Delete Profile</h3>
+            <h3 className="text-lg font-semibold text-content mb-2">{t('sitl.view.delete.title')}</h3>
             <p className="text-sm text-content-secondary mb-4">
-              Are you sure you want to delete "<span className="text-content">{currentProfile.name}</span>"?
-              This will also delete the EEPROM file with all your saved configuration.
+              {t('sitl.view.delete.confirm-before')}<span className="text-content">{currentProfile.name}</span>{t('sitl.view.delete.confirm-after')}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-4 py-2 text-sm text-content-secondary hover:text-content transition-colors"
               >
-                Cancel
+                {t('sitl.view.action.cancel')}
               </button>
               <button
                 onClick={handleDeleteProfile}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
               >
-                Delete
+                {t('sitl.view.action.delete')}
               </button>
             </div>
           </div>

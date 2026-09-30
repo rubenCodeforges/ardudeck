@@ -5,6 +5,7 @@
  * Parsing is live so mistakes are visible before anything lands on the map.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { MapPin, X, Check } from 'lucide-react';
 import { parseSurveyedPoints } from './rtk-points';
@@ -23,6 +24,7 @@ export function SurveyedPointsDialog({
   onClose: () => void;
   showToast?: (msg: string, kind: 'success' | 'error') => void;
 }): JSX.Element {
+  const { t } = useTranslation('mission');
   const addSurveyedPoints = useGuideStore((s) => s.addSurveyedPoints);
   const [text, setText] = useState('');
   const [name, setName] = useState('');
@@ -56,7 +58,7 @@ export function SurveyedPointsDialog({
             <MapPin className="w-4 h-4 text-teal-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-content">Surveyed points</h3>
+            <h3 className="text-sm font-semibold text-content">{t('surveyedPoints.heading')}</h3>
             <p className="text-[11px] text-content-tertiary">
               Paste RTK measurements - one point per line, latitude first.
             </p>
@@ -97,7 +99,7 @@ export function SurveyedPointsDialog({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Name (optional, e.g. Field boundary north)"
+            placeholder={t('surveyedPoints.namePlaceholder')}
             className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-xs text-content focus:outline-none focus:border-teal-500"
           />
 
@@ -111,7 +113,7 @@ export function SurveyedPointsDialog({
               }`}
             >
               Markers
-              <span className="block text-[10px] opacity-70 font-normal">numbered pins on the map</span>
+              <span className="block text-[10px] opacity-70 font-normal">{t('surveyedPoints.numberedPins')}</span>
             </button>
             <button
               onClick={() => setConnect(true)}
@@ -122,7 +124,7 @@ export function SurveyedPointsDialog({
               }`}
             >
               Connected polygon
-              <span className="block text-[10px] opacity-70 font-normal">outline in measurement order, plan surveys from it</span>
+              <span className="block text-[10px] opacity-70 font-normal">{t('surveyedPoints.outlineInOrder')}</span>
             </button>
           </div>
         </div>

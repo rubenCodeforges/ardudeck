@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSigningStore, initSigningListener } from '../../stores/signing-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { SecureLinkCompliance } from './SecureLinkCompliance';
 
 export function SigningSection() {
+  const { t } = useTranslation('settings');
   const { connectionState } = useConnectionStore();
   const {
     enabled,
@@ -101,7 +103,7 @@ export function SigningSection() {
           </svg>
         </div>
         <div>
-          <h3 className="text-sm font-medium text-content">MAVLink Signing</h3>
+          <h3 className="text-sm font-medium text-content">{t('signing.heading')}</h3>
           <p className="text-xs text-content-secondary">
             Prevent unauthorized access to your vehicle
           </p>
@@ -143,7 +145,7 @@ export function SigningSection() {
       {/* Key mismatch warning */}
       {!isV1Only && keyMismatch && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
-          <p className="text-xs text-red-400 font-medium mb-1">Signing key mismatch</p>
+          <p className="text-xs text-red-400 font-medium mb-1">{t('signing.mismatchHeading')}</p>
           <p className="text-xs text-content-secondary">
             Your signing key doesn't match the vehicle/proxy key. Paste the base64 key the vehicle was
             set up with, or enter the same passphrase used on the proxy.
@@ -169,12 +171,12 @@ export function SigningSection() {
         <div className={`rounded-lg border p-3 ${hasKey ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-subtle bg-surface'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <StepIndicator step={1} done={hasKey} active={!hasKey} />
-            <span className="text-xs font-medium text-content">Set signing passphrase</span>
+            <span className="text-xs font-medium text-content">{t('signing.passphraseHeading')}</span>
           </div>
           <div className="ml-7">
             {hasKey && keyBase64 && (
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] text-content-secondary">Key:</span>
+                <span className="text-[10px] text-content-secondary">{t('signing.keyLabel')}</span>
                 <code className="text-[10px] font-mono text-content-secondary bg-surface-raised px-1.5 py-0.5 rounded max-w-[220px] truncate" title={keyBase64}>
                   {keyBase64}
                 </code>
@@ -186,7 +188,7 @@ export function SigningSection() {
                     setTimeout(() => setKeyCopied(false), 2000);
                   }}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors shrink-0"
-                  title="Copy key (Base64 - same format as Mission Planner)"
+                  title={t('signing.copyKeyTooltip')}
                 >
                   {keyCopied ? (
                     <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -280,7 +282,7 @@ export function SigningSection() {
         <div className={`rounded-lg border p-3 ${sentToFc ? 'border-emerald-500/20 bg-emerald-500/5' : !hasKey ? 'border-subtle bg-surface opacity-40' : 'border-subtle bg-surface'}`}>
           <div className="flex items-center gap-2.5">
             <StepIndicator step={2} done={sentToFc} active={hasKey && !sentToFc} />
-            <span className="text-xs font-medium text-content">Activate on flight controller</span>
+            <span className="text-xs font-medium text-content">{t('signing.activateHeading')}</span>
             {hasKey && (
               <button
                 onClick={handleSendToFc}
@@ -313,7 +315,7 @@ export function SigningSection() {
           {/* Pause/resume toggle */}
           <div className="flex items-center justify-between rounded-lg border border-subtle bg-surface px-3 py-2.5">
             <div>
-              <span className="text-xs font-medium text-content">Packet signing</span>
+              <span className="text-xs font-medium text-content">{t('signing.packetSigning')}</span>
               <p className="text-[10px] text-content-secondary mt-0.5">
                 {enabled ? 'All outgoing packets are signed with SHA-256' : 'Signing is paused. Outgoing packets are unsigned.'}
               </p>

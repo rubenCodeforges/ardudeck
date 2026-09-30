@@ -127,3 +127,4 @@ graphify-out/
 
 # Rust build artifacts (cargo target dirs, never committed)
 target/
+.npm-cache/

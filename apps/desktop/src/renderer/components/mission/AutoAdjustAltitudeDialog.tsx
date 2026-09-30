@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { Mountain, AlertTriangle, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { getElevations } from '../../utils/elevation-api';
@@ -75,6 +76,7 @@ export function AutoAdjustAltitudeDialog({
   onApply,
   onClose,
 }: AutoAdjustDialogProps) {
+  const { t } = useTranslation('mission');
   const [insertIntermediates, setInsertIntermediates] = useState(true);
   const [minSpacing, setMinSpacing] = useState(50);
   const [sampleStep, setSampleStep] = useState(25);
@@ -180,7 +182,7 @@ export function AutoAdjustAltitudeDialog({
             <Mountain className="w-4 h-4 text-amber-400" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-content leading-tight">Auto Adjust Altitude</h2>
+            <h2 className="text-base font-semibold text-content leading-tight">{t('autoAdjust.heading')}</h2>
             <p className="text-xs text-content-secondary mt-0.5">
               Keep the flight path {formatAltitudeFromMeters(safeBuffer, altitudeUnit)} above terrain
             </p>
@@ -198,7 +200,7 @@ export function AutoAdjustAltitudeDialog({
               className={`${checkboxClass} mt-0.5`}
             />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-content">Insert intermediate waypoints</div>
+              <div className="text-sm font-medium text-content">{t('autoAdjust.insertIntermediate')}</div>
               <p className="text-xs text-content-secondary mt-1">
                 Add waypoints where the straight line between two waypoints clips a ridge.
                 Otherwise only waypoints below the safe altitude are raised.
@@ -253,7 +255,7 @@ export function AutoAdjustAltitudeDialog({
             {loadingTerrain ? (
               <div className="flex items-center justify-center gap-2 text-xs text-content-secondary bg-surface rounded-lg px-3 py-5 border border-subtle">
                 <div className="w-3 h-3 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
-                <span>Analyzing terrain...</span>
+                <span>{t('autoAdjust.analyzingTerrain')}</span>
               </div>
             ) : terrainError ? (
               <div className="flex items-start gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-3">
@@ -263,7 +265,7 @@ export function AutoAdjustAltitudeDialog({
             ) : noChanges ? (
               <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-3">
                 <Check className="w-4 h-4 flex-shrink-0" />
-                <span>Flight path already clears terrain. No changes needed.</span>
+                <span>{t('autoAdjust.alreadyClears')}</span>
               </div>
             ) : preview ? (
               <div className="bg-surface border border-subtle rounded-lg overflow-hidden">
@@ -271,17 +273,17 @@ export function AutoAdjustAltitudeDialog({
                 <div className="grid grid-cols-3 divide-x divide-subtle border-b border-subtle">
                   <div className="px-3 py-2 text-center">
                     <div className="text-base font-semibold text-amber-500">{raiseCount}</div>
-                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">Raise</div>
+                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">{t('autoAdjust.raise')}</div>
                   </div>
                   <div className="px-3 py-2 text-center">
                     <div className="text-base font-semibold text-amber-500">{insertCount}</div>
-                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">Insert</div>
+                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">{t('autoAdjust.insert')}</div>
                   </div>
                   <div className="px-3 py-2 text-center">
                     <div className="text-base font-semibold text-content">
                       {waypoints.length}<span className="text-content-tertiary mx-1">→</span>{waypoints.length + insertCount}
                     </div>
-                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">Size</div>
+                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">{t('autoAdjust.size')}</div>
                   </div>
                 </div>
                 {/* Detail list */}

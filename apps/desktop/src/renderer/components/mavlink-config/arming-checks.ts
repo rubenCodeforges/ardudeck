@@ -21,7 +21,9 @@ export interface ArmingCheckBit {
   /** Bit index, identical in both parameters. */
   bit: number;
   name: string;
+  nameKey?: string;
   description: string;
+  descriptionKey?: string;
   /** Plane-only check, hidden elsewhere. */
   planeOnly?: boolean;
 }
@@ -29,25 +31,25 @@ export interface ArmingCheckBit {
 /** Bit list from AP_Arming's own documentation. Bit 0 was "all" on the old
  * parameter and has no equivalent on the new one. */
 export const ARMING_CHECK_BITS: ArmingCheckBit[] = [
-  { bit: 1, name: 'Barometer', description: 'Barometer health' },
-  { bit: 2, name: 'Compass', description: 'Compass health and calibration' },
-  { bit: 3, name: 'GPS lock', description: 'Position fix before arming' },
-  { bit: 4, name: 'INS', description: 'Accelerometer and gyro health' },
-  { bit: 5, name: 'Parameters', description: 'Parameter sanity' },
-  { bit: 6, name: 'RC channels', description: 'Receiver calibrated and present' },
-  { bit: 7, name: 'Board voltage', description: 'Autopilot supply within range' },
-  { bit: 8, name: 'Battery level', description: 'Pack above the arming threshold' },
-  { bit: 9, name: 'Airspeed', description: 'Airspeed sensor health', planeOnly: true },
-  { bit: 10, name: 'Logging', description: 'Logging is running (needs a card)' },
-  { bit: 11, name: 'Safety switch', description: 'Hardware safety switch released' },
-  { bit: 12, name: 'GPS configuration', description: 'Receiver configured as expected' },
-  { bit: 13, name: 'System', description: 'Overall system health' },
-  { bit: 14, name: 'Mission', description: 'Loaded mission is valid' },
-  { bit: 15, name: 'Rangefinder', description: 'Rangefinder health' },
-  { bit: 16, name: 'Camera', description: 'Camera and gimbal health' },
-  { bit: 17, name: 'AuxAuth', description: 'Authorisation from a companion computer' },
-  { bit: 18, name: 'Visual odometry', description: 'Visual odometry health' },
-  { bit: 19, name: 'FFT', description: 'In-flight FFT health' },
+  { bit: 1, name: 'Barometer', nameKey: 'mavlink.auto.barometer', description: 'Barometer health', descriptionKey: 'mavlink.auto.barometer-health' },
+  { bit: 2, name: 'Compass', nameKey: 'mavlink.auto.compass', description: 'Compass health and calibration', descriptionKey: 'mavlink.auto.compass-health-and-calibration' },
+  { bit: 3, name: 'GPS lock', nameKey: 'mavlink.auto.gps-lock', description: 'Position fix before arming', descriptionKey: 'mavlink.auto.position-fix-before-arming' },
+  { bit: 4, name: 'INS', description: 'Accelerometer and gyro health', descriptionKey: 'mavlink.auto.accelerometer-and-gyro-health' },
+  { bit: 5, name: 'Parameters', nameKey: 'mavlink.auto.parameters', description: 'Parameter sanity', descriptionKey: 'mavlink.auto.parameter-sanity' },
+  { bit: 6, name: 'RC channels', nameKey: 'mavlink.auto.rc-channels', description: 'Receiver calibrated and present', descriptionKey: 'mavlink.auto.receiver-calibrated-and-present' },
+  { bit: 7, name: 'Board voltage', nameKey: 'mavlink.auto.board-voltage', description: 'Autopilot supply within range', descriptionKey: 'mavlink.auto.autopilot-supply-within-range' },
+  { bit: 8, name: 'Battery level', nameKey: 'mavlink.auto.battery-level', description: 'Pack above the arming threshold', descriptionKey: 'mavlink.auto.pack-above-the-arming-threshold' },
+  { bit: 9, name: 'Airspeed', nameKey: 'mavlink.auto.airspeed', description: 'Airspeed sensor health', descriptionKey: 'mavlink.auto.airspeed-sensor-health', planeOnly: true },
+  { bit: 10, name: 'Logging', nameKey: 'mavlink.auto.logging', description: 'Logging is running (needs a card)', descriptionKey: 'mavlink.auto.logging-is-running-needs-a-card' },
+  { bit: 11, name: 'Safety switch', nameKey: 'mavlink.auto.safety-switch', description: 'Hardware safety switch released', descriptionKey: 'mavlink.auto.hardware-safety-switch-released' },
+  { bit: 12, name: 'GPS configuration', nameKey: 'mavlink.auto.gps-configuration', description: 'Receiver configured as expected', descriptionKey: 'mavlink.auto.receiver-configured-as-expected' },
+  { bit: 13, name: 'System', nameKey: 'mavlink.auto.system', description: 'Overall system health', descriptionKey: 'mavlink.auto.overall-system-health' },
+  { bit: 14, name: 'Mission', nameKey: 'mavlink.auto.mission', description: 'Loaded mission is valid', descriptionKey: 'mavlink.auto.loaded-mission-is-valid' },
+  { bit: 15, name: 'Rangefinder', nameKey: 'mavlink.auto.rangefinder', description: 'Rangefinder health', descriptionKey: 'mavlink.auto.rangefinder-health' },
+  { bit: 16, name: 'Camera', nameKey: 'mavlink.auto.camera', description: 'Camera and gimbal health', descriptionKey: 'mavlink.auto.camera-and-gimbal-health' },
+  { bit: 17, name: 'AuxAuth', nameKey: 'mavlink.auto.auxauth', description: 'Authorisation from a companion computer', descriptionKey: 'mavlink.auto.authorisation-from-a-companion-computer' },
+  { bit: 18, name: 'Visual odometry', nameKey: 'mavlink.auto.visual-odometry', description: 'Visual odometry health', descriptionKey: 'mavlink.auto.visual-odometry-health' },
+  { bit: 19, name: 'FFT', description: 'In-flight FFT health', descriptionKey: 'mavlink.auto.in-flight-fft-health' },
 ];
 
 /** Which parameter this board speaks. SKIPCHK wins when both are present, as

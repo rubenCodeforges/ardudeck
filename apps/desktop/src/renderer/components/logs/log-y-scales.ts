@@ -21,6 +21,19 @@ export const Y_MODE_TIP: Record<YMode, string> = {
   field: 'Every field on its own auto-scaled axis, for comparing shapes rather than values. Click to group by unit again.',
 };
 
+/** i18n keys for the two maps above; consumers resolve them with the literal as fallback. */
+export const Y_MODE_LABEL_KEY: Record<YMode, string> = {
+  unit: 'logs.yMode.label.unit',
+  shared: 'logs.yMode.label.shared',
+  field: 'logs.yMode.label.field',
+};
+
+export const Y_MODE_TIP_KEY: Record<YMode, string> = {
+  unit: 'logs.yMode.tip.unit',
+  shared: 'logs.yMode.tip.shared',
+  field: 'logs.yMode.tip.field',
+};
+
 /** Unit suffix the log's UNIT records leave on a series label, e.g. "Alt (m)". */
 export function unitOfLabel(label: string): string | undefined {
   return /\(([^()]+)\)$/.exec(label)?.[1];

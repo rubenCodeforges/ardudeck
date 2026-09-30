@@ -1,6 +1,50 @@
-import type { FeatureTour } from './types';
+import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { FeatureTour, FeatureTourStep } from './types';
 import { useParameterStore } from '../stores/parameter-store';
 import { hasDualVtolControllers } from '../components/mavlink-config/mavlink-pid-schemes';
+
+/**
+ * The registry data model lives in `./types` and is owned by the parent
+ * migration, so the optional `*Key` members are declared here as a structural
+ * extension: every entry still satisfies `FeatureTour`, and consumers that want
+ * the keys can take `LocalizedFeatureTour` (or just read `tour.titleKey`).
+ */
+export type LocalizedFeatureTourStep = FeatureTourStep & {
+  /** Key under `tours.*` for the step heading; the English literal is the JSX `content`. */
+  titleKey?: string;
+  /** Key under `tours.*` for the step body. Multi-paragraph bodies join paragraphs with a blank line (`\n\n`). */
+  bodyKey?: string;
+};
+
+export type LocalizedFeatureTour = Omit<FeatureTour, 'steps'> & {
+  /** Key under `tours.*` for the prompt title. */
+  titleKey?: string;
+  /** Key under `tours.*` for the prompt blurb. */
+  blurbKey?: string;
+  steps: LocalizedFeatureTourStep[];
+};
+
+/** Prefer the i18n key; falls back to the literal. */
+export function trText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+
+/**
+ * Bound resolver for consumers (TourPrompt renders `tour.title` / `tour.blurb`,
+ * ActiveTour renders each step's `content`). Use it from a component and pass the
+ * registry's `*Key` together with its literal fallback:
+ *
+ *   const tr = useTourText();
+ *   <h2>{tr(tour.titleKey, tour.title)}</h2>
+ *
+ * Step bodies are plain text in the catalog (inline `<strong>` emphasis is not
+ * carried), so render them as translated text rather than the original JSX.
+ */
+export function useTourText(): (key: string | undefined, fallback: string) => string {
+  const { t } = useTranslation('views');
+  return useCallback((key: string | undefined, fallback: string) => trText(t, key, fallback), [t]);
+}
 
 // Feature tours are the per-release "what's new" walkthroughs. They are NOT
 // version-gated at runtime (TourManager shows any registry tour the user hasn't
@@ -11,9 +55,11 @@ import { hasDualVtolControllers } from '../components/mavlink-config/mavlink-pid
 // yet), so a tour degrades gracefully instead of pointing at nothing.
 const present = (selector: string) => () => !!document.querySelector(selector);
 
-export const FEATURE_TOURS: FeatureTour[] = [
+export const FEATURE_TOURS: LocalizedFeatureTour[] = [
   {
     id: 'mission-planning-alpha32',
+    titleKey: 'tours.mission-planning-alpha32.title',
+    blurbKey: 'tours.mission-planning-alpha32.blurb',
     view: 'mission',
     version: '0.0.32',
     title: 'Mission planning, leveled up',
@@ -23,6 +69,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-group"]',
         predicate: present('[data-tour="mission-group"]'),
+        titleKey: 'tours.mission-planning-alpha32.steps.mission-group.title',
+        bodyKey: 'tours.mission-planning-alpha32.steps.mission-group.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Missions are organized into groups</div>
@@ -38,6 +86,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-survey"]',
         predicate: present('[data-tour="mission-survey"]'),
+        titleKey: 'tours.mission-planning-alpha32.steps.mission-survey.title',
+        bodyKey: 'tours.mission-planning-alpha32.steps.mission-survey.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Corridor surveys</div>
@@ -53,6 +103,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-survey"]',
         predicate: present('[data-tour="mission-survey"]'),
+        titleKey: 'tours.mission-planning-alpha32.steps.mission-survey-2.title',
+        bodyKey: 'tours.mission-planning-alpha32.steps.mission-survey-2.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Smarter area surveys</div>
@@ -68,6 +120,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-import"]',
         predicate: present('[data-tour="mission-import"]'),
+        titleKey: 'tours.mission-planning-alpha32.steps.mission-import.title',
+        bodyKey: 'tours.mission-planning-alpha32.steps.mission-import.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Import an area from GIS</div>
@@ -82,6 +136,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-export"]',
         predicate: present('[data-tour="mission-export"]'),
+        titleKey: 'tours.mission-planning-alpha32.steps.mission-export.title',
+        bodyKey: 'tours.mission-planning-alpha32.steps.mission-export.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Export in any format</div>
@@ -96,6 +152,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-history"]',
         predicate: present('[data-tour="mission-history"]'),
+        titleKey: 'tours.mission-planning-alpha32.steps.mission-history.title',
+        bodyKey: 'tours.mission-planning-alpha32.steps.mission-history.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Undo, redo and crash recovery</div>
@@ -111,6 +169,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'vtol-dual-controller-tuning-alpha32',
+    titleKey: 'tours.vtol-dual-controller-tuning-alpha32.title',
+    blurbKey: 'tours.vtol-dual-controller-tuning-alpha32.blurb',
     view: 'parameters',
     version: '0.0.32',
     title: 'Tune VTOL and fixed-wing separately',
@@ -122,6 +182,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="tuning-vtol-toggle"]',
         predicate: present('[data-tour="tuning-vtol-toggle"]'),
+        titleKey: 'tours.vtol-dual-controller-tuning-alpha32.steps.tuning-vtol-toggle.title',
+        bodyKey: 'tours.vtol-dual-controller-tuning-alpha32.steps.tuning-vtol-toggle.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Two controllers, one autopilot</div>
@@ -144,6 +206,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'flight-info-alpha32-5',
+    titleKey: 'tours.flight-info-alpha32-5.title',
+    blurbKey: 'tours.flight-info-alpha32-5.blurb',
     view: 'mission',
     version: '0.0.32.5',
     title: 'New: the Flight Info briefing',
@@ -156,6 +220,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
         // MissionPlanningView), and mutationObservables lets the highlight snap
         // to it once dockview mounts the panel content.
         mutationObservables: ['[data-tour="flight-info-panel"]'],
+        titleKey: 'tours.flight-info-alpha32-5.steps.flight-info-panel.title',
+        bodyKey: 'tours.flight-info-alpha32-5.steps.flight-info-panel.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Brief the flight before you fly it</div>
@@ -177,6 +243,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'quick-launch-033',
+    titleKey: 'tours.quick-launch-033.title',
+    blurbKey: 'tours.quick-launch-033.blurb',
     view: 'telemetry',
     version: '0.33',
     title: 'New: Quick Launch & the Area Editor',
@@ -187,6 +255,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
         selector: '[data-tour="welcome-cards"]',
         // Only shown on the disconnected welcome screen; skipped once connected.
         predicate: present('[data-tour="welcome-cards"]'),
+        titleKey: 'tours.quick-launch-033.steps.welcome-cards.title',
+        bodyKey: 'tours.quick-launch-033.steps.welcome-cards.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Jump straight into a tool</div>
@@ -202,6 +272,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="quick-launch"]',
         predicate: present('[data-tour="quick-launch"]'),
+        titleKey: 'tours.quick-launch-033.steps.quick-launch.title',
+        bodyKey: 'tours.quick-launch-033.steps.quick-launch.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Quick Launch - tools in their own window</div>
@@ -216,6 +288,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="quick-launch"]',
         predicate: present('[data-tour="quick-launch"]'),
+        titleKey: 'tours.quick-launch-033.steps.quick-launch-2.title',
+        bodyKey: 'tours.quick-launch-033.steps.quick-launch-2.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Meet the Area Editor</div>
@@ -233,6 +307,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'rtk-ntrip-034',
+    titleKey: 'tours.rtk-ntrip-034.title',
+    blurbKey: 'tours.rtk-ntrip-034.blurb',
     view: 'telemetry',
     version: '0.1.0',
     title: 'New: RTK corrections over NTRIP',
@@ -242,6 +318,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="add-panel"]',
         predicate: present('[data-tour="add-panel"]'),
+        titleKey: 'tours.rtk-ntrip-034.steps.add-panel.title',
+        bodyKey: 'tours.rtk-ntrip-034.steps.add-panel.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">RTK / NTRIP panel</div>
@@ -260,6 +338,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'multi-vehicle-beta1',
+    titleKey: 'tours.multi-vehicle-beta1.title',
+    blurbKey: 'tours.multi-vehicle-beta1.blurb',
     view: 'telemetry',
     version: '0.1.0',
     title: 'New: fly a whole fleet',
@@ -269,6 +349,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="connection-multi-tab"]',
         predicate: present('[data-tour="connection-multi-tab"]'),
+        titleKey: 'tours.multi-vehicle-beta1.steps.connection-multi-tab.title',
+        bodyKey: 'tours.multi-vehicle-beta1.steps.connection-multi-tab.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Multi-vehicle mode</div>
@@ -286,6 +368,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'log-explorer-beta1',
+    titleKey: 'tours.log-explorer-beta1.title',
+    blurbKey: 'tours.log-explorer-beta1.blurb',
     view: 'logs',
     version: '0.1.0',
     title: 'Log Explorer, rebuilt',
@@ -295,6 +379,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="log-field-picker"]',
         predicate: present('[data-tour="log-field-picker"]'),
+        titleKey: 'tours.log-explorer-beta1.steps.log-field-picker.title',
+        bodyKey: 'tours.log-explorer-beta1.steps.log-field-picker.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Pick any recorded field</div>
@@ -310,6 +396,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="log-chart-actions"]',
         predicate: present('[data-tour="log-chart-actions"]'),
+        titleKey: 'tours.log-explorer-beta1.steps.log-chart-actions.title',
+        bodyKey: 'tours.log-explorer-beta1.steps.log-chart-actions.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Independent axes, live stats, CSV</div>
@@ -326,6 +414,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'osd-tool-beta1',
+    titleKey: 'tours.osd-tool-beta1.title',
+    blurbKey: 'tours.osd-tool-beta1.blurb',
     view: 'osd',
     version: '0.1.0',
     title: 'OSD Tool: know where your overlay lives',
@@ -335,6 +425,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="osd-destination-bar"]',
         predicate: present('[data-tour="osd-destination-bar"]'),
+        titleKey: 'tours.osd-tool-beta1.steps.osd-destination-bar.title',
+        bodyKey: 'tours.osd-tool-beta1.steps.osd-destination-bar.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Three OSDs, three destinations</div>
@@ -352,6 +444,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'unit-preferences-beta1',
+    titleKey: 'tours.unit-preferences-beta1.title',
+    blurbKey: 'tours.unit-preferences-beta1.blurb',
     view: 'settings',
     version: '0.1.0',
     title: 'Plan in your own units',
@@ -360,6 +454,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="unit-preferences"]',
         predicate: present('[data-tour="unit-preferences"]'),
+        titleKey: 'tours.unit-preferences-beta1.steps.unit-preferences.title',
+        bodyKey: 'tours.unit-preferences-beta1.steps.unit-preferences.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Display Units</div>
@@ -376,6 +472,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'altitude-planning-beta1',
+    titleKey: 'tours.altitude-planning-beta1.title',
+    blurbKey: 'tours.altitude-planning-beta1.blurb',
     view: 'mission',
     version: '0.1.0',
     title: 'Altitude profile that understands frames',
@@ -385,6 +483,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="mission-altitude-panel"]',
         predicate: present('[data-tour="mission-altitude-panel"]'),
+        titleKey: 'tours.altitude-planning-beta1.steps.mission-altitude-panel.title',
+        bodyKey: 'tours.altitude-planning-beta1.steps.mission-altitude-panel.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Altitude, in the frame you planned it</div>
@@ -404,6 +504,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
   {
     id: 'radio-hud-beta1',
+    titleKey: 'tours.radio-hud-beta1.title',
+    blurbKey: 'tours.radio-hud-beta1.blurb',
     view: 'radio-hud',
     version: '0.1.0',
     title: 'Your radio becomes a mini GCS',
@@ -413,6 +515,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="hud-model"]',
         predicate: present('[data-tour="hud-model"]'),
+        titleKey: 'tours.radio-hud-beta1.steps.hud-model.title',
+        bodyKey: 'tours.radio-hud-beta1.steps.hud-model.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Pick your radio</div>
@@ -427,6 +531,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="hud-edit"]',
         predicate: present('[data-tour="hud-edit"]'),
+        titleKey: 'tours.radio-hud-beta1.steps.hud-edit.title',
+        bodyKey: 'tours.radio-hud-beta1.steps.hud-edit.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Make the screen yours</div>
@@ -441,6 +547,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="hud-config"]',
         predicate: present('[data-tour="hud-config"]'),
+        titleKey: 'tours.radio-hud-beta1.steps.hud-config.title',
+        bodyKey: 'tours.radio-hud-beta1.steps.hud-config.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Zero-config by default</div>
@@ -455,6 +563,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="hud-maps"]',
         predicate: present('[data-tour="hud-maps"]'),
+        titleKey: 'tours.radio-hud-beta1.steps.hud-maps.title',
+        bodyKey: 'tours.radio-hud-beta1.steps.hud-maps.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">Offline maps on the radio</div>
@@ -469,6 +579,8 @@ export const FEATURE_TOURS: FeatureTour[] = [
       {
         selector: '[data-tour="hud-apply"]',
         predicate: present('[data-tour="hud-apply"]'),
+        titleKey: 'tours.radio-hud-beta1.steps.hud-apply.title',
+        bodyKey: 'tours.radio-hud-beta1.steps.hud-apply.body',
         content: (
           <div className="space-y-2">
             <div className="text-sm font-semibold">One click to the radio</div>
@@ -484,10 +596,10 @@ export const FEATURE_TOURS: FeatureTour[] = [
   },
 ];
 
-export function getToursForView(view: string): FeatureTour[] {
+export function getToursForView(view: string): LocalizedFeatureTour[] {
   return FEATURE_TOURS.filter((t) => t.view === view);
 }
 
-export function getTourById(id: string): FeatureTour | undefined {
+export function getTourById(id: string): LocalizedFeatureTour | undefined {
   return FEATURE_TOURS.find((t) => t.id === id);
 }

@@ -9,6 +9,10 @@ export interface GraphTemplate {
   id: string;
   name: string;
   description: string;
+  /** Keys under `lua.auto.*`, added by tools/i18n-codemod.mjs; optional because
+   *  strings needing no translation are skipped. */
+  nameKey?: string;
+  descriptionKey?: string;
   category: string;
   graph: GraphFile;
 }
@@ -17,8 +21,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Low Battery Warning ──────────────────────────────────────
   {
     id: 'low-battery-warning',
-    name: 'Low Battery Warning',
-    description: 'Send a GCS alert when battery voltage drops below a threshold.',
+    name: 'Low Battery Warning', nameKey: 'lua.auto.low-battery-warning',
+    description: 'Send a GCS alert when battery voltage drops below a threshold.', descriptionKey: 'lua.auto.send-a-gcs-alert-when-battery-voltage-drops-below-a-threshol',
     category: 'Safety',
     graph: {
       version: 1,
@@ -120,8 +124,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Geofence Alert ───────────────────────────────────────────
   {
     id: 'geofence-alert',
-    name: 'Geofence Alert',
-    description: 'Warn when altitude exceeds a safety limit.',
+    name: 'Geofence Alert', nameKey: 'lua.auto.geofence-alert',
+    description: 'Warn when altitude exceeds a safety limit.', descriptionKey: 'lua.auto.warn-when-altitude-exceeds-a-safety-limit',
     category: 'Safety',
     graph: {
       version: 1,
@@ -223,8 +227,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Mode Announcement ────────────────────────────────────────
   {
     id: 'mode-announcement',
-    name: 'Mode Announcement',
-    description: 'Send a GCS message whenever the RC mode channel changes.',
+    name: 'Mode Announcement', nameKey: 'lua.auto.mode-announcement',
+    description: 'Send a GCS message whenever the RC mode channel changes.', descriptionKey: 'lua.auto.send-a-gcs-message-whenever-the-rc-mode-channel-changes',
     category: 'Utility',
     graph: {
       version: 1,
@@ -314,8 +318,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Landing Gear ─────────────────────────────────────────────
   {
     id: 'landing-gear',
-    name: 'Landing Gear',
-    description: 'Auto retract/deploy landing gear based on altitude threshold.',
+    name: 'Landing Gear', nameKey: 'lua.auto.landing-gear',
+    description: 'Auto retract/deploy landing gear based on altitude threshold.', descriptionKey: 'lua.auto.auto-retract-deploy-landing-gear-based-on-altitude-threshold',
     category: 'Automation',
     graph: {
       version: 1,
@@ -472,8 +476,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Camera Trigger ───────────────────────────────────────────
   {
     id: 'camera-trigger',
-    name: 'Camera Trigger',
-    description: 'Trigger camera relay at a fixed time interval while the vehicle is moving.',
+    name: 'Camera Trigger', nameKey: 'lua.auto.camera-trigger',
+    description: 'Trigger camera relay at a fixed time interval while the vehicle is moving.', descriptionKey: 'lua.auto.trigger-camera-relay-at-a-fixed-time-interval-while-the-vehi',
     category: 'Automation',
     graph: {
       version: 1,
@@ -598,8 +602,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Terrain Follow ───────────────────────────────────────────
   {
     id: 'terrain-follow',
-    name: 'Terrain Follow',
-    description: 'Warn when rangefinder reading is outside the safe range for terrain following.',
+    name: 'Terrain Follow', nameKey: 'lua.auto.terrain-follow',
+    description: 'Warn when rangefinder reading is outside the safe range for terrain following.', descriptionKey: 'lua.auto.warn-when-rangefinder-reading-is-outside-the-safe-range-for-',
     category: 'Navigation',
     graph: {
       version: 1,
@@ -712,8 +716,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Depth Logger ────────────────────────────────────────────
   {
     id: 'depth-logger',
-    name: 'Depth Logger',
-    description: 'Log rangefinder depth + GPS position to a CSV file, triggered by an RC aux switch.',
+    name: 'Depth Logger', nameKey: 'lua.auto.depth-logger',
+    description: 'Log rangefinder depth + GPS position to a CSV file, triggered by an RC aux switch.', descriptionKey: 'lua.auto.log-rangefinder-depth-gps-position-to-a-csv-file-triggered-b',
     category: 'Data Logging',
     graph: {
       version: 1,
@@ -842,8 +846,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Auto RTL on Low Battery ─────────────────────────────────
   {
     id: 'auto-rtl-battery',
-    name: 'Auto RTL on Low Battery',
-    description: 'Automatically switch to RTL flight mode when battery drops below a critical threshold.',
+    name: 'Auto RTL on Low Battery', nameKey: 'lua.auto.auto-rtl-on-low-battery',
+    description: 'Automatically switch to RTL flight mode when battery drops below a critical threshold.', descriptionKey: 'lua.auto.automatically-switch-to-rtl-flight-mode-when-battery-drops-b',
     category: 'Safety',
     graph: {
       version: 1,
@@ -967,8 +971,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Payload Drop ────────────────────────────────────────────
   {
     id: 'payload-drop',
-    name: 'Payload Drop',
-    description: 'Release a servo-actuated payload when an RC aux switch is flipped to HIGH.',
+    name: 'Payload Drop', nameKey: 'lua.auto.payload-drop',
+    description: 'Release a servo-actuated payload when an RC aux switch is flipped to HIGH.', descriptionKey: 'lua.auto.release-a-servo-actuated-payload-when-an-rc-aux-switch-is-fl',
     category: 'Automation',
     graph: {
       version: 1,
@@ -1108,8 +1112,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Speed Limit Warning ─────────────────────────────────────
   {
     id: 'speed-limit-warning',
-    name: 'Speed Limit Warning',
-    description: 'Send periodic GCS warnings when ground speed exceeds a configurable limit.',
+    name: 'Speed Limit Warning', nameKey: 'lua.auto.speed-limit-warning',
+    description: 'Send periodic GCS warnings when ground speed exceeds a configurable limit.', descriptionKey: 'lua.auto.send-periodic-gcs-warnings-when-ground-speed-exceeds-a-confi',
     category: 'Safety',
     graph: {
       version: 1,
@@ -1221,8 +1225,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Flight Data Logger ──────────────────────────────────────
   {
     id: 'flight-data-logger',
-    name: 'Flight Data Logger',
-    description: 'Periodically log GPS position, altitude, and speed to a CSV file on the SD card.',
+    name: 'Flight Data Logger', nameKey: 'lua.auto.flight-data-logger',
+    description: 'Periodically log GPS position, altitude, and speed to a CSV file on the SD card.', descriptionKey: 'lua.auto.periodically-log-gps-position-altitude-and-speed-to-a-csv-fi',
     category: 'Data Logging',
     graph: {
       version: 1,
@@ -1324,8 +1328,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Inspired by: ArduPilot plane-wind-failsafe.lua
   {
     id: 'wind-speed-failsafe',
-    name: 'Wind Speed Failsafe',
-    description: 'Warn when wind exceeds a threshold, force RTL if it gets critical. Based on ArduPilot plane-wind-failsafe.lua.',
+    name: 'Wind Speed Failsafe', nameKey: 'lua.auto.wind-speed-failsafe',
+    description: 'Warn when wind exceeds a threshold, force RTL if it gets critical. Based on ArduPilot plane-wind-failsafe.lua.', descriptionKey: 'lua.auto.warn-when-wind-exceeds-a-threshold-force-rtl-if-it-gets-crit',
     category: 'Safety',
     graph: {
       version: 1,
@@ -1486,8 +1490,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Inspired by: ArduPilot runcam_on_arm.lua
   {
     id: 'camera-on-arm',
-    name: 'Camera on Arm/Disarm',
-    description: 'Notify when vehicle arms or disarms. Extend with relay/servo to auto-start camera recording. Based on ArduPilot runcam_on_arm.lua.',
+    name: 'Camera on Arm/Disarm', nameKey: 'lua.auto.camera-on-arm-disarm',
+    description: 'Notify when vehicle arms or disarms. Extend with relay/servo to auto-start camera recording. Based on ArduPilot runcam_on_arm.lua.', descriptionKey: 'lua.auto.notify-when-vehicle-arms-or-disarms-extend-with-relay-servo-',
     category: 'Automation',
     graph: {
       version: 1,
@@ -1623,8 +1627,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── GPS Satellite Monitor ─────────────────────────────────
   {
     id: 'gps-satellite-monitor',
-    name: 'GPS Satellite Monitor',
-    description: 'Warn the pilot with a buzzer alert when GPS fix degrades below 3D fix quality.',
+    name: 'GPS Satellite Monitor', nameKey: 'lua.auto.gps-satellite-monitor',
+    description: 'Warn the pilot with a buzzer alert when GPS fix degrades below 3D fix quality.', descriptionKey: 'lua.auto.warn-the-pilot-with-a-buzzer-alert-when-gps-fix-degrades-bel',
     category: 'Safety',
     graph: {
       version: 1,
@@ -1748,8 +1752,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Flight Mode Logger ────────────────────────────────────
   {
     id: 'flight-mode-logger',
-    name: 'Flight Mode Change Logger',
-    description: 'Log every flight mode change to a file and announce it via GCS message.',
+    name: 'Flight Mode Change Logger', nameKey: 'lua.auto.flight-mode-change-logger',
+    description: 'Log every flight mode change to a file and announce it via GCS message.', descriptionKey: 'lua.auto.log-every-flight-mode-change-to-a-file-and-announce-it-via-g',
     category: 'Data Logging',
     graph: {
       version: 1,
@@ -1864,8 +1868,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Inspired by: ArduPilot leds_on_a_switch.lua
   {
     id: 'led-brightness-switch',
-    name: 'LED Brightness Switch',
-    description: 'Control LED brightness with a 3-position aux switch (Off / Dim / Bright). Based on ArduPilot leds_on_a_switch.lua.',
+    name: 'LED Brightness Switch', nameKey: 'lua.auto.led-brightness-switch',
+    description: 'Control LED brightness with a 3-position aux switch (Off / Dim / Bright). Based on ArduPilot leds_on_a_switch.lua.', descriptionKey: 'lua.auto.control-led-brightness-with-a-3-position-aux-switch-off-dim-',
     category: 'Automation',
     graph: {
       version: 1,
@@ -2002,8 +2006,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Complex: 19 functional nodes + 4 comments = 23 total
   {
     id: 'aerial-survey',
-    name: 'Aerial Survey Automation',
-    description: 'Auto-trigger camera at timed intervals when all survey conditions are met: armed, in AUTO mode, moving, and at correct altitude. Logs GPS coordinates for each photo.',
+    name: 'Aerial Survey Automation', nameKey: 'lua.auto.aerial-survey-automation',
+    description: 'Auto-trigger camera at timed intervals when all survey conditions are met: armed, in AUTO mode, moving, and at correct altitude. Logs GPS coordinates for each photo.', descriptionKey: 'lua.auto.auto-trigger-camera-at-timed-intervals-when-all-survey-condi',
     category: 'Automation',
     graph: {
       version: 1,
@@ -2151,8 +2155,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Complex: 16 functional nodes + 4 comments = 20 total
   {
     id: 'gimbal-stabilizer',
-    name: 'Gimbal Stabilizer',
-    description: 'Two-axis camera gimbal stabilization using RC input with attitude compensation. Subtracts vehicle pitch/roll from operator stick input for smooth, stabilized servo output.',
+    name: 'Gimbal Stabilizer', nameKey: 'lua.auto.gimbal-stabilizer',
+    description: 'Two-axis camera gimbal stabilization using RC input with attitude compensation. Subtracts vehicle pitch/roll from operator stick input for smooth, stabilized servo output.', descriptionKey: 'lua.auto.two-axis-camera-gimbal-stabilization-using-rc-input-with-att',
     category: 'Configuration',
     graph: {
       version: 1,
@@ -2284,8 +2288,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Complex: 16 functional nodes + 4 comments = 20 total
   {
     id: 'attitude-led-display',
-    name: 'Attitude LED Display',
-    description: 'Drive NeoPixel LED colors based on vehicle attitude: roll controls red, pitch controls green, yaw controls blue. Enabled by aux switch, only when armed.',
+    name: 'Attitude LED Display', nameKey: 'lua.auto.attitude-led-display',
+    description: 'Drive NeoPixel LED colors based on vehicle attitude: roll controls red, pitch controls green, yaw controls blue. Enabled by aux switch, only when armed.', descriptionKey: 'lua.auto.drive-neopixel-led-colors-based-on-vehicle-attitude-roll-con',
     category: 'Creative',
     graph: {
       version: 1,
@@ -2418,8 +2422,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Complex: 19 functional nodes + 4 comments = 23 total
   {
     id: 'preflight-health-check',
-    name: 'Preflight Health Check',
-    description: 'On arm, checks GPS satellite count, battery voltage, and altitude sensor health. Announces PASS or FAIL with a buzzer melody. 19 interconnected nodes.',
+    name: 'Preflight Health Check', nameKey: 'lua.auto.preflight-health-check',
+    description: 'On arm, checks GPS satellite count, battery voltage, and altitude sensor health. Announces PASS or FAIL with a buzzer melody. 19 interconnected nodes.', descriptionKey: 'lua.auto.on-arm-checks-gps-satellite-count-battery-voltage-and-altitu',
     category: 'Utility',
     graph: {
       version: 1,
@@ -2567,8 +2571,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // Complex: 16 functional nodes + 4 comments = 20 total
   {
     id: 'multi-timer-scheduler',
-    name: 'Multi-Timer Task Scheduler',
-    description: 'Three independent timers running at different rates: GPS logging every 2s, conditional battery warning every 10s, and GPS quality check every 30s. All gated by arm state.',
+    name: 'Multi-Timer Task Scheduler', nameKey: 'lua.auto.multi-timer-task-scheduler',
+    description: 'Three independent timers running at different rates: GPS logging every 2s, conditional battery warning every 10s, and GPS quality check every 30s. All gated by arm state.', descriptionKey: 'lua.auto.three-independent-timers-running-at-different-rates-gps-logg',
     category: 'Utility',
     graph: {
       version: 1,
@@ -2701,8 +2705,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // This is the same pattern ArduDeck's own ardudeck_commands.lua uses for AD_HB.
   {
     id: 'ad-heartbeat-beacon',
-    name: 'ArduDeck Heartbeat Beacon',
-    description: 'Publish a NAMED_VALUE_FLOAT heartbeat every second so the GCS can confirm the script is alive (mirrors the AD_HB pattern).',
+    name: 'ArduDeck Heartbeat Beacon', nameKey: 'lua.auto.ardudeck-heartbeat-beacon',
+    description: 'Publish a NAMED_VALUE_FLOAT heartbeat every second so the GCS can confirm the script is alive (mirrors the AD_HB pattern).', descriptionKey: 'lua.auto.publish-a-named-value-float-heartbeat-every-second-so-the-gc',
     category: 'FC Script',
     graph: {
       version: 1,
@@ -2782,8 +2786,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // first-class telemetry without parsing custom MAVLink.
   {
     id: 'telemetry-beacon',
-    name: 'Telemetry Beacon (3 Channels)',
-    description: 'Publish distance-to-home, sat count, and battery voltage as NAMED_VALUE_FLOATs every second for custom GCS dashboards.',
+    name: 'Telemetry Beacon (3 Channels)', nameKey: 'lua.auto.telemetry-beacon-3-channels',
+    description: 'Publish distance-to-home, sat count, and battery voltage as NAMED_VALUE_FLOATs every second for custom GCS dashboards.', descriptionKey: 'lua.auto.publish-distance-to-home-sat-count-and-battery-voltage-as-na',
     category: 'FC Script',
     graph: {
       version: 1,
@@ -2949,8 +2953,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // commanding scripts.
   {
     id: 'guided-set-target-rc',
-    name: 'GUIDED Set-Target via RC Switch',
-    description: 'When an RC AUX switch is HIGH in GUIDED mode, command the vehicle to fly to a fixed offset from home (e.g. 50m north of takeoff).',
+    name: 'GUIDED Set-Target via RC Switch', nameKey: 'lua.auto.guided-set-target-via-rc-switch',
+    description: 'When an RC AUX switch is HIGH in GUIDED mode, command the vehicle to fly to a fixed offset from home (e.g. 50m north of takeoff).', descriptionKey: 'lua.auto.when-an-rc-aux-switch-is-high-in-guided-mode-command-the-veh',
     category: 'FC Script',
     graph: {
       version: 1,
@@ -3079,8 +3083,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // misses an alert. Demonstrates location math + mode change.
   {
     id: 'distance-triggered-rtl',
-    name: 'Distance-Triggered RTL',
-    description: 'When vehicle drifts more than 200m from home, automatically switch to RTL mode. Backup geofence using location math + mode change.',
+    name: 'Distance-Triggered RTL', nameKey: 'lua.auto.distance-triggered-rtl',
+    description: 'When vehicle drifts more than 200m from home, automatically switch to RTL mode. Backup geofence using location math + mode change.', descriptionKey: 'lua.auto.when-vehicle-drifts-more-than-200m-from-home-automatically-s',
     category: 'FC Script',
     graph: {
       version: 1,
@@ -3219,8 +3223,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // the timing-latch pattern + dual conditional set-target-location.
   {
     id: 'patrol-two-anchors',
-    name: 'Patrol Between Two Anchors',
-    description: 'Toggle the GUIDED target between two fixed offsets from home every 30 seconds. Simple ad-hoc patrol with no mission required.',
+    name: 'Patrol Between Two Anchors', nameKey: 'lua.auto.patrol-between-two-anchors',
+    description: 'Toggle the GUIDED target between two fixed offsets from home every 30 seconds. Simple ad-hoc patrol with no mission required.', descriptionKey: 'lua.auto.toggle-the-guided-target-between-two-fixed-offsets-from-home',
     category: 'FC Script',
     graph: {
       version: 1,
@@ -3413,8 +3417,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Camera Trigger Watchdog ──────────────────────────────────
   {
     id: 'camera-trigger-watchdog',
-    name: 'Camera Trigger Watchdog',
-    description: 'Warn on the GCS with the current waypoint when a distance-triggered camera stops actually taking photos (e.g. it overheats). Catches the hotshoe pulse with a hardware interrupt: polling gpio:read misses the 1-2 ms pulse.',
+    name: 'Camera Trigger Watchdog', nameKey: 'lua.auto.camera-trigger-watchdog',
+    description: 'Warn on the GCS with the current waypoint when a distance-triggered camera stops actually taking photos (e.g. it overheats). Catches the hotshoe pulse with a hardware interrupt: polling gpio:read misses the 1-2 ms pulse.', descriptionKey: 'lua.auto.warn-on-the-gcs-with-the-current-waypoint-when-a-distance-tr',
     category: 'Safety',
     graph: {
       version: 1,
@@ -3574,8 +3578,8 @@ export const GRAPH_TEMPLATES: GraphTemplate[] = [
   // ─── Custom Serial Telemetry ─────────────────────────────────
   {
     id: 'custom-serial-telemetry',
-    name: 'Custom Serial Telemetry',
-    description: 'Format position + battery into a custom text sentence with a Custom Lua node and stream it out a serial port and UDP once a second.',
+    name: 'Custom Serial Telemetry', nameKey: 'lua.auto.custom-serial-telemetry',
+    description: 'Format position + battery into a custom text sentence with a Custom Lua node and stream it out a serial port and UDP once a second.', descriptionKey: 'lua.auto.format-position-battery-into-a-custom-text-sentence-with-a-c',
     category: 'Utility',
     graph: {
       version: 1,

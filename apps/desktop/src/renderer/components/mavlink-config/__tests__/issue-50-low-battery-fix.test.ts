@@ -233,14 +233,19 @@ describe('issue #50 - low battery UI wiring', () => {
   });
 
   it('low battery action options include Disabled, Land, and RTL', () => {
-    // Verify the select has all 3 valid BATT_FS_LOW_ACT values
-    // These must be within the low battery section (before critical battery)
+    // Verify the select has all 3 valid BATT_FS_LOW_ACT values, inside the low
+    // battery section (before critical battery).
+    //
+    // The option labels moved into the i18n bundle, so the source now carries
+    // `t('safety.options.*')` keys instead of English copy; the section bounds
+    // moved to the heading keys for the same reason. The values (0/1/2) are
+    // what this test exists to pin, and they are unchanged.
     const lowBattSection = safetyTabSource.slice(
-      safetyTabSource.indexOf('Low Battery'),
-      safetyTabSource.indexOf('Critical Battery'),
+      safetyTabSource.indexOf('safety.lowBattery.heading'),
+      safetyTabSource.indexOf('safety.criticalBattery.heading'),
     );
-    expect(lowBattSection).toContain('value={0}>Disabled');
-    expect(lowBattSection).toContain('value={1}>Land Immediately');
-    expect(lowBattSection).toContain('value={2}>RTL');
+    expect(lowBattSection).toContain("value={0}>{t('safety.options.disabled')}");
+    expect(lowBattSection).toContain("value={1}>{t('safety.options.landImmediately')}");
+    expect(lowBattSection).toContain("value={2}>{t('safety.options.rtl')}");
   });
 });

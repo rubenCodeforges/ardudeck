@@ -7,6 +7,12 @@
  */
 
 import React, { useMemo } from 'react';
+
+/** Prefer the i18n key; falls back to the literal. */
+function spText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { Cable, Usb, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -124,6 +130,7 @@ const PX4_PORT_LABELS: Record<string, string> = {
 const PX4_FALLBACK_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000];
 
 const Px4SerialPortsConfig: React.FC = () => {
+  const { t } = useTranslation('serialPorts');
   const { parameters, setParameter, getParameterMetadata, getDescription } = useParameterStore();
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
 
@@ -159,7 +166,7 @@ const Px4SerialPortsConfig: React.FC = () => {
     return (
       <div className="p-6">
         <div className="p-8 text-center text-content-secondary text-sm space-y-1">
-          <p>This vehicle reports no configurable serial ports.</p>
+          <p>{t('serialPorts.noConfigurablePorts')}</p>
           <p className="text-xs text-content-tertiary">
             {parameters.size === 0
               ? 'Fetch parameters first.'
@@ -180,15 +187,15 @@ const Px4SerialPortsConfig: React.FC = () => {
               <Cable className="w-5 h-5 text-sky-400" />
             </div>
             <div>
-              <h3 className="font-medium text-content">Serial Port Configuration</h3>
-              <p className="text-xs text-content-secondary">Baud rates per physical port. Changes require Save All Changes + reboot.</p>
+              <h3 className="font-medium text-content">{t('serialPorts.configHeading')}</h3>
+              <p className="text-xs text-content-secondary">{t('serialPorts.px4ConfigHint')}</p>
             </div>
           </div>
           {showTips && (
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-sky-500/5 border-sky-500/20 mb-4">
               <HelpCircle className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
               <p className="text-xs text-content leading-relaxed">
-                <span className="font-semibold text-sky-300">How this works: </span>
+                <span className="font-semibold text-sky-300">{t('serialPorts.howItWorks')}</span>
                 PX4 assigns functions to ports, not protocols. Pick which port each function uses in
                 the table below; set the port's baud rate here to match the connected device.
               </p>
@@ -198,9 +205,9 @@ const Px4SerialPortsConfig: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface text-content-secondary text-xs">
-                  <th className="px-3 py-2.5 text-left font-medium w-36">Port</th>
-                  <th className="px-2 py-2.5 text-left font-medium w-32">Baud Rate</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Assigned Functions</th>
+                  <th className="px-3 py-2.5 text-left font-medium w-36">{t('serialPorts.col.port')}</th>
+                  <th className="px-2 py-2.5 text-left font-medium w-32">{t('serialPorts.col.baud-rate')}</th>
+                  <th className="px-3 py-2.5 text-left font-medium">{t('serialPorts.col.assigned-functions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +256,7 @@ const Px4SerialPortsConfig: React.FC = () => {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-[10px] text-content-tertiary">unassigned</span>
+                          <span className="text-[10px] text-content-tertiary">{t('serialPorts.unassigned')}</span>
                         )}
                       </td>
                     </tr>
@@ -269,17 +276,17 @@ const Px4SerialPortsConfig: React.FC = () => {
               <Usb className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h3 className="font-medium text-content">Port Assignments</h3>
-              <p className="text-xs text-content-secondary">Which serial port each function (MAVLink instance, GPS, RC, ...) runs on.</p>
+              <h3 className="font-medium text-content">{t('serialPorts.portAssignments')}</h3>
+              <p className="text-xs text-content-secondary">{t('serialPorts.portAssignmentsHint')}</p>
             </div>
           </div>
           <div className="rounded-lg border-subtle overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface text-content-secondary text-xs">
-                  <th className="px-3 py-2.5 text-left font-medium w-64">Function</th>
-                  <th className="px-2 py-2.5 text-left font-medium w-48">Port</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Description</th>
+                  <th className="px-3 py-2.5 text-left font-medium w-64">{t('serialPorts.col.function')}</th>
+                  <th className="px-2 py-2.5 text-left font-medium w-48">{t('serialPorts.col.port')}</th>
+                  <th className="px-3 py-2.5 text-left font-medium">{t('serialPorts.col.description')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -413,6 +420,7 @@ function PortRow({ index }: { index: number }) {
 // =============================================================================
 
 const ArduPilotSerialPorts: React.FC = () => {
+  const { t } = useTranslation('serialPorts');
   const { parameters } = useParameterStore();
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
 
@@ -445,8 +453,8 @@ const ArduPilotSerialPorts: React.FC = () => {
             <Cable className="w-5 h-5 text-sky-400" />
           </div>
           <div>
-            <h3 className="font-medium text-content">Serial Port Configuration</h3>
-            <p className="text-xs text-content-secondary">Configure protocols and baud rates. Changes require Write to Flash + reboot.</p>
+            <h3 className="font-medium text-content">{t('serialPorts.configHeading')}</h3>
+            <p className="text-xs text-content-secondary">{t('serialPorts.ardupilotConfigHint')}</p>
           </div>
         </div>
         {/* How this works banner */}
@@ -454,8 +462,8 @@ const ArduPilotSerialPorts: React.FC = () => {
           <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-sky-500/5 border-sky-500/20 mb-4">
             <HelpCircle className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
             <p className="text-xs text-content leading-relaxed">
-              <span className="font-semibold text-sky-300">How this works: </span>
-              Each row is a serial port on your flight controller. Set the protocol to match what's physically wired to that port, like <span className="text-content">RCIN</span> for your receiver or <span className="text-content">GPS</span> for a GPS module.
+              <span className="font-semibold text-sky-300">{t('serialPorts.howItWorks')}</span>
+              {t('serialPorts.protocolHint1')} <span className="text-content">RCIN</span> {t('serialPorts.protocolHint2')} <span className="text-content">GPS</span> {t('serialPorts.protocolHint3')}
             </p>
           </div>
         )}
@@ -463,10 +471,10 @@ const ArduPilotSerialPorts: React.FC = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface text-content-secondary text-xs">
-                <th className="px-3 py-2.5 text-left font-medium w-36">Port</th>
-                <th className="px-2 py-2.5 text-left font-medium w-44">Protocol</th>
-                <th className="px-2 py-2.5 text-left font-medium w-32">Baud Rate</th>
-                <th className="px-3 py-2.5 text-center font-medium w-24">Status</th>
+                <th className="px-3 py-2.5 text-left font-medium w-36">{t('serialPorts.col.port')}</th>
+                <th className="px-2 py-2.5 text-left font-medium w-44">{t('serialPorts.col.protocol')}</th>
+                <th className="px-2 py-2.5 text-left font-medium w-32">{t('serialPorts.col.baud-rate')}</th>
+                <th className="px-3 py-2.5 text-center font-medium w-24">{t('serialPorts.col.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -482,10 +490,10 @@ const ArduPilotSerialPorts: React.FC = () => {
       <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-500/5 border-blue-500/20">
         <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
         <div className="text-xs text-content leading-relaxed space-y-1">
-          <p className="font-semibold text-blue-300">Common setups</p>
-          <p>ELRS/CRSF receiver: Set one port to <span className="text-content">RCIN</span> at <span className="text-content">115200</span> baud</p>
-          <p>GPS module: Set to <span className="text-content">GPS</span> protocol at <span className="text-content">115200</span> or <span className="text-content">230400</span> baud</p>
-          <p>Telemetry radio: Usually <span className="text-content">MAVLink2</span> at <span className="text-content">57600</span> baud on TELEM1</p>
+          <p className="font-semibold text-blue-300">{t('serialPorts.commonSetups')}</p>
+          <p>{t('serialPorts.setupElrs1')} <span className="text-content">RCIN</span> {t('serialPorts.setupElrs2')} <span className="text-content">115200</span> {t('serialPorts.setupElrs3')}</p>
+          <p>{t('serialPorts.setupGps1')} <span className="text-content">GPS</span> {t('serialPorts.setupGps2')} <span className="text-content">115200</span> {t('serialPorts.setupGps3')} <span className="text-content">230400</span> {t('serialPorts.setupGps4')}</p>
+          <p>{t('serialPorts.setupRadio1')} <span className="text-content">MAVLink2</span> {t('serialPorts.setupRadio2')} <span className="text-content">57600</span> {t('serialPorts.setupRadio3')}</p>
         </div>
       </div>
 
@@ -506,6 +514,7 @@ const ArduPilotSerialPorts: React.FC = () => {
 };
 
 const SerialPortsTab: React.FC = () => {
+  const { t } = useTranslation('serialPorts');
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
   return firmware === 'px4' ? <Px4SerialPortsConfig /> : <ArduPilotSerialPorts />;
 };

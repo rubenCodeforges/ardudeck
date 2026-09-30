@@ -1,6 +1,8 @@
-import { GROUP_SHAPE_MODES, GROUP_SHAPE_LABELS, GROUP_SHAPE_DESCRIPTIONS, useGroupShapeStore } from '../../stores/group-shape-store';
+import { useTranslation } from 'react-i18next';
+import { GROUP_SHAPE_MODES, useGroupShapeStore } from '../../stores/group-shape-store';
 
 export function GroupShapeCard() {
+  const { t } = useTranslation('settings');
   const mode = useGroupShapeStore((s) => s.mode);
   const setMode = useGroupShapeStore((s) => s.setMode);
 
@@ -13,8 +15,8 @@ export function GroupShapeCard() {
           </svg>
         </div>
         <div>
-          <h3 className="text-sm font-medium text-content">Grouped gauge shape</h3>
-          <p className="text-xs text-content-secondary">How a docked group's backdrop treats round gauges</p>
+          <h3 className="text-sm font-medium text-content">{t('groupShape.heading')}</h3>
+          <p className="text-xs text-content-secondary">{t('groupShape.description')}</p>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-2">
@@ -28,8 +30,8 @@ export function GroupShapeCard() {
               className="mt-0.5 w-3.5 h-3.5 border-border bg-surface-raised text-blue-500 focus:ring-blue-500/30 focus:ring-offset-0 cursor-pointer"
             />
             <div className="min-w-0">
-              <div className="text-xs font-medium text-content group-hover:text-content transition-colors">{GROUP_SHAPE_LABELS[m]}</div>
-              <div className="text-[11px] text-content-tertiary">{GROUP_SHAPE_DESCRIPTIONS[m]}</div>
+              <div className="text-xs font-medium text-content group-hover:text-content transition-colors">{t(`groupShape.labels.${m}`)}</div>
+              <div className="text-[11px] text-content-tertiary">{t(`groupShape.descriptions.${m}`)}</div>
             </div>
           </label>
         ))}

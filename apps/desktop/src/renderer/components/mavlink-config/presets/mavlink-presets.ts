@@ -16,29 +16,39 @@ import { Egg, Drama, Zap, Film, type LucideIcon } from 'lucide-react';
 
 export interface FlightModePreset {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   modes: number[]; // FLTMODE1-6 values
 }
 
 export const FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
   beginner: {
     name: 'Beginner Safe',
+    nameKey: 'flightModePresets.beginner',
     description: 'Safe modes only - Stabilize, AltHold, Loiter, RTL',
+    descKey: 'flightModePresets.beginner',
     modes: [0, 2, 5, 6, 9, 6], // Stabilize, AltHold, Loiter, RTL, Land, RTL
   },
   intermediate: {
     name: 'Intermediate',
+    nameKey: 'flightModePresets.intermediate',
     description: 'Add Auto and PosHold for missions',
+    descKey: 'flightModePresets.intermediate',
     modes: [0, 2, 5, 3, 16, 6], // Stabilize, AltHold, Loiter, Auto, PosHold, RTL
   },
   advanced: {
     name: 'Advanced',
+    nameKey: 'flightModePresets.advanced',
     description: 'Full control with Acro and Sport modes',
+    descKey: 'flightModePresets.advanced',
     modes: [0, 1, 13, 5, 3, 6], // Stabilize, Acro, Sport, Loiter, Auto, RTL
   },
   mapping: {
     name: 'Mapping/Survey',
+    nameKey: 'flightModePresets.mapping',
     description: 'Optimized for aerial mapping missions',
+    descKey: 'flightModePresets.mapping',
     modes: [5, 3, 24, 6, 9, 21], // Loiter, Auto, ZigZag, RTL, Land, SmartRTL
   },
 };
@@ -46,22 +56,30 @@ export const FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
 export const PLANE_FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
   beginner: {
     name: 'Beginner Safe',
+    nameKey: 'planeFlightModePresets.beginner',
     description: 'Safe modes - FBWA, Loiter, RTL',
+    descKey: 'planeFlightModePresets.beginner',
     modes: [5, 5, 12, 12, 11, 11], // FBWA, FBWA, Loiter, Loiter, RTL, RTL
   },
   intermediate: {
     name: 'Intermediate',
+    nameKey: 'planeFlightModePresets.intermediate',
     description: 'Add Auto and Cruise for missions',
+    descKey: 'planeFlightModePresets.intermediate',
     modes: [5, 7, 12, 10, 11, 11], // FBWA, Cruise, Loiter, Auto, RTL, RTL
   },
   advanced: {
     name: 'Advanced',
+    nameKey: 'planeFlightModePresets.advanced',
     description: 'Full control with Manual and Acro',
+    descKey: 'planeFlightModePresets.advanced',
     modes: [0, 4, 5, 12, 10, 11], // Manual, Acro, FBWA, Loiter, Auto, RTL
   },
   vtol: {
     name: 'VTOL QuadPlane',
+    nameKey: 'planeFlightModePresets.vtol',
     description: 'QLoiter, FBWA, QRTL for VTOL aircraft',
+    descKey: 'planeFlightModePresets.vtol',
     modes: [19, 19, 5, 5, 21, 21], // QLoiter, QLoiter, FBWA, FBWA, QRTL, QRTL
   },
 };
@@ -72,14 +90,18 @@ export const PLANE_FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
 
 export interface SkillPreset {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   params: Record<string, number>;
 }
 
 export const SKILL_PRESETS: Record<string, SkillPreset> = {
   beginner: {
     name: 'Beginner',
+    nameKey: 'skillPresets.beginner',
     description: 'Soft, forgiving response. Great for learning.',
+    descKey: 'skillPresets.beginner',
     params: {
       // Slower rates
       'ACRO_RP_RATE': 90,
@@ -96,7 +118,9 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
   },
   intermediate: {
     name: 'Intermediate',
+    nameKey: 'skillPresets.intermediate',
     description: 'Balanced response for general flying.',
+    descKey: 'skillPresets.intermediate',
     params: {
       'ACRO_RP_RATE': 180,
       'ACRO_Y_RATE': 90,
@@ -109,7 +133,9 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
   },
   expert: {
     name: 'Expert',
+    nameKey: 'skillPresets.expert',
     description: 'Aggressive response for experienced pilots.',
+    descKey: 'skillPresets.expert',
     params: {
       'ACRO_RP_RATE': 360,
       'ACRO_Y_RATE': 180,
@@ -128,14 +154,18 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
 
 export interface MissionPreset {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   params: Record<string, number>;
 }
 
 export const MISSION_PRESETS: Record<string, MissionPreset> = {
   mapping: {
     name: 'Mapping/Survey',
+    nameKey: 'missionPresets.mapping',
     description: 'Slow, stable flight for aerial mapping and photogrammetry.',
+    descKey: 'missionPresets.mapping',
     params: {
       'WPNAV_SPEED': 500, // 5 m/s - slow for photos
       'WPNAV_ACCEL': 100,
@@ -146,7 +176,9 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   },
   surveillance: {
     name: 'Surveillance',
+    nameKey: 'missionPresets.surveillance',
     description: 'Moderate speed, good stability for video.',
+    descKey: 'missionPresets.surveillance',
     params: {
       'WPNAV_SPEED': 800, // 8 m/s
       'WPNAV_ACCEL': 150,
@@ -157,7 +189,9 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   },
   sport: {
     name: 'Sport',
+    nameKey: 'missionPresets.sport',
     description: 'Fast, responsive flight for fun flying.',
+    descKey: 'missionPresets.sport',
     params: {
       'WPNAV_SPEED': 1500, // 15 m/s
       'WPNAV_ACCEL': 400,
@@ -168,7 +202,9 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
   },
   cinema: {
     name: 'Cinematic',
+    nameKey: 'missionPresets.cinema',
     description: 'Ultra-smooth movements for professional video.',
+    descKey: 'missionPresets.cinema',
     params: {
       'WPNAV_SPEED': 300, // 3 m/s - very slow
       'WPNAV_ACCEL': 50, // Very gentle acceleration
@@ -186,14 +222,18 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
 
 export interface SafetyPreset {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   params: Record<string, number>;
 }
 
 export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   maximum: {
     name: 'Maximum Safety',
+    nameKey: 'safetyPresets.maximum',
     description: 'All safety features enabled. Recommended for beginners.',
+    descKey: 'safetyPresets.maximum',
     params: {
       'FS_THR_ENABLE': 1, // RTL on throttle failsafe
       'FS_GCS_ENABLE': 1, // RTL on GCS failsafe
@@ -206,7 +246,9 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   },
   balanced: {
     name: 'Balanced',
+    nameKey: 'safetyPresets.balanced',
     description: 'Essential safety features without being restrictive.',
+    descKey: 'safetyPresets.balanced',
     params: {
       'FS_THR_ENABLE': 1,
       'FS_GCS_ENABLE': 0, // No GCS failsafe
@@ -219,7 +261,9 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   },
   minimal: {
     name: 'Minimal',
+    nameKey: 'safetyPresets.minimal',
     description: 'Only critical safety features. For experienced pilots.',
+    descKey: 'safetyPresets.minimal',
     params: {
       'FS_THR_ENABLE': 1, // Keep throttle failsafe
       'FS_GCS_ENABLE': 0,
@@ -235,67 +279,67 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
 // Failsafe Actions
 // =============================================================================
 
-export const FAILSAFE_ACTIONS: Record<number, { name: string; description: string; safe: boolean }> = {
-  0: { name: 'Disabled', description: 'No action taken', safe: false },
-  1: { name: 'RTL', description: 'Return to launch point', safe: true },
-  2: { name: 'Land', description: 'Land immediately', safe: true },
-  3: { name: 'SmartRTL', description: 'Return via original path', safe: true },
-  4: { name: 'Brake', description: 'Stop and hover', safe: true },
-  5: { name: 'Land', description: 'Land at current position', safe: true },
+export const FAILSAFE_ACTIONS: Record<number, { name: string; nameKey: string; description: string; descKey: string; safe: boolean }> = {
+  0: { name: 'Disabled', nameKey: 'failsafeActions.0', description: 'No action taken', descKey: 'failsafeActions.0', safe: false },
+  1: { name: 'RTL', nameKey: 'failsafeActions.1', description: 'Return to launch point', descKey: 'failsafeActions.1', safe: true },
+  2: { name: 'Land', nameKey: 'failsafeActions.2', description: 'Land immediately', descKey: 'failsafeActions.2', safe: true },
+  3: { name: 'SmartRTL', nameKey: 'failsafeActions.3', description: 'Return via original path', descKey: 'failsafeActions.3', safe: true },
+  4: { name: 'Brake', nameKey: 'failsafeActions.4', description: 'Stop and hover', descKey: 'failsafeActions.4', safe: true },
+  5: { name: 'Land', nameKey: 'failsafeActions.5', description: 'Land at current position', descKey: 'failsafeActions.5', safe: true },
 };
 
 // =============================================================================
 // Arming Check Flags
 // =============================================================================
 
-export const ARMING_CHECKS: Record<number, { name: string; description: string }> = {
-  1: { name: 'All', description: 'Enable all arming checks' },
-  2: { name: 'Barometer', description: 'Check barometer health' },
-  4: { name: 'Compass', description: 'Check compass health and calibration' },
-  8: { name: 'GPS Lock', description: 'Require GPS lock before arming' },
-  16: { name: 'INS', description: 'Check accelerometer/gyro health' },
-  32: { name: 'Parameters', description: 'Check for invalid parameters' },
-  64: { name: 'RC Channels', description: 'Check RC receiver is working' },
-  128: { name: 'Board Voltage', description: 'Check board voltage is stable' },
-  256: { name: 'Battery Level', description: 'Check battery has sufficient charge' },
-  512: { name: 'Airspeed', description: 'Check airspeed sensor (planes)' },
-  1024: { name: 'Logging', description: 'Check logging is working' },
-  2048: { name: 'Safety Switch', description: 'Check safety switch is disengaged' },
-  4096: { name: 'GPS Config', description: 'Check GPS configuration' },
-  8192: { name: 'System', description: 'Check system health' },
-  16384: { name: 'Mission', description: 'Check mission is valid' },
-  32768: { name: 'Rangefinder', description: 'Check rangefinder health' },
+export const ARMING_CHECKS: Record<number, { name: string; nameKey: string; description: string; descKey: string }> = {
+  1: { name: 'All', nameKey: 'armingChecks.1', description: 'Enable all arming checks', descKey: 'armingChecks.1' },
+  2: { name: 'Barometer', nameKey: 'armingChecks.2', description: 'Check barometer health', descKey: 'armingChecks.2' },
+  4: { name: 'Compass', nameKey: 'armingChecks.4', description: 'Check compass health and calibration', descKey: 'armingChecks.4' },
+  8: { name: 'GPS Lock', nameKey: 'armingChecks.8', description: 'Require GPS lock before arming', descKey: 'armingChecks.8' },
+  16: { name: 'INS', nameKey: 'armingChecks.16', description: 'Check accelerometer/gyro health', descKey: 'armingChecks.16' },
+  32: { name: 'Parameters', nameKey: 'armingChecks.32', description: 'Check for invalid parameters', descKey: 'armingChecks.32' },
+  64: { name: 'RC Channels', nameKey: 'armingChecks.64', description: 'Check RC receiver is working', descKey: 'armingChecks.64' },
+  128: { name: 'Board Voltage', nameKey: 'armingChecks.128', description: 'Check board voltage is stable', descKey: 'armingChecks.128' },
+  256: { name: 'Battery Level', nameKey: 'armingChecks.256', description: 'Check battery has sufficient charge', descKey: 'armingChecks.256' },
+  512: { name: 'Airspeed', nameKey: 'armingChecks.512', description: 'Check airspeed sensor (planes)', descKey: 'armingChecks.512' },
+  1024: { name: 'Logging', nameKey: 'armingChecks.1024', description: 'Check logging is working', descKey: 'armingChecks.1024' },
+  2048: { name: 'Safety Switch', nameKey: 'armingChecks.2048', description: 'Check safety switch is disengaged', descKey: 'armingChecks.2048' },
+  4096: { name: 'GPS Config', nameKey: 'armingChecks.4096', description: 'Check GPS configuration', descKey: 'armingChecks.4096' },
+  8192: { name: 'System', nameKey: 'armingChecks.8192', description: 'Check system health', descKey: 'armingChecks.8192' },
+  16384: { name: 'Mission', nameKey: 'armingChecks.16384', description: 'Check mission is valid', descKey: 'armingChecks.16384' },
+  32768: { name: 'Rangefinder', nameKey: 'armingChecks.32768', description: 'Check rangefinder health', descKey: 'armingChecks.32768' },
 };
 
 // =============================================================================
 // Fence Types
 // =============================================================================
 
-export const FENCE_TYPES: Record<number, { name: string; description: string }> = {
-  0: { name: 'Disabled', description: 'No geofence active' },
-  1: { name: 'Altitude', description: 'Maximum altitude limit' },
-  2: { name: 'Circle', description: 'Circular boundary around home' },
-  3: { name: 'Altitude + Circle', description: 'Both altitude and circular limits' },
-  4: { name: 'Polygon', description: 'Custom polygon boundary' },
-  7: { name: 'All', description: 'Altitude, circle, and polygon' },
+export const FENCE_TYPES: Record<number, { name: string; nameKey: string; description: string; descKey: string }> = {
+  0: { name: 'Disabled', nameKey: 'fenceTypes.0', description: 'No geofence active', descKey: 'fenceTypes.0' },
+  1: { name: 'Altitude', nameKey: 'fenceTypes.1', description: 'Maximum altitude limit', descKey: 'fenceTypes.1' },
+  2: { name: 'Circle', nameKey: 'fenceTypes.2', description: 'Circular boundary around home', descKey: 'fenceTypes.2' },
+  3: { name: 'Altitude + Circle', nameKey: 'fenceTypes.3', description: 'Both altitude and circular limits', descKey: 'fenceTypes.3' },
+  4: { name: 'Polygon', nameKey: 'fenceTypes.4', description: 'Custom polygon boundary', descKey: 'fenceTypes.4' },
+  7: { name: 'All', nameKey: 'fenceTypes.7', description: 'Altitude, circle, and polygon', descKey: 'fenceTypes.7' },
 };
 
 // =============================================================================
 // Battery Monitor Types
 // =============================================================================
 
-export const BATTERY_MONITORS: Record<number, { name: string; description: string }> = {
-  0: { name: 'Disabled', description: 'No battery monitoring' },
-  3: { name: 'Analog Voltage Only', description: 'Basic voltage monitoring' },
-  4: { name: 'Analog Voltage + Current', description: 'Full power monitoring' },
-  5: { name: 'Solo', description: '3DR Solo battery' },
-  6: { name: 'Bebop', description: 'Parrot Bebop battery' },
-  7: { name: 'SMBus-Maxell', description: 'Maxell smart battery' },
-  8: { name: 'UAVCAN', description: 'UAVCAN battery' },
-  9: { name: 'BLHeli ESC', description: 'BLHeli telemetry' },
-  10: { name: 'Sum of Selected', description: 'Sum multiple monitors' },
-  11: { name: 'FuelFlow', description: 'Fuel flow sensor' },
-  12: { name: 'FuelLevel PWM', description: 'Fuel level PWM sensor' },
+export const BATTERY_MONITORS: Record<number, { name: string; nameKey: string; description: string; descKey: string }> = {
+  0: { name: 'Disabled', nameKey: 'batteryMonitors.0', description: 'No battery monitoring', descKey: 'batteryMonitors.0' },
+  3: { name: 'Analog Voltage Only', nameKey: 'batteryMonitors.3', description: 'Basic voltage monitoring', descKey: 'batteryMonitors.3' },
+  4: { name: 'Analog Voltage + Current', nameKey: 'batteryMonitors.4', description: 'Full power monitoring', descKey: 'batteryMonitors.4' },
+  5: { name: 'Solo', nameKey: 'batteryMonitors.5', description: '3DR Solo battery', descKey: 'batteryMonitors.5' },
+  6: { name: 'Bebop', nameKey: 'batteryMonitors.6', description: 'Parrot Bebop battery', descKey: 'batteryMonitors.6' },
+  7: { name: 'SMBus-Maxell', nameKey: 'batteryMonitors.7', description: 'Maxell smart battery', descKey: 'batteryMonitors.7' },
+  8: { name: 'UAVCAN', nameKey: 'batteryMonitors.8', description: 'UAVCAN battery', descKey: 'batteryMonitors.8' },
+  9: { name: 'BLHeli ESC', nameKey: 'batteryMonitors.9', description: 'BLHeli telemetry', descKey: 'batteryMonitors.9' },
+  10: { name: 'Sum of Selected', nameKey: 'batteryMonitors.10', description: 'Sum multiple monitors', descKey: 'batteryMonitors.10' },
+  11: { name: 'FuelFlow', nameKey: 'batteryMonitors.11', description: 'Fuel flow sensor', descKey: 'batteryMonitors.11' },
+  12: { name: 'FuelLevel PWM', nameKey: 'batteryMonitors.12', description: 'Fuel level PWM sensor', descKey: 'batteryMonitors.12' },
 };
 
 // =============================================================================
@@ -306,7 +350,9 @@ export type BatteryChemistry = 'lipo' | 'lihv' | 'lion' | 'life';
 
 export interface BatteryChemistryInfo {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   /** Per-cell voltages */
   cellFull: number;
   cellNominal: number;
@@ -320,7 +366,9 @@ export interface BatteryChemistryInfo {
 export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo> = {
   lipo: {
     name: 'LiPo',
+    nameKey: 'batteryChemistries.lipo',
     description: 'Standard lithium polymer - most common for RC',
+    descKey: 'batteryChemistries.lipo',
     cellFull: 4.2,
     cellNominal: 3.7,
     cellStorage: 3.8,
@@ -330,7 +378,9 @@ export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo>
   },
   lihv: {
     name: 'LiHV',
+    nameKey: 'batteryChemistries.lihv',
     description: 'High-voltage LiPo - 4.35V full charge',
+    descKey: 'batteryChemistries.lihv',
     cellFull: 4.35,
     cellNominal: 3.8,
     cellStorage: 3.9,
@@ -340,7 +390,9 @@ export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo>
   },
   lion: {
     name: 'Li-Ion',
+    nameKey: 'batteryChemistries.lion',
     description: 'Lithium-ion - higher energy density, lower discharge rate',
+    descKey: 'batteryChemistries.lion',
     cellFull: 4.2,
     cellNominal: 3.6,
     cellStorage: 3.7,
@@ -350,7 +402,9 @@ export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo>
   },
   life: {
     name: 'LiFePO4',
+    nameKey: 'batteryChemistries.life',
     description: 'Lithium iron phosphate - very stable, long cycle life',
+    descKey: 'batteryChemistries.life',
     cellFull: 3.6,
     cellNominal: 3.3,
     cellStorage: 3.3,
@@ -401,7 +455,9 @@ export interface PidAxisValues {
 
 export interface PidPreset {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   icon: LucideIcon;
   iconColor: string;
   color: string;
@@ -418,7 +474,9 @@ export interface PidPreset {
 export const PID_PRESETS: Record<string, PidPreset> = {
   beginner: {
     name: 'Beginner',
+    nameKey: 'pidPresets.beginner',
     description: 'Smooth & forgiving - great for learning',
+    descKey: 'pidPresets.beginner',
     icon: Egg,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
@@ -431,7 +489,9 @@ export const PID_PRESETS: Record<string, PidPreset> = {
   },
   freestyle: {
     name: 'Freestyle',
+    nameKey: 'pidPresets.freestyle',
     description: 'Responsive & smooth for tricks',
+    descKey: 'pidPresets.freestyle',
     icon: Drama,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
@@ -444,7 +504,9 @@ export const PID_PRESETS: Record<string, PidPreset> = {
   },
   racing: {
     name: 'Racing',
+    nameKey: 'pidPresets.racing',
     description: 'Snappy & precise for speed',
+    descKey: 'pidPresets.racing',
     icon: Zap,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
@@ -457,7 +519,9 @@ export const PID_PRESETS: Record<string, PidPreset> = {
   },
   cinematic: {
     name: 'Cinematic',
+    nameKey: 'pidPresets.cinematic',
     description: 'Ultra-smooth for video',
+    descKey: 'pidPresets.cinematic',
     icon: Film,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
@@ -484,7 +548,9 @@ export interface RateValues {
 
 export interface RatePreset {
   name: string;
+  nameKey: string;
   description: string;
+  descKey: string;
   icon: LucideIcon;
   iconColor: string;
   color: string;
@@ -495,7 +561,9 @@ export interface RatePreset {
 export const RATE_PRESETS: Record<string, RatePreset> = {
   beginner: {
     name: 'Beginner',
+    nameKey: 'ratePresets.beginner',
     description: 'Slow & predictable - great for learning',
+    descKey: 'ratePresets.beginner',
     icon: Egg,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
@@ -503,7 +571,9 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
   },
   freestyle: {
     name: 'Freestyle',
+    nameKey: 'ratePresets.freestyle',
     description: 'Balanced for tricks & flow',
+    descKey: 'ratePresets.freestyle',
     icon: Drama,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
@@ -511,7 +581,9 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
   },
   racing: {
     name: 'Racing',
+    nameKey: 'ratePresets.racing',
     description: 'Fast & responsive for speed',
+    descKey: 'ratePresets.racing',
     icon: Zap,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
@@ -519,7 +591,9 @@ export const RATE_PRESETS: Record<string, RatePreset> = {
   },
   cinematic: {
     name: 'Cinematic',
+    nameKey: 'ratePresets.cinematic',
     description: 'Ultra-smooth for filming',
+    descKey: 'ratePresets.cinematic',
     icon: Film,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',

@@ -1,8 +1,10 @@
 import { Sparkles, X } from 'lucide-react';
-import type { FeatureTour } from '../../feature-tours';
+import { useTranslation } from 'react-i18next';
+import { useTourText } from '../../feature-tours';
+import type { LocalizedFeatureTour } from '../../feature-tours';
 
 interface TourPromptProps {
-  tour: FeatureTour;
+  tour: LocalizedFeatureTour;
   onAccept: () => void;
   onDecline: () => void;
   onLater: () => void;
@@ -10,6 +12,9 @@ interface TourPromptProps {
 }
 
 export function TourPrompt({ tour, onAccept, onDecline, onLater, onDisableAll }: TourPromptProps) {
+  const tr = useTourText();
+  const { t } = useTranslation('views');
+
   return (
     <div
       className="fixed bottom-6 right-6 z-[9999] w-[22rem] rounded-xl overflow-hidden animate-in slide-in-from-bottom-4"
@@ -30,22 +35,22 @@ export function TourPrompt({ tour, onAccept, onDecline, onLater, onDisableAll }:
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'rgb(37 99 235)' }}>
-              New in v{tour.version}
+              {t('tours.ui.new-in-version', { version: tour.version })}
             </span>
           </div>
           <h3 className="text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
-            {tour.title}
+            {tr(tour.titleKey, tour.title)}
           </h3>
           <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            {tour.blurb}
+            {tr(tour.blurbKey, tour.blurb)}
           </p>
         </div>
         <button
           onClick={onLater}
           className="shrink-0 p-1 rounded-md transition-colors"
           style={{ color: 'var(--text-tertiary)' }}
-          title="Remind me later"
-          aria-label="Remind me later"
+          title={t('tours.ui.remind-later')}
+          aria-label={t('tours.ui.remind-later')}
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -60,14 +65,14 @@ export function TourPrompt({ tour, onAccept, onDecline, onLater, onDisableAll }:
             border: '1px solid var(--border-default)',
           }}
         >
-          No thanks
+          {t('tours.ui.no-thanks')}
         </button>
         <button
           onClick={onAccept}
           className="flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
           style={{ background: 'rgb(37 99 235)', color: '#fff' }}
         >
-          Show me
+          {t('tours.ui.show-me')}
         </button>
       </div>
       <div className="px-5 pb-3 -mt-1">
@@ -76,7 +81,7 @@ export function TourPrompt({ tour, onAccept, onDecline, onLater, onDisableAll }:
           className="text-[11px] underline underline-offset-2 transition-colors hover:opacity-80"
           style={{ color: 'var(--text-tertiary)' }}
         >
-          Don't offer tours again
+          {t('tours.ui.dont-offer-again')}
         </button>
       </div>
     </div>

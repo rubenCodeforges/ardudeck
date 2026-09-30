@@ -8,8 +8,8 @@ import type { NodeDefinition, PortDefinition } from './lua-graph-types';
 const sensorNodes: NodeDefinition[] = [
   {
     type: 'sensor-gps',
-    label: 'GPS Position',
-    description: 'Current GPS coordinates from the flight controller',
+    label: 'GPS Position', labelKey: 'lua.auto.gps-position',
+    description: 'Current GPS coordinates from the flight controller', descriptionKey: 'lua.auto.current-gps-coordinates-from-the-flight-controller',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -22,8 +22,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-baro-alt',
-    label: 'Baro Altitude',
-    description: 'Barometric altitude in meters',
+    label: 'Baro Altitude', labelKey: 'lua.auto.baro-altitude',
+    description: 'Barometric altitude in meters', descriptionKey: 'lua.auto.barometric-altitude-in-meters',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -34,8 +34,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-battery',
-    label: 'Battery',
-    description: 'Battery voltage, current, and remaining percentage',
+    label: 'Battery', labelKey: 'lua.auto.battery',
+    description: 'Battery voltage, current, and remaining percentage', descriptionKey: 'lua.auto.battery-voltage-current-and-remaining-percentage',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -50,8 +50,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-airspeed',
-    label: 'Airspeed',
-    description: 'Measured airspeed in m/s',
+    label: 'Airspeed', labelKey: 'lua.auto.airspeed',
+    description: 'Measured airspeed in m/s', descriptionKey: 'lua.auto.measured-airspeed-in-m-s',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -62,8 +62,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-rc-channel',
-    label: 'RC Channel',
-    description: 'Read a specific RC channel value (1-16)',
+    label: 'RC Channel', labelKey: 'lua.auto.rc-channel',
+    description: 'Read a specific RC channel value (1-16)', descriptionKey: 'lua.auto.read-a-specific-rc-channel-value-1-16',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -76,8 +76,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-rangefinder',
-    label: 'Rangefinder',
-    description: 'Rangefinder distance in meters',
+    label: 'Rangefinder', labelKey: 'lua.auto.rangefinder',
+    description: 'Rangefinder distance in meters', descriptionKey: 'lua.auto.rangefinder-distance-in-meters',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -90,8 +90,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-attitude',
-    label: 'Attitude',
-    description: 'Current vehicle attitude (roll, pitch, yaw) in degrees',
+    label: 'Attitude', labelKey: 'lua.auto.attitude',
+    description: 'Current vehicle attitude (roll, pitch, yaw) in degrees', descriptionKey: 'lua.auto.current-vehicle-attitude-roll-pitch-yaw-in-degrees',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -104,8 +104,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-groundspeed',
-    label: 'Ground Speed',
-    description: 'GPS ground speed in m/s',
+    label: 'Ground Speed', labelKey: 'lua.auto.ground-speed',
+    description: 'GPS ground speed in m/s', descriptionKey: 'lua.auto.gps-ground-speed-in-m-s',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -116,8 +116,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-rc-aux-switch',
-    label: 'RC Aux Switch',
-    description: 'Read an RC aux switch position (Low / Mid / High)',
+    label: 'RC Aux Switch', labelKey: 'lua.auto.rc-aux-switch',
+    description: 'Read an RC aux switch position (Low / Mid / High)', descriptionKey: 'lua.auto.read-an-rc-aux-switch-position-low-mid-high',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -133,8 +133,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-rangefinder-orient',
-    label: 'Rangefinder (Oriented)',
-    description: 'Rangefinder distance with orientation (e.g. 25 = downward for boats)',
+    label: 'Rangefinder (Oriented)', labelKey: 'lua.auto.rangefinder-oriented',
+    description: 'Rangefinder distance with orientation (e.g. 25 = downward for boats)', descriptionKey: 'lua.auto.rangefinder-distance-with-orientation-e-g-25-downward-for-bo',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -154,8 +154,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-flight-mode',
-    label: 'Flight Mode',
-    description: 'Current flight mode number from the vehicle',
+    label: 'Flight Mode', labelKey: 'lua.auto.flight-mode',
+    description: 'Current flight mode number from the vehicle', descriptionKey: 'lua.auto.current-flight-mode-number-from-the-vehicle',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -166,8 +166,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-armed',
-    label: 'Armed State',
-    description: 'Whether the vehicle is currently armed',
+    label: 'Armed State', labelKey: 'lua.auto.armed-state',
+    description: 'Whether the vehicle is currently armed', descriptionKey: 'lua.auto.whether-the-vehicle-is-currently-armed',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -178,8 +178,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-gps-status',
-    label: 'GPS Status',
-    description: 'GPS fix type and satellite count',
+    label: 'GPS Status', labelKey: 'lua.auto.gps-status',
+    description: 'GPS fix type and satellite count', descriptionKey: 'lua.auto.gps-fix-type-and-satellite-count',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -194,8 +194,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-home',
-    label: 'Home Position',
-    description: 'Home location coordinates and altitude. Exposes both float components and a Location object for chaining into location-math nodes.',
+    label: 'Home Position', labelKey: 'lua.auto.home-position',
+    description: 'Home location coordinates and altitude. Exposes both float components and a Location object for chaining into location-math nodes.', descriptionKey: 'lua.auto.home-location-coordinates-and-altitude-exposes-both-float-co',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -209,8 +209,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-ahrs-location',
-    label: 'AHRS Location',
-    description: 'Live vehicle location from AHRS (a Location object - lat/lng/alt as one value)',
+    label: 'AHRS Location', labelKey: 'lua.auto.ahrs-location',
+    description: 'Live vehicle location from AHRS (a Location object - lat/lng/alt as one value)', descriptionKey: 'lua.auto.live-vehicle-location-from-ahrs-a-location-object-lat-lng-al',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -221,8 +221,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-named-float',
-    label: 'Read Named Float',
-    description: 'Read a NAMED_VALUE_FLOAT published by another script or the GCS',
+    label: 'Read Named Float', labelKey: 'lua.auto.read-named-float',
+    description: 'Read a NAMED_VALUE_FLOAT published by another script or the GCS', descriptionKey: 'lua.auto.read-a-named-value-float-published-by-another-script-or-the-',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -235,8 +235,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-velocity-ned',
-    label: 'Velocity NED',
-    description: 'Vehicle velocity in North/East/Down frame (m/s)',
+    label: 'Velocity NED', labelKey: 'lua.auto.velocity-ned',
+    description: 'Vehicle velocity in North/East/Down frame (m/s)', descriptionKey: 'lua.auto.vehicle-velocity-in-north-east-down-frame-m-s',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -249,8 +249,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-wind',
-    label: 'Wind Estimate',
-    description: 'Estimated wind speed and direction',
+    label: 'Wind Estimate', labelKey: 'lua.auto.wind-estimate',
+    description: 'Estimated wind speed and direction', descriptionKey: 'lua.auto.estimated-wind-speed-and-direction',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -262,8 +262,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-param-get',
-    label: 'Read Parameter',
-    description: 'Read a flight controller parameter live (e.g. CAM1_TRIGG_DIST). Returns 0 if the parameter does not exist.',
+    label: 'Read Parameter', labelKey: 'lua.auto.read-parameter',
+    description: 'Read a flight controller parameter live (e.g. CAM1_TRIGG_DIST). Returns 0 if the parameter does not exist.', descriptionKey: 'lua.auto.read-a-flight-controller-parameter-live-e-g-cam1-trigg-dist-',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -276,8 +276,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-gpio-read',
-    label: 'Read GPIO Pin',
-    description: 'Read the digital level of a GPIO pin. Wire a Pin input to set it from a parameter, or use the Pin property. Polled once per tick: pulses shorter than the run interval are missed, use Pulse Input (interrupt) for those.',
+    label: 'Read GPIO Pin', labelKey: 'lua.auto.read-gpio-pin',
+    description: 'Read the digital level of a GPIO pin. Wire a Pin input to set it from a parameter, or use the Pin property. Polled once per tick: pulses shorter than the run interval are missed, use Pulse Input (interrupt) for those.', descriptionKey: 'lua.auto.read-the-digital-level-of-a-gpio-pin-wire-a-pin-input-to-set',
     category: 'sensors',
     inputs: [
       { id: 'pin', label: 'Pin', type: 'number', direction: 'input' },
@@ -293,8 +293,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-pwm-pulse',
-    label: 'Pulse Input (interrupt)',
-    description: 'Catch short pulses (e.g. a 1-2 ms camera hotshoe pulse) on a GPIO pin via hardware interrupt. The pulse width is latched between ticks, so slow polling still sees it. The pin needs SERVOx_FUNCTION = -1 and must not be shared with CAM1_FEEDBAK_PIN (whoever attaches first owns the interrupt).',
+    label: 'Pulse Input (interrupt)', labelKey: 'lua.auto.pulse-input-interrupt',
+    description: 'Catch short pulses (e.g. a 1-2 ms camera hotshoe pulse) on a GPIO pin via hardware interrupt. The pulse width is latched between ticks, so slow polling still sees it. The pin needs SERVOx_FUNCTION = -1 and must not be shared with CAM1_FEEDBAK_PIN (whoever attaches first owns the interrupt).', descriptionKey: 'lua.auto.catch-short-pulses-e-g-a-1-2-ms-camera-hotshoe-pulse-on-a-gp',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -309,8 +309,8 @@ const sensorNodes: NodeDefinition[] = [
   },
   {
     type: 'sensor-current-waypoint',
-    label: 'Current Waypoint',
-    description: 'The active mission navigation waypoint index and command id.',
+    label: 'Current Waypoint', labelKey: 'lua.auto.current-waypoint',
+    description: 'The active mission navigation waypoint index and command id.', descriptionKey: 'lua.auto.the-active-mission-navigation-waypoint-index-and-command-id',
     category: 'sensors',
     inputs: [],
     outputs: [
@@ -327,8 +327,8 @@ const sensorNodes: NodeDefinition[] = [
 const logicNodes: NodeDefinition[] = [
   {
     type: 'logic-compare',
-    label: 'Compare',
-    description: 'Compare two numbers with a selected operator',
+    label: 'Compare', labelKey: 'lua.auto.compare',
+    description: 'Compare two numbers with a selected operator', descriptionKey: 'lua.auto.compare-two-numbers-with-a-selected-operator',
     category: 'logic',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -353,8 +353,8 @@ const logicNodes: NodeDefinition[] = [
   },
   {
     type: 'logic-if-else',
-    label: 'If / Else',
-    description: 'Branch execution based on a boolean condition',
+    label: 'If / Else', labelKey: 'lua.auto.if-else',
+    description: 'Branch execution based on a boolean condition', descriptionKey: 'lua.auto.branch-execution-based-on-a-boolean-condition',
     category: 'logic',
     inputs: [
       { id: 'condition', label: 'Condition', type: 'boolean', direction: 'input' },
@@ -368,7 +368,7 @@ const logicNodes: NodeDefinition[] = [
   {
     type: 'logic-and',
     label: 'AND',
-    description: 'Logical AND: true only if both inputs are true',
+    description: 'Logical AND: true only if both inputs are true', descriptionKey: 'lua.auto.logical-and-true-only-if-both-inputs-are-true',
     category: 'logic',
     inputs: [
       { id: 'a', label: 'A', type: 'boolean', direction: 'input' },
@@ -382,7 +382,7 @@ const logicNodes: NodeDefinition[] = [
   {
     type: 'logic-or',
     label: 'OR',
-    description: 'Logical OR: true if either input is true',
+    description: 'Logical OR: true if either input is true', descriptionKey: 'lua.auto.logical-or-true-if-either-input-is-true',
     category: 'logic',
     inputs: [
       { id: 'a', label: 'A', type: 'boolean', direction: 'input' },
@@ -396,7 +396,7 @@ const logicNodes: NodeDefinition[] = [
   {
     type: 'logic-not',
     label: 'NOT',
-    description: 'Invert a boolean value',
+    description: 'Invert a boolean value', descriptionKey: 'lua.auto.invert-a-boolean-value',
     category: 'logic',
     inputs: [
       { id: 'input', label: 'Input', type: 'boolean', direction: 'input' },
@@ -408,8 +408,8 @@ const logicNodes: NodeDefinition[] = [
   },
   {
     type: 'logic-range-check',
-    label: 'Range Check',
-    description: 'Check if a value is within a min/max range',
+    label: 'Range Check', labelKey: 'lua.auto.range-check',
+    description: 'Check if a value is within a min/max range', descriptionKey: 'lua.auto.check-if-a-value-is-within-a-min-max-range',
     category: 'logic',
     inputs: [
       { id: 'value', label: 'Value', type: 'number', direction: 'input' },
@@ -424,8 +424,8 @@ const logicNodes: NodeDefinition[] = [
   },
   {
     type: 'logic-switch',
-    label: 'Switch',
-    description: 'Multi-branch based on a numeric value',
+    label: 'Switch', labelKey: 'lua.auto.switch',
+    description: 'Multi-branch based on a numeric value', descriptionKey: 'lua.auto.multi-branch-based-on-a-numeric-value',
     category: 'logic',
     inputs: [
       { id: 'value', label: 'Value', type: 'number', direction: 'input' },
@@ -449,8 +449,8 @@ const logicNodes: NodeDefinition[] = [
 const mathNodes: NodeDefinition[] = [
   {
     type: 'math-add',
-    label: 'Add',
-    description: 'Add two numbers (A + B)',
+    label: 'Add', labelKey: 'lua.auto.add',
+    description: 'Add two numbers (A + B)', descriptionKey: 'lua.auto.add-two-numbers-a-b',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -461,8 +461,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-subtract',
-    label: 'Subtract',
-    description: 'Subtract two numbers (A - B)',
+    label: 'Subtract', labelKey: 'lua.auto.subtract',
+    description: 'Subtract two numbers (A - B)', descriptionKey: 'lua.auto.subtract-two-numbers-a-b',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -473,8 +473,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-multiply',
-    label: 'Multiply',
-    description: 'Multiply two numbers (A * B)',
+    label: 'Multiply', labelKey: 'lua.auto.multiply',
+    description: 'Multiply two numbers (A * B)', descriptionKey: 'lua.auto.multiply-two-numbers-a-b',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -485,8 +485,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-divide',
-    label: 'Divide',
-    description: 'Divide two numbers (A / B) with zero-division protection',
+    label: 'Divide', labelKey: 'lua.auto.divide',
+    description: 'Divide two numbers (A / B) with zero-division protection', descriptionKey: 'lua.auto.divide-two-numbers-a-b-with-zero-division-protection',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -497,8 +497,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-clamp',
-    label: 'Clamp',
-    description: 'Constrain a value to a min/max range',
+    label: 'Clamp', labelKey: 'lua.auto.clamp',
+    description: 'Constrain a value to a min/max range', descriptionKey: 'lua.auto.constrain-a-value-to-a-min-max-range',
     category: 'math',
     inputs: [
       { id: 'value', label: 'Value', type: 'number', direction: 'input', defaultValue: 0 },
@@ -511,8 +511,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-map-range',
-    label: 'Map Range',
-    description: 'Linear interpolation from one range to another',
+    label: 'Map Range', labelKey: 'lua.auto.map-range',
+    description: 'Linear interpolation from one range to another', descriptionKey: 'lua.auto.linear-interpolation-from-one-range-to-another',
     category: 'math',
     inputs: [
       { id: 'value', label: 'Value', type: 'number', direction: 'input', defaultValue: 0 },
@@ -527,8 +527,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-abs',
-    label: 'Abs',
-    description: 'Absolute value of a number',
+    label: 'Abs', labelKey: 'lua.auto.abs',
+    description: 'Absolute value of a number', descriptionKey: 'lua.auto.absolute-value-of-a-number',
     category: 'math',
     inputs: [
       { id: 'value', label: 'Value', type: 'number', direction: 'input', defaultValue: 0 },
@@ -538,8 +538,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-min',
-    label: 'Min',
-    description: 'Minimum of two values',
+    label: 'Min', labelKey: 'lua.auto.min',
+    description: 'Minimum of two values', descriptionKey: 'lua.auto.minimum-of-two-values',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -550,8 +550,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-max',
-    label: 'Max',
-    description: 'Maximum of two values',
+    label: 'Max', labelKey: 'lua.auto.max',
+    description: 'Maximum of two values', descriptionKey: 'lua.auto.maximum-of-two-values',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'number', direction: 'input', defaultValue: 0 },
@@ -563,8 +563,8 @@ const mathNodes: NodeDefinition[] = [
   // ── Location math (work with AHRS Location objects) ──
   {
     type: 'math-location-bearing',
-    label: 'Bearing A→B',
-    description: 'Compass bearing in degrees from Location A to Location B (0=North, 90=East)',
+    label: 'Bearing A→B', labelKey: 'lua.auto.bearing-a-b',
+    description: 'Compass bearing in degrees from Location A to Location B (0=North, 90=East)', descriptionKey: 'lua.auto.compass-bearing-in-degrees-from-location-a-to-location-b-0-n',
     category: 'math',
     inputs: [
       { id: 'from', label: 'From', type: 'any', direction: 'input' },
@@ -576,8 +576,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-location-distance',
-    label: 'Distance A→B',
-    description: 'Horizontal distance in metres between two Locations',
+    label: 'Distance A→B', labelKey: 'lua.auto.distance-a-b',
+    description: 'Horizontal distance in metres between two Locations', descriptionKey: 'lua.auto.horizontal-distance-in-metres-between-two-locations',
     category: 'math',
     inputs: [
       { id: 'a', label: 'A', type: 'any', direction: 'input' },
@@ -589,8 +589,8 @@ const mathNodes: NodeDefinition[] = [
   },
   {
     type: 'math-location-offset',
-    label: 'Offset Location',
-    description: 'Project a Location forward by bearing (deg) + distance (m). Returns new Location.',
+    label: 'Offset Location', labelKey: 'lua.auto.offset-location',
+    description: 'Project a Location forward by bearing (deg) + distance (m). Returns new Location.', descriptionKey: 'lua.auto.project-a-location-forward-by-bearing-deg-distance-m-returns',
     category: 'math',
     inputs: [
       { id: 'from', label: 'From', type: 'any', direction: 'input' },
@@ -608,8 +608,8 @@ const mathNodes: NodeDefinition[] = [
 const actionNodes: NodeDefinition[] = [
   {
     type: 'action-gcs-text',
-    label: 'Send GCS Text',
-    description: 'Display a message on the ground control station',
+    label: 'Send GCS Text', labelKey: 'lua.auto.send-gcs-text',
+    description: 'Display a message on the ground control station', descriptionKey: 'lua.auto.display-a-message-on-the-ground-control-station',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -635,8 +635,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-set-servo',
-    label: 'Set Servo',
-    description: 'Set a servo output to a specific PWM value',
+    label: 'Set Servo', labelKey: 'lua.auto.set-servo',
+    description: 'Set a servo output to a specific PWM value', descriptionKey: 'lua.auto.set-a-servo-output-to-a-specific-pwm-value',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -650,8 +650,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-set-mode',
-    label: 'Set Flight Mode',
-    description: 'Request a flight mode change',
+    label: 'Set Flight Mode', labelKey: 'lua.auto.set-flight-mode',
+    description: 'Request a flight mode change', descriptionKey: 'lua.auto.request-a-flight-mode-change',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -664,8 +664,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-set-param',
-    label: 'Set Parameter',
-    description: 'Change a flight controller parameter value',
+    label: 'Set Parameter', labelKey: 'lua.auto.set-parameter',
+    description: 'Change a flight controller parameter value', descriptionKey: 'lua.auto.change-a-flight-controller-parameter-value',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -679,8 +679,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-relay',
-    label: 'Trigger Relay',
-    description: 'Toggle a relay on or off',
+    label: 'Trigger Relay', labelKey: 'lua.auto.trigger-relay',
+    description: 'Toggle a relay on or off', descriptionKey: 'lua.auto.toggle-a-relay-on-or-off',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -697,8 +697,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-log-to-file',
-    label: 'Log to File',
-    description: 'Append a line of data to a CSV/text file on the SD card',
+    label: 'Log to File', labelKey: 'lua.auto.log-to-file',
+    description: 'Append a line of data to a CSV/text file on the SD card', descriptionKey: 'lua.auto.append-a-line-of-data-to-a-csv-text-file-on-the-sd-card',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -722,8 +722,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-set-led',
-    label: 'Set LED',
-    description: 'Control NeoPixel / ProfiLED colors',
+    label: 'Set LED', labelKey: 'lua.auto.set-led',
+    description: 'Control NeoPixel / ProfiLED colors', descriptionKey: 'lua.auto.control-neopixel-profiled-colors',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -739,8 +739,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-play-tune',
-    label: 'Play Tune',
-    description: 'Play a tone/melody on the buzzer (MML notation)',
+    label: 'Play Tune', labelKey: 'lua.auto.play-tune',
+    description: 'Play a tone/melody on the buzzer (MML notation)', descriptionKey: 'lua.auto.play-a-tone-melody-on-the-buzzer-mml-notation',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -753,8 +753,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-set-waypoint',
-    label: 'Jump to Waypoint',
-    description: 'Set the current mission command index (jump to a waypoint)',
+    label: 'Jump to Waypoint', labelKey: 'lua.auto.jump-to-waypoint',
+    description: 'Set the current mission command index (jump to a waypoint)', descriptionKey: 'lua.auto.set-the-current-mission-command-index-jump-to-a-waypoint',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -768,8 +768,8 @@ const actionNodes: NodeDefinition[] = [
   // ── FC-side script primitives (added for the script-installer graph) ──
   {
     type: 'action-set-target-location',
-    label: 'Set Target Location',
-    description: 'Issue a GUIDED-mode position target. Vehicle ignores it when not in GUIDED.',
+    label: 'Set Target Location', labelKey: 'lua.auto.set-target-location',
+    description: 'Issue a GUIDED-mode position target. Vehicle ignores it when not in GUIDED.', descriptionKey: 'lua.auto.issue-a-guided-mode-position-target-vehicle-ignores-it-when-',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -781,8 +781,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-publish-named-float',
-    label: 'Publish Named Float',
-    description: 'Send a NAMED_VALUE_FLOAT (max 10 char name) over MAVLink. Used for heartbeats and lightweight pub/sub.',
+    label: 'Publish Named Float', labelKey: 'lua.auto.publish-named-float',
+    description: 'Send a NAMED_VALUE_FLOAT (max 10 char name) over MAVLink. Used for heartbeats and lightweight pub/sub.', descriptionKey: 'lua.auto.send-a-named-value-float-max-10-char-name-over-mavlink-used-',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -796,8 +796,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-mavlink-on-user-cmd',
-    label: 'On MAV_CMD_USER_*',
-    description: 'Receive a MAVLink user command (MAV_CMD_USER_1..5) sent from the GCS. Carries 4 floats + lat/lon/alt.',
+    label: 'On MAV_CMD_USER_*', labelKey: 'lua.auto.on-mav-cmd-user',
+    description: 'Receive a MAVLink user command (MAV_CMD_USER_1..5) sent from the GCS. Carries 4 floats + lat/lon/alt.', descriptionKey: 'lua.auto.receive-a-mavlink-user-command-mav-cmd-user-1-5-sent-from-th',
     category: 'actions',
     inputs: [],
     outputs: [
@@ -823,8 +823,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-serial-write',
-    label: 'Serial Write',
-    description: 'Write a string out a scripting serial port. Set an unused SERIALx_PROTOCOL to 28 (Scripting); Instance picks the Nth such port.',
+    label: 'Serial Write', labelKey: 'lua.auto.serial-write',
+    description: 'Write a string out a scripting serial port. Set an unused SERIALx_PROTOCOL to 28 (Scripting); Instance picks the Nth such port.', descriptionKey: 'lua.auto.write-a-string-out-a-scripting-serial-port-set-an-unused-ser',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -859,8 +859,8 @@ const actionNodes: NodeDefinition[] = [
   },
   {
     type: 'action-socket-send',
-    label: 'Network Send',
-    description: 'Send a string over UDP or TCP via the flight controller network stack. Needs a board with networking and NET_ENABLE = 1 (ArduPilot 4.5+).',
+    label: 'Network Send', labelKey: 'lua.auto.network-send',
+    description: 'Send a string over UDP or TCP via the flight controller network stack. Needs a board with networking and NET_ENABLE = 1 (ArduPilot 4.5+).', descriptionKey: 'lua.auto.send-a-string-over-udp-or-tcp-via-the-flight-controller-netw',
     category: 'actions',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -887,8 +887,8 @@ const actionNodes: NodeDefinition[] = [
 const timingNodes: NodeDefinition[] = [
   {
     type: 'timing-run-every',
-    label: 'Run Every',
-    description: 'Execute downstream at a fixed interval (independent timer)',
+    label: 'Run Every', labelKey: 'lua.auto.run-every',
+    description: 'Execute downstream at a fixed interval (independent timer)', descriptionKey: 'lua.auto.execute-downstream-at-a-fixed-interval-independent-timer',
     category: 'timing',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -902,8 +902,8 @@ const timingNodes: NodeDefinition[] = [
   },
   {
     type: 'timing-debounce',
-    label: 'Debounce',
-    description: 'Suppress rapid changes: only pass through after value is stable',
+    label: 'Debounce', labelKey: 'lua.auto.debounce',
+    description: 'Suppress rapid changes: only pass through after value is stable', descriptionKey: 'lua.auto.suppress-rapid-changes-only-pass-through-after-value-is-stab',
     category: 'timing',
     inputs: [
       { id: 'input', label: 'Input', type: 'boolean', direction: 'input' },
@@ -917,8 +917,8 @@ const timingNodes: NodeDefinition[] = [
   },
   {
     type: 'timing-on-change',
-    label: 'On Change',
-    description: 'Trigger when a value changes from its previous value',
+    label: 'On Change', labelKey: 'lua.auto.on-change',
+    description: 'Trigger when a value changes from its previous value', descriptionKey: 'lua.auto.trigger-when-a-value-changes-from-its-previous-value',
     category: 'timing',
     inputs: [
       { id: 'value', label: 'Value', type: 'number', direction: 'input' },
@@ -930,8 +930,8 @@ const timingNodes: NodeDefinition[] = [
   },
   {
     type: 'timing-rising-edge',
-    label: 'Rising Edge',
-    description: 'Fires once when input transitions from false to true',
+    label: 'Rising Edge', labelKey: 'lua.auto.rising-edge',
+    description: 'Fires once when input transitions from false to true', descriptionKey: 'lua.auto.fires-once-when-input-transitions-from-false-to-true',
     category: 'timing',
     inputs: [
       { id: 'input', label: 'Input', type: 'boolean', direction: 'input' },
@@ -943,8 +943,8 @@ const timingNodes: NodeDefinition[] = [
   },
   {
     type: 'timing-falling-edge',
-    label: 'Falling Edge',
-    description: 'Fires once when input transitions from true to false',
+    label: 'Falling Edge', labelKey: 'lua.auto.falling-edge',
+    description: 'Fires once when input transitions from true to false', descriptionKey: 'lua.auto.fires-once-when-input-transitions-from-true-to-false',
     category: 'timing',
     inputs: [
       { id: 'input', label: 'Input', type: 'boolean', direction: 'input' },
@@ -956,8 +956,8 @@ const timingNodes: NodeDefinition[] = [
   },
   {
     type: 'timing-watchdog',
-    label: 'Watchdog Timer',
-    description: 'Outputs Expired if no Kick is received within the timeout. The timer resets on every Kick, and holds reset while Enable is false.',
+    label: 'Watchdog Timer', labelKey: 'lua.auto.watchdog-timer',
+    description: 'Outputs Expired if no Kick is received within the timeout. The timer resets on every Kick, and holds reset while Enable is false.', descriptionKey: 'lua.auto.outputs-expired-if-no-kick-is-received-within-the-timeout-th',
     category: 'timing',
     inputs: [
       { id: 'kick', label: 'Kick', type: 'boolean', direction: 'input' },
@@ -972,8 +972,8 @@ const timingNodes: NodeDefinition[] = [
   },
   {
     type: 'timing-latch',
-    label: 'Latch / Toggle',
-    description: 'Set/Reset flip-flop: Set turns output on, Reset turns it off',
+    label: 'Latch / Toggle', labelKey: 'lua.auto.latch-toggle',
+    description: 'Set/Reset flip-flop: Set turns output on, Reset turns it off', descriptionKey: 'lua.auto.set-reset-flip-flop-set-turns-output-on-reset-turns-it-off',
     category: 'timing',
     inputs: [
       { id: 'set', label: 'Set', type: 'boolean', direction: 'input' },
@@ -991,8 +991,8 @@ const timingNodes: NodeDefinition[] = [
 const variableNodes: NodeDefinition[] = [
   {
     type: 'var-constant',
-    label: 'Constant',
-    description: 'A fixed value (number, string, or boolean)',
+    label: 'Constant', labelKey: 'lua.auto.constant',
+    description: 'A fixed value (number, string, or boolean)', descriptionKey: 'lua.auto.a-fixed-value-number-string-or-boolean',
     category: 'variables',
     inputs: [],
     outputs: [
@@ -1012,8 +1012,8 @@ const variableNodes: NodeDefinition[] = [
   },
   {
     type: 'var-get',
-    label: 'Get Variable',
-    description: 'Read a named variable',
+    label: 'Get Variable', labelKey: 'lua.auto.get-variable',
+    description: 'Read a named variable', descriptionKey: 'lua.auto.read-a-named-variable',
     category: 'variables',
     inputs: [],
     outputs: [
@@ -1025,8 +1025,8 @@ const variableNodes: NodeDefinition[] = [
   },
   {
     type: 'var-set',
-    label: 'Set Variable',
-    description: 'Write a named variable',
+    label: 'Set Variable', labelKey: 'lua.auto.set-variable',
+    description: 'Write a named variable', descriptionKey: 'lua.auto.write-a-named-variable',
     category: 'variables',
     inputs: [
       { id: 'trigger', label: 'Trigger', type: 'boolean', direction: 'input' },
@@ -1044,8 +1044,8 @@ const variableNodes: NodeDefinition[] = [
 const flowNodes: NodeDefinition[] = [
   {
     type: 'flow-custom-lua',
-    label: 'Custom Lua',
-    description: 'Inline your own Lua snippet. Input pins arrive as local variables named after the pins; end the snippet with "return <output pins>" to feed downstream nodes.',
+    label: 'Custom Lua', labelKey: 'lua.auto.custom-lua',
+    description: 'Inline your own Lua snippet. Input pins arrive as local variables named after the pins; end the snippet with "return <output pins>" to feed downstream nodes.', descriptionKey: 'lua.auto.inline-your-own-lua-snippet-input-pins-arrive-as-local-varia',
     category: 'flow',
     // Ports are derived per-instance from the pin properties, see getEffectivePorts
     inputs: [],
@@ -1058,8 +1058,8 @@ const flowNodes: NodeDefinition[] = [
   },
   {
     type: 'flow-comment',
-    label: 'Comment',
-    description: 'A text comment for documentation purposes, no effect on code',
+    label: 'Comment', labelKey: 'lua.auto.comment',
+    description: 'A text comment for documentation purposes, no effect on code', descriptionKey: 'lua.auto.a-text-comment-for-documentation-purposes-no-effect-on-code',
     category: 'flow',
     inputs: [],
     outputs: [],

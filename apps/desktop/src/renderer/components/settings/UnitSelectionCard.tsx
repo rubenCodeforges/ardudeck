@@ -1,4 +1,5 @@
 import { Ruler } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   ALTITUDE_UNITS,
   AREA_UNITS,
@@ -16,16 +17,18 @@ import { useSettingsStore } from '../../stores/settings-store';
 
 type UnitKind = keyof UserUnitPreferences;
 
+// Labels come from the translation bundle, keyed by unit kind; the unit values
+// themselves stay as `UNIT_LABELS` abbreviations (m, km, m/s…) in every language.
 const UNIT_FIELDS = [
-  { kind: 'distance', label: 'Distance', options: DISTANCE_UNITS },
-  { kind: 'altitude', label: 'Altitude', options: ALTITUDE_UNITS },
-  { kind: 'speed', label: 'Speed', options: SPEED_UNITS },
-  { kind: 'verticalSpeed', label: 'Vertical speed', options: VERTICAL_SPEED_UNITS },
-  { kind: 'electricCapacity', label: 'E-Capacity', options: ELECTRIC_CAPACITY_UNITS },
-  { kind: 'weight', label: 'Weight', options: WEIGHT_UNITS },
-  { kind: 'dimensions', label: 'Dimensions', options: DIMENSION_UNITS },
-  { kind: 'area', label: 'Area', options: AREA_UNITS },
-  { kind: 'windSpeed', label: 'Wind speed', options: WIND_SPEED_UNITS },
+  { kind: 'distance', options: DISTANCE_UNITS },
+  { kind: 'altitude', options: ALTITUDE_UNITS },
+  { kind: 'speed', options: SPEED_UNITS },
+  { kind: 'verticalSpeed', options: VERTICAL_SPEED_UNITS },
+  { kind: 'electricCapacity', options: ELECTRIC_CAPACITY_UNITS },
+  { kind: 'weight', options: WEIGHT_UNITS },
+  { kind: 'dimensions', options: DIMENSION_UNITS },
+  { kind: 'area', options: AREA_UNITS },
+  { kind: 'windSpeed', options: WIND_SPEED_UNITS },
 ] as const;
 
 function unitLabel(kind: UnitKind, unit: string): string {
@@ -34,6 +37,7 @@ function unitLabel(kind: UnitKind, unit: string): string {
 }
 
 export function UnitSelectionCard() {
+  const { t } = useTranslation('settings');
   const unitPreferences = useSettingsStore((state) => state.unitPreferences);
   const setUnitPreference = useSettingsStore((state) => state.setUnitPreference);
 
@@ -45,13 +49,13 @@ export function UnitSelectionCard() {
     <div className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4 mb-4" data-tour="unit-preferences">
       <div className="flex items-center gap-3 mb-4">
         <Ruler className="w-4 h-4 text-blue-400" aria-hidden="true" />
-        <div className="text-sm font-medium text-content">Display Units</div>
+        <div className="text-sm font-medium text-content">{t('units.heading')}</div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {UNIT_FIELDS.map((field) => (
           <label key={field.kind} className="space-y-1.5">
-            <span className="block text-xs font-medium text-content-secondary">{field.label}</span>
+            <span className="block text-xs font-medium text-content-secondary">{t(`units.fields.${field.kind}`)}</span>
             <select
               value={unitPreferences[field.kind]}
               onChange={(event) => updateUnitPreference(field.kind, event.target.value)}

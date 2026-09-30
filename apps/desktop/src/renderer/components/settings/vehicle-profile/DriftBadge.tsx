@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, X } from 'lucide-react';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
 import { useConnectionStore } from '../../../stores/connection-store.js';
@@ -14,6 +15,7 @@ interface DriftBadgeProps {
  * would produce, show a yellow "Drifted — N" pill. Click to open a detail modal.
  */
 export function DriftBadge({ profile }: DriftBadgeProps) {
+  const { t } = useTranslation('settings');
   const isConnected = useConnectionStore(s => s.connectionState.isConnected);
   const isSitl = useConnectionStore(s => s.connectionState.isSitl ?? false);
   const parameters = useParameterStore(s => s.parameters);
@@ -41,7 +43,7 @@ export function DriftBadge({ profile }: DriftBadgeProps) {
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors animate-pulse"
       >
         <AlertTriangle className="w-3 h-3" />
-        Drifted · {report.diverged.length}
+        {t('vehicleProfile.drift.badge', { count: report.diverged.length })}
       </button>
 
       {open && (
@@ -53,7 +55,7 @@ export function DriftBadge({ profile }: DriftBadgeProps) {
             <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-semibold text-content">Drift from applied profile</h3>
+                <h3 className="text-sm font-semibold text-content">{t('vehicleProfile.drift.heading')}</h3>
               </div>
               <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-surface-overlay-subtle text-content-secondary">
                 <X className="w-4 h-4" />
@@ -74,7 +76,7 @@ export function DriftBadge({ profile }: DriftBadgeProps) {
               ))}
             </div>
             <div className="px-5 py-3 border-t border-subtle text-[11px] text-content-secondary">
-              Re-apply the profile from its card to restore these values.
+              {t('vehicleProfile.drift.footer')}
             </div>
           </div>
         </div>

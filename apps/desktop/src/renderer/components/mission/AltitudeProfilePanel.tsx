@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { commandHasLocation, hasValidCoordinates, mavFrameToAltFrame, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
@@ -93,6 +94,7 @@ interface AltitudeProfilePanelProps {
 }
 
 export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelProps) {
+  const { t } = useTranslation('mission');
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 400, height: 150 });
@@ -768,13 +770,13 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
         {/* Legend and status */}
         <div className="absolute top-1 right-2 flex items-center gap-3 text-[10px]">
           {terrainLoading && (
-            <span className="text-blue-400 pointer-events-none">Loading terrain...</span>
+            <span className="text-blue-400 pointer-events-none">{t('altitudeProfile.loadingTerrain')}</span>
           )}
           {terrainData.length > 0 && !terrainLoading && (
             <>
               <span className="flex items-center gap-1 pointer-events-none">
                 <span className="w-2 h-2 rounded-sm bg-green-500/60" />
-                <span className="text-content-secondary">Terrain</span>
+                <span className="text-content-secondary">{t('altitudeProfile.terrain')}</span>
               </span>
               <span className="flex items-center gap-1 pointer-events-none">
                 <span className="w-3 h-0.5 bg-amber-500" style={{ borderStyle: 'dashed' }} />

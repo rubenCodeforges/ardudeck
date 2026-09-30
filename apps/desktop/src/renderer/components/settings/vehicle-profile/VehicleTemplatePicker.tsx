@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Search, Download } from 'lucide-react';
 import type { VehicleTemplate } from '../../../lib/vehicle-templates/types.js';
 import { VEHICLE_TEMPLATES } from '../../../lib/vehicle-templates/registry.js';
@@ -30,6 +31,7 @@ interface VehicleTemplatePickerProps {
  * "Import from connected vehicle" when a connection + param cache is live.
  */
 export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose }: VehicleTemplatePickerProps) {
+  const { t } = useTranslation('settings');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [query, setQuery] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -132,7 +134,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search templates…"
+              placeholder={t('vehicleProfile.templates.searchPlaceholder')}
               className="bg-transparent text-xs text-content placeholder:text-content-secondary outline-none w-48"
             />
           </div>
@@ -150,7 +152,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
                   <Download className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-content">Import from connected vehicle</div>
+                  <div className="text-sm font-medium text-content">{t('vehicleProfile.templates.importFromVehicle')}</div>
                   <div className="text-xs text-content-secondary mt-0.5">
                     Read parameters from the currently connected vehicle and infer the matching template.
                   </div>

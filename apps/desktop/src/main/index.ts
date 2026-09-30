@@ -322,12 +322,15 @@ app.whenReady().then(() => {
   // decode nowhere.
   registerArduDeckDialect();
 
-  // Set macOS dock icon
+  // Set macOS dock icon. `app.dock` is typed `Dock | undefined` (it only exists
+  // on macOS, and Electron exposes it as optional), so the optional call keeps
+  // `tsc --noEmit` clean without changing behaviour: inside this darwin branch
+  // the dock is always present.
   if (process.platform === 'darwin') {
     const resourcesPath = isDev
       ? join(__dirname, '../../resources')
       : join(app.getAppPath(), 'resources');
-    app.dock.setIcon(join(resourcesPath, 'icon.png'));
+    app.dock?.setIcon(join(resourcesPath, 'icon.png'));
   }
 
   // Setup tile cache protocol handler (must be after app.ready)

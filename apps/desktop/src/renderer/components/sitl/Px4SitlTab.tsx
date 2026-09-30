@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { usePx4SitlStore } from '../../stores/px4-sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -23,41 +24,47 @@ import {
   UNIT_LABELS,
 } from '../../../shared/user-units.js';
 
+/** Prefer the i18n key; falls back to the literal. */
+function pxText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+
 // Inline SVG paths (24x24) so the tiles render identically to the ArduPilot tab.
 // Copter/plane/rover reuse the ArduPilot tab's exact paths; VTOL uses a
 // plane-takeoff glyph (lucide) to distinguish the transitioning airframe class.
-const VEHICLE_TYPE_OPTIONS: Array<{ value: Px4VehicleType; label: string; icon: string }> = [
-  { value: 'copter', label: 'Copter', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
-  { value: 'plane', label: 'Plane', icon: 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z' },
-  { value: 'vtol', label: 'VTOL', icon: 'M2 22h20M6.36 17.4 4 17l-2-4 1.1-.55a2 2 0 0 1 1.8 0l.17.1a2 2 0 0 0 1.8 0L8 12 5 6l.9-.45a2 2 0 0 1 2.09.2l4.02 3a2 2 0 0 0 2.1.2l4.19-2.06a2.41 2.41 0 0 1 1.73-.17L21 7a1.4 1.4 0 0 1 .87 1.99l-.38.76c-.23.46-.6.84-1.07 1.08L7.58 17.2a2 2 0 0 1-1.22.18Z' },
-  { value: 'rover', label: 'Rover', icon: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z' },
+const VEHICLE_TYPE_OPTIONS: Array<{ value: Px4VehicleType; label: string; labelKey: string; icon: string }> = [
+  { value: 'copter', label: 'Copter', labelKey: 'sitl.px4.vehicle-type.copter', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
+  { value: 'plane', label: 'Plane', labelKey: 'sitl.px4.vehicle-type.plane', icon: 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z' },
+  { value: 'vtol', label: 'VTOL', labelKey: 'sitl.px4.vehicle-type.vtol', icon: 'M2 22h20M6.36 17.4 4 17l-2-4 1.1-.55a2 2 0 0 1 1.8 0l.17.1a2 2 0 0 0 1.8 0L8 12 5 6l.9-.45a2 2 0 0 1 2.09.2l4.02 3a2 2 0 0 0 2.1.2l4.19-2.06a2.41 2.41 0 0 1 1.73-.17L21 7a1.4 1.4 0 0 1 .87 1.99l-.38.76c-.23.46-.6.84-1.07 1.08L7.58 17.2a2 2 0 0 1-1.22.18Z' },
+  { value: 'rover', label: 'Rover', labelKey: 'sitl.px4.vehicle-type.rover', icon: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z' },
 ];
 
 // Physics backend bundled with the PX4 download. jMAVSim is the lightweight
 // default; Gazebo needs a local install; "None" spawns the flight stack alone
 // for a MAVLink-only link with no physics.
-const SIMULATOR_OPTIONS: Array<{ value: Px4SimulatorBackend; label: string; description: string }> = [
-  { value: 'jmavsim', label: 'jMAVSim', description: 'Default, lightweight (needs Java)' },
-  { value: 'gz', label: 'Gazebo (needs local install)', description: 'Higher-fidelity physics; requires Gazebo installed locally' },
-  { value: 'none', label: 'None (link only)', description: 'Flight stack only, no physics backend' },
+const SIMULATOR_OPTIONS: Array<{ value: Px4SimulatorBackend; label: string; labelKey: string; description: string; descriptionKey: string }> = [
+  { value: 'jmavsim', label: 'jMAVSim', labelKey: 'sitl.px4.backend.jmavsim', description: 'Default, lightweight (needs Java)', descriptionKey: 'sitl.px4.backend.jmavsim-desc' },
+  { value: 'gz', label: 'Gazebo (needs local install)', labelKey: 'sitl.px4.backend.gazebo', description: 'Higher-fidelity physics; requires Gazebo installed locally', descriptionKey: 'sitl.px4.backend.gazebo-desc' },
+  { value: 'none', label: 'None (link only)', labelKey: 'sitl.px4.backend.none', description: 'Flight stack only, no physics backend', descriptionKey: 'sitl.px4.backend.none-desc' },
 ];
 
 // One-click home presets. CMAC mirrors ArduPilot's canonical SITL home; the
 // rest are well-known open spaces.
-const HOME_PRESETS: Array<{ name: string; lat: number; lng: number; alt: number; heading: number }> = [
-  { name: 'CMAC (default)', lat: -35.363262, lng: 149.165237, alt: 584, heading: 353 },
-  { name: 'SF Bay', lat: 37.8, lng: -122.4, alt: 0, heading: 270 },
-  { name: 'Nevada Desert', lat: 36.0, lng: -115.0, alt: 610, heading: 0 },
-  { name: 'Swiss Alps', lat: 46.5, lng: 8.0, alt: 1800, heading: 90 },
+const HOME_PRESETS: Array<{ name: string; nameKey: string; lat: number; lng: number; alt: number; heading: number }> = [
+  { name: 'CMAC (default)', nameKey: 'sitl.px4.home.preset.cmac', lat: -35.363262, lng: 149.165237, alt: 584, heading: 353 },
+  { name: 'SF Bay', nameKey: 'sitl.px4.home.preset.sf-bay', lat: 37.8, lng: -122.4, alt: 0, heading: 270 },
+  { name: 'Nevada Desert', nameKey: 'sitl.px4.home.preset.nevada', lat: 36.0, lng: -115.0, alt: 610, heading: 0 },
+  { name: 'Swiss Alps', nameKey: 'sitl.px4.home.preset.alps', lat: 46.5, lng: 8.0, alt: 1800, heading: 90 },
 ];
 
-const RELEASE_TRACK_OPTIONS: Array<{ value: Px4ReleaseTrack; label: string; description: string }> = [
-  { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
-  { value: 'beta', label: 'Beta', description: 'Release candidates and testing' },
-  { value: 'dev', label: 'Dev', description: 'Latest development builds' },
+const RELEASE_TRACK_OPTIONS: Array<{ value: Px4ReleaseTrack; label: string; labelKey: string; description: string; descriptionKey: string }> = [
+  { value: 'stable', label: 'Stable', labelKey: 'sitl.px4.release.stable', description: 'Recommended for most users', descriptionKey: 'sitl.px4.release.stable-desc' },
+  { value: 'beta', label: 'Beta', labelKey: 'sitl.px4.release.beta', description: 'Release candidates and testing', descriptionKey: 'sitl.px4.release.beta-desc' },
+  { value: 'dev', label: 'Dev', labelKey: 'sitl.px4.release.dev', description: 'Latest development builds', descriptionKey: 'sitl.px4.release.dev-desc' },
 ];
 
 export default function Px4SitlTab() {
+  const { t } = useTranslation('views');
   const {
     vehicleType,
     releaseTrack,
@@ -115,7 +122,7 @@ export default function Px4SitlTab() {
     try {
       const loc = await getIpLocation();
       if (loc.source === 'default') {
-        setLocationError('Unable to determine location');
+        setLocationError(t('sitl.px4.location.error-determine'));
         return;
       }
       const lat = Math.round(loc.lat * 10000) / 10000;
@@ -130,11 +137,11 @@ export default function Px4SitlTab() {
         heading: homeLocation.heading,
       });
     } catch {
-      setLocationError('Unable to get location');
+      setLocationError(t('sitl.px4.location.error-get'));
     } finally {
       setIsGettingLocation(false);
     }
-  }, [setHomeLocation, homeLocation.alt, homeLocation.heading]);
+  }, [setHomeLocation, homeLocation.alt, homeLocation.heading, t]);
 
   /** Re-fetch real elevation for the CURRENT lat/lng without touching lat/lng. */
   const matchTerrainElevation = useCallback(async () => {
@@ -143,16 +150,16 @@ export default function Px4SitlTab() {
     try {
       const elevation = await getElevation(homeLocation.lat, homeLocation.lng);
       if (elevation === null) {
-        setLocationError('Unable to look up terrain elevation');
+        setLocationError(t('sitl.px4.location.error-terrain'));
         return;
       }
       setHomeLocation({ ...homeLocation, alt: elevation });
     } catch {
-      setLocationError('Unable to look up terrain elevation');
+      setLocationError(t('sitl.px4.location.error-terrain'));
     } finally {
       setIsMatchingTerrain(false);
     }
-  }, [setHomeLocation, homeLocation]);
+  }, [setHomeLocation, homeLocation, t]);
 
   // Subscribe to process events and reconcile platform + bundle status on mount.
   useEffect(() => {
@@ -195,7 +202,7 @@ export default function Px4SitlTab() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <h3 className="text-sm font-medium text-red-400">Platform Error</h3>
+              <h3 className="text-sm font-medium text-red-400">{t('sitl.px4.platform-error')}</h3>
               <p className="text-xs text-red-300/80 mt-1">{platform.error}</p>
             </div>
           </div>
@@ -211,8 +218,8 @@ export default function Px4SitlTab() {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-content">Vehicle Type</h3>
-            <p className="text-xs text-content-secondary">Choose the airframe class to simulate</p>
+            <h3 className="text-sm font-semibold text-content">{t('sitl.px4.vehicle-type.title')}</h3>
+            <p className="text-xs text-content-secondary">{t('sitl.px4.vehicle-type.subtitle')}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -230,7 +237,7 @@ export default function Px4SitlTab() {
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={opt.icon} />
               </svg>
-              <span className="text-xs font-medium">{opt.label}</span>
+              <span className="text-xs font-medium">{pxText(t, opt.labelKey, opt.label)}</span>
             </button>
           ))}
         </div>
@@ -248,15 +255,15 @@ export default function Px4SitlTab() {
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-content">Physics &amp; Backend</h3>
-              <p className="text-xs text-content-secondary">Simulator backend and release track</p>
+              <h3 className="text-sm font-semibold text-content">{t('sitl.px4.physics.title')}</h3>
+              <p className="text-xs text-content-secondary">{t('sitl.px4.physics.subtitle')}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* Simulator backend */}
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Simulator backend</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.px4.backend.label')}</label>
               <div className="grid grid-cols-1 gap-1">
                 {SIMULATOR_OPTIONS.map((opt) => (
                   <button
@@ -268,11 +275,11 @@ export default function Px4SitlTab() {
                         ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                         : 'bg-surface border text-content-secondary hover:bg-surface hover:text-content'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title={opt.description}
+                    title={pxText(t, opt.descriptionKey, opt.description)}
                   >
-                    <span className="font-medium">{opt.label}</span>
+                    <span className="font-medium">{pxText(t, opt.labelKey, opt.label)}</span>
                     {opt.value === 'jmavsim' && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-500/15 text-blue-300">recommended</span>
+                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-500/15 text-blue-300">{t('sitl.px4.backend.recommended')}</span>
                     )}
                   </button>
                 ))}
@@ -281,14 +288,14 @@ export default function Px4SitlTab() {
                   blocking start, since Java may be present but undetectable. */}
               {simulator === 'jmavsim' && platform?.needsJava && (
                 <p className="mt-1.5 text-[10px] text-content-tertiary leading-tight">
-                  jMAVSim needs a Java runtime. If simulation fails to start, install Java 11+ and retry.
+                  {t('sitl.px4.backend.java-hint')}
                 </p>
               )}
             </div>
 
             {/* Release Track */}
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Release Track</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.px4.release.label')}</label>
               <div className="grid grid-cols-3 gap-1">
                 {RELEASE_TRACK_OPTIONS.map((opt) => (
                   <button
@@ -300,9 +307,9 @@ export default function Px4SitlTab() {
                         ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                         : 'bg-surface border text-content-secondary hover:bg-surface'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title={opt.description}
+                    title={pxText(t, opt.descriptionKey, opt.description)}
                   >
-                    {opt.label}
+                    {pxText(t, opt.labelKey, opt.label)}
                   </button>
                 ))}
               </div>
@@ -320,14 +327,14 @@ export default function Px4SitlTab() {
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-content">Home &amp; Scenarios</h3>
-              <p className="text-xs text-content-secondary">Spawn location for the simulated vehicle</p>
+              <h3 className="text-sm font-semibold text-content">{t('sitl.px4.home.title')}</h3>
+              <p className="text-xs text-content-secondary">{t('sitl.px4.home.subtitle')}</p>
             </div>
           </div>
 
           {/* Scenario presets — populate the home fields below */}
           <div className="mb-4">
-            <label className="block text-xs text-content-secondary mb-1.5">Scenario presets</label>
+            <label className="block text-xs text-content-secondary mb-1.5">{t('sitl.px4.home.scenario-presets')}</label>
             <div className="grid grid-cols-2 gap-2">
               {HOME_PRESETS.map((p) => {
                 const active =
@@ -344,7 +351,7 @@ export default function Px4SitlTab() {
                         : 'bg-surface border text-content-secondary hover:bg-surface hover:text-content'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {p.name}
+                    {pxText(t, p.nameKey, p.name)}
                   </button>
                 );
               })}
@@ -354,7 +361,7 @@ export default function Px4SitlTab() {
           {/* Home location fields — populated by presets above */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Latitude</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.px4.home.latitude')}</label>
               <DraftNumberInput
                 step="0.0001"
                 min={-90}
@@ -366,7 +373,7 @@ export default function Px4SitlTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Longitude</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.px4.home.longitude')}</label>
               <DraftNumberInput
                 step="0.0001"
                 min={-180}
@@ -378,7 +385,7 @@ export default function Px4SitlTab() {
               />
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Altitude</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.px4.home.altitude')}</label>
               <div className="relative">
                 <input
                   type="number"
@@ -412,7 +419,7 @@ export default function Px4SitlTab() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-content-secondary mb-1">Heading</label>
+              <label className="block text-xs text-content-secondary mb-1">{t('sitl.px4.home.heading')}</label>
               <DraftNumberInput
                 value={homeLocation.heading}
                 onCommit={(v) => setHomeLocation({ ...homeLocation, heading: v })}
@@ -424,12 +431,12 @@ export default function Px4SitlTab() {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-xs text-content-tertiary">Default: CMAC (Canberra Model Aircraft Club)</p>
+            <p className="text-xs text-content-tertiary">{t('sitl.px4.home.default-preset')}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void matchTerrainElevation()}
                 disabled={isRunning || isStarting || isMatchingTerrain}
-                data-tip="Look up the real ground elevation (AMSL) at this lat/lng and use it as home altitude"
+                data-tip={t('sitl.px4.home.match-terrain-tip')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isMatchingTerrain ? (
@@ -438,14 +445,14 @@ export default function Px4SitlTab() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Matching...
+                    {t('sitl.px4.home.matching')}
                   </>
                 ) : (
                   <>
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 001.7-9.7 6 6 0 00-11.6-1.5A4.5 4.5 0 003 15z" />
                     </svg>
-                    Match Terrain
+                    {t('sitl.px4.home.match-terrain')}
                   </>
                 )}
               </button>
@@ -460,7 +467,7 @@ export default function Px4SitlTab() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Getting...
+                    {t('sitl.px4.home.getting')}
                   </>
                 ) : (
                   <>
@@ -468,7 +475,7 @@ export default function Px4SitlTab() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Use My Location
+                    {t('sitl.px4.home.use-my-location')}
                   </>
                 )}
               </button>
@@ -490,8 +497,8 @@ export default function Px4SitlTab() {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-content">Run</h3>
-            <p className="text-xs text-content-secondary">Launch settings and PX4 SITL control</p>
+            <h3 className="text-sm font-semibold text-content">{t('sitl.px4.run.title')}</h3>
+            <p className="text-xs text-content-secondary">{t('sitl.px4.run.subtitle')}</p>
           </div>
         </div>
 
@@ -500,9 +507,9 @@ export default function Px4SitlTab() {
           <div className="w-28">
             <label
               className="flex items-center gap-1 text-xs text-content-secondary mb-1 cursor-help"
-              data-tip="How fast the simulation runs vs. real time. 1x = real-time. Higher finishes flights quicker but uses more CPU."
+              data-tip={t('sitl.px4.run.sim-speed-tip')}
             >
-              Sim speed
+              {t('sitl.px4.run.sim-speed')}
               <svg className="w-3 h-3 text-content-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -528,7 +535,7 @@ export default function Px4SitlTab() {
               disabled={isRunning || isStarting}
               className="w-4 h-4 rounded border bg-surface-raised text-blue-500 focus:ring-blue-500/50"
             />
-            <span className="text-xs text-content-secondary">Wipe params</span>
+            <span className="text-xs text-content-secondary">{t('sitl.px4.run.wipe-params')}</span>
           </label>
         </div>
 
@@ -542,8 +549,8 @@ export default function Px4SitlTab() {
               </span>
               <p className="text-xs text-content-secondary">
                 {!binaryInfo?.exists
-                  ? 'Bundle not downloaded'
-                  : `Ready at ${binaryInfo.path?.split('/').pop()}`}
+                  ? t('sitl.px4.run.bundle-missing')
+                  : t('sitl.px4.run.ready-at', { name: binaryInfo.path?.split('/').pop() })}
               </p>
             </div>
           </div>
@@ -554,7 +561,7 @@ export default function Px4SitlTab() {
                 onClick={download}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
               >
-                Download PX4 SITL
+                {t('sitl.px4.run.download')}
               </button>
             )}
 
@@ -585,14 +592,14 @@ export default function Px4SitlTab() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Starting...
+                      {t('sitl.px4.run.starting')}
                     </>
                   ) : (
                     <>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       </svg>
-                      Start PX4 SITL
+                      {t('sitl.px4.run.start')}
                     </>
                   )}
                 </button>
@@ -608,7 +615,7 @@ export default function Px4SitlTab() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Stopping...
+                      {t('sitl.px4.run.stopping')}
                     </>
                   ) : (
                     <>
@@ -616,7 +623,7 @@ export default function Px4SitlTab() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                       </svg>
-                      Stop
+                      {t('sitl.px4.run.stop')}
                     </>
                   )}
                 </button>
@@ -638,8 +645,8 @@ export default function Px4SitlTab() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="text-sm text-blue-300">
-            <span className="font-medium">PX4 SITL is running!</span>{' '}
-            Connect via UDP - <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:14550</code>
+            <span className="font-medium">{t('sitl.px4.hint.running-title')}</span>{' '}
+            {t('sitl.px4.hint.connect-via')} <code className="px-1.5 py-0.5 bg-blue-500/20 rounded text-blue-200 font-mono">127.0.0.1:14550</code>
           </div>
         </div>
       )}
@@ -658,7 +665,7 @@ export default function Px4SitlTab() {
       {(isRunning || consoleLines.length > 0) && (
         <div className="flex-1 flex flex-col overflow-hidden bg-surface-input border border-subtle rounded-lg min-h-[200px]">
           <div className="flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface-input">
-            <span className="text-xs font-medium text-content-secondary">Console Output</span>
+            <span className="text-xs font-medium text-content-secondary">{t('sitl.px4.output.heading')}</span>
           </div>
           <div
             ref={outputRef}
@@ -666,7 +673,7 @@ export default function Px4SitlTab() {
           >
             {consoleLines.length === 0 ? (
               <div className="text-content-tertiary italic">
-                No output yet. Start PX4 SITL to see process output.
+                {t('sitl.px4.output.empty')}
               </div>
             ) : (
               consoleLines.map((line, idx) => (

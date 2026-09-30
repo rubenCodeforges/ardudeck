@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Calculator } from 'lucide-react';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
 import { useSettingsStore } from '../../../stores/settings-store.js';
@@ -19,8 +20,11 @@ interface StallSpeedCalcButtonProps {
  * being plugged in; click fills the input.
  *
  *   V_stall = sqrt( 2·m·g / (ρ·S·C_Lmax) )
+ *
+ * The equation itself is math notation and stays untranslated in every language.
  */
 export function StallSpeedCalcButton({ vehicle, onCompute }: StallSpeedCalcButtonProps) {
+  const { t } = useTranslation('settings');
   const estimate = computeStallSpeed(vehicle);
   const canCompute = estimate !== null;
 
@@ -37,13 +41,14 @@ export function StallSpeedCalcButton({ vehicle, onCompute }: StallSpeedCalcButto
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         <Calculator className="w-3 h-3" />
-        Calc
+        {t('vehicleProfile.stall.button')}
       </button>
     </Tooltip>
   );
 }
 
 function StallExplanation({ vehicle, estimate }: { vehicle: VehicleProfile; estimate: number }) {
+  const { t } = useTranslation('settings');
   const speedUnit = useSettingsStore((s) => s.unitPreferences.speed);
   const weightUnit = useSettingsStore((s) => s.unitPreferences.weight);
   const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
@@ -52,40 +57,43 @@ function StallExplanation({ vehicle, estimate }: { vehicle: VehicleProfile; esti
   return (
     <div className="w-[260px] text-left p-1 space-y-2">
       <div className="flex items-baseline justify-between gap-3 pb-1.5 border-b border-subtle">
-        <span className="text-[11px] text-content-secondary">Estimated stall speed</span>
+        <span className="text-[11px] text-content-secondary">{t('vehicleProfile.stall.panelLabel')}</span>
         <span className="text-sm font-semibold text-content">{formatSpeedFromMetersPerSecond(estimate, speedUnit)}</span>
       </div>
 
       <div className="text-[11px] text-content-secondary leading-snug">
-        From the lift equation at max C<span className="text-[9px] align-baseline">Lmax</span>:
+        {t('vehicleProfile.stall.fromLiftEquationPrefix')}<span className="text-[9px] align-baseline">Lmax</span>:
       </div>
       <div className="font-mono text-[10px] text-content-secondary bg-surface-overlay-subtle rounded px-2 py-1">
         V = √(2·m·g / (ρ·S·Cmax))
       </div>
 
       <div className="text-[11px] space-y-0.5">
-        <Row label="AUW"           value={formatWeightFromGrams(vehicle.weight ?? 0, weightUnit)} />
-        <Row label="Wing area (S)" value={formatAreaFromSquareCentimeters(vehicle.wingArea ?? 0, areaUnit)} />
-        <Row label="Air density"   value="1.225 kg/m³" />
-        <Row label="C Lmax"        value={`${clMax} (${wingShapeLabel(vehicle)})`} />
+        <Row label={t('vehicleProfile.stall.params.auw')}           value={formatWeightFromGrams(vehicle.weight ?? 0, weightUnit)} />
+        <Row label={t('vehicleProfile.stall.params.wingArea')} value={formatAreaFromSquareCentimeters(vehicle.wingArea ?? 0, areaUnit)} />
+        <Row label={t('vehicleProfile.stall.params.airDensity')}   value="1.225 kg/m³" />
+        <Row label={t('vehicleProfile.stall.params.clMax')}        value={`${clMax} (${wingShapeLabel(vehicle, t)})`} />
       </div>
 
       <div className="text-[10px] text-content-tertiary leading-snug pt-1 border-t border-subtle">
-        Theoretical clean-stall: real-world stall can be lower with flaps, higher in turns or heavier loading.
+        {t('vehicleProfile.stall.note')}
       </div>
     </div>
   );
 }
 
 function MissingInputsHint({ vehicle }: { vehicle: VehicleProfile }) {
+  const { t } = useTranslation('settings');
   const hasWeight = (vehicle.weight ?? 0) > 0;
   const hasArea   = (vehicle.wingArea ?? 0) > 0;
   const missing: string[] = [];
-  if (!hasWeight) missing.push('all-up weight');
-  if (!hasArea) missing.push('wing area');
+  if (!hasWeight) missing.push(t('vehicleProfile.stall.missingInputs.weight'));
+  if (!hasArea) missing.push(t('vehicleProfile.stall.missingInputs.area'));
   return (
     <div className="w-[200px] text-[11px] text-content-secondary leading-snug p-1">
-      Set {missing.join(' and ')} to estimate stall speed.
+      {t('vehicleProfile.stall.missingInputs.template', {
+        fields: missing.join(t('vehicleProfile.stall.missingInputs.joiner')),
+      })}
     </div>
   );
 }
@@ -112,15 +120,16 @@ function getClMax(vehicle: VehicleProfile): number {
   }
 }
 
-function wingShapeLabel(vehicle: VehicleProfile): string {
+/** Wing-shape adjective used inside the C_Lmax row; keyed like the bundle. */
+function wingShapeLabel(vehicle: VehicleProfile, t: (key: string) => string): string {
   switch (vehicle.wingShape) {
-    case 'delta':        return 'delta';
-    case 'flying-wing':  return 'flying wing';
-    case 'biplane':      return 'biplane';
-    case 'v-tail':       return 'V-tail';
-    case 'inverted-v':   return 'inverted-V';
-    case 'standard':     return 'standard';
-    default:             return 'standard wing';
+    case 'delta':        return t('vehicleProfile.stall.wingShape.delta');
+    case 'flying-wing':  return t('vehicleProfile.stall.wingShape.flying-wing');
+    case 'biplane':      return t('vehicleProfile.stall.wingShape.biplane');
+    case 'v-tail':       return t('vehicleProfile.stall.wingShape.v-tail');
+    case 'inverted-v':   return t('vehicleProfile.stall.wingShape.inverted-v');
+    case 'standard':
+    default:             return t('vehicleProfile.stall.wingShape.standard');
   }
 }
 

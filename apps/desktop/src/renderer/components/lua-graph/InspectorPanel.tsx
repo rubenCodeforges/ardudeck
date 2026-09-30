@@ -3,6 +3,18 @@
  * Shows node info, editable inputs, and configurable properties.
  */
 import { useMemo } from 'react';
+
+/**
+ * Prefer the i18n key when the codemod added one, else fall back to the literal.
+ * The codemod skips strings that need no translation (all-caps acronyms like
+ * 'AND'), so the key is optional. Kept as a plain function rather than a
+ * `useX`-named hook because it does no hook work and is called from callbacks;
+ * `t` is threaded in by the calling component.
+ */
+function luaText(t: (key: string) => string, key: string | undefined, fallback: string): string {
+  return key ? t(key) : fallback;
+}
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { Settings2, Timer } from 'lucide-react';
 import { useLuaGraphStore } from '../../stores/lua-graph-store';
@@ -10,6 +22,7 @@ import { getNodeDefinition, getEffectivePorts } from './node-library';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './lua-graph-types';
 
 export function InspectorPanel() {
+  const { t } = useTranslation('lua');
   const selectedNodeId = useLuaGraphStore((s) => s.selectedNodeId);
   const nodes = useLuaGraphStore((s) => s.nodes);
   const updateNodeProperty = useLuaGraphStore((s) => s.updateNodeProperty);
@@ -126,7 +139,7 @@ export function InspectorPanel() {
           onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
           className="w-full text-sm font-semibold text-content bg-transparent border-b border-transparent hover:border-default focus:border-blue-500/50 focus:outline-none pb-0.5 transition-colors"
         />
-        <p className="text-[10px] text-content-secondary mt-1">{def.description}</p>
+        <p className="text-[10px] text-content-secondary mt-1">{luaText(t, def.descriptionKey, def.description)}</p>
       </div>
 
       {/* Properties */}

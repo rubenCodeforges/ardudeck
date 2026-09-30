@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { VehicleProfile, WingShape, VtolStyle, MotorArrangement } from '../../../stores/settings-store.js';
 
 interface ConfigSelectorsProps {
@@ -5,36 +6,44 @@ interface ConfigSelectorsProps {
   onUpdate: (updates: Partial<VehicleProfile>) => void;
 }
 
-const WING_SHAPES: Array<{ value: WingShape; label: string; hint: string }> = [
-  { value: 'standard',     label: 'Standard',      hint: 'Traditional fuselage with separate elevator/rudder/ailerons' },
-  { value: 'delta',        label: 'Delta',         hint: 'Triangular wing, elevons combine pitch+roll' },
-  { value: 'flying-wing',  label: 'Flying Wing',   hint: 'No tail, wing-only: elevons for control' },
-  { value: 'v-tail',       label: 'V-Tail',        hint: 'Two surfaces mix pitch and yaw' },
-  { value: 'biplane',      label: 'Biplane',       hint: 'Two wings stacked: rare, nostalgic' },
-  { value: 'inverted-v',   label: 'Inverted V',    hint: 'Inverted-V tail' },
+/**
+ * Option labels and hints live in the translation bundle, keyed by the config
+ * value itself (`settings.vehicleProfile.selectors.options.<value>`), so the
+ * tables below only carry ids and cannot drift from the translations.
+ */
+type OptionEntry<T extends string> = { value: T; key: string };
+type SelectorKey = 'wingShape' | 'vtolStyle' | 'motorArrangement';
+
+const WING_SHAPES: OptionEntry<WingShape>[] = [
+  { value: 'standard',     key: 'standard' },
+  { value: 'delta',        key: 'delta' },
+  { value: 'flying-wing',  key: 'flying-wing' },
+  { value: 'v-tail',       key: 'v-tail' },
+  { value: 'biplane',      key: 'biplane' },
+  { value: 'inverted-v',   key: 'inverted-v' },
 ];
 
-const VTOL_STYLES: Array<{ value: VtolStyle; label: string; hint: string }> = [
-  { value: 'quadplane',   label: 'Quadplane',    hint: 'Plane + separate vertical lift motors' },
-  { value: 'tailsitter',  label: 'Tailsitter',   hint: 'Sits on its tail, tilts to fly forward' },
-  { value: 'tiltrotor',   label: 'Tiltrotor',    hint: 'Motors tilt from vertical to horizontal' },
-  { value: 'tiltwing',    label: 'Tiltwing',     hint: 'Whole wing tilts with the motors' },
+const VTOL_STYLES: OptionEntry<VtolStyle>[] = [
+  { value: 'quadplane',   key: 'quadplane' },
+  { value: 'tailsitter',  key: 'tailsitter' },
+  { value: 'tiltrotor',   key: 'tiltrotor' },
+  { value: 'tiltwing',    key: 'tiltwing' },
 ];
 
-const MOTOR_ARRANGEMENTS: Array<{ value: MotorArrangement; label: string; hint: string }> = [
-  { value: 'quad-x',       label: 'Quad X',       hint: '4 motors in X pattern' },
-  { value: 'quad-plus',    label: 'Quad +',       hint: '4 motors in + pattern' },
-  { value: 'quad-h',       label: 'Quad H',       hint: '4 motors in H pattern' },
-  { value: 'hex-x',        label: 'Hex X',        hint: '6 motors in X pattern' },
-  { value: 'hex-plus',     label: 'Hex +',        hint: '6 motors in + pattern' },
-  { value: 'octo-x',       label: 'Octo X',       hint: '8 motors in X pattern' },
-  { value: 'octo-plus',    label: 'Octo +',       hint: '8 motors in + pattern' },
-  { value: 'y6',           label: 'Y6',           hint: '3 arms, 2 coaxial motors each' },
-  { value: 'tri',          label: 'Tricopter',    hint: '3 motors + yaw servo' },
-  { value: 'coaxial',      label: 'Coaxial X8',   hint: '4 coaxial pairs stacked' },
-  { value: 'inline-2',     label: 'Inline 2',     hint: '2 motors side-by-side' },
-  { value: 'twin-tractor', label: 'Twin-Tractor', hint: '2 motors pulling from wing LE' },
-  { value: 'twin-pusher',  label: 'Twin-Pusher',  hint: '2 motors pushing from wing TE' },
+const MOTOR_ARRANGEMENTS: OptionEntry<MotorArrangement>[] = [
+  { value: 'quad-x',       key: 'quad-x' },
+  { value: 'quad-plus',    key: 'quad-plus' },
+  { value: 'quad-h',       key: 'quad-h' },
+  { value: 'hex-x',        key: 'hex-x' },
+  { value: 'hex-plus',     key: 'hex-plus' },
+  { value: 'octo-x',       key: 'octo-x' },
+  { value: 'octo-plus',    key: 'octo-plus' },
+  { value: 'y6',           key: 'y6' },
+  { value: 'tri',          key: 'tri' },
+  { value: 'coaxial',      key: 'coaxial' },
+  { value: 'inline-2',     key: 'inline-2' },
+  { value: 'twin-tractor', key: 'twin-tractor' },
+  { value: 'twin-pusher',  key: 'twin-pusher' },
 ];
 
 /**
@@ -52,7 +61,7 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
     <div className="grid grid-cols-2 gap-4">
       {showWing && (
         <Selector
-          label="Wing Shape"
+          selectorKey="wingShape"
           value={vehicle.wingShape}
           options={WING_SHAPES}
           onChange={v => onUpdate({ wingShape: v as WingShape })}
@@ -60,7 +69,7 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
       )}
       {showVtol && (
         <Selector
-          label="VTOL Style"
+          selectorKey="vtolStyle"
           value={vehicle.vtolStyle}
           options={VTOL_STYLES}
           onChange={v => onUpdate({ vtolStyle: v as VtolStyle })}
@@ -68,7 +77,7 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
       )}
       {showMotor && (
         <Selector
-          label="Motor Arrangement"
+          selectorKey="motorArrangement"
           value={vehicle.motorArrangement}
           options={MOTOR_ARRANGEMENTS}
           onChange={v => onUpdate({ motorArrangement: v as MotorArrangement })}
@@ -79,31 +88,36 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
 }
 
 interface SelectorProps<T extends string> {
-  label: string;
+  selectorKey: SelectorKey;
   value: T | undefined;
-  options: Array<{ value: T; label: string; hint: string }>;
+  options: OptionEntry<T>[];
   onChange: (value: T) => void;
 }
 
-function Selector<T extends string>({ label, value, options, onChange }: SelectorProps<T>) {
+function Selector<T extends string>({ selectorKey, value, options, onChange }: SelectorProps<T>) {
+  const { t } = useTranslation('settings');
   const current = options.find(o => o.value === value);
+  const optionPath = `vehicleProfile.selectors.options.${current?.key ?? ''}`;
   return (
     <div>
-      <label className="block text-sm font-medium text-content mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-content mb-1.5">
+        {t(`vehicleProfile.selectors.${selectorKey}`)}
+      </label>
       <select
         value={value ?? ''}
         onChange={e => onChange(e.target.value as T)}
         className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content focus:outline-none focus:border-blue-500"
       >
-        <option value="">- select -</option>
+        <option value="">{t('vehicleProfile.selectors.selectPlaceholder')}</option>
         {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>
+            {t(`vehicleProfile.selectors.options.${o.key}.label`)}
+          </option>
         ))}
       </select>
       {current && (
-        <div className="text-[10px] text-content-secondary mt-1">{current.hint}</div>
+        <div className="text-[10px] text-content-secondary mt-1">{t(`${optionPath}.hint`)}</div>
       )}
     </div>
   );
 }
-
