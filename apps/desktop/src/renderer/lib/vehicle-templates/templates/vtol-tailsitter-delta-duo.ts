@@ -1,5 +1,6 @@
 import { Triangle } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, airspeedParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 /**
@@ -17,8 +18,8 @@ import { batteryParams, airspeedParams, commonSafetyParams, simPhysicsParams, ma
  */
 export const vtolTailsitterDeltaDuo: VehicleTemplate = {
   slug: 'vtol-tailsitter-delta-duo',
-  name: 'Tailsitter Delta Duo',
-  description: '2-motor delta-wing tailsitter, compact and efficient',
+  name: 'Tailsitter Delta Duo', // i18n-exempt
+  description: '2-motor delta-wing tailsitter, compact and efficient', // i18n-exempt
   icon: Triangle,
   vehicleType: 'vtol',
   category: 'vtol',
@@ -37,23 +38,23 @@ export const vtolTailsitterDeltaDuo: VehicleTemplate = {
     thrustToWeight: 2.5,
   },
   toParams: (p) => [
-    { name: 'Q_ENABLE',          value: 1,  reason: 'Enable VTOL',                   requiresReboot: true },
-    { name: 'Q_TAILSIT_ENABLE',  value: 1,  reason: 'Tailsitter mode',               requiresReboot: true },
-    { name: 'Q_FRAME_CLASS',     value: 10, reason: 'Single/coax for 2-motor tailsitter', requiresReboot: true },
-    { name: 'Q_FRAME_TYPE',      value: 2,  reason: 'Vectored yaw (no rudder)',       requiresReboot: true },
-    { name: 'Q_TAILSIT_INPUT',   value: 2,  reason: 'Body-frame stick input',         requiresReboot: true },
-    { name: 'Q_TAILSIT_MOTMX',   value: 3,  reason: 'Motors 1+2 active in hover' },
-    { name: 'Q_TAILSIT_VFGAIN',  value: 0.3, reason: 'Vectored thrust yaw gain' },
-    { name: 'Q_TAILSIT_VHGAIN',  value: 0.3, reason: 'Vectored thrust hover gain' },
+    { name: 'Q_ENABLE',          value: 1,  reason: t('lib:vehicleTemplates.reason.enableVTOL'),                   requiresReboot: true },
+    { name: 'Q_TAILSIT_ENABLE',  value: 1,  reason: t('lib:vehicleTemplates.reason.tailsitterMode'),               requiresReboot: true },
+    { name: 'Q_FRAME_CLASS',     value: 10, reason: t('lib:vehicleTemplates.reason.singleCoaxFor2MotorTailsitter'), requiresReboot: true },
+    { name: 'Q_FRAME_TYPE',      value: 2,  reason: t('lib:vehicleTemplates.reason.vectoredYawNoRudder'),       requiresReboot: true },
+    { name: 'Q_TAILSIT_INPUT',   value: 2,  reason: t('lib:vehicleTemplates.reason.bodyFrameStickInput'),         requiresReboot: true },
+    { name: 'Q_TAILSIT_MOTMX',   value: 3,  reason: t('lib:vehicleTemplates.reason.motors12ActiveInHover') },
+    { name: 'Q_TAILSIT_VFGAIN',  value: 0.3, reason: t('lib:vehicleTemplates.reason.vectoredThrustYawGain') },
+    { name: 'Q_TAILSIT_VHGAIN',  value: 0.3, reason: t('lib:vehicleTemplates.reason.vectoredThrustHoverGain') },
     // Delta wing elevon mixing — SERVO1 = elevon L, SERVO2 = elevon R
-    { name: 'SERVO1_FUNCTION',   value: 77, reason: 'Elevon Left (delta wing)',       requiresReboot: true },
-    { name: 'SERVO2_FUNCTION',   value: 78, reason: 'Elevon Right (delta wing)',      requiresReboot: true },
-    { name: 'SERVO3_FUNCTION',   value: 33, reason: 'Motor 1 (hover + forward)',      requiresReboot: true },
-    { name: 'SERVO4_FUNCTION',   value: 34, reason: 'Motor 2 (hover + forward)',      requiresReboot: true },
-    { name: 'MIXING_GAIN',       value: 0.5, reason: 'Elevon mix gain' },
+    { name: 'SERVO1_FUNCTION',   value: 77, reason: t('lib:vehicleTemplates.reason.elevonLeftDeltaWing'),       requiresReboot: true },
+    { name: 'SERVO2_FUNCTION',   value: 78, reason: t('lib:vehicleTemplates.reason.elevonRightDeltaWing'),      requiresReboot: true },
+    { name: 'SERVO3_FUNCTION',   value: 33, reason: t('lib:vehicleTemplates.reason.motor1HoverForward'),      requiresReboot: true },
+    { name: 'SERVO4_FUNCTION',   value: 34, reason: t('lib:vehicleTemplates.reason.motor2HoverForward'),      requiresReboot: true },
+    { name: 'MIXING_GAIN',       value: 0.5, reason: t('lib:vehicleTemplates.reason.elevonMixGain') },
     // Airspeed/transition
-    { name: 'Q_TRANSITION_MS',   value: 5000, reason: 'Transition duration (5 s)' },
-    { name: 'Q_ASSIST_SPEED',    value: Math.max((p.stallSpeed ?? 8) * 0.9, 3), reason: 'Fixed-wing assist threshold' },
+    { name: 'Q_TRANSITION_MS',   value: 5000, reason: t('lib:vehicleTemplates.reason.transitionDuration5S') },
+    { name: 'Q_ASSIST_SPEED',    value: Math.max((p.stallSpeed ?? 8) * 0.9, 3), reason: t('lib:vehicleTemplates.reason.fixedWingAssistThreshold') },
     ...airspeedParams(p),
     ...batteryParams(p),
     ...commonSafetyParams(),

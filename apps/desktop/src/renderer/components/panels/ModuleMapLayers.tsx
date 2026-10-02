@@ -1,5 +1,6 @@
 /** Module map layers (host.map), drawn under the host's own map drawing. */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Polyline, Polygon, Marker, useMapEvents } from 'react-leaflet';
 import { useMapPicking } from '../../hooks/useMapPicking';
@@ -238,6 +239,7 @@ export function ModulePolygonPick(): JSX.Element | null {
 
 /** The instruction bar, outside the map so it is not clipped by it. */
 export function ModulePolygonPickBar(): JSX.Element | null {
+  const { t } = useTranslation();
   const [pick, setPick] = useState(getPolygonPick);
   useEffect(() => subscribeModuleMapLayers(() => setPick(getPolygonPick())), []);
 
@@ -269,8 +271,8 @@ export function ModulePolygonPickBar(): JSX.Element | null {
             <div className="text-xs font-medium text-content">{pick.prompt}</div>
             <div className="text-[11px] text-content-tertiary tabular-nums">
               {ready
-                ? `${n} corners placed`
-                : `${n} of 3 corners - keep clicking`}
+                ? t('panels:modulePolygonPick.cornersPlaced', { n })
+                : t('panels:modulePolygonPick.cornersProgress', { n })}
             </div>
           </div>
         </div>
@@ -283,26 +285,26 @@ export function ModulePolygonPickBar(): JSX.Element | null {
             className="rounded px-2 py-1 text-xs text-content-secondary hover:bg-surface-hover hover:text-content disabled:opacity-40"
             disabled={n === 0}
             onClick={undoPickPoint}
-            data-tip="Backspace"
+            data-tip={t('panels:modulePolygonPick.undoTip')}
           >
-            Undo
+            {t('common:undo')}
           </button>
           <button
             type="button"
             className="rounded px-2 py-1 text-xs text-content-secondary hover:bg-surface-hover hover:text-content"
             onClick={cancelPick}
-            data-tip="Escape"
+            data-tip={t('panels:modulePolygonPick.cancelTip')}
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             type="button"
             className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!ready}
             onClick={finishPick}
-            data-tip="Double click the map, or Enter"
+            data-tip={t('panels:modulePolygonPick.doneTip')}
           >
-            Done
+            {t('common:done')}
           </button>
         </div>
       </div>

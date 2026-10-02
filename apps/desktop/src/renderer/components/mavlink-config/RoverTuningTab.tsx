@@ -9,6 +9,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Gauge, RotateCw, Navigation, Compass, AlertCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -26,17 +27,17 @@ import { useParamBounds } from '../../hooks/useParamBounds';
 /** None of these touch the slew rate: every bit of ramp is stick-to-motor
  * latency, and the same calm comes from less power and a softer low end. */
 const THROTTLE_PRESETS = [
-  { name: 'Gentle', blurb: 'Half power, soft low end', expo: -0.5, thrMax: 50, accel: 1 },
-  { name: 'Balanced', blurb: 'Three quarter power, mild softening', expo: -0.25, thrMax: 75, accel: 2 },
-  { name: 'Direct', blurb: 'ArduPilot stock: full power, no softening', expo: 0, thrMax: 100, accel: 0 },
+  { name: 'Gentle', nameKey: 'mavlink-config:roverTuningTab.preset.gentle', blurbKey: 'mavlink-config:roverTuningTab.throttlePreset.gentleBlurb', expo: -0.5, thrMax: 50, accel: 1 },
+  { name: 'Balanced', nameKey: 'mavlink-config:roverTuningTab.preset.balanced', blurbKey: 'mavlink-config:roverTuningTab.throttlePreset.balancedBlurb', expo: -0.25, thrMax: 75, accel: 2 },
+  { name: 'Direct', nameKey: 'mavlink-config:roverTuningTab.preset.direct', blurbKey: 'mavlink-config:roverTuningTab.throttlePreset.directBlurb', expo: 0, thrMax: 100, accel: 0 },
 ];
 
 /** Manual steering curves, described by what half stick actually gives, since
  * that is the part of the travel a driver lives in. */
 const STEERING_PRESETS = [
-  { name: 'Calm', blurb: 'Soft around centre, full lock unchanged', expo: 0.5 },
-  { name: 'Balanced', blurb: 'A little softening', expo: 0.25 },
-  { name: 'Direct', blurb: 'Stick angle is steering angle', expo: 0 },
+  { name: 'Calm', nameKey: 'mavlink-config:roverTuningTab.preset.calm', blurbKey: 'mavlink-config:roverTuningTab.steeringPreset.calmBlurb', expo: 0.5 },
+  { name: 'Balanced', nameKey: 'mavlink-config:roverTuningTab.preset.balanced', blurbKey: 'mavlink-config:roverTuningTab.steeringPreset.balancedBlurb', expo: 0.25 },
+  { name: 'Direct', nameKey: 'mavlink-config:roverTuningTab.preset.direct', blurbKey: 'mavlink-config:roverTuningTab.steeringPreset.directBlurb', expo: 0 },
 ];
 
 /** Below this the ramp is long enough to feel as delay rather than smoothing. */
@@ -52,6 +53,7 @@ interface RoverTuningTabProps {
 }
 
 const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steering' }) => {
+  const { t } = useTranslation();
   const { parameters, setParameter } = useParameterStore();
 
   // Get current values from parameters
@@ -129,44 +131,43 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
 
   const handleSteeringTravel = useCallback((percent: number) => {
     if (!steering) return;
-    const t = Math.round((percent / 100) * SERVO_TRAVEL_MAX_US);
-    setParameter(`SERVO${steering.ch}_MIN`, steering.trim - t);
-    setParameter(`SERVO${steering.ch}_MAX`, steering.trim + t);
+    const us = Math.round((percent / 100) * SERVO_TRAVEL_MAX_US);
+    setParameter(`SERVO${steering.ch}_MIN`, steering.trim - us);
+    setParameter(`SERVO${steering.ch}_MAX`, steering.trim + us);
   }, [steering, setParameter]);
 
   if (section === 'navigation') {
     return (
       <div className="p-6 space-y-6">
-        <InfoCard title="Navigation Tuning" variant="info">
-          These settings control how your rover follows waypoints and holds position.
-          L1 controller determines path following accuracy - lower period = tighter turns but more oscillation.
+        <InfoCard title={t('mavlink-config:roverTuningTab.navTitle')} variant="info">
+          {t('mavlink-config:roverTuningTab.navIntro')}
         </InfoCard>
 
         {/* Waypoint Settings */}
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-            <Navigation className="w-5 h-5 text-blue-400" /> Waypoint Settings
+            <Navigation className="w-5 h-5 text-blue-400" /> {t('mavlink-config:roverTuningTab.wpSettings')}
           </h3>
           <div className="grid grid-cols-2 gap-6">
             <DraggableSlider
-              label="Waypoint Radius"
+              label={t('mavlink-config:roverTuningTab.wpRadius')}
               value={values.WP_RADIUS}
               onChange={(v) => handleChange('WP_RADIUS', v)}
               min={0.5}
               max={20}
               step={0.5}
               color="#3B82F6"
-              hint="Distance to consider waypoint reached (m)"
+              hint={t('mavlink-config:roverTuningTab.wpRadiusHint')}
             />
             <DraggableSlider
-              label="Waypoint Speed"
+              label={t('mavlink-config:roverTuningTab.wpSpeed')}
               value={values.WP_SPEED}
               onChange={(v) => handleChange('WP_SPEED', v)}
               min={0}
               max={30}
               step={0.5}
               color="#3B82F6"
-              hint="Speed during missions (0 = use CRUISE_SPEED)"
+              hint={t('mavlink-config:roverTuningTab.wpSpeedHint')}
             />
           </div>
         </div>
@@ -174,28 +175,28 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
         {/* Loiter Settings */}
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-            <Compass className="w-5 h-5 text-emerald-400" /> Loiter / Position Hold
+            <Compass className="w-5 h-5 text-emerald-400" /> {t('mavlink-config:roverTuningTab.loiterSection')}
           </h3>
           <div className="grid grid-cols-2 gap-6">
             <DraggableSlider
-              label="Loiter Radius"
+              label={t('mavlink-config:roverTuningTab.loiterRadius')}
               value={values.LOIT_RADIUS}
               onChange={(v) => handleChange('LOIT_RADIUS', v)}
               min={0.5}
               max={20}
               step={0.5}
               color="#10B981"
-              hint="Acceptable drift distance (m)"
+              hint={t('mavlink-config:roverTuningTab.loiterRadiusHint')}
             />
             <DraggableSlider
-              label="Loiter Aggression"
+              label={t('mavlink-config:roverTuningTab.loiterAggression')}
               value={values.LOIT_SPEED_GAIN}
               onChange={(v) => handleChange('LOIT_SPEED_GAIN', v)}
               min={0.1}
               max={2}
               step={0.1}
               color="#10B981"
-              hint="How aggressively to correct position"
+              hint={t('mavlink-config:roverTuningTab.loiterAggressionHint')}
             />
           </div>
         </div>
@@ -203,35 +204,34 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
         {/* L1 Controller */}
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-amber-400" /> L1 Path Following (Advanced)
+            <AlertCircle className="w-5 h-5 text-amber-400" /> {t('mavlink-config:roverTuningTab.l1Section')}
           </h3>
           <div className="grid grid-cols-2 gap-6">
             <DraggableSlider
-              label="L1 Period"
+              label={t('mavlink-config:roverTuningTab.l1Period')}
               value={values.NAVL1_PERIOD}
               onChange={(v) => handleChange('NAVL1_PERIOD', v)}
               min={5}
               max={30}
               step={1}
               color="#F59E0B"
-              hint="Lookahead time (s) - lower = tighter turns"
+              hint={t('mavlink-config:roverTuningTab.l1PeriodHint')}
             />
             <DraggableSlider
-              label="L1 Damping"
+              label={t('mavlink-config:roverTuningTab.l1Damping')}
               value={values.NAVL1_DAMPING}
               onChange={(v) => handleChange('NAVL1_DAMPING', v)}
               min={0.5}
               max={1}
               step={0.05}
               color="#F59E0B"
-              hint="Damping factor - higher = smoother"
+              hint={t('mavlink-config:roverTuningTab.l1DampingHint')}
             />
           </div>
         </div>
 
-        <InfoCard title="Tip" variant="tip">
-          Start with default L1 settings and only adjust if the rover oscillates on straight paths
-          or cuts corners too much. Increase L1 Period for smoother driving, decrease for tighter following.
+        <InfoCard title={t('mavlink-config:roverTuningTab.tip')} variant="tip">
+          {t('mavlink-config:roverTuningTab.navTip')}
         </InfoCard>
       </div>
     );
@@ -240,46 +240,45 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
   // Default: Speed & Steering section
   return (
     <div className="p-6 space-y-6">
-      <InfoCard title="Speed & Steering" variant="info">
-        Configure how fast your rover drives and how it turns.
-        Cruise speed is used for autonomous missions, max speed is the absolute limit.
+      <InfoCard title={t('mavlink-config:roverTuningTab.speedSteeringTitle')} variant="info">
+        {t('mavlink-config:roverTuningTab.speedIntro')}
       </InfoCard>
 
       {/* Speed Settings */}
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-          <Gauge className="w-5 h-5 text-blue-400" /> Speed Control
+          <Gauge className="w-5 h-5 text-blue-400" /> {t('mavlink-config:roverTuningTab.speedControl')}
         </h3>
         <div className="space-y-4">
           <DraggableSlider
-            label="Cruise Speed"
+            label={t('mavlink-config:roverTuningTab.cruiseSpeed')}
             value={values.CRUISE_SPEED}
             onChange={(v) => handleChange('CRUISE_SPEED', v)}
             min={0.5}
             max={20}
             step={0.5}
             color="#3B82F6"
-            hint="Target speed for autonomous modes (m/s)"
+            hint={t('mavlink-config:roverTuningTab.cruiseSpeedHint')}
           />
           <DraggableSlider
-            label="Maximum Speed"
+            label={t('mavlink-config:roverTuningTab.maxSpeed')}
             value={values.SPEED_MAX}
             onChange={(v) => handleChange('SPEED_MAX', v)}
             min={1}
             max={30}
             step={1}
             color="#3B82F6"
-            hint="Absolute maximum speed (m/s)"
+            hint={t('mavlink-config:roverTuningTab.maxSpeedHint')}
           />
           <DraggableSlider
-            label="Cruise Throttle"
+            label={t('mavlink-config:roverTuningTab.cruiseThrottle')}
             value={values.CRUISE_THROTTLE}
             onChange={(v) => handleChange('CRUISE_THROTTLE', v)}
             min={10}
             max={100}
             step={5}
             color="#3B82F6"
-            hint="Base throttle percentage in auto modes"
+            hint={t('mavlink-config:roverTuningTab.cruiseThrottleHint')}
           />
         </div>
       </div>
@@ -287,11 +286,10 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
       {/* Throttle feel */}
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <h3 className="text-lg font-medium text-content mb-1 flex items-center gap-2">
-          <Gauge className="w-5 h-5 text-amber-400" /> Throttle feel
+          <Gauge className="w-5 h-5 text-amber-400" /> {t('mavlink-config:roverTuningTab.throttleFeel')}
         </h3>
         <p className="text-xs text-content-secondary mb-3">
-          How the rover answers the stick. The first three work in every mode including Manual;
-          the acceleration limits only apply where the autopilot holds a speed.
+          {t('mavlink-config:roverTuningTab.throttleFeelIntro')}
         </p>
 
         {/* The mode decides whether the stick IS the throttle or merely asks
@@ -303,8 +301,8 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
             : 'bg-blue-500/10 text-blue-300'
         }`}>
           {passthroughMode
-            ? `In ${flightMode} the stick is the motor output: what you set here is what you feel.`
-            : `In ${flightMode} the stick asks for a speed and a turn rate, and the controllers decide the outputs. Response depends on the steering and speed PIDs, not on these settings. Switch to Manual to feel the settings on this page directly.`}
+            ? t('mavlink-config:roverTuningTab.passthroughNote', { mode: flightMode })
+            : t('mavlink-config:roverTuningTab.controlledNote', { mode: flightMode })}
         </div>
         <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
           <ThrottleResponsePlot
@@ -315,7 +313,7 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
 
           <div className="space-y-2">
             <div className="text-xs text-content-secondary">
-              Start from one of these, then fine-tune below. The chart follows every change.
+              {t('mavlink-config:roverTuningTab.presetIntro')}
             </div>
             {THROTTLE_PRESETS.map((preset) => {
               const active = Math.abs(values.MOT_THST_EXPO - preset.expo) < 0.03
@@ -329,7 +327,7 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
                     handleChange('ATC_ACCEL_MAX', preset.accel);
                     handleChange('ATC_DECEL_MAX', preset.accel);
                   }}
-                  data-tip={`Curve ${preset.expo}, top ${preset.thrMax}%, accel limit ${preset.accel} m/s². Leaves the throttle ramp alone.`}
+                  data-tip={t('mavlink-config:roverTuningTab.throttlePresetTip', { expo: preset.expo, thrMax: preset.thrMax, accel: preset.accel })}
                   className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
                     active
                       ? 'border-amber-500/50 bg-amber-500/10'
@@ -346,11 +344,11 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
                     {preset.thrMax}%
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-content">{preset.name}</span>
-                    <span className="block text-[11px] text-content-tertiary">{preset.blurb}</span>
+                    <span className="block text-sm text-content">{t(preset.nameKey)}</span>
+                    <span className="block text-[11px] text-content-tertiary">{t(preset.blurbKey)}</span>
                   </span>
                   {active && (
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-amber-400">current</span>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-amber-400">{t('mavlink-config:roverTuningTab.current')}</span>
                   )}
                 </button>
               );
@@ -360,7 +358,7 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
 
         <div className="space-y-4">
           <DraggableSlider
-            label="Throttle ramp (adds latency)"
+            label={t('mavlink-config:roverTuningTab.throttleRamp')}
             value={values.MOT_SLEWRATE}
             onChange={(v) => handleChange('MOT_SLEWRATE', v)}
             min={0}
@@ -368,23 +366,23 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
             step={5}
             color="#F59E0B"
             hint={values.MOT_SLEWRATE === 0
-              ? 'No limit: the motors follow the stick instantly. Leave it here unless the drivetrain needs protecting from sudden reversals.'
+              ? t('mavlink-config:roverTuningTab.rampNone')
               : values.MOT_SLEWRATE < SLUGGISH_SLEW
-                ? `${(100 / values.MOT_SLEWRATE).toFixed(1)} s from stop to full, and the same back: you will feel this as delay on the stick`
-                : `${(100 / values.MOT_SLEWRATE).toFixed(2)} s from stop to full throttle`}
+                ? t('mavlink-config:roverTuningTab.rampSluggish', { s: (100 / values.MOT_SLEWRATE).toFixed(1) })
+                : t('mavlink-config:roverTuningTab.rampTime', { s: (100 / values.MOT_SLEWRATE).toFixed(2) })}
           />
           <DraggableSlider
-            label="Top throttle"
+            label={t('mavlink-config:roverTuningTab.topThrottle')}
             value={values.MOT_THR_MAX}
             onChange={(v) => handleChange('MOT_THR_MAX', v)}
             min={5}
             max={100}
             step={5}
             color="#F59E0B"
-            hint="Most throttle the rover will ever use (%)"
+            hint={t('mavlink-config:roverTuningTab.topThrottleHint')}
           />
           <DraggableSlider
-            label="Stick curve"
+            label={t('mavlink-config:roverTuningTab.stickCurve')}
             value={values.MOT_THST_EXPO}
             onChange={(v) => handleChange('MOT_THST_EXPO', v)}
             min={thstExpoBounds.min}
@@ -392,43 +390,39 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
             step={thstExpoBounds.step}
             color="#F59E0B"
             hint={values.MOT_THST_EXPO < -0.05
-              ? 'Soft low end: half stick gives well under half power'
+              ? t('mavlink-config:roverTuningTab.stickCurveSoft')
               : values.MOT_THST_EXPO > 0.05
-                ? 'Strong low end, for a motor that needs throttle before it pulls'
-                : 'Linear: stick position is throttle'}
+                ? t('mavlink-config:roverTuningTab.stickCurveStrong')
+                : t('mavlink-config:roverTuningTab.stickCurveLinear')}
           />
           <DraggableSlider
-            label="Acceleration limit"
+            label={t('mavlink-config:roverTuningTab.accelLimit')}
             value={values.ATC_ACCEL_MAX}
             onChange={(v) => handleChange('ATC_ACCEL_MAX', v)}
             min={0}
             max={10}
             step={0.1}
             color="#F59E0B"
-            hint="Auto and speed-controlled modes only, m/s² (0 = no limit)"
+            hint={t('mavlink-config:roverTuningTab.accelLimitHint')}
           />
           <DraggableSlider
-            label="Braking limit"
+            label={t('mavlink-config:roverTuningTab.brakingLimit')}
             value={values.ATC_DECEL_MAX}
             onChange={(v) => handleChange('ATC_DECEL_MAX', v)}
             min={0}
             max={10}
             step={0.1}
             color="#F59E0B"
-            hint="How hard it may slow down, m/s² (0 = same as acceleration)"
+            hint={t('mavlink-config:roverTuningTab.brakingLimitHint')}
           />
         </div>
 
         {parameters.has('ATC_BRAKE') && (
           <div className="mt-5 border-t border-subtle pt-4 space-y-4">
             <div>
-              <h4 className="text-sm text-content">Braking</h4>
+              <h4 className="text-sm text-content">{t('mavlink-config:roverTuningTab.braking')}</h4>
               <p className="text-[11px] text-content-tertiary">
-                Most rover ESCs can drive the motors backwards to slow the vehicle. ArduPilot only
-                does it when told it may, and only in the modes where it controls speed: Acro,
-                Steering, Auto and Guided. In Manual the stick IS the output, so pulling back
-                commands reverse directly and what happens then is the ESC's own brake or reverse
-                behaviour, not this setting.
+                {t('mavlink-config:roverTuningTab.brakingIntro')}
               </p>
             </div>
 
@@ -441,30 +435,30 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
               }`}
             >
               <div>
-                <div className="text-sm text-content">Brake with the motors</div>
+                <div className="text-sm text-content">{t('mavlink-config:roverTuningTab.brakeWithMotors')}</div>
                 <div className="mt-0.5 text-[11px] text-content-tertiary">
                   {values.ATC_BRAKE
-                    ? 'Reversed output is used to slow down; needs an ESC that can reverse'
-                    : 'The vehicle coasts to a stop instead'}
+                    ? t('mavlink-config:roverTuningTab.brakeOn')
+                    : t('mavlink-config:roverTuningTab.brakeOff')}
                 </div>
               </div>
               <span className={`text-[10px] uppercase tracking-wide ${
                 values.ATC_BRAKE ? 'text-amber-300' : 'text-content-tertiary'
               }`}>
-                {values.ATC_BRAKE ? 'on' : 'off'}
+                {values.ATC_BRAKE ? t('mavlink-config:roverTuningTab.stateOn') : t('mavlink-config:roverTuningTab.stateOff')}
               </span>
             </button>
 
             {parameters.has('ATC_STOP_SPEED') && (
               <DraggableSlider
-                label="Call it stopped below"
+                label={t('mavlink-config:roverTuningTab.stopSpeed')}
                 value={values.ATC_STOP_SPEED}
                 onChange={(v) => handleChange('ATC_STOP_SPEED', v)}
                 min={0}
                 max={0.5}
                 step={0.01}
                 color="#F59E0B"
-                hint="Outputs drop to zero under this speed (m/s), so it settles instead of hunting"
+                hint={t('mavlink-config:roverTuningTab.stopSpeedHint')}
               />
             )}
           </div>
@@ -474,11 +468,10 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
       {/* Steering Settings */}
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <h3 className="text-lg font-medium text-content mb-1 flex items-center gap-2">
-          <RotateCw className="w-5 h-5 text-emerald-400" /> Steering
+          <RotateCw className="w-5 h-5 text-emerald-400" /> {t('mavlink-config:roverTuningTab.steering')}
         </h3>
         <p className="text-xs text-content-secondary mb-4">
-          Steering has its own curve, and it only shapes the stick in Manual. In Acro the stick
-          asks for a turn rate instead.
+          {t('mavlink-config:roverTuningTab.steeringIntro')}
         </p>
 
         {steering && isTravelEditable(steering.shape) && (
@@ -494,25 +487,21 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
             />
             <div className="space-y-2 self-center">
               <DraggableSlider
-                label="Steering travel"
+                label={t('mavlink-config:roverTuningTab.steeringTravel')}
                 value={Math.round((steering.travel / SERVO_TRAVEL_MAX_US) * 100)}
                 onChange={handleSteeringTravel}
                 min={10}
                 max={100}
                 step={1}
                 color="#10B981"
-                hint={`Full stick puts servo ${steering.ch} at ${Math.round((steering.travel / SERVO_TRAVEL_MAX_US) * 100)}% travel (${steering.trim - steering.travel}–${steering.trim + steering.travel} µs)`}
+                hint={t('mavlink-config:roverTuningTab.steeringTravelHint', { ch: steering.ch, percent: Math.round((steering.travel / SERVO_TRAVEL_MAX_US) * 100), lo: steering.trim - steering.travel, hi: steering.trim + steering.travel })}
               />
               <p className="text-[11px] text-content-tertiary">
-                100% is the full ±500 µs a servo accepts. This scales the whole range rather than
-                clipping it: at 40%, full stick gives 40% and half stick gives 20%. Turn it down
-                when the wheels reach full lock before the stick does, so the travel you have left
-                is travel that still steers.
+                {t('mavlink-config:roverTuningTab.steeringTravelExplain')}
               </p>
               {steering.trim - steering.min !== steering.max - steering.trim && (
                 <p className="text-[11px] text-amber-400">
-                  Endpoints are uneven around trim ({steering.min}/{steering.trim}/{steering.max} µs),
-                  so it steers further one way than the other. Moving the slider evens them up.
+                  {t('mavlink-config:roverTuningTab.unevenEndpoints', { min: steering.min, trim: steering.trim, max: steering.max })}
                 </p>
               )}
             </div>
@@ -530,7 +519,7 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
                   <button
                     key={preset.name}
                     onClick={() => handleChange('MANUAL_STR_EXPO', preset.expo)}
-                    data-tip={`MANUAL_STR_EXPO ${preset.expo}: half stick gives ${half}% steering`}
+                    data-tip={t('mavlink-config:roverTuningTab.steeringPresetTip', { expo: preset.expo, half })}
                     className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
                       active
                         ? 'border-emerald-500/50 bg-emerald-500/10'
@@ -547,18 +536,18 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
                       {half}%
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm text-content">{preset.name}</span>
-                      <span className="block text-[11px] text-content-tertiary">{preset.blurb}</span>
+                      <span className="block text-sm text-content">{t(preset.nameKey)}</span>
+                      <span className="block text-[11px] text-content-tertiary">{t(preset.blurbKey)}</span>
                     </span>
                     {active && (
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-emerald-400">current</span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-emerald-400">{t('mavlink-config:roverTuningTab.current')}</span>
                     )}
                   </button>
                 );
               })}
 
               <DraggableSlider
-                label="Steering curve (Manual)"
+                label={t('mavlink-config:roverTuningTab.steeringCurve')}
                 value={values.MANUAL_STR_EXPO}
                 onChange={(v) => handleChange('MANUAL_STR_EXPO', v)}
                 min={strExpoBounds.min}
@@ -566,10 +555,10 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
                 step={strExpoBounds.step}
                 color="#10B981"
                 hint={values.MANUAL_STR_EXPO > 0.05
-                  ? 'Calm around centre, full lock still reaches full lock'
+                  ? t('mavlink-config:roverTuningTab.steerCurveCalm')
                   : values.MANUAL_STR_EXPO < -0.05
-                    ? 'Sharper around centre: twitchy, rarely what you want on a car'
-                    : 'Linear: stick angle is steering angle'}
+                    ? t('mavlink-config:roverTuningTab.steerCurveSharp')
+                    : t('mavlink-config:roverTuningTab.steerCurveLinear')}
               />
             </div>
           </div>
@@ -577,24 +566,24 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
 
         <div className="space-y-4">
           <DraggableSlider
-            label="Turn Radius"
+            label={t('mavlink-config:roverTuningTab.turnRadius')}
             value={values.TURN_RADIUS}
             onChange={(v) => handleChange('TURN_RADIUS', v)}
             min={turnRadiusBounds.min}
             max={turnRadiusBounds.max}
             step={turnRadiusBounds.step}
             color="#10B981"
-            hint="Minimum turn radius at low speeds (m)"
+            hint={t('mavlink-config:roverTuningTab.turnRadiusHint')}
           />
           <DraggableSlider
-            label="Turn rate at full stick (Acro)"
+            label={t('mavlink-config:roverTuningTab.acroTurnRate')}
             value={values.ACRO_TURN_RATE}
             onChange={(v) => handleChange('ACRO_TURN_RATE', v)}
             min={acroRateBounds.min}
             max={acroRateBounds.max}
             step={acroRateBounds.step}
             color="#10B981"
-            hint={`A full turn takes ${(360 / Math.max(1, values.ACRO_TURN_RATE)).toFixed(1)} s at full lock`}
+            hint={t('mavlink-config:roverTuningTab.acroTurnRateHint', { s: (360 / Math.max(1, values.ACRO_TURN_RATE)).toFixed(1) })}
           />
         </div>
       </div>
@@ -602,61 +591,60 @@ const RoverTuningTab: React.FC<RoverTuningTabProps> = ({ section = 'speed-steeri
       {/* Pivot Turn Settings */}
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-          <RotateCw className="w-5 h-5 text-orange-400" /> Pivot Turns (Skid Steer)
+          <RotateCw className="w-5 h-5 text-orange-400" /> {t('mavlink-config:roverTuningTab.pivotSection')}
         </h3>
         <p className="text-sm text-content-secondary mb-4">
-          For differential drive rovers that can spin in place.
+          {t('mavlink-config:roverTuningTab.pivotIntro')}
         </p>
         <div className="space-y-4">
           <DraggableSlider
-            label="Pivot Threshold"
+            label={t('mavlink-config:roverTuningTab.pivotThreshold')}
             value={values.PIVOT_TURN_ANGLE}
             onChange={(v) => handleChange('PIVOT_TURN_ANGLE', v)}
             min={0}
             max={180}
             step={10}
             color="#F97316"
-            hint="Angle to target before using pivot turn (0 = disabled)"
+            hint={t('mavlink-config:roverTuningTab.pivotThresholdHint')}
           />
           <DraggableSlider
-            label="Pivot Turn Rate"
+            label={t('mavlink-config:roverTuningTab.pivotTurnRate')}
             value={values.PIVOT_TURN_RATE}
             onChange={(v) => handleChange('PIVOT_TURN_RATE', v)}
             min={30}
             max={180}
             step={10}
             color="#F97316"
-            hint="Rotation speed during pivot turns (deg/s)"
+            hint={t('mavlink-config:roverTuningTab.pivotTurnRateHint')}
           />
         </div>
       </div>
 
       {/* Current settings summary */}
       <div className="bg-surface rounded-xl border border-subtle p-4">
-        <h3 className="text-sm font-medium text-content mb-3">Current Settings Summary</h3>
+        <h3 className="text-sm font-medium text-content mb-3">{t('mavlink-config:roverTuningTab.summary')}</h3>
         <div className="grid grid-cols-4 gap-4 text-center">
           <div>
             <div className="text-2xl font-mono text-blue-400">{values.CRUISE_SPEED}</div>
-            <div className="text-xs text-content-secondary">Cruise (m/s)</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:roverTuningTab.sumCruise')}</div>
           </div>
           <div>
             <div className="text-2xl font-mono text-blue-400">{values.SPEED_MAX}</div>
-            <div className="text-xs text-content-secondary">Max (m/s)</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:roverTuningTab.sumMax')}</div>
           </div>
           <div>
             <div className="text-2xl font-mono text-emerald-400">{values.TURN_RADIUS}</div>
-            <div className="text-xs text-content-secondary">Turn Radius (m)</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:roverTuningTab.sumTurnRadius')}</div>
           </div>
           <div>
             <div className="text-2xl font-mono text-orange-400">{values.PIVOT_TURN_ANGLE}</div>
-            <div className="text-xs text-content-secondary">Pivot Threshold</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:roverTuningTab.pivotThreshold')}</div>
           </div>
         </div>
       </div>
 
-      <InfoCard title="Tip" variant="tip">
-        Start with conservative speeds (2-5 m/s) and increase gradually after testing.
-        If your rover has skid steering (tank drive), enable pivot turns for sharper maneuvering.
+      <InfoCard title={t('mavlink-config:roverTuningTab.tip')} variant="tip">
+        {t('mavlink-config:roverTuningTab.speedTip')}
       </InfoCard>
     </div>
   );

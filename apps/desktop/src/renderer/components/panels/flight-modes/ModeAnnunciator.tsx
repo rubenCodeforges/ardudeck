@@ -7,6 +7,7 @@
  * moment a request becomes real.
  */
 
+import { useTranslation, Trans } from 'react-i18next';
 import { memo, useEffect, useRef, useState } from 'react';
 import type { ModePhase } from '../../../hooks/useModeRequest';
 
@@ -56,6 +57,7 @@ function ModeAnnunciatorImpl({
   watchdogMs = 3000,
   compact = false,
 }: ModeAnnunciatorProps) {
+  const { t } = useTranslation();
   // Suppress the confirm-ring on first paint so it only fires on real transitions.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -67,9 +69,9 @@ function ModeAnnunciatorImpl({
     : 'success';
   const dotAnim = phase === 'requesting' ? 'animate-pulse' : '';
   const badgeText =
-    phase === 'requesting' ? 'Requesting…'
+    phase === 'requesting' ? t('panels:modeAnnunciator.requesting')
     : phase === 'rejected' ? rejectLabel
-    : 'Engaged';
+    : t('panels:modeAnnunciator.engaged');
   const modeText = phase === 'requesting' && requestedName ? requestedName : currentName;
   const modeCls = phase === 'requesting' ? 'text-content-secondary' : 'text-content';
 
@@ -78,13 +80,13 @@ function ModeAnnunciatorImpl({
       <button
         onClick={onToggle}
         aria-expanded={open}
-        data-tip="Change flight mode"
+        data-tip={t('panels:modeAnnunciator.changeTip')}
         style={mounted && justConfirmed ? { boxShadow: `0 0 0 2px var(--status-success)` } : undefined}
         className={`h-full w-full flex items-center gap-2 rounded-lg border ${phase === 'active' ? 'border-subtle' : ''} bg-surface hover:border-default px-3 transition-all`}
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotAnim}`} style={{ background: `var(--status-${statusVar})` }} />
         <span className={`text-sm font-bold font-mono tracking-wide truncate ${modeCls}`}>
-          {(modeText || 'Unknown').toUpperCase()}
+          {(modeText || t('panels:modeAnnunciator.unknown')).toUpperCase()}
         </span>
         <span
           className="ml-auto shrink-0 text-[9px] font-bold font-mono uppercase tracking-[0.12em] px-2 py-[3px] rounded-full"
@@ -101,14 +103,14 @@ function ModeAnnunciatorImpl({
     <button
       onClick={onToggle}
       aria-expanded={open}
-      data-tip="Change flight mode"
+      data-tip={t('panels:modeAnnunciator.changeTip')}
       style={mounted && justConfirmed ? { boxShadow: `0 0 0 2px var(--status-success)` } : undefined}
       className={`w-full text-left rounded-lg border ${phase === 'active' ? 'border-subtle' : ''} bg-surface hover:border-default px-3 py-2 transition-all`}
     >
       <div className="flex items-center gap-2.5">
         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotAnim}`} style={{ background: `var(--status-${statusVar})` }} />
         <span className={`text-lg font-bold font-mono tracking-wide truncate ${modeCls}`}>
-          {(modeText || 'Unknown').toUpperCase()}
+          {(modeText || t('panels:modeAnnunciator.unknown')).toUpperCase()}
         </span>
         <span
           className="ml-auto text-[9px] font-bold font-mono uppercase tracking-[0.13em] px-2 py-[3px] rounded-full"
@@ -121,13 +123,17 @@ function ModeAnnunciatorImpl({
 
       <div className="mt-1 text-[11px] font-mono text-content-secondary min-h-[15px]">
         {phase === 'requesting' ? (
-          <>
-            still <span className="text-content font-semibold">{currentName.toUpperCase()}</span>
-            <span style={{ color: 'var(--status-warn)' }}> → </span>
-            {(requestedName || '').toUpperCase()}
-          </>
+          <Trans
+            i18nKey="panels:modeAnnunciator.stillRequesting"
+            values={{ current: currentName.toUpperCase(), requested: (requestedName || '').toUpperCase() }}
+            components={{ b: <span className="text-content font-semibold" />, arrow: <span style={{ color: 'var(--status-warn)' }} /> }}
+          />
         ) : phase === 'rejected' ? (
-          <><span className="font-semibold" style={{ color: 'var(--status-danger-fg)' }}>{rejectLabel}</span> · still {currentName.toUpperCase()}</>
+          <Trans
+            i18nKey="panels:modeAnnunciator.stillRejected"
+            values={{ reason: rejectLabel, current: currentName.toUpperCase() }}
+            components={{ b: <span className="font-semibold" style={{ color: 'var(--status-danger-fg)' }} /> }}
+          />
         ) : (
           currentSubline
         )}

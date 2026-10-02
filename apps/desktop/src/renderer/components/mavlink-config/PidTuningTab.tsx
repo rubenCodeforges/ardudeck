@@ -15,11 +15,12 @@
  */
 
 import React, { useMemo, useCallback, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { MoveHorizontal, MoveVertical, RefreshCw, Lightbulb, AlertTriangle, Gauge, Plane, RotateCw } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
-import { PresetSelector } from '../ui/PresetSelector';
+import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import { ProfileManager } from '../ui/ProfileManager';
 import { InfoCard } from '../ui/InfoCard';
 import { PID_PRESETS } from './presets/mavlink-presets';
@@ -32,6 +33,7 @@ type ControllerSet = 'vtol' | 'fixedwing';
 const PID_PROFILES_KEY = 'ardudeck_mavlink_pid_profiles';
 
 const PidTuningTab: React.FC = () => {
+  const { t } = useTranslation();
   const { parameters, setParameter, fetchParameters, isLoading, downloadState } = useParameterStore();
   const showExplanationCards = useSettingsStore((s) => s.uiVisibility.showExplanationCards);
 
@@ -76,12 +78,19 @@ const PidTuningTab: React.FC = () => {
 
   const isUnknown = scheme?.id === 'unknown';
 
+  const pidPresets = useMemo(
+    () => Object.fromEntries(
+      Object.entries(PID_PRESETS).map(([key, preset]) => [key, { ...preset, name: t(preset.nameKey), description: t(preset.descriptionKey) }]),
+    ) as Record<string, Preset>,
+    [t],
+  );
+
   // Aircraft wording unless the scheme names its own controllers, and no third
   // card for a vehicle that has only two.
   const axisInfo = scheme?.axisInfo ?? {
-    roll: { title: 'Roll', sub: 'Left/right tilt' },
-    pitch: { title: 'Pitch', sub: 'Forward/back tilt' },
-    yaw: { title: 'Yaw', sub: 'Rotation' },
+    roll: { title: t('common:roll'), sub: t('mavlink-config:pidTuningTab.axisRollSub') },
+    pitch: { title: t('common:pitch'), sub: t('mavlink-config:pidTuningTab.axisPitchSub') },
+    yaw: { title: t('common:yaw'), sub: t('mavlink-config:pidTuningTab.axisYawSub') },
   };
   const showYawAxis = scheme ? (!scheme.axisInfo || !!scheme.axisInfo.yaw) : true;
 
@@ -185,45 +194,45 @@ const PidTuningTab: React.FC = () => {
   const renderAxisSliders = (axis: AxisParams, axisScheme: PidScheme, values: { p: number; i: number; d: number; ff: number }) => (
     <div className="space-y-5">
       <DraggableSlider
-        label="P - Response"
+        label={t('mavlink-config:pidTuningTab.pLabel')}
         value={Math.round(values.p * axisScheme.pScale)}
         onChange={(v) => handlePidChange(axis.p, v / axisScheme.pScale)}
         min={0}
         max={axisScheme.pMax}
         step={1}
         color="#3B82F6"
-        hint="Higher = snappier"
+        hint={t('mavlink-config:pidTuningTab.pHint')}
       />
       <DraggableSlider
-        label="I - Stability"
+        label={t('mavlink-config:pidTuningTab.iLabel')}
         value={Math.round(values.i * axisScheme.iScale)}
         onChange={(v) => handlePidChange(axis.i, v / axisScheme.iScale)}
         min={0}
         max={axisScheme.iMax}
         step={1}
         color="#10B981"
-        hint="Higher = more stable"
+        hint={t('mavlink-config:pidTuningTab.iHint')}
       />
       <DraggableSlider
-        label="D - Smoothness"
+        label={t('mavlink-config:pidTuningTab.dLabel')}
         value={Math.round(values.d * axisScheme.dScale)}
         onChange={(v) => handlePidChange(axis.d, v / axisScheme.dScale)}
         min={0}
         max={axisScheme.dMax}
         step={1}
         color="#8B5CF6"
-        hint="Higher = smoother"
+        hint={t('mavlink-config:pidTuningTab.dHint')}
       />
       {axisScheme.hasFF && axis.ff && (
         <DraggableSlider
-          label="FF - Feedforward"
+          label={t('mavlink-config:pidTuningTab.ffLabel')}
           value={Math.round(values.ff * axisScheme.ffScale)}
           onChange={(v) => handlePidChange(axis.ff!, v / axisScheme.ffScale)}
           min={0}
           max={axisScheme.ffMax}
           step={1}
           color="#F59E0B"
-          hint="Anticipates commands"
+          hint={t('mavlink-config:pidTuningTab.ffHint')}
         />
       )}
     </div>
@@ -240,12 +249,12 @@ const PidTuningTab: React.FC = () => {
             </div>
             <div>
               <p className="text-amber-300 font-medium">
-                {downloadState === 'failed' ? 'Parameter Download Failed' : 'Parameters Not Loaded'}
+                {downloadState === 'failed' ? t('mavlink-config:pidTuningTab.downloadFailed') : t('mavlink-config:pidTuningTab.paramsNotLoaded')}
               </p>
               <p className="text-xs text-content-secondary">
                 {downloadState === 'failed'
-                  ? 'The vehicle did not send a full parameter set. Retry to pull them again.'
-                  : 'Fetch parameters from the FC to use presets and adjust values'}
+                  ? t('mavlink-config:pidTuningTab.downloadFailedHint')
+                  : t('mavlink-config:pidTuningTab.fetchHint')}
               </p>
             </div>
           </div>
@@ -254,7 +263,7 @@ const PidTuningTab: React.FC = () => {
             disabled={isLoading}
             className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Loading...' : downloadState === 'failed' ? 'Retry' : 'Fetch Parameters'}
+            {isLoading ? t('common:loading') : downloadState === 'failed' ? t('common:retry') : t('mavlink-config:pidTuningTab.fetchParameters')}
           </button>
         </div>
       )}
@@ -267,19 +276,12 @@ const PidTuningTab: React.FC = () => {
               <AlertTriangle className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <p className="text-red-300 font-medium">Unrecognized PID Parameters</p>
+              <p className="text-red-300 font-medium">{t('mavlink-config:pidTuningTab.unknownSchemeTitle')}</p>
               <p className="text-sm text-content-secondary mt-1">
-                Could not detect a known PID parameter scheme on this board.
-                Expected <span className="font-mono text-content">ATC_RAT_*</span>,
-                <span className="font-mono text-content"> RATE_RLL_*</span>,
-                <span className="font-mono text-content"> RLL_RATE_*</span>,
-                <span className="font-mono text-content"> RLL2SRV_*</span>,
-                <span className="font-mono text-content"> Q_A_RAT_*</span>,
-                <span className="font-mono text-content"> MC_*RATE_*</span>, or
-                <span className="font-mono text-content"> FW_*R_*</span> parameters.
+                <Trans i18nKey="mavlink-config:pidTuningTab.unknownSchemeBody" components={{ m: <span className="font-mono text-content" /> }} />
               </p>
               <p className="text-sm text-content-secondary mt-1">
-                Use the <span className="font-medium text-content">All Parameters</span> tab to find and edit your board's PID parameters directly.
+                <Trans i18nKey="mavlink-config:pidTuningTab.unknownSchemeHint" components={{ b: <span className="font-medium text-content" /> }} />
               </p>
             </div>
           </div>
@@ -287,9 +289,8 @@ const PidTuningTab: React.FC = () => {
       )}
 
       {/* Info card */}
-      <InfoCard title="What are PIDs?" variant="info">
-        PIDs control how your aircraft responds to commands. P = how quickly it reacts,
-        I = how well it holds position, D = how smoothly it stops. Start with a preset!
+      <InfoCard title={t('mavlink-config:pidTuningTab.whatArePidsTitle')} variant="info">
+        {t('mavlink-config:pidTuningTab.whatArePidsBody')}
       </InfoCard>
 
       {/* VTOL / Fixed-wing controller switch — only on QuadPlanes that carry
@@ -297,17 +298,22 @@ const PidTuningTab: React.FC = () => {
       {(dualController || dualPx4Controller) && (
         <div data-tour="tuning-vtol-toggle" className="bg-surface-raised/40 rounded-xl border border-subtle p-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-content">Controller set</p>
+            <p className="text-sm font-medium text-content">{t('mavlink-config:pidTuningTab.controllerSet')}</p>
             <p className="text-xs text-content-secondary mt-0.5">
               {dualPx4Controller
-                ? 'This VTOL runs separate multicopter and fixed-wing controllers. '
-                : 'This QuadPlane runs separate VTOL and fixed-wing controllers. '}
-              Choose which one to tune
-              {scheme ? <>, editing <span className="font-mono text-content">{
-                dualPx4Controller
-                  ? (controllerSet === 'vtol' ? 'MC_*RATE_*' : 'FW_*R_*')
-                  : (controllerSet === 'vtol' ? 'Q_A_RAT_*' : (parameters.has('RLL_RATE_P') ? 'RLL_RATE_*' : 'RLL2SRV_*'))
-              }</span></> : null}.
+                ? t('mavlink-config:pidTuningTab.px4DualIntro')
+                : t('mavlink-config:pidTuningTab.quadPlaneDualIntro')}{' '}
+              {scheme ? (
+                <Trans
+                  i18nKey="mavlink-config:pidTuningTab.chooseToTuneEditing"
+                  values={{
+                    set: dualPx4Controller
+                      ? (controllerSet === 'vtol' ? 'MC_*RATE_*' : 'FW_*R_*')
+                      : (controllerSet === 'vtol' ? 'Q_A_RAT_*' : (parameters.has('RLL_RATE_P') ? 'RLL_RATE_*' : 'RLL2SRV_*')),
+                  }}
+                  components={{ m: <span className="font-mono text-content" /> }}
+                />
+              ) : t('mavlink-config:pidTuningTab.chooseToTune')}
             </p>
           </div>
           <div className="flex items-center rounded-lg overflow-hidden border border-subtle shrink-0">
@@ -316,7 +322,7 @@ const PidTuningTab: React.FC = () => {
               className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 controllerSet === 'vtol' ? 'bg-indigo-600 text-white' : 'text-content-secondary hover:bg-surface-raised'
               }`}
-              data-tip={dualPx4Controller ? 'Multicopter rate controller used in VTOL / hover (MC_*RATE_*)' : 'Multicopter rate controller used in VTOL / hover (Q_A_RAT_*)'}
+              data-tip={t('mavlink-config:pidTuningTab.vtolTip', { params: dualPx4Controller ? 'MC_*RATE_*' : 'Q_A_RAT_*' })}
             >
               <RotateCw className="w-3.5 h-3.5" /> VTOL
             </button>
@@ -326,9 +332,9 @@ const PidTuningTab: React.FC = () => {
               className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 controllerSet === 'fixedwing' ? 'bg-indigo-600 text-white' : 'text-content-secondary hover:bg-surface-raised'
               }`}
-              data-tip={dualPx4Controller ? 'Fixed-wing controller used in forward flight (FW_*R_*)' : 'Fixed-wing controller used in forward flight (RLL_RATE_* / RLL2SRV_*)'}
+              data-tip={t('mavlink-config:pidTuningTab.fixedWingTip', { params: dualPx4Controller ? 'FW_*R_*' : 'RLL_RATE_* / RLL2SRV_*' })}
             >
-              <Plane className="w-3.5 h-3.5" /> Fixed-wing
+              <Plane className="w-3.5 h-3.5" /> {t('mavlink-config:pidTuningTab.fixedWing')}
             </button>
           </div>
         </div>
@@ -338,10 +344,10 @@ const PidTuningTab: React.FC = () => {
       <div className={isUnknown || !scheme ? 'opacity-40 pointer-events-none' : ''}>
       <div className="space-y-6">
       <PresetSelector
-        presets={PID_PRESETS}
+        presets={pidPresets}
         onApply={applyPreset}
-        label="Quick Presets"
-        hint="Click to apply a tuning style"
+        label={t('common:quickPresets')}
+        hint={t('mavlink-config:pidTuningTab.presetsHint')}
       />
 
       <ProfileManager<Record<string, number>>
@@ -349,7 +355,7 @@ const PidTuningTab: React.FC = () => {
         currentData={profileData}
         onLoad={loadProfile}
         onReset={resetToDefaults}
-        label="My Profiles"
+        label={t('common:myProfiles')}
       />
 
       {/* PID sliders: one card per controller this vehicle actually has */}
@@ -388,8 +394,8 @@ const PidTuningTab: React.FC = () => {
               <RefreshCw className="w-5 h-5 text-orange-400" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-content">{axisInfo.yaw?.title ?? 'Yaw'}</h3>
-              <p className="text-xs text-content-secondary">{axisInfo.yaw?.sub ?? 'Rotation'}</p>
+              <h3 className="text-lg font-medium text-content">{axisInfo.yaw?.title ?? t('common:yaw')}</h3>
+              <p className="text-xs text-content-secondary">{axisInfo.yaw?.sub ?? t('mavlink-config:pidTuningTab.axisYawSub')}</p>
             </div>
           </div>
           {renderAxisSliders(scheme.yaw, scheme, pidValues.yaw)}
@@ -406,40 +412,40 @@ const PidTuningTab: React.FC = () => {
             <Gauge className="w-5 h-5 text-rose-400" />
           </div>
           <div>
-            <h3 className="text-lg font-medium text-content">Acceleration Limits</h3>
-            <p className="text-xs text-content-secondary">Max rotational acceleration per axis (deg/s²). Set by Initial Parameters and Autotune.</p>
+            <h3 className="text-lg font-medium text-content">{t('mavlink-config:pidTuningTab.accelTitle')}</h3>
+            <p className="text-xs text-content-secondary">{t('mavlink-config:pidTuningTab.accelDesc')}</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-5">
           <DraggableSlider
-            label="Roll"
+            label={t('common:roll')}
             value={Math.round(accelValues.roll / 100)}
             onChange={(v) => handlePidChange(scheme.accel!.roll, v * 100)}
             min={0}
             max={1800}
             step={10}
             color="#F43F5E"
-            hint="deg/s²"
+            hint="deg/s²" /* i18n-exempt */
           />
           <DraggableSlider
-            label="Pitch"
+            label={t('common:pitch')}
             value={Math.round(accelValues.pitch / 100)}
             onChange={(v) => handlePidChange(scheme.accel!.pitch, v * 100)}
             min={0}
             max={1800}
             step={10}
             color="#10B981"
-            hint="deg/s²"
+            hint="deg/s²" /* i18n-exempt */
           />
           <DraggableSlider
-            label="Yaw"
+            label={t('common:yaw')}
             value={Math.round(accelValues.yaw / 100)}
             onChange={(v) => handlePidChange(scheme.accel!.yaw, v * 100)}
             min={0}
             max={720}
             step={5}
             color="#F59E0B"
-            hint="deg/s²"
+            hint="deg/s²" /* i18n-exempt */
           />
         </div>
       </div>
@@ -451,32 +457,32 @@ const PidTuningTab: React.FC = () => {
       {showExplanationCards && (
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h4 className="font-medium text-content mb-3 flex items-center gap-2">
-            <Lightbulb className="w-4 h-4 text-yellow-400" /> What do these numbers mean?
+            <Lightbulb className="w-4 h-4 text-yellow-400" /> {t('mavlink-config:pidTuningTab.explainTitle')}
           </h4>
           <div className={`grid ${scheme?.hasFF !== false ? 'grid-cols-4' : 'grid-cols-3'} gap-6 text-sm`}>
             <div>
-              <span className="text-blue-400 font-medium">P (Proportional)</span>
+              <span className="text-blue-400 font-medium">{t('mavlink-config:pidTuningTab.explainP')}</span>
               <p className="text-content-secondary mt-1">
-                How quickly your aircraft reacts to errors. Too high = oscillation/vibration. Too low = mushy feeling.
+                {t('mavlink-config:pidTuningTab.explainPBody')}
               </p>
             </div>
             <div>
-              <span className="text-emerald-400 font-medium">I (Integral)</span>
+              <span className="text-emerald-400 font-medium">{t('mavlink-config:pidTuningTab.explainI')}</span>
               <p className="text-content-secondary mt-1">
-                Keeps your aircraft on target over time. Helps fight wind and drift. Too high = slow wobbles.
+                {t('mavlink-config:pidTuningTab.explainIBody')}
               </p>
             </div>
             <div>
-              <span className="text-purple-400 font-medium">D (Derivative)</span>
+              <span className="text-purple-400 font-medium">{t('mavlink-config:pidTuningTab.explainD')}</span>
               <p className="text-content-secondary mt-1">
-                Dampens overshooting and oscillation. Too high = hot motors and noise. Too low = bouncy stops.
+                {t('mavlink-config:pidTuningTab.explainDBody')}
               </p>
             </div>
             {scheme?.hasFF !== false && (
             <div>
-              <span className="text-amber-400 font-medium">FF (Feedforward)</span>
+              <span className="text-amber-400 font-medium">{t('mavlink-config:pidTuningTab.explainFF')}</span>
               <p className="text-content-secondary mt-1">
-                Anticipates stick movements for faster response. Useful for agile flying but can cause overshoot.
+                {t('mavlink-config:pidTuningTab.explainFFBody')}
               </p>
             </div>
             )}
@@ -485,10 +491,8 @@ const PidTuningTab: React.FC = () => {
       )}
 
       {/* AutoTune tip */}
-      <InfoCard title="Use AutoTune for Best Results" variant="tip">
-        For optimal performance, use ArduPilot's AutoTune flight mode. It will automatically
-        tune your PID values by flying test maneuvers. Set one of your flight mode slots to
-        AutoTune, then fly in calm conditions.
+      <InfoCard title={t('mavlink-config:pidTuningTab.autotuneTitle')} variant="tip">
+        {t('mavlink-config:pidTuningTab.autotuneBody')}
       </InfoCard>
     </div>
   );

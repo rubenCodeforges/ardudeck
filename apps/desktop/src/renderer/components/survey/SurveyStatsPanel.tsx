@@ -1,6 +1,7 @@
 /**
  * Survey Stats Panel - Compact stats bar showing GSD, flight time, photo count, etc.
  */
+import { useTranslation } from 'react-i18next';
 import type { SurveyStats } from './survey-types';
 import { useSettingsStore } from '../../stores/settings-store';
 import { formatAreaFromSquareMeters, formatDistanceFromMeters } from '../../../shared/user-units.js';
@@ -31,6 +32,7 @@ function formatDataSize(gb: number): string {
 }
 
 export function SurveyStatsPanel({ stats, batteries, dataSizeGb }: SurveyStatsPanelProps) {
+  const { t } = useTranslation();
   const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
 
@@ -44,17 +46,17 @@ export function SurveyStatsPanel({ stats, batteries, dataSizeGb }: SurveyStatsPa
 
   return (
     <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
-      {!isManualMode && <StatItem label="GSD" value={`${stats.gsd.toFixed(1)} cm/px`} />}
-      {!isManualMode && <StatItem label="Photos" value={stats.photoCount.toLocaleString()} />}
-      <StatItem label="Lines" value={stats.lineCount.toString()} />
-      <StatItem label="Distance" value={formatDistanceFromMeters(stats.flightDistance, distanceUnit)} />
-      <StatItem label="Time" value={formatTime(stats.flightTime)} />
-      <StatItem label="Area" value={formatAreaFromSquareMeters(stats.areaCovered, areaUnit)} />
+      {!isManualMode && <StatItem label={t('survey:surveyStatsPanel.gsd')} value={`${stats.gsd.toFixed(1)} cm/px`} />}
+      {!isManualMode && <StatItem label={t('common:photos')} value={stats.photoCount.toLocaleString()} />}
+      <StatItem label={t('survey:surveyStatsPanel.lines')} value={stats.lineCount.toString()} />
+      <StatItem label={t('common:distance')} value={formatDistanceFromMeters(stats.flightDistance, distanceUnit)} />
+      <StatItem label={t('common:time')} value={formatTime(stats.flightTime)} />
+      <StatItem label={t('common:area')} value={formatAreaFromSquareMeters(stats.areaCovered, areaUnit)} />
       {batteries !== undefined && batteries > 0 && (
-        <StatItem label="Batteries" value={batteries.toString()} />
+        <StatItem label={t('common:batteries')} value={batteries.toString()} />
       )}
       {!isManualMode && dataSizeGb !== undefined && dataSizeGb > 0 && (
-        <StatItem label="~Data" value={formatDataSize(dataSizeGb)} />
+        <StatItem label={t('survey:surveyStatsPanel.data')} value={formatDataSize(dataSizeGb)} />
       )}
     </div>
   );

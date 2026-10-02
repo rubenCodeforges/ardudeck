@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../../hooks/useNumericDraft';
 
 interface ServoEndpointSliderProps {
@@ -28,6 +29,7 @@ export default function ServoEndpointSlider({
   onTestPosition,
   rangeLimits = { min: 500, max: 2500 },
 }: ServoEndpointSliderProps) {
+  const { t } = useTranslation();
   const [dragging, setDragging] = useState<'min' | 'center' | 'max' | null>(null);
 
   // Calculate range span for percentage conversion
@@ -86,7 +88,7 @@ export default function ServoEndpointSlider({
       {/* Number inputs */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="text-xs text-content-secondary block mb-1">Min (µs)</label>
+          <label className="text-xs text-content-secondary block mb-1">{t('servo-wizard:servoEndpointSlider.minUs')}</label>
           <DraftNumberInput
             value={min}
             onCommit={(v) => onChange({ min: snap(v), center, max })}
@@ -97,7 +99,7 @@ export default function ServoEndpointSlider({
           />
         </div>
         <div>
-          <label className="text-xs text-content-secondary block mb-1">Center (µs)</label>
+          <label className="text-xs text-content-secondary block mb-1">{t('servo-wizard:servoEndpointSlider.centerUs')}</label>
           <DraftNumberInput
             value={center}
             onCommit={(v) => onChange({ min, center: snap(v), max })}
@@ -108,7 +110,7 @@ export default function ServoEndpointSlider({
           />
         </div>
         <div>
-          <label className="text-xs text-content-secondary block mb-1">Max (µs)</label>
+          <label className="text-xs text-content-secondary block mb-1">{t('servo-wizard:servoEndpointSlider.maxUs')}</label>
           <DraftNumberInput
             value={max}
             onCommit={(v) => onChange({ min, center, max: snap(v) })}
@@ -148,7 +150,7 @@ export default function ServoEndpointSlider({
           onMouseDown={handleMouseDown('min')}
         >
           <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-content-secondary whitespace-nowrap">
-            min
+            {t('servo-wizard:servoEndpointSlider.minHandle')}
           </div>
         </div>
 
@@ -161,7 +163,7 @@ export default function ServoEndpointSlider({
           onMouseDown={handleMouseDown('center')}
         >
           <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-green-400 whitespace-nowrap">
-            center
+            {t('servo-wizard:servoEndpointSlider.centerHandle')}
           </div>
         </div>
 
@@ -174,7 +176,7 @@ export default function ServoEndpointSlider({
           onMouseDown={handleMouseDown('max')}
         >
           <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-content-secondary whitespace-nowrap">
-            max
+            {t('servo-wizard:servoEndpointSlider.maxHandle')}
           </div>
         </div>
 
@@ -192,19 +194,19 @@ export default function ServoEndpointSlider({
             onClick={() => onTestPosition('min')}
             className="flex-1 px-3 py-2 text-sm bg-surface-raised text-content rounded-lg hover:bg-surface-raised border border"
           >
-            Test Min
+            {t('servo-wizard:servoEndpointSlider.testMin')}
           </button>
           <button
             onClick={() => onTestPosition('center')}
             className="flex-1 px-3 py-2 text-sm bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 border border-green-500/30"
           >
-            Test Center
+            {t('servo-wizard:servoEndpointSlider.testCenter')}
           </button>
           <button
             onClick={() => onTestPosition('max')}
             className="flex-1 px-3 py-2 text-sm bg-surface-raised text-content rounded-lg hover:bg-surface-raised border border"
           >
-            Test Max
+            {t('servo-wizard:servoEndpointSlider.testMax')}
           </button>
         </div>
       )}

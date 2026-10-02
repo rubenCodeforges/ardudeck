@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n/index.js';
+
 /**
  * Putting a flight function on a different stick.
  *
@@ -90,7 +92,7 @@ export function movedChannel(
 /** What each stick is called on this kind of vehicle. */
 export function stickLabel(fn: StickFunction, isGround: boolean): string {
   if (!isGround) {
-    return { roll: 'Roll', pitch: 'Pitch', throttle: 'Throttle', yaw: 'Yaw' }[fn];
+    return t(`utils:stickAssign.air.${fn}`);
   }
-  return { roll: 'Steering', pitch: 'Pitch (unused)', throttle: 'Throttle', yaw: 'Yaw (unused)' }[fn];
+  return t(`utils:stickAssign.ground.${fn}`);
 }

@@ -38,6 +38,7 @@ import {
   type ElrsSetModeResult,
   type ElrsProgressEvent,
 } from '../../shared/link-doctor-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 export { ELRS_USB_BAUD };
 export type { ElrsFieldSummary, ElrsModuleInfo, ElrsSetModeResult, ElrsProgressEvent };
@@ -153,9 +154,9 @@ export async function detectElrsModule(port: string): Promise<ElrsModuleInfo | n
       const field = await readField(session, idx);
       if (!field || field.hidden) continue;
       if (field.type === CRSF_FIELD_TEXT_SELECTION) {
-        if (field.name === 'Link Mode') result.linkMode = summarize(field);
-        else if (field.name === 'Packet Rate') result.packetRate = summarize(field);
-        else if (field.name === 'Max Power') result.txPower = summarize(field);
+        if (field.name === 'Link Mode') result.linkMode = summarize(field); // i18n-exempt
+        else if (field.name === 'Packet Rate') result.packetRate = summarize(field); // i18n-exempt
+        else if (field.name === 'Max Power') result.txPower = summarize(field); // i18n-exempt
       } else if (field.type === CRSF_FIELD_INFO && /^\d+\.\d+\.\d+/.test(field.name)) {
         // ELRS exposes its version as a root INFO field named e.g. "4.0.0 ISM2G4"
         result.firmware = field.name;
@@ -221,7 +222,7 @@ export async function setElrsLinkMode(
           return {
             status: 'probable',
             mode: targetMode,
-            reason: 'The module stopped answering CRSF - its USB port has switched to MAVLink.',
+            reason: t('main:elrs.switchedToMavlink'),
           };
         }
       }
@@ -236,12 +237,12 @@ export async function setElrsLinkMode(
 async function findLinkModeIndex(session: CrsfSession): Promise<number> {
   await session.write(buildDevicePing());
   const frame = await session.waitFrame((f) => f.type === CRSF_FRAMETYPE_DEVICE_INFO, 800);
-  if (!frame) throw new Error('No ELRS module answered on this port');
+  if (!frame) throw new Error(t('main:elrs.noModule'));
   const info = parseDeviceInfo(frame.body);
-  if (!info) throw new Error('Malformed DEVICE_INFO from module');
+  if (!info) throw new Error('Malformed DEVICE_INFO from module'); // i18n-exempt
   for (let idx = 1; idx <= info.fieldCount; idx++) {
     const field = await readField(session, idx);
-    if (field?.name === 'Link Mode') return field.index;
+    if (field?.name === 'Link Mode') return field.index; // i18n-exempt
   }
-  throw new Error('This module has no Link Mode setting (firmware too old?)');
+  throw new Error(t('main:elrs.noLinkModeSetting'));
 }

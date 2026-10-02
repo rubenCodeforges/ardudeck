@@ -2,6 +2,8 @@
  * CalibrationProgress - Circular progress indicator
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface CalibrationProgressProps {
   progress: number; // 0-100
   size?: number;
@@ -23,6 +25,7 @@ export function CalibrationProgress({
   indeterminate = false,
   label,
 }: CalibrationProgressProps) {
+  const { t } = useTranslation();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
@@ -67,7 +70,7 @@ export function CalibrationProgress({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-sm font-medium text-content text-center px-4">
-            {label ?? 'Calibrating...'}
+            {label ?? t('calibration:calibrationProgress.calibrating')}
           </span>
         </div>
       </div>
@@ -121,7 +124,7 @@ export function CalibrationProgress({
           {Math.round(progress)}%
         </span>
         <span className="text-xs text-content-secondary mt-1">
-          {label ?? (progress < 100 ? 'Calibrating...' : 'Complete')}
+          {label ?? (progress < 100 ? t('calibration:calibrationProgress.calibrating') : t('calibration:calibrationProgress.complete'))}
         </span>
       </div>
 

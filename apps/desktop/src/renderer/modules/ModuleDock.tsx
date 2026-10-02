@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Boxes, Box, ChevronLeft, ChevronRight, GripVertical, X } from 'lucide-react';
 import {
   listModulePanels,
@@ -34,6 +35,7 @@ function loadPos(): { x: number; y: number } | null {
 }
 
 export function ModuleDock() {
+  const { t } = useTranslation();
   const panels = useSyncExternalStore(subscribeModulePanels, listModulePanels);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export function ModuleDock() {
                   <button
                     onClick={() => setOpenKey(null)}
                     className="rounded-md p-1 text-content-secondary transition-colors hover:bg-surface-raised hover:text-content"
-                    aria-label="Back to cargo"
+                    aria-label={t('modules:moduleDock.backToCargo')}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -142,7 +144,7 @@ export function ModuleDock() {
                   <button
                     onClick={collapse}
                     className="rounded-md p-1 text-content-secondary transition-colors hover:bg-surface-raised hover:text-content"
-                    aria-label="Close"
+                    aria-label={t('common:close')}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -155,12 +157,12 @@ export function ModuleDock() {
               <>
                 <div className="flex items-center justify-between border-b border-subtle px-3 py-2.5">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-content-tertiary">
-                    Cargo
+                    {t('modules:moduleDock.cargo')}
                   </span>
                   <button
                     onClick={() => setMenuOpen(false)}
                     className="-mr-1 rounded-md p-1 text-content-secondary transition-colors hover:bg-surface-raised hover:text-content"
-                    aria-label="Close"
+                    aria-label={t('common:close')}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -196,7 +198,7 @@ export function ModuleDock() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           style={{ touchAction: 'none', cursor: 'grab' }}
-          data-tip="Drag to move"
+          data-tip={t('modules:moduleDock.dragToMove')}
           className={
             'flex items-center gap-1.5 rounded-full border py-2 pl-2 pr-4 text-sm font-medium shadow-lg transition-colors ' +
             (menuOpen
@@ -206,7 +208,7 @@ export function ModuleDock() {
         >
           <GripVertical className={'h-4 w-4 ' + (menuOpen ? 'text-white/50' : 'text-content-tertiary')} />
           <Boxes className="h-4 w-4" />
-          Cargo
+          {t('modules:moduleDock.cargo')}
           <span
             className={
               'rounded-full px-1.5 text-[11px] ' +

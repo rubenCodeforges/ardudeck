@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { rateCurve, commandedRate, secondsPerTurn, rateAtHalfStick } from './rate-response';
@@ -31,6 +32,7 @@ const B = 26;
 export function RateResponsePlot({
   maxRate, expo, unit, axis, accent = '#3B82F6',
 }: RateResponsePlotProps): JSX.Element {
+  const { t } = useTranslation();
   const { parameters } = useParameterStore();
   const rc = useTelemetryStore((s) => s.rcChannels);
 
@@ -99,11 +101,11 @@ export function RateResponsePlot({
             <circle cx={W - R - 34} cy={T - 6} r="2.5" fill="#34D399">
               <animate attributeName="opacity" values="1;0.25;1" dur="1.6s" repeatCount="indefinite" />
             </circle>
-            <text x={W - R - 28} y={T - 3} fontSize="7.5" fill="#34D399" letterSpacing="0.5">LIVE</text>
+            <text x={W - R - 28} y={T - 3} fontSize="7.5" fill="#34D399" letterSpacing="0.5">{t('mavlink-config:responsePlot.live')}</text>
           </g>
         )}
         <text x={L} y={T - 4} fontSize="7.5" fill="var(--text-tertiary)">{unit}</text>
-        <text x={W - R} y={H - 4} textAnchor="end" fontSize="7.5" fill="var(--text-tertiary)">stick %</text>
+        <text x={W - R} y={H - 4} textAnchor="end" fontSize="7.5" fill="var(--text-tertiary)">{t('mavlink-config:responsePlot.stickPct')}</text>
       </svg>
 
       <div className="border-t border-subtle px-3 py-2">
@@ -113,19 +115,19 @@ export function RateResponsePlot({
               {Math.round(liveRate)}
             </span>
             <span className="text-[11px] text-content-secondary">
-              {unit} at {Math.round(stick)}% stick
-              {Math.abs(stick) < 2 && ' · move it and the dot follows'}
+              {t('mavlink-config:rateResponsePlot.liveRate', { unit, stick: Math.round(stick) })}
+              {Math.abs(stick) < 2 && t('mavlink-config:responsePlot.moveHint')}
             </span>
           </div>
         ) : (
           <div className="text-[11px] text-content-secondary">
-            Connect the radio and move the stick: it appears on the curve.
+            {t('mavlink-config:rateResponsePlot.connectHint')}
           </div>
         )}
         <div className="mt-0.5 text-[11px] text-content-tertiary">
           {turn !== null
-            ? `Full stick spins a whole turn in ${turn.toFixed(1)} s. Half stick gives ${Math.round(half)} ${unit}.`
-            : `Half stick gives ${Math.round(half)} ${unit}.`}
+            ? t('mavlink-config:rateResponsePlot.fullTurn', { turn: turn.toFixed(1), half: Math.round(half), unit })
+            : t('mavlink-config:rateResponsePlot.halfStick', { half: Math.round(half), unit })}
         </div>
       </div>
     </div>

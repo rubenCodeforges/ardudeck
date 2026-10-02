@@ -24,9 +24,11 @@ import {
   Cable,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { GRAPH_TEMPLATES } from './graph-templates';
 import { useLuaGraphStore } from '../../stores/lua-graph-store';
 import { ConfirmDialog } from './ConfirmDialog';
+import { templateCategory, templateDescription, templateName } from './lua-graph-i18n';
 
 // ── Category styling ────────────────────────────────────────────
 
@@ -55,7 +57,7 @@ const CATEGORY_STYLE: Record<string, { accent: string; bg: string; text: string;
     text: 'text-amber-400',
     badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
   },
-  'Data Logging': {
+  'Data Logging': { // i18n-exempt
     accent: 'border-t-cyan-500/70',
     bg: 'bg-cyan-500/10',
     text: 'text-cyan-400',
@@ -101,13 +103,14 @@ interface TemplateDialogProps {
 }
 
 export function TemplateDialog({ onClose }: TemplateDialogProps) {
+  const { t } = useTranslation();
   const { loadGraph, isDirty } = useLuaGraphStore();
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
   const applyTemplate = useCallback(
     (templateId: string) => {
-      const template = GRAPH_TEMPLATES.find((t) => t.id === templateId);
+      const template = GRAPH_TEMPLATES.find((tpl) => tpl.id === templateId);
       if (!template) return;
       loadGraph(template.graph);
       useLuaGraphStore.setState({ filePath: null });
@@ -130,16 +133,20 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
   // Search across name, description, and category
   const q = query.trim().toLowerCase();
   const visibleTemplates = q
-    ? GRAPH_TEMPLATES.filter(
-        (t) =>
-          t.name.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q),
+    ? GRAPH_TEMPLATES.filter((tpl) =>
+        [
+          tpl.name,
+          tpl.description,
+          tpl.category,
+          templateName(t, tpl),
+          templateDescription(t, tpl),
+          templateCategory(t, tpl.category),
+        ].some((s) => s.toLowerCase().includes(q)),
       )
     : GRAPH_TEMPLATES;
 
   // Group templates by category
-  const categories = [...new Set(visibleTemplates.map((t) => t.category))];
+  const categories = [...new Set(visibleTemplates.map((tpl) => tpl.category))];
 
   return (
     <>
@@ -152,9 +159,9 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
                 <Layers className="w-4 h-4 text-blue-400" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-content">Graph Templates</h2>
+                <h2 className="text-sm font-semibold text-content">{t('lua-graph:templateDialog.title')}</h2>
                 <p className="text-[10px] text-content-secondary mt-0.5">
-                  Pre-built scripts to get you started quickly
+                  {t('lua-graph:templateDialog.subtitle')}
                 </p>
               </div>
             </div>
@@ -174,7 +181,7 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search templates..."
+                placeholder={t('lua-graph:templateDialog.searchPlaceholder')}
                 autoFocus
                 className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-input border border-subtle rounded-md text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
               />
@@ -185,7 +192,7 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
           <div className="p-5 max-h-[65vh] overflow-y-auto space-y-6">
             {visibleTemplates.length === 0 && (
               <div className="py-10 text-center text-xs text-content-secondary">
-                No templates match "{query.trim()}"
+                {t('lua-graph:templateDialog.noMatches', { query: query.trim() })}
               </div>
             )}
             {categories.map((cat) => {
@@ -197,14 +204,14 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
                     <span
                       className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded border ${style.badge}`}
                     >
-                      {cat}
+                      {templateCategory(t, cat)}
                     </span>
                     <div className="flex-1 h-px bg-subtle" />
                   </div>
 
                   {/* Template cards */}
                   <div className="grid grid-cols-2 gap-3">
-                    {visibleTemplates.filter((t) => t.category === cat).map((template) => {
+                    {visibleTemplates.filter((tpl) => tpl.category === cat).map((template) => {
                       const Icon = TEMPLATE_ICON[template.id] ?? Layers;
                       const nodeCount = template.graph.nodes.filter(
                         (n) => n.type !== 'flow-comment',
@@ -233,10 +240,10 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
                               </div>
                               <div className="min-w-0">
                                 <div className="text-[13px] font-medium text-content group-hover:text-content transition-colors leading-tight">
-                                  {template.name}
+                                  {templateName(t, template)}
                                 </div>
                                 <div className="text-[11px] text-content-secondary leading-relaxed mt-1">
-                                  {template.description}
+                                  {templateDescription(t, template)}
                                 </div>
                               </div>
                             </div>
@@ -246,13 +253,13 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
                               <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
                                 <GitFork className="w-3 h-3" />
                                 <span>
-                                  {nodeCount} node{nodeCount !== 1 ? 's' : ''}
+                                  {t('lua-graph:luaGraphView.nodeCount', { count: nodeCount })}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
                                 <ArrowRight className="w-3 h-3" />
                                 <span>
-                                  {edgeCount} connection{edgeCount !== 1 ? 's' : ''}
+                                  {t('lua-graph:graphToolbar.connectionCount', { count: edgeCount })}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 text-[10px] text-content-tertiary">
@@ -278,10 +285,10 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
 
       {pendingTemplateId && (
         <ConfirmDialog
-          title="Unsaved changes"
-          message="Your current graph has unsaved changes. Loading a template will discard them."
-          confirmLabel="Load template"
-          cancelLabel="Go back"
+          title={t('common:unsavedChanges')}
+          message={t('lua-graph:templateDialog.loadDiscardMessage')}
+          confirmLabel={t('lua-graph:templateDialog.loadTemplate')}
+          cancelLabel={t('lua-graph:graphToolbar.goBack')}
           onConfirm={() => {
             applyTemplate(pendingTemplateId);
             setPendingTemplateId(null);

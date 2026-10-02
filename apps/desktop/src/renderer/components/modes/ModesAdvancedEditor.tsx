@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModesWizardStore } from '../../stores/modes-wizard-store';
 import { MODE_INFO, AUX_CHANNELS, ALL_MODES } from './presets/mode-presets';
 import ModeCard from './shared/ModeCard';
@@ -26,6 +27,7 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
   onAdd,
   existingModes,
 }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
 
   const filteredModes = ALL_MODES.filter(
@@ -41,7 +43,7 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
       <div className="bg-surface-solid rounded-xl border border shadow-2xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 border-b border-subtle flex items-center justify-between">
-          <h3 className="font-semibold text-content">Add Mode</h3>
+          <h3 className="font-semibold text-content">{t('modes:modesAdvancedEditor.addMode')}</h3>
           <button
             onClick={onClose}
             className="p-1 text-content-secondary hover:text-content rounded"
@@ -54,7 +56,7 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
         <div className="p-3 border-b border-subtle">
           <input
             type="text"
-            placeholder="Search modes..."
+            placeholder={t('modes:modesAdvancedEditor.searchModes')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full px-3 py-2 bg-surface-raised border border rounded-lg text-sm text-content placeholder-content-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -66,7 +68,7 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
         <div className="flex-1 overflow-y-auto p-2">
           {filteredModes.length === 0 ? (
             <div className="text-center py-8 text-content-secondary text-sm">
-              {existingModes.length > 0 ? 'No more modes available' : 'No modes found'}
+              {existingModes.length > 0 ? t('modes:modesAdvancedEditor.noMoreModes') : t('modes:modesAdvancedEditor.noModesFound')}
             </div>
           ) : (
             <div className="space-y-1">
@@ -86,11 +88,11 @@ const AddModeModal: React.FC<AddModeModalProps> = ({
                     </div>
                     <div className="flex-1">
                       <div className="text-sm font-medium text-content">{mode.name}</div>
-                      <div className="text-xs text-content-secondary">{mode.description}</div>
+                      <div className="text-xs text-content-secondary">{t(mode.descriptionKey)}</div>
                     </div>
                     {mode.essential && (
                       <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
-                        ESSENTIAL
+                        {t('modes:modesAdvancedEditor.essential')}
                       </span>
                     )}
                   </button>
@@ -121,6 +123,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
   onSave,
   dynamicName,
 }) => {
+  const { t } = useTranslation();
   const [auxChannel, setAuxChannel] = useState(0);
   const [rangeStart, setRangeStart] = useState(1800);
   const [rangeEnd, setRangeEnd] = useState(2100);
@@ -139,7 +142,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
   const IconComponent = info?.icon || HelpCircle;
   const rcValue = rcChannels[auxChannel + 4] || 1500;
   // Use dynamic name from FC if provided, fallback to preset name or boxId
-  const displayName = dynamicName || info?.name || `Mode ${mode.boxId}`;
+  const displayName = dynamicName || info?.name || t('modes:modeFallback', { id: mode.boxId });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -164,7 +167,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
         <div className="p-4 space-y-4">
           {/* Channel picker */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-content">AUX Channel</label>
+            <label className="block text-sm font-medium text-content">{t('modes:modesAdvancedEditor.auxChannel')}</label>
             <AuxChannelPicker
               selected={auxChannel}
               onChange={setAuxChannel}
@@ -174,7 +177,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
 
           {/* Range slider */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-content">PWM Range</label>
+            <label className="block text-sm font-medium text-content">{t('modes:modesAdvancedEditor.pwmRange')}</label>
             <RangeSlider
               rangeStart={rangeStart}
               rangeEnd={rangeEnd}
@@ -193,7 +196,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
             onClick={onClose}
             className="flex-1 px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg transition-colors"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={() => {
@@ -202,7 +205,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
             }}
             className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
           >
-            Save
+            {t('common:save')}
           </button>
         </div>
       </div>
@@ -211,6 +214,7 @@ const EditModeModal: React.FC<EditModeModalProps> = ({
 };
 
 export const ModesAdvancedEditor: React.FC = () => {
+  const { t } = useTranslation();
   const {
     pendingModes,
     rcChannels,
@@ -250,14 +254,14 @@ export const ModesAdvancedEditor: React.FC = () => {
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Add Mode
+              {t('modes:modesAdvancedEditor.addMode')}
             </button>
             <button
               onClick={resetToOriginal}
               className="px-3 py-1.5 text-content-secondary hover:text-content hover:bg-surface-raised text-sm rounded-lg transition-colors flex items-center gap-1.5"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Reset
+              {t('common:reset')}
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -267,12 +271,12 @@ export const ModesAdvancedEditor: React.FC = () => {
               className="px-3 py-1.5 text-content-secondary hover:text-content hover:bg-surface-raised text-sm rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Loading...' : 'Reload'}
+              {isLoading ? t('common:loading') : t('common:reload')}
             </button>
             {/* Unsaved changes indicator - saves via main "Save All Changes" button */}
             {pendingModes.length > 0 && (
               <span className="text-xs text-content-secondary">
-                Use main Save button to save changes
+                {t('modes:modesAdvancedEditor.useMainSave')}
               </span>
             )}
           </div>
@@ -292,23 +296,23 @@ export const ModesAdvancedEditor: React.FC = () => {
         {isLoading ? (
           <div className="text-center py-8">
             <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto" />
-            <p className="text-sm text-content-secondary mt-2">Loading modes...</p>
+            <p className="text-sm text-content-secondary mt-2">{t('modes:modesAdvancedEditor.loadingModes')}</p>
           </div>
         ) : pendingModes.length === 0 ? (
           <div className="text-center py-8">
             <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
               <Radio className="w-8 h-8 text-purple-400" />
             </div>
-            <h3 className="text-lg font-medium text-content mb-2">No modes configured</h3>
+            <h3 className="text-lg font-medium text-content mb-2">{t('modes:modesAdvancedEditor.noModesConfigured')}</h3>
             <p className="text-sm text-content-secondary max-w-md mx-auto mb-4">
-              Add modes to control how your aircraft responds to switch positions.
+              {t('modes:modesAdvancedEditor.noModesHint')}
             </p>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm flex items-center gap-2 mx-auto"
             >
               <Plus className="w-4 h-4" />
-              Add Your First Mode
+              {t('modes:modesAdvancedEditor.addFirstMode')}
             </button>
           </div>
         ) : (

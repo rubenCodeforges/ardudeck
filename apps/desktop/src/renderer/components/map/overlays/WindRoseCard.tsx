@@ -10,6 +10,7 @@
  * pan/zoom. pointer-events are off so the map stays interactive underneath.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useReducer } from 'react';
 import { useMap } from 'react-leaflet';
 import { createPortal } from 'react-dom';
@@ -35,6 +36,7 @@ function wedge(dirDeg: number, span: number, r: number): string {
 }
 
 export function WindRoseCard(): JSX.Element | null {
+  const { t } = useTranslation();
   const map = useMap();
   const field = useWindStore((s) => s.field);
   const probe = useWindStore((s) => s.probe);
@@ -138,7 +140,7 @@ export function WindRoseCard(): JSX.Element | null {
         ref={closeRef}
         type="button"
         onClick={() => setProbe(null)}
-        data-tip="Close"
+        data-tip={t('common:close')}
         style={{ position: 'absolute', left: '50%', top: -4, transform: 'translateX(-50%)', pointerEvents: 'auto' }}
         className="w-5 h-5 flex items-center justify-center rounded-full bg-surface-solid border border-subtle text-content-tertiary hover:text-content shadow"
       >

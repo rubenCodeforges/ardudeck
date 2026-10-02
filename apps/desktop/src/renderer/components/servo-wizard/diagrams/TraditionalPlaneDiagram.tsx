@@ -5,6 +5,7 @@
  * Clean geometric shapes that actually look like a plane.
  */
 
+import { useTranslation } from 'react-i18next';
 import { ControlSurface } from '../presets/servo-presets';
 
 interface Props {
@@ -20,6 +21,7 @@ export default function TraditionalPlaneDiagram({
   servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
+  const { t } = useTranslation();
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
@@ -79,7 +81,7 @@ export default function TraditionalPlaneDiagram({
           onClick={handleClick('aileron_left')}
         />
       </g>
-      <text x="55" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="10">L Aileron</text>
+      <text x="55" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="10">{t('servo-wizard:diagrams.leftAileron')}</text>
       {servoLabels.aileron_left && (
         <text x="55" y="110" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.aileron_left}
@@ -101,7 +103,7 @@ export default function TraditionalPlaneDiagram({
           onClick={handleClick('aileron_right')}
         />
       </g>
-      <text x="245" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="10">R Aileron</text>
+      <text x="245" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="10">{t('servo-wizard:diagrams.rightAileron')}</text>
       {servoLabels.aileron_right && (
         <text x="245" y="110" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.aileron_right}
@@ -137,7 +139,7 @@ export default function TraditionalPlaneDiagram({
           onClick={handleClick('elevator')}
         />
       </g>
-      <text x="150" y="155" textAnchor="middle" fill="#9CA3AF" fontSize="10">Elevator</text>
+      <text x="150" y="155" textAnchor="middle" fill="#9CA3AF" fontSize="10">{t('servo-wizard:diagrams.elevator')}</text>
       {servoLabels.elevator && (
         <text x="150" y="185" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.elevator}
@@ -158,7 +160,7 @@ export default function TraditionalPlaneDiagram({
           onClick={handleClick('rudder')}
         />
       </g>
-      <text x="168" y="190" textAnchor="start" fill="#9CA3AF" fontSize="10">Rudder</text>
+      <text x="168" y="190" textAnchor="start" fill="#9CA3AF" fontSize="10">{t('servo-wizard:diagrams.rudder')}</text>
       {servoLabels.rudder && (
         <text x="168" y="200" textAnchor="start" fill="#60A5FA" fontSize="9" fontWeight="bold">
           {servoLabels.rudder}
@@ -167,7 +169,7 @@ export default function TraditionalPlaneDiagram({
 
       {/* Direction indicator */}
       <polygon points="150,8 146,16 154,16" fill="#6B7280" />
-      <text x="162" y="14" fill="#6B7280" fontSize="8">FRONT</text>
+      <text x="162" y="14" fill="#6B7280" fontSize="8">{t('servo-wizard:diagrams.front')}</text>
     </svg>
   );
 }

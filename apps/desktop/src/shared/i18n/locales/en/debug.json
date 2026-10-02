@@ -1,0 +1,22 @@
+{
+  "debugConsole": {
+    "console": "Console",
+    "dockBottom": "Dock bottom",
+    "dockLeft": "Dock left",
+    "dockRight": "Dock right",
+    "entries_one": "{{count}} entry",
+    "entries_other": "{{count}} entries",
+    "filter": {
+      "all": "All",
+      "error": "Error",
+      "info": "Info",
+      "packet": "Packet"
+    },
+    "fix": "Fix ›",
+    "jumpToLatest": "↓ Jump to latest (paused)",
+    "msgs_one": "{{count}} msg",
+    "msgs_other": "{{count}} msgs",
+    "noLogEntries": "No log entries",
+    "noMessages": "No messages from autopilot"
+  }
+}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { BoardInfo } from '../../stores/firmware-store';
 
 interface BoardPickerProps {
@@ -17,9 +18,10 @@ export function BoardPicker({
   onSelectBoard,
   isLoading = false,
   error = null,
-  placeholder = 'Select board manually...',
+  placeholder,
   initialSearchQuery = '',
 }: BoardPickerProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   // Auto-expand when there's an initial search query
@@ -80,7 +82,7 @@ export function BoardPicker({
 
     // Define category order
     const categoryOrder = [
-      'Legacy (AVR)',
+      'Legacy (AVR)', // i18n-exempt
       'Cube',
       'Pixhawk',
       'Holybro',
@@ -202,10 +204,10 @@ export function BoardPicker({
       >
         <span className={selectedBoard ? 'text-content' : 'text-content-secondary'}>
           {isLoading
-            ? 'Loading boards...'
+            ? t('firmware:boardPicker.loadingBoards')
             : selectedBoard
               ? selectedBoard.name
-              : placeholder}
+              : placeholder ?? t('firmware:boardPicker.selectManually')}
         </span>
         <svg
           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -259,7 +261,7 @@ export function BoardPicker({
                   }
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Search boards..."
+                placeholder={t('firmware:boardPicker.searchBoards')}
                 className="w-full pl-8 pr-3 py-1.5 bg-surface-input border border rounded text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -269,11 +271,11 @@ export function BoardPicker({
           <div className="overflow-y-auto flex-1">
             {boards.length === 0 ? (
               <div className="p-4 text-center text-content-secondary">
-                No boards available
+                {t('firmware:boardPicker.noBoards')}
               </div>
             ) : filteredBoards.length === 0 ? (
               <div className="p-4 text-center text-content-secondary">
-                No boards match "{searchQuery}"
+                {t('firmware:boardPicker.noMatch', { query: searchQuery })}
               </div>
             ) : (
               <>
@@ -281,7 +283,7 @@ export function BoardPicker({
                 {!searchQuery && !showAllBoards && popularBoards.length > 0 && (
                   <div>
                     <div className="px-3 py-1.5 text-xs font-semibold text-content-secondary uppercase bg-surface-input">
-                      Popular
+                      {t('firmware:boardPicker.popular')}
                     </div>
                     {popularBoards.map((board, index) => (
                       <button
@@ -326,7 +328,7 @@ export function BoardPicker({
                         d="M19 9l-7 7-7-7"
                       />
                     </svg>
-                    Show all boards ({boards.length})
+                    {t('firmware:boardPicker.showAll', { count: boards.length })}
                   </button>
                 )}
 

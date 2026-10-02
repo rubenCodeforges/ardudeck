@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { LatLng, SurveyConfig, SurveyResult, SurveyPattern, AltitudeReference, GroundPattern, CorridorMode, StripOrderMode } from '../components/survey/survey-types';
 import { DEFAULT_SURVEY_CONFIG, asOwnFlight } from '../components/survey/survey-types';
@@ -918,7 +919,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       const { polygon, result } = get();
       if (recomputeIsHeavy(polygon, result)) {
         const count = result?.waypoints?.length ?? 0;
-        const label = count > 0 ? `Recomputing ${count.toLocaleString()} waypoints...` : 'Generating waypoints...';
+        const label = count > 0 ? t('stores:surveyStore.recomputing', { count: count.toLocaleString() }) : t('stores:surveyStore.generating');
         void runWithActivity(label, () => get().generateSurvey());
       } else {
         get().generateSurvey();
@@ -994,13 +995,13 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
 
   importArea: async () => {
     const api = window.electronAPI;
-    if (!api?.importSurveyArea) return { ok: false, areaCount: 0, error: 'Import not available' };
+    if (!api?.importSurveyArea) return { ok: false, areaCount: 0, error: t('stores:surveyStore.importUnavailable') };
     const res = await api.importSurveyArea();
     if (!res.success) {
       // A user cancel isn't an error worth shouting about.
       return { ok: false, areaCount: 0, error: res.error === 'Cancelled' ? undefined : res.error };
     }
-    if (!res.content || !res.format) return { ok: false, areaCount: 0, error: 'Empty file' };
+    if (!res.content || !res.format) return { ok: false, areaCount: 0, error: t('stores:surveyStore.emptyFile') };
     const areas = parseGisArea(res.content, res.format);
     if (areas.length === 0) {
       // A file with only a line is a corridor centreline, which is exactly what
@@ -1017,7 +1018,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
         );
         return { ok: true, areaCount: 1, importedAsCorridor: true };
       }
-      return { ok: false, areaCount: 0, error: 'No polygon boundary or line found in the file' };
+      return { ok: false, areaCount: 0, error: t('stores:surveyStore.noShapes') };
     }
 
     // The file defines the areas, so import creates one survey group per
@@ -1032,7 +1033,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
 
     const entries: Array<{ group: SurveyGroup; items: ReturnType<typeof surveyToMissionItems> }> = [];
     try {
-      await runWithActivity('Importing survey - generating waypoints...', async () => {
+      await runWithActivity(t('stores:surveyStore.importing'), async () => {
         for (const [i, area] of areas.entries()) {
           // GIS boundaries are often digitized at sub-meter resolution (thousands of
           // vertices). Survey line spacing is tens of meters, so that detail is
@@ -1057,11 +1058,11 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     } catch (err) {
       // A remote generator failing mid-import shouldn't look like "no polygons".
       const message = err instanceof Error ? err.message : String(err);
-      return { ok: false, areaCount: 0, error: `Generator failed: ${message}` };
+      return { ok: false, areaCount: 0, error: t('stores:surveyStore.generatorFailed', { message }) };
     }
 
     if (entries.length === 0) {
-      return { ok: false, areaCount: 0, error: 'Could not generate a survey from the imported area(s)' };
+      return { ok: false, areaCount: 0, error: t('stores:surveyStore.generateFailed') };
     }
 
     const ids = missionStore.addGroupsWithItems(entries);
@@ -1189,7 +1190,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
     // overwrite its committed WPs (e.g. terrain-adjusted altitudes) before the
     // user edits anything. Subsequent vertex/config changes sync as normal.
     // Opening a large group regenerates a big preview; show progress.
-    void runWithActivity('Loading survey...', () => get().generateSurvey({ sync: false }));
+    void runWithActivity(t('stores:surveyStore.loading'), () => get().generateSurvey({ sync: false }));
   },
 
   addSurveyAreaFromPolygon: async (polygon, opts) => {
@@ -1270,7 +1271,7 @@ export const useSurveyStore = create<SurveyStore>()(subscribeWithSelector((set, 
       },
       polygonEditMode: false,
     });
-    await runWithActivity('Reloading saved area...', () => get().generateSurvey({ sync: true }));
+    await runWithActivity(t('stores:surveyStore.reloadingArea'), () => get().generateSurvey({ sync: true }));
     useMissionStore.getState().setSurveyGroupSource(groupId, {
       docId: doc.id,
       revision: doc.revision,

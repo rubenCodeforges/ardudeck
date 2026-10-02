@@ -9,6 +9,8 @@
  * calibration that visibly succeeded.
  */
 
+import { t } from '../../../shared/i18n/index.js';
+
 export interface AccelCalibrationState {
   /** False when at least one accelerometer has no stored calibration. */
   calibrated: boolean;
@@ -54,8 +56,8 @@ export function accelCalibrationState(
 /** One line for the operator, or null when there is nothing to say. */
 export function accelCalibrationNote(state: AccelCalibrationState): string | null {
   if (state.unknown || state.calibrated) return null;
-  const which = state.missing.length > 1
-    ? `Accelerometers ${state.missing.join(' and ')} have`
-    : `Accelerometer ${state.missing[0]} has`;
-  return `${which} no stored 3D calibration. Run the Quick calibration (one position, vehicle level) or the 6-point one: the Level calibration only sets trims and will not clear "3D Accel calibration needed".`;
+  return t('calibration:accelCalibrationState.note', {
+    count: state.missing.length,
+    which: state.missing.join(t('calibration:accelCalibrationState.joinAnd')),
+  });
 }

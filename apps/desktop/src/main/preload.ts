@@ -3,11 +3,15 @@
  * Exposes safe APIs to the renderer process
  */
 
+import type { CameraStartPhase } from '../shared/camera-types.js';
+import type { GpsDiagEvent } from '../shared/gps-diagnostics-types.js';
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlStartedData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type Px4SitlConfig, type Px4SitlStatus, type Px4SitlExitData, type Px4SitlStartedData, type Px4SitlDownloadProgress, type Px4SitlBinaryInfo, type Px4ReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
 import type { SigningAuditSnapshot } from '../shared/signing-audit-types.js';
+import type { LanguageState } from './i18n-main.js';
 import type { StreamDiagnosis, ElrsModuleInfo, ElrsSetModeResult, ElrsProgressEvent } from '../shared/link-doctor-types.js';
 import type { WfbngStatus, CanvasStreamStartResult, CanvasStreamStatus, CanvasStreamSnapshot, VisionStreamOpenOptions } from '../shared/camera-types.js';
+import type { CameraDiscoveryResult, CameraSettingsApplyResult, CameraSettingsLogin, CameraSettingsResult, CameraSettingValue } from '../shared/camera-settings-types.js';
 import type { VehicleFlightHistory } from '../shared/fleet-log-types.js';
 import type { DetachedWindowInfo, OpenDetachedRequest } from '../shared/window-types.js';
 import type { ExportArea } from '../shared/kml-export.js';
@@ -183,6 +187,11 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_VEHICLE_COMMAND, vehicleKey, cmd),
 
   // ==================== Camera / video ====================
+  onCameraStartPhase: (callback: (e: { sourceId: string; phase: CameraStartPhase }) => void) => {
+    const handler = (_: unknown, e: { sourceId: string; phase: CameraStartPhase }) => callback(e);
+    ipcRenderer.on(IPC_CHANNELS.CAMERA_START_PHASE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.CAMERA_START_PHASE, handler);
+  },
   cameraStart: (source: CameraSourceConfig, resolvedUrl?: string): Promise<CameraStartResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_START, source, resolvedUrl),
   cameraStop: (sourceId: string): Promise<void> =>
@@ -191,6 +200,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SNAPSHOT, sourceId),
   cameraRecordToggle: (sourceId: string): Promise<CameraMediaActionResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_RECORD_TOGGLE, sourceId),
+  cameraRevealMedia: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_REVEAL_MEDIA, filePath),
   cameraDiagnostics: (): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_DIAGNOSTICS),
   cameraEngineStatus: (): Promise<MediaEngineStatus> =>
@@ -210,6 +221,17 @@ const api = {
     const handler = (_: unknown, info: VideoStreamInfoIpc) => callback(info);
     ipcRenderer.on(IPC_CHANNELS.CAMERA_VIDEO_STREAM_INFO, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.CAMERA_VIDEO_STREAM_INFO, handler);
+  },
+  // GPS diagnostics: UBX passthrough to the vehicle's GPS (disarmed only)
+  gpsDiagStart: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC_CHANNELS.GPS_DIAG_START),
+  gpsDiagStop: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.GPS_DIAG_STOP),
+  gpsDiagBridgeStart: (port: number): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GPS_DIAG_BRIDGE_START, port),
+  gpsDiagBridgeStop: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.GPS_DIAG_BRIDGE_STOP),
+  onGpsDiagEvent: (callback: (e: GpsDiagEvent) => void) => {
+    const handler = (_: unknown, e: GpsDiagEvent) => callback(e);
+    ipcRenderer.on(IPC_CHANNELS.GPS_DIAG_EVENT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.GPS_DIAG_EVENT, handler);
   },
   onCameraGimbalAttitude: (callback: (att: GimbalAttitudeIpc) => void) => {
     const handler = (_: unknown, att: GimbalAttitudeIpc) => callback(att);
@@ -1032,6 +1054,14 @@ const api = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.RALLY_CLEAR_COMPLETE, handler);
   },
 
+  getLanguage: (): Promise<LanguageState> => ipcRenderer.invoke(IPC_CHANNELS.I18N_GET_LANGUAGE),
+  setLanguage: (preference: string): Promise<LanguageState> => ipcRenderer.invoke(IPC_CHANNELS.I18N_SET_LANGUAGE, preference),
+  onLanguageChanged: (callback: (state: LanguageState) => void): (() => void) => {
+    const handler = (_: unknown, state: LanguageState) => callback(state);
+    ipcRenderer.on(IPC_CHANNELS.I18N_LANGUAGE_CHANGED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.I18N_LANGUAGE_CHANGED, handler);
+  },
+
   // Settings/Vehicle profiles
   getSettings: (): Promise<SettingsStoreSchema> =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET),
@@ -1315,6 +1345,17 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.DRONEBRIDGE_GET_SETTINGS, ip),
   dronebridgeUpdateSettings: (ip: string, settings: Partial<DroneBridgeSettings>): Promise<{ status: string; msg: string } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRONEBRIDGE_UPDATE_SETTINGS, ip, settings),
+
+  cameraSettingsDiscover: (login: { username: string; password: string }, lastHost?: string): Promise<CameraDiscoveryResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SETTINGS_DISCOVER, login, lastHost),
+  cameraSettingsConnect: (login: CameraSettingsLogin): Promise<CameraSettingsResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SETTINGS_CONNECT, login),
+  cameraSettingsRefresh: (): Promise<CameraSettingsResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SETTINGS_REFRESH),
+  cameraSettingsApply: (changes: Record<string, CameraSettingValue>): Promise<CameraSettingsApplyResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SETTINGS_APPLY, changes),
+  cameraSettingsDisconnect: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_SETTINGS_DISCONNECT),
   dronebridgeGetClients: (ip: string): Promise<DroneBridgeClients | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRONEBRIDGE_GET_CLIENTS, ip),
   dronebridgeAddUdpClient: (ip: string, clientIp: string, clientPort: number): Promise<void> =>
@@ -1488,6 +1529,10 @@ const api = {
 
   mspSetServoMixer: (index: number, rule: unknown): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_MIXER, index, rule),
+
+  // Writes every servo mix slot on the board, clearing slots past the given rules
+  mspSetServoMixerAll: (rules: unknown[]): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SERVO_MIXER_ALL, rules),
 
   mspGetServoConfigMode: (): Promise<{ usesCli: boolean; minValue: number; maxValue: number }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE),
@@ -1704,6 +1749,10 @@ const api = {
   mspGetSettings: (names: string[]): Promise<Record<string, string | number | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SETTINGS, names),
 
+  /** Why the last setting write was refused, e.g. a value outside the FC's range; cleared once read. */
+  mspLastWriteError: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.MSP_LAST_WRITE_ERROR),
+  mspGetSettingRanges: (names: string[]): Promise<Record<string, { min: number; max: number } | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MSP_GET_SETTING_RANGES, names),
   mspSetSettings: (settings: Record<string, string | number>): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MSP_SET_SETTINGS, settings),
 

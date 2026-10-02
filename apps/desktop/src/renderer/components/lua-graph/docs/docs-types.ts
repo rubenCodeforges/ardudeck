@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface DocSection {
   id: string;
-  title: string;
+  titleKey: string;
   icon: LucideIcon;
-  content: string;
+  contentKey: string;
 }

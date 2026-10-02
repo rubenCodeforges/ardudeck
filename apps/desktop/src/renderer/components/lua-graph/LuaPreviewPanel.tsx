@@ -4,11 +4,13 @@
  */
 import { useMemo, useState, useCallback } from 'react';
 import { Code2, Copy, Check, ChevronUp, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useLuaGraphStore } from '../../stores/lua-graph-store';
 import { compileGraph } from './lua-compiler';
 import { highlightLua } from './lua-highlighter';
 
 export function LuaPreviewPanel() {
+  const { t } = useTranslation();
   const nodes = useLuaGraphStore((s) => s.nodes);
   const edges = useLuaGraphStore((s) => s.edges);
   const graphName = useLuaGraphStore((s) => s.graphName);
@@ -43,11 +45,11 @@ export function LuaPreviewPanel() {
         <div className="flex items-center gap-2">
           <Code2 className="w-3 h-3 text-content-secondary" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">
-            Lua Preview
+            {t('lua-graph:luaPreviewPanel.title')}
           </span>
           {result.errors.length > 0 && (
             <span className="text-[9px] text-red-400 bg-red-500/10 px-1.5 rounded">
-              {result.errors.length} err
+              {t('lua-graph:luaPreviewPanel.errShort', { count: result.errors.length })}
             </span>
           )}
         </div>
@@ -59,7 +61,7 @@ export function LuaPreviewPanel() {
                 handleCopy();
               }}
               className="p-0.5 rounded hover:bg-surface-raised transition-colors"
-              title="Copy to clipboard"
+              title={t('lua-graph:luaPreviewPanel.copyToClipboard')}
             >
               {copied ? (
                 <Check className="w-3 h-3 text-emerald-400" />
@@ -96,7 +98,7 @@ export function LuaPreviewPanel() {
               </pre>
             ) : (
               <div className="text-[10px] text-content-tertiary italic">
-                Add nodes to see generated Lua code
+                {t('lua-graph:luaPreviewPanel.empty')}
               </div>
             )}
           </div>

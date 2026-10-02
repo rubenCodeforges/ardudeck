@@ -13,6 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ParameterWithMeta } from '../../../../shared/parameter-types';
 
 interface Option {
@@ -37,6 +38,7 @@ interface Px4ServoRowProps {
 
 export const Px4ServoRow: React.FC<Px4ServoRowProps> = React.memo(
   ({ channel, bankPrefix, parameters, setParameter, functionOptions, livePwm, liveStale, pwmMin, pwmMax }) => {
+    const { t } = useTranslation();
     const functionParam = parameters.get(`${bankPrefix}_FUNC${channel}`);
     const minParam = parameters.get(`${bankPrefix}_MIN${channel}`);
     const maxParam = parameters.get(`${bankPrefix}_MAX${channel}`);
@@ -107,7 +109,7 @@ export const Px4ServoRow: React.FC<Px4ServoRowProps> = React.memo(
               className="w-full h-8 px-2 text-sm rounded bg-surface-base border border-subtle text-content disabled:opacity-40"
             >
               {!functionOptions.some((o) => o.value === funcValue) && (
-                <option value={funcValue}>{`Unknown (${funcValue})`}</option>
+                <option value={funcValue}>{t('mavlink-config:servoRow.unknownFunction', { value: funcValue })}</option>
               )}
               {functionOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>

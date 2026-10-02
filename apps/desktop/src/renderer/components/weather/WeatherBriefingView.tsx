@@ -11,6 +11,7 @@
  * tiles with threshold tracks.
  */
 import { useEffect } from 'react';
+import type { TFunction } from 'i18next';
 import {
   CloudSun, RefreshCw, Wind, CloudRain, Eye, MapPin, Thermometer, Gauge, Cloud,
   Droplets, ArrowUp, CheckCircle2, AlertTriangle, XCircle, CloudOff, type LucideIcon,
@@ -31,13 +32,14 @@ import {
   UNIT_PRECISION,
 } from '../../../shared/user-units.js';
 import {
-  GRADE_COLOR, STATUS_PILL_WORD, STATUS_SUMMARY, washStyle, tintStyle, pillStyle,
+  GRADE_COLOR, STATUS_PILL_WORD_KEY, STATUS_SUMMARY_KEY, washStyle, tintStyle, pillStyle,
   deriveCondition, type Grade,
 } from './weather-visuals';
 import { WindRose } from './WindRose';
 import { MetricTile, type TrackConfig } from './MetricTile';
 import { type TrackZone } from './ThresholdTrack';
 import { useReducedMotion, useCountUp } from './weather-motion';
+import { useTranslation } from 'react-i18next';
 
 // Re-query on a calm cadence while the panel is open. Conditions move slowly and
 // the fetch is cheap-cached; this just keeps a long-lived briefing from going stale.
@@ -53,16 +55,16 @@ const STATUS_ICON: Record<WxStatus, LucideIcon> = {
   caution: AlertTriangle,
   nogo: XCircle,
 };
-const SOURCE_LABEL: Record<WeatherLocationSource, string> = {
-  vehicle: 'Vehicle position',
-  home: 'Home position',
-  map: 'Map center',
-  override: 'Picked location',
+const SOURCE_LABEL_KEY: Record<WeatherLocationSource, string> = {
+  vehicle: 'weather:source.vehicle',
+  home: 'weather:source.home',
+  map: 'weather:source.map',
+  override: 'weather:source.override',
 };
 
 /** Picked locations read as their place name; auto sources read as their origin. */
-function locationLabel(loc: ResolvedWeatherLocation): string {
-  return loc.source === 'override' ? (loc.name ?? SOURCE_LABEL.override) : SOURCE_LABEL[loc.source];
+function locationLabel(loc: ResolvedWeatherLocation, t: TFunction): string {
+  return loc.source === 'override' ? (loc.name ?? t(SOURCE_LABEL_KEY.override)) : t(SOURCE_LABEL_KEY[loc.source]);
 }
 
 const GREEN = 'var(--gauge-green)';
@@ -104,7 +106,7 @@ function lowTrack(value: number, key: GatingKey, grade: Grade, tip: string): Tra
 // Reads WEATHER_THRESHOLDS but never regrades: the caller passes the verdict.
 const REASON_PRIORITY: GatingKey[] = ['windGustMs', 'windSpeedMs', 'visibilityM', 'precipMm', 'precipProbPct'];
 
-function worstReason(wx: WeatherSummary, windUnit: Parameters<typeof formatWindSpeedFromMetersPerSecond>[1]): string {
+function worstReason(wx: WeatherSummary, windUnit: Parameters<typeof formatWindSpeedFromMetersPerSecond>[1], t: TFunction): string {
   const wind = (ms: number) => formatWindSpeedFromMetersPerSecond(ms, windUnit);
   const graded = REASON_PRIORITY.map((k) => ({ k, g: gradeParameter(k, wx) }));
   const driver = graded.find((x) => x.g === 'nogo') ?? graded.find((x) => x.g === 'caution');
@@ -113,24 +115,24 @@ function worstReason(wx: WeatherSummary, windUnit: Parameters<typeof formatWindS
   switch (driver.k) {
     case 'windGustMs':
       return nogo
-        ? `Gusts of ${wind(wx.windGustMs)} exceed the safe limit (${wind(WEATHER_THRESHOLDS.windGustMs.nogo)}). Risk of loss of control.`
-        : `Gusts of ${wind(wx.windGustMs)} are approaching the limit (${wind(WEATHER_THRESHOLDS.windGustMs.nogo)}). Monitor closely.`;
+        ? t('weather:reason.gustsNogo', { value: wind(wx.windGustMs), limit: wind(WEATHER_THRESHOLDS.windGustMs.nogo) })
+        : t('weather:reason.gustsCaution', { value: wind(wx.windGustMs), limit: wind(WEATHER_THRESHOLDS.windGustMs.nogo) });
     case 'windSpeedMs':
       return nogo
-        ? `Sustained wind of ${wind(wx.windSpeedMs)} exceeds the safe limit (${wind(WEATHER_THRESHOLDS.windSpeedMs.nogo)}).`
-        : `Sustained wind of ${wind(wx.windSpeedMs)} is approaching the limit (${wind(WEATHER_THRESHOLDS.windSpeedMs.nogo)}).`;
+        ? t('weather:reason.windNogo', { value: wind(wx.windSpeedMs), limit: wind(WEATHER_THRESHOLDS.windSpeedMs.nogo) })
+        : t('weather:reason.windCaution', { value: wind(wx.windSpeedMs), limit: wind(WEATHER_THRESHOLDS.windSpeedMs.nogo) });
     case 'visibilityM':
       return nogo
-        ? `Low visibility of ${(wx.visibilityM / 1000).toFixed(1)} km, below the ${(WEATHER_THRESHOLDS.visibilityM.nogo / 1000).toFixed(1)} km minimum.`
-        : `Reduced visibility of ${(wx.visibilityM / 1000).toFixed(1)} km. Maintain visual line of sight.`;
+        ? t('weather:reason.visibilityNogo', { value: (wx.visibilityM / 1000).toFixed(1), limit: (WEATHER_THRESHOLDS.visibilityM.nogo / 1000).toFixed(1) })
+        : t('weather:reason.visibilityCaution', { value: (wx.visibilityM / 1000).toFixed(1) });
     case 'precipMm':
       return nogo
-        ? `Precipitation of ${wx.precipMm.toFixed(1)} mm. Electronics at risk, do not launch.`
-        : `Light precipitation of ${wx.precipMm.toFixed(1)} mm detected. Protect the airframe.`;
+        ? t('weather:reason.precipNogo', { value: wx.precipMm.toFixed(1) })
+        : t('weather:reason.precipCaution', { value: wx.precipMm.toFixed(1) });
     case 'precipProbPct':
       return nogo
-        ? `High chance of precipitation (${Math.round(wx.precipProbPct)}%). Expect rain within the hour.`
-        : `Rising chance of precipitation (${Math.round(wx.precipProbPct)}%). Watch the sky.`;
+        ? t('weather:reason.precipProbNogo', { value: Math.round(wx.precipProbPct) })
+        : t('weather:reason.precipProbCaution', { value: Math.round(wx.precipProbPct) });
   }
 }
 
@@ -143,6 +145,7 @@ function StateShell({ children }: { children: React.ReactNode }) {
 }
 
 export function WeatherBriefingView() {
+  const { t } = useTranslation();
   const weather = useWeatherStore((s) => s.weather);
   const loading = useWeatherStore((s) => s.loading);
   const error = useWeatherStore((s) => s.error);
@@ -182,7 +185,7 @@ export function WeatherBriefingView() {
   const windVal = (ms: number) =>
     String(Number(windSpeedValueFromMetersPerSecond(ms, windSpeedUnit).toFixed(UNIT_PRECISION.windSpeed[windSpeedUnit])));
   const windLimitTip = (key: 'windSpeedMs' | 'windGustMs') =>
-    `Caution ${windVal(WEATHER_THRESHOLDS[key].caution)}, no-go ${windVal(WEATHER_THRESHOLDS[key].nogo)} ${windUnitLabel}`;
+    t('weather:briefing.windLimitTip', { caution: windVal(WEATHER_THRESHOLDS[key].caution), nogo: windVal(WEATHER_THRESHOLDS[key].nogo), unit: windUnitLabel });
 
   return (
     <div className="h-full flex flex-col bg-surface-base text-content">
@@ -196,17 +199,17 @@ export function WeatherBriefingView() {
             <CloudSun className="w-4 h-4 text-sky-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold text-content">Pre-Flight Weather Briefing</h2>
+            <h2 className="text-base font-semibold text-content">{t('weather:briefing.title')}</h2>
             <LocationPicker />
           </div>
           <button
             onClick={() => { void refresh(); }}
             disabled={loading}
             className="px-2.5 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors flex items-center gap-1.5 disabled:opacity-50"
-            data-tip="Refresh forecast"
+            data-tip={t('weather:briefing.refreshTip')}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('common:refresh')}
           </button>
         </div>
       </div>
@@ -217,27 +220,27 @@ export function WeatherBriefingView() {
           {!location ? (
             <StateShell>
               <MapPin className="w-10 h-10 mb-3 text-content-tertiary" />
-              <p className="text-sm font-medium mb-1 text-content">No position to brief</p>
+              <p className="text-sm font-medium mb-1 text-content">{t('weather:briefing.noPosition')}</p>
               <p className="text-xs text-content-tertiary max-w-xs">
-                Connect a vehicle, set a home position, or open the mission map so the briefing knows where to query the weather.
+                {t('weather:briefing.noPositionHint')}
               </p>
             </StateShell>
           ) : error && !weather ? (
             <StateShell>
               <CloudOff className="w-10 h-10 mb-3 text-content-tertiary" />
-              <p className="text-sm font-medium mb-1 text-content">Forecast unavailable</p>
+              <p className="text-sm font-medium mb-1 text-content">{t('weather:briefing.unavailable')}</p>
               <p className="text-xs text-content-tertiary max-w-xs mb-4">{error}</p>
               <button
                 onClick={() => { void refresh(); }}
                 className="px-3 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors"
               >
-                Try again
+                {t('common:tryAgain')}
               </button>
             </StateShell>
           ) : loading && !weather ? (
             <StateShell>
               <RefreshCw className="w-8 h-8 mb-3 text-content-tertiary animate-spin" />
-              <p className="text-sm text-content-secondary">Fetching forecast...</p>
+              <p className="text-sm text-content-secondary">{t('weather:briefing.fetching')}</p>
             </StateShell>
           ) : weather && status ? (
             (() => {
@@ -264,23 +267,23 @@ export function WeatherBriefingView() {
                           {Math.round(tempDisplay)}
                           <span className="text-xl font-semibold text-content-secondary">&deg;C</span>
                         </div>
-                        <div className="text-sm text-content-secondary mt-1">{condition.label}</div>
+                        <div className="text-sm text-content-secondary mt-1">{t(condition.labelKey)}</div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-content-secondary mb-1">
-                        Flight conditions
+                        {t('weather:briefing.flightConditions')}
                       </div>
                       <span
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-lg font-bold tracking-wide"
                         style={pillStyle(color)}
                       >
                         <StatusGlyph className="w-5 h-5" />
-                        {STATUS_PILL_WORD[status]}
+                        {t(STATUS_PILL_WORD_KEY[status])}
                       </span>
                       <div className="text-[10px] text-content-tertiary mt-1.5 flex items-center justify-end gap-1 tabular-nums">
                         <MapPin className="w-3 h-3" />
-                        {locationLabel(location)} · {formatClock(weather.currentTimeIso)} local
+                        {t('weather:briefing.locationAt', { location: locationLabel(location, t), clock: formatClock(weather.currentTimeIso) })}
                       </div>
                     </div>
                   </div>
@@ -288,7 +291,7 @@ export function WeatherBriefingView() {
                   {/* One-line plain-language verdict with a state accent bar. */}
                   <div className="flex items-stretch gap-3 wx-rise" style={{ animationDelay: '60ms' }}>
                     <span className={`w-1.5 rounded-full shrink-0 ${pulse}`} style={{ background: color }} />
-                    <p className="text-sm text-content-secondary self-center">{STATUS_SUMMARY[status]}</p>
+                    <p className="text-sm text-content-secondary self-center">{t(STATUS_SUMMARY_KEY[status])}</p>
                   </div>
                   </div>
 
@@ -311,19 +314,19 @@ export function WeatherBriefingView() {
                           className="w-3.5 h-3.5 shrink-0"
                           style={{ color, transform: `rotate(${weather.windDirDeg}deg)` }}
                         />
-                        Wind from <span className="font-semibold text-content">{compassPoint(weather.windDirDeg)}</span>
+                        {t('common:windFrom')} <span className="font-semibold text-content">{compassPoint(weather.windDirDeg)}</span>
                         <span className="text-content-tertiary tabular-nums">{Math.round(weather.windDirDeg)}&deg;</span>
                       </div>
                     </div>
 
                     <div>
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-content-tertiary mb-2">
-                        Launch gates
+                        {t('weather:briefing.launchGates')}
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <MetricTile
                           icon={<Wind className="w-3.5 h-3.5" />}
-                          label="Gusts"
+                          label={t('common:gusts')}
                           value={windVal(weather.windGustMs)}
                           unit={windUnitLabel}
                           valueColor={GRADE_COLOR[gustGrade]}
@@ -332,7 +335,7 @@ export function WeatherBriefingView() {
                         />
                         <MetricTile
                           icon={<Wind className="w-3.5 h-3.5" />}
-                          label="Wind"
+                          label={t('common:wind')}
                           value={windVal(weather.windSpeedMs)}
                           unit={windUnitLabel}
                           valueColor={GRADE_COLOR[speedGrade]}
@@ -341,32 +344,32 @@ export function WeatherBriefingView() {
                         />
                         <MetricTile
                           icon={<CloudRain className="w-3.5 h-3.5" />}
-                          label="Precip"
+                          label={t('weather:briefing.precip')}
                           value={weather.precipMm.toFixed(1)}
                           unit="mm"
                           valueColor={GRADE_COLOR[grade('precipMm')]}
                           track={highTrack(weather.precipMm, 'precipMm', grade('precipMm'),
-                            `Caution ${WEATHER_THRESHOLDS.precipMm.caution} mm, no-go ${WEATHER_THRESHOLDS.precipMm.nogo} mm`)}
+                            t('weather:briefing.precipTip', { caution: WEATHER_THRESHOLDS.precipMm.caution, nogo: WEATHER_THRESHOLDS.precipMm.nogo }))}
                           animate={animate}
                         />
                         <MetricTile
                           icon={<Droplets className="w-3.5 h-3.5" />}
-                          label="Precip chance"
+                          label={t('weather:briefing.precipChance')}
                           value={`${Math.round(weather.precipProbPct)}`}
                           unit="%"
                           valueColor={GRADE_COLOR[grade('precipProbPct')]}
                           track={highTrack(weather.precipProbPct, 'precipProbPct', grade('precipProbPct'),
-                            `Caution ${WEATHER_THRESHOLDS.precipProbPct.caution}%, no-go ${WEATHER_THRESHOLDS.precipProbPct.nogo}%`, 100)}
+                            t('weather:briefing.precipChanceTip', { caution: WEATHER_THRESHOLDS.precipProbPct.caution, nogo: WEATHER_THRESHOLDS.precipProbPct.nogo }), 100)}
                           animate={animate}
                         />
                         <MetricTile
                           icon={<Eye className="w-3.5 h-3.5" />}
-                          label="Visibility"
+                          label={t('weather:briefing.visibility')}
                           value={(weather.visibilityM / 1000).toFixed(1)}
                           unit="km"
                           valueColor={GRADE_COLOR[grade('visibilityM')]}
                           track={lowTrack(weather.visibilityM, 'visibilityM', grade('visibilityM'),
-                            `Caution below ${(WEATHER_THRESHOLDS.visibilityM.caution / 1000).toFixed(1)} km, no-go below ${(WEATHER_THRESHOLDS.visibilityM.nogo / 1000).toFixed(1)} km`)}
+                            t('weather:briefing.visibilityTip', { caution: (WEATHER_THRESHOLDS.visibilityM.caution / 1000).toFixed(1), nogo: (WEATHER_THRESHOLDS.visibilityM.nogo / 1000).toFixed(1) }))}
                           animate={animate}
                         />
                       </div>
@@ -376,26 +379,26 @@ export function WeatherBriefingView() {
                   {/* Context metrics: shown for awareness, never gate a launch. */}
                   <div className="wx-rise" style={{ animationDelay: '200ms' }}>
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-content-tertiary mb-2">
-                      Context
+                      {t('weather:briefing.context')}
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <MetricTile
                         icon={<Thermometer className="w-3.5 h-3.5" />}
-                        label="Temp"
+                        label={t('weather:briefing.temp')}
                         value={`${Math.round(weather.tempC)}`}
                         unit="degC"
                         animate={animate}
                       />
                       <MetricTile
                         icon={<Cloud className="w-3.5 h-3.5" />}
-                        label="Clouds"
+                        label={t('weather:briefing.clouds')}
                         value={`${Math.round(weather.cloudCoverPct)}`}
                         unit="%"
                         animate={animate}
                       />
                       <MetricTile
                         icon={<Gauge className="w-3.5 h-3.5" />}
-                        label="Pressure"
+                        label={t('weather:briefing.pressure')}
                         value={`${Math.round(weather.pressureHpa)}`}
                         unit="hPa"
                         animate={animate}
@@ -419,7 +422,7 @@ export function WeatherBriefingView() {
                   {status !== 'go' && (() => {
                     const reasonLines: string[] = [];
                     if (weatherStatus && weatherStatus !== 'go') {
-                      const wr = worstReason(weather, windSpeedUnit);
+                      const wr = worstReason(weather, windSpeedUnit, t);
                       if (wr) reasonLines.push(wr);
                     }
                     if (geomagVerdict) reasonLines.push(...geomagVerdict.reasons);
@@ -445,15 +448,17 @@ export function WeatherBriefingView() {
                     style={{ animationDelay: '320ms' }}
                   >
                     <div className="tabular-nums">
-                      Forecast valid {formatClock(weather.currentTimeIso)} local at site · Open-Meteo
-                      {lastFetchMs && <> · updated {new Date(lastFetchMs).toLocaleTimeString()}</>}
+                      {t('weather:briefing.forecastValid', { clock: formatClock(weather.currentTimeIso) })}
+                      {lastFetchMs && <> · {t('weather:briefing.updated', { time: new Date(lastFetchMs).toLocaleTimeString() })}</>}
                     </div>
                     <div className="leading-relaxed tabular-nums">
-                      Limits: gusts {WEATHER_THRESHOLDS.windGustMs.caution} / {WEATHER_THRESHOLDS.windGustMs.nogo} m/s,
-                      {' '}wind {WEATHER_THRESHOLDS.windSpeedMs.caution} / {WEATHER_THRESHOLDS.windSpeedMs.nogo} m/s,
-                      {' '}precip chance {WEATHER_THRESHOLDS.precipProbPct.caution} / {WEATHER_THRESHOLDS.precipProbPct.nogo}%,
-                      {' '}precip {WEATHER_THRESHOLDS.precipMm.caution} / {WEATHER_THRESHOLDS.precipMm.nogo} mm,
-                      {' '}visibility below {(WEATHER_THRESHOLDS.visibilityM.caution / 1000).toFixed(1)} / {(WEATHER_THRESHOLDS.visibilityM.nogo / 1000).toFixed(1)} km.
+                      {t('weather:briefing.limits', {
+                        gustC: WEATHER_THRESHOLDS.windGustMs.caution, gustN: WEATHER_THRESHOLDS.windGustMs.nogo,
+                        windC: WEATHER_THRESHOLDS.windSpeedMs.caution, windN: WEATHER_THRESHOLDS.windSpeedMs.nogo,
+                        probC: WEATHER_THRESHOLDS.precipProbPct.caution, probN: WEATHER_THRESHOLDS.precipProbPct.nogo,
+                        mmC: WEATHER_THRESHOLDS.precipMm.caution, mmN: WEATHER_THRESHOLDS.precipMm.nogo,
+                        visC: (WEATHER_THRESHOLDS.visibilityM.caution / 1000).toFixed(1), visN: (WEATHER_THRESHOLDS.visibilityM.nogo / 1000).toFixed(1),
+                      })}
                     </div>
                   </div>
                 </div>

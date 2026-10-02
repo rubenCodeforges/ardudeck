@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, BookOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DOC_SECTIONS } from './docs-content';
 import { renderMarkdown } from './markdown-renderer';
 
@@ -12,6 +13,7 @@ interface DocsDialogProps {
 }
 
 export function DocsDialog({ onClose }: DocsDialogProps) {
+  const { t, i18n } = useTranslation();
   const [activeSection, setActiveSection] = useState(DOC_SECTIONS[0]!.id);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -37,8 +39,8 @@ export function DocsDialog({ onClose }: DocsDialogProps) {
   const renderedContent = useMemo(() => {
     const section = DOC_SECTIONS.find((s) => s.id === activeSection);
     if (!section) return null;
-    return renderMarkdown(section.content);
-  }, [activeSection]);
+    return renderMarkdown(t(section.contentKey));
+  }, [activeSection, t, i18n.language]);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -50,9 +52,9 @@ export function DocsDialog({ onClose }: DocsDialogProps) {
               <BookOpen className="w-4 h-4 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-content">Documentation</h2>
+              <h2 className="text-sm font-semibold text-content">{t('lua-graph:docsDialog.title')}</h2>
               <p className="text-[10px] text-content-secondary mt-0.5">
-                Learn how to use the Lua Graph Editor
+                {t('lua-graph:docsDialog.subtitle')}
               </p>
             </div>
           </div>
@@ -84,7 +86,7 @@ export function DocsDialog({ onClose }: DocsDialogProps) {
                   `}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{section.title}</span>
+                  <span className="truncate">{t(section.titleKey)}</span>
                 </button>
               );
             })}

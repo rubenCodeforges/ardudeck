@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useObjectsStore } from './objects-store';
 
 const MENU_WIDTH = 216;
@@ -44,6 +45,7 @@ function Divider(): JSX.Element {
 }
 
 export function ObjectEditorContextMenu(): JSX.Element | null {
+  const { t } = useTranslation();
   const menu = useObjectsStore((s) => s.contextMenu);
   const objects = useObjectsStore((s) => s.objects);
   const canUndo = useObjectsStore((s) => s.past.length > 0);
@@ -92,28 +94,28 @@ export function ObjectEditorContextMenu(): JSX.Element | null {
   if (obj) {
     body = (
       <>
-        <Item label={isParametric ? 'Convert to editable polygon' : 'Edit points'}
+        <Item label={isParametric ? t('area-editor:contextMenu.convertToPolygon') : t('area-editor:contextMenu.editPoints')}
           onClick={run(() => { if (isParametric) convertSelectedToPolygon(); else setTool('edit'); })} />
-        {isParametric && <Item label="Edit points" onClick={run(() => { convertSelectedToPolygon(); setTool('edit'); })} />}
-        <Item label="Duplicate" onClick={run(() => duplicateObject(obj.id))} />
+        {isParametric && <Item label={t('area-editor:contextMenu.editPoints')} onClick={run(() => { convertSelectedToPolygon(); setTool('edit'); })} />}
+        <Item label={t('area-editor:contextMenu.duplicate')} onClick={run(() => duplicateObject(obj.id))} />
         <Divider />
-        <Item label="Bring forward" onClick={run(() => reorderObject(obj.id, 1))} />
-        <Item label="Send backward" onClick={run(() => reorderObject(obj.id, -1))} />
+        <Item label={t('area-editor:contextMenu.bringForward')} onClick={run(() => reorderObject(obj.id, 1))} />
+        <Item label={t('area-editor:contextMenu.sendBackward')} onClick={run(() => reorderObject(obj.id, -1))} />
         {!isCorridor && (
           <>
             <Divider />
-            <Item label="Cut hole" onClick={run(() => setTool('hole'))} />
-            <Item label="Split with line" onClick={run(() => setTool('split'))} />
+            <Item label={t('area-editor:contextMenu.cutHole')} onClick={run(() => setTool('hole'))} />
+            <Item label={t('area-editor:contextMenu.splitWithLine')} onClick={run(() => setTool('split'))} />
             {!obj.fenceType && !obj.role && (
-              <Item label="Merge overlapping" hint="union" onClick={run(() => mergeOverlapping(obj.id))} />
+              <Item label={t('area-editor:contextMenu.mergeOverlapping')} hint={t('area-editor:contextMenu.union')} onClick={run(() => mergeOverlapping(obj.id))} />
             )}
             <Item
-              label={obj.role === 'workspace' ? 'Clear workspace role' : 'Mark as workspace'}
+              label={obj.role === 'workspace' ? t('area-editor:contextMenu.clearWorkspace') : t('area-editor:contextMenu.markWorkspace')}
               onClick={run(() => setObjectRole(obj.id, obj.role === 'workspace' ? null : 'workspace'))}
             />
             <Item
-              label={obj.role === 'guide' ? 'Clear guide role' : 'Mark as guide'}
-              hint={obj.role === 'guide' ? undefined : 'no waypoints'}
+              label={obj.role === 'guide' ? t('area-editor:contextMenu.clearGuide') : t('area-editor:contextMenu.markGuide')}
+              hint={obj.role === 'guide' ? undefined : t('area-editor:contextMenu.noWaypoints')}
               onClick={run(() => setObjectRole(obj.id, obj.role === 'guide' ? null : 'guide'))}
             />
           </>
@@ -121,38 +123,38 @@ export function ObjectEditorContextMenu(): JSX.Element | null {
         {isCorridor && (
           <>
             <Divider />
-            <Item label="Add branch" onClick={run(() => { selectObject(obj.id); setTool('branch'); })} />
+            <Item label={t('area-editor:contextMenu.addBranch')} onClick={run(() => { selectObject(obj.id); setTool('branch'); })} />
             {otherCorridors > 0 && (
               <Item
-                label="Absorb other corridors"
-                hint={`${otherCorridors} into one route`}
+                label={t('area-editor:contextMenu.absorbCorridors')}
+                hint={t('area-editor:contextMenu.intoOneRoute', { count: otherCorridors })}
                 onClick={run(() => mergeCorridors(obj.id))}
               />
             )}
             {(obj.branches?.length ?? 0) > 0 && (
-              <Item label="Clear branches" hint={String(obj.branches!.length)} onClick={run(() => clearBranches(obj.id))} />
+              <Item label={t('area-editor:contextMenu.clearBranches')} hint={String(obj.branches!.length)} onClick={run(() => clearBranches(obj.id))} />
             )}
           </>
         )}
         <Divider />
-        <Item label="Delete" danger onClick={run(() => deleteObject(obj.id))} />
+        <Item label={t('area-editor:contextMenu.delete')} danger onClick={run(() => deleteObject(obj.id))} />
       </>
     );
   } else if (target.kind === 'measure') {
     const { world, pointIndex } = target;
     body = (
       <>
-        <Item label="Add point here" onClick={run(() => insertMeasurePointAt(world))} />
+        <Item label={t('area-editor:contextMenu.addPointHere')} onClick={run(() => insertMeasurePointAt(world))} />
         {pointIndex !== undefined && (
-          <Item label="Delete this point" disabled={measureCount <= 2} onClick={run(() => deleteMeasurePoint(pointIndex))} />
+          <Item label={t('area-editor:contextMenu.deletePoint')} disabled={measureCount <= 2} onClick={run(() => deleteMeasurePoint(pointIndex))} />
         )}
-        <Item label="Continue measuring" hint="append" onClick={run(editMeasurement)} />
+        <Item label={t('area-editor:contextMenu.continueMeasuring')} hint={t('area-editor:contextMenu.append')} onClick={run(editMeasurement)} />
         <Divider />
-        <Item label="Clear measurement" danger onClick={run(clearMeasure)} />
+        <Item label={t('area-editor:contextMenu.clearMeasurement')} danger onClick={run(clearMeasure)} />
       </>
     );
   } else if (hasMeasure) {
-    body = <Item label="Clear measurement" danger onClick={run(clearMeasure)} />;
+    body = <Item label={t('area-editor:contextMenu.clearMeasurement')} danger onClick={run(clearMeasure)} />;
   }
 
   return (
@@ -167,8 +169,10 @@ export function ObjectEditorContextMenu(): JSX.Element | null {
       >
         {body}
         {body && <Divider />}
-        <Item label="Undo" disabled={!canUndo} hint="Ctrl+Z" onClick={run(undo)} />
-        <Item label="Redo" disabled={!canRedo} hint="Ctrl+Shift+Z" onClick={run(redo)} />
+        {/* i18n-exempt */}
+        <Item label={t('area-editor:contextMenu.undo')} disabled={!canUndo} hint="Ctrl+Z" onClick={run(undo)} />
+        {/* i18n-exempt */}
+        <Item label={t('area-editor:contextMenu.redo')} disabled={!canRedo} hint="Ctrl+Shift+Z" onClick={run(redo)} />
       </div>
     </>
   );

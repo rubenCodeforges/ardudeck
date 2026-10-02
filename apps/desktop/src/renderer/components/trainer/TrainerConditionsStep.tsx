@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Check, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { TrainerCatalogue, TrainerConditions } from '../../../shared/trainer-types';
 import { useWeatherStore } from '../../stores/weather-store';
 import { SkyPreview } from './SkyPreview';
@@ -35,6 +36,7 @@ export function TrainerConditionsStep({
   conditions: TrainerConditions;
   onChange: (patch: Partial<TrainerConditions>) => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const live = useWeatherStore((w) => w.weather);
   const refreshWeather = useWeatherStore((w) => w.refresh);
   useEffect(() => {
@@ -44,7 +46,7 @@ export function TrainerConditionsStep({
   const weatherLive = conditions.weatherMode === 'live';
   const windLive = conditions.windMode === 'live';
 
-  const time = catalogue.times.find((t) => t.id === conditions.time) ?? catalogue.times[0];
+  const time = catalogue.times.find((x) => x.id === conditions.time) ?? catalogue.times[0];
   // In live mode the picture is drawn from what is actually measured here. The AUTHORITATIVE
   // resolution still happens in the Trainer at launch, at the flying site, which is why the
   // mode travels rather than the numbers: this app's weather is where the operator is standing,
@@ -62,8 +64,8 @@ export function TrainerConditionsStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-content">Conditions</h2>
-        <p className="mt-0.5 text-xs text-content-tertiary">Time, weather and wind</p>
+        <h2 className="text-lg font-semibold text-content">{t('trainer:trainerConditionsStep.title')}</h2>
+        <p className="mt-0.5 text-xs text-content-tertiary">{t('trainer:trainerConditionsStep.subtitle')}</p>
       </div>
 
       <div className="relative overflow-hidden rounded-xl border border-subtle">
@@ -82,7 +84,7 @@ export function TrainerConditionsStep({
         </div>
       </div>
 
-      <Section title="Time of day">
+      <Section title={t('trainer:trainerConditionsStep.timeOfDay')}>
         <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
           {catalogue.times.map((option) => (
             <Tile
@@ -108,10 +110,10 @@ export function TrainerConditionsStep({
       </Section>
 
       <Section
-        title="Weather"
+        title={t('trainer:trainerConditionsStep.weather')}
         control={
           <Toggle
-            label="Real weather here"
+            label={t('trainer:trainerConditionsStep.realWeatherHere')}
             on={weatherLive}
             onChange={(on) => onChange({ weatherMode: on ? 'live' : 'preset' })}
           />
@@ -121,11 +123,14 @@ export function TrainerConditionsStep({
           <div className="mb-2.5 flex items-center gap-2.5 rounded-lg border border-subtle bg-surface-inset px-3 py-2 text-xs">
             <RefreshCw className="h-3.5 w-3.5 shrink-0 text-content-tertiary" />
             <span className="text-content-secondary">
-              Right now: {Math.round(live.cloudCoverPct)}% cloud, wind{' '}
-              {live.windSpeedMs.toFixed(1)} m/s, {Math.round(live.tempC)} C
+              {t('trainer:trainerConditionsStep.rightNow', {
+                cloud: Math.round(live.cloudCoverPct),
+                wind: live.windSpeedMs.toFixed(1),
+                temp: Math.round(live.tempC),
+              })}
             </span>
             <span className="ml-auto text-content-tertiary">
-              reads as {weather?.label.toLowerCase()}
+              {t('trainer:trainerConditionsStep.readsAs', { preset: weather?.label.toLowerCase() })}
             </span>
           </div>
         )}
@@ -154,10 +159,10 @@ export function TrainerConditionsStep({
       </Section>
 
       <Section
-        title="Wind"
+        title={t('trainer:trainerConditionsStep.wind')}
         control={
           <Toggle
-            label="Real wind here"
+            label={t('trainer:trainerConditionsStep.realWindHere')}
             on={windLive}
             onChange={(on) => onChange({ windMode: on ? 'live' : 'preset' })}
           />
@@ -166,14 +171,16 @@ export function TrainerConditionsStep({
         <div className="card card-body space-y-4">
           {windLive && live && (
             <p className="text-xs text-content-tertiary">
-              Taken from the real weather: {live.windSpeedMs.toFixed(1)} m/s from{' '}
-              {compass(live.windDirDeg)}, gusting to {live.windGustMs.toFixed(1)} m/s. The Trainer
-              re-reads it at the flying site, which may not be where you are standing.
+              {t('trainer:trainerConditionsStep.windFromReal', {
+                speed: live.windSpeedMs.toFixed(1),
+                dir: compass(live.windDirDeg),
+                gust: live.windGustMs.toFixed(1),
+              })}
             </p>
           )}
           <div>
             <div className="mb-1.5 flex items-baseline justify-between">
-              <span className="text-xs font-medium text-content-secondary">Speed at 10 m</span>
+              <span className="text-xs font-medium text-content-secondary">{t('trainer:trainerConditionsStep.speedAt10m')}</span>
               <span className="text-xs text-content-tertiary">
                 {(conditions.windMs ?? 0).toFixed(1)} m/s
               </span>
@@ -191,7 +198,7 @@ export function TrainerConditionsStep({
 
           <div>
             <div className="mb-1.5 flex items-baseline justify-between">
-              <span className="text-xs font-medium text-content-secondary">Coming from</span>
+              <span className="text-xs font-medium text-content-secondary">{t('trainer:trainerConditionsStep.comingFrom')}</span>
               {/* FROM, not toward: the convention every pilot and every forecast uses. The
                   Trainer turns it around once, at its own boundary. */}
               <span className="text-xs text-content-tertiary">
@@ -210,7 +217,7 @@ export function TrainerConditionsStep({
           </div>
 
           <div>
-            <span className="mb-1.5 block text-xs font-medium text-content-secondary">Gusts</span>
+            <span className="mb-1.5 block text-xs font-medium text-content-secondary">{t('trainer:trainerConditionsStep.gusts')}</span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {catalogue.gusts.map((option) => (
                 <button

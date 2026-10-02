@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type {
   MissionSummary,
   StoredMission,
@@ -107,7 +108,7 @@ export const useMissionLibraryStore = create<MissionLibraryStore>((set, get) => 
     if (!mission) return false;
     const result = await window.electronAPI?.fleetRepoSnapshotMissionDoc(site, { ...mission, site });
     if (!result?.success) {
-      set({ error: result?.error ?? 'Could not write to the backup' });
+      set({ error: result?.error ?? t('stores:missionLibraryStore.writeFailed') });
       return false;
     }
     // Remember the project on the local copy so the next save goes to the same
@@ -120,7 +121,7 @@ export const useMissionLibraryStore = create<MissionLibraryStore>((set, get) => 
   pullMissionFromVault: async (path) => {
     const mission = await window.electronAPI?.fleetRepoReadMissionDoc(path);
     if (!mission) {
-      set({ error: 'Could not read that mission from the backup' });
+      set({ error: t('stores:missionLibraryStore.readFailed') });
       return null;
     }
     const stored = await window.electronAPI?.missionLibraryImportDoc(mission);

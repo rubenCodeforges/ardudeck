@@ -7,9 +7,10 @@
  * altitude band colour, tying the popup to the map icon.
  */
 
+import { t } from '../../../../shared/i18n/index.js';
 import type { TrafficContact } from '../../../../shared/traffic-types';
 import type { ProximityResult } from './proximity';
-import { ALT_STATE_COLOR, CATEGORY_LABEL, altitudeColorState, type AltitudeBand } from './contact-style';
+import { ALT_STATE_COLOR, CATEGORY_LABEL_KEY, altitudeColorState, type AltitudeBand } from './contact-style';
 
 function row(label: string, value: string): string {
   return `<div style="display:flex;justify-content:space-between;gap:14px;line-height:1.7">
@@ -31,25 +32,25 @@ export function buildContactPopup(
   const title = c.callsign || c.registration || c.id;
   // Lead with what the thing IS in plain words; the raw type code and data
   // source come after (B412 alone means nothing to most operators).
-  const sourceLabel = c.source === 'ogn' ? 'OGN' : c.source === 'remoteid' ? 'Remote ID' : 'ADS-B';
-  const sub = [CATEGORY_LABEL[c.category], c.model, c.registration, sourceLabel]
+  const sourceLabel = c.source === 'ogn' ? 'OGN' : c.source === 'remoteid' ? 'Remote ID' : 'ADS-B'; // i18n-exempt: protocol names
+  const sub = [t(CATEGORY_LABEL_KEY[c.category]), c.model, c.registration, sourceLabel]
     .filter(Boolean).join(' • ');
   const color = ALT_STATE_COLOR[altitudeColorState(c, band)];
 
   const rows: string[] = [];
-  if (c.altMeters != null) rows.push(row('Altitude', `${Math.round(c.altMeters * M_TO_FT).toLocaleString()} ft`));
-  if (c.onGround) rows.push(row('State', 'On ground'));
-  if (c.groundSpeedMps != null) rows.push(row('Ground speed', `${Math.round(c.groundSpeedMps * MS_TO_KT)} kt`));
-  if (c.trackDeg != null) rows.push(row('Track', `${Math.round(c.trackDeg)}°`));
+  if (c.altMeters != null) rows.push(row(t('map:contactPopup.altitude'), `${Math.round(c.altMeters * M_TO_FT).toLocaleString()} ft`));
+  if (c.onGround) rows.push(row(t('map:contactPopup.state'), t('map:contactPopup.onGround')));
+  if (c.groundSpeedMps != null) rows.push(row(t('map:contactPopup.groundSpeed'), `${Math.round(c.groundSpeedMps * MS_TO_KT)} kt`));
+  if (c.trackDeg != null) rows.push(row(t('map:contactPopup.track'), `${Math.round(c.trackDeg)}°`));
   if (c.verticalRateMps != null && Math.abs(c.verticalRateMps) > 0.05)
-    rows.push(row('Vertical', `${c.verticalRateMps > 0 ? '+' : ''}${Math.round(c.verticalRateMps * MS_TO_FPM)} fpm`));
-  if (c.squawk) rows.push(row('Squawk', c.squawk));
+    rows.push(row(t('map:contactPopup.vertical'), `${c.verticalRateMps > 0 ? '+' : ''}${Math.round(c.verticalRateMps * MS_TO_FPM)} fpm`));
+  if (c.squawk) rows.push(row(t('map:contactPopup.squawk'), c.squawk));
   if (prox) {
-    rows.push(row('Distance', `${(prox.distanceMeters / 1000).toFixed(1)} km`));
-    rows.push(row('Bearing', `${Math.round(prox.bearingDeg)}°`));
-    if (prox.verticalMeters != null) rows.push(row('Vert sep', `${Math.round(prox.verticalMeters * M_TO_FT).toLocaleString()} ft`));
+    rows.push(row(t('map:contactPopup.distance'), `${(prox.distanceMeters / 1000).toFixed(1)} km`));
+    rows.push(row(t('map:contactPopup.bearing'), `${Math.round(prox.bearingDeg)}°`));
+    if (prox.verticalMeters != null) rows.push(row(t('map:contactPopup.vertSep'), `${Math.round(prox.verticalMeters * M_TO_FT).toLocaleString()} ft`));
   }
-  rows.push(row('Age', `${Math.max(0, Math.round((nowMs - c.lastSeen) / 1000))}s`));
+  rows.push(row(t('map:contactPopup.age'), `${Math.max(0, Math.round((nowMs - c.lastSeen) / 1000))}s`));
 
   return `<div style="min-width:190px;font-size:12px">
     <div style="display:flex;align-items:center;gap:7px">

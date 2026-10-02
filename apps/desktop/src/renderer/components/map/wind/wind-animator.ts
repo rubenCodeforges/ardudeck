@@ -60,7 +60,7 @@ export class WindAnimator {
   ) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('wind-animator: 2d context unavailable');
+    if (!ctx) throw new Error('wind-animator: 2d context unavailable'); // i18n-exempt: internal
     this.ctx = ctx;
     this.projector = projector;
     this.getFrame = getFrame;

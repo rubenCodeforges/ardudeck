@@ -1,11 +1,12 @@
 import { Octagon } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 export const copterOctoPlus: VehicleTemplate = {
   slug: 'copter-octo-plus',
-  name: 'Octocopter (+)',
-  description: 'Eight motors in +, symmetrical heavy lift',
+  name: 'Octocopter (+)', // i18n-exempt
+  description: 'Eight motors in +, symmetrical heavy lift', // i18n-exempt
   icon: Octagon,
   vehicleType: 'copter',
   category: 'multirotor',
@@ -19,8 +20,8 @@ export const copterOctoPlus: VehicleTemplate = {
     batteryCapacity: 16000,
   },
   toParams: (p) => [
-    { name: 'FRAME_CLASS', value: 3, reason: 'Octocopter', requiresReboot: true },
-    { name: 'FRAME_TYPE',  value: 0, reason: '+ arrangement',    requiresReboot: true },
+    { name: 'FRAME_CLASS', value: 3, reason: t('lib:vehicleTemplates.reason.octocopter'), requiresReboot: true },
+    { name: 'FRAME_TYPE',  value: 0, reason: t('lib:vehicleTemplates.reason.plusArrangement'),    requiresReboot: true },
     ...batteryParams(p),
     ...commonSafetyParams(),
   ],

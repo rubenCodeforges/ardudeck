@@ -46,6 +46,10 @@ const safetyTabSource = readFileSync(
   'utf-8',
 );
 
+const enMavlinkConfig = JSON.parse(
+  readFileSync(join(__dirname, '..', '..', '..', '..', 'shared', 'i18n', 'locales', 'en', 'mavlink-config.json'), 'utf-8'),
+) as { safetyTab: Record<string, string> };
+
 const presetsSource = readFileSync(
   join(__dirname, '..', 'presets', 'mavlink-presets.ts'),
   'utf-8',
@@ -128,18 +132,20 @@ describe('issue #50 - semantic label fix for mAh threshold', () => {
   it('uses "Low mAh Remaining" not "Low mAh Used" for the low battery slider', () => {
     // The fix changed the label from "Low mAh Used" to "Low mAh Remaining"
     // because BATT_LOW_MAH is a *remaining* threshold, not a *consumed* counter
-    expect(safetyTabSource).toContain('Low mAh Remaining');
-    expect(safetyTabSource).not.toContain('Low mAh Used');
+    expect(safetyTabSource).toContain("t('mavlink-config:safetyTab.lowMah')");
+    expect(enMavlinkConfig.safetyTab.lowMah).toBe('Low mAh Remaining');
   });
 
   it('hint describes "remaining mAh drops below" not "mAh consumed exceeds"', () => {
     // The semantic meaning changed: old FS_BATT_MAH was "consumed", new BATT_LOW_MAH is "remaining"
-    expect(safetyTabSource).toContain('remaining mAh drops below');
-    expect(safetyTabSource).not.toContain('mAh consumed exceeds');
+    expect(safetyTabSource).toContain("t('mavlink-config:safetyTab.lowMahHint')");
+    expect(enMavlinkConfig.safetyTab.lowMahHint).toContain('remaining mAh drops below');
+    expect(enMavlinkConfig.safetyTab.lowMahHint).not.toContain('mAh consumed exceeds');
   });
 
   it('critical battery also uses "remaining" semantics', () => {
-    expect(safetyTabSource).toContain('Critical mAh Remaining');
+    expect(safetyTabSource).toContain("t('mavlink-config:safetyTab.criticalMah')");
+    expect(enMavlinkConfig.safetyTab.criticalMah).toBe('Critical mAh Remaining');
   });
 });
 
@@ -239,8 +245,8 @@ describe('issue #50 - low battery UI wiring', () => {
       safetyTabSource.indexOf('Low Battery'),
       safetyTabSource.indexOf('Critical Battery'),
     );
-    expect(lowBattSection).toContain('value={0}>Disabled');
-    expect(lowBattSection).toContain('value={1}>Land Immediately');
-    expect(lowBattSection).toContain('value={2}>RTL');
+    expect(lowBattSection).toContain("value={0}>{t('mavlink-config:safetyTab.actionDisabled')}");
+    expect(lowBattSection).toContain("value={1}>{t('mavlink-config:safetyTab.actionLandImmediately')}");
+    expect(lowBattSection).toContain("value={2}>{t('mavlink-config:safetyTab.actionRtl')}");
   });
 });

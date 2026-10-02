@@ -42,7 +42,7 @@ export function loadDevModule(
   dir: string,
   installedSlugs: readonly string[],
 ): DevLoadCheck & { module?: DevModule } {
-  if (!isDevLoadAvailable()) return { ok: false, error: 'Not available in a packaged build' };
+  if (!isDevLoadAvailable()) return { ok: false, error: 'Not available in a packaged build' }; // i18n-exempt
 
   let manifest;
   try {

@@ -7,6 +7,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Cable, Usb, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -18,52 +19,52 @@ import { useConnectionStore } from '../../stores/connection-store';
 
 /** ArduPilot serial protocol options (from AP_SerialManager.h) */
 const SERIAL_PROTOCOLS: { value: number; label: string }[] = [
-  { value: -1, label: 'None' },
-  { value: 1, label: 'MAVLink1' },
-  { value: 2, label: 'MAVLink2' },
-  { value: 3, label: 'FrSky D' },
-  { value: 4, label: 'FrSky SPort' },
-  { value: 5, label: 'GPS' },
-  { value: 7, label: 'Alexmos Gimbal' },
-  { value: 8, label: 'SToRM32 Gimbal' },
-  { value: 9, label: 'Rangefinder' },
-  { value: 10, label: 'FrSky Passthrough' },
-  { value: 11, label: 'Lidar360' },
-  { value: 13, label: 'Beacon' },
-  { value: 14, label: 'Volz Servo' },
-  { value: 15, label: 'SBus Out' },
-  { value: 16, label: 'ESC Telemetry' },
-  { value: 17, label: 'Devo Telemetry' },
-  { value: 18, label: 'OpticalFlow' },
-  { value: 19, label: 'Robotis Servo' },
-  { value: 20, label: 'NMEA Output' },
-  { value: 21, label: 'WindVane' },
-  { value: 22, label: 'SLCAN' },
-  { value: 23, label: 'RCIN' },
-  { value: 24, label: 'MegaSquirt EFI' },
-  { value: 25, label: 'LTM Telemetry' },
-  { value: 26, label: 'RunCam' },
-  { value: 27, label: 'HoTT Telemetry' },
-  { value: 28, label: 'Scripting' },
-  { value: 29, label: 'Crossfire (CRSF)' },
-  { value: 30, label: 'Generator' },
-  { value: 31, label: 'Winch' },
-  { value: 32, label: 'MSP' },
-  { value: 33, label: 'DJI FPV OSD' },
-  { value: 34, label: 'AirSpeed' },
-  { value: 35, label: 'ADSB' },
-  { value: 36, label: 'AHRS' },
-  { value: 37, label: 'SmartAudio' },
-  { value: 38, label: 'FETtec OneWire' },
-  { value: 39, label: 'Torqeedo' },
-  { value: 40, label: 'AIS' },
-  { value: 41, label: 'CoDevESC' },
-  { value: 42, label: 'MSP DisplayPort' },
-  { value: 43, label: 'MAVLink HL' },
-  { value: 44, label: 'IRC Tramp' },
-  { value: 45, label: 'DDS XRCE' },
-  { value: 46, label: 'IMUOUT' },
-  { value: 48, label: 'PPP' },
+  { value: -1, label: 'None' }, // i18n-exempt
+  { value: 1, label: 'MAVLink1' }, // i18n-exempt
+  { value: 2, label: 'MAVLink2' }, // i18n-exempt
+  { value: 3, label: 'FrSky D' }, // i18n-exempt
+  { value: 4, label: 'FrSky SPort' }, // i18n-exempt
+  { value: 5, label: 'GPS' }, // i18n-exempt
+  { value: 7, label: 'Alexmos Gimbal' }, // i18n-exempt
+  { value: 8, label: 'SToRM32 Gimbal' }, // i18n-exempt
+  { value: 9, label: 'Rangefinder' }, // i18n-exempt
+  { value: 10, label: 'FrSky Passthrough' }, // i18n-exempt
+  { value: 11, label: 'Lidar360' }, // i18n-exempt
+  { value: 13, label: 'Beacon' }, // i18n-exempt
+  { value: 14, label: 'Volz Servo' }, // i18n-exempt
+  { value: 15, label: 'SBus Out' }, // i18n-exempt
+  { value: 16, label: 'ESC Telemetry' }, // i18n-exempt
+  { value: 17, label: 'Devo Telemetry' }, // i18n-exempt
+  { value: 18, label: 'OpticalFlow' }, // i18n-exempt
+  { value: 19, label: 'Robotis Servo' }, // i18n-exempt
+  { value: 20, label: 'NMEA Output' }, // i18n-exempt
+  { value: 21, label: 'WindVane' }, // i18n-exempt
+  { value: 22, label: 'SLCAN' }, // i18n-exempt
+  { value: 23, label: 'RCIN' }, // i18n-exempt
+  { value: 24, label: 'MegaSquirt EFI' }, // i18n-exempt
+  { value: 25, label: 'LTM Telemetry' }, // i18n-exempt
+  { value: 26, label: 'RunCam' }, // i18n-exempt
+  { value: 27, label: 'HoTT Telemetry' }, // i18n-exempt
+  { value: 28, label: 'Scripting' }, // i18n-exempt
+  { value: 29, label: 'Crossfire (CRSF)' }, // i18n-exempt
+  { value: 30, label: 'Generator' }, // i18n-exempt
+  { value: 31, label: 'Winch' }, // i18n-exempt
+  { value: 32, label: 'MSP' }, // i18n-exempt
+  { value: 33, label: 'DJI FPV OSD' }, // i18n-exempt
+  { value: 34, label: 'AirSpeed' }, // i18n-exempt
+  { value: 35, label: 'ADSB' }, // i18n-exempt
+  { value: 36, label: 'AHRS' }, // i18n-exempt
+  { value: 37, label: 'SmartAudio' }, // i18n-exempt
+  { value: 38, label: 'FETtec OneWire' }, // i18n-exempt
+  { value: 39, label: 'Torqeedo' }, // i18n-exempt
+  { value: 40, label: 'AIS' }, // i18n-exempt
+  { value: 41, label: 'CoDevESC' }, // i18n-exempt
+  { value: 42, label: 'MSP DisplayPort' }, // i18n-exempt
+  { value: 43, label: 'MAVLink HL' }, // i18n-exempt
+  { value: 44, label: 'IRC Tramp' }, // i18n-exempt
+  { value: 45, label: 'DDS XRCE' }, // i18n-exempt
+  { value: 46, label: 'IMUOUT' }, // i18n-exempt
+  { value: 48, label: 'PPP' }, // i18n-exempt
 ];
 
 /** ArduPilot baud rate encoding (stored as baud/1 for exact or baud/1000 for common) */
@@ -118,7 +119,7 @@ const PX4_PORT_CODES: Record<string, number> = {
 const PX4_PORT_LABELS: Record<string, string> = {
   TEL1: 'TELEM 1', TEL2: 'TELEM 2', TEL3: 'TELEM 3', TEL4: 'TELEM 4',
   GPS1: 'GPS 1', GPS2: 'GPS 2', GPS3: 'GPS 3',
-  RC: 'RC Port', WIFI: 'Wifi Port', URT6: 'UART 6',
+  RC: 'RC Port', WIFI: 'Wifi Port', URT6: 'UART 6', // i18n-exempt
 };
 
 const PX4_FALLBACK_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000];
@@ -126,6 +127,7 @@ const PX4_FALLBACK_BAUDS = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 5
 const Px4SerialPortsConfig: React.FC = () => {
   const { parameters, setParameter, getParameterMetadata, getDescription } = useParameterStore();
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
+  const { t } = useTranslation();
 
   const selectStyle = 'bg-surface-raised text-content text-xs rounded px-1.5 py-1 border border-subtle focus:border-blue-500 focus:outline-none w-full';
 
@@ -152,18 +154,18 @@ const Px4SerialPortsConfig: React.FC = () => {
 
   const portLabelForCode = (code: number): string => {
     const entry = Object.entries(PX4_PORT_CODES).find(([, c]) => c === code);
-    return entry ? (PX4_PORT_LABELS[entry[0]] ?? entry[0]) : `Port ${code}`;
+    return entry ? (PX4_PORT_LABELS[entry[0]] ?? entry[0]) : t('mavlink-config:serialPortsTab.portCode', { code });
   };
 
   if (ports.length === 0 && configParams.length === 0) {
     return (
       <div className="p-6">
         <div className="p-8 text-center text-content-secondary text-sm space-y-1">
-          <p>This vehicle reports no configurable serial ports.</p>
+          <p>{t('mavlink-config:serialPortsTab.noPorts')}</p>
           <p className="text-xs text-content-tertiary">
             {parameters.size === 0
-              ? 'Fetch parameters first.'
-              : 'PX4 generates serial port parameters per board. Simulators (SITL) have no physical UARTs, so none exist; connect real hardware to configure its ports.'}
+              ? t('mavlink-config:serialPortsTab.fetchFirst')
+              : t('mavlink-config:serialPortsTab.px4NoPortsHint')}
           </p>
         </div>
       </div>
@@ -180,17 +182,15 @@ const Px4SerialPortsConfig: React.FC = () => {
               <Cable className="w-5 h-5 text-sky-400" />
             </div>
             <div>
-              <h3 className="font-medium text-content">Serial Port Configuration</h3>
-              <p className="text-xs text-content-secondary">Baud rates per physical port. Changes require Save All Changes + reboot.</p>
+              <h3 className="font-medium text-content">{t('mavlink-config:serialPortsTab.title')}</h3>
+              <p className="text-xs text-content-secondary">{t('mavlink-config:serialPortsTab.px4Subtitle')}</p>
             </div>
           </div>
           {showTips && (
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-sky-500/5 border-sky-500/20 mb-4">
               <HelpCircle className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
               <p className="text-xs text-content leading-relaxed">
-                <span className="font-semibold text-sky-300">How this works: </span>
-                PX4 assigns functions to ports, not protocols. Pick which port each function uses in
-                the table below; set the port's baud rate here to match the connected device.
+                <Trans i18nKey="mavlink-config:serialPortsTab.px4HowItWorks" components={{ b: <span className="font-semibold text-sky-300" /> }} />
               </p>
             </div>
           )}
@@ -198,9 +198,9 @@ const Px4SerialPortsConfig: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface text-content-secondary text-xs">
-                  <th className="px-3 py-2.5 text-left font-medium w-36">Port</th>
-                  <th className="px-2 py-2.5 text-left font-medium w-32">Baud Rate</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Assigned Functions</th>
+                  <th className="px-3 py-2.5 text-left font-medium w-36">{t('common:port')}</th>
+                  <th className="px-2 py-2.5 text-left font-medium w-32">{t('common:baudRate')}</th>
+                  <th className="px-3 py-2.5 text-left font-medium">{t('mavlink-config:serialPortsTab.assignedFunctions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +249,7 @@ const Px4SerialPortsConfig: React.FC = () => {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-[10px] text-content-tertiary">unassigned</span>
+                          <span className="text-[10px] text-content-tertiary">{t('mavlink-config:serialPortsTab.unassigned')}</span>
                         )}
                       </td>
                     </tr>
@@ -269,17 +269,17 @@ const Px4SerialPortsConfig: React.FC = () => {
               <Usb className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h3 className="font-medium text-content">Port Assignments</h3>
-              <p className="text-xs text-content-secondary">Which serial port each function (MAVLink instance, GPS, RC, ...) runs on.</p>
+              <h3 className="font-medium text-content">{t('mavlink-config:serialPortsTab.portAssignments')}</h3>
+              <p className="text-xs text-content-secondary">{t('mavlink-config:serialPortsTab.portAssignmentsHint')}</p>
             </div>
           </div>
           <div className="rounded-lg border-subtle overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface text-content-secondary text-xs">
-                  <th className="px-3 py-2.5 text-left font-medium w-64">Function</th>
-                  <th className="px-2 py-2.5 text-left font-medium w-48">Port</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Description</th>
+                  <th className="px-3 py-2.5 text-left font-medium w-64">{t('mavlink-config:serialPortsTab.function')}</th>
+                  <th className="px-2 py-2.5 text-left font-medium w-48">{t('common:port')}</th>
+                  <th className="px-3 py-2.5 text-left font-medium">{t('common:description')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -321,7 +321,7 @@ const Px4SerialPortsConfig: React.FC = () => {
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <p className="text-xs text-amber-300">
-            Serial configuration takes effect after saving with Save All Changes and rebooting the flight controller.
+            {t('mavlink-config:serialPortsTab.px4RebootNote')}
           </p>
         </div>
       </div>
@@ -335,6 +335,7 @@ const Px4SerialPortsConfig: React.FC = () => {
 
 function PortRow({ index }: { index: number }) {
   const { parameters, setParameter } = useParameterStore();
+  const { t } = useTranslation();
   const protocolParam = `SERIAL${index}_PROTOCOL`;
   const baudParam = `SERIAL${index}_BAUD`;
 
@@ -373,7 +374,7 @@ function PortRow({ index }: { index: number }) {
           className={selectStyle}
         >
           {SERIAL_PROTOCOLS.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
+            <option key={p.value} value={p.value}>{p.value === -1 ? t('common:none') : p.label}</option>
           ))}
         </select>
       </td>
@@ -395,11 +396,12 @@ function PortRow({ index }: { index: number }) {
       <td className="px-3 py-2.5 text-center">
         {isRcin && (
           <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-green-500/10 text-green-400 border-green-500/30 rounded">
-            RC Input
+            {t('mavlink-config:serialPortsTab.rcInput')}
           </span>
         )}
         {isMavlink && (
           <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/30 rounded">
+            {/* i18n-exempt */}
             MAVLink
           </span>
         )}
@@ -415,6 +417,7 @@ function PortRow({ index }: { index: number }) {
 const ArduPilotSerialPorts: React.FC = () => {
   const { parameters } = useParameterStore();
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
+  const { t } = useTranslation();
 
   // Determine how many serial ports exist by checking parameters
   const portCount = useMemo(() => {
@@ -445,8 +448,8 @@ const ArduPilotSerialPorts: React.FC = () => {
             <Cable className="w-5 h-5 text-sky-400" />
           </div>
           <div>
-            <h3 className="font-medium text-content">Serial Port Configuration</h3>
-            <p className="text-xs text-content-secondary">Configure protocols and baud rates. Changes require Write to Flash + reboot.</p>
+            <h3 className="font-medium text-content">{t('mavlink-config:serialPortsTab.title')}</h3>
+            <p className="text-xs text-content-secondary">{t('mavlink-config:serialPortsTab.apSubtitle')}</p>
           </div>
         </div>
         {/* How this works banner */}
@@ -454,8 +457,7 @@ const ArduPilotSerialPorts: React.FC = () => {
           <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-sky-500/5 border-sky-500/20 mb-4">
             <HelpCircle className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
             <p className="text-xs text-content leading-relaxed">
-              <span className="font-semibold text-sky-300">How this works: </span>
-              Each row is a serial port on your flight controller. Set the protocol to match what's physically wired to that port, like <span className="text-content">RCIN</span> for your receiver or <span className="text-content">GPS</span> for a GPS module.
+              <Trans i18nKey="mavlink-config:serialPortsTab.apHowItWorks" components={{ b: <span className="font-semibold text-sky-300" />, hl: <span className="text-content" /> }} />
             </p>
           </div>
         )}
@@ -463,10 +465,10 @@ const ArduPilotSerialPorts: React.FC = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface text-content-secondary text-xs">
-                <th className="px-3 py-2.5 text-left font-medium w-36">Port</th>
-                <th className="px-2 py-2.5 text-left font-medium w-44">Protocol</th>
-                <th className="px-2 py-2.5 text-left font-medium w-32">Baud Rate</th>
-                <th className="px-3 py-2.5 text-center font-medium w-24">Status</th>
+                <th className="px-3 py-2.5 text-left font-medium w-36">{t('common:port')}</th>
+                <th className="px-2 py-2.5 text-left font-medium w-44">{t('common:protocol')}</th>
+                <th className="px-2 py-2.5 text-left font-medium w-32">{t('common:baudRate')}</th>
+                <th className="px-3 py-2.5 text-center font-medium w-24">{t('common:status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -482,10 +484,10 @@ const ArduPilotSerialPorts: React.FC = () => {
       <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-500/5 border-blue-500/20">
         <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
         <div className="text-xs text-content leading-relaxed space-y-1">
-          <p className="font-semibold text-blue-300">Common setups</p>
-          <p>ELRS/CRSF receiver: Set one port to <span className="text-content">RCIN</span> at <span className="text-content">115200</span> baud</p>
-          <p>GPS module: Set to <span className="text-content">GPS</span> protocol at <span className="text-content">115200</span> or <span className="text-content">230400</span> baud</p>
-          <p>Telemetry radio: Usually <span className="text-content">MAVLink2</span> at <span className="text-content">57600</span> baud on TELEM1</p>
+          <p className="font-semibold text-blue-300">{t('mavlink-config:serialPortsTab.commonSetups')}</p>
+          <p><Trans i18nKey="mavlink-config:serialPortsTab.setupElrs" components={{ hl: <span className="text-content" /> }} /></p>
+          <p><Trans i18nKey="mavlink-config:serialPortsTab.setupGps" components={{ hl: <span className="text-content" /> }} /></p>
+          <p><Trans i18nKey="mavlink-config:serialPortsTab.setupTelemetry" components={{ hl: <span className="text-content" /> }} /></p>
         </div>
       </div>
 
@@ -495,8 +497,7 @@ const ArduPilotSerialPorts: React.FC = () => {
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <p className="text-xs text-amber-300">
-              No serial port is configured for RC Input (RCIN protocol). Your receiver will not work
-              unless a port is set to RCIN or the receiver is connected via DroneCAN/PPM.
+              {t('mavlink-config:serialPortsTab.noRcin')}
             </p>
           </div>
         </div>

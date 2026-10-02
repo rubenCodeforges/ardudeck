@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * Camera / video feature — shared contract between the main-process media
  * engine and the renderer camera panel.
@@ -45,9 +47,8 @@ export interface CameraSourceConfig {
   /** Trade buffering for latency (small jitter buffer, drop-late). */
   lowLatency?: boolean;
   /**
-   * RTSP pull transport for network sources. 'automatic' (default) negotiates
-   * UDP then falls back to TCP; force 'udp' for lowest latency on a clean LAN,
-   * or 'tcp' for reliability through firewalls / lossy links.
+   * RTSP pull transport for network sources. Unset means 'tcp': on Windows the firewall drops a
+   * hub's inbound UDP while a trickle gets through, so 'automatic' never falls back to TCP.
    */
   rtspTransport?: 'automatic' | 'tcp' | 'udp';
   /**
@@ -57,6 +58,8 @@ export interface CameraSourceConfig {
    */
   wfbCodec?: 'h265' | 'h264';
   wfbTranscode?: boolean;
+  /** wfbng sources: where the camera answered SSH last time, for its settings sheet. */
+  settingsHost?: string;
   /**
    * 'dongle' (default): ArduDeck drives the plugged-in RTL8812AU receiver
    * dongle itself. 'network': a separate ground station forwards the video
@@ -111,6 +114,9 @@ export interface CameraStreamSession {
   /** Engine-assigned path name (MediaMTX) for teardown / recording. */
   path?: string;
 }
+
+/** Where a camera start is, so the panel can say what it is waiting for. */
+export type CameraStartPhase = 'connecting' | 'checking-video' | 'converting' | 'opening';
 
 export interface CameraStartResult {
   ok: boolean;
@@ -288,9 +294,9 @@ export interface StreamReadUrl {
 /** Every protocol the hub re-serves a published path over. */
 export function streamReadUrls(path: string): StreamReadUrl[] {
   return [
-    { id: 'rtsp', label: 'RTSP', url: `rtsp://${HUB_HOST}:${HUB_RTSP_PORT}/${path}`, hint: 'VLC, ffmpeg, OpenCV, GStreamer' },
-    { id: 'srt', label: 'SRT', url: `srt://${HUB_HOST}:${HUB_SRT_PORT}?streamid=read:${path}`, hint: 'ffmpeg, OBS, VLC (H264 only)' },
-    { id: 'webrtc', label: 'WebRTC', url: `http://${HUB_HOST}:${HUB_WEBRTC_PORT}/${path}`, hint: 'Open in any browser, lowest latency' },
+    { id: 'rtsp', label: 'RTSP', url: `rtsp://${HUB_HOST}:${HUB_RTSP_PORT}/${path}`, hint: 'VLC, ffmpeg, OpenCV, GStreamer' }, // i18n-exempt
+    { id: 'srt', label: 'SRT', url: `srt://${HUB_HOST}:${HUB_SRT_PORT}?streamid=read:${path}`, hint: t('shared:cameraTypes.srtHint') },
+    { id: 'webrtc', label: 'WebRTC', url: `http://${HUB_HOST}:${HUB_WEBRTC_PORT}/${path}`, hint: t('shared:cameraTypes.webrtcHint') }, // i18n-exempt
   ];
 }
 

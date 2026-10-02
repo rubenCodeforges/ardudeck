@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -5,6 +6,7 @@ import { formatAltitudeFromMeters, speedValueFromMetersPerSecond, UNIT_LABELS } 
 import { PanelContainer, StatRow, formatNumber } from './panel-utils';
 
 export const FlightModePanel = React.memo(function FlightModePanel() {
+  const { t } = useTranslation();
   // Use selective subscriptions to prevent re-renders on unrelated telemetry updates
   const flight = useTelemetryStore((s) => s.flight);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
@@ -22,19 +24,19 @@ export const FlightModePanel = React.memo(function FlightModePanel() {
           <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wide ${
             flight.armed ? 'bg-red-500 text-white' : 'bg-surface-raised text-content-secondary'
           }`}>
-            {flight.armed ? 'Armed' : 'Disarmed'}
+            {flight.armed ? t('common:armed') : t('panels:flightModePanel.disarmed')}
           </span>
           <span className="text-lg font-medium text-content">{flight.mode}</span>
         </div>
 
         {/* Key stats */}
         <div className="space-y-1">
-          <StatRow label="Heading" value={formatNumber(vfrHud.heading, 0)} unit="°" />
-          <StatRow label="Altitude" value={formatAltitudeFromMeters(vfrHud.alt, altitudeUnit)} />
-          <StatRow label="Speed" value={formatNumber(speedValueFromMetersPerSecond(vfrHud.groundspeed, speedUnit), 1)} unit={UNIT_LABELS.speed[speedUnit]} />
-          <StatRow label="Throttle" value={vfrHud.throttle} unit="%" />
+          <StatRow label={t('common:heading')} value={formatNumber(vfrHud.heading, 0)} unit="°" />
+          <StatRow label={t('common:altitude')} value={formatAltitudeFromMeters(vfrHud.alt, altitudeUnit)} />
+          <StatRow label={t('common:speed')} value={formatNumber(speedValueFromMetersPerSecond(vfrHud.groundspeed, speedUnit), 1)} unit={UNIT_LABELS.speed[speedUnit]} />
+          <StatRow label={t('common:throttle')} value={vfrHud.throttle} unit="%" />
           <div className="flex justify-between items-baseline py-0.5">
-            <span className="text-content-secondary text-xs">Battery</span>
+            <span className="text-content-secondary text-xs">{t('common:battery')}</span>
             <span className={`font-mono text-sm ${batteryColor}`}>
               {formatNumber(battery.voltage, 1)}
               <span className="text-content-tertiary text-[10px] ml-0.5">V</span>

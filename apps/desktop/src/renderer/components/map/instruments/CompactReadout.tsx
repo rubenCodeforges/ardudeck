@@ -15,6 +15,7 @@
  * would paint a "how full" meter that means nothing. Colors come from the
  * gauge palette; unit-bearing values convert via shared/user-units.
  */
+import { useTranslation } from 'react-i18next';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { useSettingsStore } from '../../../stores/settings-store';
@@ -70,7 +71,7 @@ const GPS_FIX_SHORT: Record<number, string> = {
   6: 'RTK',
 };
 
-const CARDINALS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const CARDINAL_KEYS = ['map:instrument.cardinalN', 'map:instrument.cardinalNE', 'map:instrument.cardinalE', 'map:instrument.cardinalSE', 'map:instrument.cardinalS', 'map:instrument.cardinalSW', 'map:instrument.cardinalW', 'map:instrument.cardinalNW'];
 
 // ===========================================================================
 // Shell + treatments
@@ -196,6 +197,7 @@ function ReadoutView({ treatment, r, signalGlyph = false }: { treatment: Readout
 // ===========================================================================
 
 function BatteryReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const voltage = useTelemetryStore((s) => s.battery.voltage);
   const current = useTelemetryStore((s) => s.battery.current);
@@ -204,7 +206,7 @@ function BatteryReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Ele
   const known = connected && remaining >= 0;
   const currentKnown = connected && current > 0;
   const r: Readout = {
-    tag: 'BAT',
+    tag: t('map:instrument.bat'),
     value: known ? `${Math.round(remaining)}%` : '--',
     detail: connected ? `${voltage.toFixed(1)}V${currentKnown ? `  ${current.toFixed(0)}A` : ''}` : '--',
     fraction: known ? remaining / 100 : 0,
@@ -215,6 +217,7 @@ function BatteryReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Ele
 }
 
 function GpsReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const fixType = useTelemetryStore((s) => s.gps.fixType);
   const satellites = useTelemetryStore((s) => s.gps.satellites);
@@ -223,11 +226,11 @@ function GpsReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element
   const known = connected && fixType > 0;
   const hdopKnown = connected && hdop < 99;
   const r: Readout = {
-    tag: 'GPS',
-    value: known ? (GPS_FIX_SHORT[fixType] ?? 'NO FIX') : '--',
+    tag: t('map:instrument.gps'),
+    value: known ? (GPS_FIX_SHORT[fixType] ?? t('map:instrument.noFix')) : '--',
     // Sat count saturates the bar at 12; more than that is not a meaningfully
     // better fix, and the number is right there in the detail line.
-    detail: connected ? `${satellites} sats${hdopKnown ? `  ${hdop.toFixed(1)} hdop` : ''}` : '-- sats',
+    detail: connected ? (hdopKnown ? t('map:compactReadout.satsHdop', { n: satellites, hdop: hdop.toFixed(1) }) : t('map:instrument.sats', { n: satellites })) : t('map:instrument.satsNone'),
     fraction: known ? Math.max(0, Math.min(1, satellites / 12)) : 0,
     known,
     color: known ? (fixType >= 3 ? GAUGE_COLORS.green : GAUGE_COLORS.amber) : GAUGE_COLORS.tickMinor,
@@ -236,6 +239,7 @@ function GpsReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element
 }
 
 function AltitudeReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const msl = useTelemetryStore((s) => s.position.alt);
   const agl = useTelemetryStore((s) => s.position.relativeAlt);
@@ -244,9 +248,9 @@ function AltitudeReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.El
   const fmt = (m: number) => trimmed(altitudeValueFromMeters(m, altitudeUnit), UNIT_PRECISION.altitude[altitudeUnit]);
   const unit = UNIT_LABELS.altitude[altitudeUnit];
   const r: Readout = {
-    tag: 'ALT',
+    tag: t('map:instrument.alt'),
     value: connected ? `${fmt(agl)}` : '--',
-    detail: connected ? `MSL ${fmt(msl)} ${unit}` : 'MSL --',
+    detail: connected ? t('map:compactReadout.mslValue', { alt: fmt(msl), unit }) : t('map:compactReadout.mslNone'),
     fraction: null,
     known: connected,
     color: connected ? GAUGE_COLORS.text : GAUGE_COLORS.tickMinor,
@@ -255,6 +259,7 @@ function AltitudeReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.El
 }
 
 function SpeedReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const groundspeed = useTelemetryStore((s) => s.vfrHud.groundspeed);
   const airspeed = useTelemetryStore((s) => s.vfrHud.airspeed);
@@ -263,9 +268,9 @@ function SpeedReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Eleme
   const fmt = (mps: number) => trimmed(speedValueFromMetersPerSecond(mps, speedUnit), UNIT_PRECISION.speed[speedUnit]);
   const unit = UNIT_LABELS.speed[speedUnit];
   const r: Readout = {
-    tag: 'SPD',
+    tag: t('map:instrument.spd'),
     value: connected ? fmt(groundspeed) : '--',
-    detail: connected ? `AIR ${fmt(airspeed)} ${unit}` : 'AIR --',
+    detail: connected ? t('map:compactReadout.airValue', { speed: fmt(airspeed), unit }) : t('map:compactReadout.airNone'),
     fraction: null,
     known: connected,
     color: connected ? GAUGE_COLORS.text : GAUGE_COLORS.tickMinor,
@@ -274,14 +279,15 @@ function SpeedReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Eleme
 }
 
 function HeadingReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const heading = useTelemetryStore((s) => s.vfrHud.heading);
 
   const deg = ((heading % 360) + 360) % 360;
   const r: Readout = {
-    tag: 'HDG',
+    tag: t('map:instrument.hdg'),
     value: connected ? `${Math.round(deg)}°` : '--',
-    detail: connected ? (CARDINALS[Math.floor(((deg + 22.5) % 360) / 45) % 8] ?? 'N') : '--',
+    detail: connected ? t(CARDINAL_KEYS[Math.floor(((deg + 22.5) % 360) / 45) % 8] ?? 'map:instrument.cardinalN') : '--',
     // Heading is the one unbounded quantity with a real range: a compass rose
     // is a full circle, so the fill reads as "where round the dial".
     fraction: connected ? deg / 360 : 0,
@@ -292,6 +298,7 @@ function HeadingReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Ele
 }
 
 function VsiReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const climb = useTelemetryStore((s) => s.vfrHud.climb);
   const verticalSpeedUnit = useSettingsStore((s) => s.unitPreferences.verticalSpeed);
@@ -303,7 +310,7 @@ function VsiReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element
   // jiggled as climb crossed zero. A constant sign + fixed places holds width.
   const vsiPrecision = UNIT_PRECISION.verticalSpeed[verticalSpeedUnit];
   const r: Readout = {
-    tag: 'VSI',
+    tag: t('map:instrument.vsi'),
     value: connected ? `${value < 0 ? '-' : '+'}${Math.abs(value).toFixed(vsiPrecision)}` : '--',
     detail: connected ? unit : '--',
     fraction: null,
@@ -315,6 +322,7 @@ function VsiReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element
 }
 
 function HomeReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const home = useMapHomeStore((s) => s.home);
   const lat = useTelemetryStore((s) => s.position.lat);
@@ -325,9 +333,9 @@ function HomeReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Elemen
   const active = !!home && hasFix;
   const distance = active ? haversineMeters(lat, lon, home[0], home[1]) : null;
   const r: Readout = {
-    tag: 'HOME',
+    tag: t('map:instrument.home'),
     value: distance !== null ? formatDistanceFromMeters(distance, distanceUnit) : '--',
-    detail: active ? 'to launch' : 'no home',
+    detail: active ? t('map:compactReadout.toLaunch') : t('map:compactReadout.noHome'),
     fraction: null,
     known: active,
     color: active ? GAUGE_COLORS.green : GAUGE_COLORS.tickMinor,
@@ -336,6 +344,7 @@ function HomeReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Elemen
 }
 
 function LinkReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const rssi = useTelemetryStore((s) => s.rcChannels.rssi);
   const chancount = useTelemetryStore((s) => s.rcChannels.chancount);
@@ -349,9 +358,9 @@ function LinkReadout({ treatment }: { treatment: ReadoutTreatment }): JSX.Elemen
   });
   const known = state.kind === 'value';
   const r: Readout = {
-    tag: 'LINK',
+    tag: t('map:compactReadout.link'),
     value: known ? `${state.pct}%` : '--',
-    detail: known ? (state.fromModem ? 'TLM RSSI' : 'RSSI') : state.kind === 'unconfigured' ? 'not set up' : 'no RSSI',
+    detail: known ? (state.fromModem ? 'TLM RSSI' : 'RSSI') : state.kind === 'unconfigured' ? t('map:compactReadout.notSetUp') : t('map:compactReadout.noRssi'),
     fraction: known ? state.pct / 100 : 0,
     known,
     color: known ? bandColor(state.pct) : GAUGE_COLORS.tickMinor,

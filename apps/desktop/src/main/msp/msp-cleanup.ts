@@ -24,8 +24,10 @@ export function cleanupMspConnection(): void {
   cleanupCli();
 
   // Clear pending responses
+  // Reject, not just clear: an awaited request would otherwise hang forever
   for (const [, pending] of ctx.pendingResponses) {
     clearTimeout(pending.timeout);
+    pending.reject(new Error('MSP connection closed')); // i18n-exempt
   }
   ctx.pendingResponses.clear();
   ctx.unsupportedCommands.clear();
@@ -60,6 +62,7 @@ export function cleanupMspConnection(): void {
 
   // Clear cached PID state
   ctx.cachedInavPid = null;
+  ctx.cachedInavRateProfile = null;
 
   // Reset RX channel mapping to default AETR
   ctx.cachedRxMap = [0, 1, 2, 3, 4, 5, 6, 7];

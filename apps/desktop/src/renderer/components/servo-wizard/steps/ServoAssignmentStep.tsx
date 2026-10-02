@@ -5,12 +5,14 @@
  */
 
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO, ControlSurface } from '../presets/servo-presets';
 import AircraftDiagram from '../diagrams/AircraftDiagram';
 import { AlertTriangle } from 'lucide-react';
 
 export default function ServoAssignmentStep() {
+  const { t } = useTranslation();
   const {
     selectedPresetId,
     selectedPreset,
@@ -23,7 +25,7 @@ export default function ServoAssignmentStep() {
   const [highlightedSurface, setHighlightedSurface] = useState<ControlSurface | null>(null);
 
   if (!selectedPreset || !selectedPresetId) {
-    return <div className="text-content-secondary">No aircraft type selected</div>;
+    return <div className="text-content-secondary">{t('servo-wizard:servoAssignmentStep.noAircraft')}</div>;
   }
 
   // Build servo labels for the diagram
@@ -39,9 +41,9 @@ export default function ServoAssignmentStep() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-xl font-bold text-content">Assign Servos to Control Surfaces</h2>
+        <h2 className="text-xl font-bold text-content">{t('servo-wizard:servoAssignmentStep.title')}</h2>
         <p className="text-sm text-content-secondary mt-2">
-          Match each control surface to the servo output it's connected to on your flight controller.
+          {t('servo-wizard:servoAssignmentStep.subtitle')}
         </p>
       </div>
 
@@ -55,7 +57,7 @@ export default function ServoAssignmentStep() {
             servoLabels={servoLabels}
           />
           <p className="text-xs text-content-secondary text-center mt-4">
-            Click a control surface to highlight it
+            {t('servo-wizard:servoAssignmentStep.clickToHighlight')}
           </p>
         </div>
 
@@ -63,8 +65,7 @@ export default function ServoAssignmentStep() {
         <div className="space-y-3">
           <div className="bg-surface-raised rounded-lg p-3 mb-4">
             <p className="text-xs text-content-secondary">
-              <strong className="text-content">Tip:</strong> Check your FC wiring. Servo outputs are usually labeled S1-S8 or SERVO1-8.
-              S1 = Servo 0 in iNav.
+              <Trans i18nKey="servo-wizard:servoAssignmentStep.tip" components={{ b: <strong className="text-content" /> }} />
             </p>
           </div>
 
@@ -85,13 +86,13 @@ export default function ServoAssignmentStep() {
               >
                 {/* Surface name */}
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-content">{surfaceInfo.name}</div>
-                  <div className="text-xs text-content-secondary">{surfaceInfo.description}</div>
+                  <div className="text-sm font-medium text-content">{t(surfaceInfo.nameKey)}</div>
+                  <div className="text-xs text-content-secondary">{t(surfaceInfo.descriptionKey)}</div>
                 </div>
 
                 {/* Servo selector */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-content-secondary">Servo</span>
+                  <span className="text-xs text-content-secondary">{t('common:servo')}</span>
                   <select
                     value={assignment.servoIndex}
                     onChange={(e) =>
@@ -115,7 +116,7 @@ export default function ServoAssignmentStep() {
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               <span className="text-xs text-yellow-400">
-                Warning: Multiple surfaces assigned to the same servo!
+                {t('servo-wizard:servoAssignmentStep.duplicateWarning')}
               </span>
             </div>
           )}
@@ -128,13 +129,13 @@ export default function ServoAssignmentStep() {
           onClick={prevStep}
           className="px-6 py-2.5 rounded-lg font-medium bg-surface-raised text-content hover:bg-surface-raised"
         >
-          ← Back
+          {t('servo-wizard:wizardNav.back')}
         </button>
         <button
           onClick={nextStep}
           className="px-6 py-2.5 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-400"
         >
-          Continue: Test Servos →
+          {t('servo-wizard:servoAssignmentStep.continue')}
         </button>
       </div>
     </div>

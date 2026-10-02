@@ -5,10 +5,12 @@
  * they mean or whether the plan is right.
  */
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useSurveyStore } from '../../stores/survey-store';
 import { extractGeneratorOverlays } from './generator-overlays';
 
 export function EnginePlanLegend() {
+  const { t } = useTranslation();
   const result = useSurveyStore((s) => s.result);
   const isActive = useSurveyStore((s) => s.isActive);
   const [collapsed, setCollapsed] = useState(false);
@@ -28,19 +30,19 @@ export function EnginePlanLegend() {
           onClick={() => setCollapsed(false)}
           className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-solid border border-subtle text-content-secondary hover:text-content shadow-lg transition-colors"
         >
-          Plan legend
+          {t('survey:enginePlanLegend.planLegend')}
         </button>
       ) : (
         <div className="w-72 rounded-lg bg-surface-solid border border-subtle shadow-xl p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">
-              Coverage plan
+              {t('survey:enginePlanLegend.coveragePlan')}
             </span>
             <button
               onClick={() => setCollapsed(true)}
               className="text-[10px] text-content-tertiary hover:text-content transition-colors"
             >
-              Hide
+              {t('common:hide')}
             </button>
           </div>
           <div className="flex items-start gap-2">
@@ -58,30 +60,25 @@ export function EnginePlanLegend() {
               ))}
             </span>
             <span className="text-[11px] leading-snug text-content-secondary">
-              <span className="text-content">{cellCount} zones</span> - the area is flown one
-              numbered zone at a time. A color just means a different zone.
+              <Trans i18nKey="survey:enginePlanLegend.zones" values={{ count: cellCount }} components={{ b: <span className="text-content" /> }} />
             </span>
           </div>
           {hasCurve && (
             <div className="flex items-start gap-2">
               <span className="mt-1.5 w-4 h-0.5 shrink-0 rounded bg-teal-400/60" />
               <span className="text-[11px] leading-snug text-content-secondary">
-                <span className="text-content">Planned route</span> (teal) - the route the
-                engine calculated, with real turns.
+                <Trans i18nKey="survey:enginePlanLegend.plannedRoute" components={{ b: <span className="text-content" /> }} />
               </span>
             </div>
           )}
           <div className="flex items-start gap-2">
             <span className="mt-1.5 w-4 h-0.5 shrink-0 rounded bg-sky-400" />
             <span className="text-[11px] leading-snug text-content-secondary">
-              <span className="text-content">Your mission</span> (blue) - the waypoints that
-              go to the drone. It skips the turn loops: a copter just turns in place at each
-              line end.
+              <Trans i18nKey="survey:enginePlanLegend.yourMission" components={{ b: <span className="text-content" /> }} />
             </span>
           </div>
           <p className="text-[10px] leading-snug text-content-tertiary pt-1 border-t border-subtle">
-            Turn loops may extend outside the boundary - the vehicle needs turning room. To keep
-            turns inside a legal area, mark a workspace polygon in the Area Editor.
+            {t('survey:enginePlanLegend.turnLoopsNote')}
           </p>
         </div>
       )}

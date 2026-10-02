@@ -5,10 +5,12 @@
  * user picks the engine (built-in pattern or module like TOPAS) first.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGuideStore } from '../../stores/guide-store';
 import { SurveyedPointsDialog } from './SurveyedPointsDialog';
 
 export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 'success' | 'error') => void }) {
+  const { t } = useTranslation();
   const guides = useGuideStore((s) => s.guides);
   const importGuides = useGuideStore((s) => s.importGuides);
   const toggleGuide = useGuideStore((s) => s.toggleGuide);
@@ -32,7 +34,7 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
 
   const handleImport = () => {
     void importGuides().then((res) => {
-      if (res.ok) showToast?.(`Added ${res.count} guide${res.count === 1 ? '' : 's'}`, 'success');
+      if (res.ok) showToast?.(t('mission:guidesButton.added', { count: res.count }), 'success');
       else if (res.error) showToast?.(res.error, 'error');
     });
   };
@@ -45,7 +47,7 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
         data-tour="mission-import"
         onClick={() => setOpen((o) => !o)}
         className="p-1.5 rounded bg-surface-raised text-content hover:brightness-125 transition-colors relative"
-        data-tip="Boundary guides: import KML / KMZ / GeoJSON / SHP outlines and plan surveys from them"
+        data-tip={t('mission:guidesButton.tip')}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V5.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -62,7 +64,7 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
         <div className="absolute right-0 top-full mt-1 z-[1100] w-72 bg-surface-solid border border-subtle rounded-lg shadow-xl py-1">
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-subtle">
             <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">
-              Boundary guides
+              {t('mission:guidesButton.title')}
             </span>
             <div className="flex items-center gap-2">
               {guides.length > 0 && (
@@ -70,29 +72,28 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
                   onClick={() => setAllVisible(anyHidden)}
                   className="text-[10px] text-content-tertiary hover:text-content transition-colors"
                 >
-                  {anyHidden ? 'Show all' : 'Hide all'}
+                  {anyHidden ? t('mission:guidesButton.showAll') : t('mission:guidesButton.hideAll')}
                 </button>
               )}
               <button
                 onClick={() => { setShowPointsDialog(true); setOpen(false); }}
                 className="text-[10px] font-medium text-teal-300 hover:text-teal-200 transition-colors"
-                data-tip="Paste surveyed RTK points as markers or a polygon"
+                data-tip={t('mission:guidesButton.pointsTip')}
               >
-                Points...
+                {t('mission:guidesButton.points')}
               </button>
               <button
                 onClick={handleImport}
                 className="text-[10px] font-medium text-teal-300 hover:text-teal-200 transition-colors"
               >
-                Import...
+                {t('mission:guidesButton.import')}
               </button>
             </div>
           </div>
 
           {guides.length === 0 ? (
             <p className="px-3 py-3 text-[11px] text-content-tertiary leading-snug">
-              No guides yet. Import a KML / KMZ / GeoJSON / SHP boundary - it shows on the map as an
-              outline, and you plan a survey from it whenever you want, with any engine.
+              {t('mission:guidesButton.empty')}
             </p>
           ) : (
             <div className="max-h-64 overflow-y-auto">
@@ -101,7 +102,7 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
                   <button
                     onClick={() => toggleGuide(g.id)}
                     className={`shrink-0 transition-colors ${g.visible ? 'text-content' : 'text-content-tertiary opacity-50'}`}
-                    data-tip={g.visible ? 'Hide on map' : 'Show on map'}
+                    data-tip={g.visible ? t('mission:guidesButton.hideOnMap') : t('mission:guidesButton.showOnMap')}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       {g.visible ? (
@@ -119,12 +120,12 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
                     {g.name}
                   </span>
                   <span className="text-[10px] text-content-tertiary shrink-0">
-                    {g.kind === 'line' ? 'line · ' : ''}{g.polygon.length} pts
+                    {g.kind === 'line' ? t('mission:guidesButton.linePrefix') : ''}{t('mission:guidesButton.pts', { count: g.polygon.length })}
                   </span>
                   <button
                     onClick={() => focusGuide(g.id)}
                     className="shrink-0 text-content-tertiary hover:text-teal-300 transition-colors"
-                    data-tip="Zoom the map to this guide"
+                    data-tip={t('mission:guidesButton.zoomTip')}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8a4 4 0 100 8 4 4 0 000-8z" />
@@ -139,16 +140,16 @@ export function GuidesButton({ showToast }: { showToast?: (msg: string, kind: 's
                       }}
                       className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-600/80 hover:bg-purple-500 text-white transition-colors"
                       data-tip={g.kind === 'line'
-                        ? 'Use as a corridor centerline in the survey panel'
-                        : 'Load into the survey panel and plan with the selected engine'}
+                        ? t('mission:guidesButton.corridorTip')
+                        : t('mission:guidesButton.planTip')}
                     >
-                      {g.kind === 'line' ? 'Corridor' : 'Plan'}
+                      {g.kind === 'line' ? t('common:corridor') : t('mission:guidesButton.plan')}
                     </button>
                   )}
                   <button
                     onClick={() => removeGuide(g.id)}
                     className="shrink-0 text-content-tertiary hover:text-red-400 transition-colors"
-                    data-tip="Remove guide"
+                    data-tip={t('mission:guidesButton.remove')}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -8,6 +8,7 @@
  */
 
 import type { FirmwareSource } from './firmware-types';
+import { t } from './i18n/index.js';
 
 export type PreArmCategory = 'motors' | 'sensors' | 'gps' | 'rc' | 'battery' | 'system' | 'mission';
 
@@ -32,6 +33,7 @@ export interface PreArmFix {
   params?: string[];
 }
 
+// Link labels in the pattern tables are i18n keys; matchPreArmError translates them.
 const calibrate = (type: string, label: string): PreArmLink => ({ label, to: { kind: 'view', view: 'calibration', target: type } });
 const configTab = (tab: string, label: string): PreArmLink => ({ label, to: { kind: 'view', view: 'parameters', target: `tab:${tab}` } });
 const openView = (view: string, label: string): PreArmLink => ({ label, to: { kind: 'view', view } });
@@ -46,170 +48,180 @@ export interface PreArmPattern {
   fix: PreArmFix;
 }
 
+interface PreArmPatternDef {
+  pattern: RegExp;
+  category: PreArmCategory;
+  fix: Omit<PreArmFix, 'hint'> & { hintKey: string };
+}
+
 export const PREARM_CATEGORIES: { id: PreArmCategory; label: string }[] = [
-  { id: 'motors', label: 'Motors' },
-  { id: 'sensors', label: 'Sensors' },
-  { id: 'gps', label: 'GPS' },
-  { id: 'rc', label: 'RC' },
-  { id: 'battery', label: 'Battery' },
-  { id: 'system', label: 'System' },
-  { id: 'mission', label: 'Mission' },
+  { id: 'motors', label: 'Motors' }, // i18n-exempt
+  { id: 'sensors', label: 'Sensors' }, // i18n-exempt
+  { id: 'gps', label: 'GPS' }, // i18n-exempt
+  { id: 'rc', label: 'RC' }, // i18n-exempt
+  { id: 'battery', label: 'Battery' }, // i18n-exempt
+  { id: 'system', label: 'System' }, // i18n-exempt
+  { id: 'mission', label: 'Mission' }, // i18n-exempt
 ];
 
-const PREARM_PATTERNS: PreArmPattern[] = [
+export function preArmCategoryLabel(id: PreArmCategory): string {
+  return t(`shared:prearmChecks.category.${id}`);
+}
+
+const PREARM_PATTERNS: PreArmPatternDef[] = [
   // Motors
   {
     pattern: /Motors:.*frame class|Check firmware or FRAME/i,
     category: 'motors',
-    fix: { hint: 'The frame layout is not set for this vehicle. Set the frame class and type to match how the motors are arranged.', params: ['FRAME_CLASS', 'FRAME_TYPE'] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apFrameClass', params: ['FRAME_CLASS', 'FRAME_TYPE'] },
   },
   {
     pattern: /Throttle.*(too high|not low)|throttle.*(above|high)/i,
     category: 'rc',
-    fix: { hint: 'Throttle is not at minimum. Pull the throttle stick fully down, and check its trim on the transmitter.', links: [configTab('receiver', 'Check RC inputs')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apThrottleHigh', links: [configTab('receiver', 'shared:prearmChecks.link.checkRcInputs')] },
   },
   // Sensors
   {
     pattern: /Compass.*(not calibrated|offsets)|Compass.*calibration/i,
     category: 'sensors',
-    fix: { hint: 'The compass has not been calibrated, or its calibration no longer fits.', links: [calibrate('compass', 'Calibrate compass')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apCompassUncalibrated', links: [calibrate('compass', 'shared:prearmChecks.link.calibrateCompass')] },
   },
   {
     pattern: /Compasses inconsistent|Check mag field|mag field/i,
     category: 'sensors',
     fix: {
-      hint: 'The compass readings disagree or the magnetic field looks wrong. Move away from metal and power cables, check each compass orientation, then recalibrate.',
-      links: [calibrate('compass', 'Calibrate compass'), configTab('sensor-config', 'Compass setup')],
+      hintKey: 'shared:prearmChecks.hint.apCompassInconsistent',
+      links: [calibrate('compass', 'shared:prearmChecks.link.calibrateCompass'), configTab('sensor-config', 'shared:prearmChecks.link.compassSetup')],
     },
   },
   {
     pattern: /Compass not healthy/i,
     category: 'sensors',
-    fix: { hint: 'A compass is not responding. Check its wiring and that it is detected.', links: [configTab('sensor-config', 'Compass setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apCompassUnhealthy', links: [configTab('sensor-config', 'shared:prearmChecks.link.compassSetup')] },
   },
   {
     pattern: /Gyros? (inconsistent|not calibrated|not healthy)/i,
     category: 'sensors',
-    fix: { hint: 'The gyros disagree or are not calibrated. Keep the vehicle completely still and reboot, or run a gyro calibration.', links: [calibrate('gyro', 'Calibrate gyro')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apGyro', links: [calibrate('gyro', 'shared:prearmChecks.link.calibrateGyro')] },
   },
   {
     pattern: /Accels? (inconsistent|not calibrated|not healthy|calibration needed)|Accel.*(not calibrated|calibration needed)/i,
     category: 'sensors',
-    fix: { hint: 'The accelerometers need calibration.', links: [calibrate('accel-6point', 'Calibrate accelerometer')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apAccel', links: [calibrate('accel-6point', 'shared:prearmChecks.link.calibrateAccel')] },
   },
   {
     pattern: /Baro.*not healthy/i,
     category: 'sensors',
-    fix: { hint: 'The barometer is not responding. Check the flight controller hardware and reboot.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apBaro' },
   },
   {
     pattern: /Airspeed.*not healthy|Airspeed.*(fail|not)/i,
     category: 'sensors',
-    fix: { hint: 'The airspeed sensor is not responding. Check its wiring and the pitot tube.', links: [configTab('sensor-config', 'Sensor setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apAirspeed', links: [configTab('sensor-config', 'shared:prearmChecks.link.sensorSetup')] },
   },
   {
     pattern: /AHRS.*not healthy/i,
     category: 'sensors',
-    fix: { hint: 'The attitude estimate is not ready. Keep the vehicle still and give it a minute, or fix the sensor errors shown above.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apAhrsNotReady' },
   },
   {
     pattern: /Rangefinder.*not healthy/i,
     category: 'sensors',
-    fix: { hint: 'The rangefinder is not responding. Check its wiring. If none is fitted, its type must be set to none.', params: ['RNGFND1_TYPE'] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apRangefinder', params: ['RNGFND1_TYPE'] },
   },
   // EKF / Estimation
   {
     pattern: /EKF.*attitude.*bad/i,
     category: 'sensors',
-    fix: { hint: 'The EKF cannot converge. Keep the vehicle still. In SITL, restart with "Wipe EEPROM" and wait 60-90 s after boot.', links: [openView('sitl', 'Open SITL')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apEkfAttitude', links: [openView('sitl', 'shared:prearmChecks.link.openSitl')] },
   },
   {
     pattern: /AHRS.*inconsistent/i,
     category: 'sensors',
-    fix: { hint: 'The IMU cores disagree, usually stale calibration. Recalibrate the accelerometers. In SITL, restart with "Wipe EEPROM".', links: [calibrate('accel-6point', 'Calibrate accelerometer')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apAhrsInconsistent', links: [calibrate('accel-6point', 'shared:prearmChecks.link.calibrateAccel')] },
   },
   {
     pattern: /Need Position Estimate/i,
     category: 'sensors',
-    fix: { hint: 'The EKF needs a valid position. Wait for a GPS lock and 60-90 s after boot for it to converge.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apNeedPosition' },
   },
   {
     pattern: /Need Alt Estimate/i,
     category: 'sensors',
-    fix: { hint: 'The EKF needs an altitude estimate. This follows from other sensor errors, fix those first.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apNeedAlt' },
   },
   {
     pattern: /Wait or rebo/i,
     category: 'sensors',
-    fix: { hint: 'The flight controller asks you to wait for the sensors to settle, or to reboot it.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apWaitOrReboot' },
   },
   // GPS
   {
     pattern: /Need 3D Fix/i,
     category: 'gps',
-    fix: { hint: 'Waiting for a GPS 3D fix. Move to open sky and wait.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apNeed3dFix' },
   },
   {
     pattern: /GPS.*(not ready|Bad|not healthy)/i,
     category: 'gps',
-    fix: { hint: 'The GPS has no usable fix yet, or is not detected. Wait under open sky; if it persists, check the GPS setup.', links: [configTab('sensor-config', 'GPS setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apGpsNotReady', links: [configTab('sensor-config', 'shared:prearmChecks.link.gpsSetup')] },
   },
   // RC
   {
     pattern: /RC not calibrated/i,
     category: 'rc',
-    fix: { hint: 'The radio channels have not been calibrated.', links: [configTab('receiver', 'Calibrate radio')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apRcUncalibrated', links: [configTab('receiver', 'shared:prearmChecks.link.calibrateRadio')] },
   },
   {
     pattern: /Radio failsafe|RC failsafe|Throttle.*below failsafe/i,
     category: 'rc',
     fix: {
-      hint: 'The flight controller is in radio failsafe. Switch the transmitter on and check it is bound, and that its throttle range sits above the failsafe value.',
-      links: [configTab('receiver', 'Check RC inputs'), configTab('safety', 'Failsafe settings')],
+      hintKey: 'shared:prearmChecks.hint.apRadioFailsafe',
+      links: [configTab('receiver', 'shared:prearmChecks.link.checkRcInputs'), configTab('safety', 'shared:prearmChecks.link.failsafeSettings')],
     },
   },
   // Battery
   {
     pattern: /Battery.*(not healthy|too low|failsafe|below)/i,
     category: 'battery',
-    fix: { hint: 'The battery is low or not reported correctly. Charge or replace it, and check the battery monitor if the reading looks wrong.', links: [configTab('battery', 'Battery setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apBattery', links: [configTab('battery', 'shared:prearmChecks.link.batterySetup')] },
   },
   // System
   {
     pattern: /Logging.*(not available|failed)|No SD card|SD card/i,
     category: 'system',
-    fix: { hint: 'Logging is not available: the SD card is missing, full or failed. Insert or replace the card.', links: [configTab('logging', 'Logging setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apLogging', links: [configTab('logging', 'shared:prearmChecks.link.loggingSetup')] },
   },
   {
     pattern: /Hardware safety switch/i,
     category: 'system',
-    fix: { hint: 'Press and hold the safety switch on the vehicle until its light goes solid.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.apSafetySwitch' },
   },
   {
     pattern: /Check board type/i,
     category: 'system',
-    fix: { hint: 'The configured board type does not match this flight controller.', params: ['BRD_TYPE'] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apBoardType', params: ['BRD_TYPE'] },
   },
   // Mission
   {
     pattern: /Fence.*(requires position|breach)/i,
     category: 'mission',
-    fix: { hint: 'The fence needs a position, or the vehicle is outside it. Wait for a GPS lock, or move the vehicle inside the fence.', links: [openView('mission', 'Open fence')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apFence', links: [openView('mission', 'shared:prearmChecks.link.openFence')] },
   },
   {
     pattern: /Mission.*(not valid|no first item)|missing takeoff/i,
     category: 'mission',
-    fix: { hint: 'The mission cannot start as it is. Check it in the mission planner.', links: [openView('mission', 'Open mission')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.apMission', links: [openView('mission', 'shared:prearmChecks.link.openMission')] },
   },
 ];
 
 // Any ArduPilot pre-arm message without a known fix.
-const GENERIC_FALLBACK: PreArmPattern = {
+const GENERIC_FALLBACK: PreArmPatternDef = {
   pattern: /.*/,
   category: 'system',
   fix: {
-    hint: 'No automatic fix is known for this check. The message comes straight from the flight controller; the pre-arm reference explains each one.',
-    links: [docs(ARDUPILOT_PREARM_DOCS, 'ArduPilot pre-arm reference')],
+    hintKey: 'shared:prearmChecks.hint.apGeneric',
+    links: [docs(ARDUPILOT_PREARM_DOCS, 'shared:prearmChecks.link.ardupilotReference')],
   },
 };
 
@@ -230,89 +242,89 @@ export const PREARM_STALE_MS = 40_000;
  *
  * Sources: PX4 commander/preflight check messages, PX4 parameter reference.
  */
-const PX4_PREARM_PATTERNS: PreArmPattern[] = [
+const PX4_PREARM_PATTERNS: PreArmPatternDef[] = [
   // GPS / position estimate
   {
     pattern: /(global position|position).*(not ready|denied|fail|estimate)|(estimator|position).*(not ready|fail)/i,
     category: 'gps',
-    fix: { hint: 'The position estimate is not ready. Wait for a GPS lock under open sky and for the estimator to settle.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4PositionEstimate' },
   },
   {
     pattern: /\b(gps|gnss)\b.*(fix|lock|not ready|fail)|need.*3d fix/i,
     category: 'gps',
-    fix: { hint: 'Waiting for a GPS fix. Move to open sky and wait; if it persists, check the GPS setup.', links: [configTab('sensor-config', 'GPS setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4GpsFix', links: [configTab('sensor-config', 'shared:prearmChecks.link.gpsSetup')] },
   },
   // Sensors / calibration
   {
     pattern: /(compass|mag(netometer)?).*(not calibrated|inconsistent|fail|interference)/i,
     category: 'sensors',
-    fix: { hint: 'The magnetometer is not calibrated, or its readings disagree. Move away from metal and power cables and recalibrate.', links: [calibrate('compass', 'Calibrate compass')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Mag', links: [calibrate('compass', 'shared:prearmChecks.link.calibrateCompass')] },
   },
   {
     pattern: /accel(erometer)?.*(not calibrated|inconsistent|fail)/i,
     category: 'sensors',
-    fix: { hint: 'The accelerometer is not calibrated or inconsistent.', links: [calibrate('accel-6point', 'Calibrate accelerometer')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Accel', links: [calibrate('accel-6point', 'shared:prearmChecks.link.calibrateAccel')] },
   },
   {
     pattern: /gyro(scope)?.*(not calibrated|inconsistent|fail)/i,
     category: 'sensors',
-    fix: { hint: 'The gyroscope is not calibrated. Keep the vehicle completely still during calibration.', links: [calibrate('gyro', 'Calibrate gyro')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Gyro', links: [calibrate('gyro', 'shared:prearmChecks.link.calibrateGyro')] },
   },
   {
     pattern: /(accelerometer.*clipping|high vibration|vibration)/i,
     category: 'sensors',
-    fix: { hint: 'High vibration or accelerometer clipping. Improve the flight controller mounting and isolation, and balance the props.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Vibration' },
   },
   {
     pattern: /(attitude|tilt).*(estimate|quality|too large|fail)|(estimator|quality).*(attitude|tilt)/i,
     category: 'sensors',
-    fix: { hint: 'The attitude estimate is not stable. Level the vehicle, reduce vibration and let the estimator settle.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Attitude' },
   },
   // RC / manual control
   {
     pattern: /(rc|radio|manual control).*(not calibrated|lost|fail|not configured)/i,
     category: 'rc',
-    fix: { hint: 'The radio is not calibrated or its signal is lost. Switch the transmitter on, check it is bound, and calibrate it.', links: [configTab('receiver', 'Calibrate radio')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Radio', links: [configTab('receiver', 'shared:prearmChecks.link.calibrateRadio')] },
   },
   // Battery
   {
     pattern: /(battery).*(low|unhealthy|warning|critical|not connected)/i,
     category: 'battery',
-    fix: { hint: 'The battery is low or unhealthy. Charge or replace it, and check the battery setup if the reading looks wrong.', links: [configTab('battery', 'Battery setup')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Battery', links: [configTab('battery', 'shared:prearmChecks.link.batterySetup')] },
   },
   // ESC / motors
   {
     pattern: /(esc|motor).*(fail|not|telemetry|unhealthy)/i,
     category: 'motors',
-    fix: { hint: 'An ESC or motor problem was detected. Check the ESC wiring, telemetry and motor outputs.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Esc' },
   },
   // Geofence
   {
     pattern: /(geofence|\bgf\b)/i,
     category: 'mission',
-    fix: { hint: 'A geofence condition is blocking arming. Move the vehicle inside the fence, or review the fence.', links: [openView('mission', 'Open fence')] },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Geofence', links: [openView('mission', 'shared:prearmChecks.link.openFence')] },
   },
   // Home position
   {
     pattern: /(home position|home not set)/i,
     category: 'mission',
-    fix: { hint: 'The home position is not set yet. Wait for a valid position so home can be captured.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4Home' },
   },
   // Kill switch / safety
   {
     pattern: /(kill switch|emergency)/i,
     category: 'system',
-    fix: { hint: 'The kill switch is engaged. Disengage it on the transmitter before arming.' },
+    fix: { hintKey: 'shared:prearmChecks.hint.px4KillSwitch' },
   },
 ];
 
 // Any PX4 arming or preflight failure without a known fix.
-const PX4_GENERIC_FALLBACK: PreArmPattern = {
+const PX4_GENERIC_FALLBACK: PreArmPatternDef = {
   pattern: /.*/,
   category: 'system',
   fix: {
-    hint: 'No automatic fix is known for this check. The message comes straight from the flight controller; the preflight check reference explains each one.',
-    links: [docs(PX4_PREARM_DOCS, 'PX4 preflight check reference')],
+    hintKey: 'shared:prearmChecks.hint.px4Generic',
+    links: [docs(PX4_PREARM_DOCS, 'shared:prearmChecks.link.px4Reference')],
   },
 };
 
@@ -368,10 +380,18 @@ export function matchPreArmError(
 
   for (const entry of patterns) {
     if (entry.pattern.test(reason)) {
-      return { pattern: entry, reason };
+      return { pattern: translatePattern(entry), reason };
     }
   }
 
   // Fallback: it's a pre-arm message but no specific pattern matched
-  return { pattern: fallback, reason };
+  return { pattern: translatePattern(fallback), reason };
+}
+
+function translatePattern(entry: PreArmPatternDef): PreArmPattern {
+  const { hintKey, links, params } = entry.fix;
+  const fix: PreArmFix = { hint: t(hintKey) };
+  if (links) fix.links = links.map((link) => ({ ...link, label: t(link.label) }));
+  if (params) fix.params = params;
+  return { pattern: entry.pattern, category: entry.category, fix };
 }

@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ParameterWithMeta } from '../../../../shared/parameter-types';
 
 interface Option {
@@ -27,6 +28,7 @@ interface ServoRowProps {
 
 export const ServoRow: React.FC<ServoRowProps> = React.memo(
   ({ channel, parameters, setParameter, functionOptions, livePwm, liveStale, pwmMin, pwmMax }) => {
+    const { t } = useTranslation();
     const prefix = `SERVO${channel}`;
     const functionParam = parameters.get(`${prefix}_FUNCTION`);
     const reversedParam = parameters.get(`${prefix}_REVERSED`);
@@ -76,7 +78,7 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
     const canTestDirectly = funcValue === 0 || funcValue === 1 || (funcValue >= 51 && funcValue <= 66);
     const testTooltip = canTestDirectly
       ? undefined
-      : 'ArduPlane mixer overrides this output. DO_SET_SERVO only works on Disabled (0), RCPassThru (1), or RCx_PASSTHRU (51-66) functions.';
+      : t('mavlink-config:servoRow.mixerOverridesTooltip');
 
     return (
       <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_70px_70px_70px_180px] gap-2 items-center px-3 py-2 hover:bg-surface-raised/30">
@@ -117,7 +119,7 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
               className="w-full h-8 px-2 text-sm rounded bg-surface-base border border-subtle text-content disabled:opacity-40"
             >
               {!functionOptions.some((o) => o.value === funcValue) && (
-                <option value={funcValue}>{`Unknown (${funcValue})`}</option>
+                <option value={funcValue}>{t('mavlink-config:servoRow.unknownFunction', { value: funcValue })}</option>
               )}
               {functionOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -167,15 +169,15 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
             Disabled when the function is mixer-driven (ArduPlane mixer would
             overwrite SET_SERVO every cycle). */}
         <div className="flex items-center gap-1" title={testTooltip}>
-          <TestButton label="Min"  disabled={!canTestDirectly} onClick={() => pulse(minPwm)} />
-          <TestButton label="Trim" disabled={!canTestDirectly} onClick={() => pulse(trimPwm)} />
-          <TestButton label="Max"  disabled={!canTestDirectly} onClick={() => pulse(maxPwm)} />
-          <TestButton label="Rel"  disabled={!canTestDirectly} onClick={release} variant="release" />
+          <TestButton label={t('mavlink-config:servoRow.testMin')} disabled={!canTestDirectly} onClick={() => pulse(minPwm)} />
+          <TestButton label={t('mavlink-config:servoRow.testTrim')} disabled={!canTestDirectly} onClick={() => pulse(trimPwm)} />
+          <TestButton label={t('mavlink-config:servoRow.testMax')} disabled={!canTestDirectly} onClick={() => pulse(maxPwm)} />
+          <TestButton label={t('common:rel')} disabled={!canTestDirectly} onClick={release} variant="release" />
         </div>
 
         {!hasParams && (
           <div className="col-span-8 text-xs text-content-tertiary text-center">
-            (params not loaded for channel {channel})
+            {t('mavlink-config:servoRow.paramsNotLoaded', { channel })}
           </div>
         )}
       </div>

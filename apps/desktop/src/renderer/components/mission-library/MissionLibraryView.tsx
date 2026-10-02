@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useMissionLibraryStore } from '../../stores/mission-library-store';
 import { useMissionStore } from '../../stores/mission-store';
@@ -15,16 +16,17 @@ import { BackupTargetDialog } from './BackupTargetDialog';
 import type { MissionItem } from '../../../shared/mission-types';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
 
-const SORT_OPTIONS: { value: MissionSortField; label: string }[] = [
-  { value: 'updatedAt', label: 'Last Modified' },
-  { value: 'createdAt', label: 'Date Created' },
-  { value: 'name', label: 'Name' },
-  { value: 'waypointCount', label: 'Waypoints' },
-  { value: 'totalDistanceMeters', label: 'Distance' },
-  { value: 'flightCount', label: 'Flights' },
+const SORT_OPTIONS: { value: MissionSortField; labelKey: string }[] = [
+  { value: 'updatedAt', labelKey: 'mission-library:missionLibraryView.sortLastModified' },
+  { value: 'createdAt', labelKey: 'mission-library:missionLibraryView.sortDateCreated' },
+  { value: 'name', labelKey: 'common:name' },
+  { value: 'waypointCount', labelKey: 'common:waypoints' },
+  { value: 'totalDistanceMeters', labelKey: 'common:distance' },
+  { value: 'flightCount', labelKey: 'mission-library:missionLibraryView.flights' },
 ];
 
 export function MissionLibraryView() {
+  const { t } = useTranslation();
   const store = useMissionLibraryStore();
   const missionStore = useMissionStore();
   const { setView } = useNavigationStore();
@@ -84,7 +86,7 @@ export function MissionLibraryView() {
   };
 
   const handleDuplicate = async (id: string, name: string) => {
-    await store.duplicateMission(id, `${name} (copy)`);
+    await store.duplicateMission(id, t('mission-library:copyName', { name }));
   };
 
   const handleDelete = async (id: string) => {
@@ -122,15 +124,15 @@ export function MissionLibraryView() {
 
   const tabs = (
     <div className="flex items-center bg-surface border border-subtle rounded-lg overflow-hidden" data-tour="library-tabs">
-      {(['missions', 'areas', 'projects'] as const).map((t) => (
+      {(['missions', 'areas', 'projects'] as const).map((id) => (
         <button
-          key={t}
-          onClick={() => setTab(t)}
+          key={id}
+          onClick={() => setTab(id)}
           className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-            tab === t ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'
+            tab === id ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'
           }`}
         >
-          {t === 'missions' ? 'Missions' : t === 'areas' ? 'Survey areas' : 'Projects'}
+          {id === 'missions' ? t('mission-library:missionLibraryView.tabMissions') : id === 'areas' ? t('mission-library:missionLibraryView.tabSurveyAreas') : t('mission-library:missionLibraryView.tabProjects')}
         </button>
       ))}
     </div>
@@ -152,8 +154,8 @@ export function MissionLibraryView() {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-content">Mission Library</h1>
-              <p className="text-xs text-content-secondary">{store.missions.length} missions saved</p>
+              <h1 className="text-lg font-semibold text-content">{t('common:missionLibrary')}</h1>
+              <p className="text-xs text-content-secondary">{t('mission-library:missionLibraryView.missionsSaved', { count: store.missions.length })}</p>
             </div>
           </div>
 
@@ -167,16 +169,16 @@ export function MissionLibraryView() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Import File
+            {t('mission-library:missionLibraryView.importFile')}
           </button>
 
           <button
             onClick={() => void store.importMissionFile()}
-            data-tip="Open an ArduDeck mission file (.mission.json), groups and surveys intact"
+            data-tip={t('mission-library:missionLibraryView.openMissionFileTip')}
             className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:brightness-125 text-content rounded-lg transition-colors flex items-center gap-1.5"
           >
             <Upload className="w-3.5 h-3.5" />
-            Open mission file
+            {t('mission-library:missionLibraryView.openMissionFile')}
           </button>
 
           {/* Search */}
@@ -189,7 +191,7 @@ export function MissionLibraryView() {
                 type="text"
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
-                placeholder="Search missions..."
+                placeholder={t('mission-library:missionLibraryView.searchPlaceholder')}
                 className="w-full pl-9 pr-3 py-1.5 bg-surface border border-subtle rounded-lg text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-blue-500/50"
               />
             </div>
@@ -202,7 +204,7 @@ export function MissionLibraryView() {
               onChange={e => store.setFilter({ vehicleProfileId: e.target.value || undefined })}
               className="px-2 py-1.5 bg-surface border border-subtle rounded-lg text-xs text-content focus:outline-none focus:border-blue-500/50"
             >
-              <option value="">All Vehicles</option>
+              <option value="">{t('mission-library:missionLibraryView.allVehicles')}</option>
               {vehicles.map(v => (
                 <option key={v.id} value={v.id}>{v.name}</option>
               ))}
@@ -216,7 +218,7 @@ export function MissionLibraryView() {
               onChange={e => store.setFilter({ tags: e.target.value ? [e.target.value] : undefined })}
               className="px-2 py-1.5 bg-surface border border-subtle rounded-lg text-xs text-content focus:outline-none focus:border-blue-500/50"
             >
-              <option value="">All Tags</option>
+              <option value="">{t('mission-library:missionLibraryView.allTags')}</option>
               {store.allTags.map(tag => (
                 <option key={tag} value={tag}>{tag}</option>
               ))}
@@ -230,7 +232,7 @@ export function MissionLibraryView() {
             className="px-2 py-1.5 bg-surface border border-subtle rounded-lg text-xs text-content focus:outline-none focus:border-blue-500/50"
           >
             {SORT_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
             ))}
           </select>
 
@@ -238,7 +240,7 @@ export function MissionLibraryView() {
           <button
             onClick={() => store.setSort(store.sort.field, store.sort.direction === 'asc' ? 'desc' : 'asc')}
             className="p-1.5 rounded-md bg-surface border border-subtle text-content-secondary hover:text-content transition-colors"
-            title={store.sort.direction === 'asc' ? 'Ascending' : 'Descending'}
+            title={store.sort.direction === 'asc' ? t('mission-library:missionLibraryView.ascending') : t('mission-library:missionLibraryView.descending')}
           >
             <svg className={`w-3.5 h-3.5 transition-transform ${store.sort.direction === 'asc' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -250,7 +252,7 @@ export function MissionLibraryView() {
             <button
               onClick={() => store.setViewMode('grid')}
               className={`p-1.5 transition-colors ${store.viewMode === 'grid' ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'}`}
-              title="Grid view"
+              title={t('mission-library:missionLibraryView.gridView')}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -259,7 +261,7 @@ export function MissionLibraryView() {
             <button
               onClick={() => store.setViewMode('list')}
               className={`p-1.5 transition-colors ${store.viewMode === 'list' ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'}`}
-              title="List view"
+              title={t('mission-library:missionLibraryView.listView')}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -277,7 +279,7 @@ export function MissionLibraryView() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Loading...
+            {t('common:loading')}
           </div>
         ) : store.missions.length === 0 ? (
           /* Empty state */
@@ -287,9 +289,9 @@ export function MissionLibraryView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-sm font-medium text-content mb-1">No missions saved yet</h3>
+            <h3 className="text-sm font-medium text-content mb-1">{t('mission-library:missionLibraryView.emptyTitle')}</h3>
             <p className="text-xs text-content-secondary max-w-xs mb-4">
-              Save plans here for reuse. Build them in Mission Planning, or draw survey areas in the Area Editor.
+              {t('mission-library:missionLibraryView.emptyBody')}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -299,7 +301,7 @@ export function MissionLibraryView() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
-                Open Mission Planning
+                {t('mission-library:missionLibraryView.openMissionPlanning')}
               </button>
               <button
                 onClick={() => { window.electronAPI?.openAreaEditor?.().catch(() => undefined); }}
@@ -310,7 +312,7 @@ export function MissionLibraryView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 17l4-4" />
                 </svg>
-                Area Editor
+                {t('common:areaEditor')}
               </button>
             </div>
           </div>
@@ -347,12 +349,12 @@ export function MissionLibraryView() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-subtle text-content-secondary">
-                    <th className="text-left px-4 py-2.5 font-medium">Name</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Vehicle</th>
-                    <th className="text-right px-4 py-2.5 font-medium">WPs</th>
-                    <th className="text-right px-4 py-2.5 font-medium">Distance</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Last Flight</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Updated</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common:name')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('common:vehicle')}</th>
+                    <th className="text-right px-4 py-2.5 font-medium">{t('mission-library:missionLibraryView.colWps')}</th>
+                    <th className="text-right px-4 py-2.5 font-medium">{t('common:distance')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('mission-library:missionLibraryView.colLastFlight')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium">{t('mission-library:missionLibraryView.colUpdated')}</th>
                     <th className="px-4 py-2.5 w-24"></th>
                   </tr>
                 </thead>
@@ -370,10 +372,10 @@ export function MissionLibraryView() {
                       : m.lastFlightStatus === 'aborted' ? 'bg-red-500/10 text-red-400'
                       : m.lastFlightStatus === 'planned' ? 'bg-blue-500/10 text-blue-400'
                       : '';
-                    const statusLabel = m.lastFlightStatus === 'completed' ? 'Completed'
-                      : m.lastFlightStatus === 'in_progress' ? 'In Progress'
-                      : m.lastFlightStatus === 'aborted' ? 'Aborted'
-                      : m.lastFlightStatus === 'planned' ? 'Planned'
+                    const statusLabel = m.lastFlightStatus === 'completed' ? t('mission-library:flightStatus.completed')
+                      : m.lastFlightStatus === 'in_progress' ? t('mission-library:flightStatus.inProgress')
+                      : m.lastFlightStatus === 'aborted' ? t('mission-library:flightStatus.aborted')
+                      : m.lastFlightStatus === 'planned' ? t('mission-library:flightStatus.planned')
                       : null;
                     return (
                       <tr
@@ -394,7 +396,7 @@ export function MissionLibraryView() {
                               </span>
                             ) : (
                               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-raised text-content-secondary">
-                                New
+                                {t('common:new')}
                               </span>
                             )}
                           </div>
@@ -407,7 +409,7 @@ export function MissionLibraryView() {
                         <td className="px-4 py-2.5 text-content-secondary">
                           {m.flightCount > 0 ? (
                             <span className="flex items-center gap-1.5">
-                              <span>{m.flightCount} flights</span>
+                              <span>{t('mission-library:missionLibraryView.flightCount', { count: m.flightCount })}</span>
                             </span>
                           ) : '--'}
                         </td>
@@ -417,7 +419,7 @@ export function MissionLibraryView() {
                             <button
                               onClick={(e) => { e.stopPropagation(); handleLoadToEditor(m.id); }}
                               className="p-1 rounded hover:bg-blue-600/20 text-content-secondary hover:text-blue-400 transition-colors"
-                              title="Load into Editor"
+                              title={t('mission-library:actions.loadIntoEditor')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -426,7 +428,7 @@ export function MissionLibraryView() {
                             <button
                               onClick={(e) => { e.stopPropagation(); void store.exportMissionFile(m.id); }}
                               className="p-1 rounded hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"
-                              data-tip="Save this mission to a file (keeps groups and surveys)"
+                              data-tip={t('mission-library:actions.saveMissionToFile')}
                             >
                               <Download className="w-3.5 h-3.5" />
                             </button>
@@ -437,14 +439,14 @@ export function MissionLibraryView() {
                                   ? 'text-emerald-600 dark:text-emerald-400 hover:bg-surface-raised'
                                   : 'text-content-secondary hover:text-content hover:bg-surface-raised'
                               }`}
-                              data-tip="Save a copy to your backup so your other computers can open it"
+                              data-tip={t('mission-library:actions.saveCopyToBackup')}
                             >
                               <CloudUpload className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDuplicate(m.id, m.name); }}
                               className="p-1 rounded hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"
-                              title="Duplicate"
+                              title={t('mission-library:actions.duplicate')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -457,7 +459,7 @@ export function MissionLibraryView() {
                                   ? 'bg-red-600/30 text-red-400'
                                   : 'hover:bg-red-600/20 text-content-secondary hover:text-red-400'
                               }`}
-                              title={confirmDeleteId === m.id ? 'Click again to confirm' : 'Delete'}
+                              title={confirmDeleteId === m.id ? t('mission-library:actions.clickAgainToConfirm') : t('mission-library:actions.delete')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -482,7 +484,7 @@ export function MissionLibraryView() {
 
       {backupTarget && (
         <BackupTargetDialog
-          title="Save mission to backup"
+          title={t('mission-library:missionLibraryView.saveToBackupTitle')}
           itemName={backupTarget.name}
           kind="mission"
           sites={vaultSites}

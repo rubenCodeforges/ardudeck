@@ -1,11 +1,12 @@
 import { Plus } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 export const copterQuadPlus: VehicleTemplate = {
   slug: 'copter-quad-plus',
-  name: 'Quadcopter (+)',
-  description: 'Four motors in + pattern, motor 1 forward',
+  name: 'Quadcopter (+)', // i18n-exempt
+  description: 'Four motors in + pattern, motor 1 forward', // i18n-exempt
   icon: Plus,
   vehicleType: 'copter',
   category: 'multirotor',
@@ -19,8 +20,8 @@ export const copterQuadPlus: VehicleTemplate = {
     batteryCapacity: 3000,
   },
   toParams: (p) => [
-    { name: 'FRAME_CLASS', value: 1, reason: 'Quadcopter', requiresReboot: true },
-    { name: 'FRAME_TYPE',  value: 0, reason: '+ arrangement',  requiresReboot: true },
+    { name: 'FRAME_CLASS', value: 1, reason: t('lib:vehicleTemplates.reason.quadcopter'), requiresReboot: true },
+    { name: 'FRAME_TYPE',  value: 0, reason: t('lib:vehicleTemplates.reason.plusArrangement'),  requiresReboot: true },
     ...batteryParams(p),
     ...commonSafetyParams(),
   ],

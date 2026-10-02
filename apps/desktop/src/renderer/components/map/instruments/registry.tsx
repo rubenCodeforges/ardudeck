@@ -13,6 +13,8 @@
  * small CompassOverlay, so it ships visible and defaults to the old compass
  * spot beside the attitude ball. Users drag them anywhere from there.
  */
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { create } from 'zustand';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
@@ -53,7 +55,7 @@ import { RtkInstrument } from './RtkInstrument';
 export interface MapInstrumentVariant {
   /** Persisted key; also the value stored in the display-mode map. */
   id: string;
-  label: string;
+  labelKey: string;
   Component: () => JSX.Element;
   /** This variant draws a round dial, so a docked group shapes around it. */
   round?: boolean;
@@ -64,7 +66,9 @@ export type InstrumentProfile = 'air' | 'ground';
 
 export interface MapInstrumentDef {
   id: string;
-  label: string;
+  labelKey: string;
+  /** Interpolation values for labelKey (e.g. the battery number). */
+  labelValues?: Record<string, string | number>;
   defaultClassName: string;
   defaultVisible: boolean;
   Component: () => JSX.Element;
@@ -82,6 +86,11 @@ export interface MapInstrumentDef {
   /** Vehicle profiles this instrument belongs to; absent means every one. The
    * catalog hides the others, but one already placed stays placed. */
   profiles?: InstrumentProfile[];
+}
+
+/** Display name of an instrument in the current language. */
+export function instrumentLabel(def: Pick<MapInstrumentDef, 'labelKey' | 'labelValues'>, t: TFunction): string {
+  return t(def.labelKey, def.labelValues ?? {});
 }
 
 /** True when the instrument belongs on this kind of vehicle. */
@@ -107,9 +116,9 @@ export function isRoundInMode(def: MapInstrumentDef, mode: string): boolean {
 /** The three compact-readout treatments every wired scalar source offers. */
 function compactVariants(source: ReadoutSource): MapInstrumentVariant[] {
   return [
-    { id: 'strip', label: 'Strip', Component: () => <CompactReadout source={source} treatment="strip" /> },
-    { id: 'cell', label: 'Cell', Component: () => <CompactReadout source={source} treatment="cell" /> },
-    { id: 'inline', label: 'Inline', Component: () => <CompactReadout source={source} treatment="inline" /> },
+    { id: 'strip', labelKey: 'map:instrumentDisplay.strip', Component: () => <CompactReadout source={source} treatment="strip" /> },
+    { id: 'cell', labelKey: 'map:instrumentDisplay.cell', Component: () => <CompactReadout source={source} treatment="cell" /> },
+    { id: 'inline', labelKey: 'map:instrumentDisplay.inline', Component: () => <CompactReadout source={source} treatment="inline" /> },
   ];
 }
 
@@ -150,6 +159,7 @@ const BATTERY_SCALE: GaugeScale = {
  * Battery panel. Needs pointer-events-auto: the gauge center slot disables
  * pointer events so clicks fall through to the map drag. */
 function BatteryMonitorBadge({ className }: { className?: string }): JSX.Element | null {
+  const { t } = useTranslation();
   const batteries = useTelemetryStore((s) => s.batteries);
   const primaryBatteryId = useTelemetryStore((s) => s.primaryBatteryId);
   const setPrimaryBattery = useTelemetryStore((s) => s.setPrimaryBattery);
@@ -159,19 +169,19 @@ function BatteryMonitorBadge({ className }: { className?: string }): JSX.Element
   const next = ids[(ids.indexOf(effective) + 1) % ids.length] ?? 0;
   const tip = Object.values(batteries)
     .sort((a, b) => a.id - b.id)
-    .map((b) => `B${b.id + 1}: ${b.voltage.toFixed(1)}V ${b.remaining >= 0 ? Math.round(b.remaining) + '%' : '-'}`)
+    .map((b) => t('map:instrument.batteryTipEntry', { n: b.id + 1, voltage: b.voltage.toFixed(1), pct: b.remaining >= 0 ? Math.round(b.remaining) + '%' : '-' }))
     .join('   ');
   return (
     <button
       type="button"
       onClick={() => setPrimaryBattery(next)}
-      data-tip={`Switch to B${next + 1}. ${tip}`}
+      data-tip={t('map:instrument.switchBattery', { n: next + 1, tip })}
       className={
         'pointer-events-auto text-[9px] font-semibold leading-none px-1.5 py-[3px] rounded border border-[var(--gauge-bezel-edge)] ' +
         'text-[var(--gauge-text-dim)] hover:text-[var(--gauge-text)] hover:border-[var(--gauge-text-dim)] transition-colors ' + (className ?? '')
       }
     >
-      B{effective + 1} {'\u21C4'}
+      {t('map:instrument.batteryShort', { n: effective + 1 })} {'\u21C4'}
     </button>
   );
 }
@@ -194,11 +204,12 @@ function useBatteryInstance(monitorId: number): { voltage: number; remaining: nu
 
 function makeBatteryInstanceGauge(monitorId: number): () => JSX.Element {
   return function BatteryInstanceGauge(): JSX.Element {
+    const { t } = useTranslation();
     const { voltage, remaining, fresh } = useBatteryInstance(monitorId);
     const known = fresh && remaining >= 0;
     const valueColor = !known ? 'text-[var(--gauge-text)]' : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
     return (
-      <RoundGauge label={`BAT${monitorId + 1}`} scale={BATTERY_SCALE} needleValue={known ? remaining : null}>
+      <RoundGauge label={t('map:instrument.batN', { n: monitorId + 1 })} scale={BATTERY_SCALE} needleValue={known ? remaining : null}>
         <span className={`text-[15px] font-semibold leading-none ${valueColor}`}>
           {fresh ? voltage.toFixed(1) : '--'}
           {fresh && <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
@@ -213,12 +224,13 @@ function makeBatteryInstanceGauge(monitorId: number): () => JSX.Element {
 
 function makeBatteryInstanceNumeric(monitorId: number): () => JSX.Element {
   return function BatteryInstanceNumeric(): JSX.Element {
+    const { t } = useTranslation();
     const { voltage, remaining, fresh } = useBatteryInstance(monitorId);
     const known = fresh && remaining >= 0;
     const valueClassName = !known ? undefined : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
     return (
       <NumericReadout
-        label={`BAT${monitorId + 1}`}
+        label={t('map:instrument.batN', { n: monitorId + 1 })}
         value={fresh ? voltage.toFixed(1) : '--'}
         unit={fresh ? 'V' : undefined}
         sub={known ? `${Math.round(remaining)}%` : '--%'}
@@ -229,6 +241,7 @@ function makeBatteryInstanceNumeric(monitorId: number): () => JSX.Element {
 }
 
 function BatteryInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('battery');
   const voltage = useTelemetryStore((s) => s.battery.voltage);
   const remaining = useTelemetryStore((s) => s.battery.remaining);
@@ -237,7 +250,7 @@ function BatteryInstrument(): JSX.Element {
   const valueColor = !known ? 'text-[var(--gauge-text)]' : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
 
   return (
-    <RoundGauge label="BAT" scale={BATTERY_SCALE} needleValue={known ? remaining : null}>
+    <RoundGauge label={t('map:instrument.bat')} scale={BATTERY_SCALE} needleValue={known ? remaining : null}>
       <span className={`text-[15px] font-semibold leading-none ${valueColor}`}>
         {connected ? voltage.toFixed(1) : '--'}
         {connected && <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
@@ -260,6 +273,7 @@ function BatteryInstrument(): JSX.Element {
  * is unreadable at a glance and wastes the dial.
  */
 function BatteryUsedInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('battery');
   const voltage = useTelemetryStore((s) => s.battery.voltage);
   const remaining = useTelemetryStore((s) => s.battery.remaining);
@@ -299,7 +313,7 @@ function BatteryUsedInstrument(): JSX.Element {
   );
 
   return (
-    <RoundGauge label="BAT" scale={BATTERY_SCALE} needleValue={known ? remaining : null} svgContent={usedTrack}>
+    <RoundGauge label={t('map:instrument.bat')} scale={BATTERY_SCALE} needleValue={known ? remaining : null} svgContent={usedTrack}>
       <span className={`text-[19px] font-semibold leading-none ${valueColor}`}>
         {connected ? voltage.toFixed(1) : '--'}
         {connected && <span className="text-[9px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
@@ -315,8 +329,8 @@ function BatteryUsedInstrument(): JSX.Element {
 const GPS_FIX_SHORT: Record<number, string> = {
   2: '2D',
   3: '3D',
-  4: 'DGPS',
-  5: 'FLOAT',
+  4: 'DGPS', // i18n-exempt: GPS fix type
+  5: 'FLOAT', // i18n-exempt: GPS fix type
   6: 'RTK',
 };
 
@@ -346,6 +360,7 @@ function GpsSegmentRing({ lit, color }: { lit: number; color: string }): JSX.Ele
 }
 
 function GpsInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('gps');
   const fixType = useTelemetryStore((s) => s.gps.fixType);
   const satellites = useTelemetryStore((s) => s.gps.satellites);
@@ -355,12 +370,12 @@ function GpsInstrument(): JSX.Element {
   const lit = connected ? Math.min(GPS_SEGMENTS, Math.max(0, satellites)) : 0;
 
   return (
-    <RoundGauge label="GPS" svgContent={<GpsSegmentRing lit={lit} color={segColor} />}>
+    <RoundGauge label={t('map:instrument.gps')} svgContent={<GpsSegmentRing lit={lit} color={segColor} />}>
       <span className={`text-[12px] font-semibold leading-none whitespace-nowrap ${fixColor}`}>
-        {connected ? (GPS_FIX_SHORT[fixType] ?? 'NO FIX') : '--'}
+        {connected ? (GPS_FIX_SHORT[fixType] ?? t('map:instrument.noFix')) : '--'}
       </span>
       <span className="mt-1 text-[9px] leading-none text-[var(--gauge-text-dim)]">
-        {connected ? `${satellites} sats` : '-- sats'}
+        {connected ? t('map:instrument.sats', { n: satellites }) : t('map:instrument.satsNone')}
       </span>
     </RoundGauge>
   );
@@ -383,6 +398,7 @@ function VsiIndicator({ climb, connected, climbText }: { climb: number; connecte
 }
 
 function AltitudeInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('position');
   const msl = useTelemetryStore((s) => s.position.alt);
   const agl = useTelemetryStore((s) => s.position.relativeAlt);
@@ -395,7 +411,7 @@ function AltitudeInstrument(): JSX.Element {
   const climbText = `${climbValue > 0 ? '+' : ''}${trimmed(climbValue, UNIT_PRECISION.verticalSpeed[verticalSpeedUnit])}`;
 
   return (
-    <RoundGauge label="ALT" svgContent={<VsiIndicator climb={climb} connected={connected} climbText={climbText} />}>
+    <RoundGauge label={t('map:instrument.alt')} svgContent={<VsiIndicator climb={climb} connected={connected} climbText={climbText} />}>
       <span className="text-[15px] font-semibold leading-none text-[var(--gauge-text)] whitespace-nowrap">
         {connected ? fmtAlt(agl) : '--'}
         {connected && <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">{UNIT_LABELS.altitude[altitudeUnit]}</span>}
@@ -408,6 +424,7 @@ function AltitudeInstrument(): JSX.Element {
 }
 
 function SpeedInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('vfrHud');
   const groundspeed = useTelemetryStore((s) => s.vfrHud.groundspeed);
   const airspeed = useTelemetryStore((s) => s.vfrHud.airspeed);
@@ -451,7 +468,7 @@ function SpeedInstrument(): JSX.Element {
 
   return (
     <RoundGauge
-      label="SPD"
+      label={t('map:instrument.spd')}
       scale={scale}
       needleValue={connected ? gs : null}
       svgContent={
@@ -481,12 +498,13 @@ function SpeedInstrument(): JSX.Element {
   );
 }
 
-const CARDINALS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-const CARDINAL_LETTERS = ['N', 'E', 'S', 'W'];
+const CARDINAL_KEYS = ['map:instrument.cardinalN', 'map:instrument.cardinalNE', 'map:instrument.cardinalE', 'map:instrument.cardinalSE', 'map:instrument.cardinalS', 'map:instrument.cardinalSW', 'map:instrument.cardinalW', 'map:instrument.cardinalNW'];
+const CARDINAL_LETTER_KEYS = ['map:instrument.cardinalN', 'map:instrument.cardinalE', 'map:instrument.cardinalS', 'map:instrument.cardinalW'];
 
 // Rotating rose (current heading at the top lubber line, like CompassOverlay's
 // bigger sibling): cardinal + 30-degree ticks, letters oriented radially.
 function HeadingRose({ heading }: { heading: number }): JSX.Element {
+  const { t } = useTranslation();
   return (
     <>
       <g transform={`rotate(${-heading} 52 52)`}>
@@ -505,7 +523,7 @@ function HeadingRose({ heading }: { heading: number }): JSX.Element {
               {cardinal && (
                 <g transform={`rotate(${d} 52 52)`}>
                   <text x="52" y="24" textAnchor="middle" fontSize="8" fontWeight="600" fill="#fff">
-                    {CARDINAL_LETTERS[d / 90]}
+                    {t(CARDINAL_LETTER_KEYS[d / 90]!)}
                   </text>
                 </g>
               )}
@@ -520,14 +538,15 @@ function HeadingRose({ heading }: { heading: number }): JSX.Element {
 }
 
 function HeadingInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('vfrHud');
   const heading = useTelemetryStore((s) => s.vfrHud.heading);
 
   const deg = Math.round(heading) % 360;
-  const cardinal = CARDINALS[Math.round(deg / 45) % 8];
+  const cardinal = t(CARDINAL_KEYS[Math.round(deg / 45) % 8]!);
 
   return (
-    <RoundGauge label="HDG" svgContent={<HeadingRose heading={connected ? heading : 0} />}>
+    <RoundGauge label={t('map:instrument.hdg')} svgContent={<HeadingRose heading={connected ? heading : 0} />}>
       <span className="text-[15px] font-semibold leading-none text-[var(--gauge-text)]">
         {connected ? deg : '--'}
         {connected && <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">°</span>}
@@ -546,6 +565,7 @@ function HeadingInstrument(): JSX.Element {
  * from the GPS position when the fix is valid, else from home itself (0 m).
  */
 function FlightDataInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const lat = useTelemetryStore((s) => s.gps.lat);
   const lon = useTelemetryStore((s) => s.gps.lon);
   const fixType = useTelemetryStore((s) => s.gps.fixType);
@@ -575,30 +595,30 @@ function FlightDataInstrument(): JSX.Element {
       }}
     >
       <div className="flex justify-between">
-        <span className="text-[var(--gauge-text-dim)]">MSL</span>
+        <span className="text-[var(--gauge-text-dim)]">{t('map:instrument.msl')}</span>
         <span className="font-mono text-[var(--gauge-text)]">{formatAltitudeFromMeters(msl, altitudeUnit)}</span>
       </div>
       <div className="flex justify-between">
-        <span className="text-[var(--gauge-text-dim)]">Rel</span>
+        <span className="text-[var(--gauge-text-dim)]">{t('map:instrument.rel')}</span>
         <span className="font-mono text-[var(--gauge-text)]">{formatAltitudeFromMeters(rel, altitudeUnit)}</span>
       </div>
       <div className="flex justify-between">
-        <span className="text-[var(--gauge-text-dim)]">Spd</span>
+        <span className="text-[var(--gauge-text-dim)]">{t('map:instrument.spdShort')}</span>
         <span className="font-mono text-[var(--gauge-text)]">{formatSpeedFromMetersPerSecond(groundspeed, speedUnit)}</span>
       </div>
       <div className="flex justify-between">
-        <span className="text-[var(--gauge-text-dim)]">Hdg</span>
+        <span className="text-[var(--gauge-text-dim)]">{t('map:instrument.hdgShort')}</span>
         <span className="font-mono text-[var(--gauge-text)]">{heading.toFixed(0)}<span className="text-[var(--gauge-text-dim)] ml-0.5">°</span></span>
       </div>
       {homeStats && (
         <>
           <div className="my-1" style={{ borderTop: `1px solid ${GAUGE_COLORS.bezelEdge}` }} />
           <div className="flex justify-between">
-            <span className="text-[var(--gauge-text-dim)]">Home</span>
+            <span className="text-[var(--gauge-text-dim)]">{t('map:instrument.homeShort')}</span>
             <span className="font-mono text-[var(--gauge-green)]">{formatDistanceFromMeters(homeStats.distance, distanceUnit)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[var(--gauge-text-dim)]">Brng</span>
+            <span className="text-[var(--gauge-text-dim)]">{t('map:instrument.brngShort')}</span>
             {/* Bearing to a point you are standing on is undefined: within GPS
                 noise of home (~sub-meter jitter) it swings tens of degrees per
                 sample. Blank it until the distance makes direction meaningful. */}
@@ -641,6 +661,7 @@ const VSI_SCALE: GaugeScale = {
 };
 
 function VsiInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('vfrHud');
   const climb = useTelemetryStore((s) => s.vfrHud.climb);
   const verticalSpeedUnit = useSettingsStore((s) => s.unitPreferences.verticalSpeed);
@@ -652,7 +673,7 @@ function VsiInstrument(): JSX.Element {
 
   return (
     <RoundGauge
-      label="VSI"
+      label={t('map:instrument.vsi')}
       scale={VSI_SCALE}
       // 0, not null: parking a VSI needle at scale min would read as a -5 dive.
       needleValue={connected ? climb : 0}
@@ -697,6 +718,7 @@ const TILT_SCALE: GaugeScale = {
 };
 
 function TiltInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const attitude = useTelemetryStore((s) => s.attitude);
   const fresh = useTelemetryFresh('attitude');
   const roll = attitude.roll;
@@ -711,7 +733,7 @@ function TiltInstrument(): JSX.Element {
 
   return (
     <RoundGauge
-      label="TILT"
+      label={t('map:instrument.tilt')}
       scale={TILT_SCALE}
       needleValue={shown}
       svgContent={
@@ -737,10 +759,10 @@ function TiltInstrument(): JSX.Element {
     >
       {/* Pushed below the horizon so the needle and the numbers never overlap. */}
       <span className="mt-[26px] text-[13px] font-semibold leading-none whitespace-nowrap" style={{ color }}>
-        {fresh ? `${roll > 0 ? 'R' : roll < 0 ? 'L' : ''} ${Math.abs(Math.round(roll))}\u00b0` : '--'}
+        {fresh ? `${roll > 0 ? t('map:instrument.right') : roll < 0 ? t('map:instrument.left') : ''} ${Math.abs(Math.round(roll))}\u00b0` : '--'}
       </span>
       <span className="mt-0.5 text-[8px] leading-none text-[var(--gauge-text-dim)]">
-        {fresh ? `PITCH ${Math.round(pitch)}\u00b0` : 'ROLL'}
+        {fresh ? t('map:instrument.pitchValue', { deg: Math.round(pitch) }) : t('map:instrument.roll')}
       </span>
     </RoundGauge>
   );
@@ -755,6 +777,7 @@ function steerPercent(pwm: number | undefined): number | null {
 }
 
 function SteerInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const pwm = useTelemetryStore((s) => s.servoOutput?.outputs[0]);
   const throttlePwm = useTelemetryStore((s) => s.servoOutput?.outputs[2]);
   const steer = steerPercent(pwm);
@@ -763,8 +786,8 @@ function SteerInstrument(): JSX.Element {
 
   return (
     <InstrumentShell
-      label="Steer"
-      value={steer === null ? '--' : magnitude < 1 ? 'CTR' : `${steer < 0 ? 'L' : 'R'} ${Math.round(magnitude)}`}
+      label={t('map:instrument.steer')}
+      value={steer === null ? '--' : magnitude < 1 ? t('map:instrument.center') : `${steer < 0 ? t('map:instrument.left') : t('map:instrument.right')} ${Math.round(magnitude)}`}
       unit={steer === null || magnitude < 1 ? undefined : '%'}
     >
       <div className="relative h-1.5 w-full rounded-full bg-surface-raised">
@@ -791,6 +814,7 @@ function SteerInstrument(): JSX.Element {
 /** Cross-track error while following a mission: how far off the line the
  * machine is, and which side, which is the number a driver steers back on. */
 function XtrackInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const nav = useTelemetryStore((s) => s.navController);
   const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const xtrack = nav?.xtrackError;
@@ -798,22 +822,23 @@ function XtrackInstrument(): JSX.Element {
 
   return (
     <InstrumentShell
-      label="Xtrack"
+      label={t('map:instrument.xtrack')}
       value={
         xtrack === undefined || magnitude === null
           ? '--'
-          : `${xtrack < 0 ? 'L' : 'R'} ${formatDistanceFromMeters(magnitude, distanceUnit)}`
+          : `${xtrack < 0 ? t('map:instrument.left') : t('map:instrument.right')} ${formatDistanceFromMeters(magnitude, distanceUnit)}`
       }
       valueClassName={magnitude !== null && magnitude > 5 ? 'text-amber-400' : undefined}
     >
       <div className="text-[10px] text-content-tertiary">
-        {nav?.wpDist === undefined ? 'No active leg' : `WP ${formatDistanceFromMeters(nav.wpDist, distanceUnit)}`}
+        {nav?.wpDist === undefined ? t('map:instrument.noActiveLeg') : t('map:instrument.wpDist', { dist: formatDistanceFromMeters(nav.wpDist, distanceUnit) })}
       </div>
     </InstrumentShell>
   );
 }
 
 function HomeInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('position');
   const home = useMapHomeStore((s) => s.home);
   const lat = useTelemetryStore((s) => s.position.lat);
@@ -828,7 +853,7 @@ function HomeInstrument(): JSX.Element {
 
   return (
     <RoundGauge
-      label="HOME"
+      label={t('map:instrument.home')}
       svgContent={
         // Rotated by bearing MINUS heading (OSD home-arrow convention): it
         // points the turn the pilot must make, not the map direction of home.
@@ -846,7 +871,7 @@ function HomeInstrument(): JSX.Element {
         {distance !== null ? formatDistanceFromMeters(distance, distanceUnit) : '--'}
       </span>
       <span className="mt-1 text-[8px] leading-none text-[var(--gauge-text-dim)]">
-        {active ? `BRG ${Math.round((bearing + 360) % 360)}°` : ''}
+        {active ? t('map:instrument.brg', { deg: Math.round((bearing + 360) % 360) }) : ''}
       </span>
     </RoundGauge>
   );
@@ -896,6 +921,7 @@ function NumericReadout({
 }
 
 function BatteryNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('battery');
   const voltage = useTelemetryStore((s) => s.battery.voltage);
   const remaining = useTelemetryStore((s) => s.battery.remaining);
@@ -903,7 +929,7 @@ function BatteryNumeric(): JSX.Element {
   const valueClassName = !known ? undefined : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
   return (
     <NumericReadout
-      label="BAT"
+      label={t('map:instrument.bat')}
       value={connected ? voltage.toFixed(1) : '--'}
       unit={connected ? 'V' : undefined}
       sub={known ? `${Math.round(remaining)}%` : '--%'}
@@ -914,21 +940,23 @@ function BatteryNumeric(): JSX.Element {
 }
 
 function GpsNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('gps');
   const fixType = useTelemetryStore((s) => s.gps.fixType);
   const satellites = useTelemetryStore((s) => s.gps.satellites);
   const valueClassName = !connected ? undefined : fixType >= 3 ? 'text-[var(--gauge-green)]' : fixType >= 2 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
   return (
     <NumericReadout
-      label="GPS"
-      value={connected ? (GPS_FIX_SHORT[fixType] ?? 'NO FIX') : '--'}
-      sub={connected ? `${satellites} sats` : '-- sats'}
+      label={t('map:instrument.gps')}
+      value={connected ? (GPS_FIX_SHORT[fixType] ?? t('map:instrument.noFix')) : '--'}
+      sub={connected ? t('map:instrument.sats', { n: satellites }) : t('map:instrument.satsNone')}
       valueClassName={valueClassName}
     />
   );
 }
 
 function AltitudeNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('position');
   const msl = useTelemetryStore((s) => s.position.alt);
   const agl = useTelemetryStore((s) => s.position.relativeAlt);
@@ -936,15 +964,16 @@ function AltitudeNumeric(): JSX.Element {
   const fmtAlt = (m: number) => trimmed(altitudeValueFromMeters(m, altitudeUnit), UNIT_PRECISION.altitude[altitudeUnit]);
   return (
     <NumericReadout
-      label="ALT"
+      label={t('map:instrument.alt')}
       value={connected ? fmtAlt(agl) : '--'}
       unit={connected ? UNIT_LABELS.altitude[altitudeUnit] : undefined}
-      sub={connected ? `MSL ${fmtAlt(msl)}` : undefined}
+      sub={connected ? t('map:instrument.mslValue', { alt: fmtAlt(msl) }) : undefined}
     />
   );
 }
 
 function SpeedNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('vfrHud');
   const groundspeed = useTelemetryStore((s) => s.vfrHud.groundspeed);
   const airspeed = useTelemetryStore((s) => s.vfrHud.airspeed);
@@ -952,29 +981,31 @@ function SpeedNumeric(): JSX.Element {
   const fmt = (mps: number) => trimmed(speedValueFromMetersPerSecond(mps, speedUnit), UNIT_PRECISION.speed[speedUnit]);
   return (
     <NumericReadout
-      label="SPD"
+      label={t('map:instrument.spd')}
       value={connected ? fmt(groundspeed) : '--'}
       unit={connected ? UNIT_LABELS.speed[speedUnit] : undefined}
-      sub={connected && airspeed > 0 ? `AIR ${fmt(airspeed)}` : undefined}
+      sub={connected && airspeed > 0 ? t('map:instrument.air', { speed: fmt(airspeed) }) : undefined}
     />
   );
 }
 
 function HeadingNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('vfrHud');
   const heading = useTelemetryStore((s) => s.vfrHud.heading);
   const deg = Math.round(heading) % 360;
   return (
     <NumericReadout
-      label="HDG"
+      label={t('map:instrument.hdg')}
       value={connected ? String(deg) : '--'}
       unit={connected ? '°' : undefined}
-      sub={connected ? CARDINALS[Math.round(deg / 45) % 8] : undefined}
+      sub={connected ? t(CARDINAL_KEYS[Math.round(deg / 45) % 8]!) : undefined}
     />
   );
 }
 
 function VsiNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('vfrHud');
   const climb = useTelemetryStore((s) => s.vfrHud.climb);
   const verticalSpeedUnit = useSettingsStore((s) => s.unitPreferences.verticalSpeed);
@@ -982,7 +1013,7 @@ function VsiNumeric(): JSX.Element {
   const valueText = `${value > 0 ? '+' : ''}${trimmed(value, UNIT_PRECISION.verticalSpeed[verticalSpeedUnit])}`;
   return (
     <NumericReadout
-      label="VSI"
+      label={t('map:instrument.vsi')}
       value={connected ? valueText : '--'}
       unit={connected ? UNIT_LABELS.verticalSpeed[verticalSpeedUnit] : undefined}
       valueClassName={connected && Math.abs(climb) > 3 ? 'text-[var(--gauge-amber)]' : undefined}
@@ -991,6 +1022,7 @@ function VsiNumeric(): JSX.Element {
 }
 
 function HomeNumeric(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useTelemetryFresh('position');
   const home = useMapHomeStore((s) => s.home);
   const lat = useTelemetryStore((s) => s.position.lat);
@@ -1002,15 +1034,16 @@ function HomeNumeric(): JSX.Element {
   const distance = active ? haversineMeters(lat, lon, home[0], home[1]) : null;
   return (
     <NumericReadout
-      label="HOME"
+      label={t('map:instrument.home')}
       value={distance !== null ? formatDistanceFromMeters(distance, distanceUnit) : '--'}
-      sub={active ? `BRG ${Math.round((bearing + 360) % 360)}°` : undefined}
+      sub={active ? t('map:instrument.brg', { deg: Math.round((bearing + 360) % 360) }) : undefined}
       valueClassName={active ? 'text-[var(--gauge-green)]' : undefined}
     />
   );
 }
 
 function FlightModeInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const mode = useTelemetryStore((s) => s.flight.mode);
   const armed = useTelemetryStore((s) => s.flight.armed);
@@ -1026,7 +1059,7 @@ function FlightModeInstrument(): JSX.Element {
     : GAUGE_COLORS.text;
 
   return (
-    <InstrumentStrip label="Flight mode">
+    <InstrumentStrip label={t('map:instrument.flightMode')}>
       <div className="flex items-center gap-2">
         <span
           className="w-1 self-stretch rounded-full shrink-0"
@@ -1036,7 +1069,7 @@ function FlightModeInstrument(): JSX.Element {
           className="text-[15px] font-semibold leading-none whitespace-nowrap"
           style={{ color: connected ? modeColor : GAUGE_COLORS.text }}
         >
-          {connected ? (mode || 'Unknown').toUpperCase() : '--'}
+          {connected ? (mode || t('map:instrument.unknown')).toUpperCase() : '--'}
         </span>
         {connected && (
           <span
@@ -1047,7 +1080,7 @@ function FlightModeInstrument(): JSX.Element {
                 : { color: GAUGE_COLORS.textDim, border: `1px solid ${GAUGE_COLORS.bezelEdge}` }
             }
           >
-            {armed ? 'ARMED' : 'DISARMED'}
+            {armed ? t('map:instrument.armed') : t('map:instrument.disarmed')}
           </span>
         )}
       </div>
@@ -1059,6 +1092,7 @@ type AnnunState = 'absent' | 'ok' | 'amber' | 'red';
 
 // MAV_SYS_STATUS_SENSOR bits. PREARM lights amber, not red: it blocks arming
 // but is not a failing sensor.
+// i18n-exempt: MAV_SYS_STATUS_SENSOR names
 const ANNUN_SENSOR_CELLS: Array<{ label: string; bit: number; bad: 'red' | 'amber' }> = [
   { label: 'GYRO', bit: 0x01, bad: 'red' },
   { label: 'ACC', bit: 0x02, bad: 'red' },
@@ -1119,6 +1153,7 @@ function AnnunCell({ label, state }: { label: string; state: AnnunState }): JSX.
 }
 
 function AnnunciatorInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const sensorHealth = useTelemetryStore((s) => s.sensorHealth);
   const remaining = useTelemetryStore((s) => s.battery.remaining);
@@ -1135,13 +1170,13 @@ function AnnunciatorInstrument(): JSX.Element {
   const battFsState: AnnunState = !connected ? 'absent' : remaining >= 0 && remaining <= 15 ? 'red' : 'ok';
 
   return (
-    <InstrumentStrip label="Annunciator" tall>
+    <InstrumentStrip label={t('map:instrument.annunciator')} tall>
       <div className="grid grid-cols-3 gap-1">
         {ANNUN_SENSOR_CELLS.map((c) => (
           <AnnunCell key={c.label} label={c.label} state={sensorState(c.bit, c.bad)} />
         ))}
-        <AnnunCell label="LINK" state={linkState} />
-        <AnnunCell label="BATT FS" state={battFsState} />
+        <AnnunCell label={t('map:instrument.link')} state={linkState} />
+        <AnnunCell label={t('map:instrument.battFs')} state={battFsState} />
       </div>
     </InstrumentStrip>
   );
@@ -1153,6 +1188,7 @@ function formatEta(seconds: number): string {
 }
 
 function MissionInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const missionItems = useMissionStore((s) => s.missionItems);
   const currentSeq = useMissionStore((s) => s.currentSeq);
@@ -1179,7 +1215,7 @@ function MissionInstrument(): JSX.Element {
 
   return (
     <InstrumentStrip
-      label="Mission"
+      label={t('map:instrument.mission')}
       bar={
         total > 0 ? (
           <div className="h-[3px]" style={{ background: GAUGE_COLORS.bezel }}>
@@ -1193,19 +1229,19 @@ function MissionInstrument(): JSX.Element {
     >
       {total === 0 ? (
         <span className="text-[11px] leading-none" style={{ color: GAUGE_COLORS.tickMinor }}>
-          No mission
+          {t('map:instrument.noMission')}
         </span>
       ) : (
         <div className="flex items-baseline gap-2 whitespace-nowrap w-full">
           <span className="text-[15px] font-semibold leading-none text-[var(--gauge-text)]">
-            WP {cur ?? '--'}
+            {t('map:instrument.wp', { n: cur ?? '--' })}
             <span className="text-[10px] font-normal text-[var(--gauge-text-dim)]">/{total}</span>
           </span>
           {dirty && cur === null ? (
             /* The plan on screen is not on the vehicle; say so where the
                pilot looks instead of implying a ready-to-fly mission. */
             <span className="ml-auto text-[8px] font-semibold tracking-wider leading-none text-[var(--gauge-amber)]">
-              NOT UPLOADED
+              {t('map:instrument.notUploaded')}
             </span>
           ) : (
             <>
@@ -1214,7 +1250,7 @@ function MissionInstrument(): JSX.Element {
                   {formatDistanceFromMeters(distance, distanceUnit)}
                 </span>
               )}
-              {eta && <span className="ml-auto text-[9px] leading-none text-[var(--gauge-text-dim)]">ETA {eta}</span>}
+              {eta && <span className="ml-auto text-[9px] leading-none text-[var(--gauge-text-dim)]">{t('map:instrument.eta', { eta })}</span>}
             </>
           )}
         </div>
@@ -1227,6 +1263,7 @@ function MissionInstrument(): JSX.Element {
 // opacity, layouts). Was a special-cased MapPanel overlay before; its old
 // 'attitude-ball' drag position migrates in map-instruments-store.
 function AttitudeBallInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const attitude = useTelemetryStore((s) => s.attitude);
   const heading = useTelemetryStore((s) => s.vfrHud.heading);
   // Without attitude the store holds roll 0 / pitch 0, which paints a perfectly
@@ -1245,7 +1282,7 @@ function AttitudeBallInstrument(): JSX.Element {
       {!attitudeFresh && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="px-1.5 py-0.5 rounded bg-surface-overlay-light text-[10px] font-semibold tracking-wide text-[var(--gauge-amber)]">
-            NO ATT
+            {t('map:instrument.noAtt')}
           </span>
         </div>
       )}
@@ -1267,9 +1304,9 @@ const BATTERY_INSTANCE_DEFAULT_POS = [
 ];
 
 export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
-  { id: 'attitude', round: true, profiles: ['air'], label: 'Attitude ball', defaultClassName: 'absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]', defaultVisible: true, Component: AttitudeBallInstrument },
-  { id: 'flight-data', label: 'Flight data', defaultClassName: 'absolute bottom-2 left-2 z-[1000]', defaultVisible: true, Component: FlightDataInstrument },
-  { id: 'battery', round: true, label: 'Battery', defaultClassName: 'absolute left-3 top-16 z-[1000]', defaultVisible: false, Component: BatteryInstrument, NumericComponent: BatteryNumeric, variants: [{ id: 'used', label: 'Battery + used', Component: BatteryUsedInstrument, round: true }, ...compactVariants('battery')] },
+  { id: 'attitude', round: true, profiles: ['air'], labelKey: 'map:instrumentRegistry.attitude', defaultClassName: 'absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]', defaultVisible: true, Component: AttitudeBallInstrument },
+  { id: 'flight-data', labelKey: 'map:instrumentRegistry.flightData', defaultClassName: 'absolute bottom-2 left-2 z-[1000]', defaultVisible: true, Component: FlightDataInstrument },
+  { id: 'battery', round: true, labelKey: 'map:instrumentRegistry.battery', defaultClassName: 'absolute left-3 top-16 z-[1000]', defaultVisible: false, Component: BatteryInstrument, NumericComponent: BatteryNumeric, variants: [{ id: 'used', labelKey: 'map:instrumentDisplay.batteryUsed', Component: BatteryUsedInstrument, round: true }, ...compactVariants('battery')] },
   // Fixed-monitor gauges (#126), one per possible ArduPilot instance: show a
   // specific pack regardless of the primary selection. The catalog surfaces
   // only the ones this vehicle actually streams.
@@ -1277,31 +1314,32 @@ export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
     id: `battery${k + 2}`,
     monitorId: k + 1,
     round: true,
-    label: `Battery ${k + 2}`,
+    labelKey: 'map:instrumentRegistry.batteryN',
+    labelValues: { n: k + 2 },
     defaultClassName: cls,
     defaultVisible: false,
     Component: makeBatteryInstanceGauge(k + 1),
     NumericComponent: makeBatteryInstanceNumeric(k + 1),
   })),
-  { id: 'gps', round: true, label: 'GPS', defaultClassName: 'absolute left-3 top-[176px] z-[1000]', defaultVisible: false, Component: GpsInstrument, NumericComponent: GpsNumeric, variants: compactVariants('gps') },
-  { id: 'altitude', round: true, profiles: ['air'], label: 'Altitude', defaultClassName: 'absolute left-3 top-[288px] z-[1000]', defaultVisible: false, Component: AltitudeInstrument, NumericComponent: AltitudeNumeric, variants: compactVariants('altitude') },
-  { id: 'speed', round: true, label: 'Speed', defaultClassName: 'absolute left-3 top-[400px] z-[1000]', defaultVisible: false, Component: SpeedInstrument, NumericComponent: SpeedNumeric, variants: compactVariants('speed') },
-  { id: 'tilt', round: true, profiles: ['ground'], label: 'Tilt', defaultClassName: 'absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]', defaultVisible: false, Component: TiltInstrument },
-  { id: 'steer', profiles: ['ground'], label: 'Steering', defaultClassName: 'absolute left-[124px] top-[344px] z-[1000]', defaultVisible: false, Component: SteerInstrument },
-  { id: 'xtrack', profiles: ['ground'], label: 'Cross-track', defaultClassName: 'absolute left-[124px] top-[420px] z-[1000]', defaultVisible: false, Component: XtrackInstrument },
-  { id: 'heading', round: true, label: 'Compass (HDG)', defaultClassName: 'absolute bottom-3 left-[calc(50%+88px)] z-[1000]', defaultVisible: true, Component: HeadingInstrument, NumericComponent: HeadingNumeric, variants: compactVariants('heading') },
-  { id: 'vsi', round: true, profiles: ['air'], label: 'VSI', defaultClassName: 'absolute left-3 top-[512px] z-[1000]', defaultVisible: false, Component: VsiInstrument, NumericComponent: VsiNumeric, variants: compactVariants('vsi') },
-  { id: 'home', round: true, label: 'Home', defaultClassName: 'absolute left-3 top-[624px] z-[1000]', defaultVisible: false, Component: HomeInstrument, NumericComponent: HomeNumeric, variants: compactVariants('home') },
+  { id: 'gps', round: true, labelKey: 'map:instrumentRegistry.gps', defaultClassName: 'absolute left-3 top-[176px] z-[1000]', defaultVisible: false, Component: GpsInstrument, NumericComponent: GpsNumeric, variants: compactVariants('gps') },
+  { id: 'altitude', round: true, profiles: ['air'], labelKey: 'map:instrumentRegistry.altitude', defaultClassName: 'absolute left-3 top-[288px] z-[1000]', defaultVisible: false, Component: AltitudeInstrument, NumericComponent: AltitudeNumeric, variants: compactVariants('altitude') },
+  { id: 'speed', round: true, labelKey: 'map:instrumentRegistry.speed', defaultClassName: 'absolute left-3 top-[400px] z-[1000]', defaultVisible: false, Component: SpeedInstrument, NumericComponent: SpeedNumeric, variants: compactVariants('speed') },
+  { id: 'tilt', round: true, profiles: ['ground'], labelKey: 'map:instrumentRegistry.tilt', defaultClassName: 'absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]', defaultVisible: false, Component: TiltInstrument },
+  { id: 'steer', profiles: ['ground'], labelKey: 'map:instrumentRegistry.steer', defaultClassName: 'absolute left-[124px] top-[344px] z-[1000]', defaultVisible: false, Component: SteerInstrument },
+  { id: 'xtrack', profiles: ['ground'], labelKey: 'map:instrumentRegistry.xtrack', defaultClassName: 'absolute left-[124px] top-[420px] z-[1000]', defaultVisible: false, Component: XtrackInstrument },
+  { id: 'heading', round: true, labelKey: 'map:instrumentRegistry.heading', defaultClassName: 'absolute bottom-3 left-[calc(50%+88px)] z-[1000]', defaultVisible: true, Component: HeadingInstrument, NumericComponent: HeadingNumeric, variants: compactVariants('heading') },
+  { id: 'vsi', round: true, profiles: ['air'], labelKey: 'map:instrumentRegistry.vsi', defaultClassName: 'absolute left-3 top-[512px] z-[1000]', defaultVisible: false, Component: VsiInstrument, NumericComponent: VsiNumeric, variants: compactVariants('vsi') },
+  { id: 'home', round: true, labelKey: 'map:instrumentRegistry.home', defaultClassName: 'absolute left-3 top-[624px] z-[1000]', defaultVisible: false, Component: HomeInstrument, NumericComponent: HomeNumeric, variants: compactVariants('home') },
   // Strips stack in a second column beside the left-edge gauges (gauge is
   // 104px wide at left-3, so 124px clears it) under the Instruments button.
-  { id: 'flight-mode', label: 'Flight mode', defaultClassName: 'absolute left-[124px] top-16 z-[1000]', defaultVisible: false, Component: FlightModeInstrument },
-  { id: 'link', label: 'Link', defaultClassName: 'absolute left-[124px] top-[128px] z-[1000]', defaultVisible: false, Component: LinkInstrument, variants: compactVariants('link') },
-  { id: 'mission', label: 'Mission', defaultClassName: 'absolute left-[124px] top-[192px] z-[1000]', defaultVisible: false, Component: MissionInstrument },
-  { id: 'annunciator', label: 'Annunciator', defaultClassName: 'absolute left-[124px] top-[268px] z-[1000]', defaultVisible: false, Component: AnnunciatorInstrument },
-  { id: 'rtk', label: 'RTK', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: RtkInstrument },
-  { id: 'messages', label: 'Messages', defaultClassName: 'absolute right-3 top-28 z-[1000]', defaultVisible: false, Component: MessagesInstrument },
-  { id: 'controls', label: 'Flight control', defaultClassName: 'absolute left-[124px] top-[420px] z-[1000]', defaultVisible: false, Component: FlightControlInstrument, variants: [
-    { id: 'compact', label: 'Compact', Component: () => <FlightControlInstrument variant="compact" /> },
-    { id: 'bar', label: 'Bar', Component: () => <FlightControlInstrument variant="bar" /> },
+  { id: 'flight-mode', labelKey: 'map:instrumentRegistry.flightMode', defaultClassName: 'absolute left-[124px] top-16 z-[1000]', defaultVisible: false, Component: FlightModeInstrument },
+  { id: 'link', labelKey: 'map:instrumentRegistry.link', defaultClassName: 'absolute left-[124px] top-[128px] z-[1000]', defaultVisible: false, Component: LinkInstrument, variants: compactVariants('link') },
+  { id: 'mission', labelKey: 'map:instrumentRegistry.mission', defaultClassName: 'absolute left-[124px] top-[192px] z-[1000]', defaultVisible: false, Component: MissionInstrument },
+  { id: 'annunciator', labelKey: 'map:instrumentRegistry.annunciator', defaultClassName: 'absolute left-[124px] top-[268px] z-[1000]', defaultVisible: false, Component: AnnunciatorInstrument },
+  { id: 'rtk', labelKey: 'map:instrumentRegistry.rtk', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: RtkInstrument },
+  { id: 'messages', labelKey: 'map:instrumentRegistry.messages', defaultClassName: 'absolute right-3 top-28 z-[1000]', defaultVisible: false, Component: MessagesInstrument },
+  { id: 'controls', labelKey: 'map:instrumentRegistry.controls', defaultClassName: 'absolute left-[124px] top-[420px] z-[1000]', defaultVisible: false, Component: FlightControlInstrument, variants: [
+    { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <FlightControlInstrument variant="compact" /> },
+    { id: 'bar', labelKey: 'map:instrumentDisplay.bar', Component: () => <FlightControlInstrument variant="bar" /> },
   ] },
 ];

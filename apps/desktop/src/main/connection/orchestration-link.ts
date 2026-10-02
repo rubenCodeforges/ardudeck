@@ -24,6 +24,7 @@ import type {
   NtripSourcetableResult,
   NtripStatus,
 } from '../../shared/ntrip-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /** Control-plane channel discriminator (first byte of each WS binary frame). */
 const CHANNEL_MAVLINK = 0x00;
@@ -226,7 +227,7 @@ export class OrchestrationServerLink extends BaseTransport {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.ntripSourcetableWaiters.delete(id);
-        resolve({ success: false, error: 'Sourcetable request timed out' });
+        resolve({ success: false, error: t('main:ntrip.sourcetableTimeout') });
       }, 20000);
       this.ntripSourcetableWaiters.set(id, (result) => {
         clearTimeout(timer);

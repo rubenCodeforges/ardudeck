@@ -9,7 +9,7 @@ describe('classifyOutput', () => {
   });
 
   it('knows the non-proportional outputs by name', () => {
-    for (const name of ['NeoPixel1', 'ProfiLED2', 'Alarm', 'GPIO', 'Winch Clutch', 'Mount1Retract', 'CameraTrigger', 'Parachute', 'LandingGear']) {
+    for (const name of ['NeoPixel1', 'ProfiLED2', 'Alarm', 'GPIO', 'Winch Clutch', 'Mount1Retract', 'CameraTrigger', 'Parachute', 'LandingGear']) { // i18n-exempt
       expect(classifyOutput({ functionName: name })).toEqual({ shape: 'discrete', confident: true });
     }
   });

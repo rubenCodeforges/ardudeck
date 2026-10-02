@@ -12,6 +12,7 @@ import TransmitterCheckStep from './steps/TransmitterCheckStep';
 import ModeConfigStep from './steps/ModeConfigStep';
 import ReviewStep from './steps/ReviewStep';
 import { Radio, Satellite, Settings, Save, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 
 interface ModesWizardProps {
@@ -20,14 +21,15 @@ interface ModesWizardProps {
 }
 
 // Step info for progress display
-const STEPS: { id: string; label: string; Icon: LucideIcon }[] = [
-  { id: 'welcome', label: 'Style', Icon: Radio },
-  { id: 'transmitter', label: 'Check', Icon: Satellite },
-  { id: 'mode-config', label: 'Configure', Icon: Settings },
-  { id: 'review', label: 'Save', Icon: Save },
+const STEPS: { id: string; labelKey: string; Icon: LucideIcon }[] = [
+  { id: 'welcome', labelKey: 'modes:modesWizard.stepStyle', Icon: Radio },
+  { id: 'transmitter', labelKey: 'modes:modesWizard.stepCheck', Icon: Satellite },
+  { id: 'mode-config', labelKey: 'modes:modesWizard.stepConfigure', Icon: Settings },
+  { id: 'review', labelKey: 'modes:modesWizard.stepSave', Icon: Save },
 ];
 
 export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const {
     currentStep,
     stopRcPolling,
@@ -88,13 +90,13 @@ export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => 
               <Radio className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-content">Modes Setup Wizard</h2>
-              <p className="text-xs text-content-secondary">Configure your flight modes</p>
+              <h2 className="text-lg font-semibold text-content">{t('modes:modesWizard.title')}</h2>
+              <p className="text-xs text-content-secondary">{t('modes:modesWizard.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {confirmClose && (
-              <span className="text-xs text-amber-400">Press again to discard setup</span>
+              <span className="text-xs text-amber-400">{t('modes:modesWizard.pressAgain')}</span>
             )}
             <button
               onClick={handleClose}
@@ -147,7 +149,7 @@ export const ModesWizard: React.FC<ModesWizardProps> = ({ isOpen, onClose }) => 
                         isCurrent ? 'text-blue-400' : isCompleted ? 'text-green-400' : 'text-content-secondary'
                       }`}
                     >
-                      {step.label}
+                      {t(step.labelKey)}
                     </span>
                   </div>
 

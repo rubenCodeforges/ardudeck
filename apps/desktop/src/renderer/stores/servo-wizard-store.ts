@@ -7,6 +7,9 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
+import { pendingDraft } from './msp-pending-writes-store';
+import { mergeServoEdit } from './servo-config-merge';
 import {
   AircraftPreset,
   ControlSurfaceAssignment,
@@ -20,12 +23,26 @@ export type WizardStep = 'aircraft' | 'assign' | 'test' | 'endpoints' | 'review'
 
 const STEPS: WizardStep[] = ['aircraft', 'assign', 'test', 'endpoints', 'review'];
 
-export const STEP_INFO: Record<WizardStep, { label: string; icon: LucideIcon; description: string }> = {
-  aircraft: { label: 'Aircraft', icon: Plane, description: 'Select your aircraft type' },
-  assign: { label: 'Assign', icon: Wrench, description: 'Map servos to control surfaces' },
-  test: { label: 'Test', icon: Gamepad2, description: 'Verify servo movement' },
-  endpoints: { label: 'Calibrate', icon: Ruler, description: 'Adjust servo limits' },
-  review: { label: 'Save', icon: Save, description: 'Review and save' },
+interface StepInfo { label: string; labelKey: string; icon: LucideIcon; description: string; descriptionKey: string }
+
+function stepInfo(step: WizardStep, icon: LucideIcon): StepInfo {
+  const labelKey = `stores:servoWizardStore.step.${step}`;
+  const descriptionKey = `stores:servoWizardStore.step.${step}Desc`;
+  return {
+    labelKey,
+    descriptionKey,
+    icon,
+    get label() { return t(labelKey); },
+    get description() { return t(descriptionKey); },
+  };
+}
+
+export const STEP_INFO: Record<WizardStep, StepInfo> = {
+  aircraft: stepInfo('aircraft', Plane),
+  assign: stepInfo('assign', Wrench),
+  test: stepInfo('test', Gamepad2),
+  endpoints: stepInfo('endpoints', Ruler),
+  review: stepInfo('review', Save),
 };
 
 interface ServoWizardState {
@@ -53,6 +70,8 @@ interface ServoWizardState {
   // Servo assignments
   assignments: ControlSurfaceAssignment[];
   originalAssignments: ControlSurfaceAssignment[]; // For revert
+  /** Servo configs as read from the FC; writes keep their rate magnitude and forwarding. */
+  fcServoConfigs: FcServoConfig[] | null;
 
   // Live servo values (from polling)
   servoValues: number[];
@@ -83,6 +102,46 @@ interface ServoWizardState {
   reset: () => void;
 }
 
+export interface FcServoConfig {
+  min: number;
+  max: number;
+  middle: number;
+  rate: number;
+  forwardFromChannel?: number;
+  reversedSources?: number;
+}
+
+export const SERVO_TUNING_PENDING_ID = 'servo-tuning';
+
+export interface ServoTuningDraft {
+  assignments: ControlSurfaceAssignment[];
+  fcServoConfigs: FcServoConfig[] | null;
+}
+
+/** Endpoints and direction from the assignment; rate magnitude and forwarding stay as the FC had them. */
+export function servoConfigFor(a: ControlSurfaceAssignment, fc: FcServoConfig[] | null): FcServoConfig {
+  const current = fc?.[a.servoIndex];
+  const magnitude = Math.abs(current?.rate || 100);
+  return {
+    min: a.min,
+    max: a.max,
+    middle: a.center,
+    rate: a.reversed ? -magnitude : magnitude,
+    forwardFromChannel: current?.forwardFromChannel ?? 255,
+    reversedSources: current?.reversedSources ?? 0,
+  };
+}
+
+/** Servo Tuning's write: endpoints and direction only, never the mixer. */
+export async function writeServoTuning(d: ServoTuningDraft): Promise<boolean> {
+  const live = (await window.electronAPI.mspGetServoConfigs()) as FcServoConfig[] | null;
+  for (const a of d.assignments) {
+    const cfg = mergeServoEdit(d.fcServoConfigs?.[a.servoIndex], servoConfigFor(a, d.fcServoConfigs), live?.[a.servoIndex]);
+    if (cfg && !(await window.electronAPI.mspSetServoConfig(a.servoIndex, cfg))) return false;
+  }
+  return true;
+}
+
 export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
   // Initial state
   isOpen: false,
@@ -106,6 +165,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
 
   assignments: [],
   originalAssignments: [],
+  fcServoConfigs: null,
 
   servoValues: new Array(9).fill(1500),
   isPollingServos: false,
@@ -140,7 +200,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
       const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
         return Promise.race([
           promise,
-          new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms)),
+          new Promise<T>((_, reject) => setTimeout(() => reject(new Error(t('stores:servoWizardStore.timeout'))), ms)),
         ]);
       };
 
@@ -196,7 +256,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
               servoSupported: false,
               isCheckingSupport: false,
               isMultirotor: true,
-              supportError: 'Servo outputs are not available on this board in multirotor mode. This is a hardware limitation - not all flight controller boards can output servo signals when configured as a quad/hex.',
+              supportError: t('stores:servoWizardStore.multirotorNoServos'),
             });
             return;
           }
@@ -246,8 +306,8 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
             isCheckingSupport: false,
             isMultirotor,
             supportError: isMultirotor
-              ? 'No servo outputs available on this board for gimbal control.'
-              : 'No servo outputs detected. Ensure your board supports servos.',
+              ? t('stores:servoWizardStore.noServosGimbal')
+              : t('stores:servoWizardStore.noServos'),
           });
         }
       } catch (err) {
@@ -257,17 +317,17 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
           servoSupported: false,
           isCheckingSupport: false,
           isMultirotor,
-          supportError: 'Servo configuration not supported on this firmware. iNav 2.0.0 may be too old - try updating to a newer version.',
+          supportError: t('stores:servoWizardStore.firmwareTooOld'),
         });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('common:unknownError');
       console.error('[ServoWizard] Check failed:', message);
 
       set({
         servoSupported: false,
         isCheckingSupport: false,
-        supportError: 'Failed to check servo support. Please try again.',
+        supportError: t('stores:servoWizardStore.checkSupportFailed'),
       });
     }
   },
@@ -370,13 +430,13 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         console.error(`[ServoWizard] Failed to set platform type (MSP2 + CLI both failed)`);
         // Show user a helpful message
         set({
-          supportError: `Could not change platform to ${platformName}. For iNav 2.0.0, you may need to use iNav Configurator to change the mixer type, then reconnect.`,
+          supportError: t('stores:servoWizardStore.changePlatformFailed', { platform: platformName }),
         });
       }
     } catch (err) {
       console.error('[ServoWizard] Error setting platform type:', err);
       set({
-        supportError: `Error changing platform: ${err instanceof Error ? err.message : 'Unknown error'}. Try using iNav Configurator to change the mixer type.`,
+        supportError: t('stores:servoWizardStore.platformChangeError', { error: err instanceof Error ? err.message : t('common:unknownError') }),
       });
     }
   },
@@ -518,8 +578,10 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         // Apply actual FC values to assignments if we have them
         if (configs && Array.isArray(configs)) {
           for (const assignment of defaultAssignments) {
-            const fcConfig = configs[assignment.servoIndex] as { min?: number; max?: number; middle?: number } | undefined;
+            const fcConfig = configs[assignment.servoIndex] as { min?: number; max?: number; middle?: number; rate?: number } | undefined;
             if (fcConfig) {
+              // INAV reverses a servo with a negative rate
+              assignment.reversed = (fcConfig.rate ?? 100) < 0;
               // Use FC values if they look valid (not all zeros or defaults)
               if (fcConfig.min !== undefined && fcConfig.min > 0) {
                 assignment.min = fcConfig.min;
@@ -535,11 +597,14 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
           }
         }
 
+        // Unsaved tuning edits from before a tab switch win over the freshly read values
+        const draft = pendingDraft<ServoTuningDraft>(SERVO_TUNING_PENDING_ID);
         set({
           selectedPresetId: presetId,
           selectedPreset: preset,
-          assignments: defaultAssignments,
+          assignments: draft ? draft.assignments : defaultAssignments,
           originalAssignments: JSON.parse(JSON.stringify(defaultAssignments)),
+          fcServoConfigs: Array.isArray(configs) ? (configs as FcServoConfig[]) : null,
         });
       }
     } catch (err) {
@@ -558,17 +623,13 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         const assignment = assignments[i]!;
 
         // Set servo PWM config - check return value!
-        const configResult = await window.electronAPI.mspSetServoConfig(assignment.servoIndex, {
-          min: assignment.min,
-          max: assignment.max,
-          middle: assignment.center,
-          rate: 100,
-          forwardFromChannel: 255, // Disabled
-          reversedSources: 0,
-        });
+        const configResult = await window.electronAPI.mspSetServoConfig(
+          assignment.servoIndex,
+          servoConfigFor(assignment, get().fcServoConfigs),
+        );
 
         if (!configResult) {
-          throw new Error(`Failed to set servo ${assignment.servoIndex} config`);
+          throw new Error(t('stores:servoWizardStore.setServoFailed', { index: assignment.servoIndex }));
         }
 
         // Set mixer rules for this servo (MSP2 - not supported on old iNav)
@@ -586,7 +647,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
                 speed: 0,
                 min: 0,
                 max: 100,
-                box: 0,
+                box: -1, // INAV: no logic condition, always active
               }
             );
 
@@ -613,7 +674,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
         // This will save and reboot the board
         const cliSaveResult = await window.electronAPI.mspSaveServoCli();
         if (!cliSaveResult) {
-          throw new Error('Failed to save to EEPROM');
+          throw new Error(t('stores:servoWizardStore.saveEepromFailed'));
         }
         console.log('[ServoWizard] Saved via CLI (board will reboot)');
       }
@@ -636,7 +697,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
       set({ isSaving: false });
       console.log('[ServoWizard] Saved to FC successfully');
     } catch (err) {
-      let message = err instanceof Error ? err.message : 'Failed to save';
+      let message = err instanceof Error ? err.message : t('common:failedToSave');
 
       // Add helpful suggestions based on error type
       if (message.includes('timed out')) {
@@ -671,6 +732,7 @@ export const useServoWizardStore = create<ServoWizardState>((set, get) => ({
       selectedPreset: null,
       assignments: [],
       originalAssignments: [],
+      fcServoConfigs: null,
       servoValues: new Array(9).fill(1500),
       isSaving: false,
       saveError: null,

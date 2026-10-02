@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { firmwareLabel } from '../../../shared/firmware-types';
@@ -16,6 +17,7 @@ interface ProgressState {
 }
 
 export default function ReportBugView() {
+  const { t } = useTranslation();
   const { connectionState } = useConnectionStore();
   const { parameters } = useParameterStore();
 
@@ -43,8 +45,8 @@ export default function ReportBugView() {
   const boardInfo = isMspBoard
     ? `${connectionState.fcVariant} ${connectionState.fcVersion}`
     : isMavlinkBoard
-      ? [firmwareLabel(connectionState), connectionState.vehicleType].filter(Boolean).join(' ') || 'MAVLink vehicle'
-      : 'Not connected';
+      ? [firmwareLabel(connectionState), connectionState.vehicleType].filter(Boolean).join(' ') || t('report:reportBugView.mavlinkVehicle')
+      : t('report:reportBugView.notConnected');
 
   // Fetch encryption info on mount
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function ReportBugView() {
 
   const handleGenerateReport = async () => {
     if (!hasConsented) {
-      setError('Please acknowledge the data collection consent');
+      setError(t('report:reportBugView.consentRequired'));
       return;
     }
 
@@ -78,14 +80,14 @@ export default function ReportBugView() {
       // Collect board dump if requested and connected
       if (includeBoardDump && isConnected) {
         if (isMspBoard) {
-          setProgress({ stage: 'board_dump', message: 'Collecting board configuration (CLI mode)...' });
+          setProgress({ stage: 'board_dump', message: t('report:reportBugView.collectingCli') });
           const result = await window.electronAPI.reportCollectMspDump();
           if (!result.success) {
-            throw new Error(result.error || 'Failed to collect board dump');
+            throw new Error(result.error || t('report:reportBugView.collectFailed'));
           }
           boardDump = result.dump;
         } else if (isMavlinkBoard) {
-          setProgress({ stage: 'board_dump', message: 'Collecting board configuration (MAVLink)...' });
+          setProgress({ stage: 'board_dump', message: t('report:reportBugView.collectingMavlink') });
           const result = await window.electronAPI.reportCollectMavlinkDump();
           if (result.success && result.dump) {
             // Fill in parameters from the parameter store
@@ -103,22 +105,22 @@ export default function ReportBugView() {
       }
 
       // Save the report
-      setProgress({ stage: 'saving', message: 'Creating encrypted report...' });
+      setProgress({ stage: 'saving', message: t('report:reportBugView.creating') });
       const result = await window.electronAPI.reportSave(
-        description || 'No description provided',
+        description || 'No description provided', // i18n-exempt: written into the report file for developers
         boardDump,
         includeLogs ? logHours : 0
       );
 
       if (result.success) {
-        setSuccess(`Report saved to: ${result.filePath}`);
+        setSuccess(t('report:reportBugView.savedTo', { path: result.filePath }));
         setDescription('');
         setHasConsented(false);
       } else {
-        throw new Error(result.error || 'Failed to save report');
+        throw new Error(result.error || t('report:reportBugView.saveFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('common:unknownError'));
     } finally {
       generatingRef.current = false;
       setIsGenerating(false);
@@ -138,8 +140,8 @@ export default function ReportBugView() {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-content">Report a Bug</h1>
-            <p className="text-xs text-content-secondary">Create an encrypted report to share with developers</p>
+            <h1 className="text-lg font-semibold text-content">{t('report:reportBugView.title')}</h1>
+            <p className="text-xs text-content-secondary">{t('report:reportBugView.subtitle')}</p>
           </div>
         </div>
 
@@ -153,7 +155,7 @@ export default function ReportBugView() {
           ) : (
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-content-tertiary" />
-              Not connected
+              {t('report:reportBugView.notConnected')}
             </span>
           )}
         </div>
@@ -164,27 +166,26 @@ export default function ReportBugView() {
         {/* Placeholder key warning */}
         {encryptionInfo?.isPlaceholderKey && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400 text-sm">
-            <span className="font-semibold">Development Mode:</span> Using placeholder encryption key.
-            Reports created now cannot be decrypted by the production team.
+            <Trans i18nKey="report:reportBugView.devModeWarning" components={{ b: <span className="font-semibold" /> }} />
           </div>
         )}
 
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-content mb-2">
-            Describe the issue
+            {t('report:reportBugView.describeIssue')}
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What happened? What were you trying to do? Include any error messages you saw..."
+            placeholder={t('report:reportBugView.descriptionPlaceholder')}
             className="w-full h-32 px-3 py-2 bg-surface-input border border-border rounded-lg text-content placeholder-content-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none"
           />
         </div>
 
         {/* Options */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-content">What to include</h3>
+          <h3 className="text-sm font-medium text-content">{t('report:reportBugView.whatToInclude')}</h3>
 
           {/* Include logs */}
           <label className="flex items-start gap-3 cursor-pointer">
@@ -195,20 +196,20 @@ export default function ReportBugView() {
               className="mt-1 w-4 h-4 rounded border-border bg-surface-input text-blue-500 focus:ring-blue-500/50"
             />
             <div>
-              <span className="text-content">App logs</span>
+              <span className="text-content">{t('report:reportBugView.appLogs')}</span>
               <p className="text-xs text-content-secondary">
-                Includes error messages and diagnostic information from the last{' '}
+                {t('report:reportBugView.appLogsHint')}{' '}
                 <select
                   value={logHours}
                   onChange={(e) => setLogHours(Number(e.target.value))}
                   className="bg-surface-input border border-border rounded px-1 text-content"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <option value={1}>1 hour</option>
-                  <option value={6}>6 hours</option>
-                  <option value={24}>24 hours</option>
-                  <option value={72}>3 days</option>
-                  <option value={168}>7 days</option>
+                  <option value={1}>{t('report:reportBugView.hours', { count: 1 })}</option>
+                  <option value={6}>{t('report:reportBugView.hours', { count: 6 })}</option>
+                  <option value={24}>{t('report:reportBugView.hours', { count: 24 })}</option>
+                  <option value={72}>{t('report:reportBugView.days', { count: 3 })}</option>
+                  <option value={168}>{t('report:reportBugView.days', { count: 7 })}</option>
                 </select>
               </p>
             </div>
@@ -224,16 +225,16 @@ export default function ReportBugView() {
               className="mt-1 w-4 h-4 rounded border-border bg-surface-input text-blue-500 focus:ring-blue-500/50 disabled:opacity-50"
             />
             <div>
-              <span className="text-content">Board configuration</span>
+              <span className="text-content">{t('report:reportBugView.boardConfiguration')}</span>
               <p className="text-xs text-content-secondary">
                 {!isConnected ? (
-                  'Connect to a board to include configuration'
+                  t('report:reportBugView.boardConnectHint')
                 ) : isMspBoard ? (
                   <span className="text-yellow-400">
-                    Will enter CLI mode and reboot the board after collection
+                    {t('report:reportBugView.boardMspHint')}
                   </span>
                 ) : (
-                  'Includes all parameters and system status'
+                  t('report:reportBugView.boardMavlinkHint')
                 )}
               </p>
             </div>
@@ -246,7 +247,7 @@ export default function ReportBugView() {
             onClick={() => setShowWhatWeCollect(!showWhatWeCollect)}
             className="w-full flex items-center justify-between px-4 py-3 text-sm text-content hover:bg-surface-input transition-colors"
           >
-            <span>What data will be collected?</span>
+            <span>{t('report:reportBugView.whatCollected')}</span>
             <svg
               className={`w-4 h-4 transition-transform ${showWhatWeCollect ? 'rotate-180' : ''}`}
               fill="none"
@@ -258,27 +259,27 @@ export default function ReportBugView() {
           </button>
           {showWhatWeCollect && (
             <div className="px-4 pb-4 text-xs text-content-secondary space-y-2 border-t border-subtle pt-3">
-              <p><strong className="text-content-secondary">Included:</strong></p>
+              <p><strong className="text-content-secondary">{t('report:reportBugView.included')}</strong></p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Error messages and stack traces</li>
-                <li>App version and session info</li>
-                <li>Operating system and architecture</li>
-                <li>Electron/Node.js versions</li>
-                <li>MAVLink/MSP protocol messages (no personal info)</li>
-                <li>Board configuration (if selected)</li>
-                <li>Your description of the issue</li>
+                <li>{t('report:reportBugView.incErrors')}</li>
+                <li>{t('report:reportBugView.incVersion')}</li>
+                <li>{t('report:reportBugView.incOs')}</li>
+                <li>{t('report:reportBugView.incRuntime')}</li>
+                <li>{t('report:reportBugView.incProtocol')}</li>
+                <li>{t('report:reportBugView.incBoard')}</li>
+                <li>{t('report:reportBugView.incDescription')}</li>
               </ul>
-              <p className="mt-3"><strong className="text-content-secondary">Privacy protected:</strong></p>
+              <p className="mt-3"><strong className="text-content-secondary">{t('report:reportBugView.privacyProtected')}</strong></p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Home directory paths are sanitized</li>
-                <li>GPS coordinates are redacted</li>
-                <li>Email addresses are redacted</li>
-                <li>IP addresses are redacted</li>
-                <li>Passwords and credentials are redacted</li>
+                <li>{t('report:reportBugView.privPaths')}</li>
+                <li>{t('report:reportBugView.privGps')}</li>
+                <li>{t('report:reportBugView.privEmail')}</li>
+                <li>{t('report:reportBugView.privIp')}</li>
+                <li>{t('report:reportBugView.privPasswords')}</li>
               </ul>
-              <p className="mt-3"><strong className="text-content-secondary">Encryption:</strong></p>
+              <p className="mt-3"><strong className="text-content-secondary">{t('report:reportBugView.encryption')}</strong></p>
               <p className="ml-2">
-                The report is securely encrypted and can only be decrypted by the ArduDeck development team.
+                {t('report:reportBugView.encryptionHint')}
               </p>
             </div>
           )}
@@ -293,8 +294,7 @@ export default function ReportBugView() {
             className="mt-1 w-4 h-4 rounded border-border bg-surface-input text-blue-500 focus:ring-blue-500/50"
           />
           <div className="text-sm text-content">
-            I understand that the collected data will be encrypted and shared with the ArduDeck development team
-            for debugging purposes. No personal information beyond what is listed above will be included.
+            {t('report:reportBugView.consent')}
           </div>
         </label>
 
@@ -335,22 +335,21 @@ export default function ReportBugView() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Generating Report...
+              {t('report:reportBugView.generating')}
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Generate & Save Report
+              {t('report:reportBugView.generate')}
             </>
           )}
         </button>
 
         {/* Info about the file */}
         <p className="text-xs text-content-secondary text-center">
-          The report will be saved as a <code className="bg-surface-input px-1 rounded">.deckreport</code> file
-          that you can share with the development team.
+          <Trans i18nKey="report:reportBugView.fileInfo" components={{ c: <code className="bg-surface-input px-1 rounded" /> }} />
         </p>
       </div>
     </div>

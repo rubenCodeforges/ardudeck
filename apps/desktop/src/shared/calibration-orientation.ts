@@ -12,6 +12,7 @@
  */
 
 import type { AccelPosition } from './calibration-types';
+import { t } from './i18n/index.js';
 
 export interface TargetOrientation {
   /** Index into ACCEL_6POINT_POSITIONS. */
@@ -20,6 +21,7 @@ export interface TargetOrientation {
   pitch: number;
   /** Short instruction, phrased as an action. */
   instruction: string;
+  instructionKey: string;
 }
 
 const D = Math.PI / 180;
@@ -30,13 +32,17 @@ const D = Math.PI / 180;
  * does not care which way the nose points, only which face is down.
  */
 export const SIX_POINT_TARGETS: readonly TargetOrientation[] = [
-  { position: 0, roll: 0, pitch: 0, instruction: 'Place the vehicle level, right way up' },
-  { position: 1, roll: -90 * D, pitch: 0, instruction: 'Roll the vehicle onto its LEFT side' },
-  { position: 2, roll: 90 * D, pitch: 0, instruction: 'Roll the vehicle onto its RIGHT side' },
-  { position: 3, roll: 0, pitch: -90 * D, instruction: 'Stand the vehicle NOSE DOWN' },
-  { position: 4, roll: 0, pitch: 90 * D, instruction: 'Stand the vehicle NOSE UP' },
-  { position: 5, roll: 180 * D, pitch: 0, instruction: 'Turn the vehicle UPSIDE DOWN' },
+  { position: 0, roll: 0, pitch: 0, instruction: 'Place the vehicle level, right way up', instructionKey: 'shared:calibrationOrientation.level' }, // i18n-exempt
+  { position: 1, roll: -90 * D, pitch: 0, instruction: 'Roll the vehicle onto its LEFT side', instructionKey: 'shared:calibrationOrientation.leftSide' }, // i18n-exempt
+  { position: 2, roll: 90 * D, pitch: 0, instruction: 'Roll the vehicle onto its RIGHT side', instructionKey: 'shared:calibrationOrientation.rightSide' }, // i18n-exempt
+  { position: 3, roll: 0, pitch: -90 * D, instruction: 'Stand the vehicle NOSE DOWN', instructionKey: 'shared:calibrationOrientation.noseDown' }, // i18n-exempt
+  { position: 4, roll: 0, pitch: 90 * D, instruction: 'Stand the vehicle NOSE UP', instructionKey: 'shared:calibrationOrientation.noseUp' }, // i18n-exempt
+  { position: 5, roll: 180 * D, pitch: 0, instruction: 'Turn the vehicle UPSIDE DOWN', instructionKey: 'shared:calibrationOrientation.upsideDown' }, // i18n-exempt
 ];
+
+export function targetInstruction(target: TargetOrientation): string {
+  return t(target.instructionKey);
+}
 
 export function targetForPosition(position: AccelPosition): TargetOrientation {
   return SIX_POINT_TARGETS[position] ?? SIX_POINT_TARGETS[0]!;
@@ -106,11 +112,9 @@ export function orientationHint(
 
   // Name the single biggest correction: two instructions at once is noise.
   if (Math.abs(dRoll) >= Math.abs(dPitch)) {
-    return dRoll > 0
-      ? `Roll ${Math.round(Math.abs(dRoll))}° left`
-      : `Roll ${Math.round(Math.abs(dRoll))}° right`;
+    const deg = Math.round(Math.abs(dRoll));
+    return dRoll > 0 ? t('shared:calibrationOrientation.rollLeft', { deg }) : t('shared:calibrationOrientation.rollRight', { deg });
   }
-  return dPitch > 0
-    ? `Pitch ${Math.round(Math.abs(dPitch))}° down`
-    : `Pitch ${Math.round(Math.abs(dPitch))}° up`;
+  const deg = Math.round(Math.abs(dPitch));
+  return dPitch > 0 ? t('shared:calibrationOrientation.pitchDown', { deg }) : t('shared:calibrationOrientation.pitchUp', { deg });
 }

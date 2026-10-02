@@ -24,13 +24,15 @@ import { useFleetRepoStore, useCurrentVaultUnit, isRestoreTargetMatch, isRestore
 import { VaultAutoSyncToggle } from './VaultAutoSyncToggle';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { Trans, useTranslation } from 'react-i18next';
+import { t as translate } from '../../../shared/i18n/index.js';
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  if (s < 86400 * 30) return `${Math.floor(s / 86400)}d ago`;
+  if (s < 60) return translate('vault:timeAgo.justNow');
+  if (s < 3600) return translate('vault:timeAgo.minutes', { count: Math.floor(s / 60) });
+  if (s < 86400) return translate('vault:timeAgo.hours', { count: Math.floor(s / 3600) });
+  if (s < 86400 * 30) return translate('vault:timeAgo.days', { count: Math.floor(s / 86400) });
   return new Date(ts).toLocaleDateString();
 }
 
@@ -41,7 +43,7 @@ function fmtValue(v: number): string {
 
 // ── GitHub connect dialog ───────────────────────────────────────
 
-function ExtLink({ href, children }: { href: string; children: React.ReactNode }) {
+function ExtLink({ href, children }: { href: string; children?: React.ReactNode }) {
   return (
     <button
       onClick={() => window.electronAPI?.openExternal(href)}
@@ -53,6 +55,7 @@ function ExtLink({ href, children }: { href: string; children: React.ReactNode }
 }
 
 function GithubDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const status = useFleetRepoStore((s) => s.status);
   const refresh = useFleetRepoStore((s) => s.refresh);
   const [device, setDevice] = useState<{ userCode: string; verificationUri: string; deviceCode: string; interval: number } | null>(null);
@@ -80,7 +83,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
     const res = await window.electronAPI?.fleetRepoGhDeviceStart();
     setBusy(false);
     if (!res?.success || !res.deviceCode) {
-      setError(res?.error ?? 'Could not reach GitHub');
+      setError(res?.error ?? t('vault:githubDialog.errReach'));
       return;
     }
     setDevice({
@@ -99,7 +102,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
       } else if (poll?.state === 'error') {
         if (pollTimer.current) clearInterval(pollTimer.current);
         setDevice(null);
-        setError(poll.error ?? 'Authorization failed');
+        setError(poll.error ?? t('vault:githubDialog.errAuth'));
       }
     }, ((res.interval ?? 5) + 1) * 1000);
   }, [refresh]);
@@ -111,7 +114,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
     const res = await window.electronAPI?.fleetRepoGhSetToken(pat.trim());
     setBusy(false);
     if (!res?.success) {
-      setError(res?.error ?? 'Token rejected');
+      setError(res?.error ?? t('vault:githubDialog.errToken'));
       return;
     }
     setPat('');
@@ -127,7 +130,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
     const res = await window.electronAPI?.fleetRepoGhListRepos();
     setBusy(false);
     if (!res?.success || !res.repos) {
-      setError(res?.error ?? 'Could not list repositories');
+      setError(res?.error ?? t('vault:githubDialog.errList'));
       return;
     }
     setRepoList(res.repos);
@@ -141,7 +144,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
     const res = await window.electronAPI?.fleetRepoGhUseExisting(pickedRepo);
     setBusy(false);
     if (!res?.success) {
-      setError(res?.error ?? 'Could not use that repository');
+      setError(res?.error ?? t('vault:githubDialog.errUse'));
       return;
     }
     setRepoList(null);
@@ -154,7 +157,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
     const res = await window.electronAPI?.fleetRepoGhCreateRepo(repoName.trim() || 'ardudeck-fleet');
     setBusy(false);
     if (!res?.success) {
-      setError(res?.error ?? 'Could not create repository');
+      setError(res?.error ?? t('vault:githubDialog.errCreate'));
       return;
     }
     await refresh();
@@ -174,7 +177,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
     );
     setBusy(false);
     if (!res?.success) {
-      setError(res?.error ?? 'Could not save the repository');
+      setError(res?.error ?? t('vault:githubDialog.errSave'));
       return;
     }
     setCustomToken('');
@@ -190,7 +193,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
           <div className="flex items-center gap-2.5">
             <Github className="w-4.5 h-4.5 text-content" />
-            <h2 className="text-sm font-semibold text-content">GitHub backup</h2>
+            <h2 className="text-sm font-semibold text-content">{t('vault:githubDialog.title')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -208,47 +211,48 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
           {!connected && !device && (
             <>
               <p className="text-[11px] text-content-secondary leading-relaxed">
-                ArduDeck backs up your parameter snapshots, missions and areas to an online
-                repository. Everything keeps working offline; sync happens when you ask for it.
-                Two ways to connect:
+                {t('vault:githubDialog.intro')}
               </p>
 
               {/* Option 1: sign in */}
               <div className="rounded-xl border border-subtle p-3.5">
-                <div className="text-xs font-medium text-content mb-1">1. Sign in with GitHub</div>
+                <div className="text-xs font-medium text-content mb-1">{t('vault:githubDialog.option1Title')}</div>
                 <p className="text-[10px] text-content-tertiary leading-relaxed mb-2.5">
-                  Easiest. ArduDeck creates a private repository for you. GitHub's approval page
-                  asks for repository access in general (that is how GitHub permissions work);
-                  ArduDeck only touches the one vault repository.
+                  {t('vault:githubDialog.option1Body')}
                 </p>
                 <button
                   onClick={startDeviceFlow}
                   disabled={busy}
                   className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors disabled:opacity-50"
                 >
-                  Connect GitHub account
+                  {t('vault:githubDialog.connectAccount')}
                 </button>
                 <p className="text-[10px] text-content-tertiary mt-2">
-                  No account yet? <ExtLink href="https://github.com/signup">Create one free at github.com</ExtLink>
+                  <Trans
+                    i18nKey="vault:githubDialog.noAccount"
+                    components={{ link: <ExtLink href="https://github.com/signup" /> }}
+                  />
                 </p>
               </div>
 
               {/* Option 2: token */}
               <div className="rounded-xl border border-subtle p-3.5">
-                <div className="text-xs font-medium text-content mb-1">2. Paste a GitHub token</div>
+                <div className="text-xs font-medium text-content mb-1">{t('vault:githubDialog.option2Title')}</div>
                 <p className="text-[10px] text-content-tertiary leading-relaxed mb-2.5">
-                  No approval page. Create a token yourself (a fine-grained one limited to a single
-                  repository gives ArduDeck access to nothing else) and paste it here.{' '}
-                  <ExtLink href="https://github.com/settings/personal-access-tokens/new">Open the token page</ExtLink>
-                  {' '}(choose "Only select repositories" and give Contents read and write), or read{' '}
-                  <ExtLink href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token">GitHub's step-by-step guide</ExtLink>.
+                  <Trans
+                    i18nKey="vault:githubDialog.option2Body"
+                    components={{
+                      tokenLink: <ExtLink href="https://github.com/settings/personal-access-tokens/new" />,
+                      guideLink: <ExtLink href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token" />,
+                    }}
+                  />
                 </p>
                 <div className="flex gap-2">
                   <input
                     type="password"
                     value={pat}
                     onChange={(e) => setPat(e.target.value)}
-                    placeholder="Personal access token"
+                    placeholder={t('vault:githubDialog.patPlaceholder')}
                     className="flex-1 text-xs bg-surface-input border border-subtle rounded-lg px-3 py-2 text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
                   />
                   <button
@@ -256,7 +260,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                     disabled={busy || !pat.trim()}
                     className="px-3 py-2 rounded-lg bg-surface-raised border border-subtle text-xs text-content hover:bg-surface-overlay transition-colors disabled:opacity-50"
                   >
-                    Use
+                    {t('vault:githubDialog.use')}
                   </button>
                 </div>
               </div>
@@ -266,22 +270,21 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                 onClick={() => setShowCustom((v) => !v)}
                 className="self-start text-[11px] text-content-secondary hover:text-content transition-colors"
               >
-                {showCustom ? 'Hide advanced option' : 'Advanced: I already have a repository (GitHub, GitLab, self-hosted)'}
+                {showCustom ? t('vault:githubDialog.hideAdvanced') : t('vault:githubDialog.showAdvanced')}
               </button>
               {showCustom && (
                 <div className="rounded-xl border border-subtle p-3.5 flex flex-col gap-2">
                   <p className="text-[10px] text-content-tertiary leading-relaxed">
-                    Point ArduDeck at any existing empty repository over HTTPS. SSH URLs are
-                    converted to HTTPS automatically. The token needs read and write access to
-                    that repository (GitLab tokens: set username to "oauth2").{' '}
-                    <ExtLink href="https://github.com/new">Create an empty repository on GitHub</ExtLink>
-                    {' '}(set it to Private, don't add a README).
+                    <Trans
+                      i18nKey="vault:githubDialog.customBody"
+                      components={{ link: <ExtLink href="https://github.com/new" /> }}
+                    />
                   </p>
                   <input
                     type="text"
                     value={customUrl}
                     onChange={(e) => setCustomUrl(e.target.value)}
-                    placeholder="https://host/you/repo.git"
+                    placeholder="https://host/you/repo.git" /* i18n-exempt */
                     className="w-full text-xs bg-surface-input border border-subtle rounded-lg px-3 py-2 text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
                   />
                   <div className="flex gap-2">
@@ -289,14 +292,14 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                       type="password"
                       value={customToken}
                       onChange={(e) => setCustomToken(e.target.value)}
-                      placeholder="Token"
+                      placeholder={t('vault:githubDialog.tokenPlaceholder')}
                       className="flex-1 text-xs bg-surface-input border border-subtle rounded-lg px-3 py-2 text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
                     />
                     <input
                       type="text"
                       value={customUser}
                       onChange={(e) => setCustomUser(e.target.value)}
-                      placeholder="Username (optional)"
+                      placeholder={t('vault:githubDialog.usernamePlaceholder')}
                       className="w-36 text-xs bg-surface-input border border-subtle rounded-lg px-3 py-2 text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
                     />
                   </div>
@@ -305,7 +308,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                     disabled={busy || !customUrl.trim() || !customToken.trim()}
                     className="self-end px-3 py-2 rounded-lg bg-surface-raised border border-subtle text-xs text-content hover:bg-surface-overlay transition-colors disabled:opacity-50"
                   >
-                    Use this repository
+                    {t('vault:githubDialog.useThisRepo')}
                   </button>
                 </div>
               )}
@@ -314,11 +317,11 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
 
           {device && (
             <div className="flex flex-col items-center gap-3 py-2">
-              <p className="text-[11px] text-content-secondary">Enter this code at {device.verificationUri.replace('https://', '')}</p>
+              <p className="text-[11px] text-content-secondary">{t('vault:githubDialog.enterCode', { url: device.verificationUri.replace('https://', '') })}</p>
               <div className="text-2xl font-bold tracking-[0.3em] text-content bg-surface-raised border border-subtle rounded-xl px-5 py-3 font-mono">
                 {device.userCode}
               </div>
-              <p className="text-[10px] text-content-tertiary">Waiting for authorization...</p>
+              <p className="text-[10px] text-content-tertiary">{t('vault:githubDialog.waitingAuth')}</p>
             </div>
           )}
 
@@ -326,14 +329,14 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
             <>
               <div className="flex items-center gap-2 text-xs text-content">
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
-                Using your repository
+                {t('vault:githubDialog.usingYourRepo')}
               </div>
               <p className="text-[10px] font-mono text-content-secondary break-all">{status.github.repo}</p>
               <button
                 onClick={disconnect}
                 className="self-start text-[11px] text-red-500 hover:text-red-400 transition-colors"
               >
-                Disconnect
+                {t('common:disconnect')}
               </button>
             </>
           )}
@@ -342,10 +345,14 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
             <>
               <div className="flex items-center gap-2 text-xs text-content">
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
-                Connected as <span className="font-semibold">{status?.github.login}</span>
+                <Trans
+                  i18nKey="vault:githubDialog.connectedAs"
+                  values={{ login: status?.github.login }}
+                  components={{ b: <span className="font-semibold" /> }}
+                />
               </div>
               <div>
-                <label className="text-[10px] text-content-secondary block mb-1">Repository (private, created if missing)</label>
+                <label className="text-[10px] text-content-secondary block mb-1">{t('vault:githubDialog.repoLabel')}</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -358,12 +365,12 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                     disabled={busy || !repoName.trim()}
                     className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs transition-colors disabled:opacity-50"
                   >
-                    {status?.github.repo ? 'Update' : 'Create'}
+                    {status?.github.repo ? t('vault:githubDialog.update') : t('vault:githubDialog.create')}
                   </button>
                 </div>
                 {status?.github.repo && (
                   <p className="text-[10px] text-content-tertiary mt-1.5">
-                    Using {status.github.login}/{status.github.repo}
+                    {t('vault:githubDialog.usingRepo', { repo: `${status.github.login}/${status.github.repo}` })}
                   </p>
                 )}
               </div>
@@ -375,12 +382,12 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                   disabled={busy}
                   className="self-start text-[11px] text-content-secondary hover:text-content transition-colors disabled:opacity-50"
                 >
-                  Or pick one of your existing repositories...
+                  {t('vault:githubDialog.pickExisting')}
                 </button>
               ) : (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] text-content-secondary">
-                    Existing repository (its history is kept; only possible while this vault is empty)
+                    {t('vault:githubDialog.existingLabel')}
                   </label>
                   <div className="flex gap-2">
                     <select
@@ -390,7 +397,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                     >
                       {repoList.map((r) => (
                         <option key={r.fullName} value={r.fullName}>
-                          {r.fullName}{r.private ? '' : ' (public)'}
+                          {r.fullName}{r.private ? '' : t('vault:githubDialog.publicSuffix')}
                         </option>
                       ))}
                     </select>
@@ -399,7 +406,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                       disabled={busy || !pickedRepo}
                       className="px-3 py-2 rounded-lg bg-surface-raised border border-subtle text-xs text-content hover:bg-surface-overlay transition-colors disabled:opacity-50"
                     >
-                      Use
+                      {t('vault:githubDialog.use')}
                     </button>
                   </div>
                 </div>
@@ -409,7 +416,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
                 onClick={disconnect}
                 className="self-start text-[11px] text-red-500 hover:text-red-400 transition-colors"
               >
-                Disconnect account
+                {t('vault:githubDialog.disconnectAccount')}
               </button>
             </>
           )}
@@ -422,6 +429,7 @@ function GithubDialog({ onClose }: { onClose: () => void }) {
 // ── Diff panel ──────────────────────────────────────────────────
 
 function DiffPanel() {
+  const { t } = useTranslation();
   const diff = useFleetRepoStore((s) => s.diff);
   const clearDiff = useFleetRepoStore((s) => s.clearDiff);
   const restoreSnapshot = useFleetRepoStore((s) => s.restoreSnapshot);
@@ -457,25 +465,25 @@ function DiffPanel() {
           onClick={clearDiff}
           className="text-[11px] text-content-secondary hover:text-content transition-colors"
         >
-          Back to history
+          {t('vault:vaultView.backToHistory')}
         </button>
         <div className="flex-1" />
         <span className="text-[11px] text-content-secondary">
-          {diff.changed.length} differ, {diff.sameCount} identical, {diff.totalInSnapshot} in snapshot
+          {t('vault:diffPanel.summary', { differ: diff.changed.length, same: diff.sameCount, total: diff.totalInSnapshot })}
         </span>
       </div>
 
       {!diff.liveAvailable && (
         <div className="mx-4 mt-3 text-[11px] text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
           {diff.liveLoading
-            ? 'Parameters are still downloading from the vehicle. Open this snapshot again once the download finishes.'
-            : 'No live parameters loaded. Connect the vehicle to compare and restore.'}
+            ? t('vault:diffPanel.stillDownloading')
+            : t('vault:diffPanel.noLive')}
         </div>
       )}
 
       {diff.liveAvailable && diff.changed.length === 0 && (
         <div className="flex-1 flex items-center justify-center text-xs text-content-secondary">
-          Vehicle matches this snapshot.
+          {t('vault:diffPanel.matches')}
         </div>
       )}
 
@@ -485,9 +493,9 @@ function DiffPanel() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-[10px] uppercase tracking-wider text-content-tertiary">
-                  <th className="text-left font-medium pb-2">Parameter</th>
-                  <th className="text-right font-medium pb-2">Vehicle now</th>
-                  <th className="text-right font-medium pb-2">Snapshot</th>
+                  <th className="text-left font-medium pb-2">{t('common:parameter')}</th>
+                  <th className="text-right font-medium pb-2">{t('vault:diffPanel.vehicleNow')}</th>
+                  <th className="text-right font-medium pb-2">{t('vault:diffPanel.snapshot')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -498,7 +506,7 @@ function DiffPanel() {
                       {row.calibration && (
                         <span
                           className="inline-flex items-center gap-0.5 text-[9px] text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded px-1"
-                          data-tip="Per-unit calibration - excluded from restore by default"
+                          data-tip={t('vault:diffPanel.calTip')}
                         >
                           <ShieldAlert className="w-2.5 h-2.5" /> CAL
                         </span>
@@ -514,7 +522,7 @@ function DiffPanel() {
             </table>
             {diff.missingOnVehicle.length > 0 && (
               <p className="text-[10px] text-content-tertiary mt-3">
-                {diff.missingOnVehicle.length} snapshot param{diff.missingOnVehicle.length === 1 ? '' : 's'} not present on this vehicle (skipped).
+                {t('vault:diffPanel.missing', { count: diff.missingOnVehicle.length })}
               </p>
             )}
           </div>
@@ -528,30 +536,30 @@ function DiffPanel() {
                   onChange={(e) => { setIncludeCal(e.target.checked); setConfirming(false); }}
                   className="w-3.5 h-3.5 rounded"
                 />
-                Include {calCount} calibration param{calCount === 1 ? '' : 's'}
+                {t('vault:diffPanel.includeCal', { count: calCount })}
               </label>
             )}
             <div className="flex-1" />
             {restoreBusy && restoreProgress ? (
               <span className="text-[11px] text-content-secondary">
-                Writing {restoreProgress.done}/{restoreProgress.total}...
+                {t('vault:diffPanel.writing', { done: restoreProgress.done, total: restoreProgress.total })}
               </span>
             ) : confirming ? (
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-content-secondary">
-                  Write {applicable} value{applicable === 1 ? '' : 's'} to the vehicle?
+                  {t('vault:diffPanel.confirmWrite', { count: applicable })}
                 </span>
                 <button
                   onClick={async () => { setConfirming(false); await restoreSnapshot(includeCal); }}
                   className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition-colors"
                 >
-                  Restore
+                  {t('common:restore')}
                 </button>
                 <button
                   onClick={() => setConfirming(false)}
                   className="px-2 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content transition-colors"
                 >
-                  Cancel
+                  {t('common:cancel')}
                 </button>
               </div>
             ) : (
@@ -561,15 +569,15 @@ function DiffPanel() {
                 className="px-3 py-1.5 rounded-lg bg-surface-raised border border-subtle text-xs text-content hover:bg-surface-overlay transition-colors disabled:opacity-50"
                 data-tip={
                   !isConnected
-                    ? 'Connect the vehicle to restore'
+                    ? t('vault:diffPanel.connectToRestore')
                     : !targetMatches
-                      ? `This snapshot belongs to ${ownerName}. Restore only writes to the vehicle it came from; set "Working on" to ${ownerName} if this is that aircraft.`
+                      ? t('vault:diffPanel.wrongVehicle', { name: ownerName })
                       : !firmwareMatches
-                        ? `This snapshot was taken from ${diff.snapshotFirmware}, but the vehicle is running ${liveFirmware}. Parameter names do not carry across flight stacks.`
+                        ? t('vault:diffPanel.wrongFirmware', { snapshot: diff.snapshotFirmware, live: liveFirmware })
                         : undefined
                 }
               >
-                Restore snapshot...
+                {t('vault:diffPanel.restoreSnapshot')}
               </button>
             )}
           </div>
@@ -582,6 +590,7 @@ function DiffPanel() {
 // ── Main view ───────────────────────────────────────────────────
 
 export function VaultView() {
+  const { t } = useTranslation();
   const status = useFleetRepoStore((s) => s.status);
   const units = useFleetRepoStore((s) => s.units);
   const sites = useFleetRepoStore((s) => s.sites);
@@ -671,11 +680,11 @@ export function VaultView() {
           <GitBranch className="w-4 h-4 text-blue-500" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-sm font-semibold text-content leading-tight">Fleet Vault</h1>
+          <h1 className="text-sm font-semibold text-content leading-tight">{t('vault:vaultView.title')}</h1>
           <p className="text-[10px] text-content-secondary">
-            Backup and history for settings, missions and survey areas ·{' '}
-            {status ? `${status.commitCount} save${status.commitCount === 1 ? '' : 's'}` : 'Loading...'}
-            {status?.github.lastSyncAt ? ` · copied online ${timeAgo(status.github.lastSyncAt)}` : ''}
+            {t('vault:vaultView.subtitle')}{' '}
+            {status ? t('vault:vaultView.saves', { count: status.commitCount }) : t('common:loading')}
+            {status?.github.lastSyncAt ? t('vault:vaultView.copiedOnline', { ago: timeAgo(status.github.lastSyncAt) }) : ''}
           </p>
         </div>
         <div className="flex-1" />
@@ -684,11 +693,11 @@ export function VaultView() {
         <button
           onClick={() => window.electronAPI?.fleetRepoOpenDir()}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
-          data-tip="Open vault folder"
+          data-tip={t('vault:vaultView.openFolder')}
         >
           <FolderOpen className="w-4 h-4" />
         </button>
-        {canSync && <VaultAutoSyncToggle savesLabel="Auto sync on" />}
+        {canSync && <VaultAutoSyncToggle savesLabel={t('vault:vaultView.autoSyncOn')} />}
         {canSync && (
           <button
             onClick={sync}
@@ -696,7 +705,7 @@ export function VaultView() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-raised border border-subtle text-xs text-content hover:bg-surface-overlay transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncBusy ? 'animate-spin' : ''}`} />
-            Sync
+            {t('vault:vaultView.sync')}
           </button>
         )}
         <button
@@ -708,7 +717,7 @@ export function VaultView() {
           }`}
         >
           <Github className="w-3.5 h-3.5" />
-          {ghConnected ? status?.github.login ?? 'Backup on' : 'Set up backup'}
+          {ghConnected ? status?.github.login ?? t('vault:vaultSyncBadge.backupOn') : t('vault:vaultSyncBadge.setUp')}
         </button>
       </div>
 
@@ -716,14 +725,13 @@ export function VaultView() {
         <div className="flex items-center gap-2 px-5 py-2 border-b border-subtle bg-amber-500/10">
           <CloudOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           <span className="text-[11px] text-content-secondary">
-            Everything here is saved on this computer only. Turn on online backup to keep a copy off the machine and
-            open the same missions and areas on another computer.
+            {t('vault:vaultView.localOnly')}
           </span>
           <button
             onClick={() => setGhOpen(true)}
             className="ml-auto px-2 py-1 rounded-md text-[11px] font-medium bg-amber-500/20 text-amber-700 dark:text-amber-200 hover:brightness-110 transition-colors"
           >
-            Set up backup
+            {t('vault:vaultSyncBadge.setUp')}
           </button>
         </div>
       )}
@@ -738,26 +746,26 @@ export function VaultView() {
               onClick={() => snapshotParams()}
               disabled={snapshotBusy || !isConnected || paramCount === 0}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors disabled:opacity-40"
-              data-tip={!isConnected ? 'Connect a vehicle first' : paramCount === 0 ? 'Waiting for parameters' : undefined}
+              data-tip={!isConnected ? t('vault:vaultView.connectFirst') : paramCount === 0 ? t('vault:vaultView.waitingParams') : undefined}
             >
               <Camera className="w-3.5 h-3.5" />
               <span className="truncate">
-                {currentUnit ? `Snapshot ${currentUnit.name}` : 'Snapshot vehicle params'}
+                {currentUnit ? t('vault:vaultView.snapshotNamed', { name: currentUnit.name }) : t('vault:vaultView.snapshotParams')}
               </span>
             </button>
             {/* Manual override for when automatic vehicle matching guesses wrong */}
             {isConnected && units.length > 0 && (
               <div className="mt-1.5 flex items-center gap-1.5">
-                <span className="text-[10px] text-content-tertiary shrink-0">Working on</span>
+                <span className="text-[10px] text-content-tertiary shrink-0">{t('vault:vaultView.workingOn')}</span>
                 <select
                   value={unitOverride ?? ''}
                   onChange={(e) => setUnitOverride(e.target.value || null)}
                   className={`flex-1 min-w-0 text-[10px] bg-surface-input border rounded px-1.5 py-1 text-content focus:outline-none ${
                     unitOverride ? 'border-blue-500/40' : 'border-subtle'
                   }`}
-                  data-tip="Snapshots go to this vehicle. Auto detect uses the board id and profile."
+                  data-tip={t('vault:vaultView.workingOnTip')}
                 >
-                  <option value="">Auto detect</option>
+                  <option value="">{t('vault:vaultView.autoDetect')}</option>
                   {units.map((u) => (
                     <option key={u.uid} value={u.uid}>{u.name}</option>
                   ))}
@@ -770,10 +778,10 @@ export function VaultView() {
           <div className="px-3 pt-3">
             <div className="flex items-center gap-2 mb-2">
               <Cpu className="w-3.5 h-3.5 text-content-secondary" />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">Units</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">{t('vault:vaultView.units')}</span>
             </div>
             {units.length === 0 && !currentUnit && (
-              <p className="text-[11px] text-content-tertiary pb-2">No snapshots yet.</p>
+              <p className="text-[11px] text-content-tertiary pb-2">{t('vault:vaultView.noSnapshots')}</p>
             )}
             <div className="flex flex-col gap-1 pb-2">
               {/* Connected vehicle without any snapshot yet: show it so the
@@ -790,16 +798,16 @@ export function VaultView() {
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-content-tertiary">connected now, no snapshots yet</div>
+                  <div className="text-[10px] text-content-tertiary">{t('vault:vaultView.connectedNoSnapshots')}</div>
                   {units.length > 0 && (
                     <div className="mt-1.5 flex items-center gap-1.5">
                       <select
                         value={linkTarget}
                         onChange={(e) => setLinkTarget(e.target.value)}
                         className="flex-1 min-w-0 text-[10px] bg-surface-input border border-subtle rounded px-1.5 py-1 text-content focus:outline-none"
-                        data-tip="Already snapshotted this vehicle under another name? Link it so history continues there."
+                        data-tip={t('vault:vaultView.linkTip')}
                       >
-                        <option value="">Same vehicle as...</option>
+                        <option value="">{t('vault:vaultView.sameVehicleAs')}</option>
                         {units.map((u) => (
                           <option key={u.uid} value={u.uid}>{u.name}</option>
                         ))}
@@ -809,7 +817,7 @@ export function VaultView() {
                         disabled={!linkTarget}
                         className="px-2 py-1 rounded text-[10px] bg-surface-raised border border-subtle text-content hover:bg-surface-overlay transition-colors disabled:opacity-40"
                       >
-                        Link
+                        {t('vault:vaultView.link')}
                       </button>
                     </div>
                   )}
@@ -853,14 +861,14 @@ export function VaultView() {
                         {isCurrentUnit(u) && (
                           <span
                             className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"
-                            data-tip="This vehicle is connected right now"
+                            data-tip={t('vault:vaultView.connectedNow')}
                           />
                         )}
                         <span className="text-xs text-content font-medium truncate">{u.name}</span>
                         {u.sitl && (
                           <span
                             className="text-[9px] font-semibold px-1 rounded bg-amber-500/15 text-amber-500 border border-amber-500/25"
-                            data-tip="Simulator snapshots, kept separate from real aircraft"
+                            data-tip={t('vault:vaultView.sitlTip')}
                           >
                             SITL
                           </span>
@@ -873,7 +881,7 @@ export function VaultView() {
                             setRenameDraft(u.name);
                           }}
                           className="opacity-0 group-hover/unit:opacity-100 text-content-tertiary hover:text-content transition-opacity"
-                          data-tip="Rename"
+                          data-tip={t('common:rename')}
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
@@ -881,7 +889,7 @@ export function VaultView() {
                     )}
                     <div className="text-[10px] text-content-tertiary">
                       {u.vehicleType ? `${u.vehicleType} - ` : ''}
-                      {u.paramCount ? `${u.paramCount} params` : ''}
+                      {u.paramCount ? t('vault:vaultView.paramCount', { count: u.paramCount }) : ''}
                       {u.lastSnapshotAt ? ` - ${timeAgo(u.lastSnapshotAt)}` : ''}
                     </div>
                   </div>
@@ -894,7 +902,7 @@ export function VaultView() {
           <div className="px-3 pt-2 pb-3">
             <div className="flex items-center gap-2 mb-2">
               <MapIcon className="w-3.5 h-3.5 text-content-secondary" />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">Sites</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">{t('vault:vaultView.sites')}</span>
             </div>
             <div className="flex flex-col gap-1 pb-2">
               {sites.map((s) => {
@@ -912,8 +920,8 @@ export function VaultView() {
                   >
                     <div className="text-xs text-content font-medium truncate">{s.site}</div>
                     <div className="text-[10px] text-content-tertiary">
-                      {s.missions.length} mission{s.missions.length === 1 ? '' : 's'}
-                      {s.hasBoundary ? ' - boundary' : ''}
+                      {t('vault:vaultView.missionCount', { count: s.missions.length })}
+                      {s.hasBoundary ? t('vault:vaultView.boundarySuffix') : ''}
                     </div>
                   </button>
                 );
@@ -926,14 +934,14 @@ export function VaultView() {
                 type="text"
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
-                placeholder="Site name"
+                placeholder={t('vault:vaultView.siteName')}
                 className="w-full text-[11px] bg-surface-input border border-subtle rounded-lg px-2.5 py-1.5 text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
               />
               <input
                 type="text"
                 value={missionName}
                 onChange={(e) => setMissionName(e.target.value)}
-                placeholder="Mission name (for mission saves)"
+                placeholder={t('vault:vaultView.missionName')}
                 className="w-full text-[11px] bg-surface-input border border-subtle rounded-lg px-2.5 py-1.5 text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
               />
               <div className="flex gap-1.5">
@@ -941,17 +949,17 @@ export function VaultView() {
                   onClick={() => snapshotMission(siteName.trim() || 'default', missionName.trim() || 'mission')}
                   disabled={snapshotBusy || !siteName.trim()}
                   className="flex-1 py-1.5 rounded-lg bg-surface-raised border border-subtle text-[11px] text-content hover:bg-surface-overlay transition-colors disabled:opacity-40"
-                  data-tip="Save the currently planned mission into this site"
+                  data-tip={t('vault:vaultView.saveMissionTip')}
                 >
-                  Save mission
+                  {t('vault:vaultView.saveMission')}
                 </button>
                 <button
                   onClick={() => snapshotArea(siteName.trim() || 'default')}
                   disabled={snapshotBusy || !siteName.trim()}
                   className="flex-1 py-1.5 rounded-lg bg-surface-raised border border-subtle text-[11px] text-content hover:bg-surface-overlay transition-colors disabled:opacity-40"
-                  data-tip="Save the survey polygons on the map as this site's boundary"
+                  data-tip={t('vault:vaultView.saveBoundaryTip')}
                 >
-                  Save boundary
+                  {t('vault:vaultView.saveBoundary')}
                 </button>
               </div>
             </div>
@@ -961,7 +969,7 @@ export function VaultView() {
         {/* Main: diff, preview, or history */}
         {diff || diffLoading ? (
           diffLoading ? (
-            <div className="flex-1 flex items-center justify-center text-xs text-content-secondary">Loading snapshot...</div>
+            <div className="flex-1 flex items-center justify-center text-xs text-content-secondary">{t('vault:vaultView.loadingSnapshot')}</div>
           ) : (
             <DiffPanel />
           )
@@ -972,7 +980,7 @@ export function VaultView() {
                 onClick={() => setPreview(null)}
                 className="text-[11px] text-content-secondary hover:text-content transition-colors"
               >
-                Back to history
+                {t('vault:vaultView.backToHistory')}
               </button>
               <span className="text-[11px] font-mono text-content-secondary truncate">{preview.title}</span>
             </div>
@@ -985,28 +993,27 @@ export function VaultView() {
             <div className="flex items-center gap-2 px-4 pt-4 pb-2">
               <History className="w-3.5 h-3.5 text-content-secondary" />
               <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">
-                {filterPrefix ? `History: ${filterPrefix}` : 'History'}
+                {filterPrefix ? t('vault:vaultView.historyFiltered', { filter: filterPrefix }) : t('vault:vaultView.history')}
               </span>
               {filterPrefix && (
                 <button
                   onClick={() => setFilterPrefix(null)}
                   className="text-[10px] text-content-tertiary hover:text-content transition-colors"
                 >
-                  clear filter
+                  {t('vault:vaultView.clearFilter')}
                 </button>
               )}
             </div>
             {filteredHistory.length === 0 && filterPrefix && (
               <p className="px-4 py-6 text-xs text-content-tertiary">
-                No saves here yet.
+                {t('vault:vaultView.noSaves')}
               </p>
             )}
             {filteredHistory.length === 0 && !filterPrefix && (
               <div className="max-w-md mx-auto mt-10 px-6">
-                <h2 className="text-sm font-semibold text-content mb-1.5">Your drone's memory</h2>
+                <h2 className="text-sm font-semibold text-content mb-1.5">{t('vault:vaultView.emptyTitle')}</h2>
                 <p className="text-xs text-content-secondary leading-relaxed mb-5">
-                  The vault keeps safe copies of your drone's settings, missions and survey areas,
-                  so you can always see what changed and go back.
+                  {t('vault:vaultView.emptyBody')}
                 </p>
                 <div className="flex flex-col gap-4">
                   <div className="flex gap-3">
@@ -1014,10 +1021,9 @@ export function VaultView() {
                       <Camera className="w-4 h-4 text-blue-500" />
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-content">1. Save a copy</div>
+                      <div className="text-xs font-medium text-content">{t('vault:vaultView.step1Title')}</div>
                       <p className="text-[11px] text-content-secondary leading-relaxed">
-                        Connect your drone and press "Snapshot vehicle params". Every setting is saved.
-                        Do it before and after you change anything.
+                        {t('vault:vaultView.step1Body')}
                       </p>
                     </div>
                   </div>
@@ -1026,10 +1032,9 @@ export function VaultView() {
                       <History className="w-4 h-4 text-blue-500" />
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-content">2. Look back anytime</div>
+                      <div className="text-xs font-medium text-content">{t('vault:vaultView.step2Title')}</div>
                       <p className="text-[11px] text-content-secondary leading-relaxed">
-                        Flying worse after a change? Open an old copy, see exactly which settings
-                        are different, and put them back with one click.
+                        {t('vault:vaultView.step2Body')}
                       </p>
                     </div>
                   </div>
@@ -1038,10 +1043,9 @@ export function VaultView() {
                       <Github className="w-4 h-4 text-blue-500" />
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-content">3. Keep it safe online (optional)</div>
+                      <div className="text-xs font-medium text-content">{t('vault:vaultView.step3Title')}</div>
                       <p className="text-[11px] text-content-secondary leading-relaxed">
-                        Connect a free GitHub account and your copies are backed up to the cloud
-                        and shared with your other computers.
+                        {t('vault:vaultView.step3Body')}
                       </p>
                     </div>
                   </div>

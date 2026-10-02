@@ -801,69 +801,70 @@ export const SERVO_INPUT_SOURCE_NAMES: Record<number, string> = {
 };
 
 /**
- * Deserialize MSP_SERVO_CONFIGURATIONS response
- * Returns array of servo configurations (typically 8 servos)
+ * Deserialize MSP_SERVO_CONFIGURATIONS (120) response.
  *
- * Format detection:
- * - iNav uses 7 bytes per servo: min(2) + max(2) + middle(2) + rate(1)
- * - Betaflight uses 12 bytes per servo: min(2) + max(2) + middle(2) + rate(1) + forward(1) + reversed(4)
+ * - Betaflight: 12 bytes per servo (min, max, middle, rate, forward, reversed)
+ * - iNav legacy: 14 bytes per servo (min, max, middle, rate, 2 legacy bytes, forward, reversed)
+ * - 7 bytes per servo: same as MSP2_INAV_SERVO_CONFIG
+ *
+ * Pass `bytesPerServo` when the firmware is known. Auto-detection checks 14 before 12 before 7
+ * because every 14-byte payload is also a multiple of 7.
  */
-export function deserializeServoConfigurations(payload: Uint8Array): MSPServoConfig[] {
+export function deserializeServoConfigurations(
+  payload: Uint8Array,
+  bytesPerServo?: 7 | 12 | 14,
+): MSPServoConfig[] {
   const reader = new PayloadReader(payload);
   const servos: MSPServoConfig[] = [];
 
-  // Detect format based on payload size
-  // iNav: 7 bytes per servo (min, max, mid, rate)
-  // Betaflight: 12 bytes per servo (min, max, mid, rate, forward, reversed)
-  // Legacy: 14 bytes per servo (min, max, mid, rate, 2 padding, forward, reversed)
-  // Check % 7 first: 84 bytes (12 servos × 7) is also divisible by 12, so iNav must win
-  const bytesPerServo = payload.length % 7 === 0 ? 7 : (payload.length % 12 === 0 ? 12 : 14);
+  const size = bytesPerServo
+    ?? (payload.length % 14 === 0 ? 14 : payload.length % 12 === 0 ? 12 : 7);
 
-  console.log(`[MSP] Servo format detection: ${payload.length} bytes, using ${bytesPerServo}-byte format`);
+  if (size === 7) {
+    return deserializeInavServoConfigs(payload);
+  }
 
-  if (bytesPerServo === 7) {
-    // iNav format: 7 bytes per servo
-    while (reader.remaining() >= 7) {
-      servos.push({
-        min: reader.readU16(),
-        max: reader.readU16(),
-        middle: reader.readU16(),
-        rate: reader.readS8(),
-        forwardFromChannel: 255,
-        reversedSources: 0,
-      });
-    }
-  } else if (bytesPerServo === 12) {
-    // Betaflight format: 12 bytes per servo (no padding)
-    while (reader.remaining() >= 12) {
-      const min = reader.readU16();
-      const max = reader.readU16();
-      const middle = reader.readU16();
-      const rate = reader.readS8();
-      const forwardFromChannel = reader.readU8();
-      const reversedSources = reader.readU32();
-      servos.push({ min, max, middle, rate, forwardFromChannel, reversedSources });
-    }
-  } else {
-    // Legacy 14-byte format: 14 bytes per servo (with 2 padding bytes)
-    while (reader.remaining() >= 14) {
-      const min = reader.readU16();
-      const max = reader.readU16();
-      const middle = reader.readU16();
-      const rate = reader.readS8();
-      reader.skip(2); // 2 padding bytes
-      const forwardFromChannel = reader.readU8();
-      const reversedSources = reader.readU32();
-      servos.push({ min, max, middle, rate, forwardFromChannel, reversedSources });
-    }
+  while (reader.remaining() >= size) {
+    const min = reader.readU16();
+    const max = reader.readU16();
+    const middle = reader.readU16();
+    const rate = reader.readS8();
+    if (size === 14) reader.skip(2);
+    const forwardFromChannel = reader.readU8();
+    const reversedSources = reader.readU32();
+    servos.push({ min, max, middle, rate, forwardFromChannel, reversedSources });
   }
 
   return servos;
 }
 
 /**
- * Serialize MSP_SET_SERVO_CONFIGURATION payload
- * Sets configuration for a single servo by index
+ * Deserialize MSP2_INAV_SERVO_CONFIG (0x2200) response.
+ * 7 bytes per servo: min int16, max int16, middle int16, rate int8 (negative = reversed).
+ * Mirrors inav-configurator MSPHelper.js MSP2_INAV_SERVO_CONFIG decode.
+ */
+export function deserializeInavServoConfigs(payload: Uint8Array): MSPServoConfig[] {
+  const reader = new PayloadReader(payload);
+  const servos: MSPServoConfig[] = [];
+  if (payload.length % 7 !== 0) return servos;
+
+  while (reader.remaining() >= 7) {
+    servos.push({
+      min: reader.readS16(),
+      max: reader.readS16(),
+      middle: reader.readS16(),
+      rate: reader.readS8(),
+      forwardFromChannel: 255,
+      reversedSources: 0,
+    });
+  }
+
+  return servos;
+}
+
+/**
+ * Serialize MSP_SET_SERVO_CONFIGURATION (212) payload, Betaflight layout (13 bytes).
+ * iNav uses serializeInavServoConfig instead.
  */
 export function serializeServoConfiguration(index: number, config: MSPServoConfig): Uint8Array {
   const builder = new PayloadBuilder();
@@ -875,6 +876,23 @@ export function serializeServoConfiguration(index: number, config: MSPServoConfi
   builder.writeS8(config.rate);
   builder.writeU8(config.forwardFromChannel);
   builder.writeU32(config.reversedSources);
+
+  return builder.build();
+}
+
+/**
+ * Serialize MSP2_INAV_SET_SERVO_CONFIG (0x2201) payload (8 bytes):
+ * index u8, min u16, max u16, middle u16, rate as int8 two's complement.
+ * forwardFromChannel / reversedSources are ignored, as the configurator does.
+ */
+export function serializeInavServoConfig(index: number, config: MSPServoConfig): Uint8Array {
+  const builder = new PayloadBuilder();
+
+  builder.writeU8(index);
+  builder.writeU16(config.min);
+  builder.writeU16(config.max);
+  builder.writeU16(config.middle);
+  builder.writeS8(config.rate);
 
   return builder.build();
 }
@@ -928,6 +946,12 @@ export function deserializeServoMixerRules(payload: Uint8Array): MSPServoMixerRu
   return rules;
 }
 
+/** Slots past `slotCount` belong to the other mixer profile; rate 0 marks an unused slot. */
+export function activeServoMixerRules(rules: MSPServoMixerRule[], slotCount: number): MSPServoMixerRule[] {
+  const active = slotCount > 0 ? rules.slice(0, slotCount) : rules;
+  return active.filter(r => r.rate !== 0);
+}
+
 /**
  * Serialize a single iNav servo mixer rule
  *
@@ -950,6 +974,35 @@ export function serializeServoMixerRule(index: number, rule: MSPServoMixerRule):
   builder.writeS8(rule.box);    // conditionId/box, NOT min/max
 
   return builder.build();
+}
+
+/**
+ * Empty servo mix rule, as inav-configurator's ServoMixRule(0, 0, 0, 0) sends it:
+ * rate 0 marks the slot unused, condition -1 is "always" (servoMixRule.js getConditionId).
+ */
+export const EMPTY_SERVO_MIXER_RULE: MSPServoMixerRule = {
+  targetChannel: 0,
+  inputSource: 0,
+  rate: 0,
+  speed: 0,
+  min: 0,
+  max: 0,
+  box: -1,
+};
+
+/**
+ * Build one MSP2_INAV_SET_SERVO_MIXER payload per slot, padding unused slots with the empty
+ * rule so stale rules are cleared (configurator: SERVO_RULES.inflate() then sendServoMixer).
+ */
+export function buildServoMixerSlotPayloads(rules: MSPServoMixerRule[], slotCount: number): Uint8Array[] {
+  if (rules.slice(slotCount).some(r => r.rate !== 0)) {
+    throw new Error(`${rules.length} servo mix rules exceed the ${slotCount} slots on this board`);
+  }
+  const payloads: Uint8Array[] = [];
+  for (let i = 0; i < slotCount; i++) {
+    payloads.push(serializeServoMixerRule(i, rules[i] ?? EMPTY_SERVO_MIXER_RULE));
+  }
+  return payloads;
 }
 
 // =============================================================================
@@ -1028,6 +1081,24 @@ export function serializeMotorMixerRule(index: number, rule: MSPMotorMixerRule):
   return builder.build();
 }
 
+/** Empty motor rule, as inav-configurator's MotorMixRule(0, 0, 0, 0): throttle 0 marks it unused. */
+export const EMPTY_MOTOR_MIXER_RULE: MSPMotorMixerRule = { throttle: 0, roll: 0, pitch: 0, yaw: 0 };
+
+/**
+ * Build one MSP2_COMMON_SET_MOTOR_MIXER payload per slot up to the board's motor count, padding
+ * unused slots with the empty rule (configurator: MOTOR_RULES.inflate() then sendMotorMixer).
+ */
+export function buildMotorMixerSlotPayloads(rules: MSPMotorMixerRule[], slotCount: number): Uint8Array[] {
+  if (rules.slice(slotCount).some(r => r.throttle !== 0)) {
+    throw new Error(`${rules.length} motor rules exceed the ${slotCount} motor slots on this board`);
+  }
+  const payloads: Uint8Array[] = [];
+  for (let i = 0; i < slotCount; i++) {
+    payloads.push(serializeMotorMixerRule(i, rules[i] ?? EMPTY_MOTOR_MIXER_RULE));
+  }
+  return payloads;
+}
+
 // =============================================================================
 // iNav Navigation Settings
 // =============================================================================
@@ -1045,16 +1116,16 @@ export interface MSPNavConfig {
   emergencyDescentRate: number;  // Emergency descent rate cm/s
   // RTH settings
   rthAltControlMode: number;     // RTH altitude mode (0=current, 1=extra, 2=fixed, 3=max, 4=at_least)
-  rthAbortThreshold: number;     // Abort RTH if closer than this (m)
+  rthAbortThreshold: number;     // Abort RTH threshold (cm)
   rthAltitude: number;           // RTH altitude in cm
   // Waypoint settings
   waypointRadius: number;        // WP reached radius in cm
-  waypointSafeAlt: number;       // Safe altitude for WP missions in cm
+  waypointSafeAlt: number;       // No INAV setting exists for this; not read or written
   // Position hold
-  maxBankAngle: number;          // Max bank angle (degrees * 10)
+  maxBankAngle: number;          // Max multicopter bank angle (degrees)
   // Cruise
   useThrottleMidForAlthold: boolean;
-  hoverThrottle: number;         // Hover throttle (0-1000)
+  hoverThrottle: number;         // Hover throttle (us, nav_mc_hover_thr)
 }
 
 export const NAV_RTH_ALT_MODE = {
@@ -1089,69 +1160,6 @@ export function deserializeNavPoshold(payload: Uint8Array): Partial<MSPNavConfig
     useThrottleMidForAlthold: reader.readU8() === 1,
     hoverThrottle: reader.readU16(),
   };
-}
-
-/**
- * Deserialize MSP_NAV_CONFIG response (iNav)
- */
-export function deserializeNavConfig(payload: Uint8Array): Partial<MSPNavConfig> {
-  const reader = new PayloadReader(payload);
-
-  // Structure varies by iNav version, handle common fields
-  const config: Partial<MSPNavConfig> = {};
-
-  if (reader.remaining() >= 2) {
-    config.maxNavigationSpeed = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.maxClimbRate = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.waypointRadius = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.waypointSafeAlt = reader.readU16();
-  }
-  if (reader.remaining() >= 1) {
-    config.rthAltControlMode = reader.readU8();
-  }
-  if (reader.remaining() >= 2) {
-    config.rthAltitude = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.landDescendRate = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.landSlowdownMinAlt = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.landSlowdownMaxAlt = reader.readU16();
-  }
-  if (reader.remaining() >= 2) {
-    config.emergencyDescentRate = reader.readU16();
-  }
-
-  return config;
-}
-
-/**
- * Serialize MSP_SET_NAV_CONFIG payload
- */
-export function serializeNavConfig(config: Partial<MSPNavConfig>): Uint8Array {
-  const builder = new PayloadBuilder();
-
-  builder.writeU16(config.maxNavigationSpeed ?? 300);    // cm/s
-  builder.writeU16(config.maxClimbRate ?? 500);          // cm/s
-  builder.writeU16(config.waypointRadius ?? 100);        // cm
-  builder.writeU16(config.waypointSafeAlt ?? 2000);      // cm
-  builder.writeU8(config.rthAltControlMode ?? 0);
-  builder.writeU16(config.rthAltitude ?? 1000);          // cm
-  builder.writeU16(config.landDescendRate ?? 200);       // cm/s
-  builder.writeU16(config.landSlowdownMinAlt ?? 500);    // cm
-  builder.writeU16(config.landSlowdownMaxAlt ?? 200);    // cm
-  builder.writeU16(config.emergencyDescentRate ?? 500);  // cm/s
-
-  return builder.build();
 }
 
 // =============================================================================
@@ -1308,20 +1316,30 @@ export function serializeInavRateProfile(profile: MSPInavRateProfile): Uint8Arra
   builder.writeU8(Math.round(profile.pitchRate / 10));
   builder.writeU8(Math.round(profile.yawRate / 10));
 
-  // Manual mode (5 bytes)
-  builder.writeU8(profile.manualRcExpo ?? 0);
-  builder.writeU8(profile.manualRcYawExpo ?? 0);
-  builder.writeU8(profile.manualRollRate ?? 0);
-  builder.writeU8(profile.manualPitchRate ?? 0);
-  builder.writeU8(profile.manualYawRate ?? 0);
+  // Manual mode (5 bytes), only when the FC sent them; never invent zeros
+  if (
+    profile.manualRcExpo !== undefined &&
+    profile.manualRcYawExpo !== undefined &&
+    profile.manualRollRate !== undefined &&
+    profile.manualPitchRate !== undefined &&
+    profile.manualYawRate !== undefined
+  ) {
+    builder.writeU8(profile.manualRcExpo);
+    builder.writeU8(profile.manualRcYawExpo);
+    builder.writeU8(profile.manualRollRate);
+    builder.writeU8(profile.manualPitchRate);
+    builder.writeU8(profile.manualYawRate);
+  }
 
   return builder.build();
 }
 
 /**
- * Convert MSPRcTuning to MSPInavRateProfile for saving to iNav
+ * Convert MSPRcTuning to MSPInavRateProfile for saving to iNav.
+ * MSPRcTuning has no MANUAL-mode fields, so they are carried over from `base` (the profile last
+ * read from the FC) unchanged.
  */
-export function rcTuningToInavRateProfile(rcTuning: MSPRcTuning): MSPInavRateProfile {
+export function rcTuningToInavRateProfile(rcTuning: MSPRcTuning, base: MSPInavRateProfile): MSPInavRateProfile {
   return {
     throttleMid: rcTuning.throttleMid,
     throttleExpo: rcTuning.throttleExpo,
@@ -1333,11 +1351,11 @@ export function rcTuningToInavRateProfile(rcTuning: MSPRcTuning): MSPInavRatePro
     rollRate: rcTuning.rollRate || rcTuning.rollPitchRate || 70,
     pitchRate: rcTuning.pitchRate || rcTuning.rollPitchRate || 70,
     yawRate: rcTuning.yawRate || 70,
-    manualRcExpo: 0,
-    manualRcYawExpo: 0,
-    manualRollRate: 0,
-    manualPitchRate: 0,
-    manualYawRate: 0,
+    manualRcExpo: base.manualRcExpo,
+    manualRcYawExpo: base.manualRcYawExpo,
+    manualRollRate: base.manualRollRate,
+    manualPitchRate: base.manualPitchRate,
+    manualYawRate: base.manualYawRate,
   };
 }
 
@@ -2264,6 +2282,66 @@ export function getVtxFrequency(band: number, channel: number): number {
     return bandTable[channel];
   }
   return 0;
+}
+
+/** iNav VTX device type meaning "no VTX" (inav-configurator js/vtx.js DEV_UNKNOWN). */
+export const INAV_VTX_DEV_UNKNOWN = 0xff;
+/** Sent instead of a band/channel to tell iNav to leave it alone (js/vtx.js MAX_FREQUENCY_MHZ + 1). */
+export const INAV_VTX_IGNORE_FREQUENCY = 6000;
+
+/**
+ * Deserialize iNav MSP_VTX_CONFIG (88): device type, band, channel, power, pit mode, ready,
+ * low power disarm (MSPHelper.js MSP_VTX_CONFIG). There is no frequency field; it is derived.
+ */
+export function deserializeInavVtxConfig(payload: Uint8Array): MSPVtxConfig {
+  const reader = new PayloadReader(payload);
+  const vtxType = reader.remaining() >= 1 ? reader.readU8() : INAV_VTX_DEV_UNKNOWN;
+  const config: MSPVtxConfig = {
+    vtxType,
+    band: 0,
+    channel: 0,
+    power: 0,
+    pitMode: false,
+    frequency: 0,
+    deviceReady: false,
+    lowPowerDisarm: 0,
+    pitModeFrequency: 0,
+    vtxTableAvailable: false,
+    vtxTableBands: 0,
+    vtxTableChannels: 0,
+    vtxTablePowerLevels: 0,
+  };
+  if (vtxType === INAV_VTX_DEV_UNKNOWN || reader.remaining() < 6) return config;
+
+  config.band = reader.readU8();
+  config.channel = reader.readU8();
+  config.power = reader.readU8();
+  config.pitMode = reader.readU8() !== 0;
+  config.deviceReady = reader.readU8() !== 0;
+  config.lowPowerDisarm = reader.readU8();
+  config.frequency = getVtxFrequency(config.band, config.channel);
+  return config;
+}
+
+/**
+ * Serialize iNav MSP_SET_VTX_CONFIG (89), 5 bytes as inav-configurator MSPHelper.js sends it:
+ * u16 (band-1)*8+(channel-1) (or 6000 = ignore), power u8, pit mode u8 (always 0), low power disarm u8.
+ */
+export function serializeInavVtxConfig(config: Partial<MSPVtxConfig>): Uint8Array {
+  const builder = new PayloadBuilder();
+  const band = config.band ?? 0;
+  const channel = config.channel ?? 0;
+
+  if (band > 0 && channel > 0) {
+    builder.writeU16((band - 1) * 8 + (channel - 1));
+  } else {
+    builder.writeU16(INAV_VTX_IGNORE_FREQUENCY);
+  }
+  builder.writeU8(config.power ?? 0);
+  builder.writeU8(0); // the configurator never turns pit mode on
+  builder.writeU8(config.lowPowerDisarm ?? 0);
+
+  return builder.build();
 }
 
 // =============================================================================

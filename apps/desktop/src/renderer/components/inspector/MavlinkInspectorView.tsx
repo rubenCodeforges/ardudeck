@@ -10,6 +10,7 @@
  * store tick). Graph panels independently sample on the same tick.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DockviewReact,
@@ -56,6 +57,7 @@ const inspectorDockviewComponents: Record<string, React.FC<IDockviewPanelProps>>
  * renderer for isolation, and the popped window ends up unstyled).
  */
 function GraphHeaderActions(props: IDockviewHeaderActionsProps): JSX.Element | null {
+  const { t } = useTranslation();
   if (!props.activePanel) return null;
 
   const handleClick = () => {
@@ -102,7 +104,7 @@ function GraphHeaderActions(props: IDockviewHeaderActionsProps): JSX.Element | n
     // tabs in main, the user closes them explicitly via the tab's X.
     window.electronAPI.openDetachedWindow({
       componentId: 'inspector-graphs',
-      title: `Inspector: ${specs.length} graph${specs.length === 1 ? '' : 's'}`,
+      title: t('inspector:mavlinkInspector.windowTitle', { count: specs.length }),
       initialBounds: { width: 1000, height: 700 },
       props: { initialGraphs: specs, initialSamples, initialOverlays },
     });
@@ -113,19 +115,20 @@ function GraphHeaderActions(props: IDockviewHeaderActionsProps): JSX.Element | n
       data-tour="inspector-popout"
       onClick={handleClick}
       className="h-7 px-2 mx-0.5 rounded-md inline-flex items-center gap-1.5 text-xs transition-colors text-content-secondary hover:text-content hover:bg-surface-raised"
-      title={`Open all ${props.group.panels.length} tab${props.group.panels.length === 1 ? '' : 's'} in a new window`}
+      title={t('inspector:mavlinkInspector.popOutTitle', { count: props.group.panels.length })}
     >
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M14 3h7m0 0v7m0-7L10 14M5 5h4M5 19h14a0 0 0 010 0v-4" />
       </svg>
-      <span>Pop out</span>
+      <span>{t('inspector:mavlinkInspector.popOut')}</span>
     </button>
   );
 }
 
 /** Watermark shown when the graph workspace is empty. */
 function GraphsWatermark(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="h-full w-full flex items-center justify-center p-6 text-center">
       <div className="max-w-sm">
@@ -135,11 +138,9 @@ function GraphsWatermark(): JSX.Element {
               d="M7 12l3-3 3 3 4-4M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
         </div>
-        <div className="text-sm font-medium text-content mb-1">Graph a field to start plotting</div>
+        <div className="text-sm font-medium text-content mb-1">{t('inspector:mavlinkInspector.watermarkTitle')}</div>
         <div className="text-xs text-content-secondary leading-relaxed">
-          Expand a message in the tree on the left, then click the graph icon on any numeric field.
-          Each graph becomes a tab here. Pop them out to separate windows, or drag tabs together
-          to build a multi-graph view.
+          {t('inspector:mavlinkInspector.watermarkHint')}
         </div>
       </div>
     </div>
@@ -147,6 +148,7 @@ function GraphsWatermark(): JSX.Element {
 }
 
 export function MavlinkInspectorView(): JSX.Element {
+  const { t } = useTranslation();
   // Field decode runs only while a fields-consuming view is mounted.
   useEffect(() => acquireInspectorFields(), []);
   const tick = useInspectorStore((s) => s.tick);
@@ -283,18 +285,18 @@ export function MavlinkInspectorView(): JSX.Element {
             </svg>
           </div>
           <div className="flex-1" data-tour="inspector-stats">
-            <h2 className="text-base font-semibold text-content">MAVLink Inspector</h2>
+            <h2 className="text-base font-semibold text-content">{t('common:mavlinkInspector')}</h2>
             <div className="text-xs text-content-secondary tabular-nums">
               {isConnected ? (
                 <>
-                  {totalMsgs} message {totalMsgs === 1 ? 'type' : 'types'}
+                  {t('inspector:mavlinkInspector.messageTypes', { count: totalMsgs })}
                   {' · '}
-                  {totalRate.hz.toFixed(1)} Hz total
+                  {t('inspector:mavlinkInspector.hzTotal', { hz: totalRate.hz.toFixed(1) })}
                   {' · '}
                   {formatBps(totalRate.bps)}
                 </>
               ) : (
-                'Not connected, waiting for packets'
+                t('inspector:mavlinkInspector.waitingNotConnected')
               )}
             </div>
           </div>
@@ -307,16 +309,16 @@ export function MavlinkInspectorView(): JSX.Element {
                   ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 hover:bg-amber-500/25'
                   : 'bg-surface border-subtle text-content-secondary hover:bg-surface-raised hover:text-content'
               }`}
-              title={paused ? 'Resume packet capture' : 'Pause packet capture'}
+              title={paused ? t('inspector:mavlinkInspector.resumeTitle') : t('inspector:mavlinkInspector.pauseTitle')}
             >
-              {paused ? 'Resume' : 'Pause'}
+              {paused ? t('inspector:mavlinkInspector.resume') : t('common:pause')}
             </button>
             <button
               onClick={reset}
               className="px-2.5 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors"
-              title="Clear all captured messages"
+              title={t('inspector:mavlinkInspector.clearTitle')}
             >
-              Clear
+              {t('common:clear')}
             </button>
           </div>
         </div>
@@ -333,7 +335,7 @@ export function MavlinkInspectorView(): JSX.Element {
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Search messages…"
+              placeholder={t('inspector:mavlinkInspector.searchPlaceholder')}
               className="w-full pl-8 pr-3 py-1.5 text-sm bg-surface-input border border-subtle rounded-md placeholder:text-content-tertiary text-content focus:outline-none focus:border-blue-500/60"
             />
           </div>
@@ -342,10 +344,10 @@ export function MavlinkInspectorView(): JSX.Element {
             value={sysidFilter}
             onChange={(e) => setSysidFilter(Number(e.target.value))}
             className="px-2 py-1.5 text-sm bg-surface-input border border-subtle rounded-md text-content focus:outline-none focus:border-blue-500/60"
-            title="Filter by system ID"
+            title={t('inspector:mavlinkInspector.filterSysidTitle')}
           >
-            <option value={0}>All sysids</option>
-            {sysids.map((s) => (
+            <option value={0}>{t('inspector:mavlinkInspector.allSysids')}</option>
+            {sysids.map((s) => ( // i18n-exempt: MAVLink field name
               <option key={s} value={s}>sysid {s}</option>
             ))}
           </select>
@@ -354,10 +356,10 @@ export function MavlinkInspectorView(): JSX.Element {
             value={compidFilter}
             onChange={(e) => setCompidFilter(Number(e.target.value))}
             className="px-2 py-1.5 text-sm bg-surface-input border border-subtle rounded-md text-content focus:outline-none focus:border-blue-500/60"
-            title="Filter by component ID"
+            title={t('inspector:mavlinkInspector.filterCompidTitle')}
           >
-            <option value={0}>All compids</option>
-            {compids.map((c) => (
+            <option value={0}>{t('inspector:mavlinkInspector.allCompids')}</option>
+            {compids.map((c) => ( // i18n-exempt: MAVLink field name
               <option key={c} value={c}>compid {c}</option>
             ))}
           </select>
@@ -379,7 +381,7 @@ export function MavlinkInspectorView(): JSX.Element {
               return (
                 <div key={groupKey} className="mb-4">
                   <div className="text-[10px] uppercase tracking-wider text-content-tertiary font-semibold px-2 py-1">
-                    Vehicle {sysid} · Component {compid}
+                    {t('inspector:mavlinkInspector.groupHeader', { sysid, compid })}
                   </div>
                   <div className="rounded-lg overflow-hidden border border-subtle bg-surface">
                     {msgs.map((m) => (
@@ -423,6 +425,7 @@ function MessageRow({
   isExpanded: boolean;
   onToggle: () => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const fields = stats.fields ? Object.entries(stats.fields) : [];
 
   return (
@@ -440,7 +443,7 @@ function MessageRow({
         <span className="font-mono text-sm text-content flex-1 truncate">{stats.name}</span>
         <span className="text-xs text-content-tertiary tabular-nums">#{stats.msgid}</span>
         <span className="text-xs text-blue-400 tabular-nums w-14 text-right">
-          {stats.hz.toFixed(1)} Hz
+          {stats.hz.toFixed(1)} Hz{/* i18n-exempt: unit */}
         </span>
         <span className="text-xs text-emerald-500 tabular-nums w-16 text-right">
           {formatBps(stats.bps)}
@@ -450,7 +453,7 @@ function MessageRow({
         <div className="bg-surface-inset/40 border-t border-subtle px-3 py-2">
           {fields.length === 0 ? (
             <div className="text-xs text-content-tertiary italic px-2 py-1">
-              No decoder registered for msgid {stats.msgid}, raw payload only.
+              {t('inspector:mavlinkInspector.noDecoder', { msgid: stats.msgid })}
             </div>
           ) : (
             <table className="w-full text-xs font-mono">
@@ -483,6 +486,7 @@ function loadTreeWidth(): number {
 }
 
 function TreeResizeHandle({ onDrag }: { onDrag: (dx: number) => void }): JSX.Element {
+  const { t } = useTranslation();
   const last = useRef(0);
   const down = (e: React.PointerEvent) => {
     e.preventDefault();
@@ -507,7 +511,7 @@ function TreeResizeHandle({ onDrag }: { onDrag: (dx: number) => void }): JSX.Ele
     <div
       onPointerDown={down}
       className="w-1.5 shrink-0 cursor-col-resize border-r border-subtle bg-transparent transition-colors hover:bg-blue-500/40 active:bg-blue-500/60"
-      title="Drag to resize"
+      title={t('inspector:mavlinkInspector.resizeTitle')}
     />
   );
 }
@@ -526,6 +530,7 @@ function FieldRow({
   fieldName: string;
   value: unknown;
 }): JSX.Element {
+  const { t } = useTranslation();
   const display = formatFieldValue(value);
   const isGraphable = typeof value === 'number' || typeof value === 'bigint';
 
@@ -576,11 +581,11 @@ function FieldRow({
             title={
               plotted
                 ? isPrimary
-                  ? `Close the ${stats.name} graph`
-                  : 'Remove this trace from the graph'
+                  ? t('inspector:mavlinkInspector.closeGraph', { name: stats.name })
+                  : t('inspector:mavlinkInspector.removeTrace')
                 : owner
-                  ? `Plot on the ${stats.name} graph`
-                  : 'Graph this field'
+                  ? t('inspector:mavlinkInspector.plotOn', { name: stats.name })
+                  : t('inspector:mavlinkInspector.graphField')
             }
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -601,10 +606,11 @@ function EmptyState({
   isConnected: boolean;
   hasFilter: boolean;
 }): JSX.Element {
+  const { t } = useTranslation();
   if (hasFilter) {
     return (
       <div className="flex items-center justify-center h-full text-center p-8">
-        <div className="text-content-secondary text-sm">No messages match your filter.</div>
+        <div className="text-content-secondary text-sm">{t('inspector:mavlinkInspector.noMatch')}</div>
       </div>
     );
   }
@@ -618,12 +624,12 @@ function EmptyState({
           </svg>
         </div>
         <div className="text-sm font-medium text-content mb-1">
-          {isConnected ? 'Waiting for packets…' : 'Not connected'}
+          {isConnected ? t('inspector:mavlinkInspector.waiting') : t('inspector:mavlinkInspector.notConnected')}
         </div>
         <div className="text-xs text-content-secondary">
           {isConnected
-            ? 'Messages will appear here as soon as the FC starts sending.'
-            : 'Connect to a flight controller from the panel on the left.'}
+            ? t('inspector:mavlinkInspector.waitingHint')
+            : t('inspector:mavlinkInspector.connectHint')}
         </div>
       </div>
     </div>

@@ -15,9 +15,11 @@ import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/m
 import { setupDeepLinks, handleStartupArgs, flushPendingDeepLink, deliverDeepLinkUrl } from './modules/deep-link.js';
 import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc, getMainFullScreen, setMainFullScreen } from './window-manager.js';
 import { createSplashWindow, splashSetStatus, closeSplash } from './splash-window.js';
+import { initMainI18n, setupI18nIpc } from './i18n-main.js';
 import { Worker } from 'node:worker_threads';
 import Store from 'electron-store';
 import { registerArduDeckDialect } from '@ardudeck/mavlink-ts';
+import { t } from '../shared/i18n/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -57,7 +59,7 @@ process.on('unhandledRejection', (reason: unknown) => {
 
   console.error('[Main] Unhandled rejection:', reason);
   console.error('[Main] Rejection type:', typeof reason, reason?.constructor?.name);
-  console.error('[Main] Rejection stack:', new Error('rejection trace').stack);
+  console.error('[Main] Rejection stack:', new Error('rejection trace').stack); // i18n-exempt
 });
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -164,13 +166,10 @@ function maybeShowKeychainNotice(): void {
   if (!isUpgrade) return;
   dialog.showMessageBoxSync({
     type: 'info',
-    title: 'ArduDeck',
-    message: 'Your keys are protected',
-    detail:
-      'ArduDeck encrypts the sensitive data you enter - AI provider API keys, map service keys and connection tokens - and keeps the encryption key in your macOS keychain, the same vault Safari uses for your passwords.\n\n' +
-      'Because macOS guards that vault, it may ask once whether ArduDeck can access "ardudeck Safe Storage". That is ArduDeck unlocking its own encryption key, nothing else.\n\n' +
-      'Click "Always Allow" and macOS will not ask again. Nothing is read from other apps and nothing ever leaves this computer.',
-    buttons: ['Got it'],
+    title: 'ArduDeck', // i18n-exempt
+    message: t('main:mainIndex.keychainNoticeTitle'),
+    detail: t('main:mainIndex.keychainNoticeDetail'),
+    buttons: [t('main:mainIndex.gotIt')],
   });
 }
 
@@ -211,7 +210,7 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
 
   // Milestone: the renderer bundle has parsed and is executing.
   mainWindow.webContents.once('did-finish-load', () => {
-    splashSetStatus(splash ?? null, 'Loading interface');
+    splashSetStatus(splash ?? null, t('main:mainIndex.splashLoadingInterface'));
   });
 
   // Last-resort safety net: ready-to-show (below) is the clean handoff - it
@@ -231,7 +230,7 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   mainWindow.on('ready-to-show', () => {
     graphicsPrefs.set('lastLaunchUnclean', false);
     clearTimeout(handoffTimeout);
-    splashSetStatus(splash ?? null, 'Ready');
+    splashSetStatus(splash ?? null, t('main:mainIndex.splashReady'));
     closeSplash(splash ?? null);
     mainWindow.show();
   });
@@ -321,6 +320,7 @@ app.whenReady().then(() => {
   // getAllMessageInfos(), so a vehicle-SDK message registered after that point would
   // decode nowhere.
   registerArduDeckDialect();
+  initMainI18n();
 
   // Set macOS dock icon
   if (process.platform === 'darwin') {
@@ -348,6 +348,7 @@ app.whenReady().then(() => {
   // IPC handlers wire up, so safeSend's broadcast() helper can see it.
   initWindowManager(mainWindow);
   setupWindowManagerIpc();
+  setupI18nIpc();
 
   // Setup IPC handlers
   setupIpcHandlers(mainWindow);
@@ -355,7 +356,7 @@ app.whenReady().then(() => {
   setupAppIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
 
-  splashSetStatus(splash, 'Initializing systems');
+  splashSetStatus(splash, t('main:mainIndex.splashInitializing'));
 
   // Restore any detached windows the user had open last time.
   // Defer until after the main window is ready so the renderer has subscribed

@@ -65,12 +65,12 @@ export async function setSerialConfig(config: MSPSerialConfig): Promise<boolean>
         // Fall back to MSP1 (55)
         await sendMspRequestWithPayload(MSP.SET_CF_SERIAL_CONFIG, payload, 2000);
       }
-      ctx.sendLog('info', 'Serial config updated');
+      ctx.sendLog('info', 'Serial config updated'); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET serial config failed:', msg);
-      ctx.sendLog('error', 'Failed to set serial config', msg);
+      ctx.sendLog('error', 'Failed to set serial config', msg); // i18n-exempt
       return false;
     }
   });
@@ -108,7 +108,7 @@ export async function setRxMap(map: number[]): Promise<boolean> {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET RX map failed:', msg);
-      ctx.sendLog('error', 'Failed to set RX map', msg);
+      ctx.sendLog('error', 'Failed to set RX map', msg); // i18n-exempt
       return false;
     }
   });
@@ -145,7 +145,7 @@ export async function setRcDeadband(config: MSPRcDeadband): Promise<boolean> {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET RC deadband failed:', msg);
-      ctx.sendLog('error', 'Failed to set RC deadband', msg);
+      ctx.sendLog('error', 'Failed to set RC deadband', msg); // i18n-exempt
       return false;
     }
   });

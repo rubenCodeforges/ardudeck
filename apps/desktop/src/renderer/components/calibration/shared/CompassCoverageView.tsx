@@ -13,6 +13,7 @@
  */
 
 import { useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { CompassSphere } from './CompassSphere';
 import { coveredCount, SECTION_COUNT } from '../../../../shared/geodesic-grid';
 import { useCompassCoverageStore } from '../../../stores/compass-coverage-store';
@@ -23,6 +24,7 @@ interface CompassCoverageViewProps {
 }
 
 export function CompassCoverageView({ active = true }: CompassCoverageViewProps) {
+  const { t } = useTranslation();
   const byCompass = useCompassCoverageStore((s) => s.byCompass);
   const reset = useCompassCoverageStore((s) => s.reset);
 
@@ -35,7 +37,7 @@ export function CompassCoverageView({ active = true }: CompassCoverageViewProps)
   const compasses = [...byCompass.entries()].sort((a, b) => a[0] - b[0]);
 
   if (compasses.length === 0) {
-    return <div className="text-[11px] text-content-secondary">Waiting for the first samples…</div>;
+    return <div className="text-[11px] text-content-secondary">{t('calibration:compassCoverageView.waiting')}</div>;
   }
 
   // One compass gets the full-size solid; several share the width.
@@ -55,22 +57,28 @@ export function CompassCoverageView({ active = true }: CompassCoverageViewProps)
               spinning={active}
             />
             <div className="text-center">
-              <div className="text-xs text-content-secondary">Compass {id + 1}</div>
+              <div className="text-xs text-content-secondary">{t('calibration:compassCoverageView.compassN', { n: id + 1 })}</div>
               <div className="text-sm text-content">
-                <span className="font-mono text-cyan-400">{covered}</span>
-                <span className="text-content-secondary"> of {SECTION_COUNT}</span>
+                <Trans
+                  i18nKey="calibration:compassCoverageView.coveredOf"
+                  values={{ covered, total: SECTION_COUNT }}
+                  components={{
+                    n: <span className="font-mono text-cyan-400" />,
+                    m: <span className="text-content-secondary" />,
+                  }}
+                />
               </div>
               <div className="text-[11px] text-content-secondary mt-0.5">
                 {remaining === 0
-                  ? 'Every direction sampled'
-                  : `${remaining} dark ${remaining === 1 ? 'patch' : 'patches'} left`}
+                  ? t('calibration:compassCoverageView.allSampled')
+                  : t('calibration:compassCoverageView.patchesLeft', { count: remaining })}
               </div>
             </div>
           </div>
         );
       })}
       <p className="w-full text-center text-[11px] text-content-tertiary">
-        Dark patches are directions with no samples yet. Drag a sphere to look around.
+        {t('calibration:compassCoverageView.hint')}
       </p>
     </div>
   );

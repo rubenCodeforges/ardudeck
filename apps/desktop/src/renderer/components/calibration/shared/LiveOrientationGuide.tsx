@@ -8,6 +8,7 @@
  * diagram rather than showing a confident aircraft sitting level.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { useConnectionStore } from '../../../stores/connection-store';
 import { getVehicleClass } from '../../../../shared/telemetry-types';
@@ -16,6 +17,7 @@ import {
   matchOrientation,
   orientationHint,
   targetForPosition,
+  targetInstruction,
   ORIENTATION_TOLERANCE_DEG,
 } from '../../../../shared/calibration-orientation';
 import type { AccelPosition } from '../../../../shared/calibration-types';
@@ -31,6 +33,7 @@ interface LiveOrientationGuideProps {
 const DEG2RAD = Math.PI / 180;
 
 export function LiveOrientationGuide({ position, size = 220 }: LiveOrientationGuideProps) {
+  const { t } = useTranslation();
   // The telemetry store is degrees; calibration-orientation and the scene are
   // radians. Convert here, at the boundary between the two.
   const roll = useTelemetryStore((s) => s.attitude.roll) * DEG2RAD;
@@ -53,12 +56,12 @@ export function LiveOrientationGuide({ position, size = 220 }: LiveOrientationGu
         <div className="flex flex-col items-center gap-2">
           <PositionDiagram position={position} isActive compact />
           <span className="text-[11px] text-amber-400">
-            No attitude telemetry: position cannot be checked
+            {t('calibration:liveOrientationGuide.noAttitude')}
           </span>
         </div>
       )}
 
-      <p className="text-center text-sm text-content">{target.instruction}</p>
+      <p className="text-center text-sm text-content">{targetInstruction(target)}</p>
 
       {live && (
         <div
@@ -69,8 +72,8 @@ export function LiveOrientationGuide({ position, size = 220 }: LiveOrientationGu
           }`}
         >
           {match.matched
-            ? `Held, ${match.errorDeg.toFixed(0)}° off`
-            : hint ?? `${match.errorDeg.toFixed(0)}° off`}
+            ? t('calibration:liveOrientationGuide.held', { deg: match.errorDeg.toFixed(0) })
+            : hint ?? t('calibration:liveOrientationGuide.off', { deg: match.errorDeg.toFixed(0) })}
         </div>
       )}
     </div>

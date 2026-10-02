@@ -23,16 +23,18 @@ import {
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
+import { Trans, useTranslation } from 'react-i18next';
 
 // Fallback enum labels used when metadata for the param is not loaded.
-const SOURCE_LABELS: Record<number, string> = {
-  [-1]: 'Disabled',
-  0: 'Power Module / Analog',
-  1: 'External / ADC',
-  2: 'ESCs',
+const SOURCE_LABEL_KEYS: Record<number, string> = {
+  [-1]: 'mavlink-config:px4BatteryConfig.sourceDisabled',
+  0: 'mavlink-config:px4BatteryConfig.sourcePowerModule',
+  1: 'mavlink-config:px4BatteryConfig.sourceExternal',
+  2: 'mavlink-config:px4BatteryConfig.sourceEscs',
 };
 
 const Px4BatteryConfig: React.FC = () => {
+  const { t } = useTranslation();
   const { parameters, setParameter, modifiedCount, getParameterMetadata } =
     useParameterStore();
 
@@ -66,11 +68,11 @@ const Px4BatteryConfig: React.FC = () => {
         label,
       }));
     }
-    return Object.entries(SOURCE_LABELS).map(([v, label]) => ({
+    return Object.entries(SOURCE_LABEL_KEYS).map(([v, labelKey]) => ({
       value: Number(v),
-      label,
+      label: t(labelKey),
     }));
-  }, [sourceMeta]);
+  }, [sourceMeta, t]);
 
   // Cell-count enum max from metadata (PX4 ships 0..16), fall back to 16.
   const cellMeta = getParameterMetadata('BAT1_N_CELLS');
@@ -96,10 +98,8 @@ const Px4BatteryConfig: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <InfoCard title="Battery Monitoring (PX4)" variant="info">
-        Configure your PX4 battery estimator: cell count, per-cell voltage
-        endpoints, pack capacity and the warning thresholds that trigger PX4
-        failsafes. Accurate setup is essential for safe flying.
+      <InfoCard title={t('mavlink-config:px4BatteryConfig.infoTitle')} variant="info">
+        {t('mavlink-config:px4BatteryConfig.infoBody')}
       </InfoCard>
 
       <div className="grid grid-cols-2 gap-4">
@@ -111,10 +111,10 @@ const Px4BatteryConfig: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-content">
-                Voltage / Current Source
+                {t('mavlink-config:px4BatteryConfig.sourceTitle')}
               </h3>
               <p className="text-xs text-content-secondary">
-                Where readings come from
+                {t('mavlink-config:px4BatteryConfig.sourceSubtitle')}
               </p>
             </div>
           </div>
@@ -134,8 +134,7 @@ const Px4BatteryConfig: React.FC = () => {
 
           <div className="bg-surface-raised rounded-lg p-3">
             <p className="text-xs text-content-secondary">
-              Power Module / Analog uses the board ADC. External is a separate
-              ADC sensor. ESCs report telemetry over the ESC link.
+              {t('mavlink-config:px4BatteryConfig.sourceHint')}
             </p>
           </div>
         </div>
@@ -148,16 +147,16 @@ const Px4BatteryConfig: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-content">
-                Battery Capacity
+                {t('mavlink-config:px4BatteryConfig.capacityTitle')}
               </h3>
               <p className="text-xs text-content-secondary">
-                For accurate mAh remaining
+                {t('mavlink-config:px4BatteryConfig.capacitySubtitle')}
               </p>
             </div>
           </div>
 
           <DraggableSlider
-            label="Capacity (mAh)"
+            label={t('mavlink-config:px4BatteryConfig.capacityLabel')}
             value={Math.max(0, values.capacity)}
             onChange={(v) => setParameter('BAT1_CAPACITY', v)}
             min={0}
@@ -165,21 +164,21 @@ const Px4BatteryConfig: React.FC = () => {
             step={100}
             color="#22C55E"
             disabled={!has('BAT1_CAPACITY')}
-            hint="Match your pack capacity. Set to -1 (Unknown) to disable mAh estimation."
+            hint={t('mavlink-config:px4BatteryConfig.capacityHint')}
           />
 
           {!capacityKnown && (
             <div className="bg-amber-500/10 border-amber-500/30 rounded-lg p-3 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <p className="text-xs text-amber-400">
-                Capacity unknown (-1). Remaining mAh will not be estimated.
+                {t('mavlink-config:px4BatteryConfig.capacityUnknown')}
               </p>
             </div>
           )}
 
           <div>
             <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1.5">
-              Common capacities
+              {t('mavlink-config:px4BatteryConfig.commonCapacities')}
             </div>
             <div className="flex flex-wrap gap-2">
               {[2200, 3000, 5000, 8000, 16000, 22000].map((cap) => (
@@ -194,7 +193,7 @@ const Px4BatteryConfig: React.FC = () => {
                   }`}
                 >
                   {cap >= 1000
-                    ? `${(cap / 1000).toFixed(cap % 1000 ? 1 : 0)} Ah`
+                    ? `${(cap / 1000).toFixed(cap % 1000 ? 1 : 0)} Ah` // i18n-exempt
                     : `${cap} mAh`}
                 </button>
               ))}
@@ -212,10 +211,10 @@ const Px4BatteryConfig: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-content">
-                Cell Count & Per-Cell Voltage
+                {t('mavlink-config:px4BatteryConfig.cellTitle')}
               </h3>
               <p className="text-xs text-content-secondary">
-                Defines the full and empty endpoints PX4 uses for SOC
+                {t('mavlink-config:px4BatteryConfig.cellSubtitle')}
               </p>
             </div>
           </div>
@@ -243,7 +242,7 @@ const Px4BatteryConfig: React.FC = () => {
               >
                 <div className="text-lg font-bold">{cells}S</div>
                 <div className="text-[10px] text-content-secondary mt-1">
-                  {(cells * values.vCharged).toFixed(1)}V full
+                  {t('mavlink-config:px4BatteryConfig.voltsFull', { volts: (cells * values.vCharged).toFixed(1) })}
                 </div>
               </button>
             );
@@ -251,7 +250,7 @@ const Px4BatteryConfig: React.FC = () => {
         </div>
 
         <DraggableSlider
-          label="Cell Count (BAT1_N_CELLS)"
+          label={t('mavlink-config:px4BatteryConfig.cellCountLabel')}
           value={values.nCells}
           onChange={(v) => setParameter('BAT1_N_CELLS', v)}
           min={0}
@@ -259,12 +258,12 @@ const Px4BatteryConfig: React.FC = () => {
           step={1}
           color="#F59E0B"
           disabled={!has('BAT1_N_CELLS')}
-          hint="Number of cells in series. 0 = unknown."
+          hint={t('mavlink-config:px4BatteryConfig.cellCountHint')}
         />
 
         <div className="grid grid-cols-2 gap-4">
           <DraggableSlider
-            label="Full Cell Voltage (V/cell)"
+            label={t('mavlink-config:px4BatteryConfig.fullCellLabel')}
             value={values.vCharged}
             onChange={(v) => setParameter('BAT1_V_CHARGED', v)}
             min={3.6}
@@ -272,10 +271,10 @@ const Px4BatteryConfig: React.FC = () => {
             step={0.01}
             color="#22C55E"
             disabled={!has('BAT1_V_CHARGED')}
-            hint="Per-cell voltage when fully charged (LiPo ~4.2)."
+            hint={t('mavlink-config:px4BatteryConfig.fullCellHint')}
           />
           <DraggableSlider
-            label="Empty Cell Voltage (V/cell)"
+            label={t('mavlink-config:px4BatteryConfig.emptyCellLabel')}
             value={values.vEmpty}
             onChange={(v) => setParameter('BAT1_V_EMPTY', v)}
             min={2.8}
@@ -283,7 +282,7 @@ const Px4BatteryConfig: React.FC = () => {
             step={0.01}
             color="#EF4444"
             disabled={!has('BAT1_V_EMPTY')}
-            hint="Per-cell voltage treated as empty under load (LiPo ~3.5)."
+            hint={t('mavlink-config:px4BatteryConfig.emptyCellHint')}
           />
         </div>
 
@@ -295,7 +294,7 @@ const Px4BatteryConfig: React.FC = () => {
                   {packFull.toFixed(1)}V
                 </div>
                 <div className="text-[10px] text-content-secondary">
-                  Pack full
+                  {t('mavlink-config:px4BatteryConfig.packFull')}
                 </div>
               </div>
               <div>
@@ -303,7 +302,7 @@ const Px4BatteryConfig: React.FC = () => {
                   {packEmpty.toFixed(1)}V
                 </div>
                 <div className="text-[10px] text-content-secondary">
-                  Pack empty
+                  {t('mavlink-config:px4BatteryConfig.packEmpty')}
                 </div>
               </div>
             </div>
@@ -312,10 +311,7 @@ const Px4BatteryConfig: React.FC = () => {
 
         <div className="bg-blue-500/5 border-blue-500/20 rounded-lg p-3">
           <p className="text-xs text-content-secondary">
-            <span className="text-blue-400">PX4 note:</span> State of charge is
-            estimated from voltage between the full and empty endpoints (and
-            internal resistance, if set). The warning thresholds below are
-            fractions of remaining capacity.
+            <Trans i18nKey="mavlink-config:px4BatteryConfig.socNote" components={{ b: <span className="text-blue-400" /> }} />
           </p>
         </div>
       </div>
@@ -328,17 +324,17 @@ const Px4BatteryConfig: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-medium text-content">
-              Warning Thresholds
+              {t('mavlink-config:px4BatteryConfig.thresholdsTitle')}
             </h3>
             <p className="text-xs text-content-secondary">
-              Remaining-capacity fractions that trigger PX4 failsafes
+              {t('mavlink-config:px4BatteryConfig.thresholdsSubtitle')}
             </p>
           </div>
         </div>
 
         <div className="space-y-4">
           <DraggableSlider
-            label="Low Threshold (% remaining)"
+            label={t('mavlink-config:px4BatteryConfig.lowLabel')}
             value={Math.round(values.lowThr * 100)}
             onChange={(v) => setParameter('BAT_LOW_THR', v / 100)}
             min={12}
@@ -346,10 +342,10 @@ const Px4BatteryConfig: React.FC = () => {
             step={1}
             color="#F59E0B"
             disabled={!has('BAT_LOW_THR')}
-            hint="First warning. PX4 default action is typically a warning / RTL."
+            hint={t('mavlink-config:px4BatteryConfig.lowHint')}
           />
           <DraggableSlider
-            label="Critical Threshold (% remaining)"
+            label={t('mavlink-config:px4BatteryConfig.critLabel')}
             value={Math.round(values.critThr * 100)}
             onChange={(v) => setParameter('BAT_CRIT_THR', v / 100)}
             min={5}
@@ -357,10 +353,10 @@ const Px4BatteryConfig: React.FC = () => {
             step={1}
             color="#EF4444"
             disabled={!has('BAT_CRIT_THR')}
-            hint="Critical warning. Usually triggers return or land."
+            hint={t('mavlink-config:px4BatteryConfig.critHint')}
           />
           <DraggableSlider
-            label="Emergency Threshold (% remaining)"
+            label={t('mavlink-config:px4BatteryConfig.emergLabel')}
             value={Math.round(values.emergThr * 100)}
             onChange={(v) => setParameter('BAT_EMERGEN_THR', v / 100)}
             min={3}
@@ -368,7 +364,7 @@ const Px4BatteryConfig: React.FC = () => {
             step={1}
             color="#DC2626"
             disabled={!has('BAT_EMERGEN_THR')}
-            hint="Emergency. Triggers immediate land."
+            hint={t('mavlink-config:px4BatteryConfig.emergHint')}
           />
         </div>
 
@@ -409,21 +405,21 @@ const Px4BatteryConfig: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-medium text-content">
-                Calibration
+                {t('common:calibration')}
               </h3>
               <p className="text-xs text-content-secondary">
-                Fine-tune voltage / current and internal resistance
+                {t('mavlink-config:px4BatteryConfig.calibrationSubtitle')}
               </p>
             </div>
           </div>
           <span className="px-2 py-0.5 text-[10px] bg-surface-raised text-content-secondary rounded">
-            Advanced
+            {t('common:advanced')}
           </span>
         </div>
 
         <div className="space-y-4">
           <DraggableSlider
-            label="Internal Resistance (Ohm)"
+            label={t('mavlink-config:px4BatteryConfig.rInternalLabel')}
             value={values.rInternal}
             onChange={(v) => setParameter('BAT1_R_INTERNAL', v)}
             min={-1}
@@ -431,13 +427,13 @@ const Px4BatteryConfig: React.FC = () => {
             step={0.001}
             color="#8B5CF6"
             disabled={!has('BAT1_R_INTERNAL')}
-            hint="Per-pack internal resistance for sag compensation. -1 = automatic estimate."
+            hint={t('mavlink-config:px4BatteryConfig.rInternalHint')}
           />
 
           {/* Voltage divider / amps-per-volt only exist on boards that expose
               them; render disabled when the param is absent. */}
           <DraggableSlider
-            label="Voltage Divider (BAT1_V_DIV)"
+            label={t('mavlink-config:px4BatteryConfig.vDivLabel')}
             value={Math.max(0, values.vDiv)}
             onChange={(v) => setParameter('BAT1_V_DIV', v)}
             min={0}
@@ -447,13 +443,13 @@ const Px4BatteryConfig: React.FC = () => {
             disabled={!has('BAT1_V_DIV')}
             hint={
               has('BAT1_V_DIV')
-                ? 'Analog voltage divider scaling.'
-                : 'Not exposed on this vehicle (board-defined ADC scaling).'
+                ? t('mavlink-config:px4BatteryConfig.vDivHint')
+                : t('mavlink-config:px4BatteryConfig.notExposed')
             }
           />
 
           <DraggableSlider
-            label="Amps Per Volt (BAT1_A_PER_V)"
+            label={t('mavlink-config:px4BatteryConfig.aPerVLabel')}
             value={Math.max(0, values.aPerV)}
             onChange={(v) => setParameter('BAT1_A_PER_V', v)}
             min={0}
@@ -463,18 +459,15 @@ const Px4BatteryConfig: React.FC = () => {
             disabled={!has('BAT1_A_PER_V')}
             hint={
               has('BAT1_A_PER_V')
-                ? 'Current sensor scaling.'
-                : 'Not exposed on this vehicle (board-defined ADC scaling).'
+                ? t('mavlink-config:px4BatteryConfig.aPerVHint')
+                : t('mavlink-config:px4BatteryConfig.notExposed')
             }
           />
         </div>
 
         <div className="bg-surface-raised rounded-lg p-3">
           <p className="text-xs text-content-secondary">
-            <span className="text-blue-400">Tip:</span> To calibrate voltage,
-            measure the pack with a multimeter and adjust until the reported
-            voltage matches. For current, compare against a watt meter during a
-            hover test.
+            <Trans i18nKey="mavlink-config:px4BatteryConfig.calibrationTip" components={{ b: <span className="text-blue-400" /> }} />
           </p>
         </div>
       </div>
@@ -483,8 +476,7 @@ const Px4BatteryConfig: React.FC = () => {
         <div className="bg-amber-500/10 rounded-xl border-amber-500/30 p-4 flex items-center gap-3">
           <Save className="w-5 h-5 text-amber-400" />
           <p className="text-sm text-amber-400">
-            You have unsaved changes. Changes are written to the vehicle as you
-            edit.
+            {t('mavlink-config:px4BatteryConfig.unsavedNote')}
           </p>
         </div>
       )}

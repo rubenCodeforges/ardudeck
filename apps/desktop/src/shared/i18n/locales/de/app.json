@@ -1,0 +1,78 @@
+{
+  "altFrameReset": "Standard-Höhenbezug auf Home zurückgesetzt (geländebezogen wurde vom Fahrzeug abgelehnt).",
+  "cliExit": {
+    "body": "Beim Verlassen des CLI-Tabs wird ein exit-Befehl gesendet, der einen Neustart des Flugcontrollers auslöst (2-4 Sekunden).",
+    "leave": "Verlassen und neu starten",
+    "reconnect": "Die App verbindet sich nach dem Neustart des Boards automatisch neu.",
+    "stay": "In CLI bleiben",
+    "title": "CLI-Terminal verlassen?"
+  },
+  "legacyStream": {
+    "allow": "Streams anfordern und in diesem Fahrzeug speichern",
+    "body": "{{label}} hat auf die moderne Anforderung pro Nachricht nicht geantwortet. Die ältere Anforderung funktioniert meist, aber bei diesem Luftfahrzeug<b> speichert ArduPilot diese Raten in seinen SR*_-Parametern</b>, wo sie nach diesem Flug und in jeder anderen Bodenstation erhalten bleiben.",
+    "conservative": "Wenn Sie es erlauben, werden die konservativen Raten angefordert (Fluglage 10 Hz), nicht Ihre gewählte Telemetriegeschwindigkeit, damit eine langsame Funkverbindung nutzbar bleibt.",
+    "decline": "Mein Fahrzeug nicht verändern",
+    "declineHint": "Beim Ablehnen bleiben die bereits im Fahrzeug vorhandenen Raten erhalten. Sie können die SR*_-Parameter selbst unter Parameter erhöhen.",
+    "fleetLink": "Dies ist eine Flottenverbindung, daher würde dies bei jedem Verbinden passieren.",
+    "notWithoutAsking": "ArduDeck verändert Ihr Fahrzeug nicht ohne Rückfrage.",
+    "title": "Keine Telemetrie von {{label}}"
+  },
+  "mismatch": {
+    "body": "Ihr Fahrzeugprofil ist auf <profile>{{profile}}</profile> eingestellt, aber der verbundene Flugcontroller ist ein <fc>{{fc}}</fc>.",
+    "dontAskAgain": "Nicht mehr fragen",
+    "hint": "Leistungsschätzungen und Einstellungen sind für Ihr tatsächliches Fahrzeug möglicherweise nicht korrekt.",
+    "ignoreOnce": "Einmal ignorieren",
+    "title": "Fahrzeugtyp stimmt nicht überein",
+    "updateProfile": "Profil auf {{type}} aktualisieren"
+  },
+  "pseudoTx": {
+    "assignHint": "Drücken Sie <b>Zuweisen</b> und bewegen Sie dann den Stick oder den Schalter, den Sie auf diesem Kanal haben möchten. Nicht zugewiesene Kanäle halten 1500.",
+    "detailConnected": "{{device}} - {{frames}} RC-Frames gesendet",
+    "detailOff": "Aus - die Schieberegler unten steuern RC",
+    "detailWaiting": "Warte auf einen Sender - stellen Sie EdgeTX auf den USB-Joystick-Modus",
+    "framesToVehicle": "{{fps}} Frames/s an das Fahrzeug",
+    "gamepadWarning": " - sieht aus wie ein Gamepad, nicht wie ein Sender",
+    "monitorCounts": "{{axes}} Achsen - {{buttons}} Tasten",
+    "monitorMapping": " - Zuordnung \"{{mode}}\"",
+    "monitorRawHid": " - Raw-HID",
+    "moveIt": "bewegen",
+    "overrideTip": "Sendet RC_CHANNELS_OVERRIDE an das verbundene Fahrzeug. Der Joystick STEUERT das Luftfahrzeug.",
+    "reversedRestore": "Kanal ist umgekehrt - klicken zum Wiederherstellen",
+    "source": {
+      "axis": "Achse {{index}}",
+      "button": "Taste {{index}}",
+      "buttons": "Tasten {{low}}/{{high}}",
+      "unassigned": "nicht zugewiesen"
+    },
+    "standardLayoutWarning": "Der Browser hat sein Standard-Gamepad-Layout auf dieses Gerät angewendet, das nur vier Achsen behält und den Rest verwirft - daher kommen die Schalter nie an. Stecken Sie den Sender neu ein, während er bereits im USB-Joystick-Modus ist, oder verwenden Sie ein Modell, dessen USB-Deskriptor nicht als Gamecontroller erkannt wird.",
+    "title": "Mit USB-Sender fliegen",
+    "trainerActive": "Trainer-Sitzung aktiv - der Trainer hat die Sticks",
+    "unavailable": "Nicht verfügbar",
+    "vehicleOff": "Aus - sendet nichts an das Luftfahrzeug"
+  },
+  "sidebar": {
+    "collapse": "Seitenleiste einklappen",
+    "expand": "Seitenleiste ausklappen"
+  },
+  "vehicleType": {
+    "boat": "Boot",
+    "copter": "Multicopter",
+    "plane": "Flächenflugzeug",
+    "rover": "Rover",
+    "sub": "U-Boot",
+    "vtol": "VTOL"
+  },
+  "welcome": {
+    "drawMissionAreas": "Missionsflächen auf einer Live-Karte zeichnen",
+    "firmwareFlashDesc": "Firmware über USB oder DFU flashen",
+    "flightLogAnalysis": "Flug-Log-Analyse",
+    "flightLogAnalysisDesc": "KI-gestützte Auswertung von Flug-Logs",
+    "intro": "Verbinden Sie sich über das Panel links mit Ihrem Flugcontroller oder springen Sie direkt zu einem der Werkzeuge unten.",
+    "missionLibraryDesc": "Gespeicherte Pläne durchsuchen und verwalten",
+    "radioHudDesc": "ArduDeck-Telemetrieanzeige auf Ihrer EdgeTX-Fernsteuerung",
+    "simWorldDesc": "SITL in einer persistenten 3D-Welt fliegen",
+    "sitlDesc": "Firmware ohne Hardware testen",
+    "title": "Willkommen bei ArduDeck",
+    "waypointsSurveysGeofences": "Wegpunkte, Vermessungen und Geofences"
+  }
+}

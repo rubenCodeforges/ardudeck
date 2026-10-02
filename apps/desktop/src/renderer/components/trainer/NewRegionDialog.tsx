@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MapPin, Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type {
   TrainerBakeProgress,
   TrainerCatalogue,
@@ -34,6 +35,7 @@ export function NewRegionDialog({
   onClose: () => void;
   onBuilt: (regionName: string) => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const { limits } = catalogue;
   const [name, setName] = useState('');
   const [query, setQuery] = useState('');
@@ -118,9 +120,9 @@ export function NewRegionDialog({
     try {
       const done = await window.electronAPI.trainerBake(request);
       if (done.ok && done.regionName) onBuilt(done.regionName);
-      else setError(done.error ?? 'The region could not be built.');
+      else setError(done.error ?? t('trainer:newRegionDialog.couldNotBuild'));
     } catch (err) {
-      setError(`${(err as Error).message}. Restart ArduDeck if the Trainer was just updated.`);
+      setError(t('trainer:trainerView.restartHint', { message: (err as Error).message }));
     } finally {
       setBusy(false);
     }
@@ -136,9 +138,9 @@ export function NewRegionDialog({
       <div className="card relative flex max-h-full w-full max-w-2xl flex-col overflow-hidden !bg-surface-solid">
         <div className="card-header flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-medium text-content">New region</h2>
+            <h2 className="text-sm font-medium text-content">{t('trainer:newRegionDialog.title')}</h2>
             <p className="mt-0.5 text-xs text-content-tertiary">
-              Anywhere on Earth. Built from open elevation, imagery and map data.
+              {t('trainer:newRegionDialog.subtitle')}
             </p>
           </div>
           {!busy && (
@@ -155,7 +157,7 @@ export function NewRegionDialog({
           <div className="card-body space-y-4">
             <div className="flex items-center gap-2.5 text-sm text-content">
               <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-              {progress?.label ?? 'Getting started'}
+              {progress?.label ?? t('trainer:newRegionDialog.gettingStarted')}
             </div>
 
             <div className="h-1.5 overflow-hidden rounded-full bg-surface-inset">
@@ -178,12 +180,12 @@ export function NewRegionDialog({
               className="btn btn-secondary w-full"
               onClick={() => void window.electronAPI.trainerBakeCancel()}
             >
-              Stop
+              {t('trainer:newRegionDialog.stop')}
             </button>
           </div>
         ) : (
           <div className="card-body space-y-4 overflow-auto">
-            <Field label="Name">
+            <Field label={t('trainer:newRegionDialog.name')}>
               <input
                 className="input w-full"
                 value={name}
@@ -192,12 +194,12 @@ export function NewRegionDialog({
               />
             </Field>
 
-            <Field label="Place">
+            <Field label={t('trainer:newRegionDialog.place')}>
               <div className="flex gap-2">
                 <input
                   className="input w-full"
                   value={query}
-                  placeholder="Bar, Montenegro"
+                  placeholder={t('trainer:newRegionDialog.placePlaceholder')}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && void search()}
                 />
@@ -240,28 +242,28 @@ export function NewRegionDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Slider
-                label="Size"
+                label={t('trainer:newRegionDialog.size')}
                 value={sideKm}
                 min={limits.sideMinKm}
                 max={limits.sideMaxKm}
                 step={0.5}
-                format={(v) => `${v} x ${v} km`}
+                format={(v) => t('trainer:newRegionDialog.sizeValue', { v })}
                 onChange={setSideKm}
               />
               <Slider
-                label="Detail"
+                label={t('trainer:newRegionDialog.detail')}
                 value={res}
                 min={limits.resMinM}
                 max={limits.resMaxM}
                 step={1}
-                format={(v) => `${v} m per texel`}
+                format={(v) => t('trainer:newRegionDialog.detailValue', { v })}
                 onChange={setRes}
               />
             </div>
 
             <div>
               <span className="mb-1.5 block text-xs font-medium text-content-secondary">
-                Aerial detail
+                {t('trainer:newRegionDialog.aerialDetail')}
               </span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {catalogue.details.map((d) => (
@@ -292,9 +294,9 @@ export function NewRegionDialog({
                 onChange={(e) => setSuperRes(e.target.checked)}
               />
               <span className="text-xs">
-                <span className="font-medium text-content-secondary">Super-resolution</span>
+                <span className="font-medium text-content-secondary">{t('trainer:newRegionDialog.superRes')}</span>
                 <span className="block text-[11px] text-content-tertiary">
-                  Sharpens the 10 m satellite ground to 2.5 m. Adds about three minutes.
+                  {t('trainer:newRegionDialog.superResHint')}
                 </span>
               </span>
             </label>
@@ -303,32 +305,29 @@ export function NewRegionDialog({
                 the ortho fetch itself is seconds, but having one makes the class map refine on
                 its grid, which is 25 megapixels and about five minutes on a 10 km box. */}
             <p className="rounded-lg border border-subtle bg-surface-inset p-2.5 text-[11px] leading-relaxed text-content-tertiary">
-              Roughly {estimateMinutes(detail, superRes)} minutes. Aerial detail and
-              super-resolution are what decide that; everything else in the pipeline is under two
-              minutes together.
+              {t('trainer:newRegionDialog.estimate', { minutes: estimateMinutes(detail, superRes) })}
             </p>
 
             <div className="flex flex-wrap gap-2 text-[11px] text-content-tertiary">
+              {/* i18n-exempt */}
               <Chip>{estimate.areaKm2.toFixed(0)} km²</Chip>
-              <Chip>
-                {estimate.texels} x {estimate.texels} texels
-              </Chip>
+              <Chip>{t('trainer:newRegionDialog.texels', { n: estimate.texels })}</Chip>
               <Chip>~{estimate.mb.toFixed(0)} MB</Chip>
             </div>
 
             {tooBig && (
               <p className="text-xs text-amber-400">
-                That is larger than {limits.areaMaxKm2} km², which is more than a bake can finish.
+                {t('trainer:newRegionDialog.tooBig', { max: limits.areaMaxKm2 })}
               </p>
             )}
             {error && <p className="text-xs text-red-400">{error}</p>}
 
             <div className="flex justify-end gap-2 pt-1">
               <button className="btn btn-secondary" onClick={onClose}>
-                Cancel
+                {t('common:cancel')}
               </button>
               <button className="btn btn-primary" disabled={!canBuild} onClick={() => void build()}>
-                Build region
+                {t('trainer:newRegionDialog.build')}
               </button>
             </div>
           </div>

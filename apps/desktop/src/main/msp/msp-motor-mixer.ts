@@ -7,7 +7,7 @@
 import {
   MSP2,
   deserializeMotorMixerRules,
-  serializeMotorMixerRule,
+  buildMotorMixerSlotPayloads,
   type MSPMotorMixerRule,
 } from '@ardudeck/msp-ts';
 import { ctx } from './msp-context.js';
@@ -72,7 +72,7 @@ export async function setMotorMixerRulesViaCli(
     await ctx.currentTransport.write(new TextEncoder().encode('exit\n'));
     await new Promise(r => setTimeout(r, 500));
 
-    ctx.sendLog('info', 'Motor mixer rules set via CLI', `${rules.length} rules`);
+    ctx.sendLog('info', 'Motor mixer rules set via CLI', `${rules.length} rules`); // i18n-exempt
     return true;
   } catch (error) {
     console.error('[MSP] CLI motor mixer failed:', error);
@@ -115,7 +115,7 @@ export async function setServoMixerRulesViaCli(
     // DO NOT exit CLI mode - save needs to happen in CLI mode!
     ctx.servoCliModeActive = true;
 
-    ctx.sendLog('info', 'Servo mixer rules set via CLI', `${rules.length} rules`);
+    ctx.sendLog('info', 'Servo mixer rules set via CLI', `${rules.length} rules`); // i18n-exempt
     return true;
   } catch (error) {
     console.error('[MSP] CLI servo mixer failed:', error);
@@ -286,12 +286,10 @@ export async function getMotorMixer(): Promise<MSPMotorMixerRule[] | null> {
   return withConfigLock(async () => {
     try {
       const payload = await sendMspV2Request(MSP2.COMMON_MOTOR_MIXER, 1000);
-      const rules = deserializeMotorMixerRules(payload);
+      // Slots past the motor count are mixer_profile 2's (configurator inactiveData)
+      const limitedRules = deserializeMotorMixerRules(payload.slice(0, expectedMotorCount * 8));
 
-      // CRITICAL: Limit to expected motor count (prevents garbage data)
-      const limitedRules = rules.slice(0, expectedMotorCount);
-
-      ctx.sendLog('info', 'Motor mixer loaded via MSP', `${limitedRules.length} motors (expected ${expectedMotorCount})`);
+      ctx.sendLog('info', 'Motor mixer loaded via MSP', `${limitedRules.length} motors (expected ${expectedMotorCount})`); // i18n-exempt
       return limitedRules;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -302,32 +300,42 @@ export async function getMotorMixer(): Promise<MSPMotorMixerRule[] | null> {
 }
 
 /**
- * Set motor mixer rules via MSP2_COMMON_SET_MOTOR_MIXER (0x1006)
+ * Set motor mixer rules via MSP2_COMMON_SET_MOTOR_MIXER (0x1006).
+ * Writes every motor slot the board has, clearing unused ones (configurator MOTOR_RULES.inflate()).
  */
 export async function setMotorMixer(rules: MSPMotorMixerRule[]): Promise<boolean> {
   if (!ctx.currentTransport?.isOpen) return false;
-
-  if (rules.length === 0) {
-    ctx.sendLog('info', 'Motor mixer: no rules to set');
-    return true;
+  if (!ctx.isInavFirmware) {
+    ctx.sendLog('warn', 'Motor mixer rules are only available on iNav'); // i18n-exempt
+    return false;
   }
 
-  ctx.sendLog('info', 'Setting motor mixer via MSP', `${rules.length} motors`);
+  const mixerConfig = await getInavMixerConfig();
+  if (!mixerConfig || mixerConfig.numberOfMotors <= 0) {
+    ctx.sendLog('error', 'Motor mixer not saved', 'Could not read the motor count from the flight controller'); // i18n-exempt
+    return false;
+  }
 
-  for (let i = 0; i < rules.length; i++) {
-    const rule = rules[i];
-    const payload = serializeMotorMixerRule(i, rule!);
+  let payloads: Uint8Array[];
+  try {
+    payloads = buildMotorMixerSlotPayloads(rules, mixerConfig.numberOfMotors);
+  } catch (error) {
+    ctx.sendLog('error', 'Motor mixer not saved', error instanceof Error ? error.message : String(error)); // i18n-exempt
+    return false;
+  }
 
-    try {
-      await sendMspV2RequestWithPayload(MSP2.COMMON_SET_MOTOR_MIXER, payload, 1000);
-      ctx.sendLog('info', `Motor ${i} set`, `T=${rule!.throttle} R=${rule!.roll} P=${rule!.pitch} Y=${rule!.yaw}`);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.error(`[MSP] Failed to set motor ${i}:`, msg);
-      return false;
+  return withConfigLock(async () => {
+    for (let i = 0; i < payloads.length; i++) {
+      try {
+        await sendMspV2RequestWithPayload(MSP2.COMMON_SET_MOTOR_MIXER, payloads[i]!, 1000);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`[MSP] Failed to set motor ${i}:`, msg);
+        ctx.sendLog('error', `Failed to set motor ${i}`, msg);
+        return false;
+      }
     }
-  }
-
-  ctx.sendLog('info', 'Motor mixer rules set via MSP', `${rules.length} motors`);
-  return true;
+    ctx.sendLog('info', 'Motor mixer written', `${payloads.length} slots written`); // i18n-exempt
+    return true;
+  });
 }

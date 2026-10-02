@@ -1,5 +1,6 @@
 import { Triangle } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 /**
@@ -7,8 +8,8 @@ import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '..
  */
 export const copterTri: VehicleTemplate = {
   slug: 'copter-tri',
-  name: 'Tricopter',
-  description: 'Three motors + yaw servo, efficient and quirky',
+  name: 'Tricopter', // i18n-exempt
+  description: 'Three motors + yaw servo, efficient and quirky', // i18n-exempt
   icon: Triangle,
   vehicleType: 'copter',
   category: 'multirotor',
@@ -22,8 +23,8 @@ export const copterTri: VehicleTemplate = {
     batteryCapacity: 3300,
   },
   toParams: (p) => [
-    { name: 'FRAME_CLASS', value: 7, reason: 'Tricopter', requiresReboot: true },
-    { name: 'FRAME_TYPE',  value: 1, reason: 'Y arrangement',   requiresReboot: true },
+    { name: 'FRAME_CLASS', value: 7, reason: t('lib:vehicleTemplates.reason.tricopter'), requiresReboot: true },
+    { name: 'FRAME_TYPE',  value: 1, reason: t('lib:vehicleTemplates.reason.yArrangement'),   requiresReboot: true },
     ...batteryParams(p),
     ...commonSafetyParams(),
   ],

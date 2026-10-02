@@ -6,6 +6,7 @@ import { AiWarningDialog } from './AiAnalysisPanel';
 import type { ExplorerPreset, HealthCheckResult } from '@ardudeck/dataflash-parser';
 import { formatAltitudeFromMeters, formatCapacityFromMah, formatSpeedFromMetersPerSecond } from '../../../shared/user-units.js';
 import { ADVISOR_CARGO_SLUG, useCargoEnabled } from '../../modules/capabilities';
+import { useTranslation } from 'react-i18next';
 
 type ParsedLog = NonNullable<ReturnType<typeof useLogStore.getState>['currentLog']>;
 
@@ -98,6 +99,7 @@ function computeFlightStats(log: ParsedLog | null) {
 }
 
 export function HealthReportPanel() {
+  const { t } = useTranslation();
   const healthResults = useLogStore((s) => s.healthResults);
   const currentLog = useLogStore((s) => s.currentLog);
   const currentLogPath = useLogStore((s) => s.currentLogPath);
@@ -135,10 +137,11 @@ export function HealthReportPanel() {
     const dS = (currentLog.timeRange.endUs - currentLog.timeRange.startUs) / 1_000_000;
     const dist = stats.totalDist > 1000 ? `${(stats.totalDist / 1000).toFixed(2)} km` : `${stats.totalDist.toFixed(0)} m`;
 
+    // i18n-exempt: model prompt
     const systemContext = `You are a flight log analyst for ${isUlog ? 'PX4' : 'ArduPilot'} vehicles. Analyze this flight and return ONLY a JSON array of insight cards. No other text.
 
 ## This Flight
-- Vehicle: ${meta.vehicleType || 'Unknown'} running ${meta.firmwareString || meta.firmwareVersion || 'Unknown firmware'}
+- Vehicle: ${meta.vehicleType || 'Unknown'} running ${meta.firmwareString || meta.firmwareVersion || /* i18n-exempt */ 'Unknown firmware'}
 - Duration: ${(dS / 60).toFixed(1)} minutes
 - Max Altitude: ${formatAltitudeFromMeters(stats.maxAlt, altitudeUnit)} | Max Speed: ${formatSpeedFromMetersPerSecond(stats.maxSpd, speedUnit)}
 - Distance: ${dist} | Battery Used: ${formatCapacityFromMah(stats.totalMah, electricCapacityUnit)}
@@ -166,7 +169,7 @@ Return 3-6 cards. Most important issues first.`;
 
     const result = await window.electronAPI?.logAiAnalyze({
       provider: aiProvider,
-      messages: [{ role: 'user', content: 'Analyze this flight log and generate insight cards.' }],
+      messages: [{ role: 'user', content: 'Analyze this flight log and generate insight cards.' }], // i18n-exempt: model prompt
       systemContext,
     });
 
@@ -177,17 +180,17 @@ Return 3-6 cards. Most important issues first.`;
         const parsed = JSON.parse(jsonStr) as HealthCheckResult[];
         store.setAiInsightCards(parsed);
       } catch {
-        store.setAiInsightError('Failed to parse AI response');
+        store.setAiInsightError(t('logs:report.parseFailed'));
       }
     } else {
-      store.setAiInsightError(result?.error ?? 'AI analysis failed');
+      store.setAiInsightError(result?.error ?? t('logs:report.aiFailed'));
     }
-  }, [aiProvider, altitudeUnit, currentLog, electricCapacityUnit, healthResults, isUlog, speedUnit]);
+  }, [aiProvider, altitudeUnit, currentLog, electricCapacityUnit, healthResults, isUlog, speedUnit, t]);
 
   if (!healthResults || !currentLog) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary">
-        No log loaded. Download or open a .bin file first.
+        {t('logs:report.noLog')}
       </div>
     );
   }
@@ -233,12 +236,12 @@ Return 3-6 cards. Most important issues first.`;
           </div>
           <div>
             <h3 className="text-content font-semibold">
-              {meta.firmwareString || [meta.vehicleType, meta.firmwareVersion].filter(Boolean).join(' ').trim() || 'Flight Log'}
+              {meta.firmwareString || [meta.vehicleType, meta.firmwareVersion].filter(Boolean).join(' ').trim() || t('logs:report.flightLog')}
             </h3>
             <p className="text-xs text-content-secondary">
-              {currentLogPath?.split('/').pop() ?? 'Unknown file'}
-              {durationMin > 0 && ` \u00b7 ${durationMin.toFixed(1)} min`}
-              {currentLog.messageTypes.length > 0 && ` \u00b7 ${currentLog.messageTypes.length} message types`}
+              {currentLogPath?.split('/').pop() ?? t('logs:report.unknownFile')}
+              {durationMin > 0 && ` \u00b7 ${t('logs:report.minutes', { n: durationMin.toFixed(1) })}`}
+              {currentLog.messageTypes.length > 0 && ` \u00b7 ${t('logs:report.messageTypes', { n: currentLog.messageTypes.length })}`}
             </p>
           </div>
         </div>
@@ -247,17 +250,17 @@ Return 3-6 cards. Most important issues first.`;
         <div className="flex items-center gap-3 text-xs">
           {failCount > 0 && (
             <span className="px-2 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-              {failCount} failed
+              {t('logs:report.failed', { n: failCount })}
             </span>
           )}
           {warnCount > 0 && (
             <span className="px-2 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-              {warnCount} warning{warnCount > 1 ? 's' : ''}
+              {t('logs:report.warnings', { count: warnCount })}
             </span>
           )}
           {passCount > 0 && (
             <span className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              {passCount} passed
+              {t('logs:report.passed', { n: passCount })}
             </span>
           )}
         </div>
@@ -266,15 +269,15 @@ Return 3-6 cards. Most important issues first.`;
         {flightStats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-subtle">
             <div>
-              <div className="text-xs text-content-secondary">Max Altitude</div>
+              <div className="text-xs text-content-secondary">{t('logs:report.maxAltitude')}</div>
               <div className="text-sm text-content font-medium">{formatAltitudeFromMeters(flightStats.maxAlt, altitudeUnit)}</div>
             </div>
             <div>
-              <div className="text-xs text-content-secondary">Max Speed</div>
+              <div className="text-xs text-content-secondary">{t('common:maxSpeed')}</div>
               <div className="text-sm text-content font-medium">{formatSpeedFromMetersPerSecond(flightStats.maxSpd, speedUnit)}</div>
             </div>
             <div>
-              <div className="text-xs text-content-secondary">Distance</div>
+              <div className="text-xs text-content-secondary">{t('common:distance')}</div>
               <div className="text-sm text-content font-medium">
                 {flightStats.totalDist > 1000
                   ? `${(flightStats.totalDist / 1000).toFixed(2)} km`
@@ -282,7 +285,7 @@ Return 3-6 cards. Most important issues first.`;
               </div>
             </div>
             <div>
-              <div className="text-xs text-content-secondary">Battery Used</div>
+              <div className="text-xs text-content-secondary">{t('logs:report.batteryUsed')}</div>
               <div className="text-sm text-content font-medium">{formatCapacityFromMah(flightStats.totalMah, electricCapacityUnit)}</div>
             </div>
           </div>
@@ -297,7 +300,7 @@ Return 3-6 cards. Most important issues first.`;
                 disabled={isAiInsightLoading}
                 className="text-xs px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 rounded-lg transition-colors disabled:opacity-50"
               >
-                {isAiInsightLoading ? 'Re-analyzing...' : 'Re-analyze with AI'}
+                {isAiInsightLoading ? t('logs:report.reanalyzing') : t('logs:report.reanalyze')}
               </button>
             ) : (
               <button
@@ -308,14 +311,14 @@ Return 3-6 cards. Most important issues first.`;
                 {isAiInsightLoading ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm">Analyzing flight...</span>
+                    <span className="text-sm">{t('logs:report.analyzing')}</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
-                    <span className="text-sm">Analyze log with AI</span>
+                    <span className="text-sm">{t('logs:report.analyze')}</span>
                   </>
                 )}
               </button>
@@ -334,8 +337,8 @@ Return 3-6 cards. Most important issues first.`;
             <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
-            <h3 className="text-sm font-semibold text-purple-300">AI Insights</h3>
-            <span className="text-[10px] text-amber-400/60 ml-auto">Experimental - verify before applying</span>
+            <h3 className="text-sm font-semibold text-purple-300">{t('logs:report.aiInsights')}</h3>
+            <span className="text-[10px] text-amber-400/60 ml-auto">{t('logs:report.experimental')}</span>
           </div>
           {isAiInsightLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -353,7 +356,7 @@ Return 3-6 cards. Most important issues first.`;
                 <HealthCheckCard
                   key={card.id}
                   result={card}
-                  aiLabel="Ask AI"
+                  aiLabel={t('logs:report.askAi')}
                   onAskAi={aiEnabled
                     ? () => handleAskAi(`Regarding the "${card.name}" finding: ${card.summary}${card.details ? `\nDetails: ${card.details}` : ''}${card.recommendation ? `\nRecommendation was: ${card.recommendation}` : ''}\n\nCan you explain this further and suggest specific steps to address it?`)
                     : undefined}
@@ -367,7 +370,7 @@ Return 3-6 cards. Most important issues first.`;
       {/* Automated health check cards */}
       {aiEnabled && (aiInsightCards.length > 0 || isAiInsightLoading) && (
         <div className="flex items-center gap-2 mb-0">
-          <h3 className="text-sm font-semibold text-content-secondary">Automated Checks</h3>
+          <h3 className="text-sm font-semibold text-content-secondary">{t('logs:report.automatedChecks')}</h3>
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -401,7 +404,7 @@ Return 3-6 cards. Most important issues first.`;
       {skipCount > 0 && (
         <details className="text-sm text-content-secondary">
           <summary className="cursor-pointer hover:text-content-secondary">
-            {skipCount} check{skipCount > 1 ? 's' : ''} skipped (no data)
+            {t('logs:report.skipped', { count: skipCount })}
           </summary>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
             {healthResults.filter((r) => r.status === 'skip').map((result) => (

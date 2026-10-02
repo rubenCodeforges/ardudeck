@@ -9,6 +9,8 @@
  * and decode drops say whether this machine cannot keep up.
  */
 
+import { t } from '../../../shared/i18n/index.js';
+
 /** One sample of the inbound video track, plucked from an RTCStatsReport. */
 export interface StreamSample {
   timestampMs: number;
@@ -118,12 +120,12 @@ export function verdictFor(h: StreamHealth): HealthVerdict {
 
 /** Why it is not 'good', in the pilot's terms. Null when nothing is wrong. */
 export function healthReason(h: StreamHealth): string | null {
-  if (h.fps === 0) return 'No frames arriving';
-  if (h.freezes > 0) return `Froze ${h.freezes}x (${h.freezeSeconds}s)`;
-  if (h.lossPct >= 5) return `${h.lossPct}% packet loss: check the radio link`;
-  if (h.lossPct >= 1) return `${h.lossPct}% packet loss`;
-  if (h.droppedFrames > 0) return `${h.droppedFrames} frames dropped: this machine is behind`;
-  if (h.keyframeRequests > 0) return 'Requesting keyframes after loss';
-  if (h.fps < 10) return `Only ${h.fps} fps`;
+  if (h.fps === 0) return t('camera:health.noFrames');
+  if (h.freezes > 0) return t('camera:health.froze', { n: h.freezes, seconds: h.freezeSeconds });
+  if (h.lossPct >= 5) return t('camera:health.lossHigh', { pct: h.lossPct });
+  if (h.lossPct >= 1) return t('camera:health.loss', { pct: h.lossPct });
+  if (h.droppedFrames > 0) return t('camera:health.framesDropped', { n: h.droppedFrames });
+  if (h.keyframeRequests > 0) return t('camera:health.requestingKeyframes');
+  if (h.fps < 10) return t('camera:health.lowFps', { fps: h.fps });
   return null;
 }

@@ -43,8 +43,10 @@ export interface FeatureTour {
   id: string;
   view: ViewId;
   version: string;
-  title: string;
-  blurb: string;
+  /** i18n key, translated where rendered. */
+  titleKey: string;
+  /** i18n key, translated where rendered. */
+  blurbKey: string;
   steps: FeatureTourStep[];
   requires?: FeatureTourRequirements;
   demo?: FeatureTourDemo;

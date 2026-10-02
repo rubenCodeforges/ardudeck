@@ -7,6 +7,8 @@
  * here and there is nothing left to import.
  */
 
+import { useTranslation } from 'react-i18next';
+
 /**
  * What the sky will look like, drawn from the same numbers the game is given.
  *
@@ -85,6 +87,7 @@ export function SkyPreview({
   height = 190,
   compact = false,
 }: Props) {
+  const { t } = useTranslation();
   const W = 640;
   const H = compact ? 120 : 200;
   const horizon = H * HORIZON_RATIO;
@@ -110,7 +113,7 @@ export function SkyPreview({
       style={{ height }}
       preserveAspectRatio="none"
       role="img"
-      aria-label={`${preset} sky, wind ${windMs.toFixed(0)} metres per second`}
+      aria-label={t('trainer:skyPreview.ariaLabel', { preset, speed: windMs.toFixed(0) })}
     >
       <defs>
         <linearGradient id={`sky-${uid}`} x1="0" y1="0" x2="0" y2="1">
@@ -271,6 +274,7 @@ function WindStreaks({
   height: number;
   horizon: number;
 }) {
+  const { t } = useTranslation();
   if (windMs < 0.4) {
     return (
       <text
@@ -280,7 +284,7 @@ function WindStreaks({
         fontSize="11"
         fill="rgba(255,255,255,0.45)"
       >
-        still air
+        {t('trainer:skyPreview.stillAir')}
       </text>
     );
   }

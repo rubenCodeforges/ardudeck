@@ -6,6 +6,7 @@ import type { CameraPreset } from './survey-types';
 
 export interface CameraPresetGroup {
   group: string;
+  groupKey?: string;
   presets: CameraPreset[];
 }
 
@@ -26,9 +27,9 @@ export const CAMERA_PRESET_GROUPS: CameraPresetGroup[] = [
   {
     group: 'Sony',
     presets: [
-      { name: 'Sony A7R IV', sensorWidth: 35.7, sensorHeight: 23.8, imageWidth: 9504, imageHeight: 6336, focalLength: 35 },
-      { name: 'Sony RX1R II', sensorWidth: 35.9, sensorHeight: 24, imageWidth: 7952, imageHeight: 5304, focalLength: 35 },
-      { name: 'Sony A6400', sensorWidth: 23.5, sensorHeight: 15.6, imageWidth: 6000, imageHeight: 4000, focalLength: 20 },
+      { name: 'Sony A7R IV', sensorWidth: 35.7, sensorHeight: 23.8, imageWidth: 9504, imageHeight: 6336, focalLength: 35 }, // i18n-exempt
+      { name: 'Sony RX1R II', sensorWidth: 35.9, sensorHeight: 24, imageWidth: 7952, imageHeight: 5304, focalLength: 35 }, // i18n-exempt
+      { name: 'Sony A6400', sensorWidth: 23.5, sensorHeight: 15.6, imageWidth: 6000, imageHeight: 4000, focalLength: 20 }, // i18n-exempt
     ],
   },
   {
@@ -40,6 +41,7 @@ export const CAMERA_PRESET_GROUPS: CameraPresetGroup[] = [
   },
   {
     group: 'Multispectral',
+    groupKey: 'survey:cameraPresets.groupMultispectral',
     presets: [
       { name: 'MicaSense RedEdge-P', sensorWidth: 5.28, sensorHeight: 3.96, imageWidth: 1456, imageHeight: 1088, focalLength: 5.5 },
       { name: 'MicaSense Altum-PT', sensorWidth: 8.7, sensorHeight: 6.52, imageWidth: 4112, imageHeight: 3008, focalLength: 8 },
@@ -47,10 +49,11 @@ export const CAMERA_PRESET_GROUPS: CameraPresetGroup[] = [
   },
   {
     group: 'Other',
+    groupKey: 'survey:cameraPresets.groupOther',
     presets: [
       { name: 'senseFly S.O.D.A.', sensorWidth: 23.5, sensorHeight: 15.7, imageWidth: 5472, imageHeight: 3648, focalLength: 10.6 },
       { name: 'senseFly Aeria X', sensorWidth: 23.5, sensorHeight: 15.7, imageWidth: 6000, imageHeight: 4000, focalLength: 18.5 },
-      { name: 'Phase One iXM-100', sensorWidth: 43.9, sensorHeight: 32.9, imageWidth: 11664, imageHeight: 8750, focalLength: 50 },
+      { name: 'Phase One iXM-100', sensorWidth: 43.9, sensorHeight: 32.9, imageWidth: 11664, imageHeight: 8750, focalLength: 50 }, // i18n-exempt
     ],
   },
 ];

@@ -199,7 +199,7 @@ export function removeMember(groups: DockGroups, id: string): RemoveResult {
 interface DisplayCapable {
   id: string;
   NumericComponent?: unknown;
-  variants?: Array<{ id: string; label: string }>;
+  variants?: Array<{ id: string; labelKey?: string }>;
 }
 
 function modesOf(def: DisplayCapable): string[] {
@@ -212,7 +212,7 @@ function modesOf(def: DisplayCapable): string[] {
  * switch restyle a fraction of the group, which reads as broken); the ball is
  * exempt in a constellation since it is the anchor, not a readout.
  */
-export function groupDisplayOptions(members: DisplayCapable[]): { ids: string[]; options: Array<{ id: string; label: string }> } | null {
+export function groupDisplayOptions(members: DisplayCapable[]): { ids: string[]; options: Array<{ id: string; labelKey: string }> } | null {
   const relevant = members.filter((d) => d.id !== CLUSTER_ANCHOR);
   if (relevant.length === 0 || !relevant.every((d) => modesOf(d).length > 1)) return null;
   let common = modesOf(relevant[0]!);
@@ -221,9 +221,9 @@ export function groupDisplayOptions(members: DisplayCapable[]): { ids: string[];
     common = common.filter((m) => own.has(m));
   }
   if (common.length < 2) return null;
-  const labels = new Map<string, string>([['analog', 'Analog'], ['numeric', 'Numeric']]);
-  for (const d of relevant) for (const v of d.variants ?? []) if (!labels.has(v.id)) labels.set(v.id, v.label);
-  return { ids: relevant.map((d) => d.id), options: common.map((id) => ({ id, label: labels.get(id) ?? id })) };
+  const labels = new Map<string, string>([['analog', 'map:instrumentDisplay.analog'], ['numeric', 'map:instrumentDisplay.numeric']]);
+  for (const d of relevant) for (const v of d.variants ?? []) if (!labels.has(v.id) && v.labelKey) labels.set(v.id, v.labelKey);
+  return { ids: relevant.map((d) => d.id), options: common.map((id) => ({ id, labelKey: labels.get(id) ?? id })) };
 }
 
 export function reorderMember(groups: DockGroups, gid: string, from: number, to: number): DockGroups {

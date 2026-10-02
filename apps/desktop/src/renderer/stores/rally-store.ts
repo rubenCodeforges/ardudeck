@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import {
   type RallyPoint,
   type RallyItem,
@@ -77,7 +78,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
     try {
       const result = await window.electronAPI?.downloadRally();
       if (!result?.success) {
-        set({ error: result?.error || 'Failed to download rally points', isLoading: false, progress: null });
+        set({ error: result?.error || t('stores:rallyStore.downloadFailed'), isLoading: false, progress: null });
       }
       // Items will be set via IPC events (onRallyComplete)
     } catch (err) {
@@ -90,7 +91,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
     const items = buildRallyItems(rallyPoints);
 
     if (items.length === 0) {
-      set({ error: 'No rally points to upload' });
+      set({ error: t('stores:rallyStore.nothingToUpload') });
       return false;
     }
 
@@ -100,7 +101,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
       if (result?.success) {
         return true;
       } else {
-        set({ error: result?.error || 'Failed to upload rally points', isLoading: false, progress: null });
+        set({ error: result?.error || t('stores:rallyStore.uploadFailed'), isLoading: false, progress: null });
         return false;
       }
     } catch (err) {
@@ -116,7 +117,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
       if (result?.success) {
         return true;
       } else {
-        set({ error: result?.error || 'Failed to clear rally points', isLoading: false });
+        set({ error: result?.error || t('stores:rallyStore.clearFailed'), isLoading: false });
         return false;
       }
     } catch (err) {
@@ -206,7 +207,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
       progress: null,
       isDirty: false,
       error: null,
-      lastSuccessMessage: `Downloaded ${points.length} rally points from flight controller`,
+      lastSuccessMessage: t('stores:rallyStore.downloaded', { count: points.length }),
     });
   },
 
@@ -246,7 +247,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
       isDirty: false,
       progress: null,
       error: null,
-      lastSuccessMessage: `Uploaded ${itemCount} rally points to flight controller`,
+      lastSuccessMessage: t('stores:rallyStore.uploaded', { count: itemCount }),
     });
   },
 
@@ -255,7 +256,7 @@ export const useRallyStore = create<RallyStore>((set, get) => ({
       isLoading: false,
       progress: null,
       error: null,
-      lastSuccessMessage: 'Rally points cleared from flight controller',
+      lastSuccessMessage: t('stores:rallyStore.cleared'),
     });
   },
 

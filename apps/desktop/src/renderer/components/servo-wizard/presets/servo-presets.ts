@@ -19,18 +19,18 @@ export const SERVO_INPUT_SOURCE = {
   GIMBAL_ROLL: 13,
 } as const;
 
-// Human-readable names for input sources
-export const INPUT_SOURCE_NAMES: Record<number, string> = {
-  0: 'Roll',
-  1: 'Pitch',
-  2: 'Yaw',
-  3: 'Throttle',
-  4: 'RC Roll (manual)',
-  5: 'RC Pitch (manual)',
-  6: 'RC Yaw (manual)',
-  7: 'RC Throttle (manual)',
-  12: 'Gimbal Pitch',
-  13: 'Gimbal Roll',
+// i18n keys for input source names
+export const INPUT_SOURCE_NAME_KEYS: Record<number, string> = {
+  0: 'servo-wizard:servoPresets.inputSource.roll',
+  1: 'servo-wizard:servoPresets.inputSource.pitch',
+  2: 'servo-wizard:servoPresets.inputSource.yaw',
+  3: 'servo-wizard:servoPresets.inputSource.throttle',
+  4: 'servo-wizard:servoPresets.inputSource.rcRoll',
+  5: 'servo-wizard:servoPresets.inputSource.rcPitch',
+  6: 'servo-wizard:servoPresets.inputSource.rcYaw',
+  7: 'servo-wizard:servoPresets.inputSource.rcThrottle',
+  12: 'servo-wizard:servoPresets.inputSource.gimbalPitch',
+  13: 'servo-wizard:servoPresets.inputSource.gimbalRoll',
 };
 
 // Control surface types
@@ -49,86 +49,86 @@ export type ControlSurface =
 
 // Control surface definitions with human-friendly names
 export const CONTROL_SURFACE_INFO: Record<ControlSurface, {
-  name: string;
-  shortName: string;
-  description: string;
+  nameKey: string;
+  shortNameKey: string;
+  descriptionKey: string;
   inputSource: number;
   defaultRate: number;
 }> = {
   aileron_left: {
-    name: 'Left Aileron',
-    shortName: 'L Ail',
-    description: 'Rolls the plane left when down',
+    nameKey: 'servo-wizard:servoPresets.surface.aileronLeft.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.aileronLeft.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.aileronLeft.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL,
     defaultRate: 100,
   },
   aileron_right: {
-    name: 'Right Aileron',
-    shortName: 'R Ail',
-    description: 'Rolls the plane right when down',
+    nameKey: 'servo-wizard:servoPresets.surface.aileronRight.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.aileronRight.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.aileronRight.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL,
     defaultRate: -100, // Inverted from left
   },
   elevator: {
-    name: 'Elevator',
-    shortName: 'Elev',
-    description: 'Pitches the nose up when trailing edge goes up',
+    nameKey: 'servo-wizard:servoPresets.surface.elevator.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.elevator.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.elevator.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH,
     defaultRate: 100,
   },
   rudder: {
-    name: 'Rudder',
-    shortName: 'Rudr',
-    description: 'Yaws the plane left/right',
+    nameKey: 'servo-wizard:servoPresets.surface.rudder.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.rudder.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.rudder.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_YAW,
     defaultRate: 100,
   },
   elevon_left: {
-    name: 'Left Elevon',
-    shortName: 'L Elev',
-    description: 'Flying wing - combines roll and pitch',
+    nameKey: 'servo-wizard:servoPresets.surface.elevonLeft.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.elevonLeft.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.elevonLeft.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL, // Has both roll + pitch
     defaultRate: 100,
   },
   elevon_right: {
-    name: 'Right Elevon',
-    shortName: 'R Elev',
-    description: 'Flying wing - combines roll and pitch',
+    nameKey: 'servo-wizard:servoPresets.surface.elevonRight.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.elevonRight.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.elevonRight.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_ROLL,
     defaultRate: -100,
   },
   vtail_left: {
-    name: 'Left V-Tail',
-    shortName: 'L VT',
-    description: 'V-tail - combines elevator and rudder',
+    nameKey: 'servo-wizard:servoPresets.surface.vtailLeft.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.vtailLeft.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.vtailLeft.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH,
     defaultRate: 100,
   },
   vtail_right: {
-    name: 'Right V-Tail',
-    shortName: 'R VT',
-    description: 'V-tail - combines elevator and rudder',
+    nameKey: 'servo-wizard:servoPresets.surface.vtailRight.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.vtailRight.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.vtailRight.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_PITCH,
     defaultRate: 100,
   },
   yaw_servo: {
-    name: 'Yaw Servo',
-    shortName: 'Yaw',
-    description: 'Tricopter tail servo for yaw control',
+    nameKey: 'servo-wizard:servoPresets.surface.yawServo.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.yawServo.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.yawServo.description',
     inputSource: SERVO_INPUT_SOURCE.STABILIZED_YAW,
     defaultRate: 100,
   },
   gimbal_pan: {
-    name: 'Gimbal Pan',
-    shortName: 'Pan',
-    description: 'Camera gimbal horizontal rotation',
+    nameKey: 'servo-wizard:servoPresets.surface.gimbalPan.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.gimbalPan.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.gimbalPan.description',
     inputSource: SERVO_INPUT_SOURCE.RC_YAW,
     defaultRate: 100,
   },
   gimbal_tilt: {
-    name: 'Gimbal Tilt',
-    shortName: 'Tilt',
-    description: 'Camera gimbal vertical rotation',
+    nameKey: 'servo-wizard:servoPresets.surface.gimbalTilt.name',
+    shortNameKey: 'servo-wizard:servoPresets.surface.gimbalTilt.shortName',
+    descriptionKey: 'servo-wizard:servoPresets.surface.gimbalTilt.description',
     inputSource: SERVO_INPUT_SOURCE.RC_PITCH,
     defaultRate: 100,
   },
@@ -188,10 +188,11 @@ export const PLATFORM_TYPE = {
 export interface AircraftPreset {
   id: string;
   name: string;
+  nameKey: string;
   category: AircraftCategory;
   icon: string;
-  description: string;
-  tip: string;
+  descriptionKey: string;
+  tipKey: string;
   servoCount: number;
   controlSurfaces: ControlSurface[];
   // iNav platform type (MSP2_INAV_SET_MIXER) - THE CORRECT WAY!
@@ -209,11 +210,12 @@ export interface AircraftPreset {
 export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
   traditional: {
     id: 'traditional',
-    name: 'Traditional',
+    name: 'Traditional', // i18n-exempt
+    nameKey: 'servo-wizard:servoPresets.aircraft.traditional.name',
     category: 'fixed_wing',
     icon: 'A',
-    description: 'Standard plane with ailerons, elevator, rudder',
-    tip: 'Most common setup for planes. Separate control surfaces for each axis.',
+    descriptionKey: 'servo-wizard:servoPresets.aircraft.traditional.description',
+    tipKey: 'servo-wizard:servoPresets.aircraft.traditional.tip',
     servoCount: 4,
     controlSurfaces: ['aileron_left', 'aileron_right', 'elevator', 'rudder'],
     platformType: PLATFORM_TYPE.AIRPLANE,
@@ -240,11 +242,12 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
 
   flying_wing: {
     id: 'flying_wing',
-    name: 'Flying Wing',
+    name: 'Flying Wing', // i18n-exempt
+    nameKey: 'servo-wizard:servoPresets.aircraft.flyingWing.name',
     category: 'fixed_wing',
     icon: 'W',
-    description: 'Delta/flying wing with 2 elevons',
-    tip: 'Elevons combine aileron and elevator function. No tail surfaces.',
+    descriptionKey: 'servo-wizard:servoPresets.aircraft.flyingWing.description',
+    tipKey: 'servo-wizard:servoPresets.aircraft.flyingWing.tip',
     servoCount: 2,
     controlSurfaces: ['elevon_left', 'elevon_right'],
     platformType: PLATFORM_TYPE.AIRPLANE,
@@ -276,11 +279,12 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
 
   vtail: {
     id: 'vtail',
-    name: 'V-Tail',
+    name: 'V-Tail', // i18n-exempt
+    nameKey: 'servo-wizard:servoPresets.aircraft.vtail.name',
     category: 'fixed_wing',
     icon: 'V',
-    description: 'Plane with V-tail (ruddervators)',
-    tip: 'V-tail surfaces combine elevator and rudder. Standard ailerons.',
+    descriptionKey: 'servo-wizard:servoPresets.aircraft.vtail.description',
+    tipKey: 'servo-wizard:servoPresets.aircraft.vtail.tip',
     servoCount: 4,
     controlSurfaces: ['aileron_left', 'aileron_right', 'vtail_left', 'vtail_right'],
     platformType: PLATFORM_TYPE.AIRPLANE,
@@ -312,11 +316,12 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
 
   delta: {
     id: 'delta',
-    name: 'Delta',
+    name: 'Delta', // i18n-exempt
+    nameKey: 'servo-wizard:servoPresets.aircraft.delta.name',
     category: 'fixed_wing',
     icon: '△',
-    description: 'Delta wing with elevons and rudder',
-    tip: 'Like flying wing but with a vertical tail for rudder.',
+    descriptionKey: 'servo-wizard:servoPresets.aircraft.delta.description',
+    tipKey: 'servo-wizard:servoPresets.aircraft.delta.tip',
     servoCount: 3,
     controlSurfaces: ['elevon_left', 'elevon_right', 'rudder'],
     platformType: PLATFORM_TYPE.AIRPLANE,
@@ -348,11 +353,12 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
 
   tricopter: {
     id: 'tricopter',
-    name: 'Tricopter',
+    name: 'Tricopter', // i18n-exempt
+    nameKey: 'servo-wizard:servoPresets.aircraft.tricopter.name',
     category: 'multirotor',
     icon: 'Y',
-    description: 'Tricopter with yaw servo',
-    tip: 'Only the rear yaw servo needs configuration. Motors are handled separately.',
+    descriptionKey: 'servo-wizard:servoPresets.aircraft.tricopter.description',
+    tipKey: 'servo-wizard:servoPresets.aircraft.tricopter.tip',
     servoCount: 1,
     controlSurfaces: ['yaw_servo'],
     platformType: PLATFORM_TYPE.TRICOPTER,
@@ -381,11 +387,12 @@ export const AIRCRAFT_PRESETS: Record<string, AircraftPreset> = {
 
   gimbal: {
     id: 'gimbal',
-    name: 'Gimbal',
+    name: 'Gimbal', // i18n-exempt
+    nameKey: 'servo-wizard:servoPresets.aircraft.gimbal.name',
     category: 'other',
     icon: 'G',
-    description: '2-axis camera gimbal (pan/tilt)',
-    tip: 'For camera stabilization. Uses RC input, not stabilized output.',
+    descriptionKey: 'servo-wizard:servoPresets.aircraft.gimbal.description',
+    tipKey: 'servo-wizard:servoPresets.aircraft.gimbal.tip',
     servoCount: 2,
     controlSurfaces: ['gimbal_pan', 'gimbal_tilt'],
     platformType: PLATFORM_TYPE.MULTIROTOR, // Gimbal typically on quads

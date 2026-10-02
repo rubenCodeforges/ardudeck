@@ -11,6 +11,8 @@
  * from WPNAV_SPEED's own metadata (stored in cm/s) and is advisory.
  */
 
+import { t } from '../../../shared/i18n/index.js';
+
 export interface SpeedRange {
   min: number;
   max: number;
@@ -62,6 +64,6 @@ export function speedRangeHint(range: SpeedRange, unitLabel: string, toDisplay: 
   const lo = toDisplay(range.min);
   const hi = toDisplay(range.max);
   return range.enforced
-    ? `AIRSPEED_MIN..MAX is ${lo}-${hi} ${unitLabel}; outside that the vehicle refuses the command`
-    : `WPNAV_SPEED allows up to ${hi} ${unitLabel}`;
+    ? t('map:speedRange.enforced', { lo, hi, unit: unitLabel })
+    : t('map:speedRange.wpnav', { hi, unit: unitLabel });
 }

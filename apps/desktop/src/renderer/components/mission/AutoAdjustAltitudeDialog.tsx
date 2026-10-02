@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { Mountain, AlertTriangle, Check, ChevronDown, ChevronRight } from 'lucide-react';
@@ -75,6 +76,7 @@ export function AutoAdjustAltitudeDialog({
   onApply,
   onClose,
 }: AutoAdjustDialogProps) {
+  const { t } = useTranslation();
   const [insertIntermediates, setInsertIntermediates] = useState(true);
   const [minSpacing, setMinSpacing] = useState(50);
   const [sampleStep, setSampleStep] = useState(25);
@@ -116,7 +118,7 @@ export function AutoAdjustAltitudeDialog({
         setLoadingTerrain(false);
       } catch (err) {
         if (cancelled) return;
-        setTerrainError(`Failed to load terrain: ${String(err)}`);
+        setTerrainError(t('mission:autoAdjustAltitudeDialog.terrainFailed', { error: String(err) }));
         setLoadingTerrain(false);
       }
     })();
@@ -180,9 +182,9 @@ export function AutoAdjustAltitudeDialog({
             <Mountain className="w-4 h-4 text-amber-400" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-content leading-tight">Auto Adjust Altitude</h2>
+            <h2 className="text-base font-semibold text-content leading-tight">{t('mission:autoAdjustAltitudeDialog.title')}</h2>
             <p className="text-xs text-content-secondary mt-0.5">
-              Keep the flight path {formatAltitudeFromMeters(safeBuffer, altitudeUnit)} above terrain
+              {t('mission:autoAdjustAltitudeDialog.subtitle', { value: formatAltitudeFromMeters(safeBuffer, altitudeUnit) })}
             </p>
           </div>
         </div>
@@ -198,10 +200,9 @@ export function AutoAdjustAltitudeDialog({
               className={`${checkboxClass} mt-0.5`}
             />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-content">Insert intermediate waypoints</div>
+              <div className="text-sm font-medium text-content">{t('mission:autoAdjustAltitudeDialog.insertIntermediates')}</div>
               <p className="text-xs text-content-secondary mt-1">
-                Add waypoints where the straight line between two waypoints clips a ridge.
-                Otherwise only waypoints below the safe altitude are raised.
+                {t('mission:autoAdjustAltitudeDialog.insertIntermediatesHint')}
               </p>
             </div>
           </label>
@@ -213,14 +214,14 @@ export function AutoAdjustAltitudeDialog({
             className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-content transition-colors"
           >
             {advancedOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            Advanced
+            {t('common:advanced')}
           </button>
 
           {advancedOpen && (
             <div className="grid grid-cols-2 gap-3 pl-5">
               <div>
                 <label className="block text-[11px] uppercase tracking-wide text-content-tertiary mb-1">
-                  Min spacing (m)
+                  {t('mission:autoAdjustAltitudeDialog.minSpacing')}
                 </label>
                 <DraftNumberInput
                   min={10}
@@ -234,7 +235,7 @@ export function AutoAdjustAltitudeDialog({
               </div>
               <div>
                 <label className="block text-[11px] uppercase tracking-wide text-content-tertiary mb-1">
-                  Sample step (m)
+                  {t('mission:autoAdjustAltitudeDialog.sampleStep')}
                 </label>
                 <input
                   type="number"
@@ -253,7 +254,7 @@ export function AutoAdjustAltitudeDialog({
             {loadingTerrain ? (
               <div className="flex items-center justify-center gap-2 text-xs text-content-secondary bg-surface rounded-lg px-3 py-5 border border-subtle">
                 <div className="w-3 h-3 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
-                <span>Analyzing terrain...</span>
+                <span>{t('mission:autoAdjustAltitudeDialog.analyzing')}</span>
               </div>
             ) : terrainError ? (
               <div className="flex items-start gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-3">
@@ -263,7 +264,7 @@ export function AutoAdjustAltitudeDialog({
             ) : noChanges ? (
               <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-3">
                 <Check className="w-4 h-4 flex-shrink-0" />
-                <span>Flight path already clears terrain. No changes needed.</span>
+                <span>{t('mission:autoAdjustAltitudeDialog.noChanges')}</span>
               </div>
             ) : preview ? (
               <div className="bg-surface border border-subtle rounded-lg overflow-hidden">
@@ -271,17 +272,17 @@ export function AutoAdjustAltitudeDialog({
                 <div className="grid grid-cols-3 divide-x divide-subtle border-b border-subtle">
                   <div className="px-3 py-2 text-center">
                     <div className="text-base font-semibold text-amber-500">{raiseCount}</div>
-                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">Raise</div>
+                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">{t('mission:autoAdjustAltitudeDialog.raise')}</div>
                   </div>
                   <div className="px-3 py-2 text-center">
                     <div className="text-base font-semibold text-amber-500">{insertCount}</div>
-                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">Insert</div>
+                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">{t('mission:autoAdjustAltitudeDialog.insert')}</div>
                   </div>
                   <div className="px-3 py-2 text-center">
                     <div className="text-base font-semibold text-content">
                       {waypoints.length}<span className="text-content-tertiary mx-1">→</span>{waypoints.length + insertCount}
                     </div>
-                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">Size</div>
+                    <div className="text-[10px] text-content-tertiary uppercase tracking-wide">{t('common:size')}</div>
                   </div>
                 </div>
                 {/* Detail list */}
@@ -291,7 +292,7 @@ export function AutoAdjustAltitudeDialog({
                     if (newAlt === undefined) return null;
                     return (
                       <div key={wp.seq} className="flex items-center justify-between px-3 py-1.5 text-xs">
-                        <span className="text-content-secondary">WP {idx + 1}</span>
+                        <span className="text-content-secondary">{t('mission:autoAdjustAltitudeDialog.wp', { n: idx + 1 })}</span>
                         <span className="font-mono">
                           <span className="text-content-tertiary">{formatAltitudeFromMeters(wp.altitude, altitudeUnit)}</span>
                           <span className="text-content-tertiary mx-1.5">→</span>
@@ -303,7 +304,7 @@ export function AutoAdjustAltitudeDialog({
                   {preview.inserts.map((ins, i) => (
                     <div key={`ins-${i}`} className="flex items-center justify-between px-3 py-1.5 text-xs bg-amber-500/5">
                       <span className="text-content-secondary">
-                        + New WP after #{ins.afterSeq + 1}
+                        {t('mission:autoAdjustAltitudeDialog.newWpAfter', { n: ins.afterSeq + 1 })}
                       </span>
                       <span className="font-mono text-amber-500 font-semibold">{formatAltitudeFromMeters(ins.altitude, altitudeUnit)}</span>
                     </div>
@@ -320,7 +321,7 @@ export function AutoAdjustAltitudeDialog({
             onClick={onClose}
             className="flex-1 px-4 py-2 bg-surface-input hover:bg-surface-raised border border-subtle text-content rounded-lg transition-colors text-sm font-medium"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={handleApply}
@@ -331,7 +332,7 @@ export function AutoAdjustAltitudeDialog({
                 : 'bg-amber-500 hover:bg-amber-400 text-black shadow-sm'
             }`}
           >
-            Apply
+            {t('common:apply')}
           </button>
         </div>
       </div>

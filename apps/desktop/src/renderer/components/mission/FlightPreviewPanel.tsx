@@ -4,6 +4,7 @@
  * this panel owns transport controls and a scrubbable timeline where flight
  * legs, holds, and camera-yaw changes are laid out over mission time.
  */
+import { useTranslation } from 'react-i18next';
 import { useCallback, useMemo, useRef } from 'react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useFlightPreviewStore } from '../../stores/flight-preview-store';
@@ -15,6 +16,7 @@ function fmtTime(ms: number): string {
 }
 
 export function FlightPreviewPanel() {
+  const { t } = useTranslation();
   const missionItems = useMissionStore((s) => s.missionItems);
   const groups = useMissionStore((s) => s.groups);
   const playing = useFlightPreviewStore((s) => s.playing);
@@ -74,7 +76,7 @@ export function FlightPreviewPanel() {
   if (timeline.segments.length === 0) {
     return (
       <div className="h-full flex items-center justify-center bg-surface text-xs text-content-tertiary">
-        No flyable waypoints in the mission yet.
+        {t('mission:flightPreviewPanel.empty')}
       </div>
     );
   }
@@ -90,19 +92,19 @@ export function FlightPreviewPanel() {
           value={groupId ?? ''}
           onChange={(e) => setGroupId(e.target.value === '' ? null : e.target.value)}
           className="h-8 px-2 rounded-md bg-surface-input border border-subtle text-xs text-content focus:outline-none focus:border-cyan-500"
-          data-tip="Which waypoint group to preview"
+          data-tip={t('mission:flightPreviewPanel.scopeTip')}
         >
-          <option value="">Entire mission</option>
+          <option value="">{t('mission:flightPreviewPanel.entireMission')}</option>
           {groupOptions.map((g) => (
             <option key={g.id} value={g.id}>
-              {g.name} ({g.count} WPs)
+              {t('mission:flightPreviewPanel.groupOption', { name: g.name, count: g.count })}
             </option>
           ))}
         </select>
         <button
           onClick={togglePlay}
           className="w-8 h-8 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center transition-colors"
-          data-tip={playing ? 'Pause' : 'Play'}
+          data-tip={playing ? t('common:pause') : t('mission:flightPreviewPanel.play')}
         >
           {playing ? (
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
@@ -127,9 +129,9 @@ export function FlightPreviewPanel() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-3 text-[10px] text-content-tertiary">
-          <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-sm bg-cyan-500/70" /> flight leg</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-sm bg-amber-500/80" /> hold</span>
-          <span className="flex items-center gap-1"><span className="w-px h-3 bg-purple-400" /> camera turns</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-sm bg-cyan-500/70" /> {t('mission:flightPreviewPanel.flightLeg')}</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-sm bg-amber-500/80" /> {t('mission:flightPreviewPanel.hold')}</span>
+          <span className="flex items-center gap-1"><span className="w-px h-3 bg-purple-400" /> {t('mission:flightPreviewPanel.cameraTurns')}</span>
         </div>
       </div>
 
@@ -138,7 +140,7 @@ export function FlightPreviewPanel() {
         ref={trackRef}
         onMouseDown={onTrackMouseDown}
         className="relative flex-1 min-h-[44px] rounded-md bg-surface-inset border border-subtle cursor-pointer overflow-hidden"
-        data-tip="Click or drag to scrub the flight"
+        data-tip={t('mission:flightPreviewPanel.scrubTip')}
       >
         {timeline.segments.map((seg, i) => (
           <div
@@ -150,11 +152,11 @@ export function FlightPreviewPanel() {
             }}
           />
         ))}
-        {yawTicks.map((t, i) => (
+        {yawTicks.map((tick, i) => (
           <div
             key={`yaw-${i}`}
             className="absolute top-[18%] h-[64%] w-px bg-purple-400/80"
-            style={{ left: `${(t / dur) * 100}%` }}
+            style={{ left: `${(tick / dur) * 100}%` }}
           />
         ))}
         {/* Playhead */}

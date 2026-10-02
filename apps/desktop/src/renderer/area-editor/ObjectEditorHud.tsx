@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useObjectsStore } from './objects-store';
 import { useSurveyStore } from '../stores/survey-store';
 import { useSettingsStore } from '../stores/settings-store';
@@ -51,20 +52,22 @@ function MetricRow({ label, value }: { label: string; value: string | null }): J
 }
 
 function Metrics({ hud, distanceUnit, areaUnit }: { hud: AreaHud; distanceUnit: DistanceUnit; areaUnit: AreaUnit }): JSX.Element {
+  const { t } = useTranslation();
   return (
     <>
-      <MetricRow label="Area" value={hud.areaHa !== null ? formatSurveyAreaHa(hud.areaHa, areaUnit) : null} />
-      <MetricRow label="Distance" value={hud.flightDistanceM !== null ? formatSurveyDistanceM(hud.flightDistanceM, distanceUnit) : null} />
-      <MetricRow label="Flight time" value={hud.flightTimeSec !== null ? formatDurationSec(hud.flightTimeSec) : null} />
-      <MetricRow label="Batteries" value={hud.batteryCount !== null ? String(hud.batteryCount) : null} />
-      <MetricRow label="GSD" value={hud.gsdCm !== null && hud.gsdCm > 0 ? `${hud.gsdCm.toFixed(1)} cm/px` : null} />
-      <MetricRow label="Photos" value={hud.photoCount !== null ? hud.photoCount.toLocaleString() : null} />
-      <MetricRow label="Data" value={hud.dataGb !== null ? `${hud.dataGb.toFixed(1)} GB` : null} />
+      <MetricRow label={t('area-editor:hud.area')} value={hud.areaHa !== null ? formatSurveyAreaHa(hud.areaHa, areaUnit) : null} />
+      <MetricRow label={t('area-editor:hud.distance')} value={hud.flightDistanceM !== null ? formatSurveyDistanceM(hud.flightDistanceM, distanceUnit) : null} />
+      <MetricRow label={t('area-editor:hud.flightTime')} value={hud.flightTimeSec !== null ? formatDurationSec(hud.flightTimeSec) : null} />
+      <MetricRow label={t('area-editor:hud.batteries')} value={hud.batteryCount !== null ? String(hud.batteryCount) : null} />
+      <MetricRow label={t('area-editor:hud.gsd')} value={hud.gsdCm !== null && hud.gsdCm > 0 ? `${hud.gsdCm.toFixed(1)} cm/px` : null} />
+      <MetricRow label={t('area-editor:hud.photos')} value={hud.photoCount !== null ? hud.photoCount.toLocaleString() : null} />
+      <MetricRow label={t('area-editor:hud.data')} value={hud.dataGb !== null ? `${hud.dataGb.toFixed(1)} GB` : null} />
     </>
   );
 }
 
 export function ObjectEditorHud(): JSX.Element {
+  const { t } = useTranslation();
   const objects = useObjectsStore((s) => s.objects);
   const selectedId = useObjectsStore((s) => s.selectedId);
   const surveyConfig = useSurveyStore((s) => s.config);
@@ -122,12 +125,12 @@ export function ObjectEditorHud(): JSX.Element {
     <div className="h-full flex flex-col overflow-hidden">
       <div className="flex-shrink-0 px-4 py-3 border-b border-subtle">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-content">Flight Briefing</p>
+          <p className="text-xs font-semibold text-content">{t('area-editor:hud.title')}</p>
           <div className="flex items-center gap-1.5">
             <VaultSyncBadge />
             <span
               className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-input text-content-secondary"
-              data-tip={`Area in ${UNIT_LABELS.area[areaUnit]}, distance in ${UNIT_LABELS.distance[distanceUnit]}`}
+              data-tip={t('area-editor:hud.unitsTip', { areaUnit: UNIT_LABELS.area[areaUnit], distanceUnit: UNIT_LABELS.distance[distanceUnit] })}
             >
               {UNIT_LABELS.area[areaUnit]}
             </span>
@@ -143,7 +146,7 @@ export function ObjectEditorHud(): JSX.Element {
                     (scope === s ? 'bg-blue-600 text-white' : 'text-content-secondary hover:text-content')
                   }
                 >
-                  {s === 'all' ? 'All' : 'Selected'}
+                  {s === 'all' ? t('area-editor:hud.all') : t('area-editor:hud.selected')}
                 </button>
               ))}
             </div>
@@ -155,7 +158,7 @@ export function ObjectEditorHud(): JSX.Element {
 
       <div className="flex-1 overflow-y-auto px-4 py-2">
         {perObject.length === 0 ? (
-          <p className="text-xs text-content-tertiary mt-2">Draw an area or corridor to see the briefing.</p>
+          <p className="text-xs text-content-tertiary mt-2">{t('area-editor:hud.empty')}</p>
         ) : scope === 'selected' || !showScopeToggle ? (
           // Single object, or explicitly inspecting the selected one.
           selectedEntry || perObject.length === 1 ? (
@@ -167,19 +170,19 @@ export function ObjectEditorHud(): JSX.Element {
               <Metrics hud={(selectedEntry ?? perObject[0]!).hud} distanceUnit={distanceUnit} areaUnit={areaUnit} />
             </>
           ) : (
-            <p className="text-xs text-content-tertiary mt-2">Select an object to see its briefing, or switch to All.</p>
+            <p className="text-xs text-content-tertiary mt-2">{t('area-editor:hud.selectObject')}</p>
           )
         ) : (
           totals && (
             <>
-              <p className="text-xs text-content-tertiary mb-2">{perObject.length} objects combined</p>
+              <p className="text-xs text-content-tertiary mb-2">{t('area-editor:hud.combined', { count: perObject.length })}</p>
               <Metrics hud={totals} distanceUnit={distanceUnit} areaUnit={areaUnit} />
             </>
           )
         )}
         {!activeVehicle && (
           <p className="text-xs text-content-tertiary mt-3 leading-relaxed">
-            Add a vehicle profile for battery + endurance figures.
+            {t('area-editor:hud.addVehicle')}
           </p>
         )}
       </div>

@@ -22,6 +22,7 @@ import { app } from 'electron';
 import { mkdir, readFile, writeFile, stat, readdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { ArduPilotVehicleType } from '../../shared/ipc-channels.js';
+import { t } from '../../shared/i18n/index.js';
 
 // Upstream moved the vehicle/frame catalog from a Python dict literal in
 // `pysim/vehicleinfo.py` to a plain JSON file in `pysim/vehicleinfo.json`.
@@ -285,19 +286,19 @@ function parseFrames(rawText: string): SitlFrameInfo[] {
       parsed = JSON.parse(rawText) as RawVehicleInfo;
     } catch (err) {
       throw new Error(
-        `vehicleinfo.json parse failed: ${err instanceof Error ? err.message : String(err)}`,
+        `vehicleinfo.json parse failed: ${err instanceof Error ? err.message : String(err)}`, // i18n-exempt
       );
     }
   } else {
     // Legacy Python dict literal (older ArduPilot branches).
     const block = extractOuterBraces(rawText);
-    if (!block) throw new Error('vehicleinfo: no top-level dict found');
+    if (!block) throw new Error('vehicleinfo: no top-level dict found'); // i18n-exempt
     const json = pythonToJson(block);
     try {
       parsed = JSON.parse(json) as RawVehicleInfo;
     } catch (err) {
       throw new Error(
-        `vehicleinfo.py JSON parse failed: ${err instanceof Error ? err.message : String(err)}`,
+        `vehicleinfo.py JSON parse failed: ${err instanceof Error ? err.message : String(err)}`, // i18n-exempt
       );
     }
   }
@@ -348,22 +349,22 @@ function parseFrames(rawText: string): SitlFrameInfo[] {
  * frame so a user can hit Start immediately.
  */
 const FALLBACK_FRAMES: SitlFrameInfo[] = [
-  { value: 'quad',         label: 'Quad (default)',  vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] },
-  { value: '+',            label: 'Quad Plus',        vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] },
-  { value: 'hexa',         label: 'Hexacopter',       vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] },
-  { value: 'octa',         label: 'Octocopter',       vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] },
-  { value: 'tri',          label: 'Tricopter',        vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] },
-  { value: 'heli',         label: 'Helicopter',       vehicleType: 'copter', category: 'Helicopter', defaultParamFiles: ['default_params/copter-heli.parm'] },
-  { value: 'plane',        label: 'Plane (default)',  vehicleType: 'plane',  category: 'Plane',      defaultParamFiles: ['default_params/plane.parm'] },
-  { value: 'quadplane',    label: 'Quadplane',        vehicleType: 'plane',  category: 'Quadplane',  defaultParamFiles: ['default_params/quadplane.parm'] },
-  { value: 'plane-tailsitter', label: 'Plane Tailsitter', vehicleType: 'plane', category: 'Tailsitter', defaultParamFiles: ['default_params/plane-tailsitter.parm'] },
-  { value: 'firefly',      label: 'Firefly (Y6 VTOL)',vehicleType: 'plane',  category: 'Quadplane',  defaultParamFiles: ['default_params/firefly.parm'] },
-  { value: 'rover',        label: 'Rover (default)',  vehicleType: 'rover',  category: 'Rover',      defaultParamFiles: ['default_params/rover.parm'] },
-  { value: 'rover-skid',   label: 'Skid Steer Rover', vehicleType: 'rover',  category: 'Rover',      defaultParamFiles: ['default_params/rover-skid.parm'] },
-  { value: 'motorboat',    label: 'Motor Boat',       vehicleType: 'rover',  category: 'Boat',       defaultParamFiles: ['default_params/motorboat.parm'] },
-  { value: 'sailboat',     label: 'Sailboat',         vehicleType: 'rover',  category: 'Boat',       defaultParamFiles: ['default_params/sailboat.parm'] },
-  { value: 'vectored',     label: 'Vectored (default)', vehicleType: 'sub',  category: 'Sub',        defaultParamFiles: ['default_params/sub.parm'] },
-  { value: 'vectored_6dof',label: 'Vectored 6DOF',    vehicleType: 'sub',    category: 'Sub',        defaultParamFiles: ['default_params/sub-6dof.parm'] },
+  { value: 'quad',         label: 'Quad (default)',  vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] }, // i18n-exempt
+  { value: '+',            label: 'Quad Plus',        vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] }, // i18n-exempt
+  { value: 'hexa',         label: 'Hexacopter',       vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] }, // i18n-exempt
+  { value: 'octa',         label: 'Octocopter',       vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] }, // i18n-exempt
+  { value: 'tri',          label: 'Tricopter',        vehicleType: 'copter', category: 'Multirotor', defaultParamFiles: ['default_params/copter.parm'] }, // i18n-exempt
+  { value: 'heli',         label: 'Helicopter',       vehicleType: 'copter', category: 'Helicopter', defaultParamFiles: ['default_params/copter-heli.parm'] }, // i18n-exempt
+  { value: 'plane',        label: 'Plane (default)',  vehicleType: 'plane',  category: 'Plane',      defaultParamFiles: ['default_params/plane.parm'] }, // i18n-exempt
+  { value: 'quadplane',    label: 'Quadplane',        vehicleType: 'plane',  category: 'Quadplane',  defaultParamFiles: ['default_params/quadplane.parm'] }, // i18n-exempt
+  { value: 'plane-tailsitter', label: 'Plane Tailsitter', vehicleType: 'plane', category: 'Tailsitter', defaultParamFiles: ['default_params/plane-tailsitter.parm'] }, // i18n-exempt
+  { value: 'firefly',      label: 'Firefly (Y6 VTOL)',vehicleType: 'plane',  category: 'Quadplane',  defaultParamFiles: ['default_params/firefly.parm'] }, // i18n-exempt
+  { value: 'rover',        label: 'Rover (default)',  vehicleType: 'rover',  category: 'Rover',      defaultParamFiles: ['default_params/rover.parm'] }, // i18n-exempt
+  { value: 'rover-skid',   label: 'Skid Steer Rover', vehicleType: 'rover',  category: 'Rover',      defaultParamFiles: ['default_params/rover-skid.parm'] }, // i18n-exempt
+  { value: 'motorboat',    label: 'Motor Boat',       vehicleType: 'rover',  category: 'Boat',       defaultParamFiles: ['default_params/motorboat.parm'] }, // i18n-exempt
+  { value: 'sailboat',     label: 'Sailboat',         vehicleType: 'rover',  category: 'Boat',       defaultParamFiles: ['default_params/sailboat.parm'] }, // i18n-exempt
+  { value: 'vectored',     label: 'Vectored (default)', vehicleType: 'sub',  category: 'Sub',        defaultParamFiles: ['default_params/sub.parm'] }, // i18n-exempt
+  { value: 'vectored_6dof',label: 'Vectored 6DOF',    vehicleType: 'sub',    category: 'Sub',        defaultParamFiles: ['default_params/sub-6dof.parm'] }, // i18n-exempt
 ];
 
 // =============================================================================
@@ -432,7 +433,7 @@ export async function listFrames(opts: { force?: boolean } = {}): Promise<SitlFr
     if (ok) {
       await writeFile(vehicleinfoMetaPath(), JSON.stringify({ fetchedAt: new Date().toISOString() }), 'utf-8');
     } else {
-      fetchError = `Could not reach upstream vehicleinfo (json or py)`;
+      fetchError = t('main:sitl.vehicleinfoUnreachable');
     }
   }
 

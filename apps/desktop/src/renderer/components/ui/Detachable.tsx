@@ -1,4 +1,5 @@
 import { useCallback, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useIsDetached } from '../../stores/workspace-store';
 
 interface DetachableProps {
@@ -46,6 +47,7 @@ export function Detachable({
   enabled = true,
   children,
 }: DetachableProps): JSX.Element {
+  const { t } = useTranslation();
   const isDetached = useIsDetached(componentId, instance);
 
   const handlePopOut = useCallback(() => {
@@ -78,8 +80,8 @@ export function Detachable({
         <button
           onClick={handlePopOut}
           className="absolute top-2 right-2 z-30 p-1.5 rounded-md bg-surface-raised/80 hover:bg-surface-raised backdrop-blur-sm border border-subtle text-content-secondary hover:text-content opacity-0 group-hover:opacity-100 transition-opacity"
-          title={`Open ${title} in new window`}
-          aria-label={`Open ${title} in new window`}
+          title={t('ui:detachable.openInNewWindow', { title })}
+          aria-label={t('ui:detachable.openInNewWindow', { title })}
         >
           <PopOutIcon />
         </button>
@@ -95,6 +97,7 @@ function DetachedPlaceholder({
   title: string;
   onReDock: () => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="h-full w-full flex items-center justify-center p-6 bg-surface border border-dashed border-subtle rounded-xl">
       <div className="text-center max-w-xs">
@@ -104,12 +107,12 @@ function DetachedPlaceholder({
           </svg>
         </div>
         <div className="text-sm font-medium text-content mb-1">{title}</div>
-        <div className="text-xs text-content-secondary mb-3">Open in separate window</div>
+        <div className="text-xs text-content-secondary mb-3">{t('ui:detachable.openInSeparateWindow')}</div>
         <button
           onClick={onReDock}
           className="px-3 py-1.5 text-xs bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 border border-blue-500/40 rounded-md transition-colors"
         >
-          Dock back here
+          {t('ui:detachable.dockBackHere')}
         </button>
       </div>
     </div>

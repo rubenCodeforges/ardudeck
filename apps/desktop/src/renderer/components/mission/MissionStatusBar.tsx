@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { calculateMissionDistance, estimateMissionTime } from '../../../shared/mission-types';
@@ -16,6 +17,7 @@ export function MissionStatusBar() {
     getTotalDistance,
     getEstimatedTime,
   } = useMissionStore();
+  const { t } = useTranslation();
 
   const waypointCount = getWaypointCount();
   const totalDistanceMeters = getTotalDistance();
@@ -39,32 +41,35 @@ export function MissionStatusBar() {
         {multiMission ? (
           <>
             <span>
-              <span className="text-content font-medium">{groups.length}</span> missions
+              <Trans i18nKey="mission:missionStatusBar.missions" values={{ count: groups.length }} components={{ b: <span className="text-content font-medium" /> }} />
             </span>
             <span className="text-content-tertiary">|</span>
             <span>
-              <span className="text-content font-medium">{waypointCount}</span> WPs total
+              <Trans i18nKey="mission:missionStatusBar.wpsTotal" values={{ count: waypointCount }} components={{ b: <span className="text-content font-medium" /> }} />
             </span>
             <span className="text-content-tertiary">|</span>
             <span>
-              <span className="text-content font-medium">{formatDistanceFromMeters(totalDistanceMeters, distanceUnit)}</span> total
+              <Trans i18nKey="mission:missionStatusBar.distTotal" values={{ value: formatDistanceFromMeters(totalDistanceMeters, distanceUnit) }} components={{ b: <span className="text-content font-medium" /> }} />
             </span>
             {selectedGroup ? (
               <>
                 <span className="text-content-tertiary">|</span>
                 <span className="truncate max-w-[260px]">
-                  <span className="text-content font-medium">{selectedGroup.name}</span>: {groupItems.length} WPs
-                  {' · '}{formatDistanceFromMeters(groupDistanceMeters, distanceUnit)}{' · '}~{groupTimeMin} min
+                  <Trans
+                    i18nKey="mission:missionStatusBar.groupStats"
+                    values={{ name: selectedGroup.name, count: groupItems.length, distance: formatDistanceFromMeters(groupDistanceMeters, distanceUnit), minutes: groupTimeMin }}
+                    components={{ b: <span className="text-content font-medium" /> }}
+                  />
                 </span>
               </>
             ) : (
-              <span className="text-content-tertiary">select a mission for its distance/time</span>
+              <span className="text-content-tertiary">{t('mission:missionStatusBar.selectHint')}</span>
             )}
           </>
         ) : (
           <>
             <span>
-              <span className="text-content font-medium">{waypointCount}</span> waypoints
+              <Trans i18nKey="mission:missionStatusBar.waypoints" values={{ count: waypointCount }} components={{ b: <span className="text-content font-medium" /> }} />
             </span>
             {waypointCount > 0 && (
               <>
@@ -74,7 +79,7 @@ export function MissionStatusBar() {
                 </span>
                 <span className="text-content-tertiary">|</span>
                 <span>
-                  Est. <span className="text-content font-medium">~{Math.ceil(estimatedTimeSeconds / 60)}</span> min
+                  <Trans i18nKey="mission:missionStatusBar.estimate" values={{ minutes: Math.ceil(estimatedTimeSeconds / 60) }} components={{ b: <span className="text-content font-medium" /> }} />
                 </span>
               </>
             )}
@@ -94,18 +99,18 @@ export function MissionStatusBar() {
         {/* Loading/progress indicator */}
         {isLoading && progress && (
           <span className="text-blue-400">
-            {progress.operation === 'download' ? 'Downloading' : 'Uploading'}: {progress.transferred}/{progress.total}
+            {t(progress.operation === 'download' ? 'mission:missionStatusBar.downloading' : 'mission:missionStatusBar.uploading', { done: progress.transferred, total: progress.total })}
           </span>
         )}
 
         {/* Current waypoint during flight */}
         {!isLoading && currentSeq !== null ? (
           <span className="text-emerald-400">
-            Current: WP {currentSeq + 1} of {waypointCount}
+            {t('mission:missionStatusBar.current', { n: currentSeq + 1, total: waypointCount })}
           </span>
         ) : !isLoading && (
           <span className="text-content-secondary">
-            {waypointCount > 0 ? 'Ready to upload' : 'No active mission'}
+            {waypointCount > 0 ? t('mission:missionStatusBar.readyToUpload') : t('mission:missionStatusBar.noActiveMission')}
           </span>
         )}
       </div>

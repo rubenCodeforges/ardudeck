@@ -10,6 +10,7 @@
 
 import { extractCrsfFrames, CRSF_FRAMETYPE_LINK_STATISTICS } from './crsf-protocol.js';
 import type { StreamDiagnosis } from '../../shared/link-doctor-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 export type { StreamDiagnosis, StreamProtocol } from '../../shared/link-doctor-types.js';
 
@@ -81,9 +82,9 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
       ...base,
       protocol: 'silence',
       confidence: 'high',
-      summary: 'The port is completely silent - no data at all.',
+      summary: t('main:streamClassifier.silentSummary'),
       suggestion:
-        'Check power and wiring. If this is a radio module, make sure it is powered and linked; if it is a flight controller, make sure this is the right port.',
+        t('main:streamClassifier.silentSuggestion'),
     };
   }
 
@@ -96,11 +97,11 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
       protocol: 'crsf',
       confidence: 'high',
       summary: elrsNormalMode
-        ? 'This device is speaking CRSF link statistics - it is an ELRS radio module in Normal link mode, not MAVLink.'
-        : 'This port is speaking CRSF (RC receiver protocol), not MAVLink.',
+        ? t('main:streamClassifier.crsfElrsSummary')
+        : t('main:streamClassifier.crsfSummary'),
       suggestion: elrsNormalMode
-        ? 'Switch the module to MAVLink link mode. ArduDeck can do this for you from the ELRS Radio Setup card - the receiver must be powered off while the mode changes.'
-        : 'This looks like an RC receiver feed. To use it for telemetry, the ELRS link must be in MAVLink mode on both ends.',
+        ? t('main:streamClassifier.crsfElrsSuggestion')
+        : t('main:streamClassifier.crsfSuggestion'),
     };
   }
 
@@ -109,9 +110,9 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
       ...base,
       protocol: mavlink2Frames >= mavlink1Frames ? 'mavlink2' : 'mavlink1',
       confidence: 'high',
-      summary: 'MAVLink telemetry is flowing on this port, but no vehicle heartbeat was accepted.',
+      summary: t('main:streamClassifier.mavlinkNoHeartbeatSummary'),
       suggestion:
-        'The stream may be from a radio or companion device rather than the flight controller, or heavily corrupted. Check that the vehicle is powered and its telemetry port is configured for MAVLink2.',
+        t('main:streamClassifier.mavlinkNoHeartbeatSuggestion'),
     };
   }
 
@@ -120,8 +121,8 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
       ...base,
       protocol: nmeaSentences >= 2 ? 'nmea' : 'ublox',
       confidence: 'high',
-      summary: 'This is a GPS module (NMEA/u-blox output), not a flight controller.',
-      suggestion: 'Pick a different serial port - this one has a GPS on it.',
+      summary: t('main:streamClassifier.gpsSummary'),
+      suggestion: t('main:streamClassifier.gpsSuggestion'),
     };
   }
 
@@ -130,8 +131,8 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
       ...base,
       protocol: 'msp',
       confidence: 'medium',
-      summary: 'This port is speaking MSP (Betaflight/iNav protocol), not MAVLink.',
-      suggestion: 'Connect with the MSP option instead, or switch the flight controller port to MAVLink.',
+      summary: t('main:streamClassifier.mspSummary'),
+      suggestion: t('main:streamClassifier.mspSuggestion'),
     };
   }
 
@@ -140,8 +141,8 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
       ...base,
       protocol: 'ascii-log',
       confidence: 'medium',
-      summary: 'This port is printing text (a debug console), not telemetry.',
-      suggestion: 'The device is in a logging/boot mode or this is its debug output port. Check its mode and pick the telemetry port.',
+      summary: t('main:streamClassifier.asciiSummary'),
+      suggestion: t('main:streamClassifier.asciiSuggestion'),
     };
   }
 
@@ -149,9 +150,9 @@ export function classifyStream(sample: Uint8Array): StreamDiagnosis {
     ...base,
     protocol: 'unknown',
     confidence: 'low',
-    summary: 'Data is arriving but it does not match any known protocol.',
+    summary: t('main:streamClassifier.unknownSummary'),
     suggestion:
-      'This usually means the baud rate is wrong. Try other baud rates (ELRS MAVLink uses 460800, SiK radios 57600, flight controller USB 115200).',
+      t('main:streamClassifier.unknownSuggestion'),
   };
 }
 
@@ -179,8 +180,8 @@ export function classifyDatagrams(datagrams: Uint8Array[]): StreamDiagnosis {
       return {
         protocol: 'mpegts',
         confidence: 'high',
-        summary: 'An MPEG-TS video stream is arriving on this port.',
-        suggestion: 'Use the RTP/UDP camera source - the media engine ingests MPEG-TS directly.',
+        summary: t('main:streamClassifier.mpegtsSummary'),
+        suggestion: t('main:streamClassifier.mpegtsSuggestion'),
         elrsNormalMode: false,
         counts: { bytes, mavlink2Frames: 0, mavlink1Frames: 0, crsfFrames: 0, crsfLinkStats: 0, mspFrames: 0, nmeaSentences: 0, ubxFrames: 0, printableRatio: 0 },
       };
@@ -190,8 +191,8 @@ export function classifyDatagrams(datagrams: Uint8Array[]): StreamDiagnosis {
       return {
         protocol: 'rtp',
         confidence: 'high',
-        summary: `An RTP video stream is arriving on this port (payload type ${pts}).`,
-        suggestion: 'The wfb-ng ground station is forwarding video - the OpenIPC/WiFiLink camera source can play it.',
+        summary: t('main:streamClassifier.rtpSummary', { pts }),
+        suggestion: t('main:streamClassifier.rtpSuggestion'),
         elrsNormalMode: false,
         counts: { bytes, mavlink2Frames: 0, mavlink1Frames: 0, crsfFrames: 0, crsfLinkStats: 0, mspFrames: 0, nmeaSentences: 0, ubxFrames: 0, printableRatio: 0 },
       };

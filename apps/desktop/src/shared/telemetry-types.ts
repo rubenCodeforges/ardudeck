@@ -3,6 +3,7 @@
  */
 
 import type { VibrationData, EscTelemetryData, ServoOutputData } from './motor-test-types';
+import { t } from './i18n/index.js';
 export type { VibrationData, EscTelemetryData, EscMotorTelemetry, ServoOutputData } from './motor-test-types';
 
 export interface AttitudeData {
@@ -239,7 +240,7 @@ export const COPTER_MODES: Record<number, string> = {
   24: 'ZigZag',
   25: 'SystemID',
   26: 'Heli_Autorotate',
-  27: 'Auto RTL',
+  27: 'Auto RTL', // i18n-exempt
 };
 
 // Flight modes for ArduPilot Plane
@@ -267,7 +268,7 @@ export const PLANE_MODES: Record<number, string> = {
   22: 'QAutotune',
   23: 'QAcro',
   24: 'Thermal',
-  25: 'Loiter to QLand',
+  25: 'Loiter to QLand', // i18n-exempt
 };
 
 // Flight modes for ArduPilot Rover (also used by Boat)
@@ -283,7 +284,7 @@ export const ROVER_MODES: Record<number, string> = {
   9: 'Circle',
   10: 'Auto',
   11: 'RTL',
-  12: 'Smart RTL',
+  12: 'Smart RTL', // i18n-exempt
   15: 'Guided',
   16: 'Initializing',
 };
@@ -329,9 +330,9 @@ const PX4_AUTO_SUB_MODES: Record<number, string> = {
   4: 'Mission',
   5: 'Return',
   6: 'Land',
-  7: 'Return to Groundstation',
-  8: 'Follow Me',
-  9: 'Precision Land',
+  7: 'Return to Groundstation', // i18n-exempt
+  8: 'Follow Me', // i18n-exempt
+  9: 'Precision Land', // i18n-exempt
 };
 
 // sub_mode when main_mode === POSCTL (3)
@@ -392,14 +393,25 @@ export const PX4_FLIGHT_MODES: { name: string; mainMode: number; subMode: number
 
 // GPS fix type names
 export const GPS_FIX_TYPES: Record<number, string> = {
-  0: 'No GPS',
-  1: 'No Fix',
+  0: 'No GPS', // i18n-exempt
+  1: 'No Fix', // i18n-exempt
   2: '2D Fix',
   3: '3D Fix',
   4: 'DGPS',
   5: 'RTK Float',
   6: 'RTK Fixed',
 };
+
+const GPS_FIX_TYPE_KEYS: Record<number, string> = {
+  0: 'shared:telemetryTypes.gpsFix.noGps',
+  1: 'shared:telemetryTypes.gpsFix.noFix',
+};
+
+export function gpsFixTypeName(fixType: number): string {
+  const key = GPS_FIX_TYPE_KEYS[fixType];
+  if (key) return t(key);
+  return GPS_FIX_TYPES[fixType] ?? t('shared:telemetryTypes.gpsFix.noGps');
+}
 
 // ArduPilot vehicle class derived from MAV_TYPE. VTOL is split from plane
 // because the destructive commands (takeoff, land, RTL) take a different
@@ -502,7 +514,12 @@ export interface VehicleCapabilities {
     label: string;
     /** If false, button should be disabled with a note. */
     disabledReason?: string;
+    disabledReasonKey?: string;
   };
+}
+
+export function landDisabledReason(land: { disabledReason?: string; disabledReasonKey?: string }): string | undefined {
+  return land.disabledReasonKey ? t(land.disabledReasonKey) : land.disabledReason;
 }
 
 export const VEHICLE_CAPABILITIES: Record<ArduPilotVehicleClass, VehicleCapabilities> = {
@@ -513,7 +530,7 @@ export const VEHICLE_CAPABILITIES: Record<ArduPilotVehicleClass, VehicleCapabili
     rtlModeNum: 6,
     rtlAutoLands: true,
     takeoff: { supported: true, method: 'command' },
-    land: { supported: true, modeNum: 9, label: 'Land' },
+    land: { supported: true, modeNum: 9, label: 'Land' }, // i18n-exempt
   },
   plane: {
     stabilizeModeNum: 2,
@@ -526,8 +543,9 @@ export const VEHICLE_CAPABILITIES: Record<ArduPilotVehicleClass, VehicleCapabili
     land: {
       supported: false,
       modeNum: null,
-      label: 'Land',
-      disabledReason: 'Fixed-wing landing requires a mission with NAV_LAND waypoint (or AUTOLAND mode + DO_LAND_START)',
+      label: 'Land', // i18n-exempt
+      disabledReason: 'Fixed-wing landing requires a mission with NAV_LAND waypoint (or AUTOLAND mode + DO_LAND_START)', // i18n-exempt
+      disabledReasonKey: 'shared:telemetryTypes.planeLandDisabled',
     },
   },
   vtol: {
@@ -545,7 +563,7 @@ export const VEHICLE_CAPABILITIES: Record<ArduPilotVehicleClass, VehicleCapabili
     land: {
       supported: true,
       modeNum: 20, // QLAND — vertical descent, auto-disarm at touchdown
-      label: 'QLand',
+      label: 'QLand', // i18n-exempt
     },
   },
   rover: {
@@ -558,7 +576,7 @@ export const VEHICLE_CAPABILITIES: Record<ArduPilotVehicleClass, VehicleCapabili
     land: {
       supported: true,
       modeNum: 4, // HOLD
-      label: 'Hold',
+      label: 'Hold', // i18n-exempt
     },
   },
   sub: {
@@ -571,7 +589,7 @@ export const VEHICLE_CAPABILITIES: Record<ArduPilotVehicleClass, VehicleCapabili
     land: {
       supported: true,
       modeNum: 9, // Surface
-      label: 'Surface',
+      label: 'Surface', // i18n-exempt
     },
   },
 };

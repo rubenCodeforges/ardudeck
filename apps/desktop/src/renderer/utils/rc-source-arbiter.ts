@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n/index.js';
+
 // RC-source priority: Trainer session > (sliders XOR joystick override) >
 // pseudo-tx SITL stand-in, which gates only on the Trainer.
 
@@ -13,14 +15,14 @@ const state: ArbiterState = { trainerActive: false, owner: null };
 type Listener = (trainerActive: boolean) => void;
 const listeners = new Set<Listener>();
 
-export const TRAINER_OWNS_STICKS = 'Trainer session active - the Trainer owns the sticks';
+export const TRAINER_OWNS_STICKS = 'Trainer session active - the Trainer owns the sticks'; // i18n-exempt
 
 export function claimRcOverride(owner: RcOverrideOwner): { ok: boolean; reason?: string } {
-  if (state.trainerActive) return { ok: false, reason: TRAINER_OWNS_STICKS };
+  if (state.trainerActive) return { ok: false, reason: t('utils:rcSourceArbiter.trainerOwnsSticks') };
   if (state.owner !== null && state.owner !== owner) {
     return {
       ok: false,
-      reason: owner === 'sliders' ? 'Joystick control owns the RC link' : 'Virtual RC sliders own the RC link',
+      reason: owner === 'sliders' ? t('utils:rcSourceArbiter.joystickOwns') : t('utils:rcSourceArbiter.slidersOwn'),
     };
   }
   state.owner = owner;

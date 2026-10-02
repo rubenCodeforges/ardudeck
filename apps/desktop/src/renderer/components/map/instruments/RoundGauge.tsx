@@ -19,7 +19,7 @@ export const GAUGE_COLORS = {
   face: 'var(--gauge-face)',
   tickMajor: 'var(--gauge-tick-major)',
   tickMinor: 'var(--gauge-tick-minor)',
-  text: 'var(--gauge-text)',
+  text: 'var(--gauge-text)', // i18n-exempt: css var
   textDim: 'var(--gauge-text-dim)',
   needle: 'var(--gauge-needle)',
   north: '#ef4444',

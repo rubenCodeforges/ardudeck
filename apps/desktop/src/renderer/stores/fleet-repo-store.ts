@@ -4,6 +4,7 @@
  * process; this store orchestrates IPC and holds view state.
  */
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { useMemo } from 'react';
 import type {
   FleetRepoStatus,
@@ -160,7 +161,7 @@ function currentBoard(): { uid: string; name: string; vehicleType?: string; sitl
   // recognizable label; board name is only a seed fallback.
   return {
     uid: profile!.boardUid!,
-    name: profile!.name || profile!.boardName || 'My Vehicle',
+    name: profile!.name || profile!.boardName || 'My Vehicle', // i18n-exempt: written to the vault
     vehicleType: profile!.type,
     sitl: false,
   };
@@ -283,7 +284,7 @@ export function useCurrentVaultUnit(): CurrentVaultUnit | null {
     if (isWeakBoardUid(profile?.boardUid)) return null;
     return {
       uid: profile!.boardUid!,
-      name: profile!.name || profile!.boardName || 'My Vehicle',
+      name: profile!.name || profile!.boardName || 'My Vehicle', // i18n-exempt: written to the vault
       sitl: false,
     };
   }, [conn.isConnected, conn.isSitl, conn.systemId, conn.vehicleType, vehicles, activeVehicleId, unitOverride, units]);
@@ -319,7 +320,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
       ]);
       set({ status, units, sites, history, loading: false });
     } catch (err) {
-      set({ loading: false, lastError: err instanceof Error ? err.message : 'Vault unavailable' });
+      set({ loading: false, lastError: err instanceof Error ? err.message : t('stores:fleetRepoStore.vaultUnavailable') });
     }
   },
 
@@ -330,7 +331,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   snapshotParams: async (note) => {
     const params = liveParams();
     if (params.length === 0) {
-      set({ lastError: 'No parameters loaded to snapshot.' });
+      set({ lastError: t('stores:fleetRepoStore.noParams') });
       return false;
     }
     // Explicit user choice ("Working on: X") beats automatic matching
@@ -338,7 +339,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
     const overrideUnit = override ? get().units.find((u) => u.uid === override) : undefined;
     const board = currentBoard();
     if (!overrideUnit && !board) {
-      set({ lastError: 'Could not identify the vehicle. Pick one under "Working on" in the vault.' });
+      set({ lastError: t('stores:fleetRepoStore.cannotIdentify') });
       return false;
     }
     set({ snapshotBusy: true, lastError: null, lastNotice: null });
@@ -352,10 +353,10 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
         );
     set({ snapshotBusy: false });
     if (!result?.success) {
-      set({ lastError: result?.error ?? 'Snapshot failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.snapshotFailed') });
       return false;
     }
-    set({ lastNotice: result.changed ? `Snapshot saved (${params.length} params)` : 'No changes since last snapshot' });
+    set({ lastNotice: result.changed ? t('stores:fleetRepoStore.snapshotSaved', { count: params.length }) : t('stores:fleetRepoStore.noChanges') });
     await get().refresh();
     return true;
   },
@@ -363,11 +364,11 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   snapshotAsNewVehicle: async (name, note) => {
     const params = liveParams();
     if (params.length === 0) {
-      set({ lastError: 'No parameters loaded to snapshot.' });
+      set({ lastError: t('stores:fleetRepoStore.noParams') });
       return false;
     }
     const conn = useConnectionStore.getState().connectionState;
-    const displayName = name?.trim() || conn.boardId || 'New vehicle';
+    const displayName = name?.trim() || conn.boardId || 'New vehicle'; // i18n-exempt: written to the vault
     const uid = `vehicle-${crypto.randomUUID()}`;
     // Bind the active profile (or a fresh one) to this strong identity so the
     // vault resolves the connected board here on subsequent snapshots.
@@ -378,10 +379,10 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
     );
     set({ snapshotBusy: false });
     if (!result?.success) {
-      set({ lastError: result?.error ?? 'Snapshot failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.snapshotFailed') });
       return false;
     }
-    set({ lastNotice: `New vehicle "${displayName}" saved (${params.length} params)` });
+    set({ lastNotice: t('stores:fleetRepoStore.newVehicleSaved', { name: displayName, count: params.length }) });
     await get().refresh();
     return true;
   },
@@ -389,17 +390,17 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   snapshotMission: async (site, missionName) => {
     const items = useMissionStore.getState().missionItems;
     if (items.length === 0) {
-      set({ lastError: 'No mission loaded to snapshot.' });
+      set({ lastError: t('stores:fleetRepoStore.noMission') });
       return false;
     }
     set({ snapshotBusy: true, lastError: null, lastNotice: null });
     const result = await window.electronAPI?.fleetRepoSnapshotMission(site, missionName, items);
     set({ snapshotBusy: false });
     if (!result?.success) {
-      set({ lastError: result?.error ?? 'Snapshot failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.snapshotFailed') });
       return false;
     }
-    set({ lastNotice: result.changed ? `Mission saved to ${site}` : 'Mission unchanged since last snapshot' });
+    set({ lastNotice: result.changed ? t('stores:fleetRepoStore.missionSaved', { site }) : t('stores:fleetRepoStore.missionUnchanged') });
     await get().refresh();
     return true;
   },
@@ -407,17 +408,17 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   snapshotArea: async (site) => {
     const kml = surveyPolygonsToKml(site);
     if (!kml) {
-      set({ lastError: 'No survey polygon on the map to snapshot.' });
+      set({ lastError: t('stores:fleetRepoStore.noSurveyPolygon') });
       return false;
     }
     set({ snapshotBusy: true, lastError: null, lastNotice: null });
     const result = await window.electronAPI?.fleetRepoSnapshotArea(site, kml);
     set({ snapshotBusy: false });
     if (!result?.success) {
-      set({ lastError: result?.error ?? 'Snapshot failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.snapshotFailed') });
       return false;
     }
-    set({ lastNotice: result.changed ? `Boundary saved to ${site}` : 'Boundary unchanged since last snapshot' });
+    set({ lastNotice: result.changed ? t('stores:fleetRepoStore.boundarySaved', { site }) : t('stores:fleetRepoStore.boundaryUnchanged') });
     await get().refresh();
     return true;
   },
@@ -425,7 +426,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   renameUnit: async (uid, name) => {
     const result = await window.electronAPI?.fleetRepoRenameUnit(uid, name);
     if (!result?.success) {
-      set({ lastError: result?.error ?? 'Rename failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.renameFailed') });
       return false;
     }
     await get().refresh();
@@ -435,10 +436,10 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   linkUnit: async (unitUid, aliasUid) => {
     const result = await window.electronAPI?.fleetRepoLinkUnit(unitUid, aliasUid);
     if (!result?.success) {
-      set({ lastError: result?.error ?? 'Link failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.linkFailed') });
       return false;
     }
-    set({ lastNotice: 'Vehicle linked; snapshots continue in that unit' });
+    set({ lastNotice: t('stores:fleetRepoStore.linked') });
     await get().refresh();
     return true;
   },
@@ -447,7 +448,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
     set({ diffLoading: true, diff: null });
     const content = await window.electronAPI?.fleetRepoReadFile(`units/${uid}/params.param`, oid);
     if (!content) {
-      set({ diffLoading: false, lastError: 'Could not read snapshot from the vault.' });
+      set({ diffLoading: false, lastError: t('stores:fleetRepoStore.readSnapshotFailed') });
       return;
     }
     const snapshot = parseParamFile(content);
@@ -511,7 +512,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
     if (!isRestoreTargetMatch(diff.uid, get().unitOverride, currentBoard()?.uid ?? null, owner?.aliases)) {
       const ownerName = owner?.name ?? diff.uid;
       set({
-        lastError: `That snapshot belongs to ${ownerName}, not the connected vehicle. Open a snapshot from this vehicle's history, or set "Working on" to ${ownerName} if this is that aircraft.`,
+        lastError: t('stores:fleetRepoStore.wrongOwner', { owner: ownerName }),
         lastNotice: null,
       });
       return { applied: 0, failed: 0 };
@@ -523,7 +524,7 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
     const liveFirmware = useConnectionStore.getState().connectionState.firmware;
     if (!isRestoreFirmwareMatch(diff.snapshotFirmware, liveFirmware)) {
       set({
-        lastError: `That snapshot was taken from ${diff.snapshotFirmware}, but this vehicle is running ${liveFirmware}. Its parameter names do not carry across flight stacks.`,
+        lastError: t('stores:fleetRepoStore.firmwareMismatch', { snapshotFirmware: diff.snapshotFirmware, liveFirmware }),
         lastNotice: null,
       });
       return { applied: 0, failed: 0 };
@@ -544,8 +545,8 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
       restoreBusy: false,
       restoreProgress: null,
       lastNotice: failed === 0
-        ? `Restored ${applied} parameter${applied === 1 ? '' : 's'}`
-        : `Restored ${applied}, ${failed} failed`,
+        ? t('stores:fleetRepoStore.restored', { count: applied })
+        : t('stores:fleetRepoStore.restoredPartial', { applied, failed }),
       lastError: null,
     });
     // Live values changed: recompute the diff against the restored state
@@ -558,9 +559,9 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
     const result = await window.electronAPI?.fleetRepoGhSync();
     set({ syncBusy: false });
     if (result?.success) {
-      set({ lastNotice: 'Synced with GitHub' });
+      set({ lastNotice: t('stores:fleetRepoStore.synced') });
     } else {
-      set({ lastError: result?.error ?? 'Sync failed' });
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.syncFailed') });
     }
     await get().refresh();
   },

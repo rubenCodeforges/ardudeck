@@ -1191,10 +1191,10 @@ export function generateFallbackDescription(paramId: string): string {
   // Smart fallback - use prefix hints to generate better descriptions
   const prefixHints: Record<string, string> = {
     'ADSB': 'ADS-B aircraft tracking',
-    'AFS': 'Advanced failsafe',
-    'AIRSPEED': 'Airspeed sensor',
-    'ARSPD': 'Airspeed sensor',
-    'AUTO': 'Auto mode',
+    'AFS': 'Advanced failsafe', // i18n-exempt
+    'AIRSPEED': 'Airspeed sensor', // i18n-exempt
+    'ARSPD': 'Airspeed sensor', // i18n-exempt
+    'AUTO': 'Auto mode', // i18n-exempt
     'AUTOTUNE': 'Auto-tuning',
     'AVD': 'Avoidance',
     'BARO': 'Barometer/altitude sensor',
@@ -1203,56 +1203,56 @@ export function generateFallbackDescription(paramId: string): string {
     'CAL': 'Calibration',
     'CAM': 'Camera',
     'CAN': 'CAN bus',
-    'CRUISE': 'Cruise mode',
-    'DSPOILER': 'Differential spoiler',
-    'EFI': 'Electronic fuel injection',
-    'ESC': 'Electronic speed controller',
-    'FBW': 'Fly by wire mode',
+    'CRUISE': 'Cruise mode', // i18n-exempt
+    'DSPOILER': 'Differential spoiler', // i18n-exempt
+    'EFI': 'Electronic fuel injection', // i18n-exempt
+    'ESC': 'Electronic speed controller', // i18n-exempt
+    'FBW': 'Fly by wire mode', // i18n-exempt
     'FLAP': 'Flaps',
-    'FOLL': 'Follow mode',
+    'FOLL': 'Follow mode', // i18n-exempt
     'FRSKY': 'FrSky telemetry',
     'GEN': 'Generator',
-    'GLIDE': 'Glide mode',
+    'GLIDE': 'Glide mode', // i18n-exempt
     'GRIP': 'Gripper',
-    'GUIDED': 'Guided mode',
+    'GUIDED': 'Guided mode', // i18n-exempt
     'HLD': 'Hold',
-    'HOME': 'Home position',
-    'ICE': 'Internal combustion engine',
+    'HOME': 'Home position', // i18n-exempt
+    'ICE': 'Internal combustion engine', // i18n-exempt
     'KDE': 'KDE motor',
     'KTUN': 'K-controller tuning',
-    'LGR': 'Landing gear',
+    'LGR': 'Landing gear', // i18n-exempt
     'LIM': 'Limits',
-    'LOITER': 'Loiter mode',
+    'LOITER': 'Loiter mode', // i18n-exempt
     'MAG': 'Compass/magnetometer',
-    'MAN': 'Manual mode',
+    'MAN': 'Manual mode', // i18n-exempt
     'MIN': 'Minimum',
     'MAX': 'Maximum',
-    'MIXING': 'Control mixing',
+    'MIXING': 'Control mixing', // i18n-exempt
     'NAV': 'Navigation',
     'NAVL1': 'L1 navigation controller',
     'NTF': 'Notifications',
-    'OA': 'Object avoidance',
+    'OA': 'Object avoidance', // i18n-exempt
     'ONESHOT': 'OneShot ESC protocol',
-    'PTCH': 'Pitch control',
+    'PTCH': 'Pitch control', // i18n-exempt
     'Q_': 'QuadPlane VTOL',
-    'RALLY': 'Rally point',
+    'RALLY': 'Rally point', // i18n-exempt
     'RCIN': 'RC input',
-    'RLL': 'Roll control',
-    'SOAR': 'Thermal soaring',
+    'RLL': 'Roll control', // i18n-exempt
+    'SOAR': 'Thermal soaring', // i18n-exempt
     'SPRAY': 'Sprayer',
-    'STAB': 'Stabilize mode',
-    'STALL': 'Stall prevention',
+    'STAB': 'Stabilize mode', // i18n-exempt
+    'STALL': 'Stall prevention', // i18n-exempt
     'STEER': 'Steering',
-    'STICK': 'Stick input',
-    'TECS': 'Total energy control (airspeed/altitude)',
+    'STICK': 'Stick input', // i18n-exempt
+    'TECS': 'Total energy control (airspeed/altitude)', // i18n-exempt
     'THR': 'Throttle',
     'TKOFF': 'Takeoff',
     'TRIM': 'Trim',
     'TROT': 'Throttle',
     'TUNE': 'Tuning',
-    'WENC': 'Wheel encoder',
+    'WENC': 'Wheel encoder', // i18n-exempt
     'WRC': 'Winch',
-    'YAW': 'Yaw control',
+    'YAW': 'Yaw control', // i18n-exempt
   };
 
   // Find matching prefix

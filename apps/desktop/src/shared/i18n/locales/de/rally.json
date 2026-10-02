@@ -1,0 +1,21 @@
+{
+  "rallyListPanel": {
+    "alt": "Höhe: {{value}}",
+    "breakAlt": "Abbruchhöhe",
+    "breakAltHint": "Höhe, auf der Loiter verlassen und die Landung eingeleitet wird",
+    "detailsTitle": "Rally-Punkt R{{n}}",
+    "downloading": "Wird heruntergeladen...",
+    "empty": "Keine Rally-Punkte",
+    "emptyHint": "Klicken Sie auf der Karte auf „Rally hinzufügen“, um einen zu erstellen",
+    "flags": "Flags",
+    "landHeading": "Landekurs (°)",
+    "landHeadingHint": "0 = beliebige Richtung",
+    "landImmediately": "Sofort landen (kein Loiter)",
+    "landIntoWind": "Gegen den Wind landen",
+    "pointCount_one": "{{count}} Punkt",
+    "pointCount_other": "{{count}} Punkte",
+    "subtitle": "Notlandeorte",
+    "title": "Rally-Punkte",
+    "uploading": "Wird hochgeladen..."
+  }
+}

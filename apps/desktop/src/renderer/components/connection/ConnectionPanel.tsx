@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -32,6 +33,7 @@ interface MavlinkForwardStatus {
 }
 
 export function ConnectionPanel() {
+  const { t } = useTranslation();
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();
   const { connectionMemory, updateConnectionMemory, removeRecentConnection } = useSettingsStore();
   const settingsInitialized = useSettingsStore((s) => s._isInitialized);
@@ -183,12 +185,12 @@ export function ConnectionPanel() {
         const outcome = await run();
         setSitlNote(outcome || note);
       } catch {
-        setSitlNote('Failed, see the SITL screen');
+        setSitlNote(t('connection:connectionPanel.sitlActionFailed'));
       } finally {
         setSitlBusy(null);
       }
     },
-    [],
+    [t],
   );
 
   // A link is "a SITL" when we launched one, or when it points at the loopback
@@ -204,8 +206,8 @@ export function ConnectionPanel() {
       if (inavIsRunning) await stopInavSitl();
       if (ardupilotIsRunning) await stopArdupilotSitl();
       if (px4IsRunning) await stopPx4Sitl();
-    }, 'Stopped');
-  }, [runSitlAction, inavIsRunning, ardupilotIsRunning, px4IsRunning, stopInavSitl, stopArdupilotSitl, stopPx4Sitl]);
+    }, t('connection:connectionPanel.sitlStopped'));
+  }, [t, runSitlAction, inavIsRunning, ardupilotIsRunning, px4IsRunning, stopInavSitl, stopArdupilotSitl, stopPx4Sitl]);
 
   // Refilling in flight only works on builds whose SIM_Battery has
   // maybe_reset() (master); on 4.5 and 4.6 the pack is charged in setup() and a
@@ -223,23 +225,23 @@ export function ConnectionPanel() {
       // Believe the gauge, not the write.
       for (let i = 0; i < 12; i++) {
         await new Promise((r) => setTimeout(r, 250));
-        if (useTelemetryStore.getState().battery.voltage > before + 0.5) return 'Battery full again';
+        if (useTelemetryStore.getState().battery.voltage > before + 0.5) return t('connection:connectionPanel.batteryFull');
       }
       const echo = await window.electronAPI?.readParameterBatch?.(['SIM_BATT_VOLTAGE']);
       const accepted = echo?.values?.['SIM_BATT_VOLTAGE'];
       return typeof accepted === 'number' && Math.abs(accepted - full) < 0.2
-        ? 'This ArduPilot only charges on boot: press Respawn'
-        : 'The vehicle refused the change';
-    }, 'Battery full again');
-  }, [runSitlAction]);
+        ? t('connection:connectionPanel.chargesOnBoot')
+        : t('connection:connectionPanel.vehicleRefused');
+    }, t('connection:connectionPanel.batteryFull'));
+  }, [t, runSitlAction]);
 
   // Respawn = reboot the autopilot. On a simulated vehicle that puts it back on
   // the ground at home, upright and disarmed, which is the way out of a crash.
   const respawnSitl = useCallback(() => {
     void runSitlAction('respawn', async () => {
       await window.electronAPI?.mavlinkReboot?.();
-    }, 'Respawning at home');
-  }, [runSitlAction]);
+    }, t('connection:connectionPanel.respawningAtHome'));
+  }, [t, runSitlAction]);
 
   const linkUp = connectionState.isConnected;
   const sitlActionRow = (
@@ -247,26 +249,26 @@ export function ConnectionPanel() {
       <button
         onClick={stopRunningSitl}
         disabled={sitlBusy !== null}
-        data-tip="Stop the running SITL"
+        data-tip={t('connection:connectionPanel.stopSitlTip')}
         className="flex-1 px-2 py-1 text-[11px] rounded-md bg-red-500/15 text-red-300 hover:bg-red-500/25 disabled:opacity-50 transition-colors"
       >
-        {sitlBusy === 'stop' ? 'Stopping...' : 'Stop SITL'}
+        {sitlBusy === 'stop' ? t('connection:connectionPanel.stopping') : t('connection:connectionPanel.stopSitl')}
       </button>
       <button
         onClick={rechargeSitlBattery}
         disabled={sitlBusy !== null || !linkUp}
-        data-tip={linkUp ? 'Refill the simulated pack (SIM_BATT_VOLTAGE)' : 'Connect to the SITL first'}
+        data-tip={linkUp ? t('connection:connectionPanel.rechargeTip') : t('connection:connectionPanel.connectSitlFirst')}
         className="flex-1 px-2 py-1 text-[11px] rounded-md bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
       >
-        {sitlBusy === 'recharge' ? 'Charging...' : 'Recharge'}
+        {sitlBusy === 'recharge' ? t('connection:connectionPanel.charging') : t('connection:connectionPanel.recharge')}
       </button>
       <button
         onClick={respawnSitl}
         disabled={sitlBusy !== null || !linkUp}
-        data-tip={linkUp ? 'Reboot the simulated vehicle: back on the ground at home, disarmed' : 'Connect to the SITL first'}
+        data-tip={linkUp ? t('connection:connectionPanel.respawnTip') : t('connection:connectionPanel.connectSitlFirst')}
         className="flex-1 px-2 py-1 text-[11px] rounded-md bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 disabled:opacity-50 transition-colors"
       >
-        {sitlBusy === 'respawn' ? 'Respawning...' : 'Respawn'}
+        {sitlBusy === 'respawn' ? t('connection:connectionPanel.respawning') : t('connection:connectionPanel.respawn')}
       </button>
     </div>
   );
@@ -294,13 +296,14 @@ export function ConnectionPanel() {
   const sitlLabel = defaultSitlType === 'ardupilot' ? `ArduPilot ${cap(ardupilotVehicleType)}`
     : defaultSitlType === 'px4' ? `PX4 ${cap(px4VehicleType)}`
     : 'iNav';
-  const sitlSubtitle = anySitlDownloading ? `Downloading${activeDownloadProgress ? ` ${activeDownloadProgress.progress}%` : '...'}`
-    : anySitlStarting ? 'Starting...'
-    : inavIsRunning ? 'iNav running on TCP :5760'
-    : ardupilotIsRunning ? `ArduPilot ${ardupilotVehicleType} running on TCP :5760`
-    : px4IsRunning ? `PX4 ${px4VehicleType} running on UDP :14550`
-    : activeNeedsDownload ? 'Click to download and launch'
-    : 'Launch virtual flight controller';
+  const sitlSubtitle = anySitlDownloading
+    ? (activeDownloadProgress ? t('connection:connectionPanel.downloadingPercent', { progress: activeDownloadProgress.progress }) : t('common:downloading'))
+    : anySitlStarting ? t('connection:connectionPanel.starting')
+    : inavIsRunning ? t('connection:connectionPanel.runningOn', { name: 'iNav', endpoint: 'TCP :5760' })
+    : ardupilotIsRunning ? t('connection:connectionPanel.runningOn', { name: `ArduPilot ${ardupilotVehicleType}`, endpoint: 'TCP :5760' })
+    : px4IsRunning ? t('connection:connectionPanel.runningOn', { name: `PX4 ${px4VehicleType}`, endpoint: 'UDP :14550' })
+    : activeNeedsDownload ? t('connection:connectionPanel.clickToDownload')
+    : t('connection:connectionPanel.launchVirtualFc');
 
   // Initialize SITL listeners and check status on mount
   useEffect(() => {
@@ -338,8 +341,8 @@ export function ConnectionPanel() {
         const detail = useArduPilotSitlStore.getState().lastError;
         setError(
           detail
-            ? `Failed to download ArduPilot ${ardupilotVehicleType} binary: ${detail}`
-            : `Failed to download ArduPilot ${ardupilotVehicleType} binary.`
+            ? t('connection:connectionPanel.ardupilotDownloadFailedDetail', { vehicleType: ardupilotVehicleType, detail })
+            : t('connection:connectionPanel.ardupilotDownloadFailed', { vehicleType: ardupilotVehicleType })
         );
         return;
       }
@@ -350,8 +353,8 @@ export function ConnectionPanel() {
         const detail = usePx4SitlStore.getState().lastError;
         setError(
           detail
-            ? `Failed to download PX4 SITL bundle: ${detail}`
-            : 'Failed to download PX4 SITL bundle.'
+            ? t('connection:connectionPanel.px4DownloadFailedDetail', { detail })
+            : t('connection:connectionPanel.px4DownloadFailed')
         );
         return;
       }
@@ -397,7 +400,7 @@ export function ConnectionPanel() {
       }
     }
 
-    setError('Could not connect to SITL. Make sure it is running on TCP port 5760.');
+    setError(t('connection:connectionPanel.sitlConnectFailed'));
   };
 
   // Respond to SITL starting - switch to TCP and auto-connect with retry
@@ -440,7 +443,7 @@ export function ConnectionPanel() {
           const px4StillRunning = usePx4SitlStore.getState().isRunning;
           if (!inavStillRunning && !ardupilotStillRunning && !px4StillRunning) {
             console.warn('[ConnectionPanel] SITL process is no longer running, aborting auto-connect');
-            setError('SITL process failed to start. Check the SITL tab for details.');
+            setError(t('connection:connectionPanel.sitlProcessFailed'));
             return;
           }
 
@@ -459,12 +462,12 @@ export function ConnectionPanel() {
         }
 
         console.warn('[ConnectionPanel] SITL auto-connect failed after all retries');
-        setError('Could not connect to SITL. Try connecting manually.');
+        setError(t('connection:connectionPanel.sitlAutoConnectFailed'));
       };
 
       autoConnectWithRetry();
     }
-  }, [pendingSitlSwitch, connectionState.isConnected, setPendingSitlSwitch, connect, updateConnectionMemory, setError]);
+  }, [t, pendingSitlSwitch, connectionState.isConnected, setPendingSitlSwitch, connect, updateConnectionMemory, setError]);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -663,7 +666,7 @@ export function ConnectionPanel() {
           <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
           </svg>
-          Connection
+          {t('common:connection')}
         </h2>
       </div>
 
@@ -680,7 +683,7 @@ export function ConnectionPanel() {
                 : 'border-transparent text-content-secondary hover:text-content'
             }`}
           >
-            {tab === 'single' ? 'Single vehicle' : 'Multi-vehicle'}
+            {tab === 'single' ? t('connection:connectionPanel.singleVehicle') : t('connection:connectionPanel.multiVehicle')}
           </button>
         ))}
       </div>
@@ -705,7 +708,7 @@ export function ConnectionPanel() {
                   </svg>
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <div className="text-[13px] font-medium text-content">SITL Simulator</div>
+                  <div className="text-[13px] font-medium text-content">{t('common:sitlSimulator')}</div>
                   <div className="text-[11px] text-content-secondary mt-0.5">
                     {sitlSubtitle}
                   </div>
@@ -737,11 +740,12 @@ export function ConnectionPanel() {
                 </span>
                 {activeNeedsDownload && (
                   <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-500/15 text-amber-400">
-                    Download needed
+                    {t('connection:connectionPanel.downloadNeeded')}
                   </span>
                 )}
                 {ardupilotUsesDocker && defaultSitlType === 'ardupilot' && !ardupilotNeedsDownload && (
                   <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-blue-500/15 text-blue-400">
+                    {/* i18n-exempt */}
                     Docker
                   </span>
                 )}
@@ -825,7 +829,7 @@ export function ConnectionPanel() {
         {connectionType === 'serial' && (
           <div className="space-y-4">
             <div>
-              <label className="label">Port</label>
+              <label className="label">{t('common:port')}</label>
               <div className="flex gap-2">
                 <select
                   value={selectedPort}
@@ -833,7 +837,7 @@ export function ConnectionPanel() {
                   className="select flex-1"
                   disabled={connectionState.isConnected}
                 >
-                  {ports.length === 0 && <option value="">No ports available</option>}
+                  {ports.length === 0 && <option value="">{t('connection:connectionPanel.noPorts')}</option>}
                   {ports.map((port) => (
                     <option key={port.path} value={port.path}>
                       {formatPortDisplayName(port)}
@@ -844,8 +848,8 @@ export function ConnectionPanel() {
                   type="button"
                   onClick={refreshPorts}
                   disabled={connectionState.isConnected || isRefreshingPorts}
-                  title="Rescan serial ports"
-                  aria-label="Rescan serial ports"
+                  title={t('connection:connectionPanel.rescanPorts')}
+                  aria-label={t('connection:connectionPanel.rescanPorts')}
                   className="shrink-0 px-2.5 rounded-lg bg-surface-raised hover:bg-surface-raised text-content-secondary hover:text-content disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                 >
                   <svg
@@ -861,7 +865,7 @@ export function ConnectionPanel() {
             </div>
 
             <div>
-              <label className="label">Baud Rate</label>
+              <label className="label">{t('common:baudRate')}</label>
               <select
                 value={baudRate}
                 onChange={(e) => setBaudRate(Number(e.target.value))}
@@ -878,11 +882,11 @@ export function ConnectionPanel() {
               <button
                 onClick={() => setShowRadioWizard(true)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-raised hover:bg-surface transition-colors text-left"
-                data-tip="Guided setup for an ExpressLRS module as your telemetry radio"
+                data-tip={t('connection:connectionPanel.elrsWizardTip')}
               >
                 <div>
-                  <p className="text-sm text-content">Using an ELRS radio?</p>
-                  <p className="text-xs text-content-secondary">Guided setup - finds and configures it for you</p>
+                  <p className="text-sm text-content">{t('connection:connectionPanel.elrsWizardTitle')}</p>
+                  <p className="text-xs text-content-secondary">{t('connection:connectionPanel.elrsWizardHint')}</p>
                 </div>
                 <svg className="w-4 h-4 text-content-secondary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -903,7 +907,7 @@ export function ConnectionPanel() {
         {connectionType === 'tcp' && (
           <div className="space-y-4">
             <div>
-              <label className="label">Host</label>
+              <label className="label">{t('connection:connectionPanel.host')}</label>
               <div className="relative">
                 <input
                   type="text"
@@ -923,7 +927,7 @@ export function ConnectionPanel() {
               </div>
             </div>
             <div>
-              <label className="label">Port</label>
+              <label className="label">{t('common:port')}</label>
               <DraftNumberInput
                 value={tcpPort}
                 min={1}
@@ -935,7 +939,7 @@ export function ConnectionPanel() {
               />
             </div>
             <div>
-              <label className="label">Protocol</label>
+              <label className="label">{t('common:protocol')}</label>
               <div className="flex rounded-lg overflow-hidden border border-subtle">
                 {(['mavlink', 'msp'] as const).map((proto) => (
                   <button
@@ -948,6 +952,7 @@ export function ConnectionPanel() {
                         : 'text-content-secondary hover:text-content hover:bg-surface-raised'
                     } ${proto === 'mavlink' ? 'border-r border-subtle' : ''}`}
                   >
+                    {/* i18n-exempt */}
                     {proto === 'mavlink' ? 'MAVLink' : 'MSP'}
                   </button>
                 ))}
@@ -970,7 +975,7 @@ export function ConnectionPanel() {
                     : 'text-content-secondary hover:text-content hover:bg-surface-raised border-r border-subtle'
                 }`}
               >
-                Listen (Server)
+                {t('connection:connectionPanel.udpListen')}
               </button>
               <button
                 onClick={() => setUdpMode('client')}
@@ -981,14 +986,14 @@ export function ConnectionPanel() {
                     : 'text-content-secondary hover:text-content hover:bg-surface-raised'
                 }`}
               >
-                Client (Connect)
+                {t('connection:connectionPanel.udpClient')}
               </button>
             </div>
 
             {udpMode === 'listen' ? (
               <>
                 <div>
-                  <label className="label">Local Port</label>
+                  <label className="label">{t('connection:connectionPanel.localPort')}</label>
                   <div className="relative">
                     <DraftNumberInput
                       value={udpPort}
@@ -1009,13 +1014,13 @@ export function ConnectionPanel() {
                   </div>
                 </div>
                 <p className="text-xs text-content-secondary">
-                  Listen for incoming packets on this port
+                  {t('connection:connectionPanel.listenHint')}
                 </p>
               </>
             ) : (
               <>
                 <div>
-                  <label className="label">Remote Host</label>
+                  <label className="label">{t('connection:connectionPanel.remoteHost')}</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -1035,7 +1040,7 @@ export function ConnectionPanel() {
                   </div>
                 </div>
                 <div>
-                  <label className="label">Remote Port</label>
+                  <label className="label">{t('connection:connectionPanel.remotePort')}</label>
                   <DraftNumberInput
                     value={udpRemotePort}
                     min={1}
@@ -1047,7 +1052,7 @@ export function ConnectionPanel() {
                   />
                 </div>
                 <div>
-                  <label className="label">Local Port</label>
+                  <label className="label">{t('connection:connectionPanel.localPort')}</label>
                   <DraftNumberInput
                     value={udpClientLocalPort}
                     min={1}
@@ -1058,17 +1063,17 @@ export function ConnectionPanel() {
                     disabled={connectionState.isConnected}
                   />
                   <p className="mt-1 text-xs text-content-secondary">
-                    Source port for outgoing packets. Keep stable across reconnects: ArduPilot caches the first source endpoint it sees and replies there for the rest of the link. Change only if 14550 is in use locally.
+                    {t('connection:connectionPanel.localPortHint')}
                   </p>
                 </div>
                 <p className="text-xs text-content-secondary">
-                  Connect to a remote device at this address
+                  {t('connection:connectionPanel.clientHint')}
                 </p>
               </>
             )}
 
             <div>
-              <label className="label">Protocol</label>
+              <label className="label">{t('common:protocol')}</label>
               <div className="flex rounded-lg overflow-hidden border border-subtle">
                 {(['mavlink', 'msp', 'crsf'] as const).map((proto) => (
                   <button
@@ -1081,6 +1086,7 @@ export function ConnectionPanel() {
                         : 'text-content-secondary hover:text-content hover:bg-surface-raised'
                     } ${proto !== 'crsf' ? 'border-r border-subtle' : ''}`}
                   >
+                    {/* i18n-exempt */}
                     {proto === 'mavlink' ? 'MAVLink' : proto === 'msp' ? 'MSP' : 'CRSF'}
                   </button>
                 ))}
@@ -1091,16 +1097,16 @@ export function ConnectionPanel() {
                     <svg className="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
                     </svg>
-                    <span className="text-xs font-medium">CRSF telemetry from an ExpressLRS backpack</span>
+                    <span className="text-xs font-medium">{t('connection:connectionPanel.crsfTitle')}</span>
                   </div>
                   <p className="text-xs text-content-secondary">
-                    The telemetry an ExpressLRS transmitter broadcasts over WiFi. Set Telemetry Mode to WiFi in the ELRS Lua script and join the backpack network, then listen here on port 14550. Works behind any CRSF receiver, INAV included, with nothing changed on the aircraft.
+                    {t('connection:connectionPanel.crsfHint')}
                   </p>
                   <p className="text-xs text-content-secondary">
-                    Read-only: position, attitude, altitude, battery, flight mode and link quality. No missions, parameters, mode changes or commands, because the link only goes one way.
+                    {t('connection:connectionPanel.crsfReadOnly')}
                   </p>
                   <p className="text-xs text-content-secondary">
-                    For a two-way link, switch the ELRS Link Mode to MAVLink and connect with the MAVLink option instead. That needs an ESP-based transmitter on ELRS 3.5 or newer (backpack 1.5+), a fast packet rate, and INAV 8+ with the receiver UART set to MAVLink at 460800 (Receiver: SERIAL, protocol MAVLINK). INAV is still configured over USB either way.
+                    {t('connection:connectionPanel.crsfTwoWay')}
                   </p>
                 </div>
               )}
@@ -1121,10 +1127,10 @@ export function ConnectionPanel() {
               <svg className={`w-4 h-4 ${savedKeys.length > 0 ? 'text-amber-400' : 'text-content-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
               </svg>
-              <span className="text-xs font-medium text-content flex-1 text-left">MAVLink Signing</span>
+              <span className="text-xs font-medium text-content flex-1 text-left">{t('connection:connectionPanel.signingTitle')}</span>
               {savedKeys.length > 0 && (
                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${keyMismatch ? 'text-red-400 bg-red-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
-                  {keyMismatch ? 'Mismatch' : `${savedKeys.length} key${savedKeys.length > 1 ? 's' : ''}`}
+                  {keyMismatch ? t('connection:connectionPanel.signingMismatch') : t('connection:connectionPanel.signingKeyCount', { count: savedKeys.length })}
                 </span>
               )}
               <svg className={`w-3.5 h-3.5 text-content-secondary transition-transform ${showSigning ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1134,7 +1140,7 @@ export function ConnectionPanel() {
             {showSigning && (
               <div className="px-3 pb-3 space-y-2.5 border-t border-subtle pt-2.5">
                 <p className="text-[11px] text-content-secondary">
-                  Accepts passphrases, base64 keys (from Mission Planner), or hex keys. All keys are tried automatically on connect.
+                  {t('connection:connectionPanel.signingHint')}
                 </p>
 
                 {/* Saved keys list */}
@@ -1155,12 +1161,12 @@ export function ConnectionPanel() {
                           </svg>
                           <code className="text-[10px] font-mono text-content-secondary flex-1 truncate">{displayKey}</code>
                           {k.systemIds.length > 0 && (
-                            <span className="text-[9px] text-content-tertiary" title={`Matched FC sysid: ${k.systemIds.join(', ')}`}>
-                              sysid {k.systemIds.join(',')}
+                            <span className="text-[9px] text-content-tertiary" title={t('connection:connectionPanel.signingMatchedSysid', { ids: k.systemIds.join(', ') })}>
+                              {t('connection:connectionPanel.signingSysid', { ids: k.systemIds.join(',') })}
                             </span>
                           )}
                           {isActive && (
-                            <span className="text-[9px] text-emerald-500">active</span>
+                            <span className="text-[9px] text-emerald-500">{t('connection:connectionPanel.signingActive')}</span>
                           )}
                         </div>
                       );
@@ -1183,7 +1189,7 @@ export function ConnectionPanel() {
                           if (ok && signingInputRef.current) { signingInputRef.current.value = ''; setSigningInputHasValue(false); }
                         }
                       }}
-                      placeholder="Passphrase, base64, or hex key..."
+                      placeholder={t('connection:connectionPanel.signingPlaceholder')}
                       autoComplete="new-password"
                       name={`signing-key-${Date.now()}`}
                       className="w-full bg-surface-raised border border-border rounded-lg px-3 py-1.5 text-xs text-content placeholder-content-tertiary focus:outline-none focus:border-amber-500/50 pr-8"
@@ -1216,7 +1222,7 @@ export function ConnectionPanel() {
                     disabled={signingLoading || !signingInputHasValue}
                     className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:bg-surface-raised disabled:text-content-secondary text-white text-xs rounded-lg transition-colors shrink-0"
                   >
-                    Add Key
+                    {t('connection:connectionPanel.addKey')}
                   </button>
                 </div>
               </div>
@@ -1236,14 +1242,14 @@ export function ConnectionPanel() {
             {/* Link Doctor: explain what the port was speaking and what to do */}
             {diagnosis?.suggestion && (
               <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-lg space-y-2">
-                <p className="text-xs font-medium text-sky-300">Link Doctor</p>
+                <p className="text-xs font-medium text-sky-300">{t('connection:connectionPanel.linkDoctor')}</p>
                 <p className="text-xs text-content-secondary">{diagnosis.suggestion}</p>
                 {diagnosis.elrsNormalMode && connectionType === 'serial' && (
                   <button
                     onClick={() => setShowRadioWizard(true)}
                     className="btn btn-secondary w-full text-xs"
                   >
-                    Open Radio Setup - it fixes this for you
+                    {t('connection:connectionPanel.openRadioSetup')}
                   </button>
                 )}
               </div>
@@ -1258,7 +1264,7 @@ export function ConnectionPanel() {
         {/* Connect/Disconnect button */}
         {connectionState.isConnected || connectionState.isWaitingForHeartbeat ? (
           <button onClick={disconnect} className="btn btn-danger w-full">
-            Disconnect
+            {t('common:disconnect')}
           </button>
         ) : (
           <button
@@ -1272,10 +1278,10 @@ export function ConnectionPanel() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Connecting...
+                {t('common:connecting')}
               </span>
             ) : (
-              'Connect'
+              t('common:connect')
             )}
           </button>
         )}
@@ -1291,12 +1297,12 @@ export function ConnectionPanel() {
               <svg className={`w-4 h-4 ${forwardStatus?.running ? 'text-emerald-400' : 'text-content-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3" />
               </svg>
-              <span className="text-xs font-medium text-content flex-1 text-left">Second Screen / Forward</span>
+              <span className="text-xs font-medium text-content flex-1 text-left">{t('connection:connectionPanel.forwardTitle')}</span>
               {forwardStatus?.running && (
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-400/10">
                   {forwardStatus.endpoints.length + forwardStatus.learned.length > 0
-                    ? `${forwardStatus.endpoints.length + forwardStatus.learned.length} client${forwardStatus.endpoints.length + forwardStatus.learned.length > 1 ? 's' : ''}`
-                    : 'Listening'}
+                    ? t('connection:connectionPanel.forwardClients', { count: forwardStatus.endpoints.length + forwardStatus.learned.length })
+                    : t('connection:connectionPanel.forwardListening')}
                 </span>
               )}
               <svg className={`w-3.5 h-3.5 text-content-secondary transition-transform ${showForward ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1306,20 +1312,20 @@ export function ConnectionPanel() {
             {showForward && (
               <div className="px-3 pb-3 space-y-2.5 border-t border-subtle pt-2.5">
                 <p className="text-[11px] text-content-secondary">
-                  Mirrors this link's raw MAVLink to other devices over UDP and relays their commands back. Any UDP peer that can reach this port is picked up automatically once it sends a heartbeat - a phone on the same WiFi, or one with no network at all, bridged in over USB - or enter its address below.
+                  {t('connection:connectionPanel.forwardHint')}
                 </p>
                 {!forwardStatus?.running && (
                   <input
                     type="text"
                     value={forwardEndpoint}
                     onChange={(e) => setForwardEndpoint(e.target.value)}
-                    placeholder="Phone address (optional), e.g. 192.168.1.42:14550"
+                    placeholder={t('connection:connectionPanel.forwardPlaceholder')}
                     className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-input border border-subtle text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/50"
                   />
                 )}
                 {forwardStatus?.running && (
                   <div className="text-[11px] text-content-secondary space-y-0.5">
-                    <div>Listening on UDP :{forwardStatus.listenPort}</div>
+                    <div>{t('connection:connectionPanel.forwardListeningOn', { port: forwardStatus.listenPort })}</div>
                     {[...forwardStatus.endpoints, ...forwardStatus.learned].map((ep) => (
                       <div key={`${ep.host}:${ep.port}`} className="tabular-nums">→ {ep.host}:{ep.port}</div>
                     ))}
@@ -1333,7 +1339,7 @@ export function ConnectionPanel() {
                   disabled={forwardBusy}
                   className={`btn w-full text-xs ${forwardStatus?.running ? 'btn-secondary' : 'btn-primary'}`}
                 >
-                  {forwardStatus?.running ? 'Stop forwarding' : 'Start forwarding'}
+                  {forwardStatus?.running ? t('connection:connectionPanel.stopForwarding') : t('connection:connectionPanel.startForwarding')}
                 </button>
               </div>
             )}
@@ -1350,7 +1356,7 @@ export function ConnectionPanel() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-yellow-400">Waiting for heartbeat...</p>
+                  <p className="text-sm font-medium text-yellow-400">{t('connection:connectionPanel.waitingHeartbeat')}</p>
                   <p className="text-xs text-content-secondary">{connectionState.transport}</p>
                 </div>
               </div>
@@ -1374,7 +1380,7 @@ export function ConnectionPanel() {
             <div className="card-header">
               <h3 className="text-sm font-medium text-content flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-blue-400" />
-                Simulator
+                {t('connection:connectionPanel.simulator')}
               </h3>
             </div>
             <div className="card-body space-y-2">
@@ -1382,7 +1388,7 @@ export function ConnectionPanel() {
               {sitlNote && <div className="text-center text-[10px] text-content-tertiary">{sitlNote}</div>}
               {!anySitlRunning && (
                 <div className="text-[10px] text-content-tertiary">
-                  Started outside ArduDeck: Stop only ends simulators this app launched.
+                  {t('connection:connectionPanel.startedOutside')}
                 </div>
               )}
             </div>
@@ -1395,29 +1401,29 @@ export function ConnectionPanel() {
             <div className="card-header">
               <h3 className="text-sm font-medium text-content flex items-center gap-2">
                 <div className="status-dot status-dot-connected" />
-                Connected
+                {t('common:connected')}
               </h3>
             </div>
             <div className="card-body space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-content-secondary">Transport</span>
+                <span className="text-content-secondary">{t('connection:connectionPanel.transport')}</span>
                 <span className="text-content font-medium">{connectionState.transport}</span>
               </div>
               {(connectionState.autopilot || connectionState.firmware) && (
                 <div className="flex justify-between">
-                  <span className="text-content-secondary">Autopilot</span>
+                  <span className="text-content-secondary">{t('connection:connectionPanel.autopilot')}</span>
                   <span className="text-content font-medium">{firmwareLabel(connectionState)}</span>
                 </div>
               )}
               {connectionState.vehicleType && (
                 <div className="flex justify-between">
-                  <span className="text-content-secondary">Vehicle</span>
+                  <span className="text-content-secondary">{t('common:vehicle')}</span>
                   <span className="text-content font-medium">{connectionState.vehicleType}</span>
                 </div>
               )}
               {connectionState.systemId !== undefined && (
                 <div className="flex justify-between">
-                  <span className="text-content-secondary">System ID</span>
+                  <span className="text-content-secondary">{t('connection:connectionPanel.systemId')}</span>
                   <span className="text-content font-medium">{connectionState.systemId}</span>
                 </div>
               )}
@@ -1442,7 +1448,7 @@ export function ConnectionPanel() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Device not showing? Get driver help
+              {t('connection:connectionPanel.driverHelp')}
             </button>
             {showDriverHelp && (
               <div className="mt-3">

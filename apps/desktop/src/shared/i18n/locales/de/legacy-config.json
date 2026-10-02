@@ -1,0 +1,209 @@
+{
+  "legacyConfigView": {
+    "badge": "Legacy CLI",
+    "configError": "Konfigurationsfehler",
+    "howItWorks": "<b>So funktioniert es:</b> Änderungen werden sofort als CLI-Befehle gesendet. Im CLI-Terminal sehen Sie die gesendeten Befehle. Wenn Sie fertig sind, klicken Sie auf „Im EEPROM speichern“, um die Änderungen dauerhaft zu sichern (das Board startet neu).",
+    "loading": "Konfiguration wird über CLI geladen...",
+    "notConnected": "Mit einem Legacy-Board verbinden, um es zu konfigurieren",
+    "reboot": {
+      "done": "Speichern abgeschlossen",
+      "error": "Speichern fehlgeschlagen",
+      "rebooting": "Board startet neu",
+      "reconnecting": "Verbindung wird wiederhergestellt",
+      "saving": "Konfiguration wird gespeichert"
+    },
+    "runningDump": "dump-Befehl wird ausgeführt",
+    "saveAndReboot": "Speichern & neu starten",
+    "saveConfirmBody": "Dadurch werden alle Änderungen im Flugcontroller gespeichert und <b>das Board neu gestartet</b>. Nach dem Neustart müssen Sie sich erneut verbinden.",
+    "saveConfirmTitle": "Im EEPROM speichern?",
+    "saveToEeprom": "Im EEPROM speichern",
+    "subtitle": "Konfiguration über CLI-Befehle (F3-Board)",
+    "tabs": {
+      "mixer": "Mischer",
+      "modes": "Modi",
+      "pid": "PID",
+      "rates": "Raten",
+      "servo": "Servo"
+    },
+    "unsavedChanges": "Ungespeicherte Änderungen"
+  },
+  "legacyMixerTab": {
+    "addMotor": "Motor hinzufügen ({{count}}/{{max}})",
+    "addServoRule": "Servo-Regel hinzufügen ({{count}}/{{max}})",
+    "description": "Legen Sie fest, wie Motoren und Servos auf die Ausgänge des Flugcontrollers reagieren. Werte reichen von -1.0 bis 1.0. Änderungen werden sofort gesendet.",
+    "inputSource": "Eingangsquelle",
+    "mixStrength": "Mischanteil:",
+    "motorMixerTab": "Motormischer ({{count}})",
+    "motorN": "Motor {{index}}",
+    "noMotorRules": "Keine Motormischer-Regeln gefunden.",
+    "noMotorRulesHint": "Bei Flächenflugzeugen ist das normal.",
+    "noServoRules": "Keine Servomischer-Regeln gefunden.",
+    "noServoRulesHint": "Fügen Sie Regeln hinzu, um Servos über die Ausgänge des Flugcontrollers zu steuern.",
+    "outputChannel": "Ausgangskanal",
+    "pitch": "Nicken",
+    "rateLabel": "Rate:",
+    "ratePercent": "Rate (%)",
+    "removeMotor": "Motormischer entfernen",
+    "removeServoRule": "Servomischer-Regel entfernen",
+    "roll": "Rollen",
+    "ruleN": "Regel #{{index}}",
+    "servoMixerTab": "Servomischer ({{count}})",
+    "servoN": "Servo {{index}}",
+    "sourceN": "Quelle {{index}}",
+    "sources": {
+      "rcAux1": "RC AUX 1",
+      "rcAux2": "RC AUX 2",
+      "rcAux3": "RC AUX 3",
+      "rcAux4": "RC AUX 4",
+      "rcPitch": "RC Nicken",
+      "rcRoll": "RC Rollen",
+      "rcThrottle": "RC Gas",
+      "rcYaw": "RC Gieren",
+      "stabPitch": "Stabilisiertes Nicken",
+      "stabRoll": "Stabilisiertes Rollen",
+      "stabThrottle": "Stabilisiertes Gas",
+      "stabYaw": "Stabilisiertes Gieren"
+    },
+    "speed": "Geschwindigkeit",
+    "targetServo": "Ziel-Servo",
+    "throttle": "Gas",
+    "title": "Mischer-Konfiguration",
+    "yaw": "Gieren"
+  },
+  "legacyModesTab": {
+    "activationRange": "Aktivierungsbereich",
+    "activeModes": "Aktive Modi ({{count}})",
+    "clickToEnable": "#{{index}} - Klicken zum Aktivieren",
+    "description": "Legen Sie fest, welche AUX-Schalterstellungen welchen Flugmodus aktivieren. Ziehen Sie die Bereichsgriffe oder geben Sie Werte direkt ein. Setzen Sie beide auf 900, um den Modus zu deaktivieren.",
+    "disableMode": "Modus deaktivieren",
+    "disabledModes": "Deaktiviert ({{count}})",
+    "mode": "Modus",
+    "modeDescriptions": {
+      "m0": "Motoren freigeben",
+      "m1": "Selbstnivellierender Modus",
+      "m10": "Rückkehr nach Home",
+      "m11": "GPS-Position halten",
+      "m12": "Direkter Durchgang",
+      "m13": "Meinen Quad finden",
+      "m19": "OSD umschalten",
+      "m2": "Hybrid aus Selbstnivellierung + Acro",
+      "m20": "Telemetrie aktivieren",
+      "m26": "Flugdaten aufzeichnen",
+      "m27": "Notfall-Failsafe",
+      "m28": "Wegpunkt-Mission",
+      "m3": "Höhe halten",
+      "m35": "Flaperon-Steuerung",
+      "m36": "Koordinierte Kurven",
+      "m38": "Servos automatisch trimmen",
+      "m39": "Kamerasteuerung 1",
+      "m40": "Kamerasteuerung 2",
+      "m41": "Kamerasteuerung 3",
+      "m45": "Tempomat",
+      "m46": "Multirotor-Bremsung",
+      "m5": "Kompasskurs halten",
+      "m6": "Headless-Modus",
+      "m7": "Headfree-Referenz anpassen"
+    },
+    "modeN": "Modus {{id}}",
+    "noRules": "Keine AUX-Modusregeln gefunden.",
+    "switchChannel": "Schalterkanal",
+    "title": "Flugmodus-Konfiguration",
+    "unknownMode": "Unbekannter Modus"
+  },
+  "legacyPidTab": {
+    "axis": {
+      "pitch": "Nicken",
+      "roll": "Rollen",
+      "yaw": "Gieren"
+    },
+    "dHint": "Dämpft Überschwinger",
+    "dLabel": "D - Differential",
+    "ffHint": "Nimmt Stickbewegungen vorweg",
+    "ffLabel": "FF - Feed Forward",
+    "iHint": "Korrigiert Drift über die Zeit",
+    "iLabel": "I - Integral",
+    "infoFixedWing": "<b>Legacy-CLI-Modus (Flächenflugzeug):</b> Änderungen werden sofort über CLI-Befehle gesendet. Klicken Sie abschließend auf „Im EEPROM speichern“, um die Änderungen dauerhaft zu sichern.",
+    "infoMultirotor": "<b>Legacy-CLI-Modus (Multirotor):</b> Änderungen werden sofort über CLI-Befehle gesendet. Klicken Sie abschließend auf „Im EEPROM speichern“, um die Änderungen dauerhaft zu sichern.",
+    "levelDHint": "Verringert Schwingungen",
+    "levelDLabel": "D - Dämpfung",
+    "levelIHint": "Hält die waagerechte Lage über die Zeit",
+    "levelPHint": "Wie stark die Selbstnivellierung wirkt",
+    "levelPLabel": "P - Stärke",
+    "levelTitle": "Level (Angle-Modus)",
+    "noData": "Keine PID-Daten geladen. Führen Sie zuerst den dump-Befehl aus.",
+    "pHint": "Ansprechverhalten auf Stick-Eingaben",
+    "pLabel": "P - Proportional",
+    "presets": {
+      "beginner": {
+        "description": "Sanft & verzeihend - ideal zum Lernen",
+        "name": "Anfänger"
+      },
+      "cinematic": {
+        "description": "Extrem sanft für Videos",
+        "name": "Cinematic"
+      },
+      "freestyle": {
+        "description": "Direkt & sanft für Tricks",
+        "name": "Freestyle"
+      },
+      "racing": {
+        "description": "Knackig & präzise für Geschwindigkeit",
+        "name": "Racing"
+      }
+    },
+    "profileNamePlaceholder": "Profilname...",
+    "quickPresets": "Schnell-Voreinstellungen",
+    "saveAsProfile": "+ Aktuelle als Profil speichern",
+    "saveDialogTitle": "Aktuelle PIDs als Profil speichern",
+    "yourProfiles": "Ihre Profile"
+  },
+  "legacyRatesTab": {
+    "expoHint": "Empfindlichkeit um die Stick-Mitte",
+    "globalSettings": "Globale Einstellungen",
+    "info": "<b>Legacy-CLI-Modus:</b> Änderungen werden sofort über CLI-Befehle gesendet. Klicken Sie abschließend auf „Im EEPROM speichern“, um die Änderungen dauerhaft zu sichern.",
+    "maxRate": "Max: <v>{{rate}}°/s</v>",
+    "noData": "Keine Ratendaten geladen. Führen Sie zuerst den dump-Befehl aus.",
+    "presets": {
+      "beginner": {
+        "description": "Langsam & berechenbar - ideal zum Lernen"
+      },
+      "cinematic": {
+        "description": "Extrem sanft für Filmaufnahmen"
+      },
+      "freestyle": {
+        "description": "Ausgewogen für Tricks & Flow"
+      },
+      "racing": {
+        "description": "Schnell & direkt für Geschwindigkeit"
+      }
+    },
+    "rateHint": "Maximale Drehgeschwindigkeit",
+    "rcRate": "RC Rate",
+    "rcRateHint": "Gesamtfaktor für die Stick-Empfindlichkeit",
+    "responseCurve": "Ansprechkurve",
+    "saveDialogTitle": "Aktuelle Raten als Profil speichern",
+    "stick": "Stick",
+    "throttleExpo": "Gas-Expo",
+    "throttleExpoHint": "Gaskurve",
+    "throttleMid": "Gas-Mitte",
+    "throttleMidHint": "Schwebepunkt",
+    "tpaBreakpoint": "TPA-Breakpoint",
+    "tpaBreakpointHint": "Gasstellung, ab der TPA einsetzt",
+    "tpaDescription": "Verringert die PID-Stärke bei hohem Gas, um Schwingungen im schnellen Flug zu verhindern.",
+    "tpaRate": "TPA-Rate",
+    "tpaRateHint": "Wie stark die PIDs bei Vollgas reduziert werden",
+    "tpaTitle": "Gasabhängige PID-Absenkung (TPA)"
+  },
+  "legacyServoTab": {
+    "description": "Konfigurieren Sie Min-/Max-/Mittelstellung und Rate für jedes Servo. Bereich: 750-2250μs bei Legacy-F3-Boards. Änderungen werden sofort gesendet.",
+    "fullRange": "Voller Bereich",
+    "maximum": "Maximum",
+    "minimum": "Minimum",
+    "noConfigs": "Keine Servo-Konfigurationen gefunden.",
+    "noConfigsHint": "Führen Sie den dump-Befehl aus, um die Konfiguration zu laden.",
+    "resetDefault": "Auf Standard zurücksetzen",
+    "safeRange": "Sicherer Bereich",
+    "title": "Servo-Endpunkt-Konfiguration",
+    "travel": "Weg: {{range}}μs"
+  }
+}

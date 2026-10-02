@@ -1,5 +1,7 @@
+import type { TFunction } from 'i18next';
 import { useCompanionStore } from '../../../stores/companion-store';
 import { PanelContainer, StatRow } from '../../panels/panel-utils';
+import { useTranslation } from 'react-i18next';
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
@@ -11,14 +13,15 @@ function formatUptime(seconds: number): string {
   return `${m}m ${s}s`;
 }
 
-function formatTimeSince(timestamp: number): string {
+function formatTimeSince(timestamp: number, t: TFunction): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 5) return t('companion:status.justNow');
+  if (seconds < 60) return t('companion:status.secondsAgo', { n: seconds });
+  return t('companion:containers.ageMinutes', { n: Math.floor(seconds / 60) });
 }
 
 export function StatusPanel() {
+  const { t } = useTranslation();
   const connectionState = useCompanionStore((s) => s.connectionState);
   const heartbeatOnline = useCompanionStore((s) => s.heartbeatOnline);
   const lastHeartbeat = useCompanionStore((s) => s.lastHeartbeat);
@@ -37,12 +40,12 @@ export function StatusPanel() {
     : 'bg-gray-600';
 
   const statusLabel = isConnected
-    ? 'Connected'
+    ? t('common:connected')
     : isReconnecting
-    ? `Reconnecting (${connectionState.reconnectAttempt})`
+    ? t('companion:status.reconnecting', { attempt: connectionState.reconnectAttempt })
     : heartbeatOnline
-    ? 'MAVLink Only'
-    : 'Offline';
+    ? t('companion:status.mavlinkOnly')
+    : t('companion:status.offline');
 
   const statusTextColor = isConnected
     ? 'text-emerald-400'
@@ -69,7 +72,7 @@ export function StatusPanel() {
         {/* Version mismatch warning */}
         {connectionState.versionMismatch && (
           <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
-            Agent version mismatch. Update your agent for full compatibility.
+            {t('companion:status.versionMismatch')}
           </div>
         )}
 
@@ -77,32 +80,34 @@ export function StatusPanel() {
         <div className="space-y-1">
           {systemInfo ? (
             <>
-              <StatRow label="Hostname" value={systemInfo.hostname} />
+              <StatRow label={t('companion:status.hostname')} value={systemInfo.hostname} />
               <StatRow label="OS" value={systemInfo.os} />
-              <StatRow label="Architecture" value={systemInfo.arch} />
-              <StatRow label="Uptime" value={formatUptime(systemInfo.uptime)} />
-              <StatRow label="Agent Version" value={systemInfo.agentVersion} />
+              <StatRow label={t('companion:status.architecture')} value={systemInfo.arch} />
+              <StatRow label={t('companion:status.uptime')} value={formatUptime(systemInfo.uptime)} />
+              <StatRow label={t('companion:status.agentVersion')} value={systemInfo.agentVersion} />
               {systemInfo.dockerAvailable && (
-                <StatRow label="Docker" value="Available" />
+                // i18n-exempt: product name
+                <StatRow label="Docker" value={t('companion:status.available')} />
               )}
               {systemInfo.blueosDetected && (
-                <StatRow label="BlueOS" value="Detected" />
+                // i18n-exempt: product name
+                <StatRow label="BlueOS" value={t('companion:status.detected')} />
               )}
             </>
           ) : heartbeatOnline ? (
             <>
-              <StatRow label="Source" value="MAVLink Heartbeat" />
-              {companionType && <StatRow label="Type" value={companionType} />}
+              <StatRow label={t('common:source')} value={t('companion:status.mavlinkHeartbeat')} />
+              {companionType && <StatRow label={t('common:type')} value={companionType} />}
               {lastHeartbeat && (
-                <StatRow label="Last Seen" value={formatTimeSince(lastHeartbeat)} />
+                <StatRow label={t('companion:status.lastSeen')} value={formatTimeSince(lastHeartbeat, t)} />
               )}
               <div className="mt-3 p-2 bg-surface-raised rounded text-xs text-content-secondary">
-                Install the ArduDeck Agent on the companion for full monitoring.
+                {t('companion:status.installAgent')}
               </div>
             </>
           ) : (
             <div className="flex items-center justify-center h-20 text-content-tertiary text-xs">
-              No companion detected
+              {t('companion:status.none')}
             </div>
           )}
         </div>

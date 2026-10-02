@@ -42,7 +42,7 @@ export async function tryMspDetection(
   // Share transport with CLI handlers
   setCliTransport(transport);
 
-  ctx.sendLog('info', 'Trying MSP protocol detection...');
+  ctx.sendLog('info', 'Trying MSP protocol detection...'); // i18n-exempt
 
   // Setup data handler for MSP
   const dataHandler = (data: Uint8Array) => {
@@ -60,7 +60,7 @@ export async function tryMspDetection(
         if (pending) {
           clearTimeout(pending.timeout);
           ctx.pendingResponses.delete(packet.command);
-          pending.reject(new Error(`MSP command ${packet.command} not supported by this board`));
+          pending.reject(new Error(`MSP command ${packet.command} rejected by the flight controller`)); // i18n-exempt
         }
         // Track unsupported commands (only log once to avoid spam)
         if (!ctx.unsupportedCommands.has(packet.command)) {
@@ -117,7 +117,7 @@ export async function tryMspDetection(
     };
   } catch (error) {
     // Not MSP
-    ctx.sendLog('info', 'MSP detection failed', error instanceof Error ? error.message : 'No response');
+    ctx.sendLog('info', 'MSP detection failed', error instanceof Error ? error.message : 'No response'); // i18n-exempt
     transport.off('data', dataHandler as (...args: unknown[]) => void);
     ctx.mspParser = null;
     ctx.currentTransport = null;

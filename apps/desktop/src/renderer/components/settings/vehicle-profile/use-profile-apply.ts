@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { t } from '../../../../shared/i18n/index.js';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
 import { useSettingsStore } from '../../../stores/settings-store.js';
 import { useConnectionStore } from '../../../stores/connection-store.js';
@@ -26,7 +27,7 @@ export function useProfileApply(profile: VehicleProfile) {
     const telemetry = useTelemetryStore.getState();
     const armed = !!telemetry.flight?.armed;
 
-    const label = connectionState.transport ?? (connectionState.isSitl ? 'SITL' : 'Vehicle');
+    const label = connectionState.transport ?? (connectionState.isSitl ? 'SITL' : t('common:vehicle'));
 
     const params = new Map<string, { value: number; type: number }>();
     for (const [id, meta] of paramStore.parameters) {
@@ -140,7 +141,7 @@ export function useProfileApply(profile: VehicleProfile) {
       applyStore.getState().clear();
       applyStore.getState().setToast({
         kind: 'info',
-        message: 'Apply cancelled, no parameters were changed',
+        message: t('settings:useProfileApply.cancelledNoChange'),
         createdAt: Date.now(),
       });
       return;
@@ -181,15 +182,15 @@ export function useProfileApply(profile: VehicleProfile) {
       });
     }
 
-    const failMsg = failedCount > 0 ? ` (${failedCount} failed)` : '';
+    const failMsg = failedCount > 0 ? t('settings:useProfileApply.failedSuffix', { count: failedCount }) : '';
     const flashNote =
-      flashed ? ' and saved to flash'
-      : gate.target.isSitl ? ' (SITL, flash not required)'
-      : ' (not saved to flash, will reset on reboot)';
+      flashed ? t('settings:useProfileApply.savedToFlash')
+      : gate.target.isSitl ? t('settings:useProfileApply.sitlNoFlash')
+      : t('settings:useProfileApply.notSaved');
     applyStore.getState().setStatus('done', profile.id);
     applyStore.getState().setToast({
       kind: 'success',
-      message: `Applied ${appliedCount} param${appliedCount === 1 ? '' : 's'} to ${gate.target.isSitl ? 'SITL' : 'vehicle'}${flashNote}${failMsg}`,
+      message: t('settings:useProfileApply.applied', { count: appliedCount, target: gate.target.isSitl ? 'SITL' : t('settings:useProfileApply.targetVehicle'), flashNote, failMsg }),
       snapshotId: gate.pendingSnapshot.id,
       profileId: profile.id,
       rebootRequired: rebootRequired.length,
@@ -211,7 +212,7 @@ export function useProfileApply(profile: VehicleProfile) {
         applyStore.getState().clear();
         applyStore.getState().setToast({
           kind: 'error',
-          message: 'Backup failed, apply aborted',
+          message: t('settings:useProfileApply.backupFailed'),
           createdAt: Date.now(),
         });
         return;
@@ -232,7 +233,7 @@ export function useProfileApply(profile: VehicleProfile) {
     applyStore.getState().clear();
     applyStore.getState().setToast({
       kind: 'info',
-      message: 'Apply cancelled',
+      message: t('settings:useProfileApply.cancelled'),
       createdAt: Date.now(),
     });
   }, [applyStore]);

@@ -87,7 +87,7 @@ function nextNodeId(): string {
 const DEFAULT_STATE = {
   nodes: [] as Node<GraphNodeData>[],
   edges: [] as Edge<GraphEdgeData>[],
-  graphName: 'Untitled Script',
+  graphName: 'Untitled Script', // i18n-exempt: persisted graph data
   graphDescription: '',
   runIntervalMs: 1000,
   filePath: null as string | null,

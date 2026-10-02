@@ -1,0 +1,21 @@
+{
+  "rallyListPanel": {
+    "alt": "Alt: {{value}}",
+    "breakAlt": "Break Alt",
+    "breakAltHint": "Altitude to exit loiter and begin landing",
+    "detailsTitle": "Rally Point R{{n}}",
+    "downloading": "Downloading...",
+    "empty": "No rally points",
+    "emptyHint": "Click \"Add Rally\" on the map to create one",
+    "flags": "Flags",
+    "landHeading": "Land Heading (°)",
+    "landHeadingHint": "0 = any direction",
+    "landImmediately": "Land immediately (no loiter)",
+    "landIntoWind": "Land into wind",
+    "pointCount_one": "{{count}} point",
+    "pointCount_other": "{{count}} points",
+    "subtitle": "Emergency landing locations",
+    "title": "Rally Points",
+    "uploading": "Uploading..."
+  }
+}

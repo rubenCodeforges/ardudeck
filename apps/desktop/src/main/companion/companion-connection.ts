@@ -16,6 +16,7 @@ import type {
   ProcessInfo,
   LogEntry,
 } from '@ardudeck/companion-types';
+import { t } from '../../shared/i18n/index.js';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -81,7 +82,7 @@ export class CompanionConnection {
     if (this.ws) {
       this.ws.removeAllListeners();
       if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.close(1000, 'User disconnect');
+        this.ws.close(1000, 'User disconnect'); // i18n-exempt
       }
       this.ws = null;
     }
@@ -103,7 +104,7 @@ export class CompanionConnection {
 
   /** Make an authenticated REST request to the agent */
   async restGet<T>(path: string): Promise<T> {
-    if (!this.options) throw new Error('Not connected');
+    if (!this.options) throw new Error(t('main:companion.notConnected'));
     const url = `http://${this.options.host}:${this.options.port}/api/v1${path}`;
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${this.options.token}` } as Record<string, string>,
@@ -114,7 +115,7 @@ export class CompanionConnection {
 
   /** Make an authenticated REST POST to the agent */
   async restPost<T>(path: string, body?: unknown): Promise<T> {
-    if (!this.options) throw new Error('Not connected');
+    if (!this.options) throw new Error(t('main:companion.notConnected'));
     const url = `http://${this.options.host}:${this.options.port}/api/v1${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.options.token}`,

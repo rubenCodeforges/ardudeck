@@ -9,16 +9,16 @@ export type YMode = 'shared' | 'unit' | 'field';
 
 export const Y_MODE_ORDER: YMode[] = ['unit', 'shared', 'field'];
 
-export const Y_MODE_LABEL: Record<YMode, string> = {
-  unit: 'Y: Unit',
-  shared: 'Y: Shared',
-  field: 'Y: Field',
+export const Y_MODE_LABEL_KEY: Record<YMode, string> = {
+  unit: 'logs:yMode.unit',
+  shared: 'logs:yMode.shared',
+  field: 'logs:yMode.field',
 };
 
-export const Y_MODE_TIP: Record<YMode, string> = {
-  unit: 'One axis per unit: fields measured in the same unit share a scale and stay comparable. Click for one shared axis.',
-  shared: 'One axis for every field, whatever its unit. Click to give each field its own scale.',
-  field: 'Every field on its own auto-scaled axis, for comparing shapes rather than values. Click to group by unit again.',
+export const Y_MODE_TIP_KEY: Record<YMode, string> = {
+  unit: 'logs:yMode.unitTip',
+  shared: 'logs:yMode.sharedTip',
+  field: 'logs:yMode.fieldTip',
 };
 
 /** Unit suffix the log's UNIT records leave on a series label, e.g. "Alt (m)". */

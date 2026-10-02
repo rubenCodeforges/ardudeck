@@ -73,8 +73,10 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { NodeCategory } from './lua-graph-types';
-import { CATEGORY_COLORS, CATEGORY_LABELS } from './lua-graph-types';
+import { CATEGORY_COLORS, CATEGORY_LABEL_KEYS } from './lua-graph-types';
+import { nodeDescription, nodeLabel } from './lua-graph-i18n';
 import { NODE_LIBRARY, getNodesByCategory } from './node-library';
 import { useLuaGraphStore } from '../../stores/lua-graph-store';
 
@@ -154,6 +156,7 @@ const CATEGORY_ICONS: Record<NodeCategory, LucideIcon> = {
 const CATEGORIES: NodeCategory[] = ['sensors', 'logic', 'math', 'actions', 'timing', 'variables', 'flow'];
 
 export function NodePalette() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategory, setExpandedCategory] = useState<NodeCategory | null>('sensors');
   const addNode = useLuaGraphStore((s) => s.addNode);
@@ -180,11 +183,10 @@ export function NodePalette() {
 
   // Filter nodes by search query
   const filteredBySearch = searchQuery.trim()
-    ? NODE_LIBRARY.filter(
-        (n) =>
-          n.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          n.description.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+    ? NODE_LIBRARY.filter((n) => {
+        const q = searchQuery.toLowerCase();
+        return [n.label, n.description, nodeLabel(t, n), nodeDescription(t, n)].some((s) => s.toLowerCase().includes(q));
+      })
     : null;
 
   return (
@@ -197,7 +199,7 @@ export function NodePalette() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search nodes..."
+            placeholder={t('lua-graph:nodePalette.searchPlaceholder')}
             className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface-input border border-subtle rounded-md text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500/40"
           />
         </div>
@@ -209,14 +211,14 @@ export function NodePalette() {
           // Search results — flat list
           <div className="flex flex-col gap-0.5 px-1">
             {filteredBySearch.length === 0 && (
-              <div className="text-xs text-content-tertiary text-center py-4">No matching nodes</div>
+              <div className="text-xs text-content-tertiary text-center py-4">{t('lua-graph:nodePalette.noMatches')}</div>
             )}
             {filteredBySearch.map((node) => (
               <NodeItem
                 key={node.type}
                 definitionType={node.type}
-                label={node.label}
-                description={node.description}
+                label={nodeLabel(t, node)}
+                description={nodeDescription(t, node)}
                 color={CATEGORY_COLORS[node.category]}
                 onDragStart={onDragStart}
                 onDoubleClick={onDoubleClick}
@@ -238,7 +240,7 @@ export function NodePalette() {
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-content hover:bg-surface transition-colors"
                 >
                   <CatIcon className="w-3.5 h-3.5 shrink-0" style={{ color }} />
-                  <span className="flex-1 text-left">{CATEGORY_LABELS[cat]}</span>
+                  <span className="flex-1 text-left">{t(CATEGORY_LABEL_KEYS[cat])}</span>
                   <svg
                     className={`w-3 h-3 text-content-secondary transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                     fill="none"
@@ -256,8 +258,8 @@ export function NodePalette() {
                       <NodeItem
                         key={node.type}
                         definitionType={node.type}
-                        label={node.label}
-                        description={node.description}
+                        label={nodeLabel(t, node)}
+                        description={nodeDescription(t, node)}
                         color={color}
                         onDragStart={onDragStart}
                         onDoubleClick={onDoubleClick}

@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMessagesStore } from '../../stores/messages-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import {
   PREARM_CATEGORIES,
   PREARM_STALE_MS,
+  preArmCategoryLabel,
   isPreArmMessage,
   matchPreArmError,
   type PreArmCategory,
@@ -13,6 +15,7 @@ import { SafetyConfigCard } from './SafetyConfigCard';
 import { PanelContainer } from '../panels/panel-utils';
 
 export function PreflightCheckCard() {
+  const { t } = useTranslation();
   const messages = useMessagesStore((s) => s.messages);
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
   const [lastCheckTs, setLastCheckTs] = useState(() => Date.now() - 30_000);
@@ -78,16 +81,16 @@ export function PreflightCheckCard() {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-subtle shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-content">Pre-flight Checks</span>
+          <span className="text-xs font-medium text-content">{t('prearm:preflightCheckCard.title')}</span>
           {isChecking ? (
-            <span className="text-[10px] text-blue-400 animate-pulse">Checking...</span>
+            <span className="text-[10px] text-blue-400 animate-pulse">{t('common:checking')}</span>
           ) : issueCount > 0 ? (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400">
-              {issueCount} issue{issueCount !== 1 ? 's' : ''}
+              {t('prearm:preflightCheckCard.issues', { count: issueCount })}
             </span>
           ) : (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">
-              Ready
+              {t('common:ready')}
             </span>
           )}
         </div>
@@ -96,7 +99,7 @@ export function PreflightCheckCard() {
           disabled={isChecking}
           className="text-[10px] text-content-secondary hover:text-content transition-colors px-1.5 py-0.5 rounded hover:bg-surface-overlay-subtle disabled:opacity-50"
         >
-          Recheck
+          {t('prearm:preflightCheckCard.recheck')}
         </button>
       </div>
 
@@ -109,7 +112,7 @@ export function PreflightCheckCard() {
           <SafetyConfigCard />
         </div>
         <div className="divide-y divide-subtle/50">
-          {PREARM_CATEGORIES.map(({ id, label }) => {
+          {PREARM_CATEGORIES.map(({ id }) => {
             const errors = errorsByCategory.get(id);
             const hasFailed = errors && errors.length > 0;
             const isExpanded = expandedCategories.has(id);
@@ -131,7 +134,7 @@ export function PreflightCheckCard() {
                   )}
 
                   <span className={`flex-1 ${hasFailed ? 'text-content' : 'text-content-secondary'}`}>
-                    {label}
+                    {preArmCategoryLabel(id)}
                   </span>
 
                   {hasFailed && (
@@ -160,7 +163,7 @@ export function PreflightCheckCard() {
           <div className="px-3 py-2 border-t border-subtle">
             <div className="flex items-center gap-2 text-xs text-emerald-400">
               <span>✓</span>
-              <span>Ready to Arm</span>
+              <span>{t('prearm:preflightCheckCard.readyToArm')}</span>
             </div>
           </div>
         )}

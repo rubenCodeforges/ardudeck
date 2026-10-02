@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, useMap, Marker, Polyline, useMapEvents, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
@@ -659,6 +660,7 @@ function MapBoundsTracker({ onBoundsChange }: { onBoundsChange: (b: { north: num
 
 // GPS warning banner; subscribes so it clears live once a fix is acquired
 function GpsWarning() {
+  const { t } = useTranslation();
   const hasGps = useTelemetryStore(
     (s) => s.gps.fixType >= 2 && s.gps.lat !== 0 && s.gps.lon !== 0
   );
@@ -670,7 +672,7 @@ function GpsWarning() {
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
-      No GPS - home will use clicked position
+      {t('mission:missionMapPanel.noGps')}
     </div>
   );
 }
@@ -754,6 +756,7 @@ export function MissionMapPanel({ readOnly = false }: MissionMapPanelProps) {
 }
 
 function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
+  const { t } = useTranslation();
   // Get connection state to check protocol type and vehicle type
   const connectionState = useConnectionStore((state) => state.connectionState);
   const isMspProtocol = connectionState?.protocol === 'msp';
@@ -951,7 +954,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
     if (loadCounter !== prevLoadCounterRef.current) {
       prevLoadCounterRef.current = loadCounter;
       if (loadCounter > 0 && waypoints.length > 0) {
-        setFitTrigger(t => t + 1);
+        setFitTrigger(n => n + 1);
       }
     }
   }, [loadCounter, waypoints.length]);
@@ -1531,46 +1534,46 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                     ? 'bg-blue-600 text-white'
                     : 'bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm'
                 }`}
-                title={isAddingWaypoint ? 'Click on map to add waypoints' : 'Enter waypoint adding mode'}
+                title={isAddingWaypoint ? t('mission:missionMapPanel.addWpActiveTip') : t('mission:missionMapPanel.addWpTip')}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                {isAddingWaypoint ? 'Click map' : 'Add WP'}
+                {isAddingWaypoint ? t('mission:missionMapPanel.clickMap') : t('mission:missionMapPanel.addWp')}
               </button>
             )}
 
             {/* Hint for Shift+click - show when NOT in add mode (as a shortcut hint) */}
             {!readOnly && !isAddingWaypoint && !isSettingHome && (
               <span className="text-xs text-content-secondary bg-surface-solid border border-subtle shadow-sm px-2.5 py-1.5 rounded">
-                <kbd className="bg-surface-raised px-1 rounded text-content-secondary">Shift</kbd>+click to add
+                <Trans i18nKey="mission:missionMapPanel.shiftClickHint" components={{ kbd: <kbd className="bg-surface-raised px-1 rounded text-content-secondary" /> }} />
               </span>
             )}
 
             {waypoints.length > 0 && (
               <button
-                onClick={() => setFitTrigger(t => t + 1)}
+                onClick={() => setFitTrigger(n => n + 1)}
                 className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm transition-colors flex items-center gap-1.5"
-                title="Fit map to show all waypoints"
+                title={t('mission:missionMapPanel.fitTip')}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
-                Fit
+                {t('mission:missionMapPanel.fit')}
               </button>
             )}
 
             {/* Center on Vehicle button */}
             <button
-              onClick={() => setCenterOnVehicleTrigger(t => t + 1)}
+              onClick={() => setCenterOnVehicleTrigger(n => n + 1)}
               className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm transition-colors flex items-center gap-1.5"
-              title="Center map on vehicle GPS position"
+              title={t('mission:missionMapPanel.centerTip')}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Vehicle
+              {t('common:vehicle')}
             </button>
 
             {/* Set Home button - hidden in readOnly mode */}
@@ -1584,12 +1587,12 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                       ? 'bg-emerald-600/80 text-white'
                       : 'bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm'
                 }`}
-                title={isSettingHome ? 'Click on map to set home position' : homePosition ? 'Click to change home position' : 'Set home position by clicking on map'}
+                title={isSettingHome ? t('mission:missionMapPanel.setHomeActiveTip') : homePosition ? t('mission:missionMapPanel.changeHomeTip') : t('mission:missionMapPanel.setHomeTip')}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
-                {isSettingHome ? 'Click map' : homePosition ? 'Home Set' : 'Set Home'}
+                {isSettingHome ? t('mission:missionMapPanel.clickMap') : homePosition ? t('mission:missionMapPanel.homeSet') : t('common:setHome')}
               </button>
             )}
 
@@ -1601,18 +1604,18 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                 else fp.open();
               }}
               className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm transition-colors flex items-center gap-1.5"
-              data-tip="Preview the flight: a gizmo flies the plan at mission speed, showing where the camera points"
+              data-tip={t('mission:missionMapPanel.previewTip')}
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5v14l11-7z" />
               </svg>
-              Preview
+              {t('mission:missionMapPanel.preview')}
             </button>
 
             {/* Hint for Set Home mode */}
             {!readOnly && isSettingHome && (
               <span className="text-xs text-emerald-400 bg-surface-solid border border-subtle shadow-sm px-2.5 py-1.5 rounded">
-                Click on map to set home
+                {t('mission:missionMapPanel.setHomeHint')}
               </span>
             )}
 
@@ -1630,31 +1633,31 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                     {surveyDrawMode === 'polygon' && (
                       <span className="text-xs text-purple-400 bg-surface-solid border border-subtle shadow-sm px-2.5 py-1.5 rounded">
                         {surveyPattern === 'corridor'
-                          ? 'Click to add centerline points, double-click to finish'
-                          : 'Click to add boundary points, double-click to finish'}
+                          ? t('mission:missionMapPanel.centerlineHint')
+                          : t('mission:missionMapPanel.boundaryHint')}
                       </span>
                     )}
                     {surveyDrawMode === 'none' && !surveyPolygon && (
                       <button
                         onClick={startSurveyDrawing}
                         className="px-2.5 py-1.5 rounded text-xs font-medium bg-purple-600/80 text-white transition-colors flex items-center gap-1.5"
-                        title={surveyPattern === 'corridor' ? 'Draw corridor centerline' : 'Draw survey boundary'}
+                        title={surveyPattern === 'corridor' ? t('mission:missionMapPanel.drawCenterlineTip') : t('mission:missionMapPanel.drawBoundaryTip')}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                        {surveyPattern === 'corridor' ? 'Draw Centerline' : 'Draw Boundary'}
+                        {surveyPattern === 'corridor' ? t('mission:missionMapPanel.drawCenterline') : t('mission:missionMapPanel.drawBoundary')}
                       </button>
                     )}
                     <button
                       onClick={deactivateSurvey}
                       className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface-solid border border-red-400 shadow-sm text-red-400 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1.5"
-                      title="Exit survey mode"
+                      title={t('mission:missionMapPanel.exitSurveyTip')}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      Exit Survey
+                      {t('mission:missionMapPanel.exitSurvey')}
                     </button>
                   </>
                 )}
@@ -1675,9 +1678,9 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                     ? 'bg-green-600 text-white'
                     : 'text-content-secondary hover:text-content'
                 }`}
-                title="Draw inclusion zones (vehicle must stay inside)"
+                title={t('mission:missionMapPanel.includeTip')}
               >
-                Include
+                {t('mission:missionMapPanel.include')}
               </button>
               <button
                 onClick={() => setFenceInclusionMode(false)}
@@ -1686,9 +1689,9 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                     ? 'bg-red-600 text-white'
                     : 'text-content-secondary hover:text-content'
                 }`}
-                title="Draw exclusion zones (vehicle must stay outside)"
+                title={t('mission:missionMapPanel.excludeTip')}
               >
-                Exclude
+                {t('mission:missionMapPanel.exclude')}
               </button>
             </div>
 
@@ -1705,12 +1708,12 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                       ? `${activeColor} text-white`
                       : 'bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm'
                   }`}
-                  title={`Draw ${fenceInclusionMode ? 'inclusion' : 'exclusion'} polygon`}
+                  title={fenceInclusionMode ? t('mission:missionMapPanel.drawInclusionPolygon') : t('mission:missionMapPanel.drawExclusionPolygon')}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16l-2 14H6L4 5z" />
                   </svg>
-                  {isPolygonActive ? 'Drawing...' : 'Polygon'}
+                  {isPolygonActive ? t('mission:missionMapPanel.drawing') : t('mission:missionMapPanel.polygon')}
                 </button>
               );
             })()}
@@ -1728,12 +1731,12 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                       ? `${activeColor} text-white`
                       : 'bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm'
                   }`}
-                  title={`Draw ${fenceInclusionMode ? 'inclusion' : 'exclusion'} circle`}
+                  title={fenceInclusionMode ? t('mission:missionMapPanel.drawInclusionCircle') : t('mission:missionMapPanel.drawExclusionCircle')}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <circle cx="12" cy="12" r="9" strokeWidth={2} />
                   </svg>
-                  {isCircleActive ? 'Drawing...' : 'Circle'}
+                  {isCircleActive ? t('mission:missionMapPanel.drawing') : t('mission:missionMapPanel.circle')}
                 </button>
               );
             })()}
@@ -1746,13 +1749,13 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                   ? 'bg-amber-600 text-white'
                   : 'bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm'
               }`}
-              title="Set fence return point (where vehicle flies on breach)"
+              title={t('mission:missionMapPanel.returnPointTip')}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {fenceDrawMode === 'return-point' ? 'Click map' : 'Return Pt'}
+              {fenceDrawMode === 'return-point' ? t('mission:missionMapPanel.clickMap') : t('mission:missionMapPanel.returnPt')}
             </button>
 
             {/* Drawing hint */}
@@ -1761,9 +1764,9 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                 fenceDrawMode === 'return-point' ? 'text-amber-400' :
                 fenceInclusionMode ? 'text-green-400' : 'text-red-400'
               }`}>
-                {fenceDrawMode.startsWith('polygon-') ? 'Click to add points, double-click to finish' :
-                 fenceDrawMode.startsWith('circle-') ? 'Click center, then click edge for radius' :
-                 'Click to set return point'}
+                {fenceDrawMode.startsWith('polygon-') ? t('mission:missionMapPanel.fencePolygonHint') :
+                 fenceDrawMode.startsWith('circle-') ? t('mission:missionMapPanel.fenceCircleHint') :
+                 t('mission:missionMapPanel.fenceReturnHint')}
               </span>
             )}
           </>
@@ -1779,18 +1782,18 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                   ? 'bg-orange-600 text-white'
                   : 'bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm'
               }`}
-              title="Add rally points by clicking on map"
+              title={t('mission:missionMapPanel.addRallyTip')}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              {rallyAddMode ? 'Click map' : 'Add Rally'}
+              {rallyAddMode ? t('mission:missionMapPanel.clickMap') : t('mission:missionMapPanel.addRally')}
             </button>
 
             {/* Adding hint */}
             {rallyAddMode && (
               <span className="text-xs text-orange-400 bg-surface-solid border border-subtle shadow-sm px-2.5 py-1.5 rounded">
-                Click on map to add rally point (ESC to cancel)
+                {t('mission:missionMapPanel.addRallyHint')}
               </span>
             )}
           </>
@@ -1805,8 +1808,8 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
       {activeMode === 'mission' && isSettingHome && !readOnly && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-surface-solid border border-subtle shadow-lg px-6 py-4 rounded-xl text-center">
-            <div className="text-emerald-400 text-sm mb-2">Click anywhere on the map</div>
-            <div className="text-content-secondary text-xs">to set your Home position</div>
+            <div className="text-emerald-400 text-sm mb-2">{t('mission:missionMapPanel.homePromptTitle')}</div>
+            <div className="text-content-secondary text-xs">{t('mission:missionMapPanel.homePromptBody')}</div>
           </div>
         </div>
       )}
@@ -1815,7 +1818,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
       {waypoints.length === 0 && readOnly && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
           <div className="bg-surface-solid border border-subtle shadow-lg px-6 py-4 rounded-xl text-center">
-            <div className="text-content-secondary text-sm">No mission loaded</div>
+            <div className="text-content-secondary text-sm">{t('mission:missionMapPanel.noMission')}</div>
           </div>
         </div>
       )}
@@ -1827,21 +1830,21 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
             <button
               onClick={() => updateMissionDefaults({ mapLegendCollapsed: false })}
               className="bg-surface-solid border border-subtle shadow-sm rounded-lg px-2 py-1.5 text-xs text-content-secondary hover:text-content transition-colors flex items-center gap-1.5"
-              title="Show the map legend"
+              title={t('mission:missionMapPanel.showLegendTip')}
             >
               <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M1.5 3h9M1.5 6h9M1.5 9h9" strokeLinecap="round" />
               </svg>
-              Legend
+              {t('mission:missionMapPanel.legend')}
             </button>
           ) : (
           <div className="bg-surface-solid border border-subtle shadow-sm rounded-lg overflow-hidden text-xs max-w-[280px]">
             <div className="flex items-center justify-between pl-2.5 pr-1 py-1 border-b border-subtle">
-              <span className="text-[10px] uppercase tracking-wider text-content-tertiary">Legend</span>
+              <span className="text-[10px] uppercase tracking-wider text-content-tertiary">{t('mission:missionMapPanel.legend')}</span>
               <button
                 onClick={() => updateMissionDefaults({ mapLegendCollapsed: true })}
                 className="p-1 rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
-                title="Hide the map legend"
+                title={t('mission:missionMapPanel.hideLegendTip')}
               >
                 <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path d="M3 3l6 6M9 3l-6 6" strokeLinecap="round" />
@@ -1863,7 +1866,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                   </svg>
                 )}
               </div>
-              <span className="text-content font-medium">Path colors</span>
+              <span className="text-content font-medium">{t('mission:missionMapPanel.pathColors')}</span>
             </button>
             <button
               onClick={() => updateMissionDefaults({ showLineOrder: !showLineOrder })}
@@ -1878,7 +1881,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                   </svg>
                 )}
               </div>
-              <span className="text-content font-medium">Line order</span>
+              <span className="text-content font-medium">{t('mission:missionMapPanel.lineOrder')}</span>
             </button>
             <button
               onClick={() => updateMissionDefaults({ showFlownPath: !showFlownPath })}
@@ -1893,25 +1896,25 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                   </svg>
                 )}
               </div>
-              <span className="text-content font-medium">Predicted turns</span>
+              <span className="text-content font-medium">{t('mission:missionMapPanel.predictedTurns')}</span>
             </button>
             {flown && (
               <div className="px-2.5 pb-2 pt-0.5 text-[11px] leading-snug">
                 <div className="text-content-secondary">
-                  {Math.round(flown.radius)} m turn radius at {flown.speed.toFixed(1)} m/s, {flownPathBankDeg}° bank
-                  {flown.isDraft && <span className="text-content-tertiary"> · survey draft</span>}
+                  {t('mission:missionMapPanel.turnRadius', { radius: Math.round(flown.radius), speed: flown.speed.toFixed(1), bank: flownPathBankDeg })}
+                  {flown.isDraft && <span className="text-content-tertiary">{t('mission:missionMapPanel.surveyDraft')}</span>}
                 </div>
                 {flown.fromCruise && (
                   <div className="text-content-tertiary">
                     {flown.cruiseFromVehicle
-                      ? "Sized on the vehicle's AIRSPEED_CRUISE, not the slower survey speed a plane will not hold."
-                      : 'Sized on a 12 m/s cruise (no vehicle connected), not the slower survey speed a plane will not hold.'}
+                      ? t('mission:missionMapPanel.sizedOnVehicle')
+                      : t('mission:missionMapPanel.sizedOnDefault')}
                   </div>
                 )}
                 <div className={flown.gaps.length > 0 ? 'text-red-400' : 'text-content-tertiary'}>
                   {flown.gaps.length > 0
-                    ? `${flown.gaps.length} bend${flown.gaps.length > 1 ? 's' : ''} cut past the swath - coverage gap`
-                    : 'Every bend stays inside the swath'}
+                    ? t('mission:missionMapPanel.bendGaps', { count: flown.gaps.length })
+                    : t('mission:missionMapPanel.noBendGaps')}
                 </div>
               </div>
             )}
@@ -1919,7 +1922,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               <div className="px-2.5 pb-2 pt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.camera }} />
-                  <span className="text-content-secondary">Camera</span>
+                  <span className="text-content-secondary">{t('common:camera')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.roi }} />
@@ -1927,7 +1930,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.speed }} />
-                  <span className="text-content-secondary">Speed</span>
+                  <span className="text-content-secondary">{t('common:speed')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.rth }} />
@@ -1935,11 +1938,11 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.land }} />
-                  <span className="text-content-secondary">Land</span>
+                  <span className="text-content-secondary">{t('common:land')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-0.5 rounded-full" style={{ backgroundColor: SEGMENT_COLORS.default }} />
-                  <span className="text-content-secondary">Default</span>
+                  <span className="text-content-secondary">{t('common:default')}</span>
                 </div>
               </div>
             )}
@@ -1972,15 +1975,15 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Insert waypoint here
+                  {t('mission:missionMapPanel.insertHere')}
                 </button>
                 <div className="px-3 py-1 text-[10px] text-content-secondary border-t border-default mt-1">
-                  Between WP {contextMenu.afterSeq + 1} → {contextMenu.afterSeq + 2}
-                  {insertHost && <span className="text-content-tertiary"> · in {insertHost.name}</span>}
+                  {t('mission:missionMapPanel.between', { from: contextMenu.afterSeq + 1, to: contextMenu.afterSeq + 2 })}
+                  {insertHost && <span className="text-content-tertiary">{t('mission:missionMapPanel.inGroup', { name: insertHost.name })}</span>}
                 </div>
                 {insertHost?.kind === 'survey' && (
                   <div className="px-3 pb-1 text-[10px] text-amber-500">
-                    Regenerating this survey rebuilds its path and drops the waypoint.
+                    {t('mission:missionMapPanel.surveyInsertWarning')}
                   </div>
                 )}
               </>
@@ -1994,10 +1997,10 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                     <circle cx="12" cy="12" r="3" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />
                   </svg>
-                  Add relative waypoint…
+                  {t('mission:missionMapPanel.addRelative')}
                 </button>
                 <div className="px-3 py-1 text-[10px] text-content-secondary border-t border-default mt-1">
-                  From WP {(contextMenu.refSeq ?? 0) + 1} · bearing + distance
+                  {t('mission:missionMapPanel.fromWpBearing', { n: (contextMenu.refSeq ?? 0) + 1 })}
                 </div>
               </>
             )}

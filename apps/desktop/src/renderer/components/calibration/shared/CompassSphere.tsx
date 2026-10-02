@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GEODESIC_SECTIONS,
   gapDirection,
@@ -49,6 +50,7 @@ function wrapAngle(a: number): number {
 }
 
 export function CompassSphere({ mask, direction, size = 260, spinning = true }: CompassSphereProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Where the camera is now, and where it is heading.
@@ -268,7 +270,7 @@ export function CompassSphere({ mask, direction, size = 260, spinning = true }: 
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      aria-label="Compass calibration coverage"
+      aria-label={t('calibration:compassSphere.ariaLabel')}
     />
   );
 }

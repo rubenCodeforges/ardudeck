@@ -6,6 +6,7 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { GraphNodeData, GraphEdgeData } from './lua-graph-types';
 import { getNodeDefinition, parseCustomPins } from './node-library';
+import { t } from '../../../shared/i18n/index.js';
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ function topoSort(
   }
 
   if (sorted.length !== nodes.length) {
-    errors.push('Graph contains a cycle, cannot compile');
+    errors.push(t('lua-graph:luaCompiler.cycle'));
   }
 
   return { sorted, errors };

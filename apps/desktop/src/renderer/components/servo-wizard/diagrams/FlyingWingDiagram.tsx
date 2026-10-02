@@ -4,6 +4,7 @@
  * Top-down SVG diagram of a flying wing with 2 elevons.
  */
 
+import { useTranslation } from 'react-i18next';
 import { ControlSurface } from '../presets/servo-presets';
 
 interface Props {
@@ -19,6 +20,7 @@ export default function FlyingWingDiagram({
   servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
+  const { t } = useTranslation();
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
@@ -77,7 +79,7 @@ export default function FlyingWingDiagram({
       </g>
       {/* Left elevon label */}
       <text x="70" y="108" textAnchor="middle" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        L Elevon
+        {t('servo-wizard:diagrams.leftElevon')}
       </text>
       {servoLabels.elevon_left && (
         <text x="85" y="150" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -95,7 +97,7 @@ export default function FlyingWingDiagram({
       </g>
       {/* Right elevon label */}
       <text x="230" y="108" textAnchor="middle" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        R Elevon
+        {t('servo-wizard:diagrams.rightElevon')}
       </text>
       {servoLabels.elevon_right && (
         <text x="215" y="150" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -106,12 +108,12 @@ export default function FlyingWingDiagram({
       {/* Direction arrow */}
       <path d="M150 25 L145 35 L155 35 Z" fill="#6B7280" />
       <text x="165" y="33" fill="#6B7280" fontSize="8">
-        FRONT
+        {t('servo-wizard:diagrams.front')}
       </text>
 
       {/* Info text */}
       <text x="150" y="170" textAnchor="middle" fill="#6B7280" fontSize="9">
-        Elevons = Aileron + Elevator combined
+        {t('servo-wizard:diagrams.flyingWingHint')}
       </text>
     </svg>
   );

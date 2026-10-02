@@ -5,6 +5,7 @@
  * Useful for debugging arming issues, sensor status, and RC input.
  */
 
+import { useTranslation, Trans } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSitlStore } from '../../stores/sitl-store';
@@ -16,6 +17,7 @@ import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 
 // Sensor status indicator
 function SensorBadge({ name, status }: { name: string; status: string }) {
+  const { t } = useTranslation();
   const isOk = status === 'OK' || status === 'FAKE';
   const isNone = status === 'NONE' || !status;
 
@@ -29,7 +31,7 @@ function SensorBadge({ name, status }: { name: string; status: string }) {
           : 'bg-red-500/20 text-red-400 border border-red-500/30'
       }`}
     >
-      {name}: {status || 'N/A'}
+      {name}: {status || t('panels:sitlStatusPanel.na')}
     </div>
   );
 }
@@ -58,6 +60,7 @@ function RCChannelBar({ channel, value, label }: { channel: number; value: numbe
 }
 
 export function SitlStatusPanel() {
+  const { t } = useTranslation();
   const flight = useTelemetryStore((s) => s.flight);
   const position = useTelemetryStore((s) => s.position);
   const gps = useTelemetryStore((s) => s.gps);
@@ -118,15 +121,15 @@ export function SitlStatusPanel() {
       <div className="space-y-4 text-sm">
         {/* Connection Status */}
         <div className="flex items-center justify-between">
-          <span className="text-content-secondary">SITL Status</span>
+          <span className="text-content-secondary">{t('panels:sitlStatusPanel.title')}</span>
           <div className="flex items-center gap-2">
             {sitlRunning ? (
-              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Running</span>
+              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">{t('panels:sitlStatusPanel.running')}</span>
             ) : (
-              <span className="px-2 py-0.5 bg-surface-raised text-content-secondary text-xs rounded">Stopped</span>
+              <span className="px-2 py-0.5 bg-surface-raised text-content-secondary text-xs rounded">{t('panels:sitlStatusPanel.stopped')}</span>
             )}
             {bridgeConnected && (
-              <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">Bridge</span>
+              <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">{t('panels:sitlStatusPanel.bridge')}</span>
             )}
           </div>
         </div>
@@ -134,18 +137,18 @@ export function SitlStatusPanel() {
         {/* Firmware Info */}
         {isConnected && (
           <div className="p-2 bg-surface-raised rounded-lg">
-            <div className="text-xs text-content-secondary mb-1">Firmware</div>
+            <div className="text-xs text-content-secondary mb-1">{t('common:firmware')}</div>
             <div className="text-content font-medium">
               {connectionState.fcVariant} {connectionState.fcVersion}
             </div>
-            {isSitl && <div className="text-xs text-amber-400 mt-1">SITL Simulation</div>}
+            {isSitl && <div className="text-xs text-amber-400 mt-1">{t('panels:sitlStatusPanel.simulation')}</div>}
           </div>
         )}
 
         {/* Arming Status */}
         <div className="p-2 bg-surface-raised rounded-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-content-secondary">Arming</span>
+            <span className="text-xs text-content-secondary">{t('common:arming')}</span>
             <span
               className={`px-2 py-0.5 rounded text-xs font-bold ${
                 flight.armed
@@ -153,14 +156,14 @@ export function SitlStatusPanel() {
                   : 'bg-surface-raised text-content-secondary'
               }`}
             >
-              {flight.armed ? 'ARMED' : 'DISARMED'}
+              {flight.armed ? t('panels:sitlStatusPanel.armedUpper') : t('panels:sitlStatusPanel.disarmedUpper')}
             </span>
           </div>
 
           {/* Arming Blockers */}
           {!flight.armed && armingFlags.length > 0 && (
             <div className="space-y-1">
-              <div className="text-xs text-red-400">Blockers:</div>
+              <div className="text-xs text-red-400">{t('panels:sitlStatusPanel.blockers')}</div>
               <div className="flex flex-wrap gap-1">
                 {armingFlags.map((flag, i) => (
                   <span
@@ -177,13 +180,13 @@ export function SitlStatusPanel() {
 
         {/* Flight Mode */}
         <div className="p-2 bg-surface-raised rounded-lg">
-          <div className="text-xs text-content-secondary mb-1">Flight Mode</div>
-          <div className="text-content font-medium">{flight.mode || 'Unknown'}</div>
+          <div className="text-xs text-content-secondary mb-1">{t('common:flightMode')}</div>
+          <div className="text-content font-medium">{flight.mode || t('common:unknown')}</div>
         </div>
 
         {/* Sensors */}
         <div>
-          <div className="text-xs text-content-secondary mb-2">Sensors</div>
+          <div className="text-xs text-content-secondary mb-2">{t('common:sensors')}</div>
           <div className="flex flex-wrap gap-1">
             <SensorBadge name="GYRO" status={sensorStatus.gyro} />
             <SensorBadge name="ACC" status={sensorStatus.acc} />
@@ -202,24 +205,24 @@ export function SitlStatusPanel() {
                 gps.fixType >= 3 ? 'text-green-400' : 'text-amber-400'
               }`}
             >
-              {gps.fixType >= 3 ? '3D Fix' : gps.fixType === 2 ? '2D Fix' : 'No Fix'}
+              {gps.fixType >= 3 ? t('panels:sitlStatusPanel.fix3d') : gps.fixType === 2 ? t('panels:sitlStatusPanel.fix2d') : t('panels:sitlStatusPanel.noFix')}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-content-secondary">Sats: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.sats')} </span>
               <span className="text-content">{gps.satellites}</span>
             </div>
             <div>
-              <span className="text-content-secondary">HDOP: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.hdop')} </span>
               <span className="text-content">{(gps.hdop / 100).toFixed(1)}</span>
             </div>
             <div>
-              <span className="text-content-secondary">Lat: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.lat')} </span>
               <span className="text-content">{position.lat.toFixed(6)}</span>
             </div>
             <div>
-              <span className="text-content-secondary">Lon: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.lon')} </span>
               <span className="text-content">{position.lon.toFixed(6)}</span>
             </div>
           </div>
@@ -227,18 +230,18 @@ export function SitlStatusPanel() {
 
         {/* Attitude */}
         <div className="p-2 bg-surface-raised rounded-lg">
-          <div className="text-xs text-content-secondary mb-1">Attitude</div>
+          <div className="text-xs text-content-secondary mb-1">{t('common:attitude')}</div>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div>
-              <span className="text-content-secondary">Roll: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.roll')} </span>
               <span className="text-content">{attitude.roll.toFixed(1)}°</span>
             </div>
             <div>
-              <span className="text-content-secondary">Pitch: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.pitch')} </span>
               <span className="text-content">{attitude.pitch.toFixed(1)}°</span>
             </div>
             <div>
-              <span className="text-content-secondary">Yaw: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.yaw')} </span>
               <span className="text-content">{attitude.yaw.toFixed(0)}°</span>
             </div>
           </div>
@@ -246,14 +249,14 @@ export function SitlStatusPanel() {
 
         {/* Altitude */}
         <div className="p-2 bg-surface-raised rounded-lg">
-          <div className="text-xs text-content-secondary mb-1">Altitude</div>
+          <div className="text-xs text-content-secondary mb-1">{t('common:altitude')}</div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-content-secondary">MSL: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.msl')} </span>
               <span className="text-content">{formatAltitudeFromMeters(position.alt, altitudeUnit)}</span>
             </div>
             <div>
-              <span className="text-content-secondary">AGL: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.agl')} </span>
               <span className="text-content">{formatAltitudeFromMeters((position as unknown as Record<string, number>).altAgl ?? 0, altitudeUnit)}</span>
             </div>
           </div>
@@ -262,27 +265,27 @@ export function SitlStatusPanel() {
         {/* RC Channels - GCS Sending vs FC Receiving */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-content-secondary">RC Channels</span>
+            <span className="text-xs text-content-secondary">{t('panels:sitlStatusPanel.rcChannels')}</span>
             {isOverrideActive && (
-              <span className="text-xs text-amber-400">Override Active</span>
+              <span className="text-xs text-amber-400">{t('panels:sitlStatusPanel.overrideActive')}</span>
             )}
           </div>
 
           {/* Column headers */}
           <div className="flex items-center gap-2 mb-1 text-xs text-content-tertiary">
             <span className="w-12"></span>
-            <span className="flex-1 text-center">FC Receives</span>
+            <span className="flex-1 text-center">{t('panels:sitlStatusPanel.fcReceives')}</span>
             <span className="w-10"></span>
-            <span className="w-12 text-center">GCS</span>
+            <span className="w-12 text-center">{t('panels:sitlStatusPanel.gcs')}</span>
           </div>
 
           <div className="space-y-1.5">
             {/* RPTY order: Roll=0, Pitch=1, Throttle=2, Yaw=3 */}
             {[
-              { label: 'Roll', idx: 0 },
-              { label: 'Pitch', idx: 1 },
-              { label: 'Throt', idx: 2 },
-              { label: 'Yaw', idx: 3 },
+              { label: t('common:roll'), idx: 0 },
+              { label: t('common:pitch'), idx: 1 },
+              { label: t('panels:sitlStatusPanel.throttleShort'), idx: 2 },
+              { label: t('common:yaw'), idx: 3 },
               { label: 'AUX1', idx: 4 },
               { label: 'AUX2', idx: 5 },
               { label: 'AUX3', idx: 6 },
@@ -321,21 +324,21 @@ export function SitlStatusPanel() {
           {/* Warning if mismatch detected */}
           {isOverrideActive && rcChannels.some((fc, i) => Math.abs(fc - (gcsChannels[i] || 1000)) > 50) && (
             <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
-              FC not receiving GCS values. Check: <code className="bg-surface-base px-1 rounded">set receiver_type = MSP</code>
+              <Trans i18nKey="panels:sitlStatusPanel.mismatch" components={{ c: <code className="bg-surface-base px-1 rounded" /> }} />
             </div>
           )}
         </div>
 
         {/* Battery (even if fake) */}
         <div className="p-2 bg-surface-raised rounded-lg">
-          <div className="text-xs text-content-secondary mb-1">Battery</div>
+          <div className="text-xs text-content-secondary mb-1">{t('common:battery')}</div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-content-secondary">Voltage: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.voltage')} </span>
               <span className="text-content">{battery.voltage.toFixed(2)}V</span>
             </div>
             <div>
-              <span className="text-content-secondary">Current: </span>
+              <span className="text-content-secondary">{t('panels:sitlStatusPanel.current')} </span>
               <span className="text-content">{battery.current.toFixed(1)}A</span>
             </div>
           </div>
@@ -343,7 +346,7 @@ export function SitlStatusPanel() {
 
         {/* System Info */}
         <div className="text-xs text-content-tertiary border-t border-subtle pt-2">
-          <div>System Load: {(flight as unknown as Record<string, number>).cpuLoad || 0}%</div>
+          <div>{t('panels:sitlStatusPanel.systemLoad', { load: (flight as unknown as Record<string, number>).cpuLoad || 0 })}</div>
         </div>
       </div>
     </PanelContainer>

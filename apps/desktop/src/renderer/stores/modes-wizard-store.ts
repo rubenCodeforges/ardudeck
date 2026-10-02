@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { MSPModeRange } from '@ardudeck/msp-ts';
 import { PRESETS, type ModePreset } from '../components/modes/presets/mode-presets';
 import { useSettingsStore } from './settings-store';
@@ -368,12 +369,12 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
           isLoading: false,
         });
       } else {
-        set({ isLoading: false, loadError: 'Failed to load modes from FC', boxNameMapping });
+        set({ isLoading: false, loadError: t('stores:modesWizardStore.loadFromFcFailed'), boxNameMapping });
       }
     } catch (error) {
       set({
         isLoading: false,
-        loadError: error instanceof Error ? error.message : 'Failed to load modes',
+        loadError: error instanceof Error ? error.message : t('stores:modesWizardStore.loadFailed'),
       });
     }
   },
@@ -412,7 +413,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
           rangeEnd: 900, // Same start/end = disabled
         });
         if (!success) {
-          throw new Error(`Failed to clear mode slot ${i}`);
+          throw new Error(t('stores:modesWizardStore.clearSlotFailed', { i }));
         }
       }
 
@@ -421,14 +422,14 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
         const mode = pendingModes[i]!;
         const success = await window.electronAPI?.mspSetModeRange(i, mode);
         if (!success) {
-          throw new Error(`Failed to set mode ${i}`);
+          throw new Error(t('stores:modesWizardStore.setModeFailed', { i }));
         }
       }
 
       // Save to EEPROM
       const eepromSuccess = await window.electronAPI?.mspSaveEeprom();
       if (!eepromSuccess) {
-        throw new Error('Modes sent but EEPROM save failed');
+        throw new Error(t('stores:modesWizardStore.eepromSaveFailed'));
       }
 
       set({
@@ -444,7 +445,7 @@ export const useModesWizardStore = create<ModesWizardState>((set, get) => ({
 
       return true;
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to save modes';
+      const msg = error instanceof Error ? error.message : t('stores:modesWizardStore.saveFailed');
       console.error('[ModesWizard] Save failed:', msg);
       set({
         isSaving: false,

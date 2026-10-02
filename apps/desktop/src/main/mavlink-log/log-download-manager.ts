@@ -227,7 +227,7 @@ export class LogDownloadManager {
       });
       this.sendPacket(LOG_REQUEST_LIST_ID, payload, LOG_REQUEST_LIST_CRC_EXTRA).then(async (packet) => {
         await this.writeTransport(packet);
-        this.log('info', 'Requesting log list from FC');
+        this.log('info', 'Requesting log list from FC'); // i18n-exempt
       }).catch((err) => {
         this.log('error', `Failed to send log list request: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
       });

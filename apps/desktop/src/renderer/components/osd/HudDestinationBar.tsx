@@ -10,25 +10,27 @@
  * would be misleading - while the editor is in HUD mode.
  */
 
+import { useTranslation } from 'react-i18next';
 import { MonitorPlay, Video, Layers, Monitor, Cpu, ChevronRight, type LucideIcon } from 'lucide-react';
 
 export function HudDestinationBar() {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3 px-4 py-2 border-b border-subtle bg-gradient-to-r from-indigo-500/10 via-indigo-500/[0.04] to-transparent shrink-0 flex-wrap" data-tour="osd-destination-bar">
       {/* Identity pill - a live overlay, so a live dot, but plainly a screen target */}
       <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30">
         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden />
         <MonitorPlay className="h-3.5 w-3.5 text-indigo-300" />
-        <span className="text-xs font-medium text-content">ArduDeck screen overlay</span>
+        <span className="text-xs font-medium text-content">{t('osd:hudDestinationBar.screenOverlay')}</span>
       </div>
 
       {/* Where it actually renders, drawn as a pipeline */}
       <div className="flex items-center gap-1.5">
-        <FlowNode icon={Video} label="Video feed" />
+        <FlowNode icon={Video} label={t('osd:hudDestinationBar.videoFeed')} />
         <ChevronRight className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
-        <FlowNode icon={Layers} label="HUD overlay" active />
+        <FlowNode icon={Layers} label={t('osd:hudDestinationBar.hudOverlay')} active />
         <ChevronRight className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
-        <FlowNode icon={Monitor} label="Your display" />
+        <FlowNode icon={Monitor} label={t('osd:hudDestinationBar.yourDisplay')} />
       </div>
 
       <div className="flex-1" />
@@ -36,7 +38,7 @@ export function HudDestinationBar() {
       {/* The flight controller, shown explicitly bypassed */}
       <div
         className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-strong bg-surface-raised/40"
-        data-tip="A HUD is drawn on the ground, over your video. Unlike a text OSD it is not written to the flight controller, so there is nothing to upload."
+        data-tip={t('osd:hudDestinationBar.notUploadedTip')}
       >
         <span className="relative inline-flex items-center justify-center">
           <Cpu className="h-3.5 w-3.5 text-content-tertiary" />
@@ -46,9 +48,9 @@ export function HudDestinationBar() {
           />
         </span>
         <span className="text-[11px] text-content-tertiary line-through decoration-content-tertiary/60">
-          Flight controller
+          {t('osd:hudDestinationBar.flightController')}
         </span>
-        <span className="text-[11px] font-medium text-content-secondary">not uploaded</span>
+        <span className="text-[11px] font-medium text-content-secondary">{t('osd:hudDestinationBar.notUploaded')}</span>
       </div>
     </div>
   );

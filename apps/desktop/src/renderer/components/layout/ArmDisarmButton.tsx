@@ -10,6 +10,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useFlightControlStore } from '../../stores/flight-control-store';
@@ -17,6 +18,7 @@ import { useMessagesStore } from '../../stores/messages-store';
 import { isPreArmMessage, extractPreArmReason } from '../../../shared/prearm-checks';
 
 export function ArmDisarmButton() {
+  const { t } = useTranslation();
   const flight = useTelemetryStore((s) => s.flight);
   const connectionState = useConnectionStore((s) => s.connectionState);
   const messages = useMessagesStore((s) => s.messages);
@@ -131,7 +133,7 @@ export function ArmDisarmButton() {
               : 'bg-surface border border-border text-content-secondary hover:bg-surface-raised hover:text-content'
           }
         `}
-        title={`${isArmed ? 'Disarm' : forceArm && isMavlink ? 'Force arm (bypasses checks)' : 'Arm'} - Right-click for options`}
+        title={t('layout:armDisarm.title', { action: isArmed ? t('layout:armDisarm.disarmTitle') : forceArm && isMavlink ? t('layout:armDisarm.forceArmTitle') : t('layout:armDisarm.armTitle') })}
       >
         {/* Pulsing dot for armed state */}
         <div className={`w-1.5 h-1.5 rounded-full ${
@@ -144,7 +146,7 @@ export function ArmDisarmButton() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         ) : (
-          <span>{isArmed ? 'DISARM' : forceArm && isMavlink ? 'FORCE ARM' : 'ARM'}</span>
+          <span>{isArmed ? t('layout:armDisarm.disarm') : forceArm && isMavlink ? t('layout:armDisarm.forceArm') : t('layout:armDisarm.arm')}</span>
         )}
 
         {/* Chevron */}
@@ -170,15 +172,15 @@ export function ArmDisarmButton() {
                 className="w-3.5 h-3.5 rounded border-border bg-surface-raised text-amber-500 focus:ring-amber-500/50 focus:ring-offset-0"
               />
               <div>
-                <div className="text-xs text-content font-medium">Force ARM</div>
-                <div className="text-[10px] text-content-secondary">Bypass pre-arm safety checks</div>
+                <div className="text-xs text-content font-medium">{t('layout:armDisarm.forceArmLabel')}</div>
+                <div className="text-[10px] text-content-secondary">{t('layout:armDisarm.forceArmHint')}</div>
               </div>
             </label>
           )}
 
           {isMsp && !mspCanArm && modeMappingsLoaded && (
             <div className="px-3 py-2.5 text-[10px] text-content-secondary">
-              ARM mode not configured on FC. Set an AUX channel for ARM in the Modes tab.
+              {t('layout:armDisarm.armNotConfigured')}
             </div>
           )}
 
@@ -186,7 +188,7 @@ export function ArmDisarmButton() {
           {hasBlockedReasons && (
             <div className={`px-3 py-2.5 ${isMavlink ? 'border-t border-subtle' : ''}`}>
               <div className="text-[10px] font-medium text-red-400 uppercase tracking-wider mb-1">
-                {isMavlink ? 'Pre-arm Checks Failed' : 'Arming Blocked'}
+                {isMavlink ? t('layout:armDisarm.preArmFailed') : t('layout:armDisarm.armingBlocked')}
               </div>
               <div className="flex flex-col gap-0.5">
                 {preArmReasons.map((reason, i) => (
@@ -200,7 +202,7 @@ export function ArmDisarmButton() {
 
           {/* Protocol info */}
           <div className="px-3 py-2 border-t border-subtle text-[10px] text-content-secondary">
-            {isMavlink ? 'MAVLink' : `MSP (${connectionState.fcVariant || 'Unknown'})`}
+            {isMavlink ? 'MAVLink' : `MSP (${connectionState.fcVariant || t('layout:armDisarm.mspUnknown')})`} {/* i18n-exempt */}
           </div>
         </div>
       )}

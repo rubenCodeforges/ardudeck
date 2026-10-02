@@ -73,7 +73,7 @@ function readSerial(
 
     // If we detect the "app_main finished" marker, we can stop early
     const checkDone = () => {
-      if (collected.includes('app_main finished') || collected.includes('Rest Server started')) {
+      if (collected.includes('app_main finished') || collected.includes('Rest Server started')) { // i18n-exempt
         clearTimeout(timeout);
         // Give a tiny bit more time for any trailing output
         setTimeout(finish, 500);

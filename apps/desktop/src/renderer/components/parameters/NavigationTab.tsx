@@ -6,6 +6,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { pendingDraft, usePendingWritesStore } from '../../stores/msp-pending-writes-store';
+import { INAV_NAV_NUMERIC_SETTINGS } from '@ardudeck/msp-ts';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { Compass, Home, PlaneLanding, MapPin, Satellite, AlertTriangle } from 'lucide-react';
 
@@ -47,28 +50,29 @@ const NAV_RTH_ALT_MODE = {
   AT_LEAST: 4,
 } as const;
 
-const NAV_RTH_ALT_MODE_NAMES: Record<number, { name: string; description: string }> = {
-  0: { name: 'Current', description: 'Stay at current height, could hit obstacles!' },
-  1: { name: 'Extra', description: 'Climb higher by RTH Altitude before returning' },
-  2: { name: 'Fixed', description: 'Always return at exactly RTH Altitude' },
-  3: { name: 'Maximum', description: 'Use higher of current or RTH Altitude' },
-  4: { name: 'At Least (Recommended)', description: 'Climb to RTH Altitude if below, otherwise stay' },
+const NAV_RTH_ALT_MODE_NAMES: Record<number, { nameKey: string; descriptionKey: string }> = {
+  0: { nameKey: 'parameters:navigationTab.rthCurrent', descriptionKey: 'parameters:navigationTab.rthCurrentDesc' },
+  1: { nameKey: 'parameters:navigationTab.rthExtra', descriptionKey: 'parameters:navigationTab.rthExtraDesc' },
+  2: { nameKey: 'parameters:navigationTab.rthFixed', descriptionKey: 'parameters:navigationTab.rthFixedDesc' },
+  3: { nameKey: 'parameters:navigationTab.rthMaximum', descriptionKey: 'parameters:navigationTab.rthMaximumDesc' },
+  4: { nameKey: 'parameters:navigationTab.rthAtLeast', descriptionKey: 'parameters:navigationTab.rthAtLeastDesc' },
 };
 
+// INAV 9 has no NMEA driver; numbers follow msp-ts inav-nav-gps (renderer provider ids)
 const GPS_PROVIDER_NAMES: Record<number, string> = {
-  0: 'NMEA',
-  1: 'u-blox',
-  2: 'MSP',
-  3: 'Fake (Testing)',
+  1: 'u-blox', // i18n-exempt
+  2: 'MSP', // i18n-exempt
+  3: 'parameters:navigationTab.gpsFake',
 };
 
 const GPS_SBAS_NAMES: Record<number, string> = {
-  0: 'Auto',
-  1: 'EGNOS (Europe)',
-  2: 'WAAS (USA)',
-  3: 'MSAS (Japan)',
-  4: 'GAGAN (India)',
-  5: 'None',
+  0: 'parameters:navigationTab.sbasAuto',
+  1: 'parameters:navigationTab.sbasEgnos',
+  2: 'parameters:navigationTab.sbasWaas',
+  3: 'parameters:navigationTab.sbasMsas',
+  4: 'parameters:navigationTab.sbasGagan',
+  5: 'parameters:navigationTab.sbasNone',
+  6: 'parameters:navigationTab.sbasSouthPan',
 };
 
 // Default nav config (iNav defaults)
@@ -100,18 +104,57 @@ const DEFAULT_WP_SETTINGS: WaypointSettings = {
   nav_fw_wp_turn_smoothing: 'OFF',
 };
 
-interface Props {
-  modified: boolean;
-  setModified: (v: boolean) => void;
+interface NavDraft {
+  navConfig: Partial<MSPNavConfig>;
+  gpsConfig: MSPGpsConfig | null;
+  wpSettings: WaypointSettings;
+  wpSettingsSupported: boolean;
 }
 
-export default function NavigationTab({ modified, setModified }: Props) {
-  const [navConfig, setNavConfig] = useState<Partial<MSPNavConfig>>(DEFAULT_NAV_CONFIG);
-  const [gpsConfig, setGpsConfig] = useState<MSPGpsConfig | null>(null);
-  const [wpSettings, setWpSettings] = useState<WaypointSettings>(DEFAULT_WP_SETTINGS);
-  const [wpSettingsSupported, setWpSettingsSupported] = useState(false);
-  const [loading, setLoading] = useState(true);
+const PENDING_ID = 'navigation';
+
+async function writeNavigation(d: NavDraft): Promise<boolean> {
+  if (!(await window.electronAPI.mspSetNavConfig(d.navConfig))) return false;
+  if (d.gpsConfig && !(await window.electronAPI.mspSetGpsConfig(d.gpsConfig))) return false;
+  if (d.wpSettingsSupported) {
+    const ok = await window.electronAPI.mspSetSettings({ ...d.wpSettings });
+    if (!ok) return false;
+  }
+  return true;
+}
+
+export default function NavigationTab() {
+  const { t } = useTranslation();
+  const draft = pendingDraft<NavDraft>(PENDING_ID);
+  const [navConfig, setNavConfig] = useState<Partial<MSPNavConfig>>(draft?.navConfig ?? DEFAULT_NAV_CONFIG);
+  const [gpsConfig, setGpsConfig] = useState<MSPGpsConfig | null>(draft?.gpsConfig ?? null);
+  const [wpSettings, setWpSettings] = useState<WaypointSettings>(draft?.wpSettings ?? DEFAULT_WP_SETTINGS);
+  const [wpSettingsSupported, setWpSettingsSupported] = useState(draft?.wpSettingsSupported ?? false);
+  const [dirty, setDirty] = useState(!!draft);
+  const [loading, setLoading] = useState(!draft);
   const [error, setError] = useState<string | null>(null);
+  const [ranges, setRanges] = useState<Record<string, { min: number; max: number } | null>>({});
+
+  // Input limits come from the FC itself, so a value it would refuse cannot be typed
+  useEffect(() => {
+    const names = [...Object.values(INAV_NAV_NUMERIC_SETTINGS), 'nav_wp_max_safe_distance'];
+    void window.electronAPI.mspGetSettingRanges?.(names).then((r) => { if (r) setRanges(r); }).catch(() => undefined);
+  }, []);
+
+  /** FC range for a setting in display units (cm to m by default), else the given fallback. */
+  const lim = (setting: string, fallback: [number, number], scale = 100) => {
+    const r = ranges[setting];
+    return r ? { min: r.min / scale, max: r.max / scale } : { min: fallback[0], max: fallback[1] };
+  };
+
+  useEffect(() => {
+    if (!dirty) return;
+    usePendingWritesStore.getState().put<NavDraft>(PENDING_ID, {
+      label: t('parameters:navigationTab.pendingLabel'),
+      draft: { navConfig, gpsConfig, wpSettings, wpSettingsSupported },
+      write: writeNavigation,
+    });
+  }, [dirty, navConfig, gpsConfig, wpSettings, wpSettingsSupported, t]);
 
   // Load navigation configuration
   const loadConfig = useCallback(async () => {
@@ -158,85 +201,41 @@ export default function NavigationTab({ modified, setModified }: Props) {
         setWpSettingsSupported(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load navigation config');
+      setError(err instanceof Error ? err.message : t('parameters:navigationTab.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    loadConfig();
+    // unsaved edits from before a tab switch stay on screen instead of the FC values
+    if (!pendingDraft(PENDING_ID)) loadConfig();
   }, [loadConfig]);
+
+  const refresh = () => {
+    usePendingWritesStore.getState().drop(PENDING_ID);
+    setDirty(false);
+    void loadConfig();
+  };
 
   // Update nav config
   const updateNavConfig = (updates: Partial<MSPNavConfig>) => {
     setNavConfig((prev) => ({ ...prev, ...updates }));
-    setModified(true);
+    setDirty(true);
   };
 
   // Update GPS config
   const updateGpsConfig = (updates: Partial<MSPGpsConfig>) => {
     if (gpsConfig) {
       setGpsConfig({ ...gpsConfig, ...updates });
-      setModified(true);
+      setDirty(true);
     }
   };
 
   // Update waypoint settings
   const updateWpSettings = (updates: Partial<WaypointSettings>) => {
     setWpSettings((prev) => ({ ...prev, ...updates }));
-    setModified(true);
-  };
-
-  // Save all changes
-  const saveAll = async () => {
-    setError(null);
-    try {
-      console.log('[Navigation] Saving nav config...');
-      const navSuccess = await window.electronAPI.mspSetNavConfig(navConfig);
-      if (!navSuccess) {
-        // MSP2 might not be supported on old iNav - try GPS config only
-        console.log('[Navigation] Nav config save failed (may not be supported on old iNav)');
-      }
-
-      if (gpsConfig) {
-        console.log('[Navigation] Saving GPS config...');
-        const gpsSuccess = await window.electronAPI.mspSetGpsConfig(gpsConfig);
-        if (!gpsSuccess) {
-          setError('Failed to set GPS config');
-          return;
-        }
-      }
-
-      // Save extended waypoint settings via generic settings API
-      if (wpSettingsSupported) {
-        console.log('[Navigation] Saving waypoint settings...');
-        const wpSuccess = await window.electronAPI.mspSetSettings({
-          nav_wp_load_on_boot: wpSettings.nav_wp_load_on_boot,
-          nav_wp_max_safe_distance: wpSettings.nav_wp_max_safe_distance,
-          nav_wp_mission_restart: wpSettings.nav_wp_mission_restart,
-          nav_mc_wp_slowdown: wpSettings.nav_mc_wp_slowdown,
-          nav_fw_wp_turn_smoothing: wpSettings.nav_fw_wp_turn_smoothing,
-        });
-        if (!wpSuccess) {
-          console.log('[Navigation] Some waypoint settings failed to save');
-        }
-      }
-
-      // Save to EEPROM
-      console.log('[Navigation] Saving to EEPROM...');
-      const eepromSuccess = await window.electronAPI.mspSaveEeprom();
-      if (!eepromSuccess) {
-        setError('Config sent but EEPROM save failed - changes may not persist');
-        return;
-      }
-
-      console.log('[Navigation] Saved successfully');
-      setModified(false);
-    } catch (err) {
-      console.error('[Navigation] Save error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    }
+    setDirty(true);
   };
 
   // Convert cm/s to m/s for display
@@ -252,7 +251,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mb-2 mx-auto" />
-          <p className="text-content-secondary">Loading navigation configuration...</p>
+          <p className="text-content-secondary">{t('parameters:navigationTab.loading')}</p>
         </div>
       </div>
     );
@@ -264,16 +263,15 @@ export default function NavigationTab({ modified, setModified }: Props) {
       <div className="bg-blue-500/10 rounded-xl border-blue-500/30 p-4 flex items-start gap-4">
         <Compass className="w-6 h-6 text-blue-400" />
         <div>
-          <p className="text-blue-400 font-medium">Navigation Settings (iNav): Autonomous Flight</p>
+          <p className="text-blue-400 font-medium">{t('parameters:navigationTab.headerTitle')}</p>
           <p className="text-sm text-content-secondary mt-1">
-            These settings control what happens when your aircraft flies <strong className="text-content">without your input</strong>,
-            like flying home automatically or following a mission.
+            <Trans i18nKey="parameters:navigationTab.headerDesc" components={{ b: <strong className="text-content" /> }} />
           </p>
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-content-secondary">
-            <p><span className="text-green-400 inline-flex items-center gap-1"><Home className="w-3.5 h-3.5" /> RTH</span>: "Return To Home" flies back to where it took off</p>
-            <p><span className="text-purple-400 inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Waypoints</span>: Pre-planned GPS points the aircraft will fly to</p>
-            <p><span className="text-amber-400 inline-flex items-center gap-1"><PlaneLanding className="w-3.5 h-3.5" /> Landing</span>: How fast/slow it comes down after RTH</p>
-            <p><span className="text-blue-400 inline-flex items-center gap-1"><Satellite className="w-3.5 h-3.5" /> GPS</span>: Satellite settings (usually leave on Auto)</p>
+            <p><span className="text-green-400 inline-flex items-center gap-1"><Home className="w-3.5 h-3.5" /> {t('parameters:navigationTab.legendRth')}</span>: {t('parameters:navigationTab.legendRthDesc')}</p>
+            <p><span className="text-purple-400 inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {t('parameters:navigationTab.legendWaypoints')}</span>: {t('parameters:navigationTab.legendWaypointsDesc')}</p>
+            <p><span className="text-amber-400 inline-flex items-center gap-1"><PlaneLanding className="w-3.5 h-3.5" /> {t('parameters:navigationTab.legendLanding')}</span>: {t('parameters:navigationTab.legendLandingDesc')}</p>
+            <p><span className="text-blue-400 inline-flex items-center gap-1"><Satellite className="w-3.5 h-3.5" /> {t('parameters:navigationTab.legendGps')}</span>: {t('parameters:navigationTab.legendGpsDesc')}</p>
           </div>
         </div>
       </div>
@@ -295,15 +293,15 @@ export default function NavigationTab({ modified, setModified }: Props) {
             <Home className="w-5 h-5 text-green-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Return to Home (RTH)</h3>
-            <p className="text-xs text-content-secondary">What happens when RTH is triggered</p>
+            <h3 className="text-sm font-medium text-content">{t('parameters:navigationTab.rthTitle')}</h3>
+            <p className="text-xs text-content-secondary">{t('parameters:navigationTab.rthDesc')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6">
           {/* RTH Altitude Mode */}
           <div className="space-y-3">
-            <label className="text-xs text-content-secondary block">RTH Altitude Mode</label>
+            <label className="text-xs text-content-secondary block">{t('parameters:navigationTab.rthAltMode')}</label>
             <div className="space-y-2">
               {Object.entries(NAV_RTH_ALT_MODE_NAMES).map(([value, info]) => (
                 <label
@@ -323,8 +321,8 @@ export default function NavigationTab({ modified, setModified }: Props) {
                     className="w-4 h-4 text-green-500"
                   />
                   <div>
-                    <div className="text-sm text-content">{info.name}</div>
-                    <div className="text-xs text-content-secondary">{info.description}</div>
+                    <div className="text-sm text-content">{t(info.nameKey)}</div>
+                    <div className="text-xs text-content-secondary">{t(info.descriptionKey)}</div>
                   </div>
                 </label>
               ))}
@@ -334,37 +332,34 @@ export default function NavigationTab({ modified, setModified }: Props) {
           {/* RTH Altitude & Speeds */}
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">RTH Altitude (m)</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.rthAltitude')}</label>
               <DraftNumberInput
                 value={Number(toM(navConfig.rthAltitude ?? 3000))}
                 onCommit={(v) => updateNavConfig({ rthAltitude: fromM(v) })}
                 className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-                min={5}
-                max={300}
+                {...lim(INAV_NAV_NUMERIC_SETTINGS.rthAltitude, [5, 300])}
               />
-              <p className="text-[10px] text-content-tertiary mt-1">Used with Fixed/Max/At Least modes</p>
+              <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.rthAltitudeHint')}</p>
             </div>
 
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">Max Navigation Speed (m/s)</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.maxNavSpeed')}</label>
               <DraftNumberInput
                 value={Number(toMs(navConfig.maxNavigationSpeed ?? 300))}
                 onCommit={(v) => updateNavConfig({ maxNavigationSpeed: fromMs(v) })}
                 className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-                min={0.5}
-                max={20}
+                {...lim(INAV_NAV_NUMERIC_SETTINGS.maxNavigationSpeed, [0.5, 20])}
                 step={0.5}
               />
             </div>
 
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">Max Climb Rate (m/s)</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.maxClimbRate')}</label>
               <DraftNumberInput
                 value={Number(toMs(navConfig.maxClimbRate ?? 500))}
                 onCommit={(v) => updateNavConfig({ maxClimbRate: fromMs(v) })}
                 className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-                min={0.5}
-                max={10}
+                {...lim(INAV_NAV_NUMERIC_SETTINGS.maxClimbRate, [0.5, 10])}
                 step={0.5}
               />
             </div>
@@ -379,48 +374,45 @@ export default function NavigationTab({ modified, setModified }: Props) {
             <PlaneLanding className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Landing Configuration</h3>
-            <p className="text-xs text-content-secondary">How the aircraft lands after RTH</p>
+            <h3 className="text-sm font-medium text-content">{t('parameters:navigationTab.landingTitle')}</h3>
+            <p className="text-xs text-content-secondary">{t('parameters:navigationTab.landingDesc')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Descent Rate (m/s)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.descentRate')}</label>
             <DraftNumberInput
               value={Number(toMs(navConfig.landDescendRate ?? 200))}
               onCommit={(v) => updateNavConfig({ landDescendRate: fromMs(v) })}
               className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-              min={0.2}
-              max={5}
+              {...lim(INAV_NAV_NUMERIC_SETTINGS.landDescendRate, [0.2, 5])}
               step={0.1}
             />
-            <p className="text-[10px] text-content-tertiary mt-1">Slower = softer landing</p>
+            <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.descentRateHint')}</p>
           </div>
 
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Slowdown Min Alt (m)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.slowdownMinAlt')}</label>
             <DraftNumberInput
               value={Number(toM(navConfig.landSlowdownMinAlt ?? 500))}
               onCommit={(v) => updateNavConfig({ landSlowdownMinAlt: fromM(v) })}
               className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-              min={1}
-              max={50}
+              {...lim(INAV_NAV_NUMERIC_SETTINGS.landSlowdownMinAlt, [1, 50])}
             />
-            <p className="text-[10px] text-content-tertiary mt-1">Start slowing at this alt</p>
+            <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.slowdownMinAltHint')}</p>
           </div>
 
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Emergency Descent (m/s)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.emergencyDescent')}</label>
             <DraftNumberInput
               value={Number(toMs(navConfig.emergencyDescentRate ?? 500))}
               onCommit={(v) => updateNavConfig({ emergencyDescentRate: fromMs(v) })}
               className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-              min={1}
-              max={10}
+              {...lim(INAV_NAV_NUMERIC_SETTINGS.emergencyDescentRate, [1, 10])}
               step={0.5}
             />
-            <p className="text-[10px] text-content-tertiary mt-1">GPS loss descent rate</p>
+            <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.emergencyDescentHint')}</p>
           </div>
         </div>
       </div>
@@ -432,35 +424,22 @@ export default function NavigationTab({ modified, setModified }: Props) {
             <MapPin className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Waypoint Navigation</h3>
-            <p className="text-xs text-content-secondary">Settings for mission waypoints</p>
+            <h3 className="text-sm font-medium text-content">{t('parameters:navigationTab.wpTitle')}</h3>
+            <p className="text-xs text-content-secondary">{t('parameters:navigationTab.wpDesc')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Waypoint Radius (m)</label>
+            <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.wpRadius')}</label>
             <DraftNumberInput
               value={Number(toM(navConfig.waypointRadius ?? 100))}
               onCommit={(v) => updateNavConfig({ waypointRadius: fromM(v) })}
               className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-              min={0.5}
-              max={20}
+              {...lim(INAV_NAV_NUMERIC_SETTINGS.waypointRadius, [0.5, 20])}
               step={0.5}
             />
-            <p className="text-[10px] text-content-tertiary mt-1">Waypoint considered reached within this radius</p>
-          </div>
-
-          <div>
-            <label className="text-xs text-content-secondary block mb-1.5">Safe Altitude (m)</label>
-            <DraftNumberInput
-              value={Number(toM(navConfig.waypointSafeAlt ?? 2000))}
-              onCommit={(v) => updateNavConfig({ waypointSafeAlt: fromM(v) })}
-              className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-              min={5}
-              max={200}
-            />
-            <p className="text-[10px] text-content-tertiary mt-1">Minimum safe altitude for missions</p>
+            <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.wpRadiusHint')}</p>
           </div>
         </div>
 
@@ -468,33 +447,32 @@ export default function NavigationTab({ modified, setModified }: Props) {
         {wpSettingsSupported && (
           <>
             <div className="border-t border-subtle pt-4 mt-4">
-              <p className="text-xs text-content-secondary mb-3">Advanced Mission Settings</p>
+              <p className="text-xs text-content-secondary mb-3">{t('parameters:navigationTab.advancedMission')}</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1.5">Max Safe Distance (m)</label>
+                  <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.maxSafeDistance')}</label>
                   <DraftNumberInput
                     value={wpSettings.nav_wp_max_safe_distance}
                     onCommit={(v) => updateWpSettings({ nav_wp_max_safe_distance: v })}
                     className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
-                    min={0}
-                    max={1500}
+                    {...lim('nav_wp_max_safe_distance', [0, 1500], 1)}
                     step={10}
                   />
-                  <p className="text-[10px] text-content-tertiary mt-1">Max distance from home (0 = disabled)</p>
+                  <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.maxSafeDistanceHint')}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs text-content-secondary block mb-1.5">Mission Restart Mode</label>
+                  <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.missionRestart')}</label>
                   <select
                     value={wpSettings.nav_wp_mission_restart}
                     onChange={(e) => updateWpSettings({ nav_wp_mission_restart: e.target.value })}
                     className="w-full px-3 py-2 bg-surface-raised border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
                   >
-                    <option value="START">Start from beginning</option>
-                    <option value="RESUME">Resume from last WP</option>
-                    <option value="SWITCH">Switch to next mission</option>
+                    <option value="START">{t('parameters:navigationTab.restartStart')}</option>
+                    <option value="RESUME">{t('parameters:navigationTab.restartResume')}</option>
+                    <option value="SWITCH">{t('parameters:navigationTab.restartSwitch')}</option>
                   </select>
-                  <p className="text-[10px] text-content-tertiary mt-1">What happens after RTH</p>
+                  <p className="text-[10px] text-content-tertiary mt-1">{t('parameters:navigationTab.missionRestartHint')}</p>
                 </div>
               </div>
             </div>
@@ -507,7 +485,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
                   onChange={(e) => updateWpSettings({ nav_wp_load_on_boot: e.target.checked ? 'ON' : 'OFF' })}
                   className="w-4 h-4 rounded border bg-surface-raised text-purple-500"
                 />
-                <span className="text-sm text-content-secondary">Load mission on boot</span>
+                <span className="text-sm text-content-secondary">{t('parameters:navigationTab.loadOnBoot')}</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -517,7 +495,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
                   onChange={(e) => updateWpSettings({ nav_mc_wp_slowdown: e.target.checked ? 'ON' : 'OFF' })}
                   className="w-4 h-4 rounded border bg-surface-raised text-purple-500"
                 />
-                <span className="text-sm text-content-secondary">Slowdown at waypoints (MC)</span>
+                <span className="text-sm text-content-secondary">{t('parameters:navigationTab.mcSlowdown')}</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -526,11 +504,11 @@ export default function NavigationTab({ modified, setModified }: Props) {
                   onChange={(e) => updateWpSettings({ nav_fw_wp_turn_smoothing: e.target.value })}
                   className="px-2 py-1 bg-surface-raised border rounded text-sm text-content focus:outline-none focus:border-blue-500"
                 >
-                  <option value="OFF">Off</option>
-                  <option value="ON">On</option>
-                  <option value="ON-CUT">On + Cut throttle</option>
+                  <option value="OFF">{t('common:off')}</option>
+                  <option value="ON">{t('common:on')}</option>
+                  <option value="ON-CUT">{t('parameters:navigationTab.turnCut')}</option>
                 </select>
-                <span className="text-sm text-content-secondary">Turn smoothing (FW)</span>
+                <span className="text-sm text-content-secondary">{t('parameters:navigationTab.turnSmoothing')}</span>
               </label>
             </div>
           </>
@@ -545,14 +523,14 @@ export default function NavigationTab({ modified, setModified }: Props) {
               <Satellite className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-content">GPS Configuration</h3>
-              <p className="text-xs text-content-secondary">GPS module settings</p>
+              <h3 className="text-sm font-medium text-content">{t('parameters:navigationTab.gpsTitle')}</h3>
+              <p className="text-xs text-content-secondary">{t('parameters:navigationTab.gpsDesc')}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">GPS Provider</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.gpsProvider')}</label>
               <select
                 value={gpsConfig.provider}
                 onChange={(e) => updateGpsConfig({ provider: Number(e.target.value) })}
@@ -560,14 +538,14 @@ export default function NavigationTab({ modified, setModified }: Props) {
               >
                 {Object.entries(GPS_PROVIDER_NAMES).map(([val, name]) => (
                   <option key={val} value={val}>
-                    {name}
+                    {name.startsWith('parameters:') ? t(name) : name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="text-xs text-content-secondary block mb-1.5">SBAS Mode</label>
+              <label className="text-xs text-content-secondary block mb-1.5">{t('parameters:navigationTab.sbasMode')}</label>
               <select
                 value={gpsConfig.sbasMode}
                 onChange={(e) => updateGpsConfig({ sbasMode: Number(e.target.value) })}
@@ -575,7 +553,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
               >
                 {Object.entries(GPS_SBAS_NAMES).map(([val, name]) => (
                   <option key={val} value={val}>
-                    {name}
+                    {t(name)}
                   </option>
                 ))}
               </select>
@@ -590,7 +568,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
                 onChange={(e) => updateGpsConfig({ autoConfig: e.target.checked })}
                 className="w-4 h-4 rounded border bg-surface-raised text-blue-500"
               />
-              <span className="text-sm text-content-secondary">Auto-configure GPS</span>
+              <span className="text-sm text-content-secondary">{t('parameters:navigationTab.gpsAutoConfig')}</span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer">
@@ -600,7 +578,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
                 onChange={(e) => updateGpsConfig({ autoBaud: e.target.checked })}
                 className="w-4 h-4 rounded border bg-surface-raised text-blue-500"
               />
-              <span className="text-sm text-content-secondary">Auto-detect baud rate</span>
+              <span className="text-sm text-content-secondary">{t('parameters:navigationTab.gpsAutoBaud')}</span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer">
@@ -610,17 +588,7 @@ export default function NavigationTab({ modified, setModified }: Props) {
                 onChange={(e) => updateGpsConfig({ ubloxUseGalileo: e.target.checked })}
                 className="w-4 h-4 rounded border bg-surface-raised text-blue-500"
               />
-              <span className="text-sm text-content-secondary">Enable Galileo (u-blox)</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={gpsConfig.homePointOnce}
-                onChange={(e) => updateGpsConfig({ homePointOnce: e.target.checked })}
-                className="w-4 h-4 rounded border bg-surface-raised text-blue-500"
-              />
-              <span className="text-sm text-content-secondary">Set home once (don't update)</span>
+              <span className="text-sm text-content-secondary">{t('parameters:navigationTab.gpsGalileo')}</span>
             </label>
           </div>
         </div>
@@ -630,12 +598,12 @@ export default function NavigationTab({ modified, setModified }: Props) {
       <div className="bg-amber-500/10 rounded-xl border-amber-500/30 p-4 flex items-start gap-4">
         <AlertTriangle className="w-6 h-6 text-amber-400" />
         <div>
-          <p className="text-amber-400 font-medium">Important Safety Notes</p>
+          <p className="text-amber-400 font-medium">{t('parameters:navigationTab.safetyTitle')}</p>
           <ul className="text-sm text-content-secondary mt-1 space-y-1 list-disc list-inside">
-            <li>Always test RTH in an open area before relying on it</li>
-            <li>Ensure RTH altitude is above all obstacles in your flying area</li>
-            <li>Check GPS satellite count (8+) before autonomous flight</li>
-            <li>Configure failsafe to RTH for added safety</li>
+            <li>{t('parameters:navigationTab.safety1')}</li>
+            <li>{t('parameters:navigationTab.safety2')}</li>
+            <li>{t('parameters:navigationTab.safety3')}</li>
+            <li>{t('parameters:navigationTab.safety4')}</li>
           </ul>
         </div>
       </div>
@@ -643,21 +611,10 @@ export default function NavigationTab({ modified, setModified }: Props) {
       {/* Action buttons */}
       <div className="flex justify-end gap-3">
         <button
-          onClick={loadConfig}
+          onClick={refresh}
           className="px-4 py-2 text-sm bg-surface-raised text-content rounded-lg hover:bg-surface-raised"
         >
-          Refresh
-        </button>
-        <button
-          onClick={saveAll}
-          disabled={!modified}
-          className={`px-4 py-2 text-sm rounded-lg ${
-            modified
-              ? 'bg-blue-500 text-white hover:bg-blue-400'
-              : 'bg-surface-raised text-content-secondary cursor-not-allowed'
-          }`}
-        >
-          Save Navigation Config
+          {dirty ? t('parameters:navigationTab.discardChanges') : t('common:refresh')}
         </button>
       </div>
     </div>

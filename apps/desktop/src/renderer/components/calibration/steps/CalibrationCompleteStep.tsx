@@ -6,10 +6,11 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCalibrationStore } from '../../../stores/calibration-store';
 import { assessAccelCalibration, assessCompassFitness, type CalibrationVerdict } from '../../../../shared/calibration-quality';
 import { useConnectionStore } from '../../../stores/connection-store';
-import { CALIBRATION_TYPES, type CalibrationVerification } from '../../../../shared/calibration-types';
+import { CALIBRATION_TYPES, calibrationTypeName, type CalibrationVerification } from '../../../../shared/calibration-types';
 import { boardSupportsPersistentParamSave } from '../../../../shared/board-mappings';
 import { CalibrationResultCard } from '../shared/CalibrationResultCard';
 import { CompassFitPanel } from '../shared/CompassFitPanel';
@@ -24,16 +25,17 @@ function rotationName(o: number | null): string {
 }
 /** Verdict styling. The judgement itself lives in shared/calibration-quality
  *  so the wizard, the stored record and the preflight card cannot disagree. */
-const VERDICT_STYLE: Record<CalibrationVerdict, { label: string; cls: string }> = {
-  good: { label: 'Good', cls: 'text-green-400 bg-green-500/15 border-green-500/30' },
-  marginal: { label: 'Marginal', cls: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-  bad: { label: 'Poor', cls: 'text-red-400 bg-red-500/15 border-red-500/30' },
-  unknown: { label: 'Unknown', cls: 'text-content-secondary bg-surface-raised border-subtle' },
+const VERDICT_STYLE: Record<CalibrationVerdict, { labelKey: string; cls: string }> = {
+  good: { labelKey: 'calibration:calibrationCompleteStep.verdictGood', cls: 'text-green-400 bg-green-500/15 border-green-500/30' },
+  marginal: { labelKey: 'calibration:calibrationCompleteStep.verdictMarginal', cls: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
+  bad: { labelKey: 'calibration:calibrationCompleteStep.verdictPoor', cls: 'text-red-400 bg-red-500/15 border-red-500/30' },
+  unknown: { labelKey: 'common:unknown', cls: 'text-content-secondary bg-surface-raised border-subtle' },
 };
 
 const VERDICT_ORDER: Record<CalibrationVerdict, number> = { good: 0, unknown: 1, marginal: 2, bad: 3 };
 
 export function CalibrationCompleteStep() {
+  const { t } = useTranslation();
   const {
     calibrationType,
     calibrationSuccess,
@@ -66,7 +68,7 @@ export function CalibrationCompleteStep() {
   const showPersistentSave = isMavlink ? boardSupportsPersistentParamSave(boardId) : true;
 
   const calTypeInfo = calibrationType
-    ? CALIBRATION_TYPES.find((t) => t.id === calibrationType)
+    ? CALIBRATION_TYPES.find((c) => c.id === calibrationType)
     : null;
 
   const handleRecalibrate = () => {
@@ -87,14 +89,14 @@ export function CalibrationCompleteStep() {
     try {
       const ok = await window.electronAPI?.mavlinkReboot();
       if (!ok) {
-        setRebootError('Reboot command failed, reboot from the connection panel instead.');
+        setRebootError(t('calibration:calibrationCompleteStep.rebootFailed'));
         setIsRebooting(false);
         return;
       }
       // Reboot + reconnect runs in the background; leave the wizard.
       setStep('select');
     } catch (err) {
-      setRebootError(err instanceof Error ? err.message : 'Unknown error');
+      setRebootError(err instanceof Error ? err.message : t('common:unknownError'));
       setIsRebooting(false);
     }
   };
@@ -183,18 +185,18 @@ export function CalibrationCompleteStep() {
             : showSuccess ? 'text-green-400' : showUnconfirmed ? 'text-amber-400' : 'text-red-400'
         }`}>
           {isVerifying
-            ? 'Verifying Calibration…'
-            : showSuccess ? 'Calibration Complete!' : showUnconfirmed ? 'Completed, Not Confirmed' : 'Calibration Failed'}
+            ? t('calibration:calibrationCompleteStep.verifyingTitle')
+            : showSuccess ? t('calibration:calibrationCompleteStep.successTitle') : showUnconfirmed ? t('calibration:calibrationCompleteStep.unconfirmedTitle') : t('calibration:calibrationCompleteStep.failedTitle')}
         </h3>
 
         <p className="text-content-secondary">
           {isVerifying
-            ? 'Reading parameters back from the flight controller to confirm the calibration was applied.'
+            ? t('calibration:calibrationCompleteStep.verifyingBody')
             : showSuccess
-              ? `${calTypeInfo?.name} calibration was successful.`
+              ? t('calibration:calibrationCompleteStep.successBody', { name: calTypeInfo ? calibrationTypeName(calTypeInfo) : undefined })
               : showUnconfirmed
-                ? 'The flight controller never confirmed this calibration and the parameter check could not settle it. Verify the calibration parameters changed before flying, or run it again.'
-                : error || 'An error occurred during calibration. Please try again.'}
+                ? t('calibration:calibrationCompleteStep.unconfirmedBody')
+                : error || t('calibration:calibrationCompleteStep.failedBody')}
         </p>
       </div>
 
@@ -204,7 +206,7 @@ export function CalibrationCompleteStep() {
       {showSuccess && calibrationData && (
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-content uppercase tracking-wide">
-            Calibration Results
+            {t('calibration:calibrationCompleteStep.results')}
           </h4>
 
           <CalibrationResultCard data={calibrationData} type={calibrationType!} />
@@ -223,11 +225,11 @@ export function CalibrationCompleteStep() {
           reported success. */}
       {showSuccess && calibrationType === 'accel-6point' && accelAssessment && accelAssessment.verdict !== 'unknown' ? (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-content uppercase tracking-wide">Accelerometer Fit</h4>
+          <h4 className="text-sm font-medium text-content uppercase tracking-wide">{t('calibration:calibrationCompleteStep.accelFit')}</h4>
           <div className="flex items-center justify-between bg-surface rounded-lg border border-subtle p-3">
             <div className="text-sm text-content">{accelAssessment.summary}</div>
             <span className={`px-2 py-0.5 rounded-full border text-[11px] font-medium ${VERDICT_STYLE[accelAssessment.verdict].cls}`}>
-              {VERDICT_STYLE[accelAssessment.verdict].label}
+              {t(VERDICT_STYLE[accelAssessment.verdict].labelKey)}
             </span>
           </div>
           {accelAssessment.advice && (
@@ -242,9 +244,9 @@ export function CalibrationCompleteStep() {
           the EKF reports yaw inconsistent until the FC restarts. */}
       {showSuccess && calibrationRebootRequired && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-content mb-1">Reboot required</h4>
+          <h4 className="text-sm font-medium text-content mb-1">{t('calibration:calibrationCompleteStep.rebootRequired')}</h4>
           <p className="text-xs text-content-secondary mb-3">
-            The new compass offsets only take effect after the flight controller reboots. Until then the EKF will report yaw inconsistent and arming will be blocked.
+            {t('calibration:calibrationCompleteStep.rebootRequiredBody')}
           </p>
           {rebootError && <p className="text-xs text-red-400 mb-2">{rebootError}</p>}
           <button
@@ -252,7 +254,7 @@ export function CalibrationCompleteStep() {
             disabled={isRebooting}
             className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-amber-400 text-sm font-medium transition-colors"
           >
-            {isRebooting ? 'Rebooting…' : 'Reboot Now'}
+            {isRebooting ? t('calibration:loadCalibrationFromFileDialog.rebooting') : t('common:rebootNow')}
           </button>
         </div>
       )}
@@ -291,7 +293,7 @@ export function CalibrationCompleteStep() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Calibrations
+            {t('calibration:calibrationCompleteStep.backToCalibrations')}
           </button>
         ) : (
           <button
@@ -301,7 +303,7 @@ export function CalibrationCompleteStep() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Cancel
+            {t('common:cancel')}
           </button>
         )}
 
@@ -314,7 +316,7 @@ export function CalibrationCompleteStep() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Try Again
+              {t('calibration:calibrationCompleteStep.tryAgain')}
             </button>
           )}
 
@@ -331,14 +333,14 @@ export function CalibrationCompleteStep() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Saving...
+                  {t('common:saving')}
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                   </svg>
-                  Save to FC
+                  {t('calibration:calibrationCompleteStep.saveToFc')}
                 </>
               )}
             </button>
@@ -349,7 +351,7 @@ export function CalibrationCompleteStep() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Saved successfully
+              {t('calibration:calibrationCompleteStep.savedSuccessfully')}
             </div>
           )}
         </div>
@@ -371,12 +373,12 @@ export function CalibrationCompleteStep() {
             </div>
             <div className="flex-1">
               <h4 className="text-sm font-medium text-content mb-1">
-                {isMavlink ? 'Save Calibration to Flash' : 'Save to Persistent Storage'}
+                {isMavlink ? t('calibration:calibrationCompleteStep.saveToFlash') : t('calibration:calibrationCompleteStep.saveToPersistent')}
               </h4>
               <p className="text-xs text-content-secondary mb-3">
                 {isMavlink
-                  ? 'Calibration is already applied. Write parameters to the FC\u2019s parameter storage so they persist across reboots.'
-                  : 'Save calibration data to the bootloader partition. This data will survive firmware updates.'}
+                  ? t('calibration:calibrationCompleteStep.saveToFlashBody')
+                  : t('calibration:calibrationCompleteStep.saveToPersistentBody')}
               </p>
 
               {savePersistentError && (
@@ -395,14 +397,14 @@ export function CalibrationCompleteStep() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Saving...
+                      {t('common:saving')}
                     </>
                   ) : (
                     <>
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
                       </svg>
-                      {isMavlink ? 'Save Calibration to Flash' : 'Save to Persistent Storage'}
+                      {isMavlink ? t('calibration:calibrationCompleteStep.saveToFlash') : t('calibration:calibrationCompleteStep.saveToPersistent')}
                     </>
                   )}
                 </button>
@@ -412,7 +414,7 @@ export function CalibrationCompleteStep() {
                   disabled={isSavingPersistent}
                   className="text-xs text-content-secondary hover:text-content-secondary transition-colors"
                 >
-                  Skip
+                  {t('common:skip')}
                 </button>
               </div>
             </div>
@@ -427,8 +429,8 @@ export function CalibrationCompleteStep() {
           </svg>
           <p className="text-sm text-green-400">
             {isMavlink
-              ? 'Calibration saved to flight controller storage.'
-              : 'Calibration saved to persistent storage. Data will survive firmware updates.'}
+              ? t('calibration:calibrationCompleteStep.savedToFcStorage')
+              : t('calibration:calibrationCompleteStep.savedToPersistent')}
           </p>
         </div>
       )}
@@ -437,27 +439,27 @@ export function CalibrationCompleteStep() {
           stay hidden during the verification window. */}
       {showSuccess && !saveSuccess && !isMavlink && (
         <p className="text-center text-xs text-content-secondary">
-          Calibration data has been applied. Click "Save to FC" to persist changes to flash memory.
+          {t('calibration:calibrationCompleteStep.noteMsp')}
         </p>
       )}
       {showSuccess && isMavlink && showPersistentSave && !savePersistentSuccess && (
         <p className="text-center text-xs text-content-secondary">
-          The flight controller already applied the calibration. Use "Save Calibration to Flash" so it persists across reboots.
+          {t('calibration:calibrationCompleteStep.noteMavlinkFlash')}
         </p>
       )}
       {showSuccess && isMavlink && !showPersistentSave && (
         <p className="text-center text-xs text-content-secondary">
-          The flight controller has applied and saved the calibration.
+          {t('calibration:calibrationCompleteStep.noteMavlinkSaved')}
         </p>
       )}
       {saveSuccess && !isMavlink && !savePersistentSuccess && (
         <p className="text-center text-xs text-green-600">
-          Calibration saved to flash memory. You can also save to persistent storage above to survive firmware updates.
+          {t('calibration:calibrationCompleteStep.noteSavedFlash')}
         </p>
       )}
       {savePersistentSuccess && (
         <p className="text-center text-xs text-green-600">
-          All saved. Returning to calibration menu...
+          {t('calibration:calibrationCompleteStep.noteAllSaved')}
         </p>
       )}
     </div>
@@ -469,6 +471,7 @@ export function CalibrationCompleteStep() {
 // =============================================================================
 
 function CalibrationVerificationCard({ verification }: { verification: CalibrationVerification }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   if (verification.status === 'pending') {
@@ -478,7 +481,7 @@ function CalibrationVerificationCard({ verification }: { verification: Calibrati
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
-        <p className="text-sm text-content-secondary">Verifying calibration parameters on flight controller…</p>
+        <p className="text-sm text-content-secondary">{t('calibration:calibrationCompleteStep.verifyingParams')}</p>
       </div>
     );
   }
@@ -491,8 +494,8 @@ function CalibrationVerificationCard({ verification }: { verification: Calibrati
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <p className="text-sm font-medium text-amber-400 mb-1">Could not verify calibration</p>
-            <p className="text-xs text-amber-600">{verification.error ?? 'Parameter readback failed.'} The flight controller still reported success, but ArduDeck could not confirm the new values were written.</p>
+            <p className="text-sm font-medium text-amber-400 mb-1">{t('calibration:calibrationCompleteStep.couldNotVerify')}</p>
+            <p className="text-xs text-amber-600">{t('calibration:calibrationCompleteStep.couldNotVerifyBody', { error: verification.error ?? t('calibration:calibrationCompleteStep.readbackFailed') })}</p>
           </div>
         </div>
       </div>
@@ -520,13 +523,13 @@ function CalibrationVerificationCard({ verification }: { verification: Calibrati
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-medium ${palette.text} mb-1`}>
             {isUnchanged
-              ? 'Calibration may not have applied'
-              : `Calibration verified - ${changedCount} of ${totalCount} parameter${totalCount === 1 ? '' : 's'} updated`}
+              ? t('calibration:calibrationCompleteStep.mayNotHaveApplied')
+              : t('calibration:calibrationCompleteStep.verifiedCount', { changed: changedCount, count: totalCount })}
           </p>
           <p className={`text-xs ${palette.sub}`}>
             {isUnchanged
-              ? 'The flight controller reported success but the tracked parameters did not change. This usually means the calibration silently failed - try again, and if the values still do not move, check the FC logs.'
-              : 'ArduDeck re-read the relevant parameters from the flight controller and confirmed they changed.'}
+              ? t('calibration:calibrationCompleteStep.unchangedBody')
+              : t('calibration:calibrationCompleteStep.verifiedBody')}
           </p>
 
           <button
@@ -536,7 +539,7 @@ function CalibrationVerificationCard({ verification }: { verification: Calibrati
             <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            {expanded ? 'Hide' : 'Show'} parameter values
+            {expanded ? t('calibration:calibrationCompleteStep.hideValues') : t('calibration:calibrationCompleteStep.showValues')}
           </button>
 
           {expanded && (
@@ -544,10 +547,10 @@ function CalibrationVerificationCard({ verification }: { verification: Calibrati
               <table className="w-full text-xs">
                 <thead className="bg-surface">
                   <tr className="text-left text-content-secondary">
-                    <th className="px-3 py-2 font-medium">Parameter</th>
-                    <th className="px-3 py-2 font-medium text-right">Before</th>
-                    <th className="px-3 py-2 font-medium text-right">After</th>
-                    <th className="px-3 py-2 font-medium text-right">Delta</th>
+                    <th className="px-3 py-2 font-medium">{t('common:parameter')}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t('calibration:calibrationCompleteStep.colBefore')}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t('calibration:calibrationCompleteStep.colAfter')}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t('calibration:calibrationCompleteStep.colDelta')}</th>
                   </tr>
                 </thead>
                 <tbody>

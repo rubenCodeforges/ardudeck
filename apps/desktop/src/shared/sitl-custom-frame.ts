@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * SITL Custom Frame
  *
@@ -114,7 +116,7 @@ export interface SitlCustomFrameRecord extends SitlCustomFrameMeta {
  */
 export const SITL_FRAME_TEMPLATES: Record<string, { name: string; frame: SitlCustomFrame }> = {
   small_quad: {
-    name: 'Small Quad (default)',
+    name: 'Small Quad (default)', // i18n-exempt
     frame: {
       mass: 1.5,
       diagonal_size: 0.4,
@@ -141,7 +143,7 @@ export const SITL_FRAME_TEMPLATES: Record<string, { name: string; frame: SitlCus
     },
   },
   hexa: {
-    name: 'Hexa (medium cinema)',
+    name: 'Hexa (medium cinema)', // i18n-exempt
     frame: {
       mass: 4.5,
       diagonal_size: 0.65,
@@ -168,7 +170,7 @@ export const SITL_FRAME_TEMPLATES: Record<string, { name: string; frame: SitlCus
     },
   },
   heavy_octa: {
-    name: 'Heavy-lift Octa (Callisto class)',
+    name: 'Heavy-lift Octa (Callisto class)', // i18n-exempt
     frame: {
       mass: 32.5,
       diagonal_size: 1.325,
@@ -210,7 +212,7 @@ export const SITL_FRAME_TEMPLATES: Record<string, { name: string; frame: SitlCus
     },
   },
   heavy_industrial_14s: {
-    name: 'Heavy Industrial Octa 14S',
+    name: 'Heavy Industrial Octa 14S', // i18n-exempt
     frame: {
       mass: 60,
       diagonal_size: 1.6,
@@ -264,6 +266,10 @@ export function frameTypeForMotors(numMotors: number): string {
   }
 }
 
+export function sitlFrameTemplateName(templateKey: string): string {
+  return t(`shared:sitlCustomFrame.template.${templateKey}`, { defaultValue: SITL_FRAME_TEMPLATES[templateKey]?.name ?? templateKey });
+}
+
 /**
  * Validate a parsed JSON object against the SitlCustomFrame shape. Returns
  * the typed frame on success, or a list of error strings.
@@ -271,7 +277,7 @@ export function frameTypeForMotors(numMotors: number): string {
 export function validateFrame(obj: unknown): { ok: true; frame: SitlCustomFrame } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!obj || typeof obj !== 'object') {
-    return { ok: false, errors: ['Not a JSON object'] };
+    return { ok: false, errors: [t('shared:sitlCustomFrame.notJsonObject')] };
   }
   const o = obj as Record<string, unknown>;
   const requiredNumeric: (keyof SitlCustomFrame)[] = [
@@ -282,7 +288,7 @@ export function validateFrame(obj: unknown): { ok: true; frame: SitlCustomFrame 
   ];
   for (const key of requiredNumeric) {
     if (typeof o[key] !== 'number' || !Number.isFinite(o[key] as number)) {
-      errors.push(`Missing or non-numeric field: ${key}`);
+      errors.push(t('shared:sitlCustomFrame.missingField', { key }));
     }
   }
   // slungLoad is optional. Absent => valid (unchanged physics). Present => it
@@ -297,7 +303,7 @@ export function validateFrame(obj: unknown): { ok: true; frame: SitlCustomFrame 
 /** Validate an optional slungLoad block, pushing any problems onto `errors`. */
 function validateSlungLoad(value: unknown, errors: string[]): void {
   if (!value || typeof value !== 'object') {
-    errors.push('slungLoad must be an object');
+    errors.push(t('shared:sitlCustomFrame.slungLoadNotObject'));
     return;
   }
   const s = value as Record<string, unknown>;
@@ -306,16 +312,16 @@ function validateSlungLoad(value: unknown, errors: string[]): void {
   ];
   for (const key of requiredNumeric) {
     if (typeof s[key] !== 'number' || !Number.isFinite(s[key] as number)) {
-      errors.push(`slungLoad: missing or non-numeric field: ${key}`);
+      errors.push(t('shared:sitlCustomFrame.slungLoadMissingField', { key }));
     }
   }
   const hp = s.hardpoint;
   if (!Array.isArray(hp) || hp.length !== 3 || hp.some((n) => typeof n !== 'number' || !Number.isFinite(n))) {
-    errors.push('slungLoad: hardpoint must be an array of three numbers');
+    errors.push(t('shared:sitlCustomFrame.slungLoadHardpoint'));
   }
   for (const key of ['winchChannel', 'releaseChannel'] as const) {
     if (s[key] !== undefined && (typeof s[key] !== 'number' || !Number.isInteger(s[key] as number))) {
-      errors.push(`slungLoad: ${key} must be an integer servo channel`);
+      errors.push(t('shared:sitlCustomFrame.slungLoadServoChannel', { key }));
     }
   }
 }

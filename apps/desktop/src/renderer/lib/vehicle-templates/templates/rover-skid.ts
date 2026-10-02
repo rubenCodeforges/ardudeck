@@ -1,5 +1,6 @@
 import { Car } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 /**
@@ -7,8 +8,8 @@ import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '..
  */
 export const roverSkid: VehicleTemplate = {
   slug: 'rover-skid',
-  name: 'Skid-Steer Rover',
-  description: 'Differential drive: tank-style, no steering servo',
+  name: 'Skid-Steer Rover', // i18n-exempt
+  description: 'Differential drive: tank-style, no steering servo', // i18n-exempt
   icon: Car,
   vehicleType: 'rover',
   category: 'rover',
@@ -23,12 +24,12 @@ export const roverSkid: VehicleTemplate = {
     batteryCapacity: 8000,
   },
   toParams: (p) => [
-    { name: 'FRAME_CLASS',     value: 1,  reason: 'Rover frame',     requiresReboot: true },
-    { name: 'FRAME_TYPE',      value: 0,  reason: 'Differential',    requiresReboot: true },
-    { name: 'SERVO1_FUNCTION', value: 73, reason: 'Throttle Left',   requiresReboot: true },
-    { name: 'SERVO3_FUNCTION', value: 74, reason: 'Throttle Right',  requiresReboot: true },
-    { name: 'WP_SPEED',        value: p.maxSpeed ?? 3, reason: `Waypoint speed from maxSpeed` },
-    { name: 'CRUISE_SPEED',    value: (p.maxSpeed ?? 3) * 0.6, reason: `Cruise speed = 60% of max` },
+    { name: 'FRAME_CLASS',     value: 1,  reason: t('lib:vehicleTemplates.reason.roverFrame'),     requiresReboot: true },
+    { name: 'FRAME_TYPE',      value: 0,  reason: t('lib:vehicleTemplates.reason.differential'),    requiresReboot: true },
+    { name: 'SERVO1_FUNCTION', value: 73, reason: t('lib:vehicleTemplates.reason.throttleLeft'),   requiresReboot: true },
+    { name: 'SERVO3_FUNCTION', value: 74, reason: t('lib:vehicleTemplates.reason.throttleRight'),  requiresReboot: true },
+    { name: 'WP_SPEED',        value: p.maxSpeed ?? 3, reason: t('lib:vehicleTemplates.reason.waypointSpeedFromMaxSpeed') },
+    { name: 'CRUISE_SPEED',    value: (p.maxSpeed ?? 3) * 0.6, reason: t('lib:vehicleTemplates.reason.cruiseSpeed60OfMax') },
     ...batteryParams(p),
     ...commonSafetyParams(),
   ],

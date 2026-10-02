@@ -10,15 +10,17 @@
 import luaSource from '../lua-scripts/ardudeck_commands.lua?raw';
 import { buildScriptBundle, type ScriptBundle } from './installer-service';
 import { USER_CMD, SUB_CMD, type ScriptManifest } from '../../shared/script-installer-types';
+import { i18n, t } from '../../shared/i18n/index.js';
 
 const FILENAME = 'ardudeck_commands.lua';
 const VERSION = '1.0.0';
 
 let cached: ScriptBundle | null = null;
+let cachedLanguage: string | null = null;
 
 /** Build the script bundle from the inlined source. Cached after first call. */
 export function getScriptBundle(): ScriptBundle {
-  if (cached) return cached;
+  if (cached && cachedLanguage === i18n.language) return cached;
 
   // Manifest mirrors what's documented in the .lua header. Keep these in sync
   // when bumping the script version.
@@ -28,13 +30,13 @@ export function getScriptBundle(): ScriptBundle {
     requirements: [
       {
         param: 'SCR_ENABLE',
-        why: 'Lua scripting must be enabled on the autopilot.',
+        why: t('main:scriptBundle.scrEnableWhy'),
         exact: 1,
         rebootIfChanged: true,
       },
       {
         param: 'SCR_HEAP_SIZE',
-        why: 'Scripts need at least 64 KiB of heap.',
+        why: t('main:scriptBundle.heapWhy'),
         min: 65536,
         rebootIfChanged: true,
       },
@@ -42,9 +44,8 @@ export function getScriptBundle(): ScriptBundle {
     commands: [
       {
         name: 'ORBIT',
-        label: 'Orbit',
-        description:
-          'Orbits a target lat/lon at a chosen radius and altitude in GUIDED mode. Anchored to live telemetry, so link drops do not desync the orbit. Optional revolutions count: 0 = indefinite, N = stop and hover after N full circles.',
+        label: t('main:scriptBundle.orbitLabel'),
+        description: t('main:scriptBundle.orbitDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.ORBIT,
         paramSchema:
@@ -52,9 +53,8 @@ export function getScriptBundle(): ScriptBundle {
       },
       {
         name: 'SPIRAL',
-        label: 'Spiral',
-        description:
-          'Orbits a target lat/lon while continuously climbing or descending toward a target altitude at a chosen rate. Once the target altitude is reached, holds the orbit indefinitely. Useful for clearing obstacles before RTL or controlled descent into landing zones.',
+        label: t('main:scriptBundle.spiralLabel'),
+        description: t('main:scriptBundle.spiralDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.SPIRAL,
         paramSchema:
@@ -62,9 +62,8 @@ export function getScriptBundle(): ScriptBundle {
       },
       {
         name: 'WATCHTOWER',
-        label: 'Watchtower',
-        description:
-          'Hovers at a clicked point and slowly rotates yaw for a panoramic survey. Useful for "what is around me?" site checks or quick 360° captures.',
+        label: t('main:scriptBundle.watchtowerLabel'),
+        description: t('main:scriptBundle.watchtowerDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.WATCHTOWER,
         paramSchema:
@@ -72,9 +71,8 @@ export function getScriptBundle(): ScriptBundle {
       },
       {
         name: 'CLIMB_RTL',
-        label: 'Climb + RTL',
-        description:
-          'Climbs the vehicle in place to a safe altitude before the FC switches to RTL for the actual return. Solves the "RTL into a tree" problem when current altitude is below RTL_ALT or the home path is blocked.',
+        label: t('main:scriptBundle.climbRtlLabel'),
+        description: t('main:scriptBundle.climbRtlDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.CLIMB_RTL,
         paramSchema:
@@ -82,9 +80,8 @@ export function getScriptBundle(): ScriptBundle {
       },
       {
         name: 'REVEAL',
-        label: 'Reveal',
-        description:
-          'Cinematic pull-back: vehicle retreats from its current position along the away-from-target bearing while climbing, yaw locked to the clicked target throughout. The "castle reveal" shot.',
+        label: t('main:scriptBundle.revealLabel'),
+        description: t('main:scriptBundle.revealDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.REVEAL,
         paramSchema:
@@ -92,9 +89,8 @@ export function getScriptBundle(): ScriptBundle {
       },
       {
         name: 'STRAFE',
-        label: 'Strafe',
-        description:
-          'Cinematic dolly pass: vehicle flies along an axis perpendicular to the target-to-vehicle bearing at a chosen offset, yaw locked to the clicked target. Picks the side of the target the vehicle is already on so the approach is short.',
+        label: t('main:scriptBundle.strafeLabel'),
+        description: t('main:scriptBundle.strafeDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.STRAFE,
         paramSchema:
@@ -102,9 +98,8 @@ export function getScriptBundle(): ScriptBundle {
       },
       {
         name: 'LAND_AT',
-        label: 'Land at point',
-        description:
-          'Flies to the clicked lat/lon at the vehicle\'s current altitude, then switches to LAND mode. Solves the "ArduCopter NAV_LAND ignores lat/lon and just descends in place" problem by repositioning first.',
+        label: t('main:scriptBundle.landAtLabel'),
+        description: t('main:scriptBundle.landAtDescription'),
         trigger: USER_CMD.AD,
         subId: SUB_CMD.LAND_AT,
         paramSchema:
@@ -115,5 +110,6 @@ export function getScriptBundle(): ScriptBundle {
   };
 
   cached = buildScriptBundle(luaSource, partialManifest);
+  cachedLanguage = i18n.language;
   return cached;
 }

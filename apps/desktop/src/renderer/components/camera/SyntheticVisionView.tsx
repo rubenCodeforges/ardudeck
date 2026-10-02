@@ -42,6 +42,7 @@ import {
   pushSample,
   type Sample,
 } from './svt/svt-pose-buffer';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Module-level cache of the last loaded terrain grid per vehicle. Grids are plain
@@ -171,6 +172,7 @@ function predictAtt(sample: Sample<AttSample>, now: number): AttSample {
 }
 
 export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, streamSlot }: SyntheticVisionViewProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<SvtScene | null>(null);
@@ -591,7 +593,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
       ref={containerRef}
       className="relative h-full w-full overflow-hidden bg-black"
       onClick={onActivate}
-      title={onActivate ? 'Click to make active' : undefined}
+      title={onActivate ? t('camera:view.clickToActivate') : undefined}
     >
       <canvas ref={canvasRef} className="block h-full w-full" />
       {streamSlot?.({ canvasRef, containerRef })}
@@ -600,9 +602,9 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
 
       {!position && (
         <Center>
-          <div className="text-sm text-amber-300">No position fix</div>
+          <div className="text-sm text-amber-300">{t('camera:svt.noFix')}</div>
           <div className="max-w-[80%] text-[11px] text-white/60">
-            Synthetic vision needs a GPS fix from {vehicle?.label ?? 'the vehicle'}.
+            {t('camera:svt.needsFix', { vehicle: vehicle?.label ?? t('camera:svt.theVehicle') })}
           </div>
         </Center>
       )}
@@ -614,6 +616,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
             (clearanceM <= 0 ? 'bg-red-600/90 text-white' : 'bg-amber-500/90 text-black')
           }
         >
+          {/* i18n-exempt: GPWS-style callout */}
           {clearanceM <= 0 ? 'TERRAIN' : `TERRAIN ${Math.round(clearanceM)} m`}
         </div>
       )}
@@ -621,12 +624,12 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
       {position && terrainStatus === 'loading' && (
         <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded bg-black/55 px-2 py-1 text-[11px] text-white/80">
           <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white/90" />
-          Loading terrain…
+          {t('camera:svt.loadingTerrain')}
         </div>
       )}
       {position && terrainStatus === 'error' && (
         <div className="absolute bottom-2 left-2 rounded bg-black/55 px-2 py-1 text-[11px] text-amber-300">
-          Terrain data unavailable, check the internet connection.
+          {t('camera:svt.terrainUnavailable')}
         </div>
       )}
     </div>

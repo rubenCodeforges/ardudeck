@@ -12,6 +12,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Move, Lightbulb, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { useConnectionStore } from '../../../stores/connection-store';
@@ -24,6 +25,7 @@ const PWM_MIN = 800;
 const PWM_MAX = 2200;
 
 const ServoOutputTab: React.FC = () => {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const getParameterMetadata = useParameterStore((s) => s.getParameterMetadata);
   const paramsLoaded = useParameterStore((s) => s.downloadState === 'complete');
@@ -51,9 +53,9 @@ const ServoOutputTab: React.FC = () => {
       .map(([fn, channels]) => ({
         fn,
         channels,
-        label: (getParameterMetadata('SERVO1_FUNCTION')?.values?.[fn]) ?? `Function ${fn}`,
+        label: (getParameterMetadata('SERVO1_FUNCTION')?.values?.[fn]) ?? t('mavlink-config:outputCards.functionFallback', { fn }),
       }));
-  }, [parameters, getParameterMetadata]);
+  }, [parameters, getParameterMetadata, t]);
 
   // 32 channels if SERVO_32_ENABLE param is present and truthy, else 16.
   const channelCount = useMemo(() => {
@@ -92,8 +94,8 @@ const ServoOutputTab: React.FC = () => {
             <Lightbulb className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
-            <p className="text-sm text-amber-400/80">Connect to a flight controller to edit servo outputs.</p>
+            <p className="text-amber-300 font-medium">{t('mavlink-config:servoOutputTab.paramsNotLoaded')}</p>
+            <p className="text-sm text-amber-400/80">{t('mavlink-config:servoOutputTab.connectToEdit')}</p>
           </div>
         </div>
       )}
@@ -104,18 +106,17 @@ const ServoOutputTab: React.FC = () => {
             <AlertTriangle className="mt-0.5 w-5 h-5 shrink-0 text-amber-400" />
             <div className="text-sm">
               <p className="font-medium text-amber-300">
-                More than one output is doing the same job
+                {t('mavlink-config:servoOutputTab.duplicateTitle')}
               </p>
               <ul className="mt-1 space-y-0.5 text-xs text-amber-200/90">
                 {duplicateFunctions.map((d) => (
                   <li key={d.fn}>
-                    {d.label} is on outputs {d.channels.join(' and ')}
+                    {t('mavlink-config:servoOutputTab.duplicateItem', { label: d.label, channels: d.channels.join(t('mavlink-config:servoOutputTab.and')) })}
                   </li>
                 ))}
               </ul>
               <p className="mt-1.5 text-xs text-amber-200/80">
-                That is right for a vehicle with two ESCs or paired servos, and wrong everywhere
-                else: a spare output driving nothing, or two devices fighting over one signal.
+                {t('mavlink-config:servoOutputTab.duplicateHint')}
               </p>
             </div>
           </div>
@@ -130,18 +131,18 @@ const ServoOutputTab: React.FC = () => {
             <Move className="w-5 h-5 text-pink-400" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-content">Servo Output</h3>
+            <h3 className="text-base font-semibold text-content">{t('mavlink-config:servoOutputTab.title')}</h3>
             <p className="text-sm text-content-secondary">
-              Per-channel function, range, and live output
+              {t('mavlink-config:servoOutputTab.subtitle')}
               {!hasLiveOutput && hasParameters && (
-                <span className="ml-2 text-content-tertiary">(no live telemetry)</span>
+                <span className="ml-2 text-content-tertiary">{t('mavlink-config:servoOutputTab.noLiveTelemetry')}</span>
               )}
             </p>
           </div>
           <div className="ml-auto flex rounded-lg border border-subtle overflow-hidden text-xs">
             {([
-              { id: 'cards', label: 'In use', title: 'The functions this vehicle has, with their travel' },
-              { id: 'table', label: 'All outputs', title: 'Every channel, assigned or not, with raw values and per-output test' },
+              { id: 'cards', label: t('mavlink-config:servoOutputTab.viewInUse'), title: t('mavlink-config:servoOutputTab.viewInUseTitle') },
+              { id: 'table', label: t('mavlink-config:servoOutputTab.viewAll'), title: t('mavlink-config:servoOutputTab.viewAllTitle') },
             ] as const).map((v) => (
               <button
                 key={v.id}
@@ -170,13 +171,13 @@ const ServoOutputTab: React.FC = () => {
         <div className={`rounded-lg border border-subtle overflow-hidden ${view === 'cards' ? 'hidden' : ''}`}>
           <div className="grid grid-cols-[40px_1fr_80px_minmax(180px,1fr)_70px_70px_70px_180px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary bg-surface-raised/40 border-b border-subtle">
             <div className="text-center">#</div>
-            <div>Position</div>
-            <div className="text-center">Reverse</div>
-            <div>Function</div>
-            <div className="text-center">Min</div>
-            <div className="text-center">Trim</div>
-            <div className="text-center">Max</div>
-            <div className="text-center">Test</div>
+            <div>{t('common:position')}</div>
+            <div className="text-center">{t('common:reverse')}</div>
+            <div>{t('mavlink-config:servoOutputTab.colFunction')}</div>
+            <div className="text-center">{t('mavlink-config:servoRow.testMin')}</div>
+            <div className="text-center">{t('mavlink-config:servoRow.testTrim')}</div>
+            <div className="text-center">{t('mavlink-config:servoRow.testMax')}</div>
+            <div className="text-center">{t('mavlink-config:servoOutputTab.colTest')}</div>
           </div>
           <div className="divide-y divide-subtle/60">
             {Array.from({ length: channelCount }, (_, i) => i + 1).map((ch) => (

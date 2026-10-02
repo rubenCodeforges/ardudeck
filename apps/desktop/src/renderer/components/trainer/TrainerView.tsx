@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Check, CloudSun, Globe, Loader2, Plane, Rocket } from 'lucide-react';
 import type {
   TrainerCatalogue,
@@ -28,18 +29,19 @@ const LOG_LINES = 200;
 
 type StepId = 'region' | 'conditions' | 'vehicle';
 
-const STEPS: { id: StepId; label: string; hint: string; icon: JSX.Element }[] = [
-  { id: 'region', label: 'Region', hint: 'Where you fly', icon: <Globe className="h-4 w-4" /> },
+const STEPS: { id: StepId; labelKey: string; hintKey: string; icon: JSX.Element }[] = [
+  { id: 'region', labelKey: 'trainer:trainerView.stepRegion', hintKey: 'trainer:trainerView.stepRegionHint', icon: <Globe className="h-4 w-4" /> },
   {
     id: 'conditions',
-    label: 'Conditions',
-    hint: 'Time, weather and wind',
+    labelKey: 'trainer:trainerView.stepConditions',
+    hintKey: 'trainer:trainerView.stepConditionsHint',
     icon: <CloudSun className="h-4 w-4" />,
   },
-  { id: 'vehicle', label: 'Vehicle', hint: 'Camera and frame', icon: <Plane className="h-4 w-4" /> },
+  { id: 'vehicle', labelKey: 'trainer:trainerView.stepVehicle', hintKey: 'trainer:trainerView.stepVehicleHint', icon: <Plane className="h-4 w-4" /> },
 ];
 
 export function TrainerView(): JSX.Element {
+  const { t } = useTranslation();
   const [step, setStep] = useState<StepId>('region');
   const [status, setStatus] = useState<TrainerStatus | null>(null);
   const [catalogue, setCatalogue] = useState<TrainerCatalogue | null>(null);
@@ -88,12 +90,12 @@ export function TrainerView(): JSX.Element {
       }
     } catch (err) {
       setCatalogueError(
-        `${(err as Error).message}. Restart ArduDeck if the Trainer was just updated.`,
+        t('trainer:trainerView.restartHint', { message: (err as Error).message }),
       );
     } finally {
       setRescanning(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void refresh();
@@ -136,7 +138,7 @@ export function TrainerView(): JSX.Element {
         fullscreen: true,
       };
       const result = await window.electronAPI.trainerLaunch(input);
-      if (!result.ok) setError(result.error ?? 'The Trainer did not start.');
+      if (!result.ok) setError(result.error ?? t('trainer:trainerView.didNotStart'));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -179,9 +181,9 @@ export function TrainerView(): JSX.Element {
                   className={`flex items-center gap-1.5 text-sm font-medium ${active ? 'text-blue-400' : 'text-content'}`}
                 >
                   {s.icon}
-                  {s.label}
+                  {t(s.labelKey)}
                 </span>
-                <span className="block truncate text-[11px] text-content-tertiary">{s.hint}</span>
+                <span className="block truncate text-[11px] text-content-tertiary">{t(s.hintKey)}</span>
               </span>
             </button>
           );
@@ -193,7 +195,7 @@ export function TrainerView(): JSX.Element {
               className={`h-2 w-2 shrink-0 rounded-full ${ready ? 'bg-emerald-400' : 'bg-amber-400'}`}
             />
             <span className="text-content-secondary">
-              {ready ? 'Ready to fly' : (status?.reason ?? 'Checking…')}
+              {ready ? t('trainer:trainerView.readyToFly') : (status?.reason ?? t('trainer:trainerView.checking'))}
             </span>
           </div>
           <button
@@ -202,7 +204,7 @@ export function TrainerView(): JSX.Element {
             onClick={() => void fly()}
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-            {busy ? 'Starting…' : 'Fly in Trainer'}
+            {busy ? t('trainer:trainerView.starting') : t('trainer:trainerView.flyInTrainer')}
           </button>
           {status?.home && (
             <p className="mt-2 font-mono text-[10px] leading-relaxed text-content-tertiary">

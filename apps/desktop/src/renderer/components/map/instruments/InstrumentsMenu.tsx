@@ -8,6 +8,7 @@
  * menus read as one family; the count reflects how many instruments are on
  * screen.
  */
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useMapInstrumentsStore, resolveInstrumentVisible } from '../../../stores/map-instruments-store';
 import { MAP_INSTRUMENTS } from './registry';
@@ -21,6 +22,7 @@ const gaugeIcon = (
 );
 
 export function InstrumentsMenu(): JSX.Element {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const visible = useMapInstrumentsStore((s) => s.visible);
   const count = MAP_INSTRUMENTS.reduce((n, i) => n + (resolveInstrumentVisible(visible, i.id) ? 1 : 0), 0);
@@ -30,12 +32,12 @@ export function InstrumentsMenu(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        data-tip="Map instruments"
+        data-tip={t('map:instrumentsMenu.tip')}
         data-tour="map-instruments"
         className="px-2 py-1 inline-flex items-center gap-1.5 rounded text-xs bg-surface text-content hover:bg-surface-raised shadow-lg transition-colors"
       >
         {gaugeIcon}
-        <span className="font-medium">Instruments{count > 0 ? ` (${count})` : ''}</span>
+        <span className="font-medium">{count > 0 ? t('map:instrumentsMenu.buttonCount', { count }) : t('map:instrumentsMenu.button')}</span>
       </button>
       {open && <InstrumentsCatalog onClose={() => setOpen(false)} />}
     </>

@@ -10,7 +10,7 @@
 
 export interface ShapeDef {
   value: string;
-  label: string;
+  labelKey: string;
   /** Preset spacing (m) auto-applied when this shape is picked. */
   spacing?: number;
   /** Dot positions in a 0..24 viewBox. */
@@ -20,14 +20,14 @@ export interface ShapeDef {
 }
 
 export const SHAPE_OPTIONS: ShapeDef[] = [
-  { value: 'vee', label: 'Vee (delta)', leader: 0, dots: [[12, 5], [7, 11], [17, 11], [3, 18], [21, 18]] },
-  { value: 'line', label: 'Line abreast (wall)', dots: [[3, 12], [9.5, 12], [14.5, 12], [21, 12]] },
-  { value: 'column', label: 'Column (trail)', leader: 0, dots: [[12, 3], [12, 9.5], [12, 16], [12, 21]] },
-  { value: 'echelonRight', label: 'Echelon right', leader: 0, dots: [[4, 4], [10, 10], [16, 16], [21, 21]] },
-  { value: 'echelonLeft', label: 'Echelon left', leader: 0, dots: [[20, 4], [14, 10], [8, 16], [3, 21]] },
-  { value: 'diamond', label: 'Diamond', leader: 0, dots: [[12, 3], [4, 12], [20, 12], [12, 21]] },
-  { value: 'box', label: 'Box (grid)', dots: [[8, 8], [16, 8], [8, 16], [16, 16]] },
-  { value: 'survey', label: 'Survey sweep (wide)', spacing: 40, dots: [[3, 9], [10, 9], [17, 9], [22, 9]] },
+  { value: 'vee', labelKey: 'fleet:formationGlyphs.vee', leader: 0, dots: [[12, 5], [7, 11], [17, 11], [3, 18], [21, 18]] },
+  { value: 'line', labelKey: 'fleet:formationGlyphs.line', dots: [[3, 12], [9.5, 12], [14.5, 12], [21, 12]] },
+  { value: 'column', labelKey: 'fleet:formationGlyphs.column', leader: 0, dots: [[12, 3], [12, 9.5], [12, 16], [12, 21]] },
+  { value: 'echelonRight', labelKey: 'fleet:formationGlyphs.echelonRight', leader: 0, dots: [[4, 4], [10, 10], [16, 16], [21, 21]] },
+  { value: 'echelonLeft', labelKey: 'fleet:formationGlyphs.echelonLeft', leader: 0, dots: [[20, 4], [14, 10], [8, 16], [3, 21]] },
+  { value: 'diamond', labelKey: 'fleet:formationGlyphs.diamond', leader: 0, dots: [[12, 3], [4, 12], [20, 12], [12, 21]] },
+  { value: 'box', labelKey: 'fleet:formationGlyphs.box', dots: [[8, 8], [16, 8], [8, 16], [16, 16]] },
+  { value: 'survey', labelKey: 'fleet:formationGlyphs.survey', spacing: 40, dots: [[3, 9], [10, 9], [17, 9], [22, 9]] },
 ];
 
 export const SHAPE_BY_VALUE = new Map(SHAPE_OPTIONS.map((o) => [o.value, o]));

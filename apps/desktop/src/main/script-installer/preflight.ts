@@ -14,6 +14,7 @@ import type {
   PreflightCheck,
   ScriptManifest,
 } from '../../shared/script-installer-types';
+import { t } from '../../shared/i18n/index.js';
 
 interface PreflightInputs {
   manifest: ScriptManifest;
@@ -44,11 +45,11 @@ export function runPreflight(inputs: PreflightInputs): PreflightCheck[] {
   // 1. FTP capability is a hard prerequisite - we can't write without it.
   out.push({
     id: 'ftp_supported',
-    label: 'MAVLink FTP available',
+    label: t('main:scriptPreflight.ftpLabel'),
     severity: ftpSupported ? 'pass' : 'block',
     detail: ftpSupported
-      ? 'Connection supports MAVLink FTP - script can be uploaded.'
-      : 'This connection does not support MAVLink FTP. Install requires FTP for writing the script to the SD card. Modern ArduPilot (4.x+) supports it; check that you are connected to a real FC, not a passthrough.',
+      ? t('main:scriptPreflight.ftpPass')
+      : t('main:scriptPreflight.ftpFail'),
     fix: null,
   });
 
@@ -60,17 +61,17 @@ export function runPreflight(inputs: PreflightInputs): PreflightCheck[] {
 
     if (current === undefined) {
       pass = false;
-      detail = `${req.why}\nParameter ${req.param} not present on this FC (timed out reading). Either the param doesn't exist on this build or the link is unstable.`;
+      detail = t('main:scriptPreflight.paramMissing', { why: req.why, param: req.param });
     } else if (req.exact !== undefined) {
       pass = current === req.exact;
       detail = pass
-        ? `${req.why} (currently ${current}).`
-        : `${req.why}\nCurrently ${req.param} = ${current}; needs to be ${req.exact}.`;
+        ? t('main:scriptPreflight.paramExactPass', { why: req.why, current })
+        : t('main:scriptPreflight.paramExactFail', { why: req.why, param: req.param, current, target: req.exact });
     } else if (req.min !== undefined) {
       pass = current >= req.min;
       detail = pass
-        ? `${req.why} (currently ${current}, minimum ${req.min}).`
-        : `${req.why}\nCurrently ${req.param} = ${current}; needs to be at least ${req.min}.`;
+        ? t('main:scriptPreflight.paramMinPass', { why: req.why, current, min: req.min })
+        : t('main:scriptPreflight.paramMinFail', { why: req.why, param: req.param, current, min: req.min });
     }
 
     const target = req.exact ?? req.min ?? 0;
@@ -98,13 +99,13 @@ export function runPreflight(inputs: PreflightInputs): PreflightCheck[] {
     const free = Math.max(0, scrLdNum - loadedScriptCount);
     out.push({
       id: 'script_slots',
-      label: 'Script slots',
+      label: t('main:scriptPreflight.slotsLabel'),
       severity: free >= 1 ? 'pass' : 'block',
       detail: free >= 1
-        ? `${free} free of ${scrLdNum} - script will fit.`
-        : `No free slots (${loadedScriptCount} loaded of ${scrLdNum} max). Increase SCR_LD_NUM or remove an existing script before installing.`,
-      currentValue: `${free} free of ${scrLdNum}`,
-      expectedValue: '≥ 1 free',
+        ? t('main:scriptPreflight.slotsPass', { free, max: scrLdNum })
+        : t('main:scriptPreflight.slotsFail', { loaded: loadedScriptCount, max: scrLdNum }),
+      currentValue: t('main:scriptPreflight.slotsValue', { free, max: scrLdNum }),
+      expectedValue: t('main:scriptPreflight.slotsExpected'),
       fix: free >= 1 ? null : null,
     });
   }
@@ -114,11 +115,11 @@ export function runPreflight(inputs: PreflightInputs): PreflightCheck[] {
   //    will be blocked separately when applying the fix.
   out.push({
     id: 'armed_state',
-    label: 'Vehicle disarmed',
+    label: t('main:scriptPreflight.disarmedLabel'),
     severity: vehicleArmed ? 'warn' : 'pass',
     detail: vehicleArmed
-      ? 'Vehicle is currently armed. Install will proceed, but any required reboot will be refused while armed - disarm first if a reboot is needed.'
-      : 'Vehicle is disarmed - safe to install.',
+      ? t('main:scriptPreflight.armedWarn')
+      : t('main:scriptPreflight.disarmedPass'),
     fix: vehicleArmed ? { type: 'disarm' } : null,
   });
 

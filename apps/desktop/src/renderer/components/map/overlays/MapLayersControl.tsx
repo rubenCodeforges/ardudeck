@@ -13,9 +13,10 @@
  * and scrolls instead of spilling underneath them when the list is long.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { MAP_LAYERS, type LayerKey } from '../../../../shared/map-layers';
+import { mapLayerName, type LayerKey } from '../../../../shared/map-layers';
 import { LayerIcon } from '../LayerIcon';
 import { useOverlayStore } from '../../../stores/overlay-store';
 import { OVERLAYS } from './OverlayToggles';
@@ -37,6 +38,7 @@ const MENU_WIDTH = 208;
 export function MapLayersControl({
   baseLayers, activeLayer, onSelectLayer, showTerrain, onToggleTerrain, extra,
 }: MapLayersControlProps): JSX.Element {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -70,14 +72,14 @@ export function MapLayersControl({
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        data-tip="Map layers & overlays"
+        data-tip={t('map:mapLayers.tip')}
         className="w-full px-2 py-1 inline-flex items-center gap-1.5 rounded text-xs bg-surface text-content hover:bg-surface-raised shadow-lg transition-colors"
       >
         <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2l9 5-9 5-9-5 9-5z" />
           <path d="M3 12l9 5 9-5M3 17l9 5 9-5" />
         </svg>
-        <span className="font-medium">Layers{overlayCount > 0 ? ` (${overlayCount})` : ''}</span>
+        <span className="font-medium">{overlayCount > 0 ? t('map:mapLayers.buttonCount', { count: overlayCount }) : t('map:mapLayers.button')}</span>
       </button>
 
       {open && pos &&
@@ -90,25 +92,25 @@ export function MapLayersControl({
               style={{ top: pos.top, left: pos.left, width: MENU_WIDTH, maxHeight: pos.maxHeight }}
             >
               <div className="overflow-y-auto">
-                <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-b border-subtle">Base map</div>
+                <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-b border-subtle">{t('map:mapLayers.baseMap')}</div>
                 {/* space-y keeps adjacent selected rows from merging into one slab */}
                 <div className="p-1 space-y-0.5">
                   {baseLayers.map((key) => (
                     <button key={key} type="button" onClick={() => onSelectLayer(key)} className={row(activeLayer === key)}>
                       <LayerIcon layerKey={key} />
-                      {MAP_LAYERS[key].name}
+                      {mapLayerName(key)}
                     </button>
                   ))}
                 </div>
 
-                <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-y border-subtle">Overlays</div>
+                <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-y border-subtle">{t('map:mapLayers.overlays')}</div>
                 <div className="p-1 space-y-0.5">
-                  {OVERLAYS.map(({ id, label, icon }) => {
+                  {OVERLAYS.map(({ id, labelKey, icon }) => {
                     if (id === 'dipul' && !dipulAvailable) return null;
                     return (
                       <button key={id} type="button" onClick={() => toggleOverlay(id)} className={row(activeOverlays.has(id))}>
                         {icon}
-                        {label}
+                        {t(labelKey)}
                       </button>
                     );
                   })}
@@ -118,7 +120,7 @@ export function MapLayersControl({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l4-4 3 3 4-6 7 7" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 17h18" />
                       </svg>
-                      Height
+                      {t('map:mapLayers.height')}
                     </button>
                   )}
                 </div>
@@ -140,12 +142,13 @@ export function MapLayersControl({
  * registered, so the control does not grow an empty section for most pilots.
  */
 function ModuleLayerToggles({ row }: { row: (on: boolean) => string }): JSX.Element | null {
+  const { t } = useTranslation();
   const { layers, isVisible, toggle } = useModuleMapLayerToggles();
   if (layers.length === 0) return null;
   return (
     <>
       <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-y border-subtle">
-        Modules
+        {t('map:mapLayers.modules')}
       </div>
       <div className="p-1 space-y-0.5">
         {layers.map((l) => (

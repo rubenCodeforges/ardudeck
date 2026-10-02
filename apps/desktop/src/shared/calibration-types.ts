@@ -5,6 +5,8 @@
  * and MAVLink (ArduPilot) protocols.
  */
 
+import { t } from './i18n/index.js';
+
 // ============================================================================
 // Calibration Types
 // ============================================================================
@@ -45,8 +47,8 @@ export interface CalibrationTypeInfo {
 export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
   {
     id: 'accel-level',
-    name: 'Accelerometer (Level)',
-    description: 'Quick 1-position level calibration. Place your vehicle on a flat surface.',
+    name: 'Accelerometer (Level)', // i18n-exempt
+    description: 'Quick 1-position level calibration. Place your vehicle on a flat surface.', // i18n-exempt
     icon: 'level',
     protocols: ['msp', 'mavlink'],
     variants: ['INAV', 'BTFL', 'ARDU', 'PX4'],
@@ -54,8 +56,8 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
   },
   {
     id: 'accel-quick',
-    name: 'Accelerometer (Quick)',
-    description: 'One position, vehicle level and still. Writes the offsets ArduPilot wants before it will arm, without turning the vehicle over.',
+    name: 'Accelerometer (Quick)', // i18n-exempt
+    description: 'One position, vehicle level and still. Writes the offsets ArduPilot wants before it will arm, without turning the vehicle over.', // i18n-exempt
     icon: 'level',
     protocols: ['mavlink'],
     variants: ['ARDU'],
@@ -63,8 +65,8 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
   },
   {
     id: 'accel-6point',
-    name: 'Accelerometer (6-Point)',
-    description: 'Full 6-position calibration for maximum accuracy.',
+    name: 'Accelerometer (6-Point)', // i18n-exempt
+    description: 'Full 6-position calibration for maximum accuracy.', // i18n-exempt
     icon: '6point',
     protocols: ['msp', 'mavlink'],
     variants: ['INAV', 'ARDU', 'PX4'],
@@ -72,8 +74,8 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
   },
   {
     id: 'compass',
-    name: 'Compass / Magnetometer',
-    description: 'Rotate your vehicle in all directions to calibrate the compass.',
+    name: 'Compass / Magnetometer', // i18n-exempt
+    description: 'Rotate your vehicle in all directions to calibrate the compass.', // i18n-exempt
     icon: 'compass',
     protocols: ['msp', 'mavlink'],
     variants: ['INAV', 'BTFL', 'ARDU', 'PX4'],
@@ -82,8 +84,8 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
   },
   {
     id: 'gyro',
-    name: 'Gyroscope',
-    description: 'Quick gyro calibration. Keep your vehicle completely still.',
+    name: 'Gyroscope', // i18n-exempt
+    description: 'Quick gyro calibration. Keep your vehicle completely still.', // i18n-exempt
     icon: 'gyro',
     protocols: ['msp', 'mavlink'],
     variants: ['INAV', 'BTFL', 'ARDU', 'PX4'],
@@ -91,8 +93,8 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
   },
   {
     id: 'opflow',
-    name: 'Optical Flow',
-    description: 'Calibrate optical flow sensor. iNav only.',
+    name: 'Optical Flow', // i18n-exempt
+    description: 'Calibrate optical flow sensor. iNav only.', // i18n-exempt
     icon: 'opflow',
     protocols: ['msp'],
     variants: ['INAV'],
@@ -100,6 +102,23 @@ export const CALIBRATION_TYPES: CalibrationTypeInfo[] = [
     estimatedDuration: 30,
   },
 ];
+
+const CALIBRATION_TYPE_KEYS: Record<CalibrationTypeId, string> = {
+  'accel-level': 'accelLevel',
+  'accel-quick': 'accelQuick',
+  'accel-6point': 'accel6point',
+  compass: 'compass',
+  gyro: 'gyro',
+  opflow: 'opflow',
+};
+
+export function calibrationTypeName(info: Pick<CalibrationTypeInfo, 'id'>): string {
+  return t(`shared:calibrationTypes.${CALIBRATION_TYPE_KEYS[info.id]}.name`);
+}
+
+export function calibrationTypeDescription(info: Pick<CalibrationTypeInfo, 'id'>): string {
+  return t(`shared:calibrationTypes.${CALIBRATION_TYPE_KEYS[info.id]}.description`);
+}
 
 // ============================================================================
 // Sensor Availability
@@ -131,15 +150,22 @@ export type CalibrationStep =
 // Order matches ArduPilot's ACCELCAL_VEHICLE_POS enum so the position number
 // shown to the user lines up with the order AP actually requests them.
 export const ACCEL_6POINT_POSITIONS = [
-  'Level (Top Up)',
-  'Left Side Down',
-  'Right Side Down',
-  'Nose Down',
-  'Nose Up',
-  'Inverted (Top Down)',
+  'Level (Top Up)', // i18n-exempt
+  'Left Side Down', // i18n-exempt
+  'Right Side Down', // i18n-exempt
+  'Nose Down', // i18n-exempt
+  'Nose Up', // i18n-exempt
+  'Inverted (Top Down)', // i18n-exempt
 ] as const;
 
 export type AccelPosition = 0 | 1 | 2 | 3 | 4 | 5;
+
+const ACCEL_POSITION_KEYS = ['level', 'leftSide', 'rightSide', 'noseDown', 'noseUp', 'inverted'] as const;
+
+export function accelPositionName(position: number): string {
+  const key = ACCEL_POSITION_KEYS[position];
+  return key ? t(`shared:calibrationTypes.position.${key}`) : (ACCEL_6POINT_POSITIONS[position] ?? '');
+}
 
 // ============================================================================
 // Calibration Data

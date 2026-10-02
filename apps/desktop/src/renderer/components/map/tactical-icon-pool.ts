@@ -22,8 +22,8 @@ export interface TacticalIconDef {
   svgPath: string;
   /** Whether the path uses stroke-only rendering (no fill) */
   strokeOnly?: boolean;
-  /** Human-readable label */
-  label: string;
+  /** Human-readable label (i18n key) */
+  labelKey: string;
   /** Short tactical designation for info labels (e.g. "QUAD", "FW") */
   defaultDesignation: string;
 }
@@ -47,13 +47,13 @@ export const TACTICAL_ICON_POOL: Record<TacticalVehicleClass, TacticalIconDef> =
       'M14 14m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
     ].join(''),
     strokeOnly: true,
-    label: 'Multirotor',
+    labelKey: 'map:tacticalIcon.multirotor',
     defaultDesignation: 'QUAD',
   },
   plane: {
     // Delta/chevron with swept wings - classic fixed-wing strategic icon
     svgPath: 'M14 3L4 23L14 17L24 23Z',
-    label: 'Fixed Wing',
+    labelKey: 'map:tacticalIcon.fixedWing',
     defaultDesignation: 'FW',
   },
   vtol: {
@@ -63,37 +63,37 @@ export const TACTICAL_ICON_POOL: Record<TacticalVehicleClass, TacticalIconDef> =
       'M5 21m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
       'M23 21m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
     ].join(''),
-    label: 'VTOL',
+    labelKey: 'map:tacticalIcon.vtol',
     defaultDesignation: 'VTOL',
   },
   rover: {
     // Rounded rectangle with forward arrow notch - ground unit
     svgPath: 'M8 5L14 2L20 5L20 25L8 25Z',
-    label: 'Ground Rover',
+    labelKey: 'map:tacticalIcon.rover',
     defaultDesignation: 'ROV',
   },
   boat: {
     // Pointed hull shape - naval surface vessel
     svgPath: 'M14 3L6 14L8 25L20 25L22 14Z',
-    label: 'Surface Boat',
+    labelKey: 'map:tacticalIcon.boat',
     defaultDesignation: 'BOAT',
   },
   sub: {
     // Oval hull with periscope tick at top
     svgPath: 'M14 2L14 6M9 7Q4 14 9 23L19 23Q24 14 19 7Z',
-    label: 'Submarine',
+    labelKey: 'map:tacticalIcon.sub',
     defaultDesignation: 'SUB',
   },
   antenna: {
     // Diamond - static, no heading rotation
     svgPath: 'M14 3L25 14L14 25L3 14Z',
-    label: 'Antenna Tracker',
+    labelKey: 'map:tacticalIcon.tracker',
     defaultDesignation: 'ANT',
   },
   unknown: {
     // Circle
     svgPath: 'M14 14m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0',
-    label: 'Unknown',
+    labelKey: 'map:tacticalIcon.unknown',
     defaultDesignation: '???',
   },
 };

@@ -12,6 +12,7 @@
  */
 import type { SurveyConfig, SurveyPattern, CameraPreset } from './survey-types';
 import { MANUAL_CAMERA } from './camera-presets';
+import { t } from '../../../shared/i18n/index.js';
 
 export interface SurveyPreset {
   /** Stable id used as the dropdown selection key. */
@@ -20,6 +21,9 @@ export interface SurveyPreset {
   name: string;
   /** Short tagline rendered below the label. */
   description: string;
+  /** i18n keys for built-ins; user presets carry their own text. */
+  nameKey?: string;
+  descriptionKey?: string;
   /** Partial config the preset writes. Fields it omits are left untouched. */
   config: Partial<Pick<
     SurveyConfig,
@@ -44,8 +48,10 @@ export interface SurveyPreset {
 export const BUILTIN_SURVEY_PRESETS: SurveyPreset[] = [
   {
     id: 'map-ortho',
-    name: 'Map / Orthomosaic',
-    description: '2D map. Fast flight, single grid pass.',
+    nameKey: 'survey:surveyPresets.mapOrtho.name',
+    descriptionKey: 'survey:surveyPresets.mapOrtho.description',
+    name: 'Map / Orthomosaic', // i18n-exempt
+    description: '2D map. Fast flight, single grid pass.', // i18n-exempt
     tag: 'Flying',
     config: {
       pattern: 'grid',
@@ -59,8 +65,10 @@ export const BUILTIN_SURVEY_PRESETS: SurveyPreset[] = [
   },
   {
     id: 'photogrammetry-3d',
-    name: '3D / Photogrammetry',
-    description: 'Buildings, terrain meshes. Crosshatch + high overlap.',
+    nameKey: 'survey:surveyPresets.photogrammetry3d.name',
+    descriptionKey: 'survey:surveyPresets.photogrammetry3d.description',
+    name: '3D / Photogrammetry', // i18n-exempt
+    description: 'Buildings, terrain meshes. Crosshatch + high overlap.', // i18n-exempt
     tag: 'Flying',
     config: {
       pattern: 'crosshatch',
@@ -74,8 +82,10 @@ export const BUILTIN_SURVEY_PRESETS: SurveyPreset[] = [
   },
   {
     id: 'inspection-detail',
-    name: 'Inspection / Detail',
-    description: 'Small areas, low altitude, high GSD.',
+    nameKey: 'survey:surveyPresets.inspectionDetail.name',
+    descriptionKey: 'survey:surveyPresets.inspectionDetail.description',
+    name: 'Inspection / Detail', // i18n-exempt
+    description: 'Small areas, low altitude, high GSD.', // i18n-exempt
     tag: 'Flying',
     config: {
       pattern: 'grid',
@@ -89,8 +99,10 @@ export const BUILTIN_SURVEY_PRESETS: SurveyPreset[] = [
   },
   {
     id: 'corridor-plane',
-    name: 'Corridor (Plane)',
-    description: 'Roads, rail, power lines. Fixed-wing strips with racetrack turns.',
+    nameKey: 'survey:surveyPresets.corridorPlane.name',
+    descriptionKey: 'survey:surveyPresets.corridorPlane.description',
+    name: 'Corridor (Plane)', // i18n-exempt
+    description: 'Roads, rail, power lines. Fixed-wing strips with racetrack turns.', // i18n-exempt
     tag: 'Flying',
     config: {
       pattern: 'corridor',
@@ -108,8 +120,10 @@ export const BUILTIN_SURVEY_PRESETS: SurveyPreset[] = [
   },
   {
     id: 'corridor-copter',
-    name: 'Corridor (Copter)',
-    description: 'Branched corridors. Multirotor turns on the spot.',
+    nameKey: 'survey:surveyPresets.corridorCopter.name',
+    descriptionKey: 'survey:surveyPresets.corridorCopter.description',
+    name: 'Corridor (Copter)', // i18n-exempt
+    description: 'Branched corridors. Multirotor turns on the spot.', // i18n-exempt
     tag: 'Flying',
     config: {
       pattern: 'corridor',
@@ -126,8 +140,10 @@ export const BUILTIN_SURVEY_PRESETS: SurveyPreset[] = [
   },
   {
     id: 'rover-mower',
-    name: 'Rover / Mower',
-    description: 'Ground vehicle. Set corridor width directly.',
+    nameKey: 'survey:surveyPresets.roverMower.name',
+    descriptionKey: 'survey:surveyPresets.roverMower.description',
+    name: 'Rover / Mower', // i18n-exempt
+    description: 'Ground vehicle. Set corridor width directly.', // i18n-exempt
     tag: 'Ground',
     camera: { ...MANUAL_CAMERA },
     config: {
@@ -151,12 +167,24 @@ export function makeUserPreset(
   return {
     id: `user-${Date.now().toString(36)}`,
     name,
-    description: 'Saved preset',
+    description: 'Saved preset', // i18n-exempt
+    descriptionKey: 'survey:surveyPresets.savedPreset', // i18n-exempt
     tag: 'Custom',
     isUserDefined: true,
     config,
     ...(camera ? { camera } : {}),
   };
+}
+
+export function presetName(p: Pick<SurveyPreset, 'name' | 'nameKey'>): string {
+  return p.nameKey ? t(p.nameKey) : p.name;
+}
+
+export function presetDescription(p: Pick<SurveyPreset, 'description' | 'descriptionKey' | 'isUserDefined'>): string {
+  if (p.descriptionKey) return t(p.descriptionKey);
+  // i18n-exempt
+  if (p.isUserDefined && (!p.description || p.description === 'Saved preset')) return t('survey:surveyPresets.savedPreset');
+  return p.description;
 }
 
 /**

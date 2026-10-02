@@ -10,12 +10,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Gauge, HelpCircle, Cable, Zap, RotateCcw, MapPin } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useInspectorStore, startInspector, getInspectorSnapshot } from '../../stores/inspector-store';
 import {
-  mavlinkLinks, paramLookup, RATE_GROUPS, rateParamName, rateScheme, readRates,
+  mavlinkLinks, paramLookup, RATE_GROUPS, rateParamName, rateScheme, readRates, rateGroupLabel,
   bandwidthCost, serialCapacity,
 } from '../../../shared/mavlink-channels';
 import Px4TelemetryRates from './Px4TelemetryRates';
@@ -34,6 +35,7 @@ export default function TelemetryRatesTab() {
 }
 
 function ArduPilotTelemetryRates() {
+  const { t } = useTranslation();
   const { parameters, setParameter } = useParameterStore();
   const connectionState = useConnectionStore((s) => s.connectionState);
   // measured rates come from the inspector's per-message counters
@@ -131,7 +133,7 @@ function ArduPilotTelemetryRates() {
     const ok = await setParameter(name, hz);
     setBusy(null);
     if (ok) dirtyRef.current.delete(id);
-    setNote(ok ? `${name} set to ${hz} Hz` : `Could not write ${name}`);
+    setNote(ok ? t('mavlink-config:telemetryRatesTab.paramSet', { name, hz }) : t('mavlink-config:telemetryRatesTab.couldNotWrite', { name }));
   };
 
   const tryNow = async () => {
@@ -145,15 +147,14 @@ function ArduPilotTelemetryRates() {
     const result = await window.electronAPI.telemetrySetMessageRates?.(rates);
     setBusy(null);
     setNote(result?.success
-      ? 'Running for this session only. Nothing was written; a reboot restores the saved rates.'
-      : 'The vehicle did not accept the session rates.');
+      ? t('mavlink-config:telemetryRatesTab.sessionRunning')
+      : t('mavlink-config:telemetryRatesTab.sessionRejected'));
   };
 
   if (links.length === 0) {
     return (
       <div className="p-6 text-sm text-content-secondary">
-        No MAVLink serial ports found on this vehicle. Set a port's protocol to MAVLink2 in
-        Serial Ports first, then come back.
+        {t('mavlink-config:telemetryRatesTab.noPorts')}
       </div>
     );
   }
@@ -166,9 +167,9 @@ function ArduPilotTelemetryRates() {
             <Gauge className="w-5 h-5 text-teal-400" />
           </div>
           <div>
-            <h3 className="font-medium text-content">Telemetry Rates</h3>
+            <h3 className="font-medium text-content">{t('mavlink-config:telemetryRatesTab.title')}</h3>
             <p className="text-xs text-content-secondary">
-              How often the vehicle sends each kind of data, and what that costs on the link.
+              {t('mavlink-config:telemetryRatesTab.subtitle')}
             </p>
           </div>
         </div>
@@ -176,10 +177,7 @@ function ArduPilotTelemetryRates() {
         <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-teal-500/5 border border-teal-500/20 mb-4">
           <HelpCircle className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
           <p className="text-xs text-content leading-relaxed">
-            <span className="font-semibold text-teal-300">The trap: </span>
-            the number in SR0_ / MAV0_ is the MAVLink channel, not the serial port. Channels are
-            handed out in port order, so if SERIAL7 is your only MAVLink port it is channel 0.
-            The table below is that mapping, read from this vehicle.
+            <Trans i18nKey="mavlink-config:telemetryRatesTab.trap" components={{ b: <span className="font-semibold text-teal-300" /> }} />
           </p>
         </div>
 
@@ -187,10 +185,10 @@ function ArduPilotTelemetryRates() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface text-content-secondary text-xs">
-                <th className="px-3 py-2.5 text-left font-medium">Port</th>
-                <th className="px-3 py-2.5 text-left font-medium w-28">Protocol</th>
-                <th className="px-3 py-2.5 text-left font-medium w-28">Baud</th>
-                <th className="px-3 py-2.5 text-left font-medium w-40">Rate parameters</th>
+                <th className="px-3 py-2.5 text-left font-medium">{t('common:port')}</th>
+                <th className="px-3 py-2.5 text-left font-medium w-28">{t('common:protocol')}</th>
+                <th className="px-3 py-2.5 text-left font-medium w-28">{t('common:baud')}</th>
+                <th className="px-3 py-2.5 text-left font-medium w-40">{t('mavlink-config:telemetryRatesTab.rateParams')}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +210,7 @@ function ArduPilotTelemetryRates() {
                         </div>
                         {l.channel === myLink && (
                           <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            you are here
+                            {t('mavlink-config:telemetryRatesTab.youAreHere')}
                           </span>
                         )}
                       </div>
@@ -236,11 +234,11 @@ function ArduPilotTelemetryRates() {
         {myLink === null && (
           <button
             onClick={claimLink}
-            data-tip="Session-only rates can only be sent down the link this app is connected through"
+            data-tip={t('mavlink-config:telemetryRatesTab.claimTip')}
             className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-xs bg-surface-input hover:bg-surface-raised border border-subtle rounded text-content-secondary hover:text-content transition-colors"
           >
             <MapPin className="w-3.5 h-3.5" />
-            This is the link I'm connected through
+            {t('mavlink-config:telemetryRatesTab.claimLink')}
           </button>
         )}
       </div>
@@ -249,19 +247,17 @@ function ArduPilotTelemetryRates() {
         <div className="bg-surface-raised border border-subtle rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-content">
-              {link?.label} rates
+              {t('mavlink-config:telemetryRatesTab.linkRates', { label: link?.label })}
               <span className="ml-2 text-xs font-mono text-content-secondary">{scheme}{channel}_*</span>
             </h4>
             <span className="text-xs text-content-secondary">
-              {isMyLink ? 'requested / measured' : 'requested (not the link I am on)'}
+              {isMyLink ? t('mavlink-config:telemetryRatesTab.requestedMeasured') : t('mavlink-config:telemetryRatesTab.requestedOnly')}
             </span>
           </div>
 
           {isMyLink && (
             <p className="mb-3 text-[11px] text-content-tertiary">
-              These parameters are the port's defaults at boot. A connected ground station can ask
-              for different rates for its own session, and ArduDeck does: that is why the measured
-              column can run well above the slider.
+              {t('mavlink-config:telemetryRatesTab.bootDefaults')}
             </p>
           )}
 
@@ -281,9 +277,9 @@ function ArduPilotTelemetryRates() {
                   <div className="w-52 shrink-0">
                     <span
                       className="text-sm text-content"
-                      data-tip={`${name} - sends ${group.messages.join(', ')}`}
+                      data-tip={t('mavlink-config:telemetryRatesTab.groupTip', { name, messages: group.messages.join(', ') })}
                     >
-                      {group.label}
+                      {rateGroupLabel(group)}
                     </span>
                     <p className="text-[10px] text-content-secondary leading-tight font-mono">{name}</p>
                   </div>
@@ -302,17 +298,17 @@ function ArduPilotTelemetryRates() {
                     className="flex-1 accent-teal-400"
                   />
                   <span className="w-16 text-right text-sm text-content tabular-nums">
-                    {hz === 0 ? 'off' : `${hz} Hz`}
+                    {hz === 0 ? t('mavlink-config:telemetryRatesTab.off') : t('mavlink-config:telemetryRatesTab.hz', { hz })}
                   </span>
                   <span
                     className={`w-20 text-right text-xs tabular-nums ${starved ? 'text-amber-400' : 'text-content-secondary'}`}
                     data-tip={!isMyLink
-                      ? 'Only the link ArduDeck is connected through can be measured'
+                      ? t('mavlink-config:telemetryRatesTab.notMeasurable')
                       : starved
-                        ? 'Arriving slower than requested: the link is saturated'
-                        : 'Measured on the wire right now. A GCS can ask for more than the parameter says, and ArduDeck does.'}
+                        ? t('mavlink-config:telemetryRatesTab.starved')
+                        : t('mavlink-config:telemetryRatesTab.measuredTip')}
                   >
-                    {live > 0 ? `${live.toFixed(1)} Hz` : '-'}
+                    {live > 0 ? t('mavlink-config:telemetryRatesTab.hz', { hz: live.toFixed(1) }) : '-'}
                   </span>
                 </div>
               );
@@ -322,8 +318,8 @@ function ArduPilotTelemetryRates() {
           <div className="mt-4 pt-3 border-t border-subtle">
             <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="text-content-secondary">
-                Link budget
-                {capacity !== null && <span className="ml-1">({capacity.toLocaleString()} B/s at {link?.baud?.toLocaleString()} baud)</span>}
+                {t('mavlink-config:telemetryRatesTab.linkBudget')}
+                {capacity !== null && <span className="ml-1">{t('mavlink-config:telemetryRatesTab.capacity', { capacity: capacity.toLocaleString(), baud: link?.baud?.toLocaleString() })}</span>}
               </span>
               <span className={`tabular-nums ${used !== null && used > 90 ? 'text-red-400' : used !== null && used > 70 ? 'text-amber-400' : 'text-content-secondary'}`}>
                 {cost.toLocaleString()} B/s{used !== null ? ` · ${used}%` : ''}
@@ -337,8 +333,7 @@ function ArduPilotTelemetryRates() {
             </div>
             {capacity === null && (
               <p className="mt-1.5 text-[10px] text-content-secondary">
-                No baud rate for this port, so the bar shows cost only. A radio link delivers far
-                less than its serial baud: watch the measured column instead.
+                {t('mavlink-config:telemetryRatesTab.noBaud')}
               </p>
             )}
           </div>
@@ -349,22 +344,22 @@ function ArduPilotTelemetryRates() {
             <button
               onClick={() => { dirtyRef.current.clear(); setDraft(current); }}
               disabled={!dirty || busy !== null}
-              data-tip="Drop edits you have not released yet"
+              data-tip={t('mavlink-config:telemetryRatesTab.revertTip')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-surface-input hover:bg-surface-raised border border-subtle rounded text-content-secondary hover:text-content disabled:opacity-40 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Revert
+              {t('mavlink-config:telemetryRatesTab.revert')}
             </button>
             <button
               onClick={tryNow}
               disabled={!isMine || busy !== null}
               data-tip={isMine
-                ? 'Applies for this session only using SET_MESSAGE_INTERVAL. No parameters are written.'
-                : 'Only possible on the link this app is connected through'}
+                ? t('mavlink-config:telemetryRatesTab.tryTip')
+                : t('mavlink-config:telemetryRatesTab.tryUnavailable')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-surface-input hover:bg-surface-raised border border-subtle rounded text-content disabled:opacity-40 transition-colors"
             >
               <Zap className="w-3.5 h-3.5 text-amber-400" />
-              {busy === 'try' ? 'Sending…' : 'Try now'}
+              {busy === 'try' ? t('mavlink-config:telemetryRatesTab.sending') : t('mavlink-config:telemetryRatesTab.tryNow')}
             </button>
           </div>
         </div>

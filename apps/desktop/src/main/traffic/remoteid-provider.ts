@@ -54,7 +54,7 @@ function toContact(raw: unknown, shape: RemoteIdShape, nowMs: number): TrafficCo
   let flat: Record<string, unknown> = r;
   if (shape === 'opendroneid') {
     const loc = (r['Location/Vector Message'] ?? r['location'] ?? r['Location']) as Record<string, unknown> | undefined;
-    const basic = (r['Basic ID Message'] ?? r['basicId'] ?? r['BasicID']) as Record<string, unknown> | undefined;
+    const basic = (r['Basic ID Message'] ?? r['basicId'] ?? r['BasicID']) as Record<string, unknown> | undefined; // i18n-exempt
     flat = { ...r, ...(loc ?? {}), ...(basic ?? {}) };
   }
 
@@ -62,9 +62,9 @@ function toContact(raw: unknown, shape: RemoteIdShape, nowMs: number): TrafficCo
   const lon = pick(flat, ['lon', 'lng', 'longitude', 'Longitude']);
   if (lat === undefined || lon === undefined || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
 
-  const uasId = pickStr(flat, ['id', 'uasId', 'UAS ID', 'uas_id', 'serial', 'BasicID', 'Basic ID']);
+  const uasId = pickStr(flat, ['id', 'uasId', 'UAS ID', 'uas_id', 'serial', 'BasicID', 'Basic ID']); // i18n-exempt
   // Geodetic altitude (MSL) preferred; some receivers only have height-above-takeoff.
-  const altMeters = pick(flat, ['alt', 'altMeters', 'AltitudeGeo', 'geodetic_altitude', 'Geodetic Altitude', 'altitude']);
+  const altMeters = pick(flat, ['alt', 'altMeters', 'AltitudeGeo', 'geodetic_altitude', 'Geodetic Altitude', 'altitude']); // i18n-exempt
   const opLat = pick(flat, ['operatorLat', 'OperatorLatitude', 'operator_lat', 'pilotLat']);
   const opLon = pick(flat, ['operatorLon', 'OperatorLongitude', 'operator_lon', 'pilotLon']);
 

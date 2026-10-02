@@ -11,11 +11,13 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Radio, PencilRuler, Cpu, MonitorPlay, ChevronRight, Download, type LucideIcon } from 'lucide-react';
 import { serializeOsdBlock } from '../../utils/osd/ruby-osd';
 import { useRubyOsdStore } from '../../stores/ruby-osd-store';
 
 export function RubyOsdDestinationBar() {
+  const { t } = useTranslation();
   const params = useRubyOsdStore((s) => s.params);
   const [saved, setSaved] = useState(false);
 
@@ -38,18 +40,19 @@ export function RubyOsdDestinationBar() {
       {/* Identity pill */}
       <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-rose-500/15 border border-rose-400/30">
         <Radio className="h-3.5 w-3.5 text-rose-300" />
-        <span className="text-xs font-medium text-content">RubyFPV ground OSD</span>
+        <span className="text-xs font-medium text-content">{t('osd:rubyOsdDestinationBar.groundOsd')}</span>
       </div>
 
       {/* The delivery path, drawn out */}
       <div className="flex items-center gap-1.5">
-        <FlowNode icon={PencilRuler} label="Author here" active />
+        <FlowNode icon={PencilRuler} label={t('osd:rubyOsdDestinationBar.authorHere')} active />
         <ChevronRight className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
+        {/* i18n-exempt */}
         <FlowNode icon={Radio} label="ArduDeck Agent" />
         <ChevronRight className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
-        <FlowNode icon={Cpu} label="RubyFPV ground board" />
+        <FlowNode icon={Cpu} label={t('osd:rubyOsdDestinationBar.groundBoard')} />
         <ChevronRight className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
-        <FlowNode icon={MonitorPlay} label="Drawn over video" />
+        <FlowNode icon={MonitorPlay} label={t('osd:rubyOsdDestinationBar.drawnOverVideo')} />
       </div>
 
       <div className="flex-1" />
@@ -58,13 +61,13 @@ export function RubyOsdDestinationBar() {
       <button
         onClick={exportLayout}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-600/80 hover:bg-rose-500/80 text-white"
-        data-tip="Save a RubyFPV v12 OSD block (the exact text spliced into ctrl-N.mdl). Direct push to a paired board over the Agent is coming."
+        data-tip={t('osd:rubyOsdDestinationBar.exportTip')}
       >
         <Download className="h-3.5 w-3.5" />
-        {saved ? 'Saved' : 'Export OSD block'}
+        {saved ? t('common:saved') : t('osd:rubyOsdDestinationBar.exportBlock')}
       </button>
 
-      <span className="text-[10px] text-content-tertiary">Flight controller not involved (ground-side OSD)</span>
+      <span className="text-[10px] text-content-tertiary">{t('osd:rubyOsdDestinationBar.fcNotInvolved')}</span>
     </div>
   );
 }

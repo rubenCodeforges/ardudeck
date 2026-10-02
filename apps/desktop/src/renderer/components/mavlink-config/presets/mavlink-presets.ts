@@ -15,53 +15,53 @@ import { Egg, Drama, Zap, Film, type LucideIcon } from 'lucide-react';
 // =============================================================================
 
 export interface FlightModePreset {
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   modes: number[]; // FLTMODE1-6 values
 }
 
 export const FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
   beginner: {
-    name: 'Beginner Safe',
-    description: 'Safe modes only - Stabilize, AltHold, Loiter, RTL',
+    nameKey: 'mavlink-config:mavlinkPresets.flightMode.beginner.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.flightMode.beginner.description',
     modes: [0, 2, 5, 6, 9, 6], // Stabilize, AltHold, Loiter, RTL, Land, RTL
   },
   intermediate: {
-    name: 'Intermediate',
-    description: 'Add Auto and PosHold for missions',
+    nameKey: 'mavlink-config:mavlinkPresets.flightMode.intermediate.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.flightMode.intermediate.description',
     modes: [0, 2, 5, 3, 16, 6], // Stabilize, AltHold, Loiter, Auto, PosHold, RTL
   },
   advanced: {
-    name: 'Advanced',
-    description: 'Full control with Acro and Sport modes',
+    nameKey: 'mavlink-config:mavlinkPresets.flightMode.advanced.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.flightMode.advanced.description',
     modes: [0, 1, 13, 5, 3, 6], // Stabilize, Acro, Sport, Loiter, Auto, RTL
   },
   mapping: {
-    name: 'Mapping/Survey',
-    description: 'Optimized for aerial mapping missions',
+    nameKey: 'mavlink-config:mavlinkPresets.flightMode.mapping.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.flightMode.mapping.description',
     modes: [5, 3, 24, 6, 9, 21], // Loiter, Auto, ZigZag, RTL, Land, SmartRTL
   },
 };
 
 export const PLANE_FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
   beginner: {
-    name: 'Beginner Safe',
-    description: 'Safe modes - FBWA, Loiter, RTL',
+    nameKey: 'mavlink-config:mavlinkPresets.planeFlightMode.beginner.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.planeFlightMode.beginner.description',
     modes: [5, 5, 12, 12, 11, 11], // FBWA, FBWA, Loiter, Loiter, RTL, RTL
   },
   intermediate: {
-    name: 'Intermediate',
-    description: 'Add Auto and Cruise for missions',
+    nameKey: 'mavlink-config:mavlinkPresets.planeFlightMode.intermediate.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.planeFlightMode.intermediate.description',
     modes: [5, 7, 12, 10, 11, 11], // FBWA, Cruise, Loiter, Auto, RTL, RTL
   },
   advanced: {
-    name: 'Advanced',
-    description: 'Full control with Manual and Acro',
+    nameKey: 'mavlink-config:mavlinkPresets.planeFlightMode.advanced.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.planeFlightMode.advanced.description',
     modes: [0, 4, 5, 12, 10, 11], // Manual, Acro, FBWA, Loiter, Auto, RTL
   },
   vtol: {
-    name: 'VTOL QuadPlane',
-    description: 'QLoiter, FBWA, QRTL for VTOL aircraft',
+    nameKey: 'mavlink-config:mavlinkPresets.planeFlightMode.vtol.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.planeFlightMode.vtol.description',
     modes: [19, 19, 5, 5, 21, 21], // QLoiter, QLoiter, FBWA, FBWA, QRTL, QRTL
   },
 };
@@ -71,15 +71,15 @@ export const PLANE_FLIGHT_MODE_PRESETS: Record<string, FlightModePreset> = {
 // =============================================================================
 
 export interface SkillPreset {
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   params: Record<string, number>;
 }
 
 export const SKILL_PRESETS: Record<string, SkillPreset> = {
   beginner: {
-    name: 'Beginner',
-    description: 'Soft, forgiving response. Great for learning.',
+    nameKey: 'mavlink-config:mavlinkPresets.skill.beginner.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.skill.beginner.description',
     params: {
       // Slower rates
       'ACRO_RP_RATE': 90,
@@ -95,8 +95,8 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
     },
   },
   intermediate: {
-    name: 'Intermediate',
-    description: 'Balanced response for general flying.',
+    nameKey: 'mavlink-config:mavlinkPresets.skill.intermediate.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.skill.intermediate.description',
     params: {
       'ACRO_RP_RATE': 180,
       'ACRO_Y_RATE': 90,
@@ -108,8 +108,8 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
     },
   },
   expert: {
-    name: 'Expert',
-    description: 'Aggressive response for experienced pilots.',
+    nameKey: 'mavlink-config:mavlinkPresets.skill.expert.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.skill.expert.description',
     params: {
       'ACRO_RP_RATE': 360,
       'ACRO_Y_RATE': 180,
@@ -127,15 +127,15 @@ export const SKILL_PRESETS: Record<string, SkillPreset> = {
 // =============================================================================
 
 export interface MissionPreset {
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   params: Record<string, number>;
 }
 
 export const MISSION_PRESETS: Record<string, MissionPreset> = {
   mapping: {
-    name: 'Mapping/Survey',
-    description: 'Slow, stable flight for aerial mapping and photogrammetry.',
+    nameKey: 'mavlink-config:mavlinkPresets.mission.mapping.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.mission.mapping.description',
     params: {
       'WPNAV_SPEED': 500, // 5 m/s - slow for photos
       'WPNAV_ACCEL': 100,
@@ -145,8 +145,8 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
     },
   },
   surveillance: {
-    name: 'Surveillance',
-    description: 'Moderate speed, good stability for video.',
+    nameKey: 'mavlink-config:mavlinkPresets.mission.surveillance.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.mission.surveillance.description',
     params: {
       'WPNAV_SPEED': 800, // 8 m/s
       'WPNAV_ACCEL': 150,
@@ -156,8 +156,8 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
     },
   },
   sport: {
-    name: 'Sport',
-    description: 'Fast, responsive flight for fun flying.',
+    nameKey: 'mavlink-config:mavlinkPresets.mission.sport.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.mission.sport.description',
     params: {
       'WPNAV_SPEED': 1500, // 15 m/s
       'WPNAV_ACCEL': 400,
@@ -167,8 +167,8 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
     },
   },
   cinema: {
-    name: 'Cinematic',
-    description: 'Ultra-smooth movements for professional video.',
+    nameKey: 'mavlink-config:mavlinkPresets.mission.cinema.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.mission.cinema.description',
     params: {
       'WPNAV_SPEED': 300, // 3 m/s - very slow
       'WPNAV_ACCEL': 50, // Very gentle acceleration
@@ -185,15 +185,15 @@ export const MISSION_PRESETS: Record<string, MissionPreset> = {
 // =============================================================================
 
 export interface SafetyPreset {
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   params: Record<string, number>;
 }
 
 export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
   maximum: {
-    name: 'Maximum Safety',
-    description: 'All safety features enabled. Recommended for beginners.',
+    nameKey: 'mavlink-config:mavlinkPresets.safety.maximum.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.safety.maximum.description',
     params: {
       'FS_THR_ENABLE': 1, // RTL on throttle failsafe
       'FS_GCS_ENABLE': 1, // RTL on GCS failsafe
@@ -205,8 +205,8 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
     },
   },
   balanced: {
-    name: 'Balanced',
-    description: 'Essential safety features without being restrictive.',
+    nameKey: 'mavlink-config:mavlinkPresets.safety.balanced.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.safety.balanced.description',
     params: {
       'FS_THR_ENABLE': 1,
       'FS_GCS_ENABLE': 0, // No GCS failsafe
@@ -218,8 +218,8 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
     },
   },
   minimal: {
-    name: 'Minimal',
-    description: 'Only critical safety features. For experienced pilots.',
+    nameKey: 'mavlink-config:mavlinkPresets.safety.minimal.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.safety.minimal.description',
     params: {
       'FS_THR_ENABLE': 1, // Keep throttle failsafe
       'FS_GCS_ENABLE': 0,
@@ -235,67 +235,67 @@ export const SAFETY_PRESETS: Record<string, SafetyPreset> = {
 // Failsafe Actions
 // =============================================================================
 
-export const FAILSAFE_ACTIONS: Record<number, { name: string; description: string; safe: boolean }> = {
-  0: { name: 'Disabled', description: 'No action taken', safe: false },
-  1: { name: 'RTL', description: 'Return to launch point', safe: true },
-  2: { name: 'Land', description: 'Land immediately', safe: true },
-  3: { name: 'SmartRTL', description: 'Return via original path', safe: true },
-  4: { name: 'Brake', description: 'Stop and hover', safe: true },
-  5: { name: 'Land', description: 'Land at current position', safe: true },
+export const FAILSAFE_ACTIONS: Record<number, { name: string; descriptionKey: string; safe: boolean }> = {
+  0: { name: 'Disabled', descriptionKey: 'mavlink-config:mavlinkPresets.failsafeAction.0', safe: false }, // i18n-exempt
+  1: { name: 'RTL', descriptionKey: 'mavlink-config:mavlinkPresets.failsafeAction.1', safe: true }, // i18n-exempt
+  2: { name: 'Land', descriptionKey: 'mavlink-config:mavlinkPresets.failsafeAction.2', safe: true }, // i18n-exempt
+  3: { name: 'SmartRTL', descriptionKey: 'mavlink-config:mavlinkPresets.failsafeAction.3', safe: true }, // i18n-exempt
+  4: { name: 'Brake', descriptionKey: 'mavlink-config:mavlinkPresets.failsafeAction.4', safe: true }, // i18n-exempt
+  5: { name: 'Land', descriptionKey: 'mavlink-config:mavlinkPresets.failsafeAction.5', safe: true }, // i18n-exempt
 };
 
 // =============================================================================
 // Arming Check Flags
 // =============================================================================
 
-export const ARMING_CHECKS: Record<number, { name: string; description: string }> = {
-  1: { name: 'All', description: 'Enable all arming checks' },
-  2: { name: 'Barometer', description: 'Check barometer health' },
-  4: { name: 'Compass', description: 'Check compass health and calibration' },
-  8: { name: 'GPS Lock', description: 'Require GPS lock before arming' },
-  16: { name: 'INS', description: 'Check accelerometer/gyro health' },
-  32: { name: 'Parameters', description: 'Check for invalid parameters' },
-  64: { name: 'RC Channels', description: 'Check RC receiver is working' },
-  128: { name: 'Board Voltage', description: 'Check board voltage is stable' },
-  256: { name: 'Battery Level', description: 'Check battery has sufficient charge' },
-  512: { name: 'Airspeed', description: 'Check airspeed sensor (planes)' },
-  1024: { name: 'Logging', description: 'Check logging is working' },
-  2048: { name: 'Safety Switch', description: 'Check safety switch is disengaged' },
-  4096: { name: 'GPS Config', description: 'Check GPS configuration' },
-  8192: { name: 'System', description: 'Check system health' },
-  16384: { name: 'Mission', description: 'Check mission is valid' },
-  32768: { name: 'Rangefinder', description: 'Check rangefinder health' },
+export const ARMING_CHECKS: Record<number, { name: string; descriptionKey: string }> = {
+  1: { name: 'All', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.1' }, // i18n-exempt
+  2: { name: 'Barometer', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.2' }, // i18n-exempt
+  4: { name: 'Compass', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.4' }, // i18n-exempt
+  8: { name: 'GPS Lock', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.8' }, // i18n-exempt
+  16: { name: 'INS', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.16' }, // i18n-exempt
+  32: { name: 'Parameters', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.32' }, // i18n-exempt
+  64: { name: 'RC Channels', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.64' }, // i18n-exempt
+  128: { name: 'Board Voltage', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.128' }, // i18n-exempt
+  256: { name: 'Battery Level', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.256' }, // i18n-exempt
+  512: { name: 'Airspeed', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.512' }, // i18n-exempt
+  1024: { name: 'Logging', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.1024' }, // i18n-exempt
+  2048: { name: 'Safety Switch', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.2048' }, // i18n-exempt
+  4096: { name: 'GPS Config', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.4096' }, // i18n-exempt
+  8192: { name: 'System', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.8192' }, // i18n-exempt
+  16384: { name: 'Mission', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.16384' }, // i18n-exempt
+  32768: { name: 'Rangefinder', descriptionKey: 'mavlink-config:mavlinkPresets.armingCheck.32768' }, // i18n-exempt
 };
 
 // =============================================================================
 // Fence Types
 // =============================================================================
 
-export const FENCE_TYPES: Record<number, { name: string; description: string }> = {
-  0: { name: 'Disabled', description: 'No geofence active' },
-  1: { name: 'Altitude', description: 'Maximum altitude limit' },
-  2: { name: 'Circle', description: 'Circular boundary around home' },
-  3: { name: 'Altitude + Circle', description: 'Both altitude and circular limits' },
-  4: { name: 'Polygon', description: 'Custom polygon boundary' },
-  7: { name: 'All', description: 'Altitude, circle, and polygon' },
+export const FENCE_TYPES: Record<number, { name: string; descriptionKey: string }> = {
+  0: { name: 'Disabled', descriptionKey: 'mavlink-config:mavlinkPresets.fenceType.0' }, // i18n-exempt
+  1: { name: 'Altitude', descriptionKey: 'mavlink-config:mavlinkPresets.fenceType.1' }, // i18n-exempt
+  2: { name: 'Circle', descriptionKey: 'mavlink-config:mavlinkPresets.fenceType.2' }, // i18n-exempt
+  3: { name: 'Altitude + Circle', descriptionKey: 'mavlink-config:mavlinkPresets.fenceType.3' }, // i18n-exempt
+  4: { name: 'Polygon', descriptionKey: 'mavlink-config:mavlinkPresets.fenceType.4' }, // i18n-exempt
+  7: { name: 'All', descriptionKey: 'mavlink-config:mavlinkPresets.fenceType.7' }, // i18n-exempt
 };
 
 // =============================================================================
 // Battery Monitor Types
 // =============================================================================
 
-export const BATTERY_MONITORS: Record<number, { name: string; description: string }> = {
-  0: { name: 'Disabled', description: 'No battery monitoring' },
-  3: { name: 'Analog Voltage Only', description: 'Basic voltage monitoring' },
-  4: { name: 'Analog Voltage + Current', description: 'Full power monitoring' },
-  5: { name: 'Solo', description: '3DR Solo battery' },
-  6: { name: 'Bebop', description: 'Parrot Bebop battery' },
-  7: { name: 'SMBus-Maxell', description: 'Maxell smart battery' },
-  8: { name: 'UAVCAN', description: 'UAVCAN battery' },
-  9: { name: 'BLHeli ESC', description: 'BLHeli telemetry' },
-  10: { name: 'Sum of Selected', description: 'Sum multiple monitors' },
-  11: { name: 'FuelFlow', description: 'Fuel flow sensor' },
-  12: { name: 'FuelLevel PWM', description: 'Fuel level PWM sensor' },
+export const BATTERY_MONITORS: Record<number, { name: string; descriptionKey: string }> = {
+  0: { name: 'Disabled', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.0' }, // i18n-exempt
+  3: { name: 'Analog Voltage Only', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.3' }, // i18n-exempt
+  4: { name: 'Analog Voltage + Current', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.4' }, // i18n-exempt
+  5: { name: 'Solo', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.5' }, // i18n-exempt
+  6: { name: 'Bebop', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.6' }, // i18n-exempt
+  7: { name: 'SMBus-Maxell', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.7' }, // i18n-exempt
+  8: { name: 'UAVCAN', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.8' }, // i18n-exempt
+  9: { name: 'BLHeli ESC', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.9' }, // i18n-exempt
+  10: { name: 'Sum of Selected', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.10' }, // i18n-exempt
+  11: { name: 'FuelFlow', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.11' }, // i18n-exempt
+  12: { name: 'FuelLevel PWM', descriptionKey: 'mavlink-config:mavlinkPresets.batteryMonitor.12' }, // i18n-exempt
 };
 
 // =============================================================================
@@ -306,7 +306,7 @@ export type BatteryChemistry = 'lipo' | 'lihv' | 'lion' | 'life';
 
 export interface BatteryChemistryInfo {
   name: string;
-  description: string;
+  descriptionKey: string;
   /** Per-cell voltages */
   cellFull: number;
   cellNominal: number;
@@ -320,7 +320,7 @@ export interface BatteryChemistryInfo {
 export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo> = {
   lipo: {
     name: 'LiPo',
-    description: 'Standard lithium polymer - most common for RC',
+    descriptionKey: 'mavlink-config:mavlinkPresets.chemistry.lipo.description',
     cellFull: 4.2,
     cellNominal: 3.7,
     cellStorage: 3.8,
@@ -330,7 +330,7 @@ export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo>
   },
   lihv: {
     name: 'LiHV',
-    description: 'High-voltage LiPo - 4.35V full charge',
+    descriptionKey: 'mavlink-config:mavlinkPresets.chemistry.lihv.description',
     cellFull: 4.35,
     cellNominal: 3.8,
     cellStorage: 3.9,
@@ -340,7 +340,7 @@ export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo>
   },
   lion: {
     name: 'Li-Ion',
-    description: 'Lithium-ion - higher energy density, lower discharge rate',
+    descriptionKey: 'mavlink-config:mavlinkPresets.chemistry.lion.description',
     cellFull: 4.2,
     cellNominal: 3.6,
     cellStorage: 3.7,
@@ -350,7 +350,7 @@ export const BATTERY_CHEMISTRIES: Record<BatteryChemistry, BatteryChemistryInfo>
   },
   life: {
     name: 'LiFePO4',
-    description: 'Lithium iron phosphate - very stable, long cycle life',
+    descriptionKey: 'mavlink-config:mavlinkPresets.chemistry.life.description',
     cellFull: 3.6,
     cellNominal: 3.3,
     cellStorage: 3.3,
@@ -400,8 +400,8 @@ export interface PidAxisValues {
 }
 
 export interface PidPreset {
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   icon: LucideIcon;
   iconColor: string;
   color: string;
@@ -417,8 +417,8 @@ export interface PidPreset {
 
 export const PID_PRESETS: Record<string, PidPreset> = {
   beginner: {
-    name: 'Beginner',
-    description: 'Smooth & forgiving - great for learning',
+    nameKey: 'mavlink-config:mavlinkPresets.pid.beginner.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.pid.beginner.description',
     icon: Egg,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
@@ -430,8 +430,8 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     accel: { roll: 80000, pitch: 80000, yaw: 20000 },
   },
   freestyle: {
-    name: 'Freestyle',
-    description: 'Responsive & smooth for tricks',
+    nameKey: 'mavlink-config:mavlinkPresets.pid.freestyle.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.pid.freestyle.description',
     icon: Drama,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
@@ -443,8 +443,8 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     accel: { roll: 110000, pitch: 110000, yaw: 27000 },
   },
   racing: {
-    name: 'Racing',
-    description: 'Snappy & precise for speed',
+    nameKey: 'mavlink-config:mavlinkPresets.pid.racing.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.pid.racing.description',
     icon: Zap,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
@@ -456,8 +456,8 @@ export const PID_PRESETS: Record<string, PidPreset> = {
     accel: { roll: 160000, pitch: 160000, yaw: 40000 },
   },
   cinematic: {
-    name: 'Cinematic',
-    description: 'Ultra-smooth for video',
+    nameKey: 'mavlink-config:mavlinkPresets.pid.cinematic.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.pid.cinematic.description',
     icon: Film,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
@@ -485,6 +485,8 @@ export interface RateValues {
 export interface RatePreset {
   name: string;
   description: string;
+  nameKey: string;
+  descriptionKey: string;
   icon: LucideIcon;
   iconColor: string;
   color: string;
@@ -494,32 +496,40 @@ export interface RatePreset {
 
 export const RATE_PRESETS: Record<string, RatePreset> = {
   beginner: {
-    name: 'Beginner',
-    description: 'Slow & predictable - great for learning',
+    name: 'Beginner', // i18n-exempt
+    description: 'Slow & predictable - great for learning', // i18n-exempt
+    nameKey: 'mavlink-config:mavlinkPresets.rate.beginner.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.rate.beginner.description',
     icon: Egg,
     iconColor: 'text-green-400',
     color: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     values: { rpRate: 90, yawRate: 45, rpExpo: 0.3, yawExpo: 0.2 },
   },
   freestyle: {
-    name: 'Freestyle',
-    description: 'Balanced for tricks & flow',
+    name: 'Freestyle', // i18n-exempt
+    description: 'Balanced for tricks & flow', // i18n-exempt
+    nameKey: 'mavlink-config:mavlinkPresets.rate.freestyle.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.rate.freestyle.description',
     icon: Drama,
     iconColor: 'text-purple-400',
     color: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     values: { rpRate: 180, yawRate: 90, rpExpo: 0.2, yawExpo: 0.15 },
   },
   racing: {
-    name: 'Racing',
-    description: 'Fast & responsive for speed',
+    name: 'Racing', // i18n-exempt
+    description: 'Fast & responsive for speed', // i18n-exempt
+    nameKey: 'mavlink-config:mavlinkPresets.rate.racing.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.rate.racing.description',
     icon: Zap,
     iconColor: 'text-red-400',
     color: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     values: { rpRate: 360, yawRate: 180, rpExpo: 0.1, yawExpo: 0.1 },
   },
   cinematic: {
-    name: 'Cinematic',
-    description: 'Ultra-smooth for filming',
+    name: 'Cinematic', // i18n-exempt
+    description: 'Ultra-smooth for filming', // i18n-exempt
+    nameKey: 'mavlink-config:mavlinkPresets.rate.cinematic.name',
+    descriptionKey: 'mavlink-config:mavlinkPresets.rate.cinematic.description',
     icon: Film,
     iconColor: 'text-blue-400',
     color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',

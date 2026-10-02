@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PWM, pwmToStep, stepToPwm } from '../presets/mode-presets';
 
 interface RangeSliderProps {
@@ -31,9 +32,9 @@ const SCALE_MARKERS = [
 
 // Zone definitions for visual indicators
 const ZONES = [
-  { start: 900, end: 1300, label: 'LOW', color: 'bg-blue-500/10' },
-  { start: 1300, end: 1700, label: 'MID', color: 'bg-purple-500/10' },
-  { start: 1700, end: 2100, label: 'HIGH', color: 'bg-orange-500/10' },
+  { start: 900, end: 1300, label: 'LOW', labelKey: 'modes:rangeSlider.low', color: 'bg-blue-500/10' },
+  { start: 1300, end: 1700, label: 'MID', labelKey: 'modes:rangeSlider.mid', color: 'bg-purple-500/10' },
+  { start: 1700, end: 2100, label: 'HIGH', labelKey: 'modes:rangeSlider.high', color: 'bg-orange-500/10' },
 ];
 
 export const RangeSlider: React.FC<RangeSliderProps> = ({
@@ -43,6 +44,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
   onChange,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<'start' | 'end' | 'range' | null>(null);
 
@@ -161,18 +163,24 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
       {/* Quick position buttons with labels */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-content-secondary uppercase tracking-wide font-medium">Switch Position</span>
-          <span className="text-[10px] text-content-tertiary">Click to set range</span>
+          <span className="text-[10px] text-content-secondary uppercase tracking-wide font-medium">{t('modes:rangeSlider.switchPosition')}</span>
+          <span className="text-[10px] text-content-tertiary">{t('modes:rangeSlider.clickToSet')}</span>
         </div>
         <div className="flex gap-1.5">
           {(['low', 'mid', 'high', 'always'] as const).map((preset) => {
             const isSelected = isPreset(preset);
             const isAlways = preset === 'always';
             const hints: Record<string, string> = {
-              low: 'Switch DOWN',
-              mid: 'Switch MID',
-              high: 'Switch UP',
-              always: 'Always ON',
+              low: t('modes:rangeSlider.hintLow'),
+              mid: t('modes:rangeSlider.hintMid'),
+              high: t('modes:rangeSlider.hintHigh'),
+              always: t('modes:rangeSlider.hintAlways'),
+            };
+            const positionLabels: Record<string, string> = {
+              low: t('modes:rangeSlider.low'),
+              mid: t('modes:rangeSlider.mid'),
+              high: t('modes:rangeSlider.high'),
+              always: t('modes:rangeSlider.always'),
             };
             return (
               <button
@@ -188,7 +196,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
                     : 'bg-surface border-2 border-subtle text-content-secondary hover:bg-surface-raised hover:border hover:text-content'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                <span>{preset.toUpperCase()}</span>
+                <span>{positionLabels[preset]}</span>
                 <span className={`text-[9px] ${isSelected ? '' : 'text-content-secondary'}`}>{hints[preset]}</span>
               </button>
             );
@@ -216,7 +224,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
               }}
             >
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-medium text-content-tertiary uppercase tracking-wider">
-                {zone.label}
+                {t(zone.labelKey)}
               </span>
             </div>
           ))}
@@ -325,11 +333,11 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
       <div className="space-y-2">
         <div className="flex justify-between items-center px-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-content-secondary">Start:</span>
+            <span className="text-xs text-content-secondary">{t('modes:rangeSlider.start')}</span>
             <span className="px-2 py-0.5 bg-surface-raised rounded font-mono text-sm text-content">{rangeStart}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-content-secondary">End:</span>
+            <span className="text-xs text-content-secondary">{t('modes:rangeSlider.end')}</span>
             <span className="px-2 py-0.5 bg-surface-raised rounded font-mono text-sm text-content">{rangeEnd}</span>
           </div>
         </div>
@@ -338,15 +346,15 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
         <div className="flex items-center justify-center gap-4 pt-1 border-t border-subtle">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-gradient-to-b from-zinc-200 to-zinc-300 border border-zinc-400/50" />
-            <span className="text-[10px] text-content-secondary">Drag handles</span>
+            <span className="text-[10px] text-content-secondary">{t('modes:rangeSlider.dragHandles')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-0.5 h-3 bg-yellow-400 rounded-full" />
-            <span className="text-[10px] text-content-secondary">Your transmitter</span>
+            <span className="text-[10px] text-content-secondary">{t('modes:rangeSlider.yourTransmitter')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-400" />
-            <span className="text-[10px] text-content-secondary">Active range</span>
+            <span className="text-[10px] text-content-secondary">{t('modes:rangeSlider.activeRange')}</span>
           </div>
         </div>
       </div>

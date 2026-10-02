@@ -14,6 +14,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import { useTranslation } from 'react-i18next';
 import { useCliStore } from '../../stores/cli-store';
 import { useConnectionStore } from '../../stores/connection-store';
 
@@ -22,6 +23,7 @@ interface CliTerminalProps {
 }
 
 export default function CliTerminal({ onReady }: CliTerminalProps) {
+  const { t } = useTranslation();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -165,25 +167,26 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
 
     // Build each line with exact character counts, then pad
     const W = 46; // content width between borders
-    const line = (text: string, visibleLen: number) => {
+    const visible = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, '').length;
+    const line = (text: string, visibleLen: number = visible(text)) => {
       const padding = ' '.repeat(Math.max(0, W - visibleLen));
       return `${C}║${R}${text}${padding}${C}║${R}`;
     };
 
     term.writeln(`${C}╔${'═'.repeat(W)}╗${R}`);
-    term.writeln(line(`  ${Y}ArduDeck CLI Terminal${R}`, 23));
+    term.writeln(line(`  ${Y}${t('cli:cliTerminal.bannerTitle')}${R}`));
     term.writeln(`${C}╠${'═'.repeat(W)}╣${R}`);
-    term.writeln(line(`  Type ${G}help${R} for available commands`, 34));
-    term.writeln(line(`  Type ${G}dump${R} for full config (autocomplete)`, 42));
-    term.writeln(line(`  Press ${M}Tab${R} for command completion`, 34));
-    term.writeln(line(`  Press ${M}Up/Down${R} for command history`, 35));
+    term.writeln(line(`  ${t('cli:cliTerminal.bannerHelp', { cmd: `${G}help${R}` })}`));
+    term.writeln(line(`  ${t('cli:cliTerminal.bannerDump', { cmd: `${G}dump${R}` })}`));
+    term.writeln(line(`  ${t('cli:cliTerminal.bannerTab', { key: `${M}Tab${R}` })}`));
+    term.writeln(line(`  ${t('cli:cliTerminal.bannerHistory', { key: `${M}Up/Down${R}` })}`));
     term.writeln(`${C}╚${'═'.repeat(W)}╝${R}`);
     term.writeln('');
 
     // Restore previous session output (persists across view switches)
     const storedOutput = useCliStore.getState().output;
     if (storedOutput) {
-      term.writeln('\x1b[90m--- Previous session output ---\x1b[0m');
+      term.writeln(`\x1b[90m${t('cli:cliTerminal.previousSession')}\x1b[0m`);
       term.write(storedOutput);
     }
 
@@ -216,7 +219,7 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
         // If output was cleared (went from non-empty to empty)
         if (prevState.output && !state.output && xtermRef.current) {
           xtermRef.current.clear();
-          xtermRef.current.writeln('\x1b[90m--- Terminal cleared ---\x1b[0m');
+          xtermRef.current.writeln(`\x1b[90m${t('cli:cliTerminal.cleared')}\x1b[0m`);
         }
       }
     );
@@ -411,7 +414,7 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
         <div className="flex items-center gap-3">
           <span className={`flex items-center gap-1 ${isCliMode ? 'text-green-400' : 'text-content-secondary'}`}>
             <span className={`w-2 h-2 rounded-full ${isCliMode ? 'bg-green-400' : 'bg-zinc-500'}`} />
-            {isCliMode ? 'CLI Mode' : 'MSP Mode'}
+            {isCliMode ? t('cli:cliTerminal.cliMode') : t('cli:cliTerminal.mspMode')}
           </span>
           {connectionState.fcVariant && (
             <span className="text-content-secondary">
@@ -420,13 +423,13 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
           )}
         </div>
         <div className="flex items-center gap-2 text-content-secondary">
-          <span>Tab: Complete</span>
+          <span>{t('cli:cliTerminal.hintComplete')}</span>
           <span>|</span>
-          <span>Up/Down: History</span>
+          <span>{t('cli:cliTerminal.hintHistory')}</span>
           <span>|</span>
-          <span>Ctrl+C: Copy/Abort</span>
+          <span>{t('cli:cliTerminal.hintCopy')}</span>
           <span>|</span>
-          <span>Ctrl+V: Paste</span>
+          <span>{t('cli:cliTerminal.hintPaste')}</span>
         </div>
       </div>
     </div>

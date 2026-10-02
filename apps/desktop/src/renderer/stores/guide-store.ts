@@ -9,6 +9,7 @@
  * mission files - they are geography, not mission content.
  */
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { LatLng } from '../components/survey/survey-types';
 import { parseGisArea, parseGisLines } from '../../shared/gis-area-import';
 import { simplifyPolygon } from '../components/survey/geo-math';
@@ -96,16 +97,16 @@ export const useGuideStore = create<GuideStore>((set, get) => ({
 
   importGuides: async () => {
     const api = window.electronAPI;
-    if (!api?.importSurveyArea) return { ok: false, count: 0, error: 'Import not available' };
+    if (!api?.importSurveyArea) return { ok: false, count: 0, error: t('stores:guideStore.importUnavailable') };
     const res = await api.importSurveyArea();
     if (!res.success) {
       return { ok: false, count: 0, error: res.error === 'Cancelled' ? undefined : res.error };
     }
-    if (!res.content || !res.format) return { ok: false, count: 0, error: 'Empty file' };
+    if (!res.content || !res.format) return { ok: false, count: 0, error: t('stores:guideStore.emptyFile') };
     const areas = parseGisArea(res.content, res.format);
     const lines = parseGisLines(res.content, res.format);
     if (areas.length === 0 && lines.length === 0) {
-      return { ok: false, count: 0, error: 'No polygons or lines found in the file' };
+      return { ok: false, count: 0, error: t('stores:guideStore.noShapes') };
     }
 
     // Same vertex thinning as the survey import: GIS boundaries are digitized
@@ -166,7 +167,7 @@ export const useGuideStore = create<GuideStore>((set, get) => ({
   },
 
   addSurveyedPoints: (points, opts) => {
-    if (points.length === 0) return { ok: false, error: 'No valid points to add.' };
+    if (points.length === 0) return { ok: false, error: t('stores:guideStore.noValidPoints') };
     if (opts.connect && points.length < 3) {
       return { ok: false, error: 'A polygon needs at least 3 points - add as markers instead.' };
     }

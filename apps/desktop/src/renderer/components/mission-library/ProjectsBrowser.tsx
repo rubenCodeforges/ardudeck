@@ -4,6 +4,7 @@
  * reassemble from a flat list of plans.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo } from 'react';
 import { CloudDownload, FolderOpen, Map as MapIcon, Route } from 'lucide-react';
 import { useSurveyAreaStore } from '../../stores/survey-area-store';
@@ -53,6 +54,7 @@ export function buildProjects(input: {
 }
 
 export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
+  const { t } = useTranslation();
   const { areas, vaultAreas, vaultSiteInfo, loadAreas, loadVault, getArea, pullFromVault } = useSurveyAreaStore();
   const missions = useMissionLibraryStore((s) => s.missions);
   const loadMissions = useMissionLibraryStore((s) => s.loadMissions);
@@ -98,7 +100,7 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
         <div className="flex items-center gap-4 flex-wrap">
           {tabs}
           <span className="text-xs text-content-secondary">
-            {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+            {t('mission-library:projectsBrowser.projectCount', { count: projects.length })}
           </span>
         </div>
       </div>
@@ -109,10 +111,9 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
             <div className="w-16 h-16 rounded-2xl bg-surface border border-subtle flex items-center justify-center mb-4">
               <FolderOpen className="w-7 h-7 text-content-tertiary" />
             </div>
-            <h3 className="text-sm font-medium text-content mb-1">No projects yet</h3>
+            <h3 className="text-sm font-medium text-content mb-1">{t('mission-library:projectsBrowser.emptyTitle')}</h3>
             <p className="text-xs text-content-secondary max-w-sm">
-              A project is just a name for a job or a site. Give one to a mission when you save it, or to a survey
-              area when you back it up, and everything for that job collects here.
+              {t('mission-library:projectsBrowser.emptyBody')}
             </p>
           </div>
         ) : (
@@ -123,15 +124,15 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                   <FolderOpen className="w-4 h-4 text-purple-400" />
                   <span className="text-sm font-medium text-content">{project.name}</span>
                   <span className="text-[11px] text-content-secondary">
-                    {project.areas.length + project.vaultAreas.length} areas · {project.missions.length + project.vaultMissions.length + project.legacyVaultMissions.length} missions
+                    {t('mission-library:projectsBrowser.summary', { areas: project.areas.length + project.vaultAreas.length, missions: project.missions.length + project.vaultMissions.length + project.legacyVaultMissions.length })}
                   </span>
                 </div>
 
                 <div className="grid gap-4 p-4 md:grid-cols-2">
                   <div>
-                    <div className="text-[10px] font-medium text-content-secondary uppercase tracking-wider mb-1.5">Survey areas</div>
+                    <div className="text-[10px] font-medium text-content-secondary uppercase tracking-wider mb-1.5">{t('mission-library:projectsBrowser.surveyAreas')}</div>
                     {project.areas.length === 0 && project.vaultAreas.length === 0 ? (
-                      <p className="text-xs text-content-tertiary">None yet</p>
+                      <p className="text-xs text-content-tertiary">{t('mission-library:projectsBrowser.noneYet')}</p>
                     ) : (
                       <ul className="space-y-1">
                         {project.areas.map((area) => (
@@ -142,7 +143,7 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                             >
                               <MapIcon className="w-3.5 h-3.5 text-content-secondary shrink-0" />
                               <span className="truncate">{area.name}</span>
-                              <span className="ml-auto text-[10px] text-content-secondary">rev {area.revision}</span>
+                              <span className="ml-auto text-[10px] text-content-secondary">{t('mission-library:projectsBrowser.revision', { n: area.revision })}</span>
                             </button>
                           </li>
                         ))}
@@ -156,7 +157,7 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                               >
                                 <CloudDownload className="w-3.5 h-3.5 shrink-0" />
                                 <span className="truncate">{v.name}</span>
-                                <span className="ml-auto text-[10px]">copy from backup</span>
+                                <span className="ml-auto text-[10px]">{t('mission-library:projectsBrowser.copyFromBackup')}</span>
                               </button>
                             </li>
                           ))}
@@ -165,9 +166,9 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                   </div>
 
                   <div>
-                    <div className="text-[10px] font-medium text-content-secondary uppercase tracking-wider mb-1.5">Missions</div>
+                    <div className="text-[10px] font-medium text-content-secondary uppercase tracking-wider mb-1.5">{t('mission-library:projectsBrowser.missions')}</div>
                     {project.missions.length === 0 && project.vaultMissions.length === 0 && project.legacyVaultMissions.length === 0 ? (
-                      <p className="text-xs text-content-tertiary">None yet</p>
+                      <p className="text-xs text-content-tertiary">{t('mission-library:projectsBrowser.noneYet')}</p>
                     ) : (
                       <ul className="space-y-1">
                         {project.missions.map((mission) => (
@@ -178,7 +179,7 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                             >
                               <Route className="w-3.5 h-3.5 text-content-secondary shrink-0" />
                               <span className="truncate">{mission.name}</span>
-                              <span className="ml-auto text-[10px] text-content-secondary">{mission.waypointCount} WPs</span>
+                              <span className="ml-auto text-[10px] text-content-secondary">{t('mission-library:projectsBrowser.wpCount', { count: mission.waypointCount })}</span>
                             </button>
                           </li>
                         ))}
@@ -192,7 +193,7 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                               >
                                 <CloudDownload className="w-3.5 h-3.5 shrink-0" />
                                 <span className="truncate">{v.name}</span>
-                                <span className="ml-auto text-[10px]">copy from backup</span>
+                                <span className="ml-auto text-[10px]">{t('mission-library:projectsBrowser.copyFromBackup')}</span>
                               </button>
                             </li>
                           ))}
@@ -200,11 +201,11 @@ export function ProjectsBrowser({ tabs }: { tabs: React.ReactNode }) {
                           <li
                             key={`legacy-${name}`}
                             className="flex items-center gap-2 px-2 py-1.5 text-xs text-content-tertiary"
-                            data-tip="An older waypoints-only save. It can be restored from the Fleet Vault, but it has no groups or surveys to edit."
+                            data-tip={t('mission-library:projectsBrowser.legacyTip')}
                           >
                             <Route className="w-3.5 h-3.5 shrink-0" />
                             <span className="truncate">{name}</span>
-                            <span className="ml-auto text-[10px]">waypoints only</span>
+                            <span className="ml-auto text-[10px]">{t('mission-library:projectsBrowser.waypointsOnly')}</span>
                           </li>
                         ))}
                       </ul>

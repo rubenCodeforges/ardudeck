@@ -1,3 +1,5 @@
+import { useTranslation, Trans } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Navigation, Crosshair, RotateCw, Tornado, Eye, Film, MoveHorizontal,
@@ -71,12 +73,12 @@ type Accent = 'cyan' | 'amber' | 'violet' | 'rose';
 interface ActionMeta {
   id: CommandId;
   zone: Zone;
-  label: string;
+  labelKey: string;
   accent: Accent;
   icon: LucideIcon;
   /** Confirm button label. */
-  go: string;
-  hint: string;
+  goKey: string;
+  hintKey: string;
   /** Flight mode this command puts the FC into (pill shown when it differs). */
   modeTo?: 'GUIDED' | 'LAND';
   /** 'required' = Lua-script only; 'fallback' = script preferred, native works. */
@@ -103,38 +105,39 @@ const ALL: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane', 'ro
  * behaviour the same button has everywhere else.
  */
 function vtolHint(
+  t: TFunction,
   meta: ActionMeta,
   vehicleClass: TacticalVehicleClass,
   qGuidedMode: number | undefined,
 ): string | null {
   if (vehicleClass !== 'vtol' || meta.modeTo !== 'GUIDED') return null;
   const arrival = qGuidedMode === undefined
-    ? 'On arrival it depends on Q_GUIDED_MODE, which has not been read yet.'
+    ? t('map:mapCommand.vtolArrivalUnknown')
     : qGuidedMode > 0
-      ? 'On arrival it transitions back and hovers there.'
-      : 'On arrival it circles as a plane; it will not hover (Q_GUIDED_MODE is off).';
-  return `Transitions to forward flight and flies there on the wing, not in hover. ${arrival}`;
+      ? t('map:mapCommand.vtolArrivalHover')
+      : t('map:mapCommand.vtolArrivalCircle');
+  return t('map:mapCommand.vtolHint', { arrival });
 }
 
 const ACTIONS: ActionMeta[] = [
-  { id: 'fly', zone: 'primary', label: 'Fly here', accent: 'cyan', icon: Navigation, go: 'Fly',
-    hint: 'Guided move to this point at the set altitude.', modeTo: 'GUIDED', supportedClasses: ALL },
-  { id: 'look', zone: 'primary', label: 'Look here', accent: 'amber', icon: Crosshair, go: 'Look here',
-    hint: 'Gimbal locks on and tracks this point as the vehicle moves. Flight path unchanged.', supportedClasses: ALL },
-  { id: 'orbit', zone: 'primary', label: 'Orbit', accent: 'violet', icon: RotateCw, go: 'Orbit',
-    hint: 'Circle this point at fixed altitude.', modeTo: 'GUIDED', script: 'fallback', advanced: true, supportedClasses: AIR },
-  { id: 'spiral', zone: 'secondary', label: 'Spiral', accent: 'violet', icon: Tornado, go: 'Spiral',
-    hint: 'Orbit while climbing or descending to a target altitude.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: AIR },
-  { id: 'watchtower', zone: 'secondary', label: 'Watch', accent: 'violet', icon: Eye, go: 'Watch',
-    hint: 'Hover at this point and rotate slowly for a panoramic view.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
-  { id: 'reveal', zone: 'secondary', label: 'Reveal', accent: 'violet', icon: Film, go: 'Reveal',
-    hint: 'Pull back and climb with the camera locked on this target.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
-  { id: 'strafe', zone: 'secondary', label: 'Strafe', accent: 'violet', icon: MoveHorizontal, go: 'Strafe',
-    hint: 'Dolly past the target at a perpendicular offset, camera locked on.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
-  { id: 'climbRtl', zone: 'escape', label: 'Climb + RTL', accent: 'rose', icon: ArrowUpFromLine, go: 'Climb and return',
-    hint: 'Climb in place to a safe altitude, then return home.', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
-  { id: 'land', zone: 'escape', label: 'Land here', accent: 'rose', icon: ArrowDownToLine, go: 'Confirm Land',
-    hint: 'Fly to this point, then descend and land.', modeTo: 'LAND', advanced: true, guarded: true, supportedClasses: ALL },
+  { id: 'fly', zone: 'primary', labelKey: 'map:mapCommand.flyLabel', accent: 'cyan', icon: Navigation, goKey: 'map:mapCommand.flyGo',
+    hintKey: 'map:mapCommand.flyHint', modeTo: 'GUIDED', supportedClasses: ALL },
+  { id: 'look', zone: 'primary', labelKey: 'map:mapCommand.lookLabel', accent: 'amber', icon: Crosshair, goKey: 'map:mapCommand.lookGo',
+    hintKey: 'map:mapCommand.lookHint', supportedClasses: ALL },
+  { id: 'orbit', zone: 'primary', labelKey: 'map:mapCommand.orbitLabel', accent: 'violet', icon: RotateCw, goKey: 'map:mapCommand.orbitGo',
+    hintKey: 'map:mapCommand.orbitHint', modeTo: 'GUIDED', script: 'fallback', advanced: true, supportedClasses: AIR },
+  { id: 'spiral', zone: 'secondary', labelKey: 'map:mapCommand.spiralLabel', accent: 'violet', icon: Tornado, goKey: 'map:mapCommand.spiralGo',
+    hintKey: 'map:mapCommand.spiralHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: AIR },
+  { id: 'watchtower', zone: 'secondary', labelKey: 'map:mapCommand.watchLabel', accent: 'violet', icon: Eye, goKey: 'map:mapCommand.watchGo',
+    hintKey: 'map:mapCommand.watchHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'reveal', zone: 'secondary', labelKey: 'map:mapCommand.revealLabel', accent: 'violet', icon: Film, goKey: 'map:mapCommand.revealGo',
+    hintKey: 'map:mapCommand.revealHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'strafe', zone: 'secondary', labelKey: 'map:mapCommand.strafeLabel', accent: 'violet', icon: MoveHorizontal, goKey: 'map:mapCommand.strafeGo',
+    hintKey: 'map:mapCommand.strafeHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'climbRtl', zone: 'escape', labelKey: 'map:mapCommand.climbRtlLabel', accent: 'rose', icon: ArrowUpFromLine, goKey: 'map:mapCommand.climbRtlGo',
+    hintKey: 'map:mapCommand.climbRtlHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+  { id: 'land', zone: 'escape', labelKey: 'map:mapCommand.landLabel', accent: 'rose', icon: ArrowDownToLine, goKey: 'map:mapCommand.landGo',
+    hintKey: 'map:mapCommand.landHint', modeTo: 'LAND', advanced: true, guarded: true, supportedClasses: ALL },
 ];
 
 /** Per-accent classes. Solid button colors read fine on both themes; the
@@ -158,6 +161,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   onClearRoi,
   hasRoi,
 }) => {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<CommandId>('fly');
 
   // Parameter state persists while the popup is open, and defaults are sane,
@@ -285,7 +289,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   const meta = ACTIONS.find(a => a.id === selected) ?? ACTIONS[0]!;
   const blocked = isDisabled(meta);
   const modeUpper = currentMode.toUpperCase();
-  const modePill = meta.modeTo && meta.modeTo !== modeUpper ? `to ${meta.modeTo}` : null;
+  const modePill = meta.modeTo && meta.modeTo !== modeUpper ? t('map:mapCommand.toMode', { mode: meta.modeTo }) : null;
 
   // The FC rejects a destination outside the geofence with a bare FAILED and no
   // reason. We know the fence GCS-side, so warn before the operator sends.
@@ -434,14 +438,14 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
       <div className="flex items-baseline justify-between gap-2 border-b border-subtle px-1 pb-2 mb-2">
         <span className="flex min-w-0 items-baseline gap-1.5">
           {targetLabel && (
-            <span className="shrink-0 rounded border border-cyan-500/50 px-1 font-mono text-[9.5px] font-bold text-cyan-500" data-tip="Vehicle this command will be sent to">
+            <span className="shrink-0 rounded border border-cyan-500/50 px-1 font-mono text-[9.5px] font-bold text-cyan-500" data-tip={t('map:mapCommand.targetTip')}>
               {targetLabel}
             </span>
           )}
           <span className="font-mono text-[11px] text-content truncate">{lat.toFixed(6)}, {lon.toFixed(6)}</span>
         </span>
         <span className="text-[10px] text-content-tertiary shrink-0">
-          <span className="font-mono text-content-secondary">{formatDistanceFromMeters(distanceMeters, distanceUnit)}</span> away
+          <Trans i18nKey="map:mapCommand.away" values={{ distance: formatDistanceFromMeters(distanceMeters, distanceUnit) }} components={{ d: <span className="font-mono text-content-secondary" /> }} />
         </span>
       </div>
 
@@ -480,7 +484,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                   </span>
                   <Icon className={`${big ? 'w-[18px] h-[18px]' : 'w-4 h-4'} ${sel && !dis ? acc.icon : 'text-content-secondary'}`} />
                   <span className={`${big ? 'text-[10.5px]' : 'text-[9.5px]'} leading-tight font-medium text-content text-center`}>
-                    {a.label}
+                    {t(a.labelKey)}
                   </span>
                 </button>
               );
@@ -495,8 +499,8 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10.5px] leading-snug text-content-secondary">
               {scriptHealth.status === 'stale'
-                ? 'ArduDeck Lua script installed but not responding.'
-                : 'Needs the ArduDeck Lua script on the flight controller.'}
+                ? t('map:mapCommand.scriptStale')
+                : t('map:mapCommand.scriptMissing')}
             </span>
             {scriptHealth.status === 'missing' && (
               <button
@@ -504,14 +508,14 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                 onClick={() => setInstallModalOpen(true)}
                 className="shrink-0 rounded-md bg-violet-600 px-2.5 py-1 text-[10.5px] font-medium text-white hover:bg-violet-500"
               >
-                Install
+                {t('map:mapCommand.install')}
               </button>
             )}
           </div>
         ) : (
           <>
             <div className="mb-2 text-[10.5px] leading-snug text-content-secondary">
-              {vtolHint(meta, vehicleClass, qGuidedMode) ?? meta.hint}
+              {vtolHint(t, meta, vehicleClass, qGuidedMode) ?? t(meta.hintKey)}
               {meta.id === 'look' && hasRoi && (
                 <>
                   {' '}
@@ -520,7 +524,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                     onClick={onClearRoi}
                     className="font-semibold text-amber-500 underline underline-offset-2 hover:text-amber-400"
                   >
-                    Clear current ROI
+                    {t('map:mapCommand.clearRoi')}
                   </button>
                 </>
               )}
@@ -530,25 +534,25 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
             <div className="grid grid-cols-[62px_1fr] items-center gap-x-2.5 gap-y-1.5">
               {(meta.id === 'fly' || meta.id === 'orbit' || meta.id === 'watchtower' || meta.id === 'reveal' || meta.id === 'strafe') && (
                 <>
-                  <ParamRow label="Altitude">
+                  <ParamRow label={t('map:mapCommand.altitude')}>
                     <Stepper value={displayAltitude(altitude)} onChange={(v) => setAltitude(nativeAltitude(v))}
                       min={displayAltitude(2)} max={displayAltitude(5000)} step={altitudeStep}
-                      unit={altFrameSelectable ? altitudeLabel : `${altitudeLabel} rel home`} autoFocus={meta.id === 'fly'} />
+                      unit={altFrameSelectable ? altitudeLabel : t('map:mapCommand.relHome', { unit: altitudeLabel })} autoFocus={meta.id === 'fly'} />
                   </ParamRow>
                   {altFrameSelectable && (
-                    <ParamRow label="Above">
+                    <ParamRow label={t('map:mapCommand.above')}>
                       <FrameSeg value={altFrame} onChange={chooseAltFrame} />
                     </ParamRow>
                   )}
                   {(meta.id === 'fly' || meta.id === 'orbit') && (
-                    <ParamRow label="Speed">
+                    <ParamRow label={t('map:mapCommand.speed')}>
                       <Stepper
                         value={cruiseSpeed > 0 ? Number(speedValueFromMetersPerSecond(cruiseSpeed, speedUnit).toFixed(UNIT_PRECISION.speed[speedUnit] ?? 0)) : 0}
                         onChange={(v) => setCruiseSpeed(v <= 0 ? 0 : toMetersPerSecondFromSpeedUnit(v, speedUnit))}
                         min={0}
                         max={Number(speedValueFromMetersPerSecond(speedRange.max, speedUnit).toFixed(0))}
                         step={1}
-                        unit={cruiseSpeed > 0 ? UNIT_LABELS.speed[speedUnit] : 'keep current'}
+                        unit={cruiseSpeed > 0 ? UNIT_LABELS.speed[speedUnit] : t('map:mapCommand.keepCurrent')}
                       />
                     </ParamRow>
                   )}
@@ -559,7 +563,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                     return (
                       <p className={`px-1 text-[10px] leading-snug ${belowMin ? 'text-amber-400' : 'text-content-tertiary'}`}>
                         {belowMin
-                          ? `Below AIRSPEED_MIN (${displaySpeed(speedRange.min)} ${UNIT_LABELS.speed[speedUnit]}); the vehicle will refuse this speed`
+                          ? t('map:mapCommand.belowAirspeedMin', { min: displaySpeed(speedRange.min), unit: UNIT_LABELS.speed[speedUnit] })
                           : hint}
                       </p>
                     );
@@ -569,65 +573,65 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                     // safe height at the beach is underground on a hill. Show what
                     // this AMSL value means above THIS home so a too-low entry is
                     // caught before it becomes a descent into the ground.
-                    const t = useTelemetryStore.getState();
-                    const homeAmsl = t.position.alt - t.position.relativeAlt;
+                    const tel = useTelemetryStore.getState();
+                    const homeAmsl = tel.position.alt - tel.position.relativeAlt;
                     const aboveHome = altitude - homeAmsl;
                     return (
                       <div className="col-span-2 text-[11px] rounded-md px-2 py-1.5 border"
                         style={{ borderColor: 'var(--status-warn)', color: 'var(--status-warn-fg)', background: 'var(--status-warn-bg)' }}>
                         {aboveHome <= 0
-                          ? `${altitude} m above sea level is AT or BELOW home ground level here (home is ${homeAmsl.toFixed(0)} m AMSL).`
-                          : `${altitude} m above sea level = ${aboveHome.toFixed(0)} m above home here.`}
+                          ? t('map:mapCommand.aslBelowHome', { alt: altitude, home: homeAmsl.toFixed(0) })
+                          : t('map:mapCommand.aslAboveHome', { alt: altitude, above: aboveHome.toFixed(0) })}
                       </div>
                     );
                   })()}
                 </>
               )}
               {(meta.id === 'orbit' || meta.id === 'spiral') && (
-                <ParamRow label="Radius">
+                <ParamRow label={t('map:mapCommand.radius')}>
                   <Stepper value={displayDistance(radius)} onChange={(v) => setRadius(nativeDistance(v))}
                     min={displayDistance(5)} max={displayDistance(1000)} step={distanceStep} unit={distanceLabel} />
                 </ParamRow>
               )}
               {(meta.id === 'orbit' || meta.id === 'spiral' || meta.id === 'watchtower') && (
-                <ParamRow label="Direction">
+                <ParamRow label={t('map:mapCommand.direction')}>
                   <DirSeg value={direction} onChange={setDirection} />
                 </ParamRow>
               )}
               {meta.id === 'orbit' && (
-                <ParamRow label="Orbits">
+                <ParamRow label={t('map:mapCommand.orbits')}>
                   <Stepper value={revolutions} onChange={setRevolutions} min={0} max={50} step={1}
-                    unit={revolutions === 0 ? 'endless' : revolutions === 1 ? 'circle' : 'circles'} showInfinityAtZero />
+                    unit={revolutions === 0 ? t('map:mapCommand.endless') : revolutions === 1 ? t('map:mapCommand.circle') : t('map:mapCommand.circles')} showInfinityAtZero />
                 </ParamRow>
               )}
               {meta.id === 'spiral' && (
                 <>
-                  <ParamRow label="To alt">
+                  <ParamRow label={t('map:mapCommand.toAlt')}>
                     <Stepper value={displayAltitude(spiralTargetAlt)} onChange={(v) => setSpiralTargetAlt(nativeAltitude(v))}
                       min={displayAltitude(2)} max={displayAltitude(5000)} step={altitudeStep} unit={altitudeLabel} />
                   </ParamRow>
-                  <ParamRow label="Climb">
+                  <ParamRow label={t('map:mapCommand.climb')}>
                     <Stepper value={displayVerticalSpeed(climbRate)} onChange={(v) => setClimbRate(nativeVerticalSpeed(v))}
                       min={displayVerticalSpeed(0.1)} max={displayVerticalSpeed(10)} step={verticalSpeedStep} unit={verticalSpeedLabel} />
                   </ParamRow>
                 </>
               )}
               {meta.id === 'watchtower' && (
-                <ParamRow label="Yaw rate">
-                  <Stepper value={yawRate} onChange={setYawRate} min={5} max={180} step={5} unit={`°/s, ${(360 / Math.max(yawRate, 1)).toFixed(1)}s/rev`} />
+                <ParamRow label={t('map:mapCommand.yawRate')}>
+                  <Stepper value={yawRate} onChange={setYawRate} min={5} max={180} step={5} unit={t('map:mapCommand.yawRateUnit', { sec: (360 / Math.max(yawRate, 1)).toFixed(1) })} />
                 </ParamRow>
               )}
               {meta.id === 'reveal' && (
                 <>
-                  <ParamRow label="Pullback">
+                  <ParamRow label={t('map:mapCommand.pullback')}>
                     <Stepper value={displayDistance(revealPullback)} onChange={(v) => setRevealPullback(nativeDistance(v))}
                       min={displayDistance(5)} max={displayDistance(500)} step={distanceStep} unit={distanceLabel} />
                   </ParamRow>
-                  <ParamRow label="Climb">
+                  <ParamRow label={t('map:mapCommand.climb')}>
                     <Stepper value={displayAltitude(revealClimb)} onChange={(v) => setRevealClimb(nativeAltitude(v))}
                       min={displayAltitude(-100)} max={displayAltitude(200)} step={altitudeStep} unit={altitudeLabel} />
                   </ParamRow>
-                  <ParamRow label="Speed">
+                  <ParamRow label={t('map:mapCommand.speed')}>
                     <Stepper value={displaySpeed(revealSpeed)} onChange={(v) => setRevealSpeed(nativeSpeed(v))}
                       min={displaySpeed(0.5)} max={displaySpeed(15)} step={speedStep} unit={speedLabel} />
                   </ParamRow>
@@ -635,24 +639,24 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
               )}
               {meta.id === 'strafe' && (
                 <>
-                  <ParamRow label="Offset">
+                  <ParamRow label={t('map:mapCommand.offset')}>
                     <Stepper value={displayDistance(strafeOffset)} onChange={(v) => setStrafeOffset(nativeDistance(v))}
                       min={displayDistance(2)} max={displayDistance(300)} step={distanceStep} unit={distanceLabel} />
                   </ParamRow>
-                  <ParamRow label="Length">
+                  <ParamRow label={t('map:mapCommand.length')}>
                     <Stepper value={displayDistance(strafeLength)} onChange={(v) => setStrafeLength(nativeDistance(v))}
                       min={displayDistance(5)} max={displayDistance(500)} step={distanceStep} unit={distanceLabel} />
                   </ParamRow>
-                  <ParamRow label="Speed">
+                  <ParamRow label={t('map:mapCommand.speed')}>
                     <Stepper value={displaySpeed(strafeSpeed)} onChange={(v) => setStrafeSpeed(nativeSpeed(v))}
                       min={displaySpeed(0.5)} max={displaySpeed(15)} step={speedStep} unit={speedLabel} />
                   </ParamRow>
                 </>
               )}
               {meta.id === 'climbRtl' && (
-                <ParamRow label="Climb to">
+                <ParamRow label={t('map:mapCommand.climbTo')}>
                   <Stepper value={displayAltitude(climbRtlAlt)} onChange={(v) => setClimbRtlAlt(nativeAltitude(v))}
-                    min={displayAltitude(5)} max={displayAltitude(500)} step={altitudeStep} unit={`${altitudeLabel} AGL`} />
+                    min={displayAltitude(5)} max={displayAltitude(500)} step={altitudeStep} unit={t('map:mapCommand.agl', { unit: altitudeLabel })} />
                 </ParamRow>
               )}
             </div>
@@ -667,7 +671,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                   sendBlockedByTerrain ? 'cursor-not-allowed bg-surface-input !text-content-tertiary' : ACCENT[meta.accent].btn
                 }`}
               >
-                {meta.go}
+                {t(meta.goKey)}
               </button>
               {modePill && (
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide whitespace-nowrap ${ACCENT[meta.accent].pill}`}>
@@ -678,23 +682,23 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
 
             {heldByFollowLoop && meta.id !== 'look' && (
               <div className="mt-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] leading-snug text-amber-500">
-                {targetLabel ?? 'This vehicle'} is a wingman{leaderSysid !== undefined ? ` of SYS ${leaderSysid}` : ''}.
-                The formation loop re-targets it every tick, so this command will be accepted and
-                immediately overridden. Command the leader, or drop it from the fleet first.
+                {leaderSysid !== undefined
+                  ? t('map:mapCommand.wingmanWarningOf', { label: targetLabel ?? t('map:mapCommand.thisVehicle'), leader: leaderSysid })
+                  : t('map:mapCommand.wingmanWarning', { label: targetLabel ?? t('map:mapCommand.thisVehicle') })}
               </div>
             )}
 
             {fenceWarning && (
               <div className="mt-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-[10px] leading-snug text-rose-500">
-                Vehicle will refuse this point: {fenceWarning}
+                {t('map:mapCommand.fenceRefuse', { reason: fenceWarning })}
               </div>
             )}
 
             {meta.id === 'orbit' && !scriptHealthy && (
               <div className="mt-1.5 text-[9.5px] text-content-tertiary">
                 {scriptHealth.status === 'stale'
-                  ? 'Script silent: native DO_ORBIT fallback, orbit count ignored.'
-                  : 'Script not installed: native DO_ORBIT, orbit count ignored.'}
+                  ? t('map:mapCommand.orbitScriptStale')
+                  : t('map:mapCommand.orbitScriptMissing')}
               </div>
             )}
 
@@ -702,19 +706,19 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
               sendBlockedByTerrain ? (
                 <div className="mt-1.5 flex items-center justify-between gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-1.5">
                   <span className="text-[11px] leading-snug font-medium text-rose-500">
-                    {targetLabel ?? 'Vehicle'} has no terrain data: it will reject this command.
+                    {t('map:mapCommand.noTerrain', { label: targetLabel ?? t('map:mapCommand.vehicle') })}
                   </span>
                   <button
                     type="button"
                     onClick={() => chooseAltFrame('relative')}
                     className="shrink-0 rounded-md bg-rose-600 px-2.5 py-1 text-[10.5px] font-semibold text-white hover:bg-rose-500"
                   >
-                    Use Home
+                    {t('map:mapCommand.useHome')}
                   </button>
                 </div>
               ) : terrainAvailable === true ? (
                 <div className="mt-1.5 text-[9.5px] text-content-tertiary">
-                  Vehicle reports terrain data on board.
+                  {t('map:mapCommand.terrainOnBoard')}
                 </div>
               ) : null
             )}
@@ -724,9 +728,9 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
 
       {/* Keyboard hint footer */}
       <div className="mt-1.5 flex items-center justify-center gap-3 text-[9px] text-content-tertiary">
-        <span><Kbd>1</Kbd>-<Kbd>9</Kbd> select</span>
-        <span><Kbd>Enter</Kbd> or click again to send</span>
-        <span><Kbd>Esc</Kbd> close</span>
+        <span><Trans i18nKey="map:mapCommand.kbdSelect" components={{ k: <Kbd>{null}</Kbd> }} /></span>
+        <span><Trans i18nKey="map:mapCommand.kbdSend" components={{ k: <Kbd>{null}</Kbd> }} /></span>
+        <span><Trans i18nKey="map:mapCommand.kbdClose" components={{ k: <Kbd>{null}</Kbd> }} /></span>
       </div>
 
       <ScriptInstallModal open={installModalOpen} onClose={() => setInstallModalOpen(false)} />
@@ -779,7 +783,7 @@ function Stepper({ value, onChange, min, max, step, unit, autoFocus, showInfinit
         onClick={() => onChange(clamp(value - step))}
         className="w-8 flex-none text-sm leading-none text-content-secondary hover:bg-surface-raised hover:text-content"
       >
-        &minus;
+        −
       </button>
       <div className="flex min-w-0 flex-1 items-baseline justify-center gap-1 self-center">
         {showInfinityAtZero && value === 0 && !editing ? (
@@ -788,7 +792,7 @@ function Stepper({ value, onChange, min, max, step, unit, autoFocus, showInfinit
             onClick={() => { setEditing(true); setDraft('0'); }}
             className="font-mono text-xs text-content"
           >
-            &infin;
+            ∞
           </button>
         ) : (
           <input
@@ -822,10 +826,11 @@ function Stepper({ value, onChange, min, max, step, unit, autoFocus, showInfinit
 /** Altitude reference picker: Home / Terrain / Sea. Tooltips carry the detail
  *  so the labels stay short. Mirrors DirSeg geometry so the row lines up. */
 function FrameSeg({ value, onChange }: { value: AltReferenceFrame; onChange: (f: AltReferenceFrame) => void }) {
+  const { t } = useTranslation();
   const opts: { id: AltReferenceFrame; label: string; tip: string }[] = [
-    { id: 'relative', label: 'Home', tip: 'Above the home / launch point (ArduPilot default)' },
-    { id: 'terrain', label: 'Terrain', tip: 'Above the ground below the vehicle. Needs terrain data or a rangefinder.' },
-    { id: 'asl', label: 'Sea', tip: 'Above mean sea level (AMSL)' },
+    { id: 'relative', label: t('map:mapCommand.frameHome'), tip: t('map:mapCommand.frameHomeTip') },
+    { id: 'terrain', label: t('map:mapCommand.frameTerrain'), tip: t('map:mapCommand.frameTerrainTip') },
+    { id: 'asl', label: t('map:mapCommand.frameSea'), tip: t('map:mapCommand.frameSeaTip') },
   ];
   return (
     <div className="flex h-7 items-stretch overflow-hidden rounded-lg border border-subtle">
@@ -847,6 +852,7 @@ function FrameSeg({ value, onChange }: { value: AltReferenceFrame; onChange: (f:
 }
 
 function DirSeg({ value, onChange }: { value: 'cw' | 'ccw'; onChange: (d: 'cw' | 'ccw') => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex h-7 items-stretch overflow-hidden rounded-lg border border-subtle">
       {(['cw', 'ccw'] as const).map((d, i) => (
@@ -858,7 +864,7 @@ function DirSeg({ value, onChange }: { value: 'cw' | 'ccw'; onChange: (d: 'cw' |
             value === d ? 'bg-surface-raised font-semibold text-content' : 'bg-surface-input text-content-secondary hover:text-content'
           }`}
         >
-          {d.toUpperCase()}
+          {d === 'cw' ? t('map:mapCommand.cw') : t('map:mapCommand.ccw')}
         </button>
       ))}
     </div>

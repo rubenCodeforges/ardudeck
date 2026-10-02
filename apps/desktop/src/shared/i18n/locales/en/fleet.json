@@ -1,0 +1,104 @@
+{
+  "draggableFleetActions": {
+    "collapseAria": "Collapse fleet ops panel",
+    "dragTip": "Drag to move - magnets to panel & window edges",
+    "expandAria": "Expand fleet ops panel",
+    "title": "Fleet Ops"
+  },
+  "fleetContextMenu": {
+    "addToFleet": "Add to fleet",
+    "alt": "alt",
+    "chipTip": "{{label}} (m)",
+    "commandVehicle": "Command this vehicle",
+    "createLeader": "Create leader",
+    "currentShape": "{{label}} (current)",
+    "disband": "Disband fleet",
+    "disbandTip": "Disbands this fleet - its wingmen return to manual control",
+    "formUp_one": "Form up {{count}} free drone",
+    "formUp_other": "Form up {{count}} free drones",
+    "formationShape": "Formation shape",
+    "gap": "gap",
+    "join": "Join {{label}}",
+    "leadsFleet": "Leads a fleet",
+    "leave": "Leave fleet",
+    "leaveTip": "Drop {{label}} from the fleet - the rest hold formation",
+    "reformShape": "Re-form: {{label}}"
+  },
+  "fleetCoordination": {
+    "alt": "alt",
+    "altitudeTip": "Takeoff altitude (m)",
+    "collapseFleet": "Collapse fleet",
+    "engineError": "engine error",
+    "engineReportTip": "Latest report from the coordination engine (group takeoff / mission start)",
+    "expandFleet": "Expand fleet",
+    "fleet": "Fleet",
+    "leaderModeTip": "{{label}} mode",
+    "reformTip": "Re-form {{label}}'s fleet: {{shape}}",
+    "startMission": "Start mission",
+    "startMissionTip": "{{label}} flies its uploaded mission in AUTO; its wingmen hold formation and follow",
+    "startMissions": "Start missions ({{count}})",
+    "startMissionsTip": "Upload each vehicle's assigned WP group and start all {{count}} missions in AUTO",
+    "takeOff": "Take off",
+    "takeOffAll": "Take off all",
+    "takeOffAllTip": "Every connected vehicle arms and climbs to {{alt}} m together",
+    "takeOffFleetTip": "Arm and climb only {{label}}'s fleet to {{alt}} m"
+  },
+  "fleetDisclosure": {
+    "collapseAll": "Collapse all",
+    "collapseEveryTip": "Collapse every fleet",
+    "expandAll": "Expand all",
+    "expandEveryTip": "Expand every fleet",
+    "fleets": "Fleets"
+  },
+  "fleetGroupActions": {
+    "arm": "Arm",
+    "confirmArm_one": "Arm {{count}} vehicle?",
+    "confirmArm_other": "Arm {{count}} vehicles?",
+    "confirmDisarm_one": "Disarm {{count}} vehicle?",
+    "confirmDisarm_other": "Disarm {{count}} vehicles?",
+    "confirmRtl_one": "Send {{count}} vehicle home (RTL)?",
+    "confirmRtl_other": "Send {{count}} vehicles home (RTL)?",
+    "confirmStart_one": "Start mission on {{count}} vehicle?",
+    "confirmStart_other": "Start mission on {{count}} vehicles?",
+    "selected": "{{count}} selected",
+    "start": "Start"
+  },
+  "fleetStrip": {
+    "collapseFleet": "Collapse fleet",
+    "deselectTip": "{{label}} - click to deselect",
+    "dragHere": "Drag a vehicle here",
+    "dropToRemove": "Drop to remove from fleet",
+    "expandFleet": "Expand fleet",
+    "fleet": "Fleet",
+    "identityTip": "{{airframe}} - {{state}} (click to set identity colour)",
+    "lead": "Lead",
+    "orders": "Orders",
+    "selectTip": "Select for group commands",
+    "setColour": "Set colour {{color}}",
+    "unassigned": "Unassigned",
+    "vehicleTip": "{{label}} - {{mode}}",
+    "vehicleTipArmed": "{{label}} - {{mode}} - ARMED"
+  },
+  "formationGlyphs": {
+    "box": "Box (grid)",
+    "column": "Column (trail)",
+    "diamond": "Diamond",
+    "echelonLeft": "Echelon left",
+    "echelonRight": "Echelon right",
+    "line": "Line abreast (wall)",
+    "survey": "Survey sweep (wide)",
+    "vee": "Vee (delta)"
+  },
+  "heartbeatDot": {
+    "none": "No heartbeat yet",
+    "receiving": "Receiving heartbeat",
+    "stale": "No heartbeat for {{seconds}}s"
+  },
+  "missionPathsToggle": {
+    "all": "All vehicle paths",
+    "allTip": "Draw every vehicle's flight path (selected solid, others dimmed)",
+    "selected": "Selected only",
+    "selectedTip": "Draw only the selected vehicle's flight path",
+    "title": "Mission paths"
+  }
+}

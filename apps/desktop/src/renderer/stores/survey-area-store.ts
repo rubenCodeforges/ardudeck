@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { SurveyGroup } from '../../shared/mission-group-types';
 import {
   surveyAreaFromGroup,
@@ -94,7 +95,7 @@ export const useSurveyAreaStore = create<SurveyAreaStore>((set, get) => ({
     if (!doc) return false;
     const result = await window.electronAPI?.fleetRepoSnapshotSurveyArea(site, doc);
     if (!result?.success) {
-      set({ error: result?.error ?? 'Could not write to the vault' });
+      set({ error: result?.error ?? t('stores:surveyAreaStore.writeFailed') });
       return false;
     }
     // Record the site on the local copy without bumping the revision: the
@@ -107,7 +108,7 @@ export const useSurveyAreaStore = create<SurveyAreaStore>((set, get) => ({
   pullFromVault: async (path) => {
     const doc = await window.electronAPI?.fleetRepoReadSurveyArea(path);
     if (!doc) {
-      set({ error: 'Could not read that area from the vault' });
+      set({ error: t('stores:surveyAreaStore.readFailed') });
       return null;
     }
     const stored = await window.electronAPI?.surveyAreaImportDoc(doc);

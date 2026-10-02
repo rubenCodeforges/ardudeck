@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useFlightControlStore,
   type ModeMapping,
@@ -15,6 +16,7 @@ import {
 import { useConnectionStore } from '../../stores/connection-store';
 
 export function OsdModeSwitchPanel() {
+  const { t } = useTranslation();
   const connectionState = useConnectionStore((s) => s.connectionState);
   const modeMappings = useFlightControlStore((s) => s.modeMappings);
   const modeMappingsLoaded = useFlightControlStore((s) => s.modeMappingsLoaded);
@@ -35,7 +37,7 @@ export function OsdModeSwitchPanel() {
   if (!connectionState.isConnected) {
     return (
       <div className="p-3">
-        <p className="text-xs text-content-secondary">Connect to FC to see mode switches.</p>
+        <p className="text-xs text-content-secondary">{t('osd:osdModeSwitchPanel.connectFc')}</p>
       </div>
     );
   }
@@ -43,12 +45,12 @@ export function OsdModeSwitchPanel() {
   if (!modeMappingsLoaded || modeMappings.length === 0) {
     return (
       <div className="p-3 space-y-2">
-        <p className="text-xs text-content-secondary">No mode ranges loaded.</p>
+        <p className="text-xs text-content-secondary">{t('osd:osdModeSwitchPanel.noRanges')}</p>
         <button
           onClick={() => loadModeRanges()}
           className="text-xs text-blue-400 hover:text-blue-300"
         >
-          Retry
+          {t('common:retry')}
         </button>
       </div>
     );
@@ -57,7 +59,7 @@ export function OsdModeSwitchPanel() {
   return (
     <div className="space-y-1">
       <h4 className="text-[10px] font-medium text-content-secondary uppercase tracking-wider px-3 py-1">
-        Mode Switches
+        {t('osd:osdModeSwitchPanel.modeSwitches')}
       </h4>
       {modeMappings.map((mapping) => (
         <ModeButton
@@ -83,6 +85,7 @@ function ModeButton({
   onActivate: () => Promise<boolean>;
   onDeactivate: () => Promise<boolean>;
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   // Determine if mode is currently active based on channel value
@@ -126,7 +129,7 @@ function ModeButton({
         <div className="flex items-center justify-between">
           <span>{mapping.name}</span>
           <span className={`text-[10px] ${isActive ? 'text-green-400' : 'text-content-tertiary'}`}>
-            {isActive ? 'ON' : 'OFF'}
+            {isActive ? t('osd:osdModeSwitchPanel.on') : t('osd:osdModeSwitchPanel.off')}
           </span>
         </div>
       </button>

@@ -1,0 +1,36 @@
+{
+  "guideHost": {
+    "dontShowAgain": "Don't show guides automatically again",
+    "gotIt": "Got it",
+    "stepOf": "{{step}} of {{total}}"
+  },
+  "guidesAndTours": {
+    "allMarkedUnseen": "All marked unseen",
+    "guides": "Guides",
+    "offerWalkthroughs": "Offer walkthroughs when opening a view for the first time",
+    "resetAll": "Reset all",
+    "title": "Guides & tours",
+    "tours": "Tours"
+  },
+  "layoutsDemo": {
+    "workspace": "Workspace · {{name}}"
+  },
+  "registry": {
+    "grouping": {
+      "blurb": "Drag one map instrument onto another to dock them into a shared card. Drag a member back out to free it, or scale the whole group at once.",
+      "title": "Instrument grouping"
+    },
+    "mapSplit": {
+      "blurb": "The Split button on the map shares the panel with Vision. Drag the divider to set the size; the Pilot layout starts this way with synthetic vision.",
+      "title": "Map and vision side by side"
+    },
+    "workspaceLayouts": {
+      "blurb": "The Workspace button switches between Pilot, FPV and Mission, each with its own panels, cockpit instruments and split. Save your own and share them as a file.",
+      "title": "Workspace layouts"
+    }
+  },
+  "splitDemo": {
+    "split": "Split",
+    "synthetic": "Synthetic"
+  }
+}

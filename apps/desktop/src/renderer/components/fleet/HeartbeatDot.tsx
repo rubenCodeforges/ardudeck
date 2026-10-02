@@ -9,6 +9,7 @@
  * new telemetry arrives to trigger a render.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 
 /** Telemetry within this window counts as a live heartbeat. */
@@ -47,14 +48,15 @@ interface HeartbeatDotProps {
 }
 
 export function HeartbeatDot({ lastUpdate, className = '' }: HeartbeatDotProps) {
+  const { t } = useTranslation();
   useSharedTick();
   const age = lastUpdate === null ? Infinity : Date.now() - lastUpdate;
   const live = age < LIVE_WINDOW_MS;
   const tip = live
-    ? 'Receiving heartbeat'
+    ? t('fleet:heartbeatDot.receiving')
     : lastUpdate === null
-      ? 'No heartbeat yet'
-      : `No heartbeat for ${Math.round(age / 1000)}s`;
+      ? t('fleet:heartbeatDot.none')
+      : t('fleet:heartbeatDot.stale', { seconds: Math.round(age / 1000) });
 
   return (
     <span className={`relative inline-flex w-2.5 h-2.5 shrink-0 ${className}`} data-tip={tip}>

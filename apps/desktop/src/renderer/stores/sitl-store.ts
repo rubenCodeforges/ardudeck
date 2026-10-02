@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { persist } from 'zustand/middleware';
 import type { SitlProfile, SitlConfig } from '../../shared/ipc-channels.js';
 
@@ -133,23 +134,31 @@ export interface SitlStore {
 const STANDARD_PROFILES: SitlProfile[] = [
   {
     name: 'Default',
-    description: 'Fresh iNav install with factory defaults. Use for general testing.',
+    description: 'Fresh iNav install with factory defaults. Use for general testing.', // i18n-exempt: persisted, see sitlProfileDescription
     eepromFileName: 'inav-default.bin',
     isStandard: true,
   },
   {
     name: 'Airplane',
-    description: 'Pre-configured for fixed-wing testing with airplane mixer.',
+    description: 'Pre-configured for fixed-wing testing with airplane mixer.', // i18n-exempt: persisted, see sitlProfileDescription
     eepromFileName: 'inav-airplane.bin',
     isStandard: true,
   },
   {
     name: 'Quadcopter',
-    description: 'Pre-configured for quad testing with X mixer.',
+    description: 'Pre-configured for quad testing with X mixer.', // i18n-exempt: persisted, see sitlProfileDescription
     eepromFileName: 'inav-quadcopter.bin',
     isStandard: true,
   },
 ];
+
+/** Profile description in the UI language. */
+export function sitlProfileDescription(profile: SitlProfile): string | undefined {
+  if (profile.isStandard && STANDARD_PROFILES.some((p) => p.name === profile.name)) {
+    return t(`stores:sitlStore.profileDescription.${profile.name}`);
+  }
+  return profile.description;
+}
 
 // =============================================================================
 // Store Implementation
@@ -208,7 +217,7 @@ export const useSitlStore = create<SitlStore>()(
 
         const profile = getCurrentProfile();
         if (!profile) {
-          set({ lastError: 'No profile selected' });
+          set({ lastError: t('stores:sitlStore.noProfile') });
           return false;
         }
 
@@ -238,12 +247,12 @@ export const useSitlStore = create<SitlStore>()(
             }
             return true;
           } else {
-            set({ isStarting: false, lastError: result.error ?? 'Failed to start SITL' });
+            set({ isStarting: false, lastError: result.error ?? t('stores:sitlStore.startFailed') });
             appendOutput(`Error: ${result.error}\n`, true);
             return false;
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isStarting: false, lastError: message });
           appendOutput(`Error: ${message}\n`, true);
           return false;
@@ -267,7 +276,7 @@ export const useSitlStore = create<SitlStore>()(
           appendOutput('SITL stopped.\n');
           return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isStopping: false, lastError: message });
           appendOutput(`Error stopping: ${message}\n`, true);
           return false;
@@ -317,7 +326,7 @@ export const useSitlStore = create<SitlStore>()(
 
         // Check for duplicate name
         if (profiles.some((p) => p.name === name)) {
-          set({ lastError: 'Profile name already exists' });
+          set({ lastError: t('stores:sitlStore.nameExists') });
           return null;
         }
 
@@ -354,7 +363,7 @@ export const useSitlStore = create<SitlStore>()(
 
         // Can't delete standard profiles
         if (profile.isStandard) {
-          set({ lastError: 'Cannot delete standard profiles' });
+          set({ lastError: t('stores:sitlStore.cannotDeleteStandard') });
           return false;
         }
 
@@ -480,12 +489,12 @@ export const useSitlStore = create<SitlStore>()(
             appendOutput(`FlightGear launched with aircraft: ${flightGearConfig.aircraft}, airport: ${flightGearConfig.airport}\n`);
             return true;
           } else {
-            set({ isFlightGearStarting: false, flightGearError: result.error ?? 'Failed to launch FlightGear' });
+            set({ isFlightGearStarting: false, flightGearError: result.error ?? t('stores:sitlStore.flightGearFailed') });
             appendOutput(`FlightGear error: ${result.error}\n`, true);
             return false;
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isFlightGearStarting: false, flightGearError: message });
           appendOutput(`FlightGear error: ${message}\n`, true);
           return false;
@@ -508,7 +517,7 @@ export const useSitlStore = create<SitlStore>()(
           appendOutput('FlightGear stopped.\n');
           return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ flightGearError: message });
           appendOutput(`FlightGear stop error: ${message}\n`, true);
           return false;
@@ -571,12 +580,12 @@ export const useSitlStore = create<SitlStore>()(
             appendOutput('  - Enable: speeds, attitudes, lat/lon/alt\n');
             return true;
           } else {
-            set({ isXPlaneStarting: false, xplaneError: result.error ?? 'Failed to launch X-Plane' });
+            set({ isXPlaneStarting: false, xplaneError: result.error ?? t('stores:sitlStore.xplaneFailed') });
             appendOutput(`X-Plane error: ${result.error}\n`, true);
             return false;
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isXPlaneStarting: false, xplaneError: message });
           appendOutput(`X-Plane error: ${message}\n`, true);
           return false;
@@ -599,7 +608,7 @@ export const useSitlStore = create<SitlStore>()(
           appendOutput('X-Plane stopped.\n');
           return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ xplaneError: message });
           appendOutput(`X-Plane stop error: ${message}\n`, true);
           return false;
@@ -618,7 +627,7 @@ export const useSitlStore = create<SitlStore>()(
           return false;
         }
 
-        appendOutput('Starting protocol bridge...\n');
+        appendOutput(`${t('stores:sitlStore.startingBridge')}\n`);
 
         try {
           const result = await window.electronAPI.bridgeStart();
@@ -632,7 +641,7 @@ export const useSitlStore = create<SitlStore>()(
             return false;
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           appendOutput(`Bridge error: ${message}\n`, true);
           return false;
         }
@@ -646,15 +655,15 @@ export const useSitlStore = create<SitlStore>()(
           return false;
         }
 
-        appendOutput('Stopping protocol bridge...\n');
+        appendOutput(`${t('stores:sitlStore.stoppingBridge')}\n`);
 
         try {
           await window.electronAPI.bridgeStop();
           set({ isBridgeRunning: false });
-          appendOutput('Protocol bridge stopped.\n');
+          appendOutput(`${t('stores:sitlStore.bridgeStopped')}\n`);
           return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           appendOutput(`Bridge stop error: ${message}\n`, true);
           return false;
         }
@@ -698,11 +707,11 @@ export const useSitlStore = create<SitlStore>()(
           }
 
           // Wait for X-Plane to initialize
-          appendOutput('Waiting for X-Plane to initialize (10 seconds)...\n');
+          appendOutput(`${t('stores:sitlStore.waitingXPlane')}\n`);
           await new Promise((resolve) => setTimeout(resolve, 10000));
 
           // Step 2: Start SITL with X-Plane simulator mode
-          appendOutput('Starting iNav SITL...\n');
+          appendOutput(`${t('stores:sitlStore.startingInav')}\n`);
           const sitlSuccess = await startSitl();
           if (!sitlSuccess) {
             await get().stopXPlane();
@@ -738,11 +747,11 @@ export const useSitlStore = create<SitlStore>()(
           }
 
           // Wait for FlightGear to initialize
-          appendOutput('Waiting for FlightGear to initialize (15-30 seconds)...\n');
+          appendOutput(`${t('stores:sitlStore.waitingFlightGear')}\n`);
           await new Promise((resolve) => setTimeout(resolve, 15000));
 
           // Step 3: Start SITL
-          appendOutput('Starting iNav SITL...\n');
+          appendOutput(`${t('stores:sitlStore.startingInav')}\n`);
           const sitlSuccess = await startSitl();
           if (!sitlSuccess) {
             await get().stopBridge();

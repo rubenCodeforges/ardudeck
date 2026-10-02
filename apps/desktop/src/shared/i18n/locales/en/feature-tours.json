@@ -1,0 +1,227 @@
+{
+  "registry": {
+    "altitudePlanning": {
+      "blurb": "The profile now plots relative, terrain and ASL waypoints correctly against real terrain - with AGL labels, collision warnings you can trust, and zoom.",
+      "panel": {
+        "body": "Waypoints plot against terrain in their own altitude frame, so an 80m-relative survey at a mountain site reads <b>80m (80m AGL)</b>, not a false collision. The axis shows <b>height above home</b> with ASL alongside, terrain-following segments hug the ground, and the dashed line is your safety clearance. <b>Scroll to zoom, drag to pan</b>, drag a waypoint dot to change its altitude, and let <b>Auto Adjust</b> fix real terrain conflicts.",
+        "title": "Altitude, in the frame you planned it"
+      },
+      "title": "Altitude profile that understands frames"
+    },
+    "calibration": {
+      "blurb": "Accelerometer, compass, level and the rest, each as a guided step with live feedback.",
+      "title": "Sensor calibration",
+      "types": {
+        "body": "Each card is a guided calibration. Cards the vehicle has no sensor for stay greyed out. The compass calibration shows which directions are already covered while you turn the aircraft. A pre-arm fix that needs a calibration opens the right card directly.",
+        "title": "Pick what to calibrate"
+      }
+    },
+    "flightInfo": {
+      "blurb": "A live pre-flight briefing for any mission or survey: endurance and batteries, distance and altitude, site wind and weather, and your daylight window.",
+      "panel": {
+        "body": "The new <b>Flight Info</b> tab turns your mission into the numbers a pilot decides on: <b>flight time</b> and how many <b>batteries</b> it needs, total <b>distance</b> and <b>altitude</b> against the ceiling, and live <b>site weather</b>.",
+        "body2": "Wind shows as a <b>compass</b>, and the <b>daylight</b> bar marks when the flight would finish against sunset - so you can see at a glance whether it lands before dark.",
+        "title": "Brief the flight before you fly it"
+      },
+      "title": "New: the Flight Info briefing"
+    },
+    "libraryProjects": {
+      "blurb": "One site, all of its survey areas and missions, local and from the vault, in one place.",
+      "tabs": {
+        "body": "Give a mission or a survey area a <b>project</b> name when you save it and it collects under <b>Projects</b> with everything else for that site, including what is in the vault. Open an area or a mission from there and it lands in the planner.",
+        "title": "Missions, areas and projects"
+      },
+      "title": "Projects"
+    },
+    "logExplorer": {
+      "blurb": "Multiple charts with independent y-axes, window-aware stats, events and FFT panels, and a flight path map that follows your cursor.",
+      "chartActions": {
+        "body": "Toggle between a shared y-axis and <b>one axis per field</b> so RPM and attitude can share a chart. The legend's <b>min / avg / max</b> recompute over the visible window as you zoom and pan, and the export button saves exactly that window as CSV. Events, Params and <b>FFT</b> live in the panels menu.",
+        "title": "Independent axes, live stats, CSV"
+      },
+      "fieldPicker": {
+        "body": "Search every message the log contains and toggle fields onto the <b>active chart</b> - add more charts and the picker targets whichever one you focus. Multi-instance messages (two GPS units, four ESCs) expand per instance, and units come straight from the log.",
+        "title": "Pick any recorded field"
+      },
+      "title": "Log Explorer, rebuilt"
+    },
+    "mapInstruments": {
+      "blurb": "Gauges, attitude, messages and RTK float over the map. Drag them, group them and save the arrangement with a layout.",
+      "pick": {
+        "body": "<b>Instruments</b> turns speed, altitude, attitude, heading, battery, <b>Messages</b> and <b>RTK</b> on and off, or loads a whole cockpit preset. Drag one onto another to <b>group</b> them into a single tray; drag it out to split it.",
+        "body2": "A saved <b>Workspace</b> layout remembers the instruments along with the panels. Settings, Guides replays the animated walkthrough.",
+        "title": "Pick what floats on the map"
+      },
+      "stream": {
+        "body": "<b>Stream</b> publishes the Vision view, with or without the HUD, as RTSP, WebRTC and SRT. Open it in VLC, ffmpeg, OpenCV or a browser.",
+        "title": "Stream the synthetic view"
+      },
+      "title": "Instruments on the map"
+    },
+    "missionPlanning": {
+      "areaSurvey": {
+        "body": "Plan by <b>GSD</b> (cm/px) instead of guessing altitude, see live <b>battery and data</b> estimates, and split a big job into <b>battery-sized sorties</b> in one click. Crosshatch can even fly its two passes at <b>two different heights</b> for better 3D.",
+        "title": "Smarter area surveys"
+      },
+      "blurb": "Grouped missions, corridor surveys, GSD-first planning, GIS import, multi-format export, and full undo - all in the planner.",
+      "corridor": {
+        "body": "Under the <b>Survey</b> button, pick <b>Corridor</b> for linear jobs - roads, rail, power lines, pipelines. Draw a centerline and ArduDeck lays parallel strips along it. Pick <b>Plane</b> (racetrack turns at sharp bends) or <b>Copter</b> (turns on the spot), and set width, strip count and overlap.",
+        "title": "Corridor surveys"
+      },
+      "export": {
+        "body": "Save or export the whole mission from here - <b>.waypoints</b> (QGC WPL, for ArduPilot / Mission Planner) or <b>.plan</b> (QGroundControl). Pick the format up front; no guessing from the file dialog.",
+        "title": "Export in any format"
+      },
+      "gisImport": {
+        "body": "Bring a survey boundary straight in from <b>KML</b>, <b>KMZ</b> or <b>GeoJSON</b> - one survey group per polygon, inner rings kept as no-fly holes. No more re-tracing a boundary by hand.",
+        "title": "Import an area from GIS"
+      },
+      "groups": {
+        "body": "Every waypoint now lives in a named, colored <b>group</b>. Click the swatch to recolor, the checkbox to show/hide it on the map, and the per-group button to upload or save just that group. Each header shows the group's <b>distance, flight time and GSD</b> at a glance.",
+        "title": "Missions are organized into groups"
+      },
+      "history": {
+        "body": "Full <b>undo / redo</b> (Cmd/Ctrl+Z) across edits, plus automatic <b>autosave</b> - if the app closes mid-plan, your mission is recovered on the next launch.",
+        "title": "Undo, redo and crash recovery"
+      },
+      "title": "Mission planning, leveled up"
+    },
+    "multiVehicle": {
+      "blurb": "Multi-vehicle is here: one switch starts the engine, vehicles appear as they come online, and ArduDeck commands them individually or together.",
+      "tab": {
+        "body": "Switch the connection sidebar to <b>Multi-vehicle</b> and flip it on: ArduDeck starts its engine in the background and vehicles appear as their heartbeats arrive - no ports, no URLs. <b>Add a vehicle</b> covers radio, internet, cellular and second-ground-station links. Click a vehicle in the fleet list and the telemetry, map and commands switch to it.",
+        "title": "Multi-vehicle mode"
+      },
+      "title": "New: fly a whole fleet"
+    },
+    "osdTool": {
+      "blurb": "Compose a fully custom ground HUD, edit the FC Text OSD, or author a RubyFPV layout - the destination bar always shows where each one ends up.",
+      "destinationBar": {
+        "body": "This bar is the ground truth: the <b>custom HUD</b> is drawn by ArduDeck over your screen and video feed and is <b>never uploaded</b> to the flight controller; the <b>Text OSD</b> editor reads and writes the FC's real OSDn_* layout; the <b>RubyFPV</b> designer exports a layout for RubyFPV ground stations. All three preview over your live video feed.",
+        "title": "Three OSDs, three destinations"
+      },
+      "title": "OSD Tool: know where your overlay lives"
+    },
+    "quickLaunch": {
+      "areaEditor": {
+        "body": "The new <b>Area Editor</b> opens from here: a full-window map for drawing survey <b>areas and corridors</b> - multi-polygon, holes, KML import, a live <b>flight briefing</b> (toggle hectares/acres), and a <b>go-to</b> search to fly to any site. <b>Send to mission</b> drops it straight into the planner.",
+        "title": "Meet the Area Editor"
+      },
+      "blurb": "Pop tools into their own windows from the header, and jump straight into the new Area Editor for drawing survey areas and corridors.",
+      "title": "Quick Launch & the Area Editor",
+      "welcomeCards": {
+        "body": "No vehicle connected? These cards open the tools that work offline: <b>Mission Planning</b>, the <b>Area Editor</b>, <b>SITL</b>, the <b>3D Sim World</b>, the <b>Radio HUD</b>, <b>Flight Log Analysis</b>, <b>Firmware Flash</b> and your <b>Mission Library</b>.",
+        "title": "Jump straight into a tool"
+      },
+      "windows": {
+        "body": "Open the <b>MAVLink Inspector</b>, the <b>Telemetry Dashboard</b> or the <b>3D Sim World</b> in a separate window, ideal for a <b>second monitor</b> while you keep planning or tuning in the main window. Each stays live alongside the rest of the app.",
+        "title": "Quick Launch - tools in their own window"
+      }
+    },
+    "radioHud": {
+      "apply": {
+        "body": "Plug the radio in via USB (choose <b>USB Storage</b> on its screen) and hit <b>Apply</b> - widget, config, voice pack and maps land on the SD card together. Then on the radio: App layout, full-screen widget, ArduDeck.",
+        "title": "One click to the radio"
+      },
+      "blurb": "Design an ArduDeck telemetry screen for your EdgeTX radio - live preview, drag-and-drop layout, offline field maps, voice alerts - and push it to the SD card in one click.",
+      "config": {
+        "body": "Everything here is an <b>override</b>. Left on auto, the widget configures itself from the vehicle's own telemetry over ELRS - cell count, capacity, battery % - no ArduDeck connection needed in the field.",
+        "title": "Zero-config by default"
+      },
+      "edit": {
+        "body": "On color radios: drag, resize and swap <b>17 instrument tiles</b> across up to 8 swipeable pages (or start from a preset). On monochrome: every data slot, the big readout and the center panel (horizon or data wall) are assignable in place.",
+        "title": "Make the screen yours"
+      },
+      "maps": {
+        "body": "Click your flying field and ArduDeck stitches <b>satellite images at three zoom levels</b> for the Map tile - vehicle, home, trail and your planned mission drawn on top, fully offline. Tap the tile on the radio to switch zoom.",
+        "title": "Offline maps on the radio"
+      },
+      "model": {
+        "body": "Color radios (TX15, TX16S, NV14...) get the full widget - the preview is a faithful mirror of that screen. Monochrome radios (Boxer, Zorro, TX12, X9D) get a dense 1-bit telemetry script with the same voice alerts. Layouts rescale when you switch.",
+        "title": "Pick your radio"
+      },
+      "title": "Your radio becomes a mini GCS"
+    },
+    "rtkNtrip": {
+      "blurb": "Stream centimeter-grade RTK corrections from any NTRIP caster straight to your vehicle, and watch the fix on the map.",
+      "map": {
+        "body": "Under <b>Instruments</b> there is also an <b>RTK</b> instrument that shows the fix type and correction age right on the map, where you are looking anyway.",
+        "title": "RTK on the map"
+      },
+      "panel": {
+        "body": "Add the <b>RTK / NTRIP</b> panel, point it at an NTRIP caster and pick a mountpoint. ArduDeck forwards the <b>RTCM corrections</b> over MAVLink; with an RTK-capable GPS the fix climbs to <b>RTK Fixed</b> (1-2 cm). With several vehicles connected, every one of them gets the corrections.",
+        "title": "RTK / NTRIP panel"
+      },
+      "title": "RTK corrections over NTRIP",
+      "workspace": {
+        "body": "The <b>Workspace</b> button holds the layouts and every panel you can add. The RTK panel is one of them.",
+        "title": "Panels live in the Workspace"
+      }
+    },
+    "unitPreferences": {
+      "blurb": "Feet, mph, knots, acres - pick per-quantity display units and the whole app follows.",
+      "title": "Plan in your own units",
+      "units": {
+        "body": "Set distance, altitude, speed, area, weight and more independently - mission planning, telemetry panels, the log explorer and survey estimates all render in your choice. Values sent to the vehicle stay metric under the hood, so nothing about the flight changes.",
+        "title": "Display Units"
+      }
+    },
+    "vehicleSetup": {
+      "battery": {
+        "body": "Monitor type, voltage and current sensing, and the low, critical and arming voltages, suggested from cell count and chemistry.",
+        "title": "Battery"
+      },
+      "blurb": "Every tab here is a page over the parameters one job needs, in plain words. The raw table is the last resort.",
+      "links": {
+        "body": "<b>Serial Ports</b> sets what runs on each port. <b>Telemetry Rates</b> works out which MAVLink channel a port is and shows what each rate costs on the link.",
+        "title": "Links"
+      },
+      "outputs": {
+        "body": "<b>Motor Test</b> spins one motor at a time with live vibration and ESC data (props off, it asks first). <b>Servo Output</b> sets each channel's function, reverse and range with a live bar.",
+        "title": "Outputs"
+      },
+      "rc": {
+        "body": "<b>Receiver</b> shows the protocol and every channel live. <b>Modes</b> maps the switch positions to modes and shows which slot the switch is in right now.",
+        "title": "RC"
+      },
+      "roverTuning": {
+        "body": "Steering and speed controller gains, <b>Speed & Steering</b> limits, and <b>Navigation</b> for waypoint following and loiter.",
+        "title": "Tuning"
+      },
+      "safety": {
+        "body": "<b>Arming</b> lists the pre-arm checks and what is failing now. <b>Failsafes & fence</b> sets what happens on link loss, low battery and a fence breach. Pre-arm quick fixes open these pages.",
+        "title": "Safety"
+      },
+      "sensors": {
+        "body": "<b>Health</b> for every sensor live, <b>Configuration</b> for board orientation, compasses and GPS wiring, and <b>LEDs & Sound</b> for the LED, buzzer and safety button.",
+        "title": "Sensors"
+      },
+      "servoOutput": {
+        "body": "Each output's function, reverse, min, trim and max, with the live position on every row.",
+        "title": "Servo Output"
+      },
+      "storage": {
+        "body": "<b>Logging</b> chooses what the card records. <b>Files</b> browses the flight controller over MAVLink-FTP. <b>Parameters</b> is the full table, for what no page covers yet.",
+        "title": "Storage"
+      },
+      "tabs": {
+        "body": "Each tab sets up one job and writes the right parameters for this firmware, with live data beside the settings so you see the effect. Most tabs sit in a group: the next steps open each one.",
+        "title": "Pages, not parameter names"
+      },
+      "title": "Vehicle setup without the parameter table",
+      "tuning": {
+        "body": "<b>PID</b> gains per axis, <b>Rates</b> and expo, <b>Tuning</b> presets, and <b>AutoTune</b> set up without hunting for its parameters. AutoTune refuses edits while armed.",
+        "title": "Tuning"
+      }
+    },
+    "vtolDualTuning": {
+      "blurb": "QuadPlanes carry two controller sets. The PID tab now lets you switch which one you tune.",
+      "title": "Tune VTOL and fixed-wing separately",
+      "toggle": {
+        "body": "A QuadPlane runs separate controllers for hover and forward flight. This switch flips the PID tab between the <b>VTOL</b> rate controller (<code>Q_A_RAT_</code>) and the <b>fixed-wing</b> controller (<code>RLL_RATE_</code> / <code>RLL2SRV_</code>).",
+        "body2": "The sliders, presets and profiles all follow your choice, so you can tune each set without leaving the page.",
+        "title": "Two controllers, one autopilot"
+      }
+    }
+  }
+}

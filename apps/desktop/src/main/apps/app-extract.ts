@@ -42,7 +42,7 @@ export async function extractAppArchive(zipPath: string, targetDir: string): Pro
     p.stderr?.on('data', (d) => { err += String(d); });
     p.on('error', fail);
     p.on('close', (code) =>
-      code === 0 ? ok() : fail(new Error(`${cmd} failed (${code}): ${err.trim()}`)),
+      code === 0 ? ok() : fail(new Error(`${cmd} failed (${code}): ${err.trim()}`)), // i18n-exempt
     );
   });
 }

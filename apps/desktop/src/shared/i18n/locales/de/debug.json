@@ -1,0 +1,22 @@
+{
+  "debugConsole": {
+    "console": "Konsole",
+    "dockBottom": "Unten andocken",
+    "dockLeft": "Links andocken",
+    "dockRight": "Rechts andocken",
+    "entries_one": "{{count}} Eintrag",
+    "entries_other": "{{count}} Einträge",
+    "filter": {
+      "all": "Alle",
+      "error": "Fehler",
+      "info": "Info",
+      "packet": "Paket"
+    },
+    "fix": "Beheben ›",
+    "jumpToLatest": "↓ Zum neuesten springen (pausiert)",
+    "msgs_one": "{{count}} Nachr.",
+    "msgs_other": "{{count}} Nachr.",
+    "noLogEntries": "Keine Log-Einträge",
+    "noMessages": "Keine Nachrichten vom Autopiloten"
+  }
+}

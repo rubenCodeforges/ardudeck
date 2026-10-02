@@ -5,6 +5,7 @@
  */
 
 import { useActiveVehicleStore } from '../stores/active-vehicle-store';
+import { t } from '../../shared/i18n/index.js';
 import { useFleetTelemetryStore } from '../stores/fleet-telemetry-store';
 import { useTelemetryStore } from '../stores/telemetry-store';
 import { useConnectionStore } from '../stores/connection-store';
@@ -34,7 +35,7 @@ export function useActiveVehicleIdentity(): {
   if (primaryConnected) {
     return { connected: true, sysid: primarySysid ?? null, label: primarySysid ? `SYS ${primarySysid}` : null, fleetCount };
   }
-  if (fleetCount > 0) return { connected: true, sysid: null, label: `Fleet (${fleetCount})`, fleetCount };
+  if (fleetCount > 0) return { connected: true, sysid: null, label: t('hooks:useFleet.fleetCount', { count: fleetCount }), fleetCount };
   return { connected: false, sysid: null, label: null, fleetCount };
 }
 

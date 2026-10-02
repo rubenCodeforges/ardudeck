@@ -4,6 +4,7 @@
 
 import { COPTER_MODE_NAMES, PLANE_MODE_NAMES, ROVER_MODE_NAMES } from '@ardudeck/dataflash-parser';
 import { logRows, type LogColumns } from '../../utils/log-columns';
+import { t } from '../../../shared/i18n/index.js';
 
 export const COPTER_MODES = COPTER_MODE_NAMES;
 
@@ -30,79 +31,79 @@ export const MODE_COLORS: Record<string, string> = {
 
 /** ArduPilot LogErrorSubsystem ids (AP_Logger). */
 const ERR_SUBSYSTEMS: Record<number, string> = {
-  1: 'Main', 2: 'Radio', 3: 'Compass', 4: 'Optical flow',
-  5: 'Radio failsafe', 6: 'Battery failsafe', 8: 'GCS failsafe',
-  9: 'Fence failsafe', 10: 'Flight mode', 11: 'GPS', 12: 'Crash check',
-  13: 'Flip', 15: 'Parachute', 16: 'EKF check', 17: 'EKF failsafe',
-  18: 'Baro', 19: 'CPU load', 20: 'ADSB failsafe', 21: 'Terrain',
-  22: 'Navigation', 23: 'Terrain failsafe', 24: 'EKF primary',
-  25: 'Thrust loss check', 26: 'Sensor failsafe', 27: 'Leak failsafe',
-  28: 'Pilot input', 29: 'Vibration failsafe', 30: 'Internal error',
-  31: 'Dead-reckoning failsafe',
+  1: 'logs:logEvents.subsys.1', 2: 'logs:logEvents.subsys.2', 3: 'logs:logEvents.subsys.3', 4: 'logs:logEvents.subsys.4',
+  5: 'logs:logEvents.subsys.5', 6: 'logs:logEvents.subsys.6', 8: 'logs:logEvents.subsys.8',
+  9: 'logs:logEvents.subsys.9', 10: 'logs:logEvents.subsys.10', 11: 'logs:logEvents.subsys.11', 12: 'logs:logEvents.subsys.12',
+  13: 'logs:logEvents.subsys.13', 15: 'logs:logEvents.subsys.15', 16: 'logs:logEvents.subsys.16', 17: 'logs:logEvents.subsys.17',
+  18: 'logs:logEvents.subsys.18', 19: 'logs:logEvents.subsys.19', 20: 'logs:logEvents.subsys.20', 21: 'logs:logEvents.subsys.21',
+  22: 'logs:logEvents.subsys.22', 23: 'logs:logEvents.subsys.23', 24: 'logs:logEvents.subsys.24',
+  25: 'logs:logEvents.subsys.25', 26: 'logs:logEvents.subsys.26', 27: 'logs:logEvents.subsys.27',
+  28: 'logs:logEvents.subsys.28', 29: 'logs:logEvents.subsys.29', 30: 'logs:logEvents.subsys.30',
+  31: 'logs:logEvents.subsys.31',
 };
 
 /** Per-subsystem error-code meanings; generic fallbacks below. */
 const ERR_CODES_BY_SUBSYS: Record<number, Record<number, string>> = {
-  2: { 2: 'late frame' },
-  11: { 2: 'GPS glitch', 0: 'glitch cleared' },
-  12: { 1: 'CRASH DETECTED', 2: 'loss of control' },
-  16: { 2: 'bad variance', 0: 'variance cleared' },
-  18: { 2: 'baro glitch', 0: 'glitch cleared' },
-  25: { 1: 'THRUST LOSS' },
+  2: { 2: 'logs:logEvents.subsysCode.2.2' },
+  11: { 2: 'logs:logEvents.subsysCode.11.2', 0: 'logs:logEvents.subsysCode.11.0' },
+  12: { 1: 'logs:logEvents.subsysCode.12.1', 2: 'logs:logEvents.subsysCode.12.2' },
+  16: { 2: 'logs:logEvents.subsysCode.16.2', 0: 'logs:logEvents.subsysCode.16.0' },
+  18: { 2: 'logs:logEvents.subsysCode.18.2', 0: 'logs:logEvents.subsysCode.18.0' },
+  25: { 1: 'logs:logEvents.subsysCode.25.1' },
 };
 
 const ERR_CODES_GENERIC: Record<number, string> = {
-  0: 'resolved',
-  1: 'triggered',
-  4: 'unhealthy',
+  0: 'logs:logEvents.errCode.0',
+  1: 'logs:logEvents.errCode.1',
+  4: 'logs:logEvents.errCode.4',
 };
 
 /** ArduPilot LogEvent ids (AP_Logger LogEvent enum). */
 const EV_NAMES: Record<number, string> = {
-  10: 'Armed', 11: 'Disarmed', 15: 'Auto armed',
-  17: 'Land complete (maybe)', 18: 'Land complete', 19: 'Lost GPS',
-  21: 'Flip start', 22: 'Flip end', 25: 'Home set',
-  26: 'Simple mode on', 27: 'Simple mode off', 28: 'Not landed',
-  29: 'Super simple mode on',
-  30: 'AutoTune initialised', 31: 'AutoTune off', 32: 'AutoTune restart',
-  33: 'AutoTune success', 34: 'AutoTune failed', 35: 'AutoTune reached limit',
-  36: 'AutoTune pilot testing', 37: 'AutoTune gains saved',
-  38: 'Trim saved', 39: 'Waypoint saved',
-  41: 'Fence enabled', 42: 'Fence disabled',
-  43: 'Acro trainer off', 44: 'Acro trainer leveling', 45: 'Acro trainer limited',
-  46: 'Gripper grab', 47: 'Gripper release',
-  49: 'Parachute disabled', 50: 'Parachute enabled', 51: 'PARACHUTE RELEASED',
-  52: 'Landing gear deployed', 53: 'Landing gear retracted',
-  54: 'MOTORS EMERGENCY STOPPED', 55: 'Motors emergency stop cleared',
-  56: 'Motors interlock disabled', 57: 'Motors interlock enabled',
-  58: 'Rotor runup complete', 59: 'ROTOR SPEED BELOW CRITICAL',
-  60: 'EKF altitude reset', 61: 'Land cancelled by pilot', 62: 'EKF yaw reset',
-  63: 'ADSB avoidance enabled', 64: 'ADSB avoidance disabled',
-  65: 'Proximity avoidance enabled', 66: 'Proximity avoidance disabled',
-  67: 'GPS primary changed',
-  71: 'ZigZag point A stored', 72: 'ZigZag point B stored',
-  73: 'Land repositioning active', 74: 'Standby enabled', 75: 'Standby disabled',
+  10: 'logs:logEvents.ev.10', 11: 'logs:logEvents.ev.11', 15: 'logs:logEvents.ev.15',
+  17: 'logs:logEvents.ev.17', 18: 'logs:logEvents.ev.18', 19: 'logs:logEvents.ev.19',
+  21: 'logs:logEvents.ev.21', 22: 'logs:logEvents.ev.22', 25: 'logs:logEvents.ev.25',
+  26: 'logs:logEvents.ev.26', 27: 'logs:logEvents.ev.27', 28: 'logs:logEvents.ev.28',
+  29: 'logs:logEvents.ev.29',
+  30: 'logs:logEvents.ev.30', 31: 'logs:logEvents.ev.31', 32: 'logs:logEvents.ev.32',
+  33: 'logs:logEvents.ev.33', 34: 'logs:logEvents.ev.34', 35: 'logs:logEvents.ev.35',
+  36: 'logs:logEvents.ev.36', 37: 'logs:logEvents.ev.37',
+  38: 'logs:logEvents.ev.38', 39: 'logs:logEvents.ev.39',
+  41: 'logs:logEvents.ev.41', 42: 'logs:logEvents.ev.42',
+  43: 'logs:logEvents.ev.43', 44: 'logs:logEvents.ev.44', 45: 'logs:logEvents.ev.45',
+  46: 'logs:logEvents.ev.46', 47: 'logs:logEvents.ev.47',
+  49: 'logs:logEvents.ev.49', 50: 'logs:logEvents.ev.50', 51: 'logs:logEvents.ev.51',
+  52: 'logs:logEvents.ev.52', 53: 'logs:logEvents.ev.53',
+  54: 'logs:logEvents.ev.54', 55: 'logs:logEvents.ev.55',
+  56: 'logs:logEvents.ev.56', 57: 'logs:logEvents.ev.57',
+  58: 'logs:logEvents.ev.58', 59: 'logs:logEvents.ev.59',
+  60: 'logs:logEvents.ev.60', 61: 'logs:logEvents.ev.61', 62: 'logs:logEvents.ev.62',
+  63: 'logs:logEvents.ev.63', 64: 'logs:logEvents.ev.64',
+  65: 'logs:logEvents.ev.65', 66: 'logs:logEvents.ev.66',
+  67: 'logs:logEvents.ev.67',
+  71: 'logs:logEvents.ev.71', 72: 'logs:logEvents.ev.72',
+  73: 'logs:logEvents.ev.73', 74: 'logs:logEvents.ev.74', 75: 'logs:logEvents.ev.75',
 };
 
 /** ArduPilot ModeReason enum: why the vehicle changed flight mode. */
 const MODE_REASONS: Record<number, string> = {
-  0: 'unknown', 1: 'RC command', 2: 'GCS command', 3: 'radio failsafe',
-  4: 'battery failsafe', 5: 'GCS failsafe', 6: 'EKF failsafe', 7: 'GPS glitch',
-  8: 'mission end', 9: 'throttle land escape', 10: 'fence breach',
-  11: 'terrain failsafe', 12: 'brake timeout', 13: 'flip complete',
-  14: 'avoidance', 15: 'avoidance recovery', 16: 'throw complete',
-  17: 'terminate', 18: 'toy mode', 19: 'crash failsafe', 20: 'soaring FBW-B',
-  21: 'soaring thermal detected', 22: 'soaring in thermal', 23: 'unavailable',
-  24: 'autorotation start', 25: 'autorotation bailout',
-  26: 'soaring drift exceeded', 27: 'rtl complete switching to vtol land',
-  28: 'rtl complete switching to fixed wing autoland', 29: 'mission cmd',
-  30: 'frsky command', 31: 'fence return previous mode',
-  32: 'QRTL instead of RTL', 33: 'auto rtl exit', 34: 'loiter alt reached QLand',
-  35: 'loiter alt in vtol land', 36: 'radio failsafe recovery',
-  37: 'QLand instead of RTL', 38: 'deadreckon failsafe',
-  39: 'mode takeoff failsafe', 40: 'DDS command', 41: 'aux function',
-  42: 'lua command', 43: 'auto landing pattern', 44: 'rc emergency stop',
-  45: 'crow mode switch',
+  0: 'logs:logEvents.modeReason.0', 1: 'logs:logEvents.modeReason.1', 2: 'logs:logEvents.modeReason.2', 3: 'logs:logEvents.modeReason.3',
+  4: 'logs:logEvents.modeReason.4', 5: 'logs:logEvents.modeReason.5', 6: 'logs:logEvents.modeReason.6', 7: 'logs:logEvents.modeReason.7',
+  8: 'logs:logEvents.modeReason.8', 9: 'logs:logEvents.modeReason.9', 10: 'logs:logEvents.modeReason.10',
+  11: 'logs:logEvents.modeReason.11', 12: 'logs:logEvents.modeReason.12', 13: 'logs:logEvents.modeReason.13',
+  14: 'logs:logEvents.modeReason.14', 15: 'logs:logEvents.modeReason.15', 16: 'logs:logEvents.modeReason.16',
+  17: 'logs:logEvents.modeReason.17', 18: 'logs:logEvents.modeReason.18', 19: 'logs:logEvents.modeReason.19', 20: 'logs:logEvents.modeReason.20',
+  21: 'logs:logEvents.modeReason.21', 22: 'logs:logEvents.modeReason.22', 23: 'logs:logEvents.modeReason.23',
+  24: 'logs:logEvents.modeReason.24', 25: 'logs:logEvents.modeReason.25',
+  26: 'logs:logEvents.modeReason.26', 27: 'logs:logEvents.modeReason.27',
+  28: 'logs:logEvents.modeReason.28', 29: 'logs:logEvents.modeReason.29',
+  30: 'logs:logEvents.modeReason.30', 31: 'logs:logEvents.modeReason.31',
+  32: 'logs:logEvents.modeReason.32', 33: 'logs:logEvents.modeReason.33', 34: 'logs:logEvents.modeReason.34',
+  35: 'logs:logEvents.modeReason.35', 36: 'logs:logEvents.modeReason.36',
+  37: 'logs:logEvents.modeReason.37', 38: 'logs:logEvents.modeReason.38',
+  39: 'logs:logEvents.modeReason.39', 40: 'logs:logEvents.modeReason.40', 41: 'logs:logEvents.modeReason.41',
+  42: 'logs:logEvents.modeReason.42', 43: 'logs:logEvents.modeReason.43', 44: 'logs:logEvents.modeReason.44',
+  45: 'logs:logEvents.modeReason.45',
 };
 
 /** Event ids that deserve attention even though they are "events" not errors. */
@@ -125,19 +126,22 @@ export interface LogEventEntry {
 type LogMessages = Record<string, LogColumns>;
 
 export function decodeErr(subsys: number, ecode: number, vehicleType?: string): { label: string; detail: string; severity: LogEventSeverity } {
-  const label = ERR_SUBSYSTEMS[subsys] ?? `Subsystem ${subsys}`;
+  const labelKey = ERR_SUBSYSTEMS[subsys];
+  const label = labelKey ? t(labelKey) : t('logs:logEvents.subsystemN', { n: subsys });
   let detail: string;
   if (subsys === 10) {
     // Flight mode subsystem: the code is the mode number that was refused.
-    detail = `cannot enter ${getModeName(ecode, vehicleType)}`;
+    detail = t('logs:logEvents.cannotEnter', { mode: getModeName(ecode, vehicleType) });
   } else {
-    detail = ERR_CODES_BY_SUBSYS[subsys]?.[ecode] ?? ERR_CODES_GENERIC[ecode] ?? `code ${ecode}`;
+    const detailKey = ERR_CODES_BY_SUBSYS[subsys]?.[ecode] ?? ERR_CODES_GENERIC[ecode];
+    detail = detailKey ? t(detailKey) : t('logs:logEvents.codeN', { n: ecode });
   }
   return { label, detail, severity: ecode === 0 ? 'info' : 'error' };
 }
 
 export function decodeEv(id: number): { label: string; severity: LogEventSeverity } {
-  return { label: EV_NAMES[id] ?? `Event ${id}`, severity: EV_WARN_IDS.has(id) ? 'warn' : 'info' };
+  const labelKey = EV_NAMES[id];
+  return { label: labelKey ? t(labelKey) : t('logs:logEvents.eventN', { n: id }), severity: EV_WARN_IDS.has(id) ? 'warn' : 'info' };
 }
 
 /**
@@ -181,8 +185,8 @@ export function extractLogEvents(log: { messages: LogMessages; metadata?: { vehi
       timeS: m.timeUs / 1_000_000,
       kind: 'MODE',
       severity: 'info',
-      label: `Mode: ${name}`,
-      detail: typeof rsn === 'number' ? `reason: ${MODE_REASONS[rsn] ?? rsn}` : undefined,
+      label: t('logs:logEvents.modeLabel', { name }),
+      detail: typeof rsn === 'number' ? t('logs:logEvents.reason', { reason: MODE_REASONS[rsn] ? t(MODE_REASONS[rsn]) : rsn }) : undefined,
     });
   }
 
@@ -193,7 +197,7 @@ export function extractLogEvents(log: { messages: LogMessages; metadata?: { vehi
       timeS: m.timeUs / 1_000_000,
       kind: 'CMD',
       severity: 'info',
-      label: typeof num === 'number' ? `WP ${num}: ${name}` : String(name),
+      label: typeof num === 'number' ? t('logs:logEvents.wpLabel', { num, name }) : String(name),
     });
   }
 

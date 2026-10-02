@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 import { ArrowRight, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useNavigationStore, isViewId } from '../../stores/navigation-store';
 import type { PreArmFix, PreArmLink } from '../../../shared/prearm-checks';
 
 /** Opens the parameter in the Parameters view, which has the full editor. */
 function ParamLink({ paramId }: { paramId: string }) {
+  const { t } = useTranslation();
   const param = useParameterStore((s) => s.parameters.get(paramId));
   const open = useCallback(() => {
     useNavigationStore.getState().setView('parameters', paramId);
@@ -16,11 +18,11 @@ function ParamLink({ paramId }: { paramId: string }) {
       type="button"
       onClick={open}
       className="group w-full flex items-center gap-2 px-2 py-1 rounded bg-surface-raised/50 hover:bg-surface-raised border border-subtle text-left transition-colors"
-      title={`Open ${paramId} in Parameters`}
+      title={t('prearm:preArmParamFix.openParamTitle', { paramId })}
     >
       <span className="text-[10px] font-mono text-content truncate">{paramId}</span>
       {param && <span className="text-[10px] font-mono text-content-secondary shrink-0">= {param.value}</span>}
-      <span className="ml-auto text-[10px] text-blue-400 group-hover:text-blue-300 whitespace-nowrap shrink-0">Open in Parameters</span>
+      <span className="ml-auto text-[10px] text-blue-400 group-hover:text-blue-300 whitespace-nowrap shrink-0">{t('prearm:preArmParamFix.openInParameters')}</span>
     </button>
   );
 }

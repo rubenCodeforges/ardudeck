@@ -1201,8 +1201,9 @@ select,
 .leaflet-container.map-picking {
   cursor: crosshair;
 }
-.leaflet-container.map-picking .leaflet-interactive,
-.leaflet-container.map-picking .leaflet-marker-icon,
+/* Draggable markers stay live: placing a waypoint and then nudging it is one workflow. */
+.leaflet-container.map-picking .leaflet-interactive:not(.leaflet-marker-draggable),
+.leaflet-container.map-picking .leaflet-marker-icon:not(.leaflet-marker-draggable),
 .leaflet-container.map-picking .leaflet-marker-shadow {
   pointer-events: none;
 }

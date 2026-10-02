@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useMessagesStore } from '../../stores/messages-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -7,6 +8,7 @@ import { PanelContainer } from './panel-utils';
 import { MessageRowBody, formatTime, severityBorder } from '../messages/MessageRow';
 
 export function MessagesPanel() {
+  const { t } = useTranslation();
   const messages = useMessagesStore((s) => s.messages);
   const clear = useMessagesStore((s) => s.clear);
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
@@ -34,14 +36,14 @@ export function MessagesPanel() {
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-subtle shrink-0">
         <span className="text-xs text-content-secondary font-medium">
-          {messages.length > 0 ? `${messages.length} message${messages.length !== 1 ? 's' : ''}` : 'No messages'}
+          {messages.length > 0 ? t('panels:messagesPanel.count', { count: messages.length }) : t('panels:messagesPanel.none')}
         </span>
         {messages.length > 0 && (
           <button
             onClick={clear}
             className="text-[10px] text-content-secondary hover:text-content transition-colors px-1.5 py-0.5 rounded hover:bg-surface-raised"
           >
-            Clear
+            {t('common:clear')}
           </button>
         )}
       </div>
@@ -50,7 +52,7 @@ export function MessagesPanel() {
       <div ref={listRef} className="flex-1 overflow-auto">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-content-tertiary text-xs">
-            Waiting for messages...
+            {t('panels:messagesPanel.waiting')}
           </div>
         ) : (
           <div className="divide-y divide-subtle">
@@ -69,7 +71,7 @@ export function MessagesPanel() {
                     {/* Expand indicator for pre-arm messages */}
                     {prearmMatch && (
                       <span className="shrink-0 text-[10px] text-blue-400 mt-0.5">
-                        {isExpanded ? '▾' : 'Fix ›'}
+                        {isExpanded ? '▾' : t('panels:messagesPanel.fix')}
                       </span>
                     )}
 

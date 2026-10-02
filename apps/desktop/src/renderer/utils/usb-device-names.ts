@@ -47,10 +47,10 @@ const USB_DEVICE_NAMES: Record<string, string> = {
   // Arduino-based (legacy APM, old Pixhawk USB chips)
   '2341:0042': 'APM 2.x (Mega 2560)',
   '2341:0010': 'Arduino Mega 2560',
-  '2341:0043': 'Arduino Uno',
-  '2341:0001': 'Arduino Mega',
+  '2341:0043': 'Arduino Uno', // i18n-exempt
+  '2341:0001': 'Arduino Mega', // i18n-exempt
   '2a03:0042': 'Arduino Mega 2560',
-  '2a03:0043': 'Arduino Uno',
+  '2a03:0043': 'Arduino Uno', // i18n-exempt
 
   // CH340 serial (common clone boards)
   '1a86:7523': 'CH340 Serial Adapter',

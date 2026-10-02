@@ -6,11 +6,13 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO, SERVO_INPUT_SOURCE } from '../presets/servo-presets';
 import { Check, X, Save, Info } from 'lucide-react';
 
 export default function ServoReviewStep() {
+  const { t } = useTranslation();
   const {
     selectedPreset,
     assignments,
@@ -26,7 +28,7 @@ export default function ServoReviewStep() {
   // Get input source name
   const getInputName = (source: number) => {
     const entry = Object.entries(SERVO_INPUT_SOURCE).find(([, v]) => v === source);
-    return entry ? entry[0].replace(/_/g, ' ') : `Source ${source}`;
+    return entry ? entry[0].replace(/_/g, ' ') : t('servo-wizard:servoReviewStep.source', { source });
   };
 
   // Handle save to flight controller
@@ -40,7 +42,7 @@ export default function ServoReviewStep() {
       setSaveStatus('success');
     } catch (err) {
       setSaveStatus('error');
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to save configuration');
+      setErrorMessage(err instanceof Error ? err.message : t('servo-wizard:servoReviewStep.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -52,16 +54,16 @@ export default function ServoReviewStep() {
   };
 
   if (!selectedPreset) {
-    return <div className="text-content-secondary">No configuration to review</div>;
+    return <div className="text-content-secondary">{t('servo-wizard:servoReviewStep.nothingToReview')}</div>;
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-xl font-bold text-content">Review Your Configuration</h2>
+        <h2 className="text-xl font-bold text-content">{t('servo-wizard:servoReviewStep.title')}</h2>
         <p className="text-sm text-content-secondary mt-2">
-          Verify your servo configuration before saving to the flight controller.
+          {t('servo-wizard:servoReviewStep.subtitle')}
         </p>
       </div>
 
@@ -69,9 +71,9 @@ export default function ServoReviewStep() {
       <div className="flex justify-center">
         <div className="inline-flex items-center gap-3 px-4 py-2 bg-surface rounded-full border border-subtle">
           <span className="text-2xl">{selectedPreset.icon}</span>
-          <span className="text-sm font-medium text-content">{selectedPreset.name}</span>
+          <span className="text-sm font-medium text-content">{t(selectedPreset.nameKey)}</span>
           <span className="text-xs text-content-secondary">
-            {selectedPreset.servoCount} servo{selectedPreset.servoCount !== 1 ? 's' : ''}
+            {t('servo-wizard:planeTypeStep.servoCount', { count: selectedPreset.servoCount })}
           </span>
         </div>
       </div>
@@ -81,12 +83,12 @@ export default function ServoReviewStep() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface text-content-secondary text-xs uppercase tracking-wide">
-              <th className="px-4 py-3 text-left">Control Surface</th>
-              <th className="px-4 py-3 text-left">Servo</th>
-              <th className="px-4 py-3 text-left">Input</th>
-              <th className="px-4 py-3 text-center">Rate</th>
-              <th className="px-4 py-3 text-center">Range</th>
-              <th className="px-4 py-3 text-center">Center</th>
+              <th className="px-4 py-3 text-left">{t('servo-wizard:servoReviewStep.controlSurface')}</th>
+              <th className="px-4 py-3 text-left">{t('common:servo')}</th>
+              <th className="px-4 py-3 text-left">{t('servo-wizard:servoReviewStep.input')}</th>
+              <th className="px-4 py-3 text-center">{t('common:rate')}</th>
+              <th className="px-4 py-3 text-center">{t('common:range')}</th>
+              <th className="px-4 py-3 text-center">{t('common:center')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-subtle">
@@ -98,10 +100,10 @@ export default function ServoReviewStep() {
                 <tr key={assignment.surface} className="hover:bg-surface-overlay-subtle">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-content font-medium">{surfaceInfo.name}</span>
+                      <span className="text-content font-medium">{t(surfaceInfo.nameKey)}</span>
                       {assignment.reversed && (
                         <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 rounded text-yellow-400">
-                          REV
+                          {t('servo-wizard:servoReviewStep.rev')}
                         </span>
                       )}
                     </div>
@@ -136,7 +138,7 @@ export default function ServoReviewStep() {
 
       {/* Mixer rules preview */}
       <div className="bg-surface rounded-xl p-4">
-        <h3 className="text-sm font-medium text-content mb-3">Mixer Rules Preview</h3>
+        <h3 className="text-sm font-medium text-content mb-3">{t('servo-wizard:servoReviewStep.mixerPreview')}</h3>
         <div className="font-mono text-xs text-content-secondary space-y-1">
           {assignments.map((assignment) => {
             const defaultRule = selectedPreset.defaultRules[assignment.surface];
@@ -148,7 +150,7 @@ export default function ServoReviewStep() {
 
             return (
               <div key={assignment.surface}>
-                <span className="text-content-secondary">Servo {assignment.servoIndex}</span>
+                <span className="text-content-secondary">{t('servo-wizard:servoTestStep.servoIndex', { index: assignment.servoIndex })}</span>
                 <span className="text-content-tertiary"> → </span>
                 <span className="text-blue-400">{getInputName(defaultRule[0]!.inputSource)}</span>
                 <span className="text-content-tertiary"> @ </span>
@@ -166,9 +168,9 @@ export default function ServoReviewStep() {
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center gap-3">
           <Check className="w-6 h-6 text-green-400" />
           <div>
-            <p className="text-sm text-green-400 font-medium">Configuration saved successfully!</p>
+            <p className="text-sm text-green-400 font-medium">{t('servo-wizard:servoReviewStep.saved')}</p>
             <p className="text-xs text-content-secondary mt-1">
-              Settings have been written to the flight controller. You can now close this wizard.
+              {t('servo-wizard:servoReviewStep.savedHint')}
             </p>
           </div>
         </div>
@@ -178,7 +180,7 @@ export default function ServoReviewStep() {
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
           <X className="w-6 h-6 text-red-400" />
           <div>
-            <p className="text-sm text-red-400 font-medium">Failed to save configuration</p>
+            <p className="text-sm text-red-400 font-medium">{t('servo-wizard:servoReviewStep.saveFailed')}</p>
             <p className="text-xs text-content-secondary mt-1">{errorMessage}</p>
           </div>
         </div>
@@ -188,12 +190,12 @@ export default function ServoReviewStep() {
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
         <Info className="w-5 h-5 text-blue-400 shrink-0" />
         <div>
-          <p className="text-sm text-blue-400 font-medium">Before saving:</p>
+          <p className="text-sm text-blue-400 font-medium">{t('servo-wizard:servoReviewStep.beforeSaving')}</p>
           <ul className="text-xs text-content-secondary mt-1 space-y-1 list-disc list-inside">
-            <li>Ensure your flight controller is connected</li>
-            <li>Disconnect propellers for safety</li>
-            <li>After saving, test all controls before flight</li>
-            <li>Settings are stored in EEPROM (persist after power off)</li>
+            <li>{t('servo-wizard:servoReviewStep.noteConnected')}</li>
+            <li>{t('servo-wizard:servoReviewStep.notePropellers')}</li>
+            <li>{t('servo-wizard:servoReviewStep.noteTest')}</li>
+            <li>{t('servo-wizard:servoReviewStep.noteEeprom')}</li>
           </ul>
         </div>
       </div>
@@ -205,7 +207,7 @@ export default function ServoReviewStep() {
           disabled={isSaving}
           className="px-6 py-2.5 rounded-lg font-medium bg-surface-raised text-content hover:bg-surface-raised disabled:opacity-50"
         >
-          ← Back
+          {t('servo-wizard:wizardNav.back')}
         </button>
 
         <div className="flex gap-3">
@@ -214,7 +216,7 @@ export default function ServoReviewStep() {
               onClick={handleFinish}
               className="px-6 py-2.5 rounded-lg font-medium bg-green-500 text-white hover:bg-green-400"
             >
-              <Check className="w-4 h-4 inline mr-1" /> Done
+              <Check className="w-4 h-4 inline mr-1" /> {t('common:done')}
             </button>
           ) : (
             <button
@@ -225,11 +227,11 @@ export default function ServoReviewStep() {
               {isSaving ? (
                 <>
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Saving...
+                  {t('common:saving')}
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4 inline mr-1" /> Save to Flight Controller
+                  <Save className="w-4 h-4 inline mr-1" /> {t('servo-wizard:servoReviewStep.saveToFc')}
                 </>
               )}
             </button>

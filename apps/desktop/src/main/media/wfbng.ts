@@ -1,3 +1,4 @@
+import { t } from '../../shared/i18n/index.js';
 /**
  * OpenIPC / RunCam WiFiLink (wfb-ng) ingest helpers.
  *
@@ -66,6 +67,21 @@ export function buildWfbngFfmpegArgs(sdpPath: string, transcode: boolean, publis
     '-f', 'rtsp', '-rtsp_transport', 'tcp',
     publishUrl,
   ];
+}
+
+/**
+ * Why a UDP bridge never started publishing, in words, from that bridge's own
+ * ffmpeg output. Null when the output carries no recognisable cause.
+ */
+export function bridgeFailureReason(ffmpegOutput: string, port: number, codec?: WfbCodec): string | null {
+  if (/bind failed: Address already in use/i.test(ffmpegOutput)) {
+    return t('main:wfbng.udpPortHeld', { port });
+  }
+  // H.264 headers read as H.265 come out with a non-zero layer id.
+  if (codec === 'h265' && /Multi-layer HEVC coding is not implemented/i.test(ffmpegOutput)) {
+    return t('main:wfbng.codecMismatch');
+  }
+  return null;
 }
 
 /** Effective transcode decision: H.265 must be transcoded for WebRTC playback. */

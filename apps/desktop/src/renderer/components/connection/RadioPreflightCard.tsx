@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useMessagesStore } from '../../stores/messages-store';
 import { evaluateRadioPreflight } from '../../utils/radio-preflight';
@@ -9,6 +10,7 @@ import { evaluateRadioPreflight } from '../../utils/radio-preflight';
  * parameter plumbing entirely - the details flap shows it for the curious.
  */
 export function RadioPreflightCard() {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const messages = useMessagesStore((s) => s.messages);
   const [applying, setApplying] = useState(false);
@@ -37,18 +39,18 @@ export function RadioPreflightCard() {
     try {
       const batch = fixable.map((f) => {
         const existing = parameters.get(f.param);
-        if (!existing) throw new Error(`${f.param} is not loaded yet`);
+        if (!existing) throw new Error(t('connection:radioPreflight.paramNotLoaded', { param: f.param }));
         return { paramId: f.param, value: f.value, type: existing.type };
       });
       const result = await window.electronAPI.setParameterBatch(batch);
       const failed = result?.failed ?? [];
       if (failed.length > 0) {
-        setFailure(`The vehicle rejected: ${failed.join(', ')}`);
+        setFailure(t('connection:radioPreflight.vehicleRejected', { params: failed.join(', ') }));
       } else {
         setApplied(true);
       }
     } catch (e) {
-      setFailure(e instanceof Error ? e.message : 'Applying settings failed.');
+      setFailure(e instanceof Error ? e.message : t('connection:radioPreflight.applyFailed'));
     } finally {
       setApplying(false);
     }
@@ -71,11 +73,11 @@ export function RadioPreflightCard() {
       <div className="card-body space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-content">Radio Link Check</p>
+          <p className="text-sm font-medium text-content">{t('connection:radioPreflight.title')}</p>
           <p className="text-xs text-content-secondary">
             {allPass
-              ? 'The vehicle is fully set up for this radio link.'
-              : 'A few vehicle settings need adjusting for this radio link.'}
+              ? t('connection:radioPreflight.allPass')
+              : t('connection:radioPreflight.needsAdjusting')}
           </p>
         </div>
         {applied ? (
@@ -83,9 +85,9 @@ export function RadioPreflightCard() {
             onClick={reboot}
             disabled={rebooting}
             className="btn btn-primary text-xs shrink-0"
-            data-tip="The new settings take effect after a restart"
+            data-tip={t('connection:radioPreflight.restartTip')}
           >
-            {rebooting ? 'Restarting...' : 'Restart vehicle'}
+            {rebooting ? t('connection:radioPreflight.restarting') : t('connection:radioPreflight.restartVehicle')}
           </button>
         ) : (
           fixable.length > 0 && (
@@ -93,9 +95,9 @@ export function RadioPreflightCard() {
               onClick={applyFixes}
               disabled={applying}
               className="btn btn-primary text-xs shrink-0"
-              data-tip="Applies the corrected settings to the vehicle"
+              data-tip={t('connection:radioPreflight.fixTip')}
             >
-              {applying ? 'Fixing...' : 'Fix for me'}
+              {applying ? t('connection:radioPreflight.fixing') : t('connection:radioPreflight.fixForMe')}
             </button>
           )
         )}
@@ -115,8 +117,7 @@ export function RadioPreflightCard() {
 
       {applied && (
         <p className="text-xs text-emerald-300">
-          Settings applied. Restart the vehicle (button above) to make them take effect - the link reconnects by
-          itself afterwards.
+          {t('connection:radioPreflight.applied')}
         </p>
       )}
       {failure && <p className="text-xs text-red-300">{failure}</p>}
@@ -126,7 +127,7 @@ export function RadioPreflightCard() {
           onClick={() => setShowDetails((v) => !v)}
           className="text-xs text-content-secondary hover:text-content transition-colors"
         >
-          {showDetails ? 'Hide technical details' : 'Show technical details'}
+          {showDetails ? t('connection:radioPreflight.hideDetails') : t('connection:radioPreflight.showDetails')}
         </button>
       )}
       {showDetails && fixable.length > 0 && (

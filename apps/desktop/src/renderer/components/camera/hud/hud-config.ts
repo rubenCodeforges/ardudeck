@@ -6,6 +6,7 @@
  */
 
 import { READOUT_IDS, type HudReadoutId } from './hud-readouts';
+import { t } from '../../../../shared/i18n/index.js';
 
 export type HudColor = 'green' | 'amber' | 'cyan' | 'white';
 export type HudUnits = 'metric' | 'imperial';
@@ -79,23 +80,27 @@ export interface HudWidgetMeta {
   movable: boolean;
 }
 
+function hudWidget(id: HudWidgetId, labelKey: string, movable: boolean): HudWidgetMeta {
+  return { id, movable, get label() { return t(labelKey); } };
+}
+
 export const HUD_WIDGETS: HudWidgetMeta[] = [
-  { id: 'groundSpeed', label: 'Ground speed box', movable: false },
-  { id: 'horizon', label: 'Horizon line', movable: false },
-  { id: 'pitchLadder', label: 'Pitch ladder', movable: false },
-  { id: 'fpm', label: 'Flight path marker', movable: false },
-  { id: 'boresight', label: 'Boresight', movable: false },
-  { id: 'bankArc', label: 'Bank scale', movable: false },
-  { id: 'headingTape', label: 'Heading tape', movable: false },
-  { id: 'airspeedTape', label: 'Airspeed tape', movable: false },
-  { id: 'altitudeTape', label: 'Altitude tape', movable: false },
-  { id: 'vsi', label: 'Vertical speed', movable: false },
-  { id: 'waypoints', label: 'Waypoints (3D)', movable: false },
-  { id: 'swarm', label: 'Swarm contacts', movable: false },
-  { id: 'status', label: 'Status (mode/sat/thr)', movable: true },
-  { id: 'battery', label: 'Battery', movable: true },
-  { id: 'home', label: 'Home arrow + distance', movable: true },
-  { id: 'linkGraph', label: 'Link graph', movable: true },
+  hudWidget('groundSpeed', 'camera:hudWidgets.groundSpeed', false),
+  hudWidget('horizon', 'camera:hudWidgets.horizon', false),
+  hudWidget('pitchLadder', 'camera:hudWidgets.pitchLadder', false),
+  hudWidget('fpm', 'camera:hudWidgets.fpm', false),
+  hudWidget('boresight', 'camera:hudWidgets.boresight', false),
+  hudWidget('bankArc', 'camera:hudWidgets.bankArc', false),
+  hudWidget('headingTape', 'camera:hudWidgets.headingTape', false),
+  hudWidget('airspeedTape', 'camera:hudWidgets.airspeedTape', false),
+  hudWidget('altitudeTape', 'camera:hudWidgets.altitudeTape', false),
+  hudWidget('vsi', 'camera:hudWidgets.vsi', false),
+  hudWidget('waypoints', 'camera:hudWidgets.waypoints', false),
+  hudWidget('swarm', 'camera:hudWidgets.swarm', false),
+  hudWidget('status', 'camera:hudWidgets.status', true),
+  hudWidget('battery', 'camera:hudWidgets.battery', true),
+  hudWidget('home', 'camera:hudWidgets.home', true),
+  hudWidget('linkGraph', 'camera:hudWidgets.linkGraph', true),
 ];
 
 export interface Vec2 {

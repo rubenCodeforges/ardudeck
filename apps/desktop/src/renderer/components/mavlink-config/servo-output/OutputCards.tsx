@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { DraggableSlider } from '../../ui/DraggableSlider';
 import { DraftNumberInput } from '../../../hooks/useNumericDraft';
@@ -23,12 +24,12 @@ interface OutputGroup {
   reversed: boolean;
 }
 
-const SHAPE_NOTE: Record<OutputShape, string> = {
-  angular: 'Deflects either side of trim. The arc shows share of travel, not degrees.',
-  bipolar: 'Runs both ways from a centre stop, so trim is neutral.',
-  unidirectional: 'Runs one way, from min to max.',
-  discrete: 'Switches between two states; there is no travel to set.',
-  motor: 'Driven by the mixer. Min and max are ESC calibration, not travel.',
+const SHAPE_NOTE_KEY: Record<OutputShape, string> = {
+  angular: 'mavlink-config:outputCards.shapeNote.angular',
+  bipolar: 'mavlink-config:outputCards.shapeNote.bipolar',
+  unidirectional: 'mavlink-config:outputCards.shapeNote.unidirectional',
+  discrete: 'mavlink-config:outputCards.shapeNote.discrete',
+  motor: 'mavlink-config:outputCards.shapeNote.motor',
 };
 
 interface OutputCardsProps {
@@ -42,6 +43,7 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
   functionOptions,
   onAssignOutputs,
 }) => {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const metadata = useParameterStore((s) => s.metadata);
   const setParameter = useParameterStore((s) => s.setParameter);
@@ -65,7 +67,7 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
       const max = parameters.get(`SERVO${ch}_MAX`)?.value;
       if (min === undefined || trim === undefined || max === undefined) continue;
 
-      const functionName = labels?.[fn] ?? `Function ${fn}`;
+      const functionName = labels?.[fn] ?? t('mavlink-config:outputCards.functionFallback', { fn });
       const { shape, confident } = classifyOutput({ functionName, min, trim, max });
       byFunction.set(fn, {
         key: fn,
@@ -82,7 +84,7 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
       });
     }
     return [...byFunction.values()];
-  }, [parameters, metadata, channelCount]);
+  }, [parameters, metadata, channelCount, t]);
 
   const unassigned = useMemo(() => {
     const free: number[] = [];
@@ -127,11 +129,10 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
   if (groups.length === 0) {
     return (
       <div className="rounded-xl border border-subtle bg-surface p-6 text-sm text-content-secondary">
-        No output has a function yet.{' '}
-        <button onClick={onAssignOutputs} className="text-emerald-400 hover:underline">
-          Assign outputs
-        </button>{' '}
-        and they will appear here.
+        <Trans
+          i18nKey="mavlink-config:outputCards.empty"
+          components={{ btn: <button onClick={onAssignOutputs} className="text-emerald-400 hover:underline" /> }}
+        />
       </div>
     );
   }
@@ -160,15 +161,17 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
                   <div className="text-sm font-medium text-content truncate">{g.functionName}</div>
                 )}
                 <div className="text-[11px] text-content-tertiary px-1">
-                  {g.channels.length > 1 ? `Outputs ${g.channels.join(', ')}` : `Output ${g.primary}`}
+                  {g.channels.length > 1
+                    ? t('mavlink-config:outputCards.outputsList', { list: g.channels.join(', ') })
+                    : t('mavlink-config:outputCards.outputSingle', { n: g.primary })}
                 </div>
               </div>
               {!g.confident && (
                 <span
                   className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-content-tertiary bg-surface-raised"
-                  title="Shape inferred from this vehicle's endpoints, not from a known function name"
+                  title={t('mavlink-config:outputCards.inferredTitle')}
                 >
-                  inferred
+                  {t('mavlink-config:outputCards.inferred')}
                 </span>
               )}
             </div>
@@ -184,22 +187,22 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
             />
 
             {editable && (
-              <p className="text-[11px] text-content-tertiary">{SHAPE_NOTE[g.shape]}</p>
+              <p className="text-[11px] text-content-tertiary">{t(SHAPE_NOTE_KEY[g.shape])}</p>
             )}
 
             {editable ? (
               <DraggableSlider
-                label="Travel"
+                label={t('mavlink-config:outputCards.travel')}
                 value={percent}
                 onChange={(v) => setTravel(g, v)}
                 min={10}
                 max={100}
                 step={1}
                 color="#10B981"
-                hint={`Full stick reaches ${percent}% (${g.trim - g.travel}–${g.trim + g.travel} µs)`}
+                hint={t('mavlink-config:outputCards.travelHint', { percent, low: g.trim - g.travel, high: g.trim + g.travel })}
               />
             ) : (
-              <p className="text-[11px] text-content-tertiary">{SHAPE_NOTE[g.shape]}</p>
+              <p className="text-[11px] text-content-tertiary">{t(SHAPE_NOTE_KEY[g.shape])}</p>
             )}
 
             <div className="grid grid-cols-3 gap-2">
@@ -220,7 +223,7 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
 
             {g.min >= g.max && (
               <p className="text-[11px] text-amber-400">
-                Min is not below max, so this output cannot move.
+                {t('mavlink-config:outputCards.minNotBelowMax')}
               </p>
             )}
 
@@ -231,7 +234,7 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
                 onChange={() => toggleReversed(g)}
                 className="accent-emerald-500"
               />
-              Reversed
+              {t('common:reversed')}
             </label>
           </div>
         );
@@ -241,11 +244,14 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
     <div className="mt-4 flex items-center gap-2 text-xs text-content-tertiary">
       <span>
         {unassigned.length === 0
-          ? 'Every output has a function.'
-          : `${unassigned.length} output${unassigned.length === 1 ? '' : 's'} unassigned (${unassigned.slice(0, 6).join(', ')}${unassigned.length > 6 ? '…' : ''}).`}
+          ? t('mavlink-config:outputCards.allAssigned')
+          : t('mavlink-config:outputCards.unassigned', {
+              count: unassigned.length,
+              list: `${unassigned.slice(0, 6).join(', ')}${unassigned.length > 6 ? '…' : ''}`,
+            })}
       </span>
       <button onClick={onAssignOutputs} className="text-emerald-400 hover:underline">
-        Open all outputs
+        {t('mavlink-config:outputCards.openAll')}
       </button>
     </div>
     </>

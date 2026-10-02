@@ -17,6 +17,7 @@
  */
 
 import { encodePx4CustomMode, getVehicleClass, type ArduPilotVehicleClass } from './telemetry-types';
+import { t } from './i18n/index.js';
 
 export type ModeGroup = 'manual' | 'assisted' | 'auto' | 'return' | 'tuning';
 
@@ -29,13 +30,9 @@ export interface FlightModeMeta {
   commit?: boolean;
 }
 
-export const GROUP_LABEL: Record<ModeGroup, string> = {
-  manual: 'Manual / Acro',
-  assisted: 'Assisted',
-  auto: 'Autonomous / Nav',
-  return: 'Return & Land',
-  tuning: 'Tuning',
-};
+export function modeGroupLabel(group: ModeGroup): string {
+  return t(`shared:flightModeMeta.group.${group}`);
+}
 
 export const GROUP_ORDER: readonly ModeGroup[] = ['manual', 'assisted', 'auto', 'return', 'tuning'];
 
@@ -65,10 +62,10 @@ const COPTER: FlightModeMeta[] = [
   m(24, 'ZigZag', 'auto', { gps: true, fly: true }),
   m(18, 'Throw', 'auto', { gps: true }),
   m(6, 'RTL', 'return', { gps: true, fly: true, commit: true }),
-  m(21, 'Smart RTL', 'return', { gps: true, fly: true, commit: true }),
-  m(27, 'Auto RTL', 'return', { gps: true, fly: true, commit: true }),
+  m(21, 'Smart RTL', 'return', { gps: true, fly: true, commit: true }), // i18n-exempt
+  m(27, 'Auto RTL', 'return', { gps: true, fly: true, commit: true }), // i18n-exempt
   m(9, 'Land', 'return', { fly: true, commit: true }),
-  m(19, 'Avoid ADSB', 'return', { gps: true, fly: true }),
+  m(19, 'Avoid ADSB', 'return', { gps: true, fly: true }), // i18n-exempt
   m(15, 'AutoTune', 'tuning', { fly: true }),
   m(25, 'SystemID', 'tuning'),
   m(26, 'Autorotate', 'tuning', { fly: true }),
@@ -89,7 +86,7 @@ const PLANE: FlightModeMeta[] = [
   m(13, 'Takeoff', 'auto', { gps: true, fly: true, commit: true }),
   m(15, 'Guided', 'auto', { gps: true, fly: true, commit: true }),
   m(11, 'RTL', 'return', { gps: true, fly: true, commit: true }),
-  m(14, 'Avoid ADSB', 'return', { gps: true, fly: true }),
+  m(14, 'Avoid ADSB', 'return', { gps: true, fly: true }), // i18n-exempt
   m(8, 'AutoTune', 'tuning', { fly: true }),
 ];
 
@@ -111,7 +108,7 @@ const VTOL: FlightModeMeta[] = [
   m(11, 'RTL', 'return', { gps: true, fly: true, commit: true }),
   m(21, 'QRTL', 'return', { gps: true, fly: true, commit: true }),
   m(20, 'QLand', 'return', { fly: true, commit: true }),
-  m(25, 'Loiter to QLand', 'return', { gps: true, fly: true, commit: true }),
+  m(25, 'Loiter to QLand', 'return', { gps: true, fly: true, commit: true }), // i18n-exempt
   m(8, 'AutoTune', 'tuning', { fly: true }),
   m(22, 'QAutotune', 'tuning', { gps: true, fly: true }),
 ];
@@ -129,7 +126,7 @@ const ROVER: FlightModeMeta[] = [
   m(10, 'Auto', 'auto', { gps: true, commit: true }),
   m(15, 'Guided', 'auto', { gps: true, commit: true }),
   m(11, 'RTL', 'return', { gps: true, commit: true }),
-  m(12, 'Smart RTL', 'return', { gps: true, commit: true }),
+  m(12, 'Smart RTL', 'return', { gps: true, commit: true }), // i18n-exempt
 ];
 
 const SUB: FlightModeMeta[] = [
@@ -212,8 +209,8 @@ export interface ModeGateContext {
 
 /** Why a mode can't be selected right now, or null if it can. */
 export function modeBlockedReason(meta: FlightModeMeta, ctx: ModeGateContext): string | null {
-  if (meta.gps && !ctx.gpsOk) return 'Needs GPS / position lock';
-  if (meta.fly && !ctx.armed) return 'Vehicle must be armed';
+  if (meta.gps && !ctx.gpsOk) return t('shared:flightModeMeta.needsGps');
+  if (meta.fly && !ctx.armed) return t('shared:flightModeMeta.mustBeArmed');
   return null;
 }
 
@@ -237,10 +234,10 @@ export const MISSION_MODES: Record<ArduPilotVehicleClass, { auto: number; pause:
 /** One-line context under the annunciator: group + the notable preconditions. */
 export function modeSubline(meta: FlightModeMeta | undefined): string {
   if (!meta) return '';
-  const bits: string[] = [GROUP_LABEL[meta.group]];
-  bits.push(meta.gps ? 'GPS' : 'no GPS needed');
-  if (meta.fly) bits.push('in-flight');
-  if (meta.commit) bits.push('commit');
+  const bits: string[] = [modeGroupLabel(meta.group)];
+  bits.push(meta.gps ? t('shared:flightModeMeta.gps') : t('shared:flightModeMeta.noGps'));
+  if (meta.fly) bits.push(t('shared:flightModeMeta.inFlight'));
+  if (meta.commit) bits.push(t('shared:flightModeMeta.commit'));
   return bits.join(' · ');
 }
 

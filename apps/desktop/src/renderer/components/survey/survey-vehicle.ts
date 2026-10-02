@@ -20,6 +20,7 @@
 import type { ArduPilotVehicleClass } from '../../../shared/telemetry-types';
 import { MAV_CMD } from '../../../shared/mission-types';
 import type { CorridorMode } from './survey-types';
+import { t } from '../../../shared/i18n/index.js';
 
 /** Airframe the survey is planned for; 'auto' follows the connected vehicle. */
 export type SurveyAirframe = 'auto' | 'plane' | 'vtol' | 'copter';
@@ -27,17 +28,17 @@ export type SurveyAirframe = 'auto' | 'plane' | 'vtol' | 'copter';
 /** How the mission starts and ends; 'auto' follows the airframe. */
 export type SurveyLaunch = 'auto' | 'vertical' | 'runway';
 
-export const AIRFRAME_OPTIONS: Array<{ id: SurveyAirframe; label: string; description: string }> = [
-  { id: 'auto', label: 'Auto', description: 'Follow whatever vehicle is connected' },
-  { id: 'plane', label: 'Fixed wing', description: 'Needs room to turn: overshoot and racetracks' },
-  { id: 'vtol', label: 'VTOL', description: 'Surveys as a fixed wing; lift motors for takeoff and landing' },
-  { id: 'copter', label: 'Multirotor', description: 'Turns on the spot: no overshoot' },
+export const AIRFRAME_OPTIONS: Array<{ id: SurveyAirframe; labelKey: string; descriptionKey: string }> = [
+  { id: 'auto', labelKey: 'survey:surveyVehicle.airframe.auto', descriptionKey: 'survey:surveyVehicle.airframe.autoDesc' },
+  { id: 'plane', labelKey: 'survey:surveyVehicle.airframe.plane', descriptionKey: 'survey:surveyVehicle.airframe.planeDesc' },
+  { id: 'vtol', labelKey: 'survey:surveyVehicle.airframe.vtol', descriptionKey: 'survey:surveyVehicle.airframe.vtolDesc' },
+  { id: 'copter', labelKey: 'survey:surveyVehicle.airframe.copter', descriptionKey: 'survey:surveyVehicle.airframe.copterDesc' },
 ];
 
-export const LAUNCH_OPTIONS: Array<{ id: SurveyLaunch; label: string; description: string }> = [
-  { id: 'auto', label: 'Auto', description: 'Vertical for a VTOL, otherwise a normal takeoff and RTL' },
-  { id: 'vertical', label: 'Vertical', description: 'VTOL takeoff, VTOL land at home' },
-  { id: 'runway', label: 'Runway', description: 'Normal takeoff and return to launch' },
+export const LAUNCH_OPTIONS: Array<{ id: SurveyLaunch; labelKey: string; descriptionKey: string }> = [
+  { id: 'auto', labelKey: 'survey:surveyVehicle.launch.auto', descriptionKey: 'survey:surveyVehicle.launch.autoDesc' },
+  { id: 'vertical', labelKey: 'survey:surveyVehicle.launch.vertical', descriptionKey: 'survey:surveyVehicle.launch.verticalDesc' },
+  { id: 'runway', labelKey: 'survey:surveyVehicle.launch.runway', descriptionKey: 'survey:surveyVehicle.launch.runwayDesc' },
 ];
 
 /** The airframe actually planned for, resolving 'auto' against the vehicle. */
@@ -73,15 +74,15 @@ export function launchCommands(
 export type SurveyStart = 'takeoff' | 'none';
 export type SurveyFinish = 'rtl' | 'land' | 'none';
 
-export const START_OPTIONS: Array<{ id: SurveyStart; label: string; description: string }> = [
-  { id: 'takeoff', label: 'Takeoff', description: 'Mission opens with a takeoff to the survey altitude' },
-  { id: 'none', label: 'None', description: 'Launch manually, then switch to Auto. Also what a follow-on survey needs' },
+export const START_OPTIONS: Array<{ id: SurveyStart; labelKey: string; descriptionKey: string }> = [
+  { id: 'takeoff', labelKey: 'survey:surveyVehicle.start.takeoff', descriptionKey: 'survey:surveyVehicle.start.takeoffDesc' },
+  { id: 'none', labelKey: 'survey:surveyVehicle.start.none', descriptionKey: 'survey:surveyVehicle.start.noneDesc' },
 ];
 
-export const FINISH_OPTIONS: Array<{ id: SurveyFinish; label: string; description: string }> = [
-  { id: 'rtl', label: 'RTL', description: 'Return to launch after the last line' },
-  { id: 'land', label: 'Land', description: 'Land where the survey ends' },
-  { id: 'none', label: 'None', description: 'Stop at the last line, so another survey or waypoint can follow' },
+export const FINISH_OPTIONS: Array<{ id: SurveyFinish; labelKey: string; descriptionKey: string }> = [
+  { id: 'rtl', labelKey: 'survey:surveyVehicle.finish.rtl', descriptionKey: 'survey:surveyVehicle.finish.rtlDesc' },
+  { id: 'land', labelKey: 'survey:surveyVehicle.finish.land', descriptionKey: 'survey:surveyVehicle.finish.landDesc' },
+  { id: 'none', labelKey: 'survey:surveyVehicle.finish.none', descriptionKey: 'survey:surveyVehicle.finish.noneDesc' },
 ];
 
 /** The command that opens the mission, or null when the pilot launches it. */
@@ -117,12 +118,12 @@ export function finishCommand(
 /** How the detected aircraft is named in the planner. */
 export function vehicleClassLabel(vehicleClass: ArduPilotVehicleClass | undefined): string {
   switch (vehicleClass) {
-    case 'plane': return 'Fixed wing';
-    case 'vtol': return 'VTOL';
-    case 'copter': return 'Multirotor';
-    case 'rover': return 'Ground vehicle';
-    case 'sub': return 'Submarine';
-    default: return 'Unknown';
+    case 'plane': return t('survey:surveyVehicle.class.plane');
+    case 'vtol': return t('survey:surveyVehicle.class.vtol');
+    case 'copter': return t('survey:surveyVehicle.class.copter');
+    case 'rover': return t('survey:surveyVehicle.class.rover');
+    case 'sub': return t('survey:surveyVehicle.class.sub');
+    default: return t('common:unknown');
   }
 }
 
@@ -131,12 +132,12 @@ export function vehiclePlanningNote(
   vehicleClass: ArduPilotVehicleClass | undefined,
   launch?: SurveyLaunch,
 ): string {
-  if (vehicleClass === undefined) return 'No vehicle connected - pick an airframe to plan for';
+  if (vehicleClass === undefined) return t('survey:surveyVehicle.noVehicleNote');
   const turns = surveyModeForVehicle(vehicleClass) === 'plane'
-    ? 'overshoot and racetracks at hairpins'
-    : 'turns on the spot, no overshoot';
+    ? t('survey:surveyVehicle.turnsPlane')
+    : t('survey:surveyVehicle.turnsCopter');
   const start = launchCommands(launch, vehicleClass).takeoff === MAV_CMD.NAV_VTOL_TAKEOFF
-    ? 'vertical takeoff and landing'
-    : 'normal takeoff, RTL home';
-  return `${vehicleClassLabel(vehicleClass)}: ${turns} · ${start}`;
+    ? t('survey:surveyVehicle.startVertical')
+    : t('survey:surveyVehicle.startNormal');
+  return t('survey:surveyVehicle.planningNote', { vehicle: vehicleClassLabel(vehicleClass), turns, start });
 }

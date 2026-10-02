@@ -10,8 +10,8 @@
  *  ever speaks getUserMedia or WHEP.
  */
 
-import { useRef, useCallback } from 'react';
-import type { CameraSourceConfig, OsdLayers } from '../../../shared/camera-types';
+import { useRef, useCallback, useEffect, useState } from 'react';
+import type { CameraSourceConfig, CameraStartPhase, OsdLayers } from '../../../shared/camera-types';
 import type { FleetVehicle } from '../../hooks/useFleet';
 import { useCameraStore } from '../../stores/camera-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -19,6 +19,7 @@ import { CameraOverlays } from './CameraOverlays';
 import { StreamHealthReadout } from './StreamHealthReadout';
 import { useCameraStream } from './useCameraStream';
 import { projectPixelToGround, projectFrameCenter, type CameraPose } from './geolocation';
+import { useTranslation } from 'react-i18next';
 
 interface CameraViewProps {
   source: CameraSourceConfig;
@@ -37,8 +38,10 @@ interface CameraViewProps {
 }
 
 export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onError, onLive, onSignalLost }: CameraViewProps) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const { status, error, health } = useCameraStream(source, videoRef, onError, onLive, onSignalLost);
+  const startup = useStartupProgress(source.id, status === 'starting');
   const showStats = useCameraStore((s) => s.showStats);
   const gimbal = useCameraStore((s) => s.gimbalAttitude[source.vehicleKey]);
   const gimbalCfg = useCameraStore((s) => s.gimbalByVehicle[source.vehicleKey]);
@@ -97,7 +100,7 @@ export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onErro
     <div
       className="relative h-full w-full overflow-hidden bg-black"
       onClick={handleClick}
-      title={isPrimary ? 'Click to point gimbal at target' : 'Click to make active'}
+      title={isPrimary ? t('camera:view.clickToPoint') : t('camera:view.clickToActivate')}
     >
       <video ref={videoRef} className="h-full w-full object-contain" muted playsInline autoPlay />
 
@@ -122,20 +125,25 @@ export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onErro
           {status === 'starting' ? (
             <>
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white/90" />
-              <div className="text-xs text-white/70">Connecting to {source.label}…</div>
+              <div className="text-xs text-white/80">{startup.phase ? t(PHASE_TEXT_KEY[startup.phase]) : t('camera:view.connectingTo', { label: source.label })}</div>
+              {startup.seconds >= 3 && (
+                <div className="max-w-[80%] text-[11px] tabular-nums text-white/50">
+                  {startup.seconds} s{startup.phase === 'converting' ? ` · ${t('camera:view.h265Keyframe')}` : ''}
+                </div>
+              )}
             </>
           ) : status === 'stalled' ? (
             <>
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-400" />
-              <div className="text-sm font-semibold text-amber-300">Video stalled, reconnecting…</div>
+              <div className="text-sm font-semibold text-amber-300">{t('camera:view.stalled')}</div>
               <div className="max-w-[80%] text-[11px] text-white/60">
-                The feed stopped delivering frames. Retrying automatically; replugging the device also recovers it.
+                {t('camera:view.stalledHint')}
               </div>
               <ReconnectButton sourceId={source.id} />
             </>
           ) : (
             <>
-              <div className="text-sm text-red-300">No video</div>
+              <div className="text-sm text-red-300">{t('camera:view.noVideo')}</div>
               <ReconnectButton sourceId={source.id} />
               {/* The reason is the only diagnostic a field user can report, and
                   they report it by screenshot. Small grey text did not survive
@@ -147,7 +155,7 @@ export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onErro
               )}
               <div className="max-w-[80%] text-[11px] text-white/45">
                 {source.kind === 'rtsp' || source.kind === 'mavlink'
-                  ? `${source.url ?? 'no url'} · ${source.rtspTransport ?? 'automatic'}`
+                  ? `${source.url ?? t('camera:view.noUrl')} · ${source.rtspTransport ?? 'tcp'}`
                   : source.kind}
               </div>
             </>
@@ -159,13 +167,47 @@ export function CameraView({ source, vehicle, isPrimary, osd, onActivate, onErro
 }
 
 function ReconnectButton({ sourceId }: { sourceId: string }) {
+  const { t } = useTranslation();
   const requestReconnect = useCameraStore((s) => s.requestReconnect);
   return (
     <button
       onClick={() => requestReconnect(sourceId)}
       className="rounded-md border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20"
     >
-      Reconnect now
+      {t('camera:view.reconnectNow')}
     </button>
   );
+}
+
+const PHASE_TEXT_KEY: Record<CameraStartPhase, string> = {
+  connecting: 'camera:view.phaseConnecting',
+  'checking-video': 'camera:view.phaseChecking',
+  converting: 'camera:view.phaseConverting',
+  opening: 'camera:view.phaseOpening',
+};
+
+/** The main process's startup phase for this source, and seconds spent starting. */
+function useStartupProgress(sourceId: string, starting: boolean): { phase: CameraStartPhase | null; seconds: number } {
+  const [phase, setPhase] = useState<CameraStartPhase | null>(null);
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const off = window.electronAPI?.onCameraStartPhase?.((e) => {
+      if (e.sourceId === sourceId) setPhase(e.phase);
+    });
+    return () => { off?.(); };
+  }, [sourceId]);
+
+  useEffect(() => {
+    setSeconds(0);
+    if (!starting) {
+      setPhase(null);
+      return;
+    }
+    const t0 = Date.now();
+    const timer = window.setInterval(() => setSeconds(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [starting]);
+
+  return { phase, seconds };
 }

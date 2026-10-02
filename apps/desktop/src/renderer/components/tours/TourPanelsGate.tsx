@@ -1,6 +1,8 @@
 import { Layout, X, AlertTriangle } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import type { FeatureTour } from '../../feature-tours';
 import { PANEL_COMPONENTS } from '../panels';
+import { t as i18nT } from '../../../shared/i18n/index.js';
 
 interface TourPanelsGateProps {
   tour: FeatureTour;
@@ -11,11 +13,12 @@ interface TourPanelsGateProps {
 
 function panelLabel(panelId: string): string {
   const entry = PANEL_COMPONENTS[panelId as keyof typeof PANEL_COMPONENTS];
-  return entry?.title ?? panelId;
+  return entry ? i18nT(entry.titleKey) : panelId;
 }
 
 export function TourPanelsGate({ tour, missingPanels, onSwitchPreset, onCancel }: TourPanelsGateProps) {
-  const presetLabel = tour.requires?.presetLabel ?? tour.requires?.preset ?? 'recommended layout';
+  const { t } = useTranslation();
+  const presetLabel = tour.requires?.presetLabel ?? tour.requires?.preset ?? t('tours:tourPanelsGate.recommendedLayout');
   const panelNames = missingPanels.map(panelLabel);
 
   return (
@@ -32,24 +35,24 @@ export function TourPanelsGate({ tour, missingPanels, onSwitchPreset, onCancel }
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgb(37 99 235)' }}>
-                Layout adjustment
+                {t('tours:tourPanelsGate.layoutAdjustment')}
               </div>
               <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {tour.title}
+                {t(tour.titleKey)}
               </h2>
             </div>
             <button
               onClick={onCancel}
               className="p-1 rounded-md transition-colors"
               style={{ color: 'var(--text-tertiary)' }}
-              aria-label="Cancel"
+              aria-label={t('common:cancel')}
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--text-secondary)' }}>
-            This tour walks through panels that aren&apos;t in your current layout:
+            {t('tours:tourPanelsGate.panelsNotInLayout')}
           </p>
 
           <div
@@ -62,12 +65,20 @@ export function TourPanelsGate({ tour, missingPanels, onSwitchPreset, onCancel }
           >
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>
-              Missing: <span className="font-semibold">{panelNames.join(', ')}</span>
+              <Trans
+                i18nKey="tours:tourPanelsGate.missing"
+                values={{ panels: panelNames.join(', ') }}
+                components={{ b: <span className="font-semibold" /> }}
+              />
             </span>
           </div>
 
           <p className="text-xs leading-relaxed mb-5" style={{ color: 'var(--text-secondary)' }}>
-            Switch to the <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{presetLabel}</span> layout to see the tour? Your current layout stays saved - you can switch back from the layout dropdown at any time.
+            <Trans
+              i18nKey="tours:tourPanelsGate.switchPrompt"
+              values={{ preset: presetLabel }}
+              components={{ b: <span className="font-semibold" style={{ color: 'var(--text-primary)' }} /> }}
+            />
           </p>
 
           <div className="flex flex-col gap-2">
@@ -77,14 +88,14 @@ export function TourPanelsGate({ tour, missingPanels, onSwitchPreset, onCancel }
               style={{ background: 'rgb(37 99 235)', color: '#fff' }}
             >
               <Layout className="w-4 h-4" />
-              Switch to {presetLabel}
+              {t('tours:tourPanelsGate.switchTo', { preset: presetLabel })}
             </button>
             <button
               onClick={onCancel}
               className="w-full px-4 py-1.5 text-xs transition-colors"
               style={{ color: 'var(--text-tertiary)' }}
             >
-              Skip this tour
+              {t('tours:tourPanelsGate.skipTour')}
             </button>
           </div>
         </div>

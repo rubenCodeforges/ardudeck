@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import PresetSelectionStep from './steps/PresetSelectionStep';
 import TransmitterCheckStep from './steps/TransmitterCheckStep';
@@ -17,13 +18,14 @@ import { Rocket, Target, Radio, ClipboardList, type LucideIcon } from 'lucide-re
 
 // Step info for progress display
 const STEPS = [
-  { id: 'welcome', label: 'Select', icon: Target },
-  { id: 'transmitter', label: 'Check', icon: Radio },
-  { id: 'review', label: 'Review', icon: ClipboardList },
-  { id: 'apply', label: 'Apply', icon: Rocket },
+  { id: 'welcome', labelKey: 'quick-setup:wizard.stepSelect', icon: Target },
+  { id: 'transmitter', labelKey: 'quick-setup:wizard.stepCheck', icon: Radio },
+  { id: 'review', labelKey: 'quick-setup:wizard.stepReview', icon: ClipboardList },
+  { id: 'apply', labelKey: 'quick-setup:wizard.stepApply', icon: Rocket },
 ] as const;
 
 export const QuickSetupWizard: React.FC = () => {
+  const { t } = useTranslation();
   const {
     isOpen,
     currentStep,
@@ -85,13 +87,13 @@ export const QuickSetupWizard: React.FC = () => {
               <Rocket className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-content">Quick Setup Wizard</h2>
-              <p className="text-xs text-content-secondary">Configure everything in one go</p>
+              <h2 className="text-lg font-semibold text-content">{t('quick-setup:wizard.title')}</h2>
+              <p className="text-xs text-content-secondary">{t('quick-setup:wizard.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {confirmClose && (
-              <span className="text-xs text-amber-400">Press again to discard setup</span>
+              <span className="text-xs text-amber-400">{t('quick-setup:wizard.pressAgainToDiscard')}</span>
             )}
             <button
               onClick={handleClose}
@@ -151,7 +153,7 @@ export const QuickSetupWizard: React.FC = () => {
                         isCurrent ? 'text-blue-400' : isCompleted ? 'text-green-400' : 'text-content-secondary'
                       }`}
                     >
-                      {step.label}
+                      {t(step.labelKey)}
                     </span>
                   </div>
 

@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * DroneBridge ESP32 REST API types.
  * Based on DroneBridge for ESP32 v2.2 API.
@@ -80,9 +82,9 @@ export interface DroneBridgeDetected {
 
 /** ESP32 mode labels */
 export const ESP32_MODE_LABELS: Record<number, string> = {
-  1: 'Access Point',
-  2: 'Station (Client)',
-  3: 'Long Range',
+  1: 'Access Point', // i18n-exempt
+  2: 'Station (Client)', // i18n-exempt
+  3: 'Long Range', // i18n-exempt
   4: 'ESP-NOW Air',
   5: 'ESP-NOW Ground',
 };
@@ -93,6 +95,17 @@ export const PROTOCOL_LABELS: Record<number, string> = {
   1: 'MAVLink',
   2: 'Transparent',
 };
+
+const ESP32_MODE_KEYS: Record<number, string> = {
+  1: 'accessPoint',
+  2: 'station',
+  3: 'longRange',
+};
+
+export function esp32ModeLabel(mode: number): string | undefined {
+  const key = ESP32_MODE_KEYS[mode];
+  return key ? t(`shared:dronebridgeTypes.esp32Mode.${key}`) : ESP32_MODE_LABELS[mode];
+}
 
 /** Format DroneBridge firmware version string */
 export function formatDbVersion(info: DroneBridgeInfo): string {

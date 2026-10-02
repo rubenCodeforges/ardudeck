@@ -10,6 +10,8 @@
  * preconditions checked first.
  */
 
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { Gamepad2, AlertTriangle, Hand, RotateCcw } from 'lucide-react';
 import { usePseudoTxStore } from '../../stores/pseudo-tx-store';
@@ -20,18 +22,19 @@ import type { ChannelSource } from '../../utils/pseudo-tx';
 import { VirtualSticks } from './VirtualSticks';
 
 /** The four a pilot must bind before anything else is worth showing. */
-const PRIMARY = ['Roll', 'Pitch', 'Throttle', 'Yaw'];
+const PRIMARY_KEYS = ['common:roll', 'common:pitch', 'common:throttle', 'common:yaw'];
 
-function sourceLabel(src: ChannelSource): string {
+function sourceLabel(src: ChannelSource, t: TFunction): string {
   switch (src.kind) {
-    case 'none': return 'not assigned';
-    case 'axis': return `axis ${src.index}`;
-    case 'button': return `button ${src.index}`;
-    case 'button3': return `buttons ${src.low}/${src.high}`;
+    case 'none': return t('panels:joystickPanel.notAssigned');
+    case 'axis': return t('panels:joystickPanel.axisN', { n: src.index });
+    case 'button': return t('panels:joystickPanel.buttonN', { n: src.index });
+    case 'button3': return t('panels:joystickPanel.buttonPair', { low: src.low, high: src.high });
   }
 }
 
 function ChannelRow({ index }: { index: number }): JSX.Element {
+  const { t } = useTranslation();
   const mapping = usePseudoTxStore((s) => s.mapping);
   const raw = usePseudoTxStore((s) => s.raw);
   // On-screen sticks bypass the learned mapping, so recomputing the bar from
@@ -57,7 +60,7 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
   return (
     <div className="flex items-center gap-2 py-1">
       <div className="w-16 shrink-0 text-[11px] text-content-secondary">
-        {PRIMARY[index] ?? `Ch ${index + 1}`}
+        {PRIMARY_KEYS[index] ? t(PRIMARY_KEYS[index]) : t('panels:joystickPanel.channelN', { n: index + 1 })}
       </div>
       <div className="relative h-4 flex-1 rounded bg-surface-raised overflow-hidden">
         <div
@@ -66,7 +69,7 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
         />
         <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
         <div className="absolute inset-0 flex items-center justify-center text-[10px] tabular-nums text-content">
-          {pwm === null ? sourceLabel(map.source) : pwm}
+          {pwm === null ? sourceLabel(map.source, t) : pwm}
         </div>
       </div>
       <button
@@ -76,12 +79,12 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
           teaching ? 'bg-amber-500/20 text-amber-300' : 'bg-surface-raised text-content-secondary hover:text-content'
         }`}
       >
-        {usingVirtual ? 'on-screen' : teaching ? 'Move it…' : assigned ? sourceLabel(map.source) : 'Assign'}
+        {usingVirtual ? t('panels:joystickPanel.onScreen') : teaching ? t('panels:joystickPanel.moveIt') : assigned ? sourceLabel(map.source, t) : t('panels:joystickPanel.assign')}
       </button>
       <button
         onClick={() => updateMap(index, { reverse: !map.reverse })}
         disabled={!assigned}
-        data-tip="Reverse this channel"
+        data-tip={t('panels:joystickPanel.reverseTip')}
         className={`w-8 shrink-0 rounded px-1 py-1 text-[11px] disabled:opacity-30 ${
           map.reverse ? 'bg-blue-500/20 text-blue-300' : 'bg-surface-raised text-content-secondary'
         }`}
@@ -91,7 +94,7 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
       <button
         onClick={() => setSource(index, { kind: 'none' })}
         disabled={!assigned}
-        data-tip="Clear this assignment"
+        data-tip={t('panels:joystickPanel.clearTip')}
         className="w-8 shrink-0 rounded px-1 py-1 text-[11px] text-content-tertiary hover:text-content disabled:opacity-30"
       >
         ✕
@@ -101,6 +104,7 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
 }
 
 export function JoystickPanel(): JSX.Element {
+  const { t } = useTranslation();
   const enabled = usePseudoTxStore((s) => s.enabled);
   const connected = usePseudoTxStore((s) => s.connected);
   const setVirtualAxes = usePseudoTxStore((s) => s.setVirtualAxes);
@@ -131,7 +135,7 @@ export function JoystickPanel(): JSX.Element {
   useEffect(() => {
     if (vehicleControl && !connected) {
       disableVehicleControl();
-      setRefused('Controller disconnected, sticks released');
+      setRefused(t('panels:joystickPanel.disconnectedReleased'));
     }
   }, [vehicleControl, connected, disableVehicleControl]);
 
@@ -142,7 +146,7 @@ export function JoystickPanel(): JSX.Element {
       return;
     }
     const r = enableVehicleControl();
-    if (!r.ok) setRefused(r.reason ?? 'Could not take the sticks');
+    if (!r.ok) setRefused(r.reason ?? t('panels:joystickPanel.couldNotTake'));
   };
 
   return (
@@ -153,14 +157,14 @@ export function JoystickPanel(): JSX.Element {
           <Gamepad2 className={`w-4 h-4 ${connected ? 'text-emerald-400' : 'text-content-tertiary'}`} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm text-content">
-              1 &middot; {connected ? deviceName || 'Controller' : enabled ? 'Waiting for a controller…' : 'Joystick input is off'}
+              1 · {connected ? deviceName || t('panels:joystickPanel.controller') : enabled ? t('panels:joystickPanel.waitingController') : t('panels:joystickPanel.inputOff')}
             </div>
             <div className="text-[11px] text-content-tertiary">
               {connected
-                ? `${raw.axes.length} axes · ${raw.buttons.length} buttons`
+                ? t('panels:joystickPanel.axesButtons', { axes: raw.axes.length, buttons: raw.buttons.length })
                 : enabled
-                  ? 'Plug in a gamepad and press a button so the browser sees it, or a handset in USB Joystick mode, or use the on-screen sticks below'
-                  : 'Everything below is switched off until this is on'}
+                  ? t('panels:joystickPanel.plugInHint')
+                  : t('panels:joystickPanel.offHint')}
             </div>
           </div>
           <button
@@ -169,15 +173,14 @@ export function JoystickPanel(): JSX.Element {
               enabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-surface-raised text-content-secondary hover:text-content'
             }`}
           >
-            {enabled ? 'On' : 'Off'}
+            {enabled ? t('common:on') : t('common:off')}
           </button>
         </div>
         {enabled && connected && mappingMode === 'standard' && (
           <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/10 p-2 text-[11px] text-amber-300">
             <AlertTriangle className="mt-0.5 w-3.5 h-3.5 shrink-0" />
             <span>
-              The browser forced this device into the console-pad layout, which hides every axis past
-              the first four. Switches will not be assignable.
+              {t('panels:joystickPanel.standardLayoutWarning')}
             </span>
           </div>
         )}
@@ -187,21 +190,19 @@ export function JoystickPanel(): JSX.Element {
       {enabled && (
         <div className="rounded-xl border border-subtle bg-surface p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-content">Channels</span>
+            <span className="text-xs font-medium text-content">{t('panels:joystickPanel.channels')}</span>
             {!usingVirtual && (
               <button
                 onClick={resetMapping}
                 className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content"
               >
-                <RotateCcw className="w-3 h-3" /> Reset
+                <RotateCcw className="w-3 h-3" /> {t('common:reset')}
               </button>
             )}
           </div>
           {usingVirtual && (
             <div className="mb-2 rounded-md bg-surface-raised px-2 py-1.5 text-[11px] text-content-tertiary">
-              The on-screen sticks do not use this mapping: they go to the channels the vehicle
-              names in RCMAP_ROLL / PITCH / THROTTLE / YAW. The bars below still show what is
-              being sent.
+              {t('panels:joystickPanel.virtualMappingNote')}
             </div>
           )}
           {[0, 1, 2, 3].map((i) => <ChannelRow key={i} index={i} />)}
@@ -210,7 +211,7 @@ export function JoystickPanel(): JSX.Element {
             onClick={() => setShowAll((v) => !v)}
             className="mt-1 text-[11px] text-content-tertiary hover:text-content"
           >
-            {showAll ? 'Hide channels 5-16' : 'Channels 5-16'}
+            {showAll ? t('panels:joystickPanel.hideChannels') : t('panels:joystickPanel.showChannels')}
           </button>
         </div>
       )}
@@ -220,11 +221,11 @@ export function JoystickPanel(): JSX.Element {
         <div className="mb-2 flex items-center gap-2">
           <Hand className={`h-4 w-4 ${usingVirtual ? 'text-cyan-400' : 'text-content-tertiary'}`} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm text-content">2 &middot; On-screen sticks</div>
+            <div className="text-sm text-content">2 · {t('panels:joystickPanel.onScreenSticks')}</div>
             <div className="text-[11px] text-content-tertiary">
               {enabled
-                ? 'Where the stick positions come from, instead of a physical gamepad. Throttle holds where you leave it; the right stick springs back. Both centre if the window loses focus.'
-                : 'Turn joystick input on above to use these.'}
+                ? t('panels:joystickPanel.virtualHint')
+                : t('panels:joystickPanel.virtualOffHint')}
             </div>
           </div>
           <button
@@ -236,7 +237,7 @@ export function JoystickPanel(): JSX.Element {
                 : 'bg-surface-raised text-content-secondary hover:text-content'
             }`}
           >
-            {usingVirtual ? 'Using sticks' : 'Use sticks'}
+            {usingVirtual ? t('panels:joystickPanel.usingSticks') : t('panels:joystickPanel.useSticks')}
           </button>
         </div>
         {usingVirtual && <VirtualSticks onAxes={setVirtualAxes} disabled={!enabled} />}
@@ -248,18 +249,18 @@ export function JoystickPanel(): JSX.Element {
           <Hand className={`w-4 h-4 ${vehicleControl ? 'text-blue-400' : 'text-content-tertiary'}`} />
           <div className="min-w-0 flex-1">
             <div className="text-sm text-content">
-              3 &middot; {vehicleControl ? 'Joystick has the sticks' : 'Vehicle flies on its own receiver'}
+              3 · {vehicleControl ? t('panels:joystickPanel.hasSticks') : t('panels:joystickPanel.ownReceiver')}
             </div>
             <div className="text-[11px] text-content-tertiary">
               {vehicleControl
-                ? `${vehicleFps} frames/s · stop sending and the vehicle returns to its receiver within a second`
+                ? t('panels:joystickPanel.fpsHint', { fps: vehicleFps })
                 : !enabled
-                  ? 'Turn joystick input on above first.'
+                  ? t('panels:joystickPanel.turnOnFirst')
                   : !connected
-                    ? 'Pick an input first: connect a gamepad or switch on the on-screen sticks.'
+                    ? t('panels:joystickPanel.pickInput')
                     : !isConnected
-                      ? 'No vehicle connected.'
-                      : 'Sends your sticks to the vehicle. Only the channels you assigned are sent; everything else stays with the receiver.'}
+                      ? t('panels:joystickPanel.noVehicle')
+                      : t('panels:joystickPanel.sendsHint')}
             </div>
           </div>
           <button
@@ -271,7 +272,7 @@ export function JoystickPanel(): JSX.Element {
                 : 'bg-blue-600 text-white hover:bg-blue-500'
             }`}
           >
-            {vehicleControl ? 'Release' : 'Take control'}
+            {vehicleControl ? t('panels:joystickPanel.release') : t('panels:joystickPanel.takeControl')}
           </button>
         </div>
 
@@ -288,8 +289,7 @@ export function JoystickPanel(): JSX.Element {
           <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/10 p-2 text-[11px] text-amber-300">
             <AlertTriangle className="mt-0.5 w-3.5 h-3.5 shrink-0" />
             <span>
-              Armed. The sticks are live: this window must keep focus, because a browser stops
-              reporting the controller when it does not have it.
+              {t('panels:joystickPanel.armedWarning')}
             </span>
           </div>
         )}

@@ -1,0 +1,376 @@
+{
+  "flightBriefing": {
+    "batteries": "Batteries",
+    "ceiling": "ceiling {{altitude}} AGL",
+    "distance": "Distance",
+    "flightTime": "Flight time",
+    "flightTimeDetail": "estimated at cruise speed",
+    "gusts": "gusts {{speed}}",
+    "maxAltitude": "Max altitude",
+    "maxFromHome": "Max from home",
+    "reserve": "Reserve",
+    "reserveDetail": "on the final battery",
+    "setProfile": "set a vehicle profile for endurance",
+    "unknown": "unknown",
+    "usableEach": "~{{duration}} usable each",
+    "wind": "Wind"
+  },
+  "joystickSafety": {
+    "assignAxes": "Assign roll, pitch, throttle and yaw first",
+    "axisPitch": "pitch",
+    "axisRoll": "roll",
+    "axisYaw": "yaw",
+    "centreSticks_one": "Centre the {{axes}} stick",
+    "centreSticks_other": "Centre the {{axes}} sticks",
+    "closeThrottle": "Close the throttle"
+  },
+  "osdCategories": {
+    "altitude": {
+      "description": "Altitude, MSL, variometer",
+      "name": "Altitude & Vario"
+    },
+    "attitude": {
+      "description": "Crosshairs, horizon, pitch, roll, heading",
+      "name": "Attitude"
+    },
+    "battery": {
+      "description": "Voltage, current, capacity, efficiency",
+      "name": "Battery & Power"
+    },
+    "general": {
+      "description": "Flight mode, warnings, craft info",
+      "name": "General"
+    },
+    "gps": {
+      "description": "Satellites, HDOP, coordinates",
+      "name": "GPS"
+    },
+    "mission": {
+      "description": "VTX, wind indicators",
+      "name": "Mission"
+    },
+    "radio": {
+      "description": "RSSI, throttle position",
+      "name": "Radio & Control"
+    },
+    "sensors": {
+      "description": "Temperature, G-force, ESC data",
+      "name": "Sensors"
+    },
+    "speed": {
+      "description": "Ground speed, airspeed, distance",
+      "name": "Speed & Distance"
+    },
+    "timers": {
+      "description": "Flight time, on time, remaining",
+      "name": "Timers"
+    }
+  },
+  "osdElements": {
+    "airspeed": {
+      "description": "Indicated airspeed from pitot tube",
+      "name": "Airspeed"
+    },
+    "altitude": {
+      "description": "Altitude above ground level / home",
+      "name": "Altitude (AGL)"
+    },
+    "armed_status": {
+      "description": "Shows ARMED or DISARMED state",
+      "name": "Armed Status"
+    },
+    "artificial_horizon": {
+      "description": "Attitude horizon line indicator",
+      "name": "Artificial Horizon"
+    },
+    "baro_temp": {
+      "description": "Barometer sensor temperature",
+      "name": "Baro Temperature"
+    },
+    "battery_cell_voltage": {
+      "description": "Average voltage per cell",
+      "name": "Cell Voltage"
+    },
+    "battery_percent": {
+      "description": "Battery charge remaining percentage",
+      "name": "Battery Percent"
+    },
+    "battery_voltage": {
+      "description": "Total battery pack voltage",
+      "name": "Battery Voltage"
+    },
+    "coordinates": {
+      "description": "Latitude and longitude on two lines",
+      "name": "Coordinates"
+    },
+    "craft_name": {
+      "description": "User-configured aircraft name",
+      "name": "Craft Name"
+    },
+    "crosshairs": {
+      "description": "Center screen aircraft indicator",
+      "name": "Crosshairs"
+    },
+    "current_draw": {
+      "description": "Instantaneous current draw in amps",
+      "name": "Current Draw"
+    },
+    "distance": {
+      "description": "Distance from home point",
+      "name": "Home Distance"
+    },
+    "efficiency": {
+      "description": "mAh per km efficiency indicator",
+      "name": "Efficiency"
+    },
+    "esc_rpm": {
+      "description": "Motor RPM from ESC telemetry",
+      "name": "ESC RPM"
+    },
+    "esc_temp": {
+      "description": "Electronic speed controller temperature",
+      "name": "ESC Temperature"
+    },
+    "flight_time": {
+      "description": "Time since arming",
+      "name": "Flight Time"
+    },
+    "flymode": {
+      "description": "Current flight mode name (ANGLE, HORIZON, etc.)",
+      "name": "Flight Mode"
+    },
+    "g_force": {
+      "description": "Current G-force loading",
+      "name": "G-Force"
+    },
+    "gps_hdop": {
+      "description": "Horizontal dilution of precision",
+      "name": "GPS HDOP"
+    },
+    "gps_sats": {
+      "description": "Number of GPS satellites in view",
+      "name": "GPS Satellites"
+    },
+    "heading": {
+      "description": "Compass heading in degrees",
+      "name": "Heading"
+    },
+    "heading_graph": {
+      "description": "Graphical compass heading tape",
+      "name": "Heading Graph"
+    },
+    "home_direction": {
+      "description": "Arrow pointing towards home",
+      "name": "Home Direction"
+    },
+    "horizon_sidebars": {
+      "description": "Side markers for artificial horizon",
+      "name": "Horizon Sidebars"
+    },
+    "imu_temp": {
+      "description": "IMU/gyro sensor temperature",
+      "name": "IMU Temperature"
+    },
+    "latitude": {
+      "description": "Current latitude coordinate",
+      "name": "Latitude"
+    },
+    "longitude": {
+      "description": "Current longitude coordinate",
+      "name": "Longitude"
+    },
+    "mah_drawn": {
+      "description": "Total milliamp-hours consumed",
+      "name": "mAh Drawn"
+    },
+    "max_speed": {
+      "description": "Maximum speed achieved in flight",
+      "name": "Max Speed"
+    },
+    "messages": {
+      "description": "FC status messages and notifications",
+      "name": "Messages"
+    },
+    "msl_altitude": {
+      "description": "Altitude above mean sea level",
+      "name": "MSL Altitude"
+    },
+    "on_time": {
+      "description": "Time since power on",
+      "name": "On Time"
+    },
+    "pitch": {
+      "description": "Aircraft pitch angle in degrees",
+      "name": "Pitch Angle"
+    },
+    "power_watts": {
+      "description": "Instantaneous power consumption",
+      "name": "Power (Watts)"
+    },
+    "remaining_flight_time": {
+      "description": "Estimated remaining flight time",
+      "name": "Remaining Time"
+    },
+    "roll": {
+      "description": "Aircraft roll/bank angle in degrees",
+      "name": "Roll Angle"
+    },
+    "rssi": {
+      "description": "Received signal strength indicator (%)",
+      "name": "RSSI"
+    },
+    "rssi_dbm": {
+      "description": "Signal strength in dBm (ELRS, Crossfire)",
+      "name": "RSSI (dBm)"
+    },
+    "rtc_time": {
+      "description": "Real-time clock (current time)",
+      "name": "RTC Time"
+    },
+    "speed": {
+      "description": "Speed over ground",
+      "name": "Ground Speed"
+    },
+    "throttle": {
+      "description": "Current throttle position percentage",
+      "name": "Throttle"
+    },
+    "throttle_gauge": {
+      "description": "Visual throttle bar gauge",
+      "name": "Throttle Gauge"
+    },
+    "vario": {
+      "description": "Vertical speed indicator (climb/sink)",
+      "name": "Variometer"
+    },
+    "vtx_channel": {
+      "description": "Video transmitter band/channel/power",
+      "name": "VTX Channel"
+    },
+    "warnings": {
+      "description": "System warnings (low battery, GPS lost, etc.)",
+      "name": "Warnings"
+    },
+    "wind_horizontal": {
+      "description": "Horizontal wind speed and direction",
+      "name": "Wind (Horizontal)"
+    },
+    "wind_vertical": {
+      "description": "Vertical wind component",
+      "name": "Wind (Vertical)"
+    }
+  },
+  "radioPreflight": {
+    "firmwareFail": "ArduPilot {{major}}.{{minor}} is too old for stick control over MAVLink - update the flight controller to 4.6 or newer. Telemetry still works.",
+    "firmwarePass": "ArduPilot {{major}}.{{minor}} supports stick control through a MAVLink radio.",
+    "firmwareUnknown": "Could not determine the firmware version yet.",
+    "firmwareVersion": "Firmware supports RC over the radio",
+    "rcOverMavlink": "Stick control over the radio link",
+    "rcOverMavlinkFail": "The vehicle is set to ignore RC arriving over the radio link, so your sticks would do nothing (radio failsafe). The fix keeps your existing receiver protocols enabled.",
+    "rcOverMavlinkPass": "The vehicle accepts RC delivered through the MAVLink radio.",
+    "rssiSource": "Link signal strength readout",
+    "rssiSourceFail": "Signal strength is not taken from the radio link, so RSSI will read empty or wrong.",
+    "rssiSourcePass": "The vehicle reports radio signal strength from the link itself.",
+    "waitingParams": "Waiting for parameters to finish loading."
+  },
+  "rcSourceArbiter": {
+    "joystickOwns": "Joystick control owns the RC link",
+    "slidersOwn": "Virtual RC sliders own the RC link",
+    "trainerOwnsSticks": "Trainer session active - the Trainer owns the sticks"
+  },
+  "receiverConstants": {
+    "hint": {
+      "CRSF": "Low-latency digital link. Used by TBS Crossfire and ExpressLRS receivers.",
+      "FPORT": "FrSky F.Port combines SBUS + telemetry on a single wire.",
+      "GHST": "ImmersionRC Ghost ultra-low latency protocol.",
+      "IBUS": "FlySky digital protocol. Connect to a free UART RX pad.",
+      "MSP": "For GCS/SITL control only. Do not use with a physical receiver.",
+      "SBUS": "Inverted serial protocol. Common with FrSky and RadioLink receivers. Some boards need a hardware inverter.",
+      "SBUS_SHORT": "Inverted serial protocol. Common with FrSky and RadioLink receivers.",
+      "SPEK2048": "Spektrum satellite receiver. Bind to transmitter first, then connect to UART.",
+      "SPEK2048_SHORT": "Spektrum satellite receiver. Bind to transmitter first.",
+      "SRXL2": "Spektrum SRXL2 bidirectional serial protocol."
+    },
+    "receiverType": {
+      "NONE": "None",
+      "SERIAL": "Serial"
+    }
+  },
+  "rssiState": {
+    "noLink": "No telemetry link",
+    "off": "RSSI reporting is off on the vehicle (RSSI_TYPE = 0)",
+    "unconfigured": "The receiver is connected but reports no signal strength. RSSI_TYPE needs to match the receiver (3 for CRSF/ELRS)."
+  },
+  "rubyOsd": {
+    "category": {
+      "Flight": "Flight",
+      "GPS": "GPS",
+      "Grid": "Grid",
+      "Instruments": "Instruments",
+      "Link": "Link",
+      "Navigation": "Navigation",
+      "Power": "Power",
+      "System": "System",
+      "Video": "Video"
+    },
+    "element": {
+      "ahi_heading": "AHI heading",
+      "air_speed": "Air speed",
+      "alt_graph": "Altitude graph",
+      "altitude": "Altitude",
+      "battery": "Battery",
+      "battery_cells": "Battery cells",
+      "cpu_info": "CPU info",
+      "distance": "Distance",
+      "efficiency": "Efficiency",
+      "fc_temperature": "FC temperature",
+      "flight_mode": "Flight mode",
+      "flight_mode_change": "Flight mode change",
+      "gps_info": "GPS info",
+      "gps_position": "GPS position",
+      "grid_crosshair": "Crosshair",
+      "grid_diagonal": "Diagonal grid",
+      "grid_squares": "Square grid",
+      "grid_thirds": "Rule of thirds",
+      "ground_speed": "Ground speed",
+      "heading": "Heading",
+      "home": "Home",
+      "horizon": "Horizon",
+      "instruments": "Instruments",
+      "link_quality_bars": "Link quality bars",
+      "link_quality_numbers": "Link quality numbers",
+      "pitch": "Pitch",
+      "radio_interfaces": "Radio interfaces",
+      "radio_links": "Radio links",
+      "rc_rssi": "RC RSSI",
+      "signal_bars": "Signal bars",
+      "speed_alt": "Speed & altitude",
+      "speed_to_sides": "Speed to sides",
+      "throttle": "Throttle",
+      "time": "Time",
+      "time_lower": "Time (lower)",
+      "total_distance": "Total distance",
+      "tx_power": "TX power",
+      "vehicle_radio_links": "Vehicle radio links",
+      "vertical_speed": "Vertical speed",
+      "video_bitrate_history": "Video bitrate history",
+      "video_mbps": "Video Mbps",
+      "video_mode": "Video mode",
+      "wind": "Wind"
+    }
+  },
+  "stickAssign": {
+    "air": {
+      "pitch": "Pitch",
+      "roll": "Roll",
+      "throttle": "Throttle",
+      "yaw": "Yaw"
+    },
+    "ground": {
+      "pitch": "Pitch (unused)",
+      "roll": "Steering",
+      "throttle": "Throttle",
+      "yaw": "Yaw (unused)"
+    }
+  }
+}

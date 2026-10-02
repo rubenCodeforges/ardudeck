@@ -1,4 +1,5 @@
 /** Link strip instrument with a RADIO_STATUS detail popover (RSSI, noise, loss). */
+import { useTranslation } from 'react-i18next';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { RadioStatusData } from '../../../../shared/telemetry-types';
@@ -35,6 +36,7 @@ function Row({ label, value, tip }: { label: string; value: string; tip?: string
 }
 
 function DirectionBlock({ title, tip, rssi, noise }: { title: string; tip: string; rssi: number; noise: number }): JSX.Element {
+  const { t } = useTranslation();
   const margin = fadeMarginDb(rssi, noise);
   const cls = margin === null ? null : classifyMargin(margin);
   return (
@@ -44,18 +46,19 @@ function DirectionBlock({ title, tip, rssi, noise }: { title: string; tip: strin
         <span
           className="text-[13px] font-semibold font-mono leading-none"
           style={{ color: cls ? MARGIN_COLOR[cls] : GAUGE_COLORS.textDim }}
-          data-tip="Fade margin: signal above the noise floor. Above 25 dB is comfortable, under 12 dB the link is close to dropping."
+          data-tip={t('map:linkInstrument.fadeMarginTip')}
         >
           {margin === null ? '--' : `${margin.toFixed(0)} dB`}
         </span>
       </div>
-      <Row label="RSSI" value={`${rssi === RADIO_UNKNOWN ? '--' : rssi} · ${formatDbm(rssi)}`} tip="Received signal strength (raw and SiK-calibrated dBm; other modems scale differently)" />
-      <Row label="Noise" value={`${noise === RADIO_UNKNOWN ? '--' : noise} · ${formatDbm(noise)}`} tip="Background noise floor (raw and SiK-calibrated dBm)" />
+      <Row label="RSSI" value={`${rssi === RADIO_UNKNOWN ? '--' : rssi} · ${formatDbm(rssi)}`} tip={t('map:linkInstrument.rssiTip')} />
+      <Row label={t('map:linkInstrument.noise')} value={`${noise === RADIO_UNKNOWN ? '--' : noise} · ${formatDbm(noise)}`} tip={t('map:linkInstrument.noiseTip')} />
     </div>
   );
 }
 
 export function LinkInstrument(): JSX.Element {
+  const { t } = useTranslation();
   const connected = useLinkUp();
   const rssi = useTelemetryStore((s) => s.rcChannels.rssi);
   const chancount = useTelemetryStore((s) => s.rcChannels.chancount);
@@ -116,13 +119,13 @@ export function LinkInstrument(): JSX.Element {
   const r = rates.current;
 
   return (
-    <InstrumentStrip label="Link">
+    <InstrumentStrip label={t('map:linkInstrument.title')}>
       {/* A button so the drag hook's interactive-child guard leaves the click alone. */}
       <button
         ref={anchorRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        data-tip="Telemetry radio link details"
+        data-tip={t('map:linkInstrument.detailsTip')}
         className="flex items-center gap-2 w-full text-left cursor-pointer"
       >
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dotColor }} />
@@ -131,7 +134,7 @@ export function LinkInstrument(): JSX.Element {
           <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">%</span>
         </span>
         <span className="ml-auto text-[8px] leading-none text-[var(--gauge-text-dim)]">
-          {state.kind === 'unconfigured' ? 'NOT SET UP' : state.fromModem ? 'TLM RSSI' : 'RSSI'}
+          {state.kind === 'unconfigured' ? t('map:linkInstrument.notSetUp') : state.fromModem ? 'TLM RSSI' : 'RSSI'}
         </span>
         <svg className="w-2.5 h-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: GAUGE_COLORS.textDim }}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -152,32 +155,32 @@ export function LinkInstrument(): JSX.Element {
               {radioStatus ? (
                 <>
                   <DirectionBlock
-                    title="Ground receive"
-                    tip="What the ground-side modem hears from the vehicle"
+                    title={t('map:linkInstrument.groundReceive')}
+                    tip={t('map:linkInstrument.groundReceiveTip')}
                     rssi={radioStatus.rssi}
                     noise={radioStatus.noise}
                   />
                   <DirectionBlock
-                    title="Vehicle receive"
-                    tip="What the vehicle-side modem hears from the ground (reported back over the link)"
+                    title={t('map:linkInstrument.vehicleReceive')}
+                    tip={t('map:linkInstrument.vehicleReceiveTip')}
                     rssi={radioStatus.remRssi}
                     noise={radioStatus.remNoise}
                   />
                   <div className="space-y-1">
                     <Row
-                      label="Rx errors"
+                      label={t('map:linkInstrument.rxErrors')}
                       value={r ? `${radioStatus.rxErrors} (${r.errorsPerSec.toFixed(1)}/s)` : `${radioStatus.rxErrors}`}
-                      tip="Packets lost to reception errors since boot (cumulative, with current rate)"
+                      tip={t('map:linkInstrument.rxErrorsTip')}
                     />
                     <Row
-                      label="FEC corrected"
+                      label={t('map:linkInstrument.fecCorrected')}
                       value={r ? `${radioStatus.fixed} (${r.fixedPerSec.toFixed(1)}/s)` : `${radioStatus.fixed}`}
-                      tip="Damaged packets repaired by forward error correction; rising counts mean the link is working hard"
+                      tip={t('map:linkInstrument.fecTip')}
                     />
                   </div>
-                  <div data-tip="Free space in the radio's transmit buffer; near 0% the link cannot keep up with outgoing data">
+                  <div data-tip={t('map:linkInstrument.txBufferTip')}>
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-content-tertiary">Tx buffer free</span>
+                      <span className="text-content-tertiary">{t('map:linkInstrument.txBuffer')}</span>
                       <span className="text-content-secondary font-mono">{radioStatus.txbuf}%</span>
                     </div>
                     <div className="h-1 mt-1 rounded bg-surface-input overflow-hidden">
@@ -192,15 +195,15 @@ export function LinkInstrument(): JSX.Element {
                   </div>
                   {chancount > 0 && rssi !== 255 && (
                     <Row
-                      label="RC RSSI"
-                      value={rssi > 0 ? `${Math.round((Math.min(rssi, 254) / 254) * 100)}%` : 'not set up'}
-                      tip="Separate RC receiver signal reported by the flight controller"
+                      label={t('map:linkInstrument.rcRssi')}
+                      value={rssi > 0 ? `${Math.round((Math.min(rssi, 254) / 254) * 100)}%` : t('map:linkInstrument.notSetUpLower')}
+                      tip={t('map:linkInstrument.rcRssiTip')}
                     />
                   )}
                 </>
               ) : (
                 <div className="text-[11px] text-content-secondary leading-relaxed">
-                  No telemetry modem is reporting on this link. RADIO_STATUS comes from SiK/RFD900-class radios and wfb-ng or ELRS gateways; direct USB and plain network links do not send it.
+                  {t('map:linkInstrument.noModem')}
                 </div>
               )}
             </div>

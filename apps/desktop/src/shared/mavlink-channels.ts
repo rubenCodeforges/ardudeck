@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * Which stream-rate parameters belong to which serial port.
  *
@@ -96,7 +98,7 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'attitude',
     suffix: 'EXTRA1',
-    label: 'Horizon smoothness',
+    label: 'Horizon smoothness', // i18n-exempt
     messages: ['ATTITUDE', 'AHRS2'],
     msgIds: [30, 178],
     bytesPerCycle: 42 + 38,
@@ -105,7 +107,7 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'position',
     suffix: 'POSITION',
-    label: 'Map / position',
+    label: 'Map / position', // i18n-exempt
     messages: ['GLOBAL_POSITION_INT', 'GPS_RAW_INT'],
     msgIds: [33, 24],
     bytesPerCycle: 42 + 66,
@@ -114,7 +116,7 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'vfr',
     suffix: 'EXTRA2',
-    label: 'Speed, altitude, throttle',
+    label: 'Speed, altitude, throttle', // i18n-exempt
     messages: ['VFR_HUD'],
     msgIds: [74],
     bytesPerCycle: 34,
@@ -123,7 +125,7 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'status',
     suffix: 'EXT_STAT',
-    label: 'Battery & status',
+    label: 'Battery & status', // i18n-exempt
     messages: ['SYS_STATUS', 'BATTERY_STATUS', 'GPS_RAW_INT', 'MISSION_CURRENT'],
     msgIds: [1, 147, 24, 42],
     bytesPerCycle: 45 + 50 + 66 + 20,
@@ -132,7 +134,7 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'rc',
     suffix: 'RC_CHAN',
-    label: 'RC inputs',
+    label: 'RC inputs', // i18n-exempt
     messages: ['RC_CHANNELS', 'SERVO_OUTPUT_RAW'],
     msgIds: [65, 36],
     bytesPerCycle: 56 + 35,
@@ -141,7 +143,7 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'raw',
     suffix: 'RAW_SENS',
-    label: 'Raw IMU (tuning only)',
+    label: 'Raw IMU (tuning only)', // i18n-exempt
     messages: ['RAW_IMU', 'SCALED_PRESSURE'],
     msgIds: [27, 29],
     bytesPerCycle: 40 + 28,
@@ -150,13 +152,17 @@ export const RATE_GROUPS: RateGroup[] = [
   {
     id: 'extra3',
     suffix: 'EXTRA3',
-    label: 'Extra sensors',
+    label: 'Extra sensors', // i18n-exempt
     messages: ['RANGEFINDER', 'BATTERY2', 'SYSTEM_TIME'],
     msgIds: [173, 181, 2],
     bytesPerCycle: 22 + 18 + 26,
     maxHz: 10,
   },
 ];
+
+export function rateGroupLabel(group: Pick<RateGroup, 'id'>): string {
+  return t(`shared:mavlinkChannels.rateGroup.${group.id}`);
+}
 
 /**
  * Name of the parameter that carries a group's rate on a channel.

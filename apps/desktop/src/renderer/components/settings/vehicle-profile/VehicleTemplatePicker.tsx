@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Search, Download } from 'lucide-react';
 import type { VehicleTemplate } from '../../../lib/vehicle-templates/types.js';
 import { VEHICLE_TEMPLATES } from '../../../lib/vehicle-templates/registry.js';
@@ -9,14 +10,14 @@ import { Px4AirframePicker } from './Px4AirframePicker.js';
 
 type CategoryFilter = 'all' | VehicleTemplate['category'];
 
-const CATEGORIES: Array<{ id: CategoryFilter; label: string }> = [
-  { id: 'all',        label: 'All' },
-  { id: 'multirotor', label: 'Multirotor' },
-  { id: 'fixed-wing', label: 'Fixed Wing' },
-  { id: 'vtol',       label: 'VTOL' },
-  { id: 'rover',      label: 'Rover' },
-  { id: 'boat',       label: 'Boat' },
-  { id: 'sub',        label: 'Sub' },
+const CATEGORIES: Array<{ id: CategoryFilter; labelKey: string }> = [
+  { id: 'all',        labelKey: 'common:all' },
+  { id: 'multirotor', labelKey: 'common:multirotor' },
+  { id: 'fixed-wing', labelKey: 'common:fixedWing' },
+  { id: 'vtol',       labelKey: 'settings:vehicleTemplatePicker.vtol' },
+  { id: 'rover',      labelKey: 'common:rover' },
+  { id: 'boat',       labelKey: 'common:boat' },
+  { id: 'sub',        labelKey: 'common:sub' },
 ];
 
 interface VehicleTemplatePickerProps {
@@ -30,6 +31,7 @@ interface VehicleTemplatePickerProps {
  * "Import from connected vehicle" when a connection + param cache is live.
  */
 export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose }: VehicleTemplatePickerProps) {
+  const { t } = useTranslation();
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [query, setQuery] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -92,12 +94,12 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
         <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
           <div>
             <h2 className="text-base font-semibold text-content">
-              {isPx4 ? 'Choose a PX4 airframe' : 'Choose a vehicle template'}
+              {isPx4 ? t('settings:vehicleTemplatePicker.choosePx4') : t('settings:vehicleTemplatePicker.chooseTemplate')}
             </h2>
             <p className="text-xs text-content-secondary mt-0.5">
               {isPx4
-                ? 'Pick the airframe that matches your aircraft. This writes SYS_AUTOSTART and needs a reboot.'
-                : 'Pick the configuration that matches your aircraft, you can tweak fields after.'}
+                ? t('settings:vehicleTemplatePicker.px4Hint')
+                : t('settings:vehicleTemplatePicker.templateHint')}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-overlay-subtle text-content-secondary hover:text-content">
@@ -122,7 +124,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
                     : 'bg-surface-overlay-subtle text-content-secondary hover:text-content hover:bg-surface-overlay-subtle'
                 }`}
               >
-                {c.label}
+                {t(c.labelKey)}
               </button>
             ))}
           </div>
@@ -132,7 +134,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search templates…"
+              placeholder={t('settings:vehicleTemplatePicker.search')}
               className="bg-transparent text-xs text-content placeholder:text-content-secondary outline-none w-48"
             />
           </div>
@@ -150,9 +152,9 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
                   <Download className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-content">Import from connected vehicle</div>
+                  <div className="text-sm font-medium text-content">{t('settings:vehicleTemplatePicker.import')}</div>
                   <div className="text-xs text-content-secondary mt-0.5">
-                    Read parameters from the currently connected vehicle and infer the matching template.
+                    {t('settings:vehicleTemplatePicker.importHint')}
                   </div>
                 </div>
               </div>
@@ -161,7 +163,7 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
 
           {filtered.length === 0 ? (
             <div className="text-center py-12 text-content-secondary text-sm">
-              No templates match the current filter.
+              {t('settings:vehicleTemplatePicker.noMatch')}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -181,8 +183,8 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
         )}
 
         <div className="px-5 py-3 border-t border-subtle text-[10px] text-content-secondary flex items-center justify-between">
-          <span>{isPx4 ? 'PX4 airframe via SYS_AUTOSTART · reboot to apply' : `${filtered.length} template${filtered.length === 1 ? '' : 's'}`}</span>
-          <span>{isPx4 ? 'Esc cancel' : '↑↓←→ navigate · Enter select · Esc cancel'}</span>
+          <span>{isPx4 ? t('settings:vehicleTemplatePicker.px4Footer') : t('settings:vehicleTemplatePicker.count', { count: filtered.length })}</span>
+          <span>{isPx4 ? t('settings:vehicleTemplatePicker.escCancel') : t('settings:vehicleTemplatePicker.keys')}</span>
         </div>
       </div>
     </div>
@@ -197,6 +199,7 @@ interface TemplateCardProps {
 }
 
 function TemplateCard({ template, focused, onClick, onMouseEnter }: TemplateCardProps) {
+  const { t } = useTranslation();
   const Icon = template.icon;
   const paramCount = template.toParams(template.defaults as never).length;
   return (
@@ -220,7 +223,7 @@ function TemplateCard({ template, focused, onClick, onMouseEnter }: TemplateCard
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 uppercase font-medium tracking-wide">
               {template.vehicleType}
             </span>
-            <span className="text-[10px] text-content-tertiary">{paramCount} params</span>
+            <span className="text-[10px] text-content-tertiary">{t('settings:vehicleTemplatePicker.params', { count: paramCount })}</span>
           </div>
         </div>
       </div>

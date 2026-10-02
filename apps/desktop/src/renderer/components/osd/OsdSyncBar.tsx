@@ -8,11 +8,13 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useOsdStore } from '../../stores/osd-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { AP_OSD_SCREENS } from '../../utils/osd/ardupilot-osd';
 
 export function OsdSyncBar() {
+  const { t } = useTranslation();
   const target = useOsdStore((s) => s.target);
   const screen = useOsdStore((s) => s.screen);
   const availableScreens = useOsdStore((s) => s.availableScreens);
@@ -36,7 +38,7 @@ export function OsdSyncBar() {
       ? `ArduPilot${connectionState.vehicleType ? ` ${connectionState.vehicleType}` : ''}`
       : target === 'msp'
         ? connectionState.fcVariant || 'Betaflight / iNAV'
-        : 'Simulator (not connected)';
+        : t('osd:osdSyncBar.simulator');
 
   const screens = availableScreens.length > 0 ? availableScreens : [...AP_OSD_SCREENS];
 
@@ -54,7 +56,7 @@ export function OsdSyncBar() {
       {/* ArduPilot screen tabs */}
       {target === 'ardupilot' && (
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-content-secondary uppercase tracking-wide">Screen</span>
+          <span className="text-[10px] text-content-secondary uppercase tracking-wide">{t('osd:osdSyncBar.screen')}</span>
           <div className="flex items-center gap-0.5 rounded-lg border border-subtle p-0.5 bg-surface-raised">
             {screens.map((s) => (
               <button
@@ -77,13 +79,13 @@ export function OsdSyncBar() {
           onClick={() => void readFromFc()}
           disabled={offline || fc.busy}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-subtle bg-surface-raised hover:bg-surface text-content disabled:opacity-40 disabled:cursor-not-allowed"
-          data-tip={offline ? 'Connect a flight controller first' : 'Read the current OSD layout from the FC'}
+          data-tip={offline ? t('osd:osdSyncBar.connectFirst') : t('osd:osdSyncBar.loadTip')}
         >
-          <DownloadIcon /> Load from FC
+          <DownloadIcon /> {t('osd:osdSyncBar.loadFromFc')}
         </button>
-        <UploadButton offline={offline} busy={fc.busy} onUpload={uploadToFc} label="Upload layout" confirmLabel="Confirm layout" tip={offline ? 'Connect a flight controller first' : 'Write the element layout to the FC and save'} />
+        <UploadButton offline={offline} busy={fc.busy} onUpload={uploadToFc} label={t('osd:osdSyncBar.uploadLayout')} confirmLabel={t('osd:osdSyncBar.confirmLayout')} tip={offline ? t('osd:osdSyncBar.connectFirst') : t('osd:osdSyncBar.uploadLayoutTip')} />
         {target === 'msp' && (
-          <UploadButton offline={offline} busy={fc.busy} onUpload={uploadFontToFc} label="Upload font" confirmLabel="Confirm font" tip="Write the current font to the FC's character NVM (analog/MAX7456), reboot to apply" />
+          <UploadButton offline={offline} busy={fc.busy} onUpload={uploadFontToFc} label={t('osd:osdSyncBar.uploadFont')} confirmLabel={t('osd:osdSyncBar.confirmFont')} tip={t('osd:osdSyncBar.uploadFontTip')} />
         )}
       </div>
 
@@ -162,6 +164,7 @@ function UploadButton({
 }
 
 function PresetMenu() {
+  const { t } = useTranslation();
   const presets = useOsdStore((s) => s.presets);
   const savePreset = useOsdStore((s) => s.savePreset);
   const loadPreset = useOsdStore((s) => s.loadPreset);
@@ -190,7 +193,7 @@ function PresetMenu() {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-subtle bg-surface-raised hover:bg-surface text-content"
       >
-        Layouts
+        {t('osd:osdSyncBar.layouts')}
         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -208,7 +211,7 @@ function PresetMenu() {
                   setName('');
                 }
               }}
-              placeholder="Save current as..."
+              placeholder={t('osd:osdSyncBar.saveCurrentAs')}
               className="flex-1 bg-surface-input text-content text-xs rounded-lg px-2.5 py-1.5 border border-subtle focus:border-blue-500 focus:outline-none placeholder-content-tertiary"
             />
             <button
@@ -216,13 +219,13 @@ function PresetMenu() {
               className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600/80 hover:bg-blue-500/80 text-white disabled:opacity-40"
               disabled={!name.trim()}
             >
-              Save
+              {t('common:save')}
             </button>
           </div>
 
           <div className="max-h-48 overflow-y-auto">
             {names.length === 0 ? (
-              <p className="text-[10px] text-content-tertiary px-1 py-2">No saved layouts yet.</p>
+              <p className="text-[10px] text-content-tertiary px-1 py-2">{t('osd:osdSyncBar.noSavedLayouts')}</p>
             ) : (
               names.map((n) => (
                 <div key={n} className="flex items-center gap-1 group">
@@ -235,7 +238,7 @@ function PresetMenu() {
                   <button
                     onClick={() => deletePreset(n)}
                     className="px-1.5 py-1 text-content-tertiary hover:text-red-500"
-                    data-tip="Delete layout"
+                    data-tip={t('osd:osdSyncBar.deleteLayout')}
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M18 6L6 18M6 6l12 12" />
@@ -251,13 +254,13 @@ function PresetMenu() {
               onClick={() => { autoArrangeToCanvas(); setOpen(false); }}
               className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-surface-overlay-subtle text-content"
             >
-              Auto-arrange to canvas
+              {t('osd:osdSyncBar.autoArrange')}
             </button>
             <button
               onClick={() => { resetElementPositions(); setOpen(false); }}
               className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-surface-overlay-subtle text-content-secondary"
             >
-              Reset to defaults
+              {t('osd:osdSyncBar.resetDefaults')}
             </button>
           </div>
         </div>

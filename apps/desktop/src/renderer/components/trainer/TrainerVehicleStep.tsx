@@ -1,4 +1,5 @@
 import { Camera, Check, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { TrainerCatalogue, TrainerStatus } from '../../../shared/trainer-types';
 
 /**
@@ -31,6 +32,7 @@ export function TrainerVehicleStep({
   onCamera: (choice: CameraChoice | null) => void;
   status: TrainerStatus | null;
 }): JSX.Element {
+  const { t } = useTranslation();
   // Only what a pilot can actually fly by. An action camera records and is not a view, and the
   // Trainer would silently fall back to a flyable one, so offering it would be a lie.
   const kinds = catalogue.cameraKinds.filter((k) => k.flyable);
@@ -39,24 +41,24 @@ export function TrainerVehicleStep({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-content">Vehicle</h2>
+        <h2 className="text-lg font-semibold text-content">{t('trainer:trainerVehicleStep.title')}</h2>
         <p className="mt-0.5 text-xs text-content-tertiary">
-          The frame comes from the flight controller ArduDeck is running.
+          {t('trainer:trainerVehicleStep.subtitle')}
         </p>
       </div>
 
       <section>
         <h3 className="mb-2.5 flex items-center gap-1.5 border-l-2 border-blue-500/60 pl-2.5 text-xs font-medium uppercase tracking-wide text-content-secondary">
           <Camera className="h-3.5 w-3.5" />
-          Goggles
+          {t('trainer:trainerVehicleStep.goggles')}
         </h3>
 
         <div className="grid gap-2.5 sm:grid-cols-3">
           <KindCard
             active={camera === null}
             onClick={() => onCamera(null)}
-            label="The Trainer's own"
-            blurb="Whatever was last set up in the launcher."
+            label={t('trainer:trainerVehicleStep.trainersOwn')}
+            blurb={t('trainer:trainerVehicleStep.trainersOwnBlurb')}
           />
           {kinds.map((k) => (
             <KindCard
@@ -71,7 +73,7 @@ export function TrainerVehicleStep({
               }
               label={k.label}
               blurb={k.blurb}
-              badge={k.stabilised ? 'Stabilised' : undefined}
+              badge={k.stabilised ? t('trainer:trainerVehicleStep.stabilised') : undefined}
             />
           ))}
         </div>
@@ -95,7 +97,7 @@ export function TrainerVehicleStep({
             </div>
 
             <div>
-              <span className="mb-1.5 block text-xs font-medium text-content-secondary">Lens</span>
+              <span className="mb-1.5 block text-xs font-medium text-content-secondary">{t('trainer:trainerVehicleStep.lens')}</span>
               <div className="flex gap-2">
                 {spec.lenses.map((fov) => (
                   <button
@@ -116,8 +118,7 @@ export function TrainerVehicleStep({
             {spec.stabilised && (
               <p className="flex items-start gap-2 text-[11px] leading-relaxed text-content-tertiary">
                 <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                Held level by its mount, so the horizon never tilts. That means no attitude cue at
-                all, which is a genuinely different skill to fly behind.
+                {t('trainer:trainerVehicleStep.stabilisedHint')}
               </p>
             )}
           </div>
@@ -126,14 +127,14 @@ export function TrainerVehicleStep({
 
       <div className="card card-body space-y-1.5 text-xs">
         <Row
-          label="Take-off point"
+          label={t('trainer:trainerVehicleStep.takeoffPoint')}
           value={
             status?.home
               ? `${status.home.lat.toFixed(5)}, ${status.home.lon.toFixed(5)}`
-              : 'waiting for a GPS fix'
+              : t('trainer:trainerVehicleStep.waitingForFix')
           }
         />
-        <Row label="Flight controller" value="ArduDeck keeps it" />
+        <Row label={t('trainer:trainerVehicleStep.flightController')} value={t('trainer:trainerVehicleStep.arduDeckKeepsIt')} />
       </div>
     </div>
   );

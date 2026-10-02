@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import maplibregl from 'maplibre-gl';
 import { ObjectEditorMap } from './ObjectEditorMap';
 import { ObjectEditorHud } from './ObjectEditorHud';
@@ -63,23 +64,23 @@ const IRedo = () => <svg {...S}><path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 
 
 const THEME_CYCLE: ThemePreference[] = ['dark', 'light', 'system'];
 const THEME_ICON: Record<ThemePreference, () => JSX.Element> = { dark: IMoon, light: ISun, system: IMonitor };
-const THEME_TIP: Record<ThemePreference, string> = {
-  dark: 'Theme: Dark (click for Light)', light: 'Theme: Light (click for System)', system: 'Theme: System (click for Dark)',
+const THEME_TIP_KEY: Record<ThemePreference, string> = {
+  dark: 'area-editor:objectEditorApp.theme.dark', light: 'area-editor:objectEditorApp.theme.light', system: 'area-editor:objectEditorApp.theme.system',
 };
 
-const TOOLS: { id: AreaTool; icon: () => JSX.Element; tip: string }[] = [
-  { id: 'select', icon: ICursor, tip: 'Select & transform: move, rotate, scale' },
-  { id: 'polygon', icon: IPolygon, tip: 'Draw area: click points, double-click to finish' },
-  { id: 'corridor', icon: ICorridor, tip: 'Draw corridor: a centerline for a linear survey' },
-  { id: 'spline', icon: ISpline, tip: 'Spline corridor: click points along a shoreline or road, get a smooth curve (double-click to finish)' },
-  { id: 'branch', icon: IBranch, tip: 'Branch: select a corridor, draw a fork off it (double-click to finish)' },
-  { id: 'rectangle', icon: IRect, tip: 'Rectangle: drag on the map' },
-  { id: 'circle', icon: ICircle, tip: 'Circle: drag from the center' },
-  { id: 'edit', icon: IEdit, tip: 'Edit points of the selected object' },
-  { id: 'hole', icon: IHole, tip: 'Cut a hole: select an area, then click an inner ring (double-click to finish)' },
-  { id: 'split', icon: ISplit, tip: 'Split: select an area, then draw a line across it (two clicks)' },
-  { id: 'merge', icon: IMerge, tip: 'Merge: click a polygon to combine it with everything it overlaps' },
-  { id: 'measure', icon: IRuler, tip: 'Measure distance & area' },
+const TOOLS: { id: AreaTool; icon: () => JSX.Element; tipKey: string }[] = [
+  { id: 'select', icon: ICursor, tipKey: 'area-editor:objectEditorApp.tool.select' },
+  { id: 'polygon', icon: IPolygon, tipKey: 'area-editor:objectEditorApp.tool.polygon' },
+  { id: 'corridor', icon: ICorridor, tipKey: 'area-editor:objectEditorApp.tool.corridor' },
+  { id: 'spline', icon: ISpline, tipKey: 'area-editor:objectEditorApp.tool.spline' },
+  { id: 'branch', icon: IBranch, tipKey: 'area-editor:objectEditorApp.tool.branch' },
+  { id: 'rectangle', icon: IRect, tipKey: 'area-editor:objectEditorApp.tool.rectangle' },
+  { id: 'circle', icon: ICircle, tipKey: 'area-editor:objectEditorApp.tool.circle' },
+  { id: 'edit', icon: IEdit, tipKey: 'area-editor:objectEditorApp.tool.edit' },
+  { id: 'hole', icon: IHole, tipKey: 'area-editor:objectEditorApp.tool.hole' },
+  { id: 'split', icon: ISplit, tipKey: 'area-editor:objectEditorApp.tool.split' },
+  { id: 'merge', icon: IMerge, tipKey: 'area-editor:objectEditorApp.tool.merge' },
+  { id: 'measure', icon: IRuler, tipKey: 'area-editor:objectEditorApp.tool.measure' },
 ];
 
 function ActionButton({ tip, onClick, disabled = false, primary = false, children }: {
@@ -184,6 +185,7 @@ function DistanceDraftInput({
 }
 
 export function ObjectEditorApp(): JSX.Element {
+  const { t } = useTranslation();
   const cleanupRef = useRef<(() => void) | null>(null);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const tool = useObjectsStore((s) => s.tool);
@@ -359,39 +361,40 @@ export function ObjectEditorApp(): JSX.Element {
           return [{ name: o.name || `Area ${i + 1}`, polygon: ring, holes: objectWorldHoles(o) }];
         });
       if (exportAreas.length === 0) {
-        setExportNote('Nothing to export: no visible areas');
+        setExportNote(t('area-editor:objectEditorApp.nothingToExport'));
         return;
       }
       await window.electronAPI.exportAreasKml(exportAreas, format);
     } catch (err) {
       console.warn('[ObjectEditor] export failed:', err);
-      setExportNote('Export failed');
+      setExportNote(t('area-editor:objectEditorApp.exportFailed'));
     }
-  }, []);
+  }, [t, setExportNote]);
 
   return (
     <div data-testid="object-editor-shell" className="h-full w-full flex flex-col overflow-hidden bg-surface-base text-content">
       {/* Top bar */}
       <div className="flex-shrink-0 h-12 flex items-center gap-3 px-3 border-b border-subtle bg-surface">
         <div className="flex items-center gap-2 shrink-0">
+          {/* i18n-exempt */}
           <img src={logoImage} alt="ArduDeck" className="h-7 w-7 rounded-md object-cover" />
-          <span className="text-sm font-semibold tracking-tight">ArduDeck</span>
+          <span className="text-sm font-semibold tracking-tight">{t('common:ardudeck')}</span>
         </div>
 
         {/* Context options for the active tool */}
         <div className="flex items-center gap-2 min-w-0">
           {tool === 'spline' && (
             <span className="text-xs text-content-secondary">
-              Click points along the line to capture · double-click to finish the smooth curve
+              {t('area-editor:objectEditorApp.splineHint')}
             </span>
           )}
           {tool === 'merge' && (
             <span className="text-xs text-content-secondary">
-              Click a polygon to combine it with everything it overlaps
+              {t('area-editor:objectEditorApp.mergeHint')}
             </span>
           )}
           {(tool === 'corridor' || tool === 'spline' || tool === 'branch' || selectedIsCorridor) && (
-            <div className="flex items-center gap-1.5" data-tip="Corridor swath width">
+            <div className="flex items-center gap-1.5" data-tip={t('area-editor:objectEditorApp.corridorWidthTip')}>
               <span className="text-content-tertiary"><ICorridor /></span>
               <DistanceDraftInput
                 valueMeters={corridorWidthM}
@@ -400,7 +403,7 @@ export function ObjectEditorApp(): JSX.Element {
                 stepMeters={5}
                 onCommit={setCorridorWidth}
                 className="w-16 h-7 px-2 rounded bg-surface-input border border-subtle text-content text-xs"
-                ariaLabel={`Corridor width in ${UNIT_LABELS.distance[distanceUnit]}`}
+                ariaLabel={t('area-editor:objectEditorApp.corridorWidthAria', { unit: UNIT_LABELS.distance[distanceUnit] })}
               />
               <span className="text-xs text-content-tertiary">{UNIT_LABELS.distance[distanceUnit]}</span>
             </div>
@@ -408,33 +411,33 @@ export function ObjectEditorApp(): JSX.Element {
           {tool === 'branch' && (
             <span className="text-xs text-content-secondary">
               {selectedIsCorridor
-                ? 'Click along the corridor to draw a branch, double-click to finish'
-                : 'Click a corridor first, then draw a branch off it (double-click to finish)'}
+                ? t('area-editor:objectEditorApp.branchHintSelected')
+                : t('area-editor:objectEditorApp.branchHint')}
             </span>
           )}
           {tool === 'select' && selectedIsCorridor && selectedBranchCount > 0 && (
             <button
               type="button" onClick={() => clearBranches()}
-              data-tip="Remove all branches from this corridor"
+              data-tip={t('area-editor:objectEditorApp.clearBranchesTip')}
               className="text-xs text-content-secondary hover:text-content underline-offset-2 hover:underline"
             >
-              Clear {selectedBranchCount} branch{selectedBranchCount > 1 ? 'es' : ''}
+              {t('area-editor:objectEditorApp.clearBranches', { count: selectedBranchCount })}
             </button>
           )}
           {tool === 'hole' && (
             <span className="text-xs text-content-secondary">
-              Click inside an area to cut a hole, double-click to finish
+              {t('area-editor:objectEditorApp.holeHint')}
             </span>
           )}
           {tool === 'split' && (
             <span className="text-xs text-content-secondary">
-              Draw a line across an area to slice it (two clicks)
+              {t('area-editor:objectEditorApp.splitHint')}
             </span>
           )}
           {tool === 'select' && selected && !selectedIsCorridor && (
-            <div className="flex items-center gap-1" data-tip="Grow or shrink the selected area by a margin">
-              <span className="text-xs text-content-tertiary">Buffer</span>
-              <button type="button" aria-label="Shrink" onClick={() => bufferSelected(-bufferM)}
+            <div className="flex items-center gap-1" data-tip={t('area-editor:objectEditorApp.bufferTip')}>
+              <span className="text-xs text-content-tertiary">{t('area-editor:objectEditorApp.buffer')}</span>
+              <button type="button" aria-label={t('area-editor:objectEditorApp.shrink')} onClick={() => bufferSelected(-bufferM)}
                 className="w-6 h-7 inline-flex items-center justify-center rounded bg-surface-raised text-content hover:brightness-125">−</button>
               <DistanceDraftInput
                 valueMeters={bufferM}
@@ -443,10 +446,10 @@ export function ObjectEditorApp(): JSX.Element {
                 stepMeters={5}
                 onCommit={setBufferM}
                 className="w-14 h-7 px-2 rounded bg-surface-input border border-subtle text-content text-xs"
-                ariaLabel={`Buffer distance in ${UNIT_LABELS.distance[distanceUnit]}`}
+                ariaLabel={t('area-editor:objectEditorApp.bufferAria', { unit: UNIT_LABELS.distance[distanceUnit] })}
               />
               <span className="text-xs text-content-tertiary">{UNIT_LABELS.distance[distanceUnit]}</span>
-              <button type="button" aria-label="Grow" onClick={() => bufferSelected(bufferM)}
+              <button type="button" aria-label={t('area-editor:objectEditorApp.grow')} onClick={() => bufferSelected(bufferM)}
                 className="w-6 h-7 inline-flex items-center justify-center rounded bg-surface-raised text-content hover:brightness-125">+</button>
             </div>
           )}
@@ -456,20 +459,20 @@ export function ObjectEditorApp(): JSX.Element {
               onClick={() => {
                 const absorbed = mergeOverlapping(selected.id);
                 setExportNote(absorbed > 0
-                  ? `Merged ${absorbed + 1} shapes into one`
-                  : 'Nothing to merge: no shape overlaps this one');
+                  ? t('area-editor:objectEditorApp.merged', { count: absorbed + 1 })
+                  : t('area-editor:objectEditorApp.nothingToMerge'));
               }}
-              data-tip="Combine this polygon with every polygon it overlaps into one shape"
+              data-tip={t('area-editor:objectEditorApp.mergeTip')}
               className="h-7 px-2.5 inline-flex items-center rounded bg-surface-raised text-xs text-content hover:brightness-125"
             >
-              Merge
+              {t('area-editor:objectEditorApp.merge')}
             </button>
           )}
           {tool === 'measure' && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-content-secondary">Click to measure · double-click to finish</span>
+              <span className="text-xs text-content-secondary">{t('area-editor:objectEditorApp.measureHint')}</span>
               {measurePoints.length > 0 && (
-                <button type="button" onClick={clearMeasure} className="text-xs text-content-secondary hover:text-content underline-offset-2 hover:underline">Clear</button>
+                <button type="button" onClick={clearMeasure} className="text-xs text-content-secondary hover:text-content underline-offset-2 hover:underline">{t('common:clear')}</button>
               )}
             </div>
           )}
@@ -483,27 +486,27 @@ export function ObjectEditorApp(): JSX.Element {
           {saveState === 'saved' && !exportNoteText && (
             <span
               className="text-[11px] text-content-tertiary mr-2 select-none"
-              data-tip="Objects are autosaved on this computer and restored when the editor reopens"
+              data-tip={t('area-editor:objectEditorApp.savedTip')}
             >
-              Saved
+              {t('common:saved')}
             </span>
           )}
-          <ActionButton tip="Undo (Ctrl+Z)" disabled={!canUndo} onClick={undo}><IUndo /></ActionButton>
-          <ActionButton tip="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo}><IRedo /></ActionButton>
+          <ActionButton tip={t('area-editor:objectEditorApp.undoTip')} disabled={!canUndo} onClick={undo}><IUndo /></ActionButton>
+          <ActionButton tip={t('area-editor:objectEditorApp.redoTip')} disabled={!canRedo} onClick={redo}><IRedo /></ActionButton>
           <div className="w-px h-6 bg-subtle mx-1" />
-          <ActionButton tip="Zoom to fit all objects" disabled={!hasValid} onClick={handleFit}><IFit /></ActionButton>
-          <ActionButton tip="Import KML / KMZ / GeoJSON / Shapefile" onClick={() => void handleImport()}><IImport /></ActionButton>
-          <ActionButton tip="Export areas as KML" disabled={!hasValid} onClick={() => void handleExport('kml')}><IExportKml /></ActionButton>
-          <ActionButton tip="Export areas as KMZ" disabled={!hasValid} onClick={() => void handleExport('kmz')}><IExportKmz /></ActionButton>
+          <ActionButton tip={t('area-editor:objectEditorApp.fitTip')} disabled={!hasValid} onClick={handleFit}><IFit /></ActionButton>
+          <ActionButton tip={t('area-editor:objectEditorApp.importTip')} onClick={() => void handleImport()}><IImport /></ActionButton>
+          <ActionButton tip={t('area-editor:objectEditorApp.exportKmlTip')} disabled={!hasValid} onClick={() => void handleExport('kml')}><IExportKml /></ActionButton>
+          <ActionButton tip={t('area-editor:objectEditorApp.exportKmzTip')} disabled={!hasValid} onClick={() => void handleExport('kmz')}><IExportKmz /></ActionButton>
           <button
             type="button" onClick={handleSend} disabled={!hasCommittable || sent}
-            data-tip="Send these areas to the mission planner"
+            data-tip={t('area-editor:objectEditorApp.sendTip')}
             className="ml-1 h-8 px-3 inline-flex items-center gap-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ISend />{sent ? 'Sent' : 'Send to mission'}
+            <ISend />{sent ? t('area-editor:objectEditorApp.sent') : t('area-editor:objectEditorApp.sendToMission')}
           </button>
           <div className="w-px h-6 bg-subtle mx-1" />
-          <ActionButton tip={THEME_TIP[theme]} onClick={cycleTheme}><ThemeIcon /></ActionButton>
+          <ActionButton tip={t(THEME_TIP_KEY[theme])} onClick={cycleTheme}><ThemeIcon /></ActionButton>
         </div>
       </div>
 
@@ -511,12 +514,12 @@ export function ObjectEditorApp(): JSX.Element {
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Tool rail */}
         <div className="w-12 flex-shrink-0 flex flex-col items-center gap-1 py-2 border-r border-subtle bg-surface-nav">
-          {TOOLS.map(({ id, icon: Icon, tip }) => (
+          {TOOLS.map(({ id, icon: Icon, tipKey }) => (
             <button
               key={id}
               type="button"
-              data-tip={tip}
-              aria-label={tip}
+              data-tip={t(tipKey)}
+              aria-label={t(tipKey)}
               onClick={() => setTool(id)}
               className={
                 'w-9 h-9 inline-flex items-center justify-center rounded-lg transition-colors ' +

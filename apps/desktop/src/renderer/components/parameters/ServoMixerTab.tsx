@@ -5,15 +5,17 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { pendingDraft, usePendingWritesStore } from '../../stores/msp-pending-writes-store';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { CompactSlider } from '../ui/DraggableSlider';
 import { useServoWizardStore } from '../../stores/servo-wizard-store';
+import { mergeServoEdit } from '../../stores/servo-config-merge';
 import {
   Settings,
   Plus,
   Trash2,
   RefreshCw,
-  Save,
   ChevronDown,
   ChevronRight,
   AlertCircle,
@@ -39,31 +41,31 @@ interface MSPServoMixerRule {
   box: number;
 }
 
-// Human-readable input source names
+// Human-readable input source names (i18n keys)
 const INPUT_SOURCE_NAMES: Record<number, string> = {
-  0: 'Roll',
-  1: 'Pitch',
-  2: 'Yaw',
-  3: 'Throttle',
-  4: 'RC Roll (raw)',
-  5: 'RC Pitch (raw)',
-  6: 'RC Yaw (raw)',
-  7: 'RC Throttle (raw)',
-  8: 'AUX 1',
-  9: 'AUX 2',
-  10: 'AUX 3',
-  11: 'AUX 4',
-  12: 'Gimbal Pitch',
-  13: 'Gimbal Roll',
-  14: 'Flap input',
-  15: 'Headtracker',
+  0: 'common:roll',
+  1: 'common:pitch',
+  2: 'common:yaw',
+  3: 'common:throttle',
+  4: 'parameters:servoMixerTab.inputRcRoll',
+  5: 'parameters:servoMixerTab.inputRcPitch',
+  6: 'parameters:servoMixerTab.inputRcYaw',
+  7: 'parameters:servoMixerTab.inputRcThrottle',
+  8: 'parameters:servoMixerTab.inputAux1',
+  9: 'parameters:servoMixerTab.inputAux2',
+  10: 'parameters:servoMixerTab.inputAux3',
+  11: 'parameters:servoMixerTab.inputAux4',
+  12: 'parameters:servoMixerTab.inputGimbalPitch',
+  13: 'parameters:servoMixerTab.inputGimbalRoll',
+  14: 'parameters:servoMixerTab.inputFlap',
+  15: 'parameters:servoMixerTab.inputHeadtracker',
 };
 
 // Servo function presets - what the servo is connected to
 interface ServoFunction {
   id: string;
-  name: string;
-  description: string;
+  nameKey: string;
+  descKey: string;
   color: string; // gradient + border classes
   activeColor: string; // when selected
   rules: { inputSource: number; rate: number }[];
@@ -72,32 +74,32 @@ interface ServoFunction {
 const SERVO_FUNCTIONS: ServoFunction[] = [
   {
     id: 'aileron',
-    name: 'Aileron',
-    description: 'Responds to Roll',
+    nameKey: 'parameters:servoMixerTab.fn.aileron',
+    descKey: 'parameters:servoMixerTab.fn.aileronDesc',
     color: 'bg-gradient-to-br from-blue-500/25 to-blue-600/15 border-blue-500/40 hover:border-blue-400/60',
     activeColor: 'bg-gradient-to-br from-blue-500/40 to-blue-600/30 border-blue-400 text-blue-200',
     rules: [{ inputSource: 0, rate: 100 }],
   },
   {
     id: 'elevator',
-    name: 'Elevator',
-    description: 'Responds to Pitch',
+    nameKey: 'parameters:servoMixerTab.fn.elevator',
+    descKey: 'parameters:servoMixerTab.fn.elevatorDesc',
     color: 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/15 border-emerald-500/40 hover:border-emerald-400/60',
     activeColor: 'bg-gradient-to-br from-emerald-500/40 to-emerald-600/30 border-emerald-400 text-emerald-200',
     rules: [{ inputSource: 1, rate: 100 }],
   },
   {
     id: 'rudder',
-    name: 'Rudder',
-    description: 'Responds to Yaw',
+    nameKey: 'parameters:servoMixerTab.fn.rudder',
+    descKey: 'parameters:servoMixerTab.fn.rudderDesc',
     color: 'bg-gradient-to-br from-purple-500/25 to-purple-600/15 border-purple-500/40 hover:border-purple-400/60',
     activeColor: 'bg-gradient-to-br from-purple-500/40 to-purple-600/30 border-purple-400 text-purple-200',
     rules: [{ inputSource: 2, rate: 100 }],
   },
   {
     id: 'elevon_l',
-    name: 'Elevon (Left)',
-    description: 'Roll + Pitch combined',
+    nameKey: 'parameters:servoMixerTab.fn.elevonL',
+    descKey: 'parameters:servoMixerTab.fn.elevonLDesc',
     color: 'bg-gradient-to-br from-cyan-500/25 to-cyan-600/15 border-cyan-500/40 hover:border-cyan-400/60',
     activeColor: 'bg-gradient-to-br from-cyan-500/40 to-cyan-600/30 border-cyan-400 text-cyan-200',
     rules: [
@@ -107,8 +109,8 @@ const SERVO_FUNCTIONS: ServoFunction[] = [
   },
   {
     id: 'elevon_r',
-    name: 'Elevon (Right)',
-    description: 'Roll (rev) + Pitch',
+    nameKey: 'parameters:servoMixerTab.fn.elevonR',
+    descKey: 'parameters:servoMixerTab.fn.elevonRDesc',
     color: 'bg-gradient-to-br from-cyan-500/25 to-cyan-600/15 border-cyan-500/40 hover:border-cyan-400/60',
     activeColor: 'bg-gradient-to-br from-cyan-500/40 to-cyan-600/30 border-cyan-400 text-cyan-200',
     rules: [
@@ -118,8 +120,8 @@ const SERVO_FUNCTIONS: ServoFunction[] = [
   },
   {
     id: 'vtail_l',
-    name: 'V-Tail (Left)',
-    description: 'Pitch + Yaw mixed',
+    nameKey: 'parameters:servoMixerTab.fn.vtailL',
+    descKey: 'parameters:servoMixerTab.fn.vtailLDesc',
     color: 'bg-gradient-to-br from-amber-500/25 to-amber-600/15 border-amber-500/40 hover:border-amber-400/60',
     activeColor: 'bg-gradient-to-br from-amber-500/40 to-amber-600/30 border-amber-400 text-amber-200',
     rules: [
@@ -129,8 +131,8 @@ const SERVO_FUNCTIONS: ServoFunction[] = [
   },
   {
     id: 'vtail_r',
-    name: 'V-Tail (Right)',
-    description: 'Pitch + Yaw (rev)',
+    nameKey: 'parameters:servoMixerTab.fn.vtailR',
+    descKey: 'parameters:servoMixerTab.fn.vtailRDesc',
     color: 'bg-gradient-to-br from-amber-500/25 to-amber-600/15 border-amber-500/40 hover:border-amber-400/60',
     activeColor: 'bg-gradient-to-br from-amber-500/40 to-amber-600/30 border-amber-400 text-amber-200',
     rules: [
@@ -140,8 +142,8 @@ const SERVO_FUNCTIONS: ServoFunction[] = [
   },
   {
     id: 'flaperon',
-    name: 'Flaperon',
-    description: 'Aileron + flap input',
+    nameKey: 'parameters:servoMixerTab.fn.flaperon',
+    descKey: 'parameters:servoMixerTab.fn.flaperonDesc',
     color: 'bg-gradient-to-br from-rose-500/25 to-rose-600/15 border-rose-500/40 hover:border-rose-400/60',
     activeColor: 'bg-gradient-to-br from-rose-500/40 to-rose-600/30 border-rose-400 text-rose-200',
     rules: [
@@ -151,40 +153,60 @@ const SERVO_FUNCTIONS: ServoFunction[] = [
   },
   {
     id: 'gimbal_pan',
-    name: 'Gimbal Pan',
-    description: 'Camera left/right',
+    nameKey: 'parameters:servoMixerTab.fn.gimbalPan',
+    descKey: 'parameters:servoMixerTab.fn.gimbalPanDesc',
     color: 'bg-gradient-to-br from-indigo-500/25 to-indigo-600/15 border-indigo-500/40 hover:border-indigo-400/60',
     activeColor: 'bg-gradient-to-br from-indigo-500/40 to-indigo-600/30 border-indigo-400 text-indigo-200',
     rules: [{ inputSource: 13, rate: 100 }],
   },
   {
     id: 'gimbal_tilt',
-    name: 'Gimbal Tilt',
-    description: 'Camera up/down',
+    nameKey: 'parameters:servoMixerTab.fn.gimbalTilt',
+    descKey: 'parameters:servoMixerTab.fn.gimbalTiltDesc',
     color: 'bg-gradient-to-br from-indigo-500/25 to-indigo-600/15 border-indigo-500/40 hover:border-indigo-400/60',
     activeColor: 'bg-gradient-to-br from-indigo-500/40 to-indigo-600/30 border-indigo-400 text-indigo-200',
     rules: [{ inputSource: 12, rate: 100 }],
   },
   {
     id: 'aux_control',
-    name: 'AUX Channel',
-    description: 'Direct AUX 1 control',
+    nameKey: 'parameters:servoMixerTab.fn.auxControl',
+    descKey: 'parameters:servoMixerTab.fn.auxControlDesc',
     color: 'bg-gradient-to-br from-slate-400/25 to-slate-500/15 border-slate-400/40 hover:border-slate-300/60',
     activeColor: 'bg-gradient-to-br from-slate-400/40 to-slate-500/30 border-slate-300 text-slate-200',
     rules: [{ inputSource: 8, rate: 100 }],
   },
 ];
 
-interface Props {
-  modified: boolean;
-  setModified: (v: boolean) => void;
+const PENDING_ID = 'servo-mixer';
+
+// -1 is INAV's "no logic condition": the rule is always active (configurator servoMixRule.js).
+const ALWAYS = -1;
+
+interface ServoMixerDraft {
+  servoConfigs: MSPServoConfig[];
+  baseConfigs: MSPServoConfig[];
+  mixerRules: MSPServoMixerRule[];
 }
 
-export default function ServoMixerTab({ modified, setModified }: Props) {
-  const [servoConfigs, setServoConfigs] = useState<MSPServoConfig[]>([]);
-  const [mixerRules, setMixerRules] = useState<MSPServoMixerRule[]>([]);
+async function writeServoMixer(d: ServoMixerDraft): Promise<boolean> {
+  const live = (await window.electronAPI.mspGetServoConfigs()) as MSPServoConfig[] | null;
+  for (let i = 0; i < d.servoConfigs.length; i++) {
+    const cfg = mergeServoEdit(d.baseConfigs[i], d.servoConfigs[i]!, live?.[i]);
+    if (cfg && !(await window.electronAPI.mspSetServoConfig(i, cfg))) return false;
+  }
+  // Every slot, unused ones cleared, as the configurator writes the table
+  return window.electronAPI.mspSetServoMixerAll(d.mixerRules);
+}
+
+export default function ServoMixerTab() {
+  const { t } = useTranslation();
+  const draft = pendingDraft<ServoMixerDraft>(PENDING_ID);
+  const [servoConfigs, setServoConfigs] = useState<MSPServoConfig[]>(draft?.servoConfigs ?? []);
+  const [baseConfigs, setBaseConfigs] = useState<MSPServoConfig[]>(draft?.baseConfigs ?? []);
+  const [mixerRules, setMixerRules] = useState<MSPServoMixerRule[]>(draft?.mixerRules ?? []);
+  const [dirty, setDirty] = useState(!!draft);
   const [servoValues, setServoValues] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!draft);
   const [error, setError] = useState<string | null>(null);
   const [selectedServo, setSelectedServo] = useState<number>(0);
   const [pollingEnabled, setPollingEnabled] = useState(false);
@@ -199,7 +221,10 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     setError(null);
     try {
       const configs = await window.electronAPI.mspGetServoConfigs();
-      if (configs) setServoConfigs(configs as MSPServoConfig[]);
+      if (configs) {
+        setServoConfigs(configs as MSPServoConfig[]);
+        setBaseConfigs(configs as MSPServoConfig[]);
+      }
 
       const mixer = await window.electronAPI.mspGetServoMixer();
       if (mixer) setMixerRules(mixer as MSPServoMixerRule[]);
@@ -207,15 +232,30 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       const values = await window.electronAPI.mspGetServoValues();
       if (values) setServoValues(values);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load servo config');
+      setError(err instanceof Error ? err.message : t('parameters:servoMixerTab.loadFailed'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadConfig();
+    if (!pendingDraft(PENDING_ID)) loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    usePendingWritesStore.getState().put<ServoMixerDraft>(PENDING_ID, {
+      label: t('parameters:servoMixerTab.title'),
+      draft: { servoConfigs, baseConfigs, mixerRules },
+      write: writeServoMixer,
+    });
+  }, [t, dirty, servoConfigs, baseConfigs, mixerRules]);
+
+  const refresh = () => {
+    usePendingWritesStore.getState().drop(PENDING_ID);
+    setDirty(false);
+    void loadConfig();
+  };
 
   // Poll servo values
   useEffect(() => {
@@ -237,7 +277,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       next[index] = { ...next[index]!, ...updates };
       return next;
     });
-    setModified(true);
+    setDirty(true);
   };
 
   const updateMixerRule = (index: number, updates: Partial<MSPServoMixerRule>) => {
@@ -246,46 +286,20 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       next[index] = { ...next[index]!, ...updates };
       return next;
     });
-    setModified(true);
+    setDirty(true);
   };
 
   const addMixerRule = (servoIndex: number) => {
     setMixerRules((prev) => [
       ...prev,
-      { targetChannel: servoIndex, inputSource: 0, rate: 100, speed: 0, min: 0, max: 0, box: 0 },
+      { targetChannel: servoIndex, inputSource: 0, rate: 100, speed: 0, min: 0, max: 0, box: ALWAYS },
     ]);
-    setModified(true);
+    setDirty(true);
   };
 
   const removeMixerRule = (index: number) => {
     setMixerRules((prev) => prev.filter((_, i) => i !== index));
-    setModified(true);
-  };
-
-  const saveAll = async () => {
-    setError(null);
-    try {
-      for (let i = 0; i < servoConfigs.length; i++) {
-        const success = await window.electronAPI.mspSetServoConfig(i, servoConfigs[i]);
-        if (!success) {
-          setError(`Failed to save servo ${i} config`);
-          return;
-        }
-      }
-
-      for (let i = 0; i < mixerRules.length; i++) {
-        await window.electronAPI.mspSetServoMixer(i, mixerRules[i]);
-      }
-
-      const eepromSuccess = await window.electronAPI.mspSaveEeprom();
-      if (!eepromSuccess) {
-        setError('Config sent but EEPROM save failed');
-        return;
-      }
-      setModified(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    }
+    setDirty(true);
   };
 
   const applyFunction = (func: ServoFunction) => {
@@ -297,15 +311,15 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       speed: 0,
       min: 0,
       max: 0,
-      box: 0,
+      box: ALWAYS,
     }));
     setMixerRules([...existingRules, ...newRules]);
-    setModified(true);
+    setDirty(true);
   };
 
   const clearServoRules = () => {
     setMixerRules((prev) => prev.filter((r) => r.targetChannel !== selectedServo));
-    setModified(true);
+    setDirty(true);
   };
 
   const getRulesForServo = (servoIndex: number) => {
@@ -354,11 +368,12 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
   // Describe what a servo does based on its rules
   const describeServoFunction = (servoIndex: number): string => {
     const rules = getRulesForServo(servoIndex);
-    if (rules.length === 0) return 'Not configured';
+    if (rules.length === 0) return t('parameters:servoMixerTab.notConfigured');
 
     const inputs = rules.map((r) => {
-      const name = INPUT_SOURCE_NAMES[r.inputSource] || `Input ${r.inputSource}`;
-      if (r.rate < 0) return `${name} (rev)`;
+      const key = INPUT_SOURCE_NAMES[r.inputSource];
+      const name = key ? t(key) : t('parameters:servoMixerTab.inputN', { n: r.inputSource });
+      if (r.rate < 0) return t('parameters:servoMixerTab.reversed', { name });
       return name;
     });
 
@@ -379,7 +394,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mb-2 mx-auto" />
-          <p className="text-content-secondary">Loading servo configuration...</p>
+          <p className="text-content-secondary">{t('parameters:servoMixerTab.loading')}</p>
         </div>
       </div>
     );
@@ -395,9 +410,9 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-medium text-content">Servo Mixer</h2>
+        <h2 className="text-lg font-medium text-content">{t('parameters:servoMixerTab.title')}</h2>
         <p className="text-sm text-content-secondary">
-          Tell the flight controller what each servo is connected to
+          {t('parameters:servoMixerTab.subtitle')}
         </p>
       </div>
 
@@ -414,7 +429,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       {/* Servo Selector */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-content-secondary uppercase tracking-wide">Select Servo</span>
+          <span className="text-xs text-content-secondary uppercase tracking-wide">{t('parameters:servoMixerTab.selectServo')}</span>
           {servoConfigs.length > 4 && (
             <button
               onClick={() => setShowAllServos(!showAllServos)}
@@ -427,12 +442,12 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
               {showAllServos ? (
                 <>
                   <ChevronDown className="w-3 h-3" />
-                  Hide unused
+                  {t('parameters:servoMixerTab.hideUnused')}
                 </>
               ) : (
                 <>
                   <ChevronRight className="w-3 h-3" />
-                  Show all {servoConfigs.length}
+                  {t('parameters:servoMixerTab.showAll', { count: servoConfigs.length })}
                 </>
               )}
             </button>
@@ -455,7 +470,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                       : 'bg-surface border-subtle text-content-secondary hover:border'
                 }`}
               >
-                <div className="text-xs font-medium">Servo {idx}</div>
+                <div className="text-xs font-medium">{t('parameters:servoMixerTab.servoN', { n: idx })}</div>
                 <div className="text-[10px] opacity-70 truncate max-w-[100px]">{description}</div>
               </button>
             );
@@ -469,10 +484,10 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
           <div className="bg-gradient-to-br from-blue-500/10 to-indigo-600/5 rounded-xl border-blue-500/20 p-4 space-y-4">
             <div>
               <h3 className="text-sm font-medium text-blue-200">
-                What is Servo {selectedServo} connected to?
+                {t('parameters:servoMixerTab.whatIsServo', { n: selectedServo })}
               </h3>
               <p className="text-xs text-blue-300/60 mt-0.5">
-                Select the control surface or function this servo controls
+                {t('parameters:servoMixerTab.whatIsServoHint')}
               </p>
             </div>
 
@@ -494,8 +509,8 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                       isActive ? func.activeColor : `${func.color} text-content`
                     }`}
                   >
-                    <div className="text-xs font-medium">{func.name}</div>
-                    <div className="text-[10px] opacity-60 mt-0.5">{func.description}</div>
+                    <div className="text-xs font-medium">{t(func.nameKey)}</div>
+                    <div className="text-[10px] opacity-60 mt-0.5">{t(func.descKey)}</div>
                   </button>
                 );
               })}
@@ -507,16 +522,20 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                 onClick={clearServoRules}
                 className="w-full py-2 text-xs text-blue-300/50 hover:text-blue-200 hover:bg-blue-500/10 rounded transition-colors"
               >
-                Clear - this servo does nothing
+                {t('parameters:servoMixerTab.clearServo')}
               </button>
             )}
 
             {/* Current configuration summary */}
             {currentRules.length > 0 && (
               <div className="p-3 bg-blue-500/10 border-blue-500/20 rounded-lg">
-                <p className="text-xs text-blue-300/60">Current configuration:</p>
+                <p className="text-xs text-blue-300/60">{t('parameters:servoMixerTab.currentConfig')}</p>
                 <p className="text-sm text-blue-100 mt-1">
-                  Servo {selectedServo} responds to <strong className="text-blue-200">{describeServoFunction(selectedServo)}</strong>
+                  <Trans
+                    i18nKey="parameters:servoMixerTab.respondsTo"
+                    values={{ n: selectedServo, fn: describeServoFunction(selectedServo) }}
+                    components={{ b: <strong className="text-blue-200" /> }}
+                  />
                 </p>
               </div>
             )}
@@ -531,8 +550,8 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                   <Settings className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-emerald-200">Servo Limits</h3>
-                  <p className="text-xs text-emerald-300/60">Adjust travel range if needed</p>
+                  <h3 className="text-sm font-medium text-emerald-200">{t('parameters:servoMixerTab.servoLimits')}</h3>
+                  <p className="text-xs text-emerald-300/60">{t('parameters:servoMixerTab.servoLimitsHint')}</p>
                 </div>
               </div>
 
@@ -555,7 +574,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <CompactSlider
-                  label="Min"
+                  label={t('common:min')}
                   value={currentConfig.min}
                   onChange={(v) => updateServoConfig(selectedServo, { min: v })}
                   min={750}
@@ -564,7 +583,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                   color="#3B82F6"
                 />
                 <CompactSlider
-                  label="Max"
+                  label={t('common:max')}
                   value={currentConfig.max}
                   onChange={(v) => updateServoConfig(selectedServo, { max: v })}
                   min={750}
@@ -576,7 +595,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <CompactSlider
-                  label="Center"
+                  label={t('common:center')}
                   value={currentConfig.middle}
                   onChange={(v) => updateServoConfig(selectedServo, { middle: v })}
                   min={750}
@@ -585,7 +604,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                   color="#22C55E"
                 />
                 <CompactSlider
-                  label="Rate %"
+                  label={t('parameters:servoMixerTab.ratePercent')}
                   value={currentConfig.rate}
                   onChange={(v) => updateServoConfig(selectedServo, { rate: v })}
                   min={-125}
@@ -603,7 +622,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                     onChange={(e) => setPollingEnabled(e.target.checked)}
                     className="w-4 h-4 rounded border-emerald-500/40 bg-emerald-900/30 text-emerald-500"
                   />
-                  <span className="text-xs text-emerald-300/60">Live position</span>
+                  <span className="text-xs text-emerald-300/60">{t('parameters:servoMixerTab.livePosition')}</span>
                 </label>
                 <span className="text-xs text-emerald-300/50 font-mono">
                   {servoValues[selectedServo] || 1500} µs
@@ -617,7 +636,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                 onClick={() => setShowAdvanced(!showAdvanced)}
                 className="w-full p-3 flex items-center justify-between text-left"
               >
-                <span className="text-xs text-purple-300/70">Advanced: Custom mixing rules</span>
+                <span className="text-xs text-purple-300/70">{t('parameters:servoMixerTab.advancedRules')}</span>
                 {showAdvanced ? (
                   <ChevronDown className="w-4 h-4 text-purple-400/60" />
                 ) : (
@@ -629,7 +648,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                 <div className="p-4 pt-0 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-purple-300/50">
-                      For complex setups. Most users don't need this.
+                      {t('parameters:servoMixerTab.advancedHint')}
                     </p>
                     <button
                       onClick={() => addMixerRule(selectedServo)}
@@ -640,7 +659,7 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                   </div>
 
                   {currentRules.length === 0 ? (
-                    <p className="text-xs text-purple-300/50 text-center py-2">No rules</p>
+                    <p className="text-xs text-purple-300/50 text-center py-2">{t('parameters:servoMixerTab.noRules')}</p>
                   ) : (
                     currentRules.map((rule) => (
                       <div key={rule.originalIndex} className="flex items-center gap-2">
@@ -651,9 +670,9 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
                           }
                           className="flex-1 px-2 py-1.5 bg-purple-900/30 border-purple-500/30 rounded text-xs text-purple-200"
                         >
-                          {Object.entries(INPUT_SOURCE_NAMES).map(([val, name]) => (
+                          {Object.entries(INPUT_SOURCE_NAMES).map(([val, key]) => (
                             <option key={val} value={val}>
-                              {name}
+                              {t(key)}
                             </option>
                           ))}
                         </select>
@@ -687,23 +706,11 @@ export default function ServoMixerTab({ modified, setModified }: Props) {
       {/* Action buttons */}
       <div className="flex justify-between items-center pt-2">
         <button
-          onClick={loadConfig}
+          onClick={refresh}
           className="flex items-center gap-2 px-3 py-1.5 text-xs text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          Refresh
-        </button>
-        <button
-          onClick={saveAll}
-          disabled={!modified}
-          className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${
-            modified
-              ? 'bg-blue-600 text-white hover:bg-blue-500'
-              : 'bg-surface-raised text-content-secondary cursor-not-allowed'
-          }`}
-        >
-          <Save className="w-4 h-4" />
-          Save
+          {dirty ? t('parameters:servoMixerTab.discardChanges') : t('common:refresh')}
         </button>
       </div>
     </div>

@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * What a vehicle says about itself over the ArduDeck Vehicle SDK.
  *
@@ -58,15 +60,15 @@ export const AD_CAL_REQ = {
 
 /** Frame ids the vehicle may declare. Picks the icon and whether altitude is first class. */
 export const AD_FRAME_NAMES: Record<number, string> = {
-  0: 'Unknown',
-  1: 'Multirotor',
-  2: 'Fixed wing',
-  3: 'VTOL',
-  4: 'Helicopter',
-  5: 'Rover',
-  6: 'Surface boat',
-  7: 'Submarine',
-  8: 'Antenna tracker',
+  0: 'Unknown', // i18n-exempt
+  1: 'Multirotor', // i18n-exempt
+  2: 'Fixed wing', // i18n-exempt
+  3: 'VTOL', // i18n-exempt
+  4: 'Helicopter', // i18n-exempt
+  5: 'Rover', // i18n-exempt
+  6: 'Surface boat', // i18n-exempt
+  7: 'Submarine', // i18n-exempt
+  8: 'Antenna tracker', // i18n-exempt
 };
 
 export interface VehicleMode {
@@ -165,13 +167,26 @@ export function supports(profile: VehicleProfile | null | undefined, bit: number
   return hasFeature(profile, bit);
 }
 
+const AD_FRAME_KEYS: Record<number, string> = {
+  0: 'unknown',
+  1: 'multirotor',
+  2: 'fixedWing',
+  3: 'vtol',
+  4: 'helicopter',
+  5: 'rover',
+  6: 'surfaceBoat',
+  7: 'submarine',
+  8: 'antennaTracker',
+};
+
 export function frameName(frame: number): string {
-  return AD_FRAME_NAMES[frame] ?? `Frame ${frame}`;
+  const key = AD_FRAME_KEYS[frame];
+  return key ? t(`shared:vehicleProfile.frame.${key}`) : t('shared:vehicleProfile.frameUnknownId', { frame });
 }
 
 export function describeVehicle(profile: VehicleProfile): string {
   const parts = [profile.vendor, profile.model].filter(Boolean);
-  return parts.length ? parts.join(' ') : 'Unidentified vehicle';
+  return parts.length ? parts.join(' ') : t('shared:vehicleProfile.unidentified');
 }
 
 /** Reserved bits a vehicle should never set. Surfaced so the operator can report it. */

@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import { app, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { DetectedBoard, FlashProgress, FlashResult } from '../../shared/firmware-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * Get path to bundled avrdude binary
@@ -164,7 +165,7 @@ export async function flashWithAvrdude(
     if (!board.port) {
       resolve({
         success: false,
-        error: 'No serial port specified for AVR board. Please ensure the board is connected.',
+        error: t('main:avrFlasher.noSerialPort'),
         duration: 0,
       });
       return;
@@ -173,7 +174,7 @@ export async function flashWithAvrdude(
     sendProgress(window, {
       state: 'flashing',
       progress: 0,
-      message: 'Starting AVR flash...',
+      message: t('main:avrFlasher.starting'),
     });
 
     // Build avrdude arguments
@@ -251,7 +252,7 @@ export async function flashWithAvrdude(
           sendProgress(window, {
             state: 'erasing',
             progress: lastProgress,
-            message: 'Erasing chip...',
+            message: t('main:avrFlasher.erasingChip'),
           });
         }
 
@@ -259,7 +260,7 @@ export async function flashWithAvrdude(
           sendProgress(window, {
             state: 'flashing',
             progress: lastProgress,
-            message: 'Writing flash memory...',
+            message: t('main:avrFlasher.writingFlash'),
           });
         }
 
@@ -267,7 +268,7 @@ export async function flashWithAvrdude(
           sendProgress(window, {
             state: 'verifying',
             progress: lastProgress,
-            message: 'Verifying flash memory...',
+            message: t('main:avrFlasher.verifyingFlash'),
           });
         }
 
@@ -293,12 +294,12 @@ export async function flashWithAvrdude(
         sendProgress(window, {
           state: 'complete',
           progress: 100,
-          message: 'Flash complete!',
+          message: t('common:flashComplete'),
         });
 
         resolve({
           success: true,
-          message: 'Firmware flashed and verified successfully',
+          message: t('main:avrFlasher.success'),
           duration,
           verified: true,
         });
@@ -307,16 +308,16 @@ export async function flashWithAvrdude(
         let friendlyError = errorOutput;
 
         if (errorOutput.includes('can\'t open device')) {
-          friendlyError = `Cannot open ${board.port}. Make sure no other program is using the port and the board is connected.`;
+          friendlyError = t('main:avrFlasher.cannotOpenPort', { port: board.port });
         } else if (errorOutput.includes('stk500_recv')) {
-          friendlyError = 'Bootloader communication failed. Try pressing the reset button just before flashing.';
+          friendlyError = 'Bootloader communication failed. Try pressing the reset button just before flashing.'; // i18n-exempt
         } else if (errorOutput.includes('not in sync')) {
-          friendlyError = 'Board not responding. Make sure the correct port is selected and try again.';
+          friendlyError = t('main:avrFlasher.notResponding');
         }
 
         resolve({
           success: false,
-          error: friendlyError || `avrdude exited with code ${code}`,
+          error: friendlyError || t('main:avrFlasher.exitedWithCode', { code }),
           duration,
         });
       }
@@ -325,7 +326,7 @@ export async function flashWithAvrdude(
     proc.on('error', (err) => {
       resolve({
         success: false,
-        error: `Failed to start avrdude: ${err.message}. Make sure avrdude is installed.`,
+        error: t('main:avrFlasher.startFailed', { error: err.message }),
         duration: Date.now() - startTime,
       });
     });
@@ -336,7 +337,7 @@ export async function flashWithAvrdude(
         proc.kill('SIGTERM');
         resolve({
           success: false,
-          error: 'Flash operation aborted',
+          error: t('main:flasher.operationAborted'),
           duration: Date.now() - startTime,
         });
       });

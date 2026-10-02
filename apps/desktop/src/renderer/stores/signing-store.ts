@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { SigningStatus } from '../../shared/ipc-channels.js';
 
 interface SavedKeyInfo {
@@ -67,10 +68,10 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
         set({ hasKey: true, loading: false });
         return true;
       }
-      set({ loading: false, error: result?.error || 'Failed to set key' });
+      set({ loading: false, error: result?.error || t('stores:signingStore.setKeyFailed') });
       return false;
     } catch (err) {
-      set({ loading: false, error: err instanceof Error ? err.message : 'Unknown error' });
+      set({ loading: false, error: err instanceof Error ? err.message : t('common:unknownError') });
       return false;
     }
   },
@@ -83,10 +84,10 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
         set({ enabled: true, loading: false });
         return true;
       }
-      set({ loading: false, error: result?.error || 'Failed to enable signing' });
+      set({ loading: false, error: result?.error || t('stores:signingStore.enableFailed') });
       return false;
     } catch (err) {
-      set({ loading: false, error: err instanceof Error ? err.message : 'Unknown error' });
+      set({ loading: false, error: err instanceof Error ? err.message : t('common:unknownError') });
       return false;
     }
   },
@@ -109,10 +110,10 @@ export const useSigningStore = create<SigningStore>((set, get) => ({
         set({ sentToFc: true, loading: false });
         return true;
       }
-      set({ loading: false, error: result?.error || 'Failed to send to FC' });
+      set({ loading: false, error: result?.error || t('stores:signingStore.sendFailed') });
       return false;
     } catch (err) {
-      set({ loading: false, error: err instanceof Error ? err.message : 'Unknown error' });
+      set({ loading: false, error: err instanceof Error ? err.message : t('common:unknownError') });
       return false;
     }
   },

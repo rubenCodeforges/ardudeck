@@ -13,6 +13,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { firmwareLabel } from '../../../shared/firmware-types';
 import { useFlightControlStore } from '../../stores/flight-control-store';
@@ -22,6 +23,7 @@ import { OsdModeSwitchPanel } from './OsdModeSwitchPanel';
 import { buildLiveRcRows, rssiPercent } from '../../utils/osd/osd-live-rc';
 
 export function OsdLivePanel() {
+  const { t } = useTranslation();
   const connectionState = useConnectionStore((s) => s.connectionState);
   const fcRc = useTelemetryStore((s) => s.rcChannels);
   // Falls back to a USB handset when no FC is streaming, so the panel is usable on the bench.
@@ -58,15 +60,15 @@ export function OsdLivePanel() {
     <div className="flex flex-col h-full">
       {/* Connection status */}
       <div className="px-3 py-2 border-b border-subtle">
-        <h3 className="text-xs font-medium text-content mb-1">Live Telemetry</h3>
+        <h3 className="text-xs font-medium text-content mb-1">{t('osd:osdLivePanel.liveTelemetry')}</h3>
         {connectionState.isConnected ? (
           <p className="text-[10px] text-green-400">
-            Connected to {connectionState.fcVariant || (connectionState.firmware || connectionState.autopilot ? firmwareLabel(connectionState) : 'FC')}
+            {t('osd:osdLivePanel.connectedTo', { fc: connectionState.fcVariant || (connectionState.firmware || connectionState.autopilot ? firmwareLabel(connectionState) : 'FC') })}
             {connectionState.fcVersion && ` ${connectionState.fcVersion}`}
           </p>
         ) : (
           <p className="text-[10px] text-content-secondary">
-            Connect to FC for live OSD data
+            {t('osd:osdLivePanel.connectForLive')}
           </p>
         )}
       </div>
@@ -84,7 +86,7 @@ export function OsdLivePanel() {
           <div className="border-b border-subtle px-3 py-2">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-medium text-content-secondary uppercase tracking-wider">
-                Live RC Input
+                {t('osd:osdLivePanel.liveRcInput')}
               </span>
               <span className="text-[9px] font-mono text-content-secondary">
                 RSSI {rssi === null ? '--' : `${rssi}%`}
@@ -92,7 +94,7 @@ export function OsdLivePanel() {
             </div>
             {liveRows.length === 0 ? (
               <p className="text-[10px] text-content-tertiary">
-                Waiting for live RC from the FC…
+                {t('osd:osdLivePanel.waitingRc')}
               </p>
             ) : (
               <div className="space-y-1.5">
@@ -121,9 +123,9 @@ export function OsdLivePanel() {
                 <path d="M9 18l6-6-6-6" />
               </svg>
               <span className="text-[10px] font-medium text-content-secondary uppercase tracking-wider">
-                Send RC Override
+                {t('osd:osdLivePanel.sendRcOverride')}
               </span>
-              {isOverrideActive && <span className="ml-auto text-[9px] text-amber-400">sending</span>}
+              {isOverrideActive && <span className="ml-auto text-[9px] text-amber-400">{t('osd:osdLivePanel.sending')}</span>}
             </button>
 
             {rcExpanded && (
@@ -136,21 +138,21 @@ export function OsdLivePanel() {
                       onChange={(e) => handleRcToggle(e.target.checked)}
                       className="rounded-sm bg-surface-raised border w-3 h-3"
                     />
-                    Send override
+                    {t('osd:osdLivePanel.sendOverride')}
                   </label>
                   <button
                     onClick={handleReset}
                     className="text-[10px] text-blue-400 hover:text-blue-300"
                   >
-                    Reset
+                    {t('common:reset')}
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <RcBar label="Roll" value={channels[0] ?? 1500} onChange={(v) => setChannel(0, v)} />
-                  <RcBar label="Pitch" value={channels[1] ?? 1500} onChange={(v) => setChannel(1, v)} />
-                  <RcBar label="Thr" value={channels[2] ?? 1000} onChange={(v) => setChannel(2, v)} isThrottle />
-                  <RcBar label="Yaw" value={channels[3] ?? 1500} onChange={(v) => setChannel(3, v)} />
+                  <RcBar label={t('common:roll')} value={channels[0] ?? 1500} onChange={(v) => setChannel(0, v)} />
+                  <RcBar label={t('common:pitch')} value={channels[1] ?? 1500} onChange={(v) => setChannel(1, v)} />
+                  <RcBar label={t('osd:osdLivePanel.thr')} value={channels[2] ?? 1000} onChange={(v) => setChannel(2, v)} isThrottle />
+                  <RcBar label={t('common:yaw')} value={channels[3] ?? 1500} onChange={(v) => setChannel(3, v)} />
                   <div className="border-t border-subtle pt-1.5 mt-1.5">
                     <RcBar label="AUX1" value={channels[4] ?? 1000} onChange={(v) => setChannel(4, v)} />
                     <RcBar label="AUX2" value={channels[5] ?? 1000} onChange={(v) => setChannel(5, v)} />

@@ -37,6 +37,7 @@ import {
   type ServoMixerRule,
   type MotorMixerRule,
 } from '../../servo-wizard/presets/servo-presets';
+import { t } from '../../../../shared/i18n/index.js';
 
 // ============================================================================
 // Type Definitions
@@ -86,10 +87,10 @@ export interface AircraftConfig {
 
 export interface QuickSetupPreset {
   id: string;
-  name: string;
+  nameKey: string;
   icon: LucideIcon;
-  description: string;
-  tip: string;
+  descriptionKey: string;
+  tipKey: string;
   gradient: string;
   // What this preset targets
   category: 'multirotor' | 'fixed_wing';
@@ -151,10 +152,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   beginner: {
     id: 'beginner',
-    name: 'Beginner',
+    nameKey: 'quick-setup:presets.beginner.name',
     icon: Egg,
-    description: 'Safe & stable for learning',
-    tip: 'Self-leveling keeps you in control. Slow rates prevent overcorrection. Perfect for your first flights!',
+    descriptionKey: 'quick-setup:presets.beginner.description',
+    tipKey: 'quick-setup:presets.beginner.tip',
     gradient: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     category: 'multirotor',
     tags: ['safe', 'stable', 'learning', 'first-flight'],
@@ -205,10 +206,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   freestyle: {
     id: 'freestyle',
-    name: 'Freestyle',
+    nameKey: 'quick-setup:presets.freestyle.name',
     icon: Drama,
-    description: 'Balanced for tricks & flow',
-    tip: 'Three-position switch gives ANGLE/HORIZON/ACRO. AIRMODE keeps control at zero throttle for flips!',
+    descriptionKey: 'quick-setup:presets.freestyle.description',
+    tipKey: 'quick-setup:presets.freestyle.tip',
     gradient: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     category: 'multirotor',
     tags: ['freestyle', 'tricks', 'acro', 'balanced'],
@@ -263,10 +264,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   racing: {
     id: 'racing',
-    name: 'Racing',
+    nameKey: 'quick-setup:presets.racing.name',
     icon: Gauge,
-    description: 'Fast & responsive for speed',
-    tip: 'Pure ACRO for maximum control. High rates for quick corrections. Beeper helps find crashes!',
+    descriptionKey: 'quick-setup:presets.racing.description',
+    tipKey: 'quick-setup:presets.racing.tip',
     gradient: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     category: 'multirotor',
     tags: ['racing', 'fast', 'competitive', 'acro'],
@@ -319,10 +320,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   cinematic: {
     id: 'cinematic',
-    name: 'Cinematic',
+    nameKey: 'quick-setup:presets.cinematic.name',
     icon: Film,
-    description: 'Ultra-smooth for filming',
-    tip: 'Low rates + high expo = buttery smooth movements. GPS position hold for stable shots. RTH for safety.',
+    descriptionKey: 'quick-setup:presets.cinematic.description',
+    tipKey: 'quick-setup:presets.cinematic.tip',
     gradient: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     category: 'multirotor',
     tags: ['cinematic', 'smooth', 'filming', 'video', 'gps'],
@@ -377,10 +378,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   flyingWing: {
     id: 'flyingWing',
-    name: 'Flying Wing',
+    nameKey: 'quick-setup:presets.flyingWing.name',
     icon: Triangle,
-    description: 'Delta wings & flying wings with elevon mixing',
-    tip: 'Elevon mixing configured (left/right servos on CH3/CH4). Auto-launch, RTH, and waypoint navigation ready.',
+    descriptionKey: 'quick-setup:presets.flyingWing.description',
+    tipKey: 'quick-setup:presets.flyingWing.tip',
     gradient: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
     category: 'fixed_wing',
     tags: ['flying-wing', 'delta', 'elevon', 'navigation'],
@@ -435,10 +436,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   fwTrainer: {
     id: 'fwTrainer',
-    name: 'Trainer Plane',
+    nameKey: 'quick-setup:presets.fwTrainer.name',
     icon: PlaneTakeoff,
-    description: 'Traditional airplane for beginners',
-    tip: 'Classic aileron/elevator/rudder setup. Auto-level keeps wings stable. Perfect for learning fixed-wing flying.',
+    descriptionKey: 'quick-setup:presets.fwTrainer.description',
+    tipKey: 'quick-setup:presets.fwTrainer.tip',
     gradient: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     category: 'fixed_wing',
     tags: ['airplane', 'trainer', 'beginner', 'traditional'],
@@ -493,10 +494,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   fwSport: {
     id: 'fwSport',
-    name: 'Sport Plane',
+    nameKey: 'quick-setup:presets.fwSport.name',
     icon: Plane,
-    description: 'Agile traditional airplane for experienced pilots',
-    tip: 'Higher rates for aerobatics. Aileron/elevator/rudder setup. Switch between stabilized and acro modes.',
+    descriptionKey: 'quick-setup:presets.fwSport.description',
+    tipKey: 'quick-setup:presets.fwSport.tip',
     gradient: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     category: 'fixed_wing',
     tags: ['airplane', 'sport', 'aerobatic', 'traditional'],
@@ -551,10 +552,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   fwGlider: {
     id: 'fwGlider',
-    name: 'Glider',
+    nameKey: 'quick-setup:presets.fwGlider.name',
     icon: Wind,
-    description: 'Efficient soaring & thermal hunting',
-    tip: 'Optimized for glide efficiency. Low rates for precision. Soaring mode for thermals. Flying wing servo setup.',
+    descriptionKey: 'quick-setup:presets.fwGlider.description',
+    tipKey: 'quick-setup:presets.fwGlider.tip',
     gradient: 'from-cyan-500/20 to-sky-500/10 border-cyan-500/30',
     category: 'fixed_wing',
     tags: ['glider', 'soaring', 'efficient', 'flying-wing'],
@@ -609,10 +610,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   fwLongRange: {
     id: 'fwLongRange',
-    name: 'Long Range FPV',
+    nameKey: 'quick-setup:presets.fwLongRange.name',
     icon: Globe,
-    description: 'Extended range for FPV missions',
-    tip: 'Flying wing setup optimized for efficiency. Full navigation suite with waypoints, cruise, and RTH.',
+    descriptionKey: 'quick-setup:presets.fwLongRange.description',
+    tipKey: 'quick-setup:presets.fwLongRange.tip',
     gradient: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30',
     category: 'fixed_wing',
     tags: ['long-range', 'fpv', 'flying-wing', 'navigation'],
@@ -669,10 +670,10 @@ export const QUICK_SETUP_PRESETS: Record<string, QuickSetupPreset> = {
   // ==========================================================================
   longRange: {
     id: 'longRange',
-    name: 'Long Range',
+    nameKey: 'quick-setup:presets.longRange.name',
     icon: Satellite,
-    description: 'Extended range with GPS safety',
-    tip: 'Conservative PIDs for efficiency. GPS cruise and RTH for safety. ANGLE mode for easy recovery.',
+    descriptionKey: 'quick-setup:presets.longRange.description',
+    tipKey: 'quick-setup:presets.longRange.tip',
     gradient: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
     category: 'multirotor',
     tags: ['long-range', 'gps', 'endurance', 'safe'],
@@ -849,53 +850,53 @@ export function getPresetSummary(preset: QuickSetupPreset): {
            preset.aircraft.servoMixerRules.some(r2 => r2.servoIndex === r.servoIndex && r2.inputSource === SERVO_INPUT_SOURCE.STABILIZED_PITCH)
   );
   const servoConfig = hasElevonMixing
-    ? ['Flying wing elevon mixing (2 servos)', 'Single motor']
+    ? [t('quick-setup:summary.elevonMixing'), t('quick-setup:summary.singleMotor')]
     : preset.aircraft.platformType === PLATFORM_TYPE.AIRPLANE
-      ? ['Traditional setup: Aileron/Elevator/Rudder', 'Single motor']
-      : ['Quad X motor layout'];
+      ? [t('quick-setup:summary.traditionalSetup'), t('quick-setup:summary.singleMotor')]
+      : [t('quick-setup:summary.quadXLayout')];
 
   return {
     sections: [
       {
-        name: 'Aircraft Type',
-        description: preset.category === 'fixed_wing' ? 'Fixed Wing' : 'Multirotor',
+        name: t('quick-setup:summary.aircraftType'),
+        description: preset.category === 'fixed_wing' ? t('common:fixedWing') : t('common:multirotor'),
         items: servoConfig,
       },
       {
-        name: 'PID Tuning',
-        description: `${preset.name} response`,
+        name: t('quick-setup:summary.pidTuning'),
+        description: t('quick-setup:summary.pidResponse', { name: t(preset.nameKey) }),
         items: [
-          `Roll P: ${preset.pids.roll.p}, I: ${preset.pids.roll.i}, D: ${preset.pids.roll.d}`,
-          `Pitch P: ${preset.pids.pitch.p}, I: ${preset.pids.pitch.i}, D: ${preset.pids.pitch.d}`,
-          `Yaw P: ${preset.pids.yaw.p}, I: ${preset.pids.yaw.i}`,
+          t('quick-setup:summary.rollPid', { ...preset.pids.roll }),
+          t('quick-setup:summary.pitchPid', { ...preset.pids.pitch }),
+          t('quick-setup:summary.yawPid', { ...preset.pids.yaw }),
         ],
       },
       {
-        name: 'Rates',
-        description: `${preset.rates.rollRate}% max rotation`,
+        name: t('common:rates'),
+        description: t('quick-setup:summary.maxRotation', { rollRate: preset.rates.rollRate }),
         items: [
-          `RC Rate: ${preset.rates.rcRate}`,
-          `Expo: ${preset.rates.rcExpo}%`,
-          `Roll/Pitch Rate: ${preset.rates.rollRate}`,
-          `Yaw Rate: ${preset.rates.yawRate}`,
+          t('quick-setup:summary.rcRate', { value: preset.rates.rcRate }),
+          t('quick-setup:summary.expo', { value: preset.rates.rcExpo }),
+          t('quick-setup:summary.rollPitchRate', { value: preset.rates.rollRate }),
+          t('quick-setup:summary.yawRate', { value: preset.rates.yawRate }),
         ],
       },
       {
-        name: 'Flight Modes',
-        description: `${preset.modes.length} modes configured`,
+        name: t('common:flightModes'),
+        description: t('quick-setup:summary.modesConfigured', { n: preset.modes.length }),
         items: preset.wizardModes.map((boxId) => {
           const mode = preset.modes.find((m) => m.boxId === boxId);
           if (!mode) return '';
           const channelName = `AUX${mode.auxChannel + 1}`;
-          return `${getModeName(boxId)} on ${channelName}`;
+          return t('quick-setup:summary.modeOnChannel', { mode: getModeName(boxId), channel: channelName });
         }).filter(Boolean),
       },
       {
-        name: 'Failsafe',
+        name: t('common:failsafe'),
         description: preset.failsafe.procedure,
         items: [
-          `Action: ${preset.failsafe.procedure}`,
-          `Delay: ${preset.failsafe.delay}s`,
+          t('quick-setup:summary.action', { value: preset.failsafe.procedure }),
+          t('quick-setup:summary.delay', { value: preset.failsafe.delay }),
         ],
       },
     ],
@@ -926,5 +927,5 @@ function getModeName(boxId: number): string {
     [BOX_ID.TURTLE]: 'TURTLE',
     [BOX_ID.NAV_COURSE_HOLD]: 'NAV COURSE HOLD',
   };
-  return names[boxId] || `Mode ${boxId}`;
+  return names[boxId] || `Mode ${boxId}`; // i18n-exempt
 }

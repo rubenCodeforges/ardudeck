@@ -6,12 +6,13 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { pendingDraft, usePendingWritesStore } from '../../stores/msp-pending-writes-store';
 import {
   Radio,
   Zap,
   AlertTriangle,
   RefreshCw,
-  Save,
   Info,
   CheckCircle,
   XCircle,
@@ -22,9 +23,9 @@ import {
 
 // VTX band names
 const VTX_BANDS = [
-  { value: 1, label: 'A', name: 'Boscam A' },
-  { value: 2, label: 'B', name: 'Boscam B' },
-  { value: 3, label: 'E', name: 'Boscam E' },
+  { value: 1, label: 'A', name: 'Boscam A' }, // i18n-exempt
+  { value: 2, label: 'B', name: 'Boscam B' }, // i18n-exempt
+  { value: 3, label: 'E', name: 'Boscam E' }, // i18n-exempt
   { value: 4, label: 'F', name: 'Fatshark' },
   { value: 5, label: 'R', name: 'Raceband' },
 ];
@@ -52,9 +53,9 @@ const VTX_TYPE_NAMES: Record<number, string> = {
 
 // Low power disarm modes
 const LOW_POWER_DISARM_OPTIONS = [
-  { value: 0, label: 'Off', description: 'Always use configured power' },
-  { value: 1, label: 'On', description: 'Low power when disarmed' },
-  { value: 2, label: 'Until First Arm', description: 'Low power until first arm' },
+  { value: 0, labelKey: 'common:off', descKey: 'parameters:vtxConfigTab.lowPowerOffDesc' },
+  { value: 1, labelKey: 'common:on', descKey: 'parameters:vtxConfigTab.lowPowerOnDesc' },
+  { value: 2, labelKey: 'parameters:vtxConfigTab.lowPowerUntilArm', descKey: 'parameters:vtxConfigTab.lowPowerUntilArmDesc' },
 ];
 
 // Default power levels (mW) - actual values depend on VTX table
@@ -76,17 +77,26 @@ interface VtxConfig {
   vtxTablePowerLevels: number;
 }
 
-interface Props {
-  modified: boolean;
-  setModified: (v: boolean) => void;
+const PENDING_ID = 'vtx';
+const VTX_DEV_UNKNOWN = 0xff;
+
+async function writeVtx(config: VtxConfig): Promise<boolean> {
+  return window.electronAPI.mspSetVtxConfig(config);
 }
 
-export default function VtxConfigTab({ modified, setModified }: Props) {
-  const [config, setConfig] = useState<VtxConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+export default function VtxConfigTab() {
+  const { t } = useTranslation();
+  const draft = pendingDraft<VtxConfig>(PENDING_ID);
+  const [config, setConfig] = useState<VtxConfig | null>(draft ?? null);
+  const [dirty, setDirty] = useState(!!draft);
+  const [loading, setLoading] = useState(!draft);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dirty || !config) return;
+    usePendingWritesStore.getState().put<VtxConfig>(PENDING_ID, { label: 'VTX', draft: config, write: writeVtx });
+  }, [dirty, config]);
 
   // Calculate frequency from band/channel
   const getFrequency = useCallback((band: number, channel: number): number => {
@@ -104,22 +114,31 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
     setSuccess(null);
     try {
       const data = await window.electronAPI.mspGetVtxConfig();
-      if (data) {
+      if (data && (data as VtxConfig).vtxType === VTX_DEV_UNKNOWN) {
+        // The FC ignores VTX settings without a device; configurator hides the section too
+        setConfig(null);
+      } else if (data) {
         setConfig(data as VtxConfig);
       } else {
-        setError('VTX configuration not available');
+        setError(t('parameters:vtxConfigTab.notAvailable'));
       }
     } catch (err) {
       console.error('[VtxConfig] Load error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load VTX config');
+      setError(err instanceof Error ? err.message : t('parameters:vtxConfigTab.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    loadConfig();
+    if (!pendingDraft(PENDING_ID)) loadConfig();
   }, [loadConfig]);
+
+  const refresh = () => {
+    usePendingWritesStore.getState().drop(PENDING_ID);
+    setDirty(false);
+    void loadConfig();
+  };
 
   // Update config helper
   const updateConfig = (updates: Partial<VtxConfig>) => {
@@ -134,39 +153,8 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
     }
 
     setConfig({ ...config, ...updates, frequency: newFrequency });
-    setModified(true);
+    setDirty(true);
     setSuccess(null);
-  };
-
-  // Save configuration
-  const saveConfig = async () => {
-    if (!config) return;
-
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const saveSuccess = await window.electronAPI.mspSetVtxConfig(config);
-      if (!saveSuccess) {
-        setError('Failed to send VTX config');
-        return;
-      }
-
-      // Save to EEPROM
-      const eepromSuccess = await window.electronAPI.mspSaveEeprom();
-      if (!eepromSuccess) {
-        setError('Config sent but EEPROM save failed - changes may not persist');
-        return;
-      }
-
-      setSuccess('VTX configuration saved');
-      setModified(false);
-    } catch (err) {
-      console.error('[VtxConfig] Save error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setSaving(false);
-    }
   };
 
   // Memoize the frequency display
@@ -180,17 +168,17 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
     if (!config) return DEFAULT_POWER_LEVELS;
     if (config.vtxTableAvailable && config.vtxTablePowerLevels > 0) {
       // Return indices if we have a VTX table
-      return Array.from({ length: config.vtxTablePowerLevels }, (_, i) => `Level ${i + 1}`);
+      return Array.from({ length: config.vtxTablePowerLevels }, (_, i) => t('parameters:vtxConfigTab.levelN', { n: i + 1 }));
     }
     return DEFAULT_POWER_LEVELS;
-  }, [config?.vtxTableAvailable, config?.vtxTablePowerLevels]);
+  }, [t, config?.vtxTableAvailable, config?.vtxTablePowerLevels]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mb-2 mx-auto" />
-          <p className="text-content-secondary">Loading VTX configuration...</p>
+          <p className="text-content-secondary">{t('parameters:vtxConfigTab.loading')}</p>
         </div>
       </div>
     );
@@ -204,28 +192,26 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
           <div className="flex items-start gap-4">
             <Radio className="w-10 h-10 text-purple-400 shrink-0" />
             <div>
-              <h3 className="text-lg font-semibold text-purple-300">What is a VTX?</h3>
+              <h3 className="text-lg font-semibold text-purple-300">{t('parameters:vtxConfigTab.whatIsVtx')}</h3>
               <p className="text-sm text-content-secondary mt-2">
-                <strong>VTX (Video Transmitter)</strong> is the component that sends live video from your
-                drone's camera to your FPV goggles or monitor. It broadcasts on specific radio frequencies
-                that your goggles tune into.
+                <Trans i18nKey="parameters:vtxConfigTab.whatIsVtxBody" components={{ b: <strong /> }} />
               </p>
               <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-content-secondary">
                 <div className="flex items-center gap-2">
                   <Radio className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Frequency: 5.8GHz band</span>
+                  <span>{t('parameters:vtxConfigTab.factFrequency')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Power: 25mW - 800mW</span>
+                  <span>{t('parameters:vtxConfigTab.factPower')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Monitor className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Bands: A, B, E, F, Raceband</span>
+                  <span>{t('parameters:vtxConfigTab.factBands')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Hash className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Channels: 1-8 per band</span>
+                  <span>{t('parameters:vtxConfigTab.factChannels')}</span>
                 </div>
               </div>
             </div>
@@ -235,18 +221,18 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
         {/* Not detected message */}
         <div className="bg-surface rounded-xl border p-5 text-center">
           <XCircle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
-          <h4 className="text-content font-medium">VTX Not Detected</h4>
+          <h4 className="text-content font-medium">{t('parameters:vtxConfigTab.notDetected')}</h4>
           <p className="text-sm text-content-secondary mt-2 max-w-md mx-auto">
-            Your flight controller couldn't communicate with a video transmitter.
+            {t('parameters:vtxConfigTab.notDetectedBody')}
           </p>
 
           <div className="mt-4 p-4 bg-surface-raised rounded-lg text-left">
-            <p className="text-xs font-medium text-content-secondary mb-2">Common reasons:</p>
+            <p className="text-xs font-medium text-content-secondary mb-2">{t('parameters:vtxConfigTab.commonReasons')}</p>
             <ul className="text-xs text-content-secondary space-y-1">
-              <li>• VTX not connected or powered</li>
-              <li>• SmartAudio/Tramp wire not connected to FC</li>
-              <li>• VTX protocol not configured in Ports tab</li>
-              <li>• VTX doesn't support remote configuration</li>
+              <li>• {t('parameters:vtxConfigTab.reasonPower')}</li>
+              <li>• {t('parameters:vtxConfigTab.reasonWire')}</li>
+              <li>• {t('parameters:vtxConfigTab.reasonPorts')}</li>
+              <li>• {t('parameters:vtxConfigTab.reasonRemote')}</li>
             </ul>
           </div>
 
@@ -255,13 +241,13 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
             className="mt-4 px-4 py-2 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-lg flex items-center gap-2 mx-auto"
           >
             <RefreshCw className="w-4 h-4" />
-            Retry Detection
+            {t('parameters:vtxConfigTab.retryDetection')}
           </button>
         </div>
 
         {/* Skip message */}
         <p className="text-center text-xs text-content-tertiary">
-          Don't have a VTX? You can skip this tab - it's only for FPV video configuration.
+          {t('parameters:vtxConfigTab.skipHint')}
         </p>
       </div>
     );
@@ -278,23 +264,23 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-purple-300">Video Transmitter (VTX)</h2>
+                <h2 className="text-lg font-semibold text-purple-300">{t('parameters:vtxConfigTab.title')}</h2>
                 <p className="text-sm text-content-secondary mt-1">
-                  Configure the frequency and power of your FPV video signal
+                  {t('parameters:vtxConfigTab.subtitle')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {config.deviceReady ? (
                   <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-green-500/20 text-xs text-green-400">
-                    <CheckCircle className="w-3.5 h-3.5" /> Connected
+                    <CheckCircle className="w-3.5 h-3.5" /> {t('common:connected')}
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-yellow-500/20 text-xs text-yellow-400">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Not Ready
+                    <AlertTriangle className="w-3.5 h-3.5" /> {t('parameters:vtxConfigTab.notReady')}
                   </span>
                 )}
                 <span className="text-xs px-2 py-1 rounded-lg bg-surface-raised text-content">
-                  {VTX_TYPE_NAMES[config.vtxType] || 'Unknown'}
+                  {config.vtxType !== 0 && VTX_TYPE_NAMES[config.vtxType] ? VTX_TYPE_NAMES[config.vtxType] : t('common:unknown')}
                 </span>
               </div>
             </div>
@@ -331,8 +317,8 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
             <Radio className="w-5 h-5 text-purple-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-content">Band & Channel</h3>
-            <p className="text-xs text-content-secondary">Select your VTX frequency</p>
+            <h3 className="text-sm font-medium text-content">{t('parameters:vtxConfigTab.bandChannel')}</h3>
+            <p className="text-xs text-content-secondary">{t('parameters:vtxConfigTab.bandChannelHint')}</p>
           </div>
           <div className="text-right">
             <div className="text-2xl font-mono text-purple-400">{frequencyDisplay}</div>
@@ -344,7 +330,7 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
 
         {/* Band Selection */}
         <div>
-          <label className="text-xs text-content-secondary block mb-2">Band</label>
+          <label className="text-xs text-content-secondary block mb-2">{t('parameters:vtxConfigTab.band')}</label>
           <div className="grid grid-cols-5 gap-2">
             {VTX_BANDS.map((band) => (
               <button
@@ -365,7 +351,7 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
 
         {/* Channel Selection */}
         <div>
-          <label className="text-xs text-content-secondary block mb-2">Channel</label>
+          <label className="text-xs text-content-secondary block mb-2">{t('common:channel')}</label>
           <div className="grid grid-cols-8 gap-2">
             {VTX_CHANNELS.map((channel) => {
               const freq = getFrequency(config.band, channel);
@@ -389,7 +375,7 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
 
         {/* Frequency Chart - Visual representation */}
         <div className="mt-4 p-3 bg-surface-raised rounded-lg">
-          <div className="text-xs text-content-secondary mb-2">Frequency Band Overview</div>
+          <div className="text-xs text-content-secondary mb-2">{t('parameters:vtxConfigTab.bandOverview')}</div>
           <div className="relative h-8">
             {/* Background scale */}
             <div className="absolute inset-0 flex items-center">
@@ -418,15 +404,15 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
             <Zap className="w-5 h-5 text-orange-400" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-content">Power & Safety</h3>
-            <p className="text-xs text-content-secondary">Configure transmit power and pit mode</p>
+            <h3 className="text-sm font-medium text-content">{t('parameters:vtxConfigTab.powerSafety')}</h3>
+            <p className="text-xs text-content-secondary">{t('parameters:vtxConfigTab.powerSafetyHint')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6">
           {/* Power Level */}
           <div>
-            <label className="text-xs text-content-secondary block mb-2">Power Level</label>
+            <label className="text-xs text-content-secondary block mb-2">{t('parameters:vtxConfigTab.powerLevel')}</label>
             <select
               value={config.power}
               onChange={(e) => updateConfig({ power: parseInt(e.target.value, 10) })}
@@ -439,13 +425,13 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
               ))}
             </select>
             <p className="text-[10px] text-content-tertiary mt-1">
-              Higher power = longer range but more heat
+              {t('parameters:vtxConfigTab.powerLevelHint')}
             </p>
           </div>
 
           {/* Low Power Disarm */}
           <div>
-            <label className="text-xs text-content-secondary block mb-2">Low Power When Disarmed</label>
+            <label className="text-xs text-content-secondary block mb-2">{t('parameters:vtxConfigTab.lowPowerDisarmed')}</label>
             <select
               value={config.lowPowerDisarm}
               onChange={(e) => updateConfig({ lowPowerDisarm: parseInt(e.target.value, 10) })}
@@ -453,12 +439,12 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
             >
               {LOW_POWER_DISARM_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </option>
               ))}
             </select>
             <p className="text-[10px] text-content-tertiary mt-1">
-              {LOW_POWER_DISARM_OPTIONS.find(o => o.value === config.lowPowerDisarm)?.description}
+              {(() => { const o = LOW_POWER_DISARM_OPTIONS.find(o => o.value === config.lowPowerDisarm); return o ? t(o.descKey) : null; })()}
             </p>
           </div>
         </div>
@@ -469,9 +455,9 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
             <div className="flex items-center gap-3">
               <Volume2 className={`w-5 h-5 ${config.pitMode ? 'text-yellow-400' : 'text-content-secondary'}`} />
               <div>
-                <span className="text-sm text-content">Pit Mode</span>
+                <span className="text-sm text-content">{t('parameters:vtxConfigTab.pitMode')}</span>
                 <p className="text-[10px] text-content-tertiary">
-                  Reduces power for bench testing or pit area use
+                  {t('parameters:vtxConfigTab.pitModeHint')}
                 </p>
               </div>
             </div>
@@ -492,7 +478,7 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
 
         {config.pitModeFrequency > 0 && (
           <div className="text-xs text-content-secondary">
-            Pit mode frequency: {config.pitModeFrequency} MHz
+            {t('parameters:vtxConfigTab.pitModeFrequency', { freq: config.pitModeFrequency })}
           </div>
         )}
       </div>
@@ -502,9 +488,9 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
         <div className="bg-blue-500/10 rounded-xl border-blue-500/30 p-4 flex items-start gap-4">
           <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-blue-400 font-medium text-sm">VTX Table Configured</p>
+            <p className="text-blue-400 font-medium text-sm">{t('parameters:vtxConfigTab.tableConfigured')}</p>
             <p className="text-xs text-content-secondary mt-1">
-              {config.vtxTableBands} bands × {config.vtxTableChannels} channels, {config.vtxTablePowerLevels} power levels
+              {t('parameters:vtxConfigTab.tableSummary', { bands: config.vtxTableBands, channels: config.vtxTableChannels, levels: config.vtxTablePowerLevels })}
             </p>
           </div>
         </div>
@@ -514,11 +500,11 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
       <div className="bg-amber-500/10 rounded-xl border-amber-500/30 p-4 flex items-start gap-4">
         <AlertTriangle className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-amber-400 font-medium">Important</p>
+          <p className="text-amber-400 font-medium">{t('parameters:vtxConfigTab.important')}</p>
           <ul className="text-sm text-content-secondary mt-1 space-y-1 list-disc list-inside">
-            <li>Check local regulations for legal power levels and frequencies</li>
-            <li>Use pit mode when not flying to avoid interference</li>
-            <li>Coordinate frequencies with other pilots at the field</li>
+            <li>{t('parameters:vtxConfigTab.tipRegulations')}</li>
+            <li>{t('parameters:vtxConfigTab.tipPitMode')}</li>
+            <li>{t('parameters:vtxConfigTab.tipCoordinate')}</li>
           </ul>
         </div>
       </div>
@@ -526,24 +512,12 @@ export default function VtxConfigTab({ modified, setModified }: Props) {
       {/* Action buttons */}
       <div className="flex justify-end gap-3">
         <button
-          onClick={loadConfig}
+          onClick={refresh}
           disabled={loading}
           className="px-4 py-2 text-sm bg-surface-raised text-content rounded-lg hover:bg-surface-raised flex items-center gap-2"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-        <button
-          onClick={saveConfig}
-          disabled={!modified || saving}
-          className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 ${
-            modified
-              ? 'bg-purple-500 text-white hover:bg-purple-400'
-              : 'bg-surface-raised text-content-secondary cursor-not-allowed'
-          }`}
-        >
-          <Save className={`w-4 h-4 ${saving ? 'animate-pulse' : ''}`} />
-          {saving ? 'Saving...' : 'Save VTX Config'}
+          {dirty ? t('parameters:vtxConfigTab.discardChanges') : t('common:refresh')}
         </button>
       </div>
     </div>

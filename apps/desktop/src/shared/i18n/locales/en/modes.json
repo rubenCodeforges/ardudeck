@@ -1,0 +1,270 @@
+{
+  "auxChannelPicker": {
+    "current": "Current"
+  },
+  "auxChannels": {
+    "aux1": "Usually a 2-position switch",
+    "aux10": "Additional channel",
+    "aux11": "Additional channel",
+    "aux12": "Additional channel",
+    "aux2": "Often a 3-position switch",
+    "aux3": "Additional switch",
+    "aux4": "Additional switch",
+    "aux5": "Additional channel (knob/slider)",
+    "aux6": "Additional channel (knob/slider)",
+    "aux7": "Additional channel",
+    "aux8": "Additional channel",
+    "aux9": "Additional channel"
+  },
+  "modeCard": {
+    "channel": "Channel:",
+    "configure": "Configure",
+    "configureTitle": "Configure {{name}} settings",
+    "editMode": "Edit mode",
+    "essential": "ESSENTIAL",
+    "range": "Range:",
+    "removeMode": "Remove mode",
+    "unknownMode": "Unknown mode"
+  },
+  "modeConfigStep": {
+    "correctPosition": "Your switch is in the correct position. This mode would be active in flight.",
+    "essentialMode": "ESSENTIAL MODE",
+    "isActive": "{{name}} is ACTIVE!",
+    "moveSwitch": "Move your {{channel}} to the {{position}} position to see {{name}} activate.",
+    "nextMode": "Next Mode",
+    "noMode": "No mode to configure",
+    "reviewConfiguration": "Review Configuration",
+    "switch": "switch",
+    "testIt": "Test it! Flip your switch to see if it activates:",
+    "tryNow": "Try it now!",
+    "whenActivate": "When should it activate? (PWM range)",
+    "whichSwitch": "Which switch should activate this mode?"
+  },
+  "modeFallback": "Mode {{id}}",
+  "modePresets": {
+    "airmode": {
+      "beginner": "ADVANCED - Keeps full stick authority even at zero throttle. Essential for freestyle tricks and flips. Usually kept on all the time.",
+      "description": "Full control at zero throttle"
+    },
+    "angle": {
+      "beginner": "BEGINNER MODE - Your aircraft will automatically level itself when you release the sticks. Maximum tilt angle is limited. Perfect for learning to fly!",
+      "description": "Self-level"
+    },
+    "arm": {
+      "beginner": "SAFETY SWITCH - Arms/disarms your aircraft. ALWAYS put this on a dedicated switch! When armed, propellers can spin at any moment.",
+      "description": "Enable motors"
+    },
+    "beeper": {
+      "beginner": "FINDER - Makes your aircraft beep loudly to help you find it after a crash. Very useful when it lands in tall grass!",
+      "description": "Find aircraft"
+    },
+    "blackbox": {
+      "beginner": "LOGGING - Records flight data to the SD card for analysis. Useful for tuning PIDs and reviewing crashes.",
+      "description": "Flight logging"
+    },
+    "failsafe": {
+      "beginner": "EMERGENCY - Triggers failsafe behavior (usually landing or disarm). Normally activated automatically when signal is lost.",
+      "description": "Emergency landing"
+    },
+    "flaperon": {
+      "beginner": "Activates flaperons for slower landing approach. Ailerons droop down to act as flaps.",
+      "description": "Flaps mode"
+    },
+    "gcsNav": {
+      "beginner": "Allow ground control station to send navigation commands (fly-to-here, etc).",
+      "description": "Ground control"
+    },
+    "gimbalLevelTilt": {
+      "beginner": "Keeps gimbal tilt axis level regardless of aircraft attitude. Useful for camera stabilization.",
+      "description": "Gimbal tilt leveling"
+    },
+    "headingHold": {
+      "beginner": "Maintains current magnetic heading. Useful for flying straight lines.",
+      "description": "Hold heading"
+    },
+    "homeReset": {
+      "beginner": "Sets current position as new home point. Use when you relocate during a session.",
+      "description": "Reset home position"
+    },
+    "horizon": {
+      "beginner": "INTERMEDIATE MODE - Self-levels near center stick like ANGLE, but allows flips and rolls at full stick. A bridge between ANGLE and ACRO.",
+      "description": "Self-level + acro"
+    },
+    "manual": {
+      "beginner": "Direct servo/motor control without stabilization. For experienced pilots only!",
+      "description": "Direct control"
+    },
+    "navAlthold": {
+      "beginner": "Holds current altitude using barometer/GPS. Throttle controls climb/descent rate.",
+      "description": "Hold altitude"
+    },
+    "navCourseHold": {
+      "beginner": "Maintains current heading while allowing altitude control. Good for flying in a straight line.",
+      "description": "Hold course"
+    },
+    "navCruise": {
+      "beginner": "Fixed-wing cruise mode - Maintains heading and altitude. Perfect for long-range flights.",
+      "description": "Cruise control"
+    },
+    "navLaunch": {
+      "beginner": "Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.",
+      "description": "Auto launch"
+    },
+    "navPoshold": {
+      "beginner": "GPS position hold - Aircraft will stay in place. Great for aerial photography or when you need to stop.",
+      "description": "Hold position"
+    },
+    "navRth": {
+      "beginner": "Return To Home - Aircraft will climb to safe altitude and fly back to launch point. Essential safety feature!",
+      "description": "Return to home"
+    },
+    "navWp": {
+      "beginner": "Execute uploaded waypoint mission. Aircraft will fly to each waypoint automatically.",
+      "description": "Waypoint mission"
+    },
+    "prearm": {
+      "beginner": "Safety switch - must be enabled before arming. Prevents accidental arm.",
+      "description": "Pre-arm check"
+    },
+    "turnAssist": {
+      "beginner": "Auto-coordinates rudder with ailerons for smooth turns. Great for fixed-wing beginners.",
+      "description": "Coordinated turns"
+    },
+    "turtle": {
+      "beginner": "Flip crashed aircraft back over using motor spin. For multirotors only.",
+      "description": "Flip over"
+    },
+    "wpPlanner": {
+      "beginner": "Enable in-flight waypoint planning via stick commands.",
+      "description": "Mission planner"
+    }
+  },
+  "modesAdvancedEditor": {
+    "addFirstMode": "Add Your First Mode",
+    "addMode": "Add Mode",
+    "auxChannel": "AUX Channel",
+    "essential": "ESSENTIAL",
+    "loadingModes": "Loading modes...",
+    "noModesConfigured": "No modes configured",
+    "noModesFound": "No modes found",
+    "noModesHint": "Add modes to control how your aircraft responds to switch positions.",
+    "noMoreModes": "No more modes available",
+    "pwmRange": "PWM Range",
+    "searchModes": "Search modes...",
+    "useMainSave": "Use main Save button to save changes"
+  },
+  "modesWizard": {
+    "pressAgain": "Press again to discard setup",
+    "stepCheck": "Check",
+    "stepConfigure": "Configure",
+    "stepSave": "Save",
+    "stepStyle": "Style",
+    "subtitle": "Configure your flight modes",
+    "title": "Modes Setup Wizard"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Safe & simple - great for learning",
+      "name": "Beginner",
+      "tip": "Your aircraft will always stay level. Perfect for learning to hover and basic movements!"
+    },
+    "cinematic": {
+      "description": "Ultra-smooth for filming",
+      "name": "Cinematic",
+      "tip": "NAV RTH brings your aircraft home if signal is lost (requires GPS!). Perfect for long-range filming."
+    },
+    "fixedWing": {
+      "description": "For airplanes with navigation",
+      "name": "Fixed Wing",
+      "tip": "Complete setup for fixed-wing with launch assist, RTH, and waypoint navigation."
+    },
+    "freestyle": {
+      "description": "Balanced for tricks & flow",
+      "name": "Freestyle",
+      "tip": "Three-position switch on AUX2 gives you ANGLE/HORIZON/ACRO. Flip a switch to change your flying style!"
+    },
+    "racing": {
+      "description": "Fast & responsive for speed",
+      "name": "Racing",
+      "tip": "Pure ACRO mode for maximum control. Beeper on AUX3 helps find your aircraft after a crash!"
+    }
+  },
+  "rangeSlider": {
+    "activeRange": "Active range",
+    "always": "ALWAYS",
+    "clickToSet": "Click to set range",
+    "dragHandles": "Drag handles",
+    "end": "End:",
+    "high": "HIGH",
+    "hintAlways": "Always ON",
+    "hintHigh": "Switch UP",
+    "hintLow": "Switch DOWN",
+    "hintMid": "Switch MID",
+    "low": "LOW",
+    "mid": "MID",
+    "start": "Start:",
+    "switchPosition": "Switch Position",
+    "yourTransmitter": "Your transmitter"
+  },
+  "rcChannelBar": {
+    "active": "ACTIVE",
+    "inactive": "INACTIVE",
+    "rc": "RC:"
+  },
+  "reviewStep": {
+    "armMissing": "ARM mode is not configured!",
+    "armMissingHint": "Without ARM mode, you won't be able to arm your aircraft. Go back and add ARM to a switch.",
+    "beforeFly": "Before you fly:",
+    "configuredModes": "Configured Modes:",
+    "configured_one": "You have configured {{count}} mode.",
+    "configured_other": "You have configured {{count}} modes.",
+    "presetTitle": "{{name}} Preset",
+    "ready": "Ready",
+    "saveToFc": "Save to Flight Controller",
+    "saved": "Configuration saved!",
+    "savedHint": "Your mode configuration has been written to the flight controller.",
+    "tipArm": "Always test ARM in a safe area with props off",
+    "tipAux": "Double-check your AUX switch positions",
+    "tipFailsafe": "Verify your failsafe is set correctly",
+    "title": "Review Your Configuration",
+    "usingPreset_one": "Using {{name}} preset with {{count}} mode.",
+    "usingPreset_other": "Using {{name}} preset with {{count}} modes."
+  },
+  "transmitterCheckStep": {
+    "armSwitch": "Flip your ARM switch (usually AUX1)",
+    "channelsDetected": "{{count}} channels detected!",
+    "confirm": "I can see my sticks and switches responding in the visualizer above",
+    "connectedHint": "Your transmitter is connected. Move switches to detect AUX channels.",
+    "continue": "Continue to Mode Configuration",
+    "leftStick": "Move left stick up/down and left/right",
+    "noChannels": "No channels detected?",
+    "otherSwitches": "Move any other switches you plan to use",
+    "quickCheck": "Quick Check:",
+    "rightStick": "Move right stick up/down and left/right",
+    "subtitle": "Move your sticks and flip your switches to verify they're being received. Each channel should light up green when it detects movement.",
+    "tipBound": "Make sure your transmitter is turned on and bound to your receiver",
+    "tipProtocol": "Verify the correct receiver protocol is set in the configurator",
+    "tipReceiver": "Check that the receiver is connected to your flight controller",
+    "tipReconnect": "Try unplugging and reconnecting your flight controller",
+    "title": "Check Your Transmitter",
+    "waiting": "Waiting for channel movement...",
+    "waitingHint": "Move all your sticks to their extremes to verify the connection."
+  },
+  "transmitterVisualizer": {
+    "additionalSwitch": "Additional switch",
+    "aux1": "Switch (usually ARM)",
+    "aux2": "Switch or 3-pos",
+    "leftHorizontal": "Left stick horizontal",
+    "leftVertical": "Left stick vertical",
+    "rightHorizontal": "Right stick horizontal",
+    "rightVertical": "Right stick vertical"
+  },
+  "welcomeStep": {
+    "manualSetup": "Manual Setup",
+    "manualSetupHint": "Configure modes one by one (advanced)",
+    "newToFpv": "New to FPV?",
+    "newToFpvHint": "Start with the <b>Beginner</b> preset. It enables ANGLE mode which keeps your aircraft level automatically - perfect for learning!",
+    "subtitle": "Select a preset to quickly configure the essential flight modes for your style, or set up modes manually for full control.",
+    "title": "Choose Your Flying Style"
+  }
+}

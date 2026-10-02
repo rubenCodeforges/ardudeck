@@ -8,6 +8,7 @@
  * producer differs.
  */
 
+import { t as translate } from '../i18n/index.js';
 import {
   ABORT_ACTION,
   SIGNAL_LABELS,
@@ -96,7 +97,7 @@ export class SafetyMonitorEngine {
   /** Manually clear a latched DANGER. */
   clearLatch(t: number): void {
     if (this.dangerLatchedAt !== null) {
-      this.pushEvent({ t, kind: 'cleared', text: 'DANGER latch cleared by operator' });
+      this.pushEvent({ t, kind: 'cleared', text: translate('shared:safetyMonitor.latchCleared') });
     }
     this.dangerLatchedAt = null;
     this.dangerPendingSince = null;
@@ -167,7 +168,7 @@ export class SafetyMonitorEngine {
         nominalMax: p.integratorPct.caution,
         cautionMax: p.integratorPct.danger,
         available: pidAvail,
-        unavailableReason: pidAvail ? undefined : 'Enable PID streaming (GCS_PID_MASK)',
+        unavailableReason: pidAvail ? undefined : translate('shared:safetyMonitor.enablePidStreaming'),
       }),
     );
 
@@ -186,7 +187,7 @@ export class SafetyMonitorEngine {
         nominalMax: p.throttleRisingPct,
         cautionMax: 100,
         available: true,
-        detail: straining ? 'Throttle up but not lifting.' : undefined,
+        detail: straining ? translate('shared:safetyMonitor.throttleNotLifting') : undefined,
       }),
     );
 
@@ -203,8 +204,8 @@ export class SafetyMonitorEngine {
         nominalMax: p.rateErrorThreshRadS,
         cautionMax: p.rateErrorThreshRadS * 3,
         available: pidAvail,
-        unavailableReason: pidAvail ? undefined : 'Enable PID streaming (GCS_PID_MASK)',
-        detail: fighting ? 'Wound-up I term beating P - command opposes demand.' : undefined,
+        unavailableReason: pidAvail ? undefined : translate('shared:safetyMonitor.enablePidStreaming'),
+        detail: fighting ? translate('shared:safetyMonitor.controllerFighting') : undefined,
       }),
     );
 
@@ -242,7 +243,7 @@ export class SafetyMonitorEngine {
         this.pushEvent({
           t: frame.t,
           kind: 'danger',
-          text: 'Tip-over precondition pattern detected during spool-up',
+          text: translate('shared:safetyMonitor.tipoverDetected'),
         });
       }
     } else {
@@ -286,7 +287,7 @@ export class SafetyMonitorEngine {
     rest: Omit<SignalResult, 'id' | 'label' | 'severity'>,
   ): SignalResult {
     const reported = rest.available ? this.applyDebounce(id, inst, t) : 'nominal';
-    return { id, label: SIGNAL_LABELS[id], severity: reported, ...rest };
+    return { id, label: translate(`shared:safetyMonitor.signal.${id}`, { defaultValue: SIGNAL_LABELS[id] }), severity: reported, ...rest };
   }
 
   private applyDebounce(id: SignalId, inst: Severity, t: number): Severity {

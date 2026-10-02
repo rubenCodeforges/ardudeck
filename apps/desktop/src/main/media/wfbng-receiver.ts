@@ -26,6 +26,7 @@ import {
 } from './wfbng-dongle.js';
 import { wfbRxMissingMessage } from './wfb-rx-release.js';
 import type { WfbngStatus } from '../../shared/camera-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 export const WFB_RX_BINARY = 'ardudeck-wfb-rx';
 
@@ -166,12 +167,12 @@ class WfbngReceiver {
     }
     const dongle = await this.detectDongle();
     if (!dongle) {
-      return { ok: false, error: 'No WiFi receiver dongle found. Plug the RTL8812AU dongle from the camera kit into this computer.' };
+      return { ok: false, error: t('main:wfbng.noDongle') };
     }
     if (!existsSync(this.gsKeyPath())) {
       return {
         ok: false,
-        error: 'The pairing key (gs.key) has not been imported. Get it from the camera (it creates gs.key on first boot) and import it in the feed setup.',
+        error: t('main:wfbng.noPairingKey'),
       };
     }
 

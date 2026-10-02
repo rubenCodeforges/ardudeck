@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { useSurveyStore } from '../../stores/survey-store';
 import { useFleetSurveyStore } from '../../stores/fleet-survey-store';
@@ -15,6 +16,7 @@ import { useFleetVehicles } from '../../hooks/useFleet';
 import { buildFleetSurvey } from './survey-fleet-split';
 
 export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const polygon = useSurveyStore((s) => s.polygon);
   const config = useSurveyStore((s) => s.config);
   const surveyResult = useSurveyStore((s) => s.result);
@@ -59,7 +61,7 @@ export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
         setUploadStatus(a.vehicleKey, 'uploading');
         const res = await window.electronAPI?.uploadMissionToVehicle?.(a.vehicleKey, a.missionItems);
         if (res?.success) setUploadStatus(a.vehicleKey, 'complete');
-        else setUploadStatus(a.vehicleKey, 'error', res?.error ?? 'Upload failed');
+        else setUploadStatus(a.vehicleKey, 'error', res?.error ?? t('common:uploadFailed'));
       }
     } finally {
       setUploading(false);
@@ -75,16 +77,16 @@ export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-content">Split survey across fleet</h2>
+          <h2 className="text-sm font-semibold text-content">{t('survey:fleetSurveyPanel.title')}</h2>
           <button onClick={onClose} className="text-content-tertiary hover:text-content text-sm">✕</button>
         </div>
 
         {!polygon ? (
-          <p className="text-xs text-content-secondary">Draw a survey polygon first, then split it across vehicles.</p>
+          <p className="text-xs text-content-secondary">{t('survey:fleetSurveyPanel.drawFirst')}</p>
         ) : (
           <>
             <div className="mb-4">
-              <span className="text-[11px] uppercase tracking-wide text-content-secondary">Vehicles</span>
+              <span className="text-[11px] uppercase tracking-wide text-content-secondary">{t('survey:fleetSurveyPanel.vehicles')}</span>
               <div className="mt-1.5 flex flex-col gap-1">
                 {vehicles.map((v) => (
                   <label key={v.key} className="flex items-center gap-2 text-xs text-content cursor-pointer">
@@ -99,13 +101,13 @@ export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
                   </label>
                 ))}
                 {vehicles.length === 0 && (
-                  <span className="text-xs text-content-tertiary">No vehicles connected.</span>
+                  <span className="text-xs text-content-tertiary">{t('survey:fleetSurveyPanel.noVehicles')}</span>
                 )}
               </div>
             </div>
 
             <label className="flex items-center justify-between gap-3 mb-4 text-xs text-content">
-              <span>Altitude layer step (m/vehicle)</span>
+              <span>{t('survey:fleetSurveyPanel.altitudeStep')}</span>
               <DraftNumberInput
                 value={altStep}
                 min={0}
@@ -119,12 +121,12 @@ export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
               disabled={!canGenerate}
               className="w-full mb-4 px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold disabled:opacity-50"
             >
-              {building ? 'Generating…' : `Generate split (${selected.length} vehicles)`}
+              {building ? t('survey:fleetSurveyPanel.generating') : t('survey:fleetSurveyPanel.generateSplit', { count: selected.length })}
             </button>
 
             {assignments.length > 0 && (
               <div className="mb-4">
-                <span className="text-[11px] uppercase tracking-wide text-content-secondary">Assignments</span>
+                <span className="text-[11px] uppercase tracking-wide text-content-secondary">{t('survey:fleetSurveyPanel.assignments')}</span>
                 <div className="mt-1.5 rounded-lg border border-subtle overflow-hidden">
                   {assignments.map((a) => {
                     const st = uploadStatus[a.vehicleKey]?.state ?? 'idle';
@@ -134,7 +136,7 @@ export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
                       <div key={a.vehicleKey} className="flex items-center justify-between px-3 py-1.5 border-b border-subtle last:border-0 text-xs">
                         <span className="font-mono text-content">{labelOf(a.vehicleKey)}</span>
                         <span className="text-content-secondary font-mono">
-                          {a.waypointCount} wp · {(a.areaCovered / 10000).toFixed(1)} ha · {Math.round(a.altitude)} m
+                          {t('survey:fleetSurveyPanel.assignmentSummary', { waypoints: a.waypointCount, hectares: (a.areaCovered / 10000).toFixed(1), altitude: Math.round(a.altitude) })}
                         </span>
                         <span className={`font-mono ${stColor}`}>{st}</span>
                       </div>
@@ -150,13 +152,12 @@ export function FleetSurveyPanel({ onClose }: { onClose: () => void }) {
                 disabled={uploading}
                 className="w-full px-3 py-2 rounded bg-surface-raised hover:bg-surface-solid border border-subtle text-content text-xs font-semibold disabled:opacity-50"
               >
-                {uploading ? 'Uploading…' : 'Upload all'}
+                {uploading ? t('common:uploading') : t('survey:fleetSurveyPanel.uploadAll')}
               </button>
             )}
 
             <p className="mt-3 text-[10px] text-content-tertiary leading-relaxed">
-              Bands are non-overlapping; missions upload sequentially to each vehicle on any connected link.
-              Timing deconfliction is out of scope here.
+              {t('survey:fleetSurveyPanel.footnote')}
             </p>
           </>
         )}

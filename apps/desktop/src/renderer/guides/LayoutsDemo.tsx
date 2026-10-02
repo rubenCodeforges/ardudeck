@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MiniMap, MiniVision, usePhaseLoop } from './demo-kit';
 
 type Rect = { x: number; y: number; w: number; h: number } | null;
@@ -41,6 +42,7 @@ const CONTENT: Record<PanelKey, () => ReactNode> = { map: MiniMap, vision: MiniV
 
 /** A mini app cycling Pilot, FPV and Mission through the Workspace dialog. */
 export function LayoutsDemo() {
+  const { t } = useTranslation();
   const phase = usePhaseLoop(PHASES);
   const index = Math.floor(phase / 2);
   const picking = phase % 2 === 0;
@@ -51,7 +53,7 @@ export function LayoutsDemo() {
     <div className="relative overflow-hidden rounded-xl border border-subtle bg-surface-base" style={{ width: 320, height: 170 }}>
       <div className="flex h-5 items-center justify-end border-b border-subtle bg-surface px-1.5">
         <span className={`rounded border px-1.5 text-[8px] leading-[14px] transition-colors ${picking ? 'border-blue-500 bg-blue-500/15 text-blue-300' : 'border-subtle text-content-secondary'}`}>
-          Workspace · {shown.name}
+          {t('guides:layoutsDemo.workspace', { name: shown.name })}
         </span>
       </div>
       <div className="relative" style={{ height: 150 }}>

@@ -5,9 +5,10 @@
  * colorful themed design and compact layout.
  */
 
+import { Trans, useTranslation } from 'react-i18next';
 import { useCalibrationStore } from '../../../stores/calibration-store';
 import { useConnectionStore } from '../../../stores/connection-store';
-import { CALIBRATION_TYPES, ACCEL_6POINT_POSITIONS, type CalibrationTypeId } from '../../../../shared/calibration-types';
+import { CALIBRATION_TYPES, ACCEL_6POINT_POSITIONS, calibrationTypeName, accelPositionName, type CalibrationTypeId } from '../../../../shared/calibration-types';
 import { PositionDiagram } from '../shared/PositionDiagram';
 
 // Color themes matching SelectCalibrationStep
@@ -177,6 +178,7 @@ const CalibrationIcons: Record<CalibrationTypeId, React.ReactNode> = {
 };
 
 export function PrepareCalibrationStep() {
+  const { t } = useTranslation();
   const {
     calibrationType,
     countdown,
@@ -187,18 +189,18 @@ export function PrepareCalibrationStep() {
   const isPx4 = useConnectionStore((s) => s.connectionState.firmware === 'px4');
 
   const calTypeInfo = calibrationType
-    ? CALIBRATION_TYPES.find((t) => t.id === calibrationType)
+    ? CALIBRATION_TYPES.find((c) => c.id === calibrationType)
     : null;
 
   if (!calibrationType || !calTypeInfo) {
     return (
       <div className="text-center py-8">
-        <p className="text-content-secondary">No calibration type selected.</p>
+        <p className="text-content-secondary">{t('calibration:prepareCalibrationStep.noTypeSelected')}</p>
         <button
           onClick={() => setStep('select')}
           className="mt-3 px-4 py-2 bg-surface-raised hover:bg-surface-raised rounded-lg text-content transition-colors"
         >
-          Go Back
+          {t('calibration:prepareCalibrationStep.goBack')}
         </button>
       </div>
     );
@@ -223,8 +225,8 @@ export function PrepareCalibrationStep() {
                 {CalibrationIcons[calibrationType]}
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-content">{calTypeInfo.name}</h3>
-                <p className="text-xs text-content-secondary">~{calTypeInfo.estimatedDuration}s duration</p>
+                <h3 className="text-lg font-semibold text-content">{calibrationTypeName(calTypeInfo)}</h3>
+                <p className="text-xs text-content-secondary">{t('calibration:prepareCalibrationStep.duration', { s: calTypeInfo.estimatedDuration })}</p>
               </div>
             </div>
 
@@ -234,7 +236,7 @@ export function PrepareCalibrationStep() {
                 theme.iconColor.replace('text-', 'bg-').replace('400', '500')
               } hover:brightness-110 text-white shadow-lg`}
             >
-              Start
+              {t('common:start')}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
@@ -248,13 +250,13 @@ export function PrepareCalibrationStep() {
                 {/* Instructions */}
                 <div className="flex-1 space-y-2">
                   <InstructionItem theme={theme} num={1}>
-                    Place vehicle on a <strong className="text-content">level surface</strong>
+                    <Trans i18nKey="calibration:prepareCalibrationStep.levelPlace" components={{ b: <strong className="text-content" /> }} />
                   </InstructionItem>
                   <InstructionItem theme={theme} num={2}>
-                    Keep <strong className="text-content">completely still</strong> during calibration
+                    <Trans i18nKey="calibration:prepareCalibrationStep.levelStill" components={{ b: <strong className="text-content" /> }} />
                   </InstructionItem>
                   <InstructionItem theme={theme} num={3}>
-                    Click Start when ready
+                    {t('calibration:prepareCalibrationStep.levelClickStart')}
                   </InstructionItem>
                 </div>
                 {/* Diagram */}
@@ -269,24 +271,24 @@ export function PrepareCalibrationStep() {
             {calibrationType === 'accel-6point' && (
               <>
                 <p className="text-content text-sm">
-                  Place vehicle in <strong className="text-content">6 positions</strong> - {isPx4
-                    ? 'each side is detected and captured automatically.'
-                    : "you'll be guided step by step."}
+                  {isPx4
+                    ? <Trans i18nKey="calibration:prepareCalibrationStep.sixPositionsPx4" components={{ b: <strong className="text-content" /> }} />
+                    : <Trans i18nKey="calibration:prepareCalibrationStep.sixPositions" components={{ b: <strong className="text-content" /> }} />}
                 </p>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {ACCEL_6POINT_POSITIONS.map((pos, index) => (
+                  {ACCEL_6POINT_POSITIONS.map((_pos, index) => (
                     <div key={index} className="bg-surface-input rounded-lg p-2 text-center">
                       <div className={`w-5 h-5 mx-auto mb-1 ${theme.iconColor}`}>
                         <PositionIcon position={index as 0 | 1 | 2 | 3 | 4 | 5} />
                       </div>
-                      <p className="text-[10px] text-content-secondary truncate">{pos.split(' ')[0]}</p>
+                      <p className="text-[10px] text-content-secondary truncate">{accelPositionName(index).split(' ')[0]}</p>
                     </div>
                   ))}
                 </div>
                 <WarningBox>
                   {isPx4
-                    ? <>Hold each position <strong className="text-content">steady</strong> until the vehicle captures it.</>
-                    : <>Hold each position <strong className="text-content">steady</strong>, then confirm with the button.</>}
+                    ? <Trans i18nKey="calibration:prepareCalibrationStep.holdSteadyPx4" components={{ b: <strong className="text-content" /> }} />
+                    : <Trans i18nKey="calibration:prepareCalibrationStep.holdSteady" components={{ b: <strong className="text-content" /> }} />}
                 </WarningBox>
               </>
             )}
@@ -295,21 +297,21 @@ export function PrepareCalibrationStep() {
               <>
                 <div className="grid sm:grid-cols-3 gap-2">
                   <InstructionItem theme={theme} num={1}>
-                    Move away from <strong className="text-content">metal/electronics</strong>
+                    <Trans i18nKey="calibration:prepareCalibrationStep.compassMoveAway" components={{ b: <strong className="text-content" /> }} />
                   </InstructionItem>
                   <InstructionItem theme={theme} num={2}>
                     {isPx4
-                      ? <>Hold on a side, <strong className="text-content">rotate when prompted</strong></>
-                      : <><strong className="text-content">Rotate continuously</strong> in all directions</>}
+                      ? <Trans i18nKey="calibration:prepareCalibrationStep.compassHoldSidePx4" components={{ b: <strong className="text-content" /> }} />
+                      : <Trans i18nKey="calibration:prepareCalibrationStep.compassRotate" components={{ b: <strong className="text-content" /> }} />}
                   </InstructionItem>
                   <InstructionItem theme={theme} num={3}>
                     {isPx4
-                      ? <>Repeat for all <strong className="text-content">6 sides</strong></>
-                      : <>Continue until <strong className="text-content">every compass reaches 100%</strong></>}
+                      ? <Trans i18nKey="calibration:prepareCalibrationStep.compassRepeatPx4" components={{ b: <strong className="text-content" /> }} />
+                      : <Trans i18nKey="calibration:prepareCalibrationStep.compassContinue" components={{ b: <strong className="text-content" /> }} />}
                   </InstructionItem>
                 </div>
                 <WarningBox>
-                  External compass must be firmly mounted.
+                  {t('calibration:prepareCalibrationStep.compassMounted')}
                 </WarningBox>
               </>
             )}
@@ -318,17 +320,17 @@ export function PrepareCalibrationStep() {
               <>
                 <div className="grid sm:grid-cols-3 gap-2">
                   <InstructionItem theme={theme} num={1}>
-                    Place on <strong className="text-content">stable surface</strong>
+                    <Trans i18nKey="calibration:prepareCalibrationStep.gyroPlace" components={{ b: <strong className="text-content" /> }} />
                   </InstructionItem>
                   <InstructionItem theme={theme} num={2}>
-                    Keep <strong className="text-content">completely still</strong>
+                    <Trans i18nKey="calibration:prepareCalibrationStep.gyroStill" components={{ b: <strong className="text-content" /> }} />
                   </InstructionItem>
                   <InstructionItem theme={theme} num={3}>
-                    Auto-completes in seconds
+                    {t('calibration:prepareCalibrationStep.gyroAuto')}
                   </InstructionItem>
                 </div>
                 <InfoBox theme={theme}>
-                  Gyro calibration runs automatically on boot. Manual calibration only needed for drift issues.
+                  {t('calibration:prepareCalibrationStep.gyroInfo')}
                 </InfoBox>
               </>
             )}
@@ -336,13 +338,13 @@ export function PrepareCalibrationStep() {
             {calibrationType === 'opflow' && (
               <div className="grid sm:grid-cols-3 gap-2">
                 <InstructionItem theme={theme} num={1}>
-                  Hold <strong className="text-content">1-2m above textured surface</strong>
+                  <Trans i18nKey="calibration:prepareCalibrationStep.opflowHold" components={{ b: <strong className="text-content" /> }} />
                 </InstructionItem>
                 <InstructionItem theme={theme} num={2}>
-                  Surface needs <strong className="text-content">visible patterns</strong>
+                  <Trans i18nKey="calibration:prepareCalibrationStep.opflowPatterns" components={{ b: <strong className="text-content" /> }} />
                 </InstructionItem>
                 <InstructionItem theme={theme} num={3}>
-                  Keep still for ~{countdown}s
+                  {t('calibration:prepareCalibrationStep.opflowStill', { s: countdown })}
                 </InstructionItem>
               </div>
             )}
@@ -366,7 +368,7 @@ export function PrepareCalibrationStep() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Change calibration type
+          {t('calibration:prepareCalibrationStep.changeType')}
         </button>
       </div>
     </div>

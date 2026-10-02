@@ -18,6 +18,7 @@
  */
 
 import { create } from 'zustand';
+import { t as i18nT } from '../../shared/i18n/index.js';
 import {
   RC_CHANNEL_COUNT,
   RC_MID,
@@ -252,9 +253,9 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
   enableVehicleControl: () => {
     if (get().vehicleControl) return { ok: true };
     const { connectionState } = useConnectionStore.getState();
-    if (!get().enabled) return { ok: false, reason: 'Switch the USB transmitter on first' };
+    if (!get().enabled) return { ok: false, reason: i18nT('stores:pseudoTxStore.enableFirst') };
     if (!connectionState.isConnected || connectionState.protocol !== 'mavlink') {
-      return { ok: false, reason: 'Needs a connected MAVLink vehicle' };
+      return { ok: false, reason: i18nT('stores:pseudoTxStore.needsMavlink') };
     }
     const claim = claimRcOverride('joystick');
     if (!claim.ok) return { ok: false, reason: claim.reason };
@@ -355,7 +356,7 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
     // which is how this shipped looking connected while sending absolutely nothing.
     if (!bridge?.ardupilotSitlRcSend) {
       if (!get().sendError) {
-        set({ sendError: 'No SITL RC bridge in this window - frames are going nowhere' });
+        set({ sendError: i18nT('stores:pseudoTxStore.noBridge') });
       }
       return;
     }
@@ -377,7 +378,7 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
       const { connectionState } = useConnectionStore.getState();
       if (!connectionState.isConnected || connectionState.protocol !== 'mavlink') {
         get().disableVehicleControl();
-        set({ vehicleSendError: 'Vehicle link lost - joystick control released' });
+        set({ vehicleSendError: i18nT('stores:pseudoTxStore.linkLost') });
         return;
       }
       const packed = packOverrideChannels(ch, get().mapping);
@@ -385,7 +386,7 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
       if (vehicleFpsWindowStart === 0) vehicleFpsWindowStart = now;
       void bridge.rcOverrideSetChannels?.(packed).then((r) => {
         if (r && r.success === false) {
-          set({ vehicleSendError: r.error ?? 'Override rejected by the link' });
+          set({ vehicleSendError: r.error ?? i18nT('stores:pseudoTxStore.overrideRejected') });
           return;
         }
         vehicleFrameCount++;

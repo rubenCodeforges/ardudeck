@@ -10,6 +10,8 @@
  * "probably".
  */
 
+import { t } from './i18n/index.js';
+
 export type CalibrationVerdict = 'good' | 'marginal' | 'bad' | 'unknown';
 
 /**
@@ -60,25 +62,25 @@ export function assessCompassFitness(
   calFitThreshold: number = COMPASS_FITNESS_DEFAULT_LIMIT,
 ): CalibrationAssessment {
   if (!Number.isFinite(fitness) || fitness < 0) {
-    return { verdict: 'unknown', summary: 'No fitness reported by the flight controller.' };
+    return { verdict: 'unknown', summary: t('shared:calibrationQuality.noFitness') };
   }
-  const value = `fitness ${fitness.toFixed(1)} mGauss`;
+  const value = t('shared:calibrationQuality.fitnessValue', { value: fitness.toFixed(1) });
 
   if (fitness > calFitThreshold) {
     return {
       verdict: 'bad',
-      summary: `Rejected: ${value}, past the ${calFitThreshold.toFixed(0)} limit.`,
-      advice: 'Move away from metal, batteries and wiring, then calibrate again.',
+      summary: t('shared:calibrationQuality.fitnessRejected', { value, limit: calFitThreshold.toFixed(0) }),
+      advice: t('shared:calibrationQuality.fitnessRejectedAdvice'),
     };
   }
   if (fitness > COMPASS_FITNESS_GOOD) {
     return {
       verdict: 'marginal',
-      summary: `Accepted but weak: ${value}.`,
-      advice: `The flight controller accepted this, but heading drift is likely. Recalibrate away from metal and power wiring, and rotate through every axis, for a fit under ${COMPASS_FITNESS_GOOD}.`,
+      summary: t('shared:calibrationQuality.fitnessWeak', { value }),
+      advice: t('shared:calibrationQuality.fitnessWeakAdvice', { good: COMPASS_FITNESS_GOOD }),
     };
   }
-  return { verdict: 'good', summary: `Good: ${value}.` };
+  return { verdict: 'good', summary: t('shared:calibrationQuality.fitnessGood', { value }) };
 }
 
 // ── Accelerometer ────────────────────────────────────────────────────────────
@@ -103,7 +105,7 @@ export interface AccelCalibrationValues {
 export function assessAccelCalibration(values: AccelCalibrationValues): CalibrationAssessment {
   const { offsets, scales } = values;
   if (!offsets && !scales) {
-    return { verdict: 'unknown', summary: 'Calibration values not read from the vehicle.' };
+    return { verdict: 'unknown', summary: t('shared:calibrationQuality.accelNotRead') };
   }
 
   // An untouched board reads exactly zero offsets and exactly 1.0 scales. That
@@ -113,8 +115,8 @@ export function assessAccelCalibration(values: AccelCalibrationValues): Calibrat
   if (allZero && allUnity) {
     return {
       verdict: 'bad',
-      summary: 'Factory defaults: this accelerometer has never been calibrated.',
-      advice: 'Run the six-point accelerometer calibration before flying.',
+      summary: t('shared:calibrationQuality.accelFactoryDefaults'),
+      advice: t('shared:calibrationQuality.accelFactoryDefaultsAdvice'),
     };
   }
 
@@ -128,15 +130,15 @@ export function assessAccelCalibration(values: AccelCalibrationValues): Calibrat
   if (offsetLength !== null && offsetLength >= ACCEL_OFFSET_ARM_LIMIT) {
     return {
       verdict: 'bad',
-      summary: `Offsets ${offsetLength.toFixed(2)} m/s/s, past the ${ACCEL_OFFSET_ARM_LIMIT} arming limit.`,
-      advice: 'The vehicle will refuse to arm. Recalibrate on a genuinely level surface.',
+      summary: t('shared:calibrationQuality.accelOffsetsPastLimit', { offsets: offsetLength.toFixed(2), limit: ACCEL_OFFSET_ARM_LIMIT }),
+      advice: t('shared:calibrationQuality.accelOffsetsPastLimitAdvice'),
     };
   }
   if (scaleError !== null && scaleError > ACCEL_SCALE_ARM_MARGIN) {
     return {
       verdict: 'bad',
-      summary: `Scale off by ${(scaleError * 100).toFixed(0)}%, past the arming limit.`,
-      advice: 'The vehicle will refuse to arm. Recalibrate, holding each position still.',
+      summary: t('shared:calibrationQuality.accelScalePastLimit', { percent: (scaleError * 100).toFixed(0) }),
+      advice: t('shared:calibrationQuality.accelScalePastLimitAdvice'),
     };
   }
   if (
@@ -146,17 +148,17 @@ export function assessAccelCalibration(values: AccelCalibrationValues): Calibrat
     return {
       verdict: 'marginal',
       summary: offsetLength !== null && offsetLength > ACCEL_OFFSET_GOOD
-        ? `Accepted but high: offsets ${offsetLength.toFixed(2)} m/s/s.`
-        : `Accepted but high: scale off by ${((scaleError ?? 0) * 100).toFixed(0)}%.`,
-      advice: 'Within arming limits but drifting. Recalibrate on a level surface, holding each position steady.',
+        ? t('shared:calibrationQuality.accelOffsetsHigh', { offsets: offsetLength.toFixed(2) })
+        : t('shared:calibrationQuality.accelScaleHigh', { percent: ((scaleError ?? 0) * 100).toFixed(0) }),
+      advice: t('shared:calibrationQuality.accelDriftingAdvice'),
     };
   }
 
   return {
     verdict: 'good',
     summary: offsetLength !== null
-      ? `Good: offsets ${offsetLength.toFixed(2)} m/s/s.`
-      : 'Good.',
+      ? t('shared:calibrationQuality.accelGoodOffsets', { offsets: offsetLength.toFixed(2) })
+      : t('shared:calibrationQuality.accelGood'),
   };
 }
 
@@ -186,7 +188,7 @@ export function verifyCalibrationPersisted(
 ): PersistenceResult {
   const names = Object.keys(written);
   if (names.length === 0) {
-    return { state: 'unverified', summary: 'Nothing to verify.', mismatched: [] };
+    return { state: 'unverified', summary: t('shared:calibrationQuality.nothingToVerify'), mismatched: [] };
   }
 
   const missing: string[] = [];
@@ -206,7 +208,7 @@ export function verifyCalibrationPersisted(
   if (missing.length === names.length) {
     return {
       state: 'unverified',
-      summary: 'Could not read the calibration back from the vehicle.',
+      summary: t('shared:calibrationQuality.readBackFailed'),
       mismatched: missing,
     };
   }
@@ -214,10 +216,10 @@ export function verifyCalibrationPersisted(
     const lost = [...mismatched, ...missing];
     return {
       state: 'not-persisted',
-      summary: `${lost.length} calibration value${lost.length === 1 ? '' : 's'} did not survive the reboot.`,
+      summary: t('shared:calibrationQuality.notPersisted', { count: lost.length }),
       mismatched: lost,
     };
   }
 
-  return { state: 'verified', summary: 'Calibration confirmed on the vehicle after reboot.', mismatched: [] };
+  return { state: 'verified', summary: t('shared:calibrationQuality.persisted'), mismatched: [] };
 }

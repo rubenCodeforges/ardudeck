@@ -13,24 +13,24 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { LayerKey } from '../../shared/map-layers';
 
 /** Base layers offered in the editor — the planning-relevant subset of MAP_LAYERS. */
-export const AREA_EDITOR_BASE_LAYERS: { key: LayerKey; label: string }[] = [
-  { key: 'googleSat', label: 'Satellite' },
-  { key: 'googleHybrid', label: 'Hybrid' },
-  { key: 'bingSat', label: 'Bing Sat' },
-  { key: 'bingHybrid', label: 'Bing Hybrid' },
-  { key: 'osm', label: 'Street' },
-  { key: 'terrain', label: 'Terrain' },
-  { key: 'dark', label: 'Dark' },
+export const AREA_EDITOR_BASE_LAYERS: { key: LayerKey; labelKey: string }[] = [
+  { key: 'googleSat', labelKey: 'area-editor:layers.base.satellite' },
+  { key: 'googleHybrid', labelKey: 'area-editor:layers.base.hybrid' },
+  { key: 'bingSat', labelKey: 'area-editor:layers.base.bingSat' },
+  { key: 'bingHybrid', labelKey: 'area-editor:layers.base.bingHybrid' },
+  { key: 'osm', labelKey: 'area-editor:layers.base.street' },
+  { key: 'terrain', labelKey: 'area-editor:layers.base.terrain' },
+  { key: 'dark', labelKey: 'area-editor:layers.base.dark' },
 ];
 
 export type AreaEditorOverlayId = 'aviation' | 'zones' | 'wind' | 'traffic' | 'gliders';
 
-export const AREA_EDITOR_OVERLAYS: { id: AreaEditorOverlayId; label: string; hint: string }[] = [
-  { id: 'aviation', label: 'Aviation', hint: 'OpenAIP airfields, navaids and airspace (needs an OpenAIP key)' },
-  { id: 'zones', label: 'Zones', hint: 'DIPUL German UAS geo-zones (Germany only)' },
-  { id: 'wind', label: 'Wind', hint: 'Animated forecast wind (Open-Meteo)' },
-  { id: 'traffic', label: 'Traffic', hint: 'Live ADS-B aircraft' },
-  { id: 'gliders', label: 'Gliders', hint: 'Live OGN/FLARM gliders' },
+export const AREA_EDITOR_OVERLAYS: { id: AreaEditorOverlayId; labelKey: string; hintKey: string }[] = [
+  { id: 'aviation', labelKey: 'area-editor:layers.overlay.aviation', hintKey: 'area-editor:layers.overlay.aviationHint' },
+  { id: 'zones', labelKey: 'area-editor:layers.overlay.zones', hintKey: 'area-editor:layers.overlay.zonesHint' },
+  { id: 'wind', labelKey: 'area-editor:layers.overlay.wind', hintKey: 'area-editor:layers.overlay.windHint' },
+  { id: 'traffic', labelKey: 'area-editor:layers.overlay.traffic', hintKey: 'area-editor:layers.overlay.trafficHint' },
+  { id: 'gliders', labelKey: 'area-editor:layers.overlay.gliders', hintKey: 'area-editor:layers.overlay.glidersHint' },
 ];
 
 interface LayersState {

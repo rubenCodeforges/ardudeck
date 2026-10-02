@@ -12,6 +12,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { persist } from 'zustand/middleware';
 import type {
   SwarmFormation,
@@ -101,7 +102,7 @@ export const useSwarmSitlStore = create<SwarmSitlStore>()(
             formation,
           });
           if (!result.success) {
-            set({ isStarting: false, lastError: result.error ?? 'Failed to start swarm' });
+            set({ isStarting: false, lastError: result.error ?? t('stores:swarmSitlStore.startFailed') });
             return false;
           }
 
@@ -126,7 +127,7 @@ export const useSwarmSitlStore = create<SwarmSitlStore>()(
           }));
           return true;
         } catch (err) {
-          set({ isStarting: false, lastError: err instanceof Error ? err.message : 'Unknown error' });
+          set({ isStarting: false, lastError: err instanceof Error ? err.message : t('common:unknownError') });
           return false;
         }
       },

@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * Centralized map layer definitions — single source of truth for all map components.
  * Used by telemetry map, mission 2D, mission 3D, and tile cache.
@@ -28,7 +30,7 @@ export const MAP_LAYERS = {
     maxZoom: 18,
   },
   googleSat: {
-    name: 'Google Sat',
+    name: 'Google Sat', // i18n-exempt
     url: 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 22,
@@ -49,14 +51,14 @@ export const MAP_LAYERS = {
   // Microsoft is sunsetting Bing Maps for Enterprise (2028) so these may die
   // eventually; the {q} token is resolved to a quadkey in resolveTileUrl.
   bingSat: {
-    name: 'Bing Sat',
+    name: 'Bing Sat', // i18n-exempt
     url: 'https://ecn.t{s}.tiles.virtualearth.net/tiles/a{q}.jpeg?g=14364&n=z',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 21,
     maxNativeZoom: 19,
   },
   bingHybrid: {
-    name: 'Bing Hybrid',
+    name: 'Bing Hybrid', // i18n-exempt
     url: 'https://ecn.t{s}.tiles.virtualearth.net/tiles/h{q}.jpeg?g=14364&n=z',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 21,
@@ -97,6 +99,10 @@ export const MAP_LAYERS = {
 } as const satisfies Record<string, MapLayer>;
 
 export type LayerKey = keyof typeof MAP_LAYERS;
+
+export function mapLayerName(layerKey: LayerKey): string {
+  return t(`shared:mapLayers.${layerKey}`);
+}
 
 /**
  * Bing-style quadkey: one base-4 digit per zoom level, interleaving the x/y

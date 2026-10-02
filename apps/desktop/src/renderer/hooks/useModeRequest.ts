@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ArduPilotVehicleClass } from '../../shared/telemetry-types';
+import { t } from '../../shared/i18n/index.js';
 import { modeMetaFor } from '../../shared/flight-mode-meta';
 
 export type ModePhase = 'active' | 'requesting' | 'rejected';
@@ -109,14 +110,14 @@ export function useModeRequest(
     setPendingCommit(null);
     setRequestedMode(modeNum);
     setPhase('requesting');
-    watchdog.current = setTimeout(() => enterRejected('No response'), MODE_WATCHDOG_MS);
+    watchdog.current = setTimeout(() => enterRejected(t('hooks:useModeRequest.noResponse')), MODE_WATCHDOG_MS);
     let ok = false;
     try {
       ok = await sendMode(modeNum);
     } catch {
       ok = false;
     }
-    if (!ok) enterRejected('Not sent');
+    if (!ok) enterRejected(t('hooks:useModeRequest.notSent'));
   }, [clearWatchdog, enterRejected, sendMode]);
 
   const requestMode = useCallback((modeNum: number, opts?: { skipConfirm?: boolean }) => {

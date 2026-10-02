@@ -12,6 +12,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { persist } from 'zustand/middleware';
 import type {
   Px4VehicleType,
@@ -218,11 +219,11 @@ export const usePx4SitlStore = create<Px4SitlStore>()(
             await get().checkBinary();
             return true;
           }
-          set({ isDownloading: false, lastError: result.error ?? 'Download failed' });
+          set({ isDownloading: false, lastError: result.error ?? t('stores:px4SitlStore.downloadFailed') });
           appendConsole(`Download failed: ${result.error}\n`, true);
           return false;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isDownloading: false, lastError: message });
           appendConsole(`Download error: ${message}\n`, true);
           return false;
@@ -271,11 +272,11 @@ export const usePx4SitlStore = create<Px4SitlStore>()(
             }
             return true;
           }
-          set({ isStarting: false, lastError: result.error ?? 'Failed to start SITL' });
+          set({ isStarting: false, lastError: result.error ?? t('stores:px4SitlStore.startFailed') });
           appendConsole(`Error: ${result.error}\n`, true);
           return false;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isStarting: false, lastError: message });
           appendConsole(`Error: ${message}\n`, true);
           return false;
@@ -305,13 +306,13 @@ export const usePx4SitlStore = create<Px4SitlStore>()(
             const { useConnectionStore } = await import('./connection-store');
             const conn = useConnectionStore.getState();
             if (conn.connectionState.isConnected && conn.connectionState.firmware === 'px4') {
-              appendConsole('Disconnecting from stopped SITL.\n');
+              appendConsole(`${t('stores:px4SitlStore.disconnecting')}\n`);
               await conn.disconnect();
             }
           } catch { /* disconnect is best-effort; the stop itself succeeded */ }
           return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           set({ isStopping: false, lastError: message });
           appendConsole(`Error stopping: ${message}\n`, true);
           return false;
@@ -395,7 +396,7 @@ export const usePx4SitlStore = create<Px4SitlStore>()(
             set({ isDownloading: false });
             checkBinary();
           } else if (progress.status === 'error') {
-            set({ isDownloading: false, lastError: progress.error ?? 'Download failed' });
+            set({ isDownloading: false, lastError: progress.error ?? t('stores:px4SitlStore.downloadFailed') });
           }
         });
 

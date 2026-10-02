@@ -12,6 +12,7 @@ import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { DetectedBoard, FlashProgress, FlashResult, FlashOptions } from '../../shared/firmware-types.js';
 import { rebootToBootloaderCli } from './msp-detector.js';
 import { acquireFlashLock, releaseFlashLock } from './flash-guard.js';
+import { t } from '../../shared/i18n/index.js';
 
 // Inline firmware image type to avoid import issues
 interface FirmwareImage {
@@ -147,7 +148,7 @@ class STM32SerialBootloader {
    * This works on some boards where DTR->RESET and RTS->BOOT0
    */
   async tryDtrReset(): Promise<void> {
-    sendLog(this.window, 'info', 'Trying DTR/RTS reset sequence...');
+    sendLog(this.window, 'info', 'Trying DTR/RTS reset sequence...'); // i18n-exempt
 
     try {
       // Set BOOT0 high via RTS (if connected)
@@ -197,7 +198,7 @@ class STM32SerialBootloader {
    * Check if bootloader is already synchronized by sending GET command
    */
   private async checkAlreadySynced(): Promise<boolean> {
-    sendLog(this.window, 'info', 'Checking if bootloader is already synchronized...');
+    sendLog(this.window, 'info', 'Checking if bootloader is already synchronized...'); // i18n-exempt
 
     // Send GET command (0x00 + 0xFF checksum)
     await this.transport.write(new Uint8Array([CMD_GET, ~CMD_GET & 0xFF]));
@@ -211,7 +212,7 @@ class STM32SerialBootloader {
 
       if (byte >= 0) {
         if (byte === ACK) {
-          sendLog(this.window, 'info', 'Bootloader already synchronized (GET command accepted)');
+          sendLog(this.window, 'info', 'Bootloader already synchronized (GET command accepted)'); // i18n-exempt
           // Wait for full GET response then discard
           await new Promise(r => setTimeout(r, 100));
           await this.transport.discardInBuffer();
@@ -232,7 +233,7 @@ class STM32SerialBootloader {
    * Based on Betaflight Configurator's webstm32.js implementation
    */
   async sync(): Promise<boolean> {
-    sendLog(this.window, 'info', 'Synchronizing with STM32 bootloader (8E1)...');
+    sendLog(this.window, 'info', 'Synchronizing with STM32 bootloader (8E1)...'); // i18n-exempt
 
     // First try DTR/RTS reset to enter bootloader
     await this.tryDtrReset();
@@ -260,7 +261,7 @@ class STM32SerialBootloader {
       const response = await this.waitForAck(250, true);
 
       if (response) {
-        sendLog(this.window, 'info', 'Bootloader synchronized!');
+        sendLog(this.window, 'info', 'Bootloader synchronized!'); // i18n-exempt
         return true;
       }
 
@@ -370,7 +371,7 @@ class STM32SerialBootloader {
    * Erase flash memory
    */
   async eraseFlash(pages?: number[]): Promise<boolean> {
-    sendLog(this.window, 'info', 'Erasing flash...');
+    sendLog(this.window, 'info', 'Erasing flash...'); // i18n-exempt
 
     if (!await this.sendCommand(CMD_ERASE)) {
       // Try extended erase
@@ -583,13 +584,13 @@ function parseHexFile(content: string): FirmwareImage {
 async function parseApjFile(buffer: Buffer): Promise<FirmwareImage> {
   const json = JSON.parse(buffer.toString('utf-8')) as { image?: string; image_size?: number };
   if (!json.image || !json.image_size) {
-    throw new Error('Invalid APJ file: missing image or image_size');
+    throw new Error('Invalid APJ file: missing image or image_size'); // i18n-exempt
   }
 
   const compressed = Buffer.from(json.image, 'base64');
   const decompressed = await new Promise<Buffer>((resolve, reject) => {
     zlib.inflate(compressed, (err, result) => {
-      if (err) reject(new Error(`APJ decompression failed: ${err.message}`));
+      if (err) reject(new Error(`APJ decompression failed: ${err.message}`)); // i18n-exempt
       else resolve(result);
     });
   });
@@ -643,7 +644,7 @@ export async function flashWithSerialBootloader(
   if (!flashPort) {
     return {
       success: false,
-      error: 'No serial port specified',
+      error: t('main:flasher.noSerialPort'),
       duration: Date.now() - startTime,
     };
   }
@@ -652,7 +653,7 @@ export async function flashWithSerialBootloader(
   if (!acquireFlashLock('serial')) {
     return {
       success: false,
-      error: 'Another flash operation is already in progress. Please wait for it to complete.',
+      error: t('main:flasher.anotherInProgress'),
       duration: Date.now() - startTime,
     };
   }
@@ -664,7 +665,7 @@ export async function flashWithSerialBootloader(
     sendProgress(window, {
       state: 'preparing',
       progress: 0,
-      message: 'Loading firmware...',
+      message: t('main:flasher.loadingFirmware'),
     });
 
     const firmware = await loadFirmware(firmwarePath);
@@ -676,14 +677,14 @@ export async function flashWithSerialBootloader(
       sendProgress(window, {
         state: 'entering-bootloader',
         progress: 5,
-        message: 'Rebooting into bootloader mode...',
+        message: t('main:flasher.rebootingIntoBootloaderMode'),
       });
 
       // Use CLI 'dfu' command to enter bootloader — works for both iNav and Betaflight.
       // MSP_SET_REBOOT type 4 doesn't work reliably on iNav boards.
       const isNativeUsb = board.usbVid === 0x0483;
 
-      sendLog(window, 'info', 'Entering CLI to send DFU reboot command...');
+      sendLog(window, 'info', 'Entering CLI to send DFU reboot command...'); // i18n-exempt
 
       // Record ports before reboot so we can detect new ones
       // On macOS, ports can appear as /dev/cu.* or /dev/tty.* — normalize for comparison
@@ -697,15 +698,15 @@ export async function flashWithSerialBootloader(
       const rebooted = await rebootToBootloaderCli(flashPort, 115200, (msg) => sendLog(window, 'info', msg));
 
       if (rebooted) {
-        sendLog(window, 'info', 'Reboot command sent!');
+        sendLog(window, 'info', 'Reboot command sent!'); // i18n-exempt
 
         if (isNativeUsb) {
           // Native USB: port disappears and reappears as bootloader re-initializes USB CDC
-          sendLog(window, 'info', 'Waiting for board to re-enumerate USB...');
+          sendLog(window, 'info', 'Waiting for board to re-enumerate USB...'); // i18n-exempt
           sendProgress(window, {
             state: 'entering-bootloader',
             progress: 7,
-            message: 'Waiting for bootloader USB...',
+            message: t('main:flasher.waitingBootloaderUsb'),
           });
 
           // Wait for port to disappear and reappear (up to 8 seconds)
@@ -760,7 +761,7 @@ export async function flashWithSerialBootloader(
       sendProgress(window, {
         state: 'preparing',
         progress: 10,
-        message: `Trying bootloader at ${baudRate} baud...`,
+        message: t('main:flasher.tryingBaud', { baud: baudRate }),
       });
       sendLog(window, 'info', `Trying bootloader connection at ${baudRate} baud...`);
 
@@ -856,7 +857,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
             await bootloader.close();
             return {
               success: false,
-              error: `Firmware too large! The ${chipInfo.mcu} has ${flashSizeKb}KB flash, but the firmware is ${firmwareSizeKb}KB.\n\nPlease select a firmware build that matches your board's flash size.`,
+              error: t('main:flasher.firmwareTooLargeMcu', { mcu: chipInfo.mcu, flash: flashSizeKb, size: firmwareSizeKb }),
               duration: Date.now() - startTime,
             };
           }
@@ -865,15 +866,15 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
     }
 
     if (abortController?.signal.aborted) {
-      sendLog(window, 'warn', 'Flash aborted by user');
-      return { success: false, error: 'Aborted', duration: Date.now() - startTime };
+      sendLog(window, 'warn', 'Flash aborted by user'); // i18n-exempt
+      return { success: false, error: t('main:flasher.aborted'), duration: Date.now() - startTime };
     }
 
     // Erase flash
     sendProgress(window, {
       state: 'erasing',
       progress: 10,
-      message: 'Erasing flash...',
+      message: t('main:flasher.erasingFlash'),
     });
 
     const erased = await bootloader.eraseFlash();
@@ -881,38 +882,38 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
       sendLog(window, 'error', 'Flash erase command failed — bootloader did not ACK');
       return {
         success: false,
-        error: 'Flash erase failed',
+        error: t('main:flasher.eraseFailed'),
         duration: Date.now() - startTime,
       };
     }
-    sendLog(window, 'info', 'Flash erased');
+    sendLog(window, 'info', 'Flash erased'); // i18n-exempt
 
     if (abortController?.signal.aborted) {
-      sendLog(window, 'warn', 'Flash aborted by user after erase');
-      return { success: false, error: 'Aborted', duration: Date.now() - startTime };
+      sendLog(window, 'warn', 'Flash aborted by user after erase'); // i18n-exempt
+      return { success: false, error: t('main:flasher.aborted'), duration: Date.now() - startTime };
     }
 
     // Write firmware
     sendProgress(window, {
       state: 'flashing',
       progress: 20,
-      message: 'Writing firmware...',
+      message: t('main:flasher.writingFirmware'),
     });
 
     await bootloader.flash(firmware, (percent) => {
       sendProgress(window, {
         state: 'flashing',
         progress: 20 + Math.round(percent * 0.7),
-        message: `Writing firmware... ${percent}%`,
+        message: t('main:flasher.writingProgress', { percent }),
       });
     });
-    sendLog(window, 'info', 'Firmware written');
+    sendLog(window, 'info', 'Firmware written'); // i18n-exempt
 
     // Jump to application
     sendProgress(window, {
       state: 'rebooting',
       progress: 95,
-      message: 'Starting application...',
+      message: t('main:flasher.startingApplication'),
     });
 
     await bootloader.go();
@@ -921,7 +922,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
     sendProgress(window, {
       state: 'complete',
       progress: 100,
-      message: 'Flash complete!',
+      message: t('common:flashComplete'),
     });
 
     const duration = Date.now() - startTime;
@@ -929,7 +930,7 @@ The BOOT pads are usually labeled "BOOT" or "BT" near the MCU.`,
 
     return {
       success: true,
-      message: 'Firmware flashed successfully',
+      message: t('main:flasher.flashedSuccessfully'),
       duration,
       verified: false, // Serial bootloader doesn't easily support verify
     };

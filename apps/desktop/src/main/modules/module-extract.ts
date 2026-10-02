@@ -15,7 +15,7 @@ export async function extractBundle(zipPath: string, targetDir: string): Promise
     const dest = resolve(absTarget, name);
     const rel = relative(absTarget, dest);
     if (rel.startsWith('..') || isAbsolute(rel)) {
-      throw new Error(`Unsafe zip entry (path traversal): ${name}`);
+      throw new Error(`Unsafe zip entry (path traversal): ${name}`); // i18n-exempt
     }
   }
 

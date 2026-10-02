@@ -2,6 +2,7 @@ import { BrowserWindow, shell } from 'electron';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { registerSecondaryWindow } from './window-manager.js';
+import { t } from '../shared/i18n/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,7 +26,7 @@ export function openAreaEditorWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: 'ArduDeck Area Editor',
+    title: t('main:areaEditorWindow.windowTitle'),
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
@@ -56,7 +57,7 @@ export function openAreaEditorWindow(): BrowserWindow {
   const params = new URLSearchParams();
   params.set('detached', '1');
   params.set('componentId', 'area-editor');
-  params.set('title', 'Area Editor');
+  params.set('title', t('main:areaEditorWindow.title'));
   if (lastMainViewport) {
     params.set('lat', String(lastMainViewport.lat));
     params.set('lng', String(lastMainViewport.lng));

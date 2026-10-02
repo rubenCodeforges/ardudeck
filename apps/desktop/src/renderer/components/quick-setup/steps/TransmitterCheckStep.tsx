@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useQuickSetupStore } from '../../../stores/quick-setup-store';
 import { Radio, CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Wrench, Loader2 } from 'lucide-react';
 import { PRIMARY_CHANNEL_COUNT, getChannelName } from '../../../utils/rc-channel-constants';
@@ -18,8 +19,9 @@ import {
   INAV_QUICK_SELECT,
   BF_QUICK_SELECT,
   BF_PROVIDERS,
-  PROTOCOL_HINTS,
-  BF_PROTOCOL_HINTS,
+  protocolHint,
+  bfProtocolHint,
+  inavReceiverTypeLabel,
   SERIAL_FUNCTION_BIT_RX,
   INAV_RECEIVER_TYPE_INDEX,
   INAV_SERIALRX_PROVIDER_INDEX,
@@ -96,6 +98,7 @@ function getPortName(identifier: number): string {
 }
 
 export const TransmitterCheckStep: React.FC = () => {
+  const { t } = useTranslation();
   const {
     rcChannels,
     isPollingRc,
@@ -246,7 +249,7 @@ export const TransmitterCheckStep: React.FC = () => {
       setNoSignalTimeout(false);
       setConfigLoaded(false); // reload next time if needed
     } catch (err) {
-      setRxSaveError(err instanceof Error ? err.message : 'Failed to save receiver config');
+      setRxSaveError(err instanceof Error ? err.message : t('quick-setup:transmitter.saveFailed'));
     } finally {
       setIsSavingRx(false);
     }
@@ -268,12 +271,12 @@ export const TransmitterCheckStep: React.FC = () => {
           )}
         </div>
         <h2 className="text-xl font-semibold text-content">
-          {allDetected ? 'Transmitter Connected!' : 'Wiggle Your Sticks'}
+          {allDetected ? t('quick-setup:transmitter.connected') : t('quick-setup:transmitter.wiggleSticks')}
         </h2>
         <p className="text-sm text-content-secondary mt-2 max-w-md mx-auto">
           {allDetected
-            ? 'Your transmitter is working. You can proceed to review your configuration.'
-            : 'Turn on your transmitter and move all sticks to verify they are being received.'}
+            ? t('quick-setup:transmitter.workingHint')
+            : t('quick-setup:transmitter.turnOnHint')}
         </p>
       </div>
 
@@ -293,12 +296,12 @@ export const TransmitterCheckStep: React.FC = () => {
           )}
           <div>
             <p className={`text-sm font-medium ${allDetected ? 'text-green-300' : 'text-amber-300'}`}>
-              {detectedCount}/4 channels detected
+              {t('quick-setup:transmitter.channelsDetected', { n: detectedCount })}
             </p>
             <p className="text-xs text-content-secondary mt-0.5">
               {allDetected
-                ? 'All primary channels (Roll, Pitch, Throttle, Yaw) are responding'
-                : 'Wiggle each stick to detect remaining channels'}
+                ? t('quick-setup:transmitter.allPrimaryResponding')
+                : t('quick-setup:transmitter.wiggleEach')}
             </p>
           </div>
         </div>
@@ -308,7 +311,7 @@ export const TransmitterCheckStep: React.FC = () => {
       <div className="p-4 bg-surface rounded-xl space-y-3">
         <h3 className="text-sm font-medium text-content flex items-center gap-2">
           <Radio className="w-4 h-4" />
-          RC Channels
+          {t('common:rcChannels')}
           {isPollingRc && (
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           )}
@@ -353,10 +356,10 @@ export const TransmitterCheckStep: React.FC = () => {
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-amber-300">
-                  No RC signal detected
+                  {t('quick-setup:transmitter.noSignal')}
                 </p>
                 <p className="text-xs text-content-secondary mt-1">
-                  Your receiver may not be configured correctly. Check that it's powered, bound to your transmitter, and the correct protocol is set.
+                  {t('quick-setup:transmitter.noSignalHint')}
                 </p>
                 {!showTroubleshoot && (
                   <button
@@ -364,7 +367,7 @@ export const TransmitterCheckStep: React.FC = () => {
                     className="mt-3 flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors"
                   >
                     <Wrench className="w-3.5 h-3.5" />
-                    Fix Receiver Config
+                    {t('quick-setup:transmitter.fixReceiver')}
                   </button>
                 )}
               </div>
@@ -377,20 +380,20 @@ export const TransmitterCheckStep: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Wrench className="w-4 h-4 text-blue-400" />
-                  <h3 className="text-sm font-medium text-content">Receiver Configuration</h3>
+                  <h3 className="text-sm font-medium text-content">{t('quick-setup:transmitter.receiverConfiguration')}</h3>
                 </div>
                 <button
                   onClick={() => setShowTroubleshoot(false)}
                   className="text-xs text-content-secondary hover:text-content transition-colors"
                 >
-                  Close
+                  {t('common:close')}
                 </button>
               </div>
 
               {!configLoaded ? (
                 <div className="flex items-center justify-center gap-2 py-4 text-content-secondary">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Loading config from FC...</span>
+                  <span className="text-sm">{t('quick-setup:transmitter.loadingConfig')}</span>
                 </div>
               ) : (
                 <>
@@ -398,19 +401,19 @@ export const TransmitterCheckStep: React.FC = () => {
                   {isInav ? (
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs text-content-secondary mb-1.5 block">Receiver Type</label>
+                        <label className="text-xs text-content-secondary mb-1.5 block">{t('quick-setup:transmitter.receiverType')}</label>
                         <div className="flex gap-1.5 flex-wrap">
-                          {INAV_RECEIVER_TYPES.map((t) => (
+                          {INAV_RECEIVER_TYPES.map((rt) => (
                             <button
-                              key={t.value}
-                              onClick={() => setRxType(t.value)}
+                              key={rt.value}
+                              onClick={() => setRxType(rt.value)}
                               className={`px-3 py-1.5 rounded-lg text-xs transition-all ${
-                                rxType === t.value
+                                rxType === rt.value
                                   ? 'bg-blue-600 text-white'
                                   : 'bg-surface-raised text-content-secondary hover:bg-surface-raised'
                               }`}
                             >
-                              {t.label}
+                              {inavReceiverTypeLabel(rt)}
                             </button>
                           ))}
                         </div>
@@ -418,7 +421,7 @@ export const TransmitterCheckStep: React.FC = () => {
 
                       {rxType === 'SERIAL' && (
                         <div>
-                          <label className="text-xs text-content-secondary mb-1.5 block">Serial RX Protocol</label>
+                          <label className="text-xs text-content-secondary mb-1.5 block">{t('quick-setup:transmitter.serialRxProtocol')}</label>
                           <div className="flex gap-1.5 flex-wrap">
                             {INAV_QUICK_SELECT.map((p) => (
                               <button
@@ -434,8 +437,8 @@ export const TransmitterCheckStep: React.FC = () => {
                               </button>
                             ))}
                           </div>
-                          {inavProvider && PROTOCOL_HINTS[inavProvider] && (
-                            <p className="text-[11px] text-content-secondary mt-1.5">{PROTOCOL_HINTS[inavProvider]}</p>
+                          {inavProvider && protocolHint(inavProvider) && (
+                            <p className="text-[11px] text-content-secondary mt-1.5">{protocolHint(inavProvider)}</p>
                           )}
                         </div>
                       )}
@@ -443,7 +446,7 @@ export const TransmitterCheckStep: React.FC = () => {
                   ) : (
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs text-content-secondary mb-1.5 block">Receiver Protocol</label>
+                        <label className="text-xs text-content-secondary mb-1.5 block">{t('common:receiverProtocol')}</label>
                         <div className="flex gap-1.5 flex-wrap">
                           {BF_QUICK_SELECT.map((p) => (
                             <button
@@ -461,20 +464,20 @@ export const TransmitterCheckStep: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs text-content-secondary mb-1.5 block">All Protocols</label>
+                        <label className="text-xs text-content-secondary mb-1.5 block">{t('common:allProtocols')}</label>
                         <select
                           value={bfProvider ?? ''}
                           onChange={(e) => setBfProvider(Number(e.target.value))}
                           className="w-full bg-surface-raised text-content rounded-lg px-3 py-1.5 text-xs border border focus:border-blue-500 focus:outline-none"
                         >
-                          {bfProvider === null && <option value="">Not loaded</option>}
+                          {bfProvider === null && <option value="">{t('quick-setup:transmitter.notLoaded')}</option>}
                           {BF_PROVIDERS.map((p) => (
                             <option key={p.value} value={p.value}>{p.label}</option>
                           ))}
                         </select>
                       </div>
-                      {bfProvider != null && BF_PROTOCOL_HINTS[bfProvider] && (
-                        <p className="text-[11px] text-content-secondary">{BF_PROTOCOL_HINTS[bfProvider]}</p>
+                      {bfProvider != null && bfProtocolHint(bfProvider) && (
+                        <p className="text-[11px] text-content-secondary">{bfProtocolHint(bfProvider)}</p>
                       )}
                     </div>
                   )}
@@ -482,13 +485,13 @@ export const TransmitterCheckStep: React.FC = () => {
                   {/* Serial RX Port selector */}
                   {serialPorts.length > 0 && (rxType === 'SERIAL' || !isInav) && (
                     <div>
-                      <label className="text-xs text-content-secondary mb-1.5 block">Serial RX Port</label>
+                      <label className="text-xs text-content-secondary mb-1.5 block">{t('quick-setup:transmitter.serialRxPort')}</label>
                       <select
                         value={rxPortId}
                         onChange={(e) => setRxPortId(Number(e.target.value))}
                         className="w-full bg-surface-raised text-content rounded-lg px-3 py-1.5 text-xs border border focus:border-blue-500 focus:outline-none"
                       >
-                        <option value={-1}>None selected</option>
+                        <option value={-1}>{t('quick-setup:transmitter.noneSelected')}</option>
                         {serialPorts.map((p) => (
                           <option key={p.identifier} value={p.identifier}>
                             {getPortName(p.identifier)}
@@ -496,7 +499,7 @@ export const TransmitterCheckStep: React.FC = () => {
                         ))}
                       </select>
                       <p className="text-[11px] text-content-secondary mt-1">
-                        Select the UART your receiver is wired to. Only one port can have Serial RX.
+                        {t('quick-setup:transmitter.selectUartHint')}
                       </p>
                     </div>
                   )}
@@ -517,10 +520,10 @@ export const TransmitterCheckStep: React.FC = () => {
                     {isSavingRx ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Saving...
+                        {t('common:saving')}
                       </>
                     ) : (
-                      'Apply & Retry'
+                      t('quick-setup:transmitter.applyRetry')
                     )}
                   </button>
                 </>
@@ -537,9 +540,9 @@ export const TransmitterCheckStep: React.FC = () => {
             <selectedPreset.icon className="w-6 h-6 text-content" />
             <div>
               <p className="text-sm text-content">
-                Applying <strong>{selectedPreset.name}</strong> preset
+                <Trans i18nKey="quick-setup:transmitter.applyingPreset" values={{ name: t(selectedPreset.nameKey) }} components={{ b: <strong /> }} />
               </p>
-              <p className="text-xs text-content-secondary">{selectedPreset.description}</p>
+              <p className="text-xs text-content-secondary">{t(selectedPreset.descriptionKey)}</p>
             </div>
           </div>
         </div>
@@ -552,7 +555,7 @@ export const TransmitterCheckStep: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 text-sm text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
+          {t('common:back')}
         </button>
 
         <button
@@ -564,7 +567,7 @@ export const TransmitterCheckStep: React.FC = () => {
               : 'bg-surface-raised text-content-secondary cursor-not-allowed'
           }`}
         >
-          Continue
+          {t('quick-setup:transmitter.continue')}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -578,7 +581,7 @@ export const TransmitterCheckStep: React.FC = () => {
           }}
           className="text-xs text-content-secondary hover:text-content-secondary underline"
         >
-          Skip transmitter check (not recommended)
+          {t('quick-setup:transmitter.skip')}
         </button>
       </div>
     </div>

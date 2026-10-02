@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, Loader2, MonitorDown, RefreshCw, Trash2 } from 'lucide-react';
 import { useAppStore } from '../../stores/app-store';
 import { HangarAppCard } from './HangarAppCard';
@@ -12,6 +13,7 @@ import { HangarAppCard } from './HangarAppCard';
  * it there.
  */
 export function HangarApps({ mode }: { mode: 'browse' | 'installed' }) {
+  const { t } = useTranslation();
   const { catalog, installed, loading, installing, progress, fetchCatalog, fetchInstalled, install, uninstall } =
     useAppStore();
 
@@ -35,7 +37,7 @@ export function HangarApps({ mode }: { mode: 'browse' | 'installed' }) {
     if (installed.length === 0) return null;
     return (
       <div className="space-y-3">
-        <SectionHeader label="Installed apps" count={installed.length} />
+        <SectionHeader label={t('modules:hangarApps.installedApps')} count={installed.length} />
         {installed.map((a) => (
           <div key={a.slug} className="card">
             <div className="card-body flex items-center gap-4 py-3">
@@ -51,7 +53,7 @@ export function HangarApps({ mode }: { mode: 'browse' | 'installed' }) {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-content-secondary hover:text-red-400 bg-surface-raised border border-subtle rounded-lg transition-colors shrink-0"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Remove
+                {t('common:remove')}
               </button>
             </div>
           </div>
@@ -65,14 +67,14 @@ export function HangarApps({ mode }: { mode: 'browse' | 'installed' }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <SectionHeader label="Apps" count={rows.length} />
+        <SectionHeader label={t('modules:hangarApps.apps')} count={rows.length} />
         <button
           onClick={() => fetchCatalog()}
           disabled={loading}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors disabled:opacity-60 shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common:refresh')}
         </button>
       </div>
 

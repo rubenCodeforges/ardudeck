@@ -94,7 +94,7 @@ function createTerrainGridLayer(
       img.onload = () => {
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          done(new Error('No 2d context'), canvas);
+          done(new Error('No 2d context'), canvas); // i18n-exempt: internal
           return;
         }
 
@@ -161,7 +161,7 @@ function createTerrainGridLayer(
       };
 
       img.onerror = () => {
-        done(new Error('Tile load failed'), canvas);
+        done(new Error('Tile load failed'), canvas); // i18n-exempt: internal
       };
 
       img.src = url;

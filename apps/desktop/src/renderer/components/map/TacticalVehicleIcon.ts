@@ -7,6 +7,7 @@
  * The icon is only recreated when state/mode/selection/vehicleClass changes.
  */
 
+import { t } from '../../../shared/i18n/index.js';
 import L from 'leaflet';
 import {
   TACTICAL_ICON_POOL,
@@ -75,7 +76,7 @@ export function createTacticalVehicleIcon(opts: TacticalIconOptions): L.DivIcon 
   const compact = opts.compact || tier === 'medium';
 
   const leaderChip = opts.isLeader
-    ? `<span style="background:#fbbf24;color:#1f2937;font-weight:700;border-radius:2px;padding:0 3px;margin-right:4px;font-size:8px;letter-spacing:0.3px;">LEAD</span>`
+    ? `<span style="background:#fbbf24;color:#1f2937;font-weight:700;border-radius:2px;padding:0 3px;margin-right:4px;font-size:8px;letter-spacing:0.3px;">${t('map:tacticalIcon.leadChip')}</span>`
     : '';
 
   const designationHtml = opts.designation

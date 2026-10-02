@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSimStateStore, type SimStateMessage } from '../../stores/sim-state-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { createSimWorldScene, type SimWorldScene, type SimCameraMode, type SimVehicleFrame, type SimObstacle, type SimWaypoint } from './sim-world-scene';
@@ -109,11 +110,11 @@ function flatLatLon(): { lat: number; lon: number } | null {
   return p.lat !== 0 || p.lon !== 0 ? { lat: p.lat, lon: p.lon } : null;
 }
 
-const CAMERA_MODES: Array<{ value: SimCameraMode; label: string; tip: string }> = [
-  { value: 'chase', label: 'Chase', tip: 'Follow behind the vehicle along its heading' },
-  { value: 'orbit', label: 'Orbit', tip: 'Drag to orbit, scroll to zoom' },
-  { value: 'topdown', label: 'Top', tip: 'Top-down map-style view' },
-  { value: 'fpv', label: 'FPV', tip: 'First-person view from the vehicle' },
+const CAMERA_MODES: Array<{ value: SimCameraMode; labelKey: string; tipKey: string }> = [
+  { value: 'chase', labelKey: 'sim:worldView.camera.chase', tipKey: 'sim:worldView.camera.chaseTip' },
+  { value: 'orbit', labelKey: 'sim:worldView.camera.orbit', tipKey: 'sim:worldView.camera.orbitTip' },
+  { value: 'topdown', labelKey: 'sim:worldView.camera.top', tipKey: 'sim:worldView.camera.topTip' },
+  { value: 'fpv', labelKey: 'sim:worldView.camera.fpv', tipKey: 'sim:worldView.camera.fpvTip' },
 ];
 
 function groundSpeed(vel: [number, number, number]): number {
@@ -211,6 +212,7 @@ function copterFrameClass(model: string | undefined, vehicleType: string): { fra
 }
 
 export default function SimWorldView() {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SimWorldScene | null>(null);
@@ -684,7 +686,7 @@ export default function SimWorldView() {
       // Nothing to anchor the DEM to: revert the toggle with a note instead of
       // silently arming it.
       setShowTerrain(false);
-      setTerrainError('Terrain needs a GPS origin - wait for a position fix');
+      setTerrainError('sim:worldView.terrainNeedsOrigin');
       return;
     }
     const key = `${origin.lat.toFixed(4)},${origin.lon.toFixed(4)}`;
@@ -707,7 +709,7 @@ export default function SimWorldView() {
         if (!cancelled) {
           terrainOriginRef.current = null; // allow a later retry
           setShowTerrain(false);
-          setTerrainError('Terrain elevation fetch failed - check the network and retry');
+          setTerrainError('sim:worldView.terrainFetchFailed');
         }
       } finally {
         if (!cancelled) setTerrainPending(false);
@@ -862,14 +864,14 @@ export default function SimWorldView() {
   const engineConnected = status === 'connected';
   const live = engineConnected || hud !== null;
   const pillLabel = engineConnected
-    ? 'Sim Connected'
+    ? t('sim:worldView.simConnected')
     : hud
-      ? 'Vehicle Live'
+      ? t('sim:worldView.vehicleLive')
       : isConnected
-        ? 'Connected, waiting for GPS'
+        ? t('sim:worldView.connectedWaitingGps')
         : status === 'connecting'
-          ? 'Connecting...'
-          : 'Waiting for SITL';
+          ? t('common:connecting')
+          : t('sim:worldView.waitingForSitl');
   // Amber = connected/handshaking but no vehicle on screen yet.
   const pending = !live && (isConnected || status === 'connecting');
 
@@ -898,19 +900,19 @@ export default function SimWorldView() {
         <button
           onClick={() => setShowTerrain((v) => !v)}
           disabled={terrainPending}
-          data-tip="Show real elevation terrain (synthetic vision) under the vehicles"
+          data-tip={t('sim:worldView.terrainTip')}
           className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
             terrainPending
               ? 'bg-surface-raised text-content-tertiary opacity-60 cursor-wait'
               : showTerrain ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
           }`}
         >
-          {terrainPending ? 'Terrain…' : 'Terrain'}
+          {terrainPending ? t('sim:worldView.terrainPending') : t('common:terrain')}
         </button>
         <div className="relative">
           <button
             onClick={() => setShowTerrainMenu((v) => !v)}
-            data-tip="Terrain imagery and detail"
+            data-tip={t('sim:worldView.terrainMenuTip')}
             className="rounded-lg border border-subtle bg-surface-raised px-2 py-1.5 text-xs font-medium text-content-secondary shadow-lg transition-colors hover:text-content"
           >
             ⚙
@@ -926,21 +928,21 @@ export default function SimWorldView() {
                     onChange={(e) => setSvtSatellite(e.target.checked)}
                     className="accent-blue-500"
                   />
-                  Satellite imagery
+                  {t('sim:worldView.satelliteImagery')}
                 </label>
                 <div className="mt-1 border-t border-subtle pt-1">
-                  <div className="px-1.5 pb-1 text-[10px] uppercase tracking-wide text-content-tertiary">Terrain detail</div>
+                  <div className="px-1.5 pb-1 text-[10px] uppercase tracking-wide text-content-tertiary">{t('sim:worldView.terrainDetail')}</div>
                   <div className="flex overflow-hidden rounded-md border border-subtle">
                     {(['low', 'medium', 'high'] as const).map((q) => (
                       <button
                         key={q}
                         onClick={() => setSvtQuality(q)}
                         className={`flex-1 px-1.5 py-0.5 text-[11px] capitalize transition-colors ${quality === q ? 'bg-surface-raised text-content' : 'text-content-secondary hover:bg-surface-raised'}`}
-                      >{q}</button>
+                      >{q === 'low' ? t('sim:worldView.qualityLow') : q === 'medium' ? t('sim:worldView.qualityMedium') : t('common:high')}</button>
                     ))}
                   </div>
                   <div className="px-1.5 pt-1 text-[10px] leading-snug text-content-tertiary">
-                    Shared with synthetic vision. The ground nearest the vehicle always uses the sharpest imagery.
+                    {t('sim:worldView.terrainSharedNote')}
                   </div>
                 </div>
               </div>
@@ -949,37 +951,37 @@ export default function SimWorldView() {
         </div>
         <button
           onClick={() => setShowXray((v) => !v)}
-          data-tip="Physics X-ray: force budget through the CG (thrust, weight, drag, net resultant), per-motor arrows, CG markers and g-load (ArduDeck sim engine only)"
+          data-tip={t('sim:worldView.xrayTip')}
           className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
             showXray ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
           }`}
         >
-          X-ray
+          {t('sim:worldView.xray')}
         </button>
         <button
           onClick={() => setShowGrid((v) => !v)}
-          data-tip="Reference grid: a spatial-perception aid that stays visible over both the flat ground and the SVT terrain"
+          data-tip={t('sim:worldView.gridTip')}
           className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
             showGrid ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
           }`}
         >
-          Grid
+          {t('common:grid')}
         </button>
         <button
           onClick={() => setShowWaypoints((v) => !v)}
-          data-tip="Conformal 3D waypoint markers: target reticles floating at each waypoint's true position + altitude, with number and live slant-range"
+          data-tip={t('sim:worldView.waypointsTip')}
           className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
             showWaypoints ? 'bg-blue-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
           }`}
         >
-          Waypoints
+          {t('common:waypoints')}
         </button>
         <button
           onClick={() => setShowHud((v) => !v)}
           disabled={!hudSupported}
           data-tip={hudSupported
-            ? 'FPV HUD overlay: boresight, pitch/roll horizon ladder, airspeed/altitude, heading and climb rate (FPV & Chase views)'
-            : 'HUD is only available in FPV & Chase views'}
+            ? t('sim:worldView.hudTip')
+            : t('sim:worldView.hudUnavailableTip')}
           className={`rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
             !hudSupported
               ? 'bg-surface-raised text-content-tertiary opacity-40 cursor-not-allowed'
@@ -988,7 +990,7 @@ export default function SimWorldView() {
                 : 'bg-surface-raised text-content-secondary hover:text-content'
           }`}
         >
-          HUD
+          {t('sim:worldView.hud')}
         </button>
         <SimStreamControl canvasRef={canvasRef} />
         <div className="flex overflow-hidden rounded-lg border border-subtle shadow-lg">
@@ -996,14 +998,14 @@ export default function SimWorldView() {
             <button
               key={m.value}
               onClick={() => setCameraMode(m.value)}
-              data-tip={m.tip}
+              data-tip={t(m.tipKey)}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 cameraMode === m.value
                   ? 'bg-blue-600 text-white'
                   : 'bg-surface-raised text-content-secondary hover:text-content'
               }`}
             >
-              {m.label}
+              {t(m.labelKey)}
             </button>
           ))}
         </div>
@@ -1012,7 +1014,7 @@ export default function SimWorldView() {
       {/* Transient terrain-toggle revert note (fetch failed / no GPS origin). */}
       {terrainError && (
         <div className="absolute top-14 right-3 z-10 rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] text-rose-300 pointer-events-none">
-          {terrainError}
+          {t(terrainError)}
         </div>
       )}
 
@@ -1021,11 +1023,11 @@ export default function SimWorldView() {
           in the bottom-left corner, clear of every other overlay. */}
       {showXray && hud?.diagnostics && (
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2.5 rounded-md bg-surface-raised/80 backdrop-blur-sm px-2 py-1 text-[10px] text-content-tertiary pointer-events-none">
-          <LegendDot swatch="linear-gradient(90deg,#38bdf8,#ef4444)" label="Thrust" />
-          <LegendDot color="#fef08a" label="Lift" />
-          <LegendDot color="#9ca3af" label="Weight" />
-          <LegendDot color="#f97316" label="Drag" />
-          <LegendDot color="#ffffff" outline label="Net" />
+          <LegendDot swatch="linear-gradient(90deg,#38bdf8,#ef4444)" label={t('sim:worldView.legend.thrust')} />
+          <LegendDot color="#fef08a" label={t('sim:worldView.legend.lift')} />
+          <LegendDot color="#9ca3af" label={t('sim:worldView.legend.weight')} />
+          <LegendDot color="#f97316" label={t('sim:worldView.legend.drag')} />
+          <LegendDot color="#ffffff" outline label={t('sim:worldView.legend.net')} />
         </div>
       )}
 
@@ -1071,57 +1073,57 @@ export default function SimWorldView() {
       <div className="absolute bottom-3 inset-x-0 z-10 flex flex-col items-center gap-2 px-3 pointer-events-none">
         {hud && (
           <div className="flex items-end gap-2 flex-wrap justify-center pointer-events-auto">
-            <HudTile label="ALT" value={altitude.toFixed(1)} unit="m" tip="Altitude above home (-position.down)" />
-            <HudTile label="SPD" value={speed.toFixed(1)} unit="m/s" tip="Ground speed from horizontal velocity" />
-            <HudTile label="ROLL" value={rad2deg(hud.euler.roll).toFixed(0)} unit="°" tip="Roll attitude" />
-            <HudTile label="PITCH" value={rad2deg(hud.euler.pitch).toFixed(0)} unit="°" tip="Pitch attitude" />
-            <HudTile label="YAW" value={((rad2deg(hud.euler.yaw) + 360) % 360).toFixed(0)} unit="°" tip="Heading" />
+            <HudTile label={t('sim:worldView.tile.alt')} value={altitude.toFixed(1)} unit="m" tip={t('sim:worldView.tile.altTip')} />
+            <HudTile label={t('sim:worldView.tile.spd')} value={speed.toFixed(1)} unit="m/s" tip={t('sim:worldView.tile.spdTip')} />
+            <HudTile label={t('sim:worldView.tile.roll')} value={rad2deg(hud.euler.roll).toFixed(0)} unit="°" tip={t('sim:worldView.tile.rollTip')} />
+            <HudTile label={t('sim:worldView.tile.pitch')} value={rad2deg(hud.euler.pitch).toFixed(0)} unit="°" tip={t('sim:worldView.tile.pitchTip')} />
+            <HudTile label={t('sim:worldView.tile.yaw')} value={((rad2deg(hud.euler.yaw) + 360) % 360).toFixed(0)} unit="°" tip={t('common:heading')} />
             {typeof hud.batteryVoltage === 'number' && (
-              <HudTile label="BATT" value={hud.batteryVoltage.toFixed(1)} unit="V" tip="Loaded battery voltage" />
+              <HudTile label={t('sim:worldView.tile.batt')} value={hud.batteryVoltage.toFixed(1)} unit="V" tip={t('sim:worldView.tile.battTip')} />
             )}
             {hud.load && (
               <HudTile
-                label="SLING"
-                value={hud.load.attached ? hud.load.tension.toFixed(0) : 'REL'}
+                label={t('sim:worldView.tile.sling')}
+                value={hud.load.attached ? hud.load.tension.toFixed(0) : t('sim:worldView.tile.released')}
                 unit={hud.load.attached ? 'N' : ''}
                 tip={hud.load.attached
-                  ? `Slung-load cable tension (cable ${hud.load.cableLength.toFixed(1)} m)`
-                  : 'Load released'}
+                  ? t('sim:worldView.tile.slingTip', { m: hud.load.cableLength.toFixed(1) })
+                  : t('sim:worldView.tile.loadReleased')}
                 accent={hud.load.attached ? undefined : 'amber'}
               />
             )}
             {showXray && hud.diagnostics && (
               <>
                 <HudTile
-                  label="LOAD"
+                  label={t('sim:worldView.tile.load')}
                   value={hud.diagnostics.loadFactor.toFixed(2)}
                   unit="g"
-                  tip="Airframe load factor (specific force / g). 1.0 in level hover; higher in pull-ups / hard turns"
+                  tip={t('sim:worldView.tile.loadTip')}
                   accent={hud.diagnostics.loadFactor > 4 ? 'red' : hud.diagnostics.loadFactor > 2 ? 'amber' : undefined}
                 />
-                <HudTile label="ARM MAX" value={hud.diagnostics.maxArmMoment.toFixed(1)} unit="N·m" tip="Worst per-arm bending moment (thrust x arm length)" />
+                <HudTile label={t('sim:worldView.tile.armMax')} value={hud.diagnostics.maxArmMoment.toFixed(1)} unit="N·m" tip={t('sim:worldView.tile.armMaxTip')} />
                 <HudTile
-                  label="THRUST"
+                  label={t('sim:worldView.tile.thrust')}
                   value={Math.hypot(...hud.diagnostics.netThrustBody).toFixed(0)}
                   unit="N"
-                  tip="Total rotor thrust (cyan-to-red per-motor arrows)"
+                  tip={t('sim:worldView.tile.thrustTip')}
                 />
-                <HudTile label="WEIGHT" value={hud.diagnostics.weight.toFixed(0)} unit="N" tip="Gravity, m·g (grey arrow, straight down)" />
+                <HudTile label={t('sim:worldView.tile.weight')} value={hud.diagnostics.weight.toFixed(0)} unit="N" tip={t('sim:worldView.tile.weightTip')} />
                 <HudTile
-                  label="DRAG"
+                  label={t('sim:worldView.tile.drag')}
                   value={Math.hypot(
                     hud.diagnostics.airframeDragBody[0] + hud.diagnostics.momentumDragBody[0],
                     hud.diagnostics.airframeDragBody[1] + hud.diagnostics.momentumDragBody[1],
                     hud.diagnostics.airframeDragBody[2] + hud.diagnostics.momentumDragBody[2],
                   ).toFixed(0)}
                   unit="N"
-                  tip="Airframe parasitic + rotor momentum drag (orange arrow)"
+                  tip={t('sim:worldView.tile.dragTip')}
                 />
                 <HudTile
-                  label="NET"
+                  label={t('sim:worldView.tile.net')}
                   value={Math.hypot(...hud.diagnostics.netForceWorld).toFixed(0)}
                   unit="N"
-                  tip="Net resultant force accelerating the airframe (white arrow); near zero in a steady hover"
+                  tip={t('sim:worldView.tile.netTip')}
                   accent={Math.hypot(...hud.diagnostics.netForceWorld) > hud.diagnostics.weight * 0.5 ? 'amber' : undefined}
                 />
                 <MotorBars diag={hud.diagnostics} />
@@ -1145,21 +1147,21 @@ export default function SimWorldView() {
             <div className="text-content-secondary text-sm mb-1">
               {isConnected
                 ? hasFix
-                  ? 'Acquiring vehicle state…'
-                  : 'Connected, waiting for GPS fix'
-                : 'No vehicle connected'}
+                  ? t('sim:worldView.acquiringState')
+                  : t('sim:worldView.connectedWaitingFix')
+                : t('sim:worldView.noVehicle')}
             </div>
             <div className="text-content-tertiary text-xs mb-4">
               {isConnected
-                ? 'The vehicle will appear here once it has a position fix. Any connected SITL or aircraft works. The ArduDeck sim engine is optional.'
-                : 'Connect to SITL (or a vehicle) from the main window and it will appear here.'}
+                ? t('sim:worldView.connectedHint')
+                : t('sim:worldView.disconnectedHint')}
             </div>
             <button
               onClick={() => window.electronAPI?.focusMainWindow?.()}
-              data-tip="Bring ArduDeck's main window forward"
+              data-tip={t('sim:worldView.focusMainTip')}
               className="px-3 py-1.5 text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition-colors"
             >
-              Focus main window
+              {t('sim:worldView.focusMain')}
             </button>
           </div>
         </div>
@@ -1174,13 +1176,14 @@ function FleetPill({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
   const overrides = useVehicleAppearanceStore.getState().overrides;
   const color = resolveVehicleColor(overrides, v.key, v.sysid);
   const openContextMenu = useFormationStore((s) => s.openContextMenu);
+  const { t } = useTranslation();
   return (
     <button
       draggable
       onDragStart={(e) => { e.stopPropagation(); startVehicleDrag(e, v.key); }}
       onClick={() => (v.isActive ? deselectActiveVehicle() : selectActiveVehicle(v.key, v.transportId))}
       onContextMenu={(e) => { e.preventDefault(); openContextMenu({ x: e.clientX, y: e.clientY, vehicleKey: v.key }); }}
-      data-tip={v.isActive ? `${v.label} - click to deselect` : `${v.label} - ${v.mode}${v.armed ? ' - ARMED' : ''}`}
+      data-tip={v.isActive ? t('sim:worldView.pillActiveTip', { label: v.label }) : t(v.armed ? 'sim:worldView.pillTipArmed' : 'sim:worldView.pillTip', { label: v.label, mode: v.mode })}
       className={`flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-lg border border-subtle text-xs font-medium text-content shadow-md cursor-grab active:cursor-grabbing transition-colors ${
         v.isActive ? 'bg-surface-solid' : 'bg-surface-raised hover:bg-surface-solid'
       }`}
@@ -1191,9 +1194,9 @@ function FleetPill({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
     >
       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color, boxShadow: v.position ? 'none' : '0 0 0 1px rgba(127,127,127,0.5)' }} />
       <span className="font-mono">{v.label}</span>
-      {role === 'leader' && <span className="text-[7px] font-bold uppercase tracking-wide px-1 rounded-sm bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Lead</span>}
+      {role === 'leader' && <span className="text-[7px] font-bold uppercase tracking-wide px-1 rounded-sm bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">{t('sim:worldView.lead')}</span>}
       {role === 'leader' && count > 0 && <span className="text-[9px] font-mono text-content-tertiary">+{count}</span>}
-      {!v.position && <span className="text-[9px] text-content-tertiary">no fix</span>}
+      {!v.position && <span className="text-[9px] text-content-tertiary">{t('sim:worldView.noFix')}</span>}
     </button>
   );
 }
@@ -1212,6 +1215,7 @@ function FleetPicker() {
   const uiOverrides = useFleetUiStore((s) => s.overrides);
   const toggleFleet = useFleetUiStore((s) => s.toggle);
   const [dropZone, setDropZone] = useState<string | null>(null);
+  const { t } = useTranslation();
   if (vehicles.length < 2) return null;
 
   const sorted = [...vehicles].sort((a, b) => a.sysid - b.sysid);
@@ -1257,7 +1261,7 @@ function FleetPicker() {
                   type="button"
                   onClick={() => toggleFleet(g.leader.key, expanded)}
                   className="shrink-0 w-4 h-6 grid place-items-center text-content-tertiary hover:text-content"
-                  data-tip={expanded ? 'Collapse fleet' : 'Expand fleet'}
+                  data-tip={expanded ? t('sim:worldView.collapseFleet') : t('sim:worldView.expandFleet')}
                 >
                   <FleetChevron open={expanded} />
                 </button>
@@ -1295,6 +1299,7 @@ function FleetOpsPanel() {
   const vehicles = useFleetVehicles();
   const hasEngine = useOrchestrationStore((s) => Object.keys(s.servers).length > 0);
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useTranslation();
   if (vehicles.length < 2) return null;
 
   return (
@@ -1303,7 +1308,7 @@ function FleetOpsPanel() {
         onClick={() => setCollapsed((c) => !c)}
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-content-secondary hover:text-content transition-colors"
       >
-        <span>Fleet ops ({vehicles.length})</span>
+        <span>{t('sim:worldView.fleetOps', { count: vehicles.length })}</span>
         <span className="text-content-tertiary">{collapsed ? '▾' : '▴'}</span>
       </button>
       {!collapsed && (
@@ -1311,9 +1316,7 @@ function FleetOpsPanel() {
           <FleetCoordination />
         ) : (
           <div className="px-3 pb-3 -mt-1 text-[11px] text-content-secondary leading-relaxed">
-            Multi-vehicle ops run over the engine. Start the multi-vehicle engine from the
-            connection screen to take off and form up the whole fleet together. Single-vehicle
-            commands stay on the bar below.
+            {t('sim:worldView.fleetOpsNoEngine')}
           </div>
         )
       )}
@@ -1360,6 +1363,7 @@ function DraggableFlightControlPanel() {
   const persist = useSimFlightControlPanelStore((s) => s.persist);
   const toggleCollapsed = useSimFlightControlPanelStore((s) => s.toggleCollapsed);
   const { onHandlePointerDown } = useDraggableSnap(panelRef, { setPos, persist });
+  const { t } = useTranslation();
 
   // Keep the panel on-screen: seed a default lower-right position on first show,
   // and re-clamp into view on every window resize (and whenever it collapses /
@@ -1405,19 +1409,19 @@ function DraggableFlightControlPanel() {
       <div
         className="flex items-center gap-1.5 px-2 py-1 bg-surface-solid border-b border-subtle cursor-move shrink-0"
         onPointerDown={onHandlePointerDown}
-        data-tip="Drag to move - magnets to panel & window edges"
+        data-tip={t('sim:worldView.dragTip')}
       >
         <svg width="9" height="11" viewBox="0 0 9 11" className="text-content-tertiary" aria-hidden="true">
           {[2, 5.5, 9].map((cy) => [2, 7].map((cx) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1" fill="currentColor" />))}
         </svg>
-        <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wide">Flight Control</span>
+        <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wide">{t('sim:worldView.flightControl')}</span>
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={toggleCollapsed}
           className="ml-auto -mr-0.5 flex h-5 w-5 items-center justify-center rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
-          data-tip={collapsed ? 'Expand' : 'Collapse'}
-          aria-label={collapsed ? 'Expand flight control panel' : 'Collapse flight control panel'}
+          data-tip={collapsed ? t('common:expand') : t('common:collapse')}
+          aria-label={collapsed ? t('sim:worldView.expandPanel') : t('sim:worldView.collapsePanel')}
         >
           <svg
             width="12"
@@ -1498,6 +1502,7 @@ function SimFighterHud({ hud }: { hud: SimStateMessage }) {
   const profile = resolveHudProfile(config.profile, mavType);
   const widgets = profile === 'ground' ? config.widgetsGround : config.widgets;
   const linkHistory = useLinkHistory(widgets.linkGraph);
+  const { t } = useTranslation();
 
   // Core flight state from the physics engine (sim-state), radians → degrees.
   const heading = ((rad2deg(hud.euler.yaw) % 360) + 360) % 360;
@@ -1547,7 +1552,7 @@ function SimFighterHud({ hud }: { hud: SimStateMessage }) {
     lon,
     windSpeed,
     linkHistory,
-    linkLabel: 'RC LINK',
+    linkLabel: t('sim:worldView.rcLink'),
     steer,
     wpDistance,
     xtrackError,
@@ -1569,9 +1574,10 @@ function SimFighterHud({ hud }: { hud: SimStateMessage }) {
  * at-a-glance read of which corner is working hardest.
  */
 function MotorBars({ diag }: { diag: NonNullable<SimStateMessage['diagnostics']> }) {
+  const { t } = useTranslation();
   return (
     <div
-      data-tip="Per-motor output (bar height = throttle command, colour = arm load)"
+      data-tip={t('sim:worldView.motorBarsTip')}
       className="bg-surface-overlay backdrop-blur-sm border border-subtle rounded-lg px-3 py-2 flex items-end gap-1 h-[52px]"
     >
       {diag.motors.map((m, i) => {

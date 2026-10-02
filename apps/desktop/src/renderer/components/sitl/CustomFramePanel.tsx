@@ -7,9 +7,11 @@
  */
 
 import { Fragment, useEffect, useState, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Pencil, Copy, Trash2, Download, Upload, X, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   SITL_FRAME_TEMPLATES,
+  sitlFrameTemplateName,
   type SitlCustomFrame,
   type SitlCustomFrameMeta,
 } from '../../../shared/sitl-custom-frame';
@@ -41,18 +43,16 @@ type EditorMode =
 // object edited elsewhere, so exclude it from the numeric-field helpers.
 type SitlNumericFieldKey = Exclude<keyof SitlCustomFrame, 'slungLoad'>;
 
-const FIELD_GROUPS: { title: string; fields: SitlNumericFieldKey[] }[] = [
+const FIELD_GROUPS: { title: string; titleKey: string; fields: SitlNumericFieldKey[] }[] = [
   // disc_area is NOT in this grid: it's derived from prop diameter + motor count
   // in a dedicated block (renderDiscBlock) right after the Physical group.
-  { title: 'Physical', fields: ['mass', 'diagonal_size', 'num_motors'] },
-  { title: 'Battery', fields: ['maxVoltage', 'battCapacityAh', 'refBatRes'] },
-  { title: 'Reference (tuning)', fields: ['refSpd', 'refAngle', 'refVoltage', 'refCurrent', 'refAlt', 'refTempC', 'refRotRate'] },
-  { title: 'Motors', fields: ['hoverThrOut', 'pwmMin', 'pwmMax', 'spin_min', 'spin_max', 'slew_max', 'propExpo', 'mdrag_coef'] },
+  { title: 'Physical', titleKey: 'sitl:customFrame.groupPhysical', fields: ['mass', 'diagonal_size', 'num_motors'] }, // i18n-exempt
+  { title: 'Battery', titleKey: 'sitl:customFrame.groupBattery', fields: ['maxVoltage', 'battCapacityAh', 'refBatRes'] }, // i18n-exempt
+  { title: 'Reference (tuning)', titleKey: 'sitl:customFrame.groupReference', fields: ['refSpd', 'refAngle', 'refVoltage', 'refCurrent', 'refAlt', 'refTempC', 'refRotRate'] }, // i18n-exempt
+  { title: 'Motors', titleKey: 'sitl:customFrame.groupMotors', fields: ['hoverThrOut', 'pwmMin', 'pwmMax', 'spin_min', 'spin_max', 'slew_max', 'propExpo', 'mdrag_coef'] }, // i18n-exempt
 ];
 
 const FIELD_HINTS: Partial<Record<SitlNumericFieldKey, string>> = {
-  maxVoltage: 'V (full-charge)',
-  refBatRes: 'Ω (internal)',
   refAngle: 'deg',
   refVoltage: 'V',
   refCurrent: 'A',
@@ -89,6 +89,7 @@ function estimatePropDiameter(diagonalM: number, numMotors: number): number {
 }
 
 export function CustomFramePanel() {
+  const { t } = useTranslation();
   const customFramePath = useArduPilotSitlStore((s) => s.customFramePath);
   const customFrameMotors = useArduPilotSitlStore((s) => s.customFrameMotors);
   const setCustomFrame = useArduPilotSitlStore((s) => s.setCustomFrame);
@@ -129,7 +130,7 @@ export function CustomFramePanel() {
     const stillExists = list.some((f) => f.path === customFramePath);
     if (!stillExists) {
       setCustomFrame(undefined, undefined);
-      showToast('Active custom frame is missing - cleared');
+      showToast(t('sitl:customFrame.toastMissing'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customFramePath, list]);
@@ -166,7 +167,7 @@ export function CustomFramePanel() {
   const onEdit = async (id: string) => {
     const rec = await window.electronAPI?.ardupilotSitlCustomFrameLoad?.(id);
     if (!rec) {
-      showToast('Failed to load frame');
+      showToast(t('sitl:customFrame.toastLoadFailed'));
       return;
     }
     setEditor({ kind: 'edit', id: rec.id, name: rec.name, frame: { ...rec.frame } });
@@ -176,7 +177,7 @@ export function CustomFramePanel() {
   const onSave = async () => {
     if (editor.kind === 'closed') return;
     if (!editor.name.trim()) {
-      showToast('Name is required');
+      showToast(t('sitl:customFrame.toastNameRequired'));
       return;
     }
     setBusy(true);
@@ -189,7 +190,7 @@ export function CustomFramePanel() {
       if (result) {
         await refresh();
         setEditor({ kind: 'closed' });
-        showToast('Saved');
+        showToast(t('common:saved'));
       }
     } finally {
       setBusy(false);
@@ -204,17 +205,17 @@ export function CustomFramePanel() {
     try {
       const rec = await window.electronAPI?.ardupilotSitlCustomFrameLoad?.(id);
       if (!rec) {
-        showToast('Failed to copy frame');
+        showToast(t('sitl:customFrame.toastCopyFailed'));
         return;
       }
       const taken = new Set(list.map((f) => f.name.toLowerCase()));
-      let copyName = `${rec.name} copy`;
+      let copyName = `${rec.name} copy`; // i18n-exempt
       let n = 2;
-      while (taken.has(copyName.toLowerCase())) copyName = `${rec.name} copy ${n++}`;
+      while (taken.has(copyName.toLowerCase())) copyName = `${rec.name} copy ${n++}`; // i18n-exempt
       const result = await window.electronAPI?.ardupilotSitlCustomFrameSave?.({ name: copyName, frame: rec.frame });
       if (result) {
         await refresh();
-        showToast(`Copied → "${copyName}"`);
+        showToast(t('sitl:customFrame.toastCopied', { name: copyName }));
       }
     } finally {
       setBusy(false);
@@ -222,7 +223,7 @@ export function CustomFramePanel() {
   };
 
   const onDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete frame "${name}"?`)) return;
+    if (!confirm(t('sitl:customFrame.confirmDelete', { name }))) return;
     await window.electronAPI?.ardupilotSitlCustomFrameDelete?.(id);
     if (customFramePath && list.find((f) => f.id === id)?.path === customFramePath) {
       setCustomFrame(undefined, undefined);
@@ -236,7 +237,7 @@ export function CustomFramePanel() {
       const result = await window.electronAPI?.ardupilotSitlCustomFrameImport?.();
       if (result?.ok) {
         await refresh();
-        showToast(`Imported ${result.record.name}`);
+        showToast(t('sitl:customFrame.toastImported', { name: result.record.name }));
       } else if (result && !result.ok && result.error !== 'cancelled') {
         showToast(result.error);
       }
@@ -249,7 +250,7 @@ export function CustomFramePanel() {
     setBusy(true);
     try {
       const result = await window.electronAPI?.ardupilotSitlCustomFrameExport?.(id);
-      if (result?.ok) showToast('Exported');
+      if (result?.ok) showToast(t('sitl:customFrame.toastExported'));
       else if (result && !result.ok && result.error !== 'cancelled') showToast(result.error);
     } finally {
       setBusy(false);
@@ -268,7 +269,7 @@ export function CustomFramePanel() {
       rec.frame.num_motors === 6 ? 'hexa' :
       'quad';
     setModel(modelForMotors);
-    showToast(`Active: ${rec.name} → Frame/Model auto-set to ${modelForMotors}`);
+    showToast(t('sitl:customFrame.toastActivated', { name: rec.name, model: modelForMotors }));
   };
 
   const onDeactivate = () => {
@@ -313,11 +314,13 @@ export function CustomFramePanel() {
 
   const getFieldHint = (field: SitlNumericFieldKey): string | undefined => {
     if (field === 'mass') return UNIT_LABELS.weight[weightUnit];
-    if (field === 'diagonal_size') return `${UNIT_LABELS.dimensions[dimensionUnit]} (motor-to-motor)`;
+    if (field === 'diagonal_size') return t('sitl:customFrame.hintDiagonal', { unit: UNIT_LABELS.dimensions[dimensionUnit] });
     // Rotor disc area is a physical property in m² - NEVER the user's general
     // area unit (hectares/acres are for survey fields; a 2.5 m² disc showing as
     // "2.5 ha" is nonsense).
-    if (field === 'disc_area') return 'm² (total prop)';
+    if (field === 'disc_area') return t('sitl:customFrame.hintDiscArea');
+    if (field === 'maxVoltage') return t('sitl:customFrame.hintMaxVoltage');
+    if (field === 'refBatRes') return t('sitl:customFrame.hintRefBatRes');
     if (field === 'refAlt') return UNIT_LABELS.altitude[altitudeUnit];
     if (field === 'battCapacityAh') return UNIT_LABELS.electricCapacity[electricCapacityUnit];
     if (field === 'refSpd') return UNIT_LABELS.speed[speedUnit];
@@ -386,20 +389,20 @@ export function CustomFramePanel() {
     return (
       <div className="rounded-lg border border-subtle bg-surface-raised/40 p-2 space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-wide text-content-tertiary">Rotor disc area</div>
+          <div className="text-[10px] uppercase tracking-wide text-content-tertiary">{t('sitl:customFrame.rotorDiscArea')}</div>
           <button
             type="button"
             onClick={onEstimateProp}
             className="text-[10px] text-blue-400 hover:text-blue-300 underline"
-            title="Guess the prop size from the frame diagonal + motor count (rough starting point)"
+            title={t('sitl:customFrame.estimateTip')}
           >
-            estimate from frame size
+            {t('sitl:customFrame.estimate')}
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-[11px] text-content-secondary">
-              prop diameter <span className="text-content-tertiary ml-1">(in{propMm != null ? ` · ${propMm.toFixed(0)} mm` : ''})</span>
+              {t('sitl:customFrame.propDiameter')} <span className="text-content-tertiary ml-1">{propMm != null ? t('sitl:customFrame.propUnitInMm', { mm: propMm.toFixed(0) }) : t('sitl:customFrame.propUnitIn')}</span>
             </label>
             <input
               type="text"
@@ -411,7 +414,7 @@ export function CustomFramePanel() {
           </div>
           <div>
             <label className="block text-[11px] text-content-secondary">
-              disc_area <span className="text-content-tertiary ml-1">(m² total)</span>
+              disc_area <span className="text-content-tertiary ml-1">{t('sitl:customFrame.discAreaUnit')}</span>
             </label>
             <input
               type="text"
@@ -423,8 +426,7 @@ export function CustomFramePanel() {
           </div>
         </div>
         <p className="text-[10px] text-content-tertiary leading-relaxed">
-          Auto: {f.num_motors || 0} motors × π × (Ø/2)². Type your prop size in
-          inches and disc area fills in; edit disc area directly to override.
+          {t('sitl:customFrame.discAutoHint', { count: f.num_motors || 0 })}
         </p>
       </div>
     );
@@ -438,14 +440,14 @@ export function CustomFramePanel() {
       >
         <div className="flex items-center gap-2">
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          <span className="text-sm font-medium text-content">Custom Frame Physics</span>
+          <span className="text-sm font-medium text-content">{t('sitl:customFrame.title')}</span>
           {customFramePath && (
             <span className="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-300 font-medium">
-              ACTIVE
+              {t('sitl:customFrame.activeBadge')}
             </span>
           )}
         </div>
-        <span className="text-[11px] text-content-secondary">{list.length} saved</span>
+        <span className="text-[11px] text-content-secondary">{t('sitl:customFrame.savedCount', { count: list.length })}</span>
       </button>
 
       {expanded && (
@@ -454,15 +456,15 @@ export function CustomFramePanel() {
           {customFramePath && (
             <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
               <div className="text-xs text-emerald-200">
-                <span className="font-medium">Active:</span>{' '}
-                {list.find((f) => f.path === customFramePath)?.name ?? 'Unknown'}
-                {customFrameMotors && <span className="text-content-secondary"> · {customFrameMotors} motors</span>}
+                <span className="font-medium">{t('sitl:customFrame.activeLabel')}</span>{' '}
+                {list.find((f) => f.path === customFramePath)?.name ?? t('common:unknown')}
+                {customFrameMotors && <span className="text-content-secondary">{t('sitl:customFrame.motorsSuffix', { count: customFrameMotors })}</span>}
               </div>
               <button
                 onClick={onDeactivate}
                 className="text-[11px] text-emerald-300 hover:text-emerald-100 underline"
               >
-                clear
+                {t('sitl:customFrame.clear')}
               </button>
             </div>
           )}
@@ -474,9 +476,9 @@ export function CustomFramePanel() {
               defaultValue=""
               className="text-xs bg-surface-raised border border-subtle rounded px-2 py-1 text-content"
             >
-              <option value="">+ New from template…</option>
-              {Object.entries(SITL_FRAME_TEMPLATES).map(([k, t]) => (
-                <option key={k} value={k}>{t.name}</option>
+              <option value="">{t('sitl:customFrame.newFromTemplate')}</option>
+              {Object.keys(SITL_FRAME_TEMPLATES).map((k) => (
+                <option key={k} value={k}>{sitlFrameTemplateName(k)}</option>
               ))}
             </select>
             <button
@@ -484,7 +486,7 @@ export function CustomFramePanel() {
               disabled={busy}
               className="text-xs px-2 py-1 rounded bg-surface-raised border border-subtle hover:border-blue-500/50 text-content flex items-center gap-1 disabled:opacity-50"
             >
-              <Upload className="w-3 h-3" /> Import JSON
+              <Upload className="w-3 h-3" /> {t('sitl:customFrame.importJson')}
             </button>
           </div>
 
@@ -499,7 +501,7 @@ export function CustomFramePanel() {
                       {item.name}
                       {isActive && (
                         <span className="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-300 font-medium uppercase tracking-wide">
-                          Active
+                          {t('sitl:customFrame.active')}
                         </span>
                       )}
                     </span>
@@ -510,20 +512,20 @@ export function CustomFramePanel() {
                           ? 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
                           : 'bg-blue-600 text-white hover:bg-blue-500'
                       }`}
-                      title={isActive ? 'Stop using this frame' : 'Use this frame for next launch'}
+                      title={isActive ? t('sitl:customFrame.stopUsingTip') : t('sitl:customFrame.useTip')}
                     >
-                      {isActive ? 'Stop using' : 'Use'}
+                      {isActive ? t('sitl:customFrame.stopUsing') : t('sitl:customFrame.use')}
                     </button>
-                    <button onClick={() => onEdit(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title="Edit">
+                    <button onClick={() => onEdit(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title={t('common:edit')}>
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onDuplicate(item.id)} disabled={busy} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400 disabled:opacity-50" title="Duplicate this frame">
+                    <button onClick={() => onDuplicate(item.id)} disabled={busy} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400 disabled:opacity-50" title={t('sitl:customFrame.duplicateTip')}>
                       <Copy className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onExport(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title="Export JSON">
+                    <button onClick={() => onExport(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title={t('sitl:customFrame.exportJson')}>
                       <Download className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onDelete(item.id, item.name)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-red-400" title="Delete">
+                    <button onClick={() => onDelete(item.id, item.name)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-red-400" title={t('sitl:customFrame.delete')}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -534,7 +536,7 @@ export function CustomFramePanel() {
 
           {list.length === 0 && editor.kind === 'closed' && (
             <p className="text-[11px] text-content-secondary italic">
-              No custom frames yet. Create one from a template or import a JSON file.
+              {t('sitl:customFrame.empty')}
             </p>
           )}
 
@@ -546,7 +548,7 @@ export function CustomFramePanel() {
                   type="text"
                   value={editor.name}
                   onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-                  placeholder="Frame name"
+                  placeholder={t('sitl:customFrame.namePlaceholder')}
                   className="flex-1 px-2 py-1 text-sm bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-blue-500"
                 />
                 <button
@@ -554,7 +556,7 @@ export function CustomFramePanel() {
                   disabled={busy || !editor.name.trim()}
                   className="text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
                 >
-                  Save
+                  {t('common:save')}
                 </button>
                 <button
                   onClick={() => setEditor({ kind: 'closed' })}
@@ -568,7 +570,7 @@ export function CustomFramePanel() {
                 <Fragment key={group.title}>
                   <div>
                     <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1">
-                      {group.title}
+                      {t(group.titleKey)}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {group.fields.map((field) => (
@@ -602,8 +604,7 @@ export function CustomFramePanel() {
 
           {customFramePath && (
             <p className="text-[11px] text-content-tertiary">
-              Active frame is loaded via SITL <code className="px-1 bg-surface-raised rounded">--model</code> on next start.
-              Stop & restart SITL to apply.
+              <Trans i18nKey="sitl:customFrame.activeFooter" components={{ code: <code className="px-1 bg-surface-raised rounded" /> }} />
             </p>
           )}
         </div>

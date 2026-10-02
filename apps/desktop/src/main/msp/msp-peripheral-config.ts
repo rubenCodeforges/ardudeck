@@ -16,6 +16,8 @@ import {
   serializeFilterConfig,
   deserializeVtxConfig,
   serializeVtxConfig,
+  deserializeInavVtxConfig,
+  serializeInavVtxConfig,
   deserializeOsdConfig,
   serializeOsdElementPosition,
   serializeOsdCharWrite,
@@ -38,6 +40,7 @@ import {
   withConfigLock,
 } from './msp-transport.js';
 import { saveEeprom } from './msp-commands.js';
+import { t } from '../../shared/i18n/index.js';
 
 // =============================================================================
 // Failsafe Configuration
@@ -68,12 +71,12 @@ export async function setFailsafeConfig(config: MSPFailsafeConfig): Promise<bool
     try {
       const payload = serializeFailsafeConfig(config);
       await sendMspRequestWithPayload(MSP.SET_FAILSAFE_CONFIG, payload, 2000);
-      ctx.sendLog('info', 'Failsafe config updated');
+      ctx.sendLog('info', 'Failsafe config updated'); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_FAILSAFE_CONFIG failed:', msg);
-      ctx.sendLog('error', 'Failed to set failsafe config', msg);
+      ctx.sendLog('error', 'Failed to set failsafe config', msg); // i18n-exempt
       return false;
     }
   });
@@ -113,7 +116,7 @@ export async function setGpsRescueConfig(config: MSPGpsRescueConfig): Promise<bo
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_GPS_RESCUE failed:', msg);
-      ctx.sendLog('error', 'Failed to set GPS Rescue config', msg);
+      ctx.sendLog('error', 'Failed to set GPS Rescue config', msg); // i18n-exempt
       return false;
     }
   });
@@ -149,7 +152,7 @@ export async function setGpsRescuePids(pids: MSPGpsRescuePids): Promise<boolean>
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_GPS_RESCUE_PIDS failed:', msg);
-      ctx.sendLog('error', 'Failed to set GPS Rescue PIDs', msg);
+      ctx.sendLog('error', 'Failed to set GPS Rescue PIDs', msg); // i18n-exempt
       return false;
     }
   });
@@ -179,17 +182,22 @@ export async function setFilterConfig(config: MSPFilterConfig): Promise<boolean>
   if (!ctx.currentTransport?.isOpen) {
     return false;
   }
+  // The payload is Betaflight's MSP_SET_FILTER_CONFIG layout; iNav's differs.
+  if (ctx.isInavFirmware) {
+    ctx.sendLog('warn', 'Filter config not sent', 'This filter layout is Betaflight-only'); // i18n-exempt
+    return false;
+  }
 
   return withConfigLock(async () => {
     try {
       const payload = serializeFilterConfig(config);
       await sendMspRequestWithPayload(MSP.SET_FILTER_CONFIG, payload, 2000);
-      ctx.sendLog('info', 'Filter config updated');
+      ctx.sendLog('info', 'Filter config updated'); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_FILTER_CONFIG failed:', msg);
-      ctx.sendLog('error', 'Failed to set filter config', msg);
+      ctx.sendLog('error', 'Failed to set filter config', msg); // i18n-exempt
       return false;
     }
   });
@@ -205,13 +213,13 @@ export async function getVtxConfig(): Promise<MSPVtxConfig | null> {
   return withConfigLock(async () => {
     try {
       const response = await sendMspRequest(MSP.VTX_CONFIG, 2000);
-      const config = deserializeVtxConfig(response);
+      const config = ctx.isInavFirmware ? deserializeInavVtxConfig(response) : deserializeVtxConfig(response);
       console.log('[MSP] VTX_CONFIG:', config);
       return config;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] VTX_CONFIG failed:', msg);
-      ctx.sendLog('error', 'Failed to get VTX config', msg);
+      ctx.sendLog('error', 'Failed to get VTX config', msg); // i18n-exempt
       return null;
     }
   });
@@ -224,14 +232,14 @@ export async function setVtxConfig(config: Partial<MSPVtxConfig>): Promise<boole
 
   return withConfigLock(async () => {
     try {
-      const payload = serializeVtxConfig(config);
+      const payload = ctx.isInavFirmware ? serializeInavVtxConfig(config) : serializeVtxConfig(config);
       await sendMspRequestWithPayload(MSP.SET_VTX_CONFIG, payload, 2000);
       ctx.sendLog('info', 'VTX config updated');
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_VTX_CONFIG failed:', msg);
-      ctx.sendLog('error', 'Failed to set VTX config', msg);
+      ctx.sendLog('error', 'Failed to set VTX config', msg); // i18n-exempt
       return false;
     }
   });
@@ -256,7 +264,7 @@ export async function getOsdConfig(): Promise<OsdConfigData | null> {
       return config;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      if (!msg.includes('not supported')) {
+      if (!msg.includes('rejected by the flight controller')) {
         console.error('[MSP] OSD_CONFIG failed:', msg);
       }
       return null;
@@ -284,7 +292,7 @@ export async function setOsdConfig(
   elements: OsdElementWrite[],
 ): Promise<{ success: boolean; written: number; total: number; error?: string }> {
   if (!ctx.currentTransport?.isOpen) {
-    return { success: false, written: 0, total: elements.length, error: 'Not connected' };
+    return { success: false, written: 0, total: elements.length, error: t('main:msp.notConnected') };
   }
 
   return withConfigLock(async () => {
@@ -301,7 +309,7 @@ export async function setOsdConfig(
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_OSD_CONFIG failed:', msg);
-      ctx.sendLog('error', 'Failed to upload OSD layout', msg);
+      ctx.sendLog('error', 'Failed to upload OSD layout', msg); // i18n-exempt
       return { success: false, written, total: elements.length, error: msg };
     }
   });
@@ -323,7 +331,7 @@ export async function uploadOsdFont(
   chars: OsdFontChar[],
 ): Promise<{ success: boolean; written: number; total: number; error?: string }> {
   if (!ctx.currentTransport?.isOpen) {
-    return { success: false, written: 0, total: chars.length, error: 'Not connected' };
+    return { success: false, written: 0, total: chars.length, error: t('main:msp.notConnected') };
   }
   return withConfigLock(async () => {
     let written = 0;
@@ -339,7 +347,7 @@ export async function uploadOsdFont(
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] OSD_CHAR_WRITE failed:', msg);
-      ctx.sendLog('error', 'Failed to upload OSD font', msg);
+      ctx.sendLog('error', 'Failed to upload OSD font', msg); // i18n-exempt
       return { success: false, written, total: chars.length, error: msg };
     }
   });
@@ -400,7 +408,7 @@ export async function getRxConfig(): Promise<RxConfigResult | null> {
       return result;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      if (!msg.includes('not supported')) {
+      if (!msg.includes('rejected by the flight controller')) {
         console.error('[MSP] RX_CONFIG failed:', msg);
       }
       return null;
@@ -439,7 +447,7 @@ export async function setRxConfig(newProvider: number, newReceiverType?: number)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] SET_RX_CONFIG failed:', msg);
-      ctx.sendLog('error', 'Failed to set RX config', msg);
+      ctx.sendLog('error', 'Failed to set RX config', msg); // i18n-exempt
       return false;
     }
   });

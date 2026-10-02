@@ -7,9 +7,10 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useOsdStore, type OsdElementId, type OsdElementKey, type OsdElementPosition } from '../../stores/osd-store';
-import { ELEMENT_CATEGORIES, type OsdElementCategory } from '../../utils/osd/element-categories';
-import { getAllOsdElements, type AnyOsdElementDef } from '../../utils/osd/element-registry';
+import { ELEMENT_CATEGORIES, osdCategoryName, type OsdElementCategory } from '../../utils/osd/element-categories';
+import { getAllOsdElements, osdElementName, osdElementDescription, type AnyOsdElementDef } from '../../utils/osd/element-registry';
 import {
   subscribeModuleOsdElements,
   getModuleOsdElement,
@@ -31,6 +32,7 @@ function useModuleOsdRevision(): number {
 }
 
 export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
+  const { t } = useTranslation();
   const elementPositions = useOsdStore((s) => s.elementPositions);
   const toggleElement = useOsdStore((s) => s.toggleElement);
   const currentFont = useOsdStore((s) => s.currentFont);
@@ -82,6 +84,8 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
         (el) =>
           el.name.toLowerCase().includes(query) ||
           el.description.toLowerCase().includes(query) ||
+          osdElementName(el).toLowerCase().includes(query) ||
+          osdElementDescription(el).toLowerCase().includes(query) ||
           el.id.includes(query)
       );
       if (matching.length > 0) {
@@ -134,13 +138,13 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
       <div className="p-3 border-b border-subtle">
         <input
           type="text"
-          placeholder="Search elements..."
+          placeholder={t('osd:osdElementBrowser.search')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-surface-raised text-content text-xs rounded px-2.5 py-1.5 border border-subtle focus:border-blue-500 focus:outline-none placeholder-content-tertiary"
         />
         <div className="mt-1.5 text-[10px] text-content-secondary">
-          {totalEnabled} of {allElements.length} enabled
+          {t('osd:osdElementBrowser.enabledCount', { enabled: totalEnabled, total: allElements.length })}
         </div>
       </div>
 
@@ -169,7 +173,7 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
                 >
                   <path d="M9 18l6-6-6-6" />
                 </svg>
-                <span className="text-xs font-medium text-content flex-1">{catDef.name}</span>
+                <span className="text-xs font-medium text-content flex-1">{osdCategoryName(catDef)}</span>
                 {enabledCount > 0 && (
                   <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 rounded-full">
                     {enabledCount}
@@ -236,6 +240,7 @@ function ElementRow({
   onSelect: (id: OsdElementKey) => void;
   onToggle: (id: OsdElementKey) => void;
 }) {
+  const { t } = useTranslation();
   // Get font preview data URL
   const previewSrc = useMemo(() => {
     if (!currentFont || !def.previewSymbol) return null;
@@ -254,7 +259,7 @@ function ElementRow({
         ${unsupported ? 'opacity-45' : ''}
       `}
       onClick={() => onSelect(def.id)}
-      data-tip={unsupported ? 'Not available on the connected board' : def.description}
+      data-tip={unsupported ? t('osd:osdElementBrowser.notAvailable') : osdElementDescription(def)}
     >
       <input
         type="checkbox"
@@ -283,7 +288,7 @@ function ElementRow({
       <span
         className={`flex-1 text-[11px] truncate ${position.enabled ? 'text-content' : 'text-content-secondary'}`}
       >
-        {def.name}
+        {osdElementName(def)}
       </span>
 
       {position.enabled && (

@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Radio, Signal, SignalZero, Activity, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -26,22 +27,22 @@ import { PRIMARY_CHANNEL_COUNT, getMavlinkChannelNames, reorderChannelsWithRcmap
 // =============================================================================
 
 /** ArduPilot RC_PROTOCOLS bitmask values (bit positions → power of 2) */
-const RC_PROTOCOL_OPTIONS: { value: number; label: string; description: string }[] = [
-  { value: 0, label: 'Auto-Detect', description: 'Auto-detect all protocols (value 0)' },
-  { value: 1, label: 'All', description: 'Enable all protocols' },
-  { value: 2, label: 'PPM', description: 'PPM sum signal' },
+const RC_PROTOCOL_OPTIONS: { value: number; label: string; description: string; labelKey?: string; descriptionKey?: string }[] = [
+  { value: 0, label: 'Auto-Detect', description: 'Auto-detect all protocols (value 0)', labelKey: 'mavlink-config:receiverTab.protoAutoDetect', descriptionKey: 'mavlink-config:receiverTab.protoAutoDetectDesc' }, // i18n-exempt
+  { value: 1, label: 'All', description: 'Enable all protocols', labelKey: 'common:all', descriptionKey: 'mavlink-config:receiverTab.protoAllDesc' }, // i18n-exempt
+  { value: 2, label: 'PPM', description: 'PPM sum signal', descriptionKey: 'mavlink-config:receiverTab.protoPpmDesc' }, // i18n-exempt
   { value: 4, label: 'IBUS', description: 'FlySky IBUS' },
-  { value: 8, label: 'SBus', description: 'Futaba SBus (inverted serial)' },
-  { value: 16, label: 'SBus (NI)', description: 'SBus non-inverted' },
-  { value: 32, label: 'DSM/Spektrum', description: 'DSM2/DSMX satellite' },
+  { value: 8, label: 'SBus', description: 'Futaba SBus (inverted serial)', descriptionKey: 'mavlink-config:receiverTab.protoSbusDesc' }, // i18n-exempt
+  { value: 16, label: 'SBus (NI)', description: 'SBus non-inverted', descriptionKey: 'mavlink-config:receiverTab.protoSbusNiDesc' }, // i18n-exempt
+  { value: 32, label: 'DSM/Spektrum', description: 'DSM2/DSMX satellite', descriptionKey: 'mavlink-config:receiverTab.protoDsmDesc' }, // i18n-exempt
   { value: 64, label: 'SUMD', description: 'Graupner SUMD' },
-  { value: 128, label: 'SRXL', description: 'Multiplex SRXL' },
-  { value: 256, label: 'SRXL2', description: 'Spektrum SRXL2' },
-  { value: 512, label: 'CRSF/ELRS', description: 'TBS Crossfire / ExpressLRS' },
-  { value: 1024, label: 'ST24', description: 'Yuneec ST24' },
+  { value: 128, label: 'SRXL', description: 'Multiplex SRXL' }, // i18n-exempt
+  { value: 256, label: 'SRXL2', description: 'Spektrum SRXL2' }, // i18n-exempt
+  { value: 512, label: 'CRSF/ELRS', description: 'TBS Crossfire / ExpressLRS' }, // i18n-exempt
+  { value: 1024, label: 'ST24', description: 'Yuneec ST24' }, // i18n-exempt
   { value: 2048, label: 'FPORT', description: 'FrSky FPort' },
   { value: 4096, label: 'FPORT2', description: 'FrSky FPort 2.0' },
-  { value: 8192, label: 'FastSBUS', description: 'Fast SBus' },
+  { value: 8192, label: 'FastSBUS', description: 'Fast SBus', descriptionKey: 'mavlink-config:receiverTab.protoFastSbusDesc' }, // i18n-exempt
 ];
 
 // =============================================================================
@@ -112,6 +113,7 @@ const CompactChannelBar: React.FC<{
 // =============================================================================
 
 function InfoBanner({ children, color = 'teal' }: { children: React.ReactNode; color?: string }) {
+  const { t } = useTranslation();
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
   if (!showTips) return null;
 
@@ -125,7 +127,7 @@ function InfoBanner({ children, color = 'teal' }: { children: React.ReactNode; c
     <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl ${s.bg} ${s.border} border`}>
       <HelpCircle className={`w-4 h-4 ${s.icon} shrink-0 mt-0.5`} />
       <p className="text-xs text-content leading-relaxed">
-        <span className={`font-semibold ${s.label}`}>How this works: </span>
+        <span className={`font-semibold ${s.label}`}>{t('mavlink-config:receiverTab.howThisWorks')}</span>
         {children}
       </p>
     </div>
@@ -137,6 +139,7 @@ function InfoBanner({ children, color = 'teal' }: { children: React.ReactNode; c
 // =============================================================================
 
 const ReceiverTab: React.FC = () => {
+  const { t } = useTranslation();
   const { parameters, setParameter } = useParameterStore();
   const fcRc = useTelemetryStore((s) => s.rcChannels);
   const rcChannels = useEffectiveRc(fcRc);
@@ -260,7 +263,7 @@ const ReceiverTab: React.FC = () => {
 
     if (batch.length === 0) {
       setCapturedRc(null);
-      setRcCalMessage('No channels moved — nothing saved.');
+      setRcCalMessage(t('mavlink-config:receiverTab.noChannelsMoved'));
       return;
     }
 
@@ -271,8 +274,8 @@ const ReceiverTab: React.FC = () => {
       const movedChannels = batch.length / 3;
       setRcCalMessage(
         failed > 0
-          ? `Saved ${movedChannels - failed}/${movedChannels} channels, ${failed} param${failed === 1 ? '' : 's'} rejected.`
-          : `Saved calibration for ${movedChannels} channel${movedChannels === 1 ? '' : 's'}.`,
+          ? t('mavlink-config:receiverTab.savedPartial', { saved: movedChannels - failed, total: movedChannels, count: failed })
+          : t('mavlink-config:receiverTab.savedCalibration', { count: movedChannels }),
       );
     } finally {
       setIsSavingRcCal(false);
@@ -283,10 +286,10 @@ const ReceiverTab: React.FC = () => {
   const displayCal = isCalibratingRc && capturedRc ? capturedRc : calData;
 
   const signalBadge = signalStatus === 'active'
-    ? { text: 'Active', color: 'green' }
+    ? { text: t('common:active'), color: 'green' }
     : signalStatus === 'stale'
-    ? { text: 'Signal Lost', color: 'amber' }
-    : { text: 'No Signal', color: 'red' };
+    ? { text: t('mavlink-config:receiverTab.signalLost'), color: 'amber' }
+    : { text: t('mavlink-config:receiverTab.noSignal'), color: 'red' };
 
   if (firmware === 'px4') {
     return <Px4ReceiverConfig />;
@@ -301,24 +304,23 @@ const ReceiverTab: React.FC = () => {
             <Radio className="w-5 h-5 text-teal-400" />
           </div>
           <div>
-            <h3 className="font-medium text-content">Receiver Protocol</h3>
-            <p className="text-xs text-content-secondary">Select the receiver protocol used by your RC receiver</p>
+            <h3 className="font-medium text-content">{t('common:receiverProtocol')}</h3>
+            <p className="text-xs text-content-secondary">{t('mavlink-config:receiverTab.protocolHint')}</p>
           </div>
         </div>
         <div className="space-y-4">
           <InfoBanner>
-            Your transmitter sends stick commands to a receiver wired to your flight controller.
-            Select the protocol that matches your receiver. Check the label on your receiver if unsure. Auto-Detect works for most setups.
+            {t('mavlink-config:receiverTab.protocolBanner')}
           </InfoBanner>
           {/* Quick select buttons */}
           <div>
-            <label className="text-xs text-content-secondary mb-2 block">Quick Select</label>
+            <label className="text-xs text-content-secondary mb-2 block">{t('mavlink-config:receiverTab.quickSelect')}</label>
             <div className="flex flex-wrap gap-2">
               {[
-                { label: 'Auto-Detect', value: 0 },
-                { label: 'CRSF / ELRS', value: 512 },
-                { label: 'SBus', value: 8 },
-                { label: 'DSM/Spektrum', value: 32 },
+                { label: t('mavlink-config:receiverTab.protoAutoDetect'), value: 0 },
+                { label: 'CRSF / ELRS', value: 512 }, // i18n-exempt
+                { label: 'SBus', value: 8 }, // i18n-exempt
+                { label: 'DSM/Spektrum', value: 32 }, // i18n-exempt
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -337,7 +339,7 @@ const ReceiverTab: React.FC = () => {
 
           {/* Full dropdown */}
           <div>
-            <label className="text-xs text-content-secondary mb-2 block">All Protocols</label>
+            <label className="text-xs text-content-secondary mb-2 block">{t('common:allProtocols')}</label>
             <select
               value={Number(rcProtocols)}
               onChange={(e) => setParameter('RC_PROTOCOLS', Number(e.target.value))}
@@ -345,7 +347,7 @@ const ReceiverTab: React.FC = () => {
             >
               {RC_PROTOCOL_OPTIONS.map((p) => (
                 <option key={p.value} value={p.value}>
-                  {p.label} - {p.description}
+                  {p.labelKey ? t(p.labelKey) : p.label} - {p.descriptionKey ? t(p.descriptionKey) : p.description}
                 </option>
               ))}
             </select>
@@ -363,7 +365,7 @@ const ReceiverTab: React.FC = () => {
               ? <Activity className="w-5 h-5 text-amber-400" />
               : <SignalZero className="w-5 h-5 text-red-400" />}
           </div>
-          <span className="flex-1 font-medium text-content">Live RC Channels</span>
+          <span className="flex-1 font-medium text-content">{t('mavlink-config:receiverTab.liveRcChannels')}</span>
           <span className={`px-2 py-0.5 text-xs rounded-full bg-${signalBadge.color}-500/20 text-${signalBadge.color}-400`}>
             {signalBadge.text}
           </span>
@@ -372,8 +374,8 @@ const ReceiverTab: React.FC = () => {
           <div className="space-y-4">
             {/* Info row */}
             <div className="flex items-center gap-3 text-xs text-content-secondary">
-              {rcChannels.rssi > 0 && <span>RSSI: {rcChannels.rssi}</span>}
-              <span>{rcChannels.chancount} channels</span>
+              {rcChannels.rssi > 0 && <span>{t('mavlink-config:receiverTab.rssi', { rssi: rcChannels.rssi })}</span>}
+              <span>{t('mavlink-config:receiverTab.channelCount', { count: rcChannels.chancount })}</span>
             </div>
 
             {/* Primary sticks - functional order (Roll, Pitch, Throttle, Yaw) */}
@@ -412,12 +414,12 @@ const ReceiverTab: React.FC = () => {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-300">No RC signal detected</p>
-                <p className="text-xs text-content-secondary mt-1">Check that:</p>
+                <p className="text-sm font-medium text-amber-300">{t('mavlink-config:receiverTab.noRcSignal')}</p>
+                <p className="text-xs text-content-secondary mt-1">{t('mavlink-config:receiverTab.checkThat')}</p>
                 <ul className="text-xs text-content-secondary mt-1 space-y-0.5 list-disc list-inside">
-                  <li>Receiver is powered and bound to transmitter</li>
-                  <li>Correct SERIAL port has RCIN protocol set</li>
-                  <li>RC_PROTOCOLS matches your receiver hardware</li>
+                  <li>{t('mavlink-config:receiverTab.checkBound')}</li>
+                  <li>{t('mavlink-config:receiverTab.checkSerial')}</li>
+                  <li>{t('mavlink-config:receiverTab.checkProtocols')}</li>
                 </ul>
               </div>
             </div>
@@ -434,8 +436,8 @@ const ReceiverTab: React.FC = () => {
             <Activity className="w-5 h-5 text-blue-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium text-content">RC Calibration</h3>
-            <p className="text-xs text-content-secondary">Current calibration values stored on the flight controller</p>
+            <h3 className="font-medium text-content">{t('mavlink-config:receiverTab.rcCalibration')}</h3>
+            <p className="text-xs text-content-secondary">{t('mavlink-config:receiverTab.rcCalibrationHint')}</p>
           </div>
           {!isCalibratingRc ? (
             <button
@@ -443,7 +445,7 @@ const ReceiverTab: React.FC = () => {
               disabled={rcChannels.chancount === 0 || isSavingRcCal}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Calibrate Radio
+              {t('mavlink-config:receiverTab.calibrateRadio')}
             </button>
           ) : (
             <div className="flex gap-2">
@@ -451,24 +453,24 @@ const ReceiverTab: React.FC = () => {
                 onClick={cancelRcCalibration}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-raised text-content-secondary hover:bg-surface-raised"
               >
-                Cancel
+                {t('common:cancel')}
               </button>
               <button
                 onClick={finishRcCalibration}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 text-white hover:bg-green-500"
               >
-                Finish &amp; Save
+                {t('mavlink-config:receiverTab.finishSave')}
               </button>
             </div>
           )}
         </div>
         {isCalibratingRc ? (
           <InfoBanner color="amber">
-            Move every stick to every extreme, corners included, and every switch through every position. Release the sticks to center when done, then click Finish &amp; Save. Channels that never move are left as they are.
+            {t('mavlink-config:receiverTab.calibratingBanner')}
           </InfoBanner>
         ) : (
           <InfoBanner color="blue">
-            These are the min/max/center values your flight controller learned during RC calibration. If your sticks don't reach full range or center is off, click Calibrate Radio and wiggle everything, or adjust the RCn_MIN/MAX/TRIM parameters directly.
+            {t('mavlink-config:receiverTab.calibrationBanner')}
           </InfoBanner>
         )}
         {rcCalMessage && !isCalibratingRc && (
@@ -478,10 +480,10 @@ const ReceiverTab: React.FC = () => {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-surface text-content-secondary">
-                <th className="px-3 py-2 text-left font-medium">Channel</th>
-                <th className="px-3 py-2 text-right font-medium">Min</th>
-                <th className="px-3 py-2 text-right font-medium">Trim</th>
-                <th className="px-3 py-2 text-right font-medium">Max</th>
+                <th className="px-3 py-2 text-left font-medium">{t('common:channel')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('common:min')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('mavlink-config:receiverTab.trim')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('common:max')}</th>
               </tr>
             </thead>
             <tbody>

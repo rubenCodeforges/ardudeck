@@ -197,7 +197,7 @@ export function decryptReport(encrypted: Buffer, privateKey: string): ReportPayl
     // Parse header
     const header = parseHeader(encrypted);
     if (!header) {
-      throw new Error('Invalid file format');
+      throw new Error('Invalid file format'); // i18n-exempt
     }
 
     let offset = HEADER_SIZE;

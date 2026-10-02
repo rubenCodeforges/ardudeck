@@ -7,7 +7,7 @@
 /** In-place iterative radix-2 FFT. Lengths must be a power of two. */
 export function fftInPlace(re: Float64Array, im: Float64Array): void {
   const n = re.length;
-  if (n !== im.length || (n & (n - 1)) !== 0) throw new Error('fft length must be a power of two');
+  if (n !== im.length || (n & (n - 1)) !== 0) throw new Error('fft length must be a power of two'); // i18n-exempt: programmer error
 
   // Bit-reversal permutation
   for (let i = 1, j = 0; i < n; i++) {

@@ -17,6 +17,7 @@
  */
 
 import { VtolState } from './telemetry-types';
+import { t } from './i18n/index.js';
 
 /** ArduPlane clamps Q_TRANSITION_MS into this range before using it. */
 export const TRANSITION_MS_MIN = 500;
@@ -55,7 +56,7 @@ export function transitionProgress(inputs: TransitionInputs): TransitionProgress
   if (state === VtolState.TransitionToMulticopter) {
     // ArduPlane decelerates and drops into hover without a published
     // completion gate, so report the phase and no number.
-    return { fraction: null, stage: 'to-hover', label: 'TO HOVER' };
+    return { fraction: null, stage: 'to-hover', label: t('shared:vtolTransition.toHover') };
   }
 
   if (state !== VtolState.TransitionToFixedWing) return null;
@@ -66,18 +67,18 @@ export function transitionProgress(inputs: TransitionInputs): TransitionProgress
     return {
       fraction: clamp(sinceAirspeedReachedMs / total, 0, 1),
       stage: 'settling',
-      label: 'TO WING',
+      label: t('shared:vtolTransition.toWing'),
     };
   }
 
   // First stage: racing the airspeed up to AIRSPEED_MIN.
   if (airspeed === undefined || !(airspeedMin !== undefined && airspeedMin > 0)) {
-    return { fraction: null, stage: 'accelerating', label: 'TO WING' };
+    return { fraction: null, stage: 'accelerating', label: t('shared:vtolTransition.toWing') };
   }
   return {
     fraction: clamp(airspeed / airspeedMin, 0, 1),
     stage: 'accelerating',
-    label: 'TO WING',
+    label: t('shared:vtolTransition.toWing'),
   };
 }
 

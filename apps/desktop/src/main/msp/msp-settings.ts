@@ -211,6 +211,12 @@ export async function getSetting(name: string): Promise<{ value: string | number
   }
 }
 
+/** INAV stores out-of-range values sent over MSP (only the CLI checks), so the range is enforced here. */
+export function settingValueInRange(info: Pick<SettingInfo, 'type' | 'min' | 'max'>, value: string | number): boolean {
+  if (info.type === 'string' || typeof value !== 'number') return true;
+  return value >= info.min && value <= info.max;
+}
+
 /**
  * Set a CLI setting value by name
  * Uses MSP2_COMMON_SET_SETTING (0x1004)
@@ -221,6 +227,7 @@ export async function setSetting(name: string, value: string | number): Promise<
   const info = await getSettingInfo(name);
   if (!info) {
     console.error(`[MSP] setSetting: Unknown setting ${name}`);
+    ctx.lastWriteError = `${name} does not exist on this firmware`;
     return false;
   }
 
@@ -233,8 +240,15 @@ export async function setSetting(name: string, value: string | number): Promise<
         numericValue = idx + info.min;
       } else {
         console.error(`[MSP] Invalid enum value "${value}" for ${name}. Valid: ${info.table.join(', ')}`);
+        ctx.lastWriteError = `${name} cannot be ${value}; allowed: ${info.table.join(', ')}`;
         return false;
       }
+    }
+
+    if (!settingValueInRange(info, numericValue)) {
+      ctx.sendLog('error', `${name} not saved`, `${value} is outside ${info.min}..${info.max}`);
+      ctx.lastWriteError = `${name} = ${value} is outside the allowed range ${info.min} to ${info.max}`;
+      return false;
     }
 
     // Build payload: index (3 bytes) + value
@@ -290,8 +304,19 @@ export async function setSetting(name: string, value: string | number): Promise<
     return true;
   } catch (error) {
     console.error(`[MSP] setSetting(${name}, ${value}) failed:`, error);
+    ctx.lastWriteError = `${name}: ${error instanceof Error ? error.message : 'write failed'}`;
     return false;
   }
+}
+
+/** The FC's own numeric range for each setting; null for unknown or enum settings. */
+export async function getSettingRanges(names: string[]): Promise<Record<string, { min: number; max: number } | null>> {
+  const out: Record<string, { min: number; max: number } | null> = {};
+  for (const name of names) {
+    const info = await getSettingInfo(name);
+    out[name] = info && !info.table && info.type !== 'string' ? { min: info.min, max: info.max } : null;
+  }
+  return out;
 }
 
 /**
@@ -310,6 +335,7 @@ export async function getSettings(names: string[]): Promise<Record<string, strin
  * Set multiple settings at once (convenience wrapper)
  */
 export async function setSettings(settings: Record<string, string | number>): Promise<boolean> {
+  ctx.lastWriteError = null;
   for (const [name, value] of Object.entries(settings)) {
     const success = await setSetting(name, value);
     if (!success) return false;

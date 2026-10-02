@@ -18,6 +18,12 @@ export default defineConfig({
           // every window AND the MAVLink link.
           'log-worker': resolve(__dirname, 'src/main/log-worker.ts'),
         },
+        output: {
+          // electron-vite's ESM shim finds the "last import" with a regex that also matches inside
+          // string literals (any translation ending in "import"). Locale data in its own chunk has
+          // no require/__dirname, so the shim never touches it.
+          manualChunks: (id) => (id.includes('/shared/i18n/locales/') ? 'locales' : undefined),
+        },
       },
     },
   },
@@ -33,6 +39,9 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    // apps/desktop/node_modules keeps isolated-linker symlinks while react-i18next is hoisted to the
+    // root; without dedupe the renderer bundles two Reacts and every hook throws.
+    resolve: { dedupe: ['react', 'react-dom'] },
     build: {
       target: 'esnext',
       rollupOptions: {

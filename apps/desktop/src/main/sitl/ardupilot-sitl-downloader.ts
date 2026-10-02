@@ -24,6 +24,7 @@ import type {
   ArduPilotSitlBinaryInfo,
 } from '../../shared/ipc-channels.js';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
+import { t } from '../../shared/i18n/index.js';
 
 // ── URL sources ──────────────────────────────────────────────────────────────
 
@@ -215,7 +216,7 @@ class ArduPilotSitlDownloader {
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('No response body');
+        throw new Error('No response body'); // i18n-exempt
       }
 
       while (true) {
@@ -252,7 +253,7 @@ class ArduPilotSitlDownloader {
     } catch (err) {
       try { await rm(tempPath, { force: true }); } catch { /* ignore */ }
 
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : t('common:unknownError');
       this.sendProgress({
         vehicleType, releaseTrack,
         progress: 0, bytesDownloaded: 0, totalBytes: 0,
@@ -309,7 +310,7 @@ class ArduPilotSitlDownloader {
 
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      return { success: false, error: err instanceof Error ? err.message : t('common:unknownError') };
     }
   }
 

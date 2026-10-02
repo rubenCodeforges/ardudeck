@@ -18,6 +18,7 @@
  */
 
 import type { SurveyConfig, SurveyPattern, SurveyResult } from './survey-types';
+import { t } from '../../../shared/i18n/index.js';
 
 /**
  * Map the legacy `SurveyPattern` enum to a registry id. Existing saved
@@ -94,6 +95,9 @@ export interface SurveyGeneratorRegistration {
   version: string;
   displayName: string;
   description: string;
+  /** i18n keys for built-ins; module generators supply plain text only. */
+  displayNameKey?: string;
+  descriptionKey?: string;
   capabilities: SurveyGeneratorCapabilities;
   /**
    * Extra parameters the survey panel renders for this generator (an
@@ -143,6 +147,14 @@ export function registerSurveyGenerator(reg: SurveyGeneratorRegistration): void 
 
 export function unregisterSurveyGenerator(id: string): void {
   if (registry.delete(id)) notifyRegistryChanged();
+}
+
+export function generatorDisplayName(reg: Pick<SurveyGeneratorRegistration, 'displayName' | 'displayNameKey'>): string {
+  return reg.displayNameKey ? t(reg.displayNameKey) : reg.displayName;
+}
+
+export function generatorDescription(reg: Pick<SurveyGeneratorRegistration, 'description' | 'descriptionKey'>): string {
+  return reg.descriptionKey ? t(reg.descriptionKey) : reg.description;
 }
 
 export function getSurveyGenerator(id: string): SurveyGeneratorRegistration | undefined {

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState, useCallback } from 'react';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { ElevationRange } from './TerrainOverlayLayer';
@@ -30,6 +31,7 @@ function EditableValue({
   clampMaxMeters: number;
   altitudeUnit: AltitudeUnit;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const displayPrecision = altitudeUnit === 'km' ? 3 : altitudeUnit === 'm' ? 0 : 1;
@@ -83,7 +85,7 @@ function EditableValue({
     <button
       onClick={startEdit}
       className="font-mono text-content text-[10px] leading-none hover:text-blue-400 transition-colors border-b border-dashed border hover:border-blue-400/50"
-      title="Click to edit"
+      title={t('map:elevationLegend.clickToEdit')}
     >
       {formatAltitudeFromMeters(valueMeters, altitudeUnit)}
     </button>
@@ -115,6 +117,7 @@ export function ElevationLegend({
   onRelativeModeChange,
   hasCraftPosition = false,
 }: ElevationLegendProps) {
+  const { t } = useTranslation();
   const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   const displayMin = autoRange ? minElevation : fixedRange.min;
   const displayMax = autoRange ? maxElevation : fixedRange.max;
@@ -124,7 +127,7 @@ export function ElevationLegend({
     <div className="bg-surface-overlay backdrop-blur-sm rounded px-2 py-2 text-[10px] text-content select-none">
       {/* Header */}
       <div className="flex items-center gap-1 mb-1.5">
-        <span className="text-content-secondary font-medium">{relativeMode ? 'REL' : 'AMSL'}</span>
+        <span className="text-content-secondary font-medium">{relativeMode ? t('map:elevationLegend.rel') : t('map:elevationLegend.amsl')}</span>
         <div className="ml-auto flex items-center gap-1">
           {onRelativeModeChange && (
             <button
@@ -137,9 +140,9 @@ export function ElevationLegend({
                     ? 'bg-surface-raised text-content-secondary hover:text-content'
                     : 'bg-surface-raised text-content-tertiary cursor-not-allowed'
               }`}
-              title={hasCraftPosition ? 'Show height relative to craft' : 'No craft position available'}
+              title={hasCraftPosition ? t('map:elevationLegend.relTip') : t('map:elevationLegend.noCraftTip')}
             >
-              Rel
+              {t('map:elevationLegend.relButton')}
             </button>
           )}
           <button
@@ -150,7 +153,7 @@ export function ElevationLegend({
                 : 'bg-surface-raised text-content-secondary hover:text-content'
             }`}
           >
-            Auto
+            {t('map:elevationLegend.auto')}
           </button>
         </div>
       </div>

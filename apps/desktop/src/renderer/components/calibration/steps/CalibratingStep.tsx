@@ -8,9 +8,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useCalibrationStore } from '../../../stores/calibration-store';
 import { useConnectionStore } from '../../../stores/connection-store';
-import { CALIBRATION_TYPES, ACCEL_6POINT_POSITIONS } from '../../../../shared/calibration-types';
+import { CALIBRATION_TYPES, accelPositionName, calibrationTypeName } from '../../../../shared/calibration-types';
 import { CalibrationProgress } from '../shared/CalibrationProgress';
 import { CompassCoverageView } from '../shared/CompassCoverageView';
 import { useCompassCoverageStore, slowestCompassProgress } from '../../../stores/compass-coverage-store';
@@ -50,7 +51,7 @@ function PositionDots({ positionStatus, currentPosition, highlightCurrent }: {
                 ? 'bg-cyan-500/20 text-cyan-400 border-2 border-cyan-500 animate-pulse'
                 : 'bg-surface-raised text-content-secondary border border-subtle'
           }`}
-          data-tip={ACCEL_6POINT_POSITIONS[index]}
+          data-tip={accelPositionName(index)}
         >
           {done ? (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -72,6 +73,7 @@ function PositionDots({ positionStatus, currentPosition, highlightCurrent }: {
  * clearly "listening", not a progress bar pretending to know something.
  */
 function CompassWaitingForData({ elapsed }: { elapsed: number }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center gap-3 py-4">
       <div className="relative w-20 h-20">
@@ -87,13 +89,11 @@ function CompassWaitingForData({ elapsed }: { elapsed: number }) {
         </div>
       </div>
       <div className="text-center">
-        <p className="text-sm text-content">Rotate the vehicle, waiting for progress from the flight controller</p>
-        <p className="text-xs text-content-secondary mt-1">Elapsed {formatElapsed(elapsed)}</p>
+        <p className="text-sm text-content">{t('calibration:calibratingStep.rotateWaiting')}</p>
+        <p className="text-xs text-content-secondary mt-1">{t('calibration:calibratingStep.elapsed', { time: formatElapsed(elapsed) })}</p>
         {elapsed >= 20 && (
           <p className="text-xs text-amber-400 mt-2 max-w-sm">
-            Still no progress data. Keep rotating; if this persists past a minute,
-            the link may be dropping calibration messages or the compass is not
-            producing usable data.
+            {t('calibration:calibratingStep.noProgressData')}
           </p>
         )}
       </div>
@@ -102,6 +102,7 @@ function CompassWaitingForData({ elapsed }: { elapsed: number }) {
 }
 
 export function CalibratingStep() {
+  const { t } = useTranslation();
   const {
     calibrationType,
     progress,
@@ -121,14 +122,14 @@ export function CalibratingStep() {
   const coverageByCompass = useCompassCoverageStore((s) => s.byCompass);
 
   const calTypeInfo = calibrationType
-    ? CALIBRATION_TYPES.find((t) => t.id === calibrationType)
+    ? CALIBRATION_TYPES.find((c) => c.id === calibrationType)
     : null;
 
   if (!calibrationType || !calTypeInfo) {
     return null;
   }
 
-  const fcHasRequestedPosition = statusText.startsWith('Place vehicle');
+  const fcHasRequestedPosition = statusText.startsWith('Place vehicle'); // i18n-exempt
   const isWaitingForConfirm =
     calibrationType === 'accel-6point' && !isPx4 && !isFinalizing &&
     !positionStatus[currentPosition] && fcHasRequestedPosition;
@@ -144,9 +145,11 @@ export function CalibratingStep() {
       {/* Calibration type header */}
       <div className="text-center">
         <h3 className="text-xl font-semibold text-content mb-1">
-          {calTypeInfo.name}
+          {calibrationTypeName(calTypeInfo)}
         </h3>
-        <p className="text-sm text-content-secondary">{statusText}</p>
+        <p className="text-sm text-content-secondary">
+          {fcHasRequestedPosition ? t('calibration:calibratingStep.placeVehicle', { position: accelPositionName(currentPosition) }) : statusText}
+        </p>
       </div>
 
       {/* Main progress display */}
@@ -169,7 +172,7 @@ export function CalibratingStep() {
                 visibly most of the way covered. */}
             <CalibrationProgress
               progress={coverageProgress ?? progress}
-              label="slowest compass"
+              label={t('calibration:calibratingStep.slowestCompass')}
             />
           </div>
         )}
@@ -180,7 +183,7 @@ export function CalibratingStep() {
             {!px4CompassStarted && <CompassWaitingForData elapsed={elapsed} />}
             {px4CompassStarted && (
               <div className="flex justify-center">
-                <CalibrationProgress progress={progress} indeterminate={progress === 0} label="Hold and rotate as prompted" />
+                <CalibrationProgress progress={progress} indeterminate={progress === 0} label={t('calibration:calibratingStep.holdAndRotate')} />
               </div>
             )}
             <PositionDots positionStatus={positionStatus} currentPosition={currentPosition} highlightCurrent={px4CompassStarted} />
@@ -198,7 +201,7 @@ export function CalibratingStep() {
           <CalibrationProgress
             progress={progress}
             indeterminate={progress === 0}
-            label={calibrationType === 'gyro' ? 'Keep still' : 'Hold level'}
+            label={calibrationType === 'gyro' ? t('calibration:calibratingStep.keepStill') : t('calibration:calibratingStep.holdLevel')}
           />
         )}
 
@@ -214,12 +217,20 @@ export function CalibratingStep() {
                 <p className="text-center text-xs text-content-secondary">
                   {isPx4 ? (
                     positionStatus.some(Boolean) || fcHasRequestedPosition || progress > 0 ? (
-                      <>Detected: <span className="text-cyan-400 font-medium">{ACCEL_6POINT_POSITIONS[currentPosition]}</span>, {positionStatus.filter(Boolean).length} of 6 sides captured</>
+                      <Trans
+                        i18nKey="calibration:calibratingStep.detected"
+                        values={{ position: accelPositionName(currentPosition), n: positionStatus.filter(Boolean).length }}
+                        components={{ b: <span className="text-cyan-400 font-medium" /> }}
+                      />
                     ) : (
-                      <>Hold the vehicle still on any side, detection is automatic</>
+                      <>{t('calibration:calibratingStep.holdAnySide')}</>
                     )
                   ) : (
-                    <>Position {currentPosition + 1} of 6: <span className="text-cyan-400 font-medium">{ACCEL_6POINT_POSITIONS[currentPosition]}</span></>
+                    <Trans
+                      i18nKey="calibration:calibratingStep.positionOf"
+                      values={{ n: currentPosition + 1, position: accelPositionName(currentPosition) }}
+                      components={{ b: <span className="text-cyan-400 font-medium" /> }}
+                    />
                   )}
                 </p>
               </div>
@@ -232,7 +243,7 @@ export function CalibratingStep() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <p className="text-sm text-content-secondary">Writing calibration to flight controller…</p>
+                <p className="text-sm text-content-secondary">{t('calibration:calibratingStep.writing')}</p>
               </div>
             )}
 
@@ -246,13 +257,13 @@ export function CalibratingStep() {
       {calibrationType === 'compass' && compassProgress.length > 0 && (
         <div className="bg-surface rounded-xl p-4 border border-subtle">
           <div className="flex justify-between items-baseline mb-3">
-            <h4 className="text-sm font-medium text-content">Compass Progress</h4>
-            <span className="text-xs text-content-secondary">Elapsed {formatElapsed(elapsed)}</span>
+            <h4 className="text-sm font-medium text-content">{t('calibration:calibratingStep.compassProgress')}</h4>
+            <span className="text-xs text-content-secondary">{t('calibration:calibratingStep.elapsed', { time: formatElapsed(elapsed) })}</span>
           </div>
           <div className="space-y-2">
             {compassProgress.map((prog, index) => (
               <div key={index} className="flex items-center gap-3">
-                <span className="text-xs text-content-secondary w-20">Compass {index + 1}</span>
+                <span className="text-xs text-content-secondary w-20">{t('calibration:compassCoverageView.compassN', { n: index + 1 })}</span>
                 <div className="flex-1 h-2 bg-surface-inset rounded-full overflow-hidden">
                   <div
                     className="h-full bg-cyan-500 transition-all duration-300"
@@ -276,7 +287,7 @@ export function CalibratingStep() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            Position Ready
+            {t('calibration:calibratingStep.positionReady')}
           </button>
         )}
 
@@ -288,22 +299,22 @@ export function CalibratingStep() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Cancel
+            {t('common:cancel')}
           </button>
         )}
       </div>
 
       {/* Instructions reminder */}
       <p className="text-center text-xs text-content-secondary">
-        {calibrationType === 'compass' && !isPx4 && 'Keep rotating your vehicle in all directions...'}
-        {calibrationType === 'compass' && isPx4 && 'Hold the vehicle on a side, rotate it when prompted, then move to the next side...'}
-        {calibrationType === 'accel-level' && 'Keep your vehicle still on the level surface...'}
+        {calibrationType === 'compass' && !isPx4 && t('calibration:calibratingStep.hintCompass')}
+        {calibrationType === 'compass' && isPx4 && t('calibration:calibratingStep.hintCompassPx4')}
+        {calibrationType === 'accel-level' && t('calibration:calibratingStep.hintLevel')}
         {calibrationType === 'accel-6point' && !isFinalizing && (isPx4
-          ? 'Hold each position still, the vehicle detects and captures sides automatically'
-          : 'Hold the position steady, then click "Position Ready"')}
-        {calibrationType === 'accel-6point' && isFinalizing && 'Please wait - do not disconnect the flight controller'}
-        {calibrationType === 'gyro' && 'Keep your vehicle completely still...'}
-        {calibrationType === 'opflow' && 'Hold steady over the textured surface...'}
+          ? t('calibration:calibratingStep.hintSixPointPx4')
+          : t('calibration:calibratingStep.hintSixPoint'))}
+        {calibrationType === 'accel-6point' && isFinalizing && t('calibration:calibratingStep.hintFinalizing')}
+        {calibrationType === 'gyro' && t('calibration:calibratingStep.hintGyro')}
+        {calibrationType === 'opflow' && t('calibration:calibratingStep.hintOpflow')}
       </p>
     </div>
   );

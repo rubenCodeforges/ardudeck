@@ -1,0 +1,32 @@
+{
+  "fenceListPanel": {
+    "aboveMaxAlt": "Above maximum altitude",
+    "alt": "Alt: {{value}}",
+    "belowMinAlt": "Below minimum altitude",
+    "breachCount_one": "{{count}} breach",
+    "breachCount_other": "{{count}} breaches",
+    "circleCount_one": "{{count}} circle",
+    "circleCount_other": "{{count}} circles",
+    "circleRadius": "Circle ({{radius}}m)",
+    "editHint": "Click a zone (here or on the map) to move, reshape, or delete it.",
+    "exclusionZones": "Exclusion Zones ({{count}})",
+    "fenceBreached": "Fence breached",
+    "inclusionZones": "Inclusion Zones ({{count}})",
+    "mspUnsupported": "Geofencing is not supported on iNav/Betaflight boards. You can still plan fences and save to file for reference.",
+    "noExclusionZones": "No exclusion zones",
+    "noInclusionZones": "No inclusion zones",
+    "noReturnPoint": "No return point set",
+    "outsideBoundary": "Outside boundary",
+    "polygonCount_one": "{{count}} polygon",
+    "polygonCount_other": "{{count}} polygons",
+    "polygonPts": "Polygon ({{count}} pts)",
+    "returnPoint": "Return Point"
+  },
+  "fenceMapOverlay": {
+    "clickToEdit": "Click to edit or delete this zone",
+    "delete": "Delete",
+    "deleteZone": "Delete this zone (Del)",
+    "dragToMove": "Drag to move the whole zone",
+    "rightClickDelete": "Right-click to delete"
+  }
+}

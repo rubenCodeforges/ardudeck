@@ -10,6 +10,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import type { Transport } from '@ardudeck/comms';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
+import { t } from '../../shared/i18n/index.js';
 
 // =============================================================================
 // State
@@ -83,7 +84,7 @@ export async function exitCliModeIfActive(): Promise<void> {
       // Use timeout to prevent hanging - if write takes > 1 second, skip it
       const writePromise = currentTransport.write(new TextEncoder().encode('exit\n'));
       const timeoutPromise = new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error('CLI exit write timeout')), 1000)
+        setTimeout(() => reject(new Error('CLI exit write timeout')), 1000) // i18n-exempt
       );
 
       await Promise.race([writePromise, timeoutPromise]);
@@ -292,7 +293,7 @@ export async function exitCliMode(): Promise<boolean> {
         ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
       if (scheduleReconnect) {
         scheduleReconnect({
-          reason: 'CLI exit',
+          reason: 'CLI exit', // i18n-exempt
           delayMs: 3000,
           timeoutMs: 8000,
           maxAttempts: 15,
@@ -381,7 +382,7 @@ async function exitCliModeSilent(): Promise<boolean> {
  */
 export async function sendCliCommand(command: string): Promise<void> {
   if (!currentTransport?.isOpen) {
-    throw new Error('Transport not connected');
+    throw new Error(t('main:cliHandlers.transportNotConnected'));
   }
 
   // Check if this is an exit or save command - both trigger board reboot
@@ -393,7 +394,7 @@ export async function sendCliCommand(command: string): Promise<void> {
     // Auto-enter CLI mode if not already in it
     const entered = await enterCliMode();
     if (!entered) {
-      throw new Error('Failed to enter CLI mode');
+      throw new Error(t('main:cliHandlers.enterCliFailed'));
     }
   }
 
@@ -419,7 +420,7 @@ export async function sendCliCommand(command: string): Promise<void> {
       ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
     if (scheduleReconnect) {
       scheduleReconnect({
-        reason: 'CLI exit',
+        reason: 'CLI exit', // i18n-exempt
         delayMs: 3000,
         timeoutMs: 8000,
         maxAttempts: 15,
@@ -445,7 +446,7 @@ export async function sendCliCommand(command: string): Promise<void> {
       ((options: { reason: string; delayMs: number; timeoutMs?: number; maxAttempts?: number }) => void) | undefined;
     if (scheduleReconnect) {
       scheduleReconnect({
-        reason: 'CLI save',
+        reason: 'CLI save', // i18n-exempt
         delayMs: 4000,
         timeoutMs: 8000,
         maxAttempts: 15,
@@ -471,11 +472,11 @@ export async function sendCliCommand(command: string): Promise<void> {
  */
 async function sendCliRaw(data: string): Promise<void> {
   if (!currentTransport?.isOpen) {
-    throw new Error('Transport not connected');
+    throw new Error(t('main:cliHandlers.transportNotConnected'));
   }
 
   if (!cliModeActive) {
-    throw new Error('Not in CLI mode');
+    throw new Error(t('main:cliHandlers.notInCliMode'));
   }
 
   try {
@@ -493,7 +494,7 @@ async function sendCliRaw(data: string): Promise<void> {
  */
 export async function getCliDump(diff = false): Promise<string> {
   if (!currentTransport?.isOpen) {
-    throw new Error('Transport not connected');
+    throw new Error(t('main:cliHandlers.transportNotConnected'));
   }
 
   const wasInCliMode = cliModeActive;
@@ -503,7 +504,7 @@ export async function getCliDump(diff = false): Promise<string> {
     if (!wasInCliMode) {
       const entered = await enterCliMode();
       if (!entered) {
-        throw new Error('Failed to enter CLI mode');
+        throw new Error(t('main:cliHandlers.enterCliFailed'));
       }
     }
 
@@ -518,7 +519,7 @@ export async function getCliDump(diff = false): Promise<string> {
     // Temporarily replace the data listener to capture dump
     // Re-check transport in case it was closed during enterCliMode()
     if (!currentTransport?.isOpen) {
-      throw new Error('Transport closed during CLI setup');
+      throw new Error(t('main:cliHandlers.transportClosedDuringSetup'));
     }
     if (cliDataListener) {
       currentTransport.off('data', cliDataListener as (...args: unknown[]) => void);
@@ -611,11 +612,11 @@ function registerIpcHandlers(): void {
     if (!mainWindow) return false;
 
     const result = await dialog.showSaveDialog(mainWindow, {
-      title: 'Save CLI Output',
+      title: t('main:cliHandlers.saveOutputTitle'),
       defaultPath: `cli-dump-${new Date().toISOString().slice(0, 10)}.txt`,
       filters: [
-        { name: 'Text Files', extensions: ['txt'] },
-        { name: 'All Files', extensions: ['*'] },
+        { name: t('main:fileFilters.textFiles'), extensions: ['txt'] },
+        { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
       ],
     });
 

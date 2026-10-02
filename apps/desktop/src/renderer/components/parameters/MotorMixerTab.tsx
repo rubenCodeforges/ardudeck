@@ -7,11 +7,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { pendingDraft, usePendingWritesStore } from '../../stores/msp-pending-writes-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { CompactSlider } from '../ui/DraggableSlider';
 import {
-  Cog, Plus, Trash2, RotateCcw, RotateCw, Download, RefreshCw, XCircle,
+  Cog, Plus, Trash2, RotateCcw, RotateCw, RefreshCw,
   Lightbulb, HelpCircle, ChevronDown, ChevronUp, Sparkles, Plane
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -36,9 +38,9 @@ type PlatformCategory = 'multirotor' | 'airplane';
 
 // Common motor mixer presets with visual positions
 const MOTOR_PRESETS: Record<string, {
-  name: string;
-  description: string;
-  beginner: string;
+  nameKey: string;
+  descriptionKey: string;
+  beginnerKey: string;
   icon: LucideIcon;
   recommended?: boolean;
   platform: PlatformCategory;
@@ -47,9 +49,9 @@ const MOTOR_PRESETS: Record<string, {
 }> = {
   // === MULTIROTOR PRESETS ===
   quadX: {
-    name: 'Quad X',
-    description: 'Most common drone layout',
-    beginner: 'This is what most racing and freestyle drones use. The X shape gives balanced control in all directions.',
+    nameKey: 'parameters:motorMixerTab.preset.quadXName',
+    descriptionKey: 'parameters:motorMixerTab.preset.quadXDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.quadXBeginner',
     icon: Sparkles,
     recommended: true,
     platform: 'multirotor',
@@ -67,9 +69,9 @@ const MOTOR_PRESETS: Record<string, {
     ],
   },
   quadPlus: {
-    name: 'Quad +',
-    description: 'Plus-shaped layout',
-    beginner: 'Motors are arranged in a + shape. One motor points forward. Less common but works well for some frames.',
+    nameKey: 'parameters:motorMixerTab.preset.quadPlusName',
+    descriptionKey: 'parameters:motorMixerTab.preset.quadPlusDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.quadPlusBeginner',
     icon: Plus,
     platform: 'multirotor',
     positions: [
@@ -86,9 +88,9 @@ const MOTOR_PRESETS: Record<string, {
     ],
   },
   hex: {
-    name: 'Hex X',
-    description: '6 motors for heavy lifting',
-    beginner: 'Six motors provide more power and redundancy. If one motor fails, you might still be able to land safely.',
+    nameKey: 'parameters:motorMixerTab.preset.hexName',
+    descriptionKey: 'parameters:motorMixerTab.preset.hexDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.hexBeginner',
     icon: Cog,
     platform: 'multirotor',
     positions: [
@@ -111,9 +113,9 @@ const MOTOR_PRESETS: Record<string, {
 
   // === AIRPLANE PRESETS ===
   singleMotor: {
-    name: 'Single Motor',
-    description: 'Standard airplane with one motor',
-    beginner: 'Most airplanes have one motor at the front (tractor) or back (pusher). Control surfaces handle steering.',
+    nameKey: 'parameters:motorMixerTab.preset.singleMotorName',
+    descriptionKey: 'parameters:motorMixerTab.preset.singleMotorDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.singleMotorBeginner',
     icon: Plane,
     recommended: true,
     platform: 'airplane',
@@ -125,9 +127,9 @@ const MOTOR_PRESETS: Record<string, {
     ],
   },
   twinMotorDiff: {
-    name: 'Twin Motor (Diff Thrust)',
-    description: 'Yaw via motor speed difference',
-    beginner: 'Two wing motors spinning opposite directions. Yaw is controlled by speeding up one motor and slowing the other.',
+    nameKey: 'parameters:motorMixerTab.preset.twinMotorDiffName',
+    descriptionKey: 'parameters:motorMixerTab.preset.twinMotorDiffDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.twinMotorDiffBeginner',
     icon: Plane,
     platform: 'airplane',
     positions: [
@@ -140,9 +142,9 @@ const MOTOR_PRESETS: Record<string, {
     ],
   },
   twinMotorRudder: {
-    name: 'Twin Motor (Rudder)',
-    description: 'Yaw via rudder servo',
-    beginner: 'Two wing motors at equal speed. Use this if your plane has a rudder/tail for yaw control.',
+    nameKey: 'parameters:motorMixerTab.preset.twinMotorRudderName',
+    descriptionKey: 'parameters:motorMixerTab.preset.twinMotorRudderDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.twinMotorRudderBeginner',
     icon: Plane,
     platform: 'airplane',
     positions: [
@@ -155,9 +157,9 @@ const MOTOR_PRESETS: Record<string, {
     ],
   },
   quadPlaneVTOL: {
-    name: 'QuadPlane VTOL',
-    description: '4 quad motors + 1 pusher',
-    beginner: 'VTOL aircraft: 4 lifting motors (like a quad) plus 1 pusher motor for forward flight. Most popular VTOL setup.',
+    nameKey: 'parameters:motorMixerTab.preset.quadPlaneVTOLName',
+    descriptionKey: 'parameters:motorMixerTab.preset.quadPlaneVTOLDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.quadPlaneVTOLBeginner',
     icon: Plane,
     platform: 'airplane',
     positions: [
@@ -176,9 +178,9 @@ const MOTOR_PRESETS: Record<string, {
     ],
   },
   triVTOL: {
-    name: 'Tricopter VTOL',
-    description: '3 tilt/lift motors',
-    beginner: 'VTOL with 3 motors that tilt for transition. Lighter than QuadPlane but more complex mechanically.',
+    nameKey: 'parameters:motorMixerTab.preset.triVTOLName',
+    descriptionKey: 'parameters:motorMixerTab.preset.triVTOLDesc',
+    beginnerKey: 'parameters:motorMixerTab.preset.triVTOLBeginner',
     icon: Plane,
     platform: 'airplane',
     positions: [
@@ -204,6 +206,7 @@ function MotorLayoutDiagram({
   size?: number;
   showLabels?: boolean;
 }) {
+  const { t } = useTranslation();
   // Scale motor size based on diagram size
   const motorSize = size >= 140 ? 'w-8 h-8 text-sm' : 'w-6 h-6 text-xs';
   const labelSize = size >= 140 ? 'text-[10px]' : 'text-[8px]';
@@ -217,7 +220,7 @@ function MotorLayoutDiagram({
       {/* Front indicator */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center">
         <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[10px] border-l-transparent border-r-transparent border-b-emerald-500" />
-        <span className="text-[10px] text-emerald-400 font-semibold mt-1">FRONT</span>
+        <span className="text-[10px] text-emerald-400 font-semibold mt-1">{t('parameters:motorMixerTab.front')}</span>
       </div>
 
       {/* Motors */}
@@ -288,9 +291,11 @@ function MixBar({ value, color, label }: { value: number; color: string; label: 
   );
 }
 
-interface Props {
-  modified: boolean;
-  setModified: (v: boolean) => void;
+const PENDING_ID = 'motor-mixer';
+
+async function writeMotorMixer(motors: MotorMix[]): Promise<boolean> {
+  const rules = motors.map((m) => ({ throttle: m.throttle, roll: m.roll, pitch: m.pitch, yaw: m.yaw }));
+  return (await window.electronAPI?.mspSetMotorMixer(rules)) ?? false;
 }
 
 // Helper to determine platform category from vehicle type
@@ -303,14 +308,15 @@ function getPlatformCategory(vehicleType?: string): PlatformCategory {
   return 'multirotor';
 }
 
-export default function MotorMixerTab({ modified, setModified }: Props) {
+export default function MotorMixerTab() {
+  const { t } = useTranslation();
   const connectionState = useConnectionStore((s) => s.connectionState);
   const showInfoCards = useSettingsStore((s) => s.uiVisibility.showInfoCards);
-  const [motors, setMotors] = useState<MotorMix[]>([]);
+  const draft = pendingDraft<MotorMix[]>(PENDING_ID);
+  const [motors, setMotors] = useState<MotorMix[]>(draft ?? []);
+  const [dirty, setDirty] = useState(!!draft);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'rebooting' | 'reconnecting' | 'done' | 'error'>('idle');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showMorePresets, setShowMorePresets] = useState(false);
 
@@ -355,35 +361,41 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
       }
     } catch (err) {
       console.error('[MotorMixer] Load failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load motor mixer');
+      setError(err instanceof Error ? err.message : t('parameters:motorMixerTab.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
-  // Auto-load on mount
+  // Auto-load on mount, unless unsaved edits from before a tab switch are waiting
   useEffect(() => {
-    if (connectionState.isConnected) {
+    if (connectionState.isConnected && !pendingDraft(PENDING_ID)) {
       loadMotorMixer();
     }
   }, [connectionState.isConnected, loadMotorMixer]);
 
-  // Clear save state after reconnect
   useEffect(() => {
-    if (saveState === 'reconnecting' && connectionState.isConnected) {
-      setSaveState('done');
-      setTimeout(() => setSaveState('idle'), 1500);
-      // Reload after reconnect
-      loadMotorMixer();
-    }
-  }, [connectionState.isConnected, saveState, loadMotorMixer]);
+    if (!dirty) return;
+    usePendingWritesStore.getState().put<MotorMix[]>(PENDING_ID, {
+      label: t('parameters:motorMixerTab.pendingLabel'),
+      draft: motors,
+      write: writeMotorMixer,
+      needsReboot: true,
+    });
+  }, [dirty, motors, t]);
+
+  const reload = () => {
+    usePendingWritesStore.getState().drop(PENDING_ID);
+    setDirty(false);
+    void loadMotorMixer();
+  };
 
   // Update a motor's mix values
   const updateMotor = (index: number, updates: Partial<MotorMix>) => {
     setMotors(prev => prev.map(m =>
       m.index === index ? { ...m, ...updates } : m
     ));
-    setModified(true);
+    setDirty(true);
   };
 
   // Add a new motor
@@ -397,7 +409,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
       pitch: 0,
       yaw: 0,
     }]);
-    setModified(true);
+    setDirty(true);
   };
 
   // Remove a motor
@@ -406,7 +418,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
       const filtered = prev.filter(m => m.index !== index);
       return filtered.map((m, i) => ({ ...m, index: i }));
     });
-    setModified(true);
+    setDirty(true);
   };
 
   // Apply a preset
@@ -414,111 +426,20 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
     const preset = MOTOR_PRESETS[presetKey];
     if (!preset) return;
     setMotors(preset.motors.map((m, i) => ({ ...m, index: i })));
-    setModified(true);
+    setDirty(true);
   };
 
   // Reset all motors
   const resetAll = () => {
     setMotors([]);
-    setModified(true);
+    setDirty(true);
   };
-
-  // Save to FC with background reconnect handling
-  const saveToFC = async () => {
-    setSaving(true);
-    setSaveState('saving');
-    setError(null);
-
-    try {
-      const rules = motors.map(m => ({
-        throttle: m.throttle,
-        roll: m.roll,
-        pitch: m.pitch,
-        yaw: m.yaw,
-      }));
-
-      // Try MSP first, falls back to CLI internally
-      const success = await window.electronAPI?.mspSetMotorMixer(rules);
-      if (!success) {
-        throw new Error('Failed to save motor mixer');
-      }
-
-      // Save to EEPROM
-      await window.electronAPI?.mspSaveEeprom();
-
-      // Reboot board
-      setSaveState('rebooting');
-      window.electronAPI?.mspReboot().catch(() => {});
-
-      // Wait for reboot
-      await new Promise(r => setTimeout(r, 3000));
-
-      // Reconnect
-      setSaveState('reconnecting');
-      // The connection store should handle auto-reconnect
-      // If not, we can manually reconnect here
-
-      setModified(false);
-    } catch (err) {
-      console.error('[MotorMixer] Save failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save motor mixer');
-      setSaveState('error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Show save overlay during save/reboot/reconnect
-  if (saveState !== 'idle' && saveState !== 'done') {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-6">
-        <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
-          saveState === 'error' ? 'bg-red-500/20' : 'bg-blue-500/20'
-        }`}>
-          {saveState === 'error' ? (
-            <XCircle className="w-8 h-8 text-red-400" />
-          ) : (
-            <Cog className="w-8 h-8 text-blue-400 animate-spin" />
-          )}
-        </div>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-content mb-1">
-            {saveState === 'saving' && 'Saving Motor Mixer'}
-            {saveState === 'rebooting' && 'Rebooting Board'}
-            {saveState === 'reconnecting' && 'Reconnecting'}
-            {saveState === 'error' && 'Save Failed'}
-          </h3>
-          <p className="text-sm text-content-secondary">
-            {saveState === 'saving' && 'Writing configuration...'}
-            {saveState === 'rebooting' && 'Waiting for board to restart...'}
-            {saveState === 'reconnecting' && 'Connecting to board...'}
-            {saveState === 'error' && (error || 'An error occurred')}
-          </p>
-        </div>
-        {saveState !== 'error' && (
-          <div className="flex gap-2">
-            <div className={`w-2 h-2 rounded-full ${saveState === 'saving' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
-            <div className={`w-2 h-2 rounded-full ${saveState === 'rebooting' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
-            <div className={`w-2 h-2 rounded-full ${saveState === 'reconnecting' ? 'bg-blue-500' : 'bg-zinc-600'}`} />
-          </div>
-        )}
-        {saveState === 'error' && (
-          <button
-            onClick={() => setSaveState('idle')}
-            className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm"
-          >
-            Dismiss
-          </button>
-        )}
-      </div>
-    );
-  }
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-        <p className="text-sm text-content-secondary">Loading motor mixer...</p>
+        <p className="text-sm text-content-secondary">{t('parameters:motorMixerTab.loading')}</p>
       </div>
     );
   }
@@ -532,39 +453,27 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
             <Cog className="w-5 h-5 text-rose-400" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-content">Motor Mixer</h2>
-            <p className="text-sm text-content-secondary">Configure motor output mixing</p>
+            <h2 className="text-lg font-semibold text-content">{t('parameters:motorMixerTab.title')}</h2>
+            <p className="text-sm text-content-secondary">{t('parameters:motorMixerTab.subtitle')}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={loadMotorMixer}
+            onClick={reload}
             disabled={loading}
             className="px-3 py-2 text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors flex items-center gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Reload
-          </button>
-          <button
-            onClick={saveToFC}
-            disabled={saving || !modified}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              modified
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                : 'bg-surface-raised text-content-secondary cursor-not-allowed'
-            }`}
-          >
-            <Download className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save to FC'}
+            {dirty ? t('parameters:motorMixerTab.discardChanges') : t('common:reload')}
           </button>
         </div>
       </div>
 
       {/* Error */}
-      {error && saveState === 'idle' && (
+      {error && (
         <div className="p-3 bg-red-500/10 border-red-500/30 rounded-lg text-sm text-red-300 flex items-center gap-2">
-          <span>Error:</span> {error}
+          <span>{t('parameters:motorMixerTab.errorPrefix')}</span> {error}
           <button onClick={() => setError(null)} className="ml-auto hover:text-red-200">×</button>
         </div>
       )}
@@ -575,11 +484,11 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
           <div className="flex items-start gap-3">
             <Lightbulb className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
             <div>
-              <h3 className="font-medium text-blue-300 mb-1">What is Motor Mixer?</h3>
+              <h3 className="font-medium text-blue-300 mb-1">{t('parameters:motorMixerTab.whatIs')}</h3>
               <p className="text-sm text-blue-200/70">
                 {currentPlatform === 'airplane'
-                  ? 'Motor mixer controls how your motor(s) respond to throttle. Most airplanes have one motor - control surfaces handle steering.'
-                  : 'Motor mixer tells your flight controller how each motor should respond when you move the sticks. Pick a preset that matches your frame shape.'}
+                  ? t('parameters:motorMixerTab.whatIsPlane')
+                  : t('parameters:motorMixerTab.whatIsMulti')}
               </p>
             </div>
           </div>
@@ -590,14 +499,14 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium text-content">
-            {currentPlatform === 'airplane' ? 'How many motors does your airplane have?' : 'What type of frame do you have?'}
+            {currentPlatform === 'airplane' ? t('parameters:motorMixerTab.questionPlane') : t('parameters:motorMixerTab.questionMulti')}
           </h3>
           <button
             onClick={resetAll}
             className="px-3 py-1.5 text-xs bg-surface-raised hover:bg-red-500/20 rounded-lg text-content-tertiary hover:text-red-400 transition-colors flex items-center gap-1.5"
           >
             <RotateCcw className="w-3 h-3" />
-            Clear All
+            {t('parameters:motorMixerTab.clearAll')}
           </button>
         </div>
 
@@ -636,33 +545,33 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                   <div className="flex items-center gap-2 mb-2">
                     <IconComponent className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-content-secondary'}`} />
                     <span className={`font-semibold ${isSelected ? 'text-emerald-300' : 'text-content'}`}>
-                      {preset.name}
+                      {t(preset.nameKey)}
                     </span>
                     {preset.recommended && (
                       <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded font-medium">
-                        Popular
+                        {t('parameters:motorMixerTab.popular')}
                       </span>
                     )}
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-content-secondary mb-3">{preset.description}</p>
+                  <p className="text-xs text-content-secondary mb-3">{t(preset.descriptionKey)}</p>
 
                   {/* Footer */}
                   <div className="flex items-center justify-between">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-raised text-content-tertiary'
                     }`}>
-                      {preset.motors.length} {preset.motors.length === 1 ? 'motor' : 'motors'}
+                      {t('parameters:motorMixerTab.motorCount', { count: preset.motors.length })}
                     </span>
                     {isSelected && (
-                      <span className="text-xs text-emerald-400 font-medium">Selected</span>
+                      <span className="text-xs text-emerald-400 font-medium">{t('parameters:motorMixerTab.selected')}</span>
                     )}
                   </div>
 
                   {/* Beginner tip */}
                   <p className="mt-3 pt-3 border-t border-subtle text-[11px] text-content-secondary">
-                    {preset.beginner}
+                    {t(preset.beginnerKey)}
                   </p>
                 </div>
               </button>
@@ -680,12 +589,12 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
               {showMorePresets ? (
                 <>
                   <ChevronUp className="w-4 h-4" />
-                  Show Less
+                  {t('parameters:motorMixerTab.showLess')}
                 </>
               ) : (
                 <>
                   <ChevronDown className="w-4 h-4" />
-                  Show More ({morePresets.length} more)
+                  {t('parameters:motorMixerTab.showMore', { count: morePresets.length })}
                 </>
               )}
             </button>
@@ -698,12 +607,12 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
         <div className="text-center py-12 bg-surface rounded-xl border-subtle">
           <HelpCircle className="w-12 h-12 text-content-tertiary mx-auto mb-3" />
           <h3 className="text-lg font-medium text-content mb-2">
-            {currentPlatform === 'airplane' ? 'No Motor Configuration' : 'No Frame Selected'}
+            {currentPlatform === 'airplane' ? t('parameters:motorMixerTab.emptyPlane') : t('parameters:motorMixerTab.emptyMulti')}
           </h3>
           <p className="text-sm text-content-secondary max-w-md mx-auto mb-4">
             {currentPlatform === 'airplane'
-              ? 'Pick a motor setup above. Most airplanes have a single motor - control surfaces handle steering.'
-              : 'Pick a frame type above to get started. Most drones use "Quad X" - the standard layout with 4 motors in an X shape.'}
+              ? t('parameters:motorMixerTab.emptyPlaneHint')
+              : t('parameters:motorMixerTab.emptyMultiHint')}
           </p>
           <button
             onClick={() => applyPreset(defaultPreset)}
@@ -712,12 +621,12 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
             {currentPlatform === 'airplane' ? (
               <>
                 <Plane className="w-4 h-4" />
-                Use Single Motor (Recommended)
+                {t('parameters:motorMixerTab.useSingleMotor')}
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Use Quad X (Recommended)
+                {t('parameters:motorMixerTab.useQuadX')}
               </>
             )}
           </button>
@@ -733,10 +642,10 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                 </div>
                 <div>
                   <h3 className="font-medium text-emerald-300">
-                    {motors.length} Motor Configuration
+                    {t('parameters:motorMixerTab.configTitle', { count: motors.length })}
                   </h3>
                   <p className="text-sm text-emerald-200/60">
-                    {Object.entries(MOTOR_PRESETS).find(([, p]) =>
+                    {t(Object.entries(MOTOR_PRESETS).find(([, p]) =>
                       p.motors.length === motors.length &&
                       motors.every((m, i) =>
                         Math.abs(m.throttle - p.motors[i]!.throttle) < 0.01 &&
@@ -744,13 +653,13 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                         Math.abs(m.pitch - p.motors[i]!.pitch) < 0.01 &&
                         Math.abs(m.yaw - p.motors[i]!.yaw) < 0.01
                       )
-                    )?.[1]?.name || 'Custom configuration'}
+                    )?.[1]?.nameKey ?? 'parameters:motorMixerTab.customConfig')}
                   </p>
                 </div>
               </div>
-              {modified && (
+              {dirty && (
                 <span className="px-3 py-1 text-xs bg-amber-500/20 text-amber-400 rounded-full">
-                  Unsaved changes
+                  {t('common:unsavedChanges')}
                 </span>
               )}
             </div>
@@ -764,8 +673,8 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
             >
               <div className="flex items-center gap-2">
                 <Cog className="w-4 h-4 text-content-secondary" />
-                <span className="text-sm font-medium text-content">Advanced: Individual Motor Values</span>
-                <span className="text-xs text-content-secondary">(for custom configurations)</span>
+                <span className="text-sm font-medium text-content">{t('parameters:motorMixerTab.advancedTitle')}</span>
+                <span className="text-xs text-content-secondary">{t('parameters:motorMixerTab.advancedHint')}</span>
               </div>
               {showAdvanced ? (
                 <ChevronUp className="w-4 h-4 text-content-secondary" />
@@ -780,9 +689,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                 <div className="flex items-start gap-2 p-3 bg-surface-raised rounded-lg text-xs text-content-secondary">
                   <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <p>
-                    <span className="text-content font-medium">Rotation direction</span> is inferred from mixing values:
-                    motors with positive roll mix spin CW (orange), negative roll spin CCW (blue).
-                    For airplanes, yaw mixing is used instead.
+                    <Trans i18nKey="parameters:motorMixerTab.rotationInfo" components={{ b: <span className="text-content font-medium" /> }} />
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -819,13 +726,13 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                             M{motor.index}
                           </div>
                           <div>
-                            <h3 className="font-semibold text-content">Motor {motor.index}</h3>
+                            <h3 className="font-semibold text-content">{t('parameters:motorMixerTab.motorN', { n: motor.index })}</h3>
                             <div className={`flex items-center gap-1 text-xs ${
                               isCW ? 'text-orange-400' : 'text-blue-400'
                             }`}>
                               {isCW ? <RotateCw className="w-3 h-3" /> : <RotateCcw className="w-3 h-3" />}
                               <span className="font-medium">{rotation.toUpperCase()}</span>
-                              <span className="text-content-secondary ml-1">· Output {motor.index + 1}</span>
+                              <span className="text-content-secondary ml-1">· {t('parameters:motorMixerTab.outputN', { n: motor.index + 1 })}</span>
                             </div>
                           </div>
                         </div>
@@ -839,16 +746,16 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
 
                       {/* Mix Bars */}
                       <div className="p-4 space-y-3">
-                        <MixBar value={motor.throttle} color="#F59E0B" label="Throttle" />
-                        <MixBar value={motor.roll} color="#EF4444" label="Roll" />
-                        <MixBar value={motor.pitch} color="#22C55E" label="Pitch" />
-                        <MixBar value={motor.yaw} color="#3B82F6" label="Yaw" />
+                        <MixBar value={motor.throttle} color="#F59E0B" label={t('common:throttle')} />
+                        <MixBar value={motor.roll} color="#EF4444" label={t('common:roll')} />
+                        <MixBar value={motor.pitch} color="#22C55E" label={t('common:pitch')} />
+                        <MixBar value={motor.yaw} color="#3B82F6" label={t('common:yaw')} />
                       </div>
 
                       {/* Edit Controls */}
                       <div className="px-4 pb-4 space-y-3 border-t border-subtle pt-3">
                         <CompactSlider
-                          label="Throttle"
+                          label={t('common:throttle')}
                           value={motor.throttle * 1000}
                           onChange={(v) => updateMotor(motor.index, { throttle: v / 1000 })}
                           min={0}
@@ -857,7 +764,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           formatValue={(v: number) => (v / 1000).toFixed(2)}
                         />
                         <CompactSlider
-                          label="Roll"
+                          label={t('common:roll')}
                           value={(motor.roll + 1) * 500}
                           onChange={(v) => updateMotor(motor.index, { roll: (v / 500) - 1 })}
                           min={0}
@@ -866,7 +773,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           formatValue={(v: number) => ((v / 500) - 1).toFixed(2)}
                         />
                         <CompactSlider
-                          label="Pitch"
+                          label={t('common:pitch')}
                           value={(motor.pitch + 1) * 500}
                           onChange={(v) => updateMotor(motor.index, { pitch: (v / 500) - 1 })}
                           min={0}
@@ -875,7 +782,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                           formatValue={(v: number) => ((v / 500) - 1).toFixed(2)}
                         />
                         <CompactSlider
-                          label="Yaw"
+                          label={t('common:yaw')}
                           value={(motor.yaw + 1) * 500}
                           onChange={(v) => updateMotor(motor.index, { yaw: (v / 500) - 1 })}
                           min={0}
@@ -897,7 +804,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
                       className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
-                      Add Motor ({motors.length}/{MAX_MOTORS})
+                      {t('parameters:motorMixerTab.addMotor', { n: motors.length, max: MAX_MOTORS })}
                     </button>
                   </div>
                 )}
@@ -909,7 +816,7 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
 
       {/* Legend */}
       <div className="bg-surface rounded-xl border-subtle p-4">
-        <h4 className="font-medium text-content mb-3">Understanding the Diagram</h4>
+        <h4 className="font-medium text-content mb-3">{t('parameters:motorMixerTab.legendTitle')}</h4>
         <div className="flex flex-wrap gap-6 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full border-2 border-orange-500 bg-orange-500/30 flex items-center justify-center">
@@ -917,9 +824,9 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
             </div>
             <div className="flex items-center gap-1 text-orange-400">
               <RotateCw className="w-3.5 h-3.5" />
-              <span className="font-medium">CW</span>
+              <span className="font-medium">CW</span>{/* i18n-exempt */}
             </div>
-            <span className="text-content-secondary">Clockwise</span>
+            <span className="text-content-secondary">{t('parameters:motorMixerTab.clockwise')}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full border-2 border-blue-500 bg-blue-500/30 flex items-center justify-center">
@@ -927,18 +834,18 @@ export default function MotorMixerTab({ modified, setModified }: Props) {
             </div>
             <div className="flex items-center gap-1 text-blue-400">
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="font-medium">CCW</span>
+              <span className="font-medium">CCW</span>{/* i18n-exempt */}
             </div>
-            <span className="text-content-secondary">Counter-clockwise</span>
+            <span className="text-content-secondary">{t('parameters:motorMixerTab.counterClockwise')}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[10px] border-l-transparent border-r-transparent border-b-emerald-500" />
-            <span className="text-emerald-400 font-medium">FRONT</span>
-            <span className="text-content-secondary">Front of aircraft</span>
+            <span className="text-emerald-400 font-medium">{t('parameters:motorMixerTab.front')}</span>
+            <span className="text-content-secondary">{t('parameters:motorMixerTab.frontOfAircraft')}</span>
           </div>
         </div>
         <p className="text-xs text-content-secondary mt-3">
-          Numbers in the diagram match motor outputs on your flight controller (M0, M1, etc.). Opposite motors spin in opposite directions to cancel torque.
+          {t('parameters:motorMixerTab.legendHint')}
         </p>
       </div>
     </div>

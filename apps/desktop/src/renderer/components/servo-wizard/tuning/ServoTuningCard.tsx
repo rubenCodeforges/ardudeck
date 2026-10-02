@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ControlSurfaceAssignment, CONTROL_SURFACE_INFO } from '../presets/servo-presets';
 import {
   ArrowDownLeft, ArrowUpRight, MoveVertical, MoveHorizontal,
@@ -63,6 +64,7 @@ export default function ServoTuningCard({
   onTestPosition,
   rangeLimits = { min: 500, max: 2500 },
 }: ServoTuningCardProps) {
+  const { t } = useTranslation();
   const [dragging, setDragging] = useState<'min' | 'center' | 'max' | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -147,8 +149,8 @@ export default function ServoTuningCard({
         <div className="flex items-center gap-2">
           <SurfaceIcon className="w-5 h-5" />
           <div>
-            <div className="text-sm font-medium text-content">{info.name}</div>
-            <div className="text-xs text-content-secondary">Servo {assignment.servoIndex}</div>
+            <div className="text-sm font-medium text-content">{t(info.nameKey)}</div>
+            <div className="text-xs text-content-secondary">{t('servo-wizard:servoTestStep.servoIndex', { index: assignment.servoIndex })}</div>
           </div>
         </div>
 
@@ -163,9 +165,9 @@ export default function ServoTuningCard({
               ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
               : 'bg-surface-raised text-content-secondary hover:bg-surface-raised border border'
           }`}
-          title={assignment.reversed ? 'Servo reversed' : 'Click to reverse'}
+          title={assignment.reversed ? t('servo-wizard:servoTuningCard.reversedTip') : t('servo-wizard:servoTuningCard.clickToReverse')}
         >
-          {assignment.reversed ? 'REV' : 'FWD'}
+          {assignment.reversed ? t('servo-wizard:servoReviewStep.rev') : t('servo-wizard:servoTuningCard.fwd')}
         </button>
       </div>
 
@@ -266,7 +268,7 @@ export default function ServoTuningCard({
             }}
             className="flex-1 py-1.5 text-xs bg-surface-raised text-content-secondary rounded hover:bg-surface-raised transition-colors"
           >
-            ← Min
+            {t('servo-wizard:servoTuningCard.testMin')}
           </button>
           <button
             onClick={(e) => {
@@ -275,7 +277,7 @@ export default function ServoTuningCard({
             }}
             className="flex-1 py-1.5 text-xs bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors"
           >
-            Center
+            {t('common:center')}
           </button>
           <button
             onClick={(e) => {
@@ -284,7 +286,7 @@ export default function ServoTuningCard({
             }}
             className="flex-1 py-1.5 text-xs bg-surface-raised text-content-secondary rounded hover:bg-surface-raised transition-colors"
           >
-            Max →
+            {t('servo-wizard:servoTuningCard.testMax')}
           </button>
         </div>
       )}

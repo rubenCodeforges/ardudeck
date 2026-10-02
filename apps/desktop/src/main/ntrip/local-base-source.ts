@@ -7,6 +7,7 @@ import { SerialPort } from 'serialport';
 import type { NtripConfig, NtripStatus } from '../../shared/ntrip-types.js';
 import { INITIAL_NTRIP_STATUS } from '../../shared/ntrip-types.js';
 import { RtcmFramer, parseBasePosition, type RtcmFrame } from './rtcm.js';
+import { t } from '../../shared/i18n/index.js';
 
 const RECONNECT_BASE_MS = 2000;
 const RECONNECT_MAX_MS = 30000;
@@ -64,7 +65,7 @@ export class LocalBaseSource {
   }
 
   connect(config: NtripConfig): { success: boolean; error?: string } {
-    if (!config.serialPath) return { success: false, error: 'Base station serial port is not set' };
+    if (!config.serialPath) return { success: false, error: t('main:ntrip.baseSerialNotSet') };
     this.teardownPort();
     this.clearReconnect();
     this.enabled = true;
@@ -113,14 +114,14 @@ export class LocalBaseSource {
     port.on('error', (err) => this.handleStreamFailure(err.message));
     port.on('close', () => {
       if (this.port !== port) return;
-      if (this.enabled) this.handleStreamFailure('Base station port closed');
+      if (this.enabled) this.handleStreamFailure(t('main:ntrip.basePortClosed'));
     });
     port.open((err) => {
       if (this.port !== port) return;
       if (err) {
         // First-open failure (missing/busy port) is a config error, not a drop.
         if (!this.everConnected) {
-          this.failPermanently(`Could not open ${config.serialPath}: ${err.message}`);
+          this.failPermanently(t('main:ntrip.couldNotOpen', { path: config.serialPath, error: err.message }));
         } else {
           this.handleStreamFailure(err.message);
         }
@@ -151,7 +152,7 @@ export class LocalBaseSource {
   private armStallTimer(): void {
     if (this.stallTimer) clearTimeout(this.stallTimer);
     this.stallTimer = setTimeout(() => {
-      if (this.enabled) this.handleStreamFailure('No data from the base station (check that it is powered and configured to output RTCM3)');
+      if (this.enabled) this.handleStreamFailure(t('main:ntrip.baseNoData'));
     }, STREAM_STALL_TIMEOUT_MS);
   }
 

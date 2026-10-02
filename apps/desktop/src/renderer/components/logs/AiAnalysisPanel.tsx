@@ -6,9 +6,11 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { runClaudeLogChat } from './log-ai-tools';
 import { formatAltitudeFromMeters, formatCapacityFromMah, formatSpeedFromMetersPerSecond } from '../../../shared/user-units.js';
+import { useTranslation } from 'react-i18next';
 
 /** AI disclaimer dialog shown before first AI interaction */
 export function AiWarningDialog({ onAccept, onCancel }: { onAccept: (dismiss: boolean) => void; onCancel: () => void }) {
+  const { t } = useTranslation();
   const [dontShow, setDontShow] = useState(false);
 
   return (
@@ -22,11 +24,11 @@ export function AiWarningDialog({ onAccept, onCancel }: { onAccept: (dismiss: bo
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-content">AI Analysis is Experimental</h3>
+              <h3 className="text-sm font-semibold text-content">{t('logs:ai.warningTitle')}</h3>
               <div className="text-xs text-content-secondary mt-2 leading-relaxed space-y-2">
-                <p>AI-generated suggestions may be inaccurate or inappropriate for your specific vehicle and configuration.</p>
-                <p>Always verify parameter recommendations against ArduPilot documentation before applying. Incorrect parameters can lead to loss of vehicle control.</p>
-                <p className="text-amber-400/80">You are solely responsible for any changes applied to your flight controller.</p>
+                <p>{t('logs:ai.warning1')}</p>
+                <p>{t('logs:ai.warning2')}</p>
+                <p className="text-amber-400/80">{t('logs:ai.warning3')}</p>
               </div>
             </div>
           </div>
@@ -37,7 +39,7 @@ export function AiWarningDialog({ onAccept, onCancel }: { onAccept: (dismiss: bo
               onChange={(e) => setDontShow(e.target.checked)}
               className="w-3.5 h-3.5 rounded border bg-surface-input text-purple-500 focus:ring-purple-500/30 focus:ring-offset-0 cursor-pointer"
             />
-            <span className="text-xs text-content-secondary">Don't show this again</span>
+            <span className="text-xs text-content-secondary">{t('logs:ai.dontShow')}</span>
           </label>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-subtle">
@@ -45,13 +47,13 @@ export function AiWarningDialog({ onAccept, onCancel }: { onAccept: (dismiss: bo
             onClick={onCancel}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={() => onAccept(dontShow)}
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 transition-colors"
           >
-            I understand
+            {t('logs:ai.understand')}
           </button>
         </div>
       </div>
@@ -146,6 +148,7 @@ function renderMarkdown(md: string): string {
 
 /** Inline param action card rendered below AI messages */
 function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]; requireWarning: (action: () => void) => void }) {
+  const { t } = useTranslation();
   const isConnected = useConnectionStore((s) => s.connectionState.isConnected);
   const parameterStore = useParameterStore;
   const [applied, setApplied] = useState<Set<string>>(new Set());
@@ -161,7 +164,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
     if (ok) {
       setApplied((prev) => new Set(prev).add(p.name));
     } else {
-      setError(`Failed to set ${p.name}`);
+      setError(t('logs:ai.setFailed', { name: p.name }));
     }
   };
 
@@ -175,7 +178,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
       if (ok) {
         setApplied((prev) => new Set(prev).add(p.name));
       } else {
-        setError(`Failed to set ${p.name}`);
+        setError(t('logs:ai.setFailed', { name: p.name }));
         break;
       }
     }
@@ -197,7 +200,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-        <span className="text-xs font-semibold text-purple-300">Suggested Parameter Changes</span>
+        <span className="text-xs font-semibold text-purple-300">{t('logs:ai.suggested')}</span>
       </div>
 
       <div className="space-y-1.5">
@@ -220,7 +223,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
               <span className="text-content font-medium">{p.value}</span>
               {reboot && (
                 <span className="text-amber-400 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/25 flex-shrink-0">
-                  Reboot
+                  {t('common:reboot')}
                 </span>
               )}
               {isConnected && !isApplied && (
@@ -229,11 +232,11 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
                   disabled={!!applying}
                   className="ml-auto text-[10px] px-2 py-0.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 rounded transition-colors disabled:opacity-50 flex-shrink-0"
                 >
-                  {isApplying ? '...' : 'Apply'}
+                  {isApplying ? '...' : t('common:apply')}
                 </button>
               )}
               {isApplied && (
-                <span className="ml-auto text-emerald-400 text-[10px] flex-shrink-0">Applied</span>
+                <span className="ml-auto text-emerald-400 text-[10px] flex-shrink-0">{t('logs:ai.applied')}</span>
               )}
             </div>
           );
@@ -245,7 +248,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
           <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          Some parameters require a flight controller reboot to take effect.
+          {t('logs:ai.rebootNote')}
         </div>
       )}
 
@@ -259,7 +262,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
               disabled={!!applying}
               className="text-[11px] px-3 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 rounded transition-colors disabled:opacity-50"
             >
-              {applying ? 'Applying...' : 'Apply All'}
+              {applying ? t('common:applying') : t('logs:ai.applyAll')}
             </button>
           )
         ) : (
@@ -268,11 +271,11 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
             disabled={exported}
             className="text-[11px] px-3 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/25 rounded transition-colors disabled:opacity-50"
           >
-            {exported ? 'Exported' : 'Export .param file'}
+            {exported ? t('logs:ai.exported') : t('logs:ai.export')}
           </button>
         )}
         {!isConnected && (
-          <span className="text-[10px] text-content-secondary self-center">FC not connected</span>
+          <span className="text-[10px] text-content-secondary self-center">{t('logs:ai.fcNotConnected')}</span>
         )}
       </div>
     </div>
@@ -280,6 +283,7 @@ function ParamActionCard({ params, requireWarning }: { params: ParamSuggestion[]
 }
 
 export function AiAnalysisPanel() {
+  const { t } = useTranslation();
   const currentLog = useLogStore((s) => s.currentLog);
   const healthResults = useLogStore((s) => s.healthResults);
   const aiMessages = useLogStore((s) => s.aiMessages);
@@ -397,11 +401,12 @@ You have tools to query the raw telemetry of THIS log on demand, you are not lim
 All time arguments (startS/endS) are SECONDS from log start. This flight is ${dS.toFixed(1)} s long. Prefer real values pulled from these tools over the summary, and cite specific numbers and timestamps.`
       : '';
 
+    // i18n-exempt: model prompt
     return `You are a flight log analyst embedded in ArduDeck, an ArduPilot ground control station.
 You ONLY answer questions about this specific flight log, ArduPilot configuration, and drone/vehicle troubleshooting. Refuse any off-topic requests politely.
 
 ## This Flight
-- Vehicle: ${meta.vehicleType || 'Unknown'} running ${meta.firmwareString || meta.firmwareVersion || 'Unknown firmware'}
+- Vehicle: ${meta.vehicleType || 'Unknown'} running ${meta.firmwareString || meta.firmwareVersion || /* i18n-exempt */ 'Unknown firmware'}
 - Duration: ${(dS / 60).toFixed(1)} minutes (${dS.toFixed(1)} s)
 - Max Altitude: ${formatAltitudeFromMeters(stats.maxAlt, altitudeUnit)} | Max Speed: ${formatSpeedFromMetersPerSecond(stats.maxSpd, speedUnit)}
 - Distance: ${dist} | Battery Used: ${formatCapacityFromMah(stats.totalMah, electricCapacityUnit)}
@@ -448,7 +453,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
       const call = window.electronAPI?.logAiClaudeTool;
       if (!call) {
         store.setIsAiAnalyzing(false);
-        store.setAiAnalysisError('Claude analysis is unavailable.');
+        store.setAiAnalysisError(t('logs:ai.claudeUnavailable'));
         return;
       }
       const { text, error } = await runClaudeLogChat({
@@ -459,7 +464,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
         // loop unwinds without hitting the API again.
         call: (body) =>
           cancelToken.cancelled
-            ? Promise.resolve({ success: false, error: 'Stopped' })
+            ? Promise.resolve({ success: false, error: 'Stopped' }) // i18n-exempt: discarded
             : call(body),
       });
       // Stop already reset the analyzing state; drop the aborted result.
@@ -468,7 +473,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
       if (text) {
         store.addAiMessage({ role: 'assistant', content: text });
       } else {
-        store.setAiAnalysisError(error ?? 'Analysis failed');
+        store.setAiAnalysisError(error ?? t('logs:ai.analysisFailed'));
       }
       return;
     }
@@ -484,9 +489,9 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
     if (result?.success && result.response) {
       store.addAiMessage({ role: 'assistant', content: result.response });
     } else {
-      store.setAiAnalysisError(result?.error ?? 'Analysis failed');
+      store.setAiAnalysisError(result?.error ?? t('logs:ai.analysisFailed'));
     }
-  }, [aiProvider, currentLog, buildSystemContext]);
+  }, [aiProvider, currentLog, buildSystemContext, t]);
 
   const handleStopAi = useCallback(() => {
     if (cancelAiRef.current) cancelAiRef.current.cancelled = true;
@@ -545,12 +550,12 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
     return (
       <div className="h-full flex items-center justify-center text-content-secondary">
         <div className="text-center">
-          <p className="mb-2">AI Analysis requires an API key.</p>
+          <p className="mb-2">{t('logs:ai.needsKey')}</p>
           <button
             onClick={() => useNavigationStore.getState().setView('settings' as never)}
             className="text-purple-400 hover:text-purple-300 text-sm underline"
           >
-            Configure in Settings
+            {t('logs:ai.configure')}
           </button>
         </div>
       </div>
@@ -569,7 +574,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <p className="text-[10px] text-amber-300/70 leading-snug">
-          AI suggestions are experimental. Always verify recommendations before applying. Incorrect parameters can cause loss of control.
+          {t('logs:ai.disclaimer')}
         </p>
       </div>
 
@@ -583,20 +588,20 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
               </svg>
             </div>
             <div className="text-center">
-              <h3 className="text-content font-medium mb-1">Ask about this flight</h3>
+              <h3 className="text-content font-medium mb-1">{t('logs:ai.askTitle')}</h3>
               <p className="text-xs text-content-secondary">
                 {aiProvider === 'claude'
-                  ? 'Powered by Claude. It reads this log’s raw telemetry on demand to answer.'
-                  : `Powered by ${providerName}. Flight data and health checks are included as context.`}
+                  ? t('logs:ai.poweredClaude')
+                  : t('logs:ai.poweredOther', { provider: providerName })}
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2 max-w-lg">
               {[
-                'Analyze this flight and highlight any issues',
-                'Is my vibration level safe for auto missions?',
-                'What parameters should I tune based on this flight?',
-                'Explain the battery performance and estimate health',
-                'Were there any GPS or compass anomalies?',
+                t('logs:ai.suggest1'),
+                t('logs:ai.suggest2'),
+                t('logs:ai.suggest3'),
+                t('logs:ai.suggest4'),
+                t('logs:ai.suggest5'),
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -647,12 +652,12 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
             {isAiAnalyzing && (
               <div className="flex items-center gap-2 py-2">
                 <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs text-content-secondary">Analyzing...</span>
+                <span className="text-xs text-content-secondary">{t('logs:ai.analyzing')}</span>
                 <button
                   onClick={handleStopAi}
                   className="text-xs px-2 py-0.5 rounded-md border border-subtle text-content-secondary hover:text-red-400 hover:border-red-500/40 transition-colors"
                 >
-                  Stop
+                  {t('common:stop')}
                 </button>
               </div>
             )}
@@ -674,7 +679,7 @@ If a parameter requires a reboot, mention it in your explanation text.${rebootPa
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={aiMessages.length === 0 ? 'Ask about this flight...' : 'Follow-up question...'}
+            placeholder={aiMessages.length === 0 ? t('logs:ai.askPlaceholder') : t('logs:ai.followUp')}
             disabled={isAiAnalyzing}
             rows={1}
             className="flex-1 bg-surface-input border border-subtle rounded-xl px-4 py-2.5 text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-purple-500/50 disabled:opacity-50 resize-none"

@@ -6,6 +6,7 @@
  */
 
 import { useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Minus, Rows3, LocateFixed, Crosshair, RotateCw, Compass, Gauge, ArrowUpDown,
   TrendingUp, Activity, Battery, Home, Radio, LayoutGrid, Palette, Bookmark,
@@ -18,6 +19,15 @@ import { HUD_WIDGETS, HUD_COLORS, type HudColor, type HudProfile, type HudWidget
 import { HUD_READOUTS, type HudReadoutCategory } from '../camera/hud/hud-readouts';
 
 const READOUT_CATEGORY_ORDER: HudReadoutCategory[] = ['Power', 'Flight', 'Speed', 'Navigation', 'Environment', 'Status'];
+
+const READOUT_CATEGORY_KEYS: Record<HudReadoutCategory, string> = {
+  Power: 'osd:hudPanel.categoryPower',
+  Flight: 'osd:hudPanel.categoryFlight',
+  Speed: 'osd:hudPanel.categorySpeed',
+  Navigation: 'osd:hudPanel.categoryNavigation',
+  Environment: 'osd:hudPanel.categoryEnvironment',
+  Status: 'osd:hudPanel.categoryStatus',
+};
 
 // Instrument widgets only (readouts render their label tag, not an icon).
 const WIDGET_ICONS: Record<string, LucideIcon> = {
@@ -39,6 +49,7 @@ const WIDGET_ICONS: Record<string, LucideIcon> = {
 };
 
 export function HudPanel() {
+  const { t } = useTranslation();
   const config = useHudStore((s) => s.config);
   const presets = useHudStore((s) => s.presets);
   const toggleWidget = useHudStore((s) => s.toggleWidget);
@@ -76,16 +87,16 @@ export function HudPanel() {
           <Layers className="h-3.5 w-3.5" />
         </span>
         <div className="min-w-0">
-          <div className="text-[11px] font-medium text-content leading-tight">HUD overlay</div>
-          <div className="text-[10px] text-content-tertiary leading-tight">Drawn by ArduDeck over your video feed</div>
+          <div className="text-[11px] font-medium text-content leading-tight">{t('osd:hudPanel.hudOverlay')}</div>
+          <div className="text-[10px] text-content-tertiary leading-tight">{t('osd:hudPanel.drawnBy')}</div>
         </div>
       </div>
 
       {/* Vehicle profile: two independent arrangements, one HUD */}
-      <Section title="Vehicle profile" icon={designGround ? Car : Plane}>
+      <Section title={t('osd:hudPanel.vehicleProfile')} icon={designGround ? Car : Plane}>
         <div className="px-2 pb-1">
           <div className="inline-flex w-full items-center rounded-lg border border-subtle overflow-hidden bg-surface">
-            {([['air', 'Aircraft', Plane], ['ground', 'Ground', Car]] as const).map(([key, label, Icon]) => (
+            {([['air', t('osd:hudPanel.aircraft'), Plane], ['ground', t('osd:hudPanel.ground'), Car]] as const).map(([key, label, Icon]) => (
               <button
                 key={key}
                 onClick={() => setDesignGround(key === 'ground')}
@@ -100,23 +111,23 @@ export function HudPanel() {
           </div>
         </div>
         <p className="px-2 pb-1 text-[10px] leading-snug text-content-tertiary">
-          You are editing the {designGround ? 'ground vehicle (rover/boat)' : 'aircraft'} arrangement. Each keeps its own instruments.
+          {designGround ? t('osd:hudPanel.editingGround') : t('osd:hudPanel.editingAir')}
         </p>
-        <Row label="Live overlay uses">
+        <Row label={t('osd:hudPanel.liveOverlayUses')}>
           <select
             value={config.profile}
             onChange={(e) => setProfile(e.target.value as HudProfile)}
             className="bg-surface-input text-content text-[11px] rounded-lg px-2 py-1 border border-subtle focus:border-blue-500 focus:outline-none"
           >
-            <option value="auto">Auto (match vehicle)</option>
-            <option value="air">Always aircraft</option>
-            <option value="ground">Always ground</option>
+            <option value="auto">{t('osd:hudPanel.profileAuto')}</option>
+            <option value="air">{t('osd:hudPanel.profileAir')}</option>
+            <option value="ground">{t('osd:hudPanel.profileGround')}</option>
           </select>
         </Row>
       </Section>
 
       {/* Instruments */}
-      <Section title="Instruments" icon={LayoutGrid}>
+      <Section title={t('common:instruments')} icon={LayoutGrid}>
         {HUD_WIDGETS.map((wdef) => {
           const Icon = WIDGET_ICONS[wdef.id];
           const on = activeWidgets[wdef.id];
@@ -130,7 +141,7 @@ export function HudPanel() {
                 {Icon && <Icon className="h-3.5 w-3.5" />}
               </span>
               <span className="flex-1 truncate">{wdef.label}</span>
-              {wdef.movable && <span className="text-[9px] uppercase tracking-wide text-content-tertiary">drag</span>}
+              {wdef.movable && <span className="text-[9px] uppercase tracking-wide text-content-tertiary">{t('osd:hudPanel.drag')}</span>}
               <span className={`h-3.5 w-3.5 shrink-0 rounded-[4px] border transition-colors ${on ? 'border-blue-500 bg-blue-500' : 'border-strong bg-surface-input'} flex items-center justify-center`}>
                 {on && <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5" /></svg>}
               </span>
@@ -149,7 +160,7 @@ export function HudPanel() {
                 <Puzzle className="h-3.5 w-3.5" />
               </span>
               <span className="flex-1 truncate">{inst.label}</span>
-              <span className="text-[9px] uppercase tracking-wide text-content-tertiary">module</span>
+              <span className="text-[9px] uppercase tracking-wide text-content-tertiary">{t('osd:hudPanel.module')}</span>
               <span className={`h-3.5 w-3.5 shrink-0 rounded-[4px] border transition-colors ${on ? 'border-blue-500 bg-blue-500' : 'border-strong bg-surface-input'} flex items-center justify-center`}>
                 {on && <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5" /></svg>}
               </span>
@@ -159,16 +170,16 @@ export function HudPanel() {
       </Section>
 
       {/* Readouts - any telemetry value, placed anywhere (the composable part) */}
-      <Section title="Readouts" icon={SlidersHorizontal}>
+      <Section title={t('osd:hudPanel.readouts')} icon={SlidersHorizontal}>
         <p className="px-2 pb-1.5 text-[10px] leading-snug text-content-tertiary">
-          Drop any value onto the HUD and drag it where you want.
+          {t('osd:hudPanel.readoutsHint')}
         </p>
         {READOUT_CATEGORY_ORDER.map((cat) => {
           const items = HUD_READOUTS.filter((r) => r.category === cat);
           if (items.length === 0) return null;
           return (
             <div key={cat} className="mb-1">
-              <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-wider text-content-tertiary">{cat}</div>
+              <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-wider text-content-tertiary">{t(READOUT_CATEGORY_KEYS[cat])}</div>
               {items.map((r) => {
                 const on = activeWidgets[r.id];
                 return (
@@ -193,8 +204,8 @@ export function HudPanel() {
       </Section>
 
       {/* Style */}
-      <Section title="Style" icon={Palette}>
-        <Row label="Colour">
+      <Section title={t('osd:hudPanel.style')} icon={Palette}>
+        <Row label={t('osd:hudPanel.colour')}>
           <div className="flex gap-1.5">
             {(Object.keys(HUD_COLORS) as HudColor[]).map((c) => (
               <button
@@ -207,24 +218,24 @@ export function HudPanel() {
             ))}
           </div>
         </Row>
-        <Row label={`Line ${config.lineWeight.toFixed(1)}×`}>
+        <Row label={t('osd:hudPanel.line', { value: config.lineWeight.toFixed(1) })}>
           <input type="range" min={0.6} max={1.8} step={0.1} value={config.lineWeight}
             onChange={(e) => setLineWeight(parseFloat(e.target.value))} className="w-full accent-blue-500" />
         </Row>
-        <Row label={`Scale ${config.scale.toFixed(2)}×`}>
+        <Row label={t('osd:hudPanel.scale', { value: config.scale.toFixed(2) })}>
           <input type="range" min={0.7} max={1.3} step={0.05} value={config.scale}
             onChange={(e) => setScale(parseFloat(e.target.value))} className="w-full accent-blue-500" />
         </Row>
         <label className="flex items-center gap-2 px-2 py-1.5 text-[11px] text-content cursor-pointer rounded-md hover:bg-surface-raised">
           <input type="checkbox" checked={config.glow} onChange={(e) => setGlow(e.target.checked)} className="h-3.5 w-3.5 rounded-sm accent-blue-500" />
-          Holographic glow
+          {t('osd:hudPanel.holographicGlow')}
         </label>
-        <Row label="Units">
+        <Row label={t('osd:hudPanel.units')}>
           <div className="inline-flex items-center rounded-lg border border-subtle overflow-hidden bg-surface">
             {(['metric', 'imperial'] as const).map((un) => (
               <button key={un} onClick={() => setUnits(un)}
                 className={`px-2.5 py-1 text-[10px] font-medium capitalize transition-colors ${config.units === un ? 'bg-blue-600/80 text-white' : 'text-content-secondary hover:text-content hover:bg-surface-raised'}`}>
-                {un}
+                {un === 'metric' ? t('osd:hudPanel.metric') : t('osd:hudPanel.imperial')}
               </button>
             ))}
           </div>
@@ -232,27 +243,27 @@ export function HudPanel() {
       </Section>
 
       {/* Presets */}
-      <Section title="HUD presets" icon={Bookmark}>
+      <Section title={t('osd:hudPanel.hudPresets')} icon={Bookmark}>
         <div className="flex gap-1.5 mb-2">
           <input value={presetName} onChange={(e) => setPresetName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && presetName.trim()) { savePreset(presetName); setPresetName(''); } }}
-            placeholder="Save as…"
+            placeholder={t('osd:hudPanel.saveAs')}
             className="min-w-0 flex-1 bg-surface-input text-content text-xs rounded-lg px-2.5 py-1.5 border border-subtle focus:border-blue-500 focus:outline-none placeholder-content-tertiary" />
           <button onClick={() => { if (presetName.trim()) { savePreset(presetName); setPresetName(''); } }}
-            disabled={!presetName.trim()} className="shrink-0 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600/80 hover:bg-blue-500/80 text-white disabled:opacity-40">Save</button>
+            disabled={!presetName.trim()} className="shrink-0 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600/80 hover:bg-blue-500/80 text-white disabled:opacity-40">{t('common:save')}</button>
         </div>
         {presetNames.length === 0 ? (
-          <p className="text-[10px] text-content-tertiary px-2 py-1">No saved HUDs yet.</p>
+          <p className="text-[10px] text-content-tertiary px-2 py-1">{t('osd:hudPanel.noSavedHuds')}</p>
         ) : presetNames.map((n) => (
           <div key={n} className="flex items-center gap-1">
             <button onClick={() => loadPreset(n)} className="min-w-0 flex-1 text-left text-xs px-2 py-1.5 rounded-md hover:bg-surface-raised text-content truncate">{n}</button>
-            <button onClick={() => deletePreset(n)} className="shrink-0 p-1.5 rounded-md text-content-tertiary hover:text-red-500 hover:bg-surface-raised" data-tip="Delete">
+            <button onClick={() => deletePreset(n)} className="shrink-0 p-1.5 rounded-md text-content-tertiary hover:text-red-500 hover:bg-surface-raised" data-tip={t('osd:hudPanel.delete')}>
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
         <button onClick={resetConfig} className="mt-2 flex w-full items-center gap-2 text-xs px-2 py-1.5 rounded-md hover:bg-surface-raised text-content-secondary">
-          <RotateCcw className="h-3.5 w-3.5" /> Reset HUD to defaults
+          <RotateCcw className="h-3.5 w-3.5" /> {t('osd:hudPanel.resetHud')}
         </button>
       </Section>
     </div>

@@ -1,11 +1,12 @@
 import { Anchor } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 export const boatTwinProp: VehicleTemplate = {
   slug: 'boat-twin-prop',
-  name: 'Twin-Prop Boat',
-  description: 'Two motors, differential thrust steering (no rudder)',
+  name: 'Twin-Prop Boat', // i18n-exempt
+  description: 'Two motors, differential thrust steering (no rudder)', // i18n-exempt
   icon: Anchor,
   vehicleType: 'boat',
   category: 'boat',
@@ -20,11 +21,11 @@ export const boatTwinProp: VehicleTemplate = {
     batteryCapacity: 20000,
   },
   toParams: (p) => [
-    { name: 'FRAME_CLASS',     value: 1,  reason: 'Boat (rover frame class)', requiresReboot: true },
-    { name: 'FRAME_TYPE',      value: 2,  reason: 'Boat',                     requiresReboot: true },
-    { name: 'SERVO1_FUNCTION', value: 73, reason: 'Throttle Left',            requiresReboot: true },
-    { name: 'SERVO3_FUNCTION', value: 74, reason: 'Throttle Right',           requiresReboot: true },
-    { name: 'WP_SPEED',        value: p.maxSpeed ?? 3, reason: 'Waypoint speed' },
+    { name: 'FRAME_CLASS',     value: 1,  reason: t('lib:vehicleTemplates.reason.boatRoverFrameClass'), requiresReboot: true },
+    { name: 'FRAME_TYPE',      value: 2,  reason: t('lib:vehicleTemplates.reason.boat'),                     requiresReboot: true },
+    { name: 'SERVO1_FUNCTION', value: 73, reason: t('lib:vehicleTemplates.reason.throttleLeft'),            requiresReboot: true },
+    { name: 'SERVO3_FUNCTION', value: 74, reason: t('lib:vehicleTemplates.reason.throttleRight'),           requiresReboot: true },
+    { name: 'WP_SPEED',        value: p.maxSpeed ?? 3, reason: t('lib:vehicleTemplates.reason.waypointSpeed') },
     ...batteryParams(p),
     ...commonSafetyParams(),
   ],

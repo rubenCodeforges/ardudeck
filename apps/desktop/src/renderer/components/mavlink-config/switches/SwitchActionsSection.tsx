@@ -1,6 +1,7 @@
 // Staged edits only: a half-finished switch assignment must never be live on
 // the vehicle, so nothing is written until Apply (same rule as mobile).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Radio, Zap } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
@@ -14,6 +15,7 @@ const FIRST_AUX_CH = 5;
 const LAST_CH = 16;
 
 export const SwitchActionsSection: React.FC = () => {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const paramsLoaded = useParameterStore((s) => s.downloadState === 'complete');
   const metadata = useParameterStore((s) => s.metadata);
@@ -97,9 +99,9 @@ export const SwitchActionsSection: React.FC = () => {
           <Radio className="w-5 h-5 text-cyan-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-base font-semibold text-content">Switch Actions</h3>
+          <h3 className="text-base font-semibold text-content">{t('mavlink-config:switchActionsSection.title')}</h3>
           <p className="text-sm text-content-secondary">
-            What each transmitter switch does: assign an aux function, or drive a servo output directly.
+            {t('mavlink-config:switchActionsSection.subtitle')}
           </p>
         </div>
         <button
@@ -110,25 +112,24 @@ export const SwitchActionsSection: React.FC = () => {
               ? 'bg-cyan-500/20 text-cyan-400 animate-pulse cursor-wait'
               : 'bg-cyan-600 hover:bg-cyan-500 text-white'
           }`}
-          data-tip="Watches all channels and names the one you move"
+          data-tip={t('mavlink-config:switchActionsSection.detectTip')}
         >
-          {detecting ? 'Flick a switch on your radio...' : 'Find my switch'}
+          {detecting ? t('mavlink-config:switchActionsSection.detecting') : t('mavlink-config:switchActionsSection.findSwitch')}
         </button>
       </div>
       {foundChannel !== null && (
         <p className="text-sm text-cyan-400 mb-2">
-          That switch is channel {foundChannel}
-          {foundChannel === modeChannel ? ' (your flight-mode switch)' : ''}.
+          {t('mavlink-config:switchActionsSection.foundChannel', { ch: foundChannel, modeNote: foundChannel === modeChannel ? t('mavlink-config:switchActionsSection.modeNote') : '' })}
         </p>
       )}
 
       <div className="rounded-lg border border-subtle overflow-hidden mt-3">
         <div className="grid grid-cols-[52px_1fr_56px_minmax(200px,1fr)_minmax(180px,240px)] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary bg-surface-raised/40 border-b border-subtle">
-          <div>CH</div>
-          <div>Live</div>
-          <div className="text-center">Pos</div>
-          <div>Aux function (RCn_OPTION)</div>
-          <div>Drives output</div>
+          <div>{t('mavlink-config:switchActionsSection.colCh')}</div>
+          <div>{t('common:live')}</div>
+          <div className="text-center">{t('mavlink-config:switchActionsSection.colPos')}</div>
+          <div>{t('mavlink-config:switchActionsSection.colAux')}</div>
+          <div>{t('mavlink-config:switchActionsSection.colDrives')}</div>
         </div>
         <div className="divide-y divide-subtle/60">
           {Array.from({ length: Math.max(0, channelCount - FIRST_AUX_CH + 1) }, (_, i) => FIRST_AUX_CH + i).map((ch) => {
@@ -159,8 +160,8 @@ export const SwitchActionsSection: React.FC = () => {
                 <div className="text-sm font-mono text-content">
                   {ch}
                   {isModeCh && (
-                    <span className="ml-1 text-[9px] uppercase text-green-400" data-tip="Flight-mode switch (FLTMODE_CH)">
-                      mode
+                    <span className="ml-1 text-[9px] uppercase text-green-400" data-tip={t('mavlink-config:switchActionsSection.modeTip')}>
+                      {t('mavlink-config:switchActionsSection.modeBadge')}
                     </span>
                   )}
                 </div>
@@ -175,7 +176,7 @@ export const SwitchActionsSection: React.FC = () => {
                 </div>
                 <div>
                   {isModeCh ? (
-                    <span className="text-sm text-content-tertiary">Flight modes (configured above)</span>
+                    <span className="text-sm text-content-tertiary">{t('mavlink-config:switchActionsSection.flightModesAbove')}</span>
                   ) : (
                     <select
                       value={stagedOption ?? currentOption ?? 0}
@@ -208,14 +209,14 @@ export const SwitchActionsSection: React.FC = () => {
                         ? 'border-amber-500/60'
                         : 'border-subtle'
                     }`}
-                    data-tip="Makes the chosen servo output follow this switch (RCIN passthrough)"
+                    data-tip={t('mavlink-config:switchActionsSection.drivesTip')}
                   >
-                    <option value={0}>Nothing</option>
+                    <option value={0}>{t('mavlink-config:switchActionsSection.nothing')}</option>
                     {Array.from({ length: 16 }, (_, s) => s + 1).map((s) => {
                       const fn = pending.get(`SERVO${s}_FUNCTION`) ?? parameters.get(`SERVO${s}_FUNCTION`)?.value;
                       const label = fn === undefined || fn === 0
-                        ? 'free'
-                        : fn === followFn ? 'this switch' : servoFnLabels.get(fn) ?? `fn ${fn}`;
+                        ? t('mavlink-config:switchActionsSection.free')
+                        : fn === followFn ? t('mavlink-config:switchActionsSection.thisSwitch') : servoFnLabels.get(fn) ?? t('mavlink-config:switchActionsSection.fn', { fn });
                       return (
                         <option key={s} value={s}>
                           SERVO{s} ({label})
@@ -234,21 +235,21 @@ export const SwitchActionsSection: React.FC = () => {
         <div className="mt-3 flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
           <Zap className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="flex-1 text-sm text-amber-300">
-            {pending.size} change{pending.size === 1 ? '' : 's'} staged. Nothing is written to the vehicle until Apply.
+            {t('mavlink-config:switchActionsSection.staged', { count: pending.size })}
           </span>
           <button
             onClick={() => setPending(new Map())}
             disabled={applying}
             className="px-2.5 py-1.5 rounded-md text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
-            Discard
+            {t('mavlink-config:switchActionsSection.discard')}
           </button>
           <button
             onClick={() => { void apply(); }}
             disabled={applying}
             className="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-60 transition-colors"
           >
-            {applying ? 'Applying...' : 'Apply'}
+            {applying ? t('mavlink-config:switchActionsSection.applying') : t('common:apply')}
           </button>
         </div>
       )}

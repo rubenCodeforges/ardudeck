@@ -45,14 +45,14 @@ export const CATEGORY_COLORS: Record<NodeCategory, string> = {
   flow: '#6b7280',      // gray
 };
 
-export const CATEGORY_LABELS: Record<NodeCategory, string> = {
-  sensors: 'Sensors',
-  logic: 'Logic',
-  math: 'Math',
-  actions: 'Actions',
-  timing: 'Timing',
-  variables: 'Variables',
-  flow: 'Flow',
+export const CATEGORY_LABEL_KEYS: Record<NodeCategory, string> = {
+  sensors: 'lua-graph:categories.sensors',
+  logic: 'lua-graph:categories.logic',
+  math: 'lua-graph:categories.math',
+  actions: 'lua-graph:categories.actions',
+  timing: 'lua-graph:categories.timing',
+  variables: 'lua-graph:categories.variables',
+  flow: 'lua-graph:categories.flow',
 };
 
 // ── Node Definition (Template) ──────────────────────────────────

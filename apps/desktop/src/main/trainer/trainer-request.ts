@@ -13,6 +13,7 @@
  */
 
 import type { TrainerConditions } from '../../shared/trainer-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /** Matches `TRAINER_REQUEST_VERSION` in the game's `shared/trainer-launch.ts`. */
 export const TRAINER_REQUEST_VERSION = 1;
@@ -60,14 +61,14 @@ export function buildTrainerRequest(input: TrainerRequestInput): TrainerRequestR
   if (!home || !Number.isFinite(home.lat) || !Number.isFinite(home.lon)) {
     return {
       ok: false,
-      error: 'No take-off point yet. Start a flight controller and wait for a GPS fix.',
+      error: t('main:trainer.noTakeoffPoint'),
     };
   }
   if (home.lat === 0 && home.lon === 0) {
     // The uninitialised coordinate. Every GPS reads it before a fix, and it is in the Gulf of
     // Guinea, where no region is baked, so the Trainer would refuse with a puzzling message
     // about coverage rather than the true one about a fix.
-    return { ok: false, error: 'The flight controller has no GPS fix yet.' };
+    return { ok: false, error: t('main:trainer.noGpsFix') };
   }
 
   const request: TrainerRequest = {

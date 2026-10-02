@@ -3,7 +3,9 @@
  * fix actions. Used inside the install consent step.
  */
 
+import { useTranslation } from 'react-i18next';
 import type { PreflightCheck, PreflightFix } from '../../../shared/script-installer-types';
+import { t as translate } from '../../../shared/i18n/index.js';
 
 interface PreflightChecksListProps {
   checks: PreflightCheck[];
@@ -18,6 +20,7 @@ const SEVERITY_STYLE: Record<PreflightCheck['severity'], { icon: string; color: 
 };
 
 export function PreflightChecksList({ checks, busyFix, onApplyFix }: PreflightChecksListProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       {checks.map((check) => {
@@ -36,9 +39,9 @@ export function PreflightChecksList({ checks, busyFix, onApplyFix }: PreflightCh
                   <span className="text-sm font-medium text-content">{check.label}</span>
                   {check.currentValue !== undefined && (
                     <span className="text-[11px] font-mono text-content-secondary shrink-0">
-                      now: {String(check.currentValue)}
+                      {t('script-installer:preflightChecksList.now', { value: String(check.currentValue) })}
                       {check.expectedValue !== undefined && check.severity !== 'pass' && (
-                        <> → need: {String(check.expectedValue)}</>
+                        <>{t('script-installer:preflightChecksList.need', { value: String(check.expectedValue) })}</>
                       )}
                     </span>
                   )}
@@ -53,7 +56,7 @@ export function PreflightChecksList({ checks, busyFix, onApplyFix }: PreflightCh
                       disabled={isBusy}
                       className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isBusy ? 'Applying…' : fixLabel}
+                      {isBusy ? t('common:applying') : fixLabel}
                     </button>
                   </div>
                 )}
@@ -68,10 +71,11 @@ export function PreflightChecksList({ checks, busyFix, onApplyFix }: PreflightCh
 
 function formatFixLabel(fix: PreflightFix): string {
   if (fix.type === 'set_param') {
-    const reboot = fix.requiresReboot ? ' + reboot' : '';
-    return `Set ${fix.param} = ${fix.value}${reboot}`;
+    return fix.requiresReboot
+      ? translate('script-installer:preflightChecksList.setParamReboot', { param: fix.param, value: fix.value })
+      : translate('script-installer:preflightChecksList.setParam', { param: fix.param, value: fix.value });
   }
-  if (fix.type === 'reboot') return 'Reboot flight controller';
-  if (fix.type === 'disarm') return 'Disarm vehicle';
-  return 'Fix';
+  if (fix.type === 'reboot') return translate('common:rebootFlightController');
+  if (fix.type === 'disarm') return translate('script-installer:preflightChecksList.disarmVehicle');
+  return translate('script-installer:preflightChecksList.fix');
 }

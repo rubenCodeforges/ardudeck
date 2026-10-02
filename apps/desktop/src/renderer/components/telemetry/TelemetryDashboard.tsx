@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { memo, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ClipboardPaste, Copy, Download, FileUp, Pencil, Share2, Trash2, Upload } from 'lucide-react';
@@ -130,6 +131,7 @@ const PANEL_ID_TO_INSTRUMENT: Record<string, string> = {
 };
 
 function PanelHeaderActions(props: IDockviewHeaderActionsProps): JSX.Element | null {
+  const { t } = useTranslation();
   const active = props.activePanel;
   // Preset panels use the bare id ("map"); panels added via the Add Panel menu
   // get a unique "<id>-<timestamp>". Match either so menu-added panels (e.g.
@@ -168,7 +170,7 @@ function PanelHeaderActions(props: IDockviewHeaderActionsProps): JSX.Element | n
               ? 'text-blue-500 bg-blue-500/10'
               : 'text-content-secondary hover:text-content hover:bg-surface-raised'
           }`}
-          data-tip={instrumentVisible ? 'Hide map instrument' : 'Show as instrument on the map'}
+          data-tip={instrumentVisible ? t('telemetry:panelHeader.hideInstrument') : t('telemetry:panelHeader.showInstrument')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.6 15a8.4 8.4 0 1116.8 0" />
@@ -179,13 +181,13 @@ function PanelHeaderActions(props: IDockviewHeaderActionsProps): JSX.Element | n
       <button
         onClick={handleClick}
         className="h-7 px-2 mx-0.5 rounded-md inline-flex items-center gap-1.5 text-xs transition-colors text-content-secondary hover:text-content hover:bg-surface-raised"
-        title={`Open ${title} in new window`}
+        title={t('telemetry:panelHeader.popOutTitle', { title })}
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M14 3h7m0 0v7m0-7L10 14M5 5h4M5 19h14a0 0 0 010 0v-4" />
         </svg>
-        <span>Pop out</span>
+        <span>{t('telemetry:panelHeader.popOut')}</span>
       </button>
     </>
   );
@@ -251,22 +253,23 @@ interface WorkspaceProps {
 // (panel-layout presets, save/reset, offline-map capture, 2D/3D, Add panel)
 // now lives one click away, reclaiming a whole bar of vertical space.
 function WorkspaceButton(props: WorkspaceProps): JSX.Element {
+  const { t } = useTranslation();
   const open = useWorkspaceDialogStore((s) => s.open);
   const setOpen = useWorkspaceDialogStore((s) => s.setOpen);
-  const activeName = isBuiltinLayout(props.activeLayout) ? BUILTIN_LAYOUTS[props.activeLayout].label : props.activeLayout;
+  const activeName = isBuiltinLayout(props.activeLayout) ? t(BUILTIN_LAYOUTS[props.activeLayout].labelKey) : props.activeLayout;
   return (
     <>
       <button
         onClick={() => setOpen(true)}
         data-tour="telemetry-layout-select"
-        data-tip="Workspace: panel layout, view and panels"
+        data-tip={t('telemetry:workspace.buttonTip')}
         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-default bg-surface-raised text-content text-xs hover:bg-surface-solid transition-colors shrink-0"
       >
         <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
           <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
-        <span className="font-medium">Workspace</span>
+        <span className="font-medium">{t('telemetry:workspace.title')}</span>
         <span className="text-content-tertiary max-w-[140px] truncate hidden lg:inline">· {activeName}</span>
       </button>
       {open && <WorkspaceDialog {...props} onClose={() => setOpen(false)} />}
@@ -344,6 +347,7 @@ function LayoutDetailsDialog({ title, initialName, initialDescription, taken, or
   onCancel: () => void;
   onSubmit: (name: string, description: string, replaceContents: boolean) => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const [name, setName] = useState(initialName);
   const [replaceContents, setReplaceContents] = useState(false);
   const [description, setDescription] = useState(initialDescription);
@@ -368,7 +372,7 @@ function LayoutDetailsDialog({ title, initialName, initialDescription, taken, or
           <div className="px-4 py-3 border-b border-subtle text-sm font-semibold text-content">{title}</div>
           <div className="space-y-3 p-4">
             <label className="block">
-              <span className="mb-1 block text-[11px] text-content-secondary">Name</span>
+              <span className="mb-1 block text-[11px] text-content-secondary">{t('telemetry:layoutDetails.name')}</span>
               <input
                 autoFocus
                 value={name}
@@ -378,7 +382,7 @@ function LayoutDetailsDialog({ title, initialName, initialDescription, taken, or
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] text-content-secondary">Description <span className="text-content-tertiary">(optional)</span></span>
+              <span className="mb-1 block text-[11px] text-content-secondary">{t('telemetry:layoutDetails.description')} <span className="text-content-tertiary">{t('telemetry:layoutDetails.optional')}</span></span>
               <textarea
                 value={description}
                 rows={3}
@@ -395,30 +399,30 @@ function LayoutDetailsDialog({ title, initialName, initialDescription, taken, or
                   className="mt-0.5 accent-blue-500"
                 />
                 <span>
-                  Replace contents with the current screen
-                  <span className="block text-[10px] text-content-tertiary">Panels, cockpit instruments, map split and vision mode as they are now.</span>
+                  {t('telemetry:layoutDetails.replaceContents')}
+                  <span className="block text-[10px] text-content-tertiary">{t('telemetry:layoutDetails.replaceContentsHint')}</span>
                 </span>
               </label>
             )}
             {replaces && (
               <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
-                A layout named &quot;{trimmed}&quot; already exists. Saving replaces it.
+                {t('telemetry:layoutDetails.replacesExisting', { name: trimmed })}
               </div>
             )}
             {exists && !replaces && (
               <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-300">
-                That name is already taken.
+                {t('telemetry:layoutDetails.nameTaken')}
               </div>
             )}
           </div>
           <div className="flex justify-end gap-2 border-t border-subtle px-4 py-3">
-            <button onClick={onCancel} className="px-3 py-1.5 text-xs rounded-md border border-subtle text-content-secondary hover:text-content transition-colors">Cancel</button>
+            <button onClick={onCancel} className="px-3 py-1.5 text-xs rounded-md border border-subtle text-content-secondary hover:text-content transition-colors">{t('common:cancel')}</button>
             <button
               onClick={submit}
               disabled={blocked}
               className={'px-3 py-1.5 text-xs rounded-md text-white disabled:opacity-50 transition-colors ' + (replaces ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500')}
             >
-              {replaces ? 'Replace' : 'Save'}
+              {replaces ? t('telemetry:layoutDetails.replace') : t('common:save')}
             </button>
           </div>
         </div>
@@ -441,6 +445,7 @@ function SavedLayoutCard({ name, description, active, icon, onLoad, onEdit, onDe
   onDelete: () => void;
   onShare: (how: 'copy' | 'file' | 'native') => Promise<string | null>;
 }): JSX.Element {
+  const { t } = useTranslation();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -463,26 +468,26 @@ function SavedLayoutCard({ name, description, active, icon, onLoad, onEdit, onDe
         <>
           <div className="fixed inset-0 z-10" onClick={() => setShareOpen(false)} />
           <div className="absolute right-1.5 top-9 z-20 w-44 rounded-lg border border-default bg-surface-solid p-1 shadow-xl">
-            <button onClick={() => void share('copy')} className={SHARE_ITEM}><Copy className="w-3.5 h-3.5" />Copy to clipboard</button>
-            <button onClick={() => void share('file')} className={SHARE_ITEM}><Download className="w-3.5 h-3.5" />Save as file…</button>
+            <button onClick={() => void share('copy')} className={SHARE_ITEM}><Copy className="w-3.5 h-3.5" />{t('telemetry:savedLayout.copyToClipboard')}</button>
+            <button onClick={() => void share('file')} className={SHARE_ITEM}><Download className="w-3.5 h-3.5" />{t('telemetry:savedLayout.saveAsFile')}</button>
             {window.electronAPI?.canShareNatively && (
-              <button onClick={() => void share('native')} className={SHARE_ITEM}><Share2 className="w-3.5 h-3.5" />Share…</button>
+              <button onClick={() => void share('native')} className={SHARE_ITEM}><Share2 className="w-3.5 h-3.5" />{t('telemetry:savedLayout.share')}</button>
             )}
           </div>
         </>
       )}
       <div className={'absolute right-1.5 top-1.5 items-center gap-0.5 rounded-md border border-subtle bg-surface-solid px-0.5 py-0.5 shadow-sm ' + (shareOpen ? 'flex' : 'hidden group-hover/saved:flex')}>
         {confirmDelete ? (
-          <button onClick={onDelete} className="px-1.5 py-0.5 rounded text-[10px] font-medium text-rose-300 bg-rose-500/15 hover:bg-rose-500/25">Delete?</button>
+          <button onClick={onDelete} className="px-1.5 py-0.5 rounded text-[10px] font-medium text-rose-300 bg-rose-500/15 hover:bg-rose-500/25">{t('telemetry:savedLayout.confirmDelete')}</button>
         ) : (
           <>
-            <button onClick={onEdit} className={LAYOUT_ACTION} data-tip="Rename or describe">
+            <button onClick={onEdit} className={LAYOUT_ACTION} data-tip={t('telemetry:savedLayout.renameTip')}>
               <Pencil className="w-3 h-3" />
             </button>
-            <button onClick={() => setShareOpen((v) => !v)} className={LAYOUT_ACTION} data-tip="Share">
+            <button onClick={() => setShareOpen((v) => !v)} className={LAYOUT_ACTION} data-tip={t('telemetry:savedLayout.shareTip')}>
               <Share2 className="w-3 h-3" />
             </button>
-            <button onClick={() => setConfirmDelete(true)} className={LAYOUT_ACTION + ' hover:text-rose-400'} data-tip="Delete">
+            <button onClick={() => setConfirmDelete(true)} className={LAYOUT_ACTION + ' hover:text-rose-400'} data-tip={t('telemetry:savedLayout.deleteTip')}>
               <Trash2 className="w-3 h-3" />
             </button>
           </>
@@ -560,6 +565,7 @@ function panelIcon(id: string): ReactNode {
 }
 
 function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.Element {
+  const { t } = useTranslation();
   const { onSave, onLoad, onReset, onEdit, onDelete, onShare, onImport, onAddPanel, layouts, layoutDescriptions, activeLayout, supportsMissionPlanning, isMavlink, isSitlRunning, hasMapPanel, onClose } = props;
   const mapMode = useEditModeStore((s) => s.mapMode);
   const setMapMode = useEditModeStore((s) => s.setMapMode);
@@ -588,7 +594,7 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
 
   const availablePresets = Object.entries(BUILTIN_LAYOUTS)
     .filter(([, layout]) => !('needsMissions' in layout && layout.needsMissions) || supportsMissionPlanning)
-    .map(([key, layout]) => [key, layout.label, layout.description] as const);
+    .map(([key, layout]) => [key, t(layout.labelKey), t(layout.descriptionKey)] as const);
   const availablePanels = Object.entries(PANEL_COMPONENTS).filter(([id]) => {
     if (MISSION_PANEL_IDS.includes(id) && !supportsMissionPlanning) return false;
     if (MAVLINK_PANEL_IDS.includes(id) && !isMavlink) return false;
@@ -608,8 +614,8 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
         <div className="pointer-events-auto w-full max-w-[600px] max-h-[85vh] flex flex-col rounded-xl bg-surface-solid border border-subtle shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-subtle">
             <svg className="w-4 h-4 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
-            <span className="text-sm font-semibold text-content">Workspace</span>
-            <button onClick={onClose} data-tip="Close" className="ml-auto p-1.5 rounded text-content-secondary hover:text-content hover:bg-surface-raised transition-colors">
+            <span className="text-sm font-semibold text-content">{t('telemetry:workspace.title')}</span>
+            <button onClick={onClose} data-tip={t('common:close')} className="ml-auto p-1.5 rounded text-content-secondary hover:text-content hover:bg-surface-raised transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
               </svg>
@@ -617,8 +623,8 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
           </div>
 
           <div className="overflow-y-auto p-4 space-y-6 bg-surface-base">
-            <WsSection label="Panel layout" accent={WS_ACCENT.layout} icon={WS_ICONS.layout}>
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-content-tertiary">Built-in</div>
+            <WsSection label={t('telemetry:workspaceDialog.panelLayout')} accent={WS_ACCENT.layout} icon={WS_ICONS.layout}>
+              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-content-tertiary">{t('telemetry:workspaceDialog.builtIn')}</div>
               <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
                 {availablePresets.map(([key, name, description]) => (
                   <WsCard key={key} accent={WS_ACCENT.layout} active={key === activeLayout} icon={WS_ICONS.layout} label={name} description={description} onClick={() => { onLoad(key); onClose(); }} />
@@ -626,7 +632,7 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
               </div>
               {layouts.length > 0 && (
                 <>
-                  <div className="mb-1.5 mt-4 text-[10px] font-medium uppercase tracking-wide text-content-tertiary">Saved</div>
+                  <div className="mb-1.5 mt-4 text-[10px] font-medium uppercase tracking-wide text-content-tertiary">{t('telemetry:workspaceDialog.saved')}</div>
                   <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
                     {layouts.map((name) => (
                       <SavedLayoutCard
@@ -647,23 +653,23 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
               <div className="mt-3 flex items-center gap-2">
                 <button onClick={() => setDetails({ mode: 'save' })} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-subtle text-xs text-content-secondary hover:text-content hover:border-default transition-colors">
                   {plusIcon}
-                  Save current as…
+                  {t('telemetry:workspaceDialog.saveCurrentAs')}
                 </button>
                 <div className="relative">
                   <button
                     onClick={() => setImportMenu((v) => !v)}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-subtle text-xs text-content-secondary hover:text-content hover:border-default transition-colors"
-                    data-tip="Import a layout someone shared"
+                    data-tip={t('telemetry:workspaceDialog.importTip')}
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    Import
+                    {t('telemetry:workspaceDialog.import')}
                   </button>
                   {importMenu && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setImportMenu(false)} />
                       <div className="absolute left-0 top-8 z-20 w-48 rounded-lg border border-default bg-surface-solid p-1 shadow-xl">
                         <button onClick={() => { setImportMenu(false); importInputRef.current?.click(); }} className={SHARE_ITEM}>
-                          <FileUp className="w-3.5 h-3.5" />From file…
+                          <FileUp className="w-3.5 h-3.5" />{t('telemetry:workspaceDialog.fromFile')}
                         </button>
                         <button
                           onClick={async () => {
@@ -671,12 +677,12 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
                             try {
                               setImportError(await onImport(await navigator.clipboard.readText()));
                             } catch {
-                              setImportError('Could not read the clipboard.');
+                              setImportError(t('telemetry:workspaceDialog.clipboardReadFailed'));
                             }
                           }}
                           className={SHARE_ITEM}
                         >
-                          <ClipboardPaste className="w-3.5 h-3.5" />Paste from clipboard
+                          <ClipboardPaste className="w-3.5 h-3.5" />{t('telemetry:workspaceDialog.pasteFromClipboard')}
                         </button>
                       </div>
                     </>
@@ -695,7 +701,7 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
                 />
                 <button onClick={() => { onReset(); }} className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-subtle text-xs text-content-secondary hover:text-content hover:border-default transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M20 9A8 8 0 006.34 6.34M4 15a8 8 0 0013.66 2.66" /></svg>
-                  Reset to preset
+                  {t('telemetry:workspaceDialog.resetToPreset')}
                 </button>
               </div>
               {importError && (
@@ -704,16 +710,16 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
             </WsSection>
 
             {isMavlink && (
-              <WsSection label="Telemetry rate" accent={WS_ACCENT.rate} icon={WS_ICONS.rate}>
-                <WsSegment options={SPEED_OPTIONS} value={telemetrySpeed} accent={WS_ACCENT.rate} onChange={handleSpeedChange} />
-                <p className="mt-1.5 text-[11px] text-content-tertiary">How often the vehicle streams telemetry. FC leaves the flight controller's own rates untouched.</p>
+              <WsSection label={t('telemetry:workspaceDialog.telemetryRate')} accent={WS_ACCENT.rate} icon={WS_ICONS.rate}>
+                <WsSegment options={SPEED_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey), tip: t(o.tipKey) }))} value={telemetrySpeed} accent={WS_ACCENT.rate} onChange={handleSpeedChange} />
+                <p className="mt-1.5 text-[11px] text-content-tertiary">{t('telemetry:workspaceDialog.telemetryRateHint')}</p>
               </WsSection>
             )}
 
             {import.meta.env.DEV && (
-              <WsSection label="Map view" accent={WS_ACCENT.view} icon={WS_ICONS.view}>
+              <WsSection label={t('telemetry:workspaceDialog.mapView')} accent={WS_ACCENT.view} icon={WS_ICONS.view}>
                 <WsSegment
-                  options={[{ value: '2d', label: '2D map' }, { value: '3d', label: '3D terrain' }]}
+                  options={[{ value: '2d', label: t('telemetry:workspaceDialog.map2d') }, { value: '3d', label: t('telemetry:workspaceDialog.map3d') }]}
                   value={mapMode}
                   accent={WS_ACCENT.view}
                   onChange={(v) => setMapMode(v)}
@@ -722,7 +728,7 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
             )}
 
             {hasMapPanel && (
-              <WsSection label="Offline maps" accent={WS_ACCENT.offline} icon={WS_ICONS.offline}>
+              <WsSection label={t('telemetry:workspaceDialog.offlineMaps')} accent={WS_ACCENT.offline} icon={WS_ICONS.offline}>
                 <button
                   onClick={() => { setCacheActive(!cacheActive); onClose(); }}
                   className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs shadow-sm transition-all hover:shadow-md"
@@ -733,22 +739,22 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
                   }
                 >
                   <span style={{ color: cacheActive ? '#fff' : WS_ACCENT.offline }}>{WS_ICONS.offline}</span>
-                  {cacheActive ? 'Selecting… draw a box on the map' : 'Save an area for offline use'}
+                  {cacheActive ? t('telemetry:workspaceDialog.selectingArea') : t('telemetry:workspaceDialog.saveOfflineArea')}
                 </button>
-                <p className="mt-1.5 text-[11px] text-content-tertiary">Draw a box on the map to cache its tiles for flying without a connection.</p>
+                <p className="mt-1.5 text-[11px] text-content-tertiary">{t('telemetry:workspaceDialog.offlineHint')}</p>
               </WsSection>
             )}
 
-            <WsSection label="Add panel" accent={WS_ACCENT.panel} icon={WS_ICONS.panel}>
+            <WsSection label={t('telemetry:workspaceDialog.addPanel')} accent={WS_ACCENT.panel} icon={WS_ICONS.panel}>
               <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]">
-                {availablePanels.map(([id, { component, title }]) => (
+                {availablePanels.map(([id, { component, titleKey }]) => (
                   <WsCard
                     key={id}
                     accent={WS_ACCENT.panel}
                     accentIcon
                     icon={panelIcon(id)}
-                    label={title}
-                    onClick={() => onAddPanel(id, component, title)}
+                    label={t(titleKey)}
+                    onClick={() => onAddPanel(id, component, t(titleKey))}
                     dataTour={id === panelIds[0] ? 'add-panel' : id === 'rtk' ? 'add-panel-rtk' : undefined}
                   />
                 ))}
@@ -759,7 +765,7 @@ function WorkspaceDialog(props: WorkspaceProps & { onClose: () => void }): JSX.E
       </div>
       {details && (
         <LayoutDetailsDialog
-          title={details.mode === 'save' ? 'Save layout' : 'Edit layout'}
+          title={details.mode === 'save' ? t('telemetry:layoutDetails.saveTitle') : t('telemetry:layoutDetails.editTitle')}
           initialName={details.mode === 'edit' ? details.name : ''}
           initialDescription={details.mode === 'edit' ? layoutDescriptions[details.name] ?? '' : ''}
           taken={layouts}
@@ -793,10 +799,11 @@ const SITL_PANEL_IDS = ['sitlEnvironment', 'sitlFailures'];
 
 // Sensor health warning badge - shows unhealthy sensor names
 function SensorHealthWarning({ sensors }: { sensors: string[] }) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/30 rounded"
-      title={`Unhealthy: ${sensors.join(', ')} - check Messages panel for details`}
+      title={t('telemetry:sensorHealth.unhealthyTitle', { sensors: sensors.join(', ') })}
     >
       <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
@@ -807,15 +814,16 @@ function SensorHealthWarning({ sensors }: { sensors: string[] }) {
 }
 
 // Telemetry speed selector labels
-const SPEED_OPTIONS: { value: TelemetrySpeed; label: string; tip: string }[] = [
-  { value: 'fc', label: 'FC', tip: 'Hands off: ArduDeck never asks for different data rates. The vehicle keeps sending at the rates saved on the flight controller. Pick this if you tuned those rates yourself.' },
-  { value: 'eco', label: 'Eco', tip: 'Slow updates: easy on weak or long-range telemetry links' },
-  { value: 'normal', label: 'Normal', tip: 'Balanced update speed, good for most links' },
-  { value: 'max', label: 'Max', tip: 'Fastest updates, for fast links like USB or WiFi' },
+const SPEED_OPTIONS: { value: TelemetrySpeed; labelKey: string; tipKey: string }[] = [
+  { value: 'fc', labelKey: 'telemetry:speed.fc', tipKey: 'telemetry:speed.fcTip' },
+  { value: 'eco', labelKey: 'telemetry:speed.eco', tipKey: 'telemetry:speed.ecoTip' },
+  { value: 'normal', labelKey: 'telemetry:speed.normal', tipKey: 'telemetry:speed.normalTip' },
+  { value: 'max', labelKey: 'telemetry:speed.max', tipKey: 'telemetry:speed.maxTip' },
 ];
 
 // Quick stats bar
 function QuickStatsBar({ trailing }: { trailing?: ReactNode }) {
+  const { t } = useTranslation();
   const flight = useTelemetryStore((s) => s.flight);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
   const battery = useTelemetryStore((s) => s.battery);
@@ -861,35 +869,35 @@ function QuickStatsBar({ trailing }: { trailing?: ReactNode }) {
         <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wide ${
           flight.armed && connected ? 'bg-red-500 text-white' : 'bg-surface-raised text-content-secondary'
         }`}>
-          {!connected ? 'No Link' : flight.armed ? 'Armed' : 'Disarmed'}
+          {!connected ? t('telemetry:quickStats.noLink') : flight.armed ? t('telemetry:quickStats.armed') : t('telemetry:quickStats.disarmed')}
         </span>
         <span className={`text-lg font-medium ${connected ? 'text-content' : 'text-content-tertiary'}`}>
-          {connected ? flight.mode : 'Not connected'}
+          {connected ? flight.mode : t('telemetry:quickStats.notConnected')}
         </span>
       </div>
       <div className="flex items-center gap-6 text-xs">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-content-secondary">HDG</span>
+          <span className="text-content-secondary">{t('telemetry:quickStats.hdg')}</span>
           <span className="font-mono text-sm text-content">{stat(`${vfrHud.heading.toFixed(0)}°`)}</span>
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-content-secondary">ALT</span>
+          <span className="text-content-secondary">{t('telemetry:quickStats.alt')}</span>
           <span className="font-mono text-sm text-content">{stat(formatAltitudeFromMeters(vfrHud.alt, altitudeUnit))}</span>
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-content-secondary">SPD</span>
+          <span className="text-content-secondary">{t('telemetry:quickStats.spd')}</span>
           <span className="font-mono text-sm text-content">{stat(formatSpeedFromMetersPerSecond(vfrHud.groundspeed, speedUnit))}</span>
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-content-secondary">THR</span>
+          <span className="text-content-secondary">{t('telemetry:quickStats.thr')}</span>
           <span className="font-mono text-sm text-content">{stat(`${vfrHud.throttle}%`)}</span>
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-content-secondary">BAT</span>
+          <span className="text-content-secondary">{t('telemetry:quickStats.bat')}</span>
           <span className={`font-mono text-sm ${batteryColor}`}>{stat(`${battery.voltage.toFixed(1)}V`)}</span>
         </div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-content-secondary">SAT</span>
+          <span className="text-content-secondary">{t('telemetry:quickStats.sat')}</span>
           <span className={`font-mono text-sm ${satColor}`}>{stat(String(gps.satellites))}</span>
         </div>
         {unhealthySensors.length > 0 && (
@@ -907,6 +915,7 @@ function QuickStatsBar({ trailing }: { trailing?: ReactNode }) {
 }
 
 function TelemetryDashboardImpl() {
+  const { t } = useTranslation();
   const resolvedTheme = useResolvedTheme();
   const apiRef = useRef<DockviewApi | null>(null);
   const { layouts, activeLayoutName, loadLayouts, saveLayout, deleteLayout, setActiveLayout } = useLayoutStore();
@@ -1041,15 +1050,15 @@ function TelemetryDashboardImpl() {
     try {
       if (how === 'copy') {
         await navigator.clipboard.writeText(payload);
-        return 'Copied';
+        return t('telemetry:share.copied');
       }
-      if (how === 'file') return (await window.electronAPI?.exportLayoutFile(exportFileName(name), payload)) ? 'Saved' : null;
+      if (how === 'file') return (await window.electronAPI?.exportLayoutFile(exportFileName(name), payload)) ? t('telemetry:share.saved') : null;
       await window.electronAPI?.shareLayout(exportFileName(name), payload);
       return null;
     } catch {
-      return 'Could not share';
+      return t('telemetry:share.failed');
     }
-  }, [layouts]);
+  }, [layouts, t]);
 
   const handleImportLayout = useCallback(async (raw: string): Promise<string | null> => {
     const result = parseImport(raw);
@@ -1101,7 +1110,7 @@ function TelemetryDashboardImpl() {
         const panel = api.addPanel({
           id: uniqueId,
           component: entry.component,
-          title: entry.title,
+          title: t(entry.titleKey),
         });
         // Make sure the new panel's tab is the active one in its group,
         // otherwise it renders hidden and selectors won't find it.
@@ -1124,7 +1133,7 @@ function TelemetryDashboardImpl() {
     return () => {
       useTelemetryLayoutStore.getState().setBridge(null);
     };
-  }, [handleAddPanel]);
+  }, [handleAddPanel, t]);
 
   return (
     <div className="h-full flex flex-col">

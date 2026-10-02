@@ -294,6 +294,10 @@ export const IPC_CHANNELS = {
   RALLY_SAVE_FILE: 'rally:save-file',
   RALLY_LOAD_FILE: 'rally:load-file',
 
+  I18N_GET_LANGUAGE: 'i18n:get-language',
+  I18N_SET_LANGUAGE: 'i18n:set-language',
+  I18N_LANGUAGE_CHANGED: 'i18n:language-changed',
+
   // Settings/Vehicle profiles
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
@@ -350,6 +354,12 @@ export const IPC_CHANNELS = {
   DRONEBRIDGE_GET_STATS: 'dronebridge:get-stats',
   DRONEBRIDGE_GET_SETTINGS: 'dronebridge:get-settings',
   DRONEBRIDGE_UPDATE_SETTINGS: 'dronebridge:update-settings',
+  // Camera settings over SSH (RunCam WiFiLink)
+  CAMERA_SETTINGS_DISCOVER: 'camera-settings:discover',
+  CAMERA_SETTINGS_CONNECT: 'camera-settings:connect',
+  CAMERA_SETTINGS_REFRESH: 'camera-settings:refresh',
+  CAMERA_SETTINGS_APPLY: 'camera-settings:apply',
+  CAMERA_SETTINGS_DISCONNECT: 'camera-settings:disconnect',
   DRONEBRIDGE_GET_CLIENTS: 'dronebridge:get-clients',
   DRONEBRIDGE_ADD_UDP_CLIENT: 'dronebridge:add-udp-client',
   DRONEBRIDGE_CLEAR_UDP_CLIENTS: 'dronebridge:clear-udp-clients',
@@ -413,6 +423,7 @@ export const IPC_CHANNELS = {
   MSP_GET_SERVO_VALUES: 'msp:get-servo-values',
   MSP_GET_SERVO_MIXER: 'msp:get-servo-mixer',
   MSP_SET_SERVO_MIXER: 'msp:set-servo-mixer',
+  MSP_SET_SERVO_MIXER_ALL: 'msp:set-servo-mixer-all',
   MSP_GET_SERVO_CONFIG_MODE: 'msp:get-servo-config-mode', // Check if using CLI fallback + valid ranges
   MSP_GET_MOTOR_MIXER: 'msp:get-motor-mixer', // MSP motor mixer (modern boards)
   MSP_SET_MOTOR_MIXER: 'msp:set-motor-mixer', // MSP motor mixer (modern boards)
@@ -478,6 +489,8 @@ export const IPC_CHANNELS = {
   MSP_SET_SETTING: 'msp:set-setting',
   MSP_GET_SETTINGS: 'msp:get-settings',
   MSP_SET_SETTINGS: 'msp:set-settings',
+  MSP_LAST_WRITE_ERROR: 'msp:last-write-error',
+  MSP_GET_SETTING_RANGES: 'msp:get-setting-ranges',
 
   // MSP Commands
   MSP_SAVE_EEPROM: 'msp:save-eeprom',
@@ -938,6 +951,8 @@ export const IPC_CHANNELS = {
   CAMERA_SNAPSHOT: 'camera:snapshot',
   /** Renderer → main: toggle recording for a source. */
   CAMERA_RECORD_TOGGLE: 'camera:record-toggle',
+  /** Renderer → main: open the folder of a snapshot or recording with the file selected. */
+  CAMERA_REVEAL_MEDIA: 'camera:reveal-media',
   /** Renderer → main: query MediaEngineStatus. */
   CAMERA_ENGINE_STATUS: 'camera:engine-status',
   /** Renderer → main: one pasteable block explaining a video failure. */
@@ -954,6 +969,12 @@ export const IPC_CHANNELS = {
   CAMERA_VIDEO_STREAM_INFO: 'camera:video-stream-info',
   /** Main → renderer: GIMBAL_DEVICE_ATTITUDE_STATUS for a vehicle. */
   CAMERA_GIMBAL_ATTITUDE: 'camera:gimbal-attitude',
+  CAMERA_START_PHASE: 'camera:start-phase',
+  GPS_DIAG_START: 'gps-diag:start',
+  GPS_DIAG_STOP: 'gps-diag:stop',
+  GPS_DIAG_BRIDGE_START: 'gps-diag:bridge-start',
+  GPS_DIAG_BRIDGE_STOP: 'gps-diag:bridge-stop',
+  GPS_DIAG_EVENT: 'gps-diag:event',
   /** Main → renderer: GIMBAL_MANAGER_INFORMATION for a vehicle. */
   CAMERA_GIMBAL_INFO: 'camera:gimbal-info',
 

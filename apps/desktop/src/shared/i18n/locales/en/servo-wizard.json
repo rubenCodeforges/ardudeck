@@ -1,0 +1,296 @@
+{
+  "diagrams": {
+    "camera": "Camera",
+    "deltaHint": "Delta with vertical tail",
+    "elevator": "Elevator",
+    "flyingWingHint": "Elevons = Aileron + Elevator combined",
+    "front": "FRONT",
+    "gimbalHint": "Pan = horizontal, Tilt = vertical",
+    "leftAileron": "L Aileron",
+    "leftElevon": "L Elevon",
+    "leftVTail": "L V-Tail",
+    "motor1": "Motor 1",
+    "motor2": "Motor 2",
+    "panServo": "Pan Servo",
+    "rightAileron": "R Aileron",
+    "rightElevon": "R Elevon",
+    "rightVTail": "R V-Tail",
+    "rudder": "Rudder",
+    "tiltServo": "Tilt Servo",
+    "tricopterHint": "Only yaw servo needs configuration",
+    "yawServo": "Yaw Servo"
+  },
+  "planeTypeStep": {
+    "continue": "Continue →",
+    "gimbalSubtitle": "Your board is configured as a multirotor. You can set up gimbal servos for camera control.",
+    "gimbalTip": "Gimbal uses RC stick input to control pan/tilt servos for camera stabilization.",
+    "gimbalTitle": "Gimbal Servo Setup",
+    "noServos": "No servos",
+    "quadHex": "Quad/Hex",
+    "servoCount_one": "{{count}} servo",
+    "servoCount_other": "{{count}} servos",
+    "subtitle": "Select your aircraft type for the correct servo setup.",
+    "tip": "<b>Quad with camera?</b> Select Gimbal. <b2>Plane?</b2> Most are Traditional.",
+    "title": "What type of aircraft do you have?"
+  },
+  "servoAssignmentStep": {
+    "clickToHighlight": "Click a control surface to highlight it",
+    "continue": "Continue: Test Servos →",
+    "duplicateWarning": "Warning: Multiple surfaces assigned to the same servo!",
+    "noAircraft": "No aircraft type selected",
+    "subtitle": "Match each control surface to the servo output it's connected to on your flight controller.",
+    "tip": "<b>Tip:</b> Check your FC wiring. Servo outputs are usually labeled S1-S8 or SERVO1-8. S1 = Servo 0 in iNav.",
+    "title": "Assign Servos to Control Surfaces"
+  },
+  "servoEndpointSlider": {
+    "centerHandle": "center",
+    "centerUs": "Center (µs)",
+    "maxHandle": "max",
+    "maxUs": "Max (µs)",
+    "minHandle": "min",
+    "minUs": "Min (µs)",
+    "testCenter": "Test Center",
+    "testMax": "Test Max",
+    "testMin": "Test Min"
+  },
+  "servoEndpointsStep": {
+    "continue": "Continue: Review →",
+    "enableFeedback": "Enable live servo feedback",
+    "feedbackEnabled": "● Live servo feedback enabled",
+    "livePosition": "Live Position",
+    "quickTips": "Quick tips:",
+    "rate": "Rate:",
+    "rateHint": "Reduces travel range. 100% = full travel, 50% = half travel.",
+    "subtitle": "Set how far each servo can move. If your servo makes a grinding noise at full stick, reduce the limits here.",
+    "testingPosition": "Testing servo position...",
+    "tipGrinding": "<b>Grinding noise?</b> Reduce the Min or Max value",
+    "tipNotLevel": "<b>Not level at center stick?</b> Adjust the Center value",
+    "tipSensitive": "<b>Too sensitive?</b> Lower the Rate percentage",
+    "title": "Fine-Tune Servo Travel"
+  },
+  "servoPresets": {
+    "aircraft": {
+      "delta": {
+        "description": "Delta wing with elevons and rudder",
+        "name": "Delta",
+        "tip": "Like flying wing but with a vertical tail for rudder."
+      },
+      "flyingWing": {
+        "description": "Delta/flying wing with 2 elevons",
+        "name": "Flying Wing",
+        "tip": "Elevons combine aileron and elevator function. No tail surfaces."
+      },
+      "gimbal": {
+        "description": "2-axis camera gimbal (pan/tilt)",
+        "name": "Gimbal",
+        "tip": "For camera stabilization. Uses RC input, not stabilized output."
+      },
+      "traditional": {
+        "description": "Standard plane with ailerons, elevator, rudder",
+        "name": "Traditional",
+        "tip": "Most common setup for planes. Separate control surfaces for each axis."
+      },
+      "tricopter": {
+        "description": "Tricopter with yaw servo",
+        "name": "Tricopter",
+        "tip": "Only the rear yaw servo needs configuration. Motors are handled separately."
+      },
+      "vtail": {
+        "description": "Plane with V-tail (ruddervators)",
+        "name": "V-Tail",
+        "tip": "V-tail surfaces combine elevator and rudder. Standard ailerons."
+      }
+    },
+    "inputSource": {
+      "gimbalPitch": "Gimbal Pitch",
+      "gimbalRoll": "Gimbal Roll",
+      "pitch": "Pitch",
+      "rcPitch": "RC Pitch (manual)",
+      "rcRoll": "RC Roll (manual)",
+      "rcThrottle": "RC Throttle (manual)",
+      "rcYaw": "RC Yaw (manual)",
+      "roll": "Roll",
+      "throttle": "Throttle",
+      "yaw": "Yaw"
+    },
+    "surface": {
+      "aileronLeft": {
+        "description": "Rolls the plane left when down",
+        "name": "Left Aileron",
+        "shortName": "L Ail"
+      },
+      "aileronRight": {
+        "description": "Rolls the plane right when down",
+        "name": "Right Aileron",
+        "shortName": "R Ail"
+      },
+      "elevator": {
+        "description": "Pitches the nose up when trailing edge goes up",
+        "name": "Elevator",
+        "shortName": "Elev"
+      },
+      "elevonLeft": {
+        "description": "Flying wing - combines roll and pitch",
+        "name": "Left Elevon",
+        "shortName": "L Elev"
+      },
+      "elevonRight": {
+        "description": "Flying wing - combines roll and pitch",
+        "name": "Right Elevon",
+        "shortName": "R Elev"
+      },
+      "gimbalPan": {
+        "description": "Camera gimbal horizontal rotation",
+        "name": "Gimbal Pan",
+        "shortName": "Pan"
+      },
+      "gimbalTilt": {
+        "description": "Camera gimbal vertical rotation",
+        "name": "Gimbal Tilt",
+        "shortName": "Tilt"
+      },
+      "rudder": {
+        "description": "Yaws the plane left/right",
+        "name": "Rudder",
+        "shortName": "Rudr"
+      },
+      "vtailLeft": {
+        "description": "V-tail - combines elevator and rudder",
+        "name": "Left V-Tail",
+        "shortName": "L VT"
+      },
+      "vtailRight": {
+        "description": "V-tail - combines elevator and rudder",
+        "name": "Right V-Tail",
+        "shortName": "R VT"
+      },
+      "yawServo": {
+        "description": "Tricopter tail servo for yaw control",
+        "name": "Yaw Servo",
+        "shortName": "Yaw"
+      }
+    }
+  },
+  "servoReviewStep": {
+    "beforeSaving": "Before saving:",
+    "controlSurface": "Control Surface",
+    "input": "Input",
+    "mixerPreview": "Mixer Rules Preview",
+    "noteConnected": "Ensure your flight controller is connected",
+    "noteEeprom": "Settings are stored in EEPROM (persist after power off)",
+    "notePropellers": "Disconnect propellers for safety",
+    "noteTest": "After saving, test all controls before flight",
+    "nothingToReview": "No configuration to review",
+    "rev": "REV",
+    "saveFailed": "Failed to save configuration",
+    "saveToFc": "Save to Flight Controller",
+    "saved": "Configuration saved successfully!",
+    "savedHint": "Settings have been written to the flight controller. You can now close this wizard.",
+    "source": "Source {{source}}",
+    "subtitle": "Verify your servo configuration before saving to the flight controller.",
+    "title": "Review Your Configuration"
+  },
+  "servoTestStep": {
+    "checkAilerons": "<b>Ailerons:</b> Roll stick right → right aileron should go UP, left should go DOWN",
+    "checkElevator": "<b>Elevator:</b> Pull stick back → trailing edge should go UP",
+    "checkElevons": "<b>Elevons:</b> Test both roll and pitch movements",
+    "checkRudder": "<b>Rudder:</b> Yaw stick right → rudder should move RIGHT",
+    "continue": "Continue: Calibrate →",
+    "enablePolling": "Enable live servo polling",
+    "howToCheck": "How to check direction:",
+    "instruction": {
+      "aileronLeft": "Move roll stick RIGHT → this servo should move DOWN",
+      "aileronRight": "Move roll stick RIGHT → this servo should move UP",
+      "default": "Move the corresponding stick",
+      "elevator": "Pull pitch stick BACK → trailing edge should go UP",
+      "elevonLeft": "Roll RIGHT → DOWN. Pitch BACK → UP (trailing edge)",
+      "elevonRight": "Roll RIGHT → UP. Pitch BACK → UP (trailing edge)",
+      "gimbalPan": "Move yaw stick → camera should rotate horizontally",
+      "gimbalTilt": "Move pitch stick → camera should tilt up/down",
+      "rudder": "Move yaw stick RIGHT → rudder should deflect RIGHT",
+      "vtailLeft": "Pitch BACK and Yaw RIGHT → test both movements",
+      "vtailRight": "Pitch BACK and Yaw RIGHT → test both movements",
+      "yawServo": "Move yaw stick → motor should tilt"
+    },
+    "moveStick": "Move stick to test",
+    "pollingEnabled": "● Live servo polling enabled",
+    "responding": "Servo is responding",
+    "reverseHint": "If a servo moves the <b>wrong way</b>, click <rev>Reverse</rev>.",
+    "servoIndex": "Servo {{index}}",
+    "subtitle": "Move your transmitter sticks and verify each servo responds correctly.",
+    "title": "Test Your Servos",
+    "undoReverse": "Undo Reverse"
+  },
+  "servoTuningCard": {
+    "clickToReverse": "Click to reverse",
+    "fwd": "FWD",
+    "reversedTip": "Servo reversed",
+    "testMax": "Max →",
+    "testMin": "← Min"
+  },
+  "servoTuningView": {
+    "clickToSelect": "Click surface to select",
+    "noConfig": "No Servo Configuration",
+    "saveFailed": "Failed to save: {{error}}",
+    "saveToFc": "Save to FC",
+    "saved": "Saved to flight controller",
+    "useWizard": "Use the Wizard to configure your servos first."
+  },
+  "servoWizard": {
+    "boardIsMultirotor": "Board Configured as Multirotor",
+    "changeMixerHint": "This will change the mixer type to AIRPLANE, save to EEPROM, and reboot the board.",
+    "checkingSupport": "Checking servo support...",
+    "completeWizardFirst": "Complete wizard first",
+    "configureAsAirplane": "Configure as Airplane",
+    "configureAsPlaneQuestion": "Want to configure this board as a plane?",
+    "configuring": "Configuring...",
+    "disconnecting": "Disconnecting...",
+    "failedWithMessage": "Failed: {{message}}. Try iNav Configurator CLI.",
+    "fineTuneServos": "Fine-tune servos",
+    "notAvailable": "Servo Setup Not Available",
+    "oldFirmwareNote": "<b>Note:</b> iNav 2.0.0 is very old. If this doesn't work, you may need to use iNav Configurator CLI: <code>mixer AIRPLANE</code> then <code>save</code>",
+    "platformChangeFailed": "Failed to change platform. For iNav 2.0.0, try using iNav Configurator CLI: mixer AIRPLANE then save",
+    "platformChanged": "Platform changed to AIRPLANE! Reconnect to verify.",
+    "rebooting": "Rebooting board...",
+    "reconnectHint": "Use the connection panel at the top to reconnect.",
+    "reconnecting": "Reconnecting...",
+    "savingEeprom": "Platform change sent. Saving to EEPROM...",
+    "sendingPlatform": "Sending platform config (MSP2 + CLI fallback)...",
+    "servoCount": "- {{count}} servos",
+    "settingPlatform": "Setting platform type to AIRPLANE...",
+    "steps": {
+      "aircraft": {
+        "description": "Select your aircraft type",
+        "label": "Aircraft"
+      },
+      "assign": {
+        "description": "Map servos to control surfaces",
+        "label": "Assign"
+      },
+      "endpoints": {
+        "description": "Adjust servo limits",
+        "label": "Calibrate"
+      },
+      "review": {
+        "description": "Review and save",
+        "label": "Save"
+      },
+      "test": {
+        "description": "Verify servo movement",
+        "label": "Test"
+      }
+    },
+    "tune": "Tune",
+    "unknownError": "Unknown error",
+    "useConnectionPanel": "Please use the connection panel to reconnect to your board.",
+    "usedFor": "Servo Setup is used for:",
+    "usedForFixedWing": "<b>Fixed-wing aircraft</b> - ailerons, elevator, rudder",
+    "usedForFlyingWing": "<b>Flying wings</b> - elevon mixing",
+    "usedForGimbal": "<b>Gimbal servos</b> - camera pan/tilt (requires compatible board)",
+    "waitingReboot": "Waiting for board to reboot (5s)...",
+    "wizard": "Wizard"
+  },
+  "wizardNav": {
+    "back": "← Back"
+  }
+}

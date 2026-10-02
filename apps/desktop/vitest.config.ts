@@ -7,7 +7,10 @@ import { defineConfig, configDefaults } from 'vitest/config';
 // root) and is pointless since the source tests already cover the same code.
 export default defineConfig({
   test: {
+    // Pre-bundle so react-i18next (hoisted to root) shares the app's React instead of a second copy.
+    deps: { optimizer: { web: { enabled: true, include: ['react-i18next', 'react', 'react-dom'] } } },
     exclude: [...configDefaults.exclude, '**/out/**'],
+    setupFiles: ['./src/test-setup-i18n.ts'],
     coverage: {
       // `all: true` (the default) makes coverage-v8 glob every source file via
       // test-exclude to report untested ones. That scan crashes on a transitive

@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Compass, AlertTriangle, ArrowUp } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useNavigationStore } from '../../stores/navigation-store';
@@ -15,12 +16,12 @@ import { useNavigationStore } from '../../stores/navigation-store';
 const MAX_MAGS = 4;
 
 /** CAL_MAGn_PRIO. -1 is "never set up", 0 is off, higher wins. */
-const PRIORITIES: { value: number; label: string }[] = [
-  { value: 0, label: 'Off' },
-  { value: 25, label: 'Low' },
-  { value: 50, label: 'Medium' },
-  { value: 75, label: 'High' },
-  { value: 100, label: 'Max' },
+const PRIORITIES: { value: number; labelKey: string }[] = [
+  { value: 0, labelKey: 'common:off' },
+  { value: 25, labelKey: 'mavlink-config:px4CompassCard.prioLow' },
+  { value: 50, labelKey: 'mavlink-config:px4CompassCard.prioMedium' },
+  { value: 75, labelKey: 'common:high' },
+  { value: 100, labelKey: 'common:max' },
 ];
 
 interface Px4Mag {
@@ -52,6 +53,7 @@ function readMags(get: (name: string) => number | undefined): Px4Mag[] {
 }
 
 export function Px4CompassCard(): JSX.Element {
+  const { t } = useTranslation();
   const { parameters, setParameter } = useParameterStore();
   const setView = useNavigationStore((s) => s.setView);
   const [busy, setBusy] = useState(false);
@@ -92,11 +94,11 @@ export function Px4CompassCard(): JSX.Element {
           <Compass className="h-5 w-5 text-cyan-400" />
         </div>
         <div className="flex-1">
-          <h3 className="font-medium text-content">Compasses</h3>
+          <h3 className="font-medium text-content">{t('mavlink-config:px4CompassCard.title')}</h3>
           <p className="text-xs text-content-secondary">
             {mags.length === 0
-              ? 'Nothing detected on this board'
-              : `${mags.length} detected${mags.some((m) => m.external) ? ', including an external one' : ''}`}
+              ? t('mavlink-config:px4CompassCard.nothingDetected')
+              : `${t('mavlink-config:px4CompassCard.detected', { count: mags.length })}${mags.some((m) => m.external) ? t('mavlink-config:px4CompassCard.includingExternal') : ''}`}
           </p>
         </div>
       </div>
@@ -106,9 +108,7 @@ export function Px4CompassCard(): JSX.Element {
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
             <p>
-              No magnetometer has been calibrated. PX4 only fills CAL_MAG0_ID once a compass has
-              been detected and calibrated, so connect the GPS, power-cycle the autopilot, and run
-              the compass calibration.
+              {t('mavlink-config:px4CompassCard.noneCalibrated')}
             </p>
           </div>
         </div>
@@ -116,15 +116,12 @@ export function Px4CompassCard(): JSX.Element {
 
       {magFusion === 5 && mags.length > 0 && (
         <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          A compass is fitted but the estimator is set to ignore all of them, so heading comes from
-          somewhere else entirely.
+          {t('mavlink-config:px4CompassCard.estimatorIgnores')}
         </div>
       )}
 
       <div className="mb-3 rounded-lg border border-subtle bg-surface-raised px-3 py-2 text-[11px] text-content-tertiary">
-        PX4 picks the compass with the highest priority and falls back down the list. Setting a
-        priority to Off is how you stop using one, and the device id is what ties the calibration
-        to the physical sensor.
+        {t('mavlink-config:px4CompassCard.priorityExplainer')}
       </div>
 
       <div className="space-y-2">
@@ -134,24 +131,24 @@ export function Px4CompassCard(): JSX.Element {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm text-content">
-                    {mag.external ? 'External compass' : 'Onboard compass'}
+                    {mag.external ? t('mavlink-config:px4CompassCard.external') : t('mavlink-config:px4CompassCard.onboard')}
                   </span>
                   <span className="rounded bg-surface-overlay px-1.5 py-0.5 font-mono text-[10px] text-content-tertiary">
-                    id {mag.devId}
+                    {t('mavlink-config:px4CompassCard.id', { id: mag.devId })}
                   </span>
                   {best?.devId === mag.devId && (
                     <span className="flex items-center gap-1 rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] text-cyan-700 dark:text-cyan-300">
-                      <ArrowUp className="h-2.5 w-2.5" /> used for heading
+                      <ArrowUp className="h-2.5 w-2.5" /> {t('mavlink-config:px4CompassCard.usedForHeading')}
                     </span>
                   )}
                   {mag.priority === -1 && (
                     <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">
-                      not calibrated
+                      {t('mavlink-config:px4CompassCard.notCalibrated')}
                     </span>
                   )}
                 </div>
                 <div className="mt-0.5 text-[11px] text-content-tertiary">
-                  slot {mag.index} · {mag.external ? `rotation ${mag.rotation}` : 'mounted on the autopilot'}
+                  {t('mavlink-config:px4CompassCard.slot', { n: mag.index })} · {mag.external ? t('mavlink-config:px4CompassCard.rotation', { n: mag.rotation }) : t('mavlink-config:px4CompassCard.mountedOnAutopilot')}
                 </div>
               </div>
 
@@ -160,11 +157,11 @@ export function Px4CompassCard(): JSX.Element {
                 disabled={busy}
                 onChange={(e) => write(`CAL_MAG${mag.index}_PRIO`, Number(e.target.value))}
                 className="select shrink-0 text-[11px]"
-                data-tip="Higher priority compasses are preferred by the estimator"
+                data-tip={t('mavlink-config:px4CompassCard.priorityTip')}
               >
-                {mag.priority < 0 && <option value="">Not set</option>}
+                {mag.priority < 0 && <option value="">{t('mavlink-config:px4CompassCard.notSet')}</option>}
                 {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
+                  <option key={p.value} value={p.value}>{t(p.labelKey)}</option>
                 ))}
               </select>
             </div>
@@ -177,7 +174,7 @@ export function Px4CompassCard(): JSX.Element {
           onClick={() => setView('calibration')}
           className="mt-3 text-[11px] text-cyan-400 hover:text-cyan-300"
         >
-          Calibrate the compass →
+          {t('mavlink-config:px4CompassCard.calibrate')}
         </button>
       )}
     </div>

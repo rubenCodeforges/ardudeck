@@ -1,0 +1,227 @@
+{
+  "registry": {
+    "altitudePlanning": {
+      "blurb": "Das Profil stellt relative, geländebezogene und ASL-Wegpunkte jetzt korrekt über dem realen Gelände dar - mit AGL-Beschriftungen, verlässlichen Kollisionswarnungen und Zoom.",
+      "panel": {
+        "body": "Wegpunkte werden in ihrem eigenen Höhenbezug über dem Gelände dargestellt, sodass eine Vermessung mit 80 m relativ an einem Bergstandort <b>80m (80m AGL)</b> anzeigt und keine falsche Kollision. Die Achse zeigt die <b>Höhe über Home</b> mit ASL daneben, geländefolgende Abschnitte schmiegen sich an den Boden, und die gestrichelte Linie ist Ihr Sicherheitsabstand. <b>Scrollen zum Zoomen, Ziehen zum Verschieben</b>, ziehen Sie einen Wegpunkt-Punkt, um seine Höhe zu ändern, und lassen Sie <b>Auto Adjust</b> echte Geländekonflikte beheben.",
+        "title": "Höhe, im geplanten Bezugssystem"
+      },
+      "title": "Höhenprofil, das Bezugssysteme versteht"
+    },
+    "calibration": {
+      "blurb": "Beschleunigungssensor, Kompass, Waagerecht und der Rest, jeweils als geführter Schritt mit Live-Rückmeldung.",
+      "title": "Sensorkalibrierung",
+      "types": {
+        "body": "Jede Karte ist eine geführte Kalibrierung. Karten für Sensoren, die das Fahrzeug nicht hat, bleiben ausgegraut. Die Kompasskalibrierung zeigt, welche Richtungen bereits abgedeckt sind, während Sie das Luftfahrzeug drehen. Ein Pre-Arm-Fix, der eine Kalibrierung erfordert, öffnet direkt die passende Karte.",
+        "title": "Wählen, was kalibriert wird"
+      }
+    },
+    "flightInfo": {
+      "blurb": "Ein Live-Vorflugbriefing für jede Mission oder Vermessung: Flugdauer und Akkus, Strecke und Höhe, Wind und Wetter am Einsatzort sowie Ihr Tageslichtfenster.",
+      "panel": {
+        "body": "Der neue Tab <b>Fluginfo</b> macht aus Ihrer Mission die Zahlen, nach denen ein Pilot entscheidet: <b>Flugzeit</b> und wie viele <b>Akkus</b> sie braucht, Gesamt<b>strecke</b> und <b>Höhe</b> im Vergleich zur Obergrenze sowie das aktuelle <b>Wetter am Einsatzort</b>.",
+        "body2": "Der Wind wird als <b>Kompass</b> angezeigt, und der <b>Tageslicht</b>-Balken markiert, wann der Flug im Verhältnis zum Sonnenuntergang enden würde - so sehen Sie auf einen Blick, ob die Landung vor Einbruch der Dunkelheit erfolgt.",
+        "title": "Den Flug briefen, bevor Sie ihn fliegen"
+      },
+      "title": "Neu: das Flight-Info-Briefing"
+    },
+    "libraryProjects": {
+      "blurb": "Ein Einsatzort mit allen Vermessungsflächen und Missionen, lokal und aus dem Vault, an einem Ort.",
+      "tabs": {
+        "body": "Geben Sie einer Mission oder Vermessungsfläche beim Speichern einen <b>Projekt</b>namen, dann wird sie unter <b>Projekte</b> zusammen mit allem anderen für diesen Einsatzort gesammelt, einschließlich der Inhalte im Vault. Öffnen Sie dort eine Fläche oder Mission, landet sie im Planer.",
+        "title": "Missionen, Flächen und Projekte"
+      },
+      "title": "Projekte"
+    },
+    "logExplorer": {
+      "blurb": "Mehrere Diagramme mit unabhängigen Y-Achsen, fensterbezogene Statistiken, Ereignis- und FFT-Panels sowie eine Flugwegkarte, die Ihrem Cursor folgt.",
+      "chartActions": {
+        "body": "Wechseln Sie zwischen einer gemeinsamen Y-Achse und <b>einer Achse pro Feld</b>, damit RPM und Lage ein Diagramm teilen können. <b>Min / Mittel / Max</b> in der Legende werden beim Zoomen und Verschieben über den sichtbaren Bereich neu berechnet, und die Export-Schaltfläche speichert genau diesen Bereich als CSV. Ereignisse, Parameter und <b>FFT</b> finden Sie im Panel-Menü.",
+        "title": "Unabhängige Achsen, Live-Statistik, CSV"
+      },
+      "fieldPicker": {
+        "body": "Durchsuchen Sie jede im Log enthaltene Nachricht und schalten Sie Felder auf das <b>aktive Diagramm</b> - fügen Sie weitere Diagramme hinzu, und die Auswahl zielt auf das jeweils fokussierte. Nachrichten mit mehreren Instanzen (zwei GPS-Einheiten, vier ESCs) werden pro Instanz aufgeklappt, und die Einheiten kommen direkt aus dem Log.",
+        "title": "Beliebiges aufgezeichnetes Feld wählen"
+      },
+      "title": "Log Explorer, neu gebaut"
+    },
+    "mapInstruments": {
+      "blurb": "Anzeigen, Fluglage, Nachrichten und RTK schweben über der Karte. Ziehen und gruppieren Sie sie und speichern Sie die Anordnung mit einem Layout.",
+      "pick": {
+        "body": "<b>Instrumente</b> schaltet Geschwindigkeit, Höhe, Fluglage, Kurs, Akku, <b>Meldungen</b> und <b>RTK</b> ein und aus oder lädt ein komplettes Cockpit-Preset. Ziehen Sie eines auf ein anderes, um sie in einer gemeinsamen Leiste zu <b>gruppieren</b>; ziehen Sie es heraus, um sie zu trennen.",
+        "body2": "Ein gespeichertes <b>Workspace</b>-Layout merkt sich die Instrumente zusammen mit den Panels. Unter Einstellungen, Anleitungen lässt sich die animierte Einführung erneut abspielen.",
+        "title": "Wählen, was über der Karte schwebt"
+      },
+      "stream": {
+        "body": "<b>Stream</b> veröffentlicht die Vision-Ansicht, mit oder ohne HUD, als RTSP, WebRTC und SRT. Öffnen Sie sie in VLC, ffmpeg, OpenCV oder einem Browser.",
+        "title": "Die synthetische Ansicht streamen"
+      },
+      "title": "Instrumente auf der Karte"
+    },
+    "missionPlanning": {
+      "areaSurvey": {
+        "body": "Planen Sie nach <b>GSD</b> (cm/px), statt die Höhe zu raten, sehen Sie Live-Schätzungen für <b>Akku und Daten</b>, und teilen Sie einen großen Auftrag mit einem Klick in <b>akkugerechte Einsätze</b> auf. Crosshatch kann seine beiden Durchgänge sogar in <b>zwei verschiedenen Höhen</b> fliegen, für besseres 3D.",
+        "title": "Intelligentere Flächenvermessung"
+      },
+      "blurb": "Gruppierte Missionen, Korridorvermessung, GSD-basierte Planung, GIS-Import, Export in mehreren Formaten und vollständiges Rückgängigmachen - alles im Planer.",
+      "corridor": {
+        "body": "Wählen Sie unter der Schaltfläche <b>Survey</b> die Option <b>Corridor</b> für lineare Aufträge - Straßen, Bahnstrecken, Stromleitungen, Pipelines. Zeichnen Sie eine Mittellinie, und ArduDeck legt parallele Streifen entlang dieser an. Wählen Sie <b>Plane</b> (Racetrack-Kurven an scharfen Knicken) oder <b>Copter</b> (Drehung auf der Stelle) und legen Sie Breite, Streifenanzahl und Überlappung fest.",
+        "title": "Korridorvermessung"
+      },
+      "export": {
+        "body": "Speichern oder exportieren Sie hier die gesamte Mission - <b>.waypoints</b> (QGC WPL, für ArduPilot / Mission Planner) oder <b>.plan</b> (QGroundControl). Wählen Sie das Format vorab; kein Raten mehr im Dateidialog.",
+        "title": "In jedem Format exportieren"
+      },
+      "gisImport": {
+        "body": "Übernehmen Sie eine Vermessungsgrenze direkt aus <b>KML</b>, <b>KMZ</b> oder <b>GeoJSON</b> - eine Vermessungsgruppe pro Polygon, innere Ringe bleiben als Flugverbotslöcher erhalten. Kein manuelles Nachzeichnen von Grenzen mehr.",
+        "title": "Fläche aus GIS importieren"
+      },
+      "groups": {
+        "body": "Jeder Wegpunkt befindet sich jetzt in einer benannten, farbigen <b>Gruppe</b>. Klicken Sie auf das Farbfeld zum Umfärben, auf das Kontrollkästchen zum Ein- und Ausblenden auf der Karte und auf die Gruppen-Schaltfläche, um nur diese Gruppe hochzuladen oder zu speichern. Jede Kopfzeile zeigt <b>Strecke, Flugzeit und GSD</b> der Gruppe auf einen Blick.",
+        "title": "Missionen sind in Gruppen organisiert"
+      },
+      "history": {
+        "body": "Vollständiges <b>Rückgängig / Wiederholen</b> (Cmd/Ctrl+Z) über alle Bearbeitungen, dazu automatisches <b>Autosave</b> - wird die App mitten in der Planung geschlossen, wird Ihre Mission beim nächsten Start wiederhergestellt.",
+        "title": "Rückgängig, Wiederholen und Absturzwiederherstellung"
+      },
+      "title": "Missionsplanung, eine Stufe höher"
+    },
+    "multiVehicle": {
+      "blurb": "Multi-Fahrzeug ist da: Ein Schalter startet die Engine, Fahrzeuge erscheinen, sobald sie online gehen, und ArduDeck steuert sie einzeln oder gemeinsam.",
+      "tab": {
+        "body": "Stellen Sie die Verbindungsseitenleiste auf <b>Multi-vehicle</b> um und schalten Sie es ein: ArduDeck startet seine Engine im Hintergrund, und Fahrzeuge erscheinen, sobald ihre Heartbeats eintreffen - keine Ports, keine URLs. <b>Fahrzeug hinzufügen</b> deckt Funk-, Internet-, Mobilfunk- und Zweitbodenstations-Verbindungen ab. Klicken Sie in der Flottenliste auf ein Fahrzeug, und Telemetrie, Karte und Befehle wechseln zu diesem.",
+        "title": "Multi-Fahrzeug-Modus"
+      },
+      "title": "Neu: eine ganze Flotte fliegen"
+    },
+    "osdTool": {
+      "blurb": "Stellen Sie ein vollständig eigenes Boden-HUD zusammen, bearbeiten Sie das Text-OSD des FC oder erstellen Sie ein RubyFPV-Layout - die Zielleiste zeigt immer, wo jedes davon landet.",
+      "destinationBar": {
+        "body": "Diese Leiste ist maßgeblich: Das <b>eigene HUD</b> wird von ArduDeck über Ihrem Bildschirm und Videobild gezeichnet und wird <b>niemals hochgeladen</b> auf den Flugcontroller; der <b>Text-OSD</b>-Editor liest und schreibt das echte OSDn_*-Layout des FC; der <b>RubyFPV</b>-Designer exportiert ein Layout für RubyFPV-Bodenstationen. Alle drei zeigen die Vorschau über Ihrem Live-Videobild.",
+        "title": "Drei OSDs, drei Ziele"
+      },
+      "title": "OSD-Tool: wissen, wo Ihr Overlay lebt"
+    },
+    "quickLaunch": {
+      "areaEditor": {
+        "body": "Der neue <b>Flächeneditor</b> öffnet sich von hier: eine Vollfensterkarte zum Zeichnen von Vermessungs<b>flächen und Korridoren</b> - Multi-Polygon, Löcher, KML-Import, ein Live-<b>Flugbriefing</b> (Hektar/Acres umschaltbar) und eine <b>Gehe-zu</b>-Suche, um zu jedem Einsatzort zu springen. <b>An Mission senden</b> übergibt es direkt an den Planer.",
+        "title": "Der Flächeneditor"
+      },
+      "blurb": "Öffnen Sie Tools über die Kopfzeile in eigenen Fenstern und springen Sie direkt in den neuen Flächeneditor zum Zeichnen von Vermessungsflächen und Korridoren.",
+      "title": "Quick Launch & der Flächeneditor",
+      "welcomeCards": {
+        "body": "Kein Fahrzeug verbunden? Diese Karten öffnen die Tools, die offline funktionieren: <b>Missionsplanung</b>, den <b>Flächeneditor</b>, <b>SITL</b>, die <b>3D-Sim-Welt</b>, das <b>Radio-HUD</b>, die <b>Flug-Log-Analyse</b>, <b>Firmware Flash</b> und Ihre <b>Missionsbibliothek</b>.",
+        "title": "Direkt in ein Tool springen"
+      },
+      "windows": {
+        "body": "Öffnen Sie den <b>MAVLink Inspector</b>, das <b>Telemetrie-Dashboard</b> oder die <b>3D-Sim-Welt</b> in einem separaten Fenster, ideal für einen <b>zweiten Monitor</b>, während Sie im Hauptfenster weiter planen oder tunen. Jedes bleibt neben dem Rest der App live.",
+        "title": "Quick Launch - Tools im eigenen Fenster"
+      }
+    },
+    "radioHud": {
+      "apply": {
+        "body": "Schließen Sie die Fernsteuerung per USB an (wählen Sie auf ihrem Bildschirm <b>USB Storage</b>) und klicken Sie auf <b>Übernehmen</b> - Widget, Konfiguration, Sprachpaket und Karten landen gemeinsam auf der SD-Karte. Dann an der Fernsteuerung: App layout, Vollbild-Widget, ArduDeck.",
+        "title": "Ein Klick zur Fernsteuerung"
+      },
+      "blurb": "Gestalten Sie einen ArduDeck-Telemetriebildschirm für Ihre EdgeTX-Fernsteuerung - Live-Vorschau, Drag-and-Drop-Layout, Offline-Karten des Fluggeländes, Sprachwarnungen - und übertragen Sie ihn mit einem Klick auf die SD-Karte.",
+      "config": {
+        "body": "Alles hier ist eine <b>Übersteuerung</b>. Auf Auto belassen, konfiguriert sich das Widget selbst aus der Telemetrie des Fahrzeugs über ELRS - Zellenzahl, Kapazität, Akku-% - ohne ArduDeck-Verbindung im Feld.",
+        "title": "Standardmäßig ohne Konfiguration"
+      },
+      "edit": {
+        "body": "Bei Farbdisplay-Fernsteuerungen: Ziehen, skalieren und tauschen Sie <b>17 Instrumentenkacheln</b> auf bis zu 8 wischbaren Seiten (oder starten Sie mit einem Preset). Bei Monochrom-Displays: Jeder Datenplatz, die große Anzeige und das mittlere Panel (Horizont oder Datenwand) sind direkt zuweisbar.",
+        "title": "Gestalten Sie den Bildschirm nach Ihren Wünschen"
+      },
+      "maps": {
+        "body": "Klicken Sie auf Ihr Fluggelände, und ArduDeck setzt <b>Satellitenbilder in drei Zoomstufen</b> für die Kartenkachel zusammen - Fahrzeug, Home, Flugspur und Ihre geplante Mission darüber gezeichnet, vollständig offline. Tippen Sie an der Fernsteuerung auf die Kachel, um den Zoom zu wechseln.",
+        "title": "Offline-Karten auf der Fernsteuerung"
+      },
+      "model": {
+        "body": "Fernsteuerungen mit Farbdisplay (TX15, TX16S, NV14...) erhalten das vollständige Widget - die Vorschau ist ein genaues Abbild dieses Bildschirms. Monochrome Fernsteuerungen (Boxer, Zorro, TX12, X9D) erhalten ein kompaktes 1-Bit-Telemetrieskript mit denselben Sprachwarnungen. Layouts werden beim Wechsel neu skaliert.",
+        "title": "Wählen Sie Ihre Fernsteuerung"
+      },
+      "title": "Ihre Fernsteuerung wird zur Mini-Bodenstation"
+    },
+    "rtkNtrip": {
+      "blurb": "Streamen Sie zentimetergenaue RTK-Korrekturen von einem beliebigen NTRIP-Caster direkt an Ihr Fahrzeug und verfolgen Sie den Fix auf der Karte.",
+      "map": {
+        "body": "Unter <b>Instrumente</b> gibt es außerdem ein <b>RTK</b>-Instrument, das Fix-Typ und Korrekturalter direkt auf der Karte anzeigt, wo Sie ohnehin hinschauen.",
+        "title": "RTK auf der Karte"
+      },
+      "panel": {
+        "body": "Fügen Sie das Panel <b>RTK / NTRIP</b> hinzu, richten Sie es auf einen NTRIP-Caster und wählen Sie einen Mountpoint. ArduDeck leitet die <b>RTCM-Korrekturen</b> über MAVLink weiter; mit einem RTK-fähigen GPS steigt der Fix auf <b>RTK Fixed</b> (1-2 cm). Bei mehreren verbundenen Fahrzeugen erhält jedes von ihnen die Korrekturen.",
+        "title": "RTK / NTRIP-Panel"
+      },
+      "title": "RTK-Korrekturen über NTRIP",
+      "workspace": {
+        "body": "Die Schaltfläche <b>Workspace</b> enthält die Layouts und jedes Panel, das Sie hinzufügen können. Das RTK-Panel ist eines davon.",
+        "title": "Panels befinden sich im Workspace"
+      }
+    },
+    "unitPreferences": {
+      "blurb": "Fuß, mph, Knoten, Acres - wählen Sie Anzeigeeinheiten pro Größe, und die gesamte App folgt.",
+      "title": "In Ihren eigenen Einheiten planen",
+      "units": {
+        "body": "Legen Sie Strecke, Höhe, Geschwindigkeit, Fläche, Gewicht und mehr unabhängig fest - Missionsplanung, Telemetrie-Panels, der Log Explorer und Vermessungsschätzungen werden alle in Ihrer Wahl dargestellt. An das Fahrzeug gesendete Werte bleiben intern metrisch, am Flug ändert sich also nichts.",
+        "title": "Anzeigeeinheiten"
+      }
+    },
+    "vehicleSetup": {
+      "battery": {
+        "body": "Monitortyp, Spannungs- und Strommessung sowie die Spannungen für niedrig, kritisch und Scharfschalten, vorgeschlagen anhand von Zellenzahl und Chemie.",
+        "title": "Akku"
+      },
+      "blurb": "Jeder Tab hier ist eine Seite über die Parameter, die eine Aufgabe braucht, in verständlichen Worten. Die Rohtabelle ist der letzte Ausweg.",
+      "links": {
+        "body": "<b>Serielle Ports</b> legt fest, was auf jedem Port läuft. <b>Telemetrieraten</b> ermittelt, welcher MAVLink-Kanal ein Port ist, und zeigt, was jede Rate auf der Verbindung kostet.",
+        "title": "Verbindungen"
+      },
+      "outputs": {
+        "body": "<b>Motortest</b> dreht jeweils einen Motor mit Live-Vibrations- und ESC-Daten (Propeller ab, es wird zuerst nachgefragt). <b>Servoausgang</b> legt Funktion, Umkehrung und Bereich jedes Kanals mit einem Live-Balken fest.",
+        "title": "Ausgänge"
+      },
+      "rc": {
+        "body": "<b>Empfänger</b> zeigt das Protokoll und jeden Kanal live. <b>Modi</b> ordnet die Schalterstellungen den Modi zu und zeigt, in welchem Slot der Schalter gerade steht.",
+        "title": "RC"
+      },
+      "roverTuning": {
+        "body": "Regler-Gains für Lenkung und Geschwindigkeit, Grenzen für <b>Geschwindigkeit & Lenkung</b> sowie <b>Navigation</b> für Wegpunktfolge und Loiter.",
+        "title": "Tuning"
+      },
+      "safety": {
+        "body": "<b>Scharfschalten</b> listet die Pre-Arm-Checks und was gerade fehlschlägt. <b>Failsafes & Geofence</b> legt fest, was bei Verbindungsverlust, niedrigem Akku und einer Geofence-Verletzung passiert. Pre-Arm-Schnellkorrekturen öffnen diese Seiten.",
+        "title": "Sicherheit"
+      },
+      "sensors": {
+        "body": "<b>Zustand</b> für jeden Sensor live, <b>Konfiguration</b> für Board-Ausrichtung, Kompasse und GPS-Verkabelung sowie <b>LEDs & Ton</b> für LED, Summer und Sicherheitsschalter.",
+        "title": "Sensoren"
+      },
+      "servoOutput": {
+        "body": "Funktion, Umkehrung, Min, Trim und Max jedes Ausgangs, mit der Live-Position in jeder Zeile.",
+        "title": "Servoausgang"
+      },
+      "storage": {
+        "body": "<b>Logging</b> wählt, was die Karte aufzeichnet. <b>Dateien</b> durchsucht den Flugcontroller über MAVLink-FTP. <b>Parameter</b> ist die vollständige Tabelle, für alles, was noch keine Seite abdeckt.",
+        "title": "Speicher"
+      },
+      "tabs": {
+        "body": "Jeder Tab richtet eine Aufgabe ein und schreibt die richtigen Parameter für diese Firmware, mit Live-Daten neben den Einstellungen, damit Sie die Wirkung sehen. Die meisten Tabs gehören zu einer Gruppe: Die nächsten Schritte öffnen jeden davon.",
+        "title": "Seiten statt Parameternamen"
+      },
+      "title": "Fahrzeug-Setup ohne Parametertabelle",
+      "tuning": {
+        "body": "<b>PID</b>-Gains pro Achse, <b>Raten</b> und Expo, <b>Tuning</b>-Presets und <b>AutoTune</b>, eingerichtet ohne Suche nach den Parametern. AutoTune verweigert Änderungen, solange das Fahrzeug scharf ist.",
+        "title": "Tuning"
+      }
+    },
+    "vtolDualTuning": {
+      "blurb": "QuadPlanes haben zwei Reglersätze. Im PID-Tab können Sie jetzt wählen, welchen Sie tunen.",
+      "title": "VTOL und Flächenflug getrennt tunen",
+      "toggle": {
+        "body": "Ein QuadPlane nutzt getrennte Regler für Schwebeflug und Vorwärtsflug. Dieser Schalter wechselt den PID-Tab zwischen dem <b>VTOL</b>-Ratenregler (<code>Q_A_RAT_</code>) und dem <b>Flächenflug</b>-Regler (<code>RLL_RATE_</code> / <code>RLL2SRV_</code>).",
+        "body2": "Schieberegler, Presets und Profile folgen Ihrer Wahl, sodass Sie jeden Satz tunen können, ohne die Seite zu verlassen.",
+        "title": "Zwei Regler, ein Autopilot"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 /** A workspace layout = dockview grid + cockpit instruments, in-map split and Vision render mode. */
 
+import { t } from '../../../shared/i18n/index.js';
 import type { SerializedDockview } from 'dockview-react';
 import type { PanelId } from '../panels';
 import type { CameraRenderMode } from '../../../shared/camera-types';
@@ -117,16 +118,16 @@ export function parseImport(raw: string): { name: string; layout: WorkspaceLayou
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { error: 'That file is not valid JSON.' };
+    return { error: t('telemetry:layouts.importInvalidJson') };
   }
   const p = (parsed ?? {}) as { app?: unknown; kind?: unknown; name?: unknown; layout?: unknown };
-  if (p.app !== 'ardudeck' || p.kind !== EXPORT_KIND) return { error: 'That file is not an ArduDeck workspace layout.' };
+  if (p.app !== 'ardudeck' || p.kind !== EXPORT_KIND) return { error: t('telemetry:layouts.importNotLayout') };
   const layout = p.layout;
   const dock = isWorkspaceV2(layout) ? layout.dock : layout;
-  if (!isDock(dock)) return { error: 'The layout in that file has no panel arrangement.' };
+  if (!isDock(dock)) return { error: t('telemetry:layouts.importNoPanels') };
   const extras = isWorkspaceV2(layout) ? sanitizeExtras(layout.extras) : undefined;
   const description = isWorkspaceV2(layout) && typeof layout.description === 'string' ? layout.description.trim() : '';
-  const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Imported layout';
+  const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : t('telemetry:layouts.importedName');
   return {
     name,
     layout: { v: 2, dock, ...(extras ? { extras } : {}), ...(description ? { description } : {}) },
@@ -148,11 +149,11 @@ export function uniqueLayoutName(name: string, taken: string[]): string {
 
 function presetCockpit(name: string): InstrumentLayoutSnapshot {
   const preset = PRESET_INSTRUMENT_LAYOUTS.find((p) => p.name === name);
-  if (!preset) throw new Error(`Unknown instrument preset ${name}`);
+  if (!preset) throw new Error(`Unknown instrument preset ${name}`); // i18n-exempt: internal invariant
   return preset.layout;
 }
 
-const PILOT_COCKPIT = 'Pilot cockpit';
+const PILOT_COCKPIT = 'Pilot cockpit'; // i18n-exempt: preset identifier
 
 /** Pilot cockpit with the gauge bar centred and lifted clear of the edge, for the shorter mission map. */
 function missionCockpit(): InstrumentLayoutSnapshot {
@@ -163,6 +164,7 @@ function missionCockpit(): InstrumentLayoutSnapshot {
   };
 }
 
+// i18n-exempt: dockview titles are persisted with the layout
 const MAP_PANEL = { id: 'map', contentComponent: 'MapPanel', title: 'Map' };
 
 const PILOT_DOCK: SerializedDockview = {
@@ -190,7 +192,7 @@ const FPV_DOCK: SerializedDockview = {
     height: 815,
     orientation: 'HORIZONTAL',
   },
-  panels: { map: MAP_PANEL, camera: { id: 'camera', contentComponent: 'CameraPanel', title: 'Vision' } },
+  panels: { map: MAP_PANEL, camera: { id: 'camera', contentComponent: 'CameraPanel', title: 'Vision' } }, // i18n-exempt
   activeGroup: '1',
 } as SerializedDockview;
 
@@ -217,15 +219,16 @@ const MISSION_DOCK: SerializedDockview = {
   },
   panels: {
     map: MAP_PANEL,
+    // i18n-exempt: dockview titles are persisted with the layout
     waypoints: { id: 'waypoints', contentComponent: 'WaypointTablePanel', title: 'Waypoints' },
-    altitudeProfile: { id: 'altitudeProfile', contentComponent: 'AltitudeProfilePanel', title: 'Altitude Profile' },
+    altitudeProfile: { id: 'altitudeProfile', contentComponent: 'AltitudeProfilePanel', title: 'Altitude Profile' }, // i18n-exempt
   },
   activeGroup: '1',
 } as SerializedDockview;
 
 export interface BuiltinLayout {
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   /** Only offered when the vehicle can fly missions. */
   needsMissions?: boolean;
   data: () => FullWorkspaceLayout;
@@ -233,8 +236,8 @@ export interface BuiltinLayout {
 
 export const BUILTIN_LAYOUTS = {
   pilotView: {
-    label: 'Pilot',
-    description: 'Map with synthetic vision split.',
+    labelKey: 'telemetry:layouts.pilotLabel',
+    descriptionKey: 'telemetry:layouts.pilotDescription',
     data: () => ({
       v: 2,
       dock: PILOT_DOCK,
@@ -248,8 +251,8 @@ export const BUILTIN_LAYOUTS = {
     }),
   },
   fpv: {
-    label: 'FPV',
-    description: 'Map and Vision side by side.',
+    labelKey: 'telemetry:layouts.fpvLabel',
+    descriptionKey: 'telemetry:layouts.fpvDescription',
     data: () => ({
       v: 2,
       dock: FPV_DOCK,
@@ -263,8 +266,8 @@ export const BUILTIN_LAYOUTS = {
     }),
   },
   mission: {
-    label: 'Mission',
-    description: 'Map, waypoints, altitude profile.',
+    labelKey: 'telemetry:layouts.missionLabel',
+    descriptionKey: 'telemetry:layouts.missionDescription',
     needsMissions: true,
     data: () => ({
       v: 2,

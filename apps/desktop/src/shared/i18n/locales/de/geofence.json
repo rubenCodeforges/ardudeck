@@ -1,0 +1,32 @@
+{
+  "fenceListPanel": {
+    "aboveMaxAlt": "Über maximaler Höhe",
+    "alt": "Höhe: {{value}}",
+    "belowMinAlt": "Unter minimaler Höhe",
+    "breachCount_one": "{{count}} Verletzung",
+    "breachCount_other": "{{count}} Verletzungen",
+    "circleCount_one": "{{count}} Kreis",
+    "circleCount_other": "{{count}} Kreise",
+    "circleRadius": "Kreis ({{radius}}m)",
+    "editHint": "Klicken Sie auf eine Zone (hier oder auf der Karte), um sie zu verschieben, umzuformen oder zu löschen.",
+    "exclusionZones": "Ausschlusszonen ({{count}})",
+    "fenceBreached": "Geofence verletzt",
+    "inclusionZones": "Einschlusszonen ({{count}})",
+    "mspUnsupported": "Geofencing wird auf iNav/Betaflight-Boards nicht unterstützt. Sie können Geofences trotzdem planen und als Referenz in eine Datei speichern.",
+    "noExclusionZones": "Keine Ausschlusszonen",
+    "noInclusionZones": "Keine Einschlusszonen",
+    "noReturnPoint": "Kein Rückkehrpunkt gesetzt",
+    "outsideBoundary": "Außerhalb der Grenze",
+    "polygonCount_one": "{{count}} Polygon",
+    "polygonCount_other": "{{count}} Polygone",
+    "polygonPts": "Polygon ({{count}} Pkt.)",
+    "returnPoint": "Rückkehrpunkt"
+  },
+  "fenceMapOverlay": {
+    "clickToEdit": "Klicken, um diese Zone zu bearbeiten oder zu löschen",
+    "delete": "Löschen",
+    "deleteZone": "Diese Zone löschen (Entf)",
+    "dragToMove": "Ziehen, um die gesamte Zone zu verschieben",
+    "rightClickDelete": "Rechtsklick zum Löschen"
+  }
+}

@@ -1,5 +1,7 @@
 remote="$1"
 
 if [ "$remote" = "origin" ]; then
+  node tools/i18n/scan.cjs check
+  node tools/i18n/verify-locale.mjs de
   pnpm test
 fi

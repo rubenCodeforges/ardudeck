@@ -12,6 +12,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import type { GimbalCommand } from '../../../shared/camera-types';
 import { DEFAULT_GIMBAL_CONFIG } from '../../../shared/camera-types';
 import { useCameraStore } from '../../stores/camera-store';
+import { useTranslation } from 'react-i18next';
 
 interface GimbalPadProps {
   vehicleKey: string | null;
@@ -20,6 +21,7 @@ interface GimbalPadProps {
 }
 
 export function GimbalPad({ vehicleKey, maxRate = 30 }: GimbalPadProps) {
+  const { t } = useTranslation();
   const padRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
   const [dot, setDot] = useState({ x: 0.5, y: 0.5 });
@@ -85,7 +87,7 @@ export function GimbalPad({ vehicleKey, maxRate = 30 }: GimbalPadProps) {
         ref={padRef}
         onMouseDown={(e) => { if (!disabled) { setActive(true); handleMove(e.clientX, e.clientY); } }}
         className={`relative h-16 w-16 rounded-lg border border-default bg-surface-base ${disabled ? 'opacity-40' : 'cursor-crosshair'}`}
-        title={readOnly ? 'RC-driven mount, control it from your transmitter' : isMount ? 'Drag to aim gimbal (holds position)' : 'Drag to slew gimbal · release to stop'}
+        title={readOnly ? t('camera:gimbalPad.rcTip') : isMount ? t('camera:gimbalPad.aimTip') : t('camera:gimbalPad.slewTip')}
       >
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="absolute h-full w-px bg-border opacity-40" />
@@ -102,22 +104,22 @@ export function GimbalPad({ vehicleKey, maxRate = 30 }: GimbalPadProps) {
           disabled={disabled}
           onClick={() => send({ kind: 'center', deviceId: cfg.deviceId })}
           className="rounded bg-surface-raised px-2 py-1 text-[11px] text-content hover:bg-surface-raised disabled:opacity-40"
-          title="Center gimbal (neutral)"
-        >Center</button>
+          title={t('camera:gimbalPad.centerTip')}
+        >{t('common:center')}</button>
         <button
           disabled={disabled}
           onClick={() => send({ kind: 'roi-none' })}
           className="rounded bg-surface-raised px-2 py-1 text-[11px] text-content hover:bg-surface-raised disabled:opacity-40"
-          title="Release ROI lock"
-        >ROI off</button>
+          title={t('camera:gimbalPad.roiOffTip')}
+        >{t('camera:gimbalPad.roiOff')}</button>
       </div>
 
       <div className="flex flex-col gap-1">
-        <ZoomHoldButton vehicleKey={vehicleKey} direction={1} label="Zoom +" title="Zoom in (hold)" />
-        <ZoomHoldButton vehicleKey={vehicleKey} direction={-1} label="Zoom −" title="Zoom out (hold)" />
+        <ZoomHoldButton vehicleKey={vehicleKey} direction={1} label={t('camera:gimbalPad.zoomIn')} title={t('camera:gimbalPad.zoomInTip')} />
+        <ZoomHoldButton vehicleKey={vehicleKey} direction={-1} label={t('camera:gimbalPad.zoomOut')} title={t('camera:gimbalPad.zoomOutTip')} />
       </div>
 
-      {readOnly && <span className="text-[10px] text-content-tertiary">RC-driven</span>}
+      {readOnly && <span className="text-[10px] text-content-tertiary">{t('camera:gimbalPad.rcDriven')}</span>}
     </div>
   );
 }

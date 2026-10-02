@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { BwGuide } from '../radio-hud/BwGuide';
 import type { EdgeTxScanResult, EdgeTxSdCard, EdgeTxPackageInfo, InstallProgress, InstalledPackageRecord, TelemetryScreenSummary } from '../../../shared/edgetx-types';
@@ -9,6 +10,7 @@ import type { EdgeTxScanResult, EdgeTxSdCard, EdgeTxPackageInfo, InstallProgress
  * management - no MAVLink connection involved.
  */
 export function RadioSdView() {
+  const { t } = useTranslation();
   const [scan, setScan] = useState<EdgeTxScanResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [selectedVolume, setSelectedVolume] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function RadioSdView() {
     setProgress(null);
     setError(null);
     const result = await window.electronAPI.edgetxInstall(card.volumePath, pkg.id, variantId);
-    if (!result.success) setError(result.error ?? 'Install failed');
+    if (!result.success) setError(result.error ?? t('firmware:radioSdView.installFailed'));
     setScreens(result.screens ?? null);
     setBusyPackageId(null);
     setProgress(null);
@@ -73,7 +75,7 @@ export function RadioSdView() {
     setBusyPackageId(pkg.id);
     setError(null);
     const result = await window.electronAPI.edgetxRemove(card.volumePath, pkg.id);
-    if (!result.success) setError(result.error ?? 'Remove failed');
+    if (!result.success) setError(result.error ?? t('firmware:radioSdView.removeFailed'));
     setBusyPackageId(null);
     await rescan();
   };
@@ -84,23 +86,23 @@ export function RadioSdView() {
         {/* Detected radio card */}
         <div className="bg-surface-raised border border-subtle rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-content">Radio SD Card</h3>
+            <h3 className="text-sm font-medium text-content">{t('firmware:radioSdView.title')}</h3>
             <button
               onClick={rescan}
               disabled={isScanning}
               className="px-2.5 py-1 text-xs text-content-secondary hover:text-content bg-surface-input hover:bg-surface-raised border border-subtle rounded transition-colors disabled:opacity-50"
             >
-              {isScanning ? 'Scanning…' : 'Rescan'}
+              {isScanning ? t('common:scanning') : t('common:rescan')}
             </button>
           </div>
 
           {!card && (
             <div className="text-sm text-content-secondary space-y-2">
-              <p>No EdgeTX SD card detected.</p>
+              <p>{t('firmware:radioSdView.noCard')}</p>
               <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>Power on the radio and connect it via USB</li>
-                <li>Choose <span className="text-content">USB Storage (SD)</span> on the radio screen</li>
-                <li>Click Rescan</li>
+                <li>{t('firmware:radioSdView.noCardStep1')}</li>
+                <li><Trans i18nKey="firmware:radioSdView.noCardStep2" components={{ b: <span className="text-content" /> }} /></li>
+                <li>{t('firmware:radioSdView.noCardStep3')}</li>
               </ol>
             </div>
           )}
@@ -124,22 +126,21 @@ export function RadioSdView() {
                   {card.radioLabel && <span className="ml-2 text-xs text-content-secondary">{card.volumeName}</span>}
                 </span>
                 <span className="text-content-secondary text-xs">
-                  {card.firmwareVersion ? `EdgeTX ${card.firmwareVersion}` : card.sdCardVersion ? `EdgeTX SD ${card.sdCardVersion}` : 'version unknown'}
+                  {card.firmwareVersion ? `EdgeTX ${card.firmwareVersion}` : card.sdCardVersion ? `EdgeTX SD ${card.sdCardVersion}` : t('firmware:radioSdView.versionUnknown')}
                   {' · '}
-                  {(card.freeBytes / 1e6).toFixed(0)} MB free
+                  {t('firmware:radioSdView.mbFree', { mb: (card.freeBytes / 1e6).toFixed(0) })}
                 </span>
               </div>
               {card.firmwareVersion && card.sdCardVersion
                 && card.firmwareVersion.slice(0, 4) !== card.sdCardVersion.slice(0, 4) && (
                 <p className="text-[11px] text-amber-400">
-                  SD card contents are from EdgeTX {card.sdCardVersion} but the radio runs {card.firmwareVersion}.
-                  Update the card from the EdgeTX sdcard release before relying on sounds or themes.
+                  {t('firmware:radioSdView.sdVersionMismatch', { sdVersion: card.sdCardVersion, fwVersion: card.firmwareVersion })}
                 </p>
               )}
               <label className="block">
                 <span className="text-xs text-content-secondary">
-                  Radio screen
-                  {suggestedVariantId && !variantTouched && ' · detected from the card'}
+                  {t('firmware:radioSdView.radioScreen')}
+                  {suggestedVariantId && !variantTouched && t('firmware:radioSdView.detectedFromCard')}
                 </span>
                 <select
                   value={variantId}
@@ -191,19 +192,19 @@ export function RadioSdView() {
                       onClick={() => handleInstall(pkg)}
                       disabled={!card || busy || !variantSupported}
                       data-tip={!variantSupported
-                        ? 'Not available for the selected radio screen'
-                        : record ? 'Reinstall or update to the latest release' : 'Fetch the package and copy it to the SD card'}
+                        ? t('firmware:radioSdView.notAvailableForScreen')
+                        : record ? t('firmware:radioSdView.reinstallTip') : t('firmware:radioSdView.installTip')}
                       className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 disabled:bg-surface-input disabled:text-content-secondary text-white rounded transition-colors"
                     >
-                      {busy ? 'Working…' : record ? 'Update' : 'Install'}
+                      {busy ? t('firmware:radioSdView.working') : record ? t('firmware:radioSdView.update') : t('common:install')}
                     </button>
                     {record && !busy && (
                       <button
                         onClick={() => handleRemove(pkg)}
-                        data-tip="Remove all files this package installed"
+                        data-tip={t('firmware:radioSdView.removeTip')}
                         className="px-3 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
                       >
-                        Remove
+                        {t('common:remove')}
                       </button>
                     )}
                   </div>
@@ -211,14 +212,17 @@ export function RadioSdView() {
 
                 {pkg.id === 'ardudeck-hud' && record && (
                   <p className="mt-2 text-[11px] text-content-secondary">
-                    Configure and preview this widget in the{' '}
-                    <button
-                      onClick={() => useNavigationStore.getState().setView('radio-hud')}
-                      className="text-teal-400 hover:text-teal-300 underline"
-                    >
-                      Radio HUD
-                    </button>{' '}
-                    view.
+                    <Trans
+                      i18nKey="firmware:radioSdView.configureInHud"
+                      components={{
+                        link: (
+                          <button
+                            onClick={() => useNavigationStore.getState().setView('radio-hud')}
+                            className="text-teal-400 hover:text-teal-300 underline"
+                          />
+                        ),
+                      }}
+                    />
                   </p>
                 )}
 
@@ -226,11 +230,11 @@ export function RadioSdView() {
                   <div className="mt-3">
                     <div className="flex items-center justify-between text-[10px] text-content-secondary mb-1">
                       <span>
-                        {progress.phase === 'resolve' && 'Resolving latest release…'}
-                        {progress.phase === 'download' && `Downloading ${progress.detail ?? ''}…`}
-                        {progress.phase === 'extract' && 'Extracting…'}
-                        {progress.phase === 'copy' && 'Copying to SD card…'}
-                        {progress.phase === 'done' && 'Done'}
+                        {progress.phase === 'resolve' && t('firmware:radioSdView.phaseResolve')}
+                        {progress.phase === 'download' && t('firmware:radioSdView.phaseDownload', { detail: progress.detail ?? '' })}
+                        {progress.phase === 'extract' && t('firmware:radioSdView.phaseExtract')}
+                        {progress.phase === 'copy' && t('firmware:radioSdView.phaseCopy')}
+                        {progress.phase === 'done' && t('common:done')}
                       </span>
                       {progress.percent >= 0 && <span>{progress.percent}%</span>}
                     </div>
@@ -253,36 +257,30 @@ export function RadioSdView() {
               {screens ? (
                 <>
                   <p className="text-content">
-                    Set up on the radio: telemetry screen pointed at the HUD on{' '}
-                    {screens.added + screens.already} model{screens.added + screens.already === 1 ? '' : 's'}.
+                    {t('firmware:radioSdView.screensSetUp', { count: screens.added + screens.already })}
                   </p>
-                  <p>Eject, unplug, then press <span className="text-content">PAGE</span> from the main view.</p>
+                  <p><Trans i18nKey="firmware:radioSdView.ejectPressPage" components={{ b: <span className="text-content" /> }} /></p>
                   {screens.full.length > 0 && (
                     <p className="text-amber-400">
-                      No free telemetry screen on {screens.full.join(', ')}: free one of the four screens there
-                      and install again.
+                      {t('firmware:radioSdView.noFreeScreen', { models: screens.full.join(', ') })}
                     </p>
                   )}
                 </>
               ) : (
                 <p>
-                  Monochrome radios have no widgets, so install also points every model's telemetry
-                  screen at the script. Nothing to set up on the radio: eject, unplug, press{' '}
-                  <span className="text-content">PAGE</span> from the main view.
+                  <Trans i18nKey="firmware:radioSdView.bwInstallNote" components={{ b: <span className="text-content" /> }} />
                 </p>
               )}
               <button
                 onClick={() => setGuideOpen(true)}
                 className="mt-1 text-teal-400 hover:text-teal-300 underline"
               >
-                Read the guide for monochrome radios
+                {t('firmware:radioSdView.readBwGuide')}
               </button>
             </div>
           ) : (
             <p className="text-[11px] text-content-secondary">
-              After installing: eject the SD volume, unplug USB, then on the radio add the widget to a
-              model screen (long-press TELE, full-screen widget). Packages are downloaded from their
-              official repositories at install time.
+              {t('firmware:radioSdView.afterInstallNote')}
             </p>
           )
         )}

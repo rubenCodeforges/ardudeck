@@ -1,0 +1,78 @@
+{
+  "altFrameReset": "Default altitude reference reset to Home (terrain-relative was refused by the vehicle).",
+  "cliExit": {
+    "body": "Leaving the CLI tab will send an exit command which triggers a flight controller reboot (2-4 seconds).",
+    "leave": "Leave and Reboot",
+    "reconnect": "The app will automatically reconnect after the board restarts.",
+    "stay": "Stay in CLI",
+    "title": "Leave CLI Terminal?"
+  },
+  "legacyStream": {
+    "allow": "Request streams and save to this vehicle",
+    "body": "{{label}} answered the modern per-message request with nothing. The older request usually works, but on this aircraft ArduPilot<b> saves those rates into its SR*_ parameters</b>, where they stay after this flight and in every other ground station.",
+    "conservative": "If you allow it, the rates requested are the conservative ones (attitude 10 Hz), not your selected telemetry speed, so a slow radio link stays usable.",
+    "decline": "Leave my vehicle alone",
+    "declineHint": "Declining keeps whatever rates the vehicle already has. You can raise its SR*_ parameters yourself in Parameters.",
+    "fleetLink": "This is a fleet link, so it would happen on every connect.",
+    "notWithoutAsking": "ArduDeck will not change your vehicle without asking.",
+    "title": "No telemetry from {{label}}"
+  },
+  "mismatch": {
+    "body": "Your vehicle profile is set to <profile>{{profile}}</profile> but the connected flight controller is a <fc>{{fc}}</fc>.",
+    "dontAskAgain": "Don't Ask Again",
+    "hint": "Performance estimates and settings may not be accurate for your actual vehicle.",
+    "ignoreOnce": "Ignore Once",
+    "title": "Vehicle Type Mismatch",
+    "updateProfile": "Update Profile to {{type}}"
+  },
+  "pseudoTx": {
+    "assignHint": "Press <b>Assign</b>, then move the stick or flick the switch you want on that channel. Unassigned channels hold 1500.",
+    "detailConnected": "{{device}} - {{frames}} RC frames sent",
+    "detailOff": "Off - the sliders below are driving RC",
+    "detailWaiting": "Waiting for a handset - set EdgeTX to USB Joystick mode",
+    "framesToVehicle": "{{fps}} frames/s to vehicle",
+    "gamepadWarning": " - looks like a gamepad, not a handset",
+    "monitorCounts": "{{axes}} axes - {{buttons}} buttons",
+    "monitorMapping": " - mapping \"{{mode}}\"",
+    "monitorRawHid": " - raw HID",
+    "moveIt": "move it",
+    "overrideTip": "Sends RC_CHANNELS_OVERRIDE to the connected vehicle. The joystick WILL command the aircraft.",
+    "reversedRestore": "Channel is reversed - click to restore",
+    "source": {
+      "axis": "axis {{index}}",
+      "button": "button {{index}}",
+      "buttons": "buttons {{low}}/{{high}}",
+      "unassigned": "unassigned"
+    },
+    "standardLayoutWarning": "The browser has applied its standard gamepad layout to this device, which keeps only four axes and drops the rest - so the switches never arrive. Re-plug with the handset already in USB Joystick mode, or use a model whose USB descriptor is not recognised as a game controller.",
+    "title": "Fly with USB transmitter",
+    "trainerActive": "Trainer session active - the Trainer owns the sticks",
+    "unavailable": "Unavailable",
+    "vehicleOff": "Off - sends nothing to the aircraft"
+  },
+  "sidebar": {
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
+  },
+  "vehicleType": {
+    "boat": "Boat",
+    "copter": "Multicopter",
+    "plane": "Fixed Wing",
+    "rover": "Rover",
+    "sub": "Submarine",
+    "vtol": "VTOL"
+  },
+  "welcome": {
+    "drawMissionAreas": "Draw mission areas on a live map",
+    "firmwareFlashDesc": "Flash firmware over USB or DFU",
+    "flightLogAnalysis": "Flight Log Analysis",
+    "flightLogAnalysisDesc": "AI-powered flight log review",
+    "intro": "Connect to your flight controller using the panel on the left, or jump straight into one of the tools below.",
+    "missionLibraryDesc": "Browse & manage saved plans",
+    "radioHudDesc": "ArduDeck telemetry screen on your EdgeTX radio",
+    "simWorldDesc": "Fly SITL in a persistent 3D world",
+    "sitlDesc": "Test firmware without hardware",
+    "title": "Welcome to ArduDeck",
+    "waypointsSurveysGeofences": "Waypoints, surveys & geofences"
+  }
+}

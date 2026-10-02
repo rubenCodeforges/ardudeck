@@ -11,7 +11,7 @@ import {
   Sun, Moon, Cloud, CloudSun, CloudRain, CloudFog, type LucideIcon,
 } from 'lucide-react';
 import type { WeatherSummary } from '../../utils/weather-api';
-import { STATUS_WORD, type WxStatus } from './weather-thresholds';
+import { type WxStatus } from './weather-thresholds';
 
 export type Grade = WxStatus | 'info';
 
@@ -23,16 +23,16 @@ export const GRADE_COLOR: Record<Grade, string> = {
   info: 'var(--gauge-text-dim)',
 };
 
-export const STATUS_PILL_WORD: Record<WxStatus, string> = {
-  go: STATUS_WORD.go,
-  caution: STATUS_WORD.caution,
-  nogo: 'NO GO',
+export const STATUS_PILL_WORD_KEY: Record<WxStatus, string> = {
+  go: 'weather:status.go',
+  caution: 'weather:status.caution',
+  nogo: 'weather:status.nogoPill',
 };
 
-export const STATUS_SUMMARY: Record<WxStatus, string> = {
-  go: 'Conditions are within limits for launch.',
-  caution: 'Conditions are marginal. Review the flagged parameters before launch.',
-  nogo: 'One or more parameters exceed safe limits. Do not launch.',
+export const STATUS_SUMMARY_KEY: Record<WxStatus, string> = {
+  go: 'weather:status.goSummary',
+  caution: 'weather:status.cautionSummary',
+  nogo: 'weather:status.nogoSummary',
 };
 
 /**
@@ -68,7 +68,7 @@ export function pillStyle(color: string): { background: string; borderColor: str
 }
 
 export interface Condition {
-  label: string;
+  labelKey: string;
   Icon: LucideIcon;
   isNight: boolean;
 }
@@ -89,16 +89,16 @@ function isNight(wx: WeatherSummary): boolean {
 export function deriveCondition(wx: WeatherSummary): Condition {
   const night = isNight(wx);
   if (wx.precipMm >= 0.1 || wx.precipProbPct >= 60) {
-    return { label: 'Rain', Icon: CloudRain, isNight: night };
+    return { labelKey: 'weather:condition.rain', Icon: CloudRain, isNight: night };
   }
   if (wx.visibilityM > 0 && wx.visibilityM < 1000) {
-    return { label: 'Fog', Icon: CloudFog, isNight: night };
+    return { labelKey: 'weather:condition.fog', Icon: CloudFog, isNight: night };
   }
   if (wx.cloudCoverPct >= 85) {
-    return { label: 'Overcast', Icon: Cloud, isNight: night };
+    return { labelKey: 'weather:condition.overcast', Icon: Cloud, isNight: night };
   }
   if (wx.cloudCoverPct >= 40) {
-    return { label: 'Partly cloudy', Icon: CloudSun, isNight: night };
+    return { labelKey: 'weather:condition.partlyCloudy', Icon: CloudSun, isNight: night };
   }
-  return { label: 'Clear', Icon: night ? Moon : Sun, isNight: night };
+  return { labelKey: 'weather:condition.clear', Icon: night ? Moon : Sun, isNight: night };
 }

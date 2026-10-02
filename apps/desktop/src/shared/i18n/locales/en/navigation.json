@@ -1,0 +1,17 @@
+{
+  "navigationRail": {
+    "cargo": "Cargo",
+    "cliTerminal": "CLI Terminal",
+    "companionComputer": "Companion Computer",
+    "fleetVault": "Fleet Vault",
+    "luaGraphEditor": "Lua Graph Editor",
+    "osdTool": "OSD Tool",
+    "parameters": "Parameters",
+    "reportBug": "Report a Bug",
+    "themeDark": "Dark theme",
+    "themeLight": "Light theme",
+    "themeSystem": "System theme",
+    "trainer": "Trainer",
+    "weatherBriefing": "Weather Briefing"
+  }
+}

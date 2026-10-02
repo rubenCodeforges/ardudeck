@@ -11,6 +11,7 @@
  * pointer-up would chop the motors every time a finger slipped off the pad.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface VirtualSticksProps {
@@ -27,6 +28,7 @@ interface PadState {
 const CENTER: PadState = { x: 0, y: 0 };
 
 export function VirtualSticks({ onAxes, disabled }: VirtualSticksProps): JSX.Element {
+  const { t } = useTranslation();
   // Throttle stick holds its position; the attitude stick springs back.
   const [left, setLeft] = useState<PadState>({ x: 0, y: 1 });
   const [right, setRight] = useState<PadState>(CENTER);
@@ -50,14 +52,14 @@ export function VirtualSticks({ onAxes, disabled }: VirtualSticksProps): JSX.Ele
   return (
     <div className="grid grid-cols-2 gap-3">
       <Pad
-        label="Throttle / Yaw"
+        label={t('panels:virtualSticks.left')}
         value={left}
         disabled={disabled}
         onChange={setLeft}
         onRelease={() => setLeft((prev) => ({ x: 0, y: prev.y }))}
       />
       <Pad
-        label="Pitch / Roll"
+        label={t('panels:virtualSticks.right')}
         value={right}
         disabled={disabled}
         onChange={setRight}

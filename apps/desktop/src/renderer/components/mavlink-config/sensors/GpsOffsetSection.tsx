@@ -1,5 +1,6 @@
 // Staged edits only: a half-dragged antenna marker must never reach the EKF, so nothing is written until Apply.
 import React, { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Crosshair, Zap } from 'lucide-react';
 import { DraftNumberInput } from '../../../hooks/useNumericDraft';
 import { useParameterStore } from '../../../stores/parameter-store';
@@ -22,9 +23,9 @@ import {
 } from './gps-offset';
 
 const AXIS = {
-  x: { label: 'X forward', chip: 'bg-sky-500/15 text-sky-400', dot: 'bg-sky-400', line: 'stroke-sky-400', focus: 'focus:ring-sky-500/70' },
-  y: { label: 'Y right', chip: 'bg-emerald-500/15 text-emerald-400', dot: 'bg-emerald-400', line: 'stroke-emerald-400', focus: 'focus:ring-emerald-500/70' },
-  z: { label: 'Z down', chip: 'bg-violet-500/15 text-violet-400', dot: 'bg-violet-400', line: 'stroke-violet-400', focus: 'focus:ring-violet-500/70' },
+  x: { labelKey: 'mavlink-config:gpsOffsetSection.xForward', chip: 'bg-sky-500/15 text-sky-400', dot: 'bg-sky-400', line: 'stroke-sky-400', focus: 'focus:ring-sky-500/70' },
+  y: { labelKey: 'mavlink-config:gpsOffsetSection.yRight', chip: 'bg-emerald-500/15 text-emerald-400', dot: 'bg-emerald-400', line: 'stroke-emerald-400', focus: 'focus:ring-emerald-500/70' },
+  z: { labelKey: 'mavlink-config:gpsOffsetSection.zDown', chip: 'bg-violet-500/15 text-violet-400', dot: 'bg-violet-400', line: 'stroke-violet-400', focus: 'focus:ring-violet-500/70' },
 } as const;
 
 const VIEW = 240;
@@ -83,6 +84,7 @@ function AntennaPuck({ dragging, unset }: { dragging: boolean; unset: boolean })
 }
 
 export const GpsOffsetSection: React.FC = () => {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const paramsLoaded = useParameterStore((s) => s.downloadState === 'complete');
   const setParameter = useParameterStore((s) => s.setParameter);
@@ -193,7 +195,7 @@ export const GpsOffsetSection: React.FC = () => {
   const axisRow = (axis: 'x' | 'y' | 'z') => (
     <label key={axis} className="flex items-center gap-2">
       <span className={`w-2 h-2 rounded-full shrink-0 ${AXIS[axis].dot}`} />
-      <span className="w-16 shrink-0 text-xs font-medium text-content-secondary">{AXIS[axis].label}</span>
+      <span className="w-16 shrink-0 text-xs font-medium text-content-secondary">{t(AXIS[axis].labelKey)}</span>
       <DraftNumberInput
         step={0.01}
         min={-OFFSET_LIMIT_M}
@@ -202,7 +204,7 @@ export const GpsOffsetSection: React.FC = () => {
         disabled={!editable}
         live
         onCommit={(v) => stage(axis, v)}
-        data-tip={axis === 'z' ? 'Antenna above the flight controller = negative Z' : undefined}
+        data-tip={axis === 'z' ? t('mavlink-config:gpsOffsetSection.zTip') : undefined}
         className={`w-24 px-2 py-1.5 text-sm font-mono rounded-md bg-surface-input border text-content focus:outline-none focus:ring-1 ${AXIS[axis].focus} disabled:opacity-50 ${
           pending.has(ids[axis]) ? 'border-amber-500/60' : 'border-subtle'
         }`}
@@ -218,12 +220,12 @@ export const GpsOffsetSection: React.FC = () => {
           <Crosshair className="w-5 h-5 text-teal-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-sm font-medium text-content">GPS Antenna Position</h3>
+          <h3 className="text-sm font-medium text-content">{t('mavlink-config:gpsOffsetSection.title')}</h3>
           <p
             className="text-xs text-content-secondary"
-            data-tip="With the lever arm set, the EKF reports the vehicle's body position instead of the antenna's - unset, RTK centimeters are wasted on airframes where the antenna sits away from the flight controller."
+            data-tip={t('mavlink-config:gpsOffsetSection.leverArmTip')}
           >
-            Drag the antenna to where it sits relative to the flight controller.
+            {t('mavlink-config:gpsOffsetSection.subtitle')}
           </p>
         </div>
         {gps2Available && (
@@ -247,10 +249,10 @@ export const GpsOffsetSection: React.FC = () => {
         {/* Top view */}
         <div className="rounded-lg bg-surface-inset border border-subtle p-2.5 flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-content-tertiary">Top view</span>
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-content-tertiary">{t('mavlink-config:gpsOffsetSection.topView')}</span>
             <div className="flex gap-1">
-              <AxisChip axis="x" text="X fwd" />
-              <AxisChip axis="y" text="Y right" />
+              <AxisChip axis="x" text={t('mavlink-config:gpsOffsetSection.xFwd')} />
+              <AxisChip axis="y" text={t('mavlink-config:gpsOffsetSection.yRight')} />
             </div>
           </div>
           <svg
@@ -320,10 +322,10 @@ export const GpsOffsetSection: React.FC = () => {
         {/* Side view */}
         <div className="rounded-lg bg-surface-inset border border-subtle p-2.5 flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-content-tertiary">Side view</span>
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-content-tertiary">{t('mavlink-config:gpsOffsetSection.sideView')}</span>
             <div className="flex gap-1">
-              <AxisChip axis="x" text="X fwd" />
-              <AxisChip axis="z" text="Z down" />
+              <AxisChip axis="x" text={t('mavlink-config:gpsOffsetSection.xFwd')} />
+              <AxisChip axis="z" text={t('mavlink-config:gpsOffsetSection.zDown')} />
             </div>
           </div>
           <svg
@@ -343,13 +345,13 @@ export const GpsOffsetSection: React.FC = () => {
             <g transform={`translate(${SIDE.cx}, 16)`}>
               <rect x={-22} y={-8} width={44} height={15} rx={7.5} className="fill-violet-500/15" />
               <text textAnchor="middle" dominantBaseline="central" fontSize={7.5} fontWeight={700} className="fill-current text-violet-400">
-                UP = -Z
+                {t('mavlink-config:gpsOffsetSection.upNegZ')}
               </text>
             </g>
             <g transform={`translate(${SIDE.cx}, ${VIEW - 12})`}>
               <rect x={-28} y={-8} width={56} height={15} rx={7.5} className="fill-violet-500/15" />
               <text textAnchor="middle" dominantBaseline="central" fontSize={7.5} fontWeight={700} className="fill-current text-violet-400">
-                DOWN = +Z
+                {t('mavlink-config:gpsOffsetSection.downPosZ')}
               </text>
             </g>
 
@@ -413,18 +415,18 @@ export const GpsOffsetSection: React.FC = () => {
 
         {/* Controls */}
         <div className="rounded-lg bg-surface-inset border border-subtle p-3 flex flex-col gap-2.5">
-          <span className="text-[9px] font-semibold uppercase tracking-widest text-content-tertiary">Offsets</span>
+          <span className="text-[9px] font-semibold uppercase tracking-widest text-content-tertiary">{t('mavlink-config:gpsOffsetSection.offsets')}</span>
           {axisRow('x')}
           {axisRow('y')}
           {axisRow('z')}
           <div className="mt-auto space-y-2">
             {!editable && (
               <p className="text-xs text-amber-400">
-                {!isConnected ? 'Connect a vehicle to edit.' : 'Waiting for parameters...'}
+                {!isConnected ? t('mavlink-config:gpsOffsetSection.connectToEdit') : t('mavlink-config:gpsOffsetSection.waitingParams')}
               </p>
             )}
             <div className="flex items-center justify-between rounded-lg bg-teal-500/10 border border-teal-500/25 px-2.5 py-2">
-              <span className="text-xs text-content-secondary">Lever arm</span>
+              <span className="text-xs text-content-secondary">{t('mavlink-config:gpsOffsetSection.leverArm')}</span>
               <span className="text-sm font-mono text-teal-400">{formatMeters(offsetDistance(staged))} m</span>
             </div>
           </div>
@@ -435,21 +437,21 @@ export const GpsOffsetSection: React.FC = () => {
         <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
           <Zap className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="flex-1 text-sm text-amber-300">
-            {dirty.length} change{dirty.length === 1 ? '' : 's'} staged. Nothing is written to the vehicle until Apply.
+            {t('mavlink-config:gpsOffsetSection.staged', { count: dirty.length })}
           </span>
           <button
             onClick={() => setPending(new Map())}
             disabled={applying}
             className="px-2.5 py-1.5 rounded-md text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
-            Discard
+            {t('mavlink-config:gpsOffsetSection.discard')}
           </button>
           <button
             onClick={() => { void apply(); }}
             disabled={applying || !editable}
             className="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-60 transition-colors"
           >
-            {applying ? 'Applying...' : 'Apply'}
+            {applying ? t('mavlink-config:gpsOffsetSection.applying') : t('common:apply')}
           </button>
         </div>
       )}

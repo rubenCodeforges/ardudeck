@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { RotateCcw, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Storage utilities
 export function loadProfiles<T>(storageKey: string): Record<string, { name: string; data: T }> {
@@ -45,9 +46,10 @@ export function ProfileManager<T>({
   currentData,
   onLoad,
   onReset,
-  label = 'My Profiles',
+  label,
   showReset = true,
 }: ProfileManagerProps<T>) {
+  const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Record<string, { name: string; data: T }>>({});
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [profileName, setProfileName] = useState('');
@@ -100,15 +102,15 @@ export function ProfileManager<T>({
     <div className="bg-surface rounded-xl border border-subtle p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h4 className="text-sm font-medium text-content-secondary">{label}</h4>
+          <h4 className="text-sm font-medium text-content-secondary">{label ?? t('common:myProfiles')}</h4>
           {showReset && (
             <button
               onClick={onReset}
               className="px-2 py-1 text-xs rounded bg-surface-raised hover:bg-surface-raised text-content-secondary hover:text-content transition-colors flex items-center gap-1"
-              title="Reset to factory defaults"
+              title={t('ui:profileManager.resetToFactoryDefaults')}
             >
               <RotateCcw className="w-3 h-3" />
-              Reset
+              {t('common:reset')}
             </button>
           )}
         </div>
@@ -138,7 +140,7 @@ export function ProfileManager<T>({
                 type="text"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Name..."
+                placeholder={t('ui:profileManager.namePlaceholder')}
                 className="w-24 px-2 py-1.5 bg-transparent text-content text-sm focus:outline-none"
                 autoFocus
                 onKeyDown={(e) => {
@@ -164,9 +166,9 @@ export function ProfileManager<T>({
             <button
               onClick={() => setShowSaveDialog(true)}
               className="px-3 py-1.5 text-sm rounded-lg bg-surface-raised hover:bg-surface-raised text-content-secondary hover:text-content transition-colors flex items-center gap-1"
-              title="Save current settings as a profile"
+              title={t('ui:profileManager.saveAsProfile')}
             >
-              <span>+</span> Save
+              <span>+</span> {t('common:save')}
             </button>
           )}
         </div>

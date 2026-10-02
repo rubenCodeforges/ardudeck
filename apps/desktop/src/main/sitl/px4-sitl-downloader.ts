@@ -31,6 +31,7 @@ import type {
 } from '../../shared/ipc-channels.js';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import { px4SitlBasePath, px4SitlBundleDir } from './px4-paths.js';
+import { t } from '../../shared/i18n/index.js';
 
 // ── URL sources ──────────────────────────────────────────────────────────────
 
@@ -211,8 +212,8 @@ class Px4SitlDownloader {
     const platform = getPlatform();
     if (!platform) {
       const error = process.platform === 'win32'
-        ? 'PX4 SITL is not supported natively on Windows. Run it under WSL2, or use ArduPilot SITL.'
-        : `PX4 SITL is not supported on ${process.platform}/${process.arch}. Supported: macOS (arm64/x64) and Linux x64.`;
+        ? t('main:sitl.px4WindowsUnsupported')
+        : t('main:sitl.px4PlatformUnsupported', { platform: process.platform, arch: process.arch });
       return { supported: false, needsJava: true, error };
     }
     return { supported: true, needsJava: true };
@@ -221,7 +222,7 @@ class Px4SitlDownloader {
   async download(track: Px4ReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> {
     const platform = getPlatform();
     if (!platform) {
-      const error = this.checkPlatform().error ?? 'Unsupported platform';
+      const error = this.checkPlatform().error ?? t('main:sitl.unsupportedPlatform');
       this.sendProgress({
         releaseTrack: track,
         progress: 0, bytesDownloaded: 0, totalBytes: 0,
@@ -264,7 +265,7 @@ class Px4SitlDownloader {
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('No response body');
+        throw new Error('No response body'); // i18n-exempt
       }
 
       while (true) {
@@ -304,7 +305,7 @@ class Px4SitlDownloader {
       try {
         await access(extractedBinary);
       } catch {
-        throw new Error('Downloaded bundle is missing bin/px4');
+        throw new Error(t('main:sitl.bundleMissingPx4'));
       }
 
       // Atomic swap: remove any previous bundle, then rename the temp dir in.
@@ -345,7 +346,7 @@ class Px4SitlDownloader {
       try { await rm(tempArchive, { force: true }); } catch { /* ignore */ }
       try { await rm(tempExtractDir, { recursive: true, force: true }); } catch { /* ignore */ }
 
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : t('common:unknownError');
       this.sendProgress({
         releaseTrack: track,
         progress: 0, bytesDownloaded: 0, totalBytes: 0,

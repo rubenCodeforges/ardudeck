@@ -4,6 +4,7 @@
  */
 import { useMemo } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
+import { useTranslation } from 'react-i18next';
 import { GraphCanvas } from './GraphCanvas';
 import { NodePalette } from './NodePalette';
 import { InspectorPanel } from './InspectorPanel';
@@ -13,6 +14,7 @@ import { useLuaGraphStore } from '../../stores/lua-graph-store';
 import { compileGraph } from './lua-compiler';
 
 export function LuaGraphView() {
+  const { t } = useTranslation();
   const nodes = useLuaGraphStore((s) => s.nodes);
   const edges = useLuaGraphStore((s) => s.edges);
   const graphName = useLuaGraphStore((s) => s.graphName);
@@ -55,19 +57,19 @@ export function LuaGraphView() {
 
         {/* Status Bar */}
         <div className="flex items-center gap-4 px-3 py-1 bg-surface border-t border-subtle text-[10px] text-content-secondary">
-          <span>{nodes.length} node{nodes.length !== 1 ? 's' : ''}</span>
+          <span>{t('lua-graph:luaGraphView.nodeCount', { count: nodes.length })}</span>
           <span className="w-px h-3 bg-subtle" />
           <span
             className={compileResult.success ? 'text-emerald-500' : 'text-red-400'}
           >
-            {compileResult.success ? 'Valid' : `${compileResult.errors.length} error(s)`}
+            {compileResult.success ? t('lua-graph:luaGraphView.valid') : t('lua-graph:luaGraphView.errorCount', { count: compileResult.errors.length })}
           </span>
           <span className="w-px h-3 bg-subtle" />
           <span>
-            Est. memory: {(compileResult.estimatedMemoryBytes / 1024).toFixed(1)} KB
+            {t('lua-graph:luaGraphView.estMemory', { kb: (compileResult.estimatedMemoryBytes / 1024).toFixed(1) })}
           </span>
           <div className="flex-1" />
-          <span className="text-content-tertiary">ArduPilot Lua Scripting</span>
+          <span className="text-content-tertiary">{t('lua-graph:luaGraphView.footer')}</span>
         </div>
       </div>
     </ReactFlowProvider>

@@ -19,6 +19,7 @@ import type {
 } from '../../shared/ntrip-types.js';
 import { INITIAL_NTRIP_STATUS } from '../../shared/ntrip-types.js';
 import { RtcmFramer, type RtcmFrame } from './rtcm.js';
+import { t } from '../../shared/i18n/index.js';
 
 const CONNECT_TIMEOUT_MS = 10000;
 const SOURCETABLE_TIMEOUT_MS = 15000;
@@ -112,19 +113,19 @@ function classifySocketError(
 ): { message: string; permanent: boolean } {
   if (/ENOTFOUND|EAI_AGAIN/.test(message)) {
     return {
-      message: `Host not found: "${config.host}". Enter the caster server name, e.g. caster.centipede.fr (the mountpoint goes in its own field).`,
+      message: t('main:ntrip.hostNotFound', { host: config.host }),
       permanent: true,
     };
   }
   if (/ECONNREFUSED/.test(message)) {
     return {
-      message: `Connection refused by ${config.host}:${config.port}. Check the port (NTRIP casters usually use 2101).`,
+      message: t('main:ntrip.connectionRefused', { host: config.host, port: config.port }),
       permanent: false,
     };
   }
   if (/ETIMEDOUT|Connection timed out/.test(message)) {
     return {
-      message: `Could not reach ${config.host}:${config.port} (timed out).`,
+      message: t('main:ntrip.unreachableTimeout', { host: config.host, port: config.port }),
       permanent: false,
     };
   }
@@ -167,7 +168,7 @@ export function fetchSourcetable(
 ): Promise<NtripSourcetableResult> {
   return new Promise((resolve) => {
     if (!config.host) {
-      resolve({ success: false, error: 'Caster host is not set' });
+      resolve({ success: false, error: t('main:ntrip.hostNotSet') });
       return;
     }
     let settled = false;
@@ -186,7 +187,7 @@ export function fetchSourcetable(
       resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
       return;
     }
-    const timer = setTimeout(() => done({ success: false, error: 'Sourcetable request timed out' }), SOURCETABLE_TIMEOUT_MS);
+    const timer = setTimeout(() => done({ success: false, error: t('main:ntrip.sourcetableTimeout') }), SOURCETABLE_TIMEOUT_MS);
 
     const chunks: Buffer[] = [];
     // v1-only casters answer a v2-form sourcetable request fine (the STR body
@@ -203,7 +204,7 @@ export function fetchSourcetable(
       const raw = Buffer.concat(chunks);
       const full = raw.toString('latin1');
       if (/(^|\r\n)HTTP\/\d\.\d 401/.test(full) || full.startsWith('HTTP/1.0 401')) {
-        done({ success: false, error: 'Authentication rejected by caster' });
+        done({ success: false, error: t('main:ntrip.authRejected') });
         return;
       }
       // Split headers from body; v2 casters may chunk-encode the body, which
@@ -223,7 +224,7 @@ export function fetchSourcetable(
         .map(parseStrLine)
         .filter((m): m is NtripMountpoint => m !== null);
       if (mountpoints.length === 0) {
-        done({ success: false, error: 'Caster returned no mountpoints' });
+        done({ success: false, error: t('main:ntrip.noMountpoints') });
         return;
       }
       done({ success: true, mountpoints });
@@ -275,8 +276,8 @@ export class NtripClient {
   }
 
   connect(config: NtripConfig): { success: boolean; error?: string } {
-    if (!config.host) return { success: false, error: 'Caster host is not set' };
-    if (!config.mountpoint) return { success: false, error: 'Mountpoint is not set' };
+    if (!config.host) return { success: false, error: t('main:ntrip.hostNotSet') };
+    if (!config.mountpoint) return { success: false, error: t('main:ntrip.mountpointNotSet') };
     this.teardownSocket();
     this.clearReconnect();
     this.enabled = true;
@@ -332,7 +333,7 @@ export class NtripClient {
 
     socket.on('timeout', () => {
       // Doubles as connect timeout and stream-stall watchdog.
-      const reason = this.headersDone ? 'Correction stream stalled' : 'Connection timed out';
+      const reason = this.headersDone ? t('main:ntrip.streamStalled') : 'Connection timed out'; // i18n-exempt
       socket.destroy(new Error(reason));
     });
 
@@ -340,7 +341,7 @@ export class NtripClient {
     socket.on('error', (err: Error) => this.handleStreamFailure(err.message));
     socket.on('close', () => {
       if (this.socket !== socket) return; // superseded by a newer socket
-      if (this.enabled) this.handleStreamFailure(this.status.error ?? 'Caster closed the connection');
+      if (this.enabled) this.handleStreamFailure(this.status.error ?? t('main:ntrip.casterClosed'));
     });
   }
 
@@ -349,18 +350,18 @@ export class NtripClient {
       this.headerBuf += chunk.toString('latin1');
       const headerEnd = this.headerBuf.indexOf('\r\n\r\n');
       if (headerEnd === -1) {
-        if (this.headerBuf.length > 8192) this.failPermanently('Caster sent an invalid response header');
+        if (this.headerBuf.length > 8192) this.failPermanently(t('main:ntrip.invalidHeader'));
         return;
       }
       const header = this.headerBuf.slice(0, headerEnd);
       const firstLine = header.split('\r\n', 1)[0] ?? '';
 
       if (firstLine.startsWith('SOURCETABLE')) {
-        this.failPermanently(`Mountpoint "${this.config?.mountpoint}" not found (caster returned its sourcetable)`);
+        this.failPermanently(t('main:ntrip.mountpointNotFound', { mountpoint: this.config?.mountpoint }));
         return;
       }
       if (/ 401\b/.test(firstLine)) {
-        this.failPermanently('Authentication rejected by caster (check username/password)');
+        this.failPermanently(t('main:ntrip.authRejectedCheck'));
         return;
       }
       if (!/^ICY 200/.test(firstLine) && !/^HTTP\/\d\.\d 200/.test(firstLine)) {
@@ -374,7 +375,7 @@ export class NtripClient {
           this.openStream();
           return;
         }
-        this.failPermanently(`Caster refused the stream: ${firstLine || 'empty response'}`);
+        this.failPermanently(t('main:ntrip.streamRefused', { detail: firstLine || t('main:ntrip.emptyResponse') }));
         return;
       }
 

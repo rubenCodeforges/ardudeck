@@ -75,20 +75,20 @@ export const SIM_DEFAULTS: SimConditions = {
 
 export interface SimPreset {
   id: string;
-  label: string;
-  tip: string;
+  labelKey: string;
+  tipKey: string;
   patch: SimPatch;
 }
 
 /** One-click failure scenarios. Each is a patch applied over current state. */
 export const SIM_PRESETS: SimPreset[] = [
-  { id: 'motor-out', label: 'Motor out', tip: 'Kill motor 1 (SIM_ENGINE_FAIL bit0, SIM_ENGINE_MUL 0)', patch: { failedMotors: [1], engineMul: 0 } },
-  { id: 'gps-denied', label: 'GPS denied', tip: 'Disable GPS to trigger the GPS-loss failsafe / EKF fallback (SIM_GPS1_ENABLE 0)', patch: { gpsEnable: false } },
-  { id: 'gps-glitch', label: 'GPS glitch', tip: '30 m position jump (SIM_GPS1_GLTCH_X/Y)', patch: { gpsGlitch: 30 } },
-  { id: 'gps-jam', label: 'GPS jam', tip: 'Jam GPS reception (SIM_GPS1_JAM 1)', patch: { gpsJam: true } },
-  { id: 'low-sats', label: 'Sat dropout', tip: 'Degrade to 4 satellites (SIM_GPS1_NUMSATS 4)', patch: { gpsSats: 4 } },
-  { id: 'compass-fail', label: 'Compass fail', tip: 'Fail both compasses (SIM_MAG1_FAIL / SIM_MAG2_FAIL 1)', patch: { mag1Fail: true, mag2Fail: true } },
-  { id: 'baro-fail', label: 'Baro fail', tip: 'Disable the barometer (SIM_BARO_DISABLE 1)', patch: { baroDisable: true } },
-  { id: 'radio-loss', label: 'Radio loss', tip: 'Drop RC to trigger the radio failsafe (SIM_RC_FAIL 1)', patch: { rcFail: true } },
-  { id: 'high-vibe', label: 'High vibe', tip: 'Inject motor vibration (SIM_VIB_MOT_MAX 30)', patch: { vibe: 30 } },
+  { id: 'motor-out', labelKey: 'sim:presets.motorOut.label', tipKey: 'sim:presets.motorOut.tip', patch: { failedMotors: [1], engineMul: 0 } },
+  { id: 'gps-denied', labelKey: 'sim:presets.gpsDenied.label', tipKey: 'sim:presets.gpsDenied.tip', patch: { gpsEnable: false } },
+  { id: 'gps-glitch', labelKey: 'sim:presets.gpsGlitch.label', tipKey: 'sim:presets.gpsGlitch.tip', patch: { gpsGlitch: 30 } },
+  { id: 'gps-jam', labelKey: 'sim:presets.gpsJam.label', tipKey: 'sim:presets.gpsJam.tip', patch: { gpsJam: true } },
+  { id: 'low-sats', labelKey: 'sim:presets.lowSats.label', tipKey: 'sim:presets.lowSats.tip', patch: { gpsSats: 4 } },
+  { id: 'compass-fail', labelKey: 'sim:presets.compassFail.label', tipKey: 'sim:presets.compassFail.tip', patch: { mag1Fail: true, mag2Fail: true } },
+  { id: 'baro-fail', labelKey: 'sim:presets.baroFail.label', tipKey: 'sim:presets.baroFail.tip', patch: { baroDisable: true } },
+  { id: 'radio-loss', labelKey: 'sim:presets.radioLoss.label', tipKey: 'sim:presets.radioLoss.tip', patch: { rcFail: true } },
+  { id: 'high-vibe', labelKey: 'sim:presets.highVibe.label', tipKey: 'sim:presets.highVibe.tip', patch: { vibe: 30 } },
 ];

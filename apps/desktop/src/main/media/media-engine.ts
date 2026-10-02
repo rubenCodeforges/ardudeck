@@ -19,12 +19,12 @@
  */
 
 import { spawn, type ChildProcess, spawnSync } from 'node:child_process';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { app } from 'electron';
 import { mediaBinariesDownloader } from './media-binaries-downloader.js';
-import { buildWfbngSdp, buildWfbngFfmpegArgs, wfbngPort, wfbngShouldTranscode } from './wfbng.js';
+import { bridgeFailureReason, buildWfbngSdp, buildWfbngFfmpegArgs, wfbngPort, wfbngShouldTranscode } from './wfbng.js';
 import { needsH264Relay, buildH264RelayArgs, encoderChain } from './h264-relay.js';
 import { wfbngReceiver } from './wfbng-receiver.js';
 import type {
@@ -35,10 +35,15 @@ import type {
   MediaEngineStatus,
   CanvasStreamStartResult,
   CanvasStreamStatus,
+  CameraStartPhase,
 } from '../../shared/camera-types.js';
 import { HUB_HOST, HUB_RTSP_PORT, HUB_WEBRTC_PORT, HUB_SRT_PORT } from '../../shared/camera-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 const API_PORT = 9997;
+// A real stream passes this within a fraction of a second; a handshake-only path never does.
+const VIDEO_MIN_BYTES = 4096;
+const VIDEO_FLOW_TIMEOUT_MS = 5000;
 const RTSP_PORT = HUB_RTSP_PORT;
 const WEBRTC_PORT = HUB_WEBRTC_PORT;
 const WEBRTC_UDP_PORT = 8189;
@@ -73,6 +78,9 @@ interface ActiveSession {
 }
 
 export class MediaEngine {
+  /** Startup progress for the Vision panel; set by the IPC layer. */
+  onPhase: ((sourceId: string, phase: CameraStartPhase) => void) | null = null;
+
   private hub: ChildProcess | null = null;
   private sessions = new Map<string, ActiveSession>();
   /** In-flight start() per source id, so concurrent starts of the same feed
@@ -143,11 +151,11 @@ export class MediaEngine {
   getStatus(): MediaEngineStatus {
     this.resolveBinaries();
     const detail = !this.mediamtxPath
-      ? 'Video engine not installed. Click Install to download it (~95MB, one time).'
+      ? t('main:media.engineNotInstalledDetail')
       : this.lastHubError
-        ? `Media hub failed to start: ${this.lastHubError}`
+        ? t('main:media.hubFailedDetail', { error: this.lastHubError })
         : !this.ffmpegPath
-          ? 'ffmpeg not found — RTSP/WebRTC still work, but UDP bridging, snapshot and record need it. Click Install.'
+          ? t('main:media.ffmpegMissingDetail')
           : undefined;
     return {
       hubReady: this.hubReady,
@@ -290,8 +298,9 @@ export class MediaEngine {
     const line = this.hubLog
       .split('\n')
       .reverse()
+      // Only this path's lines: the hub log is shared, and another feed's failure is not this one's.
       .find((l) =>
-        (l.includes(name) || /source/i.test(l)) &&
+        l.includes(`[path ${name}]`) &&
         /(ERR|destroyed|timeout|refused|no route|unauthorized|not found|bad status|failed|denied)/i.test(l),
       );
     if (!line) return null;
@@ -351,6 +360,33 @@ export class MediaEngine {
     return false;
   }
 
+  /** Bytes the hub has received on a path, or -1 if it cannot say. */
+  private async pathBytesReceived(name: string): Promise<number> {
+    try {
+      const res = await fetch(`http://${HOST}:${API_PORT}/v3/paths/get/${encodeURIComponent(name)}`);
+      if (!res.ok) return -1;
+      const info = (await res.json()) as { bytesReceived?: number; inboundBytes?: number };
+      return info.bytesReceived ?? info.inboundBytes ?? -1;
+    } catch {
+      return -1;
+    }
+  }
+
+  /**
+   * A pulled path can be "ready" off the RTSP handshake alone while no video ever arrives
+   * (UDP dropped by a firewall). Returns the bytes seen if the stream never got going.
+   */
+  private async videoStalled(name: string, minBytes = VIDEO_MIN_BYTES, timeoutMs = VIDEO_FLOW_TIMEOUT_MS): Promise<number | null> {
+    const deadline = Date.now() + timeoutMs;
+    let bytes = -1;
+    while (Date.now() < deadline) {
+      bytes = await this.pathBytesReceived(name);
+      if (bytes < 0 || bytes >= minBytes) return null;
+      await delay(250);
+    }
+    return bytes;
+  }
+
   private whepUrl(name: string): string {
     return `http://${HOST}:${WEBRTC_PORT}/${name}/whep`;
   }
@@ -366,10 +402,10 @@ export class MediaEngine {
   async preparePublish(name: string): Promise<CanvasStreamStartResult> {
     this.resolveBinaries();
     if (!this.mediamtxPath) {
-      return { ok: false, needsInstall: true, error: this.getStatus().detail ?? 'Video engine not installed' };
+      return { ok: false, needsInstall: true, error: this.getStatus().detail ?? t('main:media.engineNotInstalled') };
     }
     if (!(await this.ensureHub())) {
-      return { ok: false, error: this.getStatus().detail ?? 'Media hub failed to start' };
+      return { ok: false, error: this.getStatus().detail ?? t('main:media.hubFailed') };
     }
     return {
       ok: true,
@@ -413,7 +449,7 @@ export class MediaEngine {
     // WebRTC sources are already WHEP — no hub, no transcode.
     if (source.kind === 'webrtc') {
       const url = resolvedUrl ?? source.url;
-      if (!url) return { ok: false, error: 'WebRTC source has no WHEP url' };
+      if (!url) return { ok: false, error: t('main:media.noWhepUrl') };
       const session: CameraStreamSession = {
         sourceId: source.id,
         vehicleKey: source.vehicleKey,
@@ -426,18 +462,20 @@ export class MediaEngine {
 
     const ok = await this.ensureHub();
     if (!ok) {
-      return { ok: false, error: this.getStatus().detail ?? 'Media hub failed to start' };
+      return { ok: false, error: this.getStatus().detail ?? t('main:media.hubFailed') };
     }
 
     const name = `cam_${source.id.replace(/[^a-zA-Z0-9]/g, '')}`;
     const url = resolvedUrl ?? source.url;
-    if (!url) return { ok: false, error: 'Source has no url' };
+    if (!url) return { ok: false, error: t('main:media.noUrl') };
 
     const needsBridge = source.kind === 'rtp-udp' || source.kind === 'rubyfpv' || source.kind === 'wfbng';
     let ingest: ChildProcess | undefined;
+    let ingestOutput = '';
 
+    this.onPhase?.(source.id, 'connecting');
     if (needsBridge) {
-      if (!this.ffmpegPath) return { ok: false, error: 'ffmpeg required to bridge UDP sources' };
+      if (!this.ffmpegPath) return { ok: false, error: t('main:media.ffmpegRequiredUdp') };
       let args: string[];
       if (source.kind === 'wfbng') {
         // Dongle mode (default): ArduDeck drives the plugged-in RTL8812AU via
@@ -470,11 +508,12 @@ export class MediaEngine {
       // string, so a space anywhere in the path (a username with a space is
       // enough) splits the command and the process never starts.
       ingest = spawn(this.ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+      ingest.stderr?.on('data', (d: Buffer) => { ingestOutput = (ingestOutput + d.toString()).slice(-8000); });
       this.superviseIngest(source, resolvedUrl, ingest);
     } else {
       // rtsp / srt / mavlink-rtsp — hub pulls directly.
-      const added = await this.addHubPath(name, url, source.rtspTransport ?? 'automatic');
-      if (!added) return { ok: false, error: 'Hub rejected the source path' };
+      const added = await this.addHubPath(name, url, source.rtspTransport ?? 'tcp');
+      if (!added) return { ok: false, error: t('main:media.hubRejectedPath') };
     }
 
     // Wait until the path is actually publishing before handing back the WHEP
@@ -484,8 +523,10 @@ export class MediaEngine {
     if (!ready) {
       // Surface mediamtx's actual source-pull error (DNS, refused, 404, 401,
       // timeout) rather than a generic message.
-      const reason = this.lastSourceError(name);
-      if (ingest) killProc(ingest);
+      const reason = ingest
+        ? bridgeFailureReason(ingestOutput, wfbngPort(url), source.kind === 'wfbng' ? (source.wfbCodec ?? 'h265') : undefined)
+        : this.lastSourceError(name);
+      if (ingest) await killProcAndWait(ingest);
       else await this.removeHubPath(name);
       return {
         ok: false,
@@ -501,6 +542,18 @@ export class MediaEngine {
     // normalize through an ffmpeg H.264 relay instead and play that.
     let playPath = name;
     if (!needsBridge) {
+      this.onPhase?.(source.id, 'checking-video');
+      const stalledAt = await this.videoStalled(name);
+      if (stalledAt !== null) {
+        await this.removeHubPath(name);
+        const transport = source.rtspTransport ?? 'tcp';
+        return {
+          ok: false,
+          error: transport === 'tcp'
+            ? `Camera connected but sent no video (${stalledAt} bytes in ${VIDEO_FLOW_TIMEOUT_MS / 1000} s). Another app or device may be holding the camera's stream.`
+            : `Camera connected but its video never arrived (${stalledAt} bytes in ${VIDEO_FLOW_TIMEOUT_MS / 1000} s). A firewall is probably dropping the UDP video: set the RTSP transport to TCP.`,
+        };
+      }
       const tracks = await this.pathTracks(name);
       if (needsH264Relay(tracks)) {
         if (!this.ffmpegPath) {
@@ -511,6 +564,7 @@ export class MediaEngine {
           };
         }
         const relayName = `${name}h264`;
+        this.onPhase?.(source.id, 'converting');
         const attempts: string[] = [];
         let started = false;
         for (const encoder of encoderChain(process.platform)) {
@@ -565,6 +619,7 @@ export class MediaEngine {
     if (source.kind === 'wfbng' && (source.wfbMode ?? 'dongle') === 'dongle') active.usesWfbReceiver = true;
     this.sessions.set(source.id, active);
     if (needsBridge) this.ensureWatchdog();
+    this.onPhase?.(source.id, 'opening');
     return { ok: true, session };
   }
 
@@ -635,7 +690,8 @@ export class MediaEngine {
     active.session.status = 'stopped';
     if (active.restartTimer) clearTimeout(active.restartTimer);
     if (active.record) killProc(active.record);
-    if (active.ingest) killProc(active.ingest);
+    // Wait for it to exit: a restart right after would otherwise find the UDP port still bound.
+    if (active.ingest) await killProcAndWait(active.ingest);
     if (active.configuredPath) await this.removeHubPath(active.configuredPath);
     this.sessions.delete(sourceId);
     // Last dongle-mode session gone -> release the dongle receiver.
@@ -647,16 +703,15 @@ export class MediaEngine {
   /** Grab a single JPEG frame from a live session. */
   async snapshot(sourceId: string): Promise<CameraMediaActionResult> {
     const active = this.sessions.get(sourceId);
-    if (!active?.session.path) return { ok: false, error: 'No live stream to snapshot' };
-    if (!this.ffmpegPath) return { ok: false, error: 'ffmpeg required for snapshots' };
-    const dir = this.mediaDir();
-    const filePath = join(dir, `snapshot_${stamp()}.jpg`);
+    if (!active?.session.path) return { ok: false, error: t('main:media.noStreamSnapshot') };
+    if (!this.ffmpegPath) return { ok: false, error: t('main:media.ffmpegRequiredSnapshot') };
+    const filePath = join(this.mediaDir('photos'), `snapshot_${stamp()}.jpg`);
     return new Promise((resolve) => {
       const p = spawn(this.ffmpegPath as string, [
         '-y', '-rtsp_transport', 'tcp', '-i', this.rtspUrl(active.session.path as string),
         '-frames:v', '1', '-q:v', '2', filePath,
       ], { stdio: 'ignore' });
-      p.on('exit', (code) => resolve(code === 0 ? { ok: true, filePath } : { ok: false, error: 'Snapshot failed' }));
+      p.on('exit', (code) => resolve(code === 0 ? { ok: true, filePath } : { ok: false, error: t('main:media.snapshotFailed') }));
       p.on('error', (e) => resolve({ ok: false, error: e.message }));
     });
   }
@@ -664,7 +719,7 @@ export class MediaEngine {
   /** Toggle recording for a session. Returns the file when recording starts. */
   async toggleRecord(sourceId: string): Promise<CameraMediaActionResult> {
     const active = this.sessions.get(sourceId);
-    if (!active?.session.path) return { ok: false, error: 'No live stream to record' };
+    if (!active?.session.path) return { ok: false, error: t('main:media.noStreamRecord') };
     if (active.record) {
       killProc(active.record);
       const filePath = active.recordPath;
@@ -672,8 +727,8 @@ export class MediaEngine {
       delete active.recordPath;
       return { ok: true, ...(filePath ? { filePath } : {}) };
     }
-    if (!this.ffmpegPath) return { ok: false, error: 'ffmpeg required for recording' };
-    const filePath = join(this.mediaDir(), `recording_${stamp()}.mp4`);
+    if (!this.ffmpegPath) return { ok: false, error: t('main:media.ffmpegRequiredRecord') };
+    const filePath = join(this.mediaDir('videos'), `recording_${stamp()}.mp4`);
     const p = spawn(this.ffmpegPath, [
       '-rtsp_transport', 'tcp', '-i', this.rtspUrl(active.session.path),
       '-c', 'copy', '-f', 'mp4', filePath,
@@ -683,10 +738,28 @@ export class MediaEngine {
     return { ok: true, filePath };
   }
 
-  private mediaDir(): string {
-    const dir = join(app.getPath('userData'), 'camera-media');
+  // Where people look for photos and videos, not the app's hidden data folder.
+  private mediaDir(kind: 'photos' | 'videos'): string {
+    let dir: string;
+    try {
+      dir = join(app.getPath(kind === 'photos' ? 'pictures' : 'videos'), 'ArduDeck');
+    } catch {
+      dir = join(app.getPath('userData'), 'camera-media');
+    }
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     return dir;
+  }
+
+  /** Only ever reveal files this engine wrote. */
+  isOwnMedia(filePath: string): boolean {
+    const name = basename(filePath);
+    if (!/^(snapshot|recording)_[\w-]+\.(jpg|mp4)$/.test(name)) return false;
+    const dir = dirname(filePath);
+    const dirs = [join(app.getPath('userData'), 'camera-media')];
+    for (const k of ['pictures', 'videos'] as const) {
+      try { dirs.push(join(app.getPath(k), 'ArduDeck')); } catch { /* platform without it */ }
+    }
+    return dirs.includes(dir) && existsSync(filePath);
   }
 
   /**
@@ -738,7 +811,7 @@ export class MediaEngine {
       const s = active.session;
       const src = active.source;
       lines.push(`session ${id}: kind=${src?.kind ?? '-'} status=${s.status} path=${s.path ?? '-'}`);
-      lines.push(`  url: ${active.resolvedUrl ?? src?.url ?? '-'}  transport: ${src?.rtspTransport ?? 'automatic'}`);
+      lines.push(`  url: ${active.resolvedUrl ?? src?.url ?? '-'}  transport: ${src?.rtspTransport ?? 'tcp'}`);
       if (s.error) lines.push(`  error: ${s.error}`);
     }
 
@@ -844,11 +917,27 @@ function killProc(p: ChildProcess): void {
   }
 }
 
+function killProcAndWait(p: ChildProcess, timeoutMs = 2500): Promise<void> {
+  if (p.exitCode !== null || p.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(done, timeoutMs);
+    p.once('exit', done);
+    killProc(p);
+  });
+}
+
 let stampCounter = 0;
+let lastStamp = '';
 /** Monotonic-ish filename stamp without Date.now (kept testable/deterministic-friendly). */
+// Local date and time, so files sort and read naturally in the folder; the counter only splits same-second shots.
 function stamp(): string {
-  stampCounter += 1;
-  return `${process.hrtime.bigint().toString()}_${stampCounter}`;
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  const t = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+  stampCounter = t === lastStamp ? stampCounter + 1 : 0;
+  lastStamp = t;
+  return stampCounter ? `${t}-${stampCounter}` : t;
 }
 
 /** Process-wide singleton. */

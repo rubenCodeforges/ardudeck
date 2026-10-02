@@ -2,6 +2,7 @@
  * In-app confirmation dialog — replaces native Electron confirm().
  */
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   title: string;
@@ -15,11 +16,12 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]">
       <div className="bg-surface-solid rounded-xl border border-subtle w-full max-w-sm mx-4 shadow-2xl">
@@ -39,13 +41,13 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('common:cancel')}
           </button>
           <button
             onClick={onConfirm}
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common:confirm')}
           </button>
         </div>
       </div>

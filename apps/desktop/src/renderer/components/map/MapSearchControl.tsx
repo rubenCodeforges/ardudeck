@@ -3,6 +3,7 @@
  * Leaflet mission map. Accepts "lat, lon" (resolved locally, offline) or a
  * place/address (geocoded in main via Nominatim), and flies the map there.
  */
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import type { GeocodeResult } from '../../../shared/overlay-types';
@@ -19,6 +20,7 @@ function parseLatLng(q: string): { lat: number; lng: number } | null {
 }
 
 export function MapSearchControl() {
+  const { t } = useTranslation();
   const map = useMap();
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
@@ -66,17 +68,17 @@ export function MapSearchControl() {
       return;
     }
     let cancelled = false;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setBusy(true);
       window.electronAPI
         .geocodeSearch(query)
         .then((hits) => {
           if (cancelled) return;
           setResults(hits);
-          setMsg(hits.length === 0 ? 'No match found' : null);
+          setMsg(hits.length === 0 ? t('map:mapSearch.noMatch') : null);
         })
         .catch(() => {
-          if (!cancelled) setMsg('Search failed');
+          if (!cancelled) setMsg(t('map:mapSearch.failed'));
         })
         .finally(() => {
           if (!cancelled) setBusy(false);
@@ -84,9 +86,9 @@ export function MapSearchControl() {
     }, 400);
     return () => {
       cancelled = true;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
-  }, [q]);
+  }, [q, t]);
 
   const submit = useCallback(async () => {
     const query = q.trim();
@@ -105,16 +107,16 @@ export function MapSearchControl() {
     try {
       const hits = await window.electronAPI.geocodeSearch(query);
       if (hits.length === 0) {
-        setMsg('No match found');
+        setMsg(t('map:mapSearch.noMatch'));
         return;
       }
       pick(hits[0]!);
     } catch {
-      setMsg('Search failed');
+      setMsg(t('map:mapSearch.failed'));
     } finally {
       setBusy(false);
     }
-  }, [q, results, flyTo, pick]);
+  }, [q, results, flyTo, pick, t]);
 
   // Top-center: clear of the zoom control (top-left) and Layers (top-right).
   // Stop event propagation so typing/clicking never pans the map or drops WPs.
@@ -136,8 +138,8 @@ export function MapSearchControl() {
             if (e.key === 'Enter') void submit();
             else if (e.key === 'Escape') closeResults();
           }}
-          placeholder="Go to place or lat, lon"
-          aria-label="Go to location"
+          placeholder={t('map:mapSearch.placeholder')}
+          aria-label={t('map:mapSearch.aria')}
           className="flex-1 min-w-0 bg-transparent text-xs text-content placeholder:text-content-tertiary focus:outline-none"
         />
         {busy && (

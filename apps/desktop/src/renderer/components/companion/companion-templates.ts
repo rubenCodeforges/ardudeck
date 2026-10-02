@@ -8,8 +8,8 @@ export type FlashMethod = 'serial' | 'image' | 'script';
 
 export interface CompanionTemplate {
   id: string;
-  name: string;
-  description: string;
+  nameKey: string;
+  descriptionKey: string;
   board: BoardFamily;
   boardVariants: string[]; // e.g. ['ESP32', 'ESP32-S3', 'ESP32-C3']
   category: string;
@@ -17,8 +17,8 @@ export interface CompanionTemplate {
   firmwareUrl?: string; // URL to download firmware binary
   installCommand?: string; // One-liner install script
   imageUrl?: string; // URL to download SD card image
-  features: string[];
-  requirements: string[];
+  featureKeys: string[];
+  requirementKeys: string[];
   projectUrl?: string; // Link to upstream project
   projectName?: string; // Name of upstream project
 }
@@ -27,32 +27,41 @@ export interface CompanionTemplate {
 
 export const BOARD_FAMILIES: Record<BoardFamily, {
   name: string;
-  description: string;
+  descriptionKey: string;
   icon: string; // SVG path for the board icon
 }> = {
   'esp32': {
     name: 'ESP32',
-    description: 'Lightweight microcontroller for telemetry bridges and sensor hubs',
+    descriptionKey: 'companion:boards.esp32.description',
     icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M3 9h2m-2 6h2m14-6h2m-2 6h2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z',
   },
   'raspberry-pi': {
-    name: 'Raspberry Pi',
-    description: 'Full companion computer for video, autonomy, and advanced features',
+    name: 'Raspberry Pi', // i18n-exempt: brand
+    descriptionKey: 'companion:boards.raspberryPi.description',
     icon: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
   },
   'jetson': {
     name: 'NVIDIA Jetson',
-    description: 'GPU-accelerated companion for AI, computer vision, and SLAM',
+    descriptionKey: 'companion:boards.jetson.description',
     icon: 'M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18',
   },
   'orange-pi': {
-    name: 'Orange Pi',
-    description: 'Budget-friendly Pi alternative with similar capabilities',
+    name: 'Orange Pi', // i18n-exempt: brand
+    descriptionKey: 'companion:boards.orangePi.description',
     icon: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01',
   },
 };
 
 // ── Category styling ───────────────────────────────────────────
+
+/** Display key per category id (the id doubles as the CATEGORY_STYLE key). */
+export const CATEGORY_LABEL_KEY: Record<string, string> = {
+  Telemetry: 'companion:category.telemetry',
+  Video: 'companion:category.video',
+  Autonomy: 'companion:category.autonomy',
+  'Full Stack': 'companion:category.fullStack', // i18n-exempt: id
+  RTK: 'companion:category.rtk',
+};
 
 export const CATEGORY_STYLE: Record<string, { accent: string; bg: string; text: string; badge: string }> = {
   Telemetry: {
@@ -73,7 +82,7 @@ export const CATEGORY_STYLE: Record<string, { accent: string; bg: string; text: 
     text: 'text-emerald-400',
     badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   },
-  'Full Stack': {
+  'Full Stack': { // i18n-exempt: id
     accent: 'border-t-amber-500/70',
     bg: 'bg-amber-500/10',
     text: 'text-amber-400',
@@ -100,52 +109,52 @@ export const COMPANION_TEMPLATES: CompanionTemplate[] = [
   // ── ESP32 Templates ──────────────────────────────────────────
   {
     id: 'dronebridge-wifi',
-    name: 'DroneBridge WiFi Telemetry',
-    description: 'Replace SiK radio with WiFi telemetry. Connect QGroundControl, Mission Planner, or ArduDeck wirelessly.',
+    nameKey: 'companion:templates.dronebridgeWifi.name',
+    descriptionKey: 'companion:templates.dronebridgeWifi.description',
     board: 'esp32',
     boardVariants: ['ESP32', 'ESP32-S2', 'ESP32-S3', 'ESP32-C3', 'ESP32-C6'],
     category: 'Telemetry',
     flashMethod: 'serial',
-    features: ['WiFi AP + Station mode', 'MAVLink transparent bridge', 'UDP/TCP telemetry', 'Web configuration UI', 'AES-256 encryption'],
-    requirements: ['ESP32 dev board', 'UART connection to FC (TX/RX/GND)', '3.3V or 5V power'],
+    featureKeys: ['companion:templates.dronebridgeWifi.feature1', 'companion:templates.dronebridgeWifi.feature2', 'companion:templates.dronebridgeWifi.feature3', 'companion:templates.dronebridgeWifi.feature4', 'companion:templates.dronebridgeWifi.feature5'],
+    requirementKeys: ['companion:templates.dronebridgeWifi.requirement1', 'companion:templates.dronebridgeWifi.requirement2', 'companion:templates.dronebridgeWifi.requirement3'],
     projectUrl: 'https://github.com/DroneBridge/ESP32',
     projectName: 'DroneBridge for ESP32',
   },
   {
     id: 'dronebridge-espnow',
-    name: 'DroneBridge ESP-NOW Long Range',
-    description: 'Connectionless encrypted telemetry up to 1km range. Requires ESP32 on both air and ground side.',
+    nameKey: 'companion:templates.dronebridgeEspnow.name',
+    descriptionKey: 'companion:templates.dronebridgeEspnow.description',
     board: 'esp32',
     boardVariants: ['ESP32', 'ESP32-S2', 'ESP32-S3', 'ESP32-C3'],
     category: 'Telemetry',
     flashMethod: 'serial',
-    features: ['ESP-NOW protocol (no WiFi association)', 'Up to 1km range with ext. antenna', 'AES-GCM encryption', 'Low latency', 'No router needed'],
-    requirements: ['2x ESP32 boards (air + ground)', 'External antenna recommended', 'UART connection to FC'],
+    featureKeys: ['companion:templates.dronebridgeEspnow.feature1', 'companion:templates.dronebridgeEspnow.feature2', 'companion:templates.dronebridgeEspnow.feature3', 'companion:templates.dronebridgeEspnow.feature4', 'companion:templates.dronebridgeEspnow.feature5'],
+    requirementKeys: ['companion:templates.dronebridgeEspnow.requirement1', 'companion:templates.dronebridgeEspnow.requirement2', 'companion:templates.dronebridgeEspnow.requirement3'],
     projectUrl: 'https://github.com/DroneBridge/ESP32',
     projectName: 'DroneBridge for ESP32',
   },
   {
     id: 'esp32-mavlink-bridge',
-    name: 'MAVLink WiFi Bridge (Minimal)',
-    description: 'Lightweight serial-to-WiFi bridge. Minimal firmware for simple telemetry forwarding over UDP.',
+    nameKey: 'companion:templates.esp32MavlinkBridge.name',
+    descriptionKey: 'companion:templates.esp32MavlinkBridge.description',
     board: 'esp32',
     boardVariants: ['ESP32', 'ESP32-S3', 'ESP32-C3'],
     category: 'Telemetry',
     flashMethod: 'serial',
-    features: ['WiFi AP mode', 'Serial-to-UDP bridge', 'Auto-baud detection', 'Minimal resource usage'],
-    requirements: ['ESP32 dev board', 'UART connection to FC', '3.3V or 5V power'],
+    featureKeys: ['companion:templates.esp32MavlinkBridge.feature1', 'companion:templates.esp32MavlinkBridge.feature2', 'companion:templates.esp32MavlinkBridge.feature3', 'companion:templates.esp32MavlinkBridge.feature4'],
+    requirementKeys: ['companion:templates.esp32MavlinkBridge.requirement1', 'companion:templates.esp32MavlinkBridge.requirement2', 'companion:templates.esp32MavlinkBridge.requirement3'],
     projectName: 'mavesp8266 (ESP32 fork)',
   },
   {
     id: 'esp32-xbee-ntrip',
-    name: 'RTK Corrections Bridge',
-    description: 'NTRIP server, client and caster on an ESP32. Puts a base receiver on the network, or pulls corrections down on the vehicle, with no laptop in the field.',
+    nameKey: 'companion:templates.esp32XbeeNtrip.name',
+    descriptionKey: 'companion:templates.esp32XbeeNtrip.description',
     board: 'esp32',
     boardVariants: ['ESP32', 'ESP32-S3'],
     category: 'RTK',
     flashMethod: 'serial',
-    features: ['NTRIP server, client and caster modes', 'WiFi AP + station mode', 'UART to TCP/UDP bridging', 'Web configuration UI', 'Same firmware for base or vehicle side'],
-    requirements: ['ESP32 dev board', '3.3V UART to the GNSS receiver (TX/RX/GND)', 'WiFi network or phone hotspot'],
+    featureKeys: ['companion:templates.esp32XbeeNtrip.feature1', 'companion:templates.esp32XbeeNtrip.feature2', 'companion:templates.esp32XbeeNtrip.feature3', 'companion:templates.esp32XbeeNtrip.feature4', 'companion:templates.esp32XbeeNtrip.feature5'],
+    requirementKeys: ['companion:templates.esp32XbeeNtrip.requirement1', 'companion:templates.esp32XbeeNtrip.requirement2', 'companion:templates.esp32XbeeNtrip.requirement3'],
     projectUrl: 'https://github.com/nebkat/esp32-xbee',
     projectName: 'ESP32 XBee',
   },
@@ -153,109 +162,109 @@ export const COMPANION_TEMPLATES: CompanionTemplate[] = [
   // ── Raspberry Pi Templates ───────────────────────────────────
   {
     id: 'pi-telemetry-bridge',
-    name: 'Telemetry Bridge',
-    description: 'MAVLink router + WiFi AP. Connects ground stations wirelessly without a telemetry radio.',
+    nameKey: 'companion:templates.piTelemetryBridge.name',
+    descriptionKey: 'companion:templates.piTelemetryBridge.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi Zero 2 W', 'Pi 3B+', 'Pi 4', 'Pi 5'],
     category: 'Telemetry',
     flashMethod: 'image',
     installCommand: 'curl -fsSL https://ardudeck.com/companion/pi-telemetry.sh | bash',
-    features: ['mavlink-router daemon', 'WiFi access point', 'Multiple GCS connections', 'ArduDeck Agent pre-installed', 'Auto-start on boot'],
-    requirements: ['Raspberry Pi with WiFi', 'MicroSD card (8GB+)', 'UART or USB connection to FC', '5V 3A BEC'],
+    featureKeys: ['companion:templates.piTelemetryBridge.feature1', 'companion:templates.piTelemetryBridge.feature2', 'companion:templates.piTelemetryBridge.feature3', 'companion:templates.piTelemetryBridge.feature4', 'companion:templates.piTelemetryBridge.feature5'],
+    requirementKeys: ['companion:templates.piTelemetryBridge.requirement1', 'companion:templates.piTelemetryBridge.requirement2', 'companion:templates.piTelemetryBridge.requirement3', 'companion:templates.piTelemetryBridge.requirement4'],
     projectName: 'mavlink-router + hostapd',
   },
   {
     id: 'pi-video-telemetry',
-    name: 'Video + Telemetry',
-    description: 'Camera streaming with GStreamer + MAVLink routing. Low-latency H.264 video over WiFi.',
+    nameKey: 'companion:templates.piVideoTelemetry.name',
+    descriptionKey: 'companion:templates.piVideoTelemetry.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi 4', 'Pi 5'],
     category: 'Video',
     flashMethod: 'image',
     installCommand: 'curl -fsSL https://ardudeck.com/companion/pi-video.sh | bash',
-    features: ['Pi Camera H.264 streaming', 'GStreamer RTSP/UDP pipeline', 'MAVLink routing', 'WiFi AP', 'ArduDeck Agent', 'Web preview'],
-    requirements: ['Raspberry Pi 4 or 5', 'Pi Camera Module (v2/v3/HQ)', 'MicroSD card (16GB+)', 'UART or USB to FC', '5V 3A BEC'],
+    featureKeys: ['companion:templates.piVideoTelemetry.feature1', 'companion:templates.piVideoTelemetry.feature2', 'companion:templates.piVideoTelemetry.feature3', 'companion:templates.piVideoTelemetry.feature4', 'companion:templates.piVideoTelemetry.feature5', 'companion:templates.piVideoTelemetry.feature6'],
+    requirementKeys: ['companion:templates.piVideoTelemetry.requirement1', 'companion:templates.piVideoTelemetry.requirement2', 'companion:templates.piVideoTelemetry.requirement3', 'companion:templates.piVideoTelemetry.requirement4', 'companion:templates.piVideoTelemetry.requirement5'],
     projectName: 'GStreamer + mavlink-router',
   },
   {
     id: 'rpanion-server',
-    name: 'Rpanion Server',
-    description: 'Full-featured companion with web UI. Telemetry routing, video streaming, NTRIP, and network management.',
+    nameKey: 'companion:templates.rpanionServer.name',
+    descriptionKey: 'companion:templates.rpanionServer.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi 3B+', 'Pi 4', 'Pi 5'],
-    category: 'Full Stack',
+    category: 'Full Stack', // i18n-exempt: id, shown via CATEGORY_LABEL_KEY
     flashMethod: 'image',
     imageUrl: 'https://github.com/stephendade/Rpanion-server/releases',
-    features: ['Web-based config UI', 'MAVLink routing', 'Video streaming', 'NTRIP client (RTK GPS)', 'Flight controller management', 'Network config'],
-    requirements: ['Raspberry Pi 3B+ or later', 'MicroSD card (16GB+)', 'UART or USB to FC', '5V 3A BEC'],
+    featureKeys: ['companion:templates.rpanionServer.feature1', 'companion:templates.rpanionServer.feature2', 'companion:templates.rpanionServer.feature3', 'companion:templates.rpanionServer.feature4', 'companion:templates.rpanionServer.feature5', 'companion:templates.rpanionServer.feature6'],
+    requirementKeys: ['companion:templates.rpanionServer.requirement1', 'companion:templates.rpanionServer.requirement2', 'companion:templates.rpanionServer.requirement3', 'companion:templates.rpanionServer.requirement4'],
     projectUrl: 'https://github.com/stephendade/Rpanion-server',
-    projectName: 'Rpanion Server',
+    projectName: 'Rpanion Server', // i18n-exempt: brand
   },
   {
     id: 'blueos',
-    name: 'BlueOS',
-    description: 'Docker-based companion OS with extension store. Full vehicle management, video, and third-party extensions.',
+    nameKey: 'companion:templates.blueos.name',
+    descriptionKey: 'companion:templates.blueos.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi 3B+', 'Pi 4', 'Pi 5'],
-    category: 'Full Stack',
+    category: 'Full Stack', // i18n-exempt: id, shown via CATEGORY_LABEL_KEY
     flashMethod: 'image',
     imageUrl: 'https://github.com/bluerobotics/BlueOS/releases',
-    features: ['Docker container architecture', 'Extension marketplace', 'MAVLink routing', 'Video streaming', 'Web UI', 'OTA updates', 'Log management'],
-    requirements: ['Raspberry Pi 3B+ or later', 'MicroSD card (16GB+)', 'UART or USB to FC', '5V 3A BEC'],
+    featureKeys: ['companion:templates.blueos.feature1', 'companion:templates.blueos.feature2', 'companion:templates.blueos.feature3', 'companion:templates.blueos.feature4', 'companion:templates.blueos.feature5', 'companion:templates.blueos.feature6', 'companion:templates.blueos.feature7'],
+    requirementKeys: ['companion:templates.blueos.requirement1', 'companion:templates.blueos.requirement2', 'companion:templates.blueos.requirement3', 'companion:templates.blueos.requirement4'],
     projectUrl: 'https://github.com/bluerobotics/BlueOS',
     projectName: 'BlueOS by Blue Robotics',
   },
   {
     id: 'pi-mavsdk-autonomy',
-    name: 'Autonomous Mission Runner',
-    description: 'Python environment with MAVSDK for onboard autonomous missions. Run scripts without a GCS link.',
+    nameKey: 'companion:templates.piMavsdkAutonomy.name',
+    descriptionKey: 'companion:templates.piMavsdkAutonomy.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi 4', 'Pi 5'],
     category: 'Autonomy',
     flashMethod: 'image',
     installCommand: 'curl -fsSL https://ardudeck.com/companion/pi-autonomy.sh | bash',
-    features: ['MAVSDK Python', 'MAVLink routing', 'Mission script examples', 'Geofence integration', 'ArduDeck Agent', 'Auto-start on boot'],
-    requirements: ['Raspberry Pi 4 or 5', 'MicroSD card (16GB+)', 'UART or USB to FC', '5V 3A BEC'],
+    featureKeys: ['companion:templates.piMavsdkAutonomy.feature1', 'companion:templates.piMavsdkAutonomy.feature2', 'companion:templates.piMavsdkAutonomy.feature3', 'companion:templates.piMavsdkAutonomy.feature4', 'companion:templates.piMavsdkAutonomy.feature5', 'companion:templates.piMavsdkAutonomy.feature6'],
+    requirementKeys: ['companion:templates.piMavsdkAutonomy.requirement1', 'companion:templates.piMavsdkAutonomy.requirement2', 'companion:templates.piMavsdkAutonomy.requirement3', 'companion:templates.piMavsdkAutonomy.requirement4'],
     projectName: 'MAVSDK + mavlink-router',
   },
   {
     id: 'openhd-air',
-    name: 'OpenHD Air Unit',
-    description: 'Digital FPV system: HD video + telemetry + RC over WiFi broadcast. Up to 50km range.',
+    nameKey: 'companion:templates.openhdAir.name',
+    descriptionKey: 'companion:templates.openhdAir.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi Zero 2 W', 'Pi 3B+', 'Pi 4'],
     category: 'Video',
     flashMethod: 'image',
-    features: ['HD video streaming (H.264/H.265)', 'Integrated telemetry overlay', 'RC control link', 'Up to 50km range', 'Dual-band support', 'Recording'],
-    requirements: ['Raspberry Pi (air + ground)', 'Compatible WiFi adapter (RTL8812AU)', 'Pi Camera', 'MicroSD card (16GB+)'],
+    featureKeys: ['companion:templates.openhdAir.feature1', 'companion:templates.openhdAir.feature2', 'companion:templates.openhdAir.feature3', 'companion:templates.openhdAir.feature4', 'companion:templates.openhdAir.feature5', 'companion:templates.openhdAir.feature6'],
+    requirementKeys: ['companion:templates.openhdAir.requirement1', 'companion:templates.openhdAir.requirement2', 'companion:templates.openhdAir.requirement3', 'companion:templates.openhdAir.requirement4'],
     projectUrl: 'https://github.com/OpenHD/OpenHD',
     projectName: 'OpenHD',
   },
   {
     id: 'pi-str2str-base',
-    name: 'RTK Base Streamer',
-    description: 'Base side: reads RTCM3 off the receiver and pushes it to an NTRIP caster. Headless, reconnects on its own, no GUI anywhere.',
+    nameKey: 'companion:templates.piStr2strBase.name',
+    descriptionKey: 'companion:templates.piStr2strBase.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi Zero 2 W', 'Pi 3B+', 'Pi 4', 'Pi 5'],
     category: 'RTK',
     flashMethod: 'script',
     installCommand: 'sudo apt install -y build-essential git && git clone https://github.com/rtklibexplorer/RTKLIB && make -C RTKLIB/app/consapp/str2str/gcc',
-    features: ['str2str serial to NTRIP server', 'Feeds rtk2go or a private caster', 'Logs raw RTCM to disk', 'Reconnects after a dropout', 'Runs as a systemd unit'],
-    requirements: ['Raspberry Pi with network or LTE', 'Base receiver on USB or 3.3V UART', 'Caster mountpoint credentials'],
+    featureKeys: ['companion:templates.piStr2strBase.feature1', 'companion:templates.piStr2strBase.feature2', 'companion:templates.piStr2strBase.feature3', 'companion:templates.piStr2strBase.feature4', 'companion:templates.piStr2strBase.feature5'],
+    requirementKeys: ['companion:templates.piStr2strBase.requirement1', 'companion:templates.piStr2strBase.requirement2', 'companion:templates.piStr2strBase.requirement3'],
     projectUrl: 'https://github.com/rtklibexplorer/RTKLIB',
     projectName: 'RTKLIB demo5 (str2str)',
   },
   {
     id: 'pi-mavproxy-ntrip',
-    name: 'RTK Injector',
-    description: 'Vehicle side: pulls corrections from a caster and injects them as GPS_RTCM_DATA straight into the flight controller. Nothing on the ground has to stay connected.',
+    nameKey: 'companion:templates.piMavproxyNtrip.name',
+    descriptionKey: 'companion:templates.piMavproxyNtrip.description',
     board: 'raspberry-pi',
     boardVariants: ['Pi Zero 2 W', 'Pi 3B+', 'Pi 4', 'Pi 5'],
     category: 'RTK',
     flashMethod: 'script',
     installCommand: 'pip3 install MAVProxy',
-    features: ['Injects GPS_RTCM_DATA over MAVLink', 'Started with --load-module ntrip', 'Sends vehicle position upstream for VRS mountpoints', 'Works on LTE or a phone hotspot', 'Auto-start as a service'],
-    requirements: ['Raspberry Pi with LTE or WiFi', 'Serial or USB link to the FC', 'Caster mountpoint credentials'],
+    featureKeys: ['companion:templates.piMavproxyNtrip.feature1', 'companion:templates.piMavproxyNtrip.feature2', 'companion:templates.piMavproxyNtrip.feature3', 'companion:templates.piMavproxyNtrip.feature4', 'companion:templates.piMavproxyNtrip.feature5'],
+    requirementKeys: ['companion:templates.piMavproxyNtrip.requirement1', 'companion:templates.piMavproxyNtrip.requirement2', 'companion:templates.piMavproxyNtrip.requirement3'],
     projectUrl: 'https://github.com/ArduPilot/MAVProxy',
     projectName: 'MAVProxy ntrip module',
   },
@@ -263,15 +272,15 @@ export const COMPANION_TEMPLATES: CompanionTemplate[] = [
   // ── Jetson Templates ─────────────────────────────────────────
   {
     id: 'jetson-cv-companion',
-    name: 'Computer Vision Companion',
-    description: 'GPU-accelerated object detection and tracking with YOLO. Real-time obstacle avoidance and target following.',
+    nameKey: 'companion:templates.jetsonCvCompanion.name',
+    descriptionKey: 'companion:templates.jetsonCvCompanion.description',
     board: 'jetson',
-    boardVariants: ['Jetson Nano', 'Orin Nano'],
+    boardVariants: ['Jetson Nano', 'Orin Nano'], // i18n-exempt: brand
     category: 'Autonomy',
     flashMethod: 'script',
     installCommand: 'curl -fsSL https://ardudeck.com/companion/jetson-cv.sh | bash',
-    features: ['YOLO object detection (GPU)', 'MAVSDK integration', 'MAVLink routing', 'Camera pipeline', 'ArduDeck Agent', 'ROS2 optional'],
-    requirements: ['NVIDIA Jetson Nano or Orin Nano', 'JetPack SDK installed', 'USB camera or CSI camera', 'UART or USB to FC'],
+    featureKeys: ['companion:templates.jetsonCvCompanion.feature1', 'companion:templates.jetsonCvCompanion.feature2', 'companion:templates.jetsonCvCompanion.feature3', 'companion:templates.jetsonCvCompanion.feature4', 'companion:templates.jetsonCvCompanion.feature5', 'companion:templates.jetsonCvCompanion.feature6'],
+    requirementKeys: ['companion:templates.jetsonCvCompanion.requirement1', 'companion:templates.jetsonCvCompanion.requirement2', 'companion:templates.jetsonCvCompanion.requirement3', 'companion:templates.jetsonCvCompanion.requirement4'],
     projectName: 'MAVSDK + TensorRT',
   },
 ];

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { cropRectFor } from './region-crop';
 import { publishWhip, streamDownscale, MAX_STREAM_EDGE, type WhipSession } from './whip-publish';
 import { IDLE_STREAM, type CanvasStreamSnapshot } from '../../../shared/camera-types';
+import { t } from '../../../shared/i18n/index.js';
 
 export type { CanvasStreamState, CanvasStreamSnapshot } from '../../../shared/camera-types';
 export { IDLE_STREAM } from '../../../shared/camera-types';
@@ -60,18 +61,18 @@ export function useCanvasStream(
       const el = region?.current ?? null;
       const box = (el ?? canvas).getBoundingClientRect();
       if (box.width < 2 || box.height < 2) {
-        fail('This view is hidden (another tab or collapsed). Show it, then start the stream.');
+        fail(t('camera:stream.viewHidden'));
         return;
       }
       let track: MediaStreamTrack | undefined;
       try {
         track = el ? await captureRegion(el) : canvas.captureStream(STREAM_FPS).getVideoTracks()[0];
       } catch (err) {
-        fail(`Could not capture the view: ${err instanceof Error ? err.message : String(err)}`);
+        fail(t('camera:stream.captureFailed', { error: err instanceof Error ? err.message : String(err) }));
         return;
       }
       if (!track) {
-        fail('Could not capture the 3D view');
+        fail(t('camera:stream.capture3dFailed'));
         return;
       }
       if (cancelled()) {
@@ -86,7 +87,7 @@ export function useCanvasStream(
       }
       if (!prep.ok || !prep.whipUrl) {
         track.stop();
-        fail(prep.error ?? 'Media hub unavailable', prep.needsInstall === true);
+        fail(prep.error ?? t('camera:stream.hubUnavailable'), prep.needsInstall === true);
         return;
       }
       trackRef.current = track;
@@ -173,7 +174,7 @@ interface BreakoutWindow {
  */
 async function captureRegion(el: HTMLElement): Promise<MediaStreamTrack> {
   const { MediaStreamTrackProcessor: Processor, MediaStreamTrackGenerator: Generator } = window as unknown as BreakoutWindow;
-  if (!Processor || !Generator) throw new Error('frame cropping is not supported by this build');
+  if (!Processor || !Generator) throw new Error('frame cropping is not supported by this build'); // i18n-exempt: technical detail inside captureFailed
   // Unbounded, tab capture copies the whole window at device resolution every frame.
   const scale = regionCaptureScale(el);
   const video = {
@@ -194,7 +195,7 @@ async function captureRegion(el: HTMLElement): Promise<MediaStreamTrack> {
     throw captureError('getDisplayMedia', err, context);
   }
   const source = media.getVideoTracks()[0];
-  if (!source) throw new Error('no video track');
+  if (!source) throw new Error('no video track'); // i18n-exempt: technical detail inside captureFailed
 
   const reader = new Processor({ track: source }).readable.getReader();
   const out = new Generator({ kind: 'video' });
@@ -254,7 +255,7 @@ async function captureRegion(el: HTMLElement): Promise<MediaStreamTrack> {
   if (!gotFrame) {
     out.stop();
     const detail = `read ${counts.read}, sent ${counts.sent}, hidden ${counts.hidden}, rejected ${counts.rejected}${counts.first ? `, ${counts.first}` : ''}${counts.lastError ? `, last error ${counts.lastError}` : ''}`;
-    throw captureError('crop', new Error(`no frames in 3s (${detail})`), context);
+    throw captureError('crop', new Error(`no frames in 3s (${detail})`), context); // i18n-exempt: technical detail
   }
 
   return out;
@@ -273,7 +274,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, discard: (late: T) => void): 
     let done = false;
     const timer = setTimeout(() => {
       done = true;
-      reject(new Error(`timed out after ${ms / 1000}s`));
+      reject(new Error(`timed out after ${ms / 1000}s`)); // i18n-exempt: technical detail
     }, ms);
     p.then(
       (v) => {

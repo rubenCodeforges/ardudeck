@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * Rally Points Types
  *
@@ -109,10 +111,10 @@ export function createRallyPoint(
 export function getRallyFlagsDescription(flags: number): string {
   const descriptions: string[] = [];
   if (flags & RALLY_FLAGS.FAVORABLE_WIND) {
-    descriptions.push('Land into wind');
+    descriptions.push(t('shared:rallyTypes.landIntoWind'));
   }
   if (flags & RALLY_FLAGS.LAND_IMMEDIATELY) {
-    descriptions.push('Land immediately');
+    descriptions.push(t('shared:rallyTypes.landImmediately'));
   }
-  return descriptions.length > 0 ? descriptions.join(', ') : 'None';
+  return descriptions.length > 0 ? descriptions.join(', ') : t('common:none');
 }

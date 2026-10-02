@@ -6,6 +6,7 @@
  */
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSimParam } from '../../hooks/useSimParam';
 
 // Wind direction arrow SVG - rotates to show wind direction
@@ -67,6 +68,7 @@ function SliderRow({ label, value, onChange, min, max, step, unit, available, ac
 }
 
 export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean }) {
+  const { t } = useTranslation();
   const wind = {
     speed: useSimParam('SIM_WIND_SPD', 0),
     direction: useSimParam('SIM_WIND_DIR', 180),
@@ -89,7 +91,7 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
   if (!anyAvailable) {
     return bare ? (
       <div className="flex items-center justify-center h-full text-xs text-content-tertiary">
-        Connect to SITL to control environment
+        {t('sitl:environmentPanel.connectToControl')}
       </div>
     ) : null;
   }
@@ -102,13 +104,13 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
           <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2 15c2-1 4 1 6 0s4-3 6-2 4 2 6 1M2 19c2-1 4 1 6 0s4-3 6-2 4 2 6 1M2 11c2-1 4 1 6 0s4-3 6-2 4 2 6 1" />
           </svg>
-          <h3 className="text-sm font-medium text-content">Environment Simulation</h3>
+          <h3 className="text-sm font-medium text-content">{t('sitl:environmentPanel.title')}</h3>
         </div>
         <button
           onClick={handleReset}
           className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors"
         >
-          Reset
+          {t('common:reset')}
         </button>
       </div>
 
@@ -117,12 +119,12 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
         {/* Wind */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-medium text-content-secondary uppercase tracking-wider">Wind</span>
+            <span className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('common:wind')}</span>
             <div className="flex-1 h-px bg-surface-raised" />
           </div>
 
           <SliderRow
-            label="Speed"
+            label={t('common:speed')}
             value={wind.speed.value}
             onChange={wind.speed.setValue}
             min={0}
@@ -134,7 +136,7 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
           />
 
           <SliderRow
-            label="Direction"
+            label={t('common:direction')}
             value={wind.direction.value}
             onChange={wind.direction.setValue}
             min={0}
@@ -149,7 +151,7 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
           </SliderRow>
 
           <SliderRow
-            label="Turbulence"
+            label={t('sitl:environmentPanel.turbulence')}
             value={wind.turbulence.value}
             onChange={wind.turbulence.setValue}
             min={0}
@@ -164,12 +166,12 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
         {/* Battery */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-medium text-content-secondary uppercase tracking-wider">Battery</span>
+            <span className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('common:battery')}</span>
             <div className="flex-1 h-px bg-surface-raised" />
           </div>
 
           <SliderRow
-            label="Voltage Override"
+            label={t('sitl:environmentPanel.voltageOverride')}
             value={battery.voltage.value}
             onChange={battery.voltage.setValue}
             min={0}
@@ -181,7 +183,7 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
           />
 
           <p className="text-[10px] text-content-tertiary leading-relaxed">
-            Set to 0 for default simulated voltage. Non-zero overrides the simulated battery.
+            {t('sitl:environmentPanel.voltageHint')}
           </p>
         </div>
       </div>

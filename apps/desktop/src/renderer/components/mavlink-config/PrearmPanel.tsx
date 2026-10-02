@@ -9,6 +9,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useMessagesStore } from '../../stores/messages-store';
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
@@ -30,31 +31,32 @@ interface PrearmPanelProps {
 }
 
 /** What actually clears each refusal, in the pilot's terms. */
-const ADVICE: Record<number, { fix: string; tab?: string; view?: string; tabLabel?: string }> = {
-  1: { fix: 'Let the board settle, or check the barometer is not in airflow.' },
-  3: { fix: 'Wait for a 3D fix, or move where the sky is open.' },
+const ADVICE: Record<number, { fixKey: string; tab?: string; view?: string; tabLabelKey?: string }> = {
+  1: { fixKey: 'mavlink-config:prearmPanel.fix1' },
+  3: { fixKey: 'mavlink-config:prearmPanel.fix3' },
   // Level writes AHRS_TRIM_* only; this check reads INS_ACCOFFS_*/INS_ACCSCAL_*,
   // which only the six-point calibration writes.
-  4: { fix: 'Run the Quick accelerometer calibration (one position, vehicle level) or the 6-point one. Level only sets trims and never clears this.', view: 'calibration', tabLabel: 'Open calibration' },
-  2: { fix: 'Calibrate the compass.', view: 'calibration', tabLabel: 'Open calibration' },
-  5: { fix: 'A parameter is out of range; the message names it.', tab: 'parameters', tabLabel: 'Open parameters' },
-  6: { fix: 'Calibrate the radio and centre the sticks.', tab: 'receiver', tabLabel: 'Open RC' },
-  7: { fix: 'Check the supply to the autopilot, it is outside the safe range.' },
-  8: { fix: 'Charge the pack or lower the arming voltage.', tab: 'battery', tabLabel: 'Open battery' },
-  9: { fix: 'Calibrate or disable the airspeed sensor.' },
-  10: { fix: 'No card, or logging failed to start. Turn logging off if the vehicle has no card.', tab: 'logging', tabLabel: 'Open logging' },
-  11: { fix: 'Press the safety switch until the light goes solid.' },
-  12: { fix: 'The receiver is not configured as ArduPilot expects; let it finish, or re-seat it.' },
-  13: { fix: 'The estimator is not happy yet. Keep the vehicle still, or check the messages above.' },
-  14: { fix: 'Load a valid mission, or clear the one on board.', tab: 'mission', tabLabel: 'Open mission' },
-  15: { fix: 'Check the rangefinder wiring and its parameters.' },
-  16: { fix: 'Check the camera or gimbal is powered and reporting.' },
-  17: { fix: 'The companion computer has not authorised arming.' },
-  18: { fix: 'Visual odometry is not reporting.' },
-  19: { fix: 'The in-flight FFT is not producing data.' },
+  4: { fixKey: 'mavlink-config:prearmPanel.fix4', view: 'calibration', tabLabelKey: 'mavlink-config:prearmPanel.openCalibration' },
+  2: { fixKey: 'mavlink-config:prearmPanel.fix2', view: 'calibration', tabLabelKey: 'mavlink-config:prearmPanel.openCalibration' },
+  5: { fixKey: 'mavlink-config:prearmPanel.fix5', tab: 'parameters', tabLabelKey: 'mavlink-config:prearmPanel.openParameters' },
+  6: { fixKey: 'mavlink-config:prearmPanel.fix6', tab: 'receiver', tabLabelKey: 'mavlink-config:prearmPanel.openRc' },
+  7: { fixKey: 'mavlink-config:prearmPanel.fix7' },
+  8: { fixKey: 'mavlink-config:prearmPanel.fix8', tab: 'battery', tabLabelKey: 'mavlink-config:prearmPanel.openBattery' },
+  9: { fixKey: 'mavlink-config:prearmPanel.fix9' },
+  10: { fixKey: 'mavlink-config:prearmPanel.fix10', tab: 'logging', tabLabelKey: 'mavlink-config:prearmPanel.openLogging' },
+  11: { fixKey: 'mavlink-config:prearmPanel.fix11' },
+  12: { fixKey: 'mavlink-config:prearmPanel.fix12' },
+  13: { fixKey: 'mavlink-config:prearmPanel.fix13' },
+  14: { fixKey: 'mavlink-config:prearmPanel.fix14', tab: 'mission', tabLabelKey: 'mavlink-config:prearmPanel.openMission' },
+  15: { fixKey: 'mavlink-config:prearmPanel.fix15' },
+  16: { fixKey: 'mavlink-config:prearmPanel.fix16' },
+  17: { fixKey: 'mavlink-config:prearmPanel.fix17' },
+  18: { fixKey: 'mavlink-config:prearmPanel.fix18' },
+  19: { fixKey: 'mavlink-config:prearmPanel.fix19' },
 };
 
 export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps): JSX.Element {
+  const { t } = useTranslation();
   const statusMessages = useMessagesStore((s) => s.messages);
   const armed = useTelemetryStore((s) => s.flight.armed);
   const setView = useNavigationStore((s) => s.setView);
@@ -84,14 +86,14 @@ export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps)
         </div>
         <div className="flex-1">
           <h3 className={`text-lg font-medium ${blocked ? 'text-amber-300' : 'text-emerald-300'}`}>
-            {armed ? 'Armed' : blocked ? 'Will not arm' : 'Ready to arm'}
+            {armed ? t('common:armed') : blocked ? t('mavlink-config:prearmPanel.willNotArm') : t('mavlink-config:prearmPanel.readyToArm')}
           </h3>
           <p className="text-xs text-content-secondary">
             {armed
-              ? 'Checks passed and the motors are live.'
+              ? t('mavlink-config:prearmPanel.armedBody')
               : blocked
-                ? `${failures.length} ${failures.length === 1 ? 'thing is' : 'things are'} in the way, newest first.`
-                : 'No refusals reported. The vehicle arms when you ask it to.'}
+                ? t('mavlink-config:prearmPanel.blocked', { count: failures.length })
+                : t('mavlink-config:prearmPanel.ready')}
           </p>
         </div>
       </div>
@@ -108,8 +110,8 @@ export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps)
                   <div className="flex-1">
                     <div className="text-sm text-content">{f.text}</div>
                     <div className="mt-0.5 text-[11px] text-content-tertiary">
-                      {name ? `${name} check` : 'No matching check'}
-                      {advice ? ` · ${advice.fix}` : ''}
+                      {name ? t('mavlink-config:prearmPanel.checkName', { name }) : t('mavlink-config:prearmPanel.noMatchingCheck')}
+                      {advice ? ` · ${t(advice.fixKey)}` : ''}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -121,16 +123,16 @@ export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps)
                         }}
                         className="flex items-center gap-1 rounded-md bg-surface-raised px-2.5 py-1.5 text-[11px] text-content-secondary hover:text-content"
                       >
-                        {advice.tabLabel} <ArrowRight className="w-3 h-3" />
+                        {advice.tabLabelKey ? t(advice.tabLabelKey) : null} <ArrowRight className="w-3 h-3" />
                       </button>
                     )}
                     {canSkip && (
                       <button
                         onClick={() => onWrite(withCheckDisabled(model!, value, f.bit!))}
-                        data-tip={`Stop checking ${name} before arming. Only do this when the hardware is genuinely absent.`}
+                        data-tip={t('mavlink-config:prearmPanel.skipTip', { name })}
                         className="rounded-md bg-amber-500/20 px-2.5 py-1.5 text-[11px] text-amber-200 hover:bg-amber-500/30"
                       >
-                        Skip this check
+                        {t('mavlink-config:prearmPanel.skipCheck')}
                       </button>
                     )}
                   </div>

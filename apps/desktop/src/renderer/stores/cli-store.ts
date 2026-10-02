@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { useConnectionStore } from './connection-store';
 
 // =============================================================================
@@ -320,7 +321,7 @@ export const useCliStore = create<CliStore>((set, get) => ({
       await window.electronAPI.cliSendCommand(command);
     } catch (err) {
       console.error('[CLI Store] Failed to send command:', err);
-      appendOutput(`Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
+      appendOutput(`Error: ${err instanceof Error ? err.message : t('common:unknownError')}\n`);
     }
   },
 
@@ -473,13 +474,13 @@ export const useCliStore = create<CliStore>((set, get) => ({
 
     try {
       // Step 1: Saving
-      setRebootState('saving', 'Saving configuration to EEPROM...');
+      setRebootState('saving', t('stores:cliStore.savingConfig'));
 
       // Send save command (main process handles scheduleReconnect)
       await window.electronAPI.cliSendCommand('save');
 
       // Step 2: Rebooting - poll for reconnection
-      setRebootState('rebooting', 'Board is rebooting...');
+      setRebootState('rebooting', t('stores:cliStore.rebooting'));
 
       // Poll connectionState until reconnected (max 12s)
       const pollStart = Date.now();
@@ -491,7 +492,7 @@ export const useCliStore = create<CliStore>((set, get) => ({
         const connState = useConnectionStore.getState().connectionState;
 
         if (connState.isReconnecting) {
-          setRebootState('reconnecting', 'Reconnecting to board...');
+          setRebootState('reconnecting', t('stores:cliStore.reconnecting'));
         }
 
         if (connState.isConnected && !connState.isReconnecting) {
@@ -501,9 +502,9 @@ export const useCliStore = create<CliStore>((set, get) => ({
       }
 
       if (reconnected) {
-        setRebootState('done', 'Configuration saved! Board reconnected.');
+        setRebootState('done', t('stores:cliStore.savedReconnected'));
       } else {
-        setRebootState('done', 'Configuration saved! Reconnecting...');
+        setRebootState('done', t('stores:cliStore.savedReconnecting'));
       }
 
       // Auto-clear after 2 seconds
@@ -513,7 +514,7 @@ export const useCliStore = create<CliStore>((set, get) => ({
 
     } catch (err) {
       console.error('[CLI Store] Save failed:', err);
-      setRebootError(err instanceof Error ? err.message : 'Failed to save configuration');
+      setRebootError(err instanceof Error ? err.message : t('stores:cliStore.saveFailed'));
     }
   },
 

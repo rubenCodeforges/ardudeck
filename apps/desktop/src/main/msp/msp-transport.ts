@@ -62,18 +62,18 @@ export async function withConfigLock<T>(fn: () => Promise<T>): Promise<T> {
 
 export async function sendMspRequest(command: number, timeout: number = 1000): Promise<Uint8Array> {
   if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-    throw new Error('MSP transport not connected');
+    throw new Error('MSP transport not connected'); // i18n-exempt
   }
 
   if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
-    throw new Error('MSP blocked - CLI mode active');
+    throw new Error('MSP blocked - CLI mode active'); // i18n-exempt
   }
 
   const release = await acquireMutex();
 
   try {
     if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-      throw new Error('MSP transport closed while waiting');
+      throw new Error('MSP transport closed while waiting'); // i18n-exempt
     }
 
     const packet = buildMspV1Request(command);
@@ -83,7 +83,7 @@ export async function sendMspRequest(command: number, timeout: number = 1000): P
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
         ctx.pendingResponses.delete(command);
-        reject(new Error(`MSP command ${command} timed out`));
+        reject(new Error(`MSP command ${command} timed out`)); // i18n-exempt
       }, timeout);
 
       ctx.pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
@@ -95,18 +95,18 @@ export async function sendMspRequest(command: number, timeout: number = 1000): P
 
 export async function sendMspRequestWithPayload(command: number, payload: Uint8Array, timeout: number = 1000): Promise<Uint8Array> {
   if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-    throw new Error('MSP transport not connected');
+    throw new Error('MSP transport not connected'); // i18n-exempt
   }
 
   if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
-    throw new Error('MSP blocked - CLI mode active');
+    throw new Error('MSP blocked - CLI mode active'); // i18n-exempt
   }
 
   const release = await acquireMutex();
 
   try {
     if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-      throw new Error('MSP transport closed while waiting');
+      throw new Error('MSP transport closed while waiting'); // i18n-exempt
     }
 
     const packet = buildMspV1RequestWithPayload(command, payload);
@@ -116,7 +116,7 @@ export async function sendMspRequestWithPayload(command: number, payload: Uint8A
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
         ctx.pendingResponses.delete(command);
-        reject(new Error(`MSP command ${command} timed out`));
+        reject(new Error(`MSP command ${command} timed out`)); // i18n-exempt
       }, timeout);
 
       ctx.pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
@@ -131,18 +131,18 @@ export async function sendMspRequestWithPayload(command: number, payload: Uint8A
  */
 export async function sendMspV2Request(command: number, timeout: number = 1000): Promise<Uint8Array> {
   if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-    throw new Error('MSP transport not connected');
+    throw new Error('MSP transport not connected'); // i18n-exempt
   }
 
   if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
-    throw new Error('MSP blocked - CLI mode active');
+    throw new Error('MSP blocked - CLI mode active'); // i18n-exempt
   }
 
   const release = await acquireMutex();
 
   try {
     if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-      throw new Error('MSP transport closed while waiting');
+      throw new Error('MSP transport closed while waiting'); // i18n-exempt
     }
 
     const packet = buildMspV2Request(command);
@@ -152,7 +152,7 @@ export async function sendMspV2Request(command: number, timeout: number = 1000):
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
         ctx.pendingResponses.delete(command);
-        reject(new Error(`MSP2 command ${command.toString(16)} timed out`));
+        reject(new Error(`MSP2 command ${command.toString(16)} timed out`)); // i18n-exempt
       }, timeout);
 
       ctx.pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });
@@ -164,18 +164,18 @@ export async function sendMspV2Request(command: number, timeout: number = 1000):
 
 export async function sendMspV2RequestWithPayload(command: number, payload: Uint8Array, timeout: number = 1000): Promise<Uint8Array> {
   if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-    throw new Error('MSP transport not connected');
+    throw new Error('MSP transport not connected'); // i18n-exempt
   }
 
   if (ctx.servoCliModeActive || ctx.tuningCliModeActive || isCliModeActive()) {
-    throw new Error('MSP blocked - CLI mode active');
+    throw new Error('MSP blocked - CLI mode active'); // i18n-exempt
   }
 
   const release = await acquireMutex();
 
   try {
     if (!ctx.currentTransport || !ctx.currentTransport.isOpen) {
-      throw new Error('MSP transport closed while waiting');
+      throw new Error('MSP transport closed while waiting'); // i18n-exempt
     }
 
     const packet = buildMspV2RequestWithPayload(command, payload);
@@ -185,7 +185,7 @@ export async function sendMspV2RequestWithPayload(command: number, payload: Uint
     return await new Promise<Uint8Array>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
         ctx.pendingResponses.delete(command);
-        reject(new Error(`MSP2 command ${command.toString(16)} timed out`));
+        reject(new Error(`MSP2 command ${command.toString(16)} timed out`)); // i18n-exempt
       }, timeout);
 
       ctx.pendingResponses.set(command, { resolve, reject, timeout: timeoutHandle });

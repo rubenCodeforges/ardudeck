@@ -1,0 +1,12 @@
+{
+  "detachedRoot": {
+    "closeTitle": "Close this window and return to ArduDeck",
+    "dockBack": "Dock back",
+    "keepOnTop": "Keep this window on top of ArduDeck",
+    "missing": "(missing)",
+    "notRegistered": "componentId <code>{{id}}</code> is not registered.",
+    "pinned": "Pinned on top, click to unpin",
+    "toggleOnTop": "Toggle always on top",
+    "unknownComponent": "Unknown component"
+  }
+}

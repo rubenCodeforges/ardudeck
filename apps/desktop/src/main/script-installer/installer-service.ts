@@ -27,6 +27,7 @@ import type {
 import { runPreflight, preflightOk } from './preflight';
 import { resetHeartbeat, waitForHeartbeat } from './heartbeat-tracker';
 import * as registry from './registry-store';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * Adapter interface the installer uses to talk to the connected flight
@@ -148,7 +149,7 @@ export function cancelInstall(): void {
 }
 
 export async function applyFix(fix: PreflightFix): Promise<void> {
-  if (!active) throw new Error('No install in progress');
+  if (!active) throw new Error('No install in progress'); // i18n-exempt
   const { adapter, emitter, bundle } = active;
   if (fix.type === 'set_param') {
     const before = (await adapter.readParams([fix.param]))[fix.param] ?? 0;
@@ -161,7 +162,7 @@ export async function applyFix(fix: PreflightFix): Promise<void> {
     });
     const ok = await adapter.setParam(fix.param, fix.value);
     if (!ok) {
-      emitFatal(emitter, 'PARAM_SET_FAILED', `Failed to set ${fix.param}`);
+      emitFatal(emitter, 'PARAM_SET_FAILED', t('main:scriptInstaller.setParamFailed', { param: fix.param }));
       return;
     }
     // Record the change for revert-on-uninstall.
@@ -183,7 +184,7 @@ export async function applyFix(fix: PreflightFix): Promise<void> {
     }
     if (fix.requiresReboot) {
       if (adapter.isVehicleArmed()) {
-        emitFatal(emitter, 'VEHICLE_ARMED_BLOCK', 'Cannot reboot while vehicle is armed');
+        emitFatal(emitter, 'VEHICLE_ARMED_BLOCK', t('main:scriptInstaller.cannotRebootArmed'));
         return;
       }
       emitter({ phase: 'rebooting', secondsWaited: 0, estimatedTotalSec: 30 });
@@ -211,7 +212,7 @@ export async function applyFix(fix: PreflightFix): Promise<void> {
     });
   } else if (fix.type === 'reboot') {
     if (adapter.isVehicleArmed()) {
-      emitFatal(emitter, 'VEHICLE_ARMED_BLOCK', 'Cannot reboot while vehicle is armed');
+      emitFatal(emitter, 'VEHICLE_ARMED_BLOCK', t('main:scriptInstaller.cannotRebootArmed'));
       return;
     }
     emitter({ phase: 'rebooting', secondsWaited: 0, estimatedTotalSec: 20 });
@@ -223,14 +224,14 @@ export async function applyFix(fix: PreflightFix): Promise<void> {
     await emitPreflight(active);
   } else if (fix.type === 'disarm') {
     // We never auto-disarm. Surface an explanatory error.
-    emitFatal(active.emitter, 'VEHICLE_ARMED_BLOCK', 'Disarm the vehicle from the Flight Control panel and try again.');
+    emitFatal(active.emitter, 'VEHICLE_ARMED_BLOCK', t('main:scriptInstaller.disarmFirst'));
   }
 }
 
 // ─── Internals ───────────────────────────────────────────────────────────────
 
 class InstallCancelled extends Error {
-  constructor() { super('Install cancelled by user'); }
+  constructor() { super('Install cancelled by user'); } // i18n-exempt
 }
 
 function emitFatal(emitter: InstallStateEmitter, code: InstallErrorCode, message: string) {
@@ -264,7 +265,7 @@ async function runFlow(state: InternalState) {
   try {
     // 1. Preflight
     if (!adapter.getAutopilotUid()) {
-      emitFatal(emitter, 'NOT_CONNECTED', 'No flight controller connected');
+      emitFatal(emitter, 'NOT_CONNECTED', t('main:scriptInstaller.noFc'));
       return;
     }
     const checks = await emitPreflight(state);
@@ -286,7 +287,7 @@ async function runFlow(state: InternalState) {
     // Re-run preflight one final time to catch any drift between consent and upload.
     const finalChecks = await runPreflightAgainst(state);
     if (!preflightOk(finalChecks)) {
-      emitFatal(emitter, 'PRECHECK_FAILED', 'Preflight failed after consent. Resolve outstanding issues.');
+      emitFatal(emitter, 'PRECHECK_FAILED', t('main:scriptInstaller.preflightFailedAfterConsent'));
       return;
     }
 
@@ -347,7 +348,7 @@ async function runFlow(state: InternalState) {
     const auditEntry: AuditEntry = {
       type: 'ftp_write',
       timestamp: new Date().toISOString(),
-      summary: `Wrote ${bundle.manifest.filename} (${bundle.sourceBytes.length} bytes)`,
+      summary: `Wrote ${bundle.manifest.filename} (${bundle.sourceBytes.length} bytes)`, // i18n-exempt
     };
 
     // 4. Wait for heartbeat - script must publish AD_HB to confirm it loaded.
@@ -366,7 +367,7 @@ async function runFlow(state: InternalState) {
     const observedVersion = await waitForHeartbeat(HEARTBEAT_TIMEOUT_SEC * 1000);
     clearInterval(waitTick);
     if (observedVersion === null) {
-      emitFatal(emitter, 'HEARTBEAT_TIMED_OUT', `Script uploaded but no heartbeat (${bundle.manifest.heartbeat.name}) received within ${HEARTBEAT_TIMEOUT_SEC}s. Possible causes:\n  • SCR_ENABLE is not 1 (preflight should have caught this)\n  • The script crashed on load - check the FC's STATUSTEXT messages\n  • The FC didn't actually reboot/reload the script subsystem\n  • SITL didn't restart cleanly`);
+      emitFatal(emitter, 'HEARTBEAT_TIMED_OUT', t('main:scriptInstaller.noHeartbeat', { name: bundle.manifest.heartbeat.name, seconds: HEARTBEAT_TIMEOUT_SEC }));
       return;
     }
 
@@ -374,7 +375,7 @@ async function runFlow(state: InternalState) {
     emitter({ phase: 'verifying', expectedVersion: bundle.manifest.version });
     const expectedFloat = parseFloat(bundle.manifest.version);
     if (!Number.isNaN(expectedFloat) && Math.abs(observedVersion - expectedFloat) > 0.001) {
-      emitFatal(emitter, 'VERSION_MISMATCH', `Expected v${bundle.manifest.version} but FC reports v${observedVersion}. Possibly an older script is still loaded.`);
+      emitFatal(emitter, 'VERSION_MISMATCH', t('main:scriptInstaller.versionMismatch', { expected: bundle.manifest.version, observed: observedVersion }));
       return;
     }
 
@@ -392,10 +393,10 @@ async function runFlow(state: InternalState) {
     emitter({ phase: 'success', installedAt: entry.installedAt });
   } catch (err) {
     if (err instanceof InstallCancelled) {
-      emitFatal(emitter, 'CANCELLED', 'Install cancelled');
+      emitFatal(emitter, 'CANCELLED', t('main:scriptInstaller.cancelled'));
       return;
     }
-    const msg = err instanceof Error ? err.message : 'Unknown error';
+    const msg = err instanceof Error ? err.message : t('common:unknownError');
     emitFatal(emitter, 'UNKNOWN', msg);
   }
 }

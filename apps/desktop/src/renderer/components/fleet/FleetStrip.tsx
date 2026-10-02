@@ -7,6 +7,7 @@
  * theme. Renders nothing for a single vehicle.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useState, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useFleetVehicles, selectActiveVehicle, deselectActiveVehicle, type FleetVehicle } from '../../hooks/useFleet';
@@ -51,6 +52,7 @@ function WingmenRail({ leaderKey, leaderSysid, children }: { leaderKey: string; 
 }
 
 function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 'wingman'; count?: number }) {
+  const { t } = useTranslation();
   const toggleSelected = useActiveVehicleStore((s) => s.toggleSelected);
   const openContextMenu = useFormationStore((s) => s.openContextMenu);
   const setColor = useVehicleAppearanceStore((s) => s.setColor);
@@ -69,7 +71,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
       className={`group relative flex items-center gap-2 cursor-grab active:cursor-grabbing rounded border pl-2 pr-1.5 py-1 transition-colors ${
         v.isActive ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-subtle bg-surface hover:bg-surface-raised'
       }`}
-      data-tip={v.isActive ? `${v.label} - click to deselect` : `${v.label} - ${v.mode}${v.armed ? ' - ARMED' : ''}`}
+      data-tip={v.isActive ? t('fleet:fleetStrip.deselectTip', { label: v.label }) : t(v.armed ? 'fleet:fleetStrip.vehicleTipArmed' : 'fleet:fleetStrip.vehicleTip', { label: v.label, mode: v.mode })}
     >
       {/* Identity colour bar - matches this vehicle's map marker + its waypoints */}
       <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full" style={{ background: identityColor }} />
@@ -90,7 +92,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
           background: 'var(--bg-inset)',
           boxShadow: `0 0 0 1.5px ${role === 'leader' ? '#f59e0b' : stateColor.fill}`,
         }}
-        data-tip={`${airframeLabel(v.mavType)} - ${v.state} (click to set identity colour)`}
+        data-tip={t('fleet:fleetStrip.identityTip', { airframe: airframeLabel(v.mavType), state: v.state })}
       >
         <AirframeIcon mavType={v.mavType} size={role === 'wingman' ? 13 : 16} />
       </button>
@@ -109,7 +111,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
                   onClick={() => { setColor(v.key, c); setSwatchOpen(false); }}
                   className={`w-5 h-5 rounded transition-transform hover:scale-110 ${c === identityColor ? 'ring-2 ring-blue-500' : ''}`}
                   style={{ backgroundColor: c }}
-                  aria-label={`Set colour ${c}`}
+                  aria-label={t('fleet:fleetStrip.setColour', { color: c })}
                 />
               ))}
             </div>
@@ -132,7 +134,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
         <div className="flex items-center gap-1.5">
           <span className="font-mono text-[11px] font-semibold text-content truncate">{v.label}</span>
           {role === 'leader' && (
-            <span className="text-[10px] font-bold uppercase tracking-wide px-1 rounded-sm bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">Lead</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1 rounded-sm bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">{t('fleet:fleetStrip.lead')}</span>
           )}
           {role === 'leader' && count > 0 && (
             <span className="text-[9px] font-mono text-content-tertiary">+{count}</span>
@@ -155,7 +157,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
           onClick={(e) => e.stopPropagation()}
           onChange={() => toggleSelected(v.key)}
           className={`shrink-0 accent-cyan-500 w-3 h-3 transition-opacity ${v.isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-          data-tip="Select for group commands"
+          data-tip={t('fleet:fleetStrip.selectTip')}
         />
       )}
 
@@ -167,7 +169,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
           const r = e.currentTarget.getBoundingClientRect();
           openContextMenu({ x: r.right + 4, y: r.top, vehicleKey: v.key });
         }}
-        data-tip="Orders"
+        data-tip={t('fleet:fleetStrip.orders')}
         className="shrink-0 grid place-items-center w-4 h-5 rounded text-content-tertiary hover:text-content hover:bg-surface-raised opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -177,6 +179,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
 }
 
 export function FleetStrip() {
+  const { t } = useTranslation();
   const vehicles = useFleetVehicles();
   const formations = useActiveVehicleStore((s) => s.formations);
   const { addToFleet, removeFromFleet } = useFormationControl();
@@ -204,7 +207,7 @@ export function FleetStrip() {
   if (collapsed) {
     return (
       <div className="shrink-0 w-8 border-r border-subtle bg-surface-nav flex flex-col items-center py-2 gap-2">
-        <button onClick={() => setCollapsed(false)} className="text-content-secondary hover:text-content text-xs" data-tip="Expand fleet">{'»'}</button>
+        <button onClick={() => setCollapsed(false)} className="text-content-secondary hover:text-content text-xs" data-tip={t('fleet:fleetStrip.expandFleet')}>{'»'}</button>
         {vehicles.map((v) => (
           <span
             key={v.key}
@@ -238,9 +241,9 @@ export function FleetStrip() {
     <div className="shrink-0 w-52 border-r border-subtle bg-surface-nav flex flex-col text-content">
       <div className="flex items-center justify-between px-2.5 py-2 border-b border-subtle">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-content-secondary">
-          Fleet <span className="text-content-tertiary">·</span> <span className="font-mono text-content">{vehicles.length}</span>
+          {t('fleet:fleetStrip.fleet')} <span className="text-content-tertiary">·</span> <span className="font-mono text-content">{vehicles.length}</span>
         </span>
-        <button onClick={() => setCollapsed(true)} className="text-content-secondary hover:text-content text-xs" data-tip="Collapse fleet">{'«'}</button>
+        <button onClick={() => setCollapsed(true)} className="text-content-secondary hover:text-content text-xs" data-tip={t('fleet:fleetStrip.collapseFleet')}>{'«'}</button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
@@ -260,7 +263,7 @@ export function FleetStrip() {
                   type="button"
                   onClick={() => toggleFleet(g.leader.key, expanded)}
                   className="shrink-0 w-4 h-6 grid place-items-center text-content-tertiary hover:text-content"
-                  data-tip={expanded ? 'Collapse fleet' : 'Expand fleet'}
+                  data-tip={expanded ? t('fleet:fleetStrip.collapseFleet') : t('fleet:fleetStrip.expandFleet')}
                 >
                   <FleetChevron open={expanded} />
                 </button>
@@ -272,7 +275,7 @@ export function FleetStrip() {
                     <FleetCard key={v.key} v={v} role="wingman" />
                   ))}
                   {g.wingmen.length === 0 && (
-                    <span className="text-[9px] uppercase tracking-wide text-content-tertiary italic py-0.5">Drag a vehicle here</span>
+                    <span className="text-[9px] uppercase tracking-wide text-content-tertiary italic py-0.5">{t('fleet:fleetStrip.dragHere')}</span>
                   )}
                 </WingmenRail>
               )}
@@ -288,11 +291,11 @@ export function FleetStrip() {
           }`}
         >
           {groups.length > 0 && others.length > 0 && (
-            <span className="text-[9px] uppercase tracking-[0.14em] text-content-tertiary px-1 pt-1">Unassigned</span>
+            <span className="text-[9px] uppercase tracking-[0.14em] text-content-tertiary px-1 pt-1">{t('fleet:fleetStrip.unassigned')}</span>
           )}
           {others.map((v) => <FleetCard key={v.key} v={v} />)}
           {groups.length > 0 && others.length === 0 && dropZone === FREE_ZONE && (
-            <span className="text-[9px] uppercase tracking-wide text-content-tertiary italic py-1 px-1">Drop to remove from fleet</span>
+            <span className="text-[9px] uppercase tracking-wide text-content-tertiary italic py-1 px-1">{t('fleet:fleetStrip.dropToRemove')}</span>
           )}
         </div>
       </div>

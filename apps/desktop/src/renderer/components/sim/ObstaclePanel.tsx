@@ -8,6 +8,7 @@
  * them — visible in this 3D world and on the map at once.
  */
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { useSimObstaclesStore } from '../../stores/sim-obstacles-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -15,6 +16,7 @@ import { localToLatLng } from '../survey/geo-math';
 import { buildFenceItems, type PolygonFence, type CircleFence } from '../../../shared/fence-types';
 
 export default function ObstaclePanel() {
+  const { t } = useTranslation();
   const obstacles = useSimObstaclesStore((s) => s.obstacles);
   const placing = useSimObstaclesStore((s) => s.placing);
   const draft = useSimObstaclesStore((s) => s.draft);
@@ -36,7 +38,7 @@ export default function ObstaclePanel() {
   const applyToFc = useCallback(async () => {
     const list = useSimObstaclesStore.getState().obstacles;
     if (list.length === 0) {
-      flash('No obstacles to apply');
+      flash(t('sim:obstaclePanel.noneToApply'));
       return;
     }
     setApplying(true);
@@ -59,7 +61,7 @@ export default function ObstaclePanel() {
       const items = buildFenceItems(polygons, circles, null);
       const up = await window.electronAPI?.uploadFence?.(items);
       if (!up?.success) {
-        flash(up?.error ? `Upload failed: ${up.error}` : 'Fence upload failed');
+        flash(up?.error ? t('sim:obstaclePanel.uploadFailedWithError', { error: up.error }) : t('sim:obstaclePanel.fenceUploadFailed'));
         return;
       }
       // Enable fence-based avoidance + Dijkstra path planning around exclusions.
@@ -70,25 +72,25 @@ export default function ObstaclePanel() {
         { paramId: 'OA_TYPE', value: 2, type: 9 }, // Dijkstra
         { paramId: 'FENCE_MARGIN', value: 2, type: 9 },
       ]);
-      flash(`Applied ${list.length} obstacle${list.length === 1 ? '' : 's'} as exclusion fences`);
+      flash(t('sim:obstaclePanel.applied', { count: list.length }));
     } catch (e) {
-      flash(e instanceof Error ? e.message : 'Apply failed');
+      flash(e instanceof Error ? e.message : t('sim:obstaclePanel.applyFailed'));
     } finally {
       setApplying(false);
     }
-  }, [flash]);
+  }, [flash, t]);
 
   const clearFromFc = useCallback(async () => {
     setApplying(true);
     try {
       await window.electronAPI?.clearFence?.();
-      flash('Cleared FC fences');
+      flash(t('sim:obstaclePanel.clearedFc'));
     } catch (e) {
-      flash(e instanceof Error ? e.message : 'Clear failed');
+      flash(e instanceof Error ? e.message : t('sim:obstaclePanel.clearFailed'));
     } finally {
       setApplying(false);
     }
-  }, [flash]);
+  }, [flash, t]);
 
   const num = 'w-16 px-1.5 py-1 text-xs rounded-md bg-surface-raised border border-subtle text-content text-center tabular-nums';
 
@@ -96,10 +98,10 @@ export default function ObstaclePanel() {
     return (
       <button
         onClick={() => setOpen(true)}
-        data-tip="Author obstacles and push them to the FC as exclusion fences"
+        data-tip={t('sim:obstaclePanel.openTip')}
         className="absolute top-14 right-3 z-10 px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-raised border border-subtle text-content-secondary hover:text-content shadow-lg"
       >
-        Obstacles{obstacles.length > 0 ? ` (${obstacles.length})` : ''}
+        {obstacles.length > 0 ? t('sim:obstaclePanel.titleWithCount', { count: obstacles.length }) : t('sim:obstaclePanel.title')}
       </button>
     );
   }
@@ -107,7 +109,7 @@ export default function ObstaclePanel() {
   return (
     <div className="absolute top-14 right-3 z-10 w-72 bg-surface-overlay backdrop-blur-sm border border-subtle rounded-xl shadow-xl text-content">
       <div className="flex items-center justify-between px-3 py-2 border-b border-subtle">
-        <span className="text-sm font-semibold">Obstacles</span>
+        <span className="text-sm font-semibold">{t('sim:obstaclePanel.title')}</span>
         <button onClick={() => setOpen(false)} className="text-content-tertiary hover:text-content text-xs">✕</button>
       </div>
 
@@ -118,7 +120,7 @@ export default function ObstaclePanel() {
             placing ? 'bg-sky-600 text-white' : 'bg-surface-raised border border-subtle text-content-secondary hover:text-content'
           }`}
         >
-          {placing ? 'Click the ground to drop…  (cancel)' : 'Place obstacle'}
+          {placing ? t('sim:obstaclePanel.placing') : t('sim:obstaclePanel.place')}
         </button>
 
         <div className="flex items-center gap-2 text-xs">
@@ -127,14 +129,14 @@ export default function ObstaclePanel() {
             onChange={(e) => setDraft({ shape: e.target.value as 'cylinder' | 'box' })}
             className="flex-1 px-2 py-1 rounded-md bg-surface-raised border border-subtle text-content"
           >
-            <option value="cylinder">Cylinder</option>
-            <option value="box">Box</option>
+            <option value="cylinder">{t('sim:obstaclePanel.cylinder')}</option>
+            <option value="box">{t('sim:obstaclePanel.box')}</option>
           </select>
-          <label className="flex items-center gap-1 text-content-tertiary" data-tip="Radius / half-width (m)">
+          <label className="flex items-center gap-1 text-content-tertiary" data-tip={t('sim:obstaclePanel.radiusTip')}>
             r<DraftNumberInput min={1} max={500} value={draft.radius}
               onCommit={(v) => setDraft({ radius: v })} className={num} />
           </label>
-          <label className="flex items-center gap-1 text-content-tertiary" data-tip="Height (m)">
+          <label className="flex items-center gap-1 text-content-tertiary" data-tip={t('sim:obstaclePanel.heightTip')}>
             h<DraftNumberInput min={1} max={500} value={draft.height}
               onCommit={(v) => setDraft({ height: v })} className={num} />
           </label>
@@ -142,14 +144,14 @@ export default function ObstaclePanel() {
 
         <div className="max-h-40 overflow-y-auto rounded-md border border-subtle divide-y divide-subtle">
           {obstacles.length === 0 ? (
-            <div className="px-3 py-3 text-xs text-content-tertiary text-center">No obstacles yet</div>
+            <div className="px-3 py-3 text-xs text-content-tertiary text-center">{t('sim:obstaclePanel.empty')}</div>
           ) : (
             obstacles.map((o, i) => (
               <div key={o.id} className="flex items-center justify-between px-2 py-1.5 text-xs">
                 <span className="text-content-secondary">
                   {o.shape === 'cylinder' ? '◯' : '▢'} #{i + 1} · r{o.radius} h{o.height}
                 </span>
-                <button onClick={() => remove(o.id)} className="text-content-tertiary hover:text-red-400" data-tip="Remove">✕</button>
+                <button onClick={() => remove(o.id)} className="text-content-tertiary hover:text-red-400" data-tip={t('common:remove')}>✕</button>
               </div>
             ))
           )}
@@ -159,23 +161,23 @@ export default function ObstaclePanel() {
           <button
             onClick={applyToFc}
             disabled={!isConnected || applying || obstacles.length === 0}
-            data-tip="Upload obstacles as exclusion fences and enable avoidance + path planning"
+            data-tip={t('sim:obstaclePanel.applyTip')}
             className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {applying ? '…' : 'Apply as fences → FC'}
+            {applying ? '…' : t('sim:obstaclePanel.apply')}
           </button>
           <button
             onClick={clearFromFc}
             disabled={!isConnected || applying}
-            data-tip="Clear all fences on the flight controller"
+            data-tip={t('sim:obstaclePanel.clearFcTip')}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-surface-raised border border-subtle text-content-secondary hover:text-content disabled:opacity-40"
           >
-            Clear FC
+            {t('sim:obstaclePanel.clearFc')}
           </button>
         </div>
         {obstacles.length > 0 && (
           <button onClick={clear} className="w-full text-[11px] text-content-tertiary hover:text-red-400">
-            Remove all obstacles
+            {t('sim:obstaclePanel.removeAll')}
           </button>
         )}
         {status && <div className="text-[11px] text-content-secondary text-center">{status}</div>}

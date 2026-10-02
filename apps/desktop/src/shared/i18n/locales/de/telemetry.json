@@ -1,0 +1,97 @@
+{
+  "layoutDetails": {
+    "description": "Beschreibung",
+    "editTitle": "Layout bearbeiten",
+    "name": "Name",
+    "nameTaken": "Dieser Name ist bereits vergeben.",
+    "optional": "(optional)",
+    "replace": "Ersetzen",
+    "replaceContents": "Inhalt durch den aktuellen Bildschirm ersetzen",
+    "replaceContentsHint": "Panels, Cockpit-Instrumente, Kartenaufteilung und Vision-Modus im aktuellen Zustand.",
+    "replacesExisting": "Ein Layout namens „{{name}}“ existiert bereits. Speichern ersetzt es.",
+    "saveTitle": "Layout speichern"
+  },
+  "layouts": {
+    "fpvDescription": "Karte und Vision nebeneinander.",
+    "fpvLabel": "FPV",
+    "importInvalidJson": "Diese Datei ist kein gültiges JSON.",
+    "importNoPanels": "Das Layout in dieser Datei enthält keine Panel-Anordnung.",
+    "importNotLayout": "Diese Datei ist kein ArduDeck-Workspace-Layout.",
+    "importedName": "Importiertes Layout",
+    "missionDescription": "Karte, Wegpunkte, Höhenprofil.",
+    "missionLabel": "Mission",
+    "pilotDescription": "Karte mit geteilter synthetischer Sicht.",
+    "pilotLabel": "Pilot"
+  },
+  "panelHeader": {
+    "hideInstrument": "Karteninstrument ausblenden",
+    "popOut": "Abdocken",
+    "popOutTitle": "{{title}} in neuem Fenster öffnen",
+    "showInstrument": "Als Instrument auf der Karte anzeigen"
+  },
+  "quickStats": {
+    "alt": "ALT",
+    "armed": "Scharf",
+    "bat": "BAT",
+    "disarmed": "Unscharf",
+    "hdg": "HDG",
+    "noLink": "Keine Verb.",
+    "notConnected": "Nicht verbunden",
+    "sat": "SAT",
+    "spd": "SPD",
+    "thr": "GAS"
+  },
+  "savedLayout": {
+    "confirmDelete": "Löschen?",
+    "copyToClipboard": "In Zwischenablage kopieren",
+    "deleteTip": "Löschen",
+    "renameTip": "Umbenennen oder beschreiben",
+    "saveAsFile": "Als Datei speichern…",
+    "share": "Teilen…",
+    "shareTip": "Teilen"
+  },
+  "sensorHealth": {
+    "unhealthyTitle": "Fehlerhaft: {{sensors}} - Details im Panel „Meldungen“"
+  },
+  "share": {
+    "copied": "Kopiert",
+    "failed": "Teilen fehlgeschlagen",
+    "saved": "Gespeichert"
+  },
+  "speed": {
+    "eco": "Eco",
+    "ecoTip": "Langsame Updates: schonend für schwache oder Langstrecken-Telemetrieverbindungen",
+    "fc": "FC",
+    "fcTip": "Keine Eingriffe: ArduDeck fordert nie andere Datenraten an. Das Fahrzeug sendet weiter mit den auf dem Flugcontroller gespeicherten Raten. Wählen Sie dies, wenn Sie diese Raten selbst eingestellt haben.",
+    "max": "Max",
+    "maxTip": "Schnellste Updates, für schnelle Verbindungen wie USB oder WLAN",
+    "normal": "Normal",
+    "normalTip": "Ausgewogene Update-Rate, für die meisten Verbindungen geeignet"
+  },
+  "workspace": {
+    "buttonTip": "Workspace: Panel-Layout, Ansicht und Panels",
+    "title": "Workspace"
+  },
+  "workspaceDialog": {
+    "addPanel": "Panel hinzufügen",
+    "builtIn": "Integriert",
+    "clipboardReadFailed": "Die Zwischenablage konnte nicht gelesen werden.",
+    "fromFile": "Aus Datei…",
+    "import": "Importieren",
+    "importTip": "Ein geteiltes Layout importieren",
+    "map2d": "2D-Karte",
+    "map3d": "3D-Gelände",
+    "mapView": "Kartenansicht",
+    "offlineHint": "Ziehen Sie einen Rahmen auf der Karte, um deren Kacheln für das Fliegen ohne Verbindung zwischenzuspeichern.",
+    "offlineMaps": "Offline-Karten",
+    "panelLayout": "Panel-Layout",
+    "pasteFromClipboard": "Aus Zwischenablage einfügen",
+    "resetToPreset": "Auf Vorlage zurücksetzen",
+    "saveCurrentAs": "Aktuelles speichern als…",
+    "saveOfflineArea": "Gebiet für Offline-Nutzung speichern",
+    "saved": "Gespeichert",
+    "selectingArea": "Auswahl… ziehen Sie einen Rahmen auf der Karte",
+    "telemetryRate": "Telemetrierate",
+    "telemetryRateHint": "Wie oft das Fahrzeug Telemetrie sendet. FC lässt die Raten des Flugcontrollers unverändert."
+  }
+}

@@ -51,6 +51,7 @@ import {
   unregisterSurveyGenerator,
   type SurveyGeneratorRegistration,
 } from '../components/survey/generator-registry';
+import { t } from '../../shared/i18n/index.js';
 
 type RegisterFn = (slug: string, name: MountPointName, component: ComponentType) => void;
 
@@ -187,7 +188,7 @@ export function createRendererHostApi(
       tools: () => CLAUDE_LOG_TOOLS as unknown as unknown[],
       callTool: (name, input) => {
         const log = useLogStore.getState().currentLog;
-        if (!log) return { error: 'No flight log is open in the Log Explorer.' };
+        if (!log) return { error: 'No flight log is open in the Log Explorer.' }; // i18n-exempt
         return executeLogTool(name, input, log);
       },
     },
@@ -270,7 +271,7 @@ export function createRendererHostApi(
           ? { accepted: true, pointsAccepted: proposal.inclusion.length }
           : {
               accepted: true,
-              error: useFenceStore.getState().error ?? 'The vehicle did not confirm the fence',
+              error: useFenceStore.getState().error ?? t('modules:moduleHost.fenceNotConfirmed'),
             };
       },
     },
@@ -288,7 +289,7 @@ export function createRendererHostApi(
     map: {
       registerLayer: (reg) => registerModuleMapLayer(slug, reg),
       unregisterLayer: (id) => unregisterModuleMapLayer(slug, id),
-      pickPolygon: (prompt) => startPolygonPick(prompt ?? 'Click the corners of the area'),
+      pickPolygon: (prompt) => startPolygonPick(prompt ?? t('modules:moduleHost.pickPolygonPrompt')),
     },
 
     survey: {
@@ -344,14 +345,14 @@ export function createRendererHostApi(
         const ok = await useFleetRepoStore.getState().snapshotParams(note);
         return ok
           ? { success: true }
-          : { success: false, error: useFleetRepoStore.getState().lastError ?? 'Snapshot failed' };
+          : { success: false, error: useFleetRepoStore.getState().lastError ?? t('modules:moduleHost.snapshotFailed') };
       },
       snapshotAsNewVehicle: async (name?: string, note?: string) => {
         requireVault();
         const ok = await useFleetRepoStore.getState().snapshotAsNewVehicle(name, note);
         return ok
           ? { success: true }
-          : { success: false, error: useFleetRepoStore.getState().lastError ?? 'Snapshot failed' };
+          : { success: false, error: useFleetRepoStore.getState().lastError ?? t('modules:moduleHost.snapshotFailed') };
       },
       sync: async () => {
         requireVault();

@@ -1,0 +1,36 @@
+{
+  "activeTour": {
+    "nextFeature": "Next feature",
+    "nextTitle": "Next: {{title}}"
+  },
+  "tourLaunchGate": {
+    "apNotInstalled": "ArduPilot SITL isn't installed yet. Head to the SITL view to download the binary - the tour will pick up automatically once you connect.",
+    "apNotSupported": "ArduPilot SITL is not supported on this platform.",
+    "connectOwnFc": "I'll connect my own FC",
+    "connectOwnToContinue": "Connect your own FC to continue the tour.",
+    "failedToStartSitl": "Failed to start SITL",
+    "goToSitlInstall": "Go to SITL to install",
+    "intro": "This walkthrough demonstrates features that need a live flight controller. You can spin up a safe <b>{{sitl}}</b> simulation to try it, or connect your own FC.",
+    "launch": "Launch {{sitl}}",
+    "needsVehicle": "Tour needs a vehicle",
+    "notNow": "Not now",
+    "startingSitl": "Starting SITL...",
+    "tcpConnectionFailed": "SITL started but TCP connection failed"
+  },
+  "tourPanelsGate": {
+    "layoutAdjustment": "Layout adjustment",
+    "missing": "Missing: <b>{{panels}}</b>",
+    "panelsNotInLayout": "This tour walks through panels that aren't in your current layout:",
+    "recommendedLayout": "recommended layout",
+    "skipTour": "Skip this tour",
+    "switchPrompt": "Switch to the <b>{{preset}}</b> layout to see the tour? Your current layout stays saved - you can switch back from the layout dropdown at any time.",
+    "switchTo": "Switch to {{preset}}"
+  },
+  "tourPrompt": {
+    "dontOfferAgain": "Don't offer tours again",
+    "noThanks": "No thanks",
+    "quickTour": "Quick tour",
+    "remindLater": "Remind me later",
+    "showMe": "Show me"
+  }
+}

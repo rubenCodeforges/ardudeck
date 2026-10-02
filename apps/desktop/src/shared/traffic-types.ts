@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * traffic-types — shared model for the ADS-B + glider (OGN) traffic overlays.
  *
@@ -151,21 +153,21 @@ export const DEFAULT_TRAFFIC_CONFIG: TrafficConfig = {
 export const ADSB_API_PRESETS: Record<AdsbApiPreset, AdsbApiPresetSpec> = {
   'airplanes-live': {
     id: 'airplanes-live',
-    label: 'airplanes.live (free, no key)',
+    label: 'airplanes.live (free, no key)', // i18n-exempt
     needsKey: false,
     urlTemplate: 'https://api.airplanes.live/v2/point/{lat}/{lon}/{radiusNm}',
     shape: 'adsbx-v2',
   },
   'adsb-fi': {
     id: 'adsb-fi',
-    label: 'adsb.fi (free, no key)',
+    label: 'adsb.fi (free, no key)', // i18n-exempt
     needsKey: false,
     urlTemplate: 'https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{radiusNm}',
     shape: 'adsbx-v2',
   },
   adsbexchange: {
     id: 'adsbexchange',
-    label: 'ADSBExchange (RapidAPI key)',
+    label: 'ADSBExchange (RapidAPI key)', // i18n-exempt
     needsKey: true,
     keyHeader: 'X-RapidAPI-Key',
     extraHeaders: { 'X-RapidAPI-Host': 'adsbexchange-com1.p.rapidapi.com' },
@@ -174,12 +176,16 @@ export const ADSB_API_PRESETS: Record<AdsbApiPreset, AdsbApiPresetSpec> = {
   },
   custom: {
     id: 'custom',
-    label: 'Custom endpoint',
+    label: 'Custom endpoint', // i18n-exempt
     needsKey: false,
     urlTemplate: '',
     shape: 'adsbx-v2',
   },
 };
+
+export function adsbPresetLabel(preset: AdsbApiPreset): string {
+  return t(`shared:trafficTypes.adsbPreset.${preset}`, { defaultValue: ADSB_API_PRESETS[preset]?.label ?? preset });
+}
 
 /** Secret-store service ids (used with the existing getApiKey/setApiKey). */
 export const TRAFFIC_SECRET_SERVICES = {

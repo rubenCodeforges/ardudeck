@@ -1,0 +1,209 @@
+{
+  "legacyConfigView": {
+    "badge": "Legacy CLI",
+    "configError": "Configuration Error",
+    "howItWorks": "<b>How it works:</b> Changes are sent immediately as CLI commands. Check the CLI terminal to see commands being sent. When you're done, click \"Save to EEPROM\" to persist changes (board will reboot).",
+    "loading": "Loading configuration from CLI...",
+    "notConnected": "Connect to a legacy board to configure",
+    "reboot": {
+      "done": "Save Complete",
+      "error": "Save Failed",
+      "rebooting": "Rebooting Board",
+      "reconnecting": "Reconnecting",
+      "saving": "Saving Configuration"
+    },
+    "runningDump": "Running dump command",
+    "saveAndReboot": "Save & Reboot",
+    "saveConfirmBody": "This will save all changes to the flight controller and <b>reboot the board</b>. You will need to reconnect after the reboot completes.",
+    "saveConfirmTitle": "Save to EEPROM?",
+    "saveToEeprom": "Save to EEPROM",
+    "subtitle": "Configuration via CLI commands (F3 board)",
+    "tabs": {
+      "mixer": "Mixer",
+      "modes": "Modes",
+      "pid": "PID",
+      "rates": "Rates",
+      "servo": "Servo"
+    },
+    "unsavedChanges": "Unsaved changes"
+  },
+  "legacyMixerTab": {
+    "addMotor": "Add Motor ({{count}}/{{max}})",
+    "addServoRule": "Add Servo Rule ({{count}}/{{max}})",
+    "description": "Define how motors and servos respond to flight controller outputs. Values range from -1.0 to 1.0. Changes are sent immediately.",
+    "inputSource": "Input Source",
+    "mixStrength": "Mix strength:",
+    "motorMixerTab": "Motor Mixer ({{count}})",
+    "motorN": "Motor {{index}}",
+    "noMotorRules": "No motor mixer rules found.",
+    "noMotorRulesHint": "This is normal for fixed-wing aircraft.",
+    "noServoRules": "No servo mixer rules found.",
+    "noServoRulesHint": "Add rules to control servos from flight controller outputs.",
+    "outputChannel": "Output channel",
+    "pitch": "Pitch",
+    "rateLabel": "Rate:",
+    "ratePercent": "Rate (%)",
+    "removeMotor": "Remove motor mixer",
+    "removeServoRule": "Remove servo mixer rule",
+    "roll": "Roll",
+    "ruleN": "Rule #{{index}}",
+    "servoMixerTab": "Servo Mixer ({{count}})",
+    "servoN": "Servo {{index}}",
+    "sourceN": "Source {{index}}",
+    "sources": {
+      "rcAux1": "RC AUX 1",
+      "rcAux2": "RC AUX 2",
+      "rcAux3": "RC AUX 3",
+      "rcAux4": "RC AUX 4",
+      "rcPitch": "RC Pitch",
+      "rcRoll": "RC Roll",
+      "rcThrottle": "RC Throttle",
+      "rcYaw": "RC Yaw",
+      "stabPitch": "Stabilized Pitch",
+      "stabRoll": "Stabilized Roll",
+      "stabThrottle": "Stabilized Throttle",
+      "stabYaw": "Stabilized Yaw"
+    },
+    "speed": "Speed",
+    "targetServo": "Target Servo",
+    "throttle": "Throttle",
+    "title": "Mixer Configuration",
+    "yaw": "Yaw"
+  },
+  "legacyModesTab": {
+    "activationRange": "Activation Range",
+    "activeModes": "Active Modes ({{count}})",
+    "clickToEnable": "#{{index}} - Click to enable",
+    "description": "Set which AUX switch positions activate each flight mode. Drag the range handles or enter values directly. Set both to 900 to disable.",
+    "disableMode": "Disable Mode",
+    "disabledModes": "Disabled ({{count}})",
+    "mode": "Mode",
+    "modeDescriptions": {
+      "m0": "Enable motors",
+      "m1": "Self-leveling mode",
+      "m10": "Return to home",
+      "m11": "Hold GPS position",
+      "m12": "Direct passthrough",
+      "m13": "Find my quad",
+      "m19": "Toggle OSD",
+      "m2": "Hybrid self-level + acro",
+      "m20": "Enable telemetry",
+      "m26": "Log flight data",
+      "m27": "Emergency failsafe",
+      "m28": "Waypoint mission",
+      "m3": "Hold altitude",
+      "m35": "Flaperon control",
+      "m36": "Coordinated turns",
+      "m38": "Auto trim servos",
+      "m39": "Camera control 1",
+      "m40": "Camera control 2",
+      "m41": "Camera control 3",
+      "m45": "Cruise control",
+      "m46": "Multi-rotor braking",
+      "m5": "Hold compass heading",
+      "m6": "Headless mode",
+      "m7": "Adjust headfree reference"
+    },
+    "modeN": "Mode {{id}}",
+    "noRules": "No aux mode rules found.",
+    "switchChannel": "Switch Channel",
+    "title": "Flight Mode Configuration",
+    "unknownMode": "Unknown mode"
+  },
+  "legacyPidTab": {
+    "axis": {
+      "pitch": "pitch",
+      "roll": "roll",
+      "yaw": "yaw"
+    },
+    "dHint": "Dampens overshoots",
+    "dLabel": "D - Derivative",
+    "ffHint": "Anticipates stick movement",
+    "ffLabel": "FF - Feed Forward",
+    "iHint": "Corrects drift over time",
+    "iLabel": "I - Integral",
+    "infoFixedWing": "<b>Legacy CLI Mode (Fixed-Wing):</b> Changes are sent immediately via CLI commands. Click \"Save to EEPROM\" when done to persist changes.",
+    "infoMultirotor": "<b>Legacy CLI Mode (Multirotor):</b> Changes are sent immediately via CLI commands. Click \"Save to EEPROM\" when done to persist changes.",
+    "levelDHint": "Reduces oscillation",
+    "levelDLabel": "D - Damping",
+    "levelIHint": "Holds level over time",
+    "levelPHint": "How hard it self-levels",
+    "levelPLabel": "P - Strength",
+    "levelTitle": "Level (Angle Mode)",
+    "noData": "No PID data loaded. Run dump command first.",
+    "pHint": "Responsiveness to stick input",
+    "pLabel": "P - Proportional",
+    "presets": {
+      "beginner": {
+        "description": "Smooth & forgiving - great for learning",
+        "name": "Beginner"
+      },
+      "cinematic": {
+        "description": "Ultra-smooth for video",
+        "name": "Cinematic"
+      },
+      "freestyle": {
+        "description": "Responsive & smooth for tricks",
+        "name": "Freestyle"
+      },
+      "racing": {
+        "description": "Snappy & precise for speed",
+        "name": "Racing"
+      }
+    },
+    "profileNamePlaceholder": "Profile name...",
+    "quickPresets": "Quick Presets",
+    "saveAsProfile": "+ Save Current as Profile",
+    "saveDialogTitle": "Save Current PIDs as Profile",
+    "yourProfiles": "Your Profiles"
+  },
+  "legacyRatesTab": {
+    "expoHint": "Center stick sensitivity",
+    "globalSettings": "Global Settings",
+    "info": "<b>Legacy CLI Mode:</b> Changes are sent immediately via CLI commands. Click \"Save to EEPROM\" when done to persist changes.",
+    "maxRate": "Max: <v>{{rate}}°/s</v>",
+    "noData": "No rates data loaded. Run dump command first.",
+    "presets": {
+      "beginner": {
+        "description": "Slow & predictable - great for learning"
+      },
+      "cinematic": {
+        "description": "Ultra-smooth for filming"
+      },
+      "freestyle": {
+        "description": "Balanced for tricks & flow"
+      },
+      "racing": {
+        "description": "Fast & responsive for speed"
+      }
+    },
+    "rateHint": "Maximum rotation speed",
+    "rcRate": "RC Rate",
+    "rcRateHint": "Overall stick sensitivity multiplier",
+    "responseCurve": "Response Curve",
+    "saveDialogTitle": "Save Current Rates as Profile",
+    "stick": "Stick",
+    "throttleExpo": "Throttle Expo",
+    "throttleExpoHint": "Throttle curve",
+    "throttleMid": "Throttle Mid",
+    "throttleMidHint": "Hover point",
+    "tpaBreakpoint": "TPA Breakpoint",
+    "tpaBreakpointHint": "Throttle level where TPA starts",
+    "tpaDescription": "Reduces PID strength at high throttle to prevent oscillations during fast flight.",
+    "tpaRate": "TPA Rate",
+    "tpaRateHint": "How much to reduce PIDs at full throttle",
+    "tpaTitle": "Throttle PID Attenuation"
+  },
+  "legacyServoTab": {
+    "description": "Configure min/max/center positions and rate for each servo. Range: 750-2250μs for legacy F3 boards. Changes are sent immediately.",
+    "fullRange": "Full Range",
+    "maximum": "Maximum",
+    "minimum": "Minimum",
+    "noConfigs": "No servo configurations found.",
+    "noConfigsHint": "Run the dump command to load configuration.",
+    "resetDefault": "Reset Default",
+    "safeRange": "Safe Range",
+    "title": "Servo Endpoint Configuration",
+    "travel": "Travel: {{range}}μs"
+  }
+}

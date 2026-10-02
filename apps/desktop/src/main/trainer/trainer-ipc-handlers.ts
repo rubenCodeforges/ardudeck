@@ -20,6 +20,7 @@ import {
   type TrainerLaunchOutcome,
 } from './trainer-process.js';
 import type { TrainerBakeDone } from '../../shared/trainer-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * Flying what is planned here, in the Trainer, without leaving this app first.
@@ -94,7 +95,7 @@ export function trainerStatus(deps: TrainerDeps): TrainerStatus {
     searched,
     home,
     canLaunch: target !== null && buildTrainerRequest({ home }).ok,
-    reason: target === null ? 'The Trainer is not installed.' : notReady(deps),
+    reason: target === null ? t('main:trainer.notInstalled') : notReady(deps),
   };
 }
 
@@ -120,7 +121,7 @@ export function setupTrainerHandlers(mainWindow: BrowserWindow | null, deps: Tra
   ipcMain.handle(
     IPC_CHANNELS.TRAINER_BAKE,
     async (_e, request: unknown): Promise<TrainerBakeDone> => {
-      if (bake) return { kind: 'done', ok: false, error: 'A region is already being built.' };
+      if (bake) return { kind: 'done', ok: false, error: t('main:trainer.regionBuilding') };
       const { target, searched } = find();
       if (!target) {
         return {
@@ -153,7 +154,7 @@ export function setupTrainerHandlers(mainWindow: BrowserWindow | null, deps: Tra
     IPC_CHANNELS.TRAINER_DELETE_REGION,
     async (_e, name: string): Promise<{ ok: boolean; error?: string }> => {
       const { target } = find();
-      if (!target) return { ok: false, error: 'The Trainer is not installed.' };
+      if (!target) return { ok: false, error: t('main:trainer.notInstalled') };
       return deleteRegion(target, name);
     },
   );

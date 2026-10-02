@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import type { OutputShape } from './output-shape';
 
@@ -54,6 +55,7 @@ export function OutputVisual({
   maxUs = 500,
   accent = ACCENT,
 }: OutputVisualProps): JSX.Element {
+  const { t } = useTranslation();
   const servoOutput = useTelemetryStore((s) => s.servoOutput);
 
   const live = useMemo(() => {
@@ -62,7 +64,10 @@ export function OutputVisual({
     return { pwm, stale: Date.now() - (servoOutput?.timestamp ?? 0) > STALE_MS };
   }, [servoOutput, channel]);
 
-  const label = functionName ?? `Servo ${channel}`;
+  const label = functionName ?? t('mavlink-config:outputVisual.servoN', { channel });
+  const waiting = t('mavlink-config:outputVisual.waiting', { channel });
+  const atPwm = (pwm: number, stale: boolean) =>
+    stale ? t('mavlink-config:outputVisual.atPwmStale', { channel, pwm }) : t('mavlink-config:outputVisual.atPwm', { channel, pwm });
   const footer = (text: string) => (
     <div className="border-t border-subtle px-3 py-1.5 text-[10px] text-content-tertiary">{text}</div>
   );
@@ -77,13 +82,13 @@ export function OutputVisual({
             style={{ background: on ? accent : 'var(--text-tertiary)', opacity: live ? 1 : 0.35 }}
           />
           <div className="min-w-0">
-            <div className="text-sm text-content">{on ? 'On' : 'Off'}</div>
+            <div className="text-sm text-content">{on ? t('common:on') : t('common:off')}</div>
             <div className="text-[11px] text-content-tertiary">
-              {label} switches between {min} and {max} µs
+              {t('mavlink-config:outputVisual.switchesBetween', { label, min, max })}
             </div>
           </div>
         </div>
-        {footer(live === null ? `Servo ${channel}: waiting for output` : `Servo ${channel} at ${live.pwm} µs`)}
+        {footer(live === null ? waiting : atPwm(live.pwm, false))}
       </div>
     );
   }
@@ -128,12 +133,12 @@ export function OutputVisual({
             )}
           </div>
           <div className="mt-1 flex justify-between text-[10px] text-content-tertiary">
-            <span>reverse</span>
-            <span>stop</span>
-            <span>forward</span>
+            <span>{t('mavlink-config:outputVisual.reverse')}</span>
+            <span>{t('mavlink-config:outputVisual.stop')}</span>
+            <span>{t('mavlink-config:outputVisual.forward')}</span>
           </div>
         </div>
-        {footer(live === null ? `Servo ${channel}: waiting for output` : `Servo ${channel} at ${live.pwm} µs${live.stale ? ' (stale)' : ''}`)}
+        {footer(live === null ? waiting : atPwm(live.pwm, live.stale))}
       </div>
     );
   }
@@ -168,7 +173,7 @@ export function OutputVisual({
             )}
           </div>
         </div>
-        {footer(live === null ? `Servo ${channel}: waiting for output` : `Servo ${channel} at ${live.pwm} µs${live.stale ? ' (stale)' : ''}`)}
+        {footer(live === null ? waiting : atPwm(live.pwm, live.stale))}
       </div>
     );
   }
@@ -239,16 +244,16 @@ export function OutputVisual({
             : `${Math.round((-lowUs / maxUs) * 100)}/${Math.round((highUs / maxUs) * 100)}%`}
         </text>
         <text x={CX} y={CY - 12} textAnchor="middle" className="fill-content-tertiary" style={{ fontSize: 9 }}>
-          {even ? `±${Math.round(highUs)}` : `${Math.round(lowUs)}/+${Math.round(highUs)}`} µs from {Math.round(trim)}
+          {t('mavlink-config:outputVisual.usFrom', { span: even ? `±${Math.round(highUs)}` : `${Math.round(lowUs)}/+${Math.round(highUs)}`, trim: Math.round(trim) })}
         </text>
       </svg>
 
       {footer(
         live === null
-          ? `Servo ${channel}: waiting for output`
+          ? waiting
           : beyond
-            ? `Servo ${channel} is outside the limit at ${live.pwm} µs`
-            : `Servo ${channel} at ${live.pwm} µs${live.stale ? ' (stale)' : ''}`
+            ? t('mavlink-config:outputVisual.outsideLimit', { channel, pwm: live.pwm })
+            : atPwm(live.pwm, live.stale)
       )}
     </div>
   );

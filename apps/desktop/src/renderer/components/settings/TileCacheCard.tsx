@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { MAP_LAYERS, type LayerKey } from '../../../shared/map-layers';
 import type { TileCacheStats, TileCacheDownloadProgress, TileCacheSettings, TileCacheDownloadRegion } from '../../../shared/ipc-channels';
 import { useTileCacheStore } from '../../stores/tile-cache-store';
@@ -45,6 +47,7 @@ function BoundsInput({ label, value, placeholder, onCommit }: {
 }
 
 export function TileCacheCard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<TileCacheStats | null>(null);
   const [settings, setSettings] = useState<TileCacheSettings | null>(null);
   const [showPerLayer, setShowPerLayer] = useState(false);
@@ -190,7 +193,7 @@ export function TileCacheCard() {
         <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
-        Offline Maps
+        {t('settings:tileCacheCard.title')}
         {stats && (
           <span className="ml-auto px-2 py-0.5 rounded text-xs font-mono bg-surface-raised text-content">
             {formatBytes(stats.totalSizeBytes)}
@@ -202,7 +205,7 @@ export function TileCacheCard() {
       {stats && settings && (
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs text-content-secondary mb-1">
-            <span>{stats.totalTiles.toLocaleString()} tiles</span>
+            <span>{t('settings:tileCacheCard.totalTiles', { n: stats.totalTiles.toLocaleString() })}</span>
             <span>{formatBytes(stats.totalSizeBytes)} / {settings.maxCacheSizeGB} GB</span>
           </div>
           <div className="w-full h-2 bg-surface-inset rounded-full overflow-hidden">
@@ -226,7 +229,7 @@ export function TileCacheCard() {
             <svg className={`w-3 h-3 transition-transform ${showPerLayer ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            Per-layer breakdown
+            {t('settings:tileCacheCard.perLayer')}
           </button>
 
           {showPerLayer && (
@@ -236,7 +239,7 @@ export function TileCacheCard() {
                   <span className="text-content">{MAP_LAYERS[layer as LayerKey]?.name ?? layer}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-content-secondary font-mono">
-                      {data.tiles.toLocaleString()} tiles / {formatBytes(data.bytes)}
+                      {t('settings:tileCacheCard.tilesBytes', { tiles: data.tiles.toLocaleString(), size: formatBytes(data.bytes) })}
                     </span>
                     {confirmLayer === layer ? (
                       <button
@@ -247,14 +250,14 @@ export function TileCacheCard() {
                         disabled={clearLayer === layer}
                         className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-600 text-white hover:bg-red-500 transition-colors disabled:opacity-50"
                       >
-                        Delete {formatBytes(data.bytes)}?
+                        {t('settings:tileCacheCard.deleteSize', { size: formatBytes(data.bytes) })}
                       </button>
                     ) : (
                       <button
                         onClick={() => setConfirmLayer(layer)}
                         disabled={clearLayer === layer}
                         className="text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-50"
-                        title={`Clear ${layer} cache (${formatBytes(data.bytes)})`}
+                        title={t('settings:tileCacheCard.clearLayerTitle', { layer, size: formatBytes(data.bytes) })}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -288,10 +291,10 @@ export function TileCacheCard() {
           }`}
         >
           {clearing
-            ? 'Clearing...'
+            ? t('settings:tileCacheCard.clearing')
             : confirmClearAll
-              ? `Delete ${stats ? formatBytes(stats.totalSizeBytes) : ''}?`
-              : 'Clear All Cache'}
+              ? t('settings:tileCacheCard.deleteSize', { size: stats ? formatBytes(stats.totalSizeBytes) : '' })
+              : t('settings:tileCacheCard.clearAll')}
         </button>
         <button
           onClick={() => setShowDownload(!showDownload)}
@@ -301,52 +304,52 @@ export function TileCacheCard() {
               : 'bg-surface-raised text-content hover:bg-surface-raised border-subtle'
           }`}
         >
-          Download Region
+          {t('settings:tileCacheCard.downloadRegion')}
         </button>
         <button
           onClick={refreshStats}
           className="px-3 py-1.5 text-xs rounded bg-surface-raised text-content hover:bg-surface-raised border border-subtle transition-colors"
         >
-          Refresh
+          {t('common:refresh')}
         </button>
       </div>
 
       {/* Download Region Panel */}
       {showDownload && (
         <div className="rounded-lg border border-subtle p-4 mb-4 space-y-3">
-          <h4 className="text-xs font-medium text-content uppercase tracking-wider">Download Region for Offline Use</h4>
+          <h4 className="text-xs font-medium text-content uppercase tracking-wider">{t('settings:tileCacheCard.downloadTitle')}</h4>
 
           {/* Bounding box inputs */}
           <div className="grid grid-cols-2 gap-2">
             <BoundsInput
-              label="North Lat"
+              label={t('settings:tileCacheCard.northLat')}
               value={dlBounds.north}
-              placeholder="e.g. 51.52"
+              placeholder={t('settings:tileCacheCard.example', { value: '51.52' })}
               onCommit={(v) => setDlBounds((b) => ({ ...b, north: v }))}
             />
             <BoundsInput
-              label="South Lat"
+              label={t('settings:tileCacheCard.southLat')}
               value={dlBounds.south}
-              placeholder="e.g. 51.49"
+              placeholder={t('settings:tileCacheCard.example', { value: '51.49' })}
               onCommit={(v) => setDlBounds((b) => ({ ...b, south: v }))}
             />
             <BoundsInput
-              label="West Lon"
+              label={t('settings:tileCacheCard.westLon')}
               value={dlBounds.west}
-              placeholder="e.g. -0.12"
+              placeholder={t('settings:tileCacheCard.example', { value: '-0.12' })}
               onCommit={(v) => setDlBounds((b) => ({ ...b, west: v }))}
             />
             <BoundsInput
-              label="East Lon"
+              label={t('settings:tileCacheCard.eastLon')}
               value={dlBounds.east}
-              placeholder="e.g. -0.07"
+              placeholder={t('settings:tileCacheCard.example', { value: '-0.07' })}
               onCommit={(v) => setDlBounds((b) => ({ ...b, east: v }))}
             />
           </div>
 
           {/* Layer selection */}
           <div>
-            <label className="text-[10px] text-content-secondary block mb-1">Layers to download</label>
+            <label className="text-[10px] text-content-secondary block mb-1">{t('settings:tileCacheCard.layersToDownload')}</label>
             <div className="flex flex-wrap gap-1.5">
               {DOWNLOADABLE_LAYERS.map((key) => (
                 <button
@@ -370,7 +373,7 @@ export function TileCacheCard() {
                     : 'bg-surface-raised text-content-secondary border border-subtle hover:text-content'
                 }`}
               >
-                Elevation (DEM)
+                {t('settings:tileCacheCard.elevation')}
               </button>
             </div>
           </div>
@@ -378,7 +381,7 @@ export function TileCacheCard() {
           {/* Zoom range */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] text-content-secondary block mb-0.5">Min Zoom: {dlMinZoom}</label>
+              <label className="text-[10px] text-content-secondary block mb-0.5">{t('settings:tileCacheCard.minZoom', { zoom: dlMinZoom })}</label>
               <input
                 type="range"
                 min={1}
@@ -389,7 +392,7 @@ export function TileCacheCard() {
               />
             </div>
             <div>
-              <label className="text-[10px] text-content-secondary block mb-0.5">Max Zoom: {dlMaxZoom}</label>
+              <label className="text-[10px] text-content-secondary block mb-0.5">{t('settings:tileCacheCard.maxZoom', { zoom: dlMaxZoom })}</label>
               <input
                 type="range"
                 min={1}
@@ -404,8 +407,11 @@ export function TileCacheCard() {
           {/* Estimate */}
           {dlEstimate !== null && (
             <div className="text-xs text-content-secondary">
-              Estimated: <span className="text-content font-mono">{dlEstimate.toLocaleString()}</span> tiles
-              (~{formatBytes(dlEstimate * 15000)})
+              <Trans
+                i18nKey="settings:tileCacheCard.estimated"
+                values={{ count: dlEstimate.toLocaleString(), size: formatBytes(dlEstimate * 15000) }}
+                components={{ b: <span className="text-content font-mono" /> }}
+              />
             </div>
           )}
 
@@ -416,7 +422,7 @@ export function TileCacheCard() {
                 <span className="text-content-secondary">
                   {dlProgress.downloadedTiles.toLocaleString()} / {dlProgress.totalTiles.toLocaleString()}
                   {dlProgress.failedTiles > 0 && (
-                    <span className="text-red-400 ml-1">({dlProgress.failedTiles} failed)</span>
+                    <span className="text-red-400 ml-1">{t('settings:tileCacheCard.failed', { count: dlProgress.failedTiles })}</span>
                   )}
                 </span>
                 <span className="text-content-secondary font-mono">{formatBytes(dlProgress.bytesDownloaded)}</span>
@@ -434,11 +440,11 @@ export function TileCacheCard() {
                   onClick={handleCancelDownload}
                   className="px-3 py-1.5 text-xs rounded bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-600/30 transition-colors"
                 >
-                  Cancel Download
+                  {t('settings:tileCacheCard.cancelDownload')}
                 </button>
               ) : (
                 <span className={`text-xs ${dlProgress.status === 'complete' ? 'text-emerald-400' : 'text-yellow-400'}`}>
-                  {dlProgress.status === 'complete' ? 'Download complete' : 'Download cancelled'}
+                  {dlProgress.status === 'complete' ? t('settings:tileCacheCard.downloadComplete') : t('settings:tileCacheCard.downloadCancelled')}
                 </span>
               )}
             </div>
@@ -448,7 +454,7 @@ export function TileCacheCard() {
               disabled={dlLayers.size === 0 || (dlBounds.north === 0 && dlBounds.south === 0)}
               className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Start Download
+              {t('settings:tileCacheCard.startDownload')}
             </button>
           )}
         </div>
@@ -460,11 +466,11 @@ export function TileCacheCard() {
       {/* Settings */}
       {settings && (
         <div className="space-y-3 pt-3 border-t border-subtle">
-          <h4 className="text-xs font-medium text-content-secondary uppercase tracking-wider">Cache Settings</h4>
+          <h4 className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('settings:tileCacheCard.cacheSettings')}</h4>
 
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs text-content">Max cache size</span>
+              <span className="text-xs text-content">{t('settings:tileCacheCard.maxCacheSize')}</span>
               <span className="text-xs text-content-secondary ml-1.5">{settings.maxCacheSizeGB} GB</span>
             </div>
             <input
@@ -478,7 +484,7 @@ export function TileCacheCard() {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-xs text-content">Auto-cache tiles while browsing</span>
+            <span className="text-xs text-content">{t('settings:tileCacheCard.autoCache')}</span>
             <button
               onClick={() => handleSettingChange('enableAutoCache', !settings.enableAutoCache)}
               className={`relative w-8 h-4 rounded-full transition-colors ${
@@ -495,7 +501,7 @@ export function TileCacheCard() {
 
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs text-content">Max auto-cache zoom</span>
+              <span className="text-xs text-content">{t('settings:tileCacheCard.maxAutoZoom')}</span>
               <span className="text-xs text-content-secondary ml-1.5">{settings.maxZoomAutoCache}</span>
             </div>
             <input
@@ -513,11 +519,12 @@ export function TileCacheCard() {
   );
 }
 
-function formatBounds(b: TileCacheDownloadRegion['bounds']): string {
-  return `${b.south.toFixed(3)}, ${b.west.toFixed(3)} to ${b.north.toFixed(3)}, ${b.east.toFixed(3)}`;
+function formatBounds(b: TileCacheDownloadRegion['bounds'], t: TFunction): string {
+  return t('settings:tileCacheCard.bounds', { south: b.south.toFixed(3), west: b.west.toFixed(3), north: b.north.toFixed(3), east: b.east.toFixed(3) });
 }
 
 function SavedRegions() {
+  const { t } = useTranslation();
   const regions = useTileCacheStore(s => s.regions);
   const fetchRegions = useTileCacheStore(s => s.fetchRegions);
   const deleteRegion = useTileCacheStore(s => s.deleteRegion);
@@ -537,7 +544,7 @@ function SavedRegions() {
         <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        Saved regions ({regions.length})
+        {t('settings:tileCacheCard.savedRegions', { count: regions.length })}
       </button>
 
       {expanded && (
@@ -545,15 +552,15 @@ function SavedRegions() {
           {regions.map((r) => (
             <div key={r.id} className="flex items-center justify-between text-xs bg-surface-raised rounded px-2.5 py-1.5">
               <div className="min-w-0">
-                <div className="text-content font-mono text-[10px] truncate">{formatBounds(r.bounds)}</div>
+                <div className="text-content font-mono text-[10px] truncate">{formatBounds(r.bounds, t)}</div>
                 <div className="text-content-secondary text-[10px]">
-                  {r.tileCount.toLocaleString()} tiles &middot; z{r.minZoom}-{r.maxZoom} &middot; {new Date(r.downloadedAt).toLocaleDateString()}
+                  {t('settings:tileCacheCard.regionMeta', { tiles: r.tileCount.toLocaleString(), min: r.minZoom, max: r.maxZoom, date: new Date(r.downloadedAt).toLocaleDateString() })}
                 </div>
               </div>
               <button
                 onClick={() => deleteRegion(r.id)}
                 className="text-red-400/60 hover:text-red-400 transition-colors shrink-0 ml-2"
-                title="Remove this saved region"
+                title={t('settings:tileCacheCard.removeRegion')}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -573,7 +580,7 @@ function SavedRegions() {
               }}
               className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors mt-1"
             >
-              Remove all saved regions
+              {t('settings:tileCacheCard.removeAllRegions')}
             </button>
           )}
         </div>

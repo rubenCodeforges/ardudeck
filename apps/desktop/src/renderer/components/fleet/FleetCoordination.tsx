@@ -7,6 +7,7 @@
  * engine advertises no group actions.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { useFormationControl } from '../../hooks/useFormationControl';
@@ -19,6 +20,7 @@ import { FleetChevron, FleetCountHeader } from './FleetDisclosure';
 import { tacButton } from './tactical';
 
 export function FleetCoordination() {
+  const { t } = useTranslation();
   const { hasServer, vehicles, canTakeoff, canFollow, formations, configFor, busy, takeOffAll, takeOffFleet, startLeaderMission, startAssignedMissions, reshapeFleet } = useFormationControl();
   const uiOverrides = useFleetUiStore((s) => s.overrides);
   const toggleFleet = useFleetUiStore((s) => s.toggle);
@@ -57,13 +59,13 @@ export function FleetCoordination() {
           <button
             onClick={() => takeOffAll(alt)}
             disabled={busy}
-            data-tip={`Every connected vehicle arms and climbs to ${alt} m together`}
+            data-tip={t('fleet:fleetCoordination.takeOffAllTip', { alt })}
             className={takeoffBtn}
           >
-            Take off all
+            {t('fleet:fleetCoordination.takeOffAll')}
           </button>
-          <label className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-content-tertiary" data-tip="Takeoff altitude (m)">
-            alt
+          <label className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-content-tertiary" data-tip={t('fleet:fleetCoordination.altitudeTip')}>
+            {t('fleet:fleetCoordination.alt')}
             <DraftNumberInput
               min={1} max={120} integer value={alt}
               onCommit={setAlt}
@@ -82,9 +84,9 @@ export function FleetCoordination() {
                 ? 'text-content-tertiary'
                 : 'text-cyan-500'
           }`}
-          data-tip="Latest report from the coordination engine (group takeoff / mission start)"
+          data-tip={t('fleet:fleetCoordination.engineReportTip')}
         >
-          {controlIsError ? 'engine error' : lastControl.state ?? lastControl.type}
+          {controlIsError ? t('fleet:fleetCoordination.engineError') : lastControl.state ?? lastControl.type}
           {lastControl.message ? `: ${lastControl.message}` : ''}
         </div>
       )}
@@ -93,10 +95,10 @@ export function FleetCoordination() {
         <button
           onClick={() => { void startAssignedMissions(); }}
           disabled={busy}
-          data-tip={`Upload each vehicle's assigned WP group and start all ${assignedCount} missions in AUTO`}
+          data-tip={t('fleet:fleetCoordination.startMissionsTip', { count: assignedCount })}
           className={takeoffBtn}
         >
-          Start missions ({assignedCount})
+          {t('fleet:fleetCoordination.startMissions', { count: assignedCount })}
         </button>
       )}
 
@@ -112,21 +114,21 @@ export function FleetCoordination() {
                 type="button"
                 onClick={() => toggleFleet(g.leader.key, expanded)}
                 className="shrink-0 w-4 grid place-items-center text-content-tertiary hover:text-content"
-                data-tip={expanded ? 'Collapse fleet' : 'Expand fleet'}
+                data-tip={expanded ? t('fleet:fleetCoordination.collapseFleet') : t('fleet:fleetCoordination.expandFleet')}
               >
                 <FleetChevron open={expanded} />
               </button>
-              <span className="font-semibold uppercase tracking-[0.12em] text-cyan-500/90">Fleet</span>
+              <span className="font-semibold uppercase tracking-[0.12em] text-cyan-500/90">{t('fleet:fleetCoordination.fleet')}</span>
               <span className="font-mono text-content-secondary truncate flex-1">{g.leader.label} +{g.wingmen}</span>
-              <span className="font-mono text-content-tertiary truncate max-w-[64px]" data-tip={`${g.leader.label} mode`}>{g.leader.mode}</span>
+              <span className="font-mono text-content-tertiary truncate max-w-[64px]" data-tip={t('fleet:fleetCoordination.leaderModeTip', { label: g.leader.label })}>{g.leader.mode}</span>
               {canTakeoff && (
                 <button
                   onClick={() => { void takeOffFleet(g.leader.key, alt); }}
                   disabled={busy}
-                  data-tip={`Arm and climb only ${g.leader.label}'s fleet to ${alt} m`}
+                  data-tip={t('fleet:fleetCoordination.takeOffFleetTip', { label: g.leader.label, alt })}
                   className="shrink-0 px-2 py-1 text-[10px] font-medium rounded border border-cyan-500/30 bg-cyan-500/10 text-content hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
                 >
-                  Take off
+                  {t('fleet:fleetCoordination.takeOff')}
                 </button>
               )}
             </div>
@@ -146,7 +148,7 @@ export function FleetCoordination() {
                           type="button"
                           disabled={busy || lit}
                           onClick={() => { void reshapeFleet(g.leader.key, o.value); }}
-                          data-tip={`Re-form ${g.leader.label}'s fleet: ${o.label}`}
+                          data-tip={t('fleet:fleetCoordination.reformTip', { label: g.leader.label, shape: t(o.labelKey) })}
                           className={`grid place-items-center aspect-square rounded border transition-colors disabled:opacity-60 ${tacButton(lit)}`}
                         >
                           <FormationGlyph shape={o.value} size={18} />
@@ -158,10 +160,10 @@ export function FleetCoordination() {
                 <button
                   onClick={() => { void startLeaderMission(g.leader.key); }}
                   disabled={busy}
-                  data-tip={`${g.leader.label} flies its uploaded mission in AUTO; its wingmen hold formation and follow`}
+                  data-tip={t('fleet:fleetCoordination.startMissionTip', { label: g.leader.label })}
                   className={subtleBtn}
                 >
-                  Start mission
+                  {t('fleet:fleetCoordination.startMission')}
                 </button>
               </>
             )}

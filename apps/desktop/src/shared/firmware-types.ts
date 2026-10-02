@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * Firmware Flash Types
  * Types for board detection, firmware sources, and flash operations
@@ -359,8 +361,12 @@ export const FIRMWARE_SOURCE_NAMES: Record<FirmwareSource, string> = {
   px4: 'PX4',
   betaflight: 'Betaflight',
   inav: 'iNav',
-  custom: 'Custom File',
+  custom: 'Custom File', // i18n-exempt
 };
+
+export function firmwareSourceName(source: FirmwareSource): string {
+  return source === 'custom' ? t('shared:firmwareTypes.customFile') : FIRMWARE_SOURCE_NAMES[source];
+}
 
 /**
  * Human-readable firmware label for a detected MAVLink connection.
@@ -372,7 +378,7 @@ export function firmwareLabel(cs: {
   autopilot?: string;
 }): string {
   if (cs.firmware) {
-    return FIRMWARE_SOURCE_NAMES[cs.firmware];
+    return firmwareSourceName(cs.firmware);
   }
   return cs.autopilot || 'ArduPilot';
 }

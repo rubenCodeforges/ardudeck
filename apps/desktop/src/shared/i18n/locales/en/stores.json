@@ -1,0 +1,358 @@
+{
+  "appStore": {
+    "installFailed": "Install failed",
+    "uninstallFailed": "Uninstall failed"
+  },
+  "ardupilotSitlStore": {
+    "browseFailed": "Browse failed",
+    "downloadBinaryFailed": "Failed to download {{track}} binary",
+    "downloadFailed": "Download failed",
+    "flightGearFailed": "Failed to launch FlightGear",
+    "model": {
+      "balancebot": "Balance Bot",
+      "coax": "Coaxial Copter",
+      "hexa": "Hexacopter",
+      "plane": "Plane (default)",
+      "quad": "Quad (default)",
+      "quadPlus": "Quad Plus (+)",
+      "rover": "Rover (default)",
+      "sailboat": "Sailboat",
+      "single": "Single Copter",
+      "skid": "Skid Steering",
+      "spoilers": "Plane w/ Spoilers",
+      "vectored": "Vectored (default)",
+      "vectored6dof": "Vectored 6DOF",
+      "vtail": "V-Tail Plane"
+    },
+    "startFailed": "Failed to start SITL"
+  },
+  "calibrationStore": {
+    "confirmPositionFailed": "Failed to confirm position",
+    "finalizing": "Finalizing calibration on flight controller...",
+    "instructions": {
+      "compass": "Rotate your vehicle in all directions",
+      "default": "Follow the on-screen instructions",
+      "gyro": "Keep your vehicle completely still",
+      "level": "Place your vehicle on a level surface",
+      "opflow": "Hold vehicle steady over a textured surface"
+    },
+    "loadFileFailed": "Failed to load file",
+    "loadSensorConfigFailed": "Failed to load sensor config",
+    "noCompassFitness": "No compass fitness reported.",
+    "noTrackedParams": "No tracked parameters could be read from the flight controller",
+    "noTypeSelected": "No calibration type selected",
+    "readParamsFailed": "Failed to read calibration parameters",
+    "recorded": "Recorded.",
+    "saveDataFailed": "Failed to save calibration data",
+    "savePersistentFailed": "Failed to save to persistent storage",
+    "saving": "Saving calibration...",
+    "sensorMissing": "{{name}} requires {{sensor}} sensor which is not available",
+    "silentFailure": "Flight controller reported success, but the calibration parameters did not change. The calibration silently failed, please try again.",
+    "startFailed": "Failed to start calibration",
+    "unsupportedProtocol": "{{name}} is not supported for {{protocol}} protocol",
+    "verificationFailed": "Verification failed",
+    "waitingForFc": "Waiting for flight controller..."
+  },
+  "cliStore": {
+    "rebooting": "Board is rebooting...",
+    "reconnecting": "Reconnecting to board...",
+    "saveFailed": "Failed to save configuration",
+    "savedReconnected": "Configuration saved! Board reconnected.",
+    "savedReconnecting": "Configuration saved! Reconnecting...",
+    "savingConfig": "Saving configuration to EEPROM..."
+  },
+  "fenceStore": {
+    "clearFailed": "Failed to clear fence",
+    "cleared": "Fence cleared from flight controller",
+    "downloadFailed": "Failed to download fence",
+    "downloaded": "Downloaded {{count}} fence items from flight controller",
+    "nothingToUpload": "No fence items to upload",
+    "uploadFailed": "Failed to upload fence",
+    "uploaded": "Uploaded {{count}} fence items to flight controller"
+  },
+  "firmwareStore": {
+    "alreadyAirplane": "Board already configured as airplane",
+    "bootloaderFailed": "Failed to enter bootloader",
+    "cannotIdentify": "Could not identify board on {{port}}. Select your board manually.",
+    "checkingPlatform": "Checking platform configuration...",
+    "configurationFailed": "Configuration failed",
+    "configuredAirplane": "Board configured as airplane! Reconnect when ready.",
+    "configuringAirplane": "Configuring board as airplane...",
+    "connectRetry": "Connection failed, retrying in {{seconds}}s...",
+    "connectingAttempt": "Connecting to board (attempt {{attempt}}/{{max}})...",
+    "detectionFailed": "Detection failed",
+    "downloadFailed": "Download failed",
+    "downloadingFirmware": "Downloading firmware...",
+    "fetchBoardsFailed": "Failed to fetch boards",
+    "fetchBoardsNoMessage": "Failed to fetch boards (no error message)",
+    "fetchVersionsFailed": "Failed to fetch versions",
+    "fetchVersionsNoMessage": "Failed to fetch versions (no error message)",
+    "noBoard": "No board connected. Click Connect first.",
+    "noBootloader": "No STM32 bootloader found on {{port}}. Make sure the board is in bootloader mode.",
+    "noFile": "No firmware file selected",
+    "noPortForReconnect": "No port found for reconnection",
+    "noUsbDevice": "No USB device detected. Make sure your flight controller is connected.",
+    "noVersion": "No firmware version selected",
+    "probeFailed": "Probe failed",
+    "readMixerFailed": "Failed to read iNav mixer config",
+    "reconnectAfterFlashFailed": "Could not connect after flash. The USB-serial chip may need a physical unplug/replug. Disconnect the board, reconnect it, then use Servo Wizard to configure as airplane.",
+    "savingEeprom": "Saving to EEPROM...",
+    "setPlatformFailed": "Failed to set platform type to airplane",
+    "startingFlash": "Starting flash...",
+    "vehicleTypeMismatch": "Vehicle type mismatch: you selected {{selected}} but the chosen version is {{version}}. Reselect the vehicle and version, then try again.",
+    "waitingReboot": "Waiting for board to reboot (6s)..."
+  },
+  "fleetRepoStore": {
+    "boundarySaved": "Boundary saved to {{site}}",
+    "boundaryUnchanged": "Boundary unchanged since last snapshot",
+    "cannotIdentify": "Could not identify the vehicle. Pick one under \"Working on\" in the vault.",
+    "firmwareMismatch": "That snapshot was taken from {{snapshotFirmware}}, but this vehicle is running {{liveFirmware}}. Its parameter names do not carry across flight stacks.",
+    "linkFailed": "Link failed",
+    "linked": "Vehicle linked; snapshots continue in that unit",
+    "missionSaved": "Mission saved to {{site}}",
+    "missionUnchanged": "Mission unchanged since last snapshot",
+    "newVehicleSaved": "New vehicle \"{{name}}\" saved ({{count}} params)",
+    "noChanges": "No changes since last snapshot",
+    "noMission": "No mission loaded to snapshot.",
+    "noParams": "No parameters loaded to snapshot.",
+    "noSurveyPolygon": "No survey polygon on the map to snapshot.",
+    "readSnapshotFailed": "Could not read snapshot from the vault.",
+    "renameFailed": "Rename failed",
+    "restoredPartial": "Restored {{applied}}, {{failed}} failed",
+    "restored_one": "Restored {{count}} parameter",
+    "restored_other": "Restored {{count}} parameters",
+    "snapshotFailed": "Snapshot failed",
+    "snapshotSaved": "Snapshot saved ({{count}} params)",
+    "syncFailed": "Sync failed",
+    "synced": "Synced with GitHub",
+    "vaultUnavailable": "Vault unavailable",
+    "wrongOwner": "That snapshot belongs to {{owner}}, not the connected vehicle. Open a snapshot from this vehicle's history, or set \"Working on\" to {{owner}} if this is that aircraft."
+  },
+  "flightControlStore": {
+    "trainerActive": "Trainer session active - the Trainer owns the sticks"
+  },
+  "groupShapeStore": {
+    "description": {
+      "edgesOnly": "Only the run's ends bulge, gauges in the middle stay flush",
+      "roundedAll": "Every round gauge bulges its own circle",
+      "square": "Flat card, no bulge - the original look"
+    },
+    "label": {
+      "edgesOnly": "Rounded (ends only)",
+      "roundedAll": "Rounded (every gauge)",
+      "square": "Square"
+    }
+  },
+  "guideStore": {
+    "emptyFile": "Empty file",
+    "importUnavailable": "Import not available",
+    "noShapes": "No polygons or lines found in the file",
+    "noValidPoints": "No valid points to add."
+  },
+  "legacyConfigStore": {
+    "loadFailed": "Failed to load config",
+    "rebooting": "Board is rebooting...",
+    "reconnecting": "Reconnecting to board...",
+    "saveFailed": "Failed to save configuration",
+    "savedReconnect": "Configuration saved! Board rebooted. Please reconnect.",
+    "savingConfig": "Saving configuration to EEPROM..."
+  },
+  "missionLibraryStore": {
+    "readFailed": "Could not read that mission from the backup",
+    "writeFailed": "Could not write to the backup"
+  },
+  "missionStore": {
+    "clearFailed": "Failed to clear mission",
+    "clearWaypointsFailed": "Failed to clear waypoints",
+    "cleared": "Mission cleared from flight controller",
+    "clearedFromFc": "Mission cleared from FC",
+    "downloadFailed": "Failed to download mission",
+    "downloadedFromFcInto": "Downloaded {{count}} waypoints from flight controller into \"{{group}}\"",
+    "downloadedInto": "Downloaded {{count}} waypoints from FC into \"{{group}}\"",
+    "groupEmptySave": "No waypoints in this group to save",
+    "groupEmptyUpload": "No waypoints in this group to upload",
+    "mspNotSupported": "Failed to download waypoints - MSP not supported",
+    "noWaypointsOnFc": "No waypoints on FC",
+    "noWaypointsToUpload": "No waypoints to upload (all groups deselected?)",
+    "recovered": "Recovered {{count}} waypoints from your last session",
+    "savedToFile": "Saved {{count}} waypoints to file",
+    "uploadFailed": "Failed to upload mission",
+    "uploadToVehicleFailed": "Failed to upload mission to vehicle",
+    "uploadWaypointsFailed": "Failed to upload waypoints",
+    "uploadedToFc": "Uploaded {{count}} waypoints to FC",
+    "uploadedToFlightController": "Uploaded {{count}} waypoints to flight controller",
+    "uploadedToVehicle": "Uploaded {{count}} waypoints to vehicle"
+  },
+  "modesWizardStore": {
+    "clearSlotFailed": "Failed to clear mode slot {{i}}",
+    "eepromSaveFailed": "Modes sent but EEPROM save failed",
+    "loadFailed": "Failed to load modes",
+    "loadFromFcFailed": "Failed to load modes from FC",
+    "saveFailed": "Failed to save modes",
+    "setModeFailed": "Failed to set mode {{i}}"
+  },
+  "moduleStore": {
+    "activationFailed": "Activation failed",
+    "installFailed": "Install failed",
+    "toggleFailed": "Toggle failed",
+    "updateFailed": "Update failed",
+    "updateFailedFor": "Update failed for {{slug}}"
+  },
+  "orchestratorEngineStore": {
+    "addSourceFailed": "Failed to add source",
+    "startFailed": "Failed to start multi-vehicle"
+  },
+  "osdStore": {
+    "ardupilotFont": "ArduPilot picks a font via the OSD_FONT parameter, not by upload",
+    "connectFcFirst": "Connect to a flight controller first",
+    "connectFirst": "Connect to an ArduPilot or Betaflight/iNav FC first",
+    "connectForFont": "Connect a Betaflight/iNAV board to upload an analog font",
+    "downloadingParams": "Downloading parameters…",
+    "fontUploadFailed": "Font upload failed: {{msg}}",
+    "fontUploaded": "Font uploaded ({{count}} chars), reboot the FC to apply",
+    "loadFontFailed": "Failed to load font",
+    "loadedFromFc": "Loaded {{count}} elements from FC",
+    "loadedFromScreen": "Loaded {{resolved}} elements from screen {{screen}}",
+    "noConfig": "No OSD config returned by FC",
+    "noFont": "No font loaded",
+    "noOsdParams": "No OSD parameters on this board (set OSD_TYPE?)",
+    "readFailed": "Read failed: {{msg}}",
+    "reading": "Reading from flight controller...",
+    "unknownError": "unknown error",
+    "unknownFont": "Unknown bundled font: {{name}}",
+    "uploadFailed": "Upload failed: {{msg}}",
+    "uploadedPartial": "Uploaded {{confirmed}}/{{total}}; {{failed}} not confirmed",
+    "uploadedSaved": "Uploaded {{count}} elements and saved to FC",
+    "uploadedToScreen": "Uploaded {{count}} parameters to screen {{screen}}",
+    "uploadingFont": "Uploading font to FC NVM…",
+    "uploadingLayout": "Uploading OSD layout...",
+    "uploadingParams": "Uploading {{count}} parameters..."
+  },
+  "parameterStore": {
+    "requestFailed": "Failed to request parameters",
+    "setFailed": "Failed to set parameter"
+  },
+  "pseudoTxStore": {
+    "enableFirst": "Switch the USB transmitter on first",
+    "linkLost": "Vehicle link lost - joystick control released",
+    "needsMavlink": "Needs a connected MAVLink vehicle",
+    "noBridge": "No SITL RC bridge in this window - frames are going nowhere",
+    "overrideRejected": "Override rejected by the link"
+  },
+  "px4SitlStore": {
+    "disconnecting": "Disconnecting from stopped SITL.",
+    "downloadFailed": "Download failed",
+    "startFailed": "Failed to start SITL"
+  },
+  "quickSetupStore": {
+    "applyFailed": "Apply failed",
+    "applyPresetFailed": "Failed to apply preset",
+    "changePlatformFailed": "Failed to change platform type",
+    "connectionLost": "Connection lost during setup. Please reconnect and try again.",
+    "noPreset": "No preset selected",
+    "notConnected": "Not connected to flight controller. Please connect first.",
+    "platformChangeUnknown": "Unknown error during platform change",
+    "reconnectFailed": "Failed to reconnect after platform change. Please reconnect manually and try again.",
+    "saveEepromFailed": "Failed to save to EEPROM",
+    "setPidsFailed": "Failed to set PIDs",
+    "setRatesFailed": "Failed to set rates",
+    "task": {
+      "checkPlatform": "Checking platform",
+      "clearModes": "Clearing old modes",
+      "clearServoMixer": "Clearing servo mixer",
+      "exitCli": "Exiting CLI mode",
+      "failsafe": "Setting failsafe",
+      "modes": "Setting flight modes",
+      "motorMixer": "Configuring motor mixer",
+      "pids": "Setting PIDs",
+      "rates": "Setting Rates",
+      "saveEeprom": "Saving to EEPROM",
+      "saveReboot": "Saving & rebooting",
+      "sendCli": "Sending CLI commands",
+      "servoMixer": "Configuring servo mixer"
+    }
+  },
+  "rallyStore": {
+    "clearFailed": "Failed to clear rally points",
+    "cleared": "Rally points cleared from flight controller",
+    "downloadFailed": "Failed to download rally points",
+    "downloaded": "Downloaded {{count}} rally points from flight controller",
+    "nothingToUpload": "No rally points to upload",
+    "uploadFailed": "Failed to upload rally points",
+    "uploaded": "Uploaded {{count}} rally points to flight controller"
+  },
+  "servoWizardStore": {
+    "changePlatformFailed": "Could not change platform to {{platform}}. For iNav 2.0.0, you may need to use iNav Configurator to change the mixer type, then reconnect.",
+    "checkSupportFailed": "Failed to check servo support. Please try again.",
+    "firmwareTooOld": "Servo configuration not supported on this firmware. iNav 2.0.0 may be too old - try updating to a newer version.",
+    "multirotorNoServos": "Servo outputs are not available on this board in multirotor mode. This is a hardware limitation - not all flight controller boards can output servo signals when configured as a quad/hex.",
+    "noServos": "No servo outputs detected. Ensure your board supports servos.",
+    "noServosGimbal": "No servo outputs available on this board for gimbal control.",
+    "platformChangeError": "Error changing platform: {{error}}. Try using iNav Configurator to change the mixer type.",
+    "saveEepromFailed": "Failed to save to EEPROM",
+    "setServoFailed": "Failed to set servo {{index}} config",
+    "step": {
+      "aircraft": "Aircraft",
+      "aircraftDesc": "Select your aircraft type",
+      "assign": "Assign",
+      "assignDesc": "Map servos to control surfaces",
+      "endpoints": "Calibrate",
+      "endpointsDesc": "Adjust servo limits",
+      "review": "Save",
+      "reviewDesc": "Review and save",
+      "test": "Test",
+      "testDesc": "Verify servo movement"
+    },
+    "timeout": "Timeout"
+  },
+  "signingStore": {
+    "enableFailed": "Failed to enable signing",
+    "sendFailed": "Failed to send to FC",
+    "setKeyFailed": "Failed to set key"
+  },
+  "sitlStore": {
+    "bridgeStopped": "Protocol bridge stopped.",
+    "cannotDeleteStandard": "Cannot delete standard profiles",
+    "flightGearFailed": "Failed to launch FlightGear",
+    "nameExists": "Profile name already exists",
+    "noProfile": "No profile selected",
+    "profileDescription": {
+      "Airplane": "Pre-configured for fixed-wing testing with airplane mixer.",
+      "Default": "Fresh iNav install with factory defaults. Use for general testing.",
+      "Quadcopter": "Pre-configured for quad testing with X mixer."
+    },
+    "startFailed": "Failed to start SITL",
+    "startingBridge": "Starting protocol bridge...",
+    "startingInav": "Starting iNav SITL...",
+    "stoppingBridge": "Stopping protocol bridge...",
+    "waitingFlightGear": "Waiting for FlightGear to initialize (15-30 seconds)...",
+    "waitingXPlane": "Waiting for X-Plane to initialize (10 seconds)...",
+    "xplaneFailed": "Failed to launch X-Plane"
+  },
+  "surveyAreaStore": {
+    "readFailed": "Could not read that area from the vault",
+    "writeFailed": "Could not write to the vault"
+  },
+  "surveyStore": {
+    "emptyFile": "Empty file",
+    "generateFailed": "Could not generate a survey from the imported area(s)",
+    "generating": "Generating waypoints...",
+    "generatorFailed": "Generator failed: {{message}}",
+    "importUnavailable": "Import not available",
+    "importing": "Importing survey - generating waypoints...",
+    "loading": "Loading survey...",
+    "noShapes": "No polygon boundary or line found in the file",
+    "recomputing": "Recomputing {{count}} waypoints...",
+    "reloadingArea": "Reloading saved area..."
+  },
+  "swarmSitlStore": {
+    "startFailed": "Failed to start swarm"
+  },
+  "weatherStore": {
+    "unavailable": "Weather data unavailable. Check your internet connection and try again."
+  },
+  "windStore": {
+    "fetchFailed": "Wind fetch failed",
+    "unavailable": "Wind data unavailable"
+  }
+}

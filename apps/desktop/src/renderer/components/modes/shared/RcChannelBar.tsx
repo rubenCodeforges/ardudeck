@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { PWM } from '../presets/mode-presets';
 
 interface RcChannelBarProps {
@@ -27,6 +28,7 @@ export const RcChannelBar: React.FC<RcChannelBarProps> = ({
   showLabels = true,
   compact = false,
 }) => {
+  const { t } = useTranslation();
   // Calculate positions as percentages
   const rangeToPercent = (value: number) =>
     ((value - PWM.MIN) / (PWM.MAX - PWM.MIN)) * 100;
@@ -96,7 +98,7 @@ export const RcChannelBar: React.FC<RcChannelBarProps> = ({
       {/* Status row */}
       <div className="flex justify-between items-center">
         <span className={`text-xs ${compact ? 'text-[10px]' : ''} text-content-secondary`}>
-          RC: <span className="text-content font-mono">{rcValue}</span>
+          {t('modes:rcChannelBar.rc')} <span className="text-content font-mono">{rcValue}</span>
         </span>
         {isActive ? (
           <span
@@ -104,7 +106,7 @@ export const RcChannelBar: React.FC<RcChannelBarProps> = ({
               compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'
             } bg-green-500/20 text-green-400 rounded-full font-medium`}
           >
-            ACTIVE
+            {t('modes:rcChannelBar.active')}
           </span>
         ) : (
           <span
@@ -112,7 +114,7 @@ export const RcChannelBar: React.FC<RcChannelBarProps> = ({
               compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'
             } bg-surface-raised text-content-secondary rounded-full`}
           >
-            INACTIVE
+            {t('modes:rcChannelBar.inactive')}
           </span>
         )}
       </div>

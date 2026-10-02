@@ -4,17 +4,12 @@
  * or a connected polygon guide (which can then seed a survey / mission plan).
  * Parsing is live so mistakes are visible before anything lands on the map.
  */
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, X, Check } from 'lucide-react';
 import { parseSurveyedPoints } from './rtk-points';
 import { useGuideStore } from '../../stores/guide-store';
-
-const PLACEHOLDER = `One point per line - labels optional, decimal commas OK:
-
-53.397635, 8.136100
-P2; 53,397841; 8,136433
-corner_ne  53.398012  8.137020`;
 
 export function SurveyedPointsDialog({
   onClose,
@@ -23,6 +18,7 @@ export function SurveyedPointsDialog({
   onClose: () => void;
   showToast?: (msg: string, kind: 'success' | 'error') => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const addSurveyedPoints = useGuideStore((s) => s.addSurveyedPoints);
   const [text, setText] = useState('');
   const [name, setName] = useState('');
@@ -33,13 +29,13 @@ export function SurveyedPointsDialog({
   const add = () => {
     const res = addSurveyedPoints(parsed.points, { connect, name });
     if (!res.ok) {
-      showToast?.(res.error ?? 'Could not add points', 'error');
+      showToast?.(res.error ?? t('mission:surveyedPointsDialog.addFailed'), 'error');
       return;
     }
     showToast?.(
       connect
-        ? `Added polygon from ${parsed.points.length} surveyed points`
-        : `Added ${parsed.points.length} surveyed point${parsed.points.length === 1 ? '' : 's'}`,
+        ? t('mission:surveyedPointsDialog.addedPolygon', { count: parsed.points.length })
+        : t('mission:surveyedPointsDialog.addedPoints', { count: parsed.points.length }),
       'success',
     );
     onClose();
@@ -56,15 +52,15 @@ export function SurveyedPointsDialog({
             <MapPin className="w-4 h-4 text-teal-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-content">Surveyed points</h3>
+            <h3 className="text-sm font-semibold text-content">{t('mission:surveyedPointsDialog.title')}</h3>
             <p className="text-[11px] text-content-tertiary">
-              Paste RTK measurements - one point per line, latitude first.
+              {t('mission:surveyedPointsDialog.subtitle')}
             </p>
           </div>
           <button
             onClick={onClose}
             className="w-7 h-7 rounded-md flex items-center justify-center text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
-            data-tip="Close"
+            data-tip={t('common:close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -74,7 +70,7 @@ export function SurveyedPointsDialog({
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={PLACEHOLDER}
+            placeholder={t('mission:surveyedPointsDialog.placeholder')}
             autoFocus
             spellCheck={false}
             rows={9}
@@ -83,11 +79,11 @@ export function SurveyedPointsDialog({
 
           <div className="flex items-center justify-between text-[11px]">
             <span className={parsed.points.length > 0 ? 'text-teal-400 font-medium' : 'text-content-tertiary'}>
-              {parsed.points.length} point{parsed.points.length === 1 ? '' : 's'} recognized
+              {t('mission:surveyedPointsDialog.recognized', { count: parsed.points.length })}
             </span>
             {parsed.skipped.length > 0 && (
-              <span className="text-amber-500" data-tip="Lines with content that produced no coordinate (headers, notes, malformed rows)">
-                {parsed.skipped.length} line{parsed.skipped.length === 1 ? '' : 's'} skipped
+              <span className="text-amber-500" data-tip={t('mission:surveyedPointsDialog.skippedTip')}>
+                {t('mission:surveyedPointsDialog.skipped', { count: parsed.skipped.length })}
                 {parsed.skipped.length <= 6 ? `: ${parsed.skipped.join(', ')}` : ''}
               </span>
             )}
@@ -97,7 +93,7 @@ export function SurveyedPointsDialog({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Name (optional, e.g. Field boundary north)"
+            placeholder={t('mission:surveyedPointsDialog.namePlaceholder')}
             className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-xs text-content focus:outline-none focus:border-teal-500"
           />
 
@@ -110,8 +106,8 @@ export function SurveyedPointsDialog({
                   : 'border-subtle bg-surface text-content-secondary hover:text-content'
               }`}
             >
-              Markers
-              <span className="block text-[10px] opacity-70 font-normal">numbered pins on the map</span>
+              {t('mission:surveyedPointsDialog.markers')}
+              <span className="block text-[10px] opacity-70 font-normal">{t('mission:surveyedPointsDialog.markersHint')}</span>
             </button>
             <button
               onClick={() => setConnect(true)}
@@ -121,8 +117,8 @@ export function SurveyedPointsDialog({
                   : 'border-subtle bg-surface text-content-secondary hover:text-content'
               }`}
             >
-              Connected polygon
-              <span className="block text-[10px] opacity-70 font-normal">outline in measurement order, plan surveys from it</span>
+              {t('mission:surveyedPointsDialog.polygon')}
+              <span className="block text-[10px] opacity-70 font-normal">{t('mission:surveyedPointsDialog.polygonHint')}</span>
             </button>
           </div>
         </div>
@@ -132,7 +128,7 @@ export function SurveyedPointsDialog({
             onClick={onClose}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={add}
@@ -140,7 +136,7 @@ export function SurveyedPointsDialog({
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
           >
             <Check className="w-3.5 h-3.5" />
-            {connect ? 'Add polygon' : 'Add markers'}
+            {connect ? t('mission:surveyedPointsDialog.addPolygon') : t('mission:surveyedPointsDialog.addMarkers')}
           </button>
         </div>
       </div>

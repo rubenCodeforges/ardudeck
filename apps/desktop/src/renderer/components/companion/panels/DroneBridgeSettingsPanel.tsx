@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNumericDraft } from '../../../hooks/useNumericDraft';
 import { useCompanionStore } from '../../../stores/companion-store';
 import { PanelContainer, SectionTitle } from '../../panels/panel-utils';
-import { ESP32_MODE_LABELS, PROTOCOL_LABELS } from '../../../../shared/dronebridge-types';
+import { ESP32_MODE_LABELS, PROTOCOL_LABELS, esp32ModeLabel } from '../../../../shared/dronebridge-types';
 import type { DroneBridgeSettings } from '../../../../shared/dronebridge-types';
+import { useTranslation } from 'react-i18next';
 
 const BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
 
@@ -90,24 +91,22 @@ function SelectInput<T extends string | number>({ value, onChange, options }: {
   );
 }
 
-const modeOptions = Object.entries(ESP32_MODE_LABELS).map(([k, v]) => ({
-  value: Number(k),
-  label: v,
-}));
-
-const protoOptions = Object.entries(PROTOCOL_LABELS).map(([k, v]) => ({
-  value: Number(k),
-  label: v,
-}));
-
 const baudOptions = BAUD_RATES.map((b) => ({ value: b, label: String(b) }));
 
-const rssiOptions = [
-  { value: 0, label: 'Percentage' },
-  { value: 1, label: 'dBm' },
-];
-
 export function DroneBridgeSettingsPanel() {
+  const { t } = useTranslation();
+  const modeOptions = Object.keys(ESP32_MODE_LABELS).map((k) => ({
+    value: Number(k),
+    label: esp32ModeLabel(Number(k)) ?? k,
+  }));
+  const protoOptions = Object.entries(PROTOCOL_LABELS).map(([k, v]) => ({
+    value: Number(k),
+    label: Number(k) === 2 ? t('companion:dashboard.protoTransparent') : v,
+  }));
+  const rssiOptions = [
+    { value: 0, label: t('companion:dbSettings.percentage') },
+    { value: 1, label: 'dBm' },
+  ];
   const droneBridgeIp = useCompanionStore((s) => s.droneBridgeIp);
 
   const [loading, setLoading] = useState(true);
@@ -156,13 +155,13 @@ export function DroneBridgeSettingsPanel() {
       }
 
       if (!cancelled) {
-        setError('Could not load settings, device may still be booting');
+        setError(t('companion:dbSettings.loadFailed'));
         setLoading(false);
       }
     };
     fetchSettings();
     return () => { cancelled = true; };
-  }, [droneBridgeIp]);
+  }, [droneBridgeIp, t]);
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -174,7 +173,7 @@ export function DroneBridgeSettingsPanel() {
     if (!droneBridgeIp || !form) return;
 
     const confirmed = window.confirm(
-      'Saving will reboot the DroneBridge. Connection will be lost for ~5 seconds. Continue?'
+      t('companion:dbSettings.confirmSave'),
     );
     if (!confirmed) return;
 
@@ -194,21 +193,21 @@ export function DroneBridgeSettingsPanel() {
         setLoaded(settings);
         setForm(settings);
       } catch {
-        setError('Device rebooted but could not re-connect. Check your WiFi settings.');
+        setError(t('companion:dbSettings.reconnectFailed'));
       }
       setRebooting(false);
     } catch {
-      setError('Failed to save settings');
+      setError(t('companion:dbSettings.saveFailed'));
       setSaving(false);
     }
-  }, [droneBridgeIp, form]);
+  }, [droneBridgeIp, form, t]);
 
   if (!droneBridgeIp) {
     return (
       <PanelContainer className="flex items-center justify-center">
         <div className="text-center text-content-tertiary text-xs">
-          <div className="text-content-secondary mb-1">No DroneBridge connected</div>
-          <div>Open the Status panel to detect or connect to a DroneBridge</div>
+          <div className="text-content-secondary mb-1">{t('companion:dbSettings.none')}</div>
+          <div>{t('companion:dbSettings.noneHint')}</div>
         </div>
       </PanelContainer>
     );
@@ -222,7 +221,7 @@ export function DroneBridgeSettingsPanel() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          Loading settings...
+          {t('companion:dbSettings.loading')}
         </div>
       </PanelContainer>
     );
@@ -236,8 +235,8 @@ export function DroneBridgeSettingsPanel() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <div className="text-sm">Rebooting...</div>
-          <div className="text-xs text-content-tertiary">Reconnecting in a few seconds</div>
+          <div className="text-sm">{t('common:rebooting')}</div>
+          <div className="text-xs text-content-tertiary">{t('companion:dbSettings.reconnectingSoon')}</div>
         </div>
       </PanelContainer>
     );
@@ -247,7 +246,7 @@ export function DroneBridgeSettingsPanel() {
     return (
       <PanelContainer className="flex items-center justify-center">
         <div className="text-center text-content-tertiary text-xs">
-          {error ?? 'No settings data available'}
+          {error ?? t('companion:dbSettings.noData')}
         </div>
       </PanelContainer>
     );
@@ -264,12 +263,12 @@ export function DroneBridgeSettingsPanel() {
 
         {/* WiFi Section */}
         <div>
-          <SectionTitle>WiFi</SectionTitle>
+          <SectionTitle>{t('companion:dbSettings.wifi')}</SectionTitle>
           <div className="space-y-0.5">
             <FieldRow label="SSID">
               <TextInput value={form.ssid} onChange={(v) => updateField('ssid', v)} />
             </FieldRow>
-            <FieldRow label="Password">
+            <FieldRow label={t('common:password')}>
               <div className="flex items-center gap-1">
                 <TextInput
                   value={form.wifi_pass}
@@ -281,20 +280,20 @@ export function DroneBridgeSettingsPanel() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="text-[10px] text-content-secondary hover:text-content px-1.5 py-1 transition-colors"
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? t('common:hide') : t('common:show')}
                 </button>
               </div>
             </FieldRow>
-            <FieldRow label="Channel">
+            <FieldRow label={t('common:channel')}>
               <NumberInput value={form.wifi_chan} onChange={(v) => updateField('wifi_chan', v)} min={1} max={13} />
             </FieldRow>
-            <FieldRow label="Mode">
+            <FieldRow label={t('common:mode')}>
               <SelectInput value={form.esp32_mode} onChange={(v) => updateField('esp32_mode', v)} options={modeOptions} />
             </FieldRow>
             <FieldRow label="802.11 g/n">
               <Toggle checked={form.wifi_en_gn === 1} onChange={(v) => updateField('wifi_en_gn', v ? 1 : 0)} />
             </FieldRow>
-            <FieldRow label="External antenna">
+            <FieldRow label={t('companion:dbSettings.extAntenna')}>
               <Toggle checked={form.ant_use_ext === 1} onChange={(v) => updateField('ant_use_ext', v ? 1 : 0)} />
             </FieldRow>
           </div>
@@ -302,23 +301,27 @@ export function DroneBridgeSettingsPanel() {
 
         {/* Serial Section */}
         <div>
-          <SectionTitle>Serial</SectionTitle>
+          <SectionTitle>{t('common:serial')}</SectionTitle>
           <div className="space-y-0.5">
-            <FieldRow label="Baud rate">
+            <FieldRow label={t('companion:dbSettings.baudRate')}>
               <SelectInput value={form.baud} onChange={(v) => updateField('baud', v)} options={baudOptions} />
             </FieldRow>
-            <FieldRow label="Protocol">
+            <FieldRow label={t('common:protocol')}>
               <SelectInput value={form.proto} onChange={(v) => updateField('proto', v)} options={protoOptions} />
             </FieldRow>
+            {/* i18n-exempt */}
             <FieldRow label="TX GPIO">
               <NumberInput value={form.gpio_tx} onChange={(v) => updateField('gpio_tx', v)} min={0} />
             </FieldRow>
+            {/* i18n-exempt */}
             <FieldRow label="RX GPIO">
               <NumberInput value={form.gpio_rx} onChange={(v) => updateField('gpio_rx', v)} min={0} />
             </FieldRow>
+            {/* i18n-exempt */}
             <FieldRow label="RTS GPIO">
               <NumberInput value={form.gpio_rts} onChange={(v) => updateField('gpio_rts', v)} min={0} />
             </FieldRow>
+            {/* i18n-exempt */}
             <FieldRow label="CTS GPIO">
               <NumberInput value={form.gpio_cts} onChange={(v) => updateField('gpio_cts', v)} min={0} />
             </FieldRow>
@@ -327,27 +330,27 @@ export function DroneBridgeSettingsPanel() {
 
         {/* Network Section */}
         <div>
-          <SectionTitle>Network</SectionTitle>
+          <SectionTitle>{t('companion:dbSettings.network')}</SectionTitle>
           <div className="space-y-0.5">
-            <FieldRow label="AP IP">
+            <FieldRow label={t('companion:dashboard.apIp')}>
               <TextInput value={form.ap_ip} onChange={(v) => updateField('ap_ip', v)} />
             </FieldRow>
-            <FieldRow label="Static IP">
+            <FieldRow label={t('companion:dbSettings.staticIp')}>
               <TextInput value={form.ip_sta} onChange={(v) => updateField('ip_sta', v)} />
             </FieldRow>
-            <FieldRow label="Gateway">
+            <FieldRow label={t('companion:dbSettings.gateway')}>
               <TextInput value={form.ip_sta_gw} onChange={(v) => updateField('ip_sta_gw', v)} />
             </FieldRow>
-            <FieldRow label="Netmask">
+            <FieldRow label={t('companion:dbSettings.netmask')}>
               <TextInput value={form.ip_sta_netmsk} onChange={(v) => updateField('ip_sta_netmsk', v)} />
             </FieldRow>
-            <FieldRow label="UDP client IP">
+            <FieldRow label={t('companion:dbSettings.udpClientIp')}>
               <TextInput value={form.udp_client_ip} onChange={(v) => updateField('udp_client_ip', v)} />
             </FieldRow>
-            <FieldRow label="UDP client port">
+            <FieldRow label={t('companion:dbSettings.udpClientPort')}>
               <NumberInput value={form.udp_client_port} onChange={(v) => updateField('udp_client_port', v)} min={1} max={65535} />
             </FieldRow>
-            <FieldRow label="Hostname">
+            <FieldRow label={t('companion:dbSettings.hostname')}>
               <TextInput value={form.wifi_hostname} onChange={(v) => updateField('wifi_hostname', v)} />
             </FieldRow>
           </div>
@@ -355,21 +358,21 @@ export function DroneBridgeSettingsPanel() {
 
         {/* Advanced Section */}
         <div>
-          <SectionTitle>Advanced</SectionTitle>
+          <SectionTitle>{t('common:advanced')}</SectionTitle>
           <div className="space-y-0.5">
-            <FieldRow label="Transparent packet size">
+            <FieldRow label={t('companion:dbSettings.transPackSize')}>
               <NumberInput value={form.trans_pack_size} onChange={(v) => updateField('trans_pack_size', v)} min={1} />
             </FieldRow>
-            <FieldRow label="Serial timeout (ms)">
+            <FieldRow label={t('companion:dbSettings.serialTimeout')}>
               <NumberInput value={form.serial_timeout} onChange={(v) => updateField('serial_timeout', v)} min={1} />
             </FieldRow>
-            <FieldRow label="LTM frames/packet">
+            <FieldRow label={t('companion:dbSettings.ltmPerPacket')}>
               <NumberInput value={form.ltm_per_packet} onChange={(v) => updateField('ltm_per_packet', v)} min={1} />
             </FieldRow>
-            <FieldRow label="Disable radio on arm">
+            <FieldRow label={t('companion:dbSettings.disableOnArm')}>
               <Toggle checked={form.radio_dis_onarm === 1} onChange={(v) => updateField('radio_dis_onarm', v ? 1 : 0)} />
             </FieldRow>
-            <FieldRow label="RSSI format">
+            <FieldRow label={t('companion:dbSettings.rssiFormat')}>
               <SelectInput value={form.rep_rssi_dbm} onChange={(v) => updateField('rep_rssi_dbm', v)} options={rssiOptions} />
             </FieldRow>
           </div>
@@ -386,7 +389,7 @@ export function DroneBridgeSettingsPanel() {
                 : 'bg-surface-raised text-content-tertiary cursor-not-allowed'
             }`}
           >
-            {saving ? 'Saving...' : 'Save and Reboot'}
+            {saving ? t('common:saving') : t('companion:dbSettings.saveReboot')}
           </button>
         </div>
       </div>

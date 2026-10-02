@@ -1,0 +1,203 @@
+{
+  "apply": {
+    "applied": "Configuration Applied!",
+    "applying": "Applying Configuration...",
+    "applyingDesc": "Applying {{name}} preset to your flight controller...",
+    "errorDesc": "There was an error applying the configuration. You can try again or go back.",
+    "failed": "Configuration Failed",
+    "noPreset": "No preset selected.",
+    "platformMismatch": "Platform Mismatch",
+    "platformMismatchDesc": "The selected preset requires \"{{required}}\" platform, but your board is currently set to \"{{current}}\".",
+    "savedHint": "Your configuration has been saved to EEPROM. You can fine-tune individual settings in the dedicated tabs, or test your setup now.",
+    "starting": "Starting...",
+    "stepReconnect": "We'll reconnect and continue applying your preset",
+    "successDesc": "Your {{name}} preset has been successfully applied to your flight controller.",
+    "tasks": "Configuration Tasks",
+    "verifyDirections": "Test servo directions - control surfaces should move correctly when you move the sticks",
+    "verifyMotor": "Verify motor output is connected and spins in the correct direction",
+    "verifySafe": "Always test in a safe environment before flying",
+    "verifyServoMixer": "Check the <b>Servo Mixer</b> tab and verify servos are connected to the correct FC outputs",
+    "verifyServos": "Verify Your Servo Setup"
+  },
+  "configReview": {
+    "applyConfiguration": "Apply Configuration",
+    "delaySeconds": "Delay: {{value}} seconds",
+    "intro": "The following configuration will be applied to your flight controller. Review the settings below before proceeding.",
+    "landingTimeout": "Landing timeout: {{value}} seconds",
+    "modeItem": "{{mode}} on {{channel}} ({{start}}-{{end}})",
+    "motorMixerMotors": "Motor mixer: {{n}} motors",
+    "motorMixerQuadX": "Motor mixer: Quad X ({{n}} motors)",
+    "noPreset": "No preset selected. Please go back and select a preset.",
+    "overwriteHint": "Make sure you've backed up your configuration if you want to preserve your current settings. The changes will be saved to EEPROM immediately.",
+    "overwriteWarning": "This will overwrite your current settings",
+    "pitchPid": "Pitch: P={{p}} I={{i}} D={{d}}",
+    "platformAirplane": "Platform: Airplane",
+    "platformMultirotor": "Platform: Multirotor",
+    "procedure": "Procedure: {{value}}",
+    "rollPid": "Roll: P={{p}} I={{i}} D={{d}}",
+    "servoMixerRules": "Servo mixer: {{n}} rules",
+    "title": "Review: {{name}}",
+    "viaCli": "Via CLI Commands",
+    "viaMsp": "Via MSP Protocol",
+    "yawPid": "Yaw: P={{p}} I={{i}}"
+  },
+  "errorDetails": "Error Details",
+  "platformChange": {
+    "boardRebooting": "Board is rebooting. Attempting to reconnect automatically...",
+    "changePlatform": "Change Platform",
+    "changingTitle": "Changing Platform...",
+    "errorGeneric": "An error occurred while changing the platform.",
+    "failed": "Platform Change Failed",
+    "pleaseWaitChanging": "Please wait while the platform type is being changed...",
+    "rebootingTitle": "Rebooting Flight Controller...",
+    "reconnecting": "Reconnecting...",
+    "required": "Required",
+    "savingEeprom": "Saving to EEPROM...",
+    "savingTitle": "Saving Configuration...",
+    "settingType": "Setting platform type...",
+    "stepReboot": "The board will reboot automatically",
+    "stepSaved": "Configuration will be saved to EEPROM",
+    "stepTypeChanged": "The platform type will be changed on your flight controller",
+    "waitingReboot": "Waiting for the flight controller to reboot...",
+    "waitingReconnection": "Waiting for reconnection...",
+    "whatHappens": "What happens when you change platform?"
+  },
+  "pleaseWait": "Please wait...",
+  "presetSelection": {
+    "bfFixedWingExperimental": "Betaflight's fixed-wing support is experimental and lacks navigation features.",
+    "bfGpsRescueHint": "Betaflight uses <b>GPS Rescue</b> instead of iNav's navigation modes. After applying a preset, configure GPS Rescue in the <b>GPS Rescue tab</b> for emergency return-to-home functionality.",
+    "bfNavNote": "<b>Note:</b> Navigation presets (GPS position hold, waypoints, RTH) are only available for iNav. Configure GPS Rescue separately in the GPS Rescue tab.",
+    "changeVehicleType": "Change vehicle type",
+    "chooseDifferent": "Choose Different Preset",
+    "cliConfig": "CLI Configuration (Legacy)",
+    "currentPlatform": "Current: {{name}}",
+    "fixedWingDesc": "Airplanes, flying wings, gliders, and other fixed-wing aircraft",
+    "flashInav": "Flash iNav Firmware",
+    "gpsReturnHome": "GPS Return Home",
+    "inavRecommendation": "For airplanes, flying wings, and gliders, we recommend <b>iNav firmware</b> which provides full navigation, auto-launch, waypoints, and return-to-home.",
+    "inavRecommended": "iNav Recommended",
+    "modesCount": "{{n}} Modes",
+    "mspConfig": "MSP Configuration",
+    "multirotorDesc": "Quadcopters, hexacopters, and other multi-motor aircraft",
+    "oneClick": "One-Click Configuration",
+    "oneClickPresetHint": "These presets apply a complete, tested configuration. You can always fine-tune individual settings later in the dedicated tabs.",
+    "oneClickVehicleHint": "Each preset applies a complete, tested configuration including PIDs, rates, flight modes, and failsafe settings. You can always fine-tune later.",
+    "pids": "PIDs",
+    "platformChangeBadge": "Platform change",
+    "platformChangeDesc": "\"{{name}}\" requires {{required}} platform, but your board is set to {{current}}.",
+    "platformChangeRequired": "Platform Change Required",
+    "presetsAvailable": "{{n}} presets available",
+    "selectPresetHint": "Select a preset to configure <b>everything at once</b>: PIDs, rates, flight modes, and failsafe settings.",
+    "selectVehicle": "Select your vehicle type to see available presets",
+    "stepReconnect": "We'll reconnect and continue the setup wizard",
+    "title": "Quick Setup",
+    "vehiclePresets": "{{vehicle}} Presets"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Safe & stable for learning",
+      "name": "Beginner",
+      "tip": "Self-leveling keeps you in control. Slow rates prevent overcorrection. Perfect for your first flights!"
+    },
+    "cinematic": {
+      "description": "Ultra-smooth for filming",
+      "name": "Cinematic",
+      "tip": "Low rates + high expo = buttery smooth movements. GPS position hold for stable shots. RTH for safety."
+    },
+    "flyingWing": {
+      "description": "Delta wings & flying wings with elevon mixing",
+      "name": "Flying Wing",
+      "tip": "Elevon mixing configured (left/right servos on CH3/CH4). Auto-launch, RTH, and waypoint navigation ready."
+    },
+    "freestyle": {
+      "description": "Balanced for tricks & flow",
+      "name": "Freestyle",
+      "tip": "Three-position switch gives ANGLE/HORIZON/ACRO. AIRMODE keeps control at zero throttle for flips!"
+    },
+    "fwGlider": {
+      "description": "Efficient soaring & thermal hunting",
+      "name": "Glider",
+      "tip": "Optimized for glide efficiency. Low rates for precision. Soaring mode for thermals. Flying wing servo setup."
+    },
+    "fwLongRange": {
+      "description": "Extended range for FPV missions",
+      "name": "Long Range FPV",
+      "tip": "Flying wing setup optimized for efficiency. Full navigation suite with waypoints, cruise, and RTH."
+    },
+    "fwSport": {
+      "description": "Agile traditional airplane for experienced pilots",
+      "name": "Sport Plane",
+      "tip": "Higher rates for aerobatics. Aileron/elevator/rudder setup. Switch between stabilized and acro modes."
+    },
+    "fwTrainer": {
+      "description": "Traditional airplane for beginners",
+      "name": "Trainer Plane",
+      "tip": "Classic aileron/elevator/rudder setup. Auto-level keeps wings stable. Perfect for learning fixed-wing flying."
+    },
+    "longRange": {
+      "description": "Extended range with GPS safety",
+      "name": "Long Range",
+      "tip": "Conservative PIDs for efficiency. GPS cruise and RTH for safety. ANGLE mode for easy recovery."
+    },
+    "racing": {
+      "description": "Fast & responsive for speed",
+      "name": "Racing",
+      "tip": "Pure ACRO for maximum control. High rates for quick corrections. Beeper helps find crashes!"
+    }
+  },
+  "summary": {
+    "action": "Action: {{value}}",
+    "aircraftType": "Aircraft Type",
+    "delay": "Delay: {{value}}s",
+    "elevonMixing": "Flying wing elevon mixing (2 servos)",
+    "expo": "Expo: {{value}}%",
+    "maxRotation": "{{rollRate}}% max rotation",
+    "modeOnChannel": "{{mode}} on {{channel}}",
+    "modesConfigured": "{{n}} modes configured",
+    "pidResponse": "{{name}} response",
+    "pidTuning": "PID Tuning",
+    "pitchPid": "Pitch P: {{p}}, I: {{i}}, D: {{d}}",
+    "quadXLayout": "Quad X motor layout",
+    "rcRate": "RC Rate: {{value}}",
+    "rollPid": "Roll P: {{p}}, I: {{i}}, D: {{d}}",
+    "rollPitchRate": "Roll/Pitch Rate: {{value}}",
+    "singleMotor": "Single motor",
+    "traditionalSetup": "Traditional setup: Aileron/Elevator/Rudder",
+    "yawPid": "Yaw P: {{p}}, I: {{i}}",
+    "yawRate": "Yaw Rate: {{value}}"
+  },
+  "transmitter": {
+    "allPrimaryResponding": "All primary channels (Roll, Pitch, Throttle, Yaw) are responding",
+    "applyRetry": "Apply & Retry",
+    "applyingPreset": "Applying <b>{{name}}</b> preset",
+    "channelsDetected": "{{n}}/4 channels detected",
+    "connected": "Transmitter Connected!",
+    "continue": "Continue",
+    "fixReceiver": "Fix Receiver Config",
+    "loadingConfig": "Loading config from FC...",
+    "noSignal": "No RC signal detected",
+    "noSignalHint": "Your receiver may not be configured correctly. Check that it's powered, bound to your transmitter, and the correct protocol is set.",
+    "noneSelected": "None selected",
+    "notLoaded": "Not loaded",
+    "receiverConfiguration": "Receiver Configuration",
+    "receiverType": "Receiver Type",
+    "saveFailed": "Failed to save receiver config",
+    "selectUartHint": "Select the UART your receiver is wired to. Only one port can have Serial RX.",
+    "serialRxPort": "Serial RX Port",
+    "serialRxProtocol": "Serial RX Protocol",
+    "skip": "Skip transmitter check (not recommended)",
+    "turnOnHint": "Turn on your transmitter and move all sticks to verify they are being received.",
+    "wiggleEach": "Wiggle each stick to detect remaining channels",
+    "wiggleSticks": "Wiggle Your Sticks",
+    "workingHint": "Your transmitter is working. You can proceed to review your configuration."
+  },
+  "wizard": {
+    "pressAgainToDiscard": "Press again to discard setup",
+    "stepApply": "Apply",
+    "stepCheck": "Check",
+    "stepReview": "Review",
+    "stepSelect": "Select",
+    "subtitle": "Configure everything in one go",
+    "title": "Quick Setup Wizard"
+  }
+}

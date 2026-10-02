@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { Parameter, ParameterWithMeta, ParameterProgress, ParamValuePayload } from '../../shared/parameter-types.js';
 import { isReadOnlyParameter, generateFallbackDescription } from '../../shared/parameter-types.js';
 import { parameterBelongsToGroup } from '../../shared/parameter-groups.js';
@@ -459,7 +460,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
       set({
         isLoading: false,
         downloadState: 'failed',
-        error: result?.error ?? 'Failed to request parameters'
+        error: result?.error ?? t('stores:parameterStore.requestFailed')
       });
     } else {
       paramFetchFailures = 0;
@@ -563,7 +564,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     const result = await window.electronAPI?.setParameter(paramId, value, paramType);
 
     if (!result?.success) {
-      set({ error: result?.error ?? 'Failed to set parameter' });
+      set({ error: result?.error ?? t('stores:parameterStore.setFailed') });
       return false;
     }
 

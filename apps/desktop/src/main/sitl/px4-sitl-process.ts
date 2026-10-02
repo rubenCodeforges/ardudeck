@@ -23,6 +23,7 @@ import type {
 } from '../../shared/ipc-channels.js';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import { px4SitlBundleDir, px4PathHasSpace } from './px4-paths.js';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * PX4_SIM_MODEL for each airframe class. We use PX4's built-in SIH
@@ -504,7 +505,7 @@ class Px4SitlProcessManager {
       this.killSim();
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: err instanceof Error ? err.message : t('common:unknownError'),
       };
     }
   }
@@ -566,7 +567,7 @@ class Px4SitlProcessManager {
    */
   async restart(): Promise<{ success: boolean; command?: string; error?: string }> {
     const cfg = this._currentConfig;
-    if (!cfg) return { success: false, error: 'No active PX4 SITL config to restart with' };
+    if (!cfg) return { success: false, error: t('main:sitl.noActivePx4Config') };
     this._relaunching = true;
     try {
       this.stop();

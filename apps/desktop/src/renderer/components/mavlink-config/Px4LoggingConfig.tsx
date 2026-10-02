@@ -15,34 +15,37 @@ import { HardDrive, AlertTriangle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
+import { useTranslation } from 'react-i18next';
 
 /** SDLOG_MODE: when the logger runs. -1 is "never", which is the no-card case. */
 const MODE_OPTIONS = [
-  { value: 0, label: 'From arm until disarm', hint: 'Default: a log per flight' },
-  { value: 1, label: 'From boot until disarm', hint: 'Catches pre-arm problems' },
-  { value: 2, label: 'From boot until shutdown', hint: 'Debugging; fills the card' },
-  { value: 3, label: 'While AUX1 is above 30%', hint: 'Pilot decides with a switch' },
-  { value: 4, label: 'From first arm until shutdown', hint: 'One file per power cycle' },
+  { value: 0, labelKey: 'mavlink-config:px4LoggingConfig.modeArmToDisarm', hintKey: 'mavlink-config:px4LoggingConfig.modeArmToDisarmHint' },
+  { value: 1, labelKey: 'mavlink-config:px4LoggingConfig.modeBootToDisarm', hintKey: 'mavlink-config:px4LoggingConfig.modeBootToDisarmHint' },
+  { value: 2, labelKey: 'mavlink-config:px4LoggingConfig.modeBootToShutdown', hintKey: 'mavlink-config:px4LoggingConfig.modeBootToShutdownHint' },
+  { value: 3, labelKey: 'mavlink-config:px4LoggingConfig.modeAux1', hintKey: 'mavlink-config:px4LoggingConfig.modeAux1Hint' },
+  { value: 4, labelKey: 'mavlink-config:px4LoggingConfig.modeFirstArmToShutdown', hintKey: 'mavlink-config:px4LoggingConfig.modeFirstArmToShutdownHint' },
 ];
 
 /** SDLOG_MODE default, and what "logging on" restores. */
 const MODE_DEFAULT = 0;
 
 /** SDLOG_PROFILE bits, used when the vehicle's metadata is not loaded. */
+// Mirrors PX4 SDLOG_PROFILE metadata, which stays English.
 const PROFILE_FALLBACK: Record<number, string> = {
-  0: 'Default set',
-  1: 'Estimator replay',
-  2: 'Thermal calibration',
-  3: 'System identification',
-  4: 'High rate',
-  5: 'Debug',
-  6: 'Sensor comparison',
-  7: 'Computer vision and avoidance',
-  8: 'Raw FIFO high-rate IMU',
-  9: 'Raw FIFO high-rate magnetometer',
+  0: 'Default set', // i18n-exempt
+  1: 'Estimator replay', // i18n-exempt
+  2: 'Thermal calibration', // i18n-exempt
+  3: 'System identification', // i18n-exempt
+  4: 'High rate', // i18n-exempt
+  5: 'Debug', // i18n-exempt
+  6: 'Sensor comparison', // i18n-exempt
+  7: 'Computer vision and avoidance', // i18n-exempt
+  8: 'Raw FIFO high-rate IMU', // i18n-exempt
+  9: 'Raw FIFO high-rate magnetometer', // i18n-exempt
 };
 
 export default function Px4LoggingConfig(): JSX.Element {
+  const { t } = useTranslation();
   const { parameters, setParameter, getParameterMetadata } = useParameterStore();
   const [busy, setBusy] = useState(false);
 
@@ -78,8 +81,8 @@ export default function Px4LoggingConfig(): JSX.Element {
   if (!supported) {
     return (
       <div className="p-6">
-        <InfoCard title="Logging" variant="info">
-          This board does not expose the logging parameters.
+        <InfoCard title={t('mavlink-config:px4LoggingConfig.logging')} variant="info">
+          {t('mavlink-config:px4LoggingConfig.notExposed')}
         </InfoCard>
       </div>
     );
@@ -93,11 +96,11 @@ export default function Px4LoggingConfig(): JSX.Element {
             <HardDrive className="w-5 h-5 text-sky-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium text-content">Flight logs</h3>
+            <h3 className="font-medium text-content">{t('mavlink-config:px4LoggingConfig.flightLogs')}</h3>
             <p className="text-xs text-content-secondary">
               {loggingOff
-                ? 'Logging is off: nothing is written to the card'
-                : 'Written to the SD card as ULog files'}
+                ? t('mavlink-config:px4LoggingConfig.offSubtitle')
+                : t('mavlink-config:px4LoggingConfig.onSubtitle')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -110,7 +113,7 @@ export default function Px4LoggingConfig(): JSX.Element {
                   : 'bg-surface-overlay text-content-tertiary'
               }`}
             >
-              Logging on
+              {t('mavlink-config:px4LoggingConfig.loggingOn')}
             </button>
             <button
               onClick={() => write('SDLOG_MODE', -1)}
@@ -121,7 +124,7 @@ export default function Px4LoggingConfig(): JSX.Element {
                   : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
               }`}
             >
-              No logging
+              {t('mavlink-config:px4LoggingConfig.noLogging')}
             </button>
           </div>
         </div>
@@ -131,17 +134,16 @@ export default function Px4LoggingConfig(): JSX.Element {
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
               <div>
-                <p className="text-amber-300">Nothing is being recorded.</p>
+                <p className="text-amber-300">{t('mavlink-config:px4LoggingConfig.nothingRecorded')}</p>
                 <p className="mt-1">
-                  The right setting for a board with no SD card. Without a log there is nothing to
-                  analyse after a flight, so turn it back on once a card is fitted.
+                  {t('mavlink-config:px4LoggingConfig.noCardHint')}
                 </p>
               </div>
             </div>
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="text-xs text-content-secondary">When to record</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:px4LoggingConfig.whenToRecord')}</div>
             {MODE_OPTIONS.map((o) => (
               <button
                 key={o.value}
@@ -154,9 +156,9 @@ export default function Px4LoggingConfig(): JSX.Element {
                 }`}
               >
                 <span className={`text-xs ${mode === o.value ? 'text-sky-300' : 'text-content'}`}>
-                  {o.label}
+                  {t(o.labelKey)}
                 </span>
-                <span className="text-[11px] text-content-tertiary">{o.hint}</span>
+                <span className="text-[11px] text-content-tertiary">{t(o.hintKey)}</span>
               </button>
             ))}
           </div>
@@ -165,10 +167,9 @@ export default function Px4LoggingConfig(): JSX.Element {
 
       {!loggingOff && (
         <div className="bg-surface rounded-xl border border-subtle p-5">
-          <h3 className="mb-1 font-medium text-content">What gets recorded</h3>
+          <h3 className="mb-1 font-medium text-content">{t('mavlink-config:px4LoggingConfig.whatGetsRecorded')}</h3>
           <p className="mb-3 text-xs text-content-secondary">
-            Logging profiles. The default set covers normal flight analysis; the rest add data for
-            specific jobs and cost card space.
+            {t('mavlink-config:px4LoggingConfig.profilesHint')}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {categories.map((c) => {
@@ -195,34 +196,34 @@ export default function Px4LoggingConfig(): JSX.Element {
 
       {!loggingOff && (
         <div className="bg-surface rounded-xl border border-subtle p-5 space-y-4">
-          <h3 className="font-medium text-content">Card housekeeping</h3>
+          <h3 className="font-medium text-content">{t('mavlink-config:px4LoggingConfig.cardHousekeeping')}</h3>
 
           {parameters.has('SDLOG_DIRS_MAX') && (
             <DraggableSlider
-              label="Keep at most"
+              label={t('mavlink-config:px4LoggingConfig.keepAtMost')}
               value={dirsMax}
               min={0}
               max={100}
               step={1}
-              unit={dirsMax === 0 ? '' : ' log folders'}
+              unit={dirsMax === 0 ? '' : t('mavlink-config:px4LoggingConfig.logFoldersUnit')}
               onChange={(v) => write('SDLOG_DIRS_MAX', Math.round(v))}
               disabled={busy}
             />
           )}
           <p className="text-[11px] text-content-tertiary">
             {dirsMax === 0
-              ? 'Unlimited: the card fills up and the oldest logs are never removed.'
-              : `Oldest folders are deleted once there are more than ${dirsMax}.`}
+              ? t('mavlink-config:px4LoggingConfig.unlimited')
+              : t('mavlink-config:px4LoggingConfig.oldestDeleted', { count: dirsMax })}
           </p>
 
           {parameters.has('SDLOG_MISSION') && (
             <div>
-              <div className="mb-2 text-xs text-content-secondary">Mission log (a small second file)</div>
+              <div className="mb-2 text-xs text-content-secondary">{t('mavlink-config:px4LoggingConfig.missionLog')}</div>
               <div className="flex gap-2">
                 {[
-                  { value: 0, label: 'Off' },
-                  { value: 1, label: 'All mission messages' },
-                  { value: 2, label: 'Geotagging only' },
+                  { value: 0, label: t('common:off') },
+                  { value: 1, label: t('mavlink-config:px4LoggingConfig.allMissionMessages') },
+                  { value: 2, label: t('mavlink-config:px4LoggingConfig.geotaggingOnly') },
                 ].map((o) => (
                   <button
                     key={o.value}

@@ -7,6 +7,7 @@
  */
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSimParam, useResolvedSimParam } from '../../hooks/useSimParam';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { SENSOR_BITS } from '../../../shared/telemetry-types';
@@ -23,6 +24,7 @@ interface FailureCardProps {
 }
 
 function FailureCard({ label, icon, active, available, fcHealthy, onToggle }: FailureCardProps) {
+  const { t } = useTranslation();
   if (!available) return null;
 
   return (
@@ -49,14 +51,14 @@ function FailureCard({ label, icon, active, available, fcHealthy, onToggle }: Fa
           ? 'bg-red-500/20 text-red-400'
           : 'bg-surface-raised text-content-tertiary'
       }`}>
-        {active ? 'FAILED' : 'OK'}
+        {active ? t('sitl:failurePanel.failed') : t('sitl:failurePanel.ok')}
       </span>
       {/* FC-confirmed health indicator */}
       {fcHealthy !== null && (
         <span className={`text-[9px] transition-colors ${
           fcHealthy ? 'text-green-400' : 'text-red-400'
         }`}>
-          FC: {fcHealthy ? 'healthy' : 'unhealthy'}
+          {t('sitl:failurePanel.fcHealth', { state: fcHealthy ? t('sitl:failurePanel.healthy') : t('sitl:failurePanel.unhealthy') })}
         </span>
       )}
     </button>
@@ -109,6 +111,7 @@ const SENSOR_BIT_MAP: Record<string, number> = {
 };
 
 export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
+  const { t } = useTranslation();
   // Failure toggles - try both old and new param naming conventions
   const gps = useResolvedSimParam(['SIM_GPS_DISABLE', 'SIM_GPS1_DISABLE'], 0);
   const compass = useResolvedSimParam(['SIM_MAG1_FAIL', 'SIM_MAG_FAIL'], 0);
@@ -134,11 +137,11 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
   };
 
   const failures = [
-    { key: 'gps', label: 'GPS', icon: GpsIcon, param: gps },
-    { key: 'compass', label: 'Compass', icon: CompassIcon, param: compass },
-    { key: 'baro', label: 'Baro', icon: BaroIcon, param: baro },
-    { key: 'accel', label: 'Accel', icon: AccelIcon, param: accel },
-    { key: 'gyro', label: 'Gyro', icon: GyroIcon, param: gyro },
+    { key: 'gps', label: t('sitl:failurePanel.gps'), icon: GpsIcon, param: gps },
+    { key: 'compass', label: t('common:compass'), icon: CompassIcon, param: compass },
+    { key: 'baro', label: t('sitl:failurePanel.baro'), icon: BaroIcon, param: baro },
+    { key: 'accel', label: t('sitl:failurePanel.accel'), icon: AccelIcon, param: accel },
+    { key: 'gyro', label: t('sitl:failurePanel.gyro'), icon: GyroIcon, param: gyro },
   ] as const;
 
   const availableFailures = failures.filter((f) => f.param.available);
@@ -157,7 +160,7 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
   if (availableFailures.length === 0) {
     return bare ? (
       <div className="flex items-center justify-center h-full text-xs text-content-tertiary">
-        Connect to SITL to inject failures
+        {t('sitl:failurePanel.connectToInject')}
       </div>
     ) : null;
   }
@@ -170,10 +173,10 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
           <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
-          <h3 className="text-sm font-medium text-content">Failure Injection</h3>
+          <h3 className="text-sm font-medium text-content">{t('sitl:failurePanel.title')}</h3>
           {activeCount > 0 && (
             <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-red-500/20 text-red-400">
-              {activeCount} active
+              {t('sitl:failurePanel.activeCount', { count: activeCount })}
             </span>
           )}
         </div>
@@ -182,14 +185,14 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
             onClick={handleResetAll}
             className="px-2 py-1 text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded transition-colors"
           >
-            Reset All
+            {t('sitl:failurePanel.resetAll')}
           </button>
         )}
       </div>
 
       {/* Info text */}
       <p className="text-[10px] text-content-tertiary mb-3">
-        Inject sensor failures to test failsafe behavior. Click a sensor to toggle its failure state.
+        {t('sitl:failurePanel.info')}
       </p>
 
       {/* Failure toggle grid */}
@@ -214,7 +217,7 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
       {(gpsSats.available || gpsDelay.available) && (
         <div className="pt-3 border-t border-subtle">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-medium text-content-secondary uppercase tracking-wider">GPS Advanced</span>
+            <span className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('sitl:failurePanel.gpsAdvanced')}</span>
             <div className="flex-1 h-px bg-surface-raised" />
           </div>
 
@@ -222,7 +225,7 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
             {gpsSats.available && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs text-content-secondary">Satellites</label>
+                  <label className="text-xs text-content-secondary">{t('common:satellites')}</label>
                   <span className="text-xs font-mono text-content tabular-nums">{gpsSats.value}</span>
                 </div>
                 <input
@@ -240,8 +243,8 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
             {gpsDelay.available && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs text-content-secondary">Delay</label>
-                  <span className="text-xs font-mono text-content tabular-nums">{gpsDelay.value} ms</span>
+                  <label className="text-xs text-content-secondary">{t('sitl:failurePanel.delay')}</label>
+                  <span className="text-xs font-mono text-content tabular-nums">{t('sitl:failurePanel.delayMs', { value: gpsDelay.value })}</span>
                 </div>
                 <input
                   type="range"

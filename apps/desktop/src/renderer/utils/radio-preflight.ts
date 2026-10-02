@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n/index.js';
+
 /**
  * Radio link preflight: plain-language checks that the vehicle is configured
  * to work over a MAVLink radio link (ELRS MAVLink mode, mLRS, etc.), with
@@ -41,25 +43,24 @@ export function evaluateRadioPreflight(
   if (rcProtocols === undefined) {
     checks.push({
       id: 'rc-over-mavlink',
-      title: 'Stick control over the radio link',
-      detail: 'Waiting for parameters to finish loading.',
+      title: t('utils:radioPreflight.rcOverMavlink'),
+      detail: t('utils:radioPreflight.waitingParams'),
       status: 'unknown',
       fix: null,
     });
   } else if ((rcProtocols & RC_PROTOCOLS_ALL_BIT) !== 0 || (rcProtocols & RC_PROTOCOLS_MAVLINK_RC_BIT) !== 0) {
     checks.push({
       id: 'rc-over-mavlink',
-      title: 'Stick control over the radio link',
-      detail: 'The vehicle accepts RC delivered through the MAVLink radio.',
+      title: t('utils:radioPreflight.rcOverMavlink'),
+      detail: t('utils:radioPreflight.rcOverMavlinkPass'),
       status: 'pass',
       fix: null,
     });
   } else {
     checks.push({
       id: 'rc-over-mavlink',
-      title: 'Stick control over the radio link',
-      detail:
-        'The vehicle is set to ignore RC arriving over the radio link, so your sticks would do nothing (radio failsafe). The fix keeps your existing receiver protocols enabled.',
+      title: t('utils:radioPreflight.rcOverMavlink'),
+      detail: t('utils:radioPreflight.rcOverMavlinkFail'),
       status: 'fail',
       fix: [{ param: 'RC_PROTOCOLS', value: rcProtocols | RC_PROTOCOLS_MAVLINK_RC_BIT }],
     });
@@ -69,24 +70,24 @@ export function evaluateRadioPreflight(
   if (rssiType === undefined) {
     checks.push({
       id: 'rssi-source',
-      title: 'Link signal strength readout',
-      detail: 'Waiting for parameters to finish loading.',
+      title: t('utils:radioPreflight.rssiSource'),
+      detail: t('utils:radioPreflight.waitingParams'),
       status: 'unknown',
       fix: null,
     });
   } else if (rssiType === 5) {
     checks.push({
       id: 'rssi-source',
-      title: 'Link signal strength readout',
-      detail: 'The vehicle reports radio signal strength from the link itself.',
+      title: t('utils:radioPreflight.rssiSource'),
+      detail: t('utils:radioPreflight.rssiSourcePass'),
       status: 'pass',
       fix: null,
     });
   } else {
     checks.push({
       id: 'rssi-source',
-      title: 'Link signal strength readout',
-      detail: 'Signal strength is not taken from the radio link, so RSSI will read empty or wrong.',
+      title: t('utils:radioPreflight.rssiSource'),
+      detail: t('utils:radioPreflight.rssiSourceFail'),
       status: 'fail',
       fix: [{ param: 'RSSI_TYPE', value: 5 }],
     });
@@ -96,24 +97,24 @@ export function evaluateRadioPreflight(
   if (!version) {
     checks.push({
       id: 'firmware-version',
-      title: 'Firmware supports RC over the radio',
-      detail: 'Could not determine the firmware version yet.',
+      title: t('utils:radioPreflight.firmwareVersion'),
+      detail: t('utils:radioPreflight.firmwareUnknown'),
       status: 'unknown',
       fix: null,
     });
   } else if (version.major > 4 || (version.major === 4 && version.minor >= 6)) {
     checks.push({
       id: 'firmware-version',
-      title: 'Firmware supports RC over the radio',
-      detail: `ArduPilot ${version.major}.${version.minor} supports stick control through a MAVLink radio.`,
+      title: t('utils:radioPreflight.firmwareVersion'),
+      detail: t('utils:radioPreflight.firmwarePass', { major: version.major, minor: version.minor }),
       status: 'pass',
       fix: null,
     });
   } else {
     checks.push({
       id: 'firmware-version',
-      title: 'Firmware supports RC over the radio',
-      detail: `ArduPilot ${version.major}.${version.minor} is too old for stick control over MAVLink - update the flight controller to 4.6 or newer. Telemetry still works.`,
+      title: t('utils:radioPreflight.firmwareVersion'),
+      detail: t('utils:radioPreflight.firmwareFail', { major: version.major, minor: version.minor }),
       status: 'fail',
       fix: null,
     });

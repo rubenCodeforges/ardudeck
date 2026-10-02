@@ -8,11 +8,14 @@
  * modelled here.
  */
 
+import { t } from '../../../shared/i18n/index.js';
+
 export type GpsBus = 'serial' | 'can' | 'none';
 
 export interface GpsPortOption {
   /** Human name of the socket on the board. */
   label: string;
+  labelKey?: string;
   /** ArduPilot: SERIALn index. PX4: the GPS_n_CONFIG value. */
   value: number;
 }
@@ -46,23 +49,23 @@ export function apSerialPorts(
 
 /** Short names for the protocols a pilot is likely to meet on a spare port. */
 const AP_PROTOCOL_NAMES: Record<number, string> = {
-  [-1]: 'unused',
-  0: 'console',
+  [-1]: 'mavlink-config:gpsSetup.protoUnused',
+  0: 'mavlink-config:gpsSetup.protoConsole',
   1: 'MAVLink',
   2: 'MAVLink2',
   3: 'FrSky D',
   4: 'FrSky SPort',
   5: 'GPS',
-  9: 'rangefinder',
+  9: 'mavlink-config:gpsSetup.protoRangefinder',
   10: 'FrSky passthrough',
-  11: 'lidar',
-  13: 'beacon',
-  16: 'ESC telemetry',
-  19: 'servo bus',
-  21: 'wind vane',
-  23: 'RC in',
+  11: 'mavlink-config:gpsSetup.protoLidar',
+  13: 'mavlink-config:gpsSetup.protoBeacon',
+  16: 'mavlink-config:gpsSetup.protoEscTelemetry',
+  19: 'mavlink-config:gpsSetup.protoServoBus',
+  21: 'mavlink-config:gpsSetup.protoWindVane',
+  23: 'mavlink-config:gpsSetup.protoRcIn',
   26: 'RunCam',
-  28: 'scripting',
+  28: 'mavlink-config:gpsSetup.protoScripting',
   29: 'CRSF',
   32: 'MSP',
   36: 'AHRS',
@@ -70,7 +73,9 @@ const AP_PROTOCOL_NAMES: Record<number, string> = {
 };
 
 export function apProtocolName(protocol: number): string {
-  return AP_PROTOCOL_NAMES[protocol] ?? `protocol ${protocol}`;
+  const name = AP_PROTOCOL_NAMES[protocol];
+  if (name === undefined) return t('mavlink-config:gpsSetup.protoN', { n: protocol });
+  return name.startsWith('mavlink-config:') ? t(name) : name;
 }
 
 export interface ApGpsSetup {
@@ -109,11 +114,11 @@ export function readApGpsSetup(get: (name: string) => number | undefined): ApGps
 
   let problem: string | null = null;
   if (type === 0) {
-    problem = 'The GPS type is set to None, so the autopilot is not looking for a GPS at all.';
+    problem = t('mavlink-config:gpsSetup.problemTypeNone');
   } else if (wantsCan && !canReady) {
-    problem = 'The GPS type asks for DroneCAN, but the CAN port is not enabled for it.';
+    problem = t('mavlink-config:gpsSetup.problemCanDisabled');
   } else if (!wantsCan && gpsPorts.length === 0) {
-    problem = 'No serial port is set to the GPS protocol, so nothing is listening to the socket.';
+    problem = t('mavlink-config:gpsSetup.problemNoSerial');
   }
 
   return { type, gpsPorts, wantsCan, canReady, bus, problem };
@@ -151,7 +156,7 @@ export function apCanGpsWrites(): Array<{ name: string; value: number }> {
  * instance; the rest are PX4's serial-port ids.
  */
 export const PX4_GPS_PORTS: GpsPortOption[] = [
-  { label: 'Disabled', value: 0 },
+  { label: 'Disabled', labelKey: 'mavlink-config:gpsSetup.portDisabled', value: 0 }, // i18n-exempt
   { label: 'GPS1', value: 201 },
   { label: 'GPS2', value: 202 },
   { label: 'TELEM1', value: 101 },
@@ -180,7 +185,7 @@ export function readPx4GpsSetup(get: (name: string) => number | undefined): Px4G
 
   let problem: string | null = null;
   if (port === 0 && !canEnabled) {
-    problem = 'GPS_1_CONFIG is Disabled and DroneCAN is off, so no GPS is expected on any port.';
+    problem = t('mavlink-config:gpsSetup.problemPx4NoGps');
   }
 
   return { port, baud, canEnabled, bus, problem };
@@ -201,7 +206,9 @@ export function px4CanGpsWrites(): Array<{ name: string; value: number }> {
 
 /** Port label for a value, for whichever firmware's list is passed. */
 export function portLabel(options: GpsPortOption[], value: number): string {
-  return options.find((o) => o.value === value)?.label ?? `Port ${value}`;
+  const option = options.find((o) => o.value === value);
+  if (!option) return t('mavlink-config:gpsSetup.portN', { value });
+  return option.labelKey ? t(option.labelKey) : option.label;
 }
 
 /**
@@ -210,9 +217,8 @@ export function portLabel(options: GpsPortOption[], value: number): string {
  * place of it, because a board is free to wire it differently.
  */
 export function apSocketHint(index: number): string | null {
-  if (index === 3) return 'GPS1 on Pixhawk / Cube';
-  if (index === 4) return 'GPS2 on Pixhawk / Cube';
-  if (index === 1) return 'TELEM1 on Pixhawk / Cube';
-  if (index === 2) return 'TELEM2 on Pixhawk / Cube';
+  const sockets: Record<number, string> = { 3: 'GPS1', 4: 'GPS2', 1: 'TELEM1', 2: 'TELEM2' };
+  const socket = sockets[index];
+  if (socket) return t('mavlink-config:gpsSetup.socketHint', { socket });
   return null;
 }

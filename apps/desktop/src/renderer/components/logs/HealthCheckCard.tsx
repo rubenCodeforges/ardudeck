@@ -1,4 +1,5 @@
 import type { HealthCheckResult, CheckStatus } from '@ardudeck/dataflash-parser';
+import { useTranslation } from 'react-i18next';
 
 const STATUS_STYLES: Record<CheckStatus, { bg: string; border: string; icon: string; text: string }> = {
   pass: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: 'text-emerald-400', text: 'text-emerald-400' },
@@ -8,8 +9,8 @@ const STATUS_STYLES: Record<CheckStatus, { bg: string; border: string; icon: str
   info: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: 'text-blue-400', text: 'text-blue-400' },
 };
 
-const STATUS_LABELS: Record<CheckStatus, string> = {
-  pass: 'Pass', warn: 'Warning', fail: 'Fail', skip: 'N/A', info: 'Info',
+const STATUS_LABEL_KEYS: Record<CheckStatus, string> = {
+  pass: 'logs:health.statusPass', warn: 'logs:health.statusWarn', fail: 'logs:health.statusFail', skip: 'logs:health.statusSkip', info: 'logs:health.statusInfo',
 };
 
 function StatusIcon({ status }: { status: CheckStatus }) {
@@ -50,6 +51,7 @@ function StatusIcon({ status }: { status: CheckStatus }) {
 }
 
 export function HealthCheckCard({ result, onViewData, onAskAi, aiLabel }: { result: HealthCheckResult; onViewData?: () => void; onAskAi?: () => void; aiLabel?: string }) {
+  const { t } = useTranslation();
   const style = STATUS_STYLES[result.status]!;
 
   return (
@@ -59,7 +61,7 @@ export function HealthCheckCard({ result, onViewData, onAskAi, aiLabel }: { resu
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-content">{result.name}</h3>
-            <span className={`text-xs font-medium ${style.text}`}>{STATUS_LABELS[result.status] ?? result.status}</span>
+            <span className={`text-xs font-medium ${style.text}`}>{STATUS_LABEL_KEYS[result.status] ? t(STATUS_LABEL_KEYS[result.status]) : result.status}</span>
           </div>
         </div>
       </div>
@@ -77,7 +79,7 @@ export function HealthCheckCard({ result, onViewData, onAskAi, aiLabel }: { resu
               onClick={onViewData}
               className="text-xs px-3 py-1.5 bg-surface hover:bg-surface-raised text-content hover:text-content rounded-md transition-colors"
             >
-              View Data
+              {t('logs:health.viewData')}
             </button>
           )}
           {onAskAi && (
@@ -85,7 +87,7 @@ export function HealthCheckCard({ result, onViewData, onAskAi, aiLabel }: { resu
               onClick={onAskAi}
               className="text-xs px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 border border-purple-500/20 rounded-md transition-colors"
             >
-              {aiLabel ?? 'Analyze with AI'}
+              {aiLabel ?? t('logs:health.analyzeAi')}
             </button>
           )}
         </div>

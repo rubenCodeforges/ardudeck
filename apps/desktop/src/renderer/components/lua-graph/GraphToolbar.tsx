@@ -13,6 +13,7 @@ import {
   BookTemplate,
   BookOpen,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useLuaGraphStore } from '../../stores/lua-graph-store';
 import { compileGraph } from './lua-compiler';
 import { TemplateDialog } from './TemplateDialog';
@@ -21,6 +22,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import type { GraphFile } from './lua-graph-types';
 
 export function GraphToolbar() {
+  const { t } = useTranslation();
   const {
     graphName,
     setGraphName,
@@ -124,33 +126,33 @@ export function GraphToolbar() {
         />
 
         {isDirty && (
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-2" title="Unsaved changes" />
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-2" title={t('common:unsavedChanges')} />
         )}
 
         <div className="w-px h-5 bg-subtle mx-1" />
 
         {/* File operations */}
-        <ToolbarButton icon={FilePlus} label="New" onClick={handleNew} />
-        <ToolbarButton icon={FolderOpen} label="Open" onClick={handleOpen} />
-        <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
-        <ToolbarButton icon={BookTemplate} label="Templates" onClick={() => setShowTemplates(true)} />
-        <ToolbarButton icon={BookOpen} label="Docs" onClick={() => setShowDocs(true)} />
+        <ToolbarButton icon={FilePlus} label={t('common:new')} onClick={handleNew} />
+        <ToolbarButton icon={FolderOpen} label={t('common:open')} onClick={handleOpen} />
+        <ToolbarButton icon={Save} label={t('common:save')} onClick={handleSave} />
+        <ToolbarButton icon={BookTemplate} label={t('lua-graph:graphToolbar.templates')} onClick={() => setShowTemplates(true)} />
+        <ToolbarButton icon={BookOpen} label={t('lua-graph:graphToolbar.docs')} onClick={() => setShowDocs(true)} />
 
         <div className="w-px h-5 bg-subtle mx-1" />
 
-        <ToolbarButton icon={FileCode} label="Export Lua" onClick={handleExportLua} accent />
+        <ToolbarButton icon={FileCode} label={t('lua-graph:graphToolbar.exportLua')} onClick={handleExportLua} accent />
 
         <div className="w-px h-5 bg-subtle mx-1" />
 
         {/* Undo / Redo */}
-        <ToolbarButton icon={Undo2} label="Undo" onClick={undo} disabled={!canUndo()} />
-        <ToolbarButton icon={Redo2} label="Redo" onClick={redo} disabled={!canRedo()} />
+        <ToolbarButton icon={Undo2} label={t('common:undo')} onClick={undo} disabled={!canUndo()} />
+        <ToolbarButton icon={Redo2} label={t('lua-graph:graphToolbar.redo')} onClick={redo} disabled={!canRedo()} />
 
         <div className="flex-1" />
 
         {/* Node count */}
         <span className="text-[10px] text-content-secondary">
-          {nodes.length} node{nodes.length !== 1 ? 's' : ''} | {edges.length} connection{edges.length !== 1 ? 's' : ''}
+          {t('lua-graph:luaGraphView.nodeCount', { count: nodes.length })} | {t('lua-graph:graphToolbar.connectionCount', { count: edges.length })}
         </span>
       </div>
 
@@ -159,10 +161,10 @@ export function GraphToolbar() {
 
       {showNewConfirm && (
         <ConfirmDialog
-          title="Unsaved changes"
-          message="Your current graph has unsaved changes. Creating a new graph will discard them."
-          confirmLabel="New graph"
-          cancelLabel="Go back"
+          title={t('common:unsavedChanges')}
+          message={t('lua-graph:graphToolbar.newDiscardMessage')}
+          confirmLabel={t('lua-graph:graphToolbar.newGraph')}
+          cancelLabel={t('lua-graph:graphToolbar.goBack')}
           onConfirm={() => {
             newGraph();
             setShowNewConfirm(false);
@@ -173,10 +175,10 @@ export function GraphToolbar() {
 
       {exportErrors && (
         <ConfirmDialog
-          title="Compilation errors"
+          title={t('lua-graph:graphToolbar.compilationErrors')}
           message={exportErrors.join('\n')}
-          confirmLabel="OK"
-          cancelLabel="Close"
+          confirmLabel={t('lua-graph:graphToolbar.ok')}
+          cancelLabel={t('common:close')}
           onConfirm={() => setExportErrors(null)}
           onCancel={() => setExportErrors(null)}
         />

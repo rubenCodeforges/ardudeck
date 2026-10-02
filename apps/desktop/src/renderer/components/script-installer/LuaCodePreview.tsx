@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { tokenizeLua, tokensByLine, TOKEN_CLASS } from './lua-highlight';
 import { ScriptGraphReadonlyView } from './ScriptGraphReadonlyView';
 import { ARDUDECK_COMMANDS_NODES, ARDUDECK_COMMANDS_EDGES } from './ardudeck-commands-graph';
@@ -25,6 +26,7 @@ interface LuaCodePreviewProps {
 }
 
 export function LuaCodePreview({ source, filename, version, sha256 }: LuaCodePreviewProps) {
+  const { t } = useTranslation();
   const [view, setView] = useState<ViewMode>('graph');
   const [fullscreen, setFullscreen] = useState(false);
   const sizeKb = useMemo(() => (new Blob([source]).size / 1024).toFixed(1), [source]);
@@ -48,17 +50,17 @@ export function LuaCodePreview({ source, filename, version, sha256 }: LuaCodePre
             <button
               onClick={handleCopySha}
               className="font-mono hover:text-content transition-colors truncate"
-              title={`Click to copy full SHA256\n${sha256}`}
+              title={t('script-installer:luaCodePreview.copySha', { sha256 })}
             >
-              sha256: {shortSha}…
+              {t('script-installer:luaCodePreview.shaLabel', { sha: shortSha })}
             </button>
           </div>
           <button
             onClick={() => setFullscreen(true)}
             className="px-2 py-1 text-[11px] rounded bg-purple-600/80 hover:bg-purple-500 text-white transition-colors shrink-0"
-            title="Open in a larger reviewer"
+            title={t('script-installer:luaCodePreview.openLarger')}
           >
-            Review fullscreen →
+            {t('script-installer:luaCodePreview.reviewFullscreen')}
           </button>
         </div>
 
@@ -91,13 +93,14 @@ export function LuaCodePreview({ source, filename, version, sha256 }: LuaCodePre
 // ─── View toggle ─────────────────────────────────────────────────────────────
 
 function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  const { t } = useTranslation();
   const tabClass = (active: boolean) => `px-2 py-0.5 text-[11px] rounded transition-colors ${
     active ? 'bg-purple-600 text-white' : 'bg-surface-raised text-content-secondary hover:text-content'
   }`;
   return (
     <div className="flex items-center gap-0.5 mr-1 shrink-0">
-      <button onClick={() => onChange('graph')} className={tabClass(value === 'graph')}>Graph</button>
-      <button onClick={() => onChange('source')} className={tabClass(value === 'source')}>Source</button>
+      <button onClick={() => onChange('graph')} className={tabClass(value === 'graph')}>{t('script-installer:luaCodePreview.graph')}</button>
+      <button onClick={() => onChange('source')} className={tabClass(value === 'source')}>{t('script-installer:luaCodePreview.source')}</button>
     </div>
   );
 }
@@ -149,6 +152,7 @@ interface FullscreenViewerProps {
 }
 
 function FullscreenViewer({ filename, version, sha256, sizeKb, lineGroups, initialView, onClose }: FullscreenViewerProps) {
+  const { t } = useTranslation();
   const [view, setView] = useState<ViewMode>(initialView);
   const handleCopySha = () => {
     navigator.clipboard.writeText(sha256).catch(() => {});
@@ -159,7 +163,7 @@ function FullscreenViewer({ filename, version, sha256, sizeKb, lineGroups, initi
         <div className="flex items-center justify-between px-4 py-3 border-b border-subtle bg-surface text-sm">
           <div className="flex items-center gap-4 text-content-secondary min-w-0">
             <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider rounded bg-purple-600/30 text-purple-300 border border-purple-600/40">
-              {view === 'graph' ? 'GRAPH REVIEW' : 'SOURCE REVIEW'}
+              {view === 'graph' ? t('script-installer:luaCodePreview.graphReview') : t('script-installer:luaCodePreview.sourceReview')}
             </span>
             <ViewToggle value={view} onChange={setView} />
             <span className="font-mono text-content">{filename}</span>
@@ -168,16 +172,16 @@ function FullscreenViewer({ filename, version, sha256, sizeKb, lineGroups, initi
             <button
               onClick={handleCopySha}
               className="font-mono text-xs hover:text-content transition-colors"
-              title={`Click to copy full SHA256\n${sha256}`}
+              title={t('script-installer:luaCodePreview.copySha', { sha256 })}
             >
-              sha256: {sha256.slice(0, 16)}…
+              {t('script-installer:luaCodePreview.shaLabel', { sha: sha256.slice(0, 16) })}
             </button>
           </div>
           <button
             onClick={onClose}
             className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:bg-surface text-content rounded border border-subtle"
           >
-            Close (Esc)
+            {t('script-installer:luaCodePreview.closeEsc')}
           </button>
         </div>
         {view === 'graph' ? (
@@ -188,7 +192,7 @@ function FullscreenViewer({ filename, version, sha256, sizeKb, lineGroups, initi
           <CodeBody lineGroups={lineGroups} variant="fullscreen" />
         )}
         <div className="px-4 py-2 border-t border-subtle bg-surface text-[11px] text-content-tertiary">
-          Read-only review. Pan/zoom in graph view. Switch tabs to inspect source line by line.
+          {t('script-installer:luaCodePreview.footer')}
         </div>
       </div>
       <EscToClose onClose={onClose} />

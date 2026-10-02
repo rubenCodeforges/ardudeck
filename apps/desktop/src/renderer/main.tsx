@@ -8,6 +8,7 @@ import { registerArduDeckDialect } from '@ardudeck/mavlink-ts/dialect';
 import { initPseudoTx } from './stores/pseudo-tx-store';
 import { initVehicleProfiles } from './stores/vehicle-profile-store';
 import { initVehicleCalibration } from './stores/vehicle-calibration-store';
+import { initRendererI18n, I18nRoot } from './i18n';
 import './styles/globals.css';
 
 // Pop-out windows share this same renderer bundle/entry. The main window opens
@@ -27,11 +28,13 @@ const isDetached = params.get('detached') === '1';
 // 3D view, and only whichever window has focus gets to drive (see the store).
 initPseudoTx();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    {isDetached ? <DetachedRoot /> : <App />}
-  </React.StrictMode>,
-);
+void initRendererI18n().then(() => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <I18nRoot>{isDetached ? <DetachedRoot /> : <App />}</I18nRoot>
+    </React.StrictMode>,
+  );
+});
 
 // Dev-only: initialize test driver IPC handlers (main window only — pop-outs
 // don't need test driver hooks). Uses import.meta.env.DEV for Vite tree-shaking.

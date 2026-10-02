@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { AppProgress, HangarApp, InstalledApp } from '../../shared/app-types';
 
 /**
@@ -59,7 +60,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ installing: slug, error: null, progress: null });
     try {
       const res = await window.electronAPI.appInstall(slug);
-      if (!res.success) set({ error: res.error ?? 'Install failed' });
+      if (!res.success) set({ error: res.error ?? t('stores:appStore.installFailed') });
       await get().fetchInstalled();
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err) });
@@ -71,7 +72,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   uninstall: async (slug) => {
     try {
       const res = await window.electronAPI.appUninstall(slug);
-      if (!res.success) set({ error: res.error ?? 'Uninstall failed' });
+      if (!res.success) set({ error: res.error ?? t('stores:appStore.uninstallFailed') });
       set({ installed: res.apps ?? get().installed.filter((a) => a.slug !== slug) });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err) });

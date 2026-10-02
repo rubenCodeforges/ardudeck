@@ -11,6 +11,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { useConnectionStore } from './connection-store';
 import { rcOverrideCall } from '../utils/rc-override-dispatch';
 import { claimRcOverride, releaseRcOverride, onTrainerActive } from '../utils/rc-source-arbiter';
@@ -649,6 +650,6 @@ export function getModeName(boxId: number, fcVariant?: string): string {
 onTrainerActive((active) => {
   if (active && useFlightControlStore.getState().isOverrideActive) {
     useFlightControlStore.getState().stopOverride();
-    useFlightControlStore.setState({ overrideError: 'Trainer session active - the Trainer owns the sticks' });
+    useFlightControlStore.setState({ overrideError: t('stores:flightControlStore.trainerActive') });
   }
 });

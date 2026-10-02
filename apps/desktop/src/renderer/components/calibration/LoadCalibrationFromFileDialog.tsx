@@ -27,6 +27,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle, FileText, RotateCw, ShieldCheck, ShieldAlert, XCircle } from 'lucide-react';
 import { useCalibrationStore, type LoadedCalParam, type CategoryValidation } from '../../stores/calibration-store';
 import {
@@ -38,8 +39,8 @@ interface Props {
 }
 
 const CATEGORY_LABEL: Record<CalibrationCategory, string> = {
-  accel: 'Accelerometer',
-  mag: 'Magnetometer',
+  accel: 'calibration:loadCalibrationFromFileDialog.categoryAccel',
+  mag: 'calibration:loadCalibrationFromFileDialog.categoryMag',
 };
 
 const CATEGORY_ACCENT: Record<CalibrationCategory, { ring: string; text: string; bg: string }> = {
@@ -53,15 +54,16 @@ function formatValue(v: number | undefined): string {
   return String(parseFloat(v.toPrecision(7)));
 }
 
-/** Human-readable reason a category can't be applied. Returns null if it can. */
+/** Translation key for why a category can't be applied. Returns null if it can. */
 function getBlockedReason(v: CategoryValidation): string | null {
-  if (!v.hasCalData) return 'No calibration data: all offsets in the file are zero';
-  if (v.idStatus === 'mismatch') return 'Sensor IDs do not match this flight controller';
-  if (v.idStatus === 'missing') return 'File contains no sensor IDs, cannot verify the source board';
+  if (!v.hasCalData) return 'calibration:loadCalibrationFromFileDialog.blockedNoData';
+  if (v.idStatus === 'mismatch') return 'calibration:loadCalibrationFromFileDialog.blockedMismatch';
+  if (v.idStatus === 'missing') return 'calibration:loadCalibrationFromFileDialog.blockedMissing';
   return null;
 }
 
 export function LoadCalibrationFromFileDialog({ onClose }: Props) {
+  const { t } = useTranslation();
   const loadCalibrationFromFile = useCalibrationStore(s => s.loadCalibrationFromFile);
   const applyLoadedCalibration = useCalibrationStore(s => s.applyLoadedCalibration);
   const clearLoadedCalibration = useCalibrationStore(s => s.clearLoadedCalibration);
@@ -94,9 +96,9 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
       if (cancelled) return;
       setIsLoadingFile(false);
       if (!r.ok) {
-        setLoadError(r.error ?? 'Failed to load file');
+        setLoadError(r.error ?? t('calibration:loadCalibrationFromFileDialog.failedToLoad'));
       } else if ((r.calCount ?? 0) === 0) {
-        setLoadError('No accel or mag calibration parameters found in the selected file.');
+        setLoadError(t('calibration:loadCalibrationFromFileDialog.noCalParams'));
       }
     })();
     return () => { cancelled = true; };
@@ -161,12 +163,9 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
           <>
             {/* Header */}
             <div className="px-6 py-4 border-b border-subtle">
-              <h3 className="text-lg font-semibold text-content">Load calibration from file</h3>
+              <h3 className="text-lg font-semibold text-content">{t('calibration:loadCalibrationFromFileDialog.title')}</h3>
               <p className="text-sm text-content-secondary mt-1">
-                Restore ACC / MAG calibration from a .param file. The file is
-                verified against this flight controller's sensor IDs before any
-                values are written, and the verified IDs are saved with the
-                offsets so ArduPilot accepts the calibration after reboot.
+                {t('calibration:loadCalibrationFromFileDialog.description')}
               </p>
               {loadedCalibration?.filePath && (
                 <div className="mt-2 flex items-center gap-2 text-xs text-content-tertiary">
@@ -179,7 +178,7 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
             {/* Body */}
             <div className="flex-1 min-h-0 overflow-auto px-6 py-4">
               {isLoadingFile && (
-                <div className="text-sm text-content-secondary text-center py-6">Reading file…</div>
+                <div className="text-sm text-content-secondary text-center py-6">{t('calibration:loadCalibrationFromFileDialog.readingFile')}</div>
               )}
 
               {loadError && (
@@ -200,7 +199,7 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
                     return (
                       <CategoryCard
                         key={cat}
-                        title={CATEGORY_LABEL[cat]}
+                        title={t(CATEGORY_LABEL[cat])}
                         accent={accent}
                         enabled={enabled[cat] && canApply}
                         canToggle={canApply && !isApplying}
@@ -220,7 +219,7 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
             {isApplying && progress && (
               <div className="px-6 py-2 border-t border-subtle">
                 <div className="flex items-center justify-between text-xs text-content-secondary mb-1">
-                  <span>Writing calibration…</span>
+                  <span>{t('calibration:loadCalibrationFromFileDialog.writing')}</span>
                   <span>{progress.applied} / {progress.total}</span>
                 </div>
                 <div className="h-1.5 bg-surface-inset rounded-full overflow-hidden">
@@ -238,7 +237,7 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
                 disabled={isApplying}
                 className="px-4 py-2 text-sm text-content-secondary hover:text-content disabled:text-content-tertiary transition-colors"
               >
-                Cancel
+                {t('common:cancel')}
               </button>
               <button
                 onClick={handleApply}
@@ -246,8 +245,8 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-raised text-white disabled:text-content-tertiary rounded-lg text-sm font-medium transition-colors"
               >
                 {isApplying
-                  ? 'Applying…'
-                  : `Apply ${totalSelected} param${totalSelected !== 1 ? 's' : ''}`}
+                  ? t('common:applying')
+                  : t('calibration:loadCalibrationFromFileDialog.applyParams', { count: totalSelected })}
               </button>
             </div>
           </>
@@ -277,6 +276,7 @@ interface CategoryCardProps {
 function CategoryCard({
   title, accent, enabled, canToggle, onToggle, totalCount, validation, blockedReason, items,
 }: CategoryCardProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const writableCount = items.length;
   return (
@@ -292,8 +292,8 @@ function CategoryCard({
           <div className={`text-sm font-medium ${accent.text}`}>{title}</div>
           <div className="text-xs text-content-tertiary">
             {totalCount === 0
-              ? 'no calibration values in file'
-              : `${writableCount} param${writableCount !== 1 ? 's' : ''} from file`}
+              ? t('calibration:loadCalibrationFromFileDialog.noValuesInFile')
+              : t('calibration:loadCalibrationFromFileDialog.paramsFromFile', { count: writableCount })}
           </div>
         </div>
         {totalCount > 0 && (
@@ -301,7 +301,7 @@ function CategoryCard({
             onClick={() => setExpanded(v => !v)}
             className="text-xs text-content-secondary hover:text-content transition-colors"
           >
-            {expanded ? 'Hide' : 'Show'} diffs
+            {expanded ? t('calibration:loadCalibrationFromFileDialog.hideDiffs') : t('calibration:loadCalibrationFromFileDialog.showDiffs')}
           </button>
         )}
       </div>
@@ -317,10 +317,10 @@ function CategoryCard({
           <table className="w-full text-xs font-mono">
             <thead>
               <tr className="text-content-tertiary">
-                <th className="text-left font-normal pb-1">Param</th>
-                <th className="text-right font-normal pb-1">Current</th>
+                <th className="text-left font-normal pb-1">{t('calibration:loadCalibrationFromFileDialog.colParam')}</th>
+                <th className="text-right font-normal pb-1">{t('common:current')}</th>
                 <th className="w-6"></th>
-                <th className="text-right font-normal pb-1">File</th>
+                <th className="text-right font-normal pb-1">{t('common:file')}</th>
               </tr>
             </thead>
             <tbody>
@@ -329,7 +329,7 @@ function CategoryCard({
                   <td className="py-1 text-content">
                     {p.paramId}
                     {p.info.kind === 'devid' && (
-                      <span className="text-content-tertiary"> (sensor ID, locks in the calibration)</span>
+                      <span className="text-content-tertiary">{' '}{t('calibration:loadCalibrationFromFileDialog.sensorIdNote')}</span>
                     )}
                   </td>
                   <td className="py-1 text-right text-content-secondary">{formatValue(p.currentValue)}</td>
@@ -346,14 +346,14 @@ function CategoryCard({
 }
 
 function ValidationBadge({ validation, blockedReason }: { validation: CategoryValidation; blockedReason: string | null }) {
+  const { t } = useTranslation();
   if (blockedReason === null) {
     return (
       <div className="px-4 pb-3">
         <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-300">
           <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
-            <span className="font-medium">Verified.</span> Sensor IDs match this
-            flight controller and the file contains non-zero calibration data.
+            <Trans i18nKey="calibration:loadCalibrationFromFileDialog.verified" components={{ b: <span className="font-medium" /> }} />
           </div>
         </div>
       </div>
@@ -364,12 +364,16 @@ function ValidationBadge({ validation, blockedReason }: { validation: CategoryVa
       <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-red-500/30 bg-red-500/10 text-xs text-red-300">
         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <span className="font-medium">Cannot apply.</span> {blockedReason}.
+          <Trans
+            i18nKey="calibration:loadCalibrationFromFileDialog.cannotApply"
+            values={{ reason: t(blockedReason) }}
+            components={{ b: <span className="font-medium" /> }}
+          />
           {validation.idMismatches.length > 0 && (
             <ul className="mt-1 font-mono text-[11px] text-red-300/80 space-y-0.5">
               {validation.idMismatches.map(m => (
                 <li key={m.paramId}>
-                  {m.paramId}: file {formatValue(m.fileValue)} ≠ FC {formatValue(m.liveValue)}
+                  {t('calibration:loadCalibrationFromFileDialog.idMismatch', { param: m.paramId, file: formatValue(m.fileValue), live: formatValue(m.liveValue) })}
                 </li>
               ))}
             </ul>
@@ -386,6 +390,7 @@ interface ResultViewProps {
 }
 
 function ResultView({ result, onDone }: ResultViewProps) {
+  const { t } = useTranslation();
   const { applied, failed, rebootRecommended } = result;
   const [isRebooting, setIsRebooting] = useState(false);
   const [rebootError, setRebootError] = useState<string | null>(null);
@@ -400,7 +405,7 @@ function ResultView({ result, onDone }: ResultViewProps) {
     try {
       const ok = await window.electronAPI?.mavlinkReboot();
       if (!ok) {
-        setRebootError('Reboot command failed. Check the connection and try again, or reboot from the connection panel.');
+        setRebootError(t('calibration:loadCalibrationFromFileDialog.rebootFailed'));
         setIsRebooting(false);
         return;
       }
@@ -408,7 +413,7 @@ function ResultView({ result, onDone }: ResultViewProps) {
       // user can watch the reconnect indicator in the connection panel.
       onDone();
     } catch (err) {
-      setRebootError(err instanceof Error ? err.message : 'Unknown error');
+      setRebootError(err instanceof Error ? err.message : t('common:unknownError'));
       setIsRebooting(false);
     }
   };
@@ -416,14 +421,14 @@ function ResultView({ result, onDone }: ResultViewProps) {
   return (
     <>
       <div className="px-6 py-4 border-b border-subtle">
-        <h3 className="text-lg font-semibold text-content">Apply complete</h3>
+        <h3 className="text-lg font-semibold text-content">{t('calibration:loadCalibrationFromFileDialog.applyComplete')}</h3>
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4">
         {applied > 0 && (
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
             <span className="text-sm text-emerald-300">
-              {applied} calibration param{applied !== 1 ? 's' : ''} written and saved to flash
+              {t('calibration:loadCalibrationFromFileDialog.appliedCount', { count: applied })}
             </span>
           </div>
         )}
@@ -431,21 +436,20 @@ function ResultView({ result, onDone }: ResultViewProps) {
           <div className="flex items-center gap-3">
             <XCircle className="w-5 h-5 text-red-400 shrink-0" />
             <span className="text-sm text-red-300">
-              {failed} param{failed !== 1 ? 's' : ''} failed (no PARAM_VALUE confirmation from FC)
+              {t('calibration:loadCalibrationFromFileDialog.failedCount', { count: failed })}
             </span>
           </div>
         )}
         {applied === 0 && failed === 0 && (
           <div className="text-sm text-content-secondary">
-            Nothing to apply: the selected calibration params already match the vehicle.
+            {t('calibration:loadCalibrationFromFileDialog.nothingToApply')}
           </div>
         )}
         {rebootRecommended && (
           <div className="flex items-start gap-3 px-3 py-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10">
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div className="text-sm text-amber-300">
-              Reboot the flight controller to make sure all calibration values are loaded
-              from EEPROM cleanly. Some IMU/compass parameters only take effect on boot.
+              {t('calibration:loadCalibrationFromFileDialog.rebootRecommended')}
             </div>
           </div>
         )}
@@ -462,7 +466,7 @@ function ResultView({ result, onDone }: ResultViewProps) {
           disabled={isRebooting}
           className="px-4 py-2 text-sm text-content-secondary hover:text-content disabled:text-content-tertiary transition-colors"
         >
-          Done
+          {t('common:done')}
         </button>
         {rebootRecommended && (
           <button
@@ -471,7 +475,7 @@ function ResultView({ result, onDone }: ResultViewProps) {
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-surface-raised disabled:text-content-tertiary text-white rounded-lg text-sm font-medium transition-colors"
           >
             <RotateCw className={`w-4 h-4 ${isRebooting ? 'animate-spin' : ''}`} />
-            {isRebooting ? 'Rebooting…' : 'Reboot now'}
+            {isRebooting ? t('calibration:loadCalibrationFromFileDialog.rebooting') : t('calibration:loadCalibrationFromFileDialog.rebootNow')}
           </button>
         )}
       </div>

@@ -3,6 +3,7 @@
  * camera footprints, and drawing preview on the map.
  */
 import { useMemo, useCallback, useState, useEffect, memo, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Polygon, Polyline, CircleMarker, Marker, Tooltip, Pane, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { extractGeneratorOverlays } from './generator-overlays';
@@ -196,6 +197,7 @@ const VertexMarker = memo(function VertexMarker({
   live?: boolean;
   locked?: boolean;
 }) {
+  const { t } = useTranslation();
   const handleDragEnd = useCallback((e: L.DragEndEvent | L.LeafletEvent) => {
     const latlng = (e.target as L.Marker).getLatLng();
     onDragEnd(index, latlng.lat, latlng.lng);
@@ -230,8 +232,8 @@ const VertexMarker = memo(function VertexMarker({
     >
       <Tooltip direction="top" offset={[0, -8]} opacity={0.9} pane="vertexTooltipPane">
         <span style={{ fontSize: '10px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
-          {`P${index + 1}: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`}
-          {locked ? '\nLocked' : canDelete ? '\nRight-click to delete' : ''}
+          {t('survey:surveyMapOverlay.vertexTooltip', { n: index + 1, lat: position.lat.toFixed(6), lng: position.lng.toFixed(6) })}
+          {locked ? `\n${t('survey:surveyMapOverlay.locked')}` : canDelete ? `\n${t('survey:surveyMapOverlay.rightClickDelete')}` : ''}
         </span>
       </Tooltip>
     </Marker>
@@ -239,6 +241,7 @@ const VertexMarker = memo(function VertexMarker({
 });
 
 export function SurveyMapOverlay() {
+  const { t } = useTranslation();
   const drawMode = useSurveyStore((s) => s.drawMode);
   const drawingVertices = useSurveyStore((s) => s.drawingVertices);
   const polygon = useSurveyStore((s) => s.polygon);
@@ -555,7 +558,7 @@ export function SurveyMapOverlay() {
               >
                 {!geometryLocked && (
                   <Tooltip sticky opacity={0.9} pane="vertexTooltipPane">
-                    <span style={{ fontSize: '10px' }}>Click to add a point</span>
+                    <span style={{ fontSize: '10px' }}>{t('survey:surveyMapOverlay.clickToAddPoint')}</span>
                   </Tooltip>
                 )}
               </Polyline>
@@ -582,7 +585,7 @@ export function SurveyMapOverlay() {
                     >
                       {!geometryLocked && (
                         <Tooltip sticky opacity={0.9} pane="vertexTooltipPane">
-                          <span style={{ fontSize: '10px' }}>Click to add a point</span>
+                          <span style={{ fontSize: '10px' }}>{t('survey:surveyMapOverlay.clickToAddPoint')}</span>
                         </Tooltip>
                       )}
                     </Polyline>
@@ -640,9 +643,9 @@ export function SurveyMapOverlay() {
               anchor to the automatic smooth tangent. */}
           {pattern === 'panorama' && polygon && selectedCtrl !== null && polygon[selectedCtrl] && (() => {
             const anchor = polygon[selectedCtrl]!;
-            const t = panoramaTangents?.[selectedCtrl] ?? defaultSplineTangent(polygon, selectedCtrl);
-            const inPos = localToLatLng(anchor, t.inX, t.inY);
-            const outPos = localToLatLng(anchor, t.outX, t.outY);
+            const tan = panoramaTangents?.[selectedCtrl] ?? defaultSplineTangent(polygon, selectedCtrl);
+            const inPos = localToLatLng(anchor, tan.inX, tan.inY);
+            const outPos = localToLatLng(anchor, tan.outX, tan.outY);
             const commitArm = (arm: 'in' | 'out') => (e: L.DragEndEvent | L.LeafletEvent) => {
               const ll = (e.target as L.Marker).getLatLng();
               const d = latLngToLocal(anchor, { lat: ll.lat, lng: ll.lng });
@@ -677,7 +680,7 @@ export function SurveyMapOverlay() {
                     eventHandlers={{ drag: commitArm(arm), dragend: commitArm(arm), contextmenu: resetArm }}
                   >
                     <Tooltip direction="top" offset={[0, -8]} opacity={0.9} pane="vertexTooltipPane">
-                      <span style={{ fontSize: '10px' }}>Drag to shape the curve · right-click to reset</span>
+                      <span style={{ fontSize: '10px' }}>{t('survey:surveyMapOverlay.dragCurve')}</span>
                     </Tooltip>
                   </Marker>
                 ))}
@@ -709,7 +712,7 @@ export function SurveyMapOverlay() {
                   }}
                 >
                   <Tooltip direction="top" offset={[0, -8]} opacity={0.9} pane="vertexTooltipPane">
-                    <span style={{ fontSize: '10px' }}>Click to add a control point</span>
+                    <span style={{ fontSize: '10px' }}>{t('survey:surveyMapOverlay.clickToAddControlPoint')}</span>
                   </Tooltip>
                 </Marker>
               );

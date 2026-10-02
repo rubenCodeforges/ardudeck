@@ -18,6 +18,7 @@
  */
 
 import dgram from 'dgram';
+import { t } from '../../shared/i18n/index.js';
 
 // FlightGear output packet structure (matches ardudeck-out.xml)
 // 22 doubles = 176 bytes
@@ -100,7 +101,7 @@ class ProtocolBridge {
    */
   async start(config: BridgeConfig = {}): Promise<{ success: boolean; error?: string }> {
     if (this.running) {
-      return { success: false, error: 'Bridge is already running' };
+      return { success: false, error: t('main:simulators.bridgeRunning') };
     }
 
     this.config = {
@@ -160,7 +161,7 @@ class ProtocolBridge {
       return { success: true };
     } catch (err) {
       await this.cleanup();
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('common:unknownError');
       return { success: false, error: message };
     }
   }

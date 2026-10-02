@@ -1,0 +1,376 @@
+{
+  "flightBriefing": {
+    "batteries": "Akkus",
+    "ceiling": "Obergrenze {{altitude}} AGL",
+    "distance": "Entfernung",
+    "flightTime": "Flugzeit",
+    "flightTimeDetail": "geschätzt bei Reisegeschwindigkeit",
+    "gusts": "Böen {{speed}}",
+    "maxAltitude": "Max. Höhe",
+    "maxFromHome": "Max. Abstand von Home",
+    "reserve": "Reserve",
+    "reserveDetail": "auf dem letzten Akku",
+    "setProfile": "Fahrzeugprofil für Flugdauer festlegen",
+    "unknown": "unbekannt",
+    "usableEach": "je ~{{duration}} nutzbar",
+    "wind": "Wind"
+  },
+  "joystickSafety": {
+    "assignAxes": "Zuerst Rollen, Nicken, Gas und Gieren zuweisen",
+    "axisPitch": "Nicken",
+    "axisRoll": "Rollen",
+    "axisYaw": "Gieren",
+    "centreSticks_one": "Stick für {{axes}} zentrieren",
+    "centreSticks_other": "Sticks für {{axes}} zentrieren",
+    "closeThrottle": "Gas auf null stellen"
+  },
+  "osdCategories": {
+    "altitude": {
+      "description": "Höhe, MSL, Variometer",
+      "name": "Höhe & Vario"
+    },
+    "attitude": {
+      "description": "Fadenkreuz, Horizont, Nicken, Rollen, Kurs",
+      "name": "Fluglage"
+    },
+    "battery": {
+      "description": "Spannung, Strom, Kapazität, Effizienz",
+      "name": "Akku & Leistung"
+    },
+    "general": {
+      "description": "Flugmodus, Warnungen, Fluggerät-Info",
+      "name": "Allgemein"
+    },
+    "gps": {
+      "description": "Satelliten, HDOP, Koordinaten",
+      "name": "GPS"
+    },
+    "mission": {
+      "description": "VTX, Windanzeigen",
+      "name": "Mission"
+    },
+    "radio": {
+      "description": "RSSI, Gasstellung",
+      "name": "Funk & Steuerung"
+    },
+    "sensors": {
+      "description": "Temperatur, G-Kraft, ESC-Daten",
+      "name": "Sensoren"
+    },
+    "speed": {
+      "description": "Grundgeschwindigkeit, Fluggeschwindigkeit, Entfernung",
+      "name": "Geschwindigkeit & Entfernung"
+    },
+    "timers": {
+      "description": "Flugzeit, Einschaltzeit, Restzeit",
+      "name": "Timer"
+    }
+  },
+  "osdElements": {
+    "airspeed": {
+      "description": "Angezeigte Fluggeschwindigkeit vom Staurohr",
+      "name": "Fluggeschwindigkeit"
+    },
+    "altitude": {
+      "description": "Höhe über Grund / Home",
+      "name": "Höhe (AGL)"
+    },
+    "armed_status": {
+      "description": "Zeigt Zustand ARMED oder DISARMED",
+      "name": "Scharf-Status"
+    },
+    "artificial_horizon": {
+      "description": "Horizontlinie zur Fluglageanzeige",
+      "name": "Künstlicher Horizont"
+    },
+    "baro_temp": {
+      "description": "Temperatur des Barometersensors",
+      "name": "Baro-Temperatur"
+    },
+    "battery_cell_voltage": {
+      "description": "Durchschnittliche Spannung pro Zelle",
+      "name": "Zellenspannung"
+    },
+    "battery_percent": {
+      "description": "Verbleibende Akkuladung in Prozent",
+      "name": "Akku-Prozent"
+    },
+    "battery_voltage": {
+      "description": "Gesamtspannung des Akkupacks",
+      "name": "Akkuspannung"
+    },
+    "coordinates": {
+      "description": "Breiten- und Längengrad auf zwei Zeilen",
+      "name": "Koordinaten"
+    },
+    "craft_name": {
+      "description": "Vom Benutzer festgelegter Name des Luftfahrzeugs",
+      "name": "Fluggerätname"
+    },
+    "crosshairs": {
+      "description": "Luftfahrzeug-Markierung in der Bildmitte",
+      "name": "Fadenkreuz"
+    },
+    "current_draw": {
+      "description": "Momentane Stromaufnahme in Ampere",
+      "name": "Stromaufnahme"
+    },
+    "distance": {
+      "description": "Entfernung vom Home-Punkt",
+      "name": "Home-Entfernung"
+    },
+    "efficiency": {
+      "description": "Effizienzanzeige in mAh pro km",
+      "name": "Effizienz"
+    },
+    "esc_rpm": {
+      "description": "Motordrehzahl aus ESC-Telemetrie",
+      "name": "ESC RPM"
+    },
+    "esc_temp": {
+      "description": "Temperatur des Motorreglers",
+      "name": "ESC-Temperatur"
+    },
+    "flight_time": {
+      "description": "Zeit seit dem Scharfschalten",
+      "name": "Flugzeit"
+    },
+    "flymode": {
+      "description": "Name des aktuellen Flugmodus (ANGLE, HORIZON usw.)",
+      "name": "Flugmodus"
+    },
+    "g_force": {
+      "description": "Aktuelle G-Belastung",
+      "name": "G-Kraft"
+    },
+    "gps_hdop": {
+      "description": "Horizontale Genauigkeitsminderung",
+      "name": "GPS HDOP"
+    },
+    "gps_sats": {
+      "description": "Anzahl sichtbarer GPS-Satelliten",
+      "name": "GPS-Satelliten"
+    },
+    "heading": {
+      "description": "Kompasskurs in Grad",
+      "name": "Kurs"
+    },
+    "heading_graph": {
+      "description": "Grafisches Kompass-Kursband",
+      "name": "Kursband"
+    },
+    "home_direction": {
+      "description": "Pfeil in Richtung Home",
+      "name": "Home-Richtung"
+    },
+    "horizon_sidebars": {
+      "description": "Seitenmarkierungen für den künstlichen Horizont",
+      "name": "Horizont-Seitenleisten"
+    },
+    "imu_temp": {
+      "description": "Temperatur des IMU-/Gyroskopsensors",
+      "name": "IMU-Temperatur"
+    },
+    "latitude": {
+      "description": "Aktueller Breitengrad",
+      "name": "Breitengrad"
+    },
+    "longitude": {
+      "description": "Aktueller Längengrad",
+      "name": "Längengrad"
+    },
+    "mah_drawn": {
+      "description": "Insgesamt verbrauchte Milliamperestunden",
+      "name": "Verbrauchte mAh"
+    },
+    "max_speed": {
+      "description": "Höchste im Flug erreichte Geschwindigkeit",
+      "name": "Max. Geschwindigkeit"
+    },
+    "messages": {
+      "description": "FC-Statusmeldungen und Benachrichtigungen",
+      "name": "Meldungen"
+    },
+    "msl_altitude": {
+      "description": "Höhe über dem mittleren Meeresspiegel",
+      "name": "MSL-Höhe"
+    },
+    "on_time": {
+      "description": "Zeit seit dem Einschalten",
+      "name": "Einschaltzeit"
+    },
+    "pitch": {
+      "description": "Nickwinkel des Luftfahrzeugs in Grad",
+      "name": "Nickwinkel"
+    },
+    "power_watts": {
+      "description": "Momentane Leistungsaufnahme",
+      "name": "Leistung (Watt)"
+    },
+    "remaining_flight_time": {
+      "description": "Geschätzte verbleibende Flugzeit",
+      "name": "Restzeit"
+    },
+    "roll": {
+      "description": "Roll-/Querneigungswinkel des Luftfahrzeugs in Grad",
+      "name": "Rollwinkel"
+    },
+    "rssi": {
+      "description": "Empfangssignalstärke (%)",
+      "name": "RSSI"
+    },
+    "rssi_dbm": {
+      "description": "Signalstärke in dBm (ELRS, Crossfire)",
+      "name": "RSSI (dBm)"
+    },
+    "rtc_time": {
+      "description": "Echtzeituhr (aktuelle Uhrzeit)",
+      "name": "RTC-Zeit"
+    },
+    "speed": {
+      "description": "Geschwindigkeit über Grund",
+      "name": "Grundgeschwindigkeit"
+    },
+    "throttle": {
+      "description": "Aktuelle Gasstellung in Prozent",
+      "name": "Gas"
+    },
+    "throttle_gauge": {
+      "description": "Grafische Gas-Balkenanzeige",
+      "name": "Gasanzeige"
+    },
+    "vario": {
+      "description": "Vertikalgeschwindigkeitsanzeige (Steigen/Sinken)",
+      "name": "Variometer"
+    },
+    "vtx_channel": {
+      "description": "Band/Kanal/Leistung des Videosenders",
+      "name": "VTX-Kanal"
+    },
+    "warnings": {
+      "description": "Systemwarnungen (Akku schwach, GPS verloren usw.)",
+      "name": "Warnungen"
+    },
+    "wind_horizontal": {
+      "description": "Horizontale Windgeschwindigkeit und -richtung",
+      "name": "Wind (horizontal)"
+    },
+    "wind_vertical": {
+      "description": "Vertikale Windkomponente",
+      "name": "Wind (vertikal)"
+    }
+  },
+  "radioPreflight": {
+    "firmwareFail": "ArduPilot {{major}}.{{minor}} ist zu alt für Stick-Steuerung über MAVLink - aktualisieren Sie den Flugcontroller auf 4.6 oder neuer. Telemetrie funktioniert weiterhin.",
+    "firmwarePass": "ArduPilot {{major}}.{{minor}} unterstützt Stick-Steuerung über ein MAVLink-Funkmodem.",
+    "firmwareUnknown": "Die Firmware-Version konnte noch nicht ermittelt werden.",
+    "firmwareVersion": "Firmware unterstützt RC über Funk",
+    "rcOverMavlink": "Stick-Steuerung über die Funkverbindung",
+    "rcOverMavlinkFail": "Das Fahrzeug ist so eingestellt, dass es über die Funkverbindung eintreffende RC-Daten ignoriert, Ihre Sticks hätten also keine Wirkung (Funk-Failsafe). Die Korrektur lässt Ihre vorhandenen Empfängerprotokolle aktiviert.",
+    "rcOverMavlinkPass": "Das Fahrzeug akzeptiert RC-Daten über das MAVLink-Funkmodem.",
+    "rssiSource": "Anzeige der Verbindungs-Signalstärke",
+    "rssiSourceFail": "Die Signalstärke wird nicht aus der Funkverbindung übernommen, daher zeigt RSSI nichts oder falsche Werte an.",
+    "rssiSourcePass": "Das Fahrzeug meldet die Funk-Signalstärke direkt aus der Verbindung.",
+    "waitingParams": "Warte, bis die Parameter vollständig geladen sind."
+  },
+  "rcSourceArbiter": {
+    "joystickOwns": "Joystick-Steuerung hat die RC-Verbindung",
+    "slidersOwn": "Virtuelle RC-Schieberegler haben die RC-Verbindung",
+    "trainerOwnsSticks": "Trainer-Sitzung aktiv - der Trainer hat die Sticks"
+  },
+  "receiverConstants": {
+    "hint": {
+      "CRSF": "Digitale Verbindung mit niedriger Latenz. Verwendet von TBS-Crossfire- und ExpressLRS-Empfängern.",
+      "FPORT": "FrSky F.Port kombiniert SBUS + Telemetrie auf einer einzigen Leitung.",
+      "GHST": "ImmersionRC-Ghost-Protokoll mit extrem niedriger Latenz.",
+      "IBUS": "Digitales FlySky-Protokoll. An einen freien UART-RX-Pad anschließen.",
+      "MSP": "Nur für Bodenstations-/SITL-Steuerung. Nicht mit einem physischen Empfänger verwenden.",
+      "SBUS": "Invertiertes serielles Protokoll. Üblich bei FrSky- und RadioLink-Empfängern. Manche Boards benötigen einen Hardware-Inverter.",
+      "SBUS_SHORT": "Invertiertes serielles Protokoll. Üblich bei FrSky- und RadioLink-Empfängern.",
+      "SPEK2048": "Spektrum-Satellitenempfänger. Zuerst an den Sender binden, dann an UART anschließen.",
+      "SPEK2048_SHORT": "Spektrum-Satellitenempfänger. Zuerst an den Sender binden.",
+      "SRXL2": "Bidirektionales serielles Spektrum-SRXL2-Protokoll."
+    },
+    "receiverType": {
+      "NONE": "Keiner",
+      "SERIAL": "Seriell"
+    }
+  },
+  "rssiState": {
+    "noLink": "Keine Telemetrieverbindung",
+    "off": "RSSI-Meldung ist am Fahrzeug deaktiviert (RSSI_TYPE = 0)",
+    "unconfigured": "Der Empfänger ist verbunden, meldet aber keine Signalstärke. RSSI_TYPE muss zum Empfänger passen (3 für CRSF/ELRS)."
+  },
+  "rubyOsd": {
+    "category": {
+      "Flight": "Flug",
+      "GPS": "GPS",
+      "Grid": "Raster",
+      "Instruments": "Instrumente",
+      "Link": "Verbindung",
+      "Navigation": "Navigation",
+      "Power": "Leistung",
+      "System": "System",
+      "Video": "Video"
+    },
+    "element": {
+      "ahi_heading": "AHI-Kurs",
+      "air_speed": "Fluggeschwindigkeit",
+      "alt_graph": "Höhengraph",
+      "altitude": "Höhe",
+      "battery": "Akku",
+      "battery_cells": "Akkuzellen",
+      "cpu_info": "CPU-Info",
+      "distance": "Entfernung",
+      "efficiency": "Effizienz",
+      "fc_temperature": "FC-Temperatur",
+      "flight_mode": "Flugmodus",
+      "flight_mode_change": "Flugmoduswechsel",
+      "gps_info": "GPS-Info",
+      "gps_position": "GPS-Position",
+      "grid_crosshair": "Fadenkreuz",
+      "grid_diagonal": "Diagonalraster",
+      "grid_squares": "Quadratraster",
+      "grid_thirds": "Drittelregel",
+      "ground_speed": "Grundgeschwindigkeit",
+      "heading": "Kurs",
+      "home": "Home",
+      "horizon": "Horizont",
+      "instruments": "Instrumente",
+      "link_quality_bars": "Verbindungsqualität (Balken)",
+      "link_quality_numbers": "Verbindungsqualität (Zahlen)",
+      "pitch": "Nicken",
+      "radio_interfaces": "Funkschnittstellen",
+      "radio_links": "Funkverbindungen",
+      "rc_rssi": "RC RSSI",
+      "signal_bars": "Signalbalken",
+      "speed_alt": "Geschwindigkeit & Höhe",
+      "speed_to_sides": "Geschwindigkeit seitlich",
+      "throttle": "Gas",
+      "time": "Zeit",
+      "time_lower": "Zeit (unten)",
+      "total_distance": "Gesamtstrecke",
+      "tx_power": "Sendeleistung",
+      "vehicle_radio_links": "Funkverbindungen des Fahrzeugs",
+      "vertical_speed": "Vertikalgeschwindigkeit",
+      "video_bitrate_history": "Video-Bitratenverlauf",
+      "video_mbps": "Video Mbps",
+      "video_mode": "Videomodus",
+      "wind": "Wind"
+    }
+  },
+  "stickAssign": {
+    "air": {
+      "pitch": "Nicken",
+      "roll": "Rollen",
+      "throttle": "Gas",
+      "yaw": "Gieren"
+    },
+    "ground": {
+      "pitch": "Nicken (ungenutzt)",
+      "roll": "Lenkung",
+      "throttle": "Gas",
+      "yaw": "Gieren (ungenutzt)"
+    }
+  }
+}

@@ -101,8 +101,8 @@ describe('SAFETY_PRESETS - structural integrity', () => {
 
   it('each preset has required fields', () => {
     for (const [key, preset] of Object.entries(SAFETY_PRESETS)) {
-      expect(preset.name, `preset "${key}" missing name`).toBeTruthy();
-      expect(preset.description, `preset "${key}" missing description`).toBeTruthy();
+      expect(preset.nameKey, `preset "${key}" missing nameKey`).toBeTruthy();
+      expect(preset.descriptionKey, `preset "${key}" missing descriptionKey`).toBeTruthy();
       expect(
         Object.keys(preset.params).length,
         `preset "${key}" has no params`,

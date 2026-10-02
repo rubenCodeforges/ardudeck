@@ -3,13 +3,16 @@
  * Shows node info, editable inputs, and configurable properties.
  */
 import { useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { Settings2, Timer } from 'lucide-react';
 import { useLuaGraphStore } from '../../stores/lua-graph-store';
 import { getNodeDefinition, getEffectivePorts } from './node-library';
-import { CATEGORY_COLORS, CATEGORY_LABELS } from './lua-graph-types';
+import { CATEGORY_COLORS, CATEGORY_LABEL_KEYS } from './lua-graph-types';
+import { nodeDescription, nodeInstanceLabel, optionLabel, portLabel, propertyLabel } from './lua-graph-i18n';
 
 export function InspectorPanel() {
+  const { t } = useTranslation();
   const selectedNodeId = useLuaGraphStore((s) => s.selectedNodeId);
   const nodes = useLuaGraphStore((s) => s.nodes);
   const updateNodeProperty = useLuaGraphStore((s) => s.updateNodeProperty);
@@ -34,13 +37,13 @@ export function InspectorPanel() {
           <div className="flex items-center gap-2 mb-3">
             <Settings2 className="w-3.5 h-3.5 text-content-secondary" />
             <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">
-              Script Settings
+              {t('lua-graph:inspectorPanel.scriptSettings')}
             </span>
           </div>
 
           <div className="flex flex-col gap-2.5">
             <div>
-              <label className="text-[10px] text-content-secondary block mb-0.5">Name</label>
+              <label className="text-[10px] text-content-secondary block mb-0.5">{t('common:name')}</label>
               <input
                 type="text"
                 value={graphName}
@@ -49,13 +52,13 @@ export function InspectorPanel() {
               />
             </div>
             <div>
-              <label className="text-[10px] text-content-secondary block mb-0.5">Description</label>
+              <label className="text-[10px] text-content-secondary block mb-0.5">{t('common:description')}</label>
               <textarea
                 value={graphDescription}
                 onChange={(e) => setGraphDescription(e.target.value)}
                 rows={2}
                 className="w-full text-xs bg-surface-input border border-subtle rounded px-2 py-1 text-content focus:outline-none focus:border-blue-500/40 resize-none"
-                placeholder="What does this script do?"
+                placeholder={t('lua-graph:inspectorPanel.descriptionPlaceholder')}
               />
             </div>
           </div>
@@ -65,11 +68,11 @@ export function InspectorPanel() {
           <div className="flex items-center gap-2 mb-3">
             <Timer className="w-3.5 h-3.5 text-amber-500" />
             <span className="text-[10px] font-medium uppercase tracking-wider text-content-secondary">
-              Run Interval
+              {t('lua-graph:inspectorPanel.runInterval')}
             </span>
           </div>
           <p className="text-[10px] text-content-tertiary mb-2">
-            How often the script executes. Lower values give faster response but use more CPU.
+            {t('lua-graph:inspectorPanel.runIntervalHint')}
           </p>
           <div className="flex items-center gap-2">
             <DraftNumberInput
@@ -117,23 +120,23 @@ export function InspectorPanel() {
         <div className="flex items-center gap-2 mb-2">
           <div className="w-2.5 h-2.5 rounded-full" style={{ background: categoryColor }} />
           <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: categoryColor }}>
-            {CATEGORY_LABELS[selectedNode.data.category]}
+            {t(CATEGORY_LABEL_KEYS[selectedNode.data.category])}
           </span>
         </div>
         <input
           type="text"
-          value={selectedNode.data.label}
+          value={nodeInstanceLabel(t, def, selectedNode.data)}
           onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
           className="w-full text-sm font-semibold text-content bg-transparent border-b border-transparent hover:border-default focus:border-blue-500/50 focus:outline-none pb-0.5 transition-colors"
         />
-        <p className="text-[10px] text-content-secondary mt-1">{def.description}</p>
+        <p className="text-[10px] text-content-secondary mt-1">{nodeDescription(t, def)}</p>
       </div>
 
       {/* Properties */}
       {def.properties.length > 0 && (
         <div className="px-3 py-3">
           <h4 className="text-[10px] font-medium uppercase tracking-wider text-content-secondary mb-2">
-            Properties
+            {t('lua-graph:inspectorPanel.properties')}
           </h4>
           <div className="flex flex-col gap-2.5">
             {def.properties.map((propDef) => {
@@ -142,7 +145,7 @@ export function InspectorPanel() {
               if (propDef.type === 'select') {
                 return (
                   <div key={propDef.id}>
-                    <label className="text-[10px] text-content-secondary block mb-0.5">{propDef.label}</label>
+                    <label className="text-[10px] text-content-secondary block mb-0.5">{propertyLabel(t, def, propDef)}</label>
                     <select
                       value={String(value)}
                       onChange={(e) => {
@@ -151,9 +154,9 @@ export function InspectorPanel() {
                       }}
                       className="w-full text-xs bg-surface-input border border-subtle rounded px-2 py-1 text-content focus:outline-none focus:border-blue-500/40"
                     >
-                      {propDef.options?.map((opt) => (
+                      {propDef.options?.map((opt, i) => (
                         <option key={String(opt.value)} value={String(opt.value)}>
-                          {opt.label}
+                          {optionLabel(t, def, propDef, i)}
                         </option>
                       ))}
                     </select>
@@ -164,7 +167,7 @@ export function InspectorPanel() {
               if (propDef.type === 'code') {
                 return (
                   <div key={propDef.id}>
-                    <label className="text-[10px] text-content-secondary block mb-0.5">{propDef.label}</label>
+                    <label className="text-[10px] text-content-secondary block mb-0.5">{propertyLabel(t, def, propDef)}</label>
                     <textarea
                       value={String(value)}
                       onChange={(e) => updateNodeProperty(selectedNode.id, propDef.id, e.target.value)}
@@ -173,7 +176,7 @@ export function InspectorPanel() {
                       className="w-full text-[11px] font-mono leading-snug bg-surface-input border border-subtle rounded px-2 py-1.5 text-content focus:outline-none focus:border-blue-500/40 resize-y whitespace-pre"
                     />
                     <p className="text-[10px] text-content-tertiary mt-1">
-                      Input pins are available as local variables. Finish with <span className="font-mono">return</span> listing the output pins in order.
+                      <Trans i18nKey="lua-graph:inspectorPanel.customLuaHint" components={{ code: <span className="font-mono" /> }} />
                     </p>
                   </div>
                 );
@@ -188,7 +191,7 @@ export function InspectorPanel() {
                       onChange={(e) => updateNodeProperty(selectedNode.id, propDef.id, e.target.checked)}
                       className="w-3.5 h-3.5 rounded border bg-surface-raised text-blue-500 focus:ring-0"
                     />
-                    <label className="text-[11px] text-content-secondary">{propDef.label}</label>
+                    <label className="text-[11px] text-content-secondary">{propertyLabel(t, def, propDef)}</label>
                   </div>
                 );
               }
@@ -196,7 +199,7 @@ export function InspectorPanel() {
               if (propDef.type === 'number' || propDef.type === 'channel') {
                 return (
                   <div key={propDef.id}>
-                    <label className="text-[10px] text-content-secondary block mb-0.5">{propDef.label}</label>
+                    <label className="text-[10px] text-content-secondary block mb-0.5">{propertyLabel(t, def, propDef)}</label>
                     <DraftNumberInput
                       value={Number(value)}
                       min={propDef.min}
@@ -212,7 +215,7 @@ export function InspectorPanel() {
               // string
               return (
                 <div key={propDef.id}>
-                  <label className="text-[10px] text-content-secondary block mb-0.5">{propDef.label}</label>
+                  <label className="text-[10px] text-content-secondary block mb-0.5">{propertyLabel(t, def, propDef)}</label>
                   <input
                     type="text"
                     value={String(value)}
@@ -230,11 +233,11 @@ export function InspectorPanel() {
       {(ports.inputs.length > 0 || ports.outputs.length > 0) && (
         <div className="px-3 py-3 border-t border-subtle">
           <h4 className="text-[10px] font-medium uppercase tracking-wider text-content-secondary mb-2">
-            Ports
+            {t('lua-graph:inspectorPanel.ports')}
           </h4>
           {ports.inputs.length > 0 && (
             <div className="mb-2">
-              <span className="text-[10px] text-content-tertiary">Inputs</span>
+              <span className="text-[10px] text-content-tertiary">{t('lua-graph:inspectorPanel.inputs')}</span>
               <div className="mt-1 flex flex-col gap-1">
                 {ports.inputs.map((p) => (
                   <div key={p.id} className="flex items-center gap-1.5 text-[10px]">
@@ -248,7 +251,7 @@ export function InspectorPanel() {
                           : '#9ca3af',
                       }}
                     />
-                    <span className="text-content-secondary">{p.label}</span>
+                    <span className="text-content-secondary">{portLabel(t, def, p)}</span>
                     <span className="text-content-tertiary ml-auto">{p.type}</span>
                   </div>
                 ))}
@@ -257,7 +260,7 @@ export function InspectorPanel() {
           )}
           {ports.outputs.length > 0 && (
             <div>
-              <span className="text-[10px] text-content-tertiary">Outputs</span>
+              <span className="text-[10px] text-content-tertiary">{t('lua-graph:inspectorPanel.outputs')}</span>
               <div className="mt-1 flex flex-col gap-1">
                 {ports.outputs.map((p) => (
                   <div key={p.id} className="flex items-center gap-1.5 text-[10px]">
@@ -271,7 +274,7 @@ export function InspectorPanel() {
                           : '#9ca3af',
                       }}
                     />
-                    <span className="text-content-secondary">{p.label}</span>
+                    <span className="text-content-secondary">{portLabel(t, def, p)}</span>
                     <span className="text-content-tertiary ml-auto">{p.type}</span>
                   </div>
                 ))}

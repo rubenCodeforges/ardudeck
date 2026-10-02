@@ -7,6 +7,7 @@
  */
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRubyOsdStore, getFontSize, getTransparency } from '../../stores/ruby-osd-store';
 import { buildRubyPreview, type PreviewZone, type RubyPreviewChip } from '../../utils/osd/ruby-osd-preview';
 import { OsdVideoBackdrop } from './OsdVideoBackdrop';
@@ -44,6 +45,7 @@ const ZONE_CLASS: Record<PreviewZone, string> = {
 const ZONES: PreviewZone[] = ['TL', 'TC', 'TR', 'ML', 'MR', 'BL', 'BC', 'BR'];
 
 export function RubyOsdPreview() {
+  const { t } = useTranslation();
   const params = useRubyOsdStore((s) => s.params);
   const editingScreen = useRubyOsdStore((s) => s.editingScreen);
   const pv = buildRubyPreview(params, editingScreen);
@@ -146,13 +148,13 @@ export function RubyOsdPreview() {
 
       {empty && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] text-content-tertiary">No elements enabled on screen {editingScreen + 1}</span>
+          <span className="text-[11px] text-content-tertiary">{t('osd:rubyOsdPreview.noElements', { n: editingScreen + 1 })}</span>
         </div>
       )}
 
         {/* Fidelity note */}
         <div className="absolute -top-px right-1 -translate-y-full text-[10px] text-content-tertiary font-mono pb-1">
-          RubyFPV OSD · layout preview
+          {t('osd:rubyOsdPreview.layoutPreview')}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 // Rate calculation functions for different rate types
 export type RateType = 'betaflight' | 'raceflight' | 'kiss' | 'actual' | 'quick' | 'ardupilot';
@@ -125,6 +126,7 @@ export function RateCurve({
   height = 96,
   className = '',
 }: RateCurveProps) {
+  const { t } = useTranslation();
   const points = useMemo(() => {
     const pts: string[] = [];
     for (let i = 0; i <= 100; i += 2) {
@@ -147,9 +149,9 @@ export function RateCurve({
     <div className={`bg-surface-input rounded-lg p-3 border border-subtle ${className}`}>
       {showMaxRate && (
         <div className="flex items-center justify-between text-xs text-content-secondary mb-2">
-          <span>Response Curve</span>
+          <span>{t('common:responseCurve')}</span>
           <span className="text-content-secondary">
-            Max: <span style={{ color }}>{maxRate}°/s</span>
+            <Trans i18nKey="ui:rateCurve.maxRate" values={{ maxRate }} components={{ v: <span style={{ color }} /> }} />
           </span>
         </div>
       )}
@@ -161,8 +163,8 @@ export function RateCurve({
         <line x1="50" y1="5" x2="50" y2="95" stroke="#374151" strokeWidth="0.5" strokeDasharray="2,2" />
 
         {/* Axis labels */}
-        <text x="50" y="99" fill="#6B7280" fontSize="4" textAnchor="middle">Stick</text>
-        <text x="2" y="50" fill="#6B7280" fontSize="4" textAnchor="middle" transform="rotate(-90, 2, 50)">Rate</text>
+        <text x="50" y="99" fill="#6B7280" fontSize="4" textAnchor="middle">{t('common:stick')}</text>
+        <text x="2" y="50" fill="#6B7280" fontSize="4" textAnchor="middle" transform="rotate(-90, 2, 50)">{t('common:rate')}</text>
 
         {/* Rate curve */}
         <polyline

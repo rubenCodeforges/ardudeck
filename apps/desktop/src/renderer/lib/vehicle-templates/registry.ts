@@ -39,6 +39,7 @@ import { boatCatamaran }  from './templates/boat-catamaran.js';
 
 // Sub
 import { subVectored6 } from './templates/sub-vectored-6.js';
+import { t as translate } from '../../../shared/i18n/index.js';
 
 /**
  * The full template registry. Add new templates here and they automatically
@@ -66,6 +67,14 @@ export function getTemplate(slug: string | undefined): VehicleTemplate | undefin
   return VEHICLE_TEMPLATES.find(t => t.slug === slug);
 }
 
+export function templateName(tpl: Pick<VehicleTemplate, 'slug' | 'name'>): string {
+  return translate(`lib:vehicleTemplates.template.${tpl.slug}.name`, { defaultValue: tpl.name });
+}
+
+export function templateDescription(tpl: Pick<VehicleTemplate, 'slug' | 'description'>): string {
+  return translate(`lib:vehicleTemplates.template.${tpl.slug}.description`, { defaultValue: tpl.description });
+}
+
 export function templatesForType(type: VehicleType): VehicleTemplate[] {
   return VEHICLE_TEMPLATES.filter(t => t.vehicleType === type);
 }
@@ -85,6 +94,6 @@ export function defaultTemplateForType(type: VehicleType): VehicleTemplate {
     sub:    'sub-vectored-6',
   };
   const t = getTemplate(fallbacks[type]);
-  if (!t) throw new Error(`No default template for type ${type}`);
+  if (!t) throw new Error(`No default template for type ${type}`); // i18n-exempt
   return t;
 }

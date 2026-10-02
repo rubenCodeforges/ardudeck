@@ -1,0 +1,24 @@
+{
+  "preArmParamFix": {
+    "openInParameters": "In Parametern öffnen",
+    "openParamTitle": "{{paramId}} in Parametern öffnen"
+  },
+  "preflightCheckCard": {
+    "issues_one": "{{count}} Problem",
+    "issues_other": "{{count}} Probleme",
+    "readyToArm": "Bereit zum Scharfschalten",
+    "recheck": "Erneut prüfen",
+    "title": "Vorflug-Checks"
+  },
+  "safetyConfigCard": {
+    "applied": "Übernommen",
+    "items_one": "{{count}} Eintrag",
+    "items_other": "{{count}} Einträge",
+    "setsParamTip": "Setzt {{param}} auf {{value}}",
+    "severityAdvisory": "Gut zu wissen",
+    "severityCritical": "Nicht fliegen",
+    "severityWarning": "Bitte prüfen",
+    "title": "Sicherheitskonfiguration",
+    "writeFailed": "Schreiben fehlgeschlagen, öffnen Sie stattdessen den Parameter"
+  }
+}

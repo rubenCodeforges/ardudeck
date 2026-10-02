@@ -4,6 +4,7 @@
  * unit-testable. Operates on newest-first flights.
  */
 import type { VehicleFlightHistory, MaintenanceFlag } from './fleet-log-types.js';
+import { t } from './i18n/index.js';
 
 export function deriveMaintenanceFlags(history: VehicleFlightHistory): MaintenanceFlag[] {
   const flags: MaintenanceFlag[] = [];
@@ -22,8 +23,8 @@ export function deriveMaintenanceFlags(history: VehicleFlightHistory): Maintenan
       flags.push({
         vehicleKey: key,
         severity: 'warn',
-        title: 'Vibration trending up',
-        detail: `Recent peak vibration averaging ${rAvg.toFixed(0)} m/s2 vs ${pAvg.toFixed(0)} earlier. Check motor/prop balance and isolation.`,
+        title: t('shared:fleetLogMaintenance.vibrationTitle'),
+        detail: t('shared:fleetLogMaintenance.vibrationDetail', { recent: rAvg.toFixed(0), prior: pAvg.toFixed(0) }),
       });
     }
   }
@@ -37,15 +38,15 @@ export function deriveMaintenanceFlags(history: VehicleFlightHistory): Maintenan
       flags.push({
         vehicleKey: key,
         severity: failing >= 2 ? 'fail' : 'warn',
-        title: `Recurring ${label} issue`,
-        detail: `${bad.length} of the last ${window.length} flights flagged ${label}. Investigate before the next mission.`,
+        title: t('shared:fleetLogMaintenance.recurringTitle', { label }),
+        detail: t('shared:fleetLogMaintenance.recurringDetail', { bad: bad.length, total: window.length, label }),
       });
     }
   };
   checkRepeat('gps', 'GPS');
-  checkRepeat('compass', 'compass');
-  checkRepeat('vibration', 'vibration');
-  checkRepeat('power', 'power');
+  checkRepeat('compass', t('shared:fleetLogMaintenance.labelCompass'));
+  checkRepeat('vibration', t('shared:fleetLogMaintenance.labelVibration'));
+  checkRepeat('power', t('shared:fleetLogMaintenance.labelPower'));
 
   // Battery sag: min pack voltage dropping flight-over-flight suggests aging cells.
   const volts = flights.filter((f) => f.minBatteryV > 0).slice(0, 6).map((f) => f.minBatteryV);
@@ -56,8 +57,8 @@ export function deriveMaintenanceFlags(history: VehicleFlightHistory): Maintenan
       flags.push({
         vehicleKey: key,
         severity: 'warn',
-        title: 'Battery sag increasing',
-        detail: `Minimum pack voltage down ~${(olderV - recentV).toFixed(1)} V vs earlier flights. The pack may be aging.`,
+        title: t('shared:fleetLogMaintenance.batteryTitle'),
+        detail: t('shared:fleetLogMaintenance.batteryDetail', { drop: (olderV - recentV).toFixed(1) }),
       });
     }
   }

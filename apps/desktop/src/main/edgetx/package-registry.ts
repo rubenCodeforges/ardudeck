@@ -7,6 +7,7 @@
  */
 
 import type { RadioVariant, EdgeTxPackageInfo } from '../../shared/edgetx-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 export type { RadioVariant };
 
@@ -48,12 +49,12 @@ export interface EdgeTxPackage {
  * folder taxonomy since it is the most complete radio-to-resolution map.
  */
 export const RADIO_VARIANTS: RadioVariant[] = [
-  { id: 'c480x320', label: '480x320 color', radios: 'TX15' },
-  { id: 'c480x272', label: '480x272 color', radios: 'TX16S / TX16S mkII, T16, T18, Horus X10S/X12S' },
-  { id: 'c800x480', label: '800x480 color', radios: 'TX16S mkIII' },
-  { id: 'c320x480', label: '320x480 portrait color', radios: 'Flysky NV14 / EL18' },
-  { id: 'bw128x64', label: '128x64 B&W', radios: 'Zorro, TX12, MT12, Boxer, Pocket, T-Lite/T-Pro, QX7, X9 Lite' },
-  { id: 'bw212x64', label: '212x64 B&W', radios: 'Taranis X9D/X9D+/X9E' },
+  { id: 'c480x320', label: '480x320 color', radios: 'TX15' }, // i18n-exempt
+  { id: 'c480x272', label: '480x272 color', radios: 'TX16S / TX16S mkII, T16, T18, Horus X10S/X12S' }, // i18n-exempt
+  { id: 'c800x480', label: '800x480 color', radios: 'TX16S mkIII' }, // i18n-exempt
+  { id: 'c320x480', label: '320x480 portrait color', radios: 'Flysky NV14 / EL18' }, // i18n-exempt
+  { id: 'bw128x64', label: '128x64 B&W', radios: 'Zorro, TX12, MT12, Boxer, Pocket, T-Lite/T-Pro, QX7, X9 Lite' }, // i18n-exempt
+  { id: 'bw212x64', label: '212x64 B&W', radios: 'Taranis X9D/X9D+/X9E' }, // i18n-exempt
 ];
 
 /**
@@ -65,9 +66,9 @@ export const ARDUDECK_BW_SCRIPT = 'ArduDk';
 export const EDGETX_PACKAGES: EdgeTxPackage[] = [
   {
     id: 'yaapu-telemetry',
-    name: 'Yaapu Telemetry',
+    name: 'Yaapu Telemetry', // i18n-exempt
     description:
-      'Full ArduPilot telemetry widget: HUD, flight modes, GPS, battery, STATUSTEXT messages with voice alerts. Works over ELRS 4.x MAVLink and CRSF passthrough.',
+      'Full ArduPilot telemetry widget: HUD, flight modes, GPS, battery, STATUSTEXT messages with voice alerts. Works over ELRS 4.x MAVLink and CRSF passthrough.', // i18n-exempt
     homepage: 'https://github.com/yaapu/FrskyTelemetryScript',
     license: 'GPL-3.0',
     source: { kind: 'github', repo: 'yaapu/FrskyTelemetryScript' },
@@ -88,7 +89,7 @@ export const EDGETX_PACKAGES: EdgeTxPackage[] = [
     id: 'ardudeck-hud',
     name: 'ArduDeck HUD',
     description:
-      'Glanceable ArduDeck-styled flight screen: big honest numbers, armed/mode bar, live STATUSTEXT ticker, and a diagnostic ladder that tells you exactly why telemetry is missing instead of "no telemetry". Config is generated from your connected vehicle. All color radios; layouts rescale to the screen. B&W radios get a dense telemetry script, installed and wired to a telemetry screen for you.',
+      'Glanceable ArduDeck-styled flight screen: big honest numbers, armed/mode bar, live STATUSTEXT ticker, and a diagnostic ladder that tells you exactly why telemetry is missing instead of "no telemetry". Config is generated from your connected vehicle. All color radios; layouts rescale to the screen. B&W radios get a dense telemetry script, installed and wired to a telemetry screen for you.', // i18n-exempt
     homepage: 'https://ardudeck.com',
     license: 'GPL-3.0',
     source: { kind: 'bundled', dir: 'ardudeck-hud', version: '0.5.1' },
@@ -115,7 +116,9 @@ export function getPackage(id: string): EdgeTxPackage | undefined {
 /** Renderer-safe catalog view without mapping internals. */
 export function catalogInfo(): EdgeTxPackageInfo[] {
   return EDGETX_PACKAGES.map(({ id, name, description, homepage, license, variants }) => ({
-    id, name, description, homepage, license, variants,
+    id, name, homepage, license,
+    description: t(`main:edgetxPackages.descriptions.${id}`, { defaultValue: description }),
+    variants: variants.map((v) => ({ ...v, label: t(`main:edgetxPackages.variants.${v.id}`, { defaultValue: v.label }) })),
   }));
 }
 

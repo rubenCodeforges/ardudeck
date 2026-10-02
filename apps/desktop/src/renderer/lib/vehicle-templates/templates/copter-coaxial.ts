@@ -1,5 +1,6 @@
 import { Circle } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 /**
@@ -7,8 +8,8 @@ import { batteryParams, commonSafetyParams, simPhysicsParams, matches } from '..
  */
 export const copterCoaxial: VehicleTemplate = {
   slug: 'copter-coaxial',
-  name: 'Coaxial Quad (X8)',
-  description: 'Eight motors in 4 coaxial pairs, industrial workhorse',
+  name: 'Coaxial Quad (X8)', // i18n-exempt
+  description: 'Eight motors in 4 coaxial pairs, industrial workhorse', // i18n-exempt
   icon: Circle,
   vehicleType: 'copter',
   category: 'multirotor',
@@ -22,8 +23,8 @@ export const copterCoaxial: VehicleTemplate = {
     batteryCapacity: 12000,
   },
   toParams: (p) => [
-    { name: 'FRAME_CLASS', value: 4, reason: 'OctaQuad (coaxial X8)', requiresReboot: true },
-    { name: 'FRAME_TYPE',  value: 1, reason: 'X arrangement',           requiresReboot: true },
+    { name: 'FRAME_CLASS', value: 4, reason: t('lib:vehicleTemplates.reason.octaquadCoaxialX8'), requiresReboot: true },
+    { name: 'FRAME_TYPE',  value: 1, reason: t('lib:vehicleTemplates.reason.xArrangement'),           requiresReboot: true },
     ...batteryParams(p),
     ...commonSafetyParams(),
   ],

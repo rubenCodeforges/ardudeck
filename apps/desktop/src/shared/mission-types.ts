@@ -3,6 +3,8 @@
  * Types and constants for mission waypoint management
  */
 
+import { t } from './i18n/index.js';
+
 // MAV_FRAME constants for coordinate reference
 export const MAV_FRAME = {
   GLOBAL: 0,                    // Absolute altitude (MSL)
@@ -134,181 +136,181 @@ export type MavCmd = typeof MAV_CMD[keyof typeof MAV_CMD];
 // Human-readable command names - every MAV_CMD gets a friendly name
 export const COMMAND_NAMES: Record<number, string> = {
   // Navigation
-  [MAV_CMD.NAV_WAYPOINT]: 'Waypoint',
-  [MAV_CMD.NAV_LOITER_UNLIM]: 'Loiter Unlim',
-  [MAV_CMD.NAV_LOITER_TURNS]: 'Loiter Turns',
-  [MAV_CMD.NAV_LOITER_TIME]: 'Loiter Time',
-  [MAV_CMD.NAV_RETURN_TO_LAUNCH]: 'RTL',
-  [MAV_CMD.NAV_LAND]: 'Land',
-  [MAV_CMD.NAV_TAKEOFF]: 'Takeoff',
-  [MAV_CMD.NAV_LAND_LOCAL]: 'Land Local',
-  [MAV_CMD.NAV_TAKEOFF_LOCAL]: 'Takeoff Local',
-  [MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT]: 'Continue/Change Alt',
-  [MAV_CMD.NAV_LOITER_TO_ALT]: 'Loiter to Alt',
-  [MAV_CMD.NAV_ARC_WAYPOINT]: 'Arc Waypoint',
-  [MAV_CMD.NAV_SPLINE_WAYPOINT]: 'Spline WP',
-  [MAV_CMD.NAV_ALTITUDE_WAIT]: 'Altitude Wait',
-  [MAV_CMD.NAV_VTOL_TAKEOFF]: 'VTOL Takeoff',
-  [MAV_CMD.NAV_VTOL_LAND]: 'VTOL Land',
-  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Guided Enable',
-  [MAV_CMD.NAV_DELAY]: 'Delay',
-  [MAV_CMD.NAV_PAYLOAD_PLACE]: 'Payload Place',
-  [MAV_CMD.NAV_SCRIPT_TIME]: 'Script Time',
-  [MAV_CMD.NAV_ATTITUDE_TIME]: 'Attitude Time',
+  [MAV_CMD.NAV_WAYPOINT]: 'Waypoint', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_UNLIM]: 'Loiter Unlim', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_TURNS]: 'Loiter Turns', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_TIME]: 'Loiter Time', // i18n-exempt
+  [MAV_CMD.NAV_RETURN_TO_LAUNCH]: 'RTL', // i18n-exempt
+  [MAV_CMD.NAV_LAND]: 'Land', // i18n-exempt
+  [MAV_CMD.NAV_TAKEOFF]: 'Takeoff', // i18n-exempt
+  [MAV_CMD.NAV_LAND_LOCAL]: 'Land Local', // i18n-exempt
+  [MAV_CMD.NAV_TAKEOFF_LOCAL]: 'Takeoff Local', // i18n-exempt
+  [MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT]: 'Continue/Change Alt', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_TO_ALT]: 'Loiter to Alt', // i18n-exempt
+  [MAV_CMD.NAV_ARC_WAYPOINT]: 'Arc Waypoint', // i18n-exempt
+  [MAV_CMD.NAV_SPLINE_WAYPOINT]: 'Spline WP', // i18n-exempt
+  [MAV_CMD.NAV_ALTITUDE_WAIT]: 'Altitude Wait', // i18n-exempt
+  [MAV_CMD.NAV_VTOL_TAKEOFF]: 'VTOL Takeoff', // i18n-exempt
+  [MAV_CMD.NAV_VTOL_LAND]: 'VTOL Land', // i18n-exempt
+  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Guided Enable', // i18n-exempt
+  [MAV_CMD.NAV_DELAY]: 'Delay', // i18n-exempt
+  [MAV_CMD.NAV_PAYLOAD_PLACE]: 'Payload Place', // i18n-exempt
+  [MAV_CMD.NAV_SCRIPT_TIME]: 'Script Time', // i18n-exempt
+  [MAV_CMD.NAV_ATTITUDE_TIME]: 'Attitude Time', // i18n-exempt
 
   // Conditions
-  [MAV_CMD.CONDITION_DELAY]: 'Condition Delay',
-  [MAV_CMD.CONDITION_CHANGE_ALT]: 'Condition Alt',
-  [MAV_CMD.CONDITION_DISTANCE]: 'Condition Dist',
-  [MAV_CMD.CONDITION_YAW]: 'Condition Yaw',
+  [MAV_CMD.CONDITION_DELAY]: 'Condition Delay', // i18n-exempt
+  [MAV_CMD.CONDITION_CHANGE_ALT]: 'Condition Alt', // i18n-exempt
+  [MAV_CMD.CONDITION_DISTANCE]: 'Condition Dist', // i18n-exempt
+  [MAV_CMD.CONDITION_YAW]: 'Condition Yaw', // i18n-exempt
 
   // DO commands
-  [MAV_CMD.DO_SET_MODE]: 'Set Mode',
-  [MAV_CMD.DO_JUMP]: 'Jump',
-  [MAV_CMD.DO_CHANGE_SPEED]: 'Change Speed',
-  [MAV_CMD.DO_SET_HOME]: 'Set Home',
-  [MAV_CMD.DO_SET_PARAMETER]: 'Set Parameter',
-  [MAV_CMD.DO_SET_RELAY]: 'Set Relay',
-  [MAV_CMD.DO_REPEAT_RELAY]: 'Repeat Relay',
-  [MAV_CMD.DO_SET_SERVO]: 'Set Servo',
-  [MAV_CMD.DO_SET_ACTUATOR]: 'Set Actuator',
-  [MAV_CMD.DO_REPEAT_SERVO]: 'Repeat Servo',
-  [MAV_CMD.DO_FLIGHTTERMINATION]: 'Flight Termination',
-  [MAV_CMD.DO_CHANGE_ALTITUDE]: 'Change Altitude',
-  [MAV_CMD.DO_LAND_START]: 'Land Start',
-  [MAV_CMD.DO_RALLY_LAND]: 'Rally Land',
-  [MAV_CMD.DO_GO_AROUND]: 'Go Around',
-  [MAV_CMD.DO_REPOSITION]: 'Reposition',
-  [MAV_CMD.DO_PAUSE_CONTINUE]: 'Pause/Continue',
-  [MAV_CMD.DO_SET_REVERSE]: 'Set Reverse',
-  [MAV_CMD.DO_SET_ROI_LOCATION]: 'ROI Location',
-  [MAV_CMD.DO_SET_ROI_WPNEXT_OFFSET]: 'ROI Next WP',
-  [MAV_CMD.DO_SET_ROI_NONE]: 'ROI None',
-  [MAV_CMD.DO_SET_ROI_SYSID]: 'ROI System',
-  [MAV_CMD.DO_CONTROL_VIDEO]: 'Control Video',
-  [MAV_CMD.DO_SET_ROI]: 'Set ROI',
-  [MAV_CMD.DO_DIGICAM_CONFIGURE]: 'Digicam Config',
-  [MAV_CMD.DO_DIGICAM_CONTROL]: 'Digicam Control',
-  [MAV_CMD.DO_MOUNT_CONFIGURE]: 'Mount Config',
-  [MAV_CMD.DO_MOUNT_CONTROL]: 'Mount Control',
-  [MAV_CMD.DO_SET_CAM_TRIGG_DIST]: 'Camera Trigger',
-  [MAV_CMD.DO_FENCE_ENABLE]: 'Fence Enable',
-  [MAV_CMD.DO_PARACHUTE]: 'Parachute',
-  [MAV_CMD.DO_MOTOR_TEST]: 'Motor Test',
-  [MAV_CMD.DO_INVERTED_FLIGHT]: 'Inverted Flight',
-  [MAV_CMD.DO_GRIPPER]: 'Gripper',
-  [MAV_CMD.DO_AUTOTUNE_ENABLE]: 'Autotune',
-  [MAV_CMD.SET_YAW_SPEED]: 'Set Yaw Speed',
-  [MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL]: 'Camera Interval',
-  [MAV_CMD.DO_SET_RESUME_REPEAT_DIST]: 'Resume Repeat Dist',
-  [MAV_CMD.DO_SPRAYER]: 'Sprayer',
-  [MAV_CMD.DO_SEND_SCRIPT_MESSAGE]: 'Script Message',
-  [MAV_CMD.DO_AUX_FUNCTION]: 'Aux Function',
-  [MAV_CMD.DO_GUIDED_LIMITS]: 'Guided Limits',
-  [MAV_CMD.DO_ENGINE_CONTROL]: 'Engine Control',
-  [MAV_CMD.DO_SET_MISSION_CURRENT]: 'Set Mission Item',
-  [MAV_CMD.SET_CAMERA_MODE]: 'Camera Mode',
-  [MAV_CMD.SET_CAMERA_ZOOM]: 'Camera Zoom',
-  [MAV_CMD.SET_CAMERA_FOCUS]: 'Camera Focus',
-  [MAV_CMD.SET_CAMERA_SOURCE]: 'Camera Source',
-  [MAV_CMD.JUMP_TAG]: 'Jump Tag',
-  [MAV_CMD.DO_JUMP_TAG]: 'Do Jump Tag',
-  [MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW]: 'Gimbal Pitch/Yaw',
-  [MAV_CMD.IMAGE_START_CAPTURE]: 'Start Capture',
-  [MAV_CMD.IMAGE_STOP_CAPTURE]: 'Stop Capture',
-  [MAV_CMD.VIDEO_START_CAPTURE]: 'Start Video',
-  [MAV_CMD.VIDEO_STOP_CAPTURE]: 'Stop Video',
-  [MAV_CMD.DO_VTOL_TRANSITION]: 'VTOL Transition',
-  [MAV_CMD.DO_WINCH]: 'Winch',
+  [MAV_CMD.DO_SET_MODE]: 'Set Mode', // i18n-exempt
+  [MAV_CMD.DO_JUMP]: 'Jump', // i18n-exempt
+  [MAV_CMD.DO_CHANGE_SPEED]: 'Change Speed', // i18n-exempt
+  [MAV_CMD.DO_SET_HOME]: 'Set Home', // i18n-exempt
+  [MAV_CMD.DO_SET_PARAMETER]: 'Set Parameter', // i18n-exempt
+  [MAV_CMD.DO_SET_RELAY]: 'Set Relay', // i18n-exempt
+  [MAV_CMD.DO_REPEAT_RELAY]: 'Repeat Relay', // i18n-exempt
+  [MAV_CMD.DO_SET_SERVO]: 'Set Servo', // i18n-exempt
+  [MAV_CMD.DO_SET_ACTUATOR]: 'Set Actuator', // i18n-exempt
+  [MAV_CMD.DO_REPEAT_SERVO]: 'Repeat Servo', // i18n-exempt
+  [MAV_CMD.DO_FLIGHTTERMINATION]: 'Flight Termination', // i18n-exempt
+  [MAV_CMD.DO_CHANGE_ALTITUDE]: 'Change Altitude', // i18n-exempt
+  [MAV_CMD.DO_LAND_START]: 'Land Start', // i18n-exempt
+  [MAV_CMD.DO_RALLY_LAND]: 'Rally Land', // i18n-exempt
+  [MAV_CMD.DO_GO_AROUND]: 'Go Around', // i18n-exempt
+  [MAV_CMD.DO_REPOSITION]: 'Reposition', // i18n-exempt
+  [MAV_CMD.DO_PAUSE_CONTINUE]: 'Pause/Continue', // i18n-exempt
+  [MAV_CMD.DO_SET_REVERSE]: 'Set Reverse', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_LOCATION]: 'ROI Location', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_WPNEXT_OFFSET]: 'ROI Next WP', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_NONE]: 'ROI None', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_SYSID]: 'ROI System', // i18n-exempt
+  [MAV_CMD.DO_CONTROL_VIDEO]: 'Control Video', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI]: 'Set ROI', // i18n-exempt
+  [MAV_CMD.DO_DIGICAM_CONFIGURE]: 'Digicam Config', // i18n-exempt
+  [MAV_CMD.DO_DIGICAM_CONTROL]: 'Digicam Control', // i18n-exempt
+  [MAV_CMD.DO_MOUNT_CONFIGURE]: 'Mount Config', // i18n-exempt
+  [MAV_CMD.DO_MOUNT_CONTROL]: 'Mount Control', // i18n-exempt
+  [MAV_CMD.DO_SET_CAM_TRIGG_DIST]: 'Camera Trigger', // i18n-exempt
+  [MAV_CMD.DO_FENCE_ENABLE]: 'Fence Enable', // i18n-exempt
+  [MAV_CMD.DO_PARACHUTE]: 'Parachute', // i18n-exempt
+  [MAV_CMD.DO_MOTOR_TEST]: 'Motor Test', // i18n-exempt
+  [MAV_CMD.DO_INVERTED_FLIGHT]: 'Inverted Flight', // i18n-exempt
+  [MAV_CMD.DO_GRIPPER]: 'Gripper', // i18n-exempt
+  [MAV_CMD.DO_AUTOTUNE_ENABLE]: 'Autotune', // i18n-exempt
+  [MAV_CMD.SET_YAW_SPEED]: 'Set Yaw Speed', // i18n-exempt
+  [MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL]: 'Camera Interval', // i18n-exempt
+  [MAV_CMD.DO_SET_RESUME_REPEAT_DIST]: 'Resume Repeat Dist', // i18n-exempt
+  [MAV_CMD.DO_SPRAYER]: 'Sprayer', // i18n-exempt
+  [MAV_CMD.DO_SEND_SCRIPT_MESSAGE]: 'Script Message', // i18n-exempt
+  [MAV_CMD.DO_AUX_FUNCTION]: 'Aux Function', // i18n-exempt
+  [MAV_CMD.DO_GUIDED_LIMITS]: 'Guided Limits', // i18n-exempt
+  [MAV_CMD.DO_ENGINE_CONTROL]: 'Engine Control', // i18n-exempt
+  [MAV_CMD.DO_SET_MISSION_CURRENT]: 'Set Mission Item', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_MODE]: 'Camera Mode', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_ZOOM]: 'Camera Zoom', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_FOCUS]: 'Camera Focus', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_SOURCE]: 'Camera Source', // i18n-exempt
+  [MAV_CMD.JUMP_TAG]: 'Jump Tag', // i18n-exempt
+  [MAV_CMD.DO_JUMP_TAG]: 'Do Jump Tag', // i18n-exempt
+  [MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW]: 'Gimbal Pitch/Yaw', // i18n-exempt
+  [MAV_CMD.IMAGE_START_CAPTURE]: 'Start Capture', // i18n-exempt
+  [MAV_CMD.IMAGE_STOP_CAPTURE]: 'Stop Capture', // i18n-exempt
+  [MAV_CMD.VIDEO_START_CAPTURE]: 'Start Video', // i18n-exempt
+  [MAV_CMD.VIDEO_STOP_CAPTURE]: 'Stop Video', // i18n-exempt
+  [MAV_CMD.DO_VTOL_TRANSITION]: 'VTOL Transition', // i18n-exempt
+  [MAV_CMD.DO_WINCH]: 'Winch', // i18n-exempt
 };
 
 // Command descriptions for tooltips
 export const COMMAND_DESCRIPTIONS: Record<number, string> = {
   // Navigation
-  [MAV_CMD.NAV_WAYPOINT]: 'Navigate to waypoint with optional loiter time',
-  [MAV_CMD.NAV_LOITER_UNLIM]: 'Loiter at location indefinitely',
-  [MAV_CMD.NAV_LOITER_TURNS]: 'Loiter N turns around location',
-  [MAV_CMD.NAV_LOITER_TIME]: 'Loiter at location for X seconds',
-  [MAV_CMD.NAV_RETURN_TO_LAUNCH]: 'Return to launch/home location',
-  [MAV_CMD.NAV_LAND]: 'Land at specified location',
-  [MAV_CMD.NAV_TAKEOFF]: 'Takeoff to specified altitude',
-  [MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT]: 'Continue to next WP while changing altitude',
-  [MAV_CMD.NAV_LOITER_TO_ALT]: 'Loiter and climb/descend to altitude',
-  [MAV_CMD.NAV_ARC_WAYPOINT]: 'Fly a curved arc path through waypoint',
-  [MAV_CMD.NAV_SPLINE_WAYPOINT]: 'Spline waypoint for smooth curves',
-  [MAV_CMD.NAV_ALTITUDE_WAIT]: 'Wait at altitude until climb rate met',
-  [MAV_CMD.NAV_VTOL_TAKEOFF]: 'VTOL takeoff to altitude',
-  [MAV_CMD.NAV_VTOL_LAND]: 'VTOL land at location',
-  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Enable/disable guided mode from companion',
-  [MAV_CMD.NAV_DELAY]: 'Wait for specified time or until time of day',
-  [MAV_CMD.NAV_PAYLOAD_PLACE]: 'Descend and release payload',
-  [MAV_CMD.NAV_SCRIPT_TIME]: 'Run Lua script for specified time',
-  [MAV_CMD.NAV_ATTITUDE_TIME]: 'Hold attitude for specified time',
+  [MAV_CMD.NAV_WAYPOINT]: 'Navigate to waypoint with optional loiter time', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_UNLIM]: 'Loiter at location indefinitely', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_TURNS]: 'Loiter N turns around location', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_TIME]: 'Loiter at location for X seconds', // i18n-exempt
+  [MAV_CMD.NAV_RETURN_TO_LAUNCH]: 'Return to launch/home location', // i18n-exempt
+  [MAV_CMD.NAV_LAND]: 'Land at specified location', // i18n-exempt
+  [MAV_CMD.NAV_TAKEOFF]: 'Takeoff to specified altitude', // i18n-exempt
+  [MAV_CMD.NAV_CONTINUE_AND_CHANGE_ALT]: 'Continue to next WP while changing altitude', // i18n-exempt
+  [MAV_CMD.NAV_LOITER_TO_ALT]: 'Loiter and climb/descend to altitude', // i18n-exempt
+  [MAV_CMD.NAV_ARC_WAYPOINT]: 'Fly a curved arc path through waypoint', // i18n-exempt
+  [MAV_CMD.NAV_SPLINE_WAYPOINT]: 'Spline waypoint for smooth curves', // i18n-exempt
+  [MAV_CMD.NAV_ALTITUDE_WAIT]: 'Wait at altitude until climb rate met', // i18n-exempt
+  [MAV_CMD.NAV_VTOL_TAKEOFF]: 'VTOL takeoff to altitude', // i18n-exempt
+  [MAV_CMD.NAV_VTOL_LAND]: 'VTOL land at location', // i18n-exempt
+  [MAV_CMD.NAV_GUIDED_ENABLE]: 'Enable/disable guided mode from companion', // i18n-exempt
+  [MAV_CMD.NAV_DELAY]: 'Wait for specified time or until time of day', // i18n-exempt
+  [MAV_CMD.NAV_PAYLOAD_PLACE]: 'Descend and release payload', // i18n-exempt
+  [MAV_CMD.NAV_SCRIPT_TIME]: 'Run Lua script for specified time', // i18n-exempt
+  [MAV_CMD.NAV_ATTITUDE_TIME]: 'Hold attitude for specified time', // i18n-exempt
 
   // Conditions
-  [MAV_CMD.CONDITION_DELAY]: 'Wait for seconds before next command',
-  [MAV_CMD.CONDITION_CHANGE_ALT]: 'Ascend/descend to altitude then continue',
-  [MAV_CMD.CONDITION_DISTANCE]: 'Wait until within distance of next waypoint',
-  [MAV_CMD.CONDITION_YAW]: 'Reach a target heading before next command',
+  [MAV_CMD.CONDITION_DELAY]: 'Wait for seconds before next command', // i18n-exempt
+  [MAV_CMD.CONDITION_CHANGE_ALT]: 'Ascend/descend to altitude then continue', // i18n-exempt
+  [MAV_CMD.CONDITION_DISTANCE]: 'Wait until within distance of next waypoint', // i18n-exempt
+  [MAV_CMD.CONDITION_YAW]: 'Reach a target heading before next command', // i18n-exempt
 
   // DO commands
-  [MAV_CMD.DO_SET_MODE]: 'Set flight mode',
-  [MAV_CMD.DO_JUMP]: 'Jump to waypoint N and repeat X times',
-  [MAV_CMD.DO_CHANGE_SPEED]: 'Change target speed',
-  [MAV_CMD.DO_SET_HOME]: 'Set new home position',
-  [MAV_CMD.DO_SET_PARAMETER]: 'Set a flight controller parameter',
-  [MAV_CMD.DO_SET_RELAY]: 'Set relay on/off',
-  [MAV_CMD.DO_REPEAT_RELAY]: 'Cycle relay on/off N times',
-  [MAV_CMD.DO_SET_SERVO]: 'Set servo to PWM value',
-  [MAV_CMD.DO_SET_ACTUATOR]: 'Set an actuator output (PX4)',
-  [MAV_CMD.DO_REPEAT_SERVO]: 'Cycle servo between PWM values',
-  [MAV_CMD.DO_FLIGHTTERMINATION]: 'Terminate flight immediately',
-  [MAV_CMD.DO_CHANGE_ALTITUDE]: 'Change altitude at specified rate',
-  [MAV_CMD.DO_LAND_START]: 'Marker for start of landing sequence',
-  [MAV_CMD.DO_RALLY_LAND]: 'Fly to rally point and land',
-  [MAV_CMD.DO_GO_AROUND]: 'Abort landing and go around',
-  [MAV_CMD.DO_REPOSITION]: 'Reposition vehicle to location',
-  [MAV_CMD.DO_PAUSE_CONTINUE]: 'Pause or resume current mission',
-  [MAV_CMD.DO_SET_REVERSE]: 'Set moving direction forward/reverse',
-  [MAV_CMD.DO_SET_ROI_LOCATION]: 'Point camera at location',
-  [MAV_CMD.DO_SET_ROI_WPNEXT_OFFSET]: 'Point camera at next waypoint',
-  [MAV_CMD.DO_SET_ROI_NONE]: 'Cancel ROI - stop tracking',
-  [MAV_CMD.DO_SET_ROI_SYSID]: 'Track another vehicle by system ID',
-  [MAV_CMD.DO_CONTROL_VIDEO]: 'Control onboard video system',
-  [MAV_CMD.DO_SET_ROI]: 'Set region of interest for camera',
-  [MAV_CMD.DO_DIGICAM_CONFIGURE]: 'Configure digital camera settings',
-  [MAV_CMD.DO_DIGICAM_CONTROL]: 'Trigger camera shutter',
-  [MAV_CMD.DO_MOUNT_CONFIGURE]: 'Configure gimbal mount mode',
-  [MAV_CMD.DO_MOUNT_CONTROL]: 'Control gimbal angles',
-  [MAV_CMD.DO_SET_CAM_TRIGG_DIST]: 'Trigger camera at distance intervals',
-  [MAV_CMD.DO_FENCE_ENABLE]: 'Enable/disable geofence',
-  [MAV_CMD.DO_PARACHUTE]: 'Deploy parachute or enable auto-deploy',
-  [MAV_CMD.DO_MOTOR_TEST]: 'Test individual motor',
-  [MAV_CMD.DO_INVERTED_FLIGHT]: 'Enable/disable inverted flight',
-  [MAV_CMD.DO_GRIPPER]: 'Open/close gripper',
-  [MAV_CMD.DO_AUTOTUNE_ENABLE]: 'Enable/disable autotune',
-  [MAV_CMD.SET_YAW_SPEED]: 'Set yaw angle and speed for rover',
-  [MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL]: 'Trigger camera at time intervals',
-  [MAV_CMD.DO_SET_RESUME_REPEAT_DIST]: 'Set distance for mission resume after RTL',
-  [MAV_CMD.DO_SPRAYER]: 'Enable/disable crop sprayer',
-  [MAV_CMD.DO_SEND_SCRIPT_MESSAGE]: 'Send message to onboard Lua script',
-  [MAV_CMD.DO_AUX_FUNCTION]: 'Trigger auxiliary function switch',
-  [MAV_CMD.DO_GUIDED_LIMITS]: 'Set limits for guided mode',
-  [MAV_CMD.DO_ENGINE_CONTROL]: 'Start/stop engine',
-  [MAV_CMD.DO_SET_MISSION_CURRENT]: 'Jump to mission item without counting',
-  [MAV_CMD.SET_CAMERA_MODE]: 'Set camera operating mode',
-  [MAV_CMD.SET_CAMERA_ZOOM]: 'Set camera zoom level',
-  [MAV_CMD.SET_CAMERA_FOCUS]: 'Set camera focus',
-  [MAV_CMD.SET_CAMERA_SOURCE]: 'Set camera video source',
-  [MAV_CMD.JUMP_TAG]: 'Mark a tag label for DO_JUMP_TAG',
-  [MAV_CMD.DO_JUMP_TAG]: 'Jump to tagged mission item',
-  [MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW]: 'Set gimbal pitch and yaw angles',
-  [MAV_CMD.IMAGE_START_CAPTURE]: 'Start taking photos at interval',
-  [MAV_CMD.IMAGE_STOP_CAPTURE]: 'Stop taking photos',
-  [MAV_CMD.VIDEO_START_CAPTURE]: 'Start recording video',
-  [MAV_CMD.VIDEO_STOP_CAPTURE]: 'Stop recording video',
-  [MAV_CMD.DO_VTOL_TRANSITION]: 'Transition between VTOL and fixed-wing',
-  [MAV_CMD.DO_WINCH]: 'Control winch motor',
+  [MAV_CMD.DO_SET_MODE]: 'Set flight mode', // i18n-exempt
+  [MAV_CMD.DO_JUMP]: 'Jump to waypoint N and repeat X times', // i18n-exempt
+  [MAV_CMD.DO_CHANGE_SPEED]: 'Change target speed', // i18n-exempt
+  [MAV_CMD.DO_SET_HOME]: 'Set new home position', // i18n-exempt
+  [MAV_CMD.DO_SET_PARAMETER]: 'Set a flight controller parameter', // i18n-exempt
+  [MAV_CMD.DO_SET_RELAY]: 'Set relay on/off', // i18n-exempt
+  [MAV_CMD.DO_REPEAT_RELAY]: 'Cycle relay on/off N times', // i18n-exempt
+  [MAV_CMD.DO_SET_SERVO]: 'Set servo to PWM value', // i18n-exempt
+  [MAV_CMD.DO_SET_ACTUATOR]: 'Set an actuator output (PX4)', // i18n-exempt
+  [MAV_CMD.DO_REPEAT_SERVO]: 'Cycle servo between PWM values', // i18n-exempt
+  [MAV_CMD.DO_FLIGHTTERMINATION]: 'Terminate flight immediately', // i18n-exempt
+  [MAV_CMD.DO_CHANGE_ALTITUDE]: 'Change altitude at specified rate', // i18n-exempt
+  [MAV_CMD.DO_LAND_START]: 'Marker for start of landing sequence', // i18n-exempt
+  [MAV_CMD.DO_RALLY_LAND]: 'Fly to rally point and land', // i18n-exempt
+  [MAV_CMD.DO_GO_AROUND]: 'Abort landing and go around', // i18n-exempt
+  [MAV_CMD.DO_REPOSITION]: 'Reposition vehicle to location', // i18n-exempt
+  [MAV_CMD.DO_PAUSE_CONTINUE]: 'Pause or resume current mission', // i18n-exempt
+  [MAV_CMD.DO_SET_REVERSE]: 'Set moving direction forward/reverse', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_LOCATION]: 'Point camera at location', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_WPNEXT_OFFSET]: 'Point camera at next waypoint', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_NONE]: 'Cancel ROI - stop tracking', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI_SYSID]: 'Track another vehicle by system ID', // i18n-exempt
+  [MAV_CMD.DO_CONTROL_VIDEO]: 'Control onboard video system', // i18n-exempt
+  [MAV_CMD.DO_SET_ROI]: 'Set region of interest for camera', // i18n-exempt
+  [MAV_CMD.DO_DIGICAM_CONFIGURE]: 'Configure digital camera settings', // i18n-exempt
+  [MAV_CMD.DO_DIGICAM_CONTROL]: 'Trigger camera shutter', // i18n-exempt
+  [MAV_CMD.DO_MOUNT_CONFIGURE]: 'Configure gimbal mount mode', // i18n-exempt
+  [MAV_CMD.DO_MOUNT_CONTROL]: 'Control gimbal angles', // i18n-exempt
+  [MAV_CMD.DO_SET_CAM_TRIGG_DIST]: 'Trigger camera at distance intervals', // i18n-exempt
+  [MAV_CMD.DO_FENCE_ENABLE]: 'Enable/disable geofence', // i18n-exempt
+  [MAV_CMD.DO_PARACHUTE]: 'Deploy parachute or enable auto-deploy', // i18n-exempt
+  [MAV_CMD.DO_MOTOR_TEST]: 'Test individual motor', // i18n-exempt
+  [MAV_CMD.DO_INVERTED_FLIGHT]: 'Enable/disable inverted flight', // i18n-exempt
+  [MAV_CMD.DO_GRIPPER]: 'Open/close gripper', // i18n-exempt
+  [MAV_CMD.DO_AUTOTUNE_ENABLE]: 'Enable/disable autotune', // i18n-exempt
+  [MAV_CMD.SET_YAW_SPEED]: 'Set yaw angle and speed for rover', // i18n-exempt
+  [MAV_CMD.DO_SET_CAM_TRIGG_INTERVAL]: 'Trigger camera at time intervals', // i18n-exempt
+  [MAV_CMD.DO_SET_RESUME_REPEAT_DIST]: 'Set distance for mission resume after RTL', // i18n-exempt
+  [MAV_CMD.DO_SPRAYER]: 'Enable/disable crop sprayer', // i18n-exempt
+  [MAV_CMD.DO_SEND_SCRIPT_MESSAGE]: 'Send message to onboard Lua script', // i18n-exempt
+  [MAV_CMD.DO_AUX_FUNCTION]: 'Trigger auxiliary function switch', // i18n-exempt
+  [MAV_CMD.DO_GUIDED_LIMITS]: 'Set limits for guided mode', // i18n-exempt
+  [MAV_CMD.DO_ENGINE_CONTROL]: 'Start/stop engine', // i18n-exempt
+  [MAV_CMD.DO_SET_MISSION_CURRENT]: 'Jump to mission item without counting', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_MODE]: 'Set camera operating mode', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_ZOOM]: 'Set camera zoom level', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_FOCUS]: 'Set camera focus', // i18n-exempt
+  [MAV_CMD.SET_CAMERA_SOURCE]: 'Set camera video source', // i18n-exempt
+  [MAV_CMD.JUMP_TAG]: 'Mark a tag label for DO_JUMP_TAG', // i18n-exempt
+  [MAV_CMD.DO_JUMP_TAG]: 'Jump to tagged mission item', // i18n-exempt
+  [MAV_CMD.DO_GIMBAL_MANAGER_PITCHYAW]: 'Set gimbal pitch and yaw angles', // i18n-exempt
+  [MAV_CMD.IMAGE_START_CAPTURE]: 'Start taking photos at interval', // i18n-exempt
+  [MAV_CMD.IMAGE_STOP_CAPTURE]: 'Stop taking photos', // i18n-exempt
+  [MAV_CMD.VIDEO_START_CAPTURE]: 'Start recording video', // i18n-exempt
+  [MAV_CMD.VIDEO_STOP_CAPTURE]: 'Stop recording video', // i18n-exempt
+  [MAV_CMD.DO_VTOL_TRANSITION]: 'Transition between VTOL and fixed-wing', // i18n-exempt
+  [MAV_CMD.DO_WINCH]: 'Control winch motor', // i18n-exempt
 };
 
 // Commands that have location (lat/lon/alt)
@@ -471,7 +473,25 @@ export function createTakeoffWaypoint(
  * Get human-readable name for a command
  */
 export function getCommandName(command: number): string {
-  return COMMAND_NAMES[command] || `Unknown CMD ${command}`;
+  return COMMAND_NAMES[command] || `Unknown CMD ${command}`; // i18n-exempt
+}
+
+const MAV_CMD_NAME_BY_ID: Record<number, string> = Object.fromEntries(
+  Object.entries(MAV_CMD).map(([name, id]) => [id, name]),
+);
+
+/** Translated short label for a mission command, for display. */
+export function missionCommandLabel(command: number): string {
+  const name = MAV_CMD_NAME_BY_ID[command];
+  if (name && COMMAND_NAMES[command]) return t(`shared:missionTypes.command.${name}.name`);
+  return t('shared:missionTypes.unknownCommand', { command });
+}
+
+/** Translated tooltip description for a mission command, or undefined when there is none. */
+export function missionCommandDescription(command: number): string | undefined {
+  const name = MAV_CMD_NAME_BY_ID[command];
+  if (name && COMMAND_DESCRIPTIONS[command]) return t(`shared:missionTypes.command.${name}.description`);
+  return undefined;
 }
 
 /**

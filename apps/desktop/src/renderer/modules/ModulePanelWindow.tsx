@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Maximize2, Minimize2, X } from 'lucide-react';
 import type { RegisteredPanel } from './module-panel-registry';
 
@@ -46,6 +47,7 @@ function loadBounds(panel: RegisteredPanel): Bounds {
 }
 
 export function ModulePanelWindow({ panel, onClose }: { panel: RegisteredPanel; onClose: () => void }) {
+  const { t } = useTranslation();
   const Body = panel.component;
   const [bounds, setBounds] = useState<Bounds>(() => loadBounds(panel));
   const [maximized, setMaximized] = useState(false);
@@ -113,14 +115,14 @@ export function ModulePanelWindow({ panel, onClose }: { panel: RegisteredPanel; 
         <button
           onClick={() => setMaximized((m) => !m)}
           className="rounded-md p-1 text-content-secondary transition-colors hover:bg-surface-raised hover:text-content"
-          aria-label={maximized ? 'Restore' : 'Maximize'}
+          aria-label={maximized ? t('common:restore') : t('modules:modulePanelWindow.maximize')}
         >
           {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
         <button
           onClick={onClose}
           className="rounded-md p-1 text-content-secondary transition-colors hover:bg-surface-raised hover:text-content"
-          aria-label="Close"
+          aria-label={t('common:close')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -135,7 +137,7 @@ export function ModulePanelWindow({ panel, onClose }: { panel: RegisteredPanel; 
           onPointerDown={startGesture('resize')}
           style={{ cursor: 'nwse-resize', touchAction: 'none' }}
           className="absolute bottom-0 right-0 z-10 flex h-5 w-5 items-end justify-end p-1"
-          aria-label="Resize"
+          aria-label={t('modules:modulePanelWindow.resize')}
         >
           <svg viewBox="0 0 10 10" className="h-3 w-3 text-content-tertiary">
             <path d="M9 1L1 9M9 5L5 9" stroke="currentColor" strokeWidth="1.2" fill="none" />

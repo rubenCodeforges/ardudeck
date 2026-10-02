@@ -26,7 +26,6 @@ import {
   withConfigLock,
   isCliModeBlockedError,
 } from './msp-transport.js';
-import { stopMspTelemetry, startMspTelemetry } from './msp-telemetry.js';
 
 export async function getModeRanges(): Promise<MSPModeRange[] | null> {
   if (!ctx.currentTransport?.isOpen) return null;
@@ -145,11 +144,7 @@ export async function setModeRange(index: number, mode: MSPModeRange): Promise<b
     return false;
   }
 
-  if (ctx.tuningCliModeActive) {
-    return await setModeRangeViaCli(index, mode);
-  }
-
-  const mspSuccess = await withConfigLock(async () => {
+  return withConfigLock(async () => {
     try {
       const payload = serializeModeRange(index, mode, ctx.isInavFirmware);
       if (mode.rangeEnd > mode.rangeStart) {
@@ -160,46 +155,10 @@ export async function setModeRange(index: number, mode: MSPModeRange): Promise<b
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(`[MSP] SET_MODE_RANGE[${index}] failed:`, msg);
-      if (msg.includes('not supported') || msg.includes('timed out') || msg.includes('timeout')) {
-        ctx.sendLog('warn', `MSP SET_MODE_RANGE failed (${msg}), trying CLI...`);
-        return null;
-      }
       ctx.sendLog('error', `Failed to set mode ${index}`, msg);
       return false;
     }
   });
-
-  if (mspSuccess !== null) return mspSuccess;
-  return await setModeRangeViaCli(index, mode);
-}
-
-export async function setModeRangeViaCli(index: number, mode: MSPModeRange): Promise<boolean> {
-  if (!ctx.currentTransport?.isOpen) return false;
-
-  try {
-    if (!ctx.tuningCliModeActive) {
-      ctx.tuningCliModeActive = true;
-      stopMspTelemetry();
-      ctx.sendLog('info', 'CLI mode', 'Entering CLI for legacy tuning');
-      await ctx.currentTransport.write(new Uint8Array([0x23]));
-      await new Promise(r => setTimeout(r, 500));
-      if (!ctx.currentTransport?.isOpen) {
-        ctx.tuningCliModeActive = false;
-        startMspTelemetry();
-        return false;
-      }
-    }
-
-    const startStep = Math.round((mode.rangeStart - 900) / 25);
-    const endStep = Math.round((mode.rangeEnd - 900) / 25);
-    const cmd = `aux ${index} ${mode.boxId} ${mode.auxChannel} ${startStep} ${endStep} 0`;
-    await ctx.currentTransport.write(new TextEncoder().encode(cmd + '\n'));
-    await new Promise(r => setTimeout(r, 100));
-    return true;
-  } catch (error) {
-    console.error('[MSP] CLI mode set failed:', error);
-    return false;
-  }
 }
 
 export async function getFeatures(): Promise<number | null> {

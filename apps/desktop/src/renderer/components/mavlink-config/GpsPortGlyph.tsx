@@ -10,7 +10,10 @@ interface GlyphProps {
   size?: number;
 }
 
+import { useTranslation } from 'react-i18next';
+
 export function GpsPortGlyph({ kind, active = false, size = 54 }: GlyphProps): JSX.Element {
+  const { t } = useTranslation();
   const stroke = active ? 'var(--color-emerald-400, #34d399)' : 'currentColor';
   const fill = active ? 'rgba(52, 211, 153, 0.16)' : 'transparent';
 
@@ -22,7 +25,7 @@ export function GpsPortGlyph({ kind, active = false, size = 54 }: GlyphProps): J
         viewBox="0 0 54 34"
         className={active ? 'text-emerald-400' : 'text-content-tertiary'}
         role="img"
-        aria-label="CAN bus"
+        aria-label={t('mavlink-config:gpsPortGlyph.canBus')}
       >
         <line x1="4" y1="17" x2="50" y2="17" stroke={stroke} strokeWidth="1.6" />
         <path
@@ -45,7 +48,7 @@ export function GpsPortGlyph({ kind, active = false, size = 54 }: GlyphProps): J
       viewBox="0 0 54 34"
       className={active ? 'text-emerald-400' : 'text-content-tertiary'}
       role="img"
-      aria-label="Serial socket"
+      aria-label={t('mavlink-config:gpsPortGlyph.serialSocket')}
     >
       <rect x="6" y="7" width="42" height="20" rx="3" fill={fill} stroke={stroke} strokeWidth="1.6" />
       <rect x="18" y="3.5" width="18" height="4" rx="1.5" fill={stroke} opacity="0.45" />

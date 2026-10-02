@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { t as i18nT } from '../../../shared/i18n/index.js';
 import { GuidesAndToursCard } from '../guides/GuidesAndToursList';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { TileCacheCard } from './TileCacheCard';
 import { UnitSelectionCard } from './UnitSelectionCard';
+import { LanguageCard } from './LanguageCard';
 import { TrafficSettingsCard } from './TrafficSettingsCard';
 import { GroupShapeCard } from './GroupShapeCard';
 import { useSettingsStore, type VehicleProfile, type VehicleType, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
@@ -122,17 +125,17 @@ function clampSpeedMetersPerSecondToRules(mps: number, rules: FieldValidation): 
 function validateSpeedField(value: string, rules: FieldValidation, unit: SpeedUnit): string | null {
   const trimmed = value.trim();
   if (trimmed === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
   const displayValue = Number(trimmed);
-  if (!Number.isFinite(displayValue)) return 'Invalid number';
+  if (!Number.isFinite(displayValue)) return i18nT('settings:settingsView.validation.invalidNumber');
 
   const metersPerSecond = toMetersPerSecondFromSpeedUnit(displayValue, unit);
   if (rules.min !== undefined && metersPerSecond < rules.min) {
-    return `Min: ${speedInputValueFromMetersPerSecond(rules.min, unit)} ${UNIT_LABELS.speed[unit]}`;
+    return i18nT('settings:settingsView.validation.min', { value: `${speedInputValueFromMetersPerSecond(rules.min, unit)} ${UNIT_LABELS.speed[unit]}` });
   }
   if (rules.max !== undefined && metersPerSecond > rules.max) {
-    return `Max: ${speedInputValueFromMetersPerSecond(rules.max, unit)} ${UNIT_LABELS.speed[unit]}`;
+    return i18nT('settings:settingsView.validation.max', { value: `${speedInputValueFromMetersPerSecond(rules.max, unit)} ${UNIT_LABELS.speed[unit]}` });
   }
   return null;
 }
@@ -241,14 +244,18 @@ const VEHICLE_ICONS: Record<VehicleType, React.ReactNode> = {
   ),
 };
 
-const VEHICLE_TYPE_NAMES: Record<VehicleType, string> = {
-  copter: 'Multicopter',
-  plane: 'Fixed Wing',
-  vtol: 'VTOL',
-  rover: 'Rover',
-  boat: 'Boat',
-  sub: 'Submarine',
+const VEHICLE_TYPE_NAME_KEYS: Record<VehicleType, string> = {
+  copter: 'settings:settingsView.vehicleType.copter',
+  plane: 'settings:settingsView.vehicleType.plane',
+  vtol: 'settings:settingsView.vehicleType.vtol',
+  rover: 'settings:settingsView.vehicleType.rover',
+  boat: 'settings:settingsView.vehicleType.boat',
+  sub: 'settings:settingsView.vehicleType.sub',
 };
+
+function vehicleTypeName(type: VehicleType): string {
+  return i18nT(VEHICLE_TYPE_NAME_KEYS[type]);
+}
 
 // Firmware display names
 const FIRMWARE_NAMES: Record<string, string> = {
@@ -275,7 +282,7 @@ function checkProfileCompatibility(
     if (supportedTypes && !supportedTypes.includes(profileType)) {
       return {
         compatible: false,
-        message: `Your ${VEHICLE_TYPE_NAMES[profileType]} profile is not compatible with ${FIRMWARE_NAMES[fcVariant] || fcVariant}`,
+        message: i18nT('settings:settingsView.compat.message', { type: vehicleTypeName(profileType), firmware: FIRMWARE_NAMES[fcVariant] || fcVariant }),
         supportedTypes,
       };
     }
@@ -298,6 +305,7 @@ function ProfileCompatibilityBanner({
   supportedTypes: VehicleType[];
   onCreateNewProfile: (type: VehicleType) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mb-6 bg-gradient-to-r from-amber-900/40 to-orange-900/30 border border-amber-500/40 rounded-xl p-4">
       <div className="flex items-start gap-4">
@@ -310,14 +318,16 @@ function ProfileCompatibilityBanner({
 
         {/* Message Content */}
         <div className="flex-1">
-          <h3 className="text-lg font-medium text-amber-300">Profile Compatibility Issue</h3>
+          <h3 className="text-lg font-medium text-amber-300">{t('settings:settingsView.compat.title')}</h3>
           <p className="text-sm text-content mt-1">
-            Your current profile is configured for <span className="font-medium text-amber-400">{VEHICLE_TYPE_NAMES[profileType]}</span>,
-            but you're connected to a <span className="font-medium text-blue-400">{FIRMWARE_NAMES[fcVariant] || fcVariant}</span> board
-            {boardId && <span className="text-content-secondary"> ({boardId})</span>}.
+            <Trans
+              i18nKey="settings:settingsView.compat.body"
+              values={{ type: vehicleTypeName(profileType), firmware: FIRMWARE_NAMES[fcVariant] || fcVariant, board: boardId ? ` (${boardId})` : '' }}
+              components={{ type: <span className="font-medium text-amber-400" />, fw: <span className="font-medium text-blue-400" /> }}
+            />
           </p>
           <p className="text-sm text-content-secondary mt-2">
-            {FIRMWARE_NAMES[fcVariant] || fcVariant} only supports: {supportedTypes.map(t => VEHICLE_TYPE_NAMES[t]).join(', ')}.
+            {t('settings:settingsView.compat.supports', { firmware: FIRMWARE_NAMES[fcVariant] || fcVariant, types: supportedTypes.map(vehicleTypeName).join(', ') })}
           </p>
 
           {/* Quick Actions */}
@@ -329,7 +339,7 @@ function ProfileCompatibilityBanner({
                 className="flex items-center gap-2 px-3 py-2 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 rounded-lg text-sm text-amber-200 transition-colors"
               >
                 <div className="w-5 h-5">{VEHICLE_ICONS[type]}</div>
-                Create {VEHICLE_TYPE_NAMES[type]} Profile
+                {t('settings:settingsView.compat.create', { type: vehicleTypeName(type) })}
               </button>
             ))}
           </div>
@@ -470,6 +480,7 @@ const WEATHER_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 const WEATHER_LOCATION_THRESHOLD = 0.01; // ~1km movement before refetch
 
 function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
+  const { t } = useTranslation();
   const gps = useTelemetryStore((s) => s.gps);
   const [weather, setWeather] = useState<WeatherData | null>(weatherCache.data);
   const [loading, setLoading] = useState(false);
@@ -599,7 +610,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           else if (weatherCode >= 51) condition = 'Rain';          // 51-67, 80-82
           else if (weatherCode >= 45) condition = 'Fog';           // 45, 48
           else if (weatherCode >= 3) condition = 'Cloudy';         // 3
-          else if (weatherCode >= 1) condition = 'Partly Cloudy';  // 1, 2
+          else if (weatherCode >= 1) condition = 'Partly Cloudy';  // 1, 2 i18n-exempt: identifier
 
           const weatherData: WeatherData = {
             temp: Math.round(data.current.temperature_2m),
@@ -654,15 +665,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
-          <span className="text-sm font-medium text-content-secondary">Weather</span>
+          <span className="text-sm font-medium text-content-secondary">{t('settings:settingsView.weather.title')}</span>
         </div>
         <div className="text-center py-6">
           <svg className="w-12 h-12 text-content-tertiary mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <div className="text-content-secondary text-sm">Getting location...</div>
-          <div className="text-content-tertiary text-xs mt-1">Connect vehicle or allow location access</div>
+          <div className="text-content-secondary text-sm">{t('settings:settingsView.weather.gettingLocation')}</div>
+          <div className="text-content-tertiary text-xs mt-1">{t('settings:settingsView.weather.noLocation')}</div>
         </div>
       </div>
     );
@@ -675,11 +686,11 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
-          <span className="text-sm font-medium text-content-secondary">Weather</span>
+          <span className="text-sm font-medium text-content-secondary">{t('settings:settingsView.weather.title')}</span>
         </div>
         <div className="text-center py-6">
           <div className="animate-spin w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full mx-auto mb-2" />
-          <div className="text-content-secondary text-sm">Loading weather...</div>
+          <div className="text-content-secondary text-sm">{t('settings:settingsView.weather.loading')}</div>
         </div>
       </div>
     );
@@ -692,10 +703,10 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <svg className="w-5 h-5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
-          <span className="text-sm font-medium text-content-secondary">Weather</span>
+          <span className="text-sm font-medium text-content-secondary">{t('settings:settingsView.weather.title')}</span>
         </div>
         <div className="text-center py-6">
-          <div className="text-content-secondary text-sm">Unavailable</div>
+          <div className="text-content-secondary text-sm">{t('settings:settingsView.weather.unavailable')}</div>
         </div>
       </div>
     );
@@ -716,7 +727,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
     if (isBad) return 'from-red-900/50 via-red-800/30 to-surface-base';
     if (isCaution) return 'from-amber-900/50 via-amber-800/30 to-surface-base';
     if (weather.condition === 'Clear') return 'from-blue-900/50 via-cyan-900/30 to-surface-base';
-    if (weather.condition === 'Partly Cloudy') return 'from-slate-800/50 via-blue-900/30 to-surface-base';
+    if (weather.condition === 'Partly Cloudy') return 'from-slate-800/50 via-blue-900/30 to-surface-base'; // i18n-exempt
     return 'from-surface via-surface to-surface-base';
   };
 
@@ -757,7 +768,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
         <path d="M12 4C8.68 4 6 6.68 6 10c0 .34.03.67.08 1H6c-2.21 0-4 1.79-4 4s1.79 4 4 4h12c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96C17.45 6.19 15.02 4 12 4z"/>
       </svg>
     );
-    if (weather.condition === 'Partly Cloudy') return (
+    if (weather.condition === 'Partly Cloudy') return ( // i18n-exempt
       <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M11.0947 8.02658C11.5476 5.73111 13.5717 4 16 4C18.7614 4 21 6.23858 21 9C21 11.0345 19.7849 12.7852 18.0408 13.5659M11.0947 8.02658C9.24194 8.21766 7.68947 9.4193 7 11C4.6 11.375 3 13.3144 3 15.4137C3 17.9466 5.14903 20 7.8 20L15 20C17.2091 20 19 18.2719 19 16.1402C19 15.1829 18.6388 14.2698 18.0408 13.5659M11.0947 8.02658C11.265 8.00902 11.4378 8 11.6127 8C14.2747 8 16.4504 9.99072 16.6 12.5C17.1583 12.7354 17.6501 13.106 18.0408 13.5659" />
       </svg>
@@ -777,15 +788,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
 
   // Get vehicle-specific label
   const getVehicleLabel = () => {
-    if (!vehicleType) return 'Flight';
+    if (!vehicleType) return t('settings:settingsView.weather.context.flight');
     switch (vehicleType) {
       case 'copter':
       case 'plane':
-      case 'vtol': return 'Flight';
-      case 'boat': return 'Maritime';
-      case 'sub': return 'Dive';
-      case 'rover': return 'Drive';
-      default: return 'Operation';
+      case 'vtol': return t('settings:settingsView.weather.context.flight');
+      case 'boat': return t('settings:settingsView.weather.context.maritime');
+      case 'sub': return t('settings:settingsView.weather.context.dive');
+      case 'rover': return t('settings:settingsView.weather.context.drive');
+      default: return t('settings:settingsView.weather.context.operation');
     }
   };
 
@@ -797,12 +808,12 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           <WeatherIcon />
           <div>
             <div className="text-2xl font-bold text-content">{weather.temp}°C</div>
-            <div className="text-sm text-content-secondary">{weather.condition}</div>
+            <div className="text-sm text-content-secondary">{t(`settings:settingsView.weather.condition.${weather.condition}`, { defaultValue: weather.condition })}</div>
           </div>
         </div>
         <div className="text-right">
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${getStatusColor()}`}>
-            {isBad ? 'No Go' : isCaution ? 'Caution' : 'Good'}
+            {isBad ? t('settings:settingsView.weather.noGo') : isCaution ? t('settings:settingsView.weather.caution') : t('settings:settingsView.weather.good')}
           </span>
           <div className="text-[10px] text-content-secondary mt-1 flex items-center justify-end gap-1">
             {locationSource === 'device' && (
@@ -815,15 +826,15 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               </svg>
             )}
-            {getVehicleLabel()} conditions
+            {getVehicleLabel()}
           </div>
           {briefingAvailable && (
             <button
               onClick={() => setView('weather')}
               className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-content-secondary hover:text-content transition-colors"
-              data-tip="Open the full pre-flight weather briefing"
+              data-tip={t('settings:settingsView.weather.openBriefing')}
             >
-              View in detail
+              {t('settings:settingsView.weather.viewDetail')}
               <ArrowRight className="w-3 h-3" />
             </button>
           )}
@@ -841,12 +852,12 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
               {isMaritime ? (
                 <>
                   <div className="text-lg font-semibold text-content">{kmhToKnots(weather.windSpeed)} <span className="text-sm font-normal text-content-secondary">kts</span></div>
-                  <div className="text-xs text-content-secondary">Wind from {getWindDirection(weather.windDir)}</div>
+                  <div className="text-xs text-content-secondary">{t('settings:settingsView.weather.windFrom', { dir: getWindDirection(weather.windDir) })}</div>
                 </>
               ) : (
                 <>
                   <WindSpeedValue kmh={weather.windSpeed} unit={speedUnit} className="text-lg font-semibold text-content" />
-                  <div className="text-xs text-content-secondary">Wind from {getWindDirection(weather.windDir)}</div>
+                  <div className="text-xs text-content-secondary">{t('settings:settingsView.weather.windFrom', { dir: getWindDirection(weather.windDir) })}</div>
                 </>
               )}
             </div>
@@ -857,7 +868,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                 <div className={`text-lg font-semibold ${weather.windGusts > weather.windSpeed * 1.3 ? 'text-amber-400' : 'text-content'}`}>
                   {kmhToKnots(weather.windGusts)} <span className="text-sm font-normal text-content-secondary">kts</span>
                 </div>
-                <div className="text-xs text-content-secondary">Gusts</div>
+                <div className="text-xs text-content-secondary">{t('common:gusts')}</div>
               </>
             ) : (
               <>
@@ -866,7 +877,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                   unit={speedUnit}
                   className={`text-lg font-semibold ${weather.windGusts > weather.windSpeed * 1.3 ? 'text-amber-400' : 'text-content'}`}
                 />
-                <div className="text-xs text-content-secondary">Gusts</div>
+                <div className="text-xs text-content-secondary">{t('common:gusts')}</div>
               </>
             )}
           </div>
@@ -886,7 +897,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                 <div className={`text-lg font-semibold ${(weather.waveHeight || 0) > 1.5 ? 'text-amber-400' : 'text-content'}`}>
                   {weather.waveHeight?.toFixed(1) || '-'} <span className="text-sm font-normal text-content-secondary">m</span>
                 </div>
-                <div className="text-xs text-content-secondary">Wave Height</div>
+                <div className="text-xs text-content-secondary">{t('settings:settingsView.weather.waveHeight')}</div>
               </div>
             </div>
             {weather.swellHeight !== undefined && (
@@ -895,7 +906,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
                   {weather.swellHeight?.toFixed(1)} <span className="text-sm font-normal text-content-secondary">m</span>
                 </div>
                 <div className="text-xs text-content-secondary">
-                  Swell {weather.swellDirection !== undefined ? getWindDirection(weather.swellDirection) : ''}
+                  {t('settings:settingsView.weather.swell', { dir: weather.swellDirection !== undefined ? getWindDirection(weather.swellDirection) : '' })}
                   {weather.swellPeriod ? ` ${weather.swellPeriod.toFixed(0)}s` : ''}
                 </div>
               </div>
@@ -912,7 +923,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
               <div className={`text-sm font-semibold ${weather.visibility < 5 ? 'text-amber-400' : 'text-content'}`}>
                 {weather.visibility}km
               </div>
-              <div className="text-[10px] text-content-secondary uppercase">Visibility</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('settings:settingsView.weather.visibility')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.pressure}</div>
@@ -920,7 +931,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.temp}°</div>
-              <div className="text-[10px] text-content-secondary uppercase">Air Temp</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('settings:settingsView.weather.airTemp')}</div>
             </div>
           </>
         ) : (
@@ -929,11 +940,11 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
               <div className={`text-sm font-semibold ${weather.visibility < 5 ? 'text-amber-400' : 'text-content'}`}>
                 {weather.visibility}km
               </div>
-              <div className="text-[10px] text-content-secondary uppercase">Visibility</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('settings:settingsView.weather.visibility')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.cloudCover}%</div>
-              <div className="text-[10px] text-content-secondary uppercase">Clouds</div>
+              <div className="text-[10px] text-content-secondary uppercase">{t('settings:settingsView.weather.clouds')}</div>
             </div>
             <div className="bg-surface-overlay-subtle rounded-lg py-2 px-1">
               <div className="text-sm font-semibold text-content">{weather.pressure}</div>
@@ -951,18 +962,18 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           </svg>
           <p className={`text-[11px] leading-relaxed ${isBad ? 'text-red-400' : 'text-amber-400'}`}>
             {weather.windGusts >= gustLimit
-              ? `Gusts of ${weather.windGusts} km/h exceed safe limit (${gustLimit} km/h). Risk of loss of control.`
+              ? t('settings:settingsView.weather.warn.gusts', { gusts: weather.windGusts, limit: gustLimit })
               : weather.windSpeed >= windLimit
-                ? `Sustained wind of ${weather.windSpeed} km/h exceeds safe limit (${windLimit} km/h).`
+                ? t('settings:settingsView.weather.warn.wind', { wind: weather.windSpeed, limit: windLimit })
                 : weather.condition === 'Thunderstorm'
-                  ? 'Thunderstorm activity detected. Do not fly.'
+                  ? t('settings:settingsView.weather.warn.thunderstorm')
                   : weather.condition === 'Rain'
-                    ? 'Rain detected. Electronics at risk.'
+                    ? t('settings:settingsView.weather.warn.rain')
                     : weather.visibility < visibilityLimit
-                      ? `Low visibility (${weather.visibility} km). Maintain visual line of sight.`
+                      ? t('settings:settingsView.weather.warn.visibility', { visibility: weather.visibility })
                       : weather.condition === 'Fog'
-                        ? 'Fog detected. Reduced visibility likely.'
-                        : `Wind approaching limits. Monitor conditions closely.`}
+                        ? t('settings:settingsView.weather.warn.fog')
+                        : t('settings:settingsView.weather.warn.approaching')}
           </p>
         </div>
       )}
@@ -972,6 +983,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
 
 // Tips component
 function TipsSection({ vehicle }: { vehicle: VehicleProfile | null }) {
+  const { t } = useTranslation();
   const { missionDefaults } = useSettingsStore();
 
   const tips: { type: 'info' | 'warning' | 'success'; message: string }[] = [];
@@ -979,24 +991,24 @@ function TipsSection({ vehicle }: { vehicle: VehicleProfile | null }) {
   if (vehicle) {
     // Performance tips
     if ((vehicle._avgPowerDraw ?? 0) > 500) {
-      tips.push({ type: 'info', message: 'High power draw - consider larger battery for longer flights' });
+      tips.push({ type: 'info', message: t('settings:settingsView.tips.highPower') });
     }
     if ((vehicle._cruiseSpeed ?? 0) > 15 && vehicle.type === 'copter') {
-      tips.push({ type: 'info', message: 'High cruise speed reduces efficiency on multirotors' });
+      tips.push({ type: 'info', message: t('settings:settingsView.tips.highCruise') });
     }
     if (vehicle.batteryCapacity < 3000 && vehicle.weight > 2000) {
-      tips.push({ type: 'warning', message: 'Small battery for vehicle weight - flight time may be limited' });
+      tips.push({ type: 'warning', message: t('settings:settingsView.tips.smallBattery') });
     }
   }
 
   // Mission tips
   if (missionDefaults.safeAltitudeBuffer < 20) {
-    tips.push({ type: 'warning', message: 'Low safe altitude buffer - increase for mountainous terrain' });
+    tips.push({ type: 'warning', message: t('settings:settingsView.tips.lowBuffer') });
   }
 
   // General tips
   if (tips.length === 0) {
-    tips.push({ type: 'success', message: 'Your settings look good! Ready for flight planning.' });
+    tips.push({ type: 'success', message: t('settings:settingsView.tips.allGood') });
   }
 
   const getIcon = (type: string) => {
@@ -1046,9 +1058,9 @@ function formatTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   if (hours > 0) {
-    return `${hours}h ${mins}m`;
+    return i18nT('settings:settingsView.stats.hoursMinutes', { h: hours, m: mins });
   }
-  return `${mins} min`;
+  return i18nT('settings:settingsView.stats.minutes', { m: mins });
 }
 
 // Format distance helper
@@ -1065,6 +1077,7 @@ function formatDistance(meters: number): string {
  * Only shown when connected via MAVLink (ArduPilot stores cumulative stats on-board)
  */
 function ArduPilotFlightStats() {
+  const { t } = useTranslation();
   const { parameters } = useParameterStore();
 
   const statFlightTime = parameters.get('STAT_FLTTIME')?.value ?? 0;
@@ -1073,30 +1086,30 @@ function ArduPilotFlightStats() {
 
   return (
     <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
-      <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Flight Statistics (from FC)</h3>
+      <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">{t('settings:settingsView.stats.title')}</h3>
       <div className="grid grid-cols-2 gap-2">
         <StatCard
           icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           value={formatTime(statFlightTime)}
-          label="Total Flight Time"
+          label={t('settings:settingsView.stats.flightTime')}
           color="bg-blue-500/20 text-blue-400"
         />
         <StatCard
           icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
           value={formatTime(statRuntime)}
-          label="Total Powered Time"
+          label={t('settings:settingsView.stats.poweredTime')}
           color="bg-emerald-500/20 text-emerald-400"
         />
         <StatCard
           icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
           value={statBootCount.toString()}
-          label="Boot Count"
+          label={t('settings:settingsView.stats.bootCount')}
           color="bg-purple-500/20 text-purple-400"
         />
         <StatCard
           icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
           value={statFlightTime > 0 ? `${Math.round((statFlightTime / statRuntime) * 100)}%` : '--'}
-          label="Flight Ratio"
+          label={t('settings:settingsView.stats.flightRatio')}
           color="bg-amber-500/20 text-amber-400"
         />
       </div>
@@ -1109,12 +1122,12 @@ function ArduPilotFlightStats() {
  */
 type SettingsCategoryId = 'vehicle' | 'configuration' | 'maps' | 'advanced' | 'about';
 
-const SETTINGS_CATEGORIES: { id: SettingsCategoryId; label: string; icon: LucideIcon }[] = [
-  { id: 'vehicle', label: 'Vehicle', icon: Gauge },
-  { id: 'configuration', label: 'Configuration', icon: SlidersHorizontal },
-  { id: 'maps', label: 'Maps', icon: MapIcon },
-  { id: 'advanced', label: 'Advanced', icon: FlaskConical },
-  { id: 'about', label: 'About', icon: Info },
+const SETTINGS_CATEGORIES: { id: SettingsCategoryId; labelKey: string; icon: LucideIcon }[] = [
+  { id: 'vehicle', labelKey: 'settings:settingsView.category.vehicle', icon: Gauge },
+  { id: 'configuration', labelKey: 'settings:settingsView.category.configuration', icon: SlidersHorizontal },
+  { id: 'maps', labelKey: 'settings:settingsView.category.maps', icon: MapIcon },
+  { id: 'advanced', labelKey: 'settings:settingsView.category.advanced', icon: FlaskConical },
+  { id: 'about', labelKey: 'settings:settingsView.category.about', icon: Info },
 ];
 
 // Per-tab colour coding, same convention as the Parameters group tabs: the icon
@@ -1129,6 +1142,7 @@ const CATEGORY_COLORS: Record<SettingsCategoryId, { active: string; icon: string
 };
 
 export function SettingsView() {
+  const { t } = useTranslation();
   const {
     missionDefaults,
     vehicles,
@@ -1250,9 +1264,9 @@ export function SettingsView() {
 
   // Handler to create a new profile with the compatible type
   const handleCreateCompatibleProfile = (type: VehicleType) => {
-    const boardId = connectionState.boardId || 'Unknown';
+    const boardId = connectionState.boardId || t('common:unknown');
     const newVehicleData = {
-      name: `${boardId} ${VEHICLE_TYPE_NAMES[type]}`,
+      name: `${boardId} ${vehicleTypeName(type)}`,
       type,
       weight: type === 'copter' ? 500 : type === 'plane' ? 1500 : 1000,
       batteryCells: 4,
@@ -1349,9 +1363,9 @@ export function SettingsView() {
       {/* Header */}
       <div className="shrink-0 px-6 pt-6 pb-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-2xl font-semibold text-content">Settings</h1>
+          <h1 className="text-2xl font-semibold text-content">{t('settings:settingsView.header.title')}</h1>
           <p className="text-content-secondary text-sm mt-1">
-            Configure mission defaults and vehicle profiles
+            {t('settings:settingsView.header.subtitle')}
           </p>
         </div>
       </div>
@@ -1374,7 +1388,7 @@ export function SettingsView() {
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${colors.icon}${isActive ? '' : ' opacity-50'}`} />
-                {cat.label}
+                {t(cat.labelKey)}
               </button>
             );
           })}
@@ -1403,7 +1417,7 @@ export function SettingsView() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Vehicle & Status</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.vehicleStatus')}</h2>
           </div>
 
           {/* Top row - Active Vehicle + Performance + Weather */}
@@ -1418,12 +1432,12 @@ export function SettingsView() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-lg font-medium text-content truncate">
-                        {activeVehicle?.name || 'No vehicle'}
+                        {activeVehicle?.name || t('settings:settingsView.noVehicle')}
                       </div>
                       <div className="text-sm text-content-secondary flex items-center gap-2">
-                        <span>{activeVehicle ? VEHICLE_TYPE_NAMES[activeVehicle.type] : ''}</span>
+                        <span>{activeVehicle ? vehicleTypeName(activeVehicle.type) : ''}</span>
                         {activeVehicle?.boardId && (
-                          <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded" title={activeVehicle.boardUid ? `UID: ${activeVehicle.boardUid}` : undefined}>
+                          <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded" title={activeVehicle.boardUid ? t('settings:settingsView.uid', { uid: activeVehicle.boardUid }) : undefined}>
                             {activeVehicle.boardId}
                           </span>
                         )}
@@ -1433,7 +1447,7 @@ export function SettingsView() {
                       <button
                         onClick={() => setEditingVehicleId(activeVehicle.id)}
                         className="p-1.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
-                        title="Edit vehicle in Vehicle Profiles"
+                        title={t('settings:settingsView.editVehicleTitle')}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -1467,18 +1481,18 @@ export function SettingsView() {
                     </div>
                     {/* Weight */}
                     <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                      <div className="text-xs text-content-secondary">Weight</div>
+                      <div className="text-xs text-content-secondary">{t('settings:settingsView.weight')}</div>
                       <div className="text-sm text-content font-medium">{fmtWeight(activeVehicle.weight, weightUnit)}</div>
                     </div>
                     {/* Battery */}
                     <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                      <div className="text-xs text-content-secondary">Battery</div>
+                      <div className="text-xs text-content-secondary">{t('common:battery')}</div>
                       <div className="text-sm text-content font-medium">{activeVehicle.batteryCells}S{activeVehicle.batteryChemistry && activeVehicle.batteryChemistry !== 'lipo' ? ` ${({ lihv: 'LiHV', lion: 'Li-Ion', life: 'LiFe' } as Record<string, string>)[activeVehicle.batteryChemistry] ?? ''}` : ''} {fmtCapacity(activeVehicle.batteryCapacity, electricCapacityUnit)}</div>
                     </div>
                     {/* Type-specific secondary spec */}
                     <div className="bg-surface-overlay-subtle rounded-lg p-2">
                       <div className="text-xs text-content-secondary">
-                        {['copter', 'plane', 'vtol'].includes(activeVehicle.type) ? 'Est. Cruise' : 'Est. Speed'}
+                        {['copter', 'plane', 'vtol'].includes(activeVehicle.type) ? t('settings:settingsView.estCruise') : t('settings:settingsView.estSpeed')}
                       </div>
                       <div className="text-sm text-cyan-400 font-medium">
                         {formatSpeedFromMetersPerSecond(cruiseSpeed, speedUnit)}
@@ -1488,35 +1502,35 @@ export function SettingsView() {
                   {/* Board Stats (from STAT_* parameters) */}
                   {activeVehicle.boardStats && (activeVehicle.boardStats.totalFlightCount != null || activeVehicle.boardStats.totalFlightTime != null) && (
                     <div className="mt-3 pt-3 border-t border-subtle">
-                      <div className="text-[10px] text-content-secondary uppercase tracking-wider mb-2">Board Stats</div>
+                      <div className="text-[10px] text-content-secondary uppercase tracking-wider mb-2">{t('settings:settingsView.boardStats')}</div>
                       <div className="grid grid-cols-3 gap-2">
                         {activeVehicle.boardStats.totalFlightCount != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Flights</div>
+                            <div className="text-[10px] text-content-secondary">{t('settings:settingsView.flights')}</div>
                             <div className="text-xs text-content font-medium">{activeVehicle.boardStats.totalFlightCount}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.totalFlightTime != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Flight Time</div>
+                            <div className="text-[10px] text-content-secondary">{t('settings:settingsView.flightTime')}</div>
                             <div className="text-xs text-content font-medium">{formatTime(activeVehicle.boardStats.totalFlightTime)}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.totalRunTime != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Run Time</div>
+                            <div className="text-[10px] text-content-secondary">{t('settings:settingsView.runTime')}</div>
                             <div className="text-xs text-content font-medium">{formatTime(activeVehicle.boardStats.totalRunTime)}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.totalDistance != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Distance</div>
+                            <div className="text-[10px] text-content-secondary">{t('common:distance')}</div>
                             <div className="text-xs text-content font-medium">{formatDistance(activeVehicle.boardStats.totalDistance)}</div>
                           </div>
                         )}
                         {activeVehicle.boardStats.bootCount != null && (
                           <div className="bg-surface-overlay-subtle rounded-lg p-2">
-                            <div className="text-[10px] text-content-secondary">Boots</div>
+                            <div className="text-[10px] text-content-secondary">{t('settings:settingsView.boots')}</div>
                             <div className="text-xs text-content font-medium">{activeVehicle.boardStats.bootCount}</div>
                           </div>
                         )}
@@ -1533,7 +1547,7 @@ export function SettingsView() {
                 <CircularGauge
                   value={Math.round(estimatedFlightTime / 60)}
                   max={60}
-                  label="Flight Time"
+                  label={t('settings:settingsView.flightTime')}
                   unit="min"
                   color="#3b82f6"
                   size={85}
@@ -1541,7 +1555,7 @@ export function SettingsView() {
                 <CircularGauge
                   value={Math.round(estimatedRange / 1000)}
                   max={50}
-                  label="Range"
+                  label={t('common:range')}
                   unit="km"
                   color="#10b981"
                   size={85}
@@ -1550,14 +1564,14 @@ export function SettingsView() {
               {/* Multi-level estimates table */}
               <div className="bg-surface-overlay-subtle rounded-lg overflow-hidden">
                 <div className="grid grid-cols-3 text-[10px] text-content-secondary uppercase tracking-wider px-2 py-1.5 border-b border-subtle">
-                  <span>Usage</span>
-                  <span className="text-center">Time</span>
-                  <span className="text-right">Range</span>
+                  <span>{t('settings:settingsView.usage')}</span>
+                  <span className="text-center">{t('common:time')}</span>
+                  <span className="text-right">{t('common:range')}</span>
                 </div>
                 {[
-                  { pct: 60, label: '60%', color: 'text-green-400', note: 'Safe' },
-                  { pct: 80, label: '80%', color: 'text-blue-400', note: 'Normal' },
-                  { pct: 95, label: '95%', color: 'text-red-400', note: 'Max' },
+                  { pct: 60, label: '60%', color: 'text-green-400', note: t('settings:settingsView.note.safe') },
+                  { pct: 80, label: '80%', color: 'text-blue-400', note: t('settings:settingsView.note.normal') },
+                  { pct: 95, label: '95%', color: 'text-red-400', note: t('settings:settingsView.note.max') },
                 ].map(({ pct, label, color, note }) => {
                   const scaledTime = Math.round(estimatedFlightTime * (pct / 80));
                   const scaledRange = Math.round(estimatedRange * (pct / 80));
@@ -1576,7 +1590,7 @@ export function SettingsView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="text-[11px] text-content-secondary leading-relaxed">
-                  Rough estimates. Better profile = better predictions.
+                  {t('settings:settingsView.roughEstimates')}
                 </p>
               </div>
             </section>
@@ -1590,13 +1604,13 @@ export function SettingsView() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {connectionState.firmware !== 'px4' && <ArduPilotFlightStats />}
               <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
-                <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Tips & Recommendations</h3>
+                <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">{t('settings:settingsView.tipsTitle')}</h3>
                 <TipsSection vehicle={activeVehicle} />
               </section>
             </div>
           ) : (
             <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-4">
-              <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">Tips & Recommendations</h3>
+              <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider mb-3">{t('settings:settingsView.tipsTitle')}</h3>
               <TipsSection vehicle={activeVehicle} />
             </section>
           )}
@@ -1609,7 +1623,7 @@ export function SettingsView() {
                     <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
-                    Vehicle Profiles
+                    {t('settings:settingsView.vehicleProfiles')}
                   </h2>
                   <button
                     onClick={() => setShowTemplatePicker(true)}
@@ -1618,7 +1632,7 @@ export function SettingsView() {
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    Add Vehicle
+                    {t('settings:settingsView.addVehicle')}
                   </button>
                 </div>
 
@@ -1693,9 +1707,10 @@ export function SettingsView() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Configuration</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('common:configuration')}</h2>
           </div>
 
+          <LanguageCard />
           <UnitSelectionCard />
 
           {/* Experience Level & UI Visibility */}
@@ -1707,8 +1722,8 @@ export function SettingsView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
                 <div>
-                  <div className="text-sm font-medium text-content">Experience Level</div>
-                  <div className="text-[11px] text-content-secondary">Presets control all options below</div>
+                  <div className="text-sm font-medium text-content">{t('settings:settingsView.experienceLevel')}</div>
+                  <div className="text-[11px] text-content-secondary">{t('settings:settingsView.experienceHint')}</div>
                 </div>
               </div>
               <div className="flex bg-surface-input rounded-lg border border-subtle overflow-hidden">
@@ -1723,7 +1738,7 @@ export function SettingsView() {
                       : 'text-content-secondary hover:text-content'
                   }`}
                 >
-                  Beginner
+                  {t('common:beginner')}
                 </button>
                 <button
                   onClick={async () => {
@@ -1736,7 +1751,7 @@ export function SettingsView() {
                       : 'text-content-secondary hover:text-content'
                   }`}
                 >
-                  Advanced
+                  {t('common:advanced')}
                 </button>
               </div>
             </div>
@@ -1744,12 +1759,12 @@ export function SettingsView() {
             {/* Granular checkbox grid */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               {([
-                { key: 'showInfoCards' as const, label: 'Info Cards', desc: '"What are PIDs?" panels' },
-                { key: 'showQuickPresets' as const, label: 'Quick Presets', desc: 'Tuning style selectors' },
-                { key: 'showExplanationCards' as const, label: 'Explanation Cards', desc: '"What is X?" breakdowns' },
-                { key: 'showSectionDescriptions' as const, label: 'Section Descriptions', desc: 'Header subtitle text' },
-                { key: 'showTips' as const, label: 'Inline Tips', desc: 'Compact hint text' },
-                { key: 'defaultAdvancedViews' as const, label: 'Default Advanced Views', desc: 'Start in advanced mode' },
+                { key: 'showInfoCards' as const, label: t('settings:settingsView.ui.infoCards'), desc: t('settings:settingsView.ui.infoCardsDesc') },
+                { key: 'showQuickPresets' as const, label: t('common:quickPresets'), desc: t('settings:settingsView.ui.quickPresetsDesc') },
+                { key: 'showExplanationCards' as const, label: t('settings:settingsView.ui.explanationCards'), desc: t('settings:settingsView.ui.explanationCardsDesc') },
+                { key: 'showSectionDescriptions' as const, label: t('settings:settingsView.ui.sectionDescriptions'), desc: t('settings:settingsView.ui.sectionDescriptionsDesc') },
+                { key: 'showTips' as const, label: t('settings:settingsView.ui.inlineTips'), desc: t('settings:settingsView.ui.inlineTipsDesc') },
+                { key: 'defaultAdvancedViews' as const, label: t('settings:settingsView.ui.defaultAdvanced'), desc: t('settings:settingsView.ui.defaultAdvancedDesc') },
               ] as const).map(({ key, label, desc }) => (
                 <label key={key} className="flex items-start gap-2.5 cursor-pointer group">
                   <input
@@ -1778,13 +1793,13 @@ export function SettingsView() {
                 <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
-                Mission Planning Defaults
+                {t('settings:settingsView.mission.title')}
               </h2>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Safe Alt Buffer
+                    {t('settings:settingsView.mission.safeAlt')}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1803,13 +1818,13 @@ export function SettingsView() {
                   </div>
                   {missionErrors.safeAltitudeBuffer
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.safeAltitudeBuffer}</div>
-                    : <div className="text-[10px] text-content-tertiary mt-1">Above terrain for warnings</div>
+                    : <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.mission.safeAltHint')}</div>
                   }
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Waypoint Alt
+                    {t('settings:settingsView.mission.waypointAlt')}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1828,13 +1843,13 @@ export function SettingsView() {
                   </div>
                   {missionErrors.defaultWaypointAltitude
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultWaypointAltitude}</div>
-                    : <div className="text-[10px] text-content-tertiary mt-1">Default for new waypoints</div>
+                    : <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.mission.waypointAltHint')}</div>
                   }
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Takeoff Alt
+                    {t('settings:settingsView.mission.takeoffAlt')}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1853,13 +1868,13 @@ export function SettingsView() {
                   </div>
                   {missionErrors.defaultTakeoffAltitude
                     ? <div className="text-[10px] text-red-400 mt-1">{missionErrors.defaultTakeoffAltitude}</div>
-                    : <div className="text-[10px] text-content-tertiary mt-1">Altitude after launch</div>
+                    : <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.mission.takeoffAltHint')}</div>
                   }
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Alt Reference
+                    {t('settings:settingsView.mission.altRef')}
                   </label>
                   <select
                     value={missionDefaults.defaultAltitudeReference ?? 'relative'}
@@ -1868,11 +1883,11 @@ export function SettingsView() {
                     })}
                     className="w-full px-2 py-1.5 bg-surface-input border border-border rounded text-content text-sm focus:outline-none focus:border-blue-500"
                   >
-                    <option value="relative">Relative to Home</option>
-                    <option value="terrain">Above Terrain (AGL)</option>
-                    <option value="asl">Above Sea Level</option>
+                    <option value="relative">{t('settings:settingsView.mission.relative')}</option>
+                    <option value="terrain">{t('settings:settingsView.mission.terrain')}</option>
+                    <option value="asl">{t('settings:settingsView.mission.asl')}</option>
                   </select>
-                  <div className="text-[10px] text-content-tertiary mt-1">Default altitude reference</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.mission.altRefHint')}</div>
                 </div>
               </div>
             </section>
@@ -1886,16 +1901,16 @@ export function SettingsView() {
                 <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
-                Survey &amp; Map Performance
+                {t('settings:settingsView.perf.title')}
               </h2>
               <p className="text-[11px] text-content-tertiary mb-4">
-                Guardrails that keep the map responsive with large imported boundaries and big missions. Applies everywhere.
+                {t('settings:settingsView.perf.hint')}
               </p>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Max editable vertices
+                    {t('settings:settingsView.perf.maxVertices')}
                   </label>
                   <DraftNumberInput
                     value={surveyPerformance.maxEditableVertices}
@@ -1905,12 +1920,12 @@ export function SettingsView() {
                     min={0}
                     max={5000}
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Above this, drag handles are hidden</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.perf.maxVerticesHint')}</div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Max photo markers
+                    {t('settings:settingsView.perf.maxPhotos')}
                   </label>
                   <DraftNumberInput
                     value={surveyPerformance.maxPhotoMarkers}
@@ -1920,12 +1935,12 @@ export function SettingsView() {
                     min={0}
                     max={50000}
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Above this, photo dots aren't drawn</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.perf.maxPhotosHint')}</div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Max waypoint markers
+                    {t('settings:settingsView.perf.maxWaypoints')}
                   </label>
                   <DraftNumberInput
                     value={surveyPerformance.maxWaypointMarkers}
@@ -1935,12 +1950,12 @@ export function SettingsView() {
                     min={0}
                     max={50000}
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Markers thinned above this (path still drawn)</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.perf.maxWaypointsHint')}</div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-content-secondary mb-1.5">
-                    Max interactive waypoints
+                    {t('settings:settingsView.perf.maxInteractive')}
                   </label>
                   <input
                     type="number"
@@ -1953,7 +1968,7 @@ export function SettingsView() {
                     min="0"
                     max="2000"
                   />
-                  <div className="text-[10px] text-content-tertiary mt-1">Draggable markers appear when this few waypoints are in view</div>
+                  <div className="text-[10px] text-content-tertiary mt-1">{t('settings:settingsView.perf.maxInteractiveHint')}</div>
                 </div>
               </div>
             </section>
@@ -1971,7 +1986,7 @@ export function SettingsView() {
         <div className="mt-8 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Offline Maps</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.offlineMaps')}</h2>
           </div>
           <TileCacheCard />
         </div>
@@ -1982,7 +1997,7 @@ export function SettingsView() {
         <div className="mt-8 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
-            <h2 className="text-sm font-medium text-content uppercase tracking-wider">Map Overlays</h2>
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.mapOverlays')}</h2>
           </div>
           <div className="bg-surface rounded-xl border border-subtle p-5">
             <div className="flex items-center gap-3 mb-4">
@@ -1992,8 +2007,8 @@ export function SettingsView() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-content">Map Overlays</h3>
-                <p className="text-xs text-content-secondary">API keys for airspace and airport data</p>
+                <h3 className="text-sm font-medium text-content">{t('settings:settingsView.mapOverlays')}</h3>
+                <p className="text-xs text-content-secondary">{t('settings:settingsView.mapOverlaysHint')}</p>
               </div>
             </div>
 
@@ -2025,6 +2040,7 @@ export function SettingsView() {
 }
 
 function OpenAipKeyInput() {
+  const { t } = useTranslation();
   const [key, setKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -2048,8 +2064,8 @@ function OpenAipKeyInput() {
   return (
     <div>
       <label className="block text-xs text-content-secondary mb-1.5">
-        OpenAIP API Key
-        <span className="text-content-tertiary ml-1">- free at</span>{' '}
+        {t('settings:settingsView.openAip.label')}
+        <span className="text-content-tertiary ml-1">{t('settings:settingsView.openAip.freeAt')}</span>{' '}
         <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
           openaip.net
         </a>
@@ -2059,24 +2075,25 @@ function OpenAipKeyInput() {
           type="password"
           value={key}
           onChange={(e) => { setKey(e.target.value); setSaved(false); }}
-          placeholder={hasKey ? '••••••••••••••••' : 'Paste your API key'}
+          placeholder={hasKey ? '••••••••••••••••' : t('settings:settingsView.openAip.placeholder')}
           className="flex-1 px-3 py-1.5 bg-surface-input border border-border rounded-lg text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-blue-500"
         />
         <button
           onClick={handleSave}
           className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
         >
-          {saved ? 'Saved' : 'Save'}
+          {saved ? t('common:saved') : t('common:save')}
         </button>
       </div>
       {hasKey && !saved && (
-        <p className="text-xs text-emerald-400 mt-1">Key configured</p>
+        <p className="text-xs text-emerald-400 mt-1">{t('settings:settingsView.openAip.configured')}</p>
       )}
     </div>
   );
 }
 
 function MavlinkSettingsSection() {
+  const { t } = useTranslation();
   const gcsSysid = useSettingsStore((s) => s.gcsSysid);
   const setGcsSysid = useSettingsStore((s) => s.setGcsSysid);
   const [draft, setDraft] = useState(String(gcsSysid));
@@ -2093,24 +2110,20 @@ function MavlinkSettingsSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">MAVLink</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('common:mavlink')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
             <div className="flex-1 mr-3">
-              <div className="text-sm text-content font-medium">GCS System ID</div>
+              <div className="text-sm text-content font-medium">{t('settings:settingsView.mavlink.sysid')}</div>
               <div className="text-xs text-content-secondary mt-0.5">
-                The MAVLink system id this station transmits as (1 to 255, default 255).
-                Give each station on a shared link its own id, or parameter and mission
-                transfers interleave between stations.
+                {t('settings:settingsView.mavlink.sysidHint')}
               </div>
               {gcsSysid !== 255 && (
                 <div className="text-xs text-amber-500 mt-1">
-                  The vehicle only accepts joystick / RC override from, and runs its GCS
-                  failsafe against, the id in SYSID_MYGCS (MAV_GCS_SYSID on ArduPilot 4.6+).
-                  Keep the station that flies the vehicle matched to that parameter.
+                  {t('settings:settingsView.mavlink.sysidWarning')}
                 </div>
               )}
             </div>
@@ -2132,6 +2145,7 @@ function MavlinkSettingsSection() {
 }
 
 function ConsoleSettingsSection() {
+  const { t } = useTranslation();
   const showDebugLogs = useSettingsStore((s) => s.showDebugLogs);
   const setShowDebugLogs = useSettingsStore((s) => s.setShowDebugLogs);
 
@@ -2139,16 +2153,16 @@ function ConsoleSettingsSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">Console</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.console.title')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
             <div className="flex-1 mr-3">
-              <div className="text-sm text-content font-medium">Verbose Logging</div>
+              <div className="text-sm text-content font-medium">{t('settings:settingsView.console.verbose')}</div>
               <div className="text-xs text-content-secondary mt-0.5">
-                Show debug and packet-level messages in the console. When off, only info, warnings, and errors are shown.
+                {t('settings:settingsView.console.verboseHint')}
               </div>
             </div>
             <button
@@ -2169,6 +2183,7 @@ function ConsoleSettingsSection() {
 }
 
 function AiAnalysisSection() {
+  const { t } = useTranslation();
   const advisorEnabled = useCargoEnabled(ADVISOR_CARGO_SLUG);
   const aiProvider = useSettingsStore((s) => s.aiProvider);
   const setAiProvider = useSettingsStore((s) => s.setAiProvider);
@@ -2219,13 +2234,13 @@ function AiAnalysisSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-purple-500 rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">AI Flight Analysis</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.ai.title')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="space-y-4">
           <p className="text-xs text-content-secondary">
-            Enable AI-powered analysis of your flight logs. Your API key is encrypted and stored locally.
+            {t('settings:settingsView.ai.hint')}
           </p>
 
           <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
@@ -2233,15 +2248,15 @@ function AiAnalysisSection() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div className="text-[11px] text-amber-300/80 leading-relaxed space-y-1">
-              <p><strong className="text-amber-300">Experimental feature.</strong></p>
-              <p>AI suggestions are not a substitute for your own judgement.</p>
-              <p>Always verify recommendations against ArduPilot documentation and your vehicle's specific configuration before applying changes. Incorrect parameters can cause loss of control.</p>
+              <p><strong className="text-amber-300">{t('settings:settingsView.ai.experimental')}</strong></p>
+              <p>{t('settings:settingsView.ai.notSubstitute')}</p>
+              <p>{t('settings:settingsView.ai.verify')}</p>
             </div>
           </div>
 
           {/* Provider selection */}
           <div>
-            <div className="text-xs text-content-secondary mb-2">Provider</div>
+            <div className="text-xs text-content-secondary mb-2">{t('settings:settingsView.ai.provider')}</div>
             <div className="flex gap-2">
               {providers.map((p) => (
                 <button
@@ -2263,18 +2278,18 @@ function AiAnalysisSection() {
           {/* API key input */}
           {aiProvider && (
             <div>
-              <div className="text-xs text-content-secondary mb-2">API Key</div>
+              <div className="text-xs text-content-secondary mb-2">{t('settings:settingsView.ai.apiKey')}</div>
               {hasKey ? (
                 <div className="flex items-center gap-2 bg-surface-input rounded-lg p-3">
                   <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <span className="text-sm text-content flex-1">Key configured and encrypted</span>
+                  <span className="text-sm text-content flex-1">{t('settings:settingsView.ai.keyConfigured')}</span>
                   <button
                     onClick={handleRemoveKey}
                     className="text-xs text-red-400 hover:text-red-300 transition-colors"
                   >
-                    Remove
+                    {t('common:remove')}
                   </button>
                 </div>
               ) : (
@@ -2283,7 +2298,7 @@ function AiAnalysisSection() {
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={`Enter ${providers.find((p) => p.id === aiProvider)?.name} API key...`}
+                    placeholder={t('settings:settingsView.ai.enterKey', { name: providers.find((p) => p.id === aiProvider)?.name })}
                     className="flex-1 bg-surface-input border border-subtle rounded-lg px-3 py-2 text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-purple-500/50"
                   />
                   <button
@@ -2291,7 +2306,7 @@ function AiAnalysisSection() {
                     disabled={!apiKey.trim() || saving}
                     className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {saving ? 'Saving...' : 'Save'}
+                    {saving ? t('common:saving') : t('common:save')}
                   </button>
                 </div>
               )}
@@ -2305,6 +2320,7 @@ function AiAnalysisSection() {
 }
 
 function ExperimentalFeaturesSection() {
+  const { t } = useTranslation();
   const companionUnlocked = useSettingsStore((s) => s.companionUnlocked);
   const setCompanionUnlocked = useSettingsStore((s) => s.setCompanionUnlocked);
   const advancedCommandsUnlocked = useSettingsStore((s) => s.advancedCommandsUnlocked);
@@ -2316,7 +2332,7 @@ function ExperimentalFeaturesSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-purple-500 rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">Experimental</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.experimental.title')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
@@ -2324,19 +2340,19 @@ function ExperimentalFeaturesSection() {
           <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
           </svg>
-          Experimental Features
+          {t('settings:settingsView.experimental.heading')}
         </h2>
         <p className="text-xs text-content-secondary mb-4">
-          These features are under active development and may have rough edges. ArduPilot/MAVLink only.
+          {t('settings:settingsView.experimental.hint')}
         </p>
 
         <div className="space-y-3">
           {/* Companion Computer */}
           <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
             <div className="flex-1 mr-3">
-              <div className="text-sm text-content font-medium">Companion Computer</div>
+              <div className="text-sm text-content font-medium">{t('settings:settingsView.experimental.companion')}</div>
               <div className="text-xs text-content-secondary mt-0.5">
-                Monitor and manage companion boards (Raspberry Pi, ESP32, Jetson) with remote terminal, metrics, and service control
+                {t('settings:settingsView.experimental.companionHint')}
               </div>
             </div>
             <button
@@ -2356,18 +2372,15 @@ function ExperimentalFeaturesSection() {
             <div className="flex items-center justify-between">
               <div className="flex-1 mr-3">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <div className="text-sm text-content font-medium">Advanced map commands</div>
+                  <div className="text-sm text-content font-medium">{t('settings:settingsView.experimental.advancedCommands')}</div>
                   <span className="px-1.5 py-0 text-[9px] font-bold tracking-wider rounded bg-rose-600/20 text-rose-400 border border-rose-600/40">
-                    RISKY
+                    {t('settings:settingsView.experimental.risky')}
                   </span>
                 </div>
                 <div className="text-xs text-content-secondary mt-0.5">
-                  Unlocks <strong>Orbit</strong> and <strong>Land at point</strong> in the map command popup
-                  (the popup defaults to <strong>Move</strong> only). Also enables the optional <strong>Lua script
-                  installer</strong> for flight controllers that lack native CIRCLE mode - ArduDeck can write a
-                  small script to the FC's SD card after explicit consent and source-code preview.
+                  <Trans i18nKey="settings:settingsView.experimental.advancedCommandsHint" components={{ b: <strong /> }} />
                   <span className="block mt-1 text-rose-400">
-                    Triggers flight-mode changes and may modify parameters. Bench-test every command before flight.
+                    {t('settings:settingsView.experimental.advancedCommandsWarning')}
                   </span>
                 </div>
               </div>
@@ -2392,17 +2405,16 @@ function ExperimentalFeaturesSection() {
           <div className="bg-surface-input rounded-lg p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1">
-                <div className="text-sm text-content font-medium mb-0.5">Default altitude reference</div>
+                <div className="text-sm text-content font-medium mb-0.5">{t('settings:settingsView.mission.altRefHint')}</div>
                 <div className="text-xs text-content-secondary">
-                  What the altitude you enter in the map command popup is measured against. Terrain needs
-                  terrain data or a rangefinder on the vehicle.
+                  {t('settings:settingsView.experimental.altFrameHint')}
                 </div>
               </div>
               <div className="flex items-stretch overflow-hidden rounded-lg border border-subtle flex-shrink-0 h-8">
                 {([
-                  { id: 'relative', label: 'Home' },
-                  { id: 'terrain', label: 'Terrain' },
-                  { id: 'asl', label: 'Sea' },
+                  { id: 'relative', label: t('common:home') },
+                  { id: 'terrain', label: t('common:terrain') },
+                  { id: 'asl', label: t('settings:settingsView.experimental.sea') },
                 ] as const).map((o, i) => (
                   <button
                     key={o.id}
@@ -2427,6 +2439,7 @@ function ExperimentalFeaturesSection() {
 }
 
 function ScriptInstallerActions() {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   // ArduPilot Lua only: the installer uploads to /APM/scripts/ and sets
   // SCR_ENABLE. PX4 has no scripting engine, so there is nothing to install.
@@ -2435,13 +2448,13 @@ function ScriptInstallerActions() {
   return (
     <div className="mt-3 pt-3 border-t border-subtle/50 flex items-center justify-between">
       <span className="text-[11px] text-content-tertiary">
-        Manage and review ArduDeck-installed scripts on the connected vehicle
+        {t('settings:settingsView.scripts.hint')}
       </span>
       <button
         onClick={() => setModalOpen(true)}
         className="px-3 py-1.5 text-xs bg-purple-600/80 hover:bg-purple-600 text-white rounded"
       >
-        Open installer…
+        {t('settings:settingsView.scripts.open')}
       </button>
       <ScriptInstallModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
@@ -2456,6 +2469,7 @@ function ScriptInstallerActions() {
  * address bar to reach about:gpu with.
  */
 function GraphicsStatus() {
+  const { t } = useTranslation();
   const [info, setInfo] = useState<{ features: Record<string, string>; platform: string; softwareRendering: boolean; mode: 'auto' | 'safe' | 'off' } | null>(null);
   const [modeChanged, setModeChanged] = useState(false);
   const level = useRenderGovernor((s) => s.level);
@@ -2481,30 +2495,29 @@ function GraphicsStatus() {
   return (
     <section className="mt-4 bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider">Graphics</h3>
+        <h3 className="text-xs font-medium text-content-secondary uppercase tracking-wider">{t('settings:settingsView.graphics.title')}</h3>
         <span className={`rounded px-2 py-0.5 text-[10px] ${
           info.softwareRendering
             ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
             : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
         }`}>
-          {info.softwareRendering ? 'Software rendering' : 'Hardware accelerated'}
+          {info.softwareRendering ? t('settings:settingsView.graphics.software') : t('settings:settingsView.graphics.hardware')}
         </span>
       </div>
 
       {info.softwareRendering && (
         <p className="mb-3 text-xs text-amber-600 dark:text-amber-300">
-          The GPU is not being used, so the map and instruments are being drawn by the CPU. On a
-          laptop or tablet that is the difference between smooth and unusable.
+          {t('settings:settingsView.graphics.cpuWarning')}
         </p>
       )}
 
       <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
-        <div className="mb-2 text-xs text-content">Hardware acceleration</div>
+        <div className="mb-2 text-xs text-content">{t('settings:settingsView.graphics.acceleration')}</div>
         <div className="flex gap-2">
           {([
-            { value: 'auto' as const, label: 'Force on', tip: 'Override the driver blocklist and use the GPU. The right answer on almost every machine.' },
-            { value: 'safe' as const, label: 'Default', tip: "Whatever Chromium decides on its own." },
-            { value: 'off' as const, label: 'Off', tip: 'Draw everything on the CPU. Only for a driver that crashes.' },
+            { value: 'auto' as const, label: t('settings:settingsView.graphics.forceOn'), tip: t('settings:settingsView.graphics.forceOnTip') },
+            { value: 'safe' as const, label: t('common:default'), tip: t('settings:settingsView.graphics.defaultTip') },
+            { value: 'off' as const, label: t('common:off'), tip: t('settings:settingsView.graphics.offTip') },
           ]).map((opt) => (
             <button
               key={opt.value}
@@ -2526,31 +2539,30 @@ function GraphicsStatus() {
         </div>
         <p className="mt-2 text-[11px] text-content-tertiary">
           {modeChanged
-            ? 'Restart ArduDeck for this to take effect.'
-            : 'Chromium reads this before the first window opens, so a change needs a restart. If a launch never finishes painting, ArduDeck drops back to Default by itself.'}
+            ? t('settings:settingsView.graphics.restart')
+            : t('settings:settingsView.graphics.restartHint')}
         </p>
       </div>
 
       <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-content">Screen update rate</span>
+          <span className="text-xs text-content">{t('settings:settingsView.graphics.updateRate')}</span>
           <span className="font-mono text-[10px] text-content-tertiary">
-            {Math.round(slowShare * 100)}% slow frames
+            {t('settings:settingsView.graphics.slowFrames', { pct: Math.round(slowShare * 100) })}
           </span>
         </div>
         <p className="mt-1 mb-2 text-[11px] text-content-tertiary">
-          ArduDeck measures how well this machine keeps up and thins the repaint when it cannot.
-          The link rate and the recorded data never change, only how often the screen is redrawn.
+          {t('settings:settingsView.graphics.updateRateHint')}
         </p>
         <div className="flex gap-2">
           {([
-            { value: null, label: 'Automatic' },
-            { value: 'full' as const, label: 'Full' },
-            { value: 'reduced' as const, label: 'Reduced' },
-            { value: 'minimal' as const, label: 'Minimal' },
+            { value: null, label: t('settings:settingsView.graphics.automatic') },
+            { value: 'full' as const, label: t('common:full') },
+            { value: 'reduced' as const, label: t('settings:settingsView.graphics.reduced') },
+            { value: 'minimal' as const, label: t('common:minimal') },
           ]).map((opt) => (
             <button
-              key={opt.label}
+              key={opt.value ?? 'auto'}
               onClick={() => setPinned(opt.value)}
               className={`flex-1 rounded-md px-2 py-1.5 text-[11px] transition-colors ${
                 pinned === opt.value
@@ -2564,7 +2576,7 @@ function GraphicsStatus() {
         </div>
         {pinned === null && (
           <p className="mt-2 text-[11px] text-content-tertiary">
-            Currently running at <span className="text-content">{level}</span>.
+            <Trans i18nKey="settings:settingsView.graphics.currently" values={{ level }} components={{ b: <span className="text-content" /> }} />
           </p>
         )}
       </div>
@@ -2580,7 +2592,7 @@ function GraphicsStatus() {
         ))}
         {info.platform && (
           <div className="flex items-center justify-between text-xs">
-            <span className="text-content-secondary">window system</span>
+            <span className="text-content-secondary">{t('settings:settingsView.graphics.windowSystem')}</span>
             <span className="font-mono text-content-tertiary">{info.platform}</span>
           </div>
         )}
@@ -2590,6 +2602,7 @@ function GraphicsStatus() {
 }
 
 function AboutSection() {
+  const { t } = useTranslation();
   const {
     currentVersion,
     status,
@@ -2622,7 +2635,7 @@ function AboutSection() {
         const res = await fetch('https://api.github.com/repos/rubenCodeforges/ardudeck/releases?per_page=15', {
           headers: { Accept: 'application/vnd.github+json' },
         });
-        if (!res.ok) throw new Error(`GitHub ${res.status}`);
+        if (!res.ok) throw new Error(`GitHub ${res.status}`); // i18n-exempt: internal, never shown
         const list = (await res.json()) as Array<{ name: string; tag_name: string; body: string; published_at: string; draft: boolean }>;
         const visible = list.filter((r) => !r.draft);
         // Prefer the release that matches the running version; else the newest.
@@ -2645,13 +2658,13 @@ function AboutSection() {
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
-        <h2 className="text-sm font-medium text-content uppercase tracking-wider">About</h2>
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.about.title')}</h2>
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-content">ArduDeck</h3>
+            <h3 className="text-lg font-semibold text-content">{t('common:ardudeck')}</h3>
             <p className="text-sm text-content-secondary mt-0.5">
               {currentVersion ? betaLabel(currentVersion) : '...'}
             </p>
@@ -2664,7 +2677,7 @@ function AboutSection() {
               rel="noopener noreferrer"
               className="px-3 py-1.5 text-xs text-content-secondary hover:text-content border border-border hover:border-border rounded-lg transition-colors"
             >
-              GitHub
+              GitHub{/* i18n-exempt */}
             </a>
 
             {showCheckButton && (
@@ -2676,7 +2689,7 @@ function AboutSection() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Check for Updates
+                {t('settings:settingsView.about.checkUpdates')}
               </button>
             )}
 
@@ -2686,7 +2699,7 @@ function AboutSection() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Checking...
+                {t('common:checking')}
               </span>
             )}
 
@@ -2695,7 +2708,7 @@ function AboutSection() {
                 onClick={() => downloadUpdate()}
                 className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
               >
-                Download v{latestVersion}
+                {t('settings:settingsView.about.downloadVersion', { version: latestVersion })}
               </button>
             )}
 
@@ -2704,7 +2717,7 @@ function AboutSection() {
                 onClick={openReleaseUrl}
                 className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
               >
-                View Release v{latestVersion}
+                {t('settings:settingsView.about.viewRelease', { version: latestVersion })}
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
@@ -2716,7 +2729,7 @@ function AboutSection() {
                 onClick={() => installUpdate()}
                 className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs font-medium rounded-lg transition-colors"
               >
-                Restart to Update
+                {t('settings:settingsView.about.restartToUpdate')}
               </button>
             )}
           </div>
@@ -2729,7 +2742,7 @@ function AboutSection() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              You're up to date
+              {t('settings:settingsView.about.upToDate')}
             </div>
           )}
 
@@ -2737,11 +2750,11 @@ function AboutSection() {
             <div className="flex items-center justify-between bg-blue-500/10 rounded-lg p-3">
               <div>
                 <p className="text-sm text-blue-300 font-medium">
-                  v{latestVersion} is available
+                  {t('settings:settingsView.about.available', { version: latestVersion })}
                 </p>
                 {publishedAt && (
                   <p className="text-xs text-content-secondary mt-0.5">
-                    Released {new Date(publishedAt).toLocaleDateString()}
+                    {t('settings:settingsView.about.released', { date: new Date(publishedAt).toLocaleDateString() })}
                   </p>
                 )}
               </div>
@@ -2751,7 +2764,7 @@ function AboutSection() {
           {status === 'downloading' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-content-secondary">
-                <span>Downloading v{latestVersion}...</span>
+                <span>{t('settings:settingsView.about.downloading', { version: latestVersion })}</span>
                 <span className="tabular-nums">
                   {totalBytes > 0
                     ? `${(bytesDownloaded / (1024 * 1024)).toFixed(1)} / ${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
@@ -2772,7 +2785,7 @@ function AboutSection() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Update downloaded and ready to install
+              {t('settings:settingsView.about.downloaded')}
             </div>
           )}
 
@@ -2790,30 +2803,30 @@ function AboutSection() {
       <section className="mt-4 bg-surface rounded-xl border border-subtle p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-content">
-            Release notes{notes ? ` · ${notes.name}` : ''}
+            {notes ? t('settings:settingsView.about.releaseNotesNamed', { name: notes.name }) : t('settings:settingsView.about.releaseNotes')}
           </h3>
           {notes && (
             <span className="text-xs text-content-tertiary">{new Date(notes.date).toLocaleDateString()}</span>
           )}
         </div>
         {notesState === 'loading' && (
-          <p className="text-sm text-content-tertiary">Loading release notes…</p>
+          <p className="text-sm text-content-tertiary">{t('settings:settingsView.about.loadingNotes')}</p>
         )}
         {notesState === 'empty' && (
-          <p className="text-sm text-content-tertiary">No published releases yet.</p>
+          <p className="text-sm text-content-tertiary">{t('settings:settingsView.about.noReleases')}</p>
         )}
         {notesState === 'error' && (
           <p className="text-sm text-content-tertiary">
-            Couldn't reach GitHub for release notes.{' '}
+            {t('settings:settingsView.about.notesError')}{' '}
             <a href="https://github.com/rubenCodeforges/ardudeck/releases" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-400">
-              View on GitHub
+              {t('settings:settingsView.about.viewOnGithub')}
             </a>
           </p>
         )}
         {notesState === 'ready' && notes && (
           notes.body
             ? <div className="max-w-none">{renderMarkdown(notes.body)}</div>
-            : <p className="text-sm text-content-tertiary">This release has no notes.</p>
+            : <p className="text-sm text-content-tertiary">{t('settings:settingsView.about.noNotes')}</p>
         )}
       </section>
       <GraphicsStatus />
@@ -2866,33 +2879,33 @@ const MISSION_FIELD_RULES: Record<string, FieldValidation> = {
 function validateField(value: string, rules: FieldValidation, isText?: boolean): string | null {
   const trimmed = value.trim();
   if (trimmed === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
   if (isText) return null;
   const num = Number(trimmed);
-  if (isNaN(num)) return 'Invalid number';
-  if (rules.min !== undefined && num < rules.min) return `Min: ${rules.min}`;
-  if (rules.max !== undefined && num > rules.max) return `Max: ${rules.max}`;
-  if (rules.integer && !Number.isInteger(num)) return 'Must be whole number';
+  if (isNaN(num)) return i18nT('settings:settingsView.validation.invalidNumber');
+  if (rules.min !== undefined && num < rules.min) return i18nT('settings:settingsView.validation.min', { value: `${rules.min}` });
+  if (rules.max !== undefined && num > rules.max) return i18nT('settings:settingsView.validation.max', { value: `${rules.max}` });
+  if (rules.integer && !Number.isInteger(num)) return i18nT('settings:settingsView.validation.wholeNumber');
   return null;
 }
 
 function validateAltitudeField(value: string, rules: FieldValidation, unit: AltitudeUnit): string | null {
   const trimmed = value.trim();
   if (trimmed === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
   const displayValue = Number(trimmed);
-  if (!Number.isFinite(displayValue)) return 'Invalid number';
-  if (rules.integer && unit === 'm' && !Number.isInteger(displayValue)) return 'Must be whole number';
+  if (!Number.isFinite(displayValue)) return i18nT('settings:settingsView.validation.invalidNumber');
+  if (rules.integer && unit === 'm' && !Number.isInteger(displayValue)) return i18nT('settings:settingsView.validation.wholeNumber');
 
   const displayMin = rules.min === undefined ? undefined : Number(altitudeInputValueFromMeters(rules.min, unit));
   const displayMax = rules.max === undefined ? undefined : Number(altitudeInputValueFromMeters(rules.max, unit));
   if (displayMin !== undefined && displayValue < displayMin) {
-    return `Min: ${displayMin} ${UNIT_LABELS.altitude[unit]}`;
+    return i18nT('settings:settingsView.validation.min', { value: `${displayMin} ${UNIT_LABELS.altitude[unit]}` });
   }
   if (displayMax !== undefined && displayValue > displayMax) {
-    return `Max: ${displayMax} ${UNIT_LABELS.altitude[unit]}`;
+    return i18nT('settings:settingsView.validation.max', { value: `${displayMax} ${UNIT_LABELS.altitude[unit]}` });
   }
   return null;
 }
@@ -2907,6 +2920,7 @@ function PropSizeInput({
   onChange: (val: string | undefined) => void;
   presets: { size: string; label?: string }[];
 }) {
+  const { t } = useTranslation();
   // customMode is pure UI state - no useEffect needed
   const [customMode, setCustomMode] = useState(false);
   const [customValue, setCustomValue] = useState('');
@@ -2960,17 +2974,17 @@ function PropSizeInput({
 
   return (
     <div>
-      <label className="block text-xs text-content-secondary mb-1">Propeller</label>
+      <label className="block text-xs text-content-secondary mb-1">{t('settings:settingsView.prop.label')}</label>
       <select
         value={showCustomInput ? '__custom__' : (value || '')}
         onChange={(e) => handleSelect(e.target.value)}
         className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content text-sm focus:outline-none focus:border-blue-500"
       >
-        <option value="">None</option>
+        <option value="">{t('common:none')}</option>
         {presets.map((p) => (
           <option key={p.size} value={p.size}>{p.label || `${p.size}"`}</option>
         ))}
-        <option value="__custom__">Custom size...</option>
+        <option value="__custom__">{t('settings:settingsView.prop.custom')}</option>
       </select>
       {showCustomInput && (
         <input
@@ -2978,7 +2992,7 @@ function PropSizeInput({
           value={customMode ? customValue : (value || '')}
           onChange={(e) => handleCustom(e.target.value)}
           onBlur={handleCustomBlur}
-          placeholder="DxP (e.g. 9.5x4.7)"
+          placeholder={t('settings:settingsView.prop.placeholder')}
           autoFocus={customMode}
           className={`w-full mt-1.5 px-3 py-2 bg-surface-input border rounded-lg text-sm focus:outline-none ${
             error ? 'border-red-500/60 text-content' : 'border-border text-content focus:border-blue-500'
@@ -3004,20 +3018,20 @@ function clampDimensionMillimetersToRules(millimeters: number, rules: FieldValid
 function validateDimensionField(value: string, rules: FieldValidation, unit: DimensionUnit): string | null {
   const trimmed = value.trim();
   if (trimmed === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
   const displayValue = Number(trimmed);
-  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+  if (!Number.isFinite(displayValue)) return i18nT('settings:settingsView.validation.validNumber');
 
   const millimeters = toMillimetersFromDimensionUnit(displayValue, unit);
   if (rules.min !== undefined && millimeters < rules.min) {
-    return `Min: ${dimensionInputValueFromMillimeters(rules.min, unit)} ${UNIT_LABELS.dimensions[unit]}`;
+    return i18nT('settings:settingsView.validation.min', { value: `${dimensionInputValueFromMillimeters(rules.min, unit)} ${UNIT_LABELS.dimensions[unit]}` });
   }
   if (rules.max !== undefined && millimeters > rules.max) {
-    return `Max: ${dimensionInputValueFromMillimeters(rules.max, unit)} ${UNIT_LABELS.dimensions[unit]}`;
+    return i18nT('settings:settingsView.validation.max', { value: `${dimensionInputValueFromMillimeters(rules.max, unit)} ${UNIT_LABELS.dimensions[unit]}` });
   }
   if (unit === 'mm' && rules.integer && !Number.isInteger(displayValue)) {
-    return 'Must be a whole number';
+    return i18nT('settings:settingsView.validation.wholeNumber2');
   }
   return null;
 }
@@ -3119,17 +3133,17 @@ function clampAreaSquareCentimetersToRules(squareCentimeters: number, rules: Fie
 function validateAreaSquareCentimetersField(value: string, rules: FieldValidation, unit: AreaUnit): string | null {
   const trimmed = value.trim();
   if (trimmed === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
   const displayValue = Number(trimmed);
-  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+  if (!Number.isFinite(displayValue)) return i18nT('settings:settingsView.validation.validNumber');
 
   const squareCentimeters = toSquareCentimetersFromAreaUnit(displayValue, unit);
   if (rules.min !== undefined && squareCentimeters < rules.min) {
-    return `Min: ${areaInputValueFromSquareCentimeters(rules.min, unit)} ${UNIT_LABELS.area[unit]}`;
+    return i18nT('settings:settingsView.validation.min', { value: `${areaInputValueFromSquareCentimeters(rules.min, unit)} ${UNIT_LABELS.area[unit]}` });
   }
   if (rules.max !== undefined && squareCentimeters > rules.max) {
-    return `Max: ${areaInputValueFromSquareCentimeters(rules.max, unit)} ${UNIT_LABELS.area[unit]}`;
+    return i18nT('settings:settingsView.validation.max', { value: `${areaInputValueFromSquareCentimeters(rules.max, unit)} ${UNIT_LABELS.area[unit]}` });
   }
   return null;
 }
@@ -3361,20 +3375,20 @@ function clampWeightGramsToRules(grams: number, rules: FieldValidation): number 
 function validateWeightField(value: string, rules: FieldValidation, unit: WeightUnit): string | null {
   const trimmed = value.trim();
   if (trimmed === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
   const displayValue = Number(trimmed);
-  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+  if (!Number.isFinite(displayValue)) return i18nT('settings:settingsView.validation.validNumber');
 
   const grams = toGramsFromWeightUnit(displayValue, unit);
   if (rules.min !== undefined && grams < rules.min) {
-    return `Min: ${weightInputValueFromGrams(rules.min, unit)} ${UNIT_LABELS.weight[unit]}`;
+    return i18nT('settings:settingsView.validation.min', { value: `${weightInputValueFromGrams(rules.min, unit)} ${UNIT_LABELS.weight[unit]}` });
   }
   if (rules.max !== undefined && grams > rules.max) {
-    return `Max: ${weightInputValueFromGrams(rules.max, unit)} ${UNIT_LABELS.weight[unit]}`;
+    return i18nT('settings:settingsView.validation.max', { value: `${weightInputValueFromGrams(rules.max, unit)} ${UNIT_LABELS.weight[unit]}` });
   }
   if (unit === 'g' && rules.integer && !Number.isInteger(displayValue)) {
-    return 'Must be a whole number';
+    return i18nT('settings:settingsView.validation.wholeNumber2');
   }
   return null;
 }
@@ -3474,21 +3488,21 @@ function capacityInputStep(unit: ElectricCapacityUnit): string {
 
 function validateCapacityField(value: string, rules: FieldValidation, unit: ElectricCapacityUnit): string | null {
   if (value.trim() === '') {
-    return rules.required ? 'Required' : null;
+    return rules.required ? i18nT('settings:settingsView.validation.required') : null;
   }
 
   const displayValue = Number(value);
-  if (!Number.isFinite(displayValue)) return 'Must be a valid number';
+  if (!Number.isFinite(displayValue)) return i18nT('settings:settingsView.validation.validNumber');
 
   const mah = toMahFromCapacityUnit(displayValue, unit);
   if (rules.min !== undefined && mah < rules.min) {
-    return `Min: ${capacityInputValueFromMah(rules.min, unit)} ${UNIT_LABELS.electricCapacity[unit]}`;
+    return i18nT('settings:settingsView.validation.min', { value: `${capacityInputValueFromMah(rules.min, unit)} ${UNIT_LABELS.electricCapacity[unit]}` });
   }
   if (rules.max !== undefined && mah > rules.max) {
-    return `Max: ${capacityInputValueFromMah(rules.max, unit)} ${UNIT_LABELS.electricCapacity[unit]}`;
+    return i18nT('settings:settingsView.validation.max', { value: `${capacityInputValueFromMah(rules.max, unit)} ${UNIT_LABELS.electricCapacity[unit]}` });
   }
   if (unit === 'mah' && rules.integer && !Number.isInteger(displayValue)) {
-    return 'Must be a whole number';
+    return i18nT('settings:settingsView.validation.wholeNumber2');
   }
   return null;
 }
@@ -3767,6 +3781,7 @@ function VehicleEditModal({
   onUpdate: (updates: Partial<VehicleProfile>) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { getDisplayValue, handleChange, handleBlur, getError } = useVehicleForm(vehicle, onUpdate);
   const { unitPreferences } = useSettingsStore();
   const altitudeUnit = unitPreferences.altitude;
@@ -3798,7 +3813,7 @@ function VehicleEditModal({
             <div className="w-8 h-8 text-blue-400">
               {VEHICLE_ICONS[vehicle.type]}
             </div>
-            <h2 className="text-lg font-semibold text-content">Edit {VEHICLE_TYPE_NAMES[vehicle.type]}</h2>
+            <h2 className="text-lg font-semibold text-content">{t('settings:settingsView.edit.title', { type: vehicleTypeName(vehicle.type) })}</h2>
           </div>
           <button onClick={onClose} className="text-content-secondary hover:text-content">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -3812,13 +3827,13 @@ function VehicleEditModal({
           {/* Basic Info - Common to all */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium text-content mb-1.5">Vehicle Name</label>
+              <label className="block text-sm font-medium text-content mb-1.5">{t('settings:settingsView.edit.vehicleName')}</label>
               <input
                 type="text"
                 value={nameValue}
                 onChange={(e) => handleChange('name', e.target.value.slice(0, 50), true)}
                 onBlur={() => handleBlur('name', true)}
-                placeholder="My Vehicle"
+                placeholder={t('settings:settingsView.edit.myVehicle')}
                 className={`w-full px-3 py-2 bg-surface-input border rounded-lg text-content focus:outline-none ${
                   nameError ? 'border-red-500/60 focus:border-red-500' : 'border-border focus:border-blue-500'
                 }`}
@@ -3826,14 +3841,14 @@ function VehicleEditModal({
               {nameError && <div className="text-[10px] text-red-400 mt-0.5">{nameError}</div>}
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium text-content mb-1.5">Vehicle Type</label>
+              <label className="block text-sm font-medium text-content mb-1.5">{t('settings:settingsView.edit.vehicleType')}</label>
               <select
                 value={vehicle.type}
                 onChange={(e) => onUpdate({ type: e.target.value as VehicleType })}
                 className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content focus:outline-none focus:border-blue-500"
               >
-                {Object.entries(VEHICLE_TYPE_NAMES).map(([key, name]) => (
-                  <option key={key} value={key}>{name}</option>
+                {(Object.keys(VEHICLE_TYPE_NAME_KEYS) as VehicleType[]).map((key) => (
+                  <option key={key} value={key}>{vehicleTypeName(key)}</option>
                 ))}
               </select>
             </div>
@@ -3849,11 +3864,11 @@ function VehicleEditModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-                Airframe
+                {t('settings:settingsView.edit.airframe')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <DimensionInputField
-                  label="Frame Size"
+                  label={t('settings:settingsView.edit.frameSize')}
                   valueMillimeters={vehicle.frameSize}
                   onCommit={(millimeters) => onUpdate({ frameSize: millimeters })}
                   unit={dimensionUnit}
@@ -3861,18 +3876,18 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.frameSize!}
                 />
                 <VehicleSelectField
-                  label="Motor Count"
+                  label={t('settings:settingsView.edit.motorCount')}
                   value={vehicle.motorCount || 4}
                   onChange={(v) => onUpdate({ motorCount: Number(v) })}
                   options={[
-                    { value: 3, label: 'Tricopter (3)' },
-                    { value: 4, label: 'Quadcopter (4)' },
-                    { value: 6, label: 'Hexacopter (6)' },
-                    { value: 8, label: 'Octocopter (8)' },
+                    { value: 3, label: t('settings:settingsView.edit.tricopter3') },
+                    { value: 4, label: t('settings:settingsView.edit.quadcopter4') },
+                    { value: 6, label: t('settings:settingsView.edit.hexacopter6') },
+                    { value: 8, label: t('settings:settingsView.edit.octocopter8') },
                   ]}
                 />
                 <WeightInputField
-                  label="All-Up Weight"
+                  label={t('settings:settingsView.edit.allUpWeight')}
                   valueGrams={vehicle.weight}
                   onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
                   unit={weightUnit}
@@ -3900,11 +3915,11 @@ function VehicleEditModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-                Airframe
+                {t('settings:settingsView.edit.airframe')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <DimensionInputField
-                  label="Wingspan"
+                  label={t('settings:settingsView.edit.wingspan')}
                   valueMillimeters={vehicle.wingspan}
                   onCommit={(millimeters) => onUpdate({ wingspan: millimeters })}
                   unit={dimensionUnit}
@@ -3912,7 +3927,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.wingspan!}
                 />
                 <WeightInputField
-                  label="All-Up Weight"
+                  label={t('settings:settingsView.edit.allUpWeight')}
                   valueGrams={vehicle.weight}
                   onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
                   unit={weightUnit}
@@ -3920,7 +3935,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.weight!}
                 />
                 <AreaInputField
-                  label="Wing Area"
+                  label={t('settings:settingsView.edit.wingArea')}
                   valueSquareCentimeters={vehicle.wingArea}
                   onCommit={(squareCentimeters) => onUpdate({ wingArea: squareCentimeters })}
                   unit={areaUnit}
@@ -3929,7 +3944,7 @@ function VehicleEditModal({
                 />
                 <div>
                   <div className="flex items-center justify-between mb-1 min-h-[18px]">
-                    <label className="text-xs text-content-secondary">Stall Speed</label>
+                    <label className="text-xs text-content-secondary">{t('settings:settingsView.edit.stallSpeed')}</label>
                     <StallSpeedCalcButton
                       vehicle={vehicle}
                       onCompute={(mps) => onUpdate({ stallSpeed: mps })}
@@ -3965,11 +3980,11 @@ function VehicleEditModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-                VTOL Airframe
+                {t('settings:settingsView.edit.vtolAirframe')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <DimensionInputField
-                  label="Wingspan"
+                  label={t('settings:settingsView.edit.wingspan')}
                   valueMillimeters={vehicle.wingspan}
                   onCommit={(millimeters) => onUpdate({ wingspan: millimeters })}
                   unit={dimensionUnit}
@@ -3977,17 +3992,17 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.wingspan!}
                 />
                 <VehicleSelectField
-                  label="VTOL Motors"
+                  label={t('settings:settingsView.edit.vtolMotors')}
                   value={vehicle.vtolMotorCount || 4}
                   onChange={(v) => onUpdate({ vtolMotorCount: Number(v) })}
                   options={[
-                    { value: 2, label: 'Bicopter (2)' },
-                    { value: 4, label: 'Quadplane (4)' },
-                    { value: 6, label: 'Hexaplane (6)' },
+                    { value: 2, label: t('settings:settingsView.edit.bicopter2') },
+                    { value: 4, label: t('settings:settingsView.edit.quadplane4') },
+                    { value: 6, label: t('settings:settingsView.edit.hexaplane6') },
                   ]}
                 />
                 <WeightInputField
-                  label="All-Up Weight"
+                  label={t('settings:settingsView.edit.allUpWeight')}
                   valueGrams={vehicle.weight}
                   onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
                   unit={weightUnit}
@@ -3995,7 +4010,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.weight!}
                 />
                 <SpeedInputField
-                  label="Transition Speed"
+                  label={t('settings:settingsView.edit.transitionSpeed')}
                   valueMps={vehicle.transitionSpeed}
                   onCommit={(mps) => onUpdate({ transitionSpeed: mps })}
                   unit={speedUnit}
@@ -4022,21 +4037,21 @@ function VehicleEditModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Chassis
+                {t('settings:settingsView.edit.chassis')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <VehicleSelectField
-                  label="Drive Type"
+                  label={t('settings:settingsView.edit.driveType')}
                   value={vehicle.driveType || 'differential'}
                   onChange={(v) => onUpdate({ driveType: v as 'differential' | 'ackermann' | 'skid' })}
                   options={[
-                    { value: 'differential', label: 'Differential (tank)' },
-                    { value: 'ackermann', label: 'Ackermann (car)' },
-                    { value: 'skid', label: 'Skid Steer' },
+                    { value: 'differential', label: t('settings:settingsView.edit.differentialTank') },
+                    { value: 'ackermann', label: t('settings:settingsView.edit.ackermannCar') },
+                    { value: 'skid', label: t('settings:settingsView.edit.skidSteer') },
                   ]}
                 />
                 <WeightInputField
-                  label="Total Weight"
+                  label={t('settings:settingsView.edit.totalWeight')}
                   valueGrams={vehicle.weight}
                   onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
                   unit={weightUnit}
@@ -4044,7 +4059,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.weight!}
                 />
                 <DimensionInputField
-                  label="Wheelbase"
+                  label={t('settings:settingsView.edit.wheelbase')}
                   valueMillimeters={vehicle.wheelbase}
                   onCommit={(millimeters) => onUpdate({ wheelbase: millimeters })}
                   unit={dimensionUnit}
@@ -4052,7 +4067,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.wheelbase!}
                 />
                 <DimensionInputField
-                  label="Wheel Diameter"
+                  label={t('settings:settingsView.edit.wheelDiameter')}
                   valueMillimeters={vehicle.wheelDiameter}
                   onCommit={(millimeters) => onUpdate({ wheelDiameter: millimeters })}
                   unit={dimensionUnit}
@@ -4060,7 +4075,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.wheelDiameter!}
                 />
                 <SpeedInputField
-                  label="Max Speed"
+                  label={t('settings:settingsView.edit.maxSpeed')}
                   valueMps={vehicle.maxSpeed}
                   onCommit={(mps) => onUpdate({ maxSpeed: mps })}
                   unit={speedUnit}
@@ -4078,32 +4093,32 @@ function VehicleEditModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Hull
+                {t('settings:settingsView.edit.hull')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <VehicleSelectField
-                  label="Hull Type"
+                  label={t('settings:settingsView.edit.hullType')}
                   value={vehicle.hullType || 'displacement'}
                   onChange={(v) => onUpdate({ hullType: v as 'displacement' | 'planing' | 'catamaran' | 'pontoon' })}
                   options={[
-                    { value: 'displacement', label: 'Displacement' },
-                    { value: 'planing', label: 'Planing' },
-                    { value: 'catamaran', label: 'Catamaran' },
-                    { value: 'pontoon', label: 'Pontoon' },
+                    { value: 'displacement', label: t('settings:settingsView.edit.displacement') },
+                    { value: 'planing', label: t('settings:settingsView.edit.planing') },
+                    { value: 'catamaran', label: t('settings:settingsView.edit.catamaran') },
+                    { value: 'pontoon', label: t('settings:settingsView.edit.pontoon') },
                   ]}
                 />
                 <VehicleSelectField
-                  label="Propulsion"
+                  label={t('settings:settingsView.edit.propulsion')}
                   value={vehicle.propellerType || 'prop'}
                   onChange={(v) => onUpdate({ propellerType: v as 'prop' | 'jet' | 'paddle' })}
                   options={[
-                    { value: 'prop', label: 'Propeller' },
-                    { value: 'jet', label: 'Water Jet' },
-                    { value: 'paddle', label: 'Paddle Wheel' },
+                    { value: 'prop', label: t('settings:settingsView.edit.propeller') },
+                    { value: 'jet', label: t('settings:settingsView.edit.waterJet') },
+                    { value: 'paddle', label: t('settings:settingsView.edit.paddleWheel') },
                   ]}
                 />
                 <DimensionInputField
-                  label="Hull Length"
+                  label={t('settings:settingsView.edit.hullLength')}
                   valueMillimeters={vehicle.hullLength}
                   onCommit={(millimeters) => onUpdate({ hullLength: millimeters })}
                   unit={dimensionUnit}
@@ -4111,7 +4126,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.hullLength!}
                 />
                 <WeightInputField
-                  label="Total Weight"
+                  label={t('settings:settingsView.edit.totalWeight')}
                   valueGrams={vehicle.weight}
                   onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
                   unit={weightUnit}
@@ -4119,7 +4134,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.weight!}
                 />
                 <WeightInputField
-                  label="Displacement"
+                  label={t('settings:settingsView.edit.displacement')}
                   valueGrams={vehicle.displacement}
                   onCommit={(grams) => onUpdate({ displacement: grams })}
                   unit={weightUnit}
@@ -4127,7 +4142,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.displacement!}
                 />
                 <SpeedInputField
-                  label="Max Speed"
+                  label={t('settings:settingsView.edit.maxSpeed')}
                   valueMps={vehicle.maxSpeed}
                   onCommit={(mps) => onUpdate({ maxSpeed: mps })}
                   unit={speedUnit}
@@ -4145,11 +4160,11 @@ function VehicleEditModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Hull & Thrusters
+                {t('settings:settingsView.edit.hullThrusters')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <DimensionInputField
-                  label="Hull Length"
+                  label={t('settings:settingsView.edit.hullLength')}
                   valueMillimeters={vehicle.hullLength}
                   onCommit={(millimeters) => onUpdate({ hullLength: millimeters })}
                   unit={dimensionUnit}
@@ -4157,18 +4172,18 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.hullLength!}
                 />
                 <VehicleSelectField
-                  label="Thruster Count"
+                  label={t('settings:settingsView.edit.thrusterCount')}
                   value={vehicle.thrusterCount || 4}
                   onChange={(v) => onUpdate({ thrusterCount: Number(v) })}
                   options={[
-                    { value: 2, label: '2 Thrusters' },
-                    { value: 4, label: '4 Thrusters' },
-                    { value: 6, label: '6 Thrusters' },
-                    { value: 8, label: '8 Thrusters' },
+                    { value: 2, label: t('settings:settingsView.edit.2Thrusters') },
+                    { value: 4, label: t('settings:settingsView.edit.4Thrusters') },
+                    { value: 6, label: t('settings:settingsView.edit.6Thrusters') },
+                    { value: 8, label: t('settings:settingsView.edit.8Thrusters') },
                   ]}
                 />
                 <WeightInputField
-                  label="Dry Weight"
+                  label={t('settings:settingsView.edit.dryWeight')}
                   valueGrams={vehicle.weight}
                   onCommit={(grams) => { if (grams !== undefined) onUpdate({ weight: grams }); }}
                   unit={weightUnit}
@@ -4176,7 +4191,7 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.weight!}
                 />
                 <AltitudeInputField
-                  label="Max Depth Rating"
+                  label={t('settings:settingsView.edit.maxDepthRating')}
                   valueMeters={vehicle.maxDepth}
                   onCommit={(meters) => onUpdate({ maxDepth: meters })}
                   unit={altitudeUnit}
@@ -4184,17 +4199,17 @@ function VehicleEditModal({
                   rules={VEHICLE_FIELD_RULES.maxDepth!}
                 />
                 <VehicleSelectField
-                  label="Buoyancy"
+                  label={t('settings:settingsView.edit.buoyancy')}
                   value={vehicle.buoyancy || 'neutral'}
                   onChange={(v) => onUpdate({ buoyancy: v as 'positive' | 'neutral' | 'negative' })}
                   options={[
-                    { value: 'positive', label: 'Positive (floats)' },
-                    { value: 'neutral', label: 'Neutral' },
-                    { value: 'negative', label: 'Negative (sinks)' },
+                    { value: 'positive', label: t('settings:settingsView.edit.positiveFloats') },
+                    { value: 'neutral', label: t('settings:settingsView.edit.neutral') },
+                    { value: 'negative', label: t('settings:settingsView.edit.negativeSinks') },
                   ]}
                 />
                 <SpeedInputField
-                  label="Max Speed"
+                  label={t('settings:settingsView.edit.maxSpeed')}
                   valueMps={vehicle.maxSpeed}
                   onCommit={(mps) => onUpdate({ maxSpeed: mps })}
                   unit={speedUnit}
@@ -4211,22 +4226,22 @@ function VehicleEditModal({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Battery
+              {t('settings:settingsView.edit.battery')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <VehicleSelectField
-                label="Chemistry"
+                label={t('settings:settingsView.edit.chemistry')}
                 value={vehicle.batteryChemistry || 'lipo'}
                 onChange={(v) => onUpdate({ batteryChemistry: v as VehicleProfile['batteryChemistry'] })}
                 options={[
-                  { value: 'lipo', label: 'LiPo (3.7V)' },
-                  { value: 'lihv', label: 'LiHV (3.8V)' },
-                  { value: 'lion', label: 'Li-Ion (3.6V)' },
-                  { value: 'life', label: 'LiFePO4 (3.3V)' },
+                  { value: 'lipo', label: t('settings:settingsView.edit.lipo37v') },
+                  { value: 'lihv', label: t('settings:settingsView.edit.lihv38v') },
+                  { value: 'lion', label: t('settings:settingsView.edit.liIon36v') },
+                  { value: 'life', label: t('settings:settingsView.edit.lifepo433v') },
                 ]}
               />
               <VehicleSelectField
-                label="Cell Count"
+                label={t('settings:settingsView.edit.cellCount')}
                 value={vehicle.batteryCells || 4}
                 onChange={(v) => onUpdate({ batteryCells: Number(v) })}
                 options={[
@@ -4243,7 +4258,7 @@ function VehicleEditModal({
                 ]}
               />
               <CapacityInputField
-                label="Capacity"
+                label={t('settings:settingsView.edit.capacity')}
                 valueMah={vehicle.batteryCapacity}
                 onCommit={(mah) => onUpdate({ batteryCapacity: mah })}
                 unit={electricCapacityUnit}
@@ -4263,14 +4278,14 @@ function VehicleEditModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Advanced (optional)
+              {t('settings:settingsView.edit.advancedOptional')}
             </summary>
             <div className="mt-3 space-y-3">
               {/* Copter Advanced */}
               {isCopter && (
                 <div className="grid grid-cols-2 gap-3">
                   <VehicleInputField
-                    label="Motor KV"
+                    label={t('settings:settingsView.edit.motorKv')}
                     value={getDisplayValue('motorKv')}
                     onChange={(v) => handleChange('motorKv', v)}
                     onBlur={() => handleBlur('motorKv')}
@@ -4278,7 +4293,7 @@ function VehicleEditModal({
                     placeholder="2400"
                   />
                   <VehicleInputField
-                    label="ESC Rating"
+                    label={t('settings:settingsView.edit.escRating')}
                     value={getDisplayValue('escRating')}
                     onChange={(v) => handleChange('escRating', v)}
                     onBlur={() => handleBlur('escRating')}
@@ -4287,7 +4302,7 @@ function VehicleEditModal({
                     placeholder="30"
                   />
                   <VehicleInputField
-                    label="Battery C-Rating"
+                    label={t('settings:settingsView.edit.batteryCRating')}
                     value={getDisplayValue('batteryDischarge')}
                     onChange={(v) => handleChange('batteryDischarge', v)}
                     onBlur={() => handleBlur('batteryDischarge')}
@@ -4302,7 +4317,7 @@ function VehicleEditModal({
               {(isPlane || isVtol) && (
                 <div className="grid grid-cols-2 gap-3">
                   <VehicleInputField
-                    label="Motor KV"
+                    label={t('settings:settingsView.edit.motorKv')}
                     value={getDisplayValue('motorKv')}
                     onChange={(v) => handleChange('motorKv', v)}
                     onBlur={() => handleBlur('motorKv')}
@@ -4310,7 +4325,7 @@ function VehicleEditModal({
                     placeholder="1000"
                   />
                   <VehicleInputField
-                    label="ESC Rating"
+                    label={t('settings:settingsView.edit.escRating')}
                     value={getDisplayValue('escRating')}
                     onChange={(v) => handleChange('escRating', v)}
                     onBlur={() => handleBlur('escRating')}
@@ -4325,7 +4340,7 @@ function VehicleEditModal({
               {(isRover || isBoat || isSub) && (
                 <div className="grid grid-cols-2 gap-3">
                   <VehicleInputField
-                    label="Motor KV"
+                    label={t('settings:settingsView.edit.motorKv')}
                     value={getDisplayValue('motorKv')}
                     onChange={(v) => handleChange('motorKv', v)}
                     onBlur={() => handleBlur('motorKv')}
@@ -4333,7 +4348,7 @@ function VehicleEditModal({
                     placeholder="1200"
                   />
                   <VehicleInputField
-                    label="ESC Rating"
+                    label={t('settings:settingsView.edit.escRating')}
                     value={getDisplayValue('escRating')}
                     onChange={(v) => handleChange('escRating', v)}
                     onBlur={() => handleBlur('escRating')}
@@ -4346,11 +4361,11 @@ function VehicleEditModal({
 
               {/* Notes - Common to all */}
               <div>
-                <label className="block text-xs text-content-secondary mb-1">Notes</label>
+                <label className="block text-xs text-content-secondary mb-1">{t('settings:settingsView.edit.notes')}</label>
                 <textarea
                   value={vehicle.notes || ''}
                   onChange={(e) => onUpdate({ notes: e.target.value || undefined })}
-                  placeholder="Additional notes about this vehicle..."
+                  placeholder={t('settings:settingsView.edit.notesPlaceholder')}
                   rows={2}
                   className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content text-sm focus:outline-none focus:border-blue-500 resize-none"
                 />
@@ -4373,9 +4388,9 @@ function VehicleEditModal({
               className="mt-1"
             />
             <span>
-              <span className="text-content">Auto-apply to SITL on start</span>
+              <span className="text-content">{t('settings:settingsView.edit.autoApplyToSitlOnStart')}</span>
               <span className="block text-xs text-content-tertiary mt-0.5">
-                When you launch SITL, this profile's params are reapplied automatically.
+                {t('settings:settingsView.edit.autoApplyHint')}
               </span>
             </span>
           </label>
@@ -4387,7 +4402,7 @@ function VehicleEditModal({
             onClick={onClose}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
           >
-            Done
+            {t('settings:settingsView.edit.done')}
           </button>
         </div>
       </div>
@@ -4421,6 +4436,7 @@ function VehicleCard({
   onDelete,
   canDelete,
 }: VehicleCardProps) {
+  const { t } = useTranslation();
   const { unitPreferences } = useSettingsStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => {
@@ -4444,40 +4460,42 @@ function VehicleCard({
       case 'copter':
         if (vehicle.frameSize) parts.push(fmtLength(vehicle.frameSize, dimensionUnit));
         if (vehicle.motorCount) {
-          const motorNames: Record<number, string> = { 3: 'Tri', 4: 'Quad', 6: 'Hex', 8: 'Octo' };
-          parts.push(motorNames[vehicle.motorCount] || `${vehicle.motorCount}M`);
+          parts.push([3, 4, 6, 8].includes(vehicle.motorCount)
+            ? t(`settings:settingsView.card.motor.${vehicle.motorCount}`)
+            : t('settings:settingsView.card.motors', { count: vehicle.motorCount }));
         }
         parts.push(batteryStr);
         parts.push(fmtWeight(vehicle.weight, weightUnit));
         break;
       case 'plane':
-        if (vehicle.wingspan) parts.push(`${fmtLength(vehicle.wingspan, dimensionUnit)} span`);
+        if (vehicle.wingspan) parts.push(t('settings:settingsView.card.span', { length: fmtLength(vehicle.wingspan, dimensionUnit) }));
         parts.push(batteryStr);
         parts.push(fmtWeight(vehicle.weight, weightUnit));
         break;
       case 'vtol':
         if (vehicle.wingspan) parts.push(fmtLength(vehicle.wingspan, dimensionUnit));
-        if (vehicle.vtolMotorCount) parts.push(`${vehicle.vtolMotorCount} VTOL motors`);
+        if (vehicle.vtolMotorCount) parts.push(t('settings:settingsView.card.vtolMotors', { count: vehicle.vtolMotorCount }));
         parts.push(batteryStr);
         break;
       case 'rover':
         if (vehicle.driveType) {
-          const driveNames: Record<string, string> = { differential: 'Tank', ackermann: 'Car', skid: 'Skid' };
-          parts.push(driveNames[vehicle.driveType] || vehicle.driveType);
+          parts.push(['differential', 'ackermann', 'skid'].includes(vehicle.driveType)
+            ? t(`settings:settingsView.card.drive.${vehicle.driveType}`)
+            : vehicle.driveType);
         }
-        if (vehicle.wheelDiameter) parts.push(`${fmtLength(vehicle.wheelDiameter, dimensionUnit)} wheels`);
+        if (vehicle.wheelDiameter) parts.push(t('settings:settingsView.card.wheels', { length: fmtLength(vehicle.wheelDiameter, dimensionUnit) }));
         parts.push(batteryStr);
         break;
       case 'boat':
         if (vehicle.hullType) {
-          parts.push(vehicle.hullType.charAt(0).toUpperCase() + vehicle.hullType.slice(1));
+          parts.push(t(`settings:settingsView.edit.${vehicle.hullType}`, { defaultValue: vehicle.hullType.charAt(0).toUpperCase() + vehicle.hullType.slice(1) }));
         }
         if (vehicle.hullLength) parts.push(fmtLength(vehicle.hullLength, dimensionUnit));
         parts.push(batteryStr);
         break;
       case 'sub':
-        if (vehicle.thrusterCount) parts.push(`${vehicle.thrusterCount}T`);
-        if (vehicle.maxDepth) parts.push(`${formatAltitudeFromMeters(vehicle.maxDepth, altitudeUnit)} rated`);
+        if (vehicle.thrusterCount) parts.push(t('settings:settingsView.card.thrusters', { count: vehicle.thrusterCount }));
+        if (vehicle.maxDepth) parts.push(t('settings:settingsView.card.rated', { depth: formatAltitudeFromMeters(vehicle.maxDepth, altitudeUnit) }));
         parts.push(batteryStr);
         break;
       default:
@@ -4508,10 +4526,10 @@ function VehicleCard({
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-content font-medium text-sm truncate" title={vehicle.name}>{vehicle.name}</span>
                 {isActive && (
-                  <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded shrink-0">Active</span>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded shrink-0">{t('common:active')}</span>
                 )}
                 {vehicle.boardUid && (
-                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0 max-w-[8rem] truncate" title={`Board UID: ${vehicle.boardUid}`}>
+                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0 max-w-[8rem] truncate" title={t('settings:settingsView.card.boardUid', { uid: vehicle.boardUid })}>
                     {vehicle.boardId || vehicle.boardName || vehicle.boardUid.slice(0, 8)}
                   </span>
                 )}
@@ -4529,11 +4547,11 @@ function VehicleCard({
                 await saveParmToFile(vehicle, tpl, { includeSim: false });
               }}
               className="p-1.5 text-content-secondary hover:text-content transition-colors"
-              title="Export .parm file"
+              title={t('settings:settingsView.card.export')}
             >
               <Download className="w-4 h-4" />
             </button>
-            <button onClick={onEdit} className="p-1.5 text-content-secondary hover:text-content transition-colors" title="Edit">
+            <button onClick={onEdit} className="p-1.5 text-content-secondary hover:text-content transition-colors" title={t('common:edit')}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
@@ -4550,10 +4568,10 @@ function VehicleCard({
                 className={confirmDelete
                   ? 'px-2 py-1 rounded text-[11px] font-medium text-red-400 bg-red-500/10 transition-colors'
                   : 'p-1.5 text-content-secondary hover:text-red-400 transition-colors'}
-                title={confirmDelete ? 'Click again to delete' : 'Delete'}
+                title={confirmDelete ? t('settings:settingsView.card.clickAgain') : t('settings:settingsView.card.delete')}
               >
                 {confirmDelete ? (
-                  'Delete?'
+                  t('settings:settingsView.card.deleteConfirm')
                 ) : (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

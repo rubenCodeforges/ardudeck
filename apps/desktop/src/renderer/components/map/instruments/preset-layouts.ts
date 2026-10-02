@@ -11,9 +11,11 @@ import type { InstrumentLayoutSnapshot } from '../../../stores/map-instruments-s
 export type PresetAccent = 'green' | 'blue' | 'amber' | 'violet';
 
 export interface PresetInstrumentLayout {
+  /** Stable identifier (persisted as the active layout name). */
   name: string;
+  nameKey: string;
   /** One line under the card name; keep it short so cards stay equal height. */
-  description: string;
+  descriptionKey: string;
   accent: PresetAccent;
   layout: InstrumentLayoutSnapshot;
 }
@@ -263,9 +265,9 @@ const ROVER_COCKPIT: InstrumentLayoutSnapshot = {
 };
 
 export const PRESET_INSTRUMENT_LAYOUTS: PresetInstrumentLayout[] = [
-  { name: 'Pilot cockpit', description: 'Gauge bar along the bottom, command rail down the left.', accent: 'green', layout: PILOT_COCKPIT },
-  { name: 'Minimal', description: 'Just the ball, flight data and the status strips.', accent: 'blue', layout: MINIMAL },
-  { name: 'Strips only', description: 'Compact readout bands, maximum map.', accent: 'amber', layout: STRIPS_ONLY },
-  { name: 'Split cockpit', description: 'Slim set for the in-map split; applied automatically.', accent: 'violet', layout: SPLIT_COCKPIT },
-  { name: 'Rover', description: 'Ground set: tilt, steering and cross-track instead of the ball.', accent: 'amber', layout: ROVER_COCKPIT },
+  { name: 'Pilot cockpit', nameKey: 'map:presetLayouts.pilotName', descriptionKey: 'map:presetLayouts.pilotDesc', accent: 'green', layout: PILOT_COCKPIT }, // i18n-exempt: name is an identifier
+  { name: 'Minimal', nameKey: 'map:presetLayouts.minimalName', descriptionKey: 'map:presetLayouts.minimalDesc', accent: 'blue', layout: MINIMAL },
+  { name: 'Strips only', nameKey: 'map:presetLayouts.stripsName', descriptionKey: 'map:presetLayouts.stripsDesc', accent: 'amber', layout: STRIPS_ONLY }, // i18n-exempt: name is an identifier
+  { name: 'Split cockpit', nameKey: 'map:presetLayouts.splitName', descriptionKey: 'map:presetLayouts.splitDesc', accent: 'violet', layout: SPLIT_COCKPIT }, // i18n-exempt: name is an identifier
+  { name: 'Rover', nameKey: 'map:presetLayouts.roverName', descriptionKey: 'map:presetLayouts.roverDesc', accent: 'amber', layout: ROVER_COCKPIT },
 ];

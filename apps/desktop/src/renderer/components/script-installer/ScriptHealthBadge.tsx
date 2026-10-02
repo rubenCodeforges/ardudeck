@@ -15,12 +15,14 @@
  */
 
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useScriptHealth } from './useScriptHealth';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { ScriptInstallModal } from './ScriptInstallModal';
 
 export function ScriptHealthBadge() {
+  const { t } = useTranslation();
   const advancedUnlocked = useSettingsStore(s => s.advancedCommandsUnlocked);
   const health = useScriptHealth();
   const isConnected = useConnectionStore(s => s.connectionState.isConnected);
@@ -36,7 +38,7 @@ export function ScriptHealthBadge() {
     style = {
       pill: 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15',
       dot: 'bg-emerald-400',
-      label: `Lua v${Number(health.version).toFixed(1)}`,
+      label: t('script-installer:scriptHealthBadge.present', { version: Number(health.version).toFixed(1) }),
       pulse: true,
     };
   } else if (health.status === 'stale') {
@@ -44,14 +46,14 @@ export function ScriptHealthBadge() {
     style = {
       pill: 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/15',
       dot: 'bg-amber-400',
-      label: `Lua silent ${ageSec}s`,
+      label: t('script-installer:scriptHealthBadge.silent', { seconds: ageSec }),
       pulse: false,
     };
   } else {
     style = {
       pill: 'bg-surface border-subtle hover:bg-surface-raised',
       dot: 'bg-content-tertiary',
-      label: 'Lua not detected',
+      label: t('script-installer:scriptHealthBadge.notDetected'),
       pulse: false,
     };
   }
@@ -62,7 +64,7 @@ export function ScriptHealthBadge() {
         <button
           onClick={() => setPopoverOpen(o => !o)}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${style.pill}`}
-          title="Click for FC-side script details"
+          title={t('script-installer:scriptHealthBadge.badgeTip')}
         >
           <span className="relative flex w-2 h-2">
             {style.pulse && (
@@ -106,40 +108,41 @@ function DiagnosticContent({ health, isConnected, isMavlink, onOpenInstaller }: 
   isMavlink: boolean;
   onOpenInstaller: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-content">FC-side Lua script</div>
+        <div className="text-sm font-semibold text-content">{t('script-installer:scriptHealthBadge.title')}</div>
         <span className="px-1.5 py-0 text-[9px] font-bold tracking-wider rounded bg-rose-600/20 text-rose-400 border border-rose-600/40">
-          EXPERIMENTAL
+          {t('script-installer:scriptHealthBadge.experimental')}
         </span>
       </div>
 
-      <Row label="Connection" value={isConnected ? (isMavlink ? 'MAVLink ✓' : 'connected (non-MAVLink)') : 'not connected'} />
-      <Row label="Heartbeat (AD_HB)" value={
-        health.status === 'present' ? `present (${(health.ageMs / 1000).toFixed(1)} s ago)`
-        : health.status === 'stale' ? `stale (last seen ${Math.round(health.ageMs / 1000)} s ago)`
-        : 'never received'
+      <Row label={t('common:connection')} value={isConnected ? (isMavlink ? 'MAVLink ✓' : t('script-installer:scriptHealthBadge.connectedNonMavlink')) : t('script-installer:scriptHealthBadge.notConnected')} />
+      <Row label={t('script-installer:scriptHealthBadge.heartbeat')} value={
+        health.status === 'present' ? t('script-installer:scriptHealthBadge.heartbeatPresent', { seconds: (health.ageMs / 1000).toFixed(1) })
+        : health.status === 'stale' ? t('script-installer:scriptHealthBadge.heartbeatStale', { seconds: Math.round(health.ageMs / 1000) })
+        : t('script-installer:scriptHealthBadge.heartbeatNever')
       } />
       {health.status !== 'missing' && (
-        <Row label="Version" value={`v${Number(health.version).toFixed(1)}`} />
+        <Row label={t('common:version')} value={`v${Number(health.version).toFixed(1)}`} />
       )}
 
       <div className="border-t border-subtle pt-2 text-[11px] text-content-secondary leading-snug">
         {health.status === 'present' && (
-          <p><span className="text-emerald-400">●</span> Script is running. Orbit + future commands will route through it for link-resilient execution.</p>
+          <p><span className="text-emerald-400">●</span> {t('script-installer:scriptHealthBadge.runningBody')}</p>
         )}
         {health.status === 'stale' && (
-          <p><span className="text-amber-400">●</span> Heartbeat went silent. The script may have crashed, the FC may have rebooted, or the link dropped. ArduDeck falls back to native commands until heartbeat resumes.</p>
+          <p><span className="text-amber-400">●</span> {t('script-installer:scriptHealthBadge.staleBody')}</p>
         )}
         {health.status === 'missing' && (
           <div className="space-y-2">
-            <p><span className="text-content-tertiary">●</span> No heartbeat received. Possible reasons:</p>
+            <p><span className="text-content-tertiary">●</span> {t('script-installer:scriptHealthBadge.missingBody')}</p>
             <ul className="list-disc list-inside space-y-0.5 ml-1">
-              <li>Script not installed on this FC</li>
-              <li><code className="font-mono text-content">SCR_ENABLE</code> is 0</li>
-              <li>FC hasn't rebooted since install (scripts only load at boot)</li>
-              <li>Script crashed on load - check FC STATUSTEXT messages</li>
+              <li>{t('script-installer:scriptHealthBadge.reasonNotInstalled')}</li>
+              <li><Trans i18nKey="script-installer:scriptHealthBadge.reasonScrEnable" components={{ code: <code className="font-mono text-content" /> }} /></li>
+              <li>{t('script-installer:scriptHealthBadge.reasonNoReboot')}</li>
+              <li>{t('script-installer:scriptHealthBadge.reasonCrashed')}</li>
             </ul>
           </div>
         )}
@@ -150,7 +153,7 @@ function DiagnosticContent({ health, isConnected, isMavlink, onOpenInstaller }: 
           onClick={onOpenInstaller}
           className="w-full px-3 py-1.5 text-xs font-medium bg-purple-600/80 hover:bg-purple-600 text-white rounded transition-colors"
         >
-          Open installer / manage…
+          {t('script-installer:scriptHealthBadge.openInstaller')}
         </button>
       )}
     </div>

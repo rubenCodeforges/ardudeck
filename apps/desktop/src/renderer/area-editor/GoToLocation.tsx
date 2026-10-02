@@ -5,6 +5,7 @@
  * this to jump straight to a job site by parcel coordinates or address.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type maplibregl from 'maplibre-gl';
 import type { GeocodeResult } from '../../shared/overlay-types';
 
@@ -24,6 +25,7 @@ function parseLatLng(q: string): [number, number] | null {
 }
 
 export function GoToLocation({ map }: Props): JSX.Element {
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<GeocodeResult[] | null>(null);
@@ -54,19 +56,19 @@ export function GoToLocation({ map }: Props): JSX.Element {
     setMsg(null);
     if (!query || parseLatLng(query) || query.length < 3) { setResults(null); setBusy(false); return; }
     let cancelled = false;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setBusy(true);
       window.electronAPI.geocodeSearch(query)
         .then((hits) => {
           if (cancelled) return;
           setResults(hits);
-          setMsg(hits.length === 0 ? 'No match found' : null);
+          setMsg(hits.length === 0 ? t('area-editor:goToLocation.noMatch') : null);
         })
-        .catch(() => { if (!cancelled) setMsg('Search failed'); })
+        .catch(() => { if (!cancelled) setMsg(t('area-editor:goToLocation.searchFailed')); })
         .finally(() => { if (!cancelled) setBusy(false); });
     }, 400);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [q]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [q, t]);
 
   // Enter: coordinates fly immediately; otherwise jump to the top result
   // (fetching now if the debounce hasn't resolved yet).
@@ -79,14 +81,14 @@ export function GoToLocation({ map }: Props): JSX.Element {
     setBusy(true);
     try {
       const hits = await window.electronAPI.geocodeSearch(query);
-      if (hits.length === 0) { setMsg('No match found'); return; }
+      if (hits.length === 0) { setMsg(t('area-editor:goToLocation.noMatch')); return; }
       pick(hits[0]!);
     } catch {
-      setMsg('Search failed');
+      setMsg(t('area-editor:goToLocation.searchFailed'));
     } finally {
       setBusy(false);
     }
-  }, [q, map, results, flyTo, pick]);
+  }, [q, map, results, flyTo, pick, t]);
 
   // Top-center: clears the zoom/compass control (top-left) and Layers (top-right).
   return (
@@ -99,8 +101,8 @@ export function GoToLocation({ map }: Props): JSX.Element {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void submit(); else if (e.key === 'Escape') closeResults(); }}
-          placeholder="Go to place or lat, lon"
-          aria-label="Go to location"
+          placeholder={t('area-editor:goToLocation.placeholder')}
+          aria-label={t('area-editor:goToLocation.ariaLabel')}
           className="flex-1 min-w-0 bg-transparent text-xs text-content placeholder:text-content-tertiary focus:outline-none"
         />
         {busy && (

@@ -1,3 +1,4 @@
+import { t } from '../../shared/i18n/index.js';
 export const WFB_RX_TAG = 'wfb-rx-v0.1.0';
 const RELEASE_BASE = 'https://github.com/rubenCodeforges/ardudeck/releases/download';
 
@@ -10,8 +11,6 @@ const PUBLISHED: Record<string, readonly string[]> = {
 
 const PLATFORM_LABEL: Record<string, string> = { darwin: 'macOS', linux: 'Linux', win32: 'Windows' };
 
-const NETWORK_MODE_FALLBACK =
-  'Until then, set the feed to Network mode and run the receiver on another machine that forwards video here.';
 
 export class HttpStatusError extends Error {
   constructor(readonly status: number, readonly url: string) {
@@ -42,21 +41,21 @@ function platformLabel(platform: string, arch: string): string {
 }
 
 export function wfbRxNotBuiltMessage(platform: string, arch: string): string {
-  return `The wfb-ng receiver is not built for ${platformLabel(platform, arch)}, so dongle mode cannot run on this computer. Set the feed to Network mode and run the receiver on another machine that forwards video here.`;
+  return t('main:wfbng.receiverNotBuilt', { platform: platformLabel(platform, arch) });
 }
 
 /** Stream start without the receiver on disk: say whether Install can fix it. */
 export function wfbRxMissingMessage(platform: string, arch: string): string {
   if (!isWfbRxBuiltFor(platform, arch)) return wfbRxNotBuiltMessage(platform, arch);
-  return `The wfb-ng receiver component (${wfbRxAssetName(platform, arch)}) is not installed. Open the feed setup and press Install next to "Receiver component missing".`;
+  return t('main:wfbng.receiverNotInstalled', { asset: wfbRxAssetName(platform, arch) });
 }
 
 /** Turn a failed receiver download into a sentence naming what is missing. */
 export function describeWfbRxDownloadError(err: unknown, platform: string, arch: string): string {
   const asset = wfbRxAssetName(platform, arch);
   if (err instanceof HttpStatusError && err.status === 404) {
-    return `The wfb-ng receiver for ${platformLabel(platform, arch)} has not been published yet (release ${WFB_RX_TAG} has no ${asset}), so dongle mode cannot start. ${NETWORK_MODE_FALLBACK}`;
+    return t('main:wfbng.receiverNotPublished', { platform: platformLabel(platform, arch), tag: WFB_RX_TAG, asset });
   }
-  const reason = err instanceof HttpStatusError ? `HTTP ${err.status}` : err instanceof Error ? err.message : 'download failed';
-  return `Could not download the wfb-ng receiver (${asset}): ${reason}. Check the internet connection and try Install again.`;
+  const reason = err instanceof HttpStatusError ? `HTTP ${err.status}` : err instanceof Error ? err.message : t('main:wfbng.downloadFailedReason');
+  return t('main:wfbng.downloadFailed', { asset, reason });
 }

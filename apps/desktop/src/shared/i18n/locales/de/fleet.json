@@ -1,0 +1,104 @@
+{
+  "draggableFleetActions": {
+    "collapseAria": "Flotten-Panel einklappen",
+    "dragTip": "Ziehen zum Verschieben - rastet an Panel- und Fensterrändern ein",
+    "expandAria": "Flotten-Panel ausklappen",
+    "title": "Flotte"
+  },
+  "fleetContextMenu": {
+    "addToFleet": "Zur Flotte hinzufügen",
+    "alt": "Höhe",
+    "chipTip": "{{label}} (m)",
+    "commandVehicle": "Dieses Fahrzeug steuern",
+    "createLeader": "Als Leader festlegen",
+    "currentShape": "{{label}} (aktuell)",
+    "disband": "Flotte auflösen",
+    "disbandTip": "Löst diese Flotte auf - ihre Wingmen kehren zur manuellen Steuerung zurück",
+    "formUp_one": "{{count}} freie Drohne in Formation bringen",
+    "formUp_other": "{{count}} freie Drohnen in Formation bringen",
+    "formationShape": "Formation",
+    "gap": "Abstand",
+    "join": "{{label}} beitreten",
+    "leadsFleet": "Führt eine Flotte",
+    "leave": "Flotte verlassen",
+    "leaveTip": "{{label}} aus der Flotte nehmen - die übrigen halten die Formation",
+    "reformShape": "Neu formieren: {{label}}"
+  },
+  "fleetCoordination": {
+    "alt": "Höhe",
+    "altitudeTip": "Starthöhe (m)",
+    "collapseFleet": "Flotte einklappen",
+    "engineError": "Engine-Fehler",
+    "engineReportTip": "Letzte Meldung der Koordinations-Engine (Gruppenstart / Missionsstart)",
+    "expandFleet": "Flotte ausklappen",
+    "fleet": "Flotte",
+    "leaderModeTip": "Modus von {{label}}",
+    "reformTip": "Flotte von {{label}} neu formieren: {{shape}}",
+    "startMission": "Mission starten",
+    "startMissionTip": "{{label}} fliegt seine hochgeladene Mission in AUTO; seine Wingmen halten die Formation und folgen",
+    "startMissions": "Missionen starten ({{count}})",
+    "startMissionsTip": "Die zugewiesene WP-Gruppe jedes Fahrzeugs hochladen und alle {{count}} Missionen in AUTO starten",
+    "takeOff": "Starten",
+    "takeOffAll": "Alle starten",
+    "takeOffAllTip": "Alle verbundenen Fahrzeuge werden scharf geschaltet und steigen gemeinsam auf {{alt}} m",
+    "takeOffFleetTip": "Nur die Flotte von {{label}} scharf schalten und auf {{alt}} m steigen lassen"
+  },
+  "fleetDisclosure": {
+    "collapseAll": "Alle einklappen",
+    "collapseEveryTip": "Alle Flotten einklappen",
+    "expandAll": "Alle ausklappen",
+    "expandEveryTip": "Alle Flotten ausklappen",
+    "fleets": "Flotten"
+  },
+  "fleetGroupActions": {
+    "arm": "Scharf schalten",
+    "confirmArm_one": "{{count}} Fahrzeug scharf schalten?",
+    "confirmArm_other": "{{count}} Fahrzeuge scharf schalten?",
+    "confirmDisarm_one": "{{count}} Fahrzeug unscharf schalten?",
+    "confirmDisarm_other": "{{count}} Fahrzeuge unscharf schalten?",
+    "confirmRtl_one": "{{count}} Fahrzeug nach Hause schicken (RTL)?",
+    "confirmRtl_other": "{{count}} Fahrzeuge nach Hause schicken (RTL)?",
+    "confirmStart_one": "Mission auf {{count}} Fahrzeug starten?",
+    "confirmStart_other": "Mission auf {{count}} Fahrzeugen starten?",
+    "selected": "{{count}} ausgewählt",
+    "start": "Starten"
+  },
+  "fleetStrip": {
+    "collapseFleet": "Flotte einklappen",
+    "deselectTip": "{{label}} - klicken zum Abwählen",
+    "dragHere": "Fahrzeug hierher ziehen",
+    "dropToRemove": "Ablegen, um aus der Flotte zu entfernen",
+    "expandFleet": "Flotte ausklappen",
+    "fleet": "Flotte",
+    "identityTip": "{{airframe}} - {{state}} (klicken, um die Kennfarbe festzulegen)",
+    "lead": "Leader",
+    "orders": "Befehle",
+    "selectTip": "Für Gruppenbefehle auswählen",
+    "setColour": "Farbe {{color}} festlegen",
+    "unassigned": "Nicht zugewiesen",
+    "vehicleTip": "{{label}} - {{mode}}",
+    "vehicleTipArmed": "{{label}} - {{mode}} - SCHARF"
+  },
+  "formationGlyphs": {
+    "box": "Box (Raster)",
+    "column": "Kolonne (hintereinander)",
+    "diamond": "Raute",
+    "echelonLeft": "Staffel links",
+    "echelonRight": "Staffel rechts",
+    "line": "Linie nebeneinander (Wand)",
+    "survey": "Vermessungsbahn (breit)",
+    "vee": "Keil (Delta)"
+  },
+  "heartbeatDot": {
+    "none": "Noch kein Heartbeat",
+    "receiving": "Heartbeat wird empfangen",
+    "stale": "Seit {{seconds}} s kein Heartbeat"
+  },
+  "missionPathsToggle": {
+    "all": "Alle Fahrzeugpfade",
+    "allTip": "Flugpfad jedes Fahrzeugs zeichnen (ausgewähltes durchgezogen, andere abgeblendet)",
+    "selected": "Nur ausgewähltes",
+    "selectedTip": "Nur den Flugpfad des ausgewählten Fahrzeugs zeichnen",
+    "title": "Missionspfade"
+  }
+}

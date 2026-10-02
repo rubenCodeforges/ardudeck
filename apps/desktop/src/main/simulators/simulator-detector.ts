@@ -332,7 +332,7 @@ export function getFlightGearRoot(fgPath: string): string | null {
   if (platform === 'darwin') {
     // macOS FlightGear stores data in ~/Library/Application Support/FlightGear/
     // The fgdata folder has version suffix like fgdata_2024_1
-    const supportDir = join(process.env.HOME || '', 'Library', 'Application Support', 'FlightGear');
+    const supportDir = join(process.env.HOME || '', 'Library', 'Application Support', 'FlightGear'); // i18n-exempt
     try {
       const fs = require('fs');
       const entries = fs.readdirSync(supportDir);

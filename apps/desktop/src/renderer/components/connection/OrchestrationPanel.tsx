@@ -9,11 +9,13 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useOrchestrationStore } from '../../stores/orchestration-store';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useFleetVehicles } from '../../hooks/useFleet';
 
 export function OrchestrationPanel() {
+  const { t } = useTranslation();
   const servers = useOrchestrationStore((s) => s.servers);
   const selectedVehicleKeys = useActiveVehicleStore((s) => s.selectedVehicleKeys);
   const vehicles = useFleetVehicles();
@@ -25,7 +27,7 @@ export function OrchestrationPanel() {
 
   return (
     <div className="mt-3 pt-3 border-t border-subtle flex flex-col gap-2">
-      <span className="text-[11px] uppercase tracking-wide text-content-secondary">Orchestration</span>
+      <span className="text-[11px] uppercase tracking-wide text-content-secondary">{t('connection:orchestration.title')}</span>
       {list.map((srv) => (
         <ServerCard key={srv.transportId} transportId={srv.transportId} selectedSysids={selectedSysids} />
       ))}
@@ -34,6 +36,7 @@ export function OrchestrationPanel() {
 }
 
 function ServerCard({ transportId, selectedSysids }: { transportId: string; selectedSysids: number[] }) {
+  const { t } = useTranslation();
   const srv = useOrchestrationStore((s) => s.servers[transportId]);
   const [kind, setKind] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -63,7 +66,7 @@ function ServerCard({ transportId, selectedSysids }: { transportId: string; sele
       </div>
 
       {caps.length === 0 ? (
-        <p className="mt-1 text-[10px] text-content-tertiary">No capabilities advertised yet.</p>
+        <p className="mt-1 text-[10px] text-content-tertiary">{t('connection:orchestration.noCapabilities')}</p>
       ) : (
         <div className="mt-2 flex items-end gap-2">
           <select
@@ -79,9 +82,9 @@ function ServerCard({ transportId, selectedSysids }: { transportId: string; sele
             onClick={submit}
             disabled={busy}
             className="btn btn-secondary shrink-0 px-3 py-1.5 text-xs"
-            data-tip={selectedSysids.length > 0 ? `Target sysids: ${selectedSysids.join(', ')}` : 'No vehicles selected; server decides scope'}
+            data-tip={selectedSysids.length > 0 ? t('connection:orchestration.targetSysids', { ids: selectedSysids.join(', ') }) : t('connection:orchestration.noSelection')}
           >
-            {busy ? '...' : 'Submit'}
+            {busy ? '...' : t('connection:orchestration.submit')}
           </button>
         </div>
       )}

@@ -5,6 +5,7 @@
  * Standard ailerons with V-tail ruddervators.
  */
 
+import { useTranslation } from 'react-i18next';
 import { ControlSurface } from '../presets/servo-presets';
 
 interface Props {
@@ -20,6 +21,7 @@ export default function VTailDiagram({
   servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
+  const { t } = useTranslation();
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
@@ -73,7 +75,7 @@ export default function VTailDiagram({
         onClick={handleClick('aileron_left')}
       />
       <text x="50" y="68" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        L Aileron
+        {t('servo-wizard:diagrams.leftAileron')}
       </text>
       {servoLabels.aileron_left && (
         <text x="50" y="96" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -88,7 +90,7 @@ export default function VTailDiagram({
         onClick={handleClick('aileron_right')}
       />
       <text x="250" y="68" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        R Aileron
+        {t('servo-wizard:diagrams.rightAileron')}
       </text>
       {servoLabels.aileron_right && (
         <text x="250" y="96" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -109,7 +111,7 @@ export default function VTailDiagram({
         onClick={handleClick('vtail_left')}
       />
       <text x="80" y="175" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        L V-Tail
+        {t('servo-wizard:diagrams.leftVTail')}
       </text>
       {servoLabels.vtail_left && (
         <text x="97" y="195" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -130,7 +132,7 @@ export default function VTailDiagram({
         onClick={handleClick('vtail_right')}
       />
       <text x="220" y="175" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        R V-Tail
+        {t('servo-wizard:diagrams.rightVTail')}
       </text>
       {servoLabels.vtail_right && (
         <text x="203" y="195" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -141,7 +143,7 @@ export default function VTailDiagram({
       {/* Direction arrow */}
       <path d="M150 15 L145 25 L155 25 Z" fill="#6B7280" />
       <text x="165" y="23" fill="#6B7280" fontSize="8">
-        FRONT
+        {t('servo-wizard:diagrams.front')}
       </text>
     </svg>
   );

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { t as i18nT } from '../../../../shared/i18n/index.js';
 import { Eye, EyeOff, CheckCircle2, AlertTriangle, Circle } from 'lucide-react';
 import type { VehicleProfile } from '../../../stores/settings-store.js';
 import { getTemplate, defaultTemplateForType } from '../../../lib/vehicle-templates/registry.js';
@@ -27,6 +29,7 @@ type ParamStatus = 'match' | 'drift' | 'offline';
  * A header summary shows "Last applied <ago>" + the overall match/drift count.
  */
 export function ParamsPreview({ vehicle, onBeforeApply }: ParamsPreviewProps) {
+  const { t } = useTranslation();
   const [shown, setShown] = useState(false);
   const isConnected = useConnectionStore(s => s.connectionState.isConnected);
   const parameters = useParameterStore(s => s.parameters);
@@ -71,9 +74,11 @@ export function ParamsPreview({ vehicle, onBeforeApply }: ParamsPreviewProps) {
         className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed text-xs font-medium transition-colors ${buttonStatus.containerClass}`}
       >
         <Eye className="w-3.5 h-3.5" />
-        Generate params preview
+        {t('settings:paramsPreview.generate')}
         <span className="text-content-tertiary font-normal">
-          ({core.length} core{sim.length > 0 && ` + ${sim.length} SITL`})
+          {sim.length > 0
+            ? t('settings:paramsPreview.countsCoreSim', { core: core.length, sim: sim.length })
+            : t('settings:paramsPreview.countsCore', { core: core.length })}
         </span>
         {buttonStatus.badge && (
           <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${buttonStatus.badgeClass}`}>
@@ -90,9 +95,15 @@ export function ParamsPreview({ vehicle, onBeforeApply }: ParamsPreviewProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="text-[11px] text-content-secondary leading-tight min-w-0">
-          <span className="text-content font-semibold">{core.length}</span> core
-          {sim.length > 0 && <> <span className="text-content-tertiary">·</span> <span className="text-content font-semibold">{sim.length}</span> SITL</>}
-          {' '}params from <span className="text-blue-400 font-medium">{template.name}</span>
+          <Trans
+            i18nKey={sim.length > 0 ? 'settings:paramsPreview.headerCoreSim' : 'settings:paramsPreview.headerCore'}
+            values={{ core: core.length, sim: sim.length, template: template.name }}
+            components={{
+              b: <span className="text-content font-semibold" />,
+              dot: <span className="text-content-tertiary" />,
+              tpl: <span className="text-blue-400 font-medium" />,
+            }}
+          />
         </div>
         <button
           type="button"
@@ -100,7 +111,7 @@ export function ParamsPreview({ vehicle, onBeforeApply }: ParamsPreviewProps) {
           className="inline-flex items-center gap-1 text-[10px] text-content-tertiary hover:text-content-secondary shrink-0"
         >
           <EyeOff className="w-3 h-3" />
-          Hide
+          {t('common:hide')}
         </button>
       </div>
 
@@ -145,14 +156,14 @@ function pickCollapsedStatus(args: {
 
   // Never applied.
   if (!lastApplied) {
-    return { containerClass: base, badge: 'not applied yet', badgeClass: 'text-content-tertiary', badgeIcon: <Circle className="w-2.5 h-2.5" /> };
+    return { containerClass: base, badge: i18nT('settings:paramsPreview.notAppliedYet'), badgeClass: 'text-content-tertiary', badgeIcon: <Circle className="w-2.5 h-2.5" /> };
   }
 
   // Applied but everything offline.
   if (offlineCount === total) {
     return {
       containerClass: base,
-      badge: `last applied ${timeAgo(lastApplied)}`,
+      badge: i18nT('settings:paramsPreview.lastApplied', { when: timeAgo(lastApplied) }),
       badgeClass: 'text-content-tertiary',
       badgeIcon: <Circle className="w-2.5 h-2.5" />,
     };
@@ -162,7 +173,7 @@ function pickCollapsedStatus(args: {
   if (driftCount > 0) {
     return {
       containerClass: 'border-amber-500/40 text-amber-400 hover:bg-amber-500/5 hover:border-amber-500/60',
-      badge: `${driftCount} drifted`,
+      badge: i18nT('settings:paramsPreview.drifted', { count: driftCount }),
       badgeClass: 'text-amber-400',
       badgeIcon: <AlertTriangle className="w-2.5 h-2.5" />,
     };
@@ -171,7 +182,7 @@ function pickCollapsedStatus(args: {
   // All match.
   return {
     containerClass: 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/60',
-    badge: `all ${matchCount} match`,
+    badge: i18nT('settings:paramsPreview.allMatch', { count: matchCount }),
     badgeClass: 'text-emerald-400',
     badgeIcon: <CheckCircle2 className="w-2.5 h-2.5" />,
   };
@@ -188,11 +199,12 @@ interface StatusBannerProps {
 }
 
 function StatusBanner({ lastApplied, lastAppliedTo, matchCount, driftCount, offlineCount, total, isConnected }: StatusBannerProps) {
+  const { t } = useTranslation();
   if (!lastApplied && !isConnected) {
     return (
       <div className="mt-2 flex items-center gap-2 text-[11px] text-content-tertiary">
         <Circle className="w-3 h-3" />
-        Never applied · connect to the vehicle to check live state
+        {t('settings:paramsPreview.neverAppliedConnect')}
       </div>
     );
   }
@@ -200,22 +212,27 @@ function StatusBanner({ lastApplied, lastAppliedTo, matchCount, driftCount, offl
     return (
       <div className="mt-2 flex items-center gap-2 text-[11px] text-content-tertiary">
         <Circle className="w-3 h-3" />
-        Never applied
+        {t('settings:paramsPreview.neverApplied')}
         {matchCount > 0 && (
           <span className="text-emerald-400">
-            · {matchCount} already match the live vehicle
+            {t('settings:paramsPreview.alreadyMatch', { count: matchCount })}
           </span>
         )}
       </div>
     );
   }
-  const target = lastAppliedTo?.isSitl ? 'SITL' : 'vehicle';
+  const target = lastAppliedTo?.isSitl ? 'SITL' : t('settings:paramsPreview.targetVehicle');
   const when = timeAgo(lastApplied);
   if (driftCount > 0) {
     return (
       <div className="mt-2 flex items-center gap-2 text-[11px] text-amber-400">
         <AlertTriangle className="w-3 h-3" />
-        Applied to {target} {when} · <span className="font-semibold">{driftCount}</span> param{driftCount === 1 ? '' : 's'} drifted from applied state
+        <Trans
+          i18nKey="settings:paramsPreview.appliedDrift"
+          count={driftCount}
+          values={{ target, when, count: driftCount }}
+          components={{ b: <span className="font-semibold" /> }}
+        />
       </div>
     );
   }
@@ -223,14 +240,14 @@ function StatusBanner({ lastApplied, lastAppliedTo, matchCount, driftCount, offl
     return (
       <div className="mt-2 flex items-center gap-2 text-[11px] text-content-tertiary">
         <Circle className="w-3 h-3" />
-        Last applied to {target} {when} · reconnect to verify live state
+        {t('settings:paramsPreview.lastAppliedReconnect', { target, when })}
       </div>
     );
   }
   return (
     <div className="mt-2 flex items-center gap-2 text-[11px] text-emerald-400">
       <CheckCircle2 className="w-3 h-3" />
-      Applied to {target} {when} · all live values match
+      {t('settings:paramsPreview.appliedAllMatch', { target, when })}
     </div>
   );
 }
@@ -259,8 +276,8 @@ function Chip({ name, reason, status, variant }: ChipProps) {
     : null;
 
   const statusLabel =
-    status === 'match' ? ' (live value matches)'
-    : status === 'drift' ? ' (drifted from applied state)'
+    status === 'match' ? i18nT('settings:paramsPreview.liveMatches')
+    : status === 'drift' ? i18nT('settings:paramsPreview.driftedState')
     : '';
 
   void baseColor;
@@ -278,11 +295,11 @@ function Chip({ name, reason, status, variant }: ChipProps) {
 /** Human-readable relative time. */
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'just now';
+  if (ms < 60_000) return i18nT('settings:paramsPreview.justNow');
   const mins = Math.round(ms / 60_000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return i18nT('settings:paramsPreview.minutesAgo', { n: mins });
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return i18nT('settings:paramsPreview.hoursAgo', { n: hours });
   const days = Math.round(hours / 24);
-  return `${days}d ago`;
+  return i18nT('settings:paramsPreview.daysAgo', { n: days });
 }

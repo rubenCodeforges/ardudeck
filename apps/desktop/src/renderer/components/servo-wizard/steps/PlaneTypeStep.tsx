@@ -4,6 +4,7 @@
  * Step 1: Select aircraft type from visual cards.
  */
 
+import { Trans, useTranslation } from 'react-i18next';
 import { AircraftPreset, getPresetsByCategory } from '../presets/servo-presets';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { Lightbulb, RotateCcw } from 'lucide-react';
@@ -18,6 +19,7 @@ function PresetCard({
   isSelected: boolean;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       onClick={() => onSelect(preset.id)}
@@ -30,8 +32,8 @@ function PresetCard({
       <div className="flex items-center gap-2">
         <span className="text-2xl">{preset.icon}</span>
         <div>
-          <div className="text-sm font-medium text-content">{preset.name}</div>
-          <div className="text-xs text-content-secondary">{preset.servoCount} servo{preset.servoCount !== 1 ? 's' : ''}</div>
+          <div className="text-sm font-medium text-content">{t(preset.nameKey)}</div>
+          <div className="text-xs text-content-secondary">{t('servo-wizard:planeTypeStep.servoCount', { count: preset.servoCount })}</div>
         </div>
       </div>
     </button>
@@ -39,6 +41,7 @@ function PresetCard({
 }
 
 export default function PlaneTypeStep() {
+  const { t } = useTranslation();
   const { selectedPresetId, selectAircraftType, nextStep, isMultirotor } = useServoWizardStore();
 
   const fixedWingPresets = getPresetsByCategory('fixed_wing');
@@ -51,9 +54,9 @@ export default function PlaneTypeStep() {
       <div className="space-y-4">
         {/* Header */}
         <div className="text-center">
-          <h2 className="text-lg font-bold text-content">Gimbal Servo Setup</h2>
+          <h2 className="text-lg font-bold text-content">{t('servo-wizard:planeTypeStep.gimbalTitle')}</h2>
           <p className="text-sm text-content-secondary mt-1">
-            Your board is configured as a multirotor. You can set up gimbal servos for camera control.
+            {t('servo-wizard:planeTypeStep.gimbalSubtitle')}
           </p>
         </div>
 
@@ -74,7 +77,7 @@ export default function PlaneTypeStep() {
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-2 flex items-center gap-2 flex-1">
             <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
             <p className="text-xs text-content-secondary">
-              Gimbal uses RC stick input to control pan/tilt servos for camera stabilization.
+              {t('servo-wizard:planeTypeStep.gimbalTip')}
             </p>
           </div>
           <button
@@ -86,7 +89,7 @@ export default function PlaneTypeStep() {
                 : 'bg-surface-raised text-content-secondary cursor-not-allowed'
             }`}
           >
-            Continue →
+            {t('servo-wizard:planeTypeStep.continue')}
           </button>
         </div>
       </div>
@@ -103,8 +106,8 @@ export default function PlaneTypeStep() {
     <div className="space-y-4">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-lg font-bold text-content">What type of aircraft do you have?</h2>
-        <p className="text-sm text-content-secondary mt-1">Select your aircraft type for the correct servo setup.</p>
+        <h2 className="text-lg font-bold text-content">{t('servo-wizard:planeTypeStep.title')}</h2>
+        <p className="text-sm text-content-secondary mt-1">{t('servo-wizard:planeTypeStep.subtitle')}</p>
       </div>
 
       {/* All categories in a compact grid */}
@@ -135,8 +138,8 @@ export default function PlaneTypeStep() {
           <div className="flex items-center gap-2">
             <RotateCcw className="w-6 h-6 text-blue-400" />
             <div>
-              <div className="text-sm font-medium text-content-secondary">Quad/Hex</div>
-              <div className="text-xs text-content-tertiary">No servos</div>
+              <div className="text-sm font-medium text-content-secondary">{t('servo-wizard:planeTypeStep.quadHex')}</div>
+              <div className="text-xs text-content-tertiary">{t('servo-wizard:planeTypeStep.noServos')}</div>
             </div>
           </div>
         </div>
@@ -156,8 +159,10 @@ export default function PlaneTypeStep() {
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-2 flex items-center gap-2 flex-1">
           <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
           <p className="text-xs text-content-secondary">
-            <strong className="text-content">Quad with camera?</strong> Select Gimbal.
-            <strong className="text-content ml-2">Plane?</strong> Most are Traditional.
+            <Trans
+              i18nKey="servo-wizard:planeTypeStep.tip"
+              components={{ b: <strong className="text-content" />, b2: <strong className="text-content ml-2" /> }}
+            />
           </p>
         </div>
         <button
@@ -169,7 +174,7 @@ export default function PlaneTypeStep() {
               : 'bg-surface-raised text-content-secondary cursor-not-allowed'
           }`}
         >
-          Continue →
+          {t('servo-wizard:planeTypeStep.continue')}
         </button>
       </div>
     </div>

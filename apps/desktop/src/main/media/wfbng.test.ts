@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildWfbngSdp, buildWfbngFfmpegArgs, wfbngPort, wfbngShouldTranscode } from './wfbng.js';
+import { bridgeFailureReason, buildWfbngSdp, buildWfbngFfmpegArgs, wfbngPort, wfbngShouldTranscode } from './wfbng.js';
 
 describe('wfbng ingest helpers', () => {
   it('parses the listen port from udp urls, defaulting to 5600', () => {
@@ -38,4 +38,21 @@ describe('wfbng ingest helpers', () => {
     expect(xcode).toContain('zerolatency');
     expect(xcode).not.toContain('copy');
   });
+
+  // Both lines straight from a WiFiLink 2 bench session.
+  it('names a busy UDP port from the bridge output', () => {
+    const out = '[udp @ 0x600002e7c0b0] bind failed: Address already in use\n/x/cam_1.sdp: Invalid data found when processing input';
+    expect(bridgeFailureReason(out, 5600, 'h264')).toMatch(/UDP port 5600 is still held/);
+  });
+
+  it('spots H.264 arriving on a feed set to H.265', () => {
+    const out = '[sdp @ 0x146f05500] Multi-layer HEVC coding is not implemented. Update your FFmpeg version';
+    expect(bridgeFailureReason(out, 5600, 'h265')).toMatch(/sending H\.264, but this feed is set to H\.265/);
+    expect(bridgeFailureReason(out, 5600, 'h264')).toBeNull();
+  });
+
+  it('stays quiet when the output has no known cause', () => {
+    expect(bridgeFailureReason('Input #0, sdp, from cam.sdp', 5600, 'h265')).toBeNull();
+  });
 });
+

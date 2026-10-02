@@ -11,6 +11,7 @@
 import type { ParsedLog } from '../../stores/log-store';
 
 import { fieldNames, logRows } from '../../utils/log-columns';
+import { t } from '../../../shared/i18n/index.js';
 
 type LogMsg = { type: string; timeUs: number; fields: Record<string, number | string> };
 
@@ -55,7 +56,7 @@ export function getFieldStats(
   const all = log.messages[type];
   if (!all) return { error: `No messages of type "${type}". Call list_message_types to see what's available.` };
   const msgs = windowFilter(logRows(log, type), log, startS, endS);
-  if (!msgs.length) return { type, note: 'No messages in the requested time window.' };
+  if (!msgs.length) return { type, note: 'No messages in the requested time window.' }; // i18n-exempt: model-facing
 
   const want = fields && fields.length ? fields : Object.keys(msgs[0]!.fields);
   const stats: Record<string, unknown> = {};
@@ -72,7 +73,7 @@ export function getFieldStats(
       }
     }
     if (!vals.length) {
-      stats[f] = { note: 'no numeric samples (non-numeric or missing field)' };
+      stats[f] = { note: 'no numeric samples (non-numeric or missing field)' }; // i18n-exempt: model-facing
       continue;
     }
     const n = vals.length;
@@ -108,7 +109,7 @@ export function readSamples(
   const all = log.messages[type];
   if (!all) return { error: `No messages of type "${type}". Call list_message_types to see what's available.` };
   const msgs = windowFilter(logRows(log, type), log, startS, endS);
-  if (!msgs.length) return { type, note: 'No messages in the requested time window.' };
+  if (!msgs.length) return { type, note: 'No messages in the requested time window.' }; // i18n-exempt: model-facing
 
   const cap = Math.min(Math.max(Math.floor(maxPoints) || 200, 1), 500);
   const stride = Math.max(1, Math.ceil(msgs.length / cap));
@@ -139,7 +140,7 @@ export function getParameters(log: ParsedLog, names?: string[], search?: string)
     }
   }
   if (map.size === 0) {
-    return { error: 'No PARM records in this log.' };
+    return { error: 'No PARM records in this log.' }; // i18n-exempt: model-facing
   }
   if (names && names.length) {
     const params: Record<string, number | null> = {};
@@ -158,35 +159,35 @@ export function getParameters(log: ParsedLog, names?: string[], search?: string)
     }
     return { matched: count, params };
   }
-  return { totalParams: map.size, note: 'Call again with names[] (exact) or search (substring) to get values.' };
+  return { totalParams: map.size, note: 'Call again with names[] (exact) or search (substring) to get values.' }; // i18n-exempt: model-facing
 }
 
 /** Claude tool definitions exposed to the model. */
 export const CLAUDE_LOG_TOOLS = [
   {
     name: 'list_message_types',
-    description:
+    description: // i18n-exempt: model-facing
       "List every message/topic type in this flight log, with row count and field names. Call this first to discover what's available (ArduPilot dataflash uses names like ATT, RCOU, VIBE, GPS, BAT, MODE; PX4 ULogs use topics like vehicle_attitude, sensor_combined, battery_status, vehicle_gps_position).",
     input_schema: { type: 'object', properties: {} },
   },
   {
     name: 'get_field_stats',
-    description:
+    description: // i18n-exempt: model-facing
       'Summary statistics (count, min, max, mean, stddev, first, last) for numeric fields of a message/topic type, optionally over a time window. Use for aggregate questions: vibration levels, attitude error, output saturation, voltage sag. Times are seconds from log start.',
     input_schema: {
       type: 'object',
       properties: {
-        type: { type: 'string', description: 'Message/topic type, e.g. "VIBE" (dataflash) or "vehicle_imu_status" (ULog)' },
-        fields: { type: 'array', items: { type: 'string' }, description: 'Field names; omit for all numeric fields' },
-        startS: { type: 'number', description: 'Window start, seconds from log start' },
-        endS: { type: 'number', description: 'Window end, seconds from log start' },
+        type: { type: 'string', description: 'Message/topic type, e.g. "VIBE" (dataflash) or "vehicle_imu_status" (ULog)' }, // i18n-exempt: model-facing
+        fields: { type: 'array', items: { type: 'string' }, description: 'Field names; omit for all numeric fields' }, // i18n-exempt: model-facing
+        startS: { type: 'number', description: 'Window start, seconds from log start' }, // i18n-exempt: model-facing
+        endS: { type: 'number', description: 'Window end, seconds from log start' }, // i18n-exempt: model-facing
       },
       required: ['type'],
     },
   },
   {
     name: 'read_samples',
-    description:
+    description: // i18n-exempt: model-facing
       'Decimated time-series samples (default ~200 points, max 500) for a message/topic type and fields over an optional window, so you can see the shape of a trend, spike, or oscillation. Each point has tS (seconds from log start) plus the requested fields. Prefer get_field_stats for aggregates; use this to inspect specific events.',
     input_schema: {
       type: 'object',
@@ -195,14 +196,14 @@ export const CLAUDE_LOG_TOOLS = [
         fields: { type: 'array', items: { type: 'string' } },
         startS: { type: 'number' },
         endS: { type: 'number' },
-        maxPoints: { type: 'number', description: '1-500, default 200' },
+        maxPoints: { type: 'number', description: '1-500, default 200' }, // i18n-exempt: model-facing
       },
       required: ['type'],
     },
   },
   {
     name: 'get_parameters',
-    description:
+    description: // i18n-exempt: model-facing
       'Look up parameter values recorded in this log. Provide names[] for exact params, or search for a substring (e.g. "INS_"). With neither, returns the total count.',
     input_schema: {
       type: 'object',
@@ -277,7 +278,7 @@ export async function runClaudeLogChat(opts: {
   for (let i = 0; i < maxIter; i++) {
     const res = await opts.call({ system: opts.system, messages, tools: CLAUDE_LOG_TOOLS as unknown as unknown[] });
     if (!res.success || !res.content) {
-      return { text: '', error: res.error ?? 'Analysis failed' };
+      return { text: '', error: res.error ?? t('logs:ai.analysisFailed') };
     }
     const blocks = res.content as ClaudeBlock[];
 
@@ -305,5 +306,5 @@ export async function runClaudeLogChat(opts: {
     return { text };
   }
 
-  return { text: '', error: `Stopped after ${maxIter} tool iterations without a final answer.` };
+  return { text: '', error: t('logs:ai.stoppedIterations', { n: maxIter }) };
 }

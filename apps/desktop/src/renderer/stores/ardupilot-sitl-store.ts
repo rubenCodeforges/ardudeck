@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { t as i18nT } from '../../shared/i18n/index.js';
 import { persist } from 'zustand/middleware';
 import type {
   ArduPilotSitlConfig,
@@ -199,34 +200,38 @@ export interface ArduPilotSitlStore {
 // Model Options by Vehicle Type
 // =============================================================================
 
-export const ARDUPILOT_MODELS: Record<ArduPilotVehicleType, Array<{ value: string; label: string }>> = {
+function model(value: string, labelKey: string): { value: string; labelKey: string; label: string } {
+  return { value, labelKey, get label() { return i18nT(labelKey); } };
+}
+
+export const ARDUPILOT_MODELS: Record<ArduPilotVehicleType, Array<{ value: string; label: string; labelKey?: string }>> = {
   copter: [
-    { value: 'quad', label: 'Quad (default)' },
-    { value: '+', label: 'Quad Plus (+)' },
-    { value: 'hexa', label: 'Hexacopter' },
-    { value: 'octa', label: 'Octocopter' },
-    { value: 'tri', label: 'Tricopter' },
-    { value: 'coax', label: 'Coaxial Copter' },
-    { value: 'heli', label: 'Helicopter' },
-    { value: 'singlecopter', label: 'Single Copter' },
+    model('quad', 'stores:ardupilotSitlStore.model.quad'),
+    model('+', 'stores:ardupilotSitlStore.model.quadPlus'),
+    model('hexa', 'stores:ardupilotSitlStore.model.hexa'),
+    model('octa', 'common:octocopter'),
+    model('tri', 'common:tricopter'),
+    model('coax', 'stores:ardupilotSitlStore.model.coax'),
+    model('heli', 'common:helicopter'),
+    model('singlecopter', 'stores:ardupilotSitlStore.model.single'),
   ],
   plane: [
-    { value: 'plane', label: 'Plane (default)' },
-    { value: 'quadplane', label: 'QuadPlane' },
-    { value: 'firefly', label: 'FireFly6' },
-    { value: 'plane-vtail', label: 'V-Tail Plane' },
-    { value: 'plane-dspoilers', label: 'Plane w/ Spoilers' },
+    model('plane', 'stores:ardupilotSitlStore.model.plane'),
+    { value: 'quadplane', label: 'QuadPlane' }, // i18n-exempt
+    { value: 'firefly', label: 'FireFly6' }, // i18n-exempt
+    model('plane-vtail', 'stores:ardupilotSitlStore.model.vtail'),
+    model('plane-dspoilers', 'stores:ardupilotSitlStore.model.spoilers'),
   ],
   rover: [
-    { value: 'rover', label: 'Rover (default)' },
-    { value: 'rover-skid', label: 'Skid Steering' },
-    { value: 'boat', label: 'Boat' },
-    { value: 'sailboat', label: 'Sailboat' },
-    { value: 'balancebot', label: 'Balance Bot' },
+    model('rover', 'stores:ardupilotSitlStore.model.rover'),
+    model('rover-skid', 'stores:ardupilotSitlStore.model.skid'),
+    model('boat', 'common:boat'),
+    model('sailboat', 'stores:ardupilotSitlStore.model.sailboat'),
+    model('balancebot', 'stores:ardupilotSitlStore.model.balancebot'),
   ],
   sub: [
-    { value: 'vectored', label: 'Vectored (default)' },
-    { value: 'vectored_6dof', label: 'Vectored 6DOF' },
+    model('vectored', 'stores:ardupilotSitlStore.model.vectored'),
+    model('vectored_6dof', 'stores:ardupilotSitlStore.model.vectored6dof'),
   ],
 };
 
@@ -429,12 +434,12 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             }
             return true;
           } else {
-            set({ isStarting: false, lastError: result.error ?? 'Failed to start SITL' });
+            set({ isStarting: false, lastError: result.error ?? i18nT('stores:ardupilotSitlStore.startFailed') });
             appendOutput(`Error: ${result.error}\n`, true);
             return false;
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : i18nT('common:unknownError');
           set({ isStarting: false, lastError: message });
           appendOutput(`Error: ${message}\n`, true);
           return false;
@@ -466,7 +471,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
           appendOutput('SITL stopped.\n');
           return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : i18nT('common:unknownError');
           set({ isStopping: false, lastError: message });
           appendOutput(`Error stopping: ${message}\n`, true);
           return false;
@@ -490,12 +495,12 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             await get().checkBinary();
             return true;
           } else {
-            set({ isDownloading: false, lastError: result.error ?? 'Download failed' });
+            set({ isDownloading: false, lastError: result.error ?? i18nT('stores:ardupilotSitlStore.downloadFailed') });
             appendOutput(`Download failed: ${result.error}\n`, true);
             return false;
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : i18nT('common:unknownError');
           set({ isDownloading: false, lastError: message });
           appendOutput(`Download error: ${message}\n`, true);
           return false;
@@ -587,7 +592,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             const after = await window.electronAPI.ardupilotSitlCheckBinary(recovery.vehicleType, recovery.suggestedTrack);
             set({ binaryInfo: after, isDownloading: false });
             if (!after.exists) {
-              set({ lastError: `Failed to download ${recovery.suggestedTrack} binary` });
+              set({ lastError: i18nT('stores:ardupilotSitlStore.downloadBinaryFailed', { track: recovery.suggestedTrack }) });
               return;
             }
           }
@@ -713,7 +718,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             await get().detectFlightGear();
           }
         } catch (err) {
-          set({ flightGearError: err instanceof Error ? err.message : 'Browse failed' });
+          set({ flightGearError: err instanceof Error ? err.message : i18nT('stores:ardupilotSitlStore.browseFailed') });
         }
       },
 
@@ -742,11 +747,11 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             appendOutput('FlightGear launched, it will show the SITL vehicle once scenery finishes loading.\n');
             return true;
           }
-          set({ flightGearStarting: false, flightGearError: result.error ?? 'Failed to launch FlightGear' });
+          set({ flightGearStarting: false, flightGearError: result.error ?? i18nT('stores:ardupilotSitlStore.flightGearFailed') });
           appendOutput(`FlightGear error: ${result.error}\n`, true);
           return false;
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unknown error';
+          const message = err instanceof Error ? err.message : i18nT('common:unknownError');
           set({ flightGearStarting: false, flightGearError: message });
           appendOutput(`FlightGear error: ${message}\n`, true);
           return false;
@@ -903,7 +908,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             set({ isDownloading: false });
             checkBinary();
           } else if (progress.status === 'error') {
-            set({ isDownloading: false, lastError: progress.error ?? 'Download failed' });
+            set({ isDownloading: false, lastError: progress.error ?? i18nT('stores:ardupilotSitlStore.downloadFailed') });
           }
         });
 

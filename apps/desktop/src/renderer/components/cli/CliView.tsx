@@ -6,11 +6,13 @@
  */
 
 import { useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useCliStore } from '../../stores/cli-store';
 import CliTerminal from './CliTerminal';
 
 export default function CliView() {
+  const { t } = useTranslation();
   const { connectionState } = useConnectionStore();
   const {
     isCliMode,
@@ -84,11 +86,11 @@ export default function CliView() {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-content">CLI Terminal</h1>
+            <h1 className="text-lg font-semibold text-content">{t('cli:cliView.title')}</h1>
             <p className="text-xs text-content-secondary">
               {connectionState.fcVariant && connectionState.fcVersion
                 ? `${connectionState.fcVariant} ${connectionState.fcVersion}`
-                : 'Raw command-line interface'}
+                : t('cli:cliView.subtitle')}
             </p>
           </div>
         </div>
@@ -100,12 +102,12 @@ export default function CliView() {
             onClick={handleSaveOutput}
             disabled={!output || isSaving}
             className="px-3 py-1.5 text-xs font-medium text-content bg-surface-raised hover:bg-surface-raised border border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            title="Save terminal output to file"
+            title={t('cli:cliView.saveOutputTitle')}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
-            {isSaving ? 'Saving...' : 'Save TXT'}
+            {isSaving ? t('common:saving') : t('cli:cliView.saveTxt')}
           </button>
 
           {/* Save as JSON - runs dump and parses */}
@@ -113,12 +115,12 @@ export default function CliView() {
             onClick={handleExportJsonClick}
             disabled={!isCliMode || isSavingJson}
             className="px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            title="Run dump command and save parameters as JSON"
+            title={t('cli:cliView.exportJsonTitle')}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
             </svg>
-            {isSavingJson ? 'Dumping...' : 'Export JSON'}
+            {isSavingJson ? t('cli:cliView.dumping') : t('cli:cliView.exportJson')}
           </button>
 
           {/* Clear terminal */}
@@ -126,12 +128,12 @@ export default function CliView() {
             onClick={clearOutput}
             disabled={!output}
             className="px-3 py-1.5 text-xs font-medium text-content bg-surface-raised hover:bg-surface-raised border border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            title="Clear terminal output"
+            title={t('cli:cliView.clearTitle')}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            Clear
+            {t('common:clear')}
           </button>
 
           {/* Load config for autocomplete */}
@@ -139,14 +141,14 @@ export default function CliView() {
             <button
               onClick={() => fetchDump()}
               className="px-3 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors"
-              title="Load config for autocomplete"
+              title={t('cli:cliView.loadConfigTitle')}
             >
-              Load Config
+              {t('cli:cliView.loadConfig')}
             </button>
           )}
           {hasDumpData && (
             <span className="px-2 py-1 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded">
-              Autocomplete Active
+              {t('cli:cliView.autocompleteActive')}
             </span>
           )}
         </div>
@@ -160,9 +162,9 @@ export default function CliView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-amber-300">Not Connected</p>
+              <p className="text-sm font-medium text-amber-300">{t('cli:cliView.notConnected')}</p>
               <p className="text-xs text-amber-400/70 mt-0.5">
-                Connect to a flight controller to use the CLI terminal.
+                {t('cli:cliView.notConnectedHint')}
               </p>
             </div>
           </div>
@@ -179,9 +181,9 @@ export default function CliView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-content mb-2">CLI Terminal</h2>
+            <h2 className="text-xl font-semibold text-content mb-2">{t('cli:cliView.title')}</h2>
             <p className="text-sm text-content-secondary mb-6">
-              Direct command-line access to your flight controller. MSP telemetry will be paused while in CLI mode.
+              {t('cli:cliView.intro')}
             </p>
 
             {/* Warning */}
@@ -191,10 +193,9 @@ export default function CliView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div className="text-xs text-amber-400/90">
-                  <p className="font-medium text-amber-300 mb-1">Reboot on exit</p>
+                  <p className="font-medium text-amber-300 mb-1">{t('cli:cliView.rebootOnExit')}</p>
                   <p>
-                    Leaving the CLI tab sends an exit command which causes the flight controller to reboot (2-4 seconds).
-                    The app will automatically reconnect.
+                    {t('cli:cliView.rebootOnExitHint')}
                   </p>
                 </div>
               </div>
@@ -209,14 +210,14 @@ export default function CliView() {
               {isEntering ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Entering CLI...
+                  {t('cli:cliView.entering')}
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  Enter CLI Mode
+                  {t('cli:cliView.enterCliMode')}
                 </>
               )}
             </button>
@@ -233,12 +234,10 @@ export default function CliView() {
                 </svg>
                 <div className="text-xs text-content-secondary">
                   <p>
-                    <span className="text-content font-medium">CLI Mode</span> - MSP telemetry paused while in CLI.
+                    <Trans i18nKey="cli:cliView.cliModeInfo" components={{ b: <span className="text-content font-medium" /> }} />
                   </p>
                   <p className="mt-1">
-                    Type <code className="px-1 py-0.5 bg-surface-input rounded text-green-400">help</code> for commands,{' '}
-                    <code className="px-1 py-0.5 bg-surface-input rounded text-green-400">dump</code> for full config,{' '}
-                    <code className="px-1 py-0.5 bg-surface-input rounded text-green-400">exit</code> to return to MSP mode.
+                    <Trans i18nKey="cli:cliView.cliModeUsage" components={{ c: <code className="px-1 py-0.5 bg-surface-input rounded text-green-400" /> }} />
                   </p>
                 </div>
               </div>
@@ -277,11 +276,11 @@ export default function CliView() {
 
             {/* Title */}
             <h3 className="text-lg font-semibold text-content mb-2">
-              {rebootState === 'saving' && 'Saving Configuration'}
-              {rebootState === 'rebooting' && 'Rebooting Board'}
-              {rebootState === 'reconnecting' && 'Disconnecting'}
-              {rebootState === 'done' && 'Save Complete'}
-              {rebootState === 'error' && 'Save Failed'}
+              {rebootState === 'saving' && t('cli:cliView.savingConfiguration')}
+              {rebootState === 'rebooting' && t('cli:cliView.rebootingBoard')}
+              {rebootState === 'reconnecting' && t('cli:cliView.disconnecting')}
+              {rebootState === 'done' && t('cli:cliView.saveComplete')}
+              {rebootState === 'error' && t('cli:cliView.saveFailed')}
             </h3>
 
             {/* Message */}
@@ -306,7 +305,7 @@ export default function CliView() {
                 onClick={clearRebootState}
                 className="mt-4 px-6 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm transition-colors"
               >
-                Dismiss
+                {t('common:dismiss')}
               </button>
             )}
           </div>
@@ -322,22 +321,22 @@ export default function CliView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-content text-center mb-2">Export Parameters</h3>
+            <h3 className="text-lg font-semibold text-content text-center mb-2">{t('cli:cliView.exportParameters')}</h3>
             <p className="text-sm text-content-secondary text-center mb-6">
-              This will clear the CLI terminal, run the <code className="px-1.5 py-0.5 bg-surface-raised rounded text-amber-400">dump</code> command, and save all parameters as JSON.
+              <Trans i18nKey="cli:cliView.exportConfirm" components={{ c: <code className="px-1.5 py-0.5 bg-surface-raised rounded text-amber-400" /> }} />
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowExportConfirm(false)}
                 className="flex-1 px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm transition-colors"
               >
-                Cancel
+                {t('common:cancel')}
               </button>
               <button
                 onClick={handleExportJsonConfirm}
                 className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                Export
+                {t('cli:cliView.export')}
               </button>
             </div>
           </div>

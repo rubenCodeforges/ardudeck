@@ -28,6 +28,7 @@ maplibregl.setWorkerUrl(new URL('maplibre-worker.js', document.baseURI).href);
 // main thread, where window.electronAPI exists).
 maplibregl.addProtocol('tile-cache', async (params) => {
   const data = await window.electronAPI.tileCacheGetTile(params.url);
+  // i18n-exempt
   if (!data) throw new Error(`tile-cache: no data for ${params.url}`);
   return { data };
 });

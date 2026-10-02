@@ -15,6 +15,7 @@ import {
   type FirmwareVersion,
   type FirmwareManifest,
 } from '../../shared/firmware-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * Estimate binary firmware size from Intel HEX file size
@@ -249,8 +250,8 @@ function formatBoardName(platform: string): string {
  */
 const STATIC_BOARDS: BoardInfo[] = [
   // Legacy AVR boards
-  { id: 'apm1', name: 'APM 1.x', category: 'Legacy (AVR)' },
-  { id: 'apm2', name: 'APM 2.x / 2.5 / 2.6', category: 'Legacy (AVR)' },
+  { id: 'apm1', name: 'APM 1.x', category: 'Legacy (AVR)' }, // i18n-exempt
+  { id: 'apm2', name: 'APM 2.x / 2.5 / 2.6', category: 'Legacy (AVR)' }, // i18n-exempt
 
   // Cube series (CubeOrange is popular)
   { id: 'CubeOrange', name: 'Cube Orange', category: 'Cube', isPopular: true },
@@ -353,7 +354,7 @@ const STATIC_BOARDS: BoardInfo[] = [
   { id: 'MicoAir743-Lite', name: 'MicoAir 743 Lite', category: 'MicoAir' },
 
   // Flywoo
-  { id: 'FlywooF405HD-AIOv2', name: 'Flywoo F405 HD AIO v2', category: 'Flywoo' },
+  { id: 'FlywooF405HD-AIOv2', name: 'Flywoo F405 HD AIO v2', category: 'Flywoo' }, // i18n-exempt
   { id: 'FlywooF745', name: 'Flywoo F745', category: 'Flywoo' },
   { id: 'FlywooF745Nano', name: 'Flywoo F745 Nano', category: 'Flywoo' },
 
@@ -362,17 +363,17 @@ const STATIC_BOARDS: BoardInfo[] = [
   { id: 'FoxeerH743v1', name: 'Foxeer H743 v1', category: 'Foxeer' },
 
   // Radiolink
-  { id: 'MiniPix', name: 'Radiolink MiniPix', category: 'Radiolink' },
-  { id: 'Pixhawk', name: 'Radiolink Pixhawk', category: 'Radiolink' },
+  { id: 'MiniPix', name: 'Radiolink MiniPix', category: 'Radiolink' }, // i18n-exempt
+  { id: 'Pixhawk', name: 'Radiolink Pixhawk', category: 'Radiolink' }, // i18n-exempt
 
   // Raspberry Pi / Linux
   { id: 'Navio', name: 'Navio+', category: 'Linux' },
   { id: 'Navio2', name: 'Navio2', category: 'Linux' },
-  { id: 'edge', name: 'Emlid Edge', category: 'Linux' },
-  { id: 'bebop', name: 'Parrot Bebop', category: 'Linux' },
-  { id: 'Navigator', name: 'Blue Robotics Navigator', category: 'Linux' },
-  { id: 'Pico', name: 'Raspberry Pi Pico', category: 'Linux' },
-  { id: 'linux', name: 'Generic Linux', category: 'Linux' },
+  { id: 'edge', name: 'Emlid Edge', category: 'Linux' }, // i18n-exempt
+  { id: 'bebop', name: 'Parrot Bebop', category: 'Linux' }, // i18n-exempt
+  { id: 'Navigator', name: 'Blue Robotics Navigator', category: 'Linux' }, // i18n-exempt
+  { id: 'Pico', name: 'Raspberry Pi Pico', category: 'Linux' }, // i18n-exempt
+  { id: 'linux', name: 'Generic Linux', category: 'Linux' }, // i18n-exempt
 
   // Simulator
   { id: 'SITL', name: 'SITL (Software Simulator)', category: 'Simulator' },
@@ -380,7 +381,7 @@ const STATIC_BOARDS: BoardInfo[] = [
   // Others
   { id: 'Here4FC', name: 'Here4 FC', category: 'Other' },
   { id: 'F35Lightning', name: 'F35 Lightning', category: 'Other' },
-  { id: 'revo-mini', name: 'Revolution Mini', category: 'Other' },
+  { id: 'revo-mini', name: 'Revolution Mini', category: 'Other' }, // i18n-exempt
   { id: 'sparky2', name: 'Sparky2', category: 'Other' },
   { id: 'AIRLink', name: 'Sky-Drones AIRLink', category: 'Other' },
   { id: 'SkystarsH7HD', name: 'Skystars H7 HD', category: 'Other' },
@@ -457,14 +458,14 @@ const BETAFLIGHT_BOARDS_FALLBACK: BoardInfo[] = [
   { id: 'BETAFPVF722', name: 'BetaFPV F722', category: 'BetaFPV' },
   { id: 'BETAFLIGHTF4', name: 'Betaflight F4', category: 'BetaFPV' },
   { id: 'RUSHCORE7', name: 'Rush Core 7', category: 'Rush' },
-  { id: 'RUSHBLADEF7', name: 'Rush Blade F7', category: 'Rush' },
-  { id: 'AIKONF4', name: 'Aikon F4', category: 'Aikon' },
-  { id: 'AIKONF7', name: 'Aikon F7', category: 'Aikon' },
+  { id: 'RUSHBLADEF7', name: 'Rush Blade F7', category: 'Rush' }, // i18n-exempt
+  { id: 'AIKONF4', name: 'Aikon F4', category: 'Aikon' }, // i18n-exempt
+  { id: 'AIKONF7', name: 'Aikon F7', category: 'Aikon' }, // i18n-exempt
   { id: 'COLIBRI_RACE', name: 'TBS Colibri Race', category: 'TBS' },
-  { id: 'STM32F405', name: 'Generic STM32F405', category: 'Generic' },
-  { id: 'STM32F411', name: 'Generic STM32F411', category: 'Generic' },
-  { id: 'STM32F7X2', name: 'Generic STM32F7x2', category: 'Generic' },
-  { id: 'STM32H743', name: 'Generic STM32H743', category: 'Generic' },
+  { id: 'STM32F405', name: 'Generic STM32F405', category: 'Generic' }, // i18n-exempt
+  { id: 'STM32F411', name: 'Generic STM32F411', category: 'Generic' }, // i18n-exempt
+  { id: 'STM32F7X2', name: 'Generic STM32F7x2', category: 'Generic' }, // i18n-exempt
+  { id: 'STM32H743', name: 'Generic STM32H743', category: 'Generic' }, // i18n-exempt
 ];
 
 /**
@@ -494,10 +495,10 @@ const INAV_BOARDS_FALLBACK: BoardInfo[] = [
   { id: 'IFLIGHT_BLITZ_F7_AIO', name: 'iFlight Blitz F7 AIO', category: 'iFlight' },
   { id: 'FLYWOOF405', name: 'Flywoo F405', category: 'Flywoo' },
   { id: 'FLYWOOF745', name: 'Flywoo F745', category: 'Flywoo' },
-  { id: 'GENERIC', name: 'Generic Flight Controller', category: 'Generic' },
+  { id: 'GENERIC', name: 'Generic Flight Controller', category: 'Generic' }, // i18n-exempt
   { id: 'FRSKYF3', name: 'FrSky F3', category: 'F3 Boards' },
-  { id: 'AIRHEROF3', name: 'Airhero F3', category: 'F3 Boards' },
-  { id: 'AIRHEROF3_QUAD', name: 'Airhero F3 Quad', category: 'F3 Boards' },
+  { id: 'AIRHEROF3', name: 'Airhero F3', category: 'F3 Boards' }, // i18n-exempt
+  { id: 'AIRHEROF3_QUAD', name: 'Airhero F3 Quad', category: 'F3 Boards' }, // i18n-exempt
   { id: 'SPRACINGF3', name: 'SPRacing F3', category: 'F3 Boards (Legacy)' },
   { id: 'SPRACINGF3EVO', name: 'SPRacing F3 EVO', category: 'F3 Boards (Legacy)' },
   { id: 'SPRACINGF3MINI', name: 'SPRacing F3 Mini', category: 'F3 Boards (Legacy)' },
@@ -515,7 +516,7 @@ const BF_MANUFACTURERS: Record<string, string> = {
   'RUSH': 'Rush', 'FLWO': 'Flywoo', 'BFPV': 'BetaFPV',
   'AIRB': 'Airbot', 'AIKO': 'Aikon', 'FOXE': 'Foxeer',
   'HGLR': 'HGLRC', 'JHEF': 'JHE', 'LMNR': 'Luminier',
-  'FOSS': 'Open Source', 'CUST': 'Custom', 'SKST': 'Skystars',
+  'FOSS': 'Open Source', 'CUST': 'Custom', 'SKST': 'Skystars', // i18n-exempt
   'TURC': 'TuneRC', 'BEFH': 'BetaFPV', 'TMTR': 'T-Motor',
   'AXIS': 'AxisFlying', 'TCMM': 'TCMM',
 };
@@ -554,7 +555,7 @@ function formatBfTargetName(target: string): string {
     'MAMBA': 'Mamba', 'GEPRC': 'GEPRC', 'IFLIGHT': 'iFlight',
     'FLYWOO': 'Flywoo', 'BETAFPV': 'BetaFPV', 'OMNIBUS': 'Omnibus',
     'SPRACING': 'SPRacing', 'FOXEER': 'Foxeer', 'HGLRC': 'HGLRC',
-    'RUSHBLADE': 'Rush Blade', 'RUSHCORE': 'Rush Core', 'AIKON': 'Aikon',
+    'RUSHBLADE': 'Rush Blade', 'RUSHCORE': 'Rush Core', 'AIKON': 'Aikon', // i18n-exempt
     'SKYSTARS': 'Skystars', 'ATOMRC': 'AtomRC',
   };
 
@@ -670,7 +671,7 @@ export async function resolveBetaflightDownloadUrl(downloadUrl: string): Promise
   );
 
   if (!buildResponse.key) {
-    throw new Error(`BF cloud build returned no key for ${target} @ ${release}`);
+    throw new Error(t('main:manifestFetcher.bfBuildNoKey', { target, release }));
   }
 
   // If the server already has this build cached, status will be "success" immediately
@@ -699,7 +700,7 @@ export async function resolveBetaflightDownloadUrl(downloadUrl: string): Promise
     }
 
     if (status.status === 'error' || status.status === 'failed') {
-      throw new Error(`BF cloud build failed for ${target} @ ${release}`);
+      throw new Error(t('main:manifestFetcher.bfBuildFailed', { target, release }));
     }
 
     // Still queued/building...
@@ -708,7 +709,7 @@ export async function resolveBetaflightDownloadUrl(downloadUrl: string): Promise
     }
   }
 
-  throw new Error(`BF cloud build timed out for ${target} @ ${release}`);
+  throw new Error(t('main:manifestFetcher.bfBuildTimeout', { target, release }));
 }
 
 /**
@@ -970,7 +971,7 @@ function getLegacyAvrVersions(vehicleType: FirmwareVehicleType, boardId: string)
   if (!filename) {
     return [{
       major: 'legacy',
-      label: 'Not supported on AVR',
+      label: t('main:manifestFetcher.notSupportedAvr'),
       versions: [],
       isLatest: false,
     }];
@@ -996,7 +997,7 @@ function getLegacyAvrVersions(vehicleType: FirmwareVehicleType, boardId: string)
   if (!version) {
     return [{
       major: 'legacy',
-      label: 'No firmware available',
+      label: t('main:manifestFetcher.noFirmware'),
       versions: [],
       isLatest: false,
     }];
@@ -1017,7 +1018,7 @@ function getLegacyAvrVersions(vehicleType: FirmwareVehicleType, boardId: string)
   const major = version.split('.').slice(0, 2).join('.');
   return [{
     major,
-    label: `${major}.x (Legacy AVR - Bundled)`,
+    label: t('main:manifestFetcher.legacyAvrBundled', { major }),
     versions: fwVersions,
     isLatest: true,
   }];
@@ -1174,7 +1175,7 @@ function getFallbackVersionGroups(vehicleType: FirmwareVehicleType, boardId: str
   return [
     {
       major: '4.5',
-      label: '4.5.x (Latest Stable)',
+      label: t('main:manifestFetcher.latestStable', { major: '4.5' }),
       isLatest: true,
       versions: [
         createVersion('4.5.7', 'stable'),
@@ -1328,7 +1329,7 @@ function getBetaflightCuratedVersions(boardId: string): FirmwareVersion[] {
         version: '3.5.7',
         releaseType: 'stable',
         releaseDate: '2019-03-15',
-        releaseNotes: 'Last version supporting F3 boards (256KB flash max)',
+        releaseNotes: 'Last version supporting F3 boards (256KB flash max)', // i18n-exempt
         downloadUrl: `${baseUrl}/3.5.7/betaflight_3.5.7_${boardIdUpper}.hex`,
         boardId: boardIdUpper,
         vehicleType: 'Copter',
@@ -1479,7 +1480,7 @@ function getInavCuratedVersions(vehicleType: FirmwareVehicleType, boardId: strin
         version: '2.0.0',
         releaseType: 'stable',
         releaseDate: '2018-08-20',
-        releaseNotes: 'Last iNav version supporting SPRacing F3 boards',
+        releaseNotes: 'Last iNav version supporting SPRacing F3 boards', // i18n-exempt
         downloadUrl: `${baseUrl}/2.0.0/inav_2.0.0_${f3Target}.hex`,
         boardId: f3Target,
         vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',
@@ -1509,7 +1510,7 @@ function getInavCuratedVersions(vehicleType: FirmwareVehicleType, boardId: strin
         version: '2.6.1',
         releaseType: 'stable',
         releaseDate: '2020-12-27',
-        releaseNotes: 'Last version supporting FrSky/Airhero F3 boards',
+        releaseNotes: 'Last version supporting FrSky/Airhero F3 boards', // i18n-exempt
         downloadUrl: `${baseUrl}/2.6.1/inav_2.6.1_${f3Target}.hex`,
         boardId: f3Target,
         vehicleType: vehicleType === 'plane' ? 'Plane' : 'Copter',

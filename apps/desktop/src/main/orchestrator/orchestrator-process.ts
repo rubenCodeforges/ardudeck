@@ -19,6 +19,7 @@ import { existsSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { IPC_CHANNELS, type OrchestratorSource, type OrchestratorStatus } from '../../shared/ipc-channels.js';
+import { t } from '../../shared/i18n/index.js';
 
 /** Where the engine binds its north WebSocket and where the desktop dials it. */
 const WS_HOST = '127.0.0.1';
@@ -155,7 +156,7 @@ class OrchestratorProcessManager {
 
     const binary = resolveBinary();
     if (!binary) {
-      this.lastError = 'Orchestrator engine not found. Set ARDUDECK_ORCHESTRATOR_BIN or bundle it.';
+      this.lastError = t('main:orchestrator.engineNotFound');
       this.emitState();
       return { success: false, error: this.lastError, wsUrl: ORCHESTRATOR_WS_URL };
     }
@@ -198,7 +199,7 @@ class OrchestratorProcessManager {
       });
     } catch (e) {
       this._isRunning = false;
-      this.lastError = e instanceof Error ? e.message : 'Failed to spawn engine';
+      this.lastError = e instanceof Error ? e.message : t('main:orchestrator.spawnFailed');
       this.emitState();
       return { success: false, error: this.lastError, wsUrl: ORCHESTRATOR_WS_URL };
     }
@@ -206,7 +207,7 @@ class OrchestratorProcessManager {
     const ready = await waitForPort(WS_PORT, 15_000);
     if (!ready) {
       this.stop();
-      this.lastError = 'Engine did not open its connection in time';
+      this.lastError = t('main:orchestrator.connectTimeout');
       this.emitState();
       return { success: false, error: this.lastError, wsUrl: ORCHESTRATOR_WS_URL };
     }
@@ -230,7 +231,7 @@ class OrchestratorProcessManager {
   private async reapStaleEngine(): Promise<void> {
     if (this.child) return;
     if (!(await isPortOpen(WS_PORT))) return;
-    this.log('info', 'Clearing a stale engine still holding the port');
+    this.log('info', 'Clearing a stale engine still holding the port'); // i18n-exempt
     await killByTcpPort(WS_PORT);
     // Give the OS a moment to release the sockets before we rebind.
     for (let i = 0; i < 10 && (await isPortOpen(WS_PORT, 150)); i++) {
@@ -248,7 +249,7 @@ class OrchestratorProcessManager {
     }
     this.crashCount++;
     if (this.crashCount > OrchestratorProcessManager.MAX_RAPID_CRASHES) {
-      this.lastError = 'Engine keeps crashing; auto-restart stopped. Press Start to retry.';
+      this.lastError = t('main:orchestrator.keepsCrashing');
       this.log('error', this.lastError);
       this.emitState();
       return;

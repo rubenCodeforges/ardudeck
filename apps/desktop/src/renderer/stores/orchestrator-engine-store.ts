@@ -8,6 +8,7 @@
  */
 
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import type { OrchestratorSource, OrchestratorStatus } from '../../shared/ipc-channels';
 
 interface OrchestratorEngineStore {
@@ -41,7 +42,7 @@ export const useOrchestratorEngineStore = create<OrchestratorEngineStore>((set, 
     try {
       apply(set, await window.electronAPI.orchestratorStart());
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'Failed to start multi-vehicle' });
+      set({ error: e instanceof Error ? e.message : t('stores:orchestratorEngineStore.startFailed') });
     } finally {
       set({ busy: false });
     }
@@ -62,7 +63,7 @@ export const useOrchestratorEngineStore = create<OrchestratorEngineStore>((set, 
     try {
       apply(set, await window.electronAPI.orchestratorSetSources(next));
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'Failed to add source' });
+      set({ error: e instanceof Error ? e.message : t('stores:orchestratorEngineStore.addSourceFailed') });
     } finally {
       set({ busy: false });
     }

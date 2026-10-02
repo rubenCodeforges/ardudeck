@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js';
+
 /**
  * Takeoff / Attitude Safety Monitor - shared types.
  *
@@ -176,17 +178,17 @@ export interface MonitorState {
 }
 
 export const SIGNAL_LABELS: Record<SignalId, string> = {
-  restingAttitude: 'Resting attitude offset',
-  bodyRates: 'Body rates on ground',
-  integratorLoad: 'Integrator load',
-  throttleClimbCoherence: 'Throttle vs climb',
-  controllerFighting: 'Controller fighting itself',
-  motorSpread: 'On-ground motor spread',
+  restingAttitude: 'Resting attitude offset', // i18n-exempt
+  bodyRates: 'Body rates on ground', // i18n-exempt
+  integratorLoad: 'Integrator load', // i18n-exempt
+  throttleClimbCoherence: 'Throttle vs climb', // i18n-exempt
+  controllerFighting: 'Controller fighting itself', // i18n-exempt
+  motorSpread: 'On-ground motor spread', // i18n-exempt
 };
 
 /** Default thresholds for a generic multirotor. */
 export const DEFAULT_PROFILE: MonitorProfile = {
-  name: 'Default multirotor',
+  name: 'Default multirotor', // i18n-exempt
   restingNominalDeg: 2,
   restingAttitudeDeg: { caution: 5, danger: 10 },
   bodyRateDegS: { caution: 15, danger: 40 },
@@ -205,7 +207,7 @@ export const ABORT_ACTION = 'REDUCE THROTTLE - abort, do not add power.';
 export function emptyMonitorState(): MonitorState {
   const signals: SignalResult[] = (Object.keys(SIGNAL_LABELS) as SignalId[]).map((id) => ({
     id,
-    label: SIGNAL_LABELS[id],
+    label: t(`shared:safetyMonitor.signal.${id}`),
     unit: '',
     severity: 'nominal',
     available: true,

@@ -9,12 +9,14 @@
  * that it falls back to a nominal depression so the footprint still appears.
  */
 
+import { useTranslation } from 'react-i18next';
 import { Polygon, CircleMarker, Tooltip } from 'react-leaflet';
 import { useFleetVehicles } from '../../../hooks/useFleet';
 import { useCameraStore } from '../../../stores/camera-store';
 import { projectFootprint, projectFrameCenter, type CameraPose } from '../../camera/geolocation';
 
 export function CameraFootprintOverlay() {
+  const { t } = useTranslation();
   const fleet = useFleetVehicles();
   const sources = useCameraStore((s) => s.sources);
   const selectedByVehicle = useCameraStore((s) => s.selectedByVehicle);
@@ -57,7 +59,7 @@ export function CameraFootprintOverlay() {
                 radius={4}
                 pathOptions={{ color, weight: 2, fillColor: color, fillOpacity: 0.9 }}
               >
-                <Tooltip direction="top" offset={[0, -4]}>{v.label} camera center</Tooltip>
+                <Tooltip direction="top" offset={[0, -4]}>{t('map:cameraFootprint.center', { label: v.label })}</Tooltip>
               </CircleMarker>
             )}
           </span>

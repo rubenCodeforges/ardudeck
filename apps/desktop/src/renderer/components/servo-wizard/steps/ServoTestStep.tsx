@@ -5,12 +5,14 @@
  * Move transmitter sticks and verify servos respond correctly.
  */
 
+import { Trans, useTranslation } from 'react-i18next';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { CONTROL_SURFACE_INFO } from '../presets/servo-presets';
 import ServoBar from '../shared/ServoBar';
 import { Check, Lightbulb } from 'lucide-react';
 
 export default function ServoTestStep() {
+  const { t } = useTranslation();
   const {
     assignments,
     servoValues,
@@ -36,11 +38,14 @@ export default function ServoTestStep() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-xl font-bold text-content">Test Your Servos</h2>
+        <h2 className="text-xl font-bold text-content">{t('servo-wizard:servoTestStep.title')}</h2>
         <p className="text-sm text-content-secondary mt-2">
-          Move your transmitter sticks and verify each servo responds correctly.
+          {t('servo-wizard:servoTestStep.subtitle')}
           <br />
-          If a servo moves the <strong className="text-content">wrong way</strong>, click <strong className="text-blue-400">Reverse</strong>.
+          <Trans
+            i18nKey="servo-wizard:servoTestStep.reverseHint"
+            components={{ b: <strong className="text-content" />, rev: <strong className="text-blue-400" /> }}
+          />
         </p>
       </div>
 
@@ -55,9 +60,9 @@ export default function ServoTestStep() {
           />
           <span className="text-sm text-content-secondary">
             {isPollingServos ? (
-              <span className="text-green-400">● Live servo polling enabled</span>
+              <span className="text-green-400">{t('servo-wizard:servoTestStep.pollingEnabled')}</span>
             ) : (
-              'Enable live servo polling'
+              t('servo-wizard:servoTestStep.enablePolling')
             )}
           </span>
         </label>
@@ -82,18 +87,18 @@ export default function ServoTestStep() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-content">{surfaceInfo.name}</span>
+                    <span className="text-sm font-medium text-content">{t(surfaceInfo.nameKey)}</span>
                     <span className="text-xs px-2 py-0.5 bg-surface-raised rounded text-content-secondary">
-                      Servo {assignment.servoIndex}
+                      {t('servo-wizard:servoTestStep.servoIndex', { index: assignment.servoIndex })}
                     </span>
                     {assignment.reversed && (
                       <span className="text-xs px-2 py-0.5 bg-yellow-500/20 rounded text-yellow-400">
-                        Reversed
+                        {t('common:reversed')}
                       </span>
                     )}
                   </div>
                   <div className="text-xs text-content-secondary mt-1">
-                    {getServoTestInstruction(assignment.surface)}
+                    {t(getServoTestInstructionKey(assignment.surface))}
                   </div>
                 </div>
                 <button
@@ -104,7 +109,7 @@ export default function ServoTestStep() {
                       : 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
                   }`}
                 >
-                  {assignment.reversed ? 'Undo Reverse' : 'Reverse'}
+                  {assignment.reversed ? t('servo-wizard:servoTestStep.undoReverse') : t('common:reverse')}
                 </button>
               </div>
 
@@ -123,12 +128,12 @@ export default function ServoTestStep() {
                 {moving ? (
                   <>
                     <Check className="w-4 h-4 text-green-400" />
-                    <span className="text-xs text-green-400">Servo is responding</span>
+                    <span className="text-xs text-green-400">{t('servo-wizard:servoTestStep.responding')}</span>
                   </>
                 ) : (
                   <>
                     <span className="text-content-secondary">○</span>
-                    <span className="text-xs text-content-secondary">Move stick to test</span>
+                    <span className="text-xs text-content-secondary">{t('servo-wizard:servoTestStep.moveStick')}</span>
                   </>
                 )}
               </div>
@@ -141,12 +146,12 @@ export default function ServoTestStep() {
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
         <Lightbulb className="w-5 h-5 text-amber-400 shrink-0" />
         <div>
-          <p className="text-sm text-amber-400 font-medium">How to check direction:</p>
+          <p className="text-sm text-amber-400 font-medium">{t('servo-wizard:servoTestStep.howToCheck')}</p>
           <ul className="text-xs text-content-secondary mt-1 space-y-1 list-disc list-inside">
-            <li><strong>Ailerons:</strong> Roll stick right → right aileron should go UP, left should go DOWN</li>
-            <li><strong>Elevator:</strong> Pull stick back → trailing edge should go UP</li>
-            <li><strong>Rudder:</strong> Yaw stick right → rudder should move RIGHT</li>
-            <li><strong>Elevons:</strong> Test both roll and pitch movements</li>
+            <li><Trans i18nKey="servo-wizard:servoTestStep.checkAilerons" components={{ b: <strong /> }} /></li>
+            <li><Trans i18nKey="servo-wizard:servoTestStep.checkElevator" components={{ b: <strong /> }} /></li>
+            <li><Trans i18nKey="servo-wizard:servoTestStep.checkRudder" components={{ b: <strong /> }} /></li>
+            <li><Trans i18nKey="servo-wizard:servoTestStep.checkElevons" components={{ b: <strong /> }} /></li>
           </ul>
         </div>
       </div>
@@ -157,45 +162,45 @@ export default function ServoTestStep() {
           onClick={prevStep}
           className="px-6 py-2.5 rounded-lg font-medium bg-surface-raised text-content hover:bg-surface-raised"
         >
-          ← Back
+          {t('servo-wizard:wizardNav.back')}
         </button>
         <button
           onClick={nextStep}
           className="px-6 py-2.5 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-400"
         >
-          Continue: Calibrate →
+          {t('servo-wizard:servoTestStep.continue')}
         </button>
       </div>
     </div>
   );
 }
 
-// Get test instruction for a control surface
-function getServoTestInstruction(surface: string): string {
+// Get test instruction i18n key for a control surface
+function getServoTestInstructionKey(surface: string): string {
   switch (surface) {
     case 'aileron_left':
-      return 'Move roll stick RIGHT → this servo should move DOWN';
+      return 'servo-wizard:servoTestStep.instruction.aileronLeft';
     case 'aileron_right':
-      return 'Move roll stick RIGHT → this servo should move UP';
+      return 'servo-wizard:servoTestStep.instruction.aileronRight';
     case 'elevator':
-      return 'Pull pitch stick BACK → trailing edge should go UP';
+      return 'servo-wizard:servoTestStep.instruction.elevator';
     case 'rudder':
-      return 'Move yaw stick RIGHT → rudder should deflect RIGHT';
+      return 'servo-wizard:servoTestStep.instruction.rudder';
     case 'elevon_left':
-      return 'Roll RIGHT → DOWN. Pitch BACK → UP (trailing edge)';
+      return 'servo-wizard:servoTestStep.instruction.elevonLeft';
     case 'elevon_right':
-      return 'Roll RIGHT → UP. Pitch BACK → UP (trailing edge)';
+      return 'servo-wizard:servoTestStep.instruction.elevonRight';
     case 'vtail_left':
-      return 'Pitch BACK and Yaw RIGHT → test both movements';
+      return 'servo-wizard:servoTestStep.instruction.vtailLeft';
     case 'vtail_right':
-      return 'Pitch BACK and Yaw RIGHT → test both movements';
+      return 'servo-wizard:servoTestStep.instruction.vtailRight';
     case 'yaw_servo':
-      return 'Move yaw stick → motor should tilt';
+      return 'servo-wizard:servoTestStep.instruction.yawServo';
     case 'gimbal_pan':
-      return 'Move yaw stick → camera should rotate horizontally';
+      return 'servo-wizard:servoTestStep.instruction.gimbalPan';
     case 'gimbal_tilt':
-      return 'Move pitch stick → camera should tilt up/down';
+      return 'servo-wizard:servoTestStep.instruction.gimbalTilt';
     default:
-      return 'Move the corresponding stick';
+      return 'servo-wizard:servoTestStep.instruction.default';
   }
 }

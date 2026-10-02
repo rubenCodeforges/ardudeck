@@ -23,6 +23,7 @@ import { useEditModeStore } from '../../stores/edit-mode-store';
 import { MAP_LAYERS, type LayerKey, type MapLayer } from '../../../shared/map-layers';
 import { SmoothWheelZoom } from '../map/SmoothWheelZoom';
 import { searchLocations, type GeocodeResult } from '../../utils/weather-api';
+import { useTranslation } from 'react-i18next';
 
 // Fallback view when there is no resolved position yet (matches the app's own
 // no-GPS fallback). London, wide zoom, so the operator can still pan and pick.
@@ -102,6 +103,7 @@ interface Selected {
 }
 
 export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.Element {
+  const { t } = useTranslation();
   const location = useWeatherStore((s) => s.location);
   const override = useWeatherStore((s) => s.override);
   const setOverride = useWeatherStore((s) => s.setLocationOverride);
@@ -210,13 +212,13 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
             <MapPin className="w-4 h-4 text-sky-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-content">Briefing location</h3>
-            <p className="text-[11px] text-content-tertiary">Click the map to drop a point, drag the pin to refine, or search a place.</p>
+            <h3 className="text-sm font-semibold text-content">{t('weather:locationDialog.title')}</h3>
+            <p className="text-[11px] text-content-tertiary">{t('weather:locationDialog.subtitle')}</p>
           </div>
           <button
             onClick={onClose}
             className="w-7 h-7 rounded-md flex items-center justify-center text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
-            data-tip="Close"
+            data-tip={t('common:close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -233,7 +235,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a place (city, airfield, landmark)..."
+              placeholder={t('weather:locationDialog.searchPlaceholder')}
               autoFocus
               className="w-full pl-9 pr-9 py-2 bg-surface-input border border-border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
             />
@@ -257,7 +259,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
             )}
             {query.trim().length >= 2 && !searching && results.length === 0 && (
               <div className="absolute z-[1200] left-0 right-0 mt-1.5 rounded-lg border border-default bg-surface-solid shadow-xl px-3 py-2 text-[11px] text-content-tertiary">
-                No matches.
+                {t('weather:locationDialog.noMatches')}
               </div>
             )}
           </div>
@@ -298,7 +300,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
             </MapContainer>
             {!selected && (
               <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-[500] px-2.5 py-1 rounded-md bg-surface-solid border border-subtle text-[11px] text-content-secondary shadow">
-                Click the map to set the briefing point
+                {t('weather:locationDialog.clickToSet')}
               </div>
             )}
           </div>
@@ -315,15 +317,15 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
                   <span className="tabular-nums text-content-secondary">{selected.lat.toFixed(5)}, {selected.lon.toFixed(5)}</span>
                 </span>
               ) : (
-                <span className="text-content-tertiary">No point selected</span>
+                <span className="text-content-tertiary">{t('weather:locationDialog.noPoint')}</span>
               )}
             </div>
             <button
               onClick={() => setShowManual((v) => !v)}
               className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content-secondary transition-colors shrink-0"
-              data-tip="Type exact coordinates"
+              data-tip={t('weather:locationDialog.typeCoordsTip')}
             >
-              Enter coordinates
+              {t('weather:locationDialog.enterCoords')}
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showManual ? 'rotate-180' : ''}`} />
             </button>
           </div>
@@ -334,21 +336,21 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
                 type="number"
                 value={manualLat}
                 onChange={(e) => setManualLat(e.target.value)}
-                placeholder="Lat"
+                placeholder={t('common:lat')}
                 className="w-0 flex-1 min-w-0 px-2 py-1.5 bg-surface-input border border-border rounded-md text-xs text-content tabular-nums focus:outline-none focus:border-blue-500"
               />
               <input
                 type="number"
                 value={manualLon}
                 onChange={(e) => setManualLon(e.target.value)}
-                placeholder="Lon"
+                placeholder={t('common:lon')}
                 className="w-0 flex-1 min-w-0 px-2 py-1.5 bg-surface-input border border-border rounded-md text-xs text-content tabular-nums focus:outline-none focus:border-blue-500"
               />
               <button
                 onClick={applyManual}
                 className="px-2.5 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors shrink-0"
               >
-                Go
+                {t('common:go')}
               </button>
             </div>
           )}
@@ -360,17 +362,17 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
             onClick={resetAuto}
             disabled={!override}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
-            data-tip="Follow the vehicle / home / map position automatically"
+            data-tip={t('weather:locationDialog.resetTip')}
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reset to automatic
+            {t('weather:locationDialog.resetAuto')}
           </button>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               className="px-3 py-1.5 text-xs rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
             >
-              Cancel
+              {t('common:cancel')}
             </button>
             <button
               onClick={confirm}
@@ -378,7 +380,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:hover:bg-blue-600"
             >
               <Check className="w-3.5 h-3.5" />
-              Use this location
+              {t('weather:locationDialog.useLocation')}
             </button>
           </div>
         </div>

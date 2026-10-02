@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * GIS area import - parse survey boundaries out of the files surveyors already
  * have (KML and GeoJSON) so they don't hand-trace polygons on the map.
@@ -272,14 +274,14 @@ function parseKml(content: string): ImportedArea[] {
   } catch (e) {
     // Some DOMParser implementations (e.g. @xmldom/xmldom with errorHandler)
     // throw on fatal parse errors instead of embedding a <parsererror> element.
-    throw new Error(`Invalid KML: could not parse XML (${(e as Error).message ?? e})`);
+    throw new Error(t('shared:gisAreaImport.invalidKmlDetail', { detail: (e as Error).message ?? e }));
   }
 
   // In the browser, a parse failure produces a document whose root is
   // <parsererror> rather than the expected element. Detect and reject it.
   const parseErrors = doc.getElementsByTagName('parsererror');
   if (parseErrors.length > 0) {
-    throw new Error('Invalid KML: could not parse XML');
+    throw new Error(t('shared:gisAreaImport.invalidKml'));
   }
 
   // Collect all <Polygon> elements anywhere in the document, including inside

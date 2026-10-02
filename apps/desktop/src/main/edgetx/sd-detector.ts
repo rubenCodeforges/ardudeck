@@ -56,9 +56,9 @@ const BOARDS: Record<string, { variant: string; label: string }> = {
   x10: { variant: 'c480x272', label: 'FrSky Horus X10' },
   x10express: { variant: 'c480x272', label: 'FrSky Horus X10 Express' },
   x12s: { variant: 'c480x272', label: 'FrSky Horus X12S' },
-  nv14: { variant: 'c320x480', label: 'Flysky NV14' },
-  el18: { variant: 'c320x480', label: 'Flysky EL18' },
-  pl18: { variant: 'c320x480', label: 'Flysky PL18' },
+  nv14: { variant: 'c320x480', label: 'Flysky NV14' }, // i18n-exempt
+  el18: { variant: 'c320x480', label: 'Flysky EL18' }, // i18n-exempt
+  pl18: { variant: 'c320x480', label: 'Flysky PL18' }, // i18n-exempt
 };
 
 /** Pull `board:` and `semver:` out of RADIO/radio.yml (flat top-level keys). */

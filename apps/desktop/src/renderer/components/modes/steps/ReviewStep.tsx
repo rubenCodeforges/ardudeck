@@ -6,12 +6,14 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModesWizardStore } from '../../../stores/modes-wizard-store';
 import { MODE_INFO, AUX_CHANNELS, PRESET_ICONS } from '../presets/mode-presets';
 import ModeCard from '../shared/ModeCard';
 import { ClipboardList, AlertTriangle, XCircle, CheckCircle2, Lightbulb, HelpCircle } from 'lucide-react';
 
 export const ReviewStep: React.FC = () => {
+  const { t } = useTranslation();
   const {
     selectedPreset,
     pendingModes,
@@ -55,11 +57,11 @@ export const ReviewStep: React.FC = () => {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4">
           <ClipboardList className="w-8 h-8 text-green-400" />
         </div>
-        <h2 className="text-xl font-semibold text-content">Review Your Configuration</h2>
+        <h2 className="text-xl font-semibold text-content">{t('modes:reviewStep.title')}</h2>
         <p className="text-sm text-content-secondary mt-2 max-w-md mx-auto">
           {selectedPreset
-            ? `Using ${selectedPreset.name} preset with ${pendingModes.length} mode${pendingModes.length !== 1 ? 's' : ''}.`
-            : `You have configured ${pendingModes.length} mode${pendingModes.length !== 1 ? 's' : ''}.`}
+            ? t('modes:reviewStep.usingPreset', { name: t(selectedPreset.nameKey), count: pendingModes.length })
+            : t('modes:reviewStep.configured', { count: pendingModes.length })}
         </p>
       </div>
 
@@ -73,8 +75,8 @@ export const ReviewStep: React.FC = () => {
                 <PresetIcon className="w-5 h-5 text-content" />
               </div>
               <div>
-                <h3 className="font-medium text-content">{selectedPreset.name} Preset</h3>
-                <p className="text-xs text-content-secondary mt-0.5">{selectedPreset.tip}</p>
+                <h3 className="font-medium text-content">{t('modes:reviewStep.presetTitle', { name: t(selectedPreset.nameKey) })}</h3>
+                <p className="text-xs text-content-secondary mt-0.5">{t(selectedPreset.tipKey)}</p>
               </div>
             </div>
           </div>
@@ -83,7 +85,7 @@ export const ReviewStep: React.FC = () => {
 
       {/* Mode cards */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-content">Configured Modes:</h3>
+        <h3 className="text-sm font-medium text-content">{t('modes:reviewStep.configuredModes')}</h3>
         {pendingModes.map((mode, index) => (
           <ModeCard
             key={index}
@@ -101,10 +103,10 @@ export const ReviewStep: React.FC = () => {
         <table className="w-full text-sm">
           <thead className="bg-surface-raised">
             <tr>
-              <th className="px-4 py-2 text-left font-medium text-content">Mode</th>
-              <th className="px-4 py-2 text-left font-medium text-content">Channel</th>
-              <th className="px-4 py-2 text-left font-medium text-content">Range</th>
-              <th className="px-4 py-2 text-left font-medium text-content">Status</th>
+              <th className="px-4 py-2 text-left font-medium text-content">{t('common:mode')}</th>
+              <th className="px-4 py-2 text-left font-medium text-content">{t('common:channel')}</th>
+              <th className="px-4 py-2 text-left font-medium text-content">{t('common:range')}</th>
+              <th className="px-4 py-2 text-left font-medium text-content">{t('common:status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-subtle">
@@ -120,7 +122,7 @@ export const ReviewStep: React.FC = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <IconComponent className={`w-4 h-4 ${(info?.color || 'bg-zinc-500').replace('bg-', 'text-')}`} />
-                      <span className="text-content">{info?.name || `Mode ${mode.boxId}`}</span>
+                      <span className="text-content">{info?.name || t('modes:modeFallback', { id: mode.boxId })}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-content-secondary">{aux?.name || `AUX ${mode.auxChannel + 1}`}</td>
@@ -131,10 +133,10 @@ export const ReviewStep: React.FC = () => {
                     {isActive ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                        Active
+                        {t('common:active')}
                       </span>
                     ) : (
-                      <span className="text-content-secondary text-xs">Ready</span>
+                      <span className="text-content-secondary text-xs">{t('modes:reviewStep.ready')}</span>
                     )}
                   </td>
                 </tr>
@@ -150,9 +152,9 @@ export const ReviewStep: React.FC = () => {
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-medium text-red-300">ARM mode is not configured!</h4>
+              <h4 className="font-medium text-red-300">{t('modes:reviewStep.armMissing')}</h4>
               <p className="text-xs text-red-200/70 mt-1">
-                Without ARM mode, you won&apos;t be able to arm your aircraft. Go back and add ARM to a switch.
+                {t('modes:reviewStep.armMissingHint')}
               </p>
             </div>
           </div>
@@ -165,7 +167,7 @@ export const ReviewStep: React.FC = () => {
           <div className="flex items-start gap-3">
             <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-medium text-red-300">Failed to save</h4>
+              <h4 className="font-medium text-red-300">{t('common:failedToSave')}</h4>
               <p className="text-xs text-red-200/70 mt-1">{saveError}</p>
             </div>
           </div>
@@ -178,9 +180,9 @@ export const ReviewStep: React.FC = () => {
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-6 h-6 text-green-400 shrink-0" />
             <div>
-              <h4 className="font-medium text-green-300">Configuration saved!</h4>
+              <h4 className="font-medium text-green-300">{t('modes:reviewStep.saved')}</h4>
               <p className="text-xs text-green-200/70">
-                Your mode configuration has been written to the flight controller.
+                {t('modes:reviewStep.savedHint')}
               </p>
             </div>
           </div>
@@ -192,11 +194,11 @@ export const ReviewStep: React.FC = () => {
         <div className="flex items-start gap-3">
           <Lightbulb className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-medium text-amber-200 text-sm">Before you fly:</h4>
+            <h4 className="font-medium text-amber-200 text-sm">{t('modes:reviewStep.beforeFly')}</h4>
             <ul className="text-xs text-amber-100/70 mt-2 space-y-1 list-disc list-inside">
-              <li>Always test ARM in a safe area with props off</li>
-              <li>Verify your failsafe is set correctly</li>
-              <li>Double-check your AUX switch positions</li>
+              <li>{t('modes:reviewStep.tipArm')}</li>
+              <li>{t('modes:reviewStep.tipFailsafe')}</li>
+              <li>{t('modes:reviewStep.tipAux')}</li>
             </ul>
           </div>
         </div>
@@ -209,7 +211,7 @@ export const ReviewStep: React.FC = () => {
           disabled={isSaving}
           className="px-4 py-2.5 bg-surface-raised hover:bg-surface-raised disabled:opacity-50 text-content rounded-lg transition-colors"
         >
-          Back
+          {t('common:back')}
         </button>
         <button
           onClick={handleSave}
@@ -219,7 +221,7 @@ export const ReviewStep: React.FC = () => {
           {isSaving ? (
             <>
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Saving...
+              {t('common:saving')}
             </>
           ) : (
             <>
@@ -231,7 +233,7 @@ export const ReviewStep: React.FC = () => {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              Save to Flight Controller
+              {t('modes:reviewStep.saveToFc')}
             </>
           )}
         </button>

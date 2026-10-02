@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useFirmwareStore } from '../../stores/firmware-store';
 
 type WizardStep = 'intro' | 'disconnect' | 'waiting' | 'ready' | 'flashing' | 'success' | 'error';
@@ -25,6 +26,7 @@ export function BootPadWizard({
   firmwareVersion,
   firmwareSource,
 }: BootPadWizardProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<WizardStep>('intro');
   const [jumperConfirmed, setJumperConfirmed] = useState(false);
   const [jumperRemoved, setJumperRemoved] = useState(false);
@@ -122,7 +124,7 @@ export function BootPadWizard({
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-content">Boot Pad Flash Wizard</h2>
+                <h2 className="text-lg font-semibold text-content">{t('firmware:bootPadWizard.title')}</h2>
                 <p className="text-sm text-content-secondary">{boardName}</p>
               </div>
             </div>
@@ -173,22 +175,21 @@ export function BootPadWizard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <div>
-                    <h3 className="text-amber-400 font-medium">Boot Pads Required</h3>
+                    <h3 className="text-amber-400 font-medium">{t('firmware:bootPadWizard.bootPadsRequired')}</h3>
                     <p className="text-content text-sm mt-1">
-                      Your board (<span className="text-content font-medium">{boardName}</span>) uses a USB-serial adapter
-                      and cannot enter bootloader mode via software. You'll need to physically short the boot pads.
+                      <Trans i18nKey="firmware:bootPadWizard.bootPadsRequiredDesc" values={{ boardName }} components={{ b: <span className="text-content font-medium" /> }} />
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="text-content-secondary text-sm">
-                <p className="mb-2">This wizard will guide you through:</p>
+                <p className="mb-2">{t('firmware:bootPadWizard.guideIntro')}</p>
                 <ol className="list-decimal list-inside space-y-1 text-content">
-                  <li>Disconnecting your board</li>
-                  <li>Shorting the boot pads</li>
-                  <li>Reconnecting in bootloader mode</li>
-                  <li>Flashing <span className="text-blue-400">{firmwareSource} {firmwareVersion}</span></li>
+                  <li>{t('firmware:bootPadWizard.stepDisconnect')}</li>
+                  <li>{t('firmware:bootPadWizard.stepShort')}</li>
+                  <li>{t('firmware:bootPadWizard.stepReconnect')}</li>
+                  <li><Trans i18nKey="firmware:bootPadWizard.stepFlash" values={{ firmware: `${firmwareSource} ${firmwareVersion}` }} components={{ b: <span className="text-blue-400" /> }} /></li>
                 </ol>
               </div>
 
@@ -196,7 +197,7 @@ export function BootPadWizard({
                 onClick={() => setStep('disconnect')}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
-                Start Wizard
+                {t('firmware:bootPadWizard.startWizard')}
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -213,23 +214,23 @@ export function BootPadWizard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-content mb-2">Disconnect Your Board</h3>
-                <p className="text-content-secondary">Unplug the USB cable from your flight controller</p>
+                <h3 className="text-xl font-semibold text-content mb-2">{t('firmware:bootPadWizard.disconnectTitle')}</h3>
+                <p className="text-content-secondary">{t('firmware:bootPadWizard.disconnectDesc')}</p>
               </div>
 
               <div className="p-4 bg-surface-raised rounded-lg space-y-3">
-                <h4 className="text-content font-medium">Then short the boot pads:</h4>
+                <h4 className="text-content font-medium">{t('firmware:bootPadWizard.shortTitle')}</h4>
                 <div className="flex gap-3 items-start">
                   <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-medium flex-shrink-0">1</div>
-                  <p className="text-content-secondary text-sm">Find the <span className="text-content">BOOT</span> pads on your board (usually labeled "BOOT" or "BT" near the MCU)</p>
+                  <p className="text-content-secondary text-sm"><Trans i18nKey="firmware:bootPadWizard.shortStep1" components={{ b: <span className="text-content" /> }} /></p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-medium flex-shrink-0">2</div>
-                  <p className="text-content-secondary text-sm">Use tweezers, a jumper wire, or conductive material to <span className="text-content">short the two pads together</span></p>
+                  <p className="text-content-secondary text-sm"><Trans i18nKey="firmware:bootPadWizard.shortStep2" components={{ b: <span className="text-content" /> }} /></p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-medium flex-shrink-0">3</div>
-                  <p className="text-content-secondary text-sm"><span className="text-content">Keep them shorted</span> and plug in the USB cable</p>
+                  <p className="text-content-secondary text-sm"><Trans i18nKey="firmware:bootPadWizard.shortStep3" components={{ b: <span className="text-content" /> }} /></p>
                 </div>
               </div>
 
@@ -241,7 +242,7 @@ export function BootPadWizard({
                   className="rounded border bg-surface-raised text-emerald-500 focus:ring-emerald-500"
                 />
                 <span className="text-content text-sm">
-                  I have shorted the boot pads and reconnected the USB cable
+                  {t('firmware:bootPadWizard.shortConfirm')}
                 </span>
               </label>
 
@@ -250,7 +251,7 @@ export function BootPadWizard({
                   onClick={() => setStep('intro')}
                   className="px-4 py-2.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
                 >
-                  Back
+                  {t('common:back')}
                 </button>
                 <button
                   onClick={() => setStep('waiting')}
@@ -259,7 +260,7 @@ export function BootPadWizard({
                     ${jumperConfirmed ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-surface-raised text-content-secondary cursor-not-allowed'}
                   `}
                 >
-                  Detect Board
+                  {t('firmware:bootPadWizard.detectBoard')}
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -275,13 +276,13 @@ export function BootPadWizard({
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
                   <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 </div>
-                <h3 className="text-xl font-semibold text-content mb-2">Waiting for Bootloader...</h3>
-                <p className="text-content-secondary">Make sure the boot pads are shorted and USB is connected</p>
+                <h3 className="text-xl font-semibold text-content mb-2">{t('firmware:bootPadWizard.waitingTitle')}</h3>
+                <p className="text-content-secondary">{t('firmware:bootPadWizard.waitingDesc')}</p>
               </div>
 
               <div className="p-4 bg-surface-raised rounded-lg text-center">
                 <p className="text-content-secondary text-sm">
-                  Scanning serial ports for STM32 bootloader...
+                  {t('firmware:bootPadWizard.scanning')}
                 </p>
               </div>
 
@@ -289,7 +290,7 @@ export function BootPadWizard({
                 onClick={() => setStep('disconnect')}
                 className="w-full py-2.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
               >
-                Go Back
+                {t('firmware:bootPadWizard.goBack')}
               </button>
             </div>
           )}
@@ -303,9 +304,9 @@ export function BootPadWizard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-content mb-2">Board Detected!</h3>
+                <h3 className="text-xl font-semibold text-content mb-2">{t('firmware:bootPadWizard.boardDetected')}</h3>
                 <p className="text-content-secondary">
-                  Found <span className="text-emerald-400 font-medium">{detectedMcu || 'STM32'}</span> in bootloader mode
+                  <Trans i18nKey="firmware:bootPadWizard.foundInBootloader" values={{ mcu: detectedMcu || 'STM32' }} components={{ b: <span className="text-emerald-400 font-medium" /> }} />
                 </p>
               </div>
 
@@ -318,23 +319,22 @@ export function BootPadWizard({
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-amber-300 font-medium mb-1">Before flashing: Remove the boot jumper!</h4>
+                    <h4 className="text-amber-300 font-medium mb-1">{t('firmware:bootPadWizard.removeJumperTitle')}</h4>
                     <p className="text-content text-sm">
-                      Keep the USB connected, but <span className="text-amber-400 font-semibold">remove the jumper wire now</span>.
-                      This way, after flashing completes, the board will boot into the new firmware instead of staying in bootloader.
+                      <Trans i18nKey="firmware:bootPadWizard.removeJumperDesc" components={{ b: <span className="text-amber-400 font-semibold" /> }} />
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="p-4 bg-surface-raised rounded-lg">
-                <h4 className="text-content font-medium mb-2">Ready to flash:</h4>
+                <h4 className="text-content font-medium mb-2">{t('firmware:bootPadWizard.readyToFlash')}</h4>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-content-secondary">Board:</span>
+                  <span className="text-content-secondary">{t('firmware:bootPadWizard.boardLabel')}</span>
                   <span className="text-content">{boardName}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-content-secondary">Firmware:</span>
+                  <span className="text-content-secondary">{t('firmware:bootPadWizard.firmwareLabel')}</span>
                   <span className="text-blue-400">{firmwareSource} {firmwareVersion}</span>
                 </div>
               </div>
@@ -347,7 +347,7 @@ export function BootPadWizard({
                   className="mt-0.5 rounded border bg-surface-raised text-emerald-500 focus:ring-emerald-500"
                 />
                 <span className="text-content text-sm">
-                  I have <span className="text-emerald-400 font-semibold">removed the boot jumper</span> (USB still connected)
+                  <Trans i18nKey="firmware:bootPadWizard.jumperRemovedConfirm" components={{ b: <span className="text-emerald-400 font-semibold" /> }} />
                 </span>
               </label>
 
@@ -360,8 +360,7 @@ export function BootPadWizard({
                     className="mt-0.5 rounded border bg-surface-raised text-red-500 focus:ring-red-500"
                   />
                   <span className="text-red-300 text-sm">
-                    I understand that flashing incorrect firmware can <span className="text-red-400 font-medium">brick my board</span> and
-                    I have verified the board selection is correct
+                    <Trans i18nKey="firmware:bootPadWizard.riskConfirm" components={{ b: <span className="text-red-400 font-medium" /> }} />
                   </span>
                 </label>
               </div>
@@ -378,7 +377,7 @@ export function BootPadWizard({
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Flash Firmware
+                {t('firmware:bootPadWizard.flashFirmware')}
               </button>
             </div>
           )}
@@ -390,13 +389,13 @@ export function BootPadWizard({
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
                   <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 </div>
-                <h3 className="text-xl font-semibold text-content mb-2">Flashing...</h3>
-                <p className="text-content-secondary">{flashProgress?.message || 'Please wait...'}</p>
+                <h3 className="text-xl font-semibold text-content mb-2">{t('firmware:bootPadWizard.flashing')}</h3>
+                <p className="text-content-secondary">{flashProgress?.message || t('firmware:bootPadWizard.pleaseWait')}</p>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-content-secondary">Progress</span>
+                  <span className="text-content-secondary">{t('firmware:bootPadWizard.progress')}</span>
                   <span className="text-content">{flashProgress?.progress || 0}%</span>
                 </div>
                 <div className="h-3 bg-surface-inset rounded-full overflow-hidden">
@@ -408,7 +407,7 @@ export function BootPadWizard({
               </div>
 
               <p className="text-content-secondary text-sm text-center">
-                Do not disconnect the board during flashing!
+                {t('firmware:bootPadWizard.doNotDisconnect')}
               </p>
             </div>
           )}
@@ -422,16 +421,15 @@ export function BootPadWizard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-content mb-2">Flash Complete!</h3>
+                <h3 className="text-xl font-semibold text-content mb-2">{t('firmware:bootPadWizard.flashComplete')}</h3>
                 <p className="text-content-secondary">
-                  Successfully flashed <span className="text-emerald-400">{firmwareSource} {firmwareVersion}</span>
+                  <Trans i18nKey="firmware:bootPadWizard.successFlashed" values={{ firmware: `${firmwareSource} ${firmwareVersion}` }} components={{ b: <span className="text-emerald-400" /> }} />
                 </p>
               </div>
 
               <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-center">
                 <p className="text-emerald-300 text-sm">
-                  Your board should now reboot with the new firmware.
-                  You can reconnect and configure it.
+                  {t('firmware:bootPadWizard.successDesc')}
                 </p>
               </div>
 
@@ -439,7 +437,7 @@ export function BootPadWizard({
                 onClick={handleClose}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
               >
-                Done
+                {t('common:done')}
               </button>
             </div>
           )}
@@ -453,8 +451,8 @@ export function BootPadWizard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-content mb-2">Flash Failed</h3>
-                <p className="text-content-secondary">Something went wrong during flashing</p>
+                <h3 className="text-xl font-semibold text-content mb-2">{t('firmware:bootPadWizard.flashFailed')}</h3>
+                <p className="text-content-secondary">{t('firmware:bootPadWizard.somethingWentWrong')}</p>
               </div>
 
               {flashError && (
@@ -470,13 +468,13 @@ export function BootPadWizard({
                   onClick={() => setStep('disconnect')}
                   className="flex-1 py-2.5 bg-surface-raised hover:bg-surface-raised text-content rounded-lg font-medium transition-colors"
                 >
-                  Try Again
+                  {t('firmware:bootPadWizard.tryAgain')}
                 </button>
                 <button
                   onClick={handleClose}
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-colors"
                 >
-                  Close
+                  {t('common:close')}
                 </button>
               </div>
             </div>

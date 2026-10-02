@@ -5,6 +5,7 @@
  */
 
 import type { FenceProposal, ProposalResult } from '@ardudeck/module-sdk';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * What a write would do to the fence already held. A module proposes ONE
@@ -61,10 +62,10 @@ export function proposeFence(
   existing: ExistingFence,
 ): Promise<ProposalResult> {
   if (pending) {
-    return Promise.resolve({ accepted: false, error: 'Another proposal is already open' });
+    return Promise.resolve({ accepted: false, error: t('modules:moduleProposal.alreadyOpen') });
   }
   if (!proposal?.inclusion || proposal.inclusion.length < 3) {
-    return Promise.resolve({ accepted: false, error: 'A fence needs at least three points' });
+    return Promise.resolve({ accepted: false, error: t('modules:moduleProposal.needsThreePoints') });
   }
   return new Promise<ProposalResult>((resolve) => {
     pending = {

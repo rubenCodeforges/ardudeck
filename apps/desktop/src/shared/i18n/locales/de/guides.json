@@ -1,0 +1,36 @@
+{
+  "guideHost": {
+    "dontShowAgain": "Anleitungen nicht mehr automatisch anzeigen",
+    "gotIt": "Verstanden",
+    "stepOf": "{{step}} von {{total}}"
+  },
+  "guidesAndTours": {
+    "allMarkedUnseen": "Alle als ungesehen markiert",
+    "guides": "Anleitungen",
+    "offerWalkthroughs": "Beim ersten Öffnen einer Ansicht eine Einführung anbieten",
+    "resetAll": "Alle zurücksetzen",
+    "title": "Anleitungen & Touren",
+    "tours": "Touren"
+  },
+  "layoutsDemo": {
+    "workspace": "Workspace · {{name}}"
+  },
+  "registry": {
+    "grouping": {
+      "blurb": "Ziehen Sie ein Karteninstrument auf ein anderes, um beide in einer gemeinsamen Karte anzudocken. Ziehen Sie ein Element wieder heraus, um es zu lösen, oder skalieren Sie die ganze Gruppe auf einmal.",
+      "title": "Instrumente gruppieren"
+    },
+    "mapSplit": {
+      "blurb": "Die Schaltfläche „Teilen“ auf der Karte teilt das Panel mit Vision. Ziehen Sie den Trenner, um die Größe festzulegen; das Pilot-Layout startet so mit synthetischer Sicht.",
+      "title": "Karte und Vision nebeneinander"
+    },
+    "workspaceLayouts": {
+      "blurb": "Die Schaltfläche „Workspace“ wechselt zwischen Pilot, FPV und Mission, jeweils mit eigenen Panels, Cockpit-Instrumenten und Teilung. Speichern Sie eigene Layouts und teilen Sie sie als Datei.",
+      "title": "Workspace-Layouts"
+    }
+  },
+  "splitDemo": {
+    "split": "Teilen",
+    "synthetic": "Synthetisch"
+  }
+}

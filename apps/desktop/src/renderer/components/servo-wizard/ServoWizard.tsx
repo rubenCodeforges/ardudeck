@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { CircleSlash, Check } from 'lucide-react';
 import { useServoWizardStore, WizardStep, STEP_INFO } from '../../stores/servo-wizard-store';
 import {
@@ -34,6 +35,7 @@ type ViewMode = 'wizard' | 'tune';
 const STEPS: WizardStep[] = ['aircraft', 'assign', 'test', 'endpoints', 'review'];
 
 export default function ServoWizard() {
+  const { t } = useTranslation();
   const {
     currentStep,
     currentStepIndex,
@@ -58,22 +60,22 @@ export default function ServoWizard() {
   // Change platform to airplane using the proper iNav method (with CLI fallback for old versions)
   const handleChangeToAirplane = async () => {
     setIsChangingMixer(true);
-    setMixerChangeStatus({ type: 'info', message: 'Setting platform type to AIRPLANE...' });
+    setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.settingPlatform') });
 
     try {
       // Use the proper iNav platform type command (has CLI fallback built-in)
-      setMixerChangeStatus({ type: 'info', message: 'Sending platform config (MSP2 + CLI fallback)...' });
+      setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.sendingPlatform') });
       const success = await window.electronAPI.mspSetInavPlatformType(PLATFORM_TYPE.AIRPLANE);
 
       if (success) {
         // CLI fallback may have already rebooted the board
         // Wait and prompt to reconnect
-        setMixerChangeStatus({ type: 'info', message: 'Platform change sent. Saving to EEPROM...' });
+        setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.savingEeprom') });
 
         // Try to save EEPROM (may fail if board already rebooting from CLI)
         try {
           await window.electronAPI.mspSaveEeprom();
-          setMixerChangeStatus({ type: 'info', message: 'Rebooting board...' });
+          setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.rebooting') });
           await window.electronAPI.mspReboot();
           await new Promise(r => setTimeout(r, 1000));
         } catch {
@@ -82,7 +84,7 @@ export default function ServoWizard() {
         }
 
         // Disconnect
-        setMixerChangeStatus({ type: 'info', message: 'Disconnecting...' });
+        setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.disconnecting') });
         try {
           await window.electronAPI.disconnect();
         } catch {
@@ -90,24 +92,24 @@ export default function ServoWizard() {
         }
 
         // Wait for board to reboot (F3 boards are slow)
-        setMixerChangeStatus({ type: 'info', message: 'Waiting for board to reboot (5s)...' });
+        setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.waitingReboot') });
         await new Promise(r => setTimeout(r, 5000));
 
         // Show reconnect prompt
         setMixerChangeStatus({
           type: 'success',
-          message: 'Platform changed to AIRPLANE! Reconnect to verify.',
+          message: t('servo-wizard:servoWizard.platformChanged'),
         });
       } else {
         // Both MSP2 and CLI fallback failed
         setMixerChangeStatus({
           type: 'error',
-          message: 'Failed to change platform. For iNav 2.0.0, try using iNav Configurator CLI: mixer AIRPLANE then save',
+          message: t('servo-wizard:servoWizard.platformChangeFailed'),
         });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setMixerChangeStatus({ type: 'error', message: `Failed: ${message}. Try iNav Configurator CLI.` });
+      const message = err instanceof Error ? err.message : t('servo-wizard:servoWizard.unknownError');
+      setMixerChangeStatus({ type: 'error', message: t('servo-wizard:servoWizard.failedWithMessage', { message }) });
     } finally {
       setIsChangingMixer(false);
     }
@@ -116,14 +118,14 @@ export default function ServoWizard() {
   // Reconnect after mixer change
   const handleReconnect = async () => {
     setIsChangingMixer(true);
-    setMixerChangeStatus({ type: 'info', message: 'Reconnecting...' });
+    setMixerChangeStatus({ type: 'info', message: t('servo-wizard:servoWizard.reconnecting') });
 
     try {
       // Get the last connection settings and reconnect
       // For now, just prompt user to use the connection panel
       setMixerChangeStatus({
         type: 'info',
-        message: 'Please use the connection panel to reconnect to your board.',
+        message: t('servo-wizard:servoWizard.useConnectionPanel'),
       });
     } finally {
       setIsChangingMixer(false);
@@ -181,7 +183,7 @@ export default function ServoWizard() {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p className="text-sm">Checking servo support...</p>
+        <p className="text-sm">{t('servo-wizard:servoWizard.checkingSupport')}</p>
       </div>
     );
   }
@@ -193,7 +195,7 @@ export default function ServoWizard() {
         <CircleSlash className="w-16 h-16 text-content-secondary" />
         <div>
           <h2 className="text-xl font-bold text-content mb-2">
-            {isMultirotor ? 'Board Configured as Multirotor' : 'Servo Setup Not Available'}
+            {isMultirotor ? t('servo-wizard:servoWizard.boardIsMultirotor') : t('servo-wizard:servoWizard.notAvailable')}
           </h2>
           <p className="text-content-secondary">{supportError}</p>
         </div>
@@ -202,7 +204,7 @@ export default function ServoWizard() {
         {isMultirotor && (
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 w-full">
             <p className="text-sm text-blue-300 font-medium mb-3">
-              Want to configure this board as a plane?
+              {t('servo-wizard:servoWizard.configureAsPlaneQuestion')}
             </p>
             <div className="flex flex-col gap-2">
               <button
@@ -216,10 +218,10 @@ export default function ServoWizard() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    {mixerChangeStatus?.message || 'Configuring...'}
+                    {mixerChangeStatus?.message || t('servo-wizard:servoWizard.configuring')}
                   </>
                 ) : (
-                  <>Configure as Airplane</>
+                  <>{t('servo-wizard:servoWizard.configureAsAirplane')}</>
                 )}
               </button>
 
@@ -238,31 +240,33 @@ export default function ServoWizard() {
               {/* Show reconnect prompt after successful change */}
               {mixerChangeStatus?.type === 'success' && (
                 <p className="text-xs text-content-secondary mt-1">
-                  Use the connection panel at the top to reconnect.
+                  {t('servo-wizard:servoWizard.reconnectHint')}
                 </p>
               )}
             </div>
 
             <p className="text-xs text-content-secondary mt-3">
-              This will change the mixer type to AIRPLANE, save to EEPROM, and reboot the board.
+              {t('servo-wizard:servoWizard.changeMixerHint')}
             </p>
 
             {/* Warning for old firmware */}
             <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <p className="text-xs text-yellow-400">
-                <strong>Note:</strong> iNav 2.0.0 is very old. If this doesn't work, you may need to use
-                iNav Configurator CLI: <code className="bg-black/30 px-1 rounded">mixer AIRPLANE</code> then <code className="bg-black/30 px-1 rounded">save</code>
+                <Trans
+                  i18nKey="servo-wizard:servoWizard.oldFirmwareNote"
+                  components={{ b: <strong />, code: <code className="bg-black/30 px-1 rounded" /> }}
+                />
               </p>
             </div>
           </div>
         )}
 
         <div className="bg-surface border border rounded-xl p-4 text-left">
-          <p className="text-sm text-content font-medium mb-2">Servo Setup is used for:</p>
+          <p className="text-sm text-content font-medium mb-2">{t('servo-wizard:servoWizard.usedFor')}</p>
           <ul className="text-xs text-content-secondary space-y-1 list-disc list-inside">
-            <li><strong>Fixed-wing aircraft</strong> - ailerons, elevator, rudder</li>
-            <li><strong>Flying wings</strong> - elevon mixing</li>
-            <li><strong>Gimbal servos</strong> - camera pan/tilt (requires compatible board)</li>
+            <li><Trans i18nKey="servo-wizard:servoWizard.usedForFixedWing" components={{ b: <strong /> }} /></li>
+            <li><Trans i18nKey="servo-wizard:servoWizard.usedForFlyingWing" components={{ b: <strong /> }} /></li>
+            <li><Trans i18nKey="servo-wizard:servoWizard.usedForGimbal" components={{ b: <strong /> }} /></li>
           </ul>
         </div>
       </div>
@@ -283,7 +287,7 @@ export default function ServoWizard() {
                 : 'text-content-secondary hover:text-content'
             }`}
           >
-            Wizard
+            {t('servo-wizard:servoWizard.wizard')}
           </button>
           <button
             onClick={() => setViewMode('tune')}
@@ -295,9 +299,9 @@ export default function ServoWizard() {
                 ? 'text-content-tertiary cursor-not-allowed'
                 : 'text-content-secondary hover:text-content'
             }`}
-            title={!selectedPresetId ? 'Complete wizard first' : 'Fine-tune servos'}
+            title={!selectedPresetId ? t('servo-wizard:servoWizard.completeWizardFirst') : t('servo-wizard:servoWizard.fineTuneServos')}
           >
-            Tune
+            {t('servo-wizard:servoWizard.tune')}
           </button>
         </div>
 
@@ -318,7 +322,7 @@ export default function ServoWizard() {
                     className={`flex flex-col items-center gap-1 transition-all ${
                       isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
                     }`}
-                    title={info.description}
+                    title={t(`servo-wizard:servoWizard.steps.${step}.description`)}
                   >
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
@@ -336,7 +340,7 @@ export default function ServoWizard() {
                         isActive ? 'text-blue-400' : isCompleted ? 'text-green-400' : 'text-content-secondary'
                       }`}
                     >
-                      {info.label}
+                      {t(`servo-wizard:servoWizard.steps.${step}.label`)}
                     </span>
                   </button>
                   {index < STEPS.length - 1 && (
@@ -354,8 +358,8 @@ export default function ServoWizard() {
           <div className="flex items-center gap-3">
             <span className="text-xl">{selectedPreset?.icon}</span>
             <div>
-              <span className="text-sm font-medium text-content">{selectedPreset?.name}</span>
-              <span className="text-xs text-content-secondary ml-2">- {assignments.length} servos</span>
+              <span className="text-sm font-medium text-content">{selectedPreset ? t(selectedPreset.nameKey) : null}</span>
+              <span className="text-xs text-content-secondary ml-2">{t('servo-wizard:servoWizard.servoCount', { count: assignments.length })}</span>
             </div>
           </div>
         )}

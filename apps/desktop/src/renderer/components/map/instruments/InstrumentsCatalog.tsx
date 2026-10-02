@@ -13,6 +13,7 @@
  * flat toggle dropdown, which had outgrown itself now that instruments carry
  * three to five display variants each.
  */
+import { useTranslation } from 'react-i18next';
 import {
   useEffect,
   useLayoutEffect,
@@ -31,7 +32,7 @@ import {
   INSTRUMENT_OPACITY_MIN,
   type InstrumentDisplayMode,
 } from '../../../stores/map-instruments-store';
-import { MAP_INSTRUMENTS, instrumentSuitsProfile, type MapInstrumentDef } from './registry';
+import { MAP_INSTRUMENTS, instrumentLabel, instrumentSuitsProfile, type MapInstrumentDef } from './registry';
 import { useDetectedProfile, useInstrumentProfile, useInstrumentProfileStore } from './useInstrumentProfile';
 import { PRESET_INSTRUMENT_LAYOUTS, type PresetAccent } from './preset-layouts';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
@@ -98,21 +99,21 @@ function roleOf(id: string): InstrumentRole {
 }
 
 const ROLE_TITLE: Record<InstrumentRole, string> = {
-  primaryFlight: 'Primary flight',
-  power: 'Power',
-  navigation: 'Navigation',
-  command: 'Commands',
-  status: 'Status',
-  summary: 'Summary',
+  primaryFlight: 'map:instrumentsCatalog.rolePrimaryFlight',
+  power: 'map:instrumentsCatalog.rolePower',
+  navigation: 'map:instrumentsCatalog.roleNavigation',
+  command: 'map:instrumentsCatalog.roleCommand',
+  status: 'map:instrumentsCatalog.roleStatus',
+  summary: 'map:instrumentsCatalog.roleSummary', // i18n-exempt: i18n key
 };
 
 const ROLE_BLURB: Record<InstrumentRole, string> = {
-  primaryFlight: 'The basic-T scan: attitude, speed, altitude, heading, vertical speed.',
-  power: 'Pack voltage, current and remaining capacity.',
-  navigation: 'Fix quality, mission progress and where home is.',
-  command: 'Surfaces that command the vehicle.',
-  status: 'Link, mode, warnings and vehicle messages.',
-  summary: 'Wide cards that carry several values at once.',
+  primaryFlight: 'map:instrumentsCatalog.blurbPrimaryFlight',
+  power: 'map:instrumentsCatalog.blurbPower',
+  navigation: 'map:instrumentsCatalog.blurbNavigation',
+  command: 'map:instrumentsCatalog.blurbCommand',
+  status: 'map:instrumentsCatalog.blurbStatus',
+  summary: 'map:instrumentsCatalog.blurbSummary', // i18n-exempt: i18n key
 };
 
 // One accent per role, vivid in both themes (same intent as the mobile
@@ -228,11 +229,11 @@ function StepButton({ glyph, onClick, disabled }: { glyph: 'minus' | 'plus'; onC
 
 // The analog gauge, the numeric card, then any registry variants: the exact
 // option set the on-map config popover offers, kept in one place.
-function displayOptionsOf(def: MapInstrumentDef): Array<{ id: InstrumentDisplayMode; label: string }> {
+function displayOptionsOf(def: MapInstrumentDef): Array<{ id: InstrumentDisplayMode; labelKey: string }> {
   return [
-    { id: 'analog', label: 'Analog' },
-    ...(def.NumericComponent ? [{ id: 'numeric' as InstrumentDisplayMode, label: 'Numeric' }] : []),
-    ...(def.variants ?? []).map((v) => ({ id: v.id as InstrumentDisplayMode, label: v.label })),
+    { id: 'analog', labelKey: 'map:instrumentDisplay.analog' },
+    ...(def.NumericComponent ? [{ id: 'numeric' as InstrumentDisplayMode, labelKey: 'map:instrumentDisplay.numeric' }] : []),
+    ...(def.variants ?? []).map((v) => ({ id: v.id as InstrumentDisplayMode, labelKey: v.labelKey })),
   ];
 }
 
@@ -259,6 +260,7 @@ function InstrumentCard({ def, accent }: { def: MapInstrumentDef; accent: string
 }
 
 function InstrumentCardBody({ def, accent }: { def: MapInstrumentDef; accent: string }): JSX.Element {
+  const { t } = useTranslation();
   const visibleMap = useMapInstrumentsStore((s) => s.visible);
   const mode = useMapInstrumentsStore((s) => s.displayMode[def.id] ?? 'analog') as InstrumentDisplayMode;
   const scale = useMapInstrumentsStore((s) => s.scale[def.id] ?? 1);
@@ -303,7 +305,7 @@ function InstrumentCardBody({ def, accent }: { def: MapInstrumentDef; accent: st
 
         <div className="mt-2.5 flex items-center gap-2">
           <span className={'flex-1 min-w-0 truncate text-[13px] font-semibold ' + (visible ? 'text-content' : 'text-content-tertiary')}>
-            {def.label}
+            {instrumentLabel(def, t)}
           </span>
           <ToggleSwitch on={visible} accent={accent} onClick={() => toggle(def.id)} />
         </div>
@@ -327,7 +329,7 @@ function InstrumentCardBody({ def, accent }: { def: MapInstrumentDef; accent: st
                       : undefined
                   }
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               );
             })}
@@ -335,7 +337,7 @@ function InstrumentCardBody({ def, accent }: { def: MapInstrumentDef; accent: st
         )}
 
         <div className="mt-3 flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-content-tertiary flex-1">Size</span>
+          <span className="text-[10px] uppercase tracking-wide text-content-tertiary flex-1">{t('map:instrumentsCatalog.size')}</span>
           <StepButton glyph="minus" disabled={scale <= INSTRUMENT_SCALE_MIN} onClick={() => setScale(def.id, scale - INSTRUMENT_SCALE_STEP)} />
           <span className="w-11 text-center text-[12px] font-medium tabular-nums text-content-secondary">{Math.round(scale * 100)}%</span>
           <StepButton glyph="plus" disabled={scale >= INSTRUMENT_SCALE_MAX} onClick={() => setScale(def.id, scale + INSTRUMENT_SCALE_STEP)} />
@@ -361,12 +363,13 @@ const CARD_GRID = 'grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(2
 // ---- Panes -----------------------------------------------------------------
 
 function GroupPane({ role }: { role: InstrumentRole }): JSX.Element {
+  const { t } = useTranslation();
   const accent = ROLE_COLOR[role];
   const defs = MAP_INSTRUMENTS.filter((d) => roleOf(d.id) === role);
   return (
     <div className="p-4">
-      <SectionHeading label={ROLE_TITLE[role]} accent={accent} />
-      <p className="mt-1.5 mb-3 text-[11px] text-content-tertiary">{ROLE_BLURB[role]}</p>
+      <SectionHeading label={t(ROLE_TITLE[role])} accent={accent} />
+      <p className="mt-1.5 mb-3 text-[11px] text-content-tertiary">{t(ROLE_BLURB[role])}</p>
       <div className={CARD_GRID}>
         {defs.map((def) => <InstrumentCard key={def.id} def={def} accent={accent} />)}
       </div>
@@ -375,20 +378,21 @@ function GroupPane({ role }: { role: InstrumentRole }): JSX.Element {
 }
 
 function SearchPane({ query }: { query: string }): JSX.Element {
+  const { t } = useTranslation();
   const q = query.toLowerCase();
   const hits = MAP_INSTRUMENTS.filter((d) => {
-    if (d.label.toLowerCase().includes(q)) return true;
+    if (instrumentLabel(d, t).toLowerCase().includes(q)) return true;
     if (d.id.toLowerCase().includes(q)) return true;
-    if (ROLE_TITLE[roleOf(d.id)].toLowerCase().includes(q)) return true;
-    return (d.variants ?? []).some((v) => v.label.toLowerCase().includes(q));
+    if (t(ROLE_TITLE[roleOf(d.id)]).toLowerCase().includes(q)) return true;
+    return (d.variants ?? []).some((v) => t(v.labelKey).toLowerCase().includes(q));
   });
 
   if (hits.length === 0) {
-    return <div className="p-8 text-center text-xs text-content-tertiary">Nothing matches "{query}"</div>;
+    return <div className="p-8 text-center text-xs text-content-tertiary">{t('map:instrumentsCatalog.nothingMatches', { query })}</div>;
   }
   return (
     <div className="p-4">
-      <SectionHeading label={`${hits.length} ${hits.length === 1 ? 'match' : 'matches'}`} accent="var(--text-secondary)" />
+      <SectionHeading label={t('map:instrumentsCatalog.matches', { count: hits.length })} accent="var(--text-secondary)" />
       <div className={CARD_GRID + ' mt-3'}>
         {hits.map((def) => <InstrumentCard key={def.id} def={def} accent={ROLE_COLOR[roleOf(def.id)]} />)}
       </div>
@@ -397,6 +401,7 @@ function SearchPane({ query }: { query: string }): JSX.Element {
 }
 
 function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
+  const { t } = useTranslation();
   const opacity = useMapInstrumentsStore((s) => s.opacity);
   const arrangeSnapshot = useMapInstrumentsStore((s) => s.arrangeSnapshot);
   const setOpacity = useMapInstrumentsStore((s) => s.setOpacity);
@@ -440,12 +445,12 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      setImportError('That is not valid JSON.');
+      setImportError(t('map:instrumentsCatalog.invalidJson'));
       return;
     }
     const obj = parsed as { name?: unknown; layout?: unknown };
     const layout = obj && typeof obj === 'object' && 'layout' in obj ? obj.layout : parsed;
-    const suggested = obj && typeof obj === 'object' && typeof obj.name === 'string' ? obj.name : 'Imported layout';
+    const suggested = obj && typeof obj === 'object' && typeof obj.name === 'string' ? obj.name : t('map:instrumentsCatalog.importedName');
     // Avoid clobbering an existing name silently.
     let name = suggested;
     for (let i = 2; savedLayouts[name]; i++) name = `${suggested} ${i}`;
@@ -454,13 +459,13 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
       setImportText('');
       setImportError(null);
     } else {
-      setImportError('This does not look like an ArduDeck instrument layout.');
+      setImportError(t('map:instrumentsCatalog.notLayout'));
     }
   };
 
   const onImportFile = (file: File | undefined) => {
     if (!file) return;
-    file.text().then(doImport).catch(() => setImportError('Could not read that file.'));
+    file.text().then(doImport).catch(() => setImportError(t('map:instrumentsCatalog.readFailed')));
   };
 
   const applyRow = 'w-full flex items-center gap-2 text-left px-2.5 py-1.5 rounded text-xs text-content-secondary hover:bg-surface-raised hover:text-content transition-colors';
@@ -471,7 +476,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
   return (
     <div className="p-4 space-y-5 max-w-[560px]">
       <div>
-        <SectionHeading label="Arrange" accent="var(--text-secondary)" />
+        <SectionHeading label={t('map:instrumentsCatalog.arrange')} accent="var(--text-secondary)" />
         <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
@@ -480,41 +485,40 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               onClose();
               requestAnimationFrame(() => { runAutoArrange(); });
             }}
-            data-tip="Place every visible instrument by cockpit conventions: basic-T at the bottom, status rail on the left, map center kept clear"
+            data-tip={t('map:instrumentsCatalog.autoArrangeTip')}
             className="flex items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2.5 text-[13px] text-blue-500 hover:bg-blue-500/20 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h5M4 12h8M4 17h5M15 5l1.2 2.8L19 9l-2.8 1.2L15 13l-1.2-2.8L11 9l2.8-1.2L15 5z" />
             </svg>
-            Auto arrange
+            {t('map:instrumentsCatalog.autoArrange')}
           </button>
           {arrangeSnapshot && (
             <button
               type="button"
               onClick={() => { restorePreviousLayout(); }}
-              data-tip="Put every instrument back where it was before the last auto arrange"
+              data-tip={t('map:instrumentsCatalog.restoreTip')}
               className="flex items-center gap-2 rounded-lg border border-subtle px-3 py-2.5 text-[13px] text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l-4-4 4-4M5 10h9a5 5 0 010 10h-3" />
               </svg>
-              Restore previous layout
+              {t('map:instrumentsCatalog.restore')}
             </button>
           )}
         </div>
       </div>
 
       <div>
-        <SectionHeading label="Vehicle profile" accent="var(--text-secondary)" />
+        <SectionHeading label={t('map:instrumentsCatalog.vehicleProfile')} accent="var(--text-secondary)" />
         <p className="mt-1.5 text-[11px] text-content-tertiary">
-          Which instruments this catalog offers. Auto follows what the vehicle reports, the same
-          way the HUD picks its air or ground layout.
+          {t('map:instrumentsCatalog.vehicleProfileHint')}
         </p>
         <div className="mt-2 flex items-center gap-1 rounded-lg border border-subtle p-1 w-fit">
           {([
-            ['auto', `Auto (${detected === 'ground' ? 'ground' : 'aircraft'})`],
-            ['air', 'Aircraft'],
-            ['ground', 'Ground'],
+            ['auto', detected === 'ground' ? t('map:instrumentsCatalog.profileAutoGround') : t('map:instrumentsCatalog.profileAutoAir')],
+            ['air', t('map:instrumentsCatalog.profileAir')],
+            ['ground', t('map:instrumentsCatalog.profileGround')],
           ] as const).map(([value, label]) => (
             <button
               key={value}
@@ -533,9 +537,9 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
       </div>
 
       <div>
-        <SectionHeading label="Presets" accent="var(--text-secondary)" />
+        <SectionHeading label={t('map:instrumentsCatalog.presets')} accent="var(--text-secondary)" />
         <div className="mt-2 grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
-          {PRESET_INSTRUMENT_LAYOUTS.map(({ name, description, accent, layout }) => {
+          {PRESET_INSTRUMENT_LAYOUTS.map(({ name, nameKey, descriptionKey, accent, layout }) => {
             const a = PRESET_ACCENTS[accent];
             return (
               <button
@@ -547,10 +551,10 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               >
                 <span className="flex items-center gap-2">
                   <span style={{ color: a.edge }}>{layoutIcon}</span>
-                  <span className="flex-1 min-w-0 truncate text-[13px] text-content">{name}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-content-tertiary">preset</span>
+                  <span className="flex-1 min-w-0 truncate text-[13px] text-content">{t(nameKey)}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-content-tertiary">{t('map:instrumentsCatalog.preset')}</span>
                 </span>
-                <span className="mt-1 block text-[11px] leading-snug text-content-tertiary">{description}</span>
+                <span className="mt-1 block text-[11px] leading-snug text-content-tertiary">{t(descriptionKey)}</span>
               </button>
             );
           })}
@@ -558,10 +562,10 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
       </div>
 
       <div>
-        <SectionHeading label="Saved layouts" accent="var(--text-secondary)" />
+        <SectionHeading label={t('map:instrumentsCatalog.savedLayouts')} accent="var(--text-secondary)" />
         <div className="mt-2 space-y-0.5">
           {savedNames.length === 0 && savingName === null && (
-            <p className="px-1 py-1 text-[11px] text-content-tertiary">No saved layouts yet.</p>
+            <p className="px-1 py-1 text-[11px] text-content-tertiary">{t('map:instrumentsCatalog.noSaved')}</p>
           )}
           {savedNames.map((name) => (
             <div key={name} className="flex items-center gap-0.5">
@@ -574,7 +578,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               <button
                 type="button"
                 onClick={() => saveLayout(name)}
-                data-tip="Update with current layout"
+                data-tip={t('map:instrumentsCatalog.updateTip')}
                 className="shrink-0 p-1.5 rounded text-content-tertiary hover:text-blue-500 hover:bg-surface-raised transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -585,7 +589,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               <button
                 type="button"
                 onClick={() => exportLayout(name)}
-                data-tip="Export layout to share"
+                data-tip={t('map:instrumentsCatalog.exportTip')}
                 className="shrink-0 p-1.5 rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -595,7 +599,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               <button
                 type="button"
                 onClick={() => deleteLayout(name)}
-                data-tip="Delete layout"
+                data-tip={t('map:instrumentsCatalog.deleteTip')}
                 className="shrink-0 p-1.5 rounded text-content-tertiary hover:text-red-500 hover:bg-surface-raised transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -609,7 +613,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" d="M12 5v14M5 12h14" />
               </svg>
-              Save current layout...
+              {t('map:instrumentsCatalog.saveCurrent')}
             </button>
           ) : (
             <div className="flex items-center gap-1 px-1 py-0.5">
@@ -617,12 +621,12 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
                 autoFocus
                 type="text"
                 value={savingName}
-                placeholder="Layout name"
+                placeholder={t('common:layoutName')}
                 onChange={(e) => setSavingName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') commitSave(); if (e.key === 'Escape') setSavingName(null); }}
                 className="flex-1 min-w-0 px-2 py-1 text-xs rounded bg-surface-input border border-default text-content focus:outline-none focus:border-blue-500"
               />
-              <button type="button" onClick={commitSave} disabled={!savingName.trim()} className="shrink-0 px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">Save</button>
+              <button type="button" onClick={commitSave} disabled={!savingName.trim()} className="shrink-0 px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">{t('common:save')}</button>
             </div>
           )}
 
@@ -632,18 +636,18 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
                 autoFocus
                 value={importText}
                 onChange={(e) => { setImportText(e.target.value); setImportError(null); }}
-                placeholder="Paste a shared layout (JSON) here"
+                placeholder={t('map:instrumentsCatalog.pastePlaceholder')}
                 rows={3}
                 className="w-full px-2 py-1.5 text-[11px] font-mono rounded bg-surface-input border border-default text-content focus:outline-none focus:border-blue-500 resize-none"
               />
               {importError && <p className="text-[11px] text-red-500">{importError}</p>}
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => doImport(importText)} disabled={!importText.trim()} className="px-2.5 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">Import</button>
+                <button type="button" onClick={() => doImport(importText)} disabled={!importText.trim()} className="px-2.5 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">{t('map:instrumentsCatalog.import')}</button>
                 <label className="px-2.5 py-1 text-xs rounded border border-subtle text-content-secondary hover:text-content hover:border-default transition-colors cursor-pointer">
-                  From file…
+                  {t('map:instrumentsCatalog.fromFile')}
                   <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => onImportFile(e.target.files?.[0])} />
                 </label>
-                <button type="button" onClick={() => { setImporting(false); setImportText(''); setImportError(null); }} className="ml-auto px-2.5 py-1 text-xs rounded border border-subtle text-content-secondary hover:text-content transition-colors">Cancel</button>
+                <button type="button" onClick={() => { setImporting(false); setImportText(''); setImportError(null); }} className="ml-auto px-2.5 py-1 text-xs rounded border border-subtle text-content-secondary hover:text-content transition-colors">{t('common:cancel')}</button>
               </div>
             </div>
           ) : (
@@ -651,14 +655,14 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
               <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5 5 5M12 5v12" />
               </svg>
-              Import a shared layout...
+              {t('map:instrumentsCatalog.importShared')}
             </button>
           )}
         </div>
       </div>
 
       <div>
-        <SectionHeading label="On-map opacity" accent="var(--text-secondary)" />
+        <SectionHeading label={t('map:instrumentsCatalog.opacity')} accent="var(--text-secondary)" />
         <div className="mt-2 flex items-center gap-3">
           <input
             type="range"
@@ -670,7 +674,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
           />
           <span className="w-10 text-right text-xs tabular-nums text-content-secondary">{Math.round(opacity * 100)}%</span>
         </div>
-        <p className="mt-1.5 text-[11px] text-content-tertiary">Idle instruments dim to this; hovering one restores it.</p>
+        <p className="mt-1.5 text-[11px] text-content-tertiary">{t('map:instrumentsCatalog.opacityHint')}</p>
       </div>
 
       <button
@@ -681,7 +685,7 @@ function LayoutPane({ onClose }: { onClose: () => void }): JSX.Element {
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M20 9A8 8 0 006.34 6.34M4 15a8 8 0 0013.66 2.66" />
         </svg>
-        Reset positions
+        {t('map:instrumentsCatalog.resetPositions')}
       </button>
     </div>
   );
@@ -720,6 +724,7 @@ function RailTile({
 }
 
 export function InstrumentsCatalog({ onClose }: { onClose: () => void }): JSX.Element {
+  const { t } = useTranslation();
   const visibleMap = useMapInstrumentsStore((s) => s.visible);
   // null selects the Layout and presets pane. It opens first: picking a
   // preset is what most visits to this dialog are for (mirrors mobile).
@@ -758,8 +763,8 @@ export function InstrumentsCatalog({ onClose }: { onClose: () => void }): JSX.El
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-subtle">
-            <span className="text-sm font-semibold text-content">Instruments</span>
-            <span className="text-[11px] text-content-tertiary">{visibleCount} of {MAP_INSTRUMENTS.length} on screen</span>
+            <span className="text-sm font-semibold text-content">{t('map:instrumentsCatalog.title')}</span>
+            <span className="text-[11px] text-content-tertiary">{t('map:instrumentsCatalog.onScreen', { visible: visibleCount, total: MAP_INSTRUMENTS.length })}</span>
             <div className="ml-auto relative">
               <svg className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-content-tertiary pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4-4" />
@@ -768,11 +773,11 @@ export function InstrumentsCatalog({ onClose }: { onClose: () => void }): JSX.El
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search instruments"
+                placeholder={t('map:instrumentsCatalog.searchPlaceholder')}
                 className="w-52 pl-7 pr-2 py-1.5 text-xs rounded bg-surface-input border border-default text-content placeholder:text-content-tertiary focus:outline-none focus:border-blue-500"
               />
             </div>
-            <button type="button" onClick={onClose} data-tip="Close" className="p-1.5 rounded text-content-secondary hover:text-content hover:bg-surface-raised transition-colors">
+            <button type="button" onClick={onClose} data-tip={t('common:close')} className="p-1.5 rounded text-content-secondary hover:text-content hover:bg-surface-raised transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
               </svg>
@@ -786,7 +791,7 @@ export function InstrumentsCatalog({ onClose }: { onClose: () => void }): JSX.El
                 active={role === null && query === ''}
                 accent="var(--text-secondary)"
                 icon={layoutIcon}
-                title="Layout and presets"
+                title={t('map:instrumentsCatalog.layoutAndPresets')}
                 onClick={() => { setRole(null); setQuery(''); }}
               />
               <div className="my-1 border-t border-subtle" />
@@ -796,7 +801,7 @@ export function InstrumentsCatalog({ onClose }: { onClose: () => void }): JSX.El
                   active={role === r && query === ''}
                   accent={ROLE_COLOR[r]}
                   icon={<RoleIcon role={r} className="w-4 h-4" />}
-                  title={ROLE_TITLE[r]}
+                  title={t(ROLE_TITLE[r])}
                   trailing={`${countsByRole[r].on}/${countsByRole[r].total}`}
                   onClick={() => { setRole(r); setQuery(''); }}
                 />

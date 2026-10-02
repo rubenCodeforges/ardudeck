@@ -15,6 +15,7 @@ import { useCameraStore } from '../../stores/camera-store';
 import { playWhep } from './whep';
 import { createStallTracker, nextRetryDelayMs, FIRST_FRAME_TIMEOUT_MS, RECONNECT_MS, RECHECK_SESSION_EVERY } from './stream-stall';
 import { sampleFromReport, healthBetween, type StreamHealth, type StreamSample } from './stream-health';
+import { t } from '../../../shared/i18n/index.js';
 
 export type CameraStreamStatus = 'starting' | 'live' | 'stalled' | 'error';
 
@@ -193,7 +194,7 @@ export function useCameraStream(
           dropPlayback();
           scheduleReconnect();
         } else {
-          fail('No video arrived. The feed connected but sent no frames.');
+          fail(t('camera:stream.noVideoArrived'));
         }
       }, FIRST_FRAME_TIMEOUT_MS);
       const loop = (): void => {
@@ -238,7 +239,7 @@ export function useCameraStream(
           if (cancelled) return;
           if (result.ok && result.session?.playback.kind === 'webrtc') whepUrl = result.session.playback.whepUrl;
         }
-        if (!whepUrl) throw new Error('no playback url yet');
+        if (!whepUrl) throw new Error('no playback url yet'); // i18n-exempt: internal, caught by the retry loop
         await startPlayback(video, whepUrl);
       } catch {
         if (!cancelled) scheduleReconnect();
@@ -272,7 +273,7 @@ export function useCameraStream(
         const result = await window.electronAPI.cameraStart(source, resolved);
         if (cancelled) return;
         if (!result.ok || !result.session) {
-          fail(result.error ?? 'Stream failed');
+          fail(result.error ?? t('camera:stream.failed'));
           return;
         }
         const playback = result.session.playback;
@@ -280,7 +281,7 @@ export function useCameraStream(
           whepUrl = playback.whepUrl;
           await startPlayback(video, playback.whepUrl);
         } else if (playback.kind === 'uvc') {
-          fail('Unexpected playback descriptor');
+          fail(t('camera:stream.unexpectedDescriptor'));
         }
       } catch (e) {
         if (cancelled) return;
@@ -291,7 +292,7 @@ export function useCameraStream(
           scheduleRestart();
           return;
         }
-        fail(e instanceof Error ? e.message : 'Playback error');
+        fail(e instanceof Error ? e.message : t('camera:stream.playbackError'));
       }
     }
     navigator.mediaDevices?.addEventListener?.('devicechange', onDeviceChange);

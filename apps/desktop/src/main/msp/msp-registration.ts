@@ -30,13 +30,13 @@ import { startMspTelemetry, stopMspTelemetry, getRc, setRawRc, startGpsSender, s
 import { getPid, setPid, getRcTuning, setRcTuning } from './msp-pid-rates.js';
 import { getModeRanges, setModeRange, getBoxNames, getBoxIds, getFeatures, setFeatures, getStatus, getActiveBoxes } from './msp-modes.js';
 import { getInavMixerConfig, getMixerConfig, setMixerConfig, setInavPlatformType } from './msp-mixer.js';
-import { getServoConfigs, setServoConfig, saveServoConfigViaCli, getServoValues, getServoMixer, setServoMixerRule, probeServoConfigMode } from './msp-servo.js';
+import { getServoConfigs, setServoConfig, saveServoConfigViaCli, getServoValues, getServoMixer, setServoMixerRule, setServoMixerRules, probeServoConfigMode } from './msp-servo.js';
 import { getMotorMixer, setMotorMixer, setMotorMixerRulesViaCli, setServoMixerRulesViaCli, readSmixViaCli, readMmixViaCli } from './msp-motor-mixer.js';
 import { getWaypoints, setWaypoint, uploadWaypoints, saveWaypoints, clearWaypoints, getMissionInfo } from './msp-navigation.js';
 import { getNavConfig, setNavConfig, getGpsConfig, setGpsConfig } from './msp-navigation.js';
 import { getFailsafeConfig, setFailsafeConfig, getGpsRescueConfig, setGpsRescueConfig, getGpsRescuePids, setGpsRescuePids, getFilterConfig, setFilterConfig, getVtxConfig, setVtxConfig, getOsdConfig, setOsdConfig, type OsdElementWrite, uploadOsdFont, type OsdFontChar, getRxConfig, setRxConfig } from './msp-peripheral-config.js';
 import { getSerialConfig, setSerialConfig, getRxMap, setRxMap, getRcDeadband, setRcDeadband } from './msp-serial-config.js';
-import { getSetting, setSetting, getSettings, setSettings } from './msp-settings.js';
+import { getSetting, setSetting, getSettings, setSettings, getSettingRanges } from './msp-settings.js';
 import { saveEeprom, calibrateAcc, calibrateMag, reboot, resetMspCliFlags } from './msp-commands.js';
 import { cleanupMspConnection } from './msp-cleanup.js';
 
@@ -88,6 +88,7 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_VALUES, async () => getServoValues());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_MIXER, async () => getServoMixer());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER, async (_event, index: number, rule: MSPServoMixerRule) => setServoMixerRule(index, rule));
+  ipcMain.handle(IPC_CHANNELS.MSP_SET_SERVO_MIXER_ALL, async (_event, rules: MSPServoMixerRule[]) => setServoMixerRules(rules));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE, async () => probeServoConfigMode());
   ipcMain.handle(IPC_CHANNELS.MSP_GET_MOTOR_MIXER, async () => getMotorMixer());
   ipcMain.handle(IPC_CHANNELS.MSP_SET_MOTOR_MIXER, async (_event, rules: MSPMotorMixerRule[]) => setMotorMixer(rules));
@@ -158,6 +159,12 @@ export function registerMspHandlers(window: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTING, async (_event, name: string, value: string | number) => setSetting(name, value));
   ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTINGS, async (_event, names: string[]) => getSettings(names));
   ipcMain.handle(IPC_CHANNELS.MSP_SET_SETTINGS, async (_event, settings: Record<string, string | number>) => setSettings(settings));
+  ipcMain.handle(IPC_CHANNELS.MSP_GET_SETTING_RANGES, async (_event, names: string[]) => getSettingRanges(names));
+  ipcMain.handle(IPC_CHANNELS.MSP_LAST_WRITE_ERROR, async () => {
+    const reason = ctx.lastWriteError;
+    ctx.lastWriteError = null;
+    return reason;
+  });
 
   // Command handlers
   ipcMain.handle(IPC_CHANNELS.MSP_SAVE_EEPROM, async () => saveEeprom());
@@ -223,6 +230,7 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_VALUES);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SERVO_MIXER_ALL);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SERVO_CONFIG_MODE);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_MOTOR_MIXER);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_MOTOR_MIXER);
@@ -286,6 +294,8 @@ export function unregisterMspHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SETTING);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTINGS);
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SET_SETTINGS);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_LAST_WRITE_ERROR);
+  ipcMain.removeHandler(IPC_CHANNELS.MSP_GET_SETTING_RANGES);
 
   // Command handlers
   ipcMain.removeHandler(IPC_CHANNELS.MSP_SAVE_EEPROM);

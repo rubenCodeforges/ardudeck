@@ -1,7 +1,7 @@
 /**
  * MSP Navigation
  *
- * Waypoints, mission, nav config, GPS config + CLI fallbacks.
+ * Waypoints, mission, nav config, GPS config.
  */
 
 import {
@@ -12,10 +12,15 @@ import {
   serializeWaypoint,
   MSP_WP_ACTION,
   MSP_WP_FLAG,
-  deserializeNavConfig,
-  serializeNavConfig,
   deserializeGpsConfig,
   serializeGpsConfig,
+  INAV_NAV_SETTING_NAMES,
+  INAV_GPS_SETTING_NAMES,
+  navConfigFromSettings,
+  navConfigToSettingWrites,
+  gpsConfigFromInav,
+  planInavGpsWrite,
+  type InavSettingValue,
   type MSPWaypoint,
   type MSPMissionInfo,
   type MSPNavConfig,
@@ -29,7 +34,7 @@ import {
   sendMspV2RequestWithPayload,
   withConfigLock,
 } from './msp-transport.js';
-import { stopMspTelemetry } from './msp-telemetry.js';
+import { getSetting, setSetting } from './msp-settings.js';
 
 /**
  * Get mission info (waypoint count, validity)
@@ -63,7 +68,7 @@ export async function getWaypoints(): Promise<MSPWaypoint[] | null> {
   if (!ctx.currentTransport?.isOpen) return null;
 
   if (!ctx.isInavFirmware) {
-    ctx.sendLog('warn', 'Waypoints only supported on iNav');
+    ctx.sendLog('warn', 'Waypoints only supported on iNav'); // i18n-exempt
     return null;
   }
 
@@ -74,7 +79,7 @@ export async function getWaypoints(): Promise<MSPWaypoint[] | null> {
       ctx.sendLog('info', `Mission info: ${info.waypointCount} waypoints, valid=${info.isValid}, max=${info.waypointListMaximum}`);
 
       if (info.waypointCount === 0) {
-        ctx.sendLog('info', 'No waypoints on FC');
+        ctx.sendLog('info', 'No waypoints on FC'); // i18n-exempt
         return [];
       }
 
@@ -93,7 +98,7 @@ export async function getWaypoints(): Promise<MSPWaypoint[] | null> {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] Get waypoints failed:', msg);
-      ctx.sendLog('error', 'Failed to download waypoints', msg);
+      ctx.sendLog('error', 'Failed to download waypoints', msg); // i18n-exempt
       return null;
     }
   });
@@ -107,7 +112,7 @@ export async function setWaypoint(wp: MSPWaypoint): Promise<boolean> {
   if (!ctx.currentTransport?.isOpen) return false;
 
   if (!ctx.isInavFirmware) {
-    ctx.sendLog('warn', 'Waypoints only supported on iNav');
+    ctx.sendLog('warn', 'Waypoints only supported on iNav'); // i18n-exempt
     return false;
   }
 
@@ -133,12 +138,12 @@ export async function uploadWaypoints(waypoints: MSPWaypoint[]): Promise<boolean
   if (!ctx.currentTransport?.isOpen) return false;
 
   if (!ctx.isInavFirmware) {
-    ctx.sendLog('warn', 'Waypoints only supported on iNav');
+    ctx.sendLog('warn', 'Waypoints only supported on iNav'); // i18n-exempt
     return false;
   }
 
   if (waypoints.length === 0) {
-    ctx.sendLog('info', 'No waypoints to upload');
+    ctx.sendLog('info', 'No waypoints to upload'); // i18n-exempt
     return true;
   }
 
@@ -165,7 +170,7 @@ export async function uploadWaypoints(waypoints: MSPWaypoint[]): Promise<boolean
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] Upload waypoints failed:', msg);
-      ctx.sendLog('error', 'Failed to upload waypoints', msg);
+      ctx.sendLog('error', 'Failed to upload waypoints', msg); // i18n-exempt
       return false;
     }
   });
@@ -179,7 +184,7 @@ export async function saveWaypoints(): Promise<boolean> {
   if (!ctx.currentTransport?.isOpen) return false;
 
   if (!ctx.isInavFirmware) {
-    ctx.sendLog('warn', 'Waypoints only supported on iNav');
+    ctx.sendLog('warn', 'Waypoints only supported on iNav'); // i18n-exempt
     return false;
   }
 
@@ -187,12 +192,12 @@ export async function saveWaypoints(): Promise<boolean> {
     try {
       const payload = new Uint8Array([0]);
       await sendMspRequestWithPayload(MSP.WP_MISSION_SAVE, payload, 3000);
-      ctx.sendLog('info', 'Mission saved to EEPROM');
+      ctx.sendLog('info', 'Mission saved to EEPROM'); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] Save waypoints failed:', msg);
-      ctx.sendLog('error', 'Failed to save mission to EEPROM', msg);
+      ctx.sendLog('error', 'Failed to save mission to EEPROM', msg); // i18n-exempt
       return false;
     }
   });
@@ -205,7 +210,7 @@ export async function clearWaypoints(): Promise<boolean> {
   if (!ctx.currentTransport?.isOpen) return false;
 
   if (!ctx.isInavFirmware) {
-    ctx.sendLog('warn', 'Waypoints only supported on iNav');
+    ctx.sendLog('warn', 'Waypoints only supported on iNav'); // i18n-exempt
     return false;
   }
 
@@ -228,32 +233,45 @@ export async function clearWaypoints(): Promise<boolean> {
       const savePayload = new Uint8Array([0]);
       await sendMspRequestWithPayload(MSP.WP_MISSION_SAVE, savePayload, 3000);
 
-      ctx.sendLog('info', 'Mission cleared from FC');
+      ctx.sendLog('info', 'Mission cleared from FC'); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] Clear waypoints failed:', msg);
-      ctx.sendLog('error', 'Failed to clear mission', msg);
+      ctx.sendLog('error', 'Failed to clear mission', msg); // i18n-exempt
       return false;
     }
   });
 }
 
 // =============================================================================
-// Navigation Configuration (iNav)
+// Navigation Configuration (iNav) - named settings, as inav-configurator does
 // =============================================================================
 
+async function readSettingValues(names: string[]): Promise<Record<string, InavSettingValue>> {
+  const values: Record<string, InavSettingValue> = {};
+  for (const name of names) {
+    const result = await getSetting(name);
+    values[name] = result ? result.value : null;
+  }
+  return values;
+}
+
+async function writeSettingValues(writes: Record<string, string | number>): Promise<string | null> {
+  for (const [name, value] of Object.entries(writes)) {
+    if (!(await setSetting(name, value))) return name;
+  }
+  return null;
+}
+
 export async function getNavConfig(): Promise<Partial<MSPNavConfig> | null> {
-  if (!ctx.currentTransport?.isOpen) return null;
+  if (!ctx.currentTransport?.isOpen || !ctx.isInavFirmware) return null;
 
   return withConfigLock(async () => {
     try {
-      try {
-        const payload = await sendMspV2Request(MSP2.INAV_RTH_AND_LAND_CONFIG, 1000);
-        return deserializeNavConfig(payload);
-      } catch {
-        return null;
-      }
+      const values = await readSettingValues(INAV_NAV_SETTING_NAMES);
+      if (Object.values(values).every(v => v === null)) return null;
+      return navConfigFromSettings(values);
     } catch (error) {
       console.error('[MSP] Get Nav Config failed:', error);
       return null;
@@ -262,84 +280,49 @@ export async function getNavConfig(): Promise<Partial<MSPNavConfig> | null> {
 }
 
 export async function setNavConfig(config: Partial<MSPNavConfig>): Promise<boolean> {
-  if (!ctx.currentTransport?.isOpen) {
+  if (!ctx.currentTransport?.isOpen) return false;
+  if (!ctx.isInavFirmware) {
+    ctx.sendLog('warn', 'Navigation config is only available on iNav'); // i18n-exempt
     return false;
   }
 
-  const mspSuccess = await withConfigLock(async () => {
+  return withConfigLock(async () => {
     try {
-      const payload = serializeNavConfig(config);
-      await sendMspV2RequestWithPayload(MSP2.INAV_SET_RTH_AND_LAND_CONFIG, payload, 2000);
-      ctx.sendLog('info', 'Navigation config updated');
+      const current = await readSettingValues(INAV_NAV_SETTING_NAMES);
+      const { writes, unsupported } = navConfigToSettingWrites(config, current);
+      if (unsupported.length > 0) {
+        ctx.sendLog('error', 'Nav config not saved', `The flight controller has no setting for: ${unsupported.join(', ')}`); // i18n-exempt
+        return false;
+      }
+      const failed = await writeSettingValues(writes);
+      if (failed) {
+        ctx.sendLog('error', 'Failed to set nav config', `${failed} was rejected by the flight controller`); // i18n-exempt
+        return false;
+      }
+      ctx.sendLog('info', 'Navigation config updated', `${Object.keys(writes).length} settings changed`); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.error('[MSP] SET_NAV_CONFIG failed:', msg);
-      if (msg.includes('not supported') || msg.includes('timed out')) {
-        ctx.sendLog('warn', 'MSP2 nav config not supported, trying CLI...');
-        return null;
-      }
-      ctx.sendLog('error', 'Failed to set nav config', msg);
+      ctx.sendLog('error', 'Failed to set nav config', msg); // i18n-exempt
       return false;
     }
   });
-
-  if (mspSuccess !== null) {
-    return mspSuccess;
-  }
-
-  return await setNavConfigViaCli(config);
 }
 
-async function setNavConfigViaCli(config: Partial<MSPNavConfig>): Promise<boolean> {
-  if (!ctx.currentTransport?.isOpen) return false;
-
-  try {
-    ctx.sendLog('info', 'CLI fallback', 'Setting nav config via CLI');
-
-    stopMspTelemetry();
-    await ctx.currentTransport.write(new Uint8Array([0x23])); // '#'
-    await new Promise(r => setTimeout(r, 500));
-
-    const commands: string[] = [];
-
-    if (config.rthAltitude !== undefined) {
-      commands.push(`set nav_rth_altitude = ${config.rthAltitude}`);
-    }
-    if ((config as Record<string, unknown>).rthAllowLanding !== undefined) {
-      const landingModes = ['NEVER', 'ALWAYS', 'FS_ONLY'];
-      commands.push(`set nav_rth_allow_landing = ${landingModes[(config as Record<string, unknown>).rthAllowLanding as number] || 'ALWAYS'}`);
-    }
-    if (config.landDescendRate !== undefined) {
-      commands.push(`set nav_land_descend_rate = ${config.landDescendRate}`);
-    }
-    if (config.landSlowdownMinAlt !== undefined) {
-      commands.push(`set nav_land_slowdown_minalt = ${config.landSlowdownMinAlt}`);
-    }
-    if (config.landSlowdownMaxAlt !== undefined) {
-      commands.push(`set nav_land_slowdown_maxalt = ${config.landSlowdownMaxAlt}`);
-    }
-    if (config.emergencyDescentRate !== undefined) {
-      commands.push(`set nav_emerg_landing_speed = ${config.emergencyDescentRate}`);
-    }
-
-    for (const cmd of commands) {
-      await ctx.currentTransport.write(new TextEncoder().encode(cmd + '\n'));
-      await new Promise(r => setTimeout(r, 100));
-    }
-
-    return true;
-  } catch (error) {
-    console.error('[MSP] CLI nav config failed:', error);
-    return false;
-  }
-}
+// =============================================================================
+// GPS Configuration
+// =============================================================================
 
 export async function getGpsConfig(): Promise<MSPGpsConfig | null> {
   if (!ctx.currentTransport?.isOpen) return null;
 
   return withConfigLock(async () => {
     try {
+      if (ctx.isInavFirmware) {
+        const misc = await sendMspV2Request(MSP2.INAV_MISC, 1000);
+        const values = await readSettingValues(INAV_GPS_SETTING_NAMES);
+        return gpsConfigFromInav(misc, values);
+      }
       const payload = await sendMspRequest(MSP.GPS_CONFIG, 1000);
       return deserializeGpsConfig(payload);
     } catch (error) {
@@ -350,63 +333,38 @@ export async function getGpsConfig(): Promise<MSPGpsConfig | null> {
 }
 
 export async function setGpsConfig(config: MSPGpsConfig): Promise<boolean> {
-  if (!ctx.currentTransport?.isOpen) {
-    return false;
-  }
+  if (!ctx.currentTransport?.isOpen) return false;
 
-  const mspSuccess = await withConfigLock(async () => {
+  return withConfigLock(async () => {
     try {
-      const payload = serializeGpsConfig(config);
-      await sendMspRequestWithPayload(MSP.SET_GPS_CONFIG, payload, 2000);
+      if (!ctx.isInavFirmware) {
+        await sendMspRequestWithPayload(MSP.SET_GPS_CONFIG, serializeGpsConfig(config), 2000);
+        ctx.sendLog('info', 'GPS config updated');
+        return true;
+      }
+
+      const currentMisc = await sendMspV2Request(MSP2.INAV_MISC, 1000);
+      const current = await readSettingValues(INAV_GPS_SETTING_NAMES);
+      const plan = planInavGpsWrite(config, currentMisc, current);
+      if (plan.unsupported.length > 0) {
+        ctx.sendLog('error', 'GPS config not saved', `Not available on this flight controller: ${plan.unsupported.join(', ')}`);
+        return false;
+      }
+      if (plan.misc) {
+        await sendMspV2RequestWithPayload(MSP2.INAV_SET_MISC, plan.misc, 2000);
+      }
+      const failed = await writeSettingValues(plan.writes);
+      if (failed) {
+        ctx.sendLog('error', 'Failed to set GPS config', `${failed} was rejected by the flight controller`); // i18n-exempt
+        return false;
+      }
       ctx.sendLog('info', 'GPS config updated');
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.error('[MSP] SET_GPS_CONFIG failed:', msg);
-      if (msg.includes('not supported')) {
-        ctx.sendLog('warn', 'MSP SET_GPS_CONFIG not supported, trying CLI...');
-        return null;
-      }
-      ctx.sendLog('error', 'Failed to set GPS config', msg);
+      console.error('[MSP] Set GPS config failed:', msg);
+      ctx.sendLog('error', 'Failed to set GPS config', msg); // i18n-exempt
       return false;
     }
   });
-
-  if (mspSuccess !== null) {
-    return mspSuccess;
-  }
-
-  return await setGpsConfigViaCli(config);
-}
-
-async function setGpsConfigViaCli(config: MSPGpsConfig): Promise<boolean> {
-  if (!ctx.currentTransport?.isOpen) return false;
-
-  try {
-    ctx.sendLog('info', 'CLI fallback', 'Setting GPS config via CLI');
-
-    stopMspTelemetry();
-    await ctx.currentTransport.write(new Uint8Array([0x23])); // '#'
-    await new Promise(r => setTimeout(r, 500));
-
-    const providerNames = ['NMEA', 'UBLOX', 'MSP', 'FAKE'];
-    const sbasNames = ['AUTO', 'EGNOS', 'WAAS', 'MSAS', 'GAGAN', 'NONE'];
-
-    const commands = [
-      `set gps_provider = ${providerNames[config.provider] || 'UBLOX'}`,
-      `set gps_sbas_mode = ${sbasNames[config.sbasMode] || 'AUTO'}`,
-      `set gps_auto_config = ${config.autoConfig ? 'ON' : 'OFF'}`,
-      `set gps_auto_baud = ${config.autoBaud ? 'ON' : 'OFF'}`,
-    ];
-
-    for (const cmd of commands) {
-      await ctx.currentTransport.write(new TextEncoder().encode(cmd + '\n'));
-      await new Promise(r => setTimeout(r, 100));
-    }
-
-    return true;
-  } catch (error) {
-    console.error('[MSP] CLI GPS config failed:', error);
-    return false;
-  }
 }

@@ -1,0 +1,9 @@
+{
+  "useFleet": {
+    "fleetCount": "Flotte ({{count}})"
+  },
+  "useModeRequest": {
+    "noResponse": "Keine Antwort",
+    "notSent": "Nicht gesendet"
+  }
+}

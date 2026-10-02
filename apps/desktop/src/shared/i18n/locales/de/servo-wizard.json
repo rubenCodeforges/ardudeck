@@ -1,0 +1,296 @@
+{
+  "diagrams": {
+    "camera": "Kamera",
+    "deltaHint": "Delta mit Seitenleitwerk",
+    "elevator": "Höhenruder",
+    "flyingWingHint": "Elevons = Querruder + Höhenruder kombiniert",
+    "front": "VORNE",
+    "gimbalHint": "Pan = horizontal, Tilt = vertikal",
+    "leftAileron": "L Querruder",
+    "leftElevon": "L Elevon",
+    "leftVTail": "L V-Leitwerk",
+    "motor1": "Motor 1",
+    "motor2": "Motor 2",
+    "panServo": "Pan-Servo",
+    "rightAileron": "R Querruder",
+    "rightElevon": "R Elevon",
+    "rightVTail": "R V-Leitwerk",
+    "rudder": "Seitenruder",
+    "tiltServo": "Tilt-Servo",
+    "tricopterHint": "Nur das Gier-Servo muss konfiguriert werden",
+    "yawServo": "Gier-Servo"
+  },
+  "planeTypeStep": {
+    "continue": "Weiter →",
+    "gimbalSubtitle": "Ihr Board ist als Multirotor konfiguriert. Sie können Gimbal-Servos zur Kamerasteuerung einrichten.",
+    "gimbalTip": "Der Gimbal verwendet RC-Stick-Eingaben, um Pan-/Tilt-Servos zur Kamerastabilisierung zu steuern.",
+    "gimbalTitle": "Gimbal-Servo-Einrichtung",
+    "noServos": "Keine Servos",
+    "quadHex": "Quad/Hex",
+    "servoCount_one": "{{count}} Servo",
+    "servoCount_other": "{{count}} Servos",
+    "subtitle": "Wählen Sie Ihren Luftfahrzeugtyp für die richtige Servo-Einrichtung.",
+    "tip": "<b>Quad mit Kamera?</b> Wählen Sie Gimbal. <b2>Flächenflugzeug?</b2> Die meisten sind Klassisch.",
+    "title": "Welche Art von Luftfahrzeug haben Sie?"
+  },
+  "servoAssignmentStep": {
+    "clickToHighlight": "Klicken Sie auf eine Steuerfläche, um sie hervorzuheben",
+    "continue": "Weiter: Servos testen →",
+    "duplicateWarning": "Warnung: Mehrere Steuerflächen sind demselben Servo zugewiesen!",
+    "noAircraft": "Kein Luftfahrzeugtyp ausgewählt",
+    "subtitle": "Ordnen Sie jede Steuerfläche dem Servoausgang zu, an den sie auf Ihrem Flugcontroller angeschlossen ist.",
+    "tip": "<b>Tipp:</b> Prüfen Sie Ihre FC-Verkabelung. Servoausgänge sind meist mit S1-S8 oder SERVO1-8 beschriftet. S1 = Servo 0 in iNav.",
+    "title": "Servos den Steuerflächen zuweisen"
+  },
+  "servoEndpointSlider": {
+    "centerHandle": "Mitte",
+    "centerUs": "Mitte (µs)",
+    "maxHandle": "max",
+    "maxUs": "Max (µs)",
+    "minHandle": "min",
+    "minUs": "Min (µs)",
+    "testCenter": "Mitte testen",
+    "testMax": "Max testen",
+    "testMin": "Min testen"
+  },
+  "servoEndpointsStep": {
+    "continue": "Weiter: Überprüfen →",
+    "enableFeedback": "Live-Servo-Rückmeldung aktivieren",
+    "feedbackEnabled": "● Live-Servo-Rückmeldung aktiv",
+    "livePosition": "Live-Position",
+    "quickTips": "Kurztipps:",
+    "rate": "Rate:",
+    "rateHint": "Verringert den Stellweg. 100% = voller Weg, 50% = halber Weg.",
+    "subtitle": "Legen Sie fest, wie weit sich jedes Servo bewegen darf. Wenn Ihr Servo bei vollem Stickausschlag ein Knurrgeräusch macht, verringern Sie hier die Grenzen.",
+    "testingPosition": "Servoposition wird getestet...",
+    "tipGrinding": "<b>Knurrgeräusch?</b> Min- oder Max-Wert verringern",
+    "tipNotLevel": "<b>Bei Stick in Mitte nicht neutral?</b> Mitte-Wert anpassen",
+    "tipSensitive": "<b>Zu empfindlich?</b> Rate-Prozentsatz senken",
+    "title": "Servoweg feinabstimmen"
+  },
+  "servoPresets": {
+    "aircraft": {
+      "delta": {
+        "description": "Deltaflügel mit Elevons und Seitenruder",
+        "name": "Delta",
+        "tip": "Wie ein Nurflügler, aber mit Seitenleitwerk für das Seitenruder."
+      },
+      "flyingWing": {
+        "description": "Delta/Nurflügler mit 2 Elevons",
+        "name": "Nurflügler",
+        "tip": "Elevons kombinieren Quer- und Höhenruderfunktion. Keine Leitwerksflächen."
+      },
+      "gimbal": {
+        "description": "2-Achsen-Kameragimbal (Pan/Tilt)",
+        "name": "Gimbal",
+        "tip": "Zur Kamerastabilisierung. Verwendet RC-Eingang, nicht den stabilisierten Ausgang."
+      },
+      "traditional": {
+        "description": "Standardflugzeug mit Querrudern, Höhenruder, Seitenruder",
+        "name": "Klassisch",
+        "tip": "Häufigste Konfiguration für Flächenflugzeuge. Separate Steuerflächen für jede Achse."
+      },
+      "tricopter": {
+        "description": "Tricopter mit Gier-Servo",
+        "name": "Tricopter",
+        "tip": "Nur das hintere Gier-Servo muss konfiguriert werden. Motoren werden separat behandelt."
+      },
+      "vtail": {
+        "description": "Flugzeug mit V-Leitwerk (Ruddervators)",
+        "name": "V-Leitwerk",
+        "tip": "V-Leitwerksflächen kombinieren Höhen- und Seitenruder. Standard-Querruder."
+      }
+    },
+    "inputSource": {
+      "gimbalPitch": "Gimbal Nicken",
+      "gimbalRoll": "Gimbal Rollen",
+      "pitch": "Nicken",
+      "rcPitch": "RC Nicken (manuell)",
+      "rcRoll": "RC Rollen (manuell)",
+      "rcThrottle": "RC Gas (manuell)",
+      "rcYaw": "RC Gieren (manuell)",
+      "roll": "Rollen",
+      "throttle": "Gas",
+      "yaw": "Gieren"
+    },
+    "surface": {
+      "aileronLeft": {
+        "description": "Rollt das Flugzeug nach links, wenn unten",
+        "name": "Linkes Querruder",
+        "shortName": "L QR"
+      },
+      "aileronRight": {
+        "description": "Rollt das Flugzeug nach rechts, wenn unten",
+        "name": "Rechtes Querruder",
+        "shortName": "R QR"
+      },
+      "elevator": {
+        "description": "Hebt die Nase, wenn die Hinterkante nach oben geht",
+        "name": "Höhenruder",
+        "shortName": "HR"
+      },
+      "elevonLeft": {
+        "description": "Nurflügler - kombiniert Rollen und Nicken",
+        "name": "Linkes Elevon",
+        "shortName": "L Elev"
+      },
+      "elevonRight": {
+        "description": "Nurflügler - kombiniert Rollen und Nicken",
+        "name": "Rechtes Elevon",
+        "shortName": "R Elev"
+      },
+      "gimbalPan": {
+        "description": "Horizontale Drehung des Kameragimbals",
+        "name": "Gimbal Pan",
+        "shortName": "Pan"
+      },
+      "gimbalTilt": {
+        "description": "Vertikale Drehung des Kameragimbals",
+        "name": "Gimbal Tilt",
+        "shortName": "Tilt"
+      },
+      "rudder": {
+        "description": "Giert das Flugzeug nach links/rechts",
+        "name": "Seitenruder",
+        "shortName": "SR"
+      },
+      "vtailLeft": {
+        "description": "V-Leitwerk - kombiniert Höhen- und Seitenruder",
+        "name": "Linkes V-Leitwerk",
+        "shortName": "L VT"
+      },
+      "vtailRight": {
+        "description": "V-Leitwerk - kombiniert Höhen- und Seitenruder",
+        "name": "Rechtes V-Leitwerk",
+        "shortName": "R VT"
+      },
+      "yawServo": {
+        "description": "Heckservo des Tricopters zur Giersteuerung",
+        "name": "Gier-Servo",
+        "shortName": "Gier"
+      }
+    }
+  },
+  "servoReviewStep": {
+    "beforeSaving": "Vor dem Speichern:",
+    "controlSurface": "Steuerfläche",
+    "input": "Eingang",
+    "mixerPreview": "Vorschau der Mischerregeln",
+    "noteConnected": "Stellen Sie sicher, dass Ihr Flugcontroller verbunden ist",
+    "noteEeprom": "Einstellungen werden im EEPROM gespeichert (bleiben nach dem Ausschalten erhalten)",
+    "notePropellers": "Entfernen Sie aus Sicherheitsgründen die Propeller",
+    "noteTest": "Testen Sie nach dem Speichern vor dem Flug alle Steuerungen",
+    "nothingToReview": "Keine Konfiguration zum Überprüfen",
+    "rev": "REV",
+    "saveFailed": "Konfiguration konnte nicht gespeichert werden",
+    "saveToFc": "Im Flugcontroller speichern",
+    "saved": "Konfiguration erfolgreich gespeichert!",
+    "savedHint": "Die Einstellungen wurden in den Flugcontroller geschrieben. Sie können diesen Assistenten jetzt schließen.",
+    "source": "Quelle {{source}}",
+    "subtitle": "Überprüfen Sie Ihre Servokonfiguration, bevor Sie sie im Flugcontroller speichern.",
+    "title": "Konfiguration überprüfen"
+  },
+  "servoTestStep": {
+    "checkAilerons": "<b>Querruder:</b> Roll-Stick rechts → rechtes Querruder sollte nach OBEN, linkes nach UNTEN gehen",
+    "checkElevator": "<b>Höhenruder:</b> Stick ziehen → Hinterkante sollte nach OBEN gehen",
+    "checkElevons": "<b>Elevons:</b> Sowohl Roll- als auch Nickbewegungen testen",
+    "checkRudder": "<b>Seitenruder:</b> Gier-Stick rechts → Seitenruder sollte sich nach RECHTS bewegen",
+    "continue": "Weiter: Kalibrieren →",
+    "enablePolling": "Live-Servoabfrage aktivieren",
+    "howToCheck": "So prüfen Sie die Richtung:",
+    "instruction": {
+      "aileronLeft": "Roll-Stick nach RECHTS → dieses Servo sollte sich nach UNTEN bewegen",
+      "aileronRight": "Roll-Stick nach RECHTS → dieses Servo sollte sich nach OBEN bewegen",
+      "default": "Den entsprechenden Stick bewegen",
+      "elevator": "Nick-Stick ZIEHEN → Hinterkante sollte nach OBEN gehen",
+      "elevonLeft": "Rollen RECHTS → UNTEN. Nicken ZIEHEN → OBEN (Hinterkante)",
+      "elevonRight": "Rollen RECHTS → OBEN. Nicken ZIEHEN → OBEN (Hinterkante)",
+      "gimbalPan": "Gier-Stick bewegen → Kamera sollte sich horizontal drehen",
+      "gimbalTilt": "Nick-Stick bewegen → Kamera sollte nach oben/unten kippen",
+      "rudder": "Gier-Stick nach RECHTS → Seitenruder sollte nach RECHTS ausschlagen",
+      "vtailLeft": "Nicken ZIEHEN und Gieren RECHTS → beide Bewegungen testen",
+      "vtailRight": "Nicken ZIEHEN und Gieren RECHTS → beide Bewegungen testen",
+      "yawServo": "Gier-Stick bewegen → Motor sollte kippen"
+    },
+    "moveStick": "Stick zum Testen bewegen",
+    "pollingEnabled": "● Live-Servoabfrage aktiv",
+    "responding": "Servo reagiert",
+    "reverseHint": "Wenn sich ein Servo in die <b>falsche Richtung</b> bewegt, klicken Sie auf <rev>Umkehren</rev>.",
+    "servoIndex": "Servo {{index}}",
+    "subtitle": "Bewegen Sie die Sticks Ihres Senders und prüfen Sie, ob jedes Servo korrekt reagiert.",
+    "title": "Servos testen",
+    "undoReverse": "Umkehrung rückgängig"
+  },
+  "servoTuningCard": {
+    "clickToReverse": "Zum Umkehren klicken",
+    "fwd": "NORM",
+    "reversedTip": "Servo umgekehrt",
+    "testMax": "Max →",
+    "testMin": "← Min"
+  },
+  "servoTuningView": {
+    "clickToSelect": "Steuerfläche zum Auswählen anklicken",
+    "noConfig": "Keine Servokonfiguration",
+    "saveFailed": "Speichern fehlgeschlagen: {{error}}",
+    "saveToFc": "Im FC speichern",
+    "saved": "Im Flugcontroller gespeichert",
+    "useWizard": "Verwenden Sie zuerst den Assistenten, um Ihre Servos zu konfigurieren."
+  },
+  "servoWizard": {
+    "boardIsMultirotor": "Board als Multirotor konfiguriert",
+    "changeMixerHint": "Dadurch wird der Mischertyp auf AIRPLANE geändert, im EEPROM gespeichert und das Board neu gestartet.",
+    "checkingSupport": "Servo-Unterstützung wird geprüft...",
+    "completeWizardFirst": "Zuerst den Assistenten abschließen",
+    "configureAsAirplane": "Als Flugzeug konfigurieren",
+    "configureAsPlaneQuestion": "Möchten Sie dieses Board als Flächenflugzeug konfigurieren?",
+    "configuring": "Wird konfiguriert...",
+    "disconnecting": "Wird getrennt...",
+    "failedWithMessage": "Fehlgeschlagen: {{message}}. Versuchen Sie die CLI des iNav Configurators.",
+    "fineTuneServos": "Servos feinabstimmen",
+    "notAvailable": "Servo-Einrichtung nicht verfügbar",
+    "oldFirmwareNote": "<b>Hinweis:</b> iNav 2.0.0 ist sehr alt. Falls dies nicht funktioniert, müssen Sie eventuell die CLI des iNav Configurators verwenden: <code>mixer AIRPLANE</code>, dann <code>save</code>",
+    "platformChangeFailed": "Plattform konnte nicht geändert werden. Versuchen Sie für iNav 2.0.0 die CLI des iNav Configurators: mixer AIRPLANE, dann save",
+    "platformChanged": "Plattform auf AIRPLANE geändert! Verbinden Sie sich erneut, um dies zu prüfen.",
+    "rebooting": "Board wird neu gestartet...",
+    "reconnectHint": "Verwenden Sie das Verbindungs-Panel oben, um sich erneut zu verbinden.",
+    "reconnecting": "Verbindung wird wiederhergestellt...",
+    "savingEeprom": "Plattformänderung gesendet. Speichern im EEPROM...",
+    "sendingPlatform": "Plattformkonfiguration wird gesendet (MSP2 + CLI-Fallback)...",
+    "servoCount": "- {{count}} Servos",
+    "settingPlatform": "Plattformtyp wird auf AIRPLANE gesetzt...",
+    "steps": {
+      "aircraft": {
+        "description": "Luftfahrzeugtyp auswählen",
+        "label": "Luftfahrzeug"
+      },
+      "assign": {
+        "description": "Servos den Steuerflächen zuordnen",
+        "label": "Zuweisen"
+      },
+      "endpoints": {
+        "description": "Servogrenzen anpassen",
+        "label": "Kalibrieren"
+      },
+      "review": {
+        "description": "Überprüfen und speichern",
+        "label": "Speichern"
+      },
+      "test": {
+        "description": "Servobewegung prüfen",
+        "label": "Testen"
+      }
+    },
+    "tune": "Tuning",
+    "unknownError": "Unbekannter Fehler",
+    "useConnectionPanel": "Bitte verwenden Sie das Verbindungs-Panel, um sich erneut mit Ihrem Board zu verbinden.",
+    "usedFor": "Die Servo-Einrichtung wird verwendet für:",
+    "usedForFixedWing": "<b>Flächenflugzeuge</b> - Querruder, Höhenruder, Seitenruder",
+    "usedForFlyingWing": "<b>Nurflügler</b> - Elevon-Mischung",
+    "usedForGimbal": "<b>Gimbal-Servos</b> - Kamera Pan/Tilt (erfordert kompatibles Board)",
+    "waitingReboot": "Warte auf Neustart des Boards (5s)...",
+    "wizard": "Assistent"
+  },
+  "wizardNav": {
+    "back": "← Zurück"
+  }
+}

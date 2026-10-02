@@ -1,0 +1,47 @@
+{
+  "appShell": {
+    "about": "About ArduDeck",
+    "clickToDisconnect": "Click to disconnect",
+    "disconnected": "Disconnected",
+    "fleetCount": "Fleet ({{count}})",
+    "fleetTitle": "Fleet connected over multi-vehicle links. Click to open telemetry.",
+    "noneSelected": " · none selected",
+    "staleDisconnect": "No data for {{seconds}}s. Click to disconnect",
+    "staleShort": "No data {{seconds}}s",
+    "voiceMuted": "Voice alerts muted. Click to unmute",
+    "voiceOn": "Voice alerts on. Click to mute",
+    "waiting": "Waiting..."
+  },
+  "armDisarm": {
+    "arm": "ARM",
+    "armNotConfigured": "ARM mode not configured on FC. Set an AUX channel for ARM in the Modes tab.",
+    "armTitle": "Arm",
+    "armingBlocked": "Arming Blocked",
+    "disarm": "DISARM",
+    "disarmTitle": "Disarm",
+    "forceArm": "FORCE ARM",
+    "forceArmHint": "Bypass pre-arm safety checks",
+    "forceArmLabel": "Force ARM",
+    "forceArmTitle": "Force arm (bypasses checks)",
+    "mspUnknown": "Unknown",
+    "preArmFailed": "Pre-arm Checks Failed",
+    "title": "{{action}} - Right-click for options"
+  },
+  "quickLaunch": {
+    "areaEditorDesc": "Draw mission areas: multi-area, holes, KML",
+    "button": "Quick Launch",
+    "buttonTitle": "Quick Launch: open tools in their own window",
+    "inspectorDesc": "Watch live messages and graphs",
+    "simWorldDesc": "Fly SITL in a persistent 3D world: obstacles, fences, missions",
+    "telemetryDashboard": "Telemetry Dashboard",
+    "telemetryDashboardDesc": "Live telemetry on its own screen"
+  },
+  "updateBanner": {
+    "available": "<b>ArduDeck {{version}}</b> is available{{name}}",
+    "downloading": "Downloading <b>ArduDeck {{version}}</b>",
+    "newVersion": "new version",
+    "ready": "<b>ArduDeck {{version}}</b> is ready to install",
+    "restartToUpdate": "Restart to Update",
+    "viewRelease": "View Release"
+  }
+}

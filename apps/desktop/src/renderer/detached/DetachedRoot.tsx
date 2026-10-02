@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { getDetachedComponent } from './component-registry';
 import { useDetachedSubscriptions } from './useDetachedSubscriptions';
 import { initializeSettings } from '../stores/settings-store';
@@ -42,6 +43,7 @@ function parseQuery(): ParsedQuery {
 }
 
 export function DetachedRoot(): JSX.Element {
+  const { t } = useTranslation();
   const query = useMemo(parseQuery, []);
   const def = getDetachedComponent(query.componentId);
 
@@ -69,9 +71,13 @@ export function DetachedRoot(): JSX.Element {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-surface-base text-content-secondary p-6 text-center">
         <div>
-          <div className="text-lg font-medium text-content mb-2">Unknown component</div>
+          <div className="text-lg font-medium text-content mb-2">{t('detached:detachedRoot.unknownComponent')}</div>
           <div className="text-sm">
-            componentId <code className="text-amber-500">{query.componentId || '(missing)'}</code> is not registered.
+            <Trans
+              i18nKey="detached:detachedRoot.notRegistered"
+              values={{ id: query.componentId || t('detached:detachedRoot.missing') }}
+              components={{ code: <code className="text-amber-500" /> }}
+            />
           </div>
         </div>
       </div>
@@ -105,6 +111,7 @@ export function DetachedRoot(): JSX.Element {
  * already shows that.
  */
 function DetachedChrome({ title }: { title: string }): JSX.Element {
+  const { t } = useTranslation();
   const [pinned, setPinned] = useState<boolean>(false);
 
   useEffect(() => {
@@ -142,12 +149,12 @@ function DetachedChrome({ title }: { title: string }): JSX.Element {
         onClick={dockBack}
         className="h-5 px-2 inline-flex items-center gap-1 text-[11px] rounded text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
         style={{ ['WebkitAppRegion' as never]: 'no-drag' as never }}
-        title={`Close this window and return to ArduDeck`}
+        title={t('detached:detachedRoot.closeTitle')}
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
-        <span>Dock back</span>
+        <span>{t('detached:detachedRoot.dockBack')}</span>
       </button>
 
       <div className="flex-1 text-center text-[11px] text-content-tertiary truncate px-2">
@@ -162,8 +169,8 @@ function DetachedChrome({ title }: { title: string }): JSX.Element {
             : 'text-content-tertiary hover:text-content hover:bg-surface-raised'
         }`}
         style={{ ['WebkitAppRegion' as never]: 'no-drag' as never }}
-        title={pinned ? 'Pinned on top, click to unpin' : 'Keep this window on top of ArduDeck'}
-        aria-label="Toggle always on top"
+        title={pinned ? t('detached:detachedRoot.pinned') : t('detached:detachedRoot.keepOnTop')}
+        aria-label={t('detached:detachedRoot.toggleOnTop')}
       >
         {pinned ? (
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">

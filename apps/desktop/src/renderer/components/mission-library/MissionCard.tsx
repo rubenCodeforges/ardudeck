@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { CloudUpload, Download } from 'lucide-react';
+import type { TFunction } from 'i18next';
 import type { MissionSummary, FlightStatus } from '../../../shared/mission-library-types';
 import { useSettingsStore } from '../../stores/settings-store';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
@@ -10,11 +12,11 @@ const STATUS_DOT_COLORS: Record<FlightStatus, string> = {
   aborted: 'bg-red-400',
 };
 
-const STATUS_LABELS: Record<FlightStatus, string> = {
-  planned: 'Planned',
-  in_progress: 'In Progress',
-  completed: 'Completed',
-  aborted: 'Aborted',
+const STATUS_LABEL_KEYS: Record<FlightStatus, string> = {
+  planned: 'mission-library:flightStatus.planned',
+  in_progress: 'mission-library:flightStatus.inProgress',
+  completed: 'mission-library:flightStatus.completed',
+  aborted: 'mission-library:flightStatus.aborted',
 };
 
 const STATUS_BADGE_STYLES: Record<FlightStatus, string> = {
@@ -32,7 +34,7 @@ const STATUS_LEFT_BORDER: Record<FlightStatus, string> = {
   aborted: 'border-l-red-400/60',
 };
 
-function formatRelativeDate(iso: string): string {
+function formatRelativeDate(iso: string, t: TFunction): string {
   const date = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -40,10 +42,10 @@ function formatRelativeDate(iso: string): string {
   const diffHr = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHr / 24);
 
-  if (diffMin < 1) return 'Just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHr < 24) return `${diffHr}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffMin < 1) return t('mission-library:relativeDate.justNow');
+  if (diffMin < 60) return t('mission-library:relativeDate.minutesAgo', { n: diffMin });
+  if (diffHr < 24) return t('mission-library:relativeDate.hoursAgo', { n: diffHr });
+  if (diffDay < 7) return t('mission-library:relativeDate.daysAgo', { n: diffDay });
   return date.toLocaleDateString();
 }
 
@@ -64,6 +66,7 @@ interface MissionCardProps {
 }
 
 export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoad, onDuplicate, onDelete, onExport, onBackup, inBackup }: MissionCardProps) {
+  const { t } = useTranslation();
   const { vehicles } = useSettingsStore();
   const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
   const vehicle = vehicles.find(v => v.id === mission.vehicleProfileId);
@@ -89,15 +92,15 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
           <h3 className="text-sm font-medium text-content truncate">{mission.name}</h3>
           {status ? (
             <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded border ${STATUS_BADGE_STYLES[status]}`}>
-              {STATUS_LABELS[status]}
+              {t(STATUS_LABEL_KEYS[status])}
             </span>
           ) : (
             <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded border bg-surface-raised text-content-secondary border-subtle">
-              New
+              {t('common:new')}
             </span>
           )}
         </div>
-        <span className="text-[10px] text-content-secondary shrink-0">{formatRelativeDate(mission.updatedAt)}</span>
+        <span className="text-[10px] text-content-secondary shrink-0">{formatRelativeDate(mission.updatedAt, t)}</span>
       </div>
 
       {/* Description (truncated) */}
@@ -111,7 +114,7 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           </svg>
-          {mission.waypointCount} WP
+          {t('mission-library:missionCard.waypointCount', { count: mission.waypointCount })}
         </span>
         <span>{formatDistanceFromMeters(mission.totalDistanceMeters, distanceUnit)}</span>
         {mission.flightCount > 0 && (
@@ -119,7 +122,7 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {mission.flightCount} flights
+            {t('mission-library:missionCard.flightCount', { count: mission.flightCount })}
           </span>
         )}
         {vehicle && (
@@ -146,7 +149,7 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
         <button
           onClick={(e) => { e.stopPropagation(); onLoad(); }}
           className="p-1.5 rounded-md bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 transition-colors"
-          title="Load into Editor"
+          title={t('mission-library:actions.loadIntoEditor')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -155,7 +158,7 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
         <button
           onClick={(e) => { e.stopPropagation(); onExport(); }}
           className="p-1.5 rounded-md bg-surface-raised hover:brightness-125 text-content-secondary transition-colors"
-          data-tip="Save this mission to a file (keeps groups and surveys)"
+          data-tip={t('mission-library:actions.saveMissionToFile')}
         >
           <Download className="w-3.5 h-3.5" />
         </button>
@@ -167,15 +170,15 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
               : 'bg-surface-raised hover:brightness-125 text-content-secondary'
           }`}
           data-tip={inBackup
-            ? 'Already in your backup. Save the current version again.'
-            : 'Save a copy to your backup so your other computers can open it'}
+            ? t('mission-library:actions.alreadyInBackup')
+            : t('mission-library:actions.saveCopyToBackup')}
         >
           <CloudUpload className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
           className="p-1.5 rounded-md bg-surface-raised hover:bg-surface-raised text-content-secondary transition-colors"
-          title="Duplicate"
+          title={t('mission-library:actions.duplicate')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -188,7 +191,7 @@ export function MissionCard({ mission, isSelected, confirmDelete, onClick, onLoa
               ? 'bg-red-600/40 text-red-400 ring-1 ring-red-500/60'
               : 'bg-red-600/20 hover:bg-red-600/40 text-red-400'
           }`}
-          title={confirmDelete ? 'Click again to confirm' : 'Delete'}
+          title={confirmDelete ? t('mission-library:actions.clickAgainToConfirm') : t('mission-library:actions.delete')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useLegacyConfigStore } from '../../stores/legacy-config-store';
 import LegacyPidTab from './LegacyPidTab';
@@ -32,20 +33,21 @@ type TabId = 'pid' | 'rates' | 'mixer' | 'servo' | 'modes';
 
 interface TabConfig {
   id: TabId;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
   color: string;
 }
 
 const TABS: TabConfig[] = [
-  { id: 'pid', label: 'PID', icon: Zap, color: 'text-blue-400' },
-  { id: 'rates', label: 'Rates', icon: Gauge, color: 'text-purple-400' },
-  { id: 'mixer', label: 'Mixer', icon: Shuffle, color: 'text-cyan-400' },
-  { id: 'servo', label: 'Servo', icon: SlidersHorizontal, color: 'text-orange-400' },
-  { id: 'modes', label: 'Modes', icon: ToggleRight, color: 'text-green-400' },
+  { id: 'pid', labelKey: 'legacy-config:legacyConfigView.tabs.pid', icon: Zap, color: 'text-blue-400' },
+  { id: 'rates', labelKey: 'legacy-config:legacyConfigView.tabs.rates', icon: Gauge, color: 'text-purple-400' },
+  { id: 'mixer', labelKey: 'legacy-config:legacyConfigView.tabs.mixer', icon: Shuffle, color: 'text-cyan-400' },
+  { id: 'servo', labelKey: 'legacy-config:legacyConfigView.tabs.servo', icon: SlidersHorizontal, color: 'text-orange-400' },
+  { id: 'modes', labelKey: 'legacy-config:legacyConfigView.tabs.modes', icon: ToggleRight, color: 'text-green-400' },
 ];
 
 export default function LegacyConfigView() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabId>('pid');
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const { connectionState } = useConnectionStore();
@@ -84,7 +86,7 @@ export default function LegacyConfigView() {
         <div className="flex items-center gap-3">
           {/* Legacy badge */}
           <div className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs font-medium text-amber-400">
-            Legacy CLI
+            {t('legacy-config:legacyConfigView.badge')}
           </div>
           <div>
             <h1 className="text-lg font-semibold text-content">
@@ -94,7 +96,7 @@ export default function LegacyConfigView() {
               )}
             </h1>
             <p className="text-xs text-content-secondary">
-              Configuration via CLI commands (F3 board)
+              {t('legacy-config:legacyConfigView.subtitle')}
             </p>
           </div>
         </div>
@@ -102,7 +104,7 @@ export default function LegacyConfigView() {
         {/* Save button */}
         <div className="flex items-center gap-3">
           {hasChanges && (
-            <span className="text-xs text-amber-400">Unsaved changes</span>
+            <span className="text-xs text-amber-400">{t('legacy-config:legacyConfigView.unsavedChanges')}</span>
           )}
           <button
             onClick={() => setShowSaveConfirm(true)}
@@ -113,7 +115,7 @@ export default function LegacyConfigView() {
                 : 'bg-surface-raised text-content-secondary cursor-not-allowed'
             }`}
           >
-            Save to EEPROM
+            {t('legacy-config:legacyConfigView.saveToEeprom')}
           </button>
         </div>
       </div>
@@ -129,23 +131,22 @@ export default function LegacyConfigView() {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-content mb-2">Save to EEPROM?</h3>
+                <h3 className="text-lg font-semibold text-content mb-2">{t('legacy-config:legacyConfigView.saveConfirmTitle')}</h3>
                 <p className="text-sm text-content-secondary mb-4">
-                  This will save all changes to the flight controller and <strong className="text-content">reboot the board</strong>.
-                  You will need to reconnect after the reboot completes.
+                  <Trans i18nKey="legacy-config:legacyConfigView.saveConfirmBody" components={{ b: <strong className="text-content" /> }} />
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={handleSave}
                     className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
                   >
-                    Save & Reboot
+                    {t('legacy-config:legacyConfigView.saveAndReboot')}
                   </button>
                   <button
                     onClick={() => setShowSaveConfirm(false)}
                     className="flex-1 px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm transition-colors"
                   >
-                    Cancel
+                    {t('common:cancel')}
                   </button>
                 </div>
               </div>
@@ -179,11 +180,11 @@ export default function LegacyConfigView() {
 
             {/* Title */}
             <h3 className="text-lg font-semibold text-content mb-2">
-              {rebootState === 'saving' && 'Saving Configuration'}
-              {rebootState === 'rebooting' && 'Rebooting Board'}
-              {rebootState === 'reconnecting' && 'Reconnecting'}
-              {rebootState === 'done' && 'Save Complete'}
-              {rebootState === 'error' && 'Save Failed'}
+              {rebootState === 'saving' && t('legacy-config:legacyConfigView.reboot.saving')}
+              {rebootState === 'rebooting' && t('legacy-config:legacyConfigView.reboot.rebooting')}
+              {rebootState === 'reconnecting' && t('legacy-config:legacyConfigView.reboot.reconnecting')}
+              {rebootState === 'done' && t('legacy-config:legacyConfigView.reboot.done')}
+              {rebootState === 'error' && t('legacy-config:legacyConfigView.reboot.error')}
             </h3>
 
             {/* Message */}
@@ -208,7 +209,7 @@ export default function LegacyConfigView() {
                 onClick={clearRebootState}
                 className="mt-4 px-6 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm transition-colors"
               >
-                Dismiss
+                {t('common:dismiss')}
               </button>
             )}
           </div>
@@ -223,9 +224,7 @@ export default function LegacyConfigView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="text-sm text-blue-300">
-              <strong>How it works:</strong> Changes are sent immediately as CLI commands.
-              Check the CLI terminal to see commands being sent.
-              When you're done, click "Save to EEPROM" to persist changes (board will reboot).
+              <Trans i18nKey="legacy-config:legacyConfigView.howItWorks" components={{ b: <strong /> }} />
             </div>
           </div>
         </div>
@@ -236,8 +235,8 @@ export default function LegacyConfigView() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-content-secondary">Loading configuration from CLI...</p>
-            <p className="text-xs text-content-tertiary mt-1">Running dump command</p>
+            <p className="text-content-secondary">{t('legacy-config:legacyConfigView.loading')}</p>
+            <p className="text-xs text-content-tertiary mt-1">{t('legacy-config:legacyConfigView.runningDump')}</p>
           </div>
         </div>
       )}
@@ -250,7 +249,7 @@ export default function LegacyConfigView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-red-300">Configuration Error</p>
+              <p className="text-sm font-medium text-red-300">{t('legacy-config:legacyConfigView.configError')}</p>
               <p className="text-xs text-red-400/70 mt-0.5">{error}</p>
             </div>
           </div>
@@ -275,7 +274,7 @@ export default function LegacyConfigView() {
                   }`}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? tab.color : `${tab.color} opacity-50`}`} />
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </button>
               );
             })}
@@ -299,7 +298,7 @@ export default function LegacyConfigView() {
             <svg className="w-12 h-12 text-content-tertiary mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a5 5 0 01-7.072-7.072m7.072 7.072l2.829-2.829" />
             </svg>
-            <p className="text-content-secondary">Connect to a legacy board to configure</p>
+            <p className="text-content-secondary">{t('legacy-config:legacyConfigView.notConnected')}</p>
           </div>
         </div>
       )}

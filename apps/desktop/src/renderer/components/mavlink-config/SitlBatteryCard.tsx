@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Cpu } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -31,6 +32,7 @@ interface SitlBatteryCardProps {
 const BUILTIN_FRAME_REFERENCE_V = 12.6;
 
 export function SitlBatteryCard({ cells, cellFull, capacityMah }: SitlBatteryCardProps): JSX.Element | null {
+  const { t } = useTranslation();
   const { parameters, setParameter } = useParameterStore();
   // What the vehicle is actually reporting. The stored parameter is a request;
   // this is the answer, and the two disagreeing is the whole point of the card.
@@ -76,34 +78,33 @@ export function SitlBatteryCard({ cells, cellFull, capacityMah }: SitlBatteryCar
           <Cpu className="h-5 w-5 text-violet-400" />
         </div>
         <div className="flex-1">
-          <h3 className="font-medium text-content">Simulated pack</h3>
+          <h3 className="font-medium text-content">{t('mavlink-config:sitlBatteryCard.title')}</h3>
           <p className="text-xs text-content-secondary">
-            What SITL feeds the voltage sensor. Everything else here only tells the autopilot
-            what to expect.
+            {t('mavlink-config:sitlBatteryCard.subtitle')}
           </p>
         </div>
         <span className="rounded bg-violet-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-violet-700 dark:text-violet-300">
-          SITL only
+          {t('mavlink-config:sitlBatteryCard.sitlOnly')}
         </span>
       </div>
 
       <div className="mb-3 grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-subtle bg-surface-raised p-3">
-          <div className="text-[10px] uppercase tracking-wide text-content-tertiary">Vehicle reports</div>
+          <div className="text-[10px] uppercase tracking-wide text-content-tertiary">{t('mavlink-config:sitlBatteryCard.vehicleReports')}</div>
           <div className={`font-mono text-lg ${ignored ? 'text-amber-500' : 'text-content'}`}>
             {producing ? `${measuredVolts.toFixed(1)} V` : '--'}
           </div>
           <div className="text-[11px] text-content-tertiary">
-            {simAh.toFixed(1)} Ah set{stored ? '' : `, ${simVolts.toFixed(1)} V set`}
+            {t('mavlink-config:sitlBatteryCard.ahSet', { ah: simAh.toFixed(1) })}{stored ? '' : t('mavlink-config:sitlBatteryCard.voltsSet', { v: simVolts.toFixed(1) })}
           </div>
         </div>
         <div className="rounded-lg border border-subtle bg-surface-raised p-3">
-          <div className="text-[10px] uppercase tracking-wide text-content-tertiary">Configured here</div>
+          <div className="text-[10px] uppercase tracking-wide text-content-tertiary">{t('mavlink-config:sitlBatteryCard.configuredHere')}</div>
           <div className="font-mono text-lg text-content">
             {canMatch ? `${targetVolts.toFixed(1)} V` : '--'}
           </div>
-          <div className="text-[11px] text-content-tertiary">
-            {canMatch ? `${targetAh.toFixed(1)} Ah` : 'set a cell count and capacity'}
+          <div className="text-[11px] text-content-tertiary">{/* i18n-exempt */}
+            {canMatch ? `${targetAh.toFixed(1)} Ah` : t('mavlink-config:sitlBatteryCard.setCellsCapacity')}
           </div>
         </div>
       </div>
@@ -112,10 +113,7 @@ export function SitlBatteryCard({ cells, cellFull, capacityMah }: SitlBatteryCar
         <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-200">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
           <span>
-            SITL's built-in airframes are calibrated around {BUILTIN_FRAME_REFERENCE_V} V and their
-            thrust scales with supply voltage, so this pack will over-drive them: hover throttle
-            produces several times the intended thrust and a short takeoff climbs away. Only match
-            a pack this size when you are flying a custom frame whose reference voltage suits it.
+            {t('mavlink-config:sitlBatteryCard.overdriven', { v: BUILTIN_FRAME_REFERENCE_V })}
           </span>
         </div>
       )}
@@ -129,20 +127,16 @@ export function SitlBatteryCard({ cells, cellFull, capacityMah }: SitlBatteryCar
             : 'bg-violet-500/20 text-violet-700 hover:bg-violet-500/30 dark:text-violet-300'
         }`}
       >
-        {matched ? 'Simulated pack matches this configuration' : 'Match simulated pack to this configuration'}
+        {matched ? t('mavlink-config:sitlBatteryCard.matched') : t('mavlink-config:sitlBatteryCard.match')}
       </button>
 
       {ignored ? (
         <p className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-700 dark:text-amber-200">
-          Not working. The setting is stored, but this airframe's simulated battery is capped at
-          about {measuredVolts.toFixed(1)} V and ignores anything higher, so the vehicle keeps
-          reporting that. Restarting will not change it. To simulate a bigger pack, fly a custom
-          frame that declares one.
+          {t('mavlink-config:sitlBatteryCard.ignored', { v: measuredVolts.toFixed(1) })}
         </p>
       ) : (
         <p className="mt-2 text-[11px] text-content-tertiary">
-          The left figure is what the vehicle actually reports, so you can see whether this took
-          effect rather than only whether it was set.
+          {t('mavlink-config:sitlBatteryCard.leftFigure')}
         </p>
       )}
     </div>

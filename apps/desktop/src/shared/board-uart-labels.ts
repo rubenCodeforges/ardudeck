@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * Board-specific UART pad labels and receiver suggestions.
  *
@@ -89,14 +91,18 @@ export const BOARD_UART_LABELS: Record<string, Record<number, string>> = {
 };
 
 /** Suggested UART for receiver based on board. */
-export const BOARD_RX_SUGGESTION: Record<string, { uart: number; note: string }> = {
-  MATEKF405SE: { uart: 1, note: 'SBUS pad on UART2 has built-in inverter' },
-  MATEKF405: { uart: 1, note: 'SBUS pad on UART2 has built-in inverter' },
-  SPEEDYBEEF405WING: { uart: 1, note: 'SBUS pad on UART2' },
-  SPEEDYBEEF405V3: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter' },
-  SPEEDYBEEF405V4: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter' },
-  MATEKH743: { uart: 1, note: 'SBUS pad on UART2 has built-in inverter' },
-  KAKUTEF7: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter' },
-  KAKUTEF7MINI: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter' },
-  MAMBAF405US: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter' },
+export const BOARD_RX_SUGGESTION: Record<string, { uart: number; note: string; noteKey: string }> = {
+  MATEKF405SE: { uart: 1, note: 'SBUS pad on UART2 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart2Inverter' }, // i18n-exempt
+  MATEKF405: { uart: 1, note: 'SBUS pad on UART2 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart2Inverter' }, // i18n-exempt
+  SPEEDYBEEF405WING: { uart: 1, note: 'SBUS pad on UART2', noteKey: 'shared:boardUartLabels.sbusUart2' }, // i18n-exempt
+  SPEEDYBEEF405V3: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart1Inverter' }, // i18n-exempt
+  SPEEDYBEEF405V4: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart1Inverter' }, // i18n-exempt
+  MATEKH743: { uart: 1, note: 'SBUS pad on UART2 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart2Inverter' }, // i18n-exempt
+  KAKUTEF7: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart1Inverter' }, // i18n-exempt
+  KAKUTEF7MINI: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart1Inverter' }, // i18n-exempt
+  MAMBAF405US: { uart: 0, note: 'SBUS pad on UART1 has built-in inverter', noteKey: 'shared:boardUartLabels.sbusUart1Inverter' }, // i18n-exempt
 };
+
+export function boardRxSuggestionNote(suggestion: { noteKey: string }): string {
+  return t(suggestion.noteKey);
+}

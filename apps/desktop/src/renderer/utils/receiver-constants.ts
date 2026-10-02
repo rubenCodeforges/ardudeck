@@ -6,23 +6,24 @@
  */
 
 import { INAV_SERIALRX_PROVIDER_NAMES } from '@ardudeck/msp-ts';
+import { t } from '../../shared/i18n/index.js';
 
 // =============================================================================
 // iNav
 // =============================================================================
 
 export const INAV_RECEIVER_TYPES = [
-  { value: 'NONE', label: 'None' },
-  { value: 'SERIAL', label: 'Serial' },
+  { value: 'NONE', label: 'None' }, // i18n-exempt
+  { value: 'SERIAL', label: 'Serial' }, // i18n-exempt
   { value: 'MSP', label: 'MSP' },
   { value: 'SIM (SITL)', label: 'SITL' },
 ] as const;
 
 export const INAV_QUICK_SELECT = [
-  { value: 'CRSF', label: 'CRSF / ELRS' },
+  { value: 'CRSF', label: 'CRSF / ELRS' }, // i18n-exempt
   { value: 'SBUS', label: 'SBUS' },
   { value: 'IBUS', label: 'iBUS' },
-  { value: 'SPEK2048', label: 'Spektrum' },
+  { value: 'SPEK2048', label: 'Spektrum' }, // i18n-exempt
 ] as const;
 
 // =============================================================================
@@ -30,11 +31,11 @@ export const INAV_QUICK_SELECT = [
 // =============================================================================
 
 export const BF_QUICK_SELECT = [
-  { value: 9, label: 'CRSF / ELRS' },
+  { value: 9, label: 'CRSF / ELRS' }, // i18n-exempt
   { value: 2, label: 'SBUS' },
   { value: 7, label: 'iBUS' },
-  { value: 1, label: 'Spektrum' },
-  { value: 12, label: 'FPort' },
+  { value: 1, label: 'Spektrum' }, // i18n-exempt
+  { value: 12, label: 'FPort' }, // i18n-exempt
 ] as const;
 
 export const BF_PROVIDERS: ReadonlyArray<{ value: number; label: string }> = [
@@ -62,27 +63,56 @@ export const BF_PROVIDERS: ReadonlyArray<{ value: number; label: string }> = [
 
 /** Hint text keyed by iNav serialrx_provider name */
 export const PROTOCOL_HINTS: Record<string, string> = {
-  CRSF: 'Low-latency digital link. Used by TBS Crossfire and ExpressLRS receivers.',
-  SBUS: 'Inverted serial protocol. Common with FrSky and RadioLink receivers. Some boards need a hardware inverter.',
-  IBUS: 'FlySky digital protocol. Connect to a free UART RX pad.',
-  SPEK2048: 'Spektrum satellite receiver. Bind to transmitter first, then connect to UART.',
-  FPORT: 'FrSky F.Port combines SBUS + telemetry on a single wire.',
-  GHST: 'ImmersionRC Ghost ultra-low latency protocol.',
-  SRXL2: 'Spektrum SRXL2 bidirectional serial protocol.',
-  MSP: 'For GCS/SITL control only. Do not use with a physical receiver.',
+  CRSF: 'Low-latency digital link. Used by TBS Crossfire and ExpressLRS receivers.', // i18n-exempt
+  SBUS: 'Inverted serial protocol. Common with FrSky and RadioLink receivers. Some boards need a hardware inverter.', // i18n-exempt
+  IBUS: 'FlySky digital protocol. Connect to a free UART RX pad.', // i18n-exempt
+  SPEK2048: 'Spektrum satellite receiver. Bind to transmitter first, then connect to UART.', // i18n-exempt
+  FPORT: 'FrSky F.Port combines SBUS + telemetry on a single wire.', // i18n-exempt
+  GHST: 'ImmersionRC Ghost ultra-low latency protocol.', // i18n-exempt
+  SRXL2: 'Spektrum SRXL2 bidirectional serial protocol.', // i18n-exempt
+  MSP: 'For GCS/SITL control only. Do not use with a physical receiver.', // i18n-exempt
 };
 
 /** Hint text keyed by Betaflight numeric provider value */
 export const BF_PROTOCOL_HINTS: Record<number, string> = {
-  9: 'Low-latency digital link. Used by TBS Crossfire and ExpressLRS receivers.',
-  2: 'Inverted serial protocol. Common with FrSky and RadioLink receivers.',
-  7: 'FlySky digital protocol. Connect to a free UART RX pad.',
-  1: 'Spektrum satellite receiver. Bind to transmitter first.',
-  12: 'FrSky F.Port combines SBUS + telemetry on a single wire.',
-  14: 'ImmersionRC Ghost ultra-low latency protocol.',
-  13: 'Spektrum SRXL2 bidirectional serial protocol.',
-  15: 'For GCS/SITL control only. Do not use with a physical receiver.',
+  9: 'Low-latency digital link. Used by TBS Crossfire and ExpressLRS receivers.', // i18n-exempt
+  2: 'Inverted serial protocol. Common with FrSky and RadioLink receivers.', // i18n-exempt
+  7: 'FlySky digital protocol. Connect to a free UART RX pad.', // i18n-exempt
+  1: 'Spektrum satellite receiver. Bind to transmitter first.', // i18n-exempt
+  12: 'FrSky F.Port combines SBUS + telemetry on a single wire.', // i18n-exempt
+  14: 'ImmersionRC Ghost ultra-low latency protocol.', // i18n-exempt
+  13: 'Spektrum SRXL2 bidirectional serial protocol.', // i18n-exempt
+  15: 'For GCS/SITL control only. Do not use with a physical receiver.', // i18n-exempt
 };
+
+const BF_PROTOCOL_HINT_KEYS: Record<number, string> = {
+  9: 'CRSF',
+  2: 'SBUS_SHORT',
+  7: 'IBUS',
+  1: 'SPEK2048_SHORT',
+  12: 'FPORT',
+  14: 'GHST',
+  13: 'SRXL2',
+  15: 'MSP',
+};
+
+/** Translated iNav receiver type label; protocol names stay as they are. */
+export function inavReceiverTypeLabel(item: { value: string; label: string }): string {
+  return item.value === 'NONE' || item.value === 'SERIAL'
+    ? t(`utils:receiverConstants.receiverType.${item.value}`)
+    : item.label;
+}
+
+/** Translated hint for an iNav serialrx_provider name. */
+export function protocolHint(provider: string): string | undefined {
+  return PROTOCOL_HINTS[provider] !== undefined ? t(`utils:receiverConstants.hint.${provider}`) : undefined;
+}
+
+/** Translated hint for a Betaflight numeric provider value. */
+export function bfProtocolHint(provider: number): string | undefined {
+  const key = BF_PROTOCOL_HINT_KEYS[provider];
+  return key ? t(`utils:receiverConstants.hint.${key}`) : undefined;
+}
 
 // =============================================================================
 // Reverse lookups (name → numeric value for MSP_SET_RX_CONFIG)

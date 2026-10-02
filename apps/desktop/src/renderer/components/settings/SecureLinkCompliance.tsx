@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ShieldAlert, FileDown, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useSigningStore } from '../../stores/signing-store';
 import type { SigningAuditEntry, SigningAuditEvent, ChainVerification } from '../../../shared/signing-audit-types';
 
-const EVENT_LABELS: Record<SigningAuditEvent, string> = {
-  'key-set': 'Key set',
-  'key-sent-to-fc': 'Key sent to FC',
-  'signing-enabled': 'Signing enabled',
-  'signing-disabled': 'Signing disabled',
-  'key-auto-matched': 'Auto-matched on connect',
-  'key-mismatch': 'Key mismatch',
-  'key-removed': 'Key removed',
-  'startup-auto-enable': 'Auto-enabled at startup',
+const EVENT_LABEL_KEYS: Record<SigningAuditEvent, string> = {
+  'key-set': 'settings:secureLinkCompliance.event.keySet',
+  'key-sent-to-fc': 'settings:secureLinkCompliance.event.keySentToFc',
+  'signing-enabled': 'settings:secureLinkCompliance.event.signingEnabled',
+  'signing-disabled': 'settings:secureLinkCompliance.event.signingDisabled',
+  'key-auto-matched': 'settings:secureLinkCompliance.event.keyAutoMatched',
+  'key-mismatch': 'settings:secureLinkCompliance.event.keyMismatch',
+  'key-removed': 'settings:secureLinkCompliance.event.keyRemoved',
+  'startup-auto-enable': 'settings:secureLinkCompliance.event.startupAutoEnable',
 };
 
 const EVENT_TONE: Record<SigningAuditEvent, string> = {
@@ -35,6 +36,7 @@ const EVENT_TONE: Record<SigningAuditEvent, string> = {
  * ground station, never the airframe.
  */
 export function SecureLinkCompliance() {
+  const { t } = useTranslation();
   // Re-fetch whenever live signing state changes so the log stays current.
   const signingSignature = useSigningStore((s) => `${s.enabled}/${s.sentToFc}/${s.keyMismatch}/${s.keyFingerprint ?? ''}`);
 
@@ -65,8 +67,8 @@ export function SecureLinkCompliance() {
     setExporting(true);
     try {
       const res = await window.electronAPI?.signingExportEvidence?.();
-      if (res?.success) setMessage('Evidence pack + posture report exported');
-      else if (res && res.error !== 'Cancelled') setMessage(`Export failed: ${res.error}`);
+      if (res?.success) setMessage(t('settings:secureLinkCompliance.exported'));
+      else if (res && res.error !== 'Cancelled') setMessage(t('settings:secureLinkCompliance.exportFailed', { error: res.error }));
     } finally {
       setExporting(false);
     }
@@ -84,31 +86,30 @@ export function SecureLinkCompliance() {
           <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
         )}
         <div className="min-w-0">
-          <div className="text-xs font-medium text-content">Compliance &amp; audit</div>
+          <div className="text-xs font-medium text-content">{t('settings:secureLinkCompliance.title')}</div>
           <div className="text-[10px] text-content-secondary">
             {chain
               ? chainOk
-                ? `${chain.count} signing event${chain.count === 1 ? '' : 's'} logged, hash chain verified`
-                : `Hash chain broken at entry ${chain.brokenAtSeq} - log may be tampered`
-              : 'Tamper-evident log of signing state changes'}
+                ? t('settings:secureLinkCompliance.chainVerified', { count: chain.count })
+                : t('settings:secureLinkCompliance.chainBroken', { seq: chain.brokenAtSeq })
+              : t('settings:secureLinkCompliance.subtitle')}
           </div>
         </div>
         <button
           onClick={handleExport}
           disabled={exporting}
           className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-700/70 hover:bg-cyan-600 disabled:opacity-50 text-white text-[11px] rounded-lg transition-colors shrink-0"
-          title="Export a secure-link evidence pack (JSON) + posture report (Markdown) for procurement review"
+          title={t('settings:secureLinkCompliance.exportTitle')}
         >
           <FileDown className="w-3.5 h-3.5" />
-          {exporting ? 'Exporting...' : 'Export evidence'}
+          {exporting ? t('settings:secureLinkCompliance.exporting') : t('settings:secureLinkCompliance.exportEvidence')}
         </button>
       </div>
 
       {!chainOk && (
         <div className="rounded-md border border-red-500/20 bg-red-500/5 px-2.5 py-2">
           <p className="text-[11px] text-red-400">
-            The audit log failed hash-chain verification. An entry was edited, inserted, or removed
-            outside the app. Treat the log as compromised and export it for review.
+            {t('settings:secureLinkCompliance.chainFailed')}
           </p>
         </div>
       )}
@@ -120,7 +121,7 @@ export function SecureLinkCompliance() {
           className="flex items-center gap-1.5 text-[11px] text-content-secondary hover:text-content transition-colors"
         >
           {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          {open ? 'Hide' : 'View'} audit log ({entries.length})
+          {open ? t('settings:secureLinkCompliance.hideLog', { count: entries.length }) : t('settings:secureLinkCompliance.viewLog', { count: entries.length })}
           <RefreshCw
             className="w-3 h-3 ml-1 hover:text-content"
             onClick={(e) => { e.stopPropagation(); void refresh(); }}
@@ -131,13 +132,13 @@ export function SecureLinkCompliance() {
           <div className="mt-2 max-h-56 overflow-y-auto rounded-md border border-subtle divide-y divide-subtle">
             {recent.length === 0 ? (
               <div className="px-3 py-4 text-center text-[11px] text-content-tertiary">
-                No signing events recorded yet.
+                {t('settings:secureLinkCompliance.noEvents')}
               </div>
             ) : (
               recent.map((e) => (
                 <div key={e.id} className="px-2.5 py-1.5 flex items-center gap-2 text-[10px]">
                   <span className="font-mono text-content-tertiary shrink-0">#{e.seq}</span>
-                  <span className={`font-medium shrink-0 ${EVENT_TONE[e.event]}`}>{EVENT_LABELS[e.event]}</span>
+                  <span className={`font-medium shrink-0 ${EVENT_TONE[e.event]}`}>{t(EVENT_LABEL_KEYS[e.event])}</span>
                   {e.fingerprint && (
                     <span className="font-mono text-content-tertiary truncate" title={e.fingerprint}>
                       {e.fingerprint.slice(0, 8)}
@@ -155,8 +156,7 @@ export function SecureLinkCompliance() {
       </div>
 
       <p className="text-[10px] text-content-tertiary leading-snug">
-        Attests the MAVLink link and ground station only, not the airframe. Signing is
-        authentication, not encryption, and a USB connection bypasses it.
+        {t('settings:secureLinkCompliance.attests')}
       </p>
 
       {message && (

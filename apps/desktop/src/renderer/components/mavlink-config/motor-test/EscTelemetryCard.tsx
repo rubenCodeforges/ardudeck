@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Thermometer } from 'lucide-react';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { testOrderToLabel } from './motor-layout-utils';
@@ -37,6 +38,7 @@ function pwmColor(pwm: number): string {
 
 export const EscTelemetryCard: React.FC<EscTelemetryCardProps> = ({ layout }) => {
   const escTelemetry = useTelemetryStore((s) => s.escTelemetry);
+  const { t } = useTranslation();
   const lastEscTelemetry = useTelemetryStore((s) => s.lastEscTelemetry);
   const servoOutput = useTelemetryStore((s) => s.servoOutput);
   const lastServoOutput = useTelemetryStore((s) => s.lastServoOutput);
@@ -52,17 +54,16 @@ export const EscTelemetryCard: React.FC<EscTelemetryCardProps> = ({ layout }) =>
           <Thermometer className="w-5 h-5 text-cyan-400" />
         </div>
         <div>
-          <div className="text-sm font-semibold text-content">Motor Outputs</div>
+          <div className="text-sm font-semibold text-content">{t('mavlink-config:escTelemetryCard.title')}</div>
           <div className="text-[11px] text-content-secondary">
-            {hasAnyEsc ? 'ESC telemetry · PWM · RPM · temp · V · A' : 'PWM output (no ESC telemetry)'}
+            {hasAnyEsc ? t('mavlink-config:escTelemetryCard.subtitleEsc') : t('mavlink-config:escTelemetryCard.subtitlePwm')}
           </div>
         </div>
       </div>
 
       {escStale && !hasAnyEsc && (
         <div className="text-[11px] text-content-secondary italic mb-3 leading-snug">
-          ESC telemetry not available. Requires BLHeli_32 ESCs with the telemetry wire connected
-          to a UART (SERVO_BLH_AUTO=1, SERIALn_PROTOCOL=16). PWM values below come from the FC.
+          {t('mavlink-config:escTelemetryCard.notAvailable')}
         </div>
       )}
 
@@ -109,7 +110,7 @@ export const EscTelemetryCard: React.FC<EscTelemetryCardProps> = ({ layout }) =>
                         </span>
                       </div>
                       <div className="flex items-baseline justify-between">
-                        <span className="text-[10px] text-content-secondary">Temp</span>
+                        <span className="text-[10px] text-content-secondary">{t('mavlink-config:escTelemetryCard.temp')}</span>
                         <span className={`text-sm font-mono font-semibold ${tempColor(data.tempC)}`}>
                           {data.tempC}°C
                         </span>
@@ -123,7 +124,7 @@ export const EscTelemetryCard: React.FC<EscTelemetryCardProps> = ({ layout }) =>
                     </>
                   ) : !hasPwm && !hasServoOutput ? (
                     <div className="text-[10px] text-content-tertiary italic text-center py-2">
-                      no data
+                      {t('mavlink-config:escTelemetryCard.noData')}
                     </div>
                   ) : null}
                 </div>

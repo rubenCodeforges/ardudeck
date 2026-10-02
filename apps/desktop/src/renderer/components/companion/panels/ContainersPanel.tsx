@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
+import type { TFunction } from 'i18next';
 import { useCompanionStore } from '../../../stores/companion-store';
 import { PanelContainer, SectionTitle } from '../../panels/panel-utils';
 import type { ContainerAction } from '@ardudeck/companion-types';
+import { useTranslation } from 'react-i18next';
 
 const CONTAINER_STATUS_COLORS: Record<string, { dot: string; text: string }> = {
   running: { dot: 'bg-emerald-400', text: 'text-emerald-400' },
@@ -12,16 +14,17 @@ const CONTAINER_STATUS_COLORS: Record<string, { dot: string; text: string }> = {
   dead: { dot: 'bg-red-600', text: 'text-red-500' },
 };
 
-function formatAge(created: number): string {
+function formatAge(created: number, t: TFunction): string {
   const seconds = Math.floor((Date.now() - created) / 1000);
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
-  if (d > 0) return `${d}d ago`;
-  if (h > 0) return `${h}h ago`;
-  return `${Math.floor(seconds / 60)}m ago`;
+  if (d > 0) return t('companion:containers.ageDays', { n: d });
+  if (h > 0) return t('companion:containers.ageHours', { n: h });
+  return t('companion:containers.ageMinutes', { n: Math.floor(seconds / 60) });
 }
 
 export function ContainersPanel() {
+  const { t } = useTranslation();
   const containers = useCompanionStore((s) => s.containers);
   const setContainers = useCompanionStore((s) => s.setContainers);
   const connectionState = useCompanionStore((s) => s.connectionState);
@@ -68,7 +71,7 @@ export function ContainersPanel() {
       const logs = await window.electronAPI.companionGetContainerLogs(id);
       setContainerLogs(logs);
     } catch {
-      setContainerLogs('Failed to fetch logs');
+      setContainerLogs(t('companion:containers.fetchLogsFailed'));
     } finally {
       setLogsLoading(false);
     }
@@ -80,8 +83,8 @@ export function ContainersPanel() {
     return (
       <PanelContainer className="flex items-center justify-center">
         <div className="text-center text-content-tertiary text-xs">
-          <div className="text-content-secondary mb-1">Containers unavailable</div>
-          <div>Connect to companion agent to manage Docker containers.</div>
+          <div className="text-content-secondary mb-1">{t('companion:containers.unavailable')}</div>
+          <div>{t('companion:containers.unavailableHint')}</div>
         </div>
       </PanelContainer>
     );
@@ -91,8 +94,8 @@ export function ContainersPanel() {
     return (
       <PanelContainer className="flex items-center justify-center">
         <div className="text-center text-content-tertiary text-xs">
-          <div className="text-content-secondary mb-1">Docker not detected</div>
-          <div>Docker is not installed on the companion computer.</div>
+          <div className="text-content-secondary mb-1">{t('companion:containers.noDocker')}</div>
+          <div>{t('companion:containers.noDockerHint')}</div>
         </div>
       </PanelContainer>
     );
@@ -102,13 +105,13 @@ export function ContainersPanel() {
     <PanelContainer className="flex flex-col gap-0 p-0 relative">
       {/* Header bar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-subtle shrink-0">
-        <SectionTitle>Docker Containers</SectionTitle>
+        <SectionTitle>{t('companion:containers.title')}</SectionTitle>
         <div className="flex-1" />
-        <span className="text-[10px] text-content-secondary">{containers.length} containers</span>
+        <span className="text-[10px] text-content-secondary">{t('companion:containers.count', { count: containers.length })}</span>
         <button
           onClick={fetchContainers}
           className="text-content-secondary hover:text-content transition-colors p-0.5"
-          title="Refresh"
+          title={t('common:refresh')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -120,7 +123,7 @@ export function ContainersPanel() {
       <div className="flex-1 overflow-auto">
         {containers.length === 0 ? (
           <div className="flex items-center justify-center h-full text-content-tertiary text-xs">
-            No containers found
+            {t('companion:containers.none')}
           </div>
         ) : (
           <div className="divide-y divide-subtle">
@@ -147,7 +150,7 @@ export function ContainersPanel() {
                               onClick={() => handleAction(container.id, 'start')}
                               className="px-1.5 py-0.5 text-[10px] text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors"
                             >
-                              Start
+                              {t('common:start')}
                             </button>
                           )}
                           {container.status === 'running' && (
@@ -155,20 +158,20 @@ export function ContainersPanel() {
                               onClick={() => handleAction(container.id, 'stop')}
                               className="px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/20 rounded transition-colors"
                             >
-                              Stop
+                              {t('common:stop')}
                             </button>
                           )}
                           <button
                             onClick={() => handleAction(container.id, 'restart')}
                             className="px-1.5 py-0.5 text-[10px] text-blue-400 hover:bg-blue-500/20 rounded transition-colors"
                           >
-                            Restart
+                            {t('companion:restart')}
                           </button>
                           <button
                             onClick={() => viewLogs(container.id)}
                             className="px-1.5 py-0.5 text-[10px] text-content-secondary hover:bg-surface-raised rounded transition-colors"
                           >
-                            Logs
+                            {t('companion:logs')}
                           </button>
                         </>
                       )}
@@ -177,7 +180,7 @@ export function ContainersPanel() {
 
                   <div className="flex items-center gap-3 text-[10px] text-content-secondary ml-4">
                     <span className="truncate">{container.image}</span>
-                    <span>{formatAge(container.created)}</span>
+                    <span>{formatAge(container.created, t)}</span>
                     {container.ports.length > 0 && (
                       <span className="font-mono">{container.ports.join(', ')}</span>
                     )}
@@ -194,7 +197,7 @@ export function ContainersPanel() {
         <div className="absolute inset-0 bg-surface-overlay flex flex-col z-50">
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-subtle shrink-0">
             <span className="text-xs text-content">
-              Container Logs: {containers.find((c) => c.id === logsContainerId)?.name ?? logsContainerId.slice(0, 12)}
+              {t('companion:containers.logsTitle', { name: containers.find((c) => c.id === logsContainerId)?.name ?? logsContainerId.slice(0, 12) })}
             </span>
             <button
               onClick={() => { setLogsContainerId(null); setContainerLogs(''); }}
@@ -207,7 +210,7 @@ export function ContainersPanel() {
           </div>
           <div className="flex-1 overflow-auto p-3">
             {logsLoading ? (
-              <div className="text-content-secondary text-xs">Loading logs...</div>
+              <div className="text-content-secondary text-xs">{t('companion:containers.loadingLogs')}</div>
             ) : (
               <pre className="text-xs text-content font-mono whitespace-pre-wrap break-all">{containerLogs}</pre>
             )}

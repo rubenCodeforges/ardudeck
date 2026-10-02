@@ -10,6 +10,7 @@
  * depends on the panel.
  */
 import { create } from 'zustand';
+import { t } from '../../shared/i18n/index.js';
 import { getCurrentWeather, type WeatherSummary } from '../utils/weather-api';
 import {
   getGeomagneticActivity, type GeomagneticActivity,
@@ -166,7 +167,7 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
 
     set({
       weather: summary,
-      error: summary ? null : 'Weather data unavailable. Check your internet connection and try again.',
+      error: summary ? null : t('stores:weatherStore.unavailable'),
       loading: false,
       lastFetchMs: Date.now(),
       geomag: activity,

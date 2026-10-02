@@ -9,6 +9,7 @@
  * it reorders, inside a cluster it repositions). The ball's pill breaks the
  * whole cluster apart in place.
  */
+import { useTranslation } from 'react-i18next';
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useDraggableOverlay } from '../useDraggableOverlay';
@@ -19,7 +20,7 @@ import {
   INSTRUMENT_SCALE_STEP,
   type InstrumentDisplayMode,
 } from '../../../stores/map-instruments-store';
-import { MAP_INSTRUMENTS, resolveInstrumentComponent, isRoundInMode } from './registry';
+import { MAP_INSTRUMENTS, instrumentLabel, resolveInstrumentComponent, isRoundInMode } from './registry';
 import { variantGlyph } from './variant-glyphs';
 import { useGroupShapeStore } from '../../../stores/group-shape-store';
 import { GAUGE_COLORS } from './RoundGauge';
@@ -56,10 +57,11 @@ function GroupDisplayPopover({
 }: {
   title: string;
   ids: string[];
-  options: Array<{ id: string; label: string }>;
+  options: Array<{ id: string; labelKey: string }>;
   anchorRect: DOMRect;
   onClose: () => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const displayMode = useMapInstrumentsStore((s) => s.displayMode);
   const setDisplayModes = useMapInstrumentsStore((s) => s.setDisplayModes);
   const width = 216;
@@ -76,7 +78,7 @@ function GroupDisplayPopover({
       <div className="fixed z-[9999] rounded-lg bg-surface-solid border border-subtle shadow-xl" style={{ top, left, width }}>
         <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-b border-subtle">{title}</div>
         <div className="p-2">
-          <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1.5">Display for all</div>
+          <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1.5">{t('map:dockedGroup.displayForAll')}</div>
           <div className="grid grid-cols-3 gap-1.5">
             {options.map((opt) => {
               const active = shared === opt.id;
@@ -85,7 +87,7 @@ function GroupDisplayPopover({
                   key={opt.id}
                   type="button"
                   onClick={() => setDisplayModes(ids, opt.id as InstrumentDisplayMode)}
-                  data-tip={`${opt.label} display for the whole group`}
+                  data-tip={t('map:dockedGroup.displayGroupTip', { label: t(opt.labelKey) })}
                   className={
                     'flex flex-col items-center justify-center gap-1 py-1.5 rounded-md border transition-colors ' +
                     (active
@@ -94,7 +96,7 @@ function GroupDisplayPopover({
                   }
                 >
                   <span className="w-5 h-5 flex items-center justify-center">{variantGlyph(opt.id)}</span>
-                  <span className="text-[10px] leading-none">{opt.label}</span>
+                  <span className="text-[10px] leading-none">{t(opt.labelKey)}</span>
                 </button>
               );
             })}
@@ -115,6 +117,7 @@ function UndockIcon(): JSX.Element {
 }
 
 export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): JSX.Element {
+  const { t } = useTranslation();
   // A ball-in-card group clamps by its CARD edges: the ball's bulge may hang
   // off the panel so the strip run itself can reach the screen edge.
   const overhangRef = useRef<{ top: number; right: number; bottom: number; left: number } | null>(null);
@@ -645,7 +648,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
         showPill={hoveredMember === def.id && ghost === null}
         onHover={(h) => setHoveredMember(h ? def.id : null)}
         onPillPointerDown={onMemberPillPointerDown(def.id)}
-        label={def.label}
+        label={instrumentLabel(def, t)}
       >
         {cluster ? (
           <div style={{ zoom: memberScales[def.id] ?? 1 } as CSSProperties}>
@@ -799,8 +802,8 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
           type="button"
           onClick={() => dockSetStretch(gid, !stretched)}
           data-tip={stretched
-            ? 'Shrink the group back to its content'
-            : (row ? 'Stretch the group across the panel' : 'Stretch the group down the panel')}
+            ? t('map:dockedGroup.shrink')
+            : (row ? t('map:dockedGroup.stretchRow') : t('map:dockedGroup.stretchColumn'))}
           style={stretched && panelExt
             ? (row
                 ? { top: 6, left: 6 - panelExt.before }
@@ -831,7 +834,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
             const r = wrapperRef.current?.getBoundingClientRect();
             if (r) { setDisplayAnchor(r); setDisplayOpen(true); }
           }}
-          data-tip="Display mode for the whole group"
+          data-tip={t('map:dockedGroup.displayModeTip')}
           style={stretched && panelExt
             ? (row
                 ? { top: 8, left: 38 - panelExt.before }
@@ -851,7 +854,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
       )}
       {displayOpen && displayAnchor && displayChoices && (
         <GroupDisplayPopover
-          title={cluster ? 'Constellation' : 'Docked group'}
+          title={cluster ? t('map:dockedGroup.constellation') : t('map:dockedGroup.dockedGroup')}
           ids={displayChoices.ids}
           options={displayChoices.options}
           anchorRect={displayAnchor}
@@ -896,6 +899,7 @@ function MemberCell({
   onPillPointerDown: (e: ReactPointerEvent) => void;
   label: string;
 }): JSX.Element {
+  const { t } = useTranslation();
   const setCellRef = useCallback((el: HTMLElement | null) => {
     if (el) cellRefs.set(memberId, el);
     else cellRefs.delete(memberId);
@@ -943,7 +947,7 @@ function MemberCell({
       <button
         type="button"
         onPointerDown={onPillPointerDown}
-        data-tip={`Drag out or click to undock ${label}`}
+        data-tip={t('map:dockedGroup.undockTip', { label })}
         className={
           'absolute top-0.5 right-0.5 p-1 rounded-full bg-surface shadow-lg text-content-secondary ' +
           'hover:text-content hover:bg-surface-raised cursor-grab transition-opacity ' +

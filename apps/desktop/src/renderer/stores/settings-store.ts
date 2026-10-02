@@ -493,7 +493,7 @@ const DEFAULT_MISSION_DEFAULTS: MissionDefaults = {
 
 const DEFAULT_VEHICLE: VehicleProfile = {
   id: 'default',
-  name: 'My Vehicle',
+  name: 'My Vehicle', // i18n-exempt: persisted default profile name
   type: 'copter',
   frameSize: 127,        // 5" quad (127mm)
   weight: 600,           // 600g AUW
@@ -1159,7 +1159,7 @@ export const useSettingsStore = create<SettingsStore>()(
 
     // 3. Active profile has a different boardUid → create a blank profile for the new board
     const newId = `vehicle-${Date.now()}`;
-    const displayName = boardName || boardId || 'New Board';
+    const displayName = boardName || boardId || 'New Board'; // i18n-exempt: persisted profile name
     const newVehicle: VehicleProfile = {
       id: newId,
       name: displayName,

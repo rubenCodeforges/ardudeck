@@ -6,16 +6,16 @@ export type GroupShapeMode = 'square' | 'roundedAll' | 'edgesOnly';
 
 export const GROUP_SHAPE_MODES: readonly GroupShapeMode[] = ['square', 'roundedAll', 'edgesOnly'];
 
-export const GROUP_SHAPE_LABELS: Record<GroupShapeMode, string> = {
-  square: 'Square',
-  roundedAll: 'Rounded (every gauge)',
-  edgesOnly: 'Rounded (ends only)',
+export const GROUP_SHAPE_LABEL_KEYS: Record<GroupShapeMode, string> = {
+  square: 'stores:groupShapeStore.label.square',
+  roundedAll: 'stores:groupShapeStore.label.roundedAll',
+  edgesOnly: 'stores:groupShapeStore.label.edgesOnly',
 };
 
-export const GROUP_SHAPE_DESCRIPTIONS: Record<GroupShapeMode, string> = {
-  square: 'Flat card, no bulge - the original look',
-  roundedAll: 'Every round gauge bulges its own circle',
-  edgesOnly: "Only the run's ends bulge, gauges in the middle stay flush",
+export const GROUP_SHAPE_DESCRIPTION_KEYS: Record<GroupShapeMode, string> = {
+  square: 'stores:groupShapeStore.description.square',
+  roundedAll: 'stores:groupShapeStore.description.roundedAll',
+  edgesOnly: 'stores:groupShapeStore.description.edgesOnly',
 };
 
 const KEY = 'ardudeck.groupShapeMode';

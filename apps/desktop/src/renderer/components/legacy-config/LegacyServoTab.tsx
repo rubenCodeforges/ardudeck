@@ -5,12 +5,14 @@
  * Modern UI with visual sliders and range indicators.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useLegacyConfigStore, type LegacyServoConfig } from '../../stores/legacy-config-store';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { CompactSlider } from '../ui/DraggableSlider';
 import { Settings } from 'lucide-react';
 
 export default function LegacyServoTab() {
+  const { t } = useTranslation();
   const { servoConfigs, updateServoConfig } = useLegacyConfigStore();
 
   const handleChange = (config: LegacyServoConfig) => {
@@ -25,8 +27,8 @@ export default function LegacyServoTab() {
     return (
       <div className="text-center py-12 text-content-secondary">
         <Settings className="w-10 h-10 text-content-secondary mb-3 mx-auto" />
-        <p>No servo configurations found.</p>
-        <p className="text-sm mt-1">Run the dump command to load configuration.</p>
+        <p>{t('legacy-config:legacyServoTab.noConfigs')}</p>
+        <p className="text-sm mt-1">{t('legacy-config:legacyServoTab.noConfigsHint')}</p>
       </div>
     );
   }
@@ -40,10 +42,9 @@ export default function LegacyServoTab() {
         <div className="flex items-start gap-3">
           <Settings className="w-6 h-6 text-amber-400 shrink-0" />
           <div>
-            <p className="text-sm text-amber-300 font-medium">Servo Endpoint Configuration</p>
+            <p className="text-sm text-amber-300 font-medium">{t('legacy-config:legacyServoTab.title')}</p>
             <p className="text-xs text-amber-300/70 mt-1">
-              Configure min/max/center positions and rate for each servo.
-              Range: 750-2250μs for legacy F3 boards. Changes are sent immediately.
+              {t('legacy-config:legacyServoTab.description')}
             </p>
           </div>
         </div>
@@ -68,13 +69,13 @@ export default function LegacyServoTab() {
                     S{servo.index}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-content">Servo {servo.index}</h3>
-                    <p className="text-xs text-content-secondary">Travel: {travelRange}μs</p>
+                    <h3 className="font-semibold text-content">{t('legacy-config:legacyMixerTab.servoN', { index: servo.index })}</h3>
+                    <p className="text-xs text-content-secondary">{t('legacy-config:legacyServoTab.travel', { range: travelRange })}</p>
                   </div>
                 </div>
                 {isReversed && (
                   <span className="px-2 py-1 rounded-full bg-orange-500/20 text-orange-400 text-xs font-medium">
-                    Reversed
+                    {t('common:reversed')}
                   </span>
                 )}
               </div>
@@ -112,7 +113,7 @@ export default function LegacyServoTab() {
                 {/* Sliders */}
                 <div className="grid grid-cols-2 gap-4">
                   <CompactSlider
-                    label="Minimum"
+                    label={t('legacy-config:legacyServoTab.minimum')}
                     value={servo.min}
                     onChange={(v) => handleChange({ ...servo, min: v })}
                     min={750}
@@ -121,7 +122,7 @@ export default function LegacyServoTab() {
                     color={color}
                   />
                   <CompactSlider
-                    label="Maximum"
+                    label={t('legacy-config:legacyServoTab.maximum')}
                     value={servo.max}
                     onChange={(v) => handleChange({ ...servo, max: v })}
                     min={750}
@@ -133,7 +134,7 @@ export default function LegacyServoTab() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <CompactSlider
-                    label="Center"
+                    label={t('common:center')}
                     value={servo.mid}
                     onChange={(v) => handleChange({ ...servo, mid: v })}
                     min={750}
@@ -143,13 +144,13 @@ export default function LegacyServoTab() {
                   />
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-content-secondary">Rate</span>
+                      <span className="text-xs text-content-secondary">{t('common:rate')}</span>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleChange({ ...servo, rate: -servo.rate })}
                           className="px-2 py-0.5 rounded bg-surface-raised hover:bg-surface-raised text-content-secondary text-xs"
                         >
-                          Reverse
+                          {t('common:reverse')}
                         </button>
                         <DraftNumberInput
                           min={-125}
@@ -180,19 +181,19 @@ export default function LegacyServoTab() {
                     onClick={() => handleChange({ ...servo, min: 1000, max: 2000, mid: 1500, rate: 100 })}
                     className="flex-1 py-1.5 text-xs text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
                   >
-                    Reset Default
+                    {t('legacy-config:legacyServoTab.resetDefault')}
                   </button>
                   <button
                     onClick={() => handleChange({ ...servo, min: 1100, max: 1900, mid: 1500, rate: 100 })}
                     className="flex-1 py-1.5 text-xs text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
                   >
-                    Safe Range
+                    {t('legacy-config:legacyServoTab.safeRange')}
                   </button>
                   <button
                     onClick={() => handleChange({ ...servo, min: 750, max: 2250, mid: 1500, rate: 100 })}
                     className="flex-1 py-1.5 text-xs text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
                   >
-                    Full Range
+                    {t('legacy-config:legacyServoTab.fullRange')}
                   </button>
                 </div>
               </div>

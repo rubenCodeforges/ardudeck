@@ -1,5 +1,6 @@
 import { Triangle } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import {
   batteryParams, airspeedParams, commonSafetyParams,
   simPhysicsParams, elevonServoParams, matches,
@@ -10,8 +11,8 @@ import {
  */
 export const planeFlyingWing: VehicleTemplate = {
   slug: 'plane-flying-wing',
-  name: 'Flying Wing / Delta',
-  description: 'No tail, elevons on trailing edge',
+  name: 'Flying Wing / Delta', // i18n-exempt
+  description: 'No tail, elevons on trailing edge', // i18n-exempt
   icon: Triangle,
   vehicleType: 'plane',
   category: 'fixed-wing',
@@ -27,7 +28,7 @@ export const planeFlyingWing: VehicleTemplate = {
   },
   toParams: (p) => [
     ...elevonServoParams(),
-    { name: 'SERVO3_FUNCTION', value: 70, reason: 'Throttle', requiresReboot: true },
+    { name: 'SERVO3_FUNCTION', value: 70, reason: t('lib:vehicleTemplates.reason.throttle'), requiresReboot: true },
     ...airspeedParams(p),
     ...batteryParams(p),
     ...commonSafetyParams(),

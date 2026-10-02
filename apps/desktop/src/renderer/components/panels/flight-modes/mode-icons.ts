@@ -62,15 +62,15 @@ const MODE_ICON: Record<string, LucideIcon> = {
   Dock: Ship,
   Takeoff: ArrowUpFromLine,
   Throw: Send,
-  'Avoid ADSB': ShieldAlert,
+  'Avoid ADSB': ShieldAlert, // i18n-exempt: flight mode name
   // return & land (Land matches the map command card's Land tile)
   RTL: Home,
   QRTL: Home,
-  'Smart RTL': Undo2,
-  'Auto RTL': CornerUpLeft,
+  'Smart RTL': Undo2, // i18n-exempt: flight mode name
+  'Auto RTL': CornerUpLeft, // i18n-exempt: flight mode name
   Land: ArrowDownToLine,
   QLand: ArrowDownToLine,
-  'Loiter to QLand': RotateCcw,
+  'Loiter to QLand': RotateCcw, // i18n-exempt: flight mode name
   Autorotate: LifeBuoy,
   // tuning
   AutoTune: Wrench,

@@ -5,6 +5,7 @@
  * modes (RTL / Land / Auto...) ask for one confirm before they're sent.
  */
 
+import { useTranslation, Trans } from 'react-i18next';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import type { ArduPilotVehicleClass } from '../../../../shared/telemetry-types';
@@ -12,7 +13,7 @@ import {
   FLIGHT_MODES,
   PX4_FLIGHT_MODES,
   modesFromProfile,
-  GROUP_LABEL,
+  modeGroupLabel,
   GROUP_ORDER,
   modeBlockedReason,
   type FlightModeMeta,
@@ -46,10 +47,10 @@ export interface ModePickerProps {
 const PANEL_W = 288;
 
 type StatusVar = 'success' | 'warn' | 'danger' | 'info';
-function tagFor(meta: FlightModeMeta): { label: string; status: StatusVar } | null {
-  if (meta.commit) return { label: 'commit', status: 'danger' };
-  if (meta.gps) return { label: 'gps', status: 'warn' };
-  if (meta.fly) return { label: 'fly', status: 'info' };
+function tagFor(meta: FlightModeMeta): { labelKey: string; status: StatusVar } | null {
+  if (meta.commit) return { labelKey: 'panels:modePicker.tagCommit', status: 'danger' };
+  if (meta.gps) return { labelKey: 'panels:modePicker.tagGps', status: 'warn' };
+  if (meta.fly) return { labelKey: 'panels:modePicker.tagFly', status: 'info' };
   return null;
 }
 function statusChipStyle(status: StatusVar): CSSProperties {
@@ -70,6 +71,7 @@ function ModePickerImpl({
   onCancelCommit,
   onClose,
 }: ModePickerProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [pos, setPos] = useState<{ left: number; top: number; width: number; maxH: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -193,7 +195,7 @@ function ModePickerImpl({
             className="ml-auto shrink-0 text-[8px] font-mono uppercase tracking-wide px-1 py-px rounded-full"
             style={{ color: `var(--status-${tag.status}-fg)`, background: `var(--status-${tag.status}-bg)` }}
           >
-            {tag.label}
+            {t(tag.labelKey)}
           </span>
         )}
       </button>
@@ -215,7 +217,7 @@ function ModePickerImpl({
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter modes…"
+          placeholder={t('panels:modePicker.filterPlaceholder')}
           className="flex-1 bg-transparent text-content text-sm outline-none placeholder:text-content-tertiary"
         />
         <span className="text-[9px] font-mono text-content-tertiary border border-subtle rounded px-1 py-px">esc</span>
@@ -225,10 +227,10 @@ function ModePickerImpl({
       {pendingMeta && (
         <div className="m-2 shrink-0 flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-2">
           <span className="flex-1 text-[12px] text-content">
-            Engage <span className="text-red-300 font-semibold">{pendingMeta.name}</span>?
+            <Trans i18nKey="panels:modePicker.engageConfirm" values={{ name: pendingMeta.name }} components={{ b: <span className="text-red-300 font-semibold" /> }} />
           </span>
-          <button onClick={onCancelCommit} className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-subtle text-content-secondary hover:text-content">Cancel</button>
-          <button onClick={onConfirmCommit} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white border border-red-600">Confirm</button>
+          <button onClick={onCancelCommit} className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-subtle text-content-secondary hover:text-content">{t('common:cancel')}</button>
+          <button onClick={onConfirmCommit} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white border border-red-600">{t('common:confirm')}</button>
         </div>
       )}
 
@@ -236,7 +238,7 @@ function ModePickerImpl({
         {/* recents */}
         {!q && recentMetas.length > 0 && (
           <div className="px-1.5 pt-1 pb-2">
-            <div className="text-[9px] font-mono uppercase tracking-[0.14em] text-content-tertiary mb-1.5">Recent</div>
+            <div className="text-[9px] font-mono uppercase tracking-[0.14em] text-content-tertiary mb-1.5">{t('panels:modePicker.recent')}</div>
             <div className="flex flex-wrap gap-1.5">
               {recentMetas.map((meta) => {
                 const reason = modeBlockedReason(meta, ctx);
@@ -265,7 +267,7 @@ function ModePickerImpl({
           <div key={section.group} className="mb-1">
             <div className="flex items-center gap-1.5 px-1.5 pt-2 pb-1.5">
               {(() => { const GIcon = GROUP_ICON[section.group]; return <GIcon className="w-3 h-3 text-content-tertiary" />; })()}
-              <span className="text-[9px] font-mono uppercase tracking-[0.14em] text-content-tertiary">{GROUP_LABEL[section.group]}</span>
+              <span className="text-[9px] font-mono uppercase tracking-[0.14em] text-content-tertiary">{modeGroupLabel(section.group)}</span>
               <span className="flex-1 h-px bg-subtle" />
             </div>
             <div className="grid grid-cols-2 gap-1.5 px-0.5">
@@ -275,7 +277,7 @@ function ModePickerImpl({
         ))}
 
         {groups.length === 0 && (
-          <div className="px-3 py-6 text-center text-content-tertiary text-xs">No modes match "{query}"</div>
+          <div className="px-3 py-6 text-center text-content-tertiary text-xs">{t('panels:modePicker.noMatch', { query })}</div>
         )}
       </div>
     </div>,

@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { TrainerCatalogue, TrainerRegion } from '../../../shared/trainer-types';
 
 /**
@@ -36,14 +37,15 @@ export function TrainerRegionStep({
   onDeleted: (name: string) => void;
   rescanning: boolean;
 }): JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-content">Where you fly</h2>
+          <h2 className="text-lg font-semibold text-content">{t('trainer:trainerRegionStep.title')}</h2>
           <p className="mt-0.5 text-xs text-content-tertiary">
-            Baked on this machine
-            {catalogue && ` · ${catalogue.regions.length} available`}
+            {t('trainer:trainerRegionStep.bakedHere')}
+            {catalogue && t('trainer:trainerRegionStep.available', { count: catalogue.regions.length })}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -53,7 +55,7 @@ export function TrainerRegionStep({
             disabled={rescanning}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${rescanning ? 'animate-spin' : ''}`} />
-            Rescan
+            {t('common:rescan')}
           </button>
           <button
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
@@ -61,7 +63,7 @@ export function TrainerRegionStep({
             disabled={!catalogue}
           >
             <Plus className="h-3.5 w-3.5" />
-            New region
+            {t('trainer:trainerRegionStep.newRegion')}
           </button>
         </div>
       </div>
@@ -75,7 +77,7 @@ export function TrainerRegionStep({
       {!error && !catalogue && (
         <p className="flex items-center gap-2 text-sm text-content-tertiary">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Asking the Trainer what it has…
+          {t('trainer:trainerRegionStep.asking')}
         </p>
       )}
 
@@ -112,6 +114,7 @@ function RegionCard({
   onToggle: () => void;
   onDeleted: () => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,9 +129,9 @@ function RegionCard({
       // "Deleting…" for ever with nothing said anywhere.
       const result = await window.electronAPI.trainerDeleteRegion(region.name);
       if (result.ok) onDeleted();
-      else setError(result.error ?? 'Could not delete that region.');
+      else setError(result.error ?? t('trainer:trainerRegionStep.couldNotDelete'));
     } catch (err) {
-      setError(`${(err as Error).message}. Restart ArduDeck if the Trainer was just updated.`);
+      setError(t('trainer:trainerView.restartHint', { message: (err as Error).message }));
     } finally {
       setBusy(false);
       setConfirming(false);
@@ -180,11 +183,11 @@ function RegionCard({
         <div className="flex items-center justify-between gap-2">
           {region.ready ? (
             <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-400">
-              Ready to fly
+              {t('trainer:trainerRegionStep.ready')}
             </span>
           ) : (
             <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
-              Unfinished
+              {t('trainer:trainerRegionStep.unfinished')}
             </span>
           )}
           {region.home && (
@@ -197,7 +200,7 @@ function RegionCard({
         {region.ready ? (
           <dl className="space-y-1 text-xs">
             <Row
-              label="Ground"
+              label={t('trainer:trainerRegionStep.ground')}
               value={
                 region.extentKm
                   ? `${region.extentKm.width.toFixed(1)} x ${region.extentKm.height.toFixed(1)} km`
@@ -205,23 +208,22 @@ function RegionCard({
               }
             />
             <Row
-              label="Elevation"
+              label={t('trainer:trainerRegionStep.elevation')}
               value={
                 region.elevationM
-                  ? `${Math.round(region.elevationM.min)} to ${Math.round(region.elevationM.max)} m`
+                  ? t('trainer:trainerRegionStep.elevationValue', { min: Math.round(region.elevationM.min), max: Math.round(region.elevationM.max) })
                   : null
               }
             />
-            <Row label="Imagery" value={formatDate(region.imageryDate)} />
+            <Row label={t('trainer:trainerRegionStep.imagery')} value={formatDate(region.imageryDate)} />
             <Row
-              label="On disk"
+              label={t('trainer:trainerRegionStep.onDisk')}
               value={region.sizeBytes ? `${Math.round(region.sizeBytes / 1e6)} MB` : null}
             />
           </dl>
         ) : (
           <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs leading-relaxed text-amber-300/90">
-            Building stopped early, so this place has no {region.missing.join(', ')}. Delete it and
-            build it again to finish.
+            {t('trainer:trainerRegionStep.unfinishedHint', { missing: region.missing.join(', ') })}
           </p>
         )}
 
@@ -233,7 +235,9 @@ function RegionCard({
               {/* The size is the whole point of the confirmation: 150 MB is minutes of network
                   against services that rate-limit, not a file that can be undeleted. */}
               <span className="text-content-tertiary">
-                Delete {region.sizeBytes ? `${Math.round(region.sizeBytes / 1e6)} MB` : 'this'}?
+                {region.sizeBytes
+                  ? t('trainer:trainerRegionStep.deleteSize', { size: `${Math.round(region.sizeBytes / 1e6)} MB` })
+                  : t('trainer:trainerRegionStep.deleteThis')}
               </span>
               <button
                 className="rounded px-2 py-1 text-content-secondary hover:bg-surface-raised"
@@ -242,7 +246,7 @@ function RegionCard({
                   setConfirming(false);
                 }}
               >
-                Cancel
+                {t('common:cancel')}
               </button>
               <button
                 className="rounded bg-red-500/15 px-2 py-1 font-medium text-red-400 hover:bg-red-500/25"
@@ -252,7 +256,7 @@ function RegionCard({
                   void remove();
                 }}
               >
-                {busy ? 'Deleting…' : 'Delete'}
+                {busy ? t('trainer:trainerRegionStep.deleting') : t('trainer:trainerRegionStep.delete')}
               </button>
             </div>
           ) : (
@@ -264,7 +268,7 @@ function RegionCard({
               }}
             >
               <Trash2 className="h-3 w-3" />
-              Delete
+              {t('trainer:trainerRegionStep.delete')}
             </button>
           )}
         </div>

@@ -5,6 +5,7 @@
  * store-free - callers pass the initial point and receive the confirmed one.
  * Used by the SITL launcher to place the spawn location without typing coords.
  */
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -71,7 +72,7 @@ export function MapPointPickerDialog({
   title,
   subtitle,
   initial,
-  confirmLabel = 'Use this point',
+  confirmLabel,
   onConfirm,
   onClose,
 }: {
@@ -83,6 +84,7 @@ export function MapPointPickerDialog({
   onConfirm: (lat: number, lng: number) => void;
   onClose: () => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const mapLayerKey = useEditModeStore((s) => s.mapLayer);
   const layerKey: LayerKey = (mapLayerKey in MAP_LAYERS ? mapLayerKey : 'googleSat') as LayerKey;
   const layer = MAP_LAYERS[layerKey];
@@ -172,13 +174,13 @@ export function MapPointPickerDialog({
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-content">{title}</h3>
             <p className="text-[11px] text-content-tertiary">
-              {subtitle ?? 'Click the map to drop a point, drag the pin to refine, or search a place.'}
+              {subtitle ?? t('map:mapPointPicker.subtitle')}
             </p>
           </div>
           <button
             onClick={onClose}
             className="w-7 h-7 rounded-md flex items-center justify-center text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
-            data-tip="Close"
+            data-tip={t('common:close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -194,7 +196,7 @@ export function MapPointPickerDialog({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a place (city, airfield, landmark)..."
+              placeholder={t('map:mapPointPicker.searchPlaceholder')}
               autoFocus
               className="w-full pl-9 pr-9 py-2 bg-surface-input border border-border rounded-lg text-sm text-content focus:outline-none focus:border-blue-500"
             />
@@ -255,7 +257,7 @@ export function MapPointPickerDialog({
             </MapContainer>
             {!selected && (
               <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-[500] px-2.5 py-1 rounded-md bg-surface-solid border border-subtle text-[11px] text-content-secondary shadow">
-                Click the map to set the point
+                {t('map:mapPointPicker.clickHint')}
               </div>
             )}
           </div>
@@ -268,15 +270,15 @@ export function MapPointPickerDialog({
               {selected ? (
                 <span className="tabular-nums truncate">{selected.lat.toFixed(5)}, {selected.lng.toFixed(5)}</span>
               ) : (
-                <span className="text-content-tertiary">No point selected</span>
+                <span className="text-content-tertiary">{t('map:mapPointPicker.noPoint')}</span>
               )}
             </div>
             <button
               onClick={() => setShowManual((v) => !v)}
               className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content-secondary transition-colors shrink-0"
-              data-tip="Type exact coordinates"
+              data-tip={t('map:mapPointPicker.enterCoordsTip')}
             >
-              Enter coordinates
+              {t('map:mapPointPicker.enterCoords')}
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showManual ? 'rotate-180' : ''}`} />
             </button>
           </div>
@@ -287,21 +289,21 @@ export function MapPointPickerDialog({
                 type="number"
                 value={manualLat}
                 onChange={(e) => setManualLat(e.target.value)}
-                placeholder="Lat"
+                placeholder={t('map:mapPointPicker.lat')}
                 className="w-0 flex-1 min-w-0 px-2 py-1.5 bg-surface-input border border-border rounded-md text-xs text-content tabular-nums focus:outline-none focus:border-blue-500"
               />
               <input
                 type="number"
                 value={manualLng}
                 onChange={(e) => setManualLng(e.target.value)}
-                placeholder="Lng"
+                placeholder={t('map:mapPointPicker.lng')}
                 className="w-0 flex-1 min-w-0 px-2 py-1.5 bg-surface-input border border-border rounded-md text-xs text-content tabular-nums focus:outline-none focus:border-blue-500"
               />
               <button
                 onClick={applyManual}
                 className="px-2.5 py-1.5 rounded-md text-xs bg-surface-raised text-content hover:brightness-125 transition-colors shrink-0"
               >
-                Go
+                {t('common:go')}
               </button>
             </div>
           )}
@@ -312,7 +314,7 @@ export function MapPointPickerDialog({
             onClick={onClose}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={confirm}
@@ -320,7 +322,7 @@ export function MapPointPickerDialog({
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
           >
             <Check className="w-3.5 h-3.5" />
-            {confirmLabel}
+            {confirmLabel ?? t('map:mapPointPicker.useThisPoint')}
           </button>
         </div>
       </div>

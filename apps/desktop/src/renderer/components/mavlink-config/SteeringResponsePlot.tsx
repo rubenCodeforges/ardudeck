@@ -7,6 +7,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { expoStick } from './rate-response';
@@ -26,6 +27,7 @@ const B = 26;
 const ACCENT = '#10B981';
 
 export function SteeringResponsePlot({ expo }: SteeringResponsePlotProps): JSX.Element {
+  const { t } = useTranslation();
   const { parameters } = useParameterStore();
   const rc = useTelemetryStore((s) => s.rcChannels);
 
@@ -99,11 +101,11 @@ export function SteeringResponsePlot({ expo }: SteeringResponsePlotProps): JSX.E
             <circle cx={W - R - 34} cy={T - 6} r="2.5" fill="#34D399">
               <animate attributeName="opacity" values="1;0.25;1" dur="1.6s" repeatCount="indefinite" />
             </circle>
-            <text x={W - R - 28} y={T - 3} fontSize="7.5" fill="#34D399" letterSpacing="0.5">LIVE</text>
+            <text x={W - R - 28} y={T - 3} fontSize="7.5" fill="#34D399" letterSpacing="0.5">{t('mavlink-config:responsePlot.live')}</text>
           </g>
         )}
-        <text x={L} y={T - 4} fontSize="7.5" fill="var(--text-tertiary)">steering %</text>
-        <text x={W - R} y={H - 4} textAnchor="end" fontSize="7.5" fill="var(--text-tertiary)">stick %</text>
+        <text x={L} y={T - 4} fontSize="7.5" fill="var(--text-tertiary)">{t('mavlink-config:steeringResponsePlot.steeringPct')}</text>
+        <text x={W - R} y={H - 4} textAnchor="end" fontSize="7.5" fill="var(--text-tertiary)">{t('mavlink-config:responsePlot.stickPct')}</text>
       </svg>
 
       <div className="border-t border-subtle px-3 py-2">
@@ -113,17 +115,17 @@ export function SteeringResponsePlot({ expo }: SteeringResponsePlotProps): JSX.E
               {Math.round(liveOut)}%
             </span>
             <span className="text-[11px] text-content-secondary">
-              steering at {Math.round(stick)}% stick
-              {Math.abs(stick) < 2 && ' · move it and the dot follows'}
+              {t('mavlink-config:steeringResponsePlot.liveOut', { stick: Math.round(stick) })}
+              {Math.abs(stick) < 2 && t('mavlink-config:responsePlot.moveHint')}
             </span>
           </div>
         ) : (
           <div className="text-[11px] text-content-secondary">
-            Connect the radio and move the steering stick: it appears on the curve.
+            {t('mavlink-config:steeringResponsePlot.connectHint')}
           </div>
         )}
         <div className="mt-0.5 text-[11px] text-content-tertiary">
-          Half stick gives {Math.round(atHalf)}% steering. Manual only.
+          {t('mavlink-config:steeringResponsePlot.halfStick', { half: Math.round(atHalf) })}
         </div>
       </div>
     </div>

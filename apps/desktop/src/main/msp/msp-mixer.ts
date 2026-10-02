@@ -25,9 +25,7 @@ import {
   withConfigLock,
   isCliModeBlockedError,
 } from './msp-transport.js';
-import { stopMspTelemetry } from './msp-telemetry.js';
 import { saveEeprom, reboot } from './msp-commands.js';
-import { cleanupMspConnection } from './msp-cleanup.js';
 
 export async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
   if (!ctx.currentTransport?.isOpen) return null;
@@ -77,7 +75,7 @@ export async function getInavMixerConfig(): Promise<MSPInavMixerConfig | null> {
       }
     }
     const msg = lastError instanceof Error ? lastError.message : String(lastError);
-    ctx.sendLog('warn', 'Could not read the platform type (MSP2_INAV_MIXER)', msg);
+    ctx.sendLog('warn', 'Could not read the platform type (MSP2_INAV_MIXER)', msg); // i18n-exempt
     return null;
   });
 }
@@ -172,7 +170,7 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
 
   if (ctx.isLegacyInav() && mixerType !== undefined) {
     ctx.pendingMixerType = mixerType;
-    ctx.sendLog('info', 'Legacy iNav', 'Mixer will be set when saving');
+    ctx.sendLog('info', 'Legacy iNav', 'Mixer will be set when saving'); // i18n-exempt
     return true;
   }
 
@@ -214,7 +212,7 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
           return false;
         }
 
-        ctx.sendLog('info', `Platform verified: ${platformName}`, 'Save to EEPROM and reboot required');
+        ctx.sendLog('info', `Platform verified: ${platformName}`, 'Save to EEPROM and reboot required'); // i18n-exempt
         return true;
       } catch (verifyErr) {
         console.warn('[MSP] Could not verify platform change:', verifyErr);
@@ -227,8 +225,8 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
   }
 
   if (!msp2Success) {
-    ctx.sendLog('info', 'MSP2 failed, trying CLI fallback...');
-    return await setPlatformViaCli(platformType, mixerType);
+    ctx.sendLog('error', `Platform not changed to ${platformName}`, 'The flight controller rejected or did not apply MSP2_INAV_SET_MIXER'); // i18n-exempt
+    return false;
   }
 
   if (mixerType !== undefined) {
@@ -237,59 +235,10 @@ export async function setInavPlatformType(platformType: number, mixerType?: numb
     };
     const mixerName = mixerTypeToName[mixerType] ?? `MIXER_${mixerType}`;
     ctx.pendingMixerType = mixerType;
-    ctx.sendLog('info', `Mixer ${mixerName} queued`, 'Will be applied when saving');
+    ctx.sendLog('info', `Mixer ${mixerName} queued`, 'Will be applied when saving'); // i18n-exempt
   }
 
   return true;
-}
-
-async function setPlatformViaCli(platformType: number, mixerType?: number): Promise<boolean> {
-  if (!ctx.currentTransport?.isOpen) return false;
-
-  try {
-    const platformNames = ['MULTIROTOR', 'AIRPLANE', 'HELICOPTER', 'TRICOPTER', 'ROVER', 'BOAT'];
-    const platformName = platformNames[platformType] ?? 'AIRPLANE';
-
-    const mixerTypeToName: Record<number, string> = {
-      0: 'TRI', 3: 'QUADX', 5: 'GIMBAL', 8: 'FLYING_WING', 14: 'AIRPLANE', 24: 'CUSTOM_AIRPLANE',
-    };
-
-    const platformToMixer: Record<number, string> = {
-      0: 'QUADX', 1: 'AIRPLANE', 2: 'CUSTOM', 3: 'TRI', 4: 'QUADX', 5: 'QUADX',
-    };
-
-    const mixerName = mixerType !== undefined
-      ? (mixerTypeToName[mixerType] ?? platformToMixer[platformType] ?? 'AIRPLANE')
-      : (platformToMixer[platformType] ?? 'AIRPLANE');
-
-    ctx.sendLog('info', `CLI: Setting mixer ${mixerName}`, `Platform: ${platformName}`);
-
-    stopMspTelemetry();
-
-    await ctx.currentTransport.write(new Uint8Array([0x23]));
-    await new Promise(r => setTimeout(r, 500));
-
-    const cmd1 = `set platform_type = ${platformName}\n`;
-    await ctx.currentTransport.write(new TextEncoder().encode(cmd1));
-    await new Promise(r => setTimeout(r, 200));
-
-    const cmd2 = `mixer ${mixerName}\n`;
-    await ctx.currentTransport.write(new TextEncoder().encode(cmd2));
-    await new Promise(r => setTimeout(r, 200));
-
-    await ctx.currentTransport.write(new TextEncoder().encode('save\n'));
-
-    ctx.sendLog('info', 'CLI commands sent', 'Board will reboot. Reconnect to verify.');
-
-    await new Promise(r => setTimeout(r, 500));
-    cleanupMspConnection();
-
-    return true;
-  } catch (error) {
-    console.error('[MSP] CLI platform set failed:', error);
-    ctx.sendLog('error', 'CLI command failed', error instanceof Error ? error.message : String(error));
-    return false;
-  }
 }
 
 export async function setMixerConfig(mixerType: number): Promise<boolean> {
@@ -306,7 +255,7 @@ export async function setMixerConfig(mixerType: number): Promise<boolean> {
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      ctx.sendLog('error', 'Failed to set mixer config', message);
+      ctx.sendLog('error', 'Failed to set mixer config', message); // i18n-exempt
       console.error('[MSP] Set Mixer Config failed:', error);
       return false;
     }

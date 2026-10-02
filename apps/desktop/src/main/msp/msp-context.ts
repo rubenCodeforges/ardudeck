@@ -7,7 +7,7 @@
 
 import type { BrowserWindow } from 'electron';
 import type { Transport } from '@ardudeck/comms';
-import { MSPParser, type MSPInavPid } from '@ardudeck/msp-ts';
+import { MSPParser, type MSPInavPid, type MSPInavRateProfile } from '@ardudeck/msp-ts';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 
 // Constants
@@ -75,7 +75,10 @@ export class MspContext {
 
   // Caches
   cachedInavPid: MSPInavPid | null = null;
+  cachedInavRateProfile: MSPInavRateProfile | null = null;
   cachedRxMap: number[] = [0, 1, 2, 3, 4, 5, 6, 7]; // Default AETR
+  /** Why the last named-setting write failed, for the save dialog; cleared when read. */
+  lastWriteError: string | null = null;
 
   // Pending MSP responses
   pendingResponses = new Map<
@@ -188,11 +191,13 @@ export class MspContext {
 
     // Caches
     this.cachedInavPid = null;
+    this.cachedInavRateProfile = null;
     this.cachedRxMap = [0, 1, 2, 3, 4, 5, 6, 7];
 
     // Pending responses
     for (const [, pending] of this.pendingResponses) {
       clearTimeout(pending.timeout);
+      pending.reject(new Error('MSP connection closed')); // i18n-exempt
     }
     this.pendingResponses.clear();
     this.unsupportedCommands.clear();

@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuickSetupStore } from '../../../stores/quick-setup-store';
 import {
   ArrowLeft,
@@ -45,28 +46,29 @@ const ConfigSection: React.FC<{
 };
 
 export const ConfigReviewStep: React.FC = () => {
+  const { t } = useTranslation();
   const { selectedPreset, nextStep, prevStep, boardType } = useQuickSetupStore();
 
   if (!selectedPreset) {
     return (
       <div className="text-center py-8">
-        <p className="text-content-secondary">No preset selected. Please go back and select a preset.</p>
+        <p className="text-content-secondary">{t('quick-setup:configReview.noPreset')}</p>
       </div>
     );
   }
 
   // Generate summary items
   const pidItems = [
-    `Roll: P=${selectedPreset.pids.roll.p} I=${selectedPreset.pids.roll.i} D=${selectedPreset.pids.roll.d}`,
-    `Pitch: P=${selectedPreset.pids.pitch.p} I=${selectedPreset.pids.pitch.i} D=${selectedPreset.pids.pitch.d}`,
-    `Yaw: P=${selectedPreset.pids.yaw.p} I=${selectedPreset.pids.yaw.i}`,
+    t('quick-setup:configReview.rollPid', { ...selectedPreset.pids.roll }),
+    t('quick-setup:configReview.pitchPid', { ...selectedPreset.pids.pitch }),
+    t('quick-setup:configReview.yawPid', { ...selectedPreset.pids.yaw }),
   ];
 
   const rateItems = [
-    `RC Rate: ${selectedPreset.rates.rcRate}`,
-    `Expo: ${selectedPreset.rates.rcExpo}%`,
-    `Roll/Pitch Rate: ${selectedPreset.rates.rollRate}`,
-    `Yaw Rate: ${selectedPreset.rates.yawRate}`,
+    t('quick-setup:summary.rcRate', { value: selectedPreset.rates.rcRate }),
+    t('quick-setup:summary.expo', { value: selectedPreset.rates.rcExpo }),
+    t('quick-setup:summary.rollPitchRate', { value: selectedPreset.rates.rollRate }),
+    t('quick-setup:summary.yawRate', { value: selectedPreset.rates.yawRate }),
   ];
 
   // Mode names lookup (iNav permanent box IDs)
@@ -94,27 +96,27 @@ export const ConfigReviewStep: React.FC = () => {
   };
 
   const modeItems = selectedPreset.modes.map((mode) => {
-    const name = modeNames[mode.boxId] || `Mode ${mode.boxId}`;
+    const name = modeNames[mode.boxId] || `Mode ${mode.boxId}`; // i18n-exempt
     const channel = `AUX${mode.auxChannel + 1}`;
-    return `${name} on ${channel} (${mode.rangeStart}-${mode.rangeEnd})`;
+    return t('quick-setup:configReview.modeItem', { mode: name, channel, start: mode.rangeStart, end: mode.rangeEnd });
   });
 
   const failsafeItems = [
-    `Procedure: ${selectedPreset.failsafe.procedure}`,
-    `Delay: ${selectedPreset.failsafe.delay} seconds`,
-    `Landing timeout: ${selectedPreset.failsafe.offDelay} seconds`,
+    t('quick-setup:configReview.procedure', { value: selectedPreset.failsafe.procedure }),
+    t('quick-setup:configReview.delaySeconds', { value: selectedPreset.failsafe.delay }),
+    t('quick-setup:configReview.landingTimeout', { value: selectedPreset.failsafe.offDelay }),
   ];
 
   const aircraftItems =
     selectedPreset.category === 'fixed_wing'
       ? [
-          'Platform: Airplane',
-          `Servo mixer: ${selectedPreset.aircraft.servoMixerRules.length} rules`,
-          `Motor mixer: ${selectedPreset.aircraft.motorMixerRules.length} motors`,
+          t('quick-setup:configReview.platformAirplane'),
+          t('quick-setup:configReview.servoMixerRules', { n: selectedPreset.aircraft.servoMixerRules.length }),
+          t('quick-setup:configReview.motorMixerMotors', { n: selectedPreset.aircraft.motorMixerRules.length }),
         ]
       : [
-          'Platform: Multirotor',
-          `Motor mixer: Quad X (${selectedPreset.aircraft.motorMixerRules.length} motors)`,
+          t('quick-setup:configReview.platformMultirotor'),
+          t('quick-setup:configReview.motorMixerQuadX', { n: selectedPreset.aircraft.motorMixerRules.length }),
         ];
 
   return (
@@ -125,11 +127,10 @@ export const ConfigReviewStep: React.FC = () => {
           <selectedPreset.icon className="w-8 h-8 text-content" />
         </div>
         <h2 className="text-xl font-semibold text-content">
-          Review: {selectedPreset.name}
+          {t('quick-setup:configReview.title', { name: t(selectedPreset.nameKey) })}
         </h2>
         <p className="text-sm text-content-secondary mt-2 max-w-md mx-auto">
-          The following configuration will be applied to your flight controller.
-          Review the settings below before proceeding.
+          {t('quick-setup:configReview.intro')}
         </p>
       </div>
 
@@ -142,7 +143,7 @@ export const ConfigReviewStep: React.FC = () => {
               : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
           }`}
         >
-          {boardType === 'msp' ? 'Via MSP Protocol' : 'Via CLI Commands'}
+          {boardType === 'msp' ? t('quick-setup:configReview.viaMsp') : t('quick-setup:configReview.viaCli')}
         </span>
       </div>
 
@@ -151,7 +152,7 @@ export const ConfigReviewStep: React.FC = () => {
         {/* Aircraft Type */}
         <ConfigSection
           icon={<Plane className="w-5 h-5 text-sky-400" />}
-          title="Aircraft Type"
+          title={t('quick-setup:summary.aircraftType')}
           items={aircraftItems}
           color="from-sky-500/10 to-blue-500/5 border-sky-500/20"
         />
@@ -159,7 +160,7 @@ export const ConfigReviewStep: React.FC = () => {
         {/* PIDs */}
         <ConfigSection
           icon={<SlidersHorizontal className="w-5 h-5 text-purple-400" />}
-          title="PID Tuning"
+          title={t('quick-setup:summary.pidTuning')}
           items={pidItems}
           color="from-purple-500/10 to-violet-500/5 border-purple-500/20"
         />
@@ -167,7 +168,7 @@ export const ConfigReviewStep: React.FC = () => {
         {/* Rates */}
         <ConfigSection
           icon={<Gauge className="w-5 h-5 text-blue-400" />}
-          title="Rates"
+          title={t('common:rates')}
           items={rateItems}
           color="from-blue-500/10 to-cyan-500/5 border-blue-500/20"
         />
@@ -175,7 +176,7 @@ export const ConfigReviewStep: React.FC = () => {
         {/* Modes */}
         <ConfigSection
           icon={<Gamepad2 className="w-5 h-5 text-green-400" />}
-          title="Flight Modes"
+          title={t('common:flightModes')}
           items={modeItems}
           color="from-green-500/10 to-emerald-500/5 border-green-500/20"
         />
@@ -183,7 +184,7 @@ export const ConfigReviewStep: React.FC = () => {
         {/* Failsafe */}
         <ConfigSection
           icon={<Shield className="w-5 h-5 text-orange-400" />}
-          title="Failsafe"
+          title={t('common:failsafe')}
           items={failsafeItems}
           color="from-orange-500/10 to-amber-500/5 border-orange-500/20"
         />
@@ -195,11 +196,10 @@ export const ConfigReviewStep: React.FC = () => {
           <AlertTriangle className="w-5 h-5 text-amber-400" />
           <div>
             <h4 className="font-medium text-amber-200 text-sm">
-              This will overwrite your current settings
+              {t('quick-setup:configReview.overwriteWarning')}
             </h4>
             <p className="text-xs text-amber-100/70 mt-1">
-              Make sure you've backed up your configuration if you want to preserve your
-              current settings. The changes will be saved to EEPROM immediately.
+              {t('quick-setup:configReview.overwriteHint')}
             </p>
           </div>
         </div>
@@ -212,14 +212,14 @@ export const ConfigReviewStep: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 text-sm text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
+          {t('common:back')}
         </button>
 
         <button
           onClick={nextStep}
           className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
         >
-          Apply Configuration
+          {t('quick-setup:configReview.applyConfiguration')}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

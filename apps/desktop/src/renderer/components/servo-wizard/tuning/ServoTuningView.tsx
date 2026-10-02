@@ -7,13 +7,15 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useServoWizardStore } from '../../../stores/servo-wizard-store';
 import { ControlSurface, CONTROL_SURFACE_INFO } from '../presets/servo-presets';
 import AircraftDiagram from '../diagrams/AircraftDiagram';
 import ServoTuningCard, { SERVO_COLORS } from './ServoTuningCard';
 import { Settings, Save } from 'lucide-react';
 
-export default function ServoTuningView() {
+export default function ServoTuningView({ hideSave = false }: { hideSave?: boolean } = {}) {
+  const { t } = useTranslation();
   const {
     selectedPresetId,
     selectedPreset,
@@ -111,8 +113,8 @@ export default function ServoTuningView() {
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center">
         <Settings className="w-16 h-16 text-content-secondary" />
         <div>
-          <h2 className="text-xl font-bold text-content mb-2">No Servo Configuration</h2>
-          <p className="text-content-secondary">Use the Wizard to configure your servos first.</p>
+          <h2 className="text-xl font-bold text-content mb-2">{t('servo-wizard:servoTuningView.noConfig')}</h2>
+          <p className="text-content-secondary">{t('servo-wizard:servoTuningView.useWizard')}</p>
         </div>
       </div>
     );
@@ -124,7 +126,7 @@ export default function ServoTuningView() {
       <div className="flex items-center justify-end px-4 py-2 border-b border-subtle">
         <div className="flex items-center gap-1.5 text-xs text-content-secondary">
           <div className={`w-2 h-2 rounded-full ${isPollingServos ? 'bg-green-500 animate-pulse' : 'bg-surface-raised'}`} />
-          Live
+          {t('common:live')}
         </div>
       </div>
 
@@ -147,7 +149,7 @@ export default function ServoTuningView() {
 
           {/* Legend */}
           <div className="mt-3 px-2">
-            <div className="text-xs text-content-secondary mb-2">Click surface to select</div>
+            <div className="text-xs text-content-secondary mb-2">{t('servo-wizard:servoTuningView.clickToSelect')}</div>
             <div className="flex flex-wrap gap-2">
               {assignments.map((a, i) => (
                 <button
@@ -163,7 +165,7 @@ export default function ServoTuningView() {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: SERVO_COLORS[i % SERVO_COLORS.length] }}
                   />
-                  {CONTROL_SURFACE_INFO[a.surface].shortName}
+                  {t(CONTROL_SURFACE_INFO[a.surface].shortNameKey)}
                 </button>
               ))}
             </div>
@@ -202,18 +204,18 @@ export default function ServoTuningView() {
           <div className="text-sm">
             {saveError && (
               <span className="text-red-400">
-                Failed to save: {saveError}
+                {t('servo-wizard:servoTuningView.saveFailed', { error: saveError })}
               </span>
             )}
             {saveSuccess && (
               <span className="text-green-400">
-                Saved to flight controller
+                {t('servo-wizard:servoTuningView.saved')}
               </span>
             )}
           </div>
 
-          {/* Save button */}
-          <button
+          {/* Save button; in the config screen the global Save All Changes writes this instead */}
+          {!hideSave && <button
             onClick={handleSave}
             disabled={isSaving}
             className={`px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 ${
@@ -228,14 +230,14 @@ export default function ServoTuningView() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Saving...
+                {t('common:saving')}
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 inline mr-1" /> Save to FC
+                <Save className="w-4 h-4 inline mr-1" /> {t('servo-wizard:servoTuningView.saveToFc')}
               </>
             )}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

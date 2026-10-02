@@ -4,6 +4,7 @@
  * Top-down SVG diagram of a tricopter with yaw servo.
  */
 
+import { useTranslation } from 'react-i18next';
 import { ControlSurface } from '../presets/servo-presets';
 
 interface Props {
@@ -19,6 +20,7 @@ export default function TricopterDiagram({
   servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
+  const { t } = useTranslation();
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
@@ -60,14 +62,14 @@ export default function TricopterDiagram({
       <circle cx="70" cy="45" r="20" fill="#374151" stroke="#6B7280" strokeWidth="2" />
       <circle cx="70" cy="45" r="8" fill="#6B7280" />
       <text x="70" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="9">
-        Motor 1
+        {t('servo-wizard:diagrams.motor1')}
       </text>
 
       {/* Front right motor */}
       <circle cx="230" cy="45" r="20" fill="#374151" stroke="#6B7280" strokeWidth="2" />
       <circle cx="230" cy="45" r="8" fill="#6B7280" />
       <text x="230" y="75" textAnchor="middle" fill="#9CA3AF" fontSize="9">
-        Motor 2
+        {t('servo-wizard:diagrams.motor2')}
       </text>
 
       {/* Rear motor with servo */}
@@ -85,7 +87,7 @@ export default function TricopterDiagram({
         onClick={handleClick('yaw_servo')}
       />
       <text x="150" y="152" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        Yaw Servo
+        {t('servo-wizard:diagrams.yawServo')}
       </text>
       {servoLabels.yaw_servo && (
         <text x="185" y="163" textAnchor="start" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -105,12 +107,12 @@ export default function TricopterDiagram({
       {/* Direction arrow */}
       <path d="M150 25 L145 35 L155 35 Z" fill="#6B7280" />
       <text x="165" y="33" fill="#6B7280" fontSize="8">
-        FRONT
+        {t('servo-wizard:diagrams.front')}
       </text>
 
       {/* Info text */}
       <text x="150" y="195" textAnchor="middle" fill="#6B7280" fontSize="9">
-        Only yaw servo needs configuration
+        {t('servo-wizard:diagrams.tricopterHint')}
       </text>
     </svg>
   );

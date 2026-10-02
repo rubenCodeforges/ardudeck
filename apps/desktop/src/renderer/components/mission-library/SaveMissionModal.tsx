@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useMissionLibraryStore } from '../../stores/mission-library-store';
@@ -20,6 +21,7 @@ interface SaveMissionModalProps {
 }
 
 export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome }: SaveMissionModalProps) {
+  const { t } = useTranslation();
   const missionStore = useMissionStore();
   const { saveMission, error: storeError } = useMissionLibraryStore();
   const { activeVehicleId } = useSettingsStore();
@@ -62,7 +64,7 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setError('Mission name is required');
+      setError(t('mission-library:saveMissionModal.nameRequired'));
       return;
     }
 
@@ -110,7 +112,7 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
       onSaved?.();
       onClose();
     } else {
-      setError(storeError || 'Failed to save mission. Check the console for details.');
+      setError(storeError || t('mission-library:saveMissionModal.saveFailed'));
     }
   };
 
@@ -126,7 +128,7 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-content">
-              {isImport ? 'Import to Library' : 'Save project'}
+              {isImport ? t('mission-library:saveMissionModal.importTitle') : t('mission-library:saveMissionModal.saveTitle')}
             </h2>
           </div>
         </div>
@@ -135,12 +137,12 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
         <div className="px-6 py-5 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-content mb-1">Name *</label>
+            <label className="block text-sm font-medium text-content mb-1">{t('mission-library:saveMissionModal.nameLabel')}</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g., Survey Grid North Field"
+              placeholder={t('mission-library:saveMissionModal.namePlaceholder')}
               className="w-full px-3 py-2 bg-surface-input border border-subtle rounded-lg text-content placeholder-content-tertiary text-sm focus:outline-none focus:border-blue-500/50"
               autoFocus
             />
@@ -148,11 +150,11 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-content mb-1">Description</label>
+            <label className="block text-sm font-medium text-content mb-1">{t('common:description')}</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder={isImport ? "Optional notes about this mission..." : "Optional notes about this plan..."}
+              placeholder={isImport ? t('mission-library:saveMissionModal.descImportPlaceholder') : t('mission-library:saveMissionModal.descPlaceholder')}
               rows={3}
               className="w-full px-3 py-2 bg-surface-input border border-subtle rounded-lg text-content placeholder-content-tertiary text-sm focus:outline-none focus:border-blue-500/50 resize-none"
             />
@@ -160,12 +162,12 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
 
           {/* Project / site */}
           <div>
-            <label className="block text-sm font-medium text-content mb-1">Project</label>
+            <label className="block text-sm font-medium text-content mb-1">{t('mission-library:saveMissionModal.project')}</label>
             <input
               type="text"
               value={site}
               onChange={e => setSite(e.target.value)}
-              placeholder="Site or job this mission belongs to"
+              placeholder={t('mission-library:saveMissionModal.projectPlaceholder')}
               list="ardudeck-site-suggestions"
               className="w-full px-3 py-2 bg-surface-input border border-subtle rounded-lg text-content placeholder-content-tertiary text-sm focus:outline-none focus:border-blue-500/50"
             />
@@ -184,11 +186,10 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
               />
               <span className="min-w-0">
                 <span className="block text-sm text-content">
-                  Keep {surveyGroups.length === 1 ? 'the survey area' : `all ${surveyGroups.length} survey areas`} as reusable areas
+                  {t('mission-library:saveMissionModal.keepAreas', { count: surveyGroups.length })}
                 </span>
                 <span className="block text-xs text-content-secondary mt-0.5">
-                  Keeps each survey's shape and settings on its own as well, so you can reuse this field in another
-                  mission without opening this one.
+                  {t('mission-library:saveMissionModal.keepAreasHint')}
                 </span>
               </span>
             </label>
@@ -206,11 +207,11 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
                 className="mt-0.5"
               />
               <span className="min-w-0">
-                <span className="block text-sm text-content">Copy to backup as well</span>
+                <span className="block text-sm text-content">{t('mission-library:saveMissionModal.copyToBackup')}</span>
                 <span className="block text-xs text-content-secondary mt-0.5">
                   {site.trim()
-                    ? `Files the plan and its areas under "${site.trim()}" in your backup, where earlier versions stay and your other computers can pick them up.`
-                    : 'Give this a project name first: the backup files everything by project.'}
+                    ? t('mission-library:saveMissionModal.backupHint', { project: site.trim() })
+                    : t('mission-library:saveMissionModal.backupNeedsProject')}
                 </span>
               </span>
             </label>
@@ -218,20 +219,20 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-content mb-1">Tags</label>
+            <label className="block text-sm font-medium text-content mb-1">{t('mission-library:saveMissionModal.tags')}</label>
             <TagInput
               tags={tags}
               onChange={setTags}
-              placeholder="survey, north-field, high-alt"
+              placeholder={t('mission-library:saveMissionModal.tagsPlaceholder')}
               suggestions={allTags}
             />
           </div>
 
           {/* Summary */}
           <div className="flex items-center gap-4 text-xs text-content-secondary bg-surface-raised rounded-lg px-3 py-2">
-            <span>{items.length} waypoints</span>
+            <span>{t('mission-library:saveMissionModal.waypointCount', { count: items.length })}</span>
             <span>{formatDistanceFromMeters(distance, distanceUnit)}</span>
-            {homePosition && <span>Home set</span>}
+            {homePosition && <span>{t('mission-library:saveMissionModal.homeSet')}</span>}
           </div>
 
           {/* Error */}
@@ -248,7 +249,7 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
             onClick={onClose}
             className="flex-1 px-4 py-2.5 bg-surface-raised hover:bg-surface-raised text-content rounded-lg transition-colors"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -259,7 +260,7 @@ export function SaveMissionModal({ onClose, onSaved, importedItems, importedHome
                 : 'bg-blue-600 hover:bg-blue-500 text-white'
             }`}
           >
-            {saving ? 'Saving...' : isImport ? 'Import' : 'Save'}
+            {saving ? t('common:saving') : isImport ? t('mission-library:saveMissionModal.import') : t('common:save')}
           </button>
         </div>
       </div>

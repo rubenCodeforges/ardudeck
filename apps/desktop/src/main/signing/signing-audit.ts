@@ -135,14 +135,14 @@ export function buildEvidencePack(ctx: EvidencePackContext): EvidencePack {
 }
 
 const EVENT_LABELS: Record<SigningAuditEvent, string> = {
-  'key-set': 'Signing key set',
-  'key-sent-to-fc': 'Key pushed to flight controller',
-  'signing-enabled': 'Signing enabled',
-  'signing-disabled': 'Signing disabled',
-  'key-auto-matched': 'Saved key auto-matched on connect',
-  'key-mismatch': 'Key mismatch (FC signed, no matching key)',
-  'key-removed': 'Signing key removed',
-  'startup-auto-enable': 'Signing auto-enabled at startup',
+  'key-set': 'Signing key set', // i18n-exempt
+  'key-sent-to-fc': 'Key pushed to flight controller', // i18n-exempt
+  'signing-enabled': 'Signing enabled', // i18n-exempt
+  'signing-disabled': 'Signing disabled', // i18n-exempt
+  'key-auto-matched': 'Saved key auto-matched on connect', // i18n-exempt
+  'key-mismatch': 'Key mismatch (FC signed, no matching key)', // i18n-exempt
+  'key-removed': 'Signing key removed', // i18n-exempt
+  'startup-auto-enable': 'Signing auto-enabled at startup', // i18n-exempt
 };
 
 /** Render a human-readable posture report (Markdown) for a procurement reviewer. */

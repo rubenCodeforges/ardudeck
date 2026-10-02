@@ -26,7 +26,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(0), y: Y(0) },
     data: {
       definitionType: 'timing-run-every',
-      label: 'Run every 1000 ms',
+      label: 'Run every 1000 ms', // i18n-exempt
       category: 'timing',
       propertyValues: { interval_ms: 1000 },
     },
@@ -37,7 +37,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(1), y: Y(0) },
     data: {
       definitionType: 'action-publish-named-float',
-      label: 'Publish AD_HB heartbeat',
+      label: 'Publish AD_HB heartbeat', // i18n-exempt
       category: 'actions',
       propertyValues: { name: 'AD_HB' },
     },
@@ -50,7 +50,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(0), y: Y(1) },
     data: {
       definitionType: 'action-mavlink-on-user-cmd',
-      label: 'On MAV_CMD_USER_1',
+      label: 'On MAV_CMD_USER_1', // i18n-exempt
       category: 'actions',
       propertyValues: { cmd_id: 31010 },
     },
@@ -61,7 +61,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(1), y: Y(1) },
     data: {
       definitionType: 'var-set',
-      label: 'Save orbit_center',
+      label: 'Save orbit_center', // i18n-exempt
       category: 'variables',
       propertyValues: { name: 'orbit_center' },
     },
@@ -72,7 +72,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(2), y: Y(1) },
     data: {
       definitionType: 'var-set',
-      label: 'Set active_command = "orbit"',
+      label: 'Set active_command = "orbit"', // i18n-exempt
       category: 'variables',
       propertyValues: { name: 'active_command' },
     },
@@ -85,7 +85,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(0), y: Y(2) },
     data: {
       definitionType: 'timing-run-every',
-      label: 'Run every 250 ms',
+      label: 'Run every 250 ms', // i18n-exempt
       category: 'timing',
       propertyValues: { interval_ms: 250 },
     },
@@ -96,7 +96,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(1), y: Y(2) },
     data: {
       definitionType: 'logic-if-else',
-      label: 'If active_command == "orbit"',
+      label: 'If active_command == "orbit"', // i18n-exempt
       category: 'logic',
       propertyValues: {},
     },
@@ -107,7 +107,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(2), y: Y(2) - 100 },
     data: {
       definitionType: 'sensor-ahrs-location',
-      label: 'Read live vehicle position',
+      label: 'Read live vehicle position', // i18n-exempt
       category: 'sensors',
       propertyValues: {},
     },
@@ -129,7 +129,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(3), y: Y(2) },
     data: {
       definitionType: 'math-location-bearing',
-      label: 'Bearing center → vehicle',
+      label: 'Bearing center → vehicle', // i18n-exempt
       category: 'math',
       propertyValues: {},
     },
@@ -140,7 +140,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(4), y: Y(2) },
     data: {
       definitionType: 'math-add',
-      label: 'Step ahead by ±8°',
+      label: 'Step ahead by ±8°', // i18n-exempt
       category: 'math',
       propertyValues: {},
     },
@@ -151,7 +151,7 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(5), y: Y(2) },
     data: {
       definitionType: 'math-location-offset',
-      label: 'Project next target',
+      label: 'Project next target', // i18n-exempt
       category: 'math',
       propertyValues: {},
     },
@@ -175,10 +175,10 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(3), y: Y(3) + 60 },
     data: {
       definitionType: 'flow-comment',
-      label: 'Why telemetry-anchored',
+      label: 'Why telemetry-anchored', // i18n-exempt
       category: 'flow',
       propertyValues: {
-        text: 'Each tick we re-read the live vehicle position from AHRS and compute the next bearing fresh. If the link drops the FC just loiters at the last commanded point; when telemetry resumes we pick up from wherever the vehicle actually is - no internal counter to desync.',
+        text: 'Each tick we re-read the live vehicle position from AHRS and compute the next bearing fresh. If the link drops the FC just loiters at the last commanded point; when telemetry resumes we pick up from wherever the vehicle actually is - no internal counter to desync.', // i18n-exempt
       },
     },
   },
@@ -188,10 +188,10 @@ export const ARDUDECK_COMMANDS_NODES: Node<GraphNodeData>[] = [
     position: { x: X(0), y: Y(3) + 60 },
     data: {
       definitionType: 'flow-comment',
-      label: 'Safety',
+      label: 'Safety', // i18n-exempt
       category: 'flow',
       propertyValues: {
-        text: 'Script never:\n  · arms or disarms\n  · changes flight modes\n  · writes parameters\n\nIt only issues GUIDED-mode position targets, which the FC ignores when not in GUIDED.',
+        text: 'Script never:\n  · arms or disarms\n  · changes flight modes\n  · writes parameters\n\nIt only issues GUIDED-mode position targets, which the FC ignores when not in GUIDED.', // i18n-exempt
       },
     },
   },

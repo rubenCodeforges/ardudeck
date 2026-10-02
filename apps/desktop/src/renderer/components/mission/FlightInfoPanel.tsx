@@ -7,6 +7,7 @@
  * and renders. The briefing's checks[] are informational today and become a
  * go/no-go advisor later with no change here.
  */
+import { Trans, useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { Plane, Clock, Ruler, Wind, Camera, RefreshCw } from 'lucide-react';
 import { useMissionStore } from '../../stores/mission-store';
@@ -136,19 +137,21 @@ function clockFromMin(min: number): string {
 // thin tick = now, blue tick = when the mission would finish if launched now.
 // Makes "will I land before dark" obvious without reading clock times.
 function DaylightBar({ d }: { d: DaylightWindow }) {
+  const { t } = useTranslation();
   const pct = (min: number) => Math.max(0, Math.min(100, (min / 1440) * 100));
   const left = pct(d.sunriseMin);
   const width = Math.max(0, pct(d.sunsetMin) - left);
   return (
     <div className="relative h-2 rounded-full bg-surface-input overflow-hidden mt-1">
       <div className="absolute inset-y-0 bg-amber-400/50" style={{ left: `${left}%`, width: `${width}%` }} />
-      <div className="absolute inset-y-0 w-0.5 bg-content/70" style={{ left: `${pct(d.nowMin)}%` }} title="now" />
-      <div className="absolute inset-y-0 w-0.5 bg-sky-400" style={{ left: `${pct(d.endMin)}%` }} title="mission end" />
+      <div className="absolute inset-y-0 w-0.5 bg-content/70" style={{ left: `${pct(d.nowMin)}%` }} title={t('mission:flightInfoPanel.now')} />
+      <div className="absolute inset-y-0 w-0.5 bg-sky-400" style={{ left: `${pct(d.endMin)}%` }} title={t('mission:flightInfoPanel.missionEnd')} />
     </div>
   );
 }
 
 export function FlightInfoPanel() {
+  const { t } = useTranslation();
   const missionItems = useMissionStore((s) => s.missionItems);
   const homePosition = useMissionStore((s) => s.homePosition);
   const surveyResult = useSurveyStore((s) => s.result);
@@ -168,7 +171,7 @@ export function FlightInfoPanel() {
     return {
       cruiseSpeedMs: st.getCruiseSpeed(),
       enduranceSec: st.getEstimatedFlightTime(),
-      vehicleName: v?.name ?? 'vehicle',
+      vehicleName: v?.name ?? null,
       // Flight time / altitude / ceiling / daylight only make sense in the air.
       isAerial: !v || v.type === 'copter' || v.type === 'plane' || v.type === 'vtol',
     };
@@ -241,9 +244,9 @@ export function FlightInfoPanel() {
     return (
       <div data-tour="flight-info-panel" className="h-full flex flex-col items-center justify-center text-center p-6 text-content-secondary bg-surface">
         <Plane className="w-10 h-10 mb-3 text-content-tertiary" />
-        <p className="text-sm font-medium mb-1 text-content">Aerial vehicles only</p>
+        <p className="text-sm font-medium mb-1 text-content">{t('mission:flightInfoPanel.aerialOnly')}</p>
         <p className="text-xs text-content-tertiary max-w-[14rem]">
-          The flight briefing (endurance, altitude, daylight) applies to copters, planes and VTOL. Switch the active vehicle to an aerial type to use it.
+          {t('mission:flightInfoPanel.aerialOnlyHint')}
         </p>
       </div>
     );
@@ -253,9 +256,9 @@ export function FlightInfoPanel() {
     return (
       <div data-tour="flight-info-panel" className="h-full flex flex-col items-center justify-center text-center p-6 text-content-secondary bg-surface">
         <Plane className="w-10 h-10 mb-3 text-content-tertiary" />
-        <p className="text-sm font-medium mb-1 text-content">No mission to brief</p>
+        <p className="text-sm font-medium mb-1 text-content">{t('mission:flightInfoPanel.noMission')}</p>
         <p className="text-xs text-content-tertiary max-w-[14rem]">
-          Plan or load a mission to see flight time, distance, batteries and site weather.
+          {t('mission:flightInfoPanel.noMissionHint')}
         </p>
       </div>
     );
@@ -267,20 +270,20 @@ export function FlightInfoPanel() {
   return (
     <div data-tour="flight-info-panel" className="h-full overflow-y-auto bg-surface p-2 space-y-2">
       {/* Endurance - the number a pilot opens this for. */}
-      <Section icon={<Clock className={ICON} />} title="Endurance">
+      <Section icon={<Clock className={ICON} />} title={t('mission:flightInfoPanel.endurance')}>
         <Hero
           value={formatDurationSec(briefing.flightTimeSec)}
-          unit="flight time"
-          sub={`at ~${formatSpeedFromMetersPerSecond(cruiseSpeedMs, speedUnit)} cruise (${vehicleName})`}
+          unit={t('mission:flightInfoPanel.flightTime')}
+          sub={t('mission:flightInfoPanel.atCruise', { speed: formatSpeedFromMetersPerSecond(cruiseSpeedMs, speedUnit), vehicle: vehicleName ?? t('mission:flightInfoPanel.vehicleFallback') })}
         />
         <Stat
-          label="Batteries"
-          value={briefing.batteryCount > 0 ? `${briefing.batteryCount}` : 'set vehicle'}
-          detail={briefing.enduranceSec > 0 ? `~${formatDurationSec(briefing.enduranceSec)} usable each` : undefined}
+          label={t('common:batteries')}
+          value={briefing.batteryCount > 0 ? `${briefing.batteryCount}` : t('mission:flightInfoPanel.setVehicle')}
+          detail={briefing.enduranceSec > 0 ? t('mission:flightInfoPanel.usableEach', { duration: formatDurationSec(briefing.enduranceSec) }) : undefined}
         />
         {briefing.reservePct !== null && (
           <MeterStat
-            label="Reserve (final pack)"
+            label={t('mission:flightInfoPanel.reserve')}
             value={`${Math.round(briefing.reservePct)}%`}
             pct={briefing.reservePct}
           />
@@ -288,40 +291,40 @@ export function FlightInfoPanel() {
       </Section>
 
       {/* Route */}
-      <Section icon={<Ruler className={ICON} />} title="Route">
-        <Stat label="Total distance" value={formatDistanceM(briefing.distanceM, distanceUnit)} />
+      <Section icon={<Ruler className={ICON} />} title={t('mission:flightInfoPanel.route')}>
+        <Stat label={t('mission:flightInfoPanel.totalDistance')} value={formatDistanceM(briefing.distanceM, distanceUnit)} />
         {homePosition && (
-          <Stat label="Max from home" value={formatDistanceM(briefing.maxFromHomeM, distanceUnit)} />
+          <Stat label={t('mission:flightInfoPanel.maxFromHome')} value={formatDistanceM(briefing.maxFromHomeM, distanceUnit)} />
         )}
         <MeterStat
-          label="Max altitude"
-          value={`${formatAltitudeM(briefing.maxAltM, altitudeUnit)} AGL`}
-          detail={`ceiling ${formatAltitudeM(briefing.ceilingM, altitudeUnit)}`}
+          label={t('mission:flightInfoPanel.maxAltitude')}
+          value={t('mission:flightInfoPanel.altAgl', { value: formatAltitudeM(briefing.maxAltM, altitudeUnit) })}
+          detail={t('mission:flightInfoPanel.ceiling', { value: formatAltitudeM(briefing.ceilingM, altitudeUnit) })}
           pct={altPct}
           tone={altPct > 100 ? 'bg-amber-500/80' : 'bg-blue-500/70'}
         />
         <Stat
-          label="Total climb"
+          label={t('mission:flightInfoPanel.totalClimb')}
           value={formatAltitudeM(briefing.totalClimbM, altitudeUnit)}
-          detail={`from ${formatAltitudeM(briefing.minAltM, altitudeUnit)} lowest`}
+          detail={t('mission:flightInfoPanel.fromLowest', { value: formatAltitudeM(briefing.minAltM, altitudeUnit) })}
         />
         <Stat
-          label="Waypoints"
+          label={t('common:waypoints')}
           value={briefing.waypointCount.toLocaleString()}
-          detail={briefing.waypointCount > FC_WAYPOINT_SOFT_LIMIT ? 'very large - split into sorties before upload' : undefined}
+          detail={briefing.waypointCount > FC_WAYPOINT_SOFT_LIMIT ? t('mission:flightInfoPanel.veryLarge') : undefined}
         />
       </Section>
 
       {/* Weather */}
       <Section
         icon={<Wind className={ICON} />}
-        title="Site weather"
+        title={t('mission:flightInfoPanel.siteWeather')}
         action={
           weather && (
             <button
-              onClick={() => setRefreshTick((t) => t + 1)}
+              onClick={() => setRefreshTick((n) => n + 1)}
               className="p-1 text-content-secondary hover:text-content transition-colors"
-              title="Refresh forecast"
+              title={t('mission:flightInfoPanel.refreshForecast')}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${weatherLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -329,58 +332,58 @@ export function FlightInfoPanel() {
         }
       >
         {weatherLoading && !weather ? (
-          <p className="text-xs text-content-tertiary">Fetching forecast...</p>
+          <p className="text-xs text-content-tertiary">{t('mission:flightInfoPanel.fetchingForecast')}</p>
         ) : weather ? (
           <>
             <div className="flex items-center gap-3 py-1">
               <WindRose dirDeg={weather.windDirDeg} speedMs={weather.windSpeedMs} unit={windSpeedUnit} />
               <div className="min-w-0">
                 <div className="text-sm text-content">
-                  Wind from <span className="font-medium">{compassPoint(weather.windDirDeg)}</span>
+                  <Trans i18nKey="mission:flightInfoPanel.windFrom" values={{ dir: compassPoint(weather.windDirDeg) }} components={{ b: <span className="font-medium" /> }} />
                   <span className="text-content-secondary"> ({Math.round(weather.windDirDeg)}°)</span>
                 </div>
                 <div className="text-[11px] text-content-tertiary mt-0.5">
-                  gusting to {formatWindSpeedFromMetersPerSecond(weather.windGustMs, windSpeedUnit)}
-                  {cruiseSpeedMs > 0 && <> · {Math.round((weather.windSpeedMs / cruiseSpeedMs) * 100)}% of cruise</>}
+                  {t('mission:flightInfoPanel.gustingTo', { value: formatWindSpeedFromMetersPerSecond(weather.windGustMs, windSpeedUnit) })}
+                  {cruiseSpeedMs > 0 && <> · {t('mission:flightInfoPanel.ofCruise', { pct: Math.round((weather.windSpeedMs / cruiseSpeedMs) * 100) })}</>}
                 </div>
               </div>
             </div>
             <div className="border-t border-subtle mt-1.5 pt-1.5">
-              <Stat label="Temperature" value={`${weather.tempC.toFixed(0)}°C`} />
-              <Stat label="Precipitation" value={`${weather.precipMm.toFixed(1)} mm`} />
+              <Stat label={t('mission:flightInfoPanel.temperature')} value={`${weather.tempC.toFixed(0)}°C`} />
+              <Stat label={t('mission:flightInfoPanel.precipitation')} value={`${weather.precipMm.toFixed(1)} mm`} />
               {briefing.daylight ? (
                 <>
                   <Stat
-                    label="Daylight"
+                    label={t('mission:flightInfoPanel.daylight')}
                     value={`${clockFromMin(briefing.daylight.sunriseMin)} - ${clockFromMin(briefing.daylight.sunsetMin)}`}
                   />
                   <DaylightBar d={briefing.daylight} />
                   <div className="text-[10px] text-content-tertiary mt-1">
                     {briefing.daylight.marginMin >= 0
-                      ? `Ends ~${clockFromMin(briefing.daylight.endMin)} if launched now, ${formatDurationSec(briefing.daylight.marginMin * 60)} before sunset`
-                      : `Ends ~${clockFromMin(briefing.daylight.endMin)} if launched now, ${formatDurationSec(-briefing.daylight.marginMin * 60)} after sunset`}
+                      ? t('mission:flightInfoPanel.endsBeforeSunset', { time: clockFromMin(briefing.daylight.endMin), margin: formatDurationSec(briefing.daylight.marginMin * 60) })
+                      : t('mission:flightInfoPanel.endsAfterSunset', { time: clockFromMin(briefing.daylight.endMin), margin: formatDurationSec(-briefing.daylight.marginMin * 60) })}
                   </div>
                 </>
               ) : weather.sunriseIso && weather.sunsetIso ? (
                 <Stat
-                  label="Daylight"
+                  label={t('mission:flightInfoPanel.daylight')}
                   value={`${weather.sunriseIso.slice(11, 16)} - ${weather.sunsetIso.slice(11, 16)}`}
                 />
               ) : null}
             </div>
           </>
         ) : (
-          <p className="text-xs text-content-tertiary">Weather unavailable for this site.</p>
+          <p className="text-xs text-content-tertiary">{t('mission:flightInfoPanel.weatherUnavailable')}</p>
         )}
       </Section>
 
       {/* Survey quality (only when a survey is active) */}
       {survey && (
-        <Section icon={<Camera className={ICON} />} title="Survey">
-          <Stat label="Coverage" value={formatAreaFromSquareMeters(survey.areaM2, areaUnit)} />
-          <Stat label="GSD" value={survey.gsdCm > 0 ? `${survey.gsdCm.toFixed(1)} cm/px` : 'n/a'} />
-          <Stat label="Photos" value={survey.photoCount.toLocaleString()} />
-          <Stat label="Data" value={`~${survey.dataGb.toFixed(1)} GB`} detail="JPEG+RAW estimate" />
+        <Section icon={<Camera className={ICON} />} title={t('common:survey')}>
+          <Stat label={t('mission:flightInfoPanel.coverage')} value={formatAreaFromSquareMeters(survey.areaM2, areaUnit)} />
+          <Stat label="GSD" value={survey.gsdCm > 0 ? `${survey.gsdCm.toFixed(1)} cm/px` : t('mission:flightInfoPanel.notAvailable')} />
+          <Stat label={t('common:photos')} value={survey.photoCount.toLocaleString()} />
+          <Stat label={t('mission:flightInfoPanel.data')} value={`~${survey.dataGb.toFixed(1)} GB`} detail={t('mission:flightInfoPanel.dataEstimate')} />
         </Section>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useUpdateStore } from '../../stores/update-store';
@@ -19,6 +20,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const { t } = useTranslation();
   const consoleDock = useConsoleStore((s) => s.dock);
   const { connectionState, disconnect } = useConnectionStore();
   const { currentVersion, status, fetchVersion } = useUpdateStore();
@@ -57,15 +59,15 @@ export function AppShell({ children }: AppShellProps) {
       <header className="h-14 border-b border-subtle bg-surface-nav backdrop-blur-sm flex items-center shrink-0 relative z-50">
         {/* Logo sits in a nav-rail-width slot so it lines up with the sidebar icons */}
         <div className="w-14 flex items-center justify-center shrink-0">
-          <img src={iconImage} alt="ArduDeck" className="h-8 w-8 rounded-md object-cover" />
+          <img src={iconImage} alt={t('common:ardudeck')} className="h-8 w-8 rounded-md object-cover" />
         </div>
-        <h1 className="text-lg font-semibold text-content">ArduDeck</h1>
+        <h1 className="text-lg font-semibold text-content">{t('common:ardudeck')}</h1>
 
         <div className="ml-auto flex items-center gap-4 pr-6">
           {/* Voice alerts mute */}
           <button
             onClick={() => setVoiceAlertsMuted(!voiceAlertsMuted)}
-            data-tip={voiceAlertsMuted ? 'Voice alerts muted. Click to unmute' : 'Voice alerts on. Click to mute'}
+            data-tip={voiceAlertsMuted ? t('layout:appShell.voiceMuted') : t('layout:appShell.voiceOn')}
             className={`transition-colors ${voiceAlertsMuted ? 'text-content-tertiary hover:text-content-secondary' : 'text-content-secondary hover:text-content'}`}
           >
             {voiceAlertsMuted ? (
@@ -84,7 +86,7 @@ export function AppShell({ children }: AppShellProps) {
             <button
               onClick={() => setView('settings', 'about')}
               className="flex items-center gap-1.5 text-content-tertiary hover:text-content-secondary transition-colors"
-              title="About ArduDeck"
+              title={t('layout:appShell.about')}
             >
               <span className="text-xs">{betaLabel(currentVersion)}</span>
               {(status === 'available' || status === 'downloaded') && (
@@ -103,7 +105,7 @@ export function AppShell({ children }: AppShellProps) {
           {connectionState.isConnected ? (
             <button
               onClick={disconnect}
-              title={connectionState.isStale ? `No data for ${staleSeconds}s. Click to disconnect` : 'Click to disconnect'}
+              title={connectionState.isStale ? t('layout:appShell.staleDisconnect', { seconds: staleSeconds }) : t('layout:appShell.clickToDisconnect')}
               className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface border transition-colors cursor-pointer ${
                 connectionState.isStale
                   ? 'border-yellow-500/50 hover:border-red-500/50'
@@ -120,7 +122,7 @@ export function AppShell({ children }: AppShellProps) {
               <span className={`text-sm font-medium transition-colors ${
                 connectionState.isStale ? 'text-yellow-300' : 'text-content-secondary group-hover:text-red-300'
               }`}>
-                {connectionState.isStale ? `No data ${staleSeconds}s` : connectionState.transport}
+                {connectionState.isStale ? t('layout:appShell.staleShort', { seconds: staleSeconds }) : connectionState.transport}
               </span>
               <svg className="w-3 h-3 text-content-tertiary opacity-0 group-hover:opacity-100 group-hover:text-red-400 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -129,12 +131,12 @@ export function AppShell({ children }: AppShellProps) {
           ) : fleetConnected ? (
             <button
               onClick={() => setView('telemetry')}
-              title="Fleet connected over multi-vehicle links. Click to open telemetry."
+              title={t('layout:appShell.fleetTitle')}
               className="group flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface border border-emerald-500/30 hover:border-emerald-500/50 transition-colors cursor-pointer"
             >
               <div className="status-dot status-dot-connected" />
               <span className="text-sm font-medium text-content-secondary group-hover:text-content">
-                Fleet ({fleetCount}){activeVehicleKey ? '' : ' · none selected'}
+                {t('layout:appShell.fleetCount', { count: fleetCount })}{activeVehicleKey ? '' : t('layout:appShell.noneSelected')}
               </span>
             </button>
           ) : (
@@ -152,7 +154,7 @@ export function AppShell({ children }: AppShellProps) {
                 <div className="status-dot status-dot-disconnected" />
               )}
               <span className="text-sm font-medium text-content-secondary">
-                {connectionState.isWaitingForHeartbeat ? 'Waiting...' : 'Disconnected'}
+                {connectionState.isWaitingForHeartbeat ? t('layout:appShell.waiting') : t('layout:appShell.disconnected')}
               </span>
             </div>
           )}

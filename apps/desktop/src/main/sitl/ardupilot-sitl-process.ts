@@ -25,6 +25,7 @@ import type { AuthoredObstacle, SimObstacleStoreSchema } from '../../shared/sim-
 import { resolveCopterFrame, sitlFrameForMotorCount } from '../../shared/sitl-frame-geometry.js';
 import { ardupilotSitlDownloader } from './ardupilot-sitl-downloader.js';
 import { simEngineProcess } from '../sim/sim-engine-process.js';
+import { t } from '../../shared/i18n/index.js';
 
 /** Motor count for a stock ArduPilot copter frame model name (octaquad -> 8, etc). */
 function motorCountForModel(model: string | undefined): number {
@@ -866,7 +867,7 @@ class ArduPilotSitlProcessManager {
       this._isRunning = false;
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: err instanceof Error ? err.message : t('common:unknownError'),
       };
     }
   }
@@ -928,7 +929,7 @@ class ArduPilotSitlProcessManager {
    */
   async restart(): Promise<{ success: boolean; command?: string; error?: string }> {
     const cfg = this._currentConfig;
-    if (!cfg) return { success: false, error: 'No active SITL config to restart with' };
+    if (!cfg) return { success: false, error: t('main:sitl.noActiveConfig') };
     await this.stopAndWait(5000);
     // Brief pause for the OS to fully release the bound TCP port (5760).
     await new Promise<void>(r => setTimeout(r, 1000));

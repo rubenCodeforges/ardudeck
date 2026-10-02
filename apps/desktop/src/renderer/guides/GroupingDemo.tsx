@@ -53,6 +53,7 @@ export function GroupingDemo() {
             <Gauge Component={Altitude} />
           </div>
         )}
+        {/* i18n-exempt */}
         <style>{`@keyframes guide-ghost-drag {
           from { transform: translateX(${ALT_X}px); opacity: 0.85; }
           to { transform: translateX(${SPEED_X + SIZE * 0.5}px); opacity: 0; }

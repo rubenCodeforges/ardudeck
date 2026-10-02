@@ -2,6 +2,7 @@
  * CalibrationResultCard - Display calibration results/offsets
  */
 
+import { useTranslation } from 'react-i18next';
 import { type CalibrationData, type CalibrationTypeId } from '../../../../shared/calibration-types';
 
 interface CalibrationResultCardProps {
@@ -10,6 +11,7 @@ interface CalibrationResultCardProps {
 }
 
 export function CalibrationResultCard({ data, type }: CalibrationResultCardProps) {
+  const { t } = useTranslation();
   return (
     <div className="bg-surface rounded-xl p-5 border border-subtle space-y-4">
       {/* Accelerometer data */}
@@ -18,7 +20,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
           {data.accZero && (
             <div>
               <h5 className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2">
-                Accelerometer Zero Offset
+                {t('calibration:calibrationResultCard.accelZero')}
               </h5>
               <div className="grid grid-cols-3 gap-3">
                 <ValueBox label="X" value={data.accZero.x} />
@@ -31,7 +33,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
           {data.accGain && (
             <div>
               <h5 className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2">
-                Accelerometer Gain
+                {t('calibration:calibrationResultCard.accelGain')}
               </h5>
               <div className="grid grid-cols-3 gap-3">
                 <ValueBox label="X" value={data.accGain.x} />
@@ -49,7 +51,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
           {data.magZero && (
             <div>
               <h5 className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2">
-                Magnetometer Zero Offset
+                {t('calibration:calibrationResultCard.magZero')}
               </h5>
               <div className="grid grid-cols-3 gap-3">
                 <ValueBox label="X" value={data.magZero.x} />
@@ -62,7 +64,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
           {data.magGain && (
             <div>
               <h5 className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2">
-                Magnetometer Gain
+                {t('calibration:calibrationResultCard.magGain')}
               </h5>
               <div className="grid grid-cols-3 gap-3">
                 <ValueBox label="X" value={data.magGain.x} />
@@ -75,7 +77,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
           {data.compassFitness !== undefined && (
             <div>
               <h5 className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2">
-                Compass Fitness
+                {t('calibration:calibrationResultCard.compassFitness')}
               </h5>
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 bg-surface-inset rounded-full overflow-hidden">
@@ -100,7 +102,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
                   {data.compassFitness.toFixed(2)}
                 </span>
                 <span className="text-xs text-content-secondary">
-                  ({data.compassFitness < 10 ? 'Excellent' : data.compassFitness < 20 ? 'Good' : 'Poor'})
+                  ({data.compassFitness < 10 ? t('calibration:calibrationResultCard.excellent') : data.compassFitness < 20 ? t('calibration:calibrationResultCard.good') : t('calibration:calibrationResultCard.poor')})
                 </span>
               </div>
             </div>
@@ -112,7 +114,7 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
       {type === 'opflow' && data.opflowScale !== undefined && (
         <div>
           <h5 className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2">
-            Optical Flow Scale
+            {t('calibration:calibrationResultCard.opflowScale')}
           </h5>
           <div className="bg-surface-input rounded-lg px-4 py-3">
             <span className="text-2xl font-mono text-content">{data.opflowScale.toFixed(4)}</span>
@@ -126,8 +128,8 @@ export function CalibrationResultCard({ data, type }: CalibrationResultCardProps
           <svg className="w-12 h-12 text-green-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
-          <p className="text-content-secondary">Gyroscope calibrated successfully.</p>
-          <p className="text-xs text-content-secondary mt-1">Bias offsets have been updated internally.</p>
+          <p className="text-content-secondary">{t('calibration:calibrationResultCard.gyroSuccess')}</p>
+          <p className="text-xs text-content-secondary mt-1">{t('calibration:calibrationResultCard.gyroBias')}</p>
         </div>
       )}
     </div>

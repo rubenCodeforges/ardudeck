@@ -197,7 +197,7 @@ export async function downloadBundle(
   const filePath = join(modulesDir, `${version}.zip`);
 
   if (!res.body) {
-    throw new Error('Empty response body');
+    throw new Error('Empty response body'); // i18n-exempt
   }
 
   // Stream download with progress, hashing the bytes as they arrive so the

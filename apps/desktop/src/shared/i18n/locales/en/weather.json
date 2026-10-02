@@ -1,0 +1,100 @@
+{
+  "briefing": {
+    "clouds": "Clouds",
+    "context": "Context",
+    "fetching": "Fetching forecast...",
+    "flightConditions": "Flight conditions",
+    "forecastValid": "Forecast valid {{clock}} local at site · Open-Meteo",
+    "launchGates": "Launch gates",
+    "limits": "Limits: gusts {{gustC}} / {{gustN}} m/s, wind {{windC}} / {{windN}} m/s, precip chance {{probC}} / {{probN}}%, precip {{mmC}} / {{mmN}} mm, visibility below {{visC}} / {{visN}} km.",
+    "locationAt": "{{location}} · {{clock}} local",
+    "noPosition": "No position to brief",
+    "noPositionHint": "Connect a vehicle, set a home position, or open the mission map so the briefing knows where to query the weather.",
+    "precip": "Precip",
+    "precipChance": "Precip chance",
+    "precipChanceTip": "Caution {{caution}}%, no-go {{nogo}}%",
+    "precipTip": "Caution {{caution}} mm, no-go {{nogo}} mm",
+    "pressure": "Pressure",
+    "refreshTip": "Refresh forecast",
+    "temp": "Temp",
+    "title": "Pre-Flight Weather Briefing",
+    "unavailable": "Forecast unavailable",
+    "updated": "updated {{time}}",
+    "visibility": "Visibility",
+    "visibilityTip": "Caution below {{caution}} km, no-go below {{nogo}} km",
+    "windLimitTip": "Caution {{caution}}, no-go {{nogo}} {{unit}}"
+  },
+  "condition": {
+    "clear": "Clear",
+    "fog": "Fog",
+    "overcast": "Overcast",
+    "partlyCloudy": "Partly cloudy",
+    "rain": "Rain"
+  },
+  "geomag": {
+    "activity": "Geomagnetic activity",
+    "calm": "Calm",
+    "declination": "Declination",
+    "fieldStrength": "Field strength",
+    "forecastKp": "Forecast Kp (72h)",
+    "forecastPeak": "72h forecast peak",
+    "inHours": "in {{hours}}h",
+    "inclination": "Inclination",
+    "kpBarTip": "Kp {{kp}} ({{gScale}}) at {{clock}} local",
+    "kpThresholdTip": "Caution Kp {{caution}}, no-go Kp {{nogo}} (G1 storm)",
+    "noStorm": "No storm forecast in 72h",
+    "peakKp": "Peak Kp {{kp}}",
+    "peakTip": "Highest predicted Kp in the next 72 hours",
+    "sources": "Kp from NOAA SWPC · field from WMM2025 (offline)",
+    "title": "Geomagnetic",
+    "unavailable": "Space weather unavailable",
+    "unavailableHint": "Could not reach the NOAA Kp service. The weather verdict is unaffected.",
+    "within72h": "within 72h",
+    "wmmInvalid": "WMM2025 is outside its validity window; declination and field values are approximate."
+  },
+  "locationDialog": {
+    "clickToSet": "Click the map to set the briefing point",
+    "enterCoords": "Enter coordinates",
+    "noMatches": "No matches.",
+    "noPoint": "No point selected",
+    "resetAuto": "Reset to automatic",
+    "resetTip": "Follow the vehicle / home / map position automatically",
+    "searchPlaceholder": "Search a place (city, airfield, landmark)...",
+    "subtitle": "Click the map to drop a point, drag the pin to refine, or search a place.",
+    "title": "Briefing location",
+    "typeCoordsTip": "Type exact coordinates",
+    "useLocation": "Use this location"
+  },
+  "locationPicker": {
+    "change": "Change location",
+    "noPosition": "No position",
+    "pickTip": "Pick the briefing location on a map",
+    "planned": "Planned"
+  },
+  "reason": {
+    "gustsCaution": "Gusts of {{value}} are approaching the limit ({{limit}}). Monitor closely.",
+    "gustsNogo": "Gusts of {{value}} exceed the safe limit ({{limit}}). Risk of loss of control.",
+    "precipCaution": "Light precipitation of {{value}} mm detected. Protect the airframe.",
+    "precipNogo": "Precipitation of {{value}} mm. Electronics at risk, do not launch.",
+    "precipProbCaution": "Rising chance of precipitation ({{value}}%). Watch the sky.",
+    "precipProbNogo": "High chance of precipitation ({{value}}%). Expect rain within the hour.",
+    "visibilityCaution": "Reduced visibility of {{value}} km. Maintain visual line of sight.",
+    "visibilityNogo": "Low visibility of {{value}} km, below the {{limit}} km minimum.",
+    "windCaution": "Sustained wind of {{value}} is approaching the limit ({{limit}}).",
+    "windNogo": "Sustained wind of {{value}} exceeds the safe limit ({{limit}})."
+  },
+  "source": {
+    "home": "Home position",
+    "map": "Map center",
+    "override": "Picked location",
+    "vehicle": "Vehicle position"
+  },
+  "status": {
+    "caution": "CAUTION",
+    "cautionSummary": "Conditions are marginal. Review the flagged parameters before launch.",
+    "go": "GO",
+    "goSummary": "Conditions are within limits for launch.",
+    "nogoPill": "NO GO",
+    "nogoSummary": "One or more parameters exceed safe limits. Do not launch."
+  }
+}

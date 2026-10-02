@@ -75,7 +75,7 @@ class SitlProcessManager {
       return path.join(basePath, 'macos', 'inav_SITL');
     }
 
-    throw new Error(`Unsupported platform: ${platform}`);
+    throw new Error(`Unsupported platform: ${platform}`); // i18n-exempt
   }
 
   /**

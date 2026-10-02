@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Battery, BatteryLow, BatteryWarning, Zap } from 'lucide-react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, formatNumber } from './panel-utils';
@@ -57,6 +58,7 @@ function BatteryInstanceRow({ inst, selected, stale, onSelect }: {
   stale: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation();
   const unknown = inst.remaining < 0;
   const level = unknown ? 0 : Math.max(0, Math.min(100, inst.remaining));
   const tone = toneForLevel(level, unknown || stale);
@@ -64,7 +66,7 @@ function BatteryInstanceRow({ inst, selected, stale, onSelect }: {
   return (
     <button
       onClick={onSelect}
-      data-tip={selected ? 'Primary battery' : 'Show this battery everywhere'}
+      data-tip={selected ? t('panels:batteryPanel.primaryTip') : t('panels:batteryPanel.selectTip')}
       className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors border ${
         selected
           ? 'border-[color:var(--border-strong,rgba(148,163,184,0.4))]'
@@ -73,7 +75,7 @@ function BatteryInstanceRow({ inst, selected, stale, onSelect }: {
       style={selected ? { background: tone.accent } : undefined}
     >
       <span className={`font-medium ${selected ? tone.text : 'text-content-secondary'}`}>
-        B{inst.id + 1}
+        {t('panels:batteryPanel.instanceShort', { n: inst.id + 1 })}
       </span>
       <span className="font-mono text-content">{formatNumber(inst.voltage, 1)}V</span>
       <span className={`font-mono ${tone.text}`}>{unknown ? '-' : `${level}%`}</span>
@@ -88,6 +90,7 @@ function BatteryInstanceRow({ inst, selected, stale, onSelect }: {
 }
 
 export function BatteryPanel() {
+  const { t } = useTranslation();
   const battery = useTelemetryStore((s) => s.battery);
   const batteries = useTelemetryStore((s) => s.batteries);
   const primaryBatteryId = useTelemetryStore((s) => s.primaryBatteryId);
@@ -139,7 +142,7 @@ export function BatteryPanel() {
       <div className="flex items-center justify-between text-xs">
         <span className="inline-flex items-center gap-1.5 text-content-secondary">
           <Zap className="w-3 h-3" />
-          Current
+          {t('common:current')}
         </span>
         <span className="font-mono text-content">
           {formatNumber(Math.abs(battery.current), 1)}

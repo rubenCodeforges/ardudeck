@@ -1,0 +1,203 @@
+{
+  "apply": {
+    "applied": "Konfiguration übernommen!",
+    "applying": "Konfiguration wird übernommen...",
+    "applyingDesc": "Preset {{name}} wird auf Ihren Flugcontroller übertragen...",
+    "errorDesc": "Beim Übernehmen der Konfiguration ist ein Fehler aufgetreten. Sie können es erneut versuchen oder zurückgehen.",
+    "failed": "Konfiguration fehlgeschlagen",
+    "noPreset": "Kein Preset ausgewählt.",
+    "platformMismatch": "Plattform passt nicht",
+    "platformMismatchDesc": "Das ausgewählte Preset erfordert die Plattform „{{required}}“, Ihr Board ist aber derzeit auf „{{current}}“ eingestellt.",
+    "savedHint": "Ihre Konfiguration wurde im EEPROM gespeichert. Sie können einzelne Einstellungen in den jeweiligen Tabs feinabstimmen oder Ihre Einrichtung jetzt testen.",
+    "starting": "Wird gestartet...",
+    "stepReconnect": "Wir verbinden uns erneut und übernehmen Ihr Preset weiter",
+    "successDesc": "Ihr Preset {{name}} wurde erfolgreich auf Ihren Flugcontroller übertragen.",
+    "tasks": "Konfigurationsaufgaben",
+    "verifyDirections": "Servorichtungen testen - die Steuerflächen sollten sich korrekt bewegen, wenn Sie die Sticks bewegen",
+    "verifyMotor": "Prüfen Sie, ob der Motorausgang angeschlossen ist und der Motor in die richtige Richtung dreht",
+    "verifySafe": "Testen Sie vor dem Flug immer in einer sicheren Umgebung",
+    "verifyServoMixer": "Prüfen Sie den Tab <b>Servomischer</b> und ob die Servos an den richtigen FC-Ausgängen angeschlossen sind",
+    "verifyServos": "Servo-Einrichtung prüfen"
+  },
+  "configReview": {
+    "applyConfiguration": "Konfiguration übernehmen",
+    "delaySeconds": "Verzögerung: {{value}} Sekunden",
+    "intro": "Die folgende Konfiguration wird auf Ihren Flugcontroller übertragen. Überprüfen Sie die Einstellungen unten, bevor Sie fortfahren.",
+    "landingTimeout": "Lande-Timeout: {{value}} Sekunden",
+    "modeItem": "{{mode}} auf {{channel}} ({{start}}-{{end}})",
+    "motorMixerMotors": "Motor-Mischer: {{n}} Motoren",
+    "motorMixerQuadX": "Motor-Mischer: Quad X ({{n}} Motoren)",
+    "noPreset": "Kein Preset ausgewählt. Bitte gehen Sie zurück und wählen Sie ein Preset.",
+    "overwriteHint": "Sichern Sie Ihre Konfiguration, wenn Sie Ihre aktuellen Einstellungen behalten möchten. Die Änderungen werden sofort im EEPROM gespeichert.",
+    "overwriteWarning": "Dies überschreibt Ihre aktuellen Einstellungen",
+    "pitchPid": "Nicken: P={{p}} I={{i}} D={{d}}",
+    "platformAirplane": "Plattform: Flugzeug",
+    "platformMultirotor": "Plattform: Multirotor",
+    "procedure": "Verfahren: {{value}}",
+    "rollPid": "Rollen: P={{p}} I={{i}} D={{d}}",
+    "servoMixerRules": "Servomischer: {{n}} Regeln",
+    "title": "Überprüfen: {{name}}",
+    "viaCli": "Über CLI-Befehle",
+    "viaMsp": "Über MSP-Protokoll",
+    "yawPid": "Gieren: P={{p}} I={{i}}"
+  },
+  "errorDetails": "Fehlerdetails",
+  "platformChange": {
+    "boardRebooting": "Board wird neu gestartet. Automatische Wiederverbindung wird versucht...",
+    "changePlatform": "Plattform ändern",
+    "changingTitle": "Plattform wird geändert...",
+    "errorGeneric": "Beim Ändern der Plattform ist ein Fehler aufgetreten.",
+    "failed": "Plattformänderung fehlgeschlagen",
+    "pleaseWaitChanging": "Bitte warten Sie, während der Plattformtyp geändert wird...",
+    "rebootingTitle": "Flugcontroller wird neu gestartet...",
+    "reconnecting": "Verbindung wird wiederhergestellt...",
+    "required": "Erforderlich",
+    "savingEeprom": "Speichern im EEPROM...",
+    "savingTitle": "Konfiguration wird gespeichert...",
+    "settingType": "Plattformtyp wird gesetzt...",
+    "stepReboot": "Das Board startet automatisch neu",
+    "stepSaved": "Die Konfiguration wird im EEPROM gespeichert",
+    "stepTypeChanged": "Der Plattformtyp wird auf Ihrem Flugcontroller geändert",
+    "waitingReboot": "Warte auf Neustart des Flugcontrollers...",
+    "waitingReconnection": "Warte auf Wiederverbindung...",
+    "whatHappens": "Was passiert beim Ändern der Plattform?"
+  },
+  "pleaseWait": "Bitte warten...",
+  "presetSelection": {
+    "bfFixedWingExperimental": "Die Flächenflugzeug-Unterstützung von Betaflight ist experimentell und bietet keine Navigationsfunktionen.",
+    "bfGpsRescueHint": "Betaflight verwendet <b>GPS Rescue</b> statt der Navigationsmodi von iNav. Konfigurieren Sie nach dem Übernehmen eines Presets GPS Rescue im <b>Tab GPS Rescue</b> für die Notfall-Rückkehr nach Home.",
+    "bfNavNote": "<b>Hinweis:</b> Navigations-Presets (GPS-Positionshaltung, Wegpunkte, RTH) sind nur für iNav verfügbar. Konfigurieren Sie GPS Rescue separat im Tab GPS Rescue.",
+    "changeVehicleType": "Fahrzeugtyp ändern",
+    "chooseDifferent": "Anderes Preset wählen",
+    "cliConfig": "CLI-Konfiguration (Legacy)",
+    "currentPlatform": "Aktuell: {{name}}",
+    "fixedWingDesc": "Flugzeuge, Nurflügler, Segler und andere Flächenflugzeuge",
+    "flashInav": "iNav-Firmware flashen",
+    "gpsReturnHome": "GPS-Rückkehr nach Home",
+    "inavRecommendation": "Für Flugzeuge, Nurflügler und Segler empfehlen wir die <b>iNav-Firmware</b>, die volle Navigation, Auto-Launch, Wegpunkte und Rückkehr nach Home bietet.",
+    "inavRecommended": "iNav empfohlen",
+    "modesCount": "{{n}} Modi",
+    "mspConfig": "MSP-Konfiguration",
+    "multirotorDesc": "Quadcopter, Hexacopter und andere mehrmotorige Luftfahrzeuge",
+    "oneClick": "Ein-Klick-Konfiguration",
+    "oneClickPresetHint": "Diese Presets übernehmen eine vollständige, getestete Konfiguration. Sie können einzelne Einstellungen später jederzeit in den jeweiligen Tabs feinabstimmen.",
+    "oneClickVehicleHint": "Jedes Preset übernimmt eine vollständige, getestete Konfiguration inklusive PIDs, Raten, Flugmodi und Failsafe-Einstellungen. Sie können später jederzeit feinabstimmen.",
+    "pids": "PIDs",
+    "platformChangeBadge": "Plattformänderung",
+    "platformChangeDesc": "„{{name}}“ erfordert die Plattform {{required}}, Ihr Board ist aber auf {{current}} eingestellt.",
+    "platformChangeRequired": "Plattformänderung erforderlich",
+    "presetsAvailable": "{{n}} Presets verfügbar",
+    "selectPresetHint": "Wählen Sie ein Preset, um <b>alles auf einmal</b> zu konfigurieren: PIDs, Raten, Flugmodi und Failsafe-Einstellungen.",
+    "selectVehicle": "Wählen Sie Ihren Fahrzeugtyp, um die verfügbaren Presets zu sehen",
+    "stepReconnect": "Wir verbinden uns erneut und setzen den Einrichtungsassistenten fort",
+    "title": "Schnelleinrichtung",
+    "vehiclePresets": "{{vehicle}}-Presets"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Sicher & stabil zum Lernen",
+      "name": "Anfänger",
+      "tip": "Die Selbstnivellierung hält Sie unter Kontrolle. Niedrige Raten verhindern Überkorrekturen. Perfekt für Ihre ersten Flüge!"
+    },
+    "cinematic": {
+      "description": "Extrem sanft für Filmaufnahmen",
+      "name": "Cinematic",
+      "tip": "Niedrige Raten + hohes Expo = butterweiche Bewegungen. GPS-Positionshaltung für ruhige Aufnahmen. RTH für Sicherheit."
+    },
+    "flyingWing": {
+      "description": "Deltaflügel & Nurflügler mit Elevon-Mischung",
+      "name": "Nurflügler",
+      "tip": "Elevon-Mischung konfiguriert (linkes/rechtes Servo an CH3/CH4). Auto-Launch, RTH und Wegpunktnavigation einsatzbereit."
+    },
+    "freestyle": {
+      "description": "Ausgewogen für Tricks & Flow",
+      "name": "Freestyle",
+      "tip": "Ein Dreistufenschalter bietet ANGLE/HORIZON/ACRO. AIRMODE erhält die Kontrolle bei null Gas für Flips!"
+    },
+    "fwGlider": {
+      "description": "Effizientes Segeln & Thermiksuche",
+      "name": "Segler",
+      "tip": "Optimiert für Gleiteffizienz. Niedrige Raten für Präzision. Soaring-Modus für Thermik. Nurflügler-Servo-Einrichtung."
+    },
+    "fwLongRange": {
+      "description": "Erweiterte Reichweite für FPV-Missionen",
+      "name": "Long Range FPV",
+      "tip": "Nurflügler-Einrichtung, optimiert auf Effizienz. Volle Navigation mit Wegpunkten, Cruise und RTH."
+    },
+    "fwSport": {
+      "description": "Wendiges klassisches Flugzeug für erfahrene Piloten",
+      "name": "Sportflugzeug",
+      "tip": "Höhere Raten für Kunstflug. Querruder/Höhenruder/Seitenruder-Einrichtung. Umschalten zwischen stabilisierten und Acro-Modi."
+    },
+    "fwTrainer": {
+      "description": "Klassisches Flugzeug für Anfänger",
+      "name": "Trainer",
+      "tip": "Klassische Querruder/Höhenruder/Seitenruder-Einrichtung. Auto-Level hält die Flächen stabil. Perfekt zum Erlernen des Flächenflugs."
+    },
+    "longRange": {
+      "description": "Erweiterte Reichweite mit GPS-Absicherung",
+      "name": "Long Range",
+      "tip": "Konservative PIDs für Effizienz. GPS-Cruise und RTH für Sicherheit. ANGLE-Modus für einfaches Abfangen."
+    },
+    "racing": {
+      "description": "Schnell & direkt für Geschwindigkeit",
+      "name": "Racing",
+      "tip": "Reines ACRO für maximale Kontrolle. Hohe Raten für schnelle Korrekturen. Der Beeper hilft, Abstürze wiederzufinden!"
+    }
+  },
+  "summary": {
+    "action": "Aktion: {{value}}",
+    "aircraftType": "Luftfahrzeugtyp",
+    "delay": "Verzögerung: {{value}}s",
+    "elevonMixing": "Elevon-Mischung für Nurflügler (2 Servos)",
+    "expo": "Expo: {{value}}%",
+    "maxRotation": "{{rollRate}}% max. Drehrate",
+    "modeOnChannel": "{{mode}} auf {{channel}}",
+    "modesConfigured": "{{n}} Modi konfiguriert",
+    "pidResponse": "{{name}}-Ansprechverhalten",
+    "pidTuning": "PID-Tuning",
+    "pitchPid": "Nicken P: {{p}}, I: {{i}}, D: {{d}}",
+    "quadXLayout": "Quad-X-Motorlayout",
+    "rcRate": "RC Rate: {{value}}",
+    "rollPid": "Rollen P: {{p}}, I: {{i}}, D: {{d}}",
+    "rollPitchRate": "Roll-/Nickrate: {{value}}",
+    "singleMotor": "Einzelmotor",
+    "traditionalSetup": "Klassische Einrichtung: Querruder/Höhenruder/Seitenruder",
+    "yawPid": "Gieren P: {{p}}, I: {{i}}",
+    "yawRate": "Gierrate: {{value}}"
+  },
+  "transmitter": {
+    "allPrimaryResponding": "Alle Hauptkanäle (Rollen, Nicken, Gas, Gieren) reagieren",
+    "applyRetry": "Übernehmen & erneut versuchen",
+    "applyingPreset": "Preset <b>{{name}}</b> wird übernommen",
+    "channelsDetected": "{{n}}/4 Kanäle erkannt",
+    "connected": "Sender verbunden!",
+    "continue": "Weiter",
+    "fixReceiver": "Empfängerkonfiguration korrigieren",
+    "loadingConfig": "Konfiguration wird vom FC geladen...",
+    "noSignal": "Kein RC-Signal erkannt",
+    "noSignalHint": "Ihr Empfänger ist möglicherweise nicht korrekt konfiguriert. Prüfen Sie, ob er mit Strom versorgt, mit Ihrem Sender gebunden und das richtige Protokoll eingestellt ist.",
+    "noneSelected": "Keine Auswahl",
+    "notLoaded": "Nicht geladen",
+    "receiverConfiguration": "Empfängerkonfiguration",
+    "receiverType": "Empfängertyp",
+    "saveFailed": "Empfängerkonfiguration konnte nicht gespeichert werden",
+    "selectUartHint": "Wählen Sie den UART, an den Ihr Empfänger angeschlossen ist. Nur ein Port kann Serial RX haben.",
+    "serialRxPort": "Serial-RX-Port",
+    "serialRxProtocol": "Serial-RX-Protokoll",
+    "skip": "Senderprüfung überspringen (nicht empfohlen)",
+    "turnOnHint": "Schalten Sie Ihren Sender ein und bewegen Sie alle Sticks, um zu prüfen, ob sie empfangen werden.",
+    "wiggleEach": "Bewegen Sie jeden Stick, um die übrigen Kanäle zu erkennen",
+    "wiggleSticks": "Sticks bewegen",
+    "workingHint": "Ihr Sender funktioniert. Sie können mit der Überprüfung Ihrer Konfiguration fortfahren."
+  },
+  "wizard": {
+    "pressAgainToDiscard": "Erneut drücken, um die Einrichtung zu verwerfen",
+    "stepApply": "Übernehmen",
+    "stepCheck": "Prüfen",
+    "stepReview": "Überprüfen",
+    "stepSelect": "Auswählen",
+    "subtitle": "Alles in einem Durchgang konfigurieren",
+    "title": "Schnelleinrichtungs-Assistent"
+  }
+}

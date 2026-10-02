@@ -11,6 +11,7 @@ import * as http from 'http';
 import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 import type { FirmwareVersion, FlashProgress } from '../../shared/firmware-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 // Firmware download directory
 const FIRMWARE_CACHE_DIR = path.join(os.tmpdir(), 'ardudeck-firmware');
@@ -99,13 +100,13 @@ export async function downloadFirmware(
       sendProgress(window, {
         state: 'downloading',
         progress: 100,
-        message: 'Using bundled legacy firmware',
+        message: t('main:firmwareDownloader.usingBundled'),
         bytesWritten: 0,
         totalBytes: 0,
       });
       return localPath;
     } catch {
-      throw new Error(`Bundled firmware not found: ${localPath}`);
+      throw new Error(t('main:firmwareDownloader.bundledNotFound', { path: localPath }));
     }
   }
 
@@ -116,7 +117,7 @@ export async function downloadFirmware(
     sendProgress(window, {
       state: 'downloading',
       progress: 100,
-      message: 'Using cached firmware',
+      message: t('main:firmwareDownloader.usingCached'),
       bytesWritten: version.fileSize || 0,
       totalBytes: version.fileSize || 0,
     });
@@ -130,7 +131,7 @@ export async function downloadFirmware(
     sendProgress(window, {
       state: 'downloading',
       progress: 0,
-      message: `Downloading ${version.version}...`,
+      message: t('main:firmwareDownloader.downloadingVersion', { version: version.version }),
       bytesWritten: 0,
       totalBytes: version.fileSize || 0,
     });
@@ -153,7 +154,7 @@ export async function downloadFirmware(
       }
 
       if (response.statusCode !== 200) {
-        reject(new Error(`Download failed: HTTP ${response.statusCode}`));
+        reject(new Error(t('main:firmwareDownloader.httpFailed', { status: response.statusCode })));
         return;
       }
 
@@ -170,7 +171,7 @@ export async function downloadFirmware(
         sendProgress(window, {
           state: 'downloading',
           progress,
-          message: `Downloading: ${formatBytes(downloadedSize)} / ${formatBytes(totalSize)}`,
+          message: t('main:firmwareDownloader.downloadingBytes', { done: formatBytes(downloadedSize), total: formatBytes(totalSize) }),
           bytesWritten: downloadedSize,
           totalBytes: totalSize,
         });
@@ -199,7 +200,7 @@ export async function downloadFirmware(
       abortSignal.addEventListener('abort', () => {
         request.destroy();
         fs.unlink(cachePath, () => {});
-        reject(new Error('Download aborted'));
+        reject(new Error(t('main:firmwareDownloader.aborted')));
       });
     }
   });

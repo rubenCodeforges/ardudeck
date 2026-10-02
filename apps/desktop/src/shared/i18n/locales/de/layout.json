@@ -1,0 +1,47 @@
+{
+  "appShell": {
+    "about": "Über ArduDeck",
+    "clickToDisconnect": "Klicken zum Trennen",
+    "disconnected": "Getrennt",
+    "fleetCount": "Flotte ({{count}})",
+    "fleetTitle": "Flotte über Mehrfahrzeug-Verbindungen verbunden. Klicken, um die Telemetrie zu öffnen.",
+    "noneSelected": " · keins ausgewählt",
+    "staleDisconnect": "Seit {{seconds}} s keine Daten. Klicken zum Trennen",
+    "staleShort": "Keine Daten {{seconds}} s",
+    "voiceMuted": "Sprachwarnungen stummgeschaltet. Klicken zum Aktivieren",
+    "voiceOn": "Sprachwarnungen aktiv. Klicken zum Stummschalten",
+    "waiting": "Warten..."
+  },
+  "armDisarm": {
+    "arm": "SCHARF",
+    "armNotConfigured": "ARM-Modus ist am FC nicht konfiguriert. Legen Sie im Tab Modi einen AUX-Kanal für ARM fest.",
+    "armTitle": "Scharf schalten",
+    "armingBlocked": "Scharfschalten blockiert",
+    "disarm": "UNSCHARF",
+    "disarmTitle": "Unscharf schalten",
+    "forceArm": "ERZWUNGEN SCHARF",
+    "forceArmHint": "Pre-Arm-Sicherheitschecks umgehen",
+    "forceArmLabel": "Scharf erzwingen",
+    "forceArmTitle": "Scharfschalten erzwingen (umgeht Checks)",
+    "mspUnknown": "Unbekannt",
+    "preArmFailed": "Pre-Arm-Checks fehlgeschlagen",
+    "title": "{{action}} - Rechtsklick für Optionen"
+  },
+  "quickLaunch": {
+    "areaEditorDesc": "Missionsflächen zeichnen: mehrere Flächen, Aussparungen, KML",
+    "button": "Schnellstart",
+    "buttonTitle": "Schnellstart: Werkzeuge in eigenem Fenster öffnen",
+    "inspectorDesc": "Live-Meldungen und Graphen beobachten",
+    "simWorldDesc": "SITL in einer persistenten 3D-Welt fliegen: Hindernisse, Geofences, Missionen",
+    "telemetryDashboard": "Telemetrie-Dashboard",
+    "telemetryDashboardDesc": "Live-Telemetrie auf eigenem Bildschirm"
+  },
+  "updateBanner": {
+    "available": "<b>ArduDeck {{version}}</b> ist verfügbar{{name}}",
+    "downloading": "<b>ArduDeck {{version}}</b> wird heruntergeladen",
+    "newVersion": "neue Version",
+    "ready": "<b>ArduDeck {{version}}</b> ist bereit zur Installation",
+    "restartToUpdate": "Neu starten und aktualisieren",
+    "viewRelease": "Release ansehen"
+  }
+}

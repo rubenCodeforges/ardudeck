@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store.js';
 import {
@@ -19,6 +20,7 @@ import {
 } from './px4-airframes.js';
 
 export function Px4AirframePicker() {
+  const { t } = useTranslation();
   const setParameter = useParameterStore((s) => s.setParameterImmediate);
   const paramSize = useParameterStore((s) => s.parameters.size);
   const currentId = useParameterStore((s) => s.parameters.get('SYS_AUTOSTART')?.value);
@@ -47,7 +49,7 @@ export function Px4AirframePicker() {
     if (ok) {
       setAppliedId(af.id);
     } else {
-      setError(`Failed to write SYS_AUTOSTART (${af.id}). Check the connection and try again.`);
+      setError(t('settings:px4AirframePicker.writeFailed', { id: af.id }));
     }
   };
 
@@ -56,8 +58,8 @@ export function Px4AirframePicker() {
       {!canSet && (
         <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 text-sm text-amber-300">
           {paramSize > 0
-            ? 'SYS_AUTOSTART was not found on this vehicle, so the airframe cannot be set from here.'
-            : 'Connect to a PX4 vehicle and load parameters to select an airframe.'}
+            ? t('settings:px4AirframePicker.notFound')
+            : t('settings:px4AirframePicker.connect')}
         </div>
       )}
 
@@ -66,10 +68,10 @@ export function Px4AirframePicker() {
           <AlertTriangle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-emerald-300">
-              Airframe set (SYS_AUTOSTART = {appliedId}). Reboot required to apply.
+              {t('settings:px4AirframePicker.applied', { id: appliedId })}
             </p>
             <p className="text-xs text-emerald-400/80 mt-0.5">
-              The new airframe takes effect only after the flight controller restarts.
+              {t('settings:px4AirframePicker.appliedHint')}
             </p>
           </div>
         </div>
@@ -86,7 +88,7 @@ export function Px4AirframePicker() {
         if (!list || list.length === 0) return null;
         return (
           <section key={cat.id}>
-            <h3 className="text-xs uppercase tracking-wide text-content-tertiary mb-2">{cat.label}</h3>
+            <h3 className="text-xs uppercase tracking-wide text-content-tertiary mb-2">{t(cat.labelKey)}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {list.map((af) => {
                 const selected = currentId === af.id || appliedId === af.id;
@@ -110,7 +112,7 @@ export function Px4AirframePicker() {
                         <Check className="w-4 h-4 text-blue-400 shrink-0" />
                       ) : null}
                     </div>
-                    <div className="text-xs text-content-secondary mt-0.5">{af.description}</div>
+                    <div className="text-xs text-content-secondary mt-0.5">{t(af.descriptionKey)}</div>
                     <div className="text-[10px] text-content-tertiary mt-2 font-mono">
                       SYS_AUTOSTART {af.id}
                     </div>

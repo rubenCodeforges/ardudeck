@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface TagInputProps {
   tags: string[];
@@ -7,7 +8,8 @@ interface TagInputProps {
   suggestions?: string[];
 }
 
-export function TagInput({ tags, onChange, placeholder = 'Add tags...', suggestions }: TagInputProps) {
+export function TagInput({ tags, onChange, placeholder, suggestions }: TagInputProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
@@ -130,7 +132,7 @@ export function TagInput({ tags, onChange, placeholder = 'Add tags...', suggesti
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => { /* handled by click-outside */ }}
-          placeholder={tags.length === 0 ? placeholder : ''}
+          placeholder={tags.length === 0 ? (placeholder ?? t('ui:tagInput.addTags')) : ''}
           className="flex-1 min-w-[80px] bg-transparent border-none outline-none text-sm text-content placeholder-content-tertiary py-0.5"
         />
       </div>

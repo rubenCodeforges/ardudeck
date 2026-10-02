@@ -8,6 +8,7 @@
  *
  * Spec: docs/superpowers/specs/2026-05-28-mission-groups-design.md
  */
+import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -31,6 +32,7 @@ interface UploadPreviewModalProps {
 }
 
 export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewModalProps) {
+  const { t } = useTranslation();
   const groups = useMissionStore((s) => s.groups);
   const missionItems = useMissionStore((s) => s.missionItems);
   const getUploadItems = useMissionStore((s) => s.getUploadItems);
@@ -76,42 +78,39 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div className="bg-surface-solid rounded-xl border border-subtle w-full max-w-lg mx-4 overflow-hidden shadow-2xl">
         <div className="px-6 py-4 border-b border-subtle">
-          <h2 className="text-lg font-semibold text-content">Upload to vehicle</h2>
+          <h2 className="text-lg font-semibold text-content">{t('mission:uploadPreviewModal.title')}</h2>
           <p className="text-xs text-content-secondary mt-1">
-            This will replace the existing mission on the vehicle.
+            {t('mission:uploadPreviewModal.subtitle')}
           </p>
         </div>
 
         <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Top-line summary */}
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="Waypoints" value={String(wpCount)} />
-            <Stat label="Distance" value={distanceLabel} />
-            <Stat label="ETA @ planned speed" value={`${etaMin} min`} />
+            <Stat label={t('common:waypoints')} value={String(wpCount)} />
+            <Stat label={t('common:distance')} value={distanceLabel} />
+            <Stat label={t('mission:uploadPreviewModal.eta')} value={t('mission:uploadPreviewModal.etaValue', { value: etaMin })} />
           </div>
 
           {/* WP ceiling warning */}
           {summary.overCeiling && (
             <Warning>
-              {wpCount} waypoints exceeds the typical ArduPilot ceiling of{' '}
-              {DEFAULT_AP_MISSION_CEILING}. Deselect a group or split the mission.
+              {t('mission:uploadPreviewModal.overCeiling', { count: wpCount, ceiling: DEFAULT_AP_MISSION_CEILING })}
             </Warning>
           )}
 
           {/* DO_JUMP target issues */}
           {summary.jumpIssues.length > 0 && (
             <Warning>
-              {summary.jumpIssues.length}{' '}
-              {summary.jumpIssues.length === 1 ? 'DO_JUMP' : 'DO_JUMPs'} target a
-              waypoint that no longer exists:
+              {t('mission:uploadPreviewModal.jumpIssues', { count: summary.jumpIssues.length })}
               <ul className="list-disc list-inside mt-1 text-[11px] text-red-300">
                 {summary.jumpIssues.slice(0, 4).map((j, i) => (
                   <li key={i}>
-                    WP {j.jumpSeq + 1} jumps to WP {j.targetSeq + 1} (missing)
+                    {t('mission:uploadPreviewModal.jumpIssue', { from: j.jumpSeq + 1, to: j.targetSeq + 1 })}
                   </li>
                 ))}
                 {summary.jumpIssues.length > 4 && (
-                  <li>... and {summary.jumpIssues.length - 4} more</li>
+                  <li>{t('mission:uploadPreviewModal.andMore', { count: summary.jumpIssues.length - 4 })}</li>
                 )}
               </ul>
             </Warning>
@@ -119,7 +118,7 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
 
           {/* Included groups */}
           {summary.includedGroups.length > 0 && (
-            <Section title="Included">
+            <Section title={t('mission:uploadPreviewModal.included')}>
               {summary.includedGroups.map((g) => {
                 const count = missionItems.filter((it) => it.groupId === g.id).length;
                 return (
@@ -132,7 +131,7 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
           {/* No groups but items exist (legacy, pre-migration) */}
           {groups.length === 0 && missionItems.length > 0 && (
             <p className="text-xs text-content-secondary italic">
-              Mission has no groups; all {missionItems.length} WPs will be uploaded.
+              {t('mission:uploadPreviewModal.noGroups', { count: missionItems.length })}
             </p>
           )}
         </div>
@@ -142,7 +141,7 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
             onClick={onClose}
             className="px-3 py-1.5 text-sm text-content-secondary hover:text-content rounded transition-colors"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -154,13 +153,13 @@ export function UploadPreviewModal({ open, onClose, onConfirm }: UploadPreviewMo
             }`}
             title={
               wpCount === 0
-                ? 'No waypoints selected'
+                ? t('mission:uploadPreviewModal.noneSelected')
                 : blocked
-                ? 'Resolve warnings above before uploading'
-                : 'Upload to vehicle'
+                ? t('mission:uploadPreviewModal.resolveWarnings')
+                : t('mission:uploadPreviewModal.title')
             }
           >
-            Upload {wpCount} {wpCount === 1 ? 'WP' : 'WPs'}
+            {t('mission:uploadPreviewModal.upload', { count: wpCount })}
           </button>
         </div>
       </div>
@@ -201,13 +200,14 @@ function GroupRow({
   count: number;
   dimmed?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={`flex items-center gap-2 text-xs ${dimmed ? 'opacity-60' : ''}`}>
       <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
       <span className="font-medium text-content truncate">{name}</span>
       <span className="text-[10px] uppercase text-content-tertiary">{kind}</span>
       <span className="ml-auto text-content-secondary">
-        {count} {count === 1 ? 'WP' : 'WPs'}
+        {t('mission:uploadPreviewModal.wpCount', { count })}
       </span>
     </div>
   );

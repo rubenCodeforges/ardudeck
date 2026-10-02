@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import { useUpdateStore } from '../../stores/update-store';
 
 function formatBytes(bytes: number): string {
@@ -7,6 +8,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function UpdateBanner() {
+  const { t } = useTranslation();
   const {
     status,
     canAutoUpdate,
@@ -26,7 +28,7 @@ export function UpdateBanner() {
   if (status !== 'available' && status !== 'downloading' && status !== 'downloaded') return null;
   if (dismissed && status !== 'downloading') return null;
 
-  const versionLabel = latestVersion ? `v${latestVersion}` : 'new version';
+  const versionLabel = latestVersion ? `v${latestVersion}` : t('layout:updateBanner.newVersion');
   const nameLabel = releaseName && releaseName !== `v${latestVersion}` ? `: ${releaseName}` : '';
 
   // Available state (blue) — shows for both signed and unsigned apps
@@ -37,21 +39,21 @@ export function UpdateBanner() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span className="text-sm text-content flex-1">
-          <span className="font-medium text-blue-300">ArduDeck {versionLabel}</span> is available{nameLabel}
+          <Trans i18nKey="layout:updateBanner.available" values={{ version: versionLabel, name: nameLabel }} components={{ b: <span className="font-medium text-blue-300" /> }} />
         </span>
         {canAutoUpdate ? (
           <button
             onClick={() => downloadUpdate()}
             className="px-3 py-1 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
           >
-            Download
+            {t('common:download')}
           </button>
         ) : (
           <button
             onClick={openReleaseUrl}
             className="px-3 py-1 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
           >
-            View Release
+            {t('layout:updateBanner.viewRelease')}
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
@@ -60,7 +62,7 @@ export function UpdateBanner() {
         <button
           onClick={dismiss}
           className="p-1 text-content-secondary hover:text-content transition-colors"
-          title="Dismiss"
+          title={t('common:dismiss')}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -85,7 +87,7 @@ export function UpdateBanner() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
           <span className="text-sm text-content flex-1">
-            Downloading <span className="font-medium text-blue-300">ArduDeck {versionLabel}</span>
+            <Trans i18nKey="layout:updateBanner.downloading" values={{ version: versionLabel }} components={{ b: <span className="font-medium text-blue-300" /> }} />
             <span className="text-content-secondary ml-2 text-xs">{bytesLabel}</span>
           </span>
           <span className="text-xs text-content-secondary tabular-nums">{progress}%</span>
@@ -107,18 +109,18 @@ export function UpdateBanner() {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
       <span className="text-sm text-content flex-1">
-        <span className="font-medium text-emerald-300">ArduDeck {versionLabel}</span> is ready to install
+        <Trans i18nKey="layout:updateBanner.ready" values={{ version: versionLabel }} components={{ b: <span className="font-medium text-emerald-300" /> }} />
       </span>
       <button
         onClick={() => installUpdate()}
         className="px-3 py-1 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs font-medium rounded-lg transition-colors"
       >
-        Restart to Update
+        {t('layout:updateBanner.restartToUpdate')}
       </button>
       <button
         onClick={dismiss}
         className="p-1 text-content-secondary hover:text-content transition-colors"
-        title="Dismiss"
+        title={t('common:dismiss')}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -30,6 +30,7 @@ import {
   stopCompassMot,
   type MavlinkCalibrationDeps,
 } from './mavlink-calibration.js';
+import { t } from '../../shared/i18n/index.js';
 
 // =============================================================================
 // State
@@ -50,7 +51,7 @@ function sendLog(level: 'info' | 'warn' | 'error', message: string, details?: st
       id: Date.now(),
       timestamp: Date.now(),
       level,
-      message: `[Calibration] ${message}`,
+      message: `[Calibration] ${message}`, // i18n-exempt
       details,
     });
   }
@@ -104,7 +105,7 @@ async function getCalibrationData(): Promise<CalibrationData | null> {
 }
 
 async function setCalibrationData(data: CalibrationData): Promise<{ success: boolean; error?: string }> {
-  sendLog('info', 'Saving calibration data');
+  sendLog('info', 'Saving calibration data'); // i18n-exempt
   return { success: true };
 }
 
@@ -116,7 +117,7 @@ async function startCalibration(options: CalibrationStartOptions): Promise<Calib
   const { type, protocol, firmware } = options;
 
   if (currentCalibration || isMavlinkCalibrationActive()) {
-    return { success: false, error: 'Another calibration is already in progress' };
+    return { success: false, error: t('main:calibration.alreadyInProgress') };
   }
 
   activeProtocol = protocol ?? null;
@@ -142,7 +143,7 @@ async function startCalibration(options: CalibrationStartOptions): Promise<Calib
         sendProgress({
           type: 'accel-6point',
           progress: 0,
-          statusText: 'Place vehicle level (top up)',
+          statusText: 'Place vehicle level (top up)', // i18n-exempt
           currentPosition: 0,
           positionStatus: [false, false, false, false, false, false],
         });
@@ -158,10 +159,10 @@ async function startCalibration(options: CalibrationStartOptions): Promise<Calib
         return await calibrateOpflow();
 
       default:
-        return { success: false, error: `Unknown calibration type: ${type}` };
+        return { success: false, error: t('main:calibrationHandlers.unknownType', { type }) };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : t('common:unknownError');
     sendLog('error', `Calibration failed: ${message}`);
     currentCalibration = null;
     activeProtocol = null;
@@ -177,14 +178,14 @@ async function calibrateAccelLevelMsp(): Promise<CalibrationResult> {
   sendProgress({
     type: 'accel-level',
     progress: 10,
-    statusText: 'Sending calibration command...',
+    statusText: t('main:calibrationHandlers.sendingCommand'),
   });
 
   try {
     sendProgress({
       type: 'accel-level',
       progress: 30,
-      statusText: 'Calibrating accelerometer...',
+      statusText: t('main:calibrationHandlers.calibratingAccel'),
     });
 
     const { calibrateAccFromHandler } = await import('../msp/msp-commands.js');
@@ -193,7 +194,7 @@ async function calibrateAccelLevelMsp(): Promise<CalibrationResult> {
     sendProgress({
       type: 'accel-level',
       progress: 80,
-      statusText: 'Processing...',
+      statusText: t('main:calibrationHandlers.processing'),
     });
 
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -212,12 +213,12 @@ async function calibrateAccelLevelMsp(): Promise<CalibrationResult> {
       sendComplete({
         type: 'accel-level',
         success: false,
-        error: 'Calibration failed - ensure vehicle is level and still',
+        error: t('main:calibrationHandlers.accelFailed'),
       });
-      return { success: false, error: 'Calibration failed - ensure vehicle is level and still' };
+      return { success: false, error: t('main:calibrationHandlers.accelFailed') };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : t('common:unknownError');
     sendComplete({
       type: 'accel-level',
       success: false,
@@ -233,7 +234,7 @@ async function calibrateCompassMsp(): Promise<CalibrationResult> {
   sendProgress({
     type: 'compass',
     progress: 0,
-    statusText: 'Starting compass calibration...',
+    statusText: t('main:calibrationHandlers.startingCompass'),
     countdown: duration,
   });
 
@@ -245,9 +246,9 @@ async function calibrateCompassMsp(): Promise<CalibrationResult> {
       sendComplete({
         type: 'compass',
         success: false,
-        error: 'Failed to start compass calibration',
+        error: t('main:calibrationHandlers.compassStartFailed'),
       });
-      return { success: false, error: 'Failed to start compass calibration' };
+      return { success: false, error: t('main:calibrationHandlers.compassStartFailed') };
     }
 
     let remaining = duration;
@@ -258,7 +259,7 @@ async function calibrateCompassMsp(): Promise<CalibrationResult> {
       sendProgress({
         type: 'compass',
         progress,
-        statusText: 'Rotate vehicle in all directions...',
+        statusText: t('main:calibrationHandlers.rotateAllDirections'),
         countdown: remaining,
       });
 
@@ -281,7 +282,7 @@ async function calibrateCompassMsp(): Promise<CalibrationResult> {
 
     return { success: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : t('common:unknownError');
     sendComplete({
       type: 'compass',
       success: false,
@@ -295,7 +296,7 @@ async function calibrateGyroMsp(): Promise<CalibrationResult> {
   sendProgress({
     type: 'gyro',
     progress: 0,
-    statusText: 'Calibrating gyroscope...',
+    statusText: t('main:calibrationHandlers.calibratingGyro'),
   });
 
   try {
@@ -304,7 +305,7 @@ async function calibrateGyroMsp(): Promise<CalibrationResult> {
         sendProgress({
           type: 'gyro',
           progress: 50,
-          statusText: 'Processing...',
+          statusText: t('main:calibrationHandlers.processing'),
         });
       }, 1000);
 
@@ -318,7 +319,7 @@ async function calibrateGyroMsp(): Promise<CalibrationResult> {
 
     return { success: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : t('common:unknownError');
     sendComplete({
       type: 'gyro',
       success: false,
@@ -334,7 +335,7 @@ async function calibrateOpflow(): Promise<CalibrationResult> {
   sendProgress({
     type: 'opflow',
     progress: 0,
-    statusText: 'Hold steady over textured surface...',
+    statusText: t('main:calibrationHandlers.holdSteadyOpflow'),
     countdown: duration,
   });
 
@@ -347,7 +348,7 @@ async function calibrateOpflow(): Promise<CalibrationResult> {
       sendProgress({
         type: 'opflow',
         progress,
-        statusText: 'Hold steady over textured surface...',
+        statusText: t('main:calibrationHandlers.holdSteadyOpflow'),
         countdown: remaining,
       });
 
@@ -370,7 +371,7 @@ async function calibrateOpflow(): Promise<CalibrationResult> {
 
     return { success: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : t('common:unknownError');
     sendComplete({
       type: 'opflow',
       success: false,
@@ -386,7 +387,7 @@ async function calibrateOpflow(): Promise<CalibrationResult> {
 
 async function confirmPositionMsp(position: number): Promise<{ success: boolean; error?: string }> {
   if (currentCalibration !== 'accel-6point') {
-    return { success: false, error: '6-point calibration not in progress' };
+    return { success: false, error: t('main:calibration.sixPointNotInProgress') };
   }
 
   sendLog('info', `Confirming position ${position} — sending MSP_ACC_CALIBRATION`);
@@ -397,7 +398,7 @@ async function confirmPositionMsp(position: number): Promise<{ success: boolean;
 
     if (!accResult) {
       sendLog('error', `Position ${position}: MSP_ACC_CALIBRATION failed`);
-      return { success: false, error: 'ACC calibration command failed — ensure FC is connected' };
+      return { success: false, error: t('main:calibrationHandlers.accCommandFailed') };
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -420,12 +421,12 @@ async function confirmPositionMsp(position: number): Promise<{ success: boolean;
 
     if (position < 5) {
       const positionNames = [
-        'Level (Top Up)',
-        'Inverted (Top Down)',
-        'Left Side Down',
-        'Right Side Down',
-        'Nose Down',
-        'Nose Up',
+        'Level (Top Up)', // i18n-exempt
+        'Inverted (Top Down)', // i18n-exempt
+        'Left Side Down', // i18n-exempt
+        'Right Side Down', // i18n-exempt
+        'Nose Down', // i18n-exempt
+        'Nose Up', // i18n-exempt
       ];
 
       sendProgress({
@@ -459,7 +460,7 @@ async function confirmPositionMsp(position: number): Promise<{ success: boolean;
       return { success: true };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : t('common:unknownError');
     sendLog('error', `Position ${position} failed: ${message}`);
     return { success: false, error: message };
   }
@@ -481,7 +482,7 @@ async function confirmPosition(position: number): Promise<{ success: boolean; er
 // Cancel
 // =============================================================================
 
-export function cancelCalibration(reason: string = 'Cancelled by user'): void {
+export function cancelCalibration(reason: string = t('main:calibration.cancelledByUser')): void {
   if (activeProtocol === 'mavlink') {
     // Tell the vehicle to abandon the run BEFORE tearing down local state -
     // otherwise an ArduPilot mag cal (or PX4 cal) keeps running headless on
@@ -571,7 +572,7 @@ export function initCalibrationHandlers(
       const { saveCalibrationPersistent } = await import('../msp/msp-commands.js');
       return await saveCalibrationPersistent();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });

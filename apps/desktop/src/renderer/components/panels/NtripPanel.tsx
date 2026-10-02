@@ -4,6 +4,7 @@
  * client itself lives in the main process; this panel is config + status.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import {
@@ -19,12 +20,12 @@ import { PanelContainer, SectionTitle, StatRow } from './panel-utils';
 
 const BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
 
-const STATE_LABEL: Record<NtripStatus['state'], string> = {
-  disconnected: 'Disconnected',
-  connecting: 'Connecting',
-  connected: 'Connected',
-  reconnecting: 'Reconnecting',
-  error: 'Error',
+const STATE_LABEL_KEY: Record<NtripStatus['state'], string> = {
+  disconnected: 'panels:ntripPanel.stateDisconnected',
+  connecting: 'panels:ntripPanel.stateConnecting',
+  connected: 'panels:ntripPanel.stateConnected',
+  reconnecting: 'panels:ntripPanel.stateReconnecting',
+  error: 'panels:ntripPanel.stateError',
 };
 
 const STATE_DOT: Record<NtripStatus['state'], string> = {
@@ -63,6 +64,7 @@ function rtcmTypesSummary(counts: Record<number, number>): string {
 }
 
 export function NtripPanel() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<NtripConfig>(DEFAULT_NTRIP_CONFIG);
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState<NtripStatus>(INITIAL_NTRIP_STATUS);
@@ -133,7 +135,7 @@ export function NtripPanel() {
       setStatus((s) => ({
         ...s,
         state: 'error',
-        error: `"${host}" is a mountpoint, not a caster host. Put the caster server name in Host and "${host}" in Mountpoint.`,
+        error: t('panels:ntripPanel.mountpointInHost', { host }),
       }));
       return;
     }
@@ -154,7 +156,7 @@ export function NtripPanel() {
       setMountpoints(result.mountpoints);
     } else {
       setMountpoints([]);
-      setTableError(result.error ?? 'Failed to fetch mountpoint list');
+      setTableError(result.error ?? t('panels:ntripPanel.fetchFailed'));
     }
   };
 
@@ -167,17 +169,17 @@ export function NtripPanel() {
         {/* Status header */}
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${STATE_DOT[status.state]}`} />
-          <span className="text-sm text-content">{STATE_LABEL[status.state]}</span>
+          <span className="text-sm text-content">{t(STATE_LABEL_KEY[status.state])}</span>
           {status.owner && (
             <span
               className="text-[10px] px-1.5 py-0.5 rounded bg-surface-raised text-content-secondary whitespace-nowrap"
               data-tip={
                 status.owner === 'orchestrator'
-                  ? 'The multi-vehicle engine runs the NTRIP client and injects corrections into every vehicle'
-                  : 'This desktop runs the NTRIP client and injects into the connected vehicle'
+                  ? t('panels:ntripPanel.ownerOrchestratorTip')
+                  : t('panels:ntripPanel.ownerDirectTip')
               }
             >
-              {status.owner === 'orchestrator' ? 'Via orchestrator (fleet)' : 'Direct link'}
+              {status.owner === 'orchestrator' ? t('panels:ntripPanel.ownerOrchestrator') : t('panels:ntripPanel.ownerDirect')}
             </span>
           )}
           {status.state === 'connected' && (
@@ -191,7 +193,7 @@ export function NtripPanel() {
                 : 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25'
             }`}
           >
-            {busy ? 'Disconnect' : 'Connect'}
+            {busy ? t('common:disconnect') : t('common:connect')}
           </button>
         </div>
         {errorText && <div className="text-xs text-red-400">{errorText}</div>}
@@ -208,7 +210,7 @@ export function NtripPanel() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <span className="text-[10px] font-medium text-content-secondary uppercase tracking-wider group-hover:text-content">
-            Settings
+            {t('panels:ntripPanel.settings')}
           </span>
           {!settingsOpen && config.source === 'serial' && config.serialPath && (
             <span className="text-[11px] text-content-tertiary font-mono truncate">
@@ -226,11 +228,11 @@ export function NtripPanel() {
         {settingsOpen && (<>
         {/* Corrections source */}
         <div>
-          <SectionTitle>Source</SectionTitle>
+          <SectionTitle>{t('panels:ntripPanel.source')}</SectionTitle>
           <div className="flex rounded overflow-hidden border border-default w-fit">
             {([
-              { id: 'ntrip', label: 'NTRIP caster', tip: 'Corrections from an internet caster' },
-              { id: 'serial', label: 'Local base (serial)', tip: 'Corrections from a base receiver plugged into this computer. Works fully offline.' },
+              { id: 'ntrip', label: t('panels:ntripPanel.sourceNtrip'), tip: t('panels:ntripPanel.sourceNtripTip') },
+              { id: 'serial', label: t('panels:ntripPanel.sourceSerial'), tip: t('panels:ntripPanel.sourceSerialTip') },
             ] as Array<{ id: RtkSource; label: string; tip: string }>).map((s) => (
               <button
                 key={s.id}
@@ -253,18 +255,18 @@ export function NtripPanel() {
 
         {config.source === 'serial' && (
         <div>
-          <SectionTitle>Base Station</SectionTitle>
+          <SectionTitle>{t('panels:ntripPanel.baseStation')}</SectionTitle>
           <div className="flex gap-2 items-end">
-            <Field label="Serial port" className="flex-1">
+            <Field label={t('panels:ntripPanel.serialPort')} className="flex-1">
               <select
                 value={config.serialPath}
                 onChange={(e) => persist({ serialPath: e.target.value })}
                 className={`${INPUT_CLASS} font-mono`}
               >
-                <option value="">Select a port ({serialPorts.length} found)</option>
+                <option value="">{t('panels:ntripPanel.selectPort', { count: serialPorts.length })}</option>
                 {/* Keep a vanished configured port selectable so the choice survives replug. */}
                 {config.serialPath && !serialPorts.some((p) => p.path === config.serialPath) && (
-                  <option value={config.serialPath}>{config.serialPath} (not present)</option>
+                  <option value={config.serialPath}>{t('panels:ntripPanel.notPresent', { path: config.serialPath })}</option>
                 )}
                 {serialPorts.map((p) => (
                   <option key={p.path} value={p.path}>
@@ -274,7 +276,7 @@ export function NtripPanel() {
                 ))}
               </select>
             </Field>
-            <Field label="Baud" className="w-24">
+            <Field label={t('common:baud')} className="w-24">
               <select
                 value={config.serialBaud}
                 onChange={(e) => persist({ serialBaud: Number(e.target.value) })}
@@ -287,14 +289,14 @@ export function NtripPanel() {
             </Field>
             <button
               onClick={() => void refreshSerialPorts()}
-              data-tip="Rescan serial ports. Ports used by an active vehicle connection are not listed."
+              data-tip={t('panels:ntripPanel.rescanTip')}
               className="px-2.5 py-1.5 rounded text-xs bg-surface-raised text-content-secondary hover:text-content transition-colors"
             >
-              Rescan
+              {t('common:rescan')}
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-content-tertiary">
-            The receiver must be configured as a base (surveyed-in or fixed position) and output RTCM3 on this port.
+            {t('panels:ntripPanel.baseHint')}
           </p>
         </div>
         )}
@@ -302,20 +304,20 @@ export function NtripPanel() {
         {config.source !== 'serial' && (<>
         {/* Caster config */}
         <div>
-          <SectionTitle>Caster</SectionTitle>
+          <SectionTitle>{t('panels:ntripPanel.caster')}</SectionTitle>
           <div className="space-y-2">
             <div className="flex gap-2 items-end">
-              <Field label="Host" className="flex-1">
+              <Field label={t('panels:ntripPanel.host')} className="flex-1">
                 <input
                   type="text"
-                  placeholder="e.g. rtk2go.com"
+                  placeholder={t('panels:ntripPanel.hostPlaceholder')}
                   value={config.host}
                   onChange={(e) => setConfig({ ...config, host: e.target.value })}
                   onBlur={(e) => persist({ host: e.target.value.trim() })}
                   className={INPUT_CLASS}
                 />
               </Field>
-              <Field label="Port" className="w-16">
+              <Field label={t('common:port')} className="w-16">
                 <DraftNumberInput
                   value={config.port}
                   min={1}
@@ -325,14 +327,14 @@ export function NtripPanel() {
                   className={INPUT_CLASS}
                 />
               </Field>
-              <Field label="Protocol" className="w-20">
+              <Field label={t('common:protocol')} className="w-20">
                 <select
                   value={config.protocol ?? 'auto'}
                   onChange={(e) => persist({ protocol: e.target.value as NtripConfig['protocol'] })}
-                  data-tip="NTRIP revision. Auto tries v2 and falls back to v1"
+                  data-tip={t('panels:ntripPanel.protocolTip')}
                   className={INPUT_CLASS}
                 >
-                  <option value="auto">Auto</option>
+                  <option value="auto">{t('common:auto')}</option>
                   <option value="v1">v1</option>
                   <option value="v2">v2</option>
                 </select>
@@ -348,10 +350,10 @@ export function NtripPanel() {
               </label>
             </div>
             <div className="flex gap-2">
-              <Field label="Username" className="flex-1">
+              <Field label={t('panels:ntripPanel.username')} className="flex-1">
                 <input
                   type="text"
-                  placeholder="Empty if anonymous"
+                  placeholder={t('panels:ntripPanel.usernamePlaceholder')}
                   autoComplete="off"
                   value={config.username}
                   onChange={(e) => setConfig({ ...config, username: e.target.value })}
@@ -359,7 +361,7 @@ export function NtripPanel() {
                   className={INPUT_CLASS}
                 />
               </Field>
-              <Field label="Password" className="flex-1">
+              <Field label={t('common:password')} className="flex-1">
                 <input
                   type="password"
                   autoComplete="new-password"
@@ -371,10 +373,10 @@ export function NtripPanel() {
               </Field>
             </div>
             <div className="flex gap-2 items-end">
-              <Field label="Mountpoint" className="flex-1">
+              <Field label={t('panels:ntripPanel.mountpoint')} className="flex-1">
                 <input
                   type="text"
-                  placeholder="e.g. MOUNT1 (use List)"
+                  placeholder={t('panels:ntripPanel.mountpointPlaceholder')}
                   value={config.mountpoint}
                   onChange={(e) => setConfig({ ...config, mountpoint: e.target.value })}
                   onBlur={(e) => persist({ mountpoint: e.target.value.trim() })}
@@ -384,10 +386,10 @@ export function NtripPanel() {
               <button
                 onClick={() => void handleFetchSourcetable()}
                 disabled={fetchingTable || !config.host}
-                data-tip="Fetch the caster's mountpoint list"
+                data-tip={t('panels:ntripPanel.listTip')}
                 className="px-2.5 py-1.5 rounded text-xs bg-surface-raised text-content-secondary hover:text-content transition-colors disabled:opacity-50"
               >
-                {fetchingTable ? 'Fetching...' : 'List'}
+                {fetchingTable ? t('panels:ntripPanel.fetching') : t('panels:ntripPanel.list')}
               </button>
             </div>
             {tableError && <div className="text-xs text-red-400">{tableError}</div>}
@@ -397,7 +399,7 @@ export function NtripPanel() {
                 onChange={(e) => persist({ mountpoint: e.target.value })}
                 className={INPUT_CLASS}
               >
-                <option value="">Select a mountpoint ({mountpoints.length} found)</option>
+                <option value="">{t('panels:ntripPanel.selectMountpoint', { count: mountpoints.length })}</option>
                 {mountpoints.map((m) => (
                   <option key={m.name} value={m.name}>
                     {m.name}
@@ -412,11 +414,11 @@ export function NtripPanel() {
 
         {/* Position upload */}
         <div>
-          <SectionTitle>Position Upload</SectionTitle>
+          <SectionTitle>{t('panels:ntripPanel.positionUpload')}</SectionTitle>
           <div className="flex items-center gap-3">
             <label
               className="flex items-center gap-1.5 text-xs text-content-secondary"
-              data-tip="Uploads the vehicle's GPS position as NMEA GGA. Required by VRS / network mountpoints."
+              data-tip={t('panels:ntripPanel.sendPositionTip')}
             >
               <input
                 type="checkbox"
@@ -424,11 +426,11 @@ export function NtripPanel() {
                 onChange={(e) => persist({ sendPosition: e.target.checked })}
                 className="accent-blue-500"
               />
-              Send vehicle position (GGA)
+              {t('panels:ntripPanel.sendPosition')}
             </label>
             {config.sendPosition && (
               <label className="flex items-center gap-1.5 text-xs text-content-secondary">
-                Interval (s)
+                {t('panels:ntripPanel.interval')}
                 <DraftNumberInput
                   min={1}
                   max={30}
@@ -447,42 +449,42 @@ export function NtripPanel() {
         {/* Stream stats */}
         {(busy || status.bytesReceived > 0) && (
           <div>
-            <SectionTitle>Corrections</SectionTitle>
+            <SectionTitle>{t('panels:ntripPanel.corrections')}</SectionTitle>
             <div className="space-y-1">
-              {status.mountpoint && <StatRow label="Mountpoint" value={status.mountpoint} />}
-              <StatRow label="Received" value={formatBytes(status.bytesReceived)} />
-              <StatRow label="Data rate" value={`${formatBytes(status.dataRateBps)}/s`} />
+              {status.mountpoint && <StatRow label={t('panels:ntripPanel.mountpoint')} value={status.mountpoint} />}
+              <StatRow label={t('panels:ntripPanel.received')} value={formatBytes(status.bytesReceived)} />
+              <StatRow label={t('panels:ntripPanel.dataRate')} value={`${formatBytes(status.dataRateBps)}/s`} />
               <StatRow
-                label={status.owner === 'orchestrator' ? 'Forwarded to fleet' : 'Forwarded to vehicle'}
+                label={status.owner === 'orchestrator' ? t('panels:ntripPanel.forwardedFleet') : t('panels:ntripPanel.forwardedVehicle')}
                 value={status.rtcmForwarded}
               />
               {status.owner === 'orchestrator' &&
                 status.perVehicleForwarded &&
                 Object.keys(status.perVehicleForwarded).length > 0 && (
-                  <StatRow label="Vehicles receiving" value={Object.keys(status.perVehicleForwarded).length} />
+                  <StatRow label={t('panels:ntripPanel.vehiclesReceiving')} value={Object.keys(status.perVehicleForwarded).length} />
                 )}
-              {status.rtcmDropped > 0 && <StatRow label="Dropped" value={status.rtcmDropped} />}
+              {status.rtcmDropped > 0 && <StatRow label={t('panels:ntripPanel.dropped')} value={status.rtcmDropped} />}
               {status.basePosition && (
                 <StatRow
-                  label="Base position"
+                  label={t('panels:ntripPanel.basePosition')}
                   value={`${status.basePosition.lat.toFixed(7)}, ${status.basePosition.lon.toFixed(7)} (${status.basePosition.altM.toFixed(1)} m)`}
                 />
               )}
               {status.source !== 'serial' && (
                 <StatRow
-                  label="GGA upload"
+                  label={t('panels:ntripPanel.ggaUpload')}
                   value={
                     status.ggaState === 'off'
-                      ? 'Off'
+                      ? t('common:off')
                       : status.ggaState === 'waiting-for-fix'
-                        ? 'Waiting for fix'
-                        : `Sent ${status.ggaSentCount}`
+                        ? t('panels:ntripPanel.waitingForFix')
+                        : t('panels:ntripPanel.sentCount', { count: status.ggaSentCount })
                   }
                 />
               )}
               {typesSummary && (
                 <div className="pt-1">
-                  <div className="text-content-secondary text-xs mb-0.5">RTCM messages</div>
+                  <div className="text-content-secondary text-xs mb-0.5">{t('panels:ntripPanel.rtcmMessages')}</div>
                   <div className="font-mono text-[11px] text-content-tertiary break-words">{typesSummary}</div>
                 </div>
               )}

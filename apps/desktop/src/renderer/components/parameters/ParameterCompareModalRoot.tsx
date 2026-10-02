@@ -6,6 +6,7 @@ import { useNavigationStore } from '../../stores/navigation-store.js';
 import { useCompareModalHostStore } from './compare-modal-host.js';
 import { classifySitlUnsafeParam } from '../../../shared/sitl-unsafe-params.js';
 import { formatParamValue } from '../../../shared/parameter-types.js';
+import { Trans, useTranslation } from 'react-i18next';
 
 /**
  * Global parameter compare/apply modal. Mounted once at App root so it's
@@ -112,6 +113,7 @@ function CompareView({
   diffs, skippedCount, totalCount, fileVehicleType, currentVehicleType, isSitl,
   isApplying, progress, onToggle, onSelectAll, onDeselectAll, onApply, onCancel,
 }: CompareViewProps) {
+  const { t } = useTranslation();
   // SITL-safe mode: filter out hardware-identity / hardware-bus params that
   // would crash a simulated FC (HAL panic on unmodeled peripheral registers).
   // Defaults ON when the active connection is a SITL target. User can disable
@@ -149,23 +151,27 @@ function CompareView({
   return (
     <>
       <div className="px-6 py-4 border-b border-subtle">
-        <h3 className="text-lg font-semibold text-content">Review parameter changes</h3>
+        <h3 className="text-lg font-semibold text-content">{t('parameters:parameterCompareModal.title')}</h3>
         <p className="text-sm text-content-secondary mt-1">
           {diffs.length === 0
-            ? 'No differences found: all parameters already match the vehicle.'
-            : `${diffs.length} parameter${diffs.length !== 1 ? 's' : ''} will change. Pick which to apply.`}
+            ? t('parameters:parameterCompareModal.noDifferences')
+            : t('parameters:parameterCompareModal.willChange', { count: diffs.length })}
         </p>
         {fileVehicleType && currentVehicleType && fileVehicleType !== currentVehicleType && (
           <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <span className="text-xs text-amber-300">
-              Source vehicle <span className="font-semibold">{fileVehicleType}</span> differs from connected vehicle <span className="font-semibold">{currentVehicleType}</span>
+              <Trans
+                i18nKey="parameters:parameterCompareModal.vehicleMismatch"
+                values={{ source: fileVehicleType, current: currentVehicleType }}
+                components={{ b: <span className="font-semibold" /> }}
+              />
             </span>
           </div>
         )}
         {skippedCount > 0 && (
           <p className="text-xs text-content-secondary mt-2">
-            {totalCount} total: {totalCount - skippedCount} matched the vehicle, {skippedCount} skipped (not on this firmware)
+            {t('parameters:parameterCompareModal.skippedSummary', { total: totalCount, matched: totalCount - skippedCount, skipped: skippedCount })}
           </p>
         )}
         {isSitl && unsafeMap.size > 0 && (
@@ -174,14 +180,14 @@ function CompareView({
             <div className="flex-1 text-xs">
               <div className="text-blue-300">
                 {safeMode
-                  ? `SITL-safe mode hides ${unsafeMap.size} hardware-identity param${unsafeMap.size !== 1 ? 's' : ''} that can crash the simulator.`
-                  : `${unsafeMap.size} param${unsafeMap.size !== 1 ? 's' : ''} below are flagged as hardware-only and may crash SITL on reboot.`}
+                  ? t('parameters:parameterCompareModal.sitlSafeHides', { count: unsafeMap.size })
+                  : t('parameters:parameterCompareModal.sitlUnsafeFlagged', { count: unsafeMap.size })}
               </div>
               <button
                 onClick={() => setSafeMode(v => !v)}
                 className="mt-1 text-blue-400 hover:text-blue-300 underline transition-colors"
               >
-                {safeMode ? 'Show all (override)' : 'Re-enable SITL-safe mode'}
+                {safeMode ? t('parameters:parameterCompareModal.showAllOverride') : t('parameters:parameterCompareModal.reenableSitlSafe')}
               </button>
             </div>
           </div>
@@ -191,11 +197,11 @@ function CompareView({
       {diffs.length > 0 && (
         <>
           <div className="px-6 py-2 border-b border-subtle flex items-center gap-3">
-            <button onClick={onSelectAll} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Select all</button>
+            <button onClick={onSelectAll} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">{t('common:selectAll')}</button>
             <span className="text-content-tertiary">|</span>
-            <button onClick={onDeselectAll} className="text-xs text-content-secondary hover:text-content transition-colors">Deselect all</button>
+            <button onClick={onDeselectAll} className="text-xs text-content-secondary hover:text-content transition-colors">{t('parameters:parameterCompareModal.deselectAll')}</button>
             <span className="ml-auto text-xs text-content-secondary">
-              {selectedCount} of {visibleDiffs.length} selected{hiddenUnsafeCount > 0 ? ` (${hiddenUnsafeCount} hw-only hidden)` : ''}
+              {t('parameters:parameterCompareModal.selectedCount', { selected: selectedCount, total: visibleDiffs.length })}{hiddenUnsafeCount > 0 ? t('parameters:parameterCompareModal.hwOnlyHidden', { count: hiddenUnsafeCount }) : ''}
             </span>
           </div>
 
@@ -204,11 +210,11 @@ function CompareView({
               <thead>
                 <tr className="text-left text-xs text-content-secondary uppercase">
                   <th className="pb-2 w-8"></th>
-                  <th className="pb-2">Parameter</th>
-                  <th className="pb-2 text-right">Current</th>
+                  <th className="pb-2">{t('common:parameter')}</th>
+                  <th className="pb-2 text-right">{t('common:current')}</th>
                   <th className="pb-2 text-center w-8"></th>
-                  <th className="pb-2">Target</th>
-                  <th className="pb-2 pl-3">Reason</th>
+                  <th className="pb-2">{t('parameters:parameterCompareModal.colTarget')}</th>
+                  <th className="pb-2 pl-3">{t('parameters:parameterCompareModal.colReason')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle">
@@ -236,9 +242,9 @@ function CompareView({
                         {unsafeReason && (
                           <span
                             className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide font-medium bg-red-500/15 text-red-400 border border-red-500/30"
-                            title={`SITL-unsafe: ${unsafeReason}. Applying may crash the simulator.`}
+                            title={t('parameters:parameterCompareModal.sitlUnsafeTip', { reason: unsafeReason })}
                           >
-                            hw-only
+                            {t('parameters:parameterCompareModal.hwOnly')}
                           </span>
                         )}
                       </td>
@@ -264,7 +270,7 @@ function CompareView({
       {isApplying && progress && (
         <div className="px-6 py-2 border-t border-subtle">
           <div className="flex items-center justify-between text-xs text-content-secondary mb-1">
-            <span>Writing parameters…</span>
+            <span>{t('parameters:parameterCompareModal.writingParameters')}</span>
             <span>{progress.applied} / {progress.total}</span>
           </div>
           <div className="h-1.5 bg-surface-inset rounded-full overflow-hidden">
@@ -282,7 +288,7 @@ function CompareView({
           disabled={isApplying}
           className="px-4 py-2 text-sm text-content-secondary hover:text-content disabled:text-content-tertiary transition-colors"
         >
-          {diffs.length === 0 ? 'Close' : 'Cancel'}
+          {diffs.length === 0 ? t('common:close') : t('common:cancel')}
         </button>
         {diffs.length > 0 && (
           <button
@@ -290,7 +296,7 @@ function CompareView({
             disabled={isApplying || selectedCount === 0}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-raised text-white disabled:text-content-tertiary rounded-lg text-sm font-medium transition-colors"
           >
-            {isApplying ? 'Writing…' : `Apply ${selectedCount} param${selectedCount !== 1 ? 's' : ''}`}
+            {isApplying ? t('parameters:parameterCompareModal.writing') : t('parameters:parameterCompareModal.applyCount', { count: selectedCount })}
           </button>
         )}
       </div>
@@ -305,23 +311,24 @@ interface SummaryViewProps {
 }
 
 function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="px-6 py-4 border-b border-subtle">
-        <h3 className="text-lg font-semibold text-content">Apply results</h3>
+        <h3 className="text-lg font-semibold text-content">{t('parameters:parameterCompareModal.applyResults')}</h3>
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4">
         <div className="flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
           <span className="text-sm text-emerald-300">
-            {result.applied} parameter{result.applied !== 1 ? 's' : ''} applied
+            {t('parameters:parameterCompareModal.appliedCount', { count: result.applied })}
           </span>
         </div>
         {result.failed > 0 && (
           <div className="flex items-center gap-3">
             <XCircle className="w-5 h-5 text-red-400 shrink-0" />
             <span className="text-sm text-red-300">
-              {result.failed} parameter{result.failed !== 1 ? 's' : ''} failed
+              {t('parameters:parameterCompareModal.failedCount', { count: result.failed })}
             </span>
           </div>
         )}
@@ -333,19 +340,21 @@ function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="text-sm text-amber-300">
-                Not saved permanently yet
+                {t('parameters:parameterCompareModal.notSavedYet')}
               </span>
               <p className="text-xs text-content-secondary mt-1">
-                The vehicle is using {result.applied === 1 ? 'this value' : 'these values'} now, but
-                {' '}{result.applied === 1 ? 'it' : 'they'} will revert on the next reboot until you
-                press <span className="text-content font-medium">Save All Changes</span> on the
-                Parameters screen.
+                <Trans
+                  i18nKey="parameters:parameterCompareModal.notSavedBody"
+                  count={result.applied}
+                  values={{ count: result.applied }}
+                  components={{ b: <span className="text-content font-medium" /> }}
+                />
               </p>
               <button
                 onClick={onGoToParameters}
                 className="mt-2 text-xs text-amber-300 underline hover:text-amber-200"
               >
-                Go to Parameters to save
+                {t('parameters:parameterCompareModal.goToParametersSave')}
               </button>
             </div>
           </div>
@@ -355,7 +364,7 @@ function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="text-sm text-amber-300">
-                {result.rebootRequired.length} require reboot to take effect:
+                {t('parameters:parameterCompareModal.rebootRequired', { count: result.rebootRequired.length })}
               </span>
               <p className="font-mono text-xs text-amber-400/70 mt-1 break-words">
                 {result.rebootRequired.join(', ')}
@@ -364,7 +373,7 @@ function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
                 onClick={onGoToParameters}
                 className="mt-2 text-xs text-amber-300 underline hover:text-amber-200"
               >
-                Go to Parameters tab to flash + reboot
+                {t('parameters:parameterCompareModal.goToParametersFlash')}
               </button>
             </div>
           </div>
@@ -374,13 +383,13 @@ function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
             <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
             <div>
               <span className="text-sm text-blue-300">
-                {result.skippedParams.length} not found on this firmware:
+                {t('parameters:parameterCompareModal.notFound', { count: result.skippedParams.length })}
               </span>
               <p className="font-mono text-xs text-blue-400/70 mt-1 break-words">
                 {result.skippedParams.map(p => p.id).join(', ')}
               </p>
               <p className="text-xs text-content-secondary mt-1">
-                These may become available after reboot
+                {t('parameters:parameterCompareModal.mayBecomeAvailable')}
               </p>
             </div>
           </div>
@@ -391,7 +400,7 @@ function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
           onClick={onClose}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
         >
-          Done
+          {t('common:done')}
         </button>
       </div>
     </>

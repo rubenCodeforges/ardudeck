@@ -8,6 +8,7 @@
 import React from 'react';
 import { MoveHorizontal, MoveVertical, ArrowUp, RotateCw, ToggleRight, Radio } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface TransmitterVisualizerProps {
   rcChannels: number[];
@@ -16,15 +17,15 @@ interface TransmitterVisualizerProps {
 }
 
 // Channel names in logical RPYT order (after rxMap reordering)
-const CHANNEL_INFO: { name: string; Icon: LucideIcon; description: string }[] = [
-  { name: 'Roll', Icon: MoveHorizontal, description: 'Left stick horizontal' },
-  { name: 'Pitch', Icon: MoveVertical, description: 'Left stick vertical' },
-  { name: 'Yaw', Icon: RotateCw, description: 'Right stick horizontal' },
-  { name: 'Throttle', Icon: ArrowUp, description: 'Right stick vertical' },
-  { name: 'AUX 1', Icon: ToggleRight, description: 'Switch (usually ARM)' },
-  { name: 'AUX 2', Icon: ToggleRight, description: 'Switch or 3-pos' },
-  { name: 'AUX 3', Icon: ToggleRight, description: 'Additional switch' },
-  { name: 'AUX 4', Icon: ToggleRight, description: 'Additional switch' },
+const CHANNEL_INFO: { name: string; nameKey?: string; Icon: LucideIcon; descriptionKey: string }[] = [
+  { name: 'Roll', nameKey: 'common:roll', Icon: MoveHorizontal, descriptionKey: 'modes:transmitterVisualizer.leftHorizontal' },
+  { name: 'Pitch', nameKey: 'common:pitch', Icon: MoveVertical, descriptionKey: 'modes:transmitterVisualizer.leftVertical' },
+  { name: 'Yaw', nameKey: 'common:yaw', Icon: RotateCw, descriptionKey: 'modes:transmitterVisualizer.rightHorizontal' },
+  { name: 'Throttle', nameKey: 'common:throttle', Icon: ArrowUp, descriptionKey: 'modes:transmitterVisualizer.rightVertical' },
+  { name: 'AUX 1', Icon: ToggleRight, descriptionKey: 'modes:transmitterVisualizer.aux1' },
+  { name: 'AUX 2', Icon: ToggleRight, descriptionKey: 'modes:transmitterVisualizer.aux2' },
+  { name: 'AUX 3', Icon: ToggleRight, descriptionKey: 'modes:transmitterVisualizer.additionalSwitch' },
+  { name: 'AUX 4', Icon: ToggleRight, descriptionKey: 'modes:transmitterVisualizer.additionalSwitch' },
 ];
 
 export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
@@ -32,6 +33,7 @@ export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
   channelsDetected = [],
   compact = false,
 }) => {
+  const { t } = useTranslation();
   // Calculate how many channels to show (at least 8, or all if more)
   const channelCount = Math.max(8, Math.min(rcChannels.length, 16));
 
@@ -41,8 +43,9 @@ export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
         const value = rcChannels[index] || 1500;
         const info = CHANNEL_INFO[index] || {
           name: `CH ${index + 1}`,
+          nameKey: undefined as string | undefined,
           Icon: Radio,
-          description: '',
+          descriptionKey: '',
         };
         const IconComponent = info.Icon;
         const isDetected = channelsDetected[index] || false;
@@ -72,7 +75,7 @@ export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
                       isDetected ? 'text-green-400' : 'text-content'
                     }`}
                   >
-                    {info.name}
+                    {info.nameKey ? t(info.nameKey) : info.name}
                   </span>
                 </div>
               </div>
@@ -140,9 +143,9 @@ export const TransmitterVisualizer: React.FC<TransmitterVisualizerProps> = ({
             </div>
 
             {/* Description (non-compact only) */}
-            {!compact && info.description && (
+            {!compact && info.descriptionKey && (
               <div className="ml-20 text-xs text-content-tertiary mt-0.5">
-                {info.description}
+                {t(info.descriptionKey)}
               </div>
             )}
           </div>

@@ -14,6 +14,7 @@
  * popover: individual opacity override and, where the registry provides a
  * NumericComponent, an analog/numeric display switch.
  */
+import { useTranslation } from 'react-i18next';
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useDraggableOverlay } from '../useDraggableOverlay';
@@ -26,7 +27,7 @@ import {
   INSTRUMENT_OPACITY_MIN,
   type InstrumentDisplayMode,
 } from '../../../stores/map-instruments-store';
-import { MAP_INSTRUMENTS, type MapInstrumentDef } from './registry';
+import { MAP_INSTRUMENTS, instrumentLabel, type MapInstrumentDef } from './registry';
 import { DockedGroup } from './DockedGroup';
 import { variantGlyph } from './variant-glyphs';
 import { useDockPreviewStore, measureDockCandidate, commitDock, type MeasuredCandidate } from './dock-tracking';
@@ -52,6 +53,7 @@ function InstrumentConfigPopover({
   anchorRect: DOMRect;
   onClose: () => void;
 }): JSX.Element {
+  const { t } = useTranslation();
   const globalOpacity = useMapInstrumentsStore((s) => s.opacity);
   const ownOpacity = useMapInstrumentsStore((s) => s.instrumentOpacity[instrument.id]);
   const setInstrumentOpacity = useMapInstrumentsStore((s) => s.setInstrumentOpacity);
@@ -68,9 +70,9 @@ function InstrumentConfigPopover({
   // Analog (the default Component) plus the numeric card and any extra
   // variants the registry offers. Only a single option means no picker.
   const displayOptions: Array<{ id: string; label: string }> = [
-    { id: 'analog', label: 'Analog' },
-    ...(instrument.NumericComponent ? [{ id: 'numeric', label: 'Numeric' }] : []),
-    ...(instrument.variants ?? []).map((v) => ({ id: v.id, label: v.label })),
+    { id: 'analog', label: t('map:instrumentDisplay.analog') },
+    ...(instrument.NumericComponent ? [{ id: 'numeric', label: t('map:instrumentDisplay.numeric') }] : []),
+    ...(instrument.variants ?? []).map((v) => ({ id: v.id, label: t(v.labelKey) })),
   ];
 
   return createPortal(
@@ -82,12 +84,12 @@ function InstrumentConfigPopover({
         style={{ top, left, width: CONFIG_WIDTH }}
       >
         <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-content-tertiary border-b border-subtle">
-          {instrument.label}
+          {instrumentLabel(instrument, t)}
         </div>
         <div className="p-2 space-y-2.5">
           {displayOptions.length > 1 && (
             <div>
-              <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1.5">Display</div>
+              <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1.5">{t('map:instrumentsLayer.display')}</div>
               <div className="grid grid-cols-3 gap-1.5">
                 {displayOptions.map((opt) => {
                   const active = mode === opt.id;
@@ -96,7 +98,7 @@ function InstrumentConfigPopover({
                       key={opt.id}
                       type="button"
                       onClick={() => setDisplayMode(instrument.id, opt.id as InstrumentDisplayMode)}
-                      data-tip={`${opt.label} display`}
+                      data-tip={t('map:instrumentsLayer.displayTip', { label: opt.label })}
                       className={
                         'flex flex-col items-center justify-center gap-1 py-1.5 rounded-md border transition-colors ' +
                         (active
@@ -113,7 +115,7 @@ function InstrumentConfigPopover({
             </div>
           )}
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1">Opacity</div>
+            <div className="text-[10px] uppercase tracking-wide text-content-tertiary mb-1">{t('map:instrumentsLayer.opacity')}</div>
             <div className="flex items-center gap-2">
               <input
                 type="range"
@@ -131,7 +133,7 @@ function InstrumentConfigPopover({
                 onClick={() => setInstrumentOpacity(instrument.id, null)}
                 className="mt-1 text-[11px] text-blue-500 hover:text-blue-400 transition-colors"
               >
-                Use global opacity
+                {t('map:instrumentsLayer.useGlobalOpacity')}
               </button>
             )}
           </div>
@@ -143,7 +145,7 @@ function InstrumentConfigPopover({
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-subtle text-xs text-red-500 hover:bg-red-500/10 hover:border-red-500/40 transition-colors"
           >
             <EyeOffIcon />
-            Hide instrument
+            {t('map:instrumentsLayer.hideInstrument')}
           </button>
         </div>
       </div>
@@ -191,6 +193,7 @@ function DockPreview(): JSX.Element | null {
 }
 
 function InstrumentSlot({ instrument }: { instrument: MapInstrumentDef }): JSX.Element {
+  const { t } = useTranslation();
   const drag = useDraggableOverlay('instrument:' + instrument.id);
   const storedScale = useMapInstrumentsStore((s) => s.scale[instrument.id] ?? 1);
   const setScale = useMapInstrumentsStore((s) => s.setScale);
@@ -326,7 +329,7 @@ function InstrumentSlot({ instrument }: { instrument: MapInstrumentDef }): JSX.E
       <button
         type="button"
         onClick={() => setConfigOpen(true)}
-        data-tip="Instrument settings"
+        data-tip={t('map:instrumentsLayer.settingsTip')}
         className={
           `absolute ${roundInstrument ? 'top-0 right-0' : '-top-1.5 -right-1.5'} p-1 rounded-full ` +
           'bg-surface shadow-lg text-content-secondary hover:text-content hover:bg-surface-raised ' +
@@ -345,7 +348,7 @@ function InstrumentSlot({ instrument }: { instrument: MapInstrumentDef }): JSX.E
       <button
         type="button"
         onClick={() => toggle(instrument.id)}
-        data-tip="Hide instrument"
+        data-tip={t('map:instrumentsLayer.hideInstrument')}
         className={
           `absolute ${roundInstrument ? 'top-0 left-0' : '-top-1.5 -left-1.5'} p-1 rounded-full ` +
           'bg-surface shadow-lg text-content-secondary hover:text-red-500 hover:bg-surface-raised ' +

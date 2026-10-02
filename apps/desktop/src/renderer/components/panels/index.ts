@@ -27,29 +27,29 @@ export { SitlFailureDockPanel } from './SitlFailureDockPanel';
 // Panel registry for dockview
 export const PANEL_COMPONENTS = {
   // Telemetry panels
-  attitude: { component: 'AttitudePanel', title: 'Attitude' },
-  altitude: { component: 'AltitudePanel', title: 'Altitude' },
-  speed: { component: 'SpeedPanel', title: 'Speed' },
-  battery: { component: 'BatteryPanel', title: 'Battery' },
-  gps: { component: 'GpsPanel', title: 'GPS' },
-  position: { component: 'PositionPanel', title: 'Position' },
-  velocity: { component: 'VelocityPanel', title: 'Velocity' },
-  flightMode: { component: 'FlightModePanel', title: 'Flight Mode' },
-  flightControl: { component: 'FlightControlPanel', title: 'Flight Control' },
-  map: { component: 'MapPanel', title: 'Map' }, // Unified map with mission overlays
-  camera: { component: 'CameraPanel', title: 'Vision' },
-  messages: { component: 'MessagesPanel', title: 'Messages' },
-  safetyMonitor: { component: 'SafetyMonitorPanel', title: 'Safety Monitor' },
-  joystick: { component: 'JoystickPanel', title: 'Joystick' },
-  rtk: { component: 'NtripPanel', title: 'RTK / NTRIP' },
-  preflightCheck: { component: 'PreflightCheckCard', title: 'Pre-flight Checks' },
+  attitude: { component: 'AttitudePanel', title: 'Attitude', titleKey: 'panels:registry.attitude' }, // i18n-exempt
+  altitude: { component: 'AltitudePanel', title: 'Altitude', titleKey: 'panels:registry.altitude' }, // i18n-exempt
+  speed: { component: 'SpeedPanel', title: 'Speed', titleKey: 'panels:registry.speed' }, // i18n-exempt
+  battery: { component: 'BatteryPanel', title: 'Battery', titleKey: 'panels:registry.battery' }, // i18n-exempt
+  gps: { component: 'GpsPanel', title: 'GPS', titleKey: 'panels:registry.gps' }, // i18n-exempt
+  position: { component: 'PositionPanel', title: 'Position', titleKey: 'panels:registry.position' }, // i18n-exempt
+  velocity: { component: 'VelocityPanel', title: 'Velocity', titleKey: 'panels:registry.velocity' }, // i18n-exempt
+  flightMode: { component: 'FlightModePanel', title: 'Flight Mode', titleKey: 'panels:registry.flightMode' }, // i18n-exempt
+  flightControl: { component: 'FlightControlPanel', title: 'Flight Control', titleKey: 'panels:registry.flightControl' }, // i18n-exempt
+  map: { component: 'MapPanel', title: 'Map', titleKey: 'panels:registry.map' }, // i18n-exempt (English title kept for existing consumers); Unified map with mission overlays
+  camera: { component: 'CameraPanel', title: 'Vision', titleKey: 'panels:registry.camera' }, // i18n-exempt
+  messages: { component: 'MessagesPanel', title: 'Messages', titleKey: 'panels:registry.messages' }, // i18n-exempt
+  safetyMonitor: { component: 'SafetyMonitorPanel', title: 'Safety Monitor', titleKey: 'panels:registry.safetyMonitor' }, // i18n-exempt
+  joystick: { component: 'JoystickPanel', title: 'Joystick', titleKey: 'panels:registry.joystick' }, // i18n-exempt
+  rtk: { component: 'NtripPanel', title: 'RTK / NTRIP', titleKey: 'panels:registry.rtk' }, // i18n-exempt
+  preflightCheck: { component: 'PreflightCheckCard', title: 'Pre-flight Checks', titleKey: 'panels:registry.preflightCheck' }, // i18n-exempt
   // Mission panels (for monitoring during flight)
   // Note: missionMap removed - mission data now integrated into unified MapPanel
-  waypoints: { component: 'WaypointTablePanel', title: 'Waypoints' },
-  altitudeProfile: { component: 'AltitudeProfilePanel', title: 'Altitude Profile' },
+  waypoints: { component: 'WaypointTablePanel', title: 'Waypoints', titleKey: 'panels:registry.waypoints' }, // i18n-exempt
+  altitudeProfile: { component: 'AltitudeProfilePanel', title: 'Altitude Profile', titleKey: 'panels:registry.altitudeProfile' }, // i18n-exempt
   // SITL simulation panels (only shown when SITL is running)
-  sitlEnvironment: { component: 'SitlEnvironmentDockPanel', title: 'SITL Environment' },
-  sitlFailures: { component: 'SitlFailureDockPanel', title: 'SITL Failures' },
+  sitlEnvironment: { component: 'SitlEnvironmentDockPanel', title: 'SITL Environment', titleKey: 'panels:registry.sitlEnvironment' }, // i18n-exempt
+  sitlFailures: { component: 'SitlFailureDockPanel', title: 'SITL Failures', titleKey: 'panels:registry.sitlFailures' }, // i18n-exempt
 } as const;
 
 export type PanelId = keyof typeof PANEL_COMPONENTS;

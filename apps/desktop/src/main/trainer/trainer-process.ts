@@ -8,6 +8,7 @@ import type {
   TrainerBakeProgress,
   TrainerCatalogue,
 } from '../../shared/trainer-types';
+import { t } from '../../shared/i18n/index.js';
 
 export type TrainerCatalogueResult =
   | { ok: true; catalogue: TrainerCatalogue }
@@ -23,7 +24,7 @@ export type TrainerCatalogueResult =
  */
 export function parseCatalogue(raw: unknown): TrainerCatalogueResult {
   if (typeof raw !== 'object' || raw === null) {
-    return { ok: false, error: 'The Trainer sent something that is not a catalogue.' };
+    return { ok: false, error: t('main:trainer.notCatalogue') };
   }
   const c = raw as Record<string, unknown>;
   const missing = (['regions', 'cameras', 'weather', 'times'] as const).filter(
@@ -172,7 +173,7 @@ export async function queryTrainer(target: TrainerTarget): Promise<TrainerCatalo
       resolve(r);
     };
     const timer = setTimeout(
-      () => done({ ok: false, error: 'The Trainer did not answer in time.' }),
+      () => done({ ok: false, error: t('main:trainer.noAnswer') }),
       QUERY_TIMEOUT_MS,
     );
 
@@ -205,7 +206,7 @@ export async function queryTrainer(target: TrainerTarget): Promise<TrainerCatalo
     });
     child.on('error', (err) => done({ ok: false, error: err.message }));
     child.on('exit', (code) =>
-      done({ ok: false, error: `The Trainer exited (${code}) without answering.` }),
+      done({ ok: false, error: t('main:trainer.exitedWithoutAnswer', { code }) }),
     );
   });
 }
@@ -241,7 +242,7 @@ function runMarked<T>(
       child.kill();
       resolve(value);
     };
-    const timer = setTimeout(() => done(onFail('The Trainer did not answer in time.')), timeoutMs);
+    const timer = setTimeout(() => done(onFail(t('main:trainer.noAnswer'))), timeoutMs);
 
     let out = '';
     child.stdout?.on('data', (chunk: Buffer) => {
@@ -257,7 +258,7 @@ function runMarked<T>(
       }
     });
     child.on('error', (err) => done(onFail(err.message)));
-    child.on('exit', (code) => done(onFail(`The Trainer exited (${code}) without answering.`)));
+    child.on('exit', (code) => done(onFail(t('main:trainer.exitedWithoutAnswer', { code }))));
   });
 }
 
@@ -394,7 +395,7 @@ export async function launchTrainer(
     };
 
     const timer = setTimeout(
-      () => done({ ok: false, error: 'The Trainer did not report back in time.' }),
+      () => done({ ok: false, error: t('main:trainer.noReport') }),
       RESULT_TIMEOUT_MS,
     );
 
@@ -419,7 +420,7 @@ export async function launchTrainer(
           } catch {
             // A marker we cannot parse is a Trainer newer than this build. Not fatal: it has
             // already started or failed on its own, and guessing which would be worse.
-            done({ ok: false, error: 'The Trainer answered in a format this build cannot read.' });
+            done({ ok: false, error: t('main:trainer.unreadableAnswer') });
           }
         }
       });

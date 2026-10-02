@@ -29,6 +29,7 @@ export {
 export * from './messages/info.js';
 export * from './messages/telemetry.js';
 export * from './messages/config.js';
+export * from './messages/inav-nav-gps.js';
 
 // =============================================================================
 // Modes

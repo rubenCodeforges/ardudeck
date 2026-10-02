@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMissionStore } from '../../stores/mission-store';
@@ -104,12 +105,12 @@ interface ScreenModel {
   bw?: boolean;
 }
 const SCREEN_MODELS: ScreenModel[] = [
-  { variant: 'c480x320', label: 'TX15 (480x320)', w: 480, h: 320 },
-  { variant: 'c480x272', label: 'TX16S / T16 / T18 / X10 (480x272)', w: 480, h: 272 },
-  { variant: 'c800x480', label: 'TX16S mkIII (800x480)', w: 800, h: 480 },
-  { variant: 'c320x480', label: 'NV14 / EL18 (320x480 portrait)', w: 320, h: 480 },
-  { variant: 'bw128x64', label: 'Boxer / Zorro / TX12 / Pocket (128x64 B&W)', w: 128, h: 64, bw: true },
-  { variant: 'bw212x64', label: 'Taranis X9D (212x64 B&W)', w: 212, h: 64, bw: true },
+  { variant: 'c480x320', label: 'TX15 (480x320)', w: 480, h: 320 }, // i18n-exempt
+  { variant: 'c480x272', label: 'TX16S / T16 / T18 / X10 (480x272)', w: 480, h: 272 }, // i18n-exempt
+  { variant: 'c800x480', label: 'TX16S mkIII (800x480)', w: 800, h: 480 }, // i18n-exempt
+  { variant: 'c320x480', label: 'NV14 / EL18 (320x480 portrait)', w: 320, h: 480 }, // i18n-exempt
+  { variant: 'bw128x64', label: 'Boxer / Zorro / TX12 / Pocket (128x64 B&W)', w: 128, h: 64, bw: true }, // i18n-exempt
+  { variant: 'bw212x64', label: 'Taranis X9D (212x64 B&W)', w: 212, h: 64, bw: true }, // i18n-exempt
 ];
 
 // Active screen geometry; RadioHudView reassigns from the selected radio
@@ -181,24 +182,24 @@ export interface TileDef {
 // Mirror of the Lua DEFAULT_LAYOUT (the @480x320 grid = classic 5 tiles).
 const DEFAULT_LAYOUT: TileDef[] = gridLayout(REF_SCREEN);
 
-const TILE_META: Record<string, { label: string; minW: number; minH: number; variants?: string[] }> = {
-  batt: { label: 'Battery', minW: 120, minH: 56, variants: ['default', 'icon'] },
-  home: { label: 'Home', minW: 100, minH: 56 },
-  alt: { label: 'Alt / Vspd', minW: 100, minH: 56 },
-  gps: { label: 'GPS', minW: 100, minH: 56 },
-  att: { label: 'Attitude', minW: 100, minH: 80, variants: ['ball', 'line', 'bars'] },
-  compass: { label: 'Compass', minW: 100, minH: 100 },
-  spd: { label: 'Speed', minW: 100, minH: 56 },
-  timer: { label: 'Flight Timer', minW: 100, minH: 56 },
-  wind: { label: 'Wind', minW: 110, minH: 56 },
-  link: { label: 'Signal', minW: 110, minH: 56 },
-  txbat: { label: 'TX Battery', minW: 110, minH: 56 },
-  thr: { label: 'Throttle', minW: 90, minH: 56 },
-  imu: { label: 'IMU Temp', minW: 90, minH: 56 },
-  rng: { label: 'Rangefinder', minW: 90, minH: 56 },
-  pos: { label: 'Position', minW: 140, minH: 64 },
-  map: { label: 'Map', minW: 140, minH: 100 },
-  wp: { label: 'Mission WP', minW: 120, minH: 56 },
+const TILE_META: Record<string, { labelKey: string; minW: number; minH: number; variants?: string[] }> = {
+  batt: { labelKey: 'common:battery', minW: 120, minH: 56, variants: ['default', 'icon'] },
+  home: { labelKey: 'common:home', minW: 100, minH: 56 },
+  alt: { labelKey: 'radio-hud:tiles.alt', minW: 100, minH: 56 },
+  gps: { labelKey: 'radio-hud:tiles.gps', minW: 100, minH: 56 },
+  att: { labelKey: 'common:attitude', minW: 100, minH: 80, variants: ['ball', 'line', 'bars'] },
+  compass: { labelKey: 'common:compass', minW: 100, minH: 100 },
+  spd: { labelKey: 'common:speed', minW: 100, minH: 56 },
+  timer: { labelKey: 'radio-hud:tiles.timer', minW: 100, minH: 56 },
+  wind: { labelKey: 'common:wind', minW: 110, minH: 56 },
+  link: { labelKey: 'common:signal', minW: 110, minH: 56 },
+  txbat: { labelKey: 'radio-hud:tiles.txbat', minW: 110, minH: 56 },
+  thr: { labelKey: 'common:throttle', minW: 90, minH: 56 },
+  imu: { labelKey: 'radio-hud:tiles.imu', minW: 90, minH: 56 },
+  rng: { labelKey: 'common:rangefinder', minW: 90, minH: 56 },
+  pos: { labelKey: 'common:position', minW: 140, minH: 64 },
+  map: { labelKey: 'common:map', minW: 140, minH: 100 },
+  wp: { labelKey: 'radio-hud:tiles.wp', minW: 120, minH: 56 },
 };
 
 // Sky/ground per the app's AttitudeIndicator (AttitudePanel.tsx gradients);
@@ -208,7 +209,7 @@ const GROUND = '#92400e';
 
 // Prebuilt layouts for common setups. All 8px-grid aligned.
 const LAYOUT_PRESETS: Record<string, TileDef[]> = {
-  'Classic copter': DEFAULT_LAYOUT,
+  'Classic copter': DEFAULT_LAYOUT, // i18n-exempt
   'Navigator': [
     { id: 'map', x: 8, y: 48, w: 296, h: 200, variant: 'default' },
     { id: 'compass', x: 312, y: 48, w: 144, h: 96, variant: 'default' },
@@ -229,22 +230,22 @@ const LAYOUT_PRESETS: Record<string, TileDef[]> = {
     { id: 'thr', x: 160, y: 152, w: 144, h: 96, variant: 'default' },
     { id: 'timer', x: 312, y: 152, w: 144, h: 96, variant: 'default' },
   ],
-  'Big picture': [
+  'Big picture': [ // i18n-exempt
     { id: 'att', x: 8, y: 48, w: 224, h: 200, variant: 'ball' },
     { id: 'map', x: 240, y: 48, w: 216, h: 200, variant: 'default' },
   ],
-  'Rangefinder work': [
+  'Rangefinder work': [ // i18n-exempt
     { id: 'rng', x: 8, y: 48, w: 144, h: 200, variant: 'default' },
     { id: 'alt', x: 160, y: 48, w: 144, h: 96, variant: 'default' },
     { id: 'batt', x: 160, y: 152, w: 144, h: 96, variant: 'default' },
     { id: 'att', x: 312, y: 48, w: 144, h: 200, variant: 'bars' },
   ],
-  'Mission flight': [
+  'Mission flight': [ // i18n-exempt
     { id: 'map', x: 8, y: 48, w: 296, h: 200, variant: 'default' },
     { id: 'wp', x: 312, y: 48, w: 144, h: 96, variant: 'default' },
     { id: 'home', x: 312, y: 152, w: 144, h: 96, variant: 'default' },
   ],
-  'Long range': [
+  'Long range': [ // i18n-exempt
     { id: 'link', x: 8, y: 48, w: 144, h: 96, variant: 'default' },
     { id: 'home', x: 8, y: 152, w: 144, h: 96, variant: 'default' },
     { id: 'map', x: 160, y: 48, w: 296, h: 200, variant: 'default' },
@@ -261,11 +262,24 @@ const LAYOUT_PRESETS: Record<string, TileDef[]> = {
     { id: 'link', x: 312, y: 48, w: 144, h: 96, variant: 'default' },
     { id: 'batt', x: 312, y: 152, w: 144, h: 96, variant: 'default' },
   ],
-  'Minimal glance': [
+  'Minimal glance': [ // i18n-exempt
     { id: 'batt', x: 8, y: 48, w: 224, h: 200, variant: 'icon' },
     { id: 'home', x: 240, y: 48, w: 216, h: 96, variant: 'default' },
     { id: 'timer', x: 240, y: 152, w: 216, h: 96, variant: 'default' },
   ],
+};
+const PRESET_LABEL_KEYS: Record<string, string> = {
+  'Classic copter': 'radio-hud:presets.classicCopter', // i18n-exempt
+  'Navigator': 'radio-hud:presets.navigator',
+  'Plane': 'radio-hud:presets.plane',
+  'Systems': 'radio-hud:presets.systems',
+  'Big picture': 'radio-hud:presets.bigPicture', // i18n-exempt
+  'Rangefinder work': 'radio-hud:presets.rangefinderWork', // i18n-exempt
+  'Mission flight': 'radio-hud:presets.missionFlight', // i18n-exempt
+  'Long range': 'radio-hud:presets.longRange', // i18n-exempt
+  'Rover': 'radio-hud:presets.rover',
+  'FPV': 'radio-hud:presets.fpv',
+  'Minimal glance': 'radio-hud:presets.minimalGlance', // i18n-exempt
 };
 const MAX_PAGES = 4;
 
@@ -346,9 +360,9 @@ const SAMPLE: PreviewData = {
   windMs: 3.4, windDirDeg: 62, flightSecs: 192,
   wpNum: 3, wpDist: 184, wpBearing: 276,
   messages: [
-    { sev: 6, text: 'EKF3 IMU0 is using GPS' },
-    { sev: 4, text: 'Terrain data missing' },
-    { sev: 6, text: 'Flight plan received' },
+    { sev: 6, text: 'EKF3 IMU0 is using GPS' }, // i18n-exempt
+    { sev: 4, text: 'Terrain data missing' }, // i18n-exempt
+    { sev: 6, text: 'Flight plan received' }, // i18n-exempt
   ],
 };
 
@@ -512,7 +526,7 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
       const frac = Math.max(-1, Math.min(1, data.vspd / 5));
       const fill = Math.abs(frac) * (barH / 2);
       return (
-        <TileFrame t={t} caption="ALT / VSPD">
+        <TileFrame t={t} caption="ALT / VSPD">{/* i18n-exempt */}
           <NumericBody t={t} value={`${Math.round(data.altM)}m`}
             sub={`${data.vspd >= 0 ? '+' : ''}${data.vspd.toFixed(1)}  ${data.hspd >= 10 ? Math.round(data.hspd) : data.hspd.toFixed(1)} spd`} />
           <div style={{ position: 'absolute', right: 8, top: 20, width: 8, height: barH, background: C.gaugeBezel, border: `1px solid ${C.gaugeEdge}` }}>
@@ -682,7 +696,7 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
       const mm = String(Math.floor(data.flightSecs / 60)).padStart(2, '0');
       const ss = String(data.flightSecs % 60).padStart(2, '0');
       return (
-        <TileFrame t={t} caption={groundVehicle ? 'RUN TIME' : 'FLIGHT TIME'}>
+        <TileFrame t={t} caption={groundVehicle ? 'RUN TIME' : 'FLIGHT TIME'}>{/* i18n-exempt */}
           <NumericBody
             t={t}
             value={`${mm}:${ss}`}
@@ -717,7 +731,7 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
         <TileFrame t={t} caption="SIGNAL">
           <NumericBody t={t} value={`${lq}%`} color={lqC} sub={(
             <>
-              <span style={{ color: C.success }}>-58 dBm</span>
+              <span style={{ color: C.success }}>-58 dBm</span>{/* i18n-exempt */}
               <span style={{ color: C.warnStrong, marginLeft: 10 }}>250mW</span>
             </>
           )} />
@@ -738,7 +752,7 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
       const v = 7.9;
       const pct = Math.max(0, Math.min(100, ((v - 6.6) / (8.4 - 6.6)) * 100));
       return (
-        <TileFrame t={t} caption="TX BATTERY">
+        <TileFrame t={t} caption="TX BATTERY">{/* i18n-exempt */}
           <NumericBody t={t} value={`${v.toFixed(1)}V`} sub={fitText(t.w - 36, stack(t.h, true).sf, [`${Math.round(pct)}% of 6.6-8.4V`, `${Math.round(pct)}%`])} />
           <div style={{ position: 'absolute', right: 8, top: 18, width: 6, height: t.h - 30, background: C.gaugeBezel, border: `1px solid ${C.gaugeEdge}` }}>
             <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${pct}%`, background: C.success }} />
@@ -761,7 +775,7 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
       const c = data.imuTemp >= 70 ? C.danger : data.imuTemp >= 60 ? C.warnStrong : C.success;
       const frac = Math.max(0, Math.min(1, (data.imuTemp - 20) / 60));
       return (
-        <TileFrame t={t} caption="IMU TEMP">
+        <TileFrame t={t} caption="IMU TEMP">{/* i18n-exempt */}
           <NumericBody t={t} value={`${data.imuTemp}C`} color={c} />
           <div style={{ position: 'absolute', right: 8, top: 18, width: 8, height: t.h - 30, background: C.gaugeBezel, border: `1px solid ${C.gaugeEdge}` }}>
             <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${frac * 100}%`, background: c }} />
@@ -790,7 +804,7 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
               <div style={{ position: 'absolute', left: 8, top: 40, fontSize: 15, color: C.text }}>{data.lon.toFixed(6)}</div>
             </>
           ) : (
-            <div style={{ position: 'absolute', left: 8, top: 20, fontSize: 15, color: C.text3 }}>no position</div>
+            <div style={{ position: 'absolute', left: 8, top: 20, fontSize: 15, color: C.text3 }}>no position{/* i18n-exempt */}</div>
           )}
         </TileFrame>
       );
@@ -825,8 +839,8 @@ function TileBody({ t, data, cfg }: { t: TileDef; data: PreviewData; cfg: HudCfg
               fill={C.danger}
             />
           </svg>
-          <div style={{ position: 'absolute', left: 6, bottom: 2, fontSize: 11, color: C.gaugeTick }}>1000m across</div>
-          <div style={{ position: 'absolute', right: 6, bottom: 2, fontSize: 10, color: C.text3 }}>satellite image on radio</div>
+          <div style={{ position: 'absolute', left: 6, bottom: 2, fontSize: 11, color: C.gaugeTick }}>1000m across</div>{/* i18n-exempt */}
+          <div style={{ position: 'absolute', right: 6, bottom: 2, fontSize: 10, color: C.text3 }}>satellite image on radio</div>{/* i18n-exempt */}
         </TileFrame>
       );
     }
@@ -917,15 +931,15 @@ function HudPreview({
 
   if (!editing && (mode === 'no-link' || mode === 'no-mavlink' || mode === 'streams-off')) {
     const banner = mode === 'no-link'
-      ? { state: 'NO LINK', hint: 'radio link down - check RX power / binding', color: C.danger }
+      ? { state: 'NO LINK', hint: 'radio link down - check RX power / binding', color: C.danger } // i18n-exempt
       : mode === 'no-mavlink'
-        ? { state: 'NO MAVLINK', hint: 'link up, no telemetry frames - ELRS MAVLink mode?', color: C.warn }
-        : { state: 'STREAMS OFF', hint: 'FC not streaming - connect ArduDeck to fix rates', color: C.warn };
+        ? { state: 'NO MAVLINK', hint: 'link up, no telemetry frames - ELRS MAVLink mode?', color: C.warn } // i18n-exempt
+        : { state: 'STREAMS OFF', hint: 'FC not streaming - connect ArduDeck to fix rates', color: C.warn }; // i18n-exempt
     return (
       <div style={{ position: 'relative', width: SCREEN_W, height: SCREEN_H, ...gridBg, fontFamily: 'Roboto, system-ui, sans-serif' }}>
         <div style={{ position: 'absolute', top: 84, width: '100%', textAlign: 'center', fontSize: 32, fontWeight: 700, color: banner.color }}>{banner.state}</div>
         <div style={{ position: 'absolute', top: 148, width: '100%', textAlign: 'center', fontSize: 15, color: C.text2 }}>{banner.hint}</div>
-        <div style={{ position: 'absolute', bottom: 22, width: '100%', textAlign: 'center', fontSize: 13, color: C.accent }}>ArduDeck</div>
+        <div style={{ position: 'absolute', bottom: 22, width: '100%', textAlign: 'center', fontSize: 13, color: C.accent }}>ArduDeck</div>{/* i18n-exempt */}
       </div>
     );
   }
@@ -969,7 +983,7 @@ function HudPreview({
           )}
           <span style={{ fontSize: 12, color: data.lq > 70 ? C.text2 : C.warn, marginRight: 4 }}>LQ {data.lq}</span>
           <img src={cfg.theme === 'light' ? logoLightUrl : logoUrl} style={{ width: 20, height: 20, borderRadius: cfg.theme === 'light' ? 4 : 0 }} alt="" />
-          {SCREEN_W >= 400 && <span style={{ fontSize: 12, color: C.text }}>ArduDeck</span>}
+          {SCREEN_W >= 400 && <span style={{ fontSize: 12, color: C.text }}>ArduDeck</span>}{/* i18n-exempt */}
         </div>
       </div>
 
@@ -1051,40 +1065,40 @@ interface BwBatt { cells: number; pct: number | null }
 
 /** Data-slot fields for the B&W script. KEEP IDS IN SYNC with FIELDS in
  *  SDBW/.../ArduDk.lua. */
-const BW_FIELDS: Record<string, { label: string; fmt: (d: PreviewData, b: BwBatt) => string }> = {
-  volt: { label: 'Voltage', fmt: (d) => `${d.voltV.toFixed(1)}V` },
-  cellv: { label: 'Cell voltage', fmt: (d, b) => (b.cells > 0 ? `${(d.voltV / b.cells).toFixed(2)}v/c` : '--v/c') },
-  pct: { label: 'Battery %', fmt: (_d, b) => (b.pct != null ? `${Math.round(b.pct)}%` : '--%') },
-  cellpct: { label: 'Cell V + %', fmt: (d, b) => `${b.cells > 0 ? `${(d.voltV / b.cells).toFixed(2)}v/c` : ''}${b.pct != null ? ` ${Math.round(b.pct)}%` : ''}` || '--' },
-  curr: { label: 'Current', fmt: (d) => `${d.currA.toFixed(1)}A` },
-  mah: { label: 'mAh used', fmt: (d) => `${d.mahUsed}mAh` },
-  alt: { label: 'Altitude', fmt: (d) => `A${Math.round(d.altM)}m` },
-  spd: { label: 'Ground speed', fmt: (d) => `S${d.hspd.toFixed(1)}` },
-  vspd: { label: 'Climb rate', fmt: (d) => `V${d.vspd >= 0 ? '+' : ''}${d.vspd.toFixed(1)}` },
-  sat: { label: 'Sats / fix', fmt: (d) => `${d.sats}s${d.fix >= 3 ? '3D' : d.fix === 2 ? '2D' : '--'}` },
-  home: { label: 'Home distance', fmt: (d) => `H${Math.round(d.homeDist)}m` },
-  wind: { label: 'Wind', fmt: (d) => `w${d.windMs.toFixed(1)}m` },
-  hdop: { label: 'HDOP', fmt: (d) => `hd${d.hdop.toFixed(1)}` },
-  rng: { label: 'Rangefinder', fmt: (d) => `r${d.range.toFixed(1)}m` },
-  imu: { label: 'IMU temp', fmt: (d) => `i${Math.round(d.imuTemp)}C` },
-  wp: { label: 'Waypoint', fmt: (d) => (d.wpNum > 0 ? `wp${d.wpNum} ${Math.round(d.wpDist)}m` : 'wp--') },
-  thr: { label: 'Throttle', fmt: (d) => `t${Math.round(d.throttle)}%` },
-  yaw: { label: 'Heading', fmt: (d) => String(Math.round(d.yaw) % 360).padStart(3, '0') },
-  none: { label: '(empty)', fmt: () => '' },
+const BW_FIELDS: Record<string, { labelKey: string; fmt: (d: PreviewData, b: BwBatt) => string }> = {
+  volt: { labelKey: 'common:voltage', fmt: (d) => `${d.voltV.toFixed(1)}V` },
+  cellv: { labelKey: 'radio-hud:bwFields.cellv', fmt: (d, b) => (b.cells > 0 ? `${(d.voltV / b.cells).toFixed(2)}v/c` : '--v/c') },
+  pct: { labelKey: 'radio-hud:bwFields.pct', fmt: (_d, b) => (b.pct != null ? `${Math.round(b.pct)}%` : '--%') },
+  cellpct: { labelKey: 'radio-hud:bwFields.cellpct', fmt: (d, b) => `${b.cells > 0 ? `${(d.voltV / b.cells).toFixed(2)}v/c` : ''}${b.pct != null ? ` ${Math.round(b.pct)}%` : ''}` || '--' },
+  curr: { labelKey: 'common:current', fmt: (d) => `${d.currA.toFixed(1)}A` },
+  mah: { labelKey: 'radio-hud:bwFields.mah', fmt: (d) => `${d.mahUsed}mAh` },
+  alt: { labelKey: 'common:altitude', fmt: (d) => `A${Math.round(d.altM)}m` },
+  spd: { labelKey: 'common:groundSpeed', fmt: (d) => `S${d.hspd.toFixed(1)}` },
+  vspd: { labelKey: 'radio-hud:bwFields.vspd', fmt: (d) => `V${d.vspd >= 0 ? '+' : ''}${d.vspd.toFixed(1)}` },
+  sat: { labelKey: 'radio-hud:bwFields.sat', fmt: (d) => `${d.sats}s${d.fix >= 3 ? '3D' : d.fix === 2 ? '2D' : '--'}` },
+  home: { labelKey: 'radio-hud:bwFields.home', fmt: (d) => `H${Math.round(d.homeDist)}m` },
+  wind: { labelKey: 'common:wind', fmt: (d) => `w${d.windMs.toFixed(1)}m` },
+  hdop: { labelKey: 'radio-hud:bwFields.hdop', fmt: (d) => `hd${d.hdop.toFixed(1)}` },
+  rng: { labelKey: 'common:rangefinder', fmt: (d) => `r${d.range.toFixed(1)}m` },
+  imu: { labelKey: 'radio-hud:bwFields.imu', fmt: (d) => `i${Math.round(d.imuTemp)}C` },
+  wp: { labelKey: 'common:waypoint', fmt: (d) => (d.wpNum > 0 ? `wp${d.wpNum} ${Math.round(d.wpDist)}m` : 'wp--') },
+  thr: { labelKey: 'common:throttle', fmt: (d) => `t${Math.round(d.throttle)}%` },
+  yaw: { labelKey: 'common:heading', fmt: (d) => String(Math.round(d.yaw) % 360).padStart(3, '0') },
+  none: { labelKey: 'radio-hud:bwFields.none', fmt: () => '' },
 };
 
 /** Large top-left readout choices (mirrors BIG in ArduDk.lua). */
-const BW_BIG: Record<string, { label: string; fmt: (d: PreviewData, b: BwBatt) => [string, string] }> = {
-  volt: { label: 'Voltage', fmt: (d) => [d.voltV.toFixed(1), 'V'] },
-  pct: { label: 'Battery %', fmt: (_d, b) => [b.pct != null ? String(Math.round(b.pct)) : '--', '%'] },
-  alt: { label: 'Altitude', fmt: (d) => [String(Math.round(d.altM)), 'm'] },
-  spd: { label: 'Ground speed', fmt: (d) => [d.hspd.toFixed(1), 'm/s'] },
+const BW_BIG: Record<string, { labelKey: string; fmt: (d: PreviewData, b: BwBatt) => [string, string] }> = {
+  volt: { labelKey: 'common:voltage', fmt: (d) => [d.voltV.toFixed(1), 'V'] },
+  pct: { labelKey: 'radio-hud:bwFields.pct', fmt: (_d, b) => [b.pct != null ? String(Math.round(b.pct)) : '--', '%'] },
+  alt: { labelKey: 'common:altitude', fmt: (d) => [String(Math.round(d.altM)), 'm'] },
+  spd: { labelKey: 'common:groundSpeed', fmt: (d) => [d.hspd.toFixed(1), 'm/s'] },
 };
 
 const BW_MONO = 'ui-monospace, SFMono-Regular, monospace';
 const BW_INK = '#242b1f';
 const BW_GLASS = '#c9d2bd';
-const BW_FIELD_OPTIONS = Object.entries(BW_FIELDS).map(([v, f]) => [v, f.label] as [string, string]);
+const BW_FIELD_OPTIONS = Object.entries(BW_FIELDS).map(([v, f]) => [v, f.labelKey] as [string, string]);
 
 /** Icon and colour per slot field, so the picker reads at a glance. */
 const BW_FIELD_ICONS: Record<string, { Icon: LucideIcon; color: string }> = {
@@ -1120,6 +1134,7 @@ function BwFieldPicker({ x, y, value, options, onPick, onClose }: {
   x: number; y: number; value: string;
   options: Array<[string, string]>; onPick: (v: string) => void; onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); onClose(); }} />
@@ -1129,7 +1144,8 @@ function BwFieldPicker({ x, y, value, options, onPick, onClose }: {
         className="z-50 w-56 p-2 rounded-lg bg-surface-raised border border-subtle shadow-xl"
       >
         <div className="grid grid-cols-3 gap-1">
-          {options.map(([id, label]) => {
+          {options.map(([id, labelKey]) => {
+            const label = t(labelKey);
             const meta = BW_FIELD_ICONS[id] ?? BW_FIELD_ICONS.none!;
             const active = id === value;
             return (
@@ -1243,6 +1259,7 @@ function BwSlotRows({ s, SML, list, listKey, x, count, i0 = 0, room, editing, da
   data: PreviewData; batt: BwBatt;
   onOpen: (index: number, xPx: number, yPx: number) => void;
 }) {
+  const { t } = useTranslation();
   const y0 = listKey === 'left' ? 27 : 9;
 
   if (editing) {
@@ -1265,7 +1282,7 @@ function BwSlotRows({ s, SML, list, listKey, x, count, i0 = 0, room, editing, da
               }}
             >
               <meta.Icon style={{ width: SML, height: SML, flexShrink: 0 }} />
-              {BW_FIELDS[id]?.label ?? '(empty)'}
+              {t(BW_FIELDS[id]?.labelKey ?? 'radio-hud:bwFields.none')}
             </button>
           );
         })}
@@ -1314,6 +1331,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
   editing: boolean; layout: BwLayout;
   onLayout: (next: BwLayout) => void;
 }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   // open field picker: which list, which index, and where to draw it
   const [picker, setPicker] = useState<
@@ -1346,9 +1364,9 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
     onLayout({ ...layout, [key]: next });
   };
   const timer = `${String(Math.floor(data.flightSecs / 60)).padStart(2, '0')}:${String(data.flightSecs % 60).padStart(2, '0')}`;
-  const ladder = mode === 'no-link' ? ['NO LINK', 'check RX power / binding']
-    : mode === 'no-mavlink' ? ['NO MAVLINK', 'ELRS MAVLink mode off?']
-    : mode === 'streams-off' ? ['STREAMS OFF', 'connect ArduDeck once'] : null;
+  const ladder = mode === 'no-link' ? ['NO LINK', 'check RX power / binding'] // i18n-exempt
+    : mode === 'no-mavlink' ? ['NO MAVLINK', 'ELRS MAVLink mode off?'] // i18n-exempt
+    : mode === 'streams-off' ? ['STREAMS OFF', 'connect ArduDeck once'] : null; // i18n-exempt
   // horizon geometry, same math as the Lua
   const wide = screenW > 150;
   const hx = wide ? 62 : 50;
@@ -1391,7 +1409,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
           of the 64-row canvas and clip the bottom strip */}
       <div style={{ display: 'inline-block', padding: 6, background: '#1b1d1a', borderRadius: 8, cursor: 'pointer' }}
         onClick={() => setPage(page === 1 ? 2 : 1)}
-        data-tip="Click to flip pages (rotary / +/- on the radio)"
+        data-tip={t('radio-hud:bwPreview.flipPagesTip')}
       >
         <div style={{
           position: 'relative', width: screenW * s, height: 64 * s, background: GLASS,
@@ -1401,7 +1419,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
             <>
               <Txt x={screenW / 2 - ladder[0]!.length * 3.4} y={18} size={SML * 2}>{ladder[0]}</Txt>
               <Txt x={screenW / 2 - ladder[1]!.length * 1.7} y={40}>{ladder[1]}</Txt>
-              <Txt x={1} y={56.6}>ArduDeck</Txt>
+              <Txt x={1} y={56.6}>ArduDeck</Txt>{/* i18n-exempt */}
             </>
           ) : (
             <>
@@ -1421,7 +1439,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
                   {editing && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setPicker({ key: 'big', index: 0, x: 0, y: 26 * s }); }}
-                      data-tip="Large readout"
+                      data-tip={t('radio-hud:bwPreview.largeReadout')}
                       style={{
                         position: 'absolute', left: 0, top: 9 * s, width: 46 * s, height: 17 * s,
                         background: 'rgba(255,255,255,0.35)', border: `1px dashed ${INK}`,
@@ -1441,7 +1459,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
                         background: 'rgba(255,255,255,0.6)', border: `1px dashed ${INK}`, borderRadius: 2,
                         cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden',
                       }}
-                    >{BW_FIELDS[layout.left[3] ?? 'none']?.label}</button>
+                    >{t(BW_FIELDS[layout.left[3] ?? 'none']?.labelKey ?? 'radio-hud:bwFields.none')}</button>
                   ) : (
                     <Txt x={0} y={49}>{BW_FIELDS[layout.left[3] ?? 'none']?.fmt(data, batt)}</Txt>
                   )}
@@ -1488,7 +1506,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
                             background: layout.center === mode ? INK : 'rgba(255,255,255,0.6)',
                             color: layout.center === mode ? GLASS : INK,
                           }}
-                        >{mode === 'horizon' ? 'Horizon' : 'Slots'}</button>
+                        >{mode === 'horizon' ? t('radio-hud:bwPreview.horizon') : t('radio-hud:bwPreview.slots')}</button>
                       ))}
                     </div>
                   )}
@@ -1504,12 +1522,12 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
                 </>
               ) : (
                 <>
-                  <Txt x={0} y={10} size={SML * 1.2}>{data.lat != null ? data.lat.toFixed(6) : 'no position'}</Txt>
+                  <Txt x={0} y={10} size={SML * 1.2}>{data.lat != null ? data.lat.toFixed(6) : 'no position'}</Txt>{/* i18n-exempt */}
                   <Txt x={0} y={20} size={SML * 1.2}>{data.lon != null ? data.lon.toFixed(6) : ''}</Txt>
-                  <Txt x={0} y={30}>{`home ${Math.round(data.homeDist)}m brg ${Math.round(data.homeBearing)}`}</Txt>
-                  <Txt x={0} y={38}>{data.wpNum > 0 ? `wp ${data.wpNum}  ${Math.round(data.wpDist)}m brg ${Math.round(data.wpBearing)}` : 'no mission wp'}</Txt>
-                  <Txt x={0} y={46}>{`wind ${data.windMs.toFixed(1)}m/s ${Math.round(data.windDirDeg)}  thr ${Math.round(data.throttle)}%`}</Txt>
-                  <Txt x={screenW - 50} y={10}>{`alt ${Math.round(data.altM)}m`}</Txt>
+                  <Txt x={0} y={30}>{`home ${Math.round(data.homeDist)}m brg ${Math.round(data.homeBearing)}`}</Txt>{/* i18n-exempt */}
+                  <Txt x={0} y={38}>{data.wpNum > 0 ? `wp ${data.wpNum}  ${Math.round(data.wpDist)}m brg ${Math.round(data.wpBearing)}` : 'no mission wp'}</Txt>{/* i18n-exempt */}
+                  <Txt x={0} y={46}>{`wind ${data.windMs.toFixed(1)}m/s ${Math.round(data.windDirDeg)}  thr ${Math.round(data.throttle)}%`}</Txt>{/* i18n-exempt */}
+                  <Txt x={screenW - 50} y={10}>{`alt ${Math.round(data.altM)}m`}</Txt>{/* i18n-exempt */}
                   <Txt x={screenW - 50} y={18}>{`hdp ${data.hdop.toFixed(1)}`}</Txt>
                   <Txt x={screenW - 50} y={26}>{`vsp ${data.vspd >= 0 ? '+' : ''}${data.vspd.toFixed(1)}`}</Txt>
                   {data.homeDist > 0 && <Arrow cx={screenW - 40} cy={40} r={6} />}
@@ -1524,7 +1542,7 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
             y={6 + picker.y}
             value={picker.key === 'big' ? layout.big : (layout[picker.key][picker.index] ?? 'none')}
             options={picker.key === 'big'
-              ? Object.entries(BW_BIG).map(([v, b]) => [v, b.label] as [string, string])
+              ? Object.entries(BW_BIG).map(([v, b]) => [v, b.labelKey] as [string, string])
               : BW_FIELD_OPTIONS}
             onPick={(v) => {
               if (picker.key === 'big') onLayout({ ...layout, big: v });
@@ -1535,14 +1553,16 @@ function BwPreview({ mode, data, cfg, screenW, editing, layout, onLayout }: {
         )}
       </div>
       <p className="mt-1.5 text-[11px] text-content-tertiary" style={{ maxWidth: screenW * s + 12 }}>
-        Page {page}/2, click to flip (rotary or +/- on the radio). Everything between the status strips is an editable slot: the big readout, both side columns, and the center panel (horizon or two more data columns).
-        {editing && ' Click any slot to pick what it shows; set one to (empty) and its neighbour grows into the space.'}
+        {t('radio-hud:bwPreview.pageHint', { page })}
+        {editing && t('radio-hud:bwPreview.editingHint')}
       </p>
     </div>
   );
 }
 
 const STUDIO_STORAGE_KEY = 'radio-hud.studio';
+
+const BUSY_STATE_KEYS = ['ejecting', 'installingWidget', 'lookingForRadio', 'lookingForTheRadio', 'removingWidget', 'writingConfig', 'writingFieldMaps'];
 
 interface PersistedStudio {
   cfg: HudCfg;
@@ -1569,6 +1589,7 @@ function loadPersistedStudio(): PersistedStudio | null {
 }
 
 export function RadioHudView() {
+  const { t } = useTranslation();
   const persisted = useMemo(loadPersistedStudio, []);
   const [cfg, setCfg] = useState<HudCfg>(persisted?.cfg ?? DEFAULT_CFG);
   const [screen, setScreen] = useState<{ w: number; h: number }>(persisted?.screen ?? REF_SCREEN);
@@ -1619,6 +1640,7 @@ export function RadioHudView() {
   const [scan, setScan] = useState<EdgeTxScanResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [applyState, setApplyState] = useState<string | null>(null);
+  const applyBusy = applyState !== null && BUSY_STATE_KEYS.some((k) => t(`radio-hud:radioHudView.${k}`) === applyState);
   // Models on the card: one radio flies several machines, so a layout can be
   // written for all of them (hud.cfg) or for one (models/<name>.cfg).
   const [models, setModels] = useState<{ file: string; name: string; current: boolean; hasLayout: boolean }[]>([]);
@@ -1627,7 +1649,7 @@ export function RadioHudView() {
   const [pagesFrom, setPagesFrom] = useState<string | null>(null);
   const [confirmApply, setConfirmApply] = useState(false);
   const [layouts, setLayouts] = useState<SavedHudLayout[]>(() => loadLayouts());
-  const [layoutName, setLayoutName] = useState(() => loadLayouts()[0]?.name ?? 'My layout');
+  const [layoutName, setLayoutName] = useState(() => loadLayouts()[0]?.name ?? t('radio-hud:radioHudView.myLayoutName'));
   const [nameDraft, setNameDraft] = useState('');
   const [applyTarget, setApplyTarget] = useState<string>('');
   // Once the user picks a target themselves, a rescan must not move it back.
@@ -1689,7 +1711,7 @@ export function RadioHudView() {
     const result = renameLayout(layouts, layoutName, to);
     if (!result.renamed) {
       setNameDraft(layoutName);
-      setApplyState(`A layout called "${to}" already exists.`);
+      setApplyState(t('radio-hud:radioHudView.layoutExists', { name: to }));
       return;
     }
     persistLayouts(result.layouts);
@@ -1699,21 +1721,21 @@ export function RadioHudView() {
 
   const handleGenerateMaps = async () => {
     if (!mapCenter.lat && !mapCenter.lon) {
-      setMapGenState('Set a field center first (connect the vehicle or type coordinates)');
+      setMapGenState(t('radio-hud:radioHudView.mapsNeedCenter'));
       return;
     }
-    setMapGenState('Stitching satellite images…');
+    setMapGenState(t('radio-hud:radioHudView.mapsStitching'));
     try {
       // Match the placed map tile so the image fills it instead of
       // letterboxing; the widget subtracts its own caption strip.
       const mapTile = pages.flat().find((t) => t.id === 'map');
       const size = mapTile ? { w: mapTile.w - 2, h: mapTile.h - 20 } : undefined;
       const { maps, missingTiles } = await generateFieldMaps(mapCenter.lat, mapCenter.lon, size,
-        (d, total) => setMapGenState(`Stitching satellite images… ${d}/${total}`));
+        (d, total) => setMapGenState(t('radio-hud:radioHudView.mapsStitchingProgress', { done: d, total })));
       setFieldMaps(maps);
       setMapGenState(missingTiles > 0
-        ? `Ready (${maps.length} zooms), ${missingTiles} tiles missing - browse this area on the app map once to cache them, then regenerate`
-        : `Ready: ${maps.length} zoom levels, ships with next Apply`);
+        ? t('radio-hud:radioHudView.mapsReadyMissing', { zooms: maps.length, missing: missingTiles })
+        : t('radio-hud:radioHudView.mapsReady', { zooms: maps.length }));
     } catch (e) {
       setMapGenState(null);
       setApplyError(e instanceof Error ? e.message : String(e));
@@ -1839,7 +1861,7 @@ export function RadioHudView() {
   }, []);
 
   const rescan = useCallback(async (announce = false) => {
-    if (announce) setApplyState('Looking for the radio…');
+    if (announce) setApplyState(t('radio-hud:radioHudView.lookingForTheRadio'));
     setIsScanning(true);
     try {
       const result = await window.electronAPI.edgetxScan();
@@ -1871,12 +1893,12 @@ export function RadioHudView() {
       if (announce) {
         setApplyState(found
           ? null
-          : 'No radio yet. On the radio choose USB Storage (SD); still looking.');
+          : t('radio-hud:radioHudView.noRadioYet'));
       }
     } finally {
       setIsScanning(false);
     }
-  }, [loadFromCard]);
+  }, [loadFromCard, t]);
 
   useEffect(() => { rescan(); }, [rescan]);
 
@@ -1887,7 +1909,7 @@ export function RadioHudView() {
   // the app having missed it.
   useEffect(() => {
     const id = setInterval(() => {
-      if (!isScanning && !(applyState?.endsWith('…'))) {
+      if (!isScanning && !applyBusy) {
         rescan();
       }
     }, scan?.cards.length ? 4000 : 1000);
@@ -1922,11 +1944,11 @@ export function RadioHudView() {
       suggested = (await window.electronAPI.edgetxHudConfigSuggest()).cfg;
     }
     if (Object.keys(suggested).length === 0) {
-      setApplyError('No vehicle data yet - connect the vehicle once so its parameters can be read');
+      setApplyError(t('radio-hud:radioHudView.noVehicleData'));
       return;
     }
     setApplyError(null);
-    setApplyState(connected ? null : 'Loaded from cached parameters (vehicle not currently connected)');
+    setApplyState(connected ? null : t('radio-hud:radioHudView.loadedFromCache'));
     setCfg((prev) => ({
       ...prev,
       name: String(suggested.name ?? ''),
@@ -1945,26 +1967,26 @@ export function RadioHudView() {
 
   const handleApply = async () => {
     setApplyError(null);
-    setApplyState('Looking for radio…');
+    setApplyState(t('radio-hud:radioHudView.lookingForRadio'));
     const result = await window.electronAPI.edgetxScan();
     setScan(result);
     const target = result.cards[0];
     if (!target) {
       setApplyState(null);
-      setApplyError('No radio found. Plug in the transmitter via USB and choose "USB Storage (SD)" on its screen, then apply again.');
+      setApplyError(t('radio-hud:radioHudView.noRadioFound'));
       return;
     }
     // Always refresh the widget files: bundled source, instant, and it
     // guarantees the radio runs the same code this preview mirrors.
-    setApplyState('Installing widget…');
+    setApplyState(t('radio-hud:radioHudView.installingWidget'));
     const variant = SCREEN_MODELS.find((m) => m.w === screen.w && m.h === screen.h)?.variant ?? 'c480x320';
     const install = await window.electronAPI.edgetxInstall(target.volumePath, 'ardudeck-hud', variant);
     if (!install.success) {
       setApplyState(null);
-      setApplyError(install.error ?? 'Widget install failed');
+      setApplyError(install.error ?? t('radio-hud:radioHudView.widgetInstallFailed'));
       return;
     }
-    setApplyState('Writing config…');
+    setApplyState(t('radio-hud:radioHudView.writingConfig'));
     const cfgOut: Record<string, string | number> = {};
     if (cfg.name) cfgOut.name = cfg.name;
     if (cfg.cells > 0) {
@@ -2002,7 +2024,7 @@ export function RadioHudView() {
     );
     if (!write.ok) {
       setApplyState(null);
-      setApplyError(write.error ?? 'Config write failed');
+      setApplyError(write.error ?? t('radio-hud:radioHudView.configWriteFailed'));
       return;
     }
     // mission overlay: the planner's route rides along so the radio's map
@@ -2011,19 +2033,19 @@ export function RadioHudView() {
       .filter((i) => i.latitude !== 0 && i.longitude !== 0)
       .map((i) => ({ seq: i.seq, lat: i.latitude, lon: i.longitude }));
     if (!isBw && ((fieldMaps && fieldMaps.length > 0) || missionWps.length > 0)) {
-      setApplyState('Writing field maps…');
+      setApplyState(t('radio-hud:radioHudView.writingFieldMaps'));
       const mapsResult = await window.electronAPI.edgetxHudMapsWrite(target.volumePath, fieldMaps ?? [], missionWps);
       if (!mapsResult.ok) {
         setApplyState(null);
-        setApplyError(mapsResult.error ?? 'Field maps write failed');
+        setApplyError(mapsResult.error ?? t('radio-hud:radioHudView.fieldMapsWriteFailed'));
         return;
       }
     }
     setApplyState(isBw
-      ? `Applied. Telemetry screen set on ${(install.screens?.added ?? 0) + (install.screens?.already ?? 0)} model(s) - eject, unplug, press PAGE on the radio.`
+      ? t('radio-hud:radioHudView.appliedBw', { count: (install.screens?.added ?? 0) + (install.screens?.already ?? 0) })
       : applyTarget
-        ? `Applied to the model "${applyTarget}" only. Eject before unplugging the radio.`
-        : 'Applied to every model on this radio. Eject before unplugging.');
+        ? t('radio-hud:radioHudView.appliedModel', { model: applyTarget })
+        : t('radio-hud:radioHudView.appliedAll'));
     setPagesFrom(applyTarget);
     await rescan();
   };
@@ -2032,19 +2054,19 @@ export function RadioHudView() {
     const target = scan?.cards[0];
     if (!target) return;
     setApplyError(null);
-    setApplyState('Removing widget…');
+    setApplyState(t('radio-hud:radioHudView.removingWidget'));
     const result = await window.electronAPI.edgetxRemove(target.volumePath, 'ardudeck-hud');
-    setApplyState(result.success ? 'Widget removed from the radio (config included).' : null);
-    if (!result.success) setApplyError(result.error ?? 'Remove failed');
+    setApplyState(result.success ? t('radio-hud:radioHudView.widgetRemoved') : null);
+    if (!result.success) setApplyError(result.error ?? t('radio-hud:radioHudView.removeFailed'));
     await rescan();
   };
 
   // Naming the target on the button is what stops a layout going to the wrong
   // machine; the second click is only asked for when something would be lost.
-  const busyWithCard = isScanning || (applyState?.endsWith('…') ?? false);
+  const busyWithCard = isScanning || applyBusy;
   const applyLabel = !isBw && models.length > 0
-    ? (applyTarget ? `Apply to ${applyTarget}` : 'Apply to every model')
-    : 'Apply to radio';
+    ? (applyTarget ? t('radio-hud:radioHudView.applyToModel', { model: applyTarget }) : t('radio-hud:radioHudView.applyToEveryModel'))
+    : t('radio-hud:radioHudView.applyToRadio');
   const targetOwnsLayout = models.some((m) => m.name === applyTarget && m.hasLayout);
   const applyNeedsConfirm = !isBw && models.length > 0 && pagesFrom !== null && pagesFrom !== applyTarget
     && (applyTarget === '' || targetOwnsLayout);
@@ -2053,18 +2075,18 @@ export function RadioHudView() {
     const target = scan?.cards[0];
     if (!target) return;
     setApplyError(null);
-    setApplyState('Ejecting…');
+    setApplyState(t('radio-hud:radioHudView.ejecting'));
     try {
       if (typeof window.electronAPI.edgetxEject !== 'function') {
-        throw new Error('Eject needs an app restart to activate (new capability)');
+        throw new Error(t('radio-hud:radioHudView.ejectNeedsRestart'));
       }
       const result = await window.electronAPI.edgetxEject(target.volumePath);
       if (!result.ok) setApplyState(null);
       if (result.ok) {
-        setApplyState('Ejected. Unplug the radio; the widget reloads its config within seconds.');
+        setApplyState(t('radio-hud:radioHudView.ejected'));
         await rescan();
       } else {
-        setApplyError(result.error ?? 'Eject failed');
+        setApplyError(result.error ?? t('radio-hud:radioHudView.ejectFailed'));
       }
     } catch (e) {
       setApplyError(e instanceof Error ? e.message : String(e));
@@ -2079,7 +2101,7 @@ export function RadioHudView() {
         type="number"
         step={step}
         value={value || ''}
-        placeholder={autoWhenEmpty ? 'auto' : undefined}
+        placeholder={autoWhenEmpty ? t('radio-hud:radioHudView.autoPlaceholder') : undefined}
         data-tip={hint}
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-1 w-full px-2 py-1.5 text-sm bg-surface-input border border-subtle rounded text-content placeholder:text-teal-500/60"
@@ -2095,8 +2117,8 @@ export function RadioHudView() {
             <rect x="4" y="7" width="16" height="11" rx="2" strokeWidth={1.5} />
             <path strokeLinecap="round" strokeWidth={1.5} d="M8 4l4 3 4-3M8 11h4M8 14h8" />
           </svg>
-          <h1 className="text-xl font-semibold text-content">Radio HUD</h1>
-          <span className="text-xs text-content-secondary">ArduDeck widget for EdgeTX radios</span>
+          <h1 className="text-xl font-semibold text-content">{t('radio-hud:radioHudView.title')}</h1>
+          <span className="text-xs text-content-secondary">{t('radio-hud:radioHudView.subtitle')}</span>
         </div>
       </div>
 
@@ -2105,19 +2127,19 @@ export function RadioHudView() {
           {/* left column: preview + field maps below it */}
           <div className="space-y-2 w-full lg:w-auto max-w-[512px]">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-content-secondary" data-tip="Faithful mirror of layout and colors at the selected radio's resolution; the radio renders its own font">Preview</span>
+              <span className="text-xs text-content-secondary" data-tip={t('radio-hud:radioHudView.previewTip')}>{t('radio-hud:radioHudView.preview')}</span>
               <select
                 value={previewMode}
                 onChange={(e) => setPreviewMode(e.target.value as PreviewMode)}
                 className="px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content"
               >
-                <option value="sample">Sample flight</option>
+                <option value="sample">{t('radio-hud:radioHudView.sampleFlight')}</option>
                 <option value="live" disabled={!connectionState.isConnected}>
-                  Live vehicle{connectionState.isConnected ? '' : ' (connect first)'}
+                  {connectionState.isConnected ? t('radio-hud:radioHudView.liveVehicle') : t('radio-hud:radioHudView.liveVehicleConnectFirst')}
                 </option>
-                <option value="no-link">State: NO LINK</option>
-                <option value="no-mavlink">State: NO MAVLINK</option>
-                <option value="streams-off">State: STREAMS OFF</option>
+                <option value="no-link">{t('radio-hud:radioHudView.stateNoLink')}</option>
+                <option value="no-mavlink">{t('radio-hud:radioHudView.stateNoMavlink')}</option>
+                <option value="streams-off">{t('radio-hud:radioHudView.stateStreamsOff')}</option>
               </select>
               <select
                 value={`${screen.w}x${screen.h}`}
@@ -2126,7 +2148,7 @@ export function RadioHudView() {
                   if (m) changeScreen(m);
                 }}
                 data-tour="hud-model"
-                data-tip="Radio model - layouts rescale to its screen"
+                data-tip={t('radio-hud:radioHudView.radioModelTip')}
                 className="px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content"
               >
                 {SCREEN_MODELS.map((m) => (
@@ -2136,20 +2158,20 @@ export function RadioHudView() {
               {detectedModel && `${detectedModel.w}x${detectedModel.h}` !== `${screen.w}x${screen.h}` && (
                 <button
                   onClick={() => changeScreen(detectedModel)}
-                  data-tip="The plugged-in radio identifies itself in RADIO/radio.yml - apply to the wrong screen class and it installs files the radio cannot use"
+                  data-tip={t('radio-hud:radioHudView.detectedSwitchTip')}
                   className="px-2 py-1 text-xs rounded border bg-amber-500/10 text-amber-400 border-amber-500/40 hover:bg-amber-500/20 transition-colors"
                 >
-                  {detectedCard?.radioLabel ?? 'Radio'} detected · switch
+                  {t('radio-hud:radioHudView.detectedSwitch', { radio: detectedCard?.radioLabel ?? t('radio-hud:radioHudView.radioFallback') })}
                 </button>
               )}
               {isBw && (
                 <button
                   onClick={() => setGuideOpen(true)}
-                  data-tip="How the HUD works on a monochrome radio: installing, opening it, reading it"
+                  data-tip={t('radio-hud:radioHudView.guideTip')}
                   className="flex items-center gap-1.5 px-3 py-1 text-xs rounded border bg-surface-input text-content-secondary border-subtle hover:text-content transition-colors"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-teal-400" />
-                  Guide
+                  {t('radio-hud:radioHudView.guide')}
                 </button>
               )}
               {!isBw && (
@@ -2162,14 +2184,14 @@ export function RadioHudView() {
                       setPages(saved.pages.map((p) => p.map((t) => fitTile(t, saved.screen, screen))));
                       setActivePage(0);
                       setLayoutName(saved.name);
-                      setPagesFrom(`the layout "${saved.name}"`);
+                      setPagesFrom(t('radio-hud:radioHudView.pagesFromLayout', { name: saved.name }));
                     }}
-                    data-tip="Layouts live in ArduDeck and save as you edit. The radio only gets the one you apply."
+                    data-tip={t('radio-hud:radioHudView.layoutsTip')}
                     className="px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content-secondary"
                   >
-                    {layouts.length === 0 && <option value="">Layout</option>}
+                    {layouts.length === 0 && <option value="">{t('radio-hud:radioHudView.layoutPlaceholder')}</option>}
                     {layouts.map((l) => (
-                      <option key={l.name} value={l.name}>{l.name} ({l.pages.length}p)</option>
+                      <option key={l.name} value={l.name}>{t('radio-hud:radioHudView.layoutOption', { name: l.name, count: l.pages.length })}</option>
                     ))}
                   </select>
                   <input
@@ -2177,23 +2199,23 @@ export function RadioHudView() {
                     onChange={(e) => setNameDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                     onBlur={() => commitRename()}
-                    placeholder="Layout name"
-                    data-tip="Renames this layout. Saving is automatic."
+                    placeholder={t('radio-hud:radioHudView.layoutNamePlaceholder')}
+                    data-tip={t('radio-hud:radioHudView.renameTip')}
                     className="w-32 px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content placeholder:text-content-tertiary"
                   />
                   <button
                     onClick={() => {
-                      const name = uniqueLayoutName(layouts, 'New layout');
+                      const name = uniqueLayoutName(layouts, t('radio-hud:radioHudView.newLayoutName'));
                       setLayoutName(name);
                       setNameDraft(name);
                       setPages([gridLayout(screen)]);
                       setActivePage(0);
-                      setPagesFrom(`the layout "${name}"`);
+                      setPagesFrom(t('radio-hud:radioHudView.pagesFromLayout', { name }));
                     }}
-                    data-tip="Start a new layout in ArduDeck. The current one is already saved."
+                    data-tip={t('radio-hud:radioHudView.newLayoutTip')}
                     className="px-3 py-1 text-xs rounded border bg-surface-input text-content-secondary border-subtle hover:text-content transition-colors"
                   >
-                    New
+                    {t('common:new')}
                   </button>
                   {layouts.length > 1 && layouts.some((l) => l.name === layoutName) && (
                     <button
@@ -2207,10 +2229,10 @@ export function RadioHudView() {
                         setPages(fallback.pages.map((p) => p.map((t) => fitTile(t, fallback.screen, screen))));
                         setActivePage(0);
                       }}
-                      data-tip={`Delete "${layoutName}" from ArduDeck. Whatever is already on the radio stays there.`}
+                      data-tip={t('radio-hud:radioHudView.deleteTip', { name: layoutName })}
                       className="px-2.5 py-1 text-xs rounded border border-subtle text-red-400 hover:bg-red-500/10 transition-colors"
                     >
-                      Delete
+                      {t('radio-hud:radioHudView.delete')}
                     </button>
                   )}
                 </>
@@ -2222,16 +2244,16 @@ export function RadioHudView() {
                   ? 'bg-teal-500/20 text-teal-300 border-teal-500/40'
                   : 'bg-surface-input text-content-secondary border-subtle hover:text-content'}`}
               >
-                {editing ? 'Done editing' : isBw ? 'Edit slots' : 'Edit layout'}
+                {editing ? t('radio-hud:radioHudView.doneEditing') : isBw ? t('radio-hud:radioHudView.editSlots') : t('radio-hud:radioHudView.editLayout')}
               </button>
               {editing && isBw && (
                 <button
                   onClick={() => setBw(DEFAULT_BW_LAYOUT)}
                   disabled={JSON.stringify(bw) === JSON.stringify(DEFAULT_BW_LAYOUT)}
-                  data-tip="Put every slot back to the default layout"
+                  data-tip={t('radio-hud:radioHudView.resetTip')}
                   className="px-3 py-1 text-xs rounded border bg-surface-input text-content-secondary border-subtle hover:text-content disabled:opacity-40 disabled:hover:text-content-secondary transition-colors"
                 >
-                  Reset to default
+                  {t('radio-hud:radioHudView.resetToDefault')}
                 </button>
               )}
               {editing && !isBw && (
@@ -2247,10 +2269,10 @@ export function RadioHudView() {
                   }}
                   className="px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content-secondary"
                 >
-                  <option value="" disabled>Preset…</option>
-                  <option value="__grid">Auto grid (fill this screen)</option>
+                  <option value="" disabled>{t('radio-hud:radioHudView.presetPlaceholder')}</option>
+                  <option value="__grid">{t('radio-hud:radioHudView.autoGrid')}</option>
                   {Object.keys(LAYOUT_PRESETS).map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                    <option key={name} value={name}>{t(PRESET_LABEL_KEYS[name] ?? name)}</option>
                   ))}
                 </select>
               )}
@@ -2263,7 +2285,7 @@ export function RadioHudView() {
                   <button
                     key={i}
                     onClick={() => setActivePage(i)}
-                    data-tip={`Page ${i + 1} - swipe on the radio to reach it`}
+                    data-tip={t('radio-hud:radioHudView.pageTip', { n: i + 1 })}
                     className={`w-7 h-7 text-xs rounded border transition-colors ${i === activePage
                       ? 'bg-teal-500/20 text-teal-300 border-teal-500/40'
                       : 'bg-surface-input text-content-secondary border-subtle hover:text-content'}`}
@@ -2275,31 +2297,31 @@ export function RadioHudView() {
                   <div className="relative">
                     <button
                       onClick={() => setAddPageOpen(!addPageOpen)}
-                      data-tip="Add a layout page (swipe left/right on the radio to switch)"
+                      data-tip={t('radio-hud:radioHudView.addPageTip')}
                       className="w-7 h-7 text-xs rounded border border-subtle bg-surface-input text-content-secondary hover:text-content"
                     >
                       +
                     </button>
                     {addPageOpen && (
                       <div className="absolute right-0 top-8 z-20 w-44 bg-surface-raised border border-subtle rounded-lg shadow-lg p-1">
-                        <p className="px-2 py-1 text-[10px] uppercase text-content-tertiary">New page from</p>
+                        <p className="px-2 py-1 text-[10px] uppercase text-content-tertiary">{t('radio-hud:radioHudView.newPageFrom')}</p>
                         <button
                           onClick={() => addPage(tiles.map((t) => ({ ...t })))}
                           className="w-full text-left px-2 py-1.5 text-xs text-content hover:bg-surface-input rounded"
                         >
-                          Duplicate current page
+                          {t('radio-hud:radioHudView.duplicatePage')}
                         </button>
                         <button
                           onClick={() => addPage([])}
                           className="w-full text-left px-2 py-1.5 text-xs text-content hover:bg-surface-input rounded"
                         >
-                          Empty page
+                          {t('radio-hud:radioHudView.emptyPage')}
                         </button>
                         <button
                           onClick={() => addPage(gridLayout(screen))}
                           className="w-full text-left px-2 py-1.5 text-xs text-content hover:bg-surface-input rounded"
                         >
-                          Auto grid (fill this screen)
+                          {t('radio-hud:radioHudView.autoGrid')}
                         </button>
                         <div className="my-1 border-t border-subtle" />
                         {Object.entries(LAYOUT_PRESETS).map(([name, preset]) => (
@@ -2308,7 +2330,7 @@ export function RadioHudView() {
                             onClick={() => addPage(preset.map((t) => fitTile(t, REF_SCREEN, screen)))}
                             className="w-full text-left px-2 py-1.5 text-xs text-content-secondary hover:text-content hover:bg-surface-input rounded"
                           >
-                            {name}
+                            {t(PRESET_LABEL_KEYS[name] ?? name)}
                           </button>
                         ))}
                       </div>
@@ -2322,7 +2344,7 @@ export function RadioHudView() {
                       setPages(next);
                       setActivePage(Math.max(0, activePage - 1));
                     }}
-                    data-tip="Remove this page"
+                    data-tip={t('radio-hud:radioHudView.removePageTip')}
                     className="w-7 h-7 text-xs rounded border border-subtle bg-surface-input text-red-400 hover:text-red-300"
                   >
                     ×
@@ -2347,7 +2369,7 @@ export function RadioHudView() {
 
             {editing && !isBw && (
               <div className="flex items-center gap-1.5 flex-wrap" style={{ maxWidth: SCREEN_W }}>
-                <span className="text-[11px] text-content-tertiary">Add tile:</span>
+                <span className="text-[11px] text-content-tertiary">{t('radio-hud:radioHudView.addTile')}</span>
                 {unplacedTiles.map((id) => (
                   <button
                     key={id}
@@ -2358,11 +2380,11 @@ export function RadioHudView() {
                     }])}
                     className="px-2 py-0.5 text-[11px] text-content-secondary hover:text-content bg-surface-input hover:bg-surface-raised border border-subtle rounded"
                   >
-                    + {TILE_META[id]!.label}
+                    + {t(TILE_META[id]!.labelKey)}
                   </button>
                 ))}
                 <span className="text-[10px] text-content-tertiary w-full">
-                  Drag to move, corner handle to resize (8px snap). Top bar and message ticker are fixed.
+                  {t('radio-hud:radioHudView.dragHint')}
                 </span>
               </div>
             )}
@@ -2373,8 +2395,8 @@ export function RadioHudView() {
             <div data-tour="hud-maps" className="bg-surface-raised border border-subtle rounded-xl p-3 space-y-2" style={{ maxWidth: SCREEN_W }}>
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h3 className="text-sm font-medium text-content"
-                  data-tip="Offline satellite images for the Map tile. Click your field; the rings show each zoom's coverage">
-                  Field maps
+                  data-tip={t('radio-hud:radioHudView.fieldMapsTip')}>
+                  {t('radio-hud:radioHudView.fieldMaps')}
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
@@ -2384,17 +2406,17 @@ export function RadioHudView() {
                       }
                     }}
                     disabled={!telemetry.gps.lat}
-                    data-tip="Center the field on where the vehicle is right now"
+                    data-tip={t('radio-hud:radioHudView.useVehiclePositionTip')}
                     className="px-2.5 py-1 text-xs whitespace-nowrap text-content-secondary hover:text-content bg-surface-input hover:bg-surface-raised border border-subtle rounded transition-colors disabled:opacity-50"
                   >
-                    Use vehicle position
+                    {t('radio-hud:radioHudView.useVehiclePosition')}
                   </button>
                   <button
                     onClick={handleGenerateMaps}
                     disabled={mapCenter.lat === 0}
                     className="px-2.5 py-1 text-xs whitespace-nowrap bg-teal-600/20 text-teal-300 hover:bg-teal-600/30 border border-teal-500/40 rounded transition-colors disabled:opacity-50"
                   >
-                    Generate
+                    {t('radio-hud:radioHudView.generate')}
                   </button>
                 </div>
               </div>
@@ -2434,20 +2456,20 @@ export function RadioHudView() {
             <div data-tour="hud-config" className="bg-surface-raised border border-subtle rounded-xl p-3 space-y-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-content"
-                  data-tip="Everything here is an override. Left on auto, the widget configures itself from the vehicle's telemetry - no ArduDeck or FC connection needed">
-                  Widget config
+                  data-tip={t('radio-hud:radioHudView.widgetConfigTip')}>
+                  {t('radio-hud:radioHudView.widgetConfig')}
                 </h3>
                 <button
                   onClick={handleLoadFromVehicle}
-                  data-tip="Fill the fields from the connected vehicle's parameters"
+                  data-tip={t('radio-hud:radioHudView.loadFromVehicleTip')}
                   className="px-2 py-1 text-[11px] text-content-secondary hover:text-content bg-surface-input hover:bg-surface-raised border border-subtle rounded transition-colors"
                 >
-                  Load from vehicle
+                  {t('radio-hud:radioHudView.loadFromVehicle')}
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="text-xs text-content-secondary">Theme</span>
+                  <span className="text-xs text-content-secondary">{t('radio-hud:radioHudView.theme')}</span>
                   <div className="mt-1 flex items-center bg-surface-input border border-subtle rounded p-0.5">
                     {(['dark', 'light'] as const).map((th) => (
                       <button
@@ -2455,13 +2477,13 @@ export function RadioHudView() {
                         onClick={() => setCfg({ ...cfg, theme: th })}
                         className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${cfg.theme === th ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'}`}
                       >
-                        {th === 'dark' ? 'Dark' : 'Light'}
+                        {th === 'dark' ? t('radio-hud:radioHudView.dark') : t('radio-hud:radioHudView.light')}
                       </button>
                     ))}
                   </div>
                 </label>
                 <label className="block">
-                  <span className="text-xs text-content-secondary">Vehicle name</span>
+                  <span className="text-xs text-content-secondary">{t('radio-hud:radioHudView.vehicleName')}</span>
                   <input
                     type="text"
                     value={cfg.name}
@@ -2469,16 +2491,16 @@ export function RadioHudView() {
                     className="mt-1 w-full px-2 py-1.5 text-sm bg-surface-input border border-subtle rounded text-content"
                   />
                 </label>
-                {numField('Cells (S)', cfg.cells, 1, (v) => setCfg({ ...cfg, cells: v }), 'auto-detected from peak voltage', true)}
-                {numField('Capacity (mAh)', cfg.capacity, 100, (v) => setCfg({ ...cfg, capacity: v }), 'auto from vehicle telemetry', true)}
-                {numField('Low (V/cell)', cfg.low_cell, 0.05, (v) => setCfg({ ...cfg, low_cell: v }), 'value turns amber')}
-                {numField('Critical (V/cell)', cfg.crit_cell, 0.05, (v) => setCfg({ ...cfg, crit_cell: v }), 'value turns red')}
+                {numField(t('radio-hud:radioHudView.cells'), cfg.cells, 1, (v) => setCfg({ ...cfg, cells: v }), t('radio-hud:radioHudView.cellsHint'), true)}
+                {numField(t('radio-hud:radioHudView.capacity'), cfg.capacity, 100, (v) => setCfg({ ...cfg, capacity: v }), t('radio-hud:radioHudView.capacityHint'), true)}
+                {numField(t('radio-hud:radioHudView.lowCell'), cfg.low_cell, 0.05, (v) => setCfg({ ...cfg, low_cell: v }), t('radio-hud:radioHudView.lowCellHint'))}
+                {numField(t('radio-hud:radioHudView.critCell'), cfg.crit_cell, 0.05, (v) => setCfg({ ...cfg, crit_cell: v }), t('radio-hud:radioHudView.critCellHint'))}
               </div>
               {pages.length > 1 && (
                 <label className="flex items-center gap-2 pt-1">
                   <span className="text-xs text-content-secondary"
-                    data-tip="In a normal widget slot EdgeTX gives the widget no keys and no touch, so this is the only way to see every page there. Long-press the widget and choose Full screen to use PAGE and swipe instead.">
-                    Turn pages every
+                    data-tip={t('radio-hud:radioHudView.turnPagesTip')}>
+                    {t('radio-hud:radioHudView.turnPagesEvery')}
                   </span>
                   <input
                     type="number"
@@ -2489,7 +2511,7 @@ export function RadioHudView() {
                     className="w-16 px-2 py-1 text-xs bg-surface-input border border-subtle rounded text-content"
                   />
                   <span className="text-xs text-content-tertiary">
-                    {cfg.pageSecs > 0 ? 'seconds' : 'seconds (0 = only by hand)'}
+                    {cfg.pageSecs > 0 ? t('radio-hud:radioHudView.seconds') : t('radio-hud:radioHudView.secondsManual')}
                   </span>
                 </label>
               )}
@@ -2501,8 +2523,8 @@ export function RadioHudView() {
                   className="rounded border bg-surface-input"
                 />
                 <span className="text-xs text-content-secondary"
-                  data-tip="Prints what the radio hands the widget: fullscreen yes/no, the last key event value, the last touch, and which page is showing. For working out why a button does nothing.">
-                  Show input debug on the radio
+                  data-tip={t('radio-hud:radioHudView.inputDebugTip')}>
+                  {t('radio-hud:radioHudView.inputDebug')}
                 </span>
               </label>
               <label className="flex items-center gap-2 pt-1 cursor-pointer">
@@ -2513,8 +2535,8 @@ export function RadioHudView() {
                   className="rounded border bg-surface-input"
                 />
                 <span className="text-xs text-content-secondary"
-                  data-tip="The radio animates a scripted flight with voice callouts when nothing is connected, badged DEMO. Also toggled by tapping the NO LINK screen">
-                  Demo mode on the radio
+                  data-tip={t('radio-hud:radioHudView.demoTip')}>
+                  {t('radio-hud:radioHudView.demo')}
                 </span>
               </label>
             </div>
@@ -2532,31 +2554,31 @@ export function RadioHudView() {
           ) : card ? (
             <span className="text-content-secondary">
               <span className="text-emerald-400">{card.volumeName}</span>
-              {hudInstalled ? ' - widget installed' : ' - widget will be installed on apply'}
+              {hudInstalled ? t('radio-hud:radioHudView.widgetInstalled') : t('radio-hud:radioHudView.widgetWillInstall')}
               {!isBw && models.length > 0 && (
                 <span className="text-content-tertiary">
                   {pagesFrom !== null && pagesFrom !== applyTarget
-                    ? ` - these pages came from ${pagesFrom || 'the shared layout'}${applyTarget ? `, applying puts them on ${applyTarget}` : ''}`
+                    ? t('radio-hud:radioHudView.pagesCameFrom', { from: pagesFrom || t('radio-hud:radioHudView.sharedLayout') }) + (applyTarget ? t('radio-hud:radioHudView.applyingPutsOn', { model: applyTarget }) : '')
                     : applyTarget
-                      ? ` - only "${applyTarget}" uses this layout, the rest keep the shared one`
-                      : ' - every model uses this layout unless it has its own'}
+                      ? t('radio-hud:radioHudView.onlyModelUses', { model: applyTarget })
+                      : t('radio-hud:radioHudView.everyModelUses')}
                 </span>
               )}
             </span>
           ) : (
             <span className="flex items-center gap-2 text-content-secondary">
               <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-content-tertiary/30 border-t-content-secondary" />
-              Looking for a radio. Plug in via USB and choose USB Storage (SD) on its screen; it takes a few seconds to appear.
+              {t('radio-hud:radioHudView.lookingForRadioHint')}
             </span>
           )}
         </div>
         {hudInstalled && (
           <button
             onClick={handleRemoveWidget}
-            data-tip="Delete the ArduDeck widget and its config from the SD card (only files we installed)"
+            data-tip={t('radio-hud:radioHudView.removeTip')}
             className="px-2.5 py-1.5 text-xs whitespace-nowrap text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
           >
-            Remove
+            {t('common:remove')}
           </button>
         )}
         <button
@@ -2567,37 +2589,37 @@ export function RadioHudView() {
             if (ok) setPagesFrom(loadedSourceRef.current === 'model' ? applyTarget : '');
             setApplyState(ok
               ? loadedSourceRef.current === 'model'
-                ? `Loaded the layout "${applyTarget}" has of its own.`
+                ? t('radio-hud:radioHudView.loadedOwnLayout', { model: applyTarget })
                 : applyTarget
-                  ? `"${applyTarget}" has no layout of its own yet, so this is the shared one.`
-                  : 'Loaded the shared layout every model uses.'
+                  ? t('radio-hud:radioHudView.noOwnLayout', { model: applyTarget })
+                  : t('radio-hud:radioHudView.loadedShared')
               : null);
-            if (!ok) setApplyError('No ArduDeck config found on the card');
+            if (!ok) setApplyError(t('radio-hud:radioHudView.noConfigOnCard'));
           }}
           disabled={!card}
-          data-tip="Read the config and tile layout currently on the SD card into the editor"
+          data-tip={t('radio-hud:radioHudView.loadFromRadioTip')}
           className="px-3 py-1.5 text-xs whitespace-nowrap text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised border border-subtle rounded-lg transition-colors disabled:opacity-50"
         >
-          Load from radio
+          {t('radio-hud:radioHudView.loadFromRadio')}
         </button>
         <button
           onClick={() => { void rescan(true); }}
           disabled={busyWithCard}
           className="px-3 py-1.5 text-xs whitespace-nowrap text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors disabled:opacity-50"
         >
-          {isScanning ? 'Scanning…' : 'Rescan'}
+          {isScanning ? t('common:scanning') : t('common:rescan')}
         </button>
         <button
           onClick={handleEject}
           disabled={!card || busyWithCard}
-          data-tip="Safely eject the SD volume so the radio can leave USB storage mode"
+          data-tip={t('radio-hud:radioHudView.ejectTip')}
           className="px-3 py-1.5 text-xs whitespace-nowrap text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors disabled:opacity-50"
         >
-          Eject
+          {t('radio-hud:radioHudView.eject')}
         </button>
         {!isBw && models.length > 0 && (
           <label className="flex items-center gap-2 text-xs text-content-tertiary">
-            Layout for
+            {t('radio-hud:radioHudView.layoutFor')}
             <select
               value={applyTarget}
               onChange={(e) => {
@@ -2605,10 +2627,10 @@ export function RadioHudView() {
                 setConfirmApply(false);
                 setApplyTarget(e.target.value);
               }}
-              data-tip="Which layout Apply writes and Load reads. Models share one layout unless you give a model its own; the radio then uses that one whenever the model is selected."
+              data-tip={t('radio-hud:radioHudView.layoutForTip')}
               className="px-2 py-1.5 text-xs bg-surface-input border border-subtle rounded-lg text-content-secondary"
             >
-              <option value="">Every model on this radio</option>
+              <option value="">{t('radio-hud:radioHudView.everyModelOnRadio')}</option>
               {/* The widget looks a layout up by model NAME, so two models
                   sharing one name share one layout: list it once. */}
               {models
@@ -2616,8 +2638,8 @@ export function RadioHudView() {
                 .map((m) => (
                   <option key={m.file} value={m.name}>
                     {m.name}
-                    {models.some((o) => o.name === m.name && o.current) ? ' - on the radio now' : ''}
-                    {m.hasLayout ? ' - has its own layout' : ' - shares the layout'}
+                    {models.some((o) => o.name === m.name && o.current) ? t('radio-hud:radioHudView.onRadioNow') : ''}
+                    {m.hasLayout ? t('radio-hud:radioHudView.hasOwnLayout') : t('radio-hud:radioHudView.sharesLayout')}
                   </option>
                 ))}
             </select>
@@ -2633,14 +2655,14 @@ export function RadioHudView() {
             void handleApply();
           }}
           onBlur={() => setConfirmApply(false)}
-          disabled={applyState !== null && applyState.endsWith('…')}
+          disabled={applyBusy}
           data-tour="hud-apply"
-          data-tip="Install/refresh the widget and write this layout to the SD card. Afterwards on the radio: App layout, full-screen widget, ArduDeck"
+          data-tip={t('radio-hud:radioHudView.applyTip')}
           className={`px-4 py-1.5 text-sm whitespace-nowrap disabled:opacity-60 text-white rounded-lg transition-colors ${
             confirmApply ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500'
           }`}
         >
-          {confirmApply ? `Overwrite ${applyTarget || 'every model'}?` : applyLabel}
+          {confirmApply ? t('radio-hud:radioHudView.overwriteConfirm', { target: applyTarget || t('radio-hud:radioHudView.everyModel') }) : applyLabel}
         </button>
       </div>
       {guideOpen && <BwGuide onClose={() => setGuideOpen(false)} />}

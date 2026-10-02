@@ -181,7 +181,7 @@ export async function fetchWindField(params: WindFetchParams): Promise<WindField
       const res = await fetch(url);
       if (!res.ok) {
         const body = await res.text().catch(() => '');
-        throw new Error(`Open-Meteo HTTP ${res.status} for ${latChunks[i]!.length} pts: ${body.slice(0, 200)}`);
+        throw new Error(`Open-Meteo HTTP ${res.status} for ${latChunks[i]!.length} pts: ${body.slice(0, 200)}`); // i18n-exempt
       }
       const json = await res.json();
       // Open-Meteo returns an array for multi-location requests, an object for one.

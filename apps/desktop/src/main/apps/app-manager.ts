@@ -19,6 +19,7 @@ import { extractAppArchive } from './app-extract.js';
 import type {
   AppPlatform, AppProgress, HangarApp, HangarAppDetail, InstalledApp,
 } from '../../shared/app-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /** Same ordering the module installer uses, so the two cannot disagree about a version. */
 function compareSemver(a: string, b: string): number {
@@ -79,7 +80,7 @@ export function runnableHere(apps: HangarApp[], platform: AppPlatform): HangarAp
 
 export async function listApps(): Promise<HangarApp[]> {
   const res = await fetch(`${baseUrl()}/public/apps`);
-  if (!res.ok) throw new Error(`Hangar returned ${res.status}`);
+  if (!res.ok) throw new Error(t('main:appManager.hangarReturned', { status: res.status }));
   return runnableHere((await res.json()) as HangarApp[], thisPlatform());
 }
 
@@ -104,8 +105,7 @@ export async function installApp(
   const needs = release?.minAppVersion;
   if (needs && compareSemver(app.getVersion(), needs) < 0) {
     throw new Error(
-      `${detail?.name ?? slug} needs ArduDeck ${needs} or newer (this is ${app.getVersion()}). ` +
-        'Update ArduDeck first.',
+      t('main:appManager.needsNewerArduDeck', { name: detail?.name ?? slug, needs, current: app.getVersion() }),
     );
   }
 
@@ -113,16 +113,16 @@ export async function installApp(
     `${baseUrl()}/public/apps/${encodeURIComponent(slug)}/download/latest` +
     `?platform=${platform}&kind=archive`;
 
-  onProgress({ stage: 'downloading', message: `Downloading ${slug}...`, percent: 0 });
+  onProgress({ stage: 'downloading', message: t('main:appManager.downloading', { slug }), percent: 0 });
 
   let res: Response;
   try {
     res = await fetch(url);
   } catch {
-    throw new Error(`Could not reach the Hangar at ${baseUrl()}. Check your connection.`);
+    throw new Error(t('main:appManager.hangarUnreachable', { url: baseUrl() }));
   }
-  if (!res.ok) throw new Error(`Hangar returned ${res.status} for ${slug} (${platform})`);
-  if (!res.body) throw new Error('Empty response body');
+  if (!res.ok) throw new Error(t('main:appManager.hangarReturnedFor', { status: res.status, slug, platform }));
+  if (!res.body) throw new Error('Empty response body'); // i18n-exempt
 
   const declaredHash = res.headers.get('x-bundle-hash') || '';
   const total = parseInt(res.headers.get('content-length') || '0', 10);
@@ -142,7 +142,7 @@ export async function installApp(
       got += value.byteLength;
       onProgress({
         stage: 'downloading',
-        message: `Downloading ${slug}...`,
+        message: t('main:appManager.downloading', { slug }),
         percent: total ? Math.round((got / total) * 100) : undefined,
       });
       digest.update(value);
@@ -151,14 +151,14 @@ export async function installApp(
   });
   await pipeline(source, createWriteStream(zipPath));
 
-  onProgress({ stage: 'verifying', message: `Verifying ${slug}...` });
+  onProgress({ stage: 'verifying', message: t('main:appManager.verifying', { slug }) });
   const localHash = digest.digest('hex');
   if (declaredHash && localHash !== declaredHash) {
     await rm(zipPath, { force: true });
-    throw new Error(`Hash mismatch for ${slug} - the download was corrupted or tampered with`);
+    throw new Error(t('main:appManager.hashMismatch', { slug }));
   }
 
-  onProgress({ stage: 'extracting', message: `Installing ${slug}...` });
+  onProgress({ stage: 'extracting', message: t('main:appManager.installing', { slug }) });
   const installPath = join(dir, 'current');
   await extractAppArchive(zipPath, installPath);
   // Hundreds of megabytes that are now redundant; keeping it doubles what the app costs on disk.
@@ -174,7 +174,7 @@ export async function installApp(
     bundleHash: localHash,
   };
   store().set('apps', [...store().get('apps').filter((a) => a.slug !== slug), record]);
-  onProgress({ stage: 'done', message: `${record.name} installed.`, percent: 100 });
+  onProgress({ stage: 'done', message: t('main:appManager.installed', { name: record.name }), percent: 100 });
   return record;
 }
 

@@ -14,6 +14,8 @@
  * decision). The bit numbers below are transcribed from RubyFPV's flags_osd.h.
  */
 
+import { t } from '../../../shared/i18n/index.js';
+
 export const MODEL_MAX_OSD_SCREENS = 5;
 
 export type RubyFlagField = 'flags' | 'flags2' | 'flags3' | 'instruments';
@@ -41,57 +43,65 @@ export interface RubyOsdElement {
 /** The built-in OSD elements RubyFPV can toggle, from code/base/flags_osd.h. */
 export const RUBY_OSD_ELEMENTS: RubyOsdElement[] = [
   // osd_flags
-  { id: 'video_mbps', label: 'Video Mbps', category: 'Video', field: 'flags', shift: 0 },
-  { id: 'total_distance', label: 'Total distance', category: 'Flight', field: 'flags', shift: 1 },
-  { id: 'efficiency', label: 'Efficiency', category: 'Power', field: 'flags', shift: 5 },
-  { id: 'ahi_heading', label: 'AHI heading', category: 'Instruments', field: 'flags', shift: 9 },
-  { id: 'time_lower', label: 'Time (lower)', category: 'System', field: 'flags', shift: 11 },
-  { id: 'signal_bars', label: 'Signal bars', category: 'Link', field: 'flags', shift: 13 },
-  { id: 'distance', label: 'Distance', category: 'Flight', field: 'flags', shift: 16 },
-  { id: 'altitude', label: 'Altitude', category: 'Flight', field: 'flags', shift: 17 },
-  { id: 'gps_info', label: 'GPS info', category: 'GPS', field: 'flags', shift: 18 },
-  { id: 'radio_links', label: 'Radio links', category: 'Link', field: 'flags', shift: 19 },
-  { id: 'vehicle_radio_links', label: 'Vehicle radio links', category: 'Link', field: 'flags', shift: 20 },
-  { id: 'home', label: 'Home', category: 'Navigation', field: 'flags', shift: 21 },
-  { id: 'battery', label: 'Battery', category: 'Power', field: 'flags', shift: 22 },
-  { id: 'video_mode', label: 'Video mode', category: 'Video', field: 'flags', shift: 23 },
-  { id: 'cpu_info', label: 'CPU info', category: 'System', field: 'flags', shift: 25 },
-  { id: 'pitch', label: 'Pitch', category: 'Flight', field: 'flags', shift: 26 },
-  { id: 'throttle', label: 'Throttle', category: 'Flight', field: 'flags', shift: 27 },
-  { id: 'flight_mode', label: 'Flight mode', category: 'Flight', field: 'flags', shift: 28 },
-  { id: 'time', label: 'Time', category: 'System', field: 'flags', shift: 29 },
-  { id: 'radio_interfaces', label: 'Radio interfaces', category: 'Link', field: 'flags', shift: 30 },
-  { id: 'flight_mode_change', label: 'Flight mode change', category: 'Flight', field: 'flags', shift: 31 },
+  { id: 'video_mbps', label: 'Video Mbps', category: 'Video', field: 'flags', shift: 0 }, // i18n-exempt
+  { id: 'total_distance', label: 'Total distance', category: 'Flight', field: 'flags', shift: 1 }, // i18n-exempt
+  { id: 'efficiency', label: 'Efficiency', category: 'Power', field: 'flags', shift: 5 }, // i18n-exempt
+  { id: 'ahi_heading', label: 'AHI heading', category: 'Instruments', field: 'flags', shift: 9 }, // i18n-exempt
+  { id: 'time_lower', label: 'Time (lower)', category: 'System', field: 'flags', shift: 11 }, // i18n-exempt
+  { id: 'signal_bars', label: 'Signal bars', category: 'Link', field: 'flags', shift: 13 }, // i18n-exempt
+  { id: 'distance', label: 'Distance', category: 'Flight', field: 'flags', shift: 16 }, // i18n-exempt
+  { id: 'altitude', label: 'Altitude', category: 'Flight', field: 'flags', shift: 17 }, // i18n-exempt
+  { id: 'gps_info', label: 'GPS info', category: 'GPS', field: 'flags', shift: 18 }, // i18n-exempt
+  { id: 'radio_links', label: 'Radio links', category: 'Link', field: 'flags', shift: 19 }, // i18n-exempt
+  { id: 'vehicle_radio_links', label: 'Vehicle radio links', category: 'Link', field: 'flags', shift: 20 }, // i18n-exempt
+  { id: 'home', label: 'Home', category: 'Navigation', field: 'flags', shift: 21 }, // i18n-exempt
+  { id: 'battery', label: 'Battery', category: 'Power', field: 'flags', shift: 22 }, // i18n-exempt
+  { id: 'video_mode', label: 'Video mode', category: 'Video', field: 'flags', shift: 23 }, // i18n-exempt
+  { id: 'cpu_info', label: 'CPU info', category: 'System', field: 'flags', shift: 25 }, // i18n-exempt
+  { id: 'pitch', label: 'Pitch', category: 'Flight', field: 'flags', shift: 26 }, // i18n-exempt
+  { id: 'throttle', label: 'Throttle', category: 'Flight', field: 'flags', shift: 27 }, // i18n-exempt
+  { id: 'flight_mode', label: 'Flight mode', category: 'Flight', field: 'flags', shift: 28 }, // i18n-exempt
+  { id: 'time', label: 'Time', category: 'System', field: 'flags', shift: 29 }, // i18n-exempt
+  { id: 'radio_interfaces', label: 'Radio interfaces', category: 'Link', field: 'flags', shift: 30 }, // i18n-exempt
+  { id: 'flight_mode_change', label: 'Flight mode change', category: 'Flight', field: 'flags', shift: 31 }, // i18n-exempt
   // osd_flags2
-  { id: 'battery_cells', label: 'Battery cells', category: 'Power', field: 'flags2', shift: 1 },
-  { id: 'gps_position', label: 'GPS position', category: 'GPS', field: 'flags2', shift: 3 },
-  { id: 'tx_power', label: 'TX power', category: 'Link', field: 'flags2', shift: 10 },
-  { id: 'vertical_speed', label: 'Vertical speed', category: 'Flight', field: 'flags2', shift: 11 },
-  { id: 'ground_speed', label: 'Ground speed', category: 'Flight', field: 'flags2', shift: 14 },
-  { id: 'air_speed', label: 'Air speed', category: 'Flight', field: 'flags2', shift: 15 },
-  { id: 'rc_rssi', label: 'RC RSSI', category: 'Link', field: 'flags2', shift: 16 },
-  { id: 'link_quality_numbers', label: 'Link quality numbers', category: 'Link', field: 'flags2', shift: 17 },
-  { id: 'link_quality_bars', label: 'Link quality bars', category: 'Link', field: 'flags2', shift: 18 },
+  { id: 'battery_cells', label: 'Battery cells', category: 'Power', field: 'flags2', shift: 1 }, // i18n-exempt
+  { id: 'gps_position', label: 'GPS position', category: 'GPS', field: 'flags2', shift: 3 }, // i18n-exempt
+  { id: 'tx_power', label: 'TX power', category: 'Link', field: 'flags2', shift: 10 }, // i18n-exempt
+  { id: 'vertical_speed', label: 'Vertical speed', category: 'Flight', field: 'flags2', shift: 11 }, // i18n-exempt
+  { id: 'ground_speed', label: 'Ground speed', category: 'Flight', field: 'flags2', shift: 14 }, // i18n-exempt
+  { id: 'air_speed', label: 'Air speed', category: 'Flight', field: 'flags2', shift: 15 }, // i18n-exempt
+  { id: 'rc_rssi', label: 'RC RSSI', category: 'Link', field: 'flags2', shift: 16 }, // i18n-exempt
+  { id: 'link_quality_numbers', label: 'Link quality numbers', category: 'Link', field: 'flags2', shift: 17 }, // i18n-exempt
+  { id: 'link_quality_bars', label: 'Link quality bars', category: 'Link', field: 'flags2', shift: 18 }, // i18n-exempt
   // osd_flags3
-  { id: 'grid_crosshair', label: 'Crosshair', category: 'Grid', field: 'flags3', shift: 1 },
-  { id: 'grid_diagonal', label: 'Diagonal grid', category: 'Grid', field: 'flags3', shift: 2 },
-  { id: 'grid_squares', label: 'Square grid', category: 'Grid', field: 'flags3', shift: 3 },
-  { id: 'wind', label: 'Wind', category: 'Flight', field: 'flags3', shift: 4 },
-  { id: 'fc_temperature', label: 'FC temperature', category: 'System', field: 'flags3', shift: 5 },
-  { id: 'grid_thirds', label: 'Rule of thirds', category: 'Grid', field: 'flags3', shift: 7 },
-  { id: 'video_bitrate_history', label: 'Video bitrate history', category: 'Video', field: 'flags3', shift: 8 },
+  { id: 'grid_crosshair', label: 'Crosshair', category: 'Grid', field: 'flags3', shift: 1 }, // i18n-exempt
+  { id: 'grid_diagonal', label: 'Diagonal grid', category: 'Grid', field: 'flags3', shift: 2 }, // i18n-exempt
+  { id: 'grid_squares', label: 'Square grid', category: 'Grid', field: 'flags3', shift: 3 }, // i18n-exempt
+  { id: 'wind', label: 'Wind', category: 'Flight', field: 'flags3', shift: 4 }, // i18n-exempt
+  { id: 'fc_temperature', label: 'FC temperature', category: 'System', field: 'flags3', shift: 5 }, // i18n-exempt
+  { id: 'grid_thirds', label: 'Rule of thirds', category: 'Grid', field: 'flags3', shift: 7 }, // i18n-exempt
+  { id: 'video_bitrate_history', label: 'Video bitrate history', category: 'Video', field: 'flags3', shift: 8 }, // i18n-exempt
   // instruments_flags
-  { id: 'speed_to_sides', label: 'Speed to sides', category: 'Instruments', field: 'instruments', shift: 0 },
-  { id: 'horizon', label: 'Horizon', category: 'Instruments', field: 'instruments', shift: 1 },
-  { id: 'speed_alt', label: 'Speed & altitude', category: 'Instruments', field: 'instruments', shift: 2 },
-  { id: 'heading', label: 'Heading', category: 'Instruments', field: 'instruments', shift: 3 },
-  { id: 'alt_graph', label: 'Altitude graph', category: 'Instruments', field: 'instruments', shift: 4 },
-  { id: 'instruments', label: 'Instruments', category: 'Instruments', field: 'instruments', shift: 5 },
+  { id: 'speed_to_sides', label: 'Speed to sides', category: 'Instruments', field: 'instruments', shift: 0 }, // i18n-exempt
+  { id: 'horizon', label: 'Horizon', category: 'Instruments', field: 'instruments', shift: 1 }, // i18n-exempt
+  { id: 'speed_alt', label: 'Speed & altitude', category: 'Instruments', field: 'instruments', shift: 2 }, // i18n-exempt
+  { id: 'heading', label: 'Heading', category: 'Instruments', field: 'instruments', shift: 3 }, // i18n-exempt
+  { id: 'alt_graph', label: 'Altitude graph', category: 'Instruments', field: 'instruments', shift: 4 }, // i18n-exempt
+  { id: 'instruments', label: 'Instruments', category: 'Instruments', field: 'instruments', shift: 5 }, // i18n-exempt
 ];
 
 const ELEMENT_BY_ID: Record<string, RubyOsdElement> = Object.fromEntries(
   RUBY_OSD_ELEMENTS.map((e) => [e.id, e]),
 );
+
+export function rubyOsdElementLabel(element: Pick<RubyOsdElement, 'id' | 'label'>): string {
+  return t(`utils:rubyOsd.element.${element.id}`, { defaultValue: element.label });
+}
+
+export function rubyOsdCategoryLabel(category: RubyOsdCategory): string {
+  return t(`utils:rubyOsd.category.${category}`);
+}
 
 export const RUBY_OSD_PRESET = { NONE: 0, MINIMAL: 1, COMPACT: 2, DEFAULT: 3, CUSTOM: 4 } as const;
 
@@ -212,7 +222,7 @@ const OSD_BLOCK_TOKEN_COUNT = 6 + 6 + 7 + MODEL_MAX_OSD_SCREENS * 6 + 1; // 50
 export function parseOsdBlock(text: string): RubyOsdParams {
   const toks = text.split(/\s+/).filter(Boolean);
   const i0 = toks.indexOf('osd:');
-  if (i0 < 0) throw new Error('ruby-osd: no "osd:" block found');
+  if (i0 < 0) throw new Error('ruby-osd: no "osd:" block found'); // i18n-exempt
   let k = i0 + 1;
   const num = (): number => Number(toks[k++]);
   const boolean = (): boolean => num() !== 0;
@@ -339,7 +349,7 @@ export function applyPreset(p: RubyOsdParams, screen: number, preset: number): R
 export function spliceOsdBlock(modelText: string, params: RubyOsdParams): string {
   const lines = modelText.split('\n');
   const start = lines.findIndex((l) => l.trim().startsWith('osd:'));
-  if (start < 0) throw new Error('ruby-osd: no "osd:" block to splice');
+  if (start < 0) throw new Error('ruby-osd: no "osd:" block to splice'); // i18n-exempt
   let count = 0;
   let end = start;
   for (let li = start; li < lines.length; li++) {

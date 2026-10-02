@@ -6,6 +6,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Sliders,
   Target,
@@ -19,6 +20,7 @@ import { DraggableSlider } from '../ui/DraggableSlider';
 import { InfoCard } from '../ui/InfoCard';
 
 const TuningTab: React.FC = () => {
+  const { t } = useTranslation();
   const { parameters, setParameter, modifiedCount, fetchParameters, isLoading, downloadState } = useParameterStore();
 
   // A completed download, not just whatever parameters happen to be present.
@@ -58,8 +60,8 @@ const TuningTab: React.FC = () => {
               <Lightbulb className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
-              <p className="text-xs text-content-secondary">Fetch parameters from the FC to use presets</p>
+              <p className="text-amber-300 font-medium">{t('mavlink-config:tuningTab.notLoaded')}</p>
+              <p className="text-xs text-content-secondary">{t('mavlink-config:tuningTab.notLoadedBody')}</p>
             </div>
           </div>
           <button
@@ -67,14 +69,14 @@ const TuningTab: React.FC = () => {
             disabled={isLoading}
             className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Loading...' : 'Fetch Parameters'}
+            {isLoading ? t('common:loading') : t('mavlink-config:tuningTab.fetchParameters')}
           </button>
         </div>
       )}
 
       {/* Current Settings Overview */}
       <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
-        <h3 className="text-sm font-medium text-content">Current Settings</h3>
+        <h3 className="text-sm font-medium text-content">{t('mavlink-config:tuningTab.currentSettings')}</h3>
 
         <div className="grid grid-cols-3 gap-4">
           {/* Responsiveness */}
@@ -83,11 +85,11 @@ const TuningTab: React.FC = () => {
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-purple-400" />
               </div>
-              <span className="text-xs text-content-secondary">Responsiveness</span>
+              <span className="text-xs text-content-secondary">{t('mavlink-config:tuningTab.responsiveness')}</span>
             </div>
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
-                <span className="text-content-secondary">Max Angle</span>
+                <span className="text-content-secondary">{t('mavlink-config:tuningTab.maxAngle')}</span>
                 <span className="text-content font-mono">{angleMaxDeg}°</span>
               </div>
               <div className="h-1.5 bg-surface-inset rounded-full overflow-hidden">
@@ -105,15 +107,15 @@ const TuningTab: React.FC = () => {
               <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
                 <Sliders className="w-4 h-4 text-blue-400" />
               </div>
-              <span className="text-xs text-content-secondary">Acro Rates</span>
+              <span className="text-xs text-content-secondary">{t('mavlink-config:tuningTab.acroRates')}</span>
             </div>
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
-                <span className="text-content-secondary">Roll/Pitch</span>
+                <span className="text-content-secondary">{t('mavlink-config:tuningTab.rollPitch')}</span>
                 <span className="text-content font-mono">{tuningValues.acroRpRate}°/s</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-content-secondary">Yaw</span>
+                <span className="text-content-secondary">{t('common:yaw')}</span>
                 <span className="text-content font-mono">{tuningValues.acroYRate}°/s</span>
               </div>
             </div>
@@ -125,15 +127,15 @@ const TuningTab: React.FC = () => {
               <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
                 <Target className="w-4 h-4 text-green-400" />
               </div>
-              <span className="text-xs text-content-secondary">Navigation Speed</span>
+              <span className="text-xs text-content-secondary">{t('mavlink-config:tuningTab.navSpeed')}</span>
             </div>
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
-                <span className="text-content-secondary">Waypoint</span>
+                <span className="text-content-secondary">{t('common:waypoint')}</span>
                 <span className="text-content font-mono">{(tuningValues.wpnavSpeed / 100).toFixed(0)} m/s</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-content-secondary">Loiter</span>
+                <span className="text-content-secondary">{'Loiter' /* i18n-exempt */}</span>
                 <span className="text-content font-mono">{(tuningValues.loitSpeed / 100).toFixed(0)} m/s</span>
               </div>
             </div>
@@ -144,26 +146,26 @@ const TuningTab: React.FC = () => {
       {/* Fine Tuning */}
       <div className="bg-surface rounded-xl border border-subtle p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-content">Fine Tuning</h3>
-          <span className="text-xs text-content-secondary">Adjust individual values</span>
+          <h3 className="text-sm font-medium text-content">{t('mavlink-config:tuningTab.fineTuning')}</h3>
+          <span className="text-xs text-content-secondary">{t('mavlink-config:tuningTab.adjustValues')}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-6">
           {/* Max Angle */}
           <DraggableSlider
-            label="Max Tilt Angle"
+            label={t('mavlink-config:tuningTab.maxTiltAngle')}
             value={tuningValues.angleMax}
             onChange={(v) => setParameter('ANGLE_MAX', v)}
             min={1500}
             max={8000}
             step={100}
             color="#8B5CF6"
-            hint={`${(tuningValues.angleMax / 100).toFixed(0)}° - Higher = more aggressive`}
+            hint={t('mavlink-config:tuningTab.maxTiltHint', { deg: (tuningValues.angleMax / 100).toFixed(0) })}
           />
 
           {/* Loiter Speed */}
           <DraggableSlider
-            label="Loiter Speed"
+            label={t('mavlink-config:tuningTab.loiterSpeed')}
             value={tuningValues.loitSpeed}
             onChange={(v) => setParameter('LOIT_SPEED', v)}
             min={250}
@@ -175,7 +177,7 @@ const TuningTab: React.FC = () => {
 
           {/* Waypoint Speed */}
           <DraggableSlider
-            label="Waypoint Speed"
+            label={t('mavlink-config:tuningTab.waypointSpeed')}
             value={tuningValues.wpnavSpeed}
             onChange={(v) => setParameter('WPNAV_SPEED', v)}
             min={100}
@@ -187,7 +189,7 @@ const TuningTab: React.FC = () => {
 
           {/* Acro Roll/Pitch Rate */}
           <DraggableSlider
-            label="Acro Roll/Pitch Rate"
+            label={t('mavlink-config:tuningTab.acroRpRate')}
             value={tuningValues.acroRpRate}
             onChange={(v) => setParameter('ACRO_RP_RATE', v)}
             min={45}
@@ -200,10 +202,8 @@ const TuningTab: React.FC = () => {
       </div>
 
       {/* AutoTune Info */}
-      <InfoCard title="AutoTune Available" variant="tip" icon={Wrench}>
-        For best results, use ArduPilot's AutoTune flight mode. It will automatically
-        tune your PID values by flying test maneuvers. Set one of your flight mode
-        slots to AutoTune, then fly in a calm wind.
+      <InfoCard title={t('mavlink-config:tuningTab.autotuneTitle')} variant="tip" icon={Wrench}>
+        {t('mavlink-config:tuningTab.autotuneBody')}
       </InfoCard>
 
       {/* Save Reminder */}
@@ -211,7 +211,7 @@ const TuningTab: React.FC = () => {
         <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 flex items-center gap-3">
           <Save className="w-5 h-5 text-amber-400" />
           <p className="text-sm text-amber-400">
-            You have unsaved changes. Click <span className="font-medium">"Write to Flash"</span> in the header to save.
+            <Trans i18nKey="mavlink-config:tuningTab.unsaved" components={{ b: <span className="font-medium" /> }} />
           </p>
         </div>
       )}

@@ -11,6 +11,7 @@
 
 import type { UnitProfile } from './hud-config';
 import { vtolStateLabel, type VtolState } from '../../../../shared/telemetry-types';
+import { t } from '../../../../shared/i18n/index.js';
 
 export type HudReadoutId =
   | 'voltage'
@@ -83,30 +84,34 @@ export interface ReadoutSource {
   vtolState?: VtolState | null;
 }
 
+function readout(id: HudReadoutId, label: string, descriptionKey: string, category: HudReadoutCategory): HudReadoutMeta {
+  return { id, label, category, get description() { return t(descriptionKey); } };
+}
+
 export const HUD_READOUTS: HudReadoutMeta[] = [
-  { id: 'voltage', label: 'VOLTS', description: 'Battery voltage', category: 'Power' },
-  { id: 'current', label: 'AMPS', description: 'Current draw', category: 'Power' },
-  { id: 'power', label: 'PWR', description: 'Power (W)', category: 'Power' },
-  { id: 'battPercent', label: 'BATT', description: 'Battery remaining', category: 'Power' },
-  { id: 'altitude', label: 'ALT', description: 'Altitude', category: 'Flight' },
-  { id: 'vario', label: 'VS', description: 'Vertical speed', category: 'Flight' },
-  { id: 'throttle', label: 'THR', description: 'Throttle', category: 'Flight' },
-  { id: 'groundspeed', label: 'GS', description: 'Ground speed', category: 'Speed' },
-  { id: 'airspeed', label: 'AS', description: 'Airspeed', category: 'Speed' },
-  { id: 'heading', label: 'HDG', description: 'Heading', category: 'Navigation' },
-  { id: 'distHome', label: 'HOME', description: 'Distance to home', category: 'Navigation' },
-  { id: 'gpsSats', label: 'SATS', description: 'GPS satellites', category: 'Navigation' },
-  { id: 'hdop', label: 'HDOP', description: 'GPS HDOP', category: 'Navigation' },
-  { id: 'lat', label: 'LAT', description: 'Latitude', category: 'Navigation' },
-  { id: 'lon', label: 'LON', description: 'Longitude', category: 'Navigation' },
-  { id: 'windSpeed', label: 'WIND', description: 'Wind speed', category: 'Environment' },
-  { id: 'mode', label: 'MODE', description: 'Flight mode', category: 'Status' },
-  { id: 'vtolState', label: 'VTOL', description: 'Hover, wingborne, or transitioning', category: 'Status' },
-  { id: 'gforce', label: 'G', description: 'G-force', category: 'Status' },
-  { id: 'steer', label: 'STEER', description: 'Steering output (ground vehicles)', category: 'Status' },
-  { id: 'tilt', label: 'TILT', description: 'Roll/pitch tilt (rollover awareness)', category: 'Status' },
-  { id: 'wpDist', label: 'WP', description: 'Distance to active waypoint', category: 'Navigation' },
-  { id: 'xtrack', label: 'XTK', description: 'Crosstrack error', category: 'Navigation' },
+  readout('voltage', 'VOLTS', 'camera:hudReadouts.voltage', 'Power'),
+  readout('current', 'AMPS', 'camera:hudReadouts.current', 'Power'),
+  readout('power', 'PWR', 'camera:hudReadouts.power', 'Power'),
+  readout('battPercent', 'BATT', 'camera:hudReadouts.battPercent', 'Power'),
+  readout('altitude', 'ALT', 'camera:hudReadouts.altitude', 'Flight'),
+  readout('vario', 'VS', 'camera:hudReadouts.vario', 'Flight'),
+  readout('throttle', 'THR', 'camera:hudReadouts.throttle', 'Flight'),
+  readout('groundspeed', 'GS', 'camera:hudReadouts.groundspeed', 'Speed'),
+  readout('airspeed', 'AS', 'camera:hudReadouts.airspeed', 'Speed'),
+  readout('heading', 'HDG', 'camera:hudReadouts.heading', 'Navigation'),
+  readout('distHome', 'HOME', 'camera:hudReadouts.distHome', 'Navigation'),
+  readout('gpsSats', 'SATS', 'camera:hudReadouts.gpsSats', 'Navigation'),
+  readout('hdop', 'HDOP', 'camera:hudReadouts.hdop', 'Navigation'),
+  readout('lat', 'LAT', 'camera:hudReadouts.lat', 'Navigation'),
+  readout('lon', 'LON', 'camera:hudReadouts.lon', 'Navigation'),
+  readout('windSpeed', 'WIND', 'camera:hudReadouts.windSpeed', 'Environment'),
+  readout('mode', 'MODE', 'camera:hudReadouts.mode', 'Status'),
+  readout('vtolState', 'VTOL', 'camera:hudReadouts.vtolState', 'Status'),
+  readout('gforce', 'G', 'camera:hudReadouts.gforce', 'Status'),
+  readout('steer', 'STEER', 'camera:hudReadouts.steer', 'Status'),
+  readout('tilt', 'TILT', 'camera:hudReadouts.tilt', 'Status'),
+  readout('wpDist', 'WP', 'camera:hudReadouts.wpDist', 'Navigation'),
+  readout('xtrack', 'XTK', 'camera:hudReadouts.xtrack', 'Navigation'),
 ];
 
 export const READOUT_IDS: readonly HudReadoutId[] = HUD_READOUTS.map((r) => r.id);

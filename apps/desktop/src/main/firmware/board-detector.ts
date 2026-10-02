@@ -65,7 +65,7 @@ export async function detectBoards(): Promise<DetectedBoard[]> {
     if (knownBoard) {
       // Matched via KNOWN_BOARDS or ArduPilot VID fallback
       const board: DetectedBoard = {
-        name: knownBoard.name || port.friendlyName || port.manufacturer || 'Unknown Board',
+        name: knownBoard.name || port.friendlyName || port.manufacturer || 'Unknown Board', // i18n-exempt
         boardId: knownBoard.boardId || key,
         mcuType: knownBoard.mcuType || 'Unknown',
         flasher: knownBoard.flasher || 'dfu',

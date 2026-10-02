@@ -9,6 +9,7 @@
  * - Draggable vertices for selected fence
  */
 
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Polygon, Circle, Marker, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
@@ -120,7 +121,7 @@ const createMoveHandleIcon = () =>
 // (offset below the move handle). Renders as a small red pill with a trash
 // glyph + label so it is obvious even when the underlying zone fill is
 // tinted similarly.
-const createDeleteButtonIcon = () =>
+const createDeleteButtonIcon = (label: string) =>
   L.divIcon({
     className: 'custom-div-icon',
     html: `
@@ -145,7 +146,7 @@ const createDeleteButtonIcon = () =>
           <polyline points="3 6 5 6 21 6"></polyline>
           <path d="M19 6l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7"></path>
         </svg>
-        Delete
+        ${label}
       </div>
     `,
     iconSize: [70, 22],
@@ -166,6 +167,7 @@ function polygonCentroid(vertices: Array<{ lat: number; lon: number }>): [number
 }
 
 export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
+  const { t } = useTranslation();
   const {
     polygons,
     circles,
@@ -418,7 +420,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
             >
               {!readOnly && !isSelected && drawMode === 'none' && (
                 <Tooltip sticky opacity={0.9}>
-                  <span style={{ fontSize: '10px' }}>Click to edit or delete this zone</span>
+                  <span style={{ fontSize: '10px' }}>{t('geofence:fenceMapOverlay.clickToEdit')}</span>
                 </Tooltip>
               )}
             </Polygon>
@@ -449,7 +451,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
             >
               {!readOnly && !isSelected && drawMode === 'none' && (
                 <Tooltip sticky opacity={0.9}>
-                  <span style={{ fontSize: '10px' }}>Click to edit or delete this zone</span>
+                  <span style={{ fontSize: '10px' }}>{t('geofence:fenceMapOverlay.clickToEdit')}</span>
                 </Tooltip>
               )}
             </Polygon>
@@ -473,7 +475,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
                 }}
               >
                 <Tooltip direction="top" offset={[0, -14]} opacity={0.9}>
-                  <span style={{ fontSize: '10px' }}>Drag to move the whole zone</span>
+                  <span style={{ fontSize: '10px' }}>{t('geofence:fenceMapOverlay.dragToMove')}</span>
                 </Tooltip>
               </Marker>
             );
@@ -498,7 +500,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
                 <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
                   <span style={{ fontSize: '10px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
                     {`P${i + 1}: ${vertex.lat.toFixed(6)}, ${vertex.lon.toFixed(6)}`}
-                    {polygon.vertices.length > 3 ? '\nRight-click to delete' : ''}
+                    {polygon.vertices.length > 3 ? `\n${t('geofence:fenceMapOverlay.rightClickDelete')}` : ''}
                   </span>
                 </Tooltip>
               </Marker>
@@ -532,7 +534,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
           >
             {!readOnly && !isSelected && drawMode === 'none' && (
               <Tooltip sticky opacity={0.9}>
-                <span style={{ fontSize: '10px' }}>Click to edit or delete this zone</span>
+                <span style={{ fontSize: '10px' }}>{t('geofence:fenceMapOverlay.clickToEdit')}</span>
               </Tooltip>
             )}
           </Circle>
@@ -577,7 +579,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
             <Marker
               key={`${selectedPoly.id}-delete-btn`}
               position={center}
-              icon={createDeleteButtonIcon()}
+              icon={createDeleteButtonIcon(t('geofence:fenceMapOverlay.delete'))}
               interactive
               eventHandlers={{
                 click: (e: L.LeafletMouseEvent) => {
@@ -588,7 +590,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
               }}
             >
               <Tooltip direction="top" offset={[0, -14]} opacity={0.9}>
-                <span style={{ fontSize: '10px' }}>Delete this zone (Del)</span>
+                <span style={{ fontSize: '10px' }}>{t('geofence:fenceMapOverlay.deleteZone')}</span>
               </Tooltip>
             </Marker>
           );
@@ -599,7 +601,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
             <Marker
               key={`${selectedCircle.id}-delete-btn`}
               position={[selectedCircle.center.lat, selectedCircle.center.lon]}
-              icon={createDeleteButtonIcon()}
+              icon={createDeleteButtonIcon(t('geofence:fenceMapOverlay.delete'))}
               interactive
               eventHandlers={{
                 click: (e: L.LeafletMouseEvent) => {
@@ -610,7 +612,7 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
               }}
             >
               <Tooltip direction="top" offset={[0, -14]} opacity={0.9}>
-                <span style={{ fontSize: '10px' }}>Delete this zone (Del)</span>
+                <span style={{ fontSize: '10px' }}>{t('geofence:fenceMapOverlay.deleteZone')}</span>
               </Tooltip>
             </Marker>
           );

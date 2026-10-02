@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Rocket, Plug, X, AlertTriangle, Download } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { useSitlStore } from '../../stores/sitl-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -16,6 +17,7 @@ interface TourLaunchGateProps {
 type LaunchStatus = 'idle' | 'starting-sitl' | 'connecting' | 'error';
 
 export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, onCancel }: TourLaunchGateProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<LaunchStatus>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -53,7 +55,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
           sitlKind === 'ardupilot'
             ? useArduPilotSitlStore.getState().lastError
             : useSitlStore.getState().lastError;
-        throw new Error(err ?? 'Failed to start SITL');
+        throw new Error(err ?? t('tours:tourLaunchGate.failedToStartSitl'));
       }
 
       setStatus('connecting');
@@ -66,12 +68,12 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
         protocol: 'mavlink',
       });
       if (!connectOk) {
-        throw new Error('SITL started but TCP connection failed');
+        throw new Error(t('tours:tourLaunchGate.tcpConnectionFailed'));
       }
 
       onLaunched();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : t('common:unknownError');
       setErrorMsg(msg);
       setStatus('error');
     }
@@ -94,10 +96,10 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgb(37 99 235)' }}>
-                Tour needs a vehicle
+                {t('tours:tourLaunchGate.needsVehicle')}
               </div>
               <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {tour.title}
+                {t(tour.titleKey)}
               </h2>
             </div>
             <button
@@ -105,15 +107,18 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               disabled={busy}
               className="p-1 rounded-md transition-colors disabled:opacity-40"
               style={{ color: 'var(--text-tertiary)' }}
-              aria-label="Cancel"
+              aria-label={t('common:cancel')}
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
-            This walkthrough demonstrates features that need a live flight controller. You can spin
-            up a safe <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{sitlLabel}</span> simulation to try it, or connect your own FC.
+            <Trans
+              i18nKey="tours:tourLaunchGate.intro"
+              values={{ sitl: sitlLabel }}
+              components={{ b: <span className="font-semibold" style={{ color: 'var(--text-primary)' }} /> }}
+            />
           </p>
 
           {errorMsg && (
@@ -141,8 +146,8 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
             >
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>
-                {apPlatformError ?? 'ArduPilot SITL is not supported on this platform.'} Connect
-                your own FC to continue the tour.
+                {apPlatformError ?? t('tours:tourLaunchGate.apNotSupported')}{' '}
+                {t('tours:tourLaunchGate.connectOwnToContinue')}
               </span>
             </div>
           )}
@@ -158,8 +163,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
             >
               <Download className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>
-                ArduPilot SITL isn&apos;t installed yet. Head to the SITL view to download the
-                binary - the tour will pick up automatically once you connect.
+                {t('tours:tourLaunchGate.apNotInstalled')}
               </span>
             </div>
           )}
@@ -172,7 +176,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
                 style={{ background: 'rgb(37 99 235)', color: '#fff' }}
               >
                 <Download className="w-4 h-4" />
-                Go to SITL to install
+                {t('tours:tourLaunchGate.goToSitlInstall')}
               </button>
             ) : (
               <button
@@ -183,10 +187,10 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               >
                 <Rocket className="w-4 h-4" />
                 {status === 'starting-sitl'
-                  ? 'Starting SITL...'
+                  ? t('tours:tourLaunchGate.startingSitl')
                   : status === 'connecting'
-                    ? 'Connecting...'
-                    : `Launch ${sitlLabel}`}
+                    ? t('common:connecting')
+                    : t('tours:tourLaunchGate.launch', { sitl: sitlLabel })}
               </button>
             )}
             <button
@@ -200,7 +204,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               }}
             >
               <Plug className="w-3.5 h-3.5" />
-              I&apos;ll connect my own FC
+              {t('tours:tourLaunchGate.connectOwnFc')}
             </button>
             <button
               onClick={onCancel}
@@ -208,7 +212,7 @@ export function TourLaunchGate({ tour, onLaunched, onUseOwnFc, onInstallSitl, on
               className="w-full px-4 py-1.5 text-xs transition-colors disabled:opacity-50"
               style={{ color: 'var(--text-tertiary)' }}
             >
-              Not now
+              {t('tours:tourLaunchGate.notNow')}
             </button>
           </div>
         </div>

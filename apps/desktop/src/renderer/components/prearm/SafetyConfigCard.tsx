@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { ShieldAlert, AlertTriangle, Info, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useNavigationStore } from '../../stores/navigation-store';
@@ -23,29 +24,30 @@ const SEVERITY: Record<SafetySeverity, {
   icon: typeof ShieldAlert;
   ring: string;
   chip: string;
-  label: string;
+  labelKey: string;
 }> = {
   critical: {
     icon: ShieldAlert,
     ring: 'border-red-500/40 bg-red-500/[0.07]',
     chip: 'text-red-300 bg-red-500/15 border-red-500/30',
-    label: 'Do not fly',
+    labelKey: 'prearm:safetyConfigCard.severityCritical',
   },
   warning: {
     icon: AlertTriangle,
     ring: 'border-amber-500/40 bg-amber-500/[0.07]',
     chip: 'text-amber-300 bg-amber-500/15 border-amber-500/30',
-    label: 'Check this',
+    labelKey: 'prearm:safetyConfigCard.severityWarning',
   },
   advisory: {
     icon: Info,
     ring: 'border-subtle bg-surface-raised',
     chip: 'text-content-secondary bg-surface border-subtle',
-    label: 'Worth knowing',
+    labelKey: 'prearm:safetyConfigCard.severityAdvisory',
   },
 };
 
 function FindingRow({ finding }: { finding: SafetyFinding }) {
+  const { t } = useTranslation();
   const setView = useNavigationStore((s) => s.setView);
   const setParameter = useParameterStore((s) => s.setParameterImmediate);
   const [applying, setApplying] = useState(false);
@@ -73,7 +75,7 @@ function FindingRow({ finding }: { finding: SafetyFinding }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-content">{finding.title}</span>
             <span className={`px-1.5 py-0.5 rounded-full border text-[10px] font-medium ${style.chip}`}>
-              {style.label}
+              {t(style.labelKey)}
             </span>
           </div>
           <p className="text-xs text-content-secondary mt-1 leading-relaxed">{finding.consequence}</p>
@@ -84,13 +86,13 @@ function FindingRow({ finding }: { finding: SafetyFinding }) {
                 onClick={apply}
                 disabled={applying}
                 className="px-2.5 py-1 rounded-md bg-surface-raised border border-subtle text-xs text-content hover:bg-surface-overlay transition-colors disabled:opacity-50"
-                data-tip={`Sets ${finding.recommend.param} to ${finding.recommend.value}`}
+                data-tip={t('prearm:safetyConfigCard.setsParamTip', { param: finding.recommend.param, value: finding.recommend.value })}
               >
-                {applying ? 'Applying…' : finding.recommend.label}
+                {applying ? t('common:applying') : finding.recommend.label}
               </button>
             )}
-            {applied && <span className="text-xs text-green-400">Applied</span>}
-            {failed && <span className="text-xs text-red-400">Could not write, open the parameter instead</span>}
+            {applied && <span className="text-xs text-green-400">{t('prearm:safetyConfigCard.applied')}</span>}
+            {failed && <span className="text-xs text-red-400">{t('prearm:safetyConfigCard.writeFailed')}</span>}
 
             {finding.params.length > 0 && (
               <button
@@ -109,6 +111,7 @@ function FindingRow({ finding }: { finding: SafetyFinding }) {
 }
 
 export function SafetyConfigCard() {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   // Safety findings computed from a partial set would read as "no issues"
   // simply because the parameters they check had not arrived.
@@ -155,10 +158,10 @@ export function SafetyConfigCard() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium text-content-secondary uppercase tracking-wide">
-          Safety configuration
+          {t('prearm:safetyConfigCard.title')}
         </h4>
         <span className="text-[11px] text-content-tertiary">
-          {findings.length} item{findings.length === 1 ? '' : 's'}
+          {t('prearm:safetyConfigCard.items', { count: findings.length })}
         </span>
       </div>
       {findings.map((finding) => (

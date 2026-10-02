@@ -15,10 +15,12 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { AlertTriangle, CheckCircle2, HelpCircle, ShieldAlert } from 'lucide-react';
 import { useConnectionStore } from '../../../stores/connection-store';
 import { useCalibrationStore } from '../../../stores/calibration-store';
-import { CALIBRATION_TYPES } from '../../../../shared/calibration-types';
+import { CALIBRATION_TYPES, calibrationTypeName } from '../../../../shared/calibration-types';
 import type { CalibrationRecordIpc } from '../../../../shared/calibration-quality';
 
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
@@ -31,38 +33,39 @@ const TONE_STYLE: Record<Tone, string> = {
 };
 
 function typeLabel(type: string): string {
-  return CALIBRATION_TYPES.find((t) => t.id === type)?.name ?? type;
+  const info = CALIBRATION_TYPES.find((c) => c.id === type);
+  return info ? calibrationTypeName(info) : type;
 }
 
 /** The record's overall standing. Persistence outranks fit quality: a value
  *  that is not on the vehicle cannot be good, however well it measured. */
-function assess(record: CalibrationRecordIpc): { tone: Tone; headline: string; detail: string } {
+function assess(record: CalibrationRecordIpc, t: TFunction): { tone: Tone; headline: string; detail: string } {
   const name = typeLabel(record.type);
 
   if (record.persistence && record.persistence.state !== 'verified') {
     return {
       tone: 'danger',
-      headline: `${name} calibration did not survive the reboot`,
-      detail: `${record.persistence.summary} Do not fly on this calibration. Run it again.`,
+      headline: t('calibration:calibrationHealthBanner.notSurvived', { name }),
+      detail: t('calibration:calibrationHealthBanner.notSurvivedDetail', { summary: record.persistence.summary }),
     };
   }
   if (!record.persistence) {
     return {
       tone: 'warn',
-      headline: `${name} calibration not yet confirmed`,
-      detail: 'Reboot the flight controller and reconnect. ArduDeck will read the values back and confirm they stuck.',
+      headline: t('calibration:calibrationHealthBanner.notConfirmed', { name }),
+      detail: t('calibration:calibrationHealthBanner.notConfirmedDetail'),
     };
   }
   if (record.verdict === 'bad' || record.verdict === 'marginal') {
     return {
       tone: record.verdict === 'bad' ? 'danger' : 'warn',
-      headline: `${name} calibration is on the vehicle, but weak`,
+      headline: t('calibration:calibrationHealthBanner.weak', { name }),
       detail: record.summary,
     };
   }
   return {
     tone: 'good',
-    headline: `${name} calibration confirmed on the vehicle`,
+    headline: t('calibration:calibrationHealthBanner.confirmed', { name }),
     detail: record.summary,
   };
 }
@@ -75,6 +78,7 @@ const TONE_ICON: Record<Tone, typeof CheckCircle2> = {
 };
 
 export function CalibrationHealthBanner() {
+  const { t } = useTranslation();
   const boardUid = useConnectionStore((s) => s.connectionState.boardUid);
   const isConnected = useConnectionStore((s) => s.connectionState.isConnected);
   const currentStep = useCalibrationStore((s) => s.currentStep);
@@ -99,7 +103,7 @@ export function CalibrationHealthBanner() {
   // Worst first: the thing that stops you flying belongs at the top.
   const rank: Record<Tone, number> = { danger: 0, warn: 1, neutral: 2, good: 3 };
   const rows = records
-    .map((record) => ({ record, ...assess(record) }))
+    .map((record) => ({ record, ...assess(record, t) }))
     .sort((a, b) => rank[a.tone] - rank[b.tone]);
 
   return (

@@ -21,6 +21,7 @@ import {
 } from '../../shared/user-units.js';
 import type { WeatherSummary } from './weather-api';
 import type { AltFrame } from '../components/mission/terrain-altitude-planner';
+import { t } from '../../shared/i18n/index.js';
 
 export type CheckSeverity = 'ok' | 'warn' | 'crit' | 'info';
 
@@ -298,50 +299,50 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
   const checks: BriefingCheck[] = [
     {
       id: 'flightTime',
-      label: 'Flight time',
+      label: t('utils:flightBriefing.flightTime'),
       value: formatDurationSec(ctx.flightTimeSec),
       severity: PASSIVE,
-      detail: 'estimated at cruise speed',
+      detail: t('utils:flightBriefing.flightTimeDetail'),
     },
     {
       id: 'batteries',
-      label: 'Batteries',
-      value: ctx.batteryCount > 0 ? `${ctx.batteryCount}` : 'unknown',
+      label: t('utils:flightBriefing.batteries'),
+      value: ctx.batteryCount > 0 ? `${ctx.batteryCount}` : t('utils:flightBriefing.unknown'),
       severity: PASSIVE,
       detail:
         ctx.enduranceSec > 0
-          ? `~${formatDurationSec(ctx.enduranceSec)} usable each`
-          : 'set a vehicle profile for endurance',
+          ? t('utils:flightBriefing.usableEach', { duration: formatDurationSec(ctx.enduranceSec) })
+          : t('utils:flightBriefing.setProfile'),
     },
     {
       id: 'distance',
-      label: 'Distance',
+      label: t('utils:flightBriefing.distance'),
       value: formatDistanceM(ctx.distanceM, ctx.distanceUnit),
       severity: PASSIVE,
     },
     {
       id: 'maxAlt',
-      label: 'Max altitude',
+      label: t('utils:flightBriefing.maxAltitude'),
       value: formatAltitudeM(ctx.maxAltM, ctx.altitudeUnit),
       severity: PASSIVE,
-      detail: `ceiling ${formatAltitudeM(ctx.ceilingM, ctx.altitudeUnit)} AGL`,
+      detail: t('utils:flightBriefing.ceiling', { altitude: formatAltitudeM(ctx.ceilingM, ctx.altitudeUnit) }),
     },
   ];
 
   if (ctx.reservePct !== null) {
     checks.push({
       id: 'reserve',
-      label: 'Reserve',
+      label: t('utils:flightBriefing.reserve'),
       value: `${Math.round(ctx.reservePct)}%`,
       severity: PASSIVE,
-      detail: 'on the final battery',
+      detail: t('utils:flightBriefing.reserveDetail'),
     });
   }
 
   if (ctx.hasHome) {
     checks.push({
       id: 'maxFromHome',
-      label: 'Max from home',
+      label: t('utils:flightBriefing.maxFromHome'),
       value: formatDistanceM(ctx.maxFromHomeM, ctx.distanceUnit),
       severity: PASSIVE,
     });
@@ -350,10 +351,10 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
   if (ctx.weather) {
     checks.push({
       id: 'wind',
-      label: 'Wind',
+      label: t('utils:flightBriefing.wind'),
       value: formatWindSpeedFromMetersPerSecond(ctx.weather.windSpeedMs, ctx.windSpeedUnit),
       severity: PASSIVE,
-      detail: `gusts ${formatWindSpeedFromMetersPerSecond(ctx.weather.windGustMs, ctx.windSpeedUnit)}`,
+      detail: t('utils:flightBriefing.gusts', { speed: formatWindSpeedFromMetersPerSecond(ctx.weather.windGustMs, ctx.windSpeedUnit) }),
     });
   }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { applyAttitude } from '../calibration/shared/OrientationScene';
@@ -76,6 +77,7 @@ function sceneQuaternion(pose: Mat3): THREE.Quaternion {
 }
 
 export function BoardMountScene({ pose, kind, roll, pitch, tilt, size = 320, onUnavailable }: BoardMountSceneProps) {
+  const { t } = useTranslation();
   const isLight = useResolvedTheme() === 'light';
   const mountRef = useRef<HTMLDivElement | null>(null);
   const liveRef = useRef({ pose, roll, pitch, tilt });
@@ -122,7 +124,7 @@ export function BoardMountScene({ pose, kind, roll, pitch, tilt, size = 320, onU
 
     const { group: vehicle, noseX } = buildVehicleModel(kind, vehiclePalette(isLight));
     rig.add(vehicle);
-    const front = label('FRONT', isLight ? '#b45309' : '#fbbf24', 0.45);
+    const front = label(t('mavlink-config:boardMountScene.front'), isLight ? '#b45309' : '#fbbf24', 0.45);
     front.position.set(noseX + 0.55, -0.1, 0);
     rig.add(front);
 
@@ -168,7 +170,7 @@ export function BoardMountScene({ pose, kind, roll, pitch, tilt, size = 320, onU
       });
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };
-  }, [size, kind, isLight, onUnavailable]);
+  }, [size, kind, isLight, onUnavailable, t]);
 
   return <div ref={mountRef} style={{ width: size, height: size }} className="mx-auto shrink-0 overflow-hidden" />;
 }

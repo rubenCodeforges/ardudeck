@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FrameLayout } from '../../../../shared/motor-test-types';
 import { layoutToSvgPositions, testOrderToLabel, frameTypeDisplayName } from './motor-layout-utils';
 
@@ -60,6 +61,7 @@ export const FrameDiagram: React.FC<FrameDiagramProps> = ({
   onMotorClick,
   size = 340,
 }) => {
+  const { t } = useTranslation();
   const positions = layoutToSvgPositions(layout, size);
   const center = size / 2;
   const motorRadius = 26;
@@ -67,7 +69,7 @@ export const FrameDiagram: React.FC<FrameDiagramProps> = ({
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="text-center">
-        <div className="text-xs uppercase tracking-wider text-content-secondary">Frame</div>
+        <div className="text-xs uppercase tracking-wider text-content-secondary">{t('mavlink-config:frameDiagram.frame')}</div>
         <div className="text-sm text-content">
           {layout.ClassName} <span className="text-content-secondary">·</span> {frameTypeDisplayName(layout.TypeName)}
         </div>
@@ -252,7 +254,7 @@ export const FrameDiagram: React.FC<FrameDiagramProps> = ({
           <div className="w-3 h-3 rounded-full border-2 border-emerald-500" />
           CCW
         </div>
-        <div className="text-content-tertiary">Click a motor to test</div>
+        <div className="text-content-tertiary">{t('mavlink-config:frameDiagram.clickToTest')}</div>
       </div>
     </div>
   );

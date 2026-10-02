@@ -1,5 +1,6 @@
 import { Plane } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import {
   batteryParams, airspeedParams, commonSafetyParams,
   simPhysicsParams, vtailServoParams, matches,
@@ -10,8 +11,8 @@ import {
  */
 export const planeVTail: VehicleTemplate = {
   slug: 'plane-v-tail',
-  name: 'V-Tail Plane',
-  description: 'Two combined pitch/yaw surfaces, cleaner drag profile',
+  name: 'V-Tail Plane', // i18n-exempt
+  description: 'Two combined pitch/yaw surfaces, cleaner drag profile', // i18n-exempt
   icon: Plane,
   vehicleType: 'plane',
   category: 'fixed-wing',
@@ -26,7 +27,7 @@ export const planeVTail: VehicleTemplate = {
     batteryCapacity: 4000,
   },
   toParams: (p) => [
-    { name: 'SERVO3_FUNCTION', value: 70, reason: 'Throttle', requiresReboot: true },
+    { name: 'SERVO3_FUNCTION', value: 70, reason: t('lib:vehicleTemplates.reason.throttle'), requiresReboot: true },
     ...vtailServoParams(),
     ...airspeedParams(p),
     ...batteryParams(p),

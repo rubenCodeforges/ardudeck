@@ -27,6 +27,7 @@ import {
   wfbRxAssetUrl,
   wfbRxNotBuiltMessage,
 } from './wfb-rx-release.js';
+import { t } from '../../shared/i18n/index.js';
 
 const FFMPEG_TAG = 'b6.1.1';
 const MEDIAMTX_TAG = 'v1.19.1';
@@ -76,10 +77,10 @@ export class MediaBinariesDownloader {
         onLog?.('Downloading MediaMTX…');
         await this.fetchMediamtx();
       }
-      onLog?.('Media engine ready.');
+      onLog?.('Media engine ready.'); // i18n-exempt
       return { ok: true };
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Download failed';
+      const error = e instanceof Error ? e.message : t('main:media.downloadFailed');
       onLog?.(`Media engine download failed: ${error}`);
       return { ok: false, error };
     }
@@ -133,7 +134,7 @@ export class MediaBinariesDownloader {
     if (isWin) {
       const zip = new AdmZip(Buffer.from(archive));
       const entry = zip.getEntries().find((e) => e.entryName.endsWith('mediamtx.exe'));
-      if (!entry) throw new Error('mediamtx.exe not found in archive');
+      if (!entry) throw new Error('mediamtx.exe not found in archive'); // i18n-exempt
       writeFileSync(out, entry.getData());
       return;
     }
@@ -144,7 +145,7 @@ export class MediaBinariesDownloader {
     writeFileSync(tmp, Buffer.from(archive));
     const res = spawnSync('tar', ['xzf', tmp, '-C', dir, 'mediamtx'], { stdio: 'ignore' });
     rmSync(tmp, { force: true });
-    if (res.status !== 0 || !existsSync(out)) throw new Error('Failed to extract mediamtx');
+    if (res.status !== 0 || !existsSync(out)) throw new Error('Failed to extract mediamtx'); // i18n-exempt
     chmodSync(out, 0o755);
   }
 }

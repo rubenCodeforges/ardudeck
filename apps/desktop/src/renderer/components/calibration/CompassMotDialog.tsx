@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Zap, Play, Square } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 
 interface CompassMotDialogProps {
   onClose: () => void;
@@ -43,10 +44,10 @@ type RunState =
   | { kind: 'error'; message: string };
 
 /** Interference quality bands from the ArduPilot compassmot guidance. */
-export function interferenceQuality(pct: number): { label: string; tone: 'good' | 'marginal' | 'bad' } {
-  if (pct < 30) return { label: 'Good', tone: 'good' };
-  if (pct < 60) return { label: 'Marginal', tone: 'marginal' };
-  return { label: 'High', tone: 'bad' };
+export function interferenceQuality(pct: number): { labelKey: string; tone: 'good' | 'marginal' | 'bad' } {
+  if (pct < 30) return { labelKey: 'calibration:compassMotDialog.qualityGood', tone: 'good' };
+  if (pct < 60) return { labelKey: 'calibration:compassMotDialog.qualityMarginal', tone: 'marginal' };
+  return { labelKey: 'common:high', tone: 'bad' };
 }
 
 const TONE_TEXT: Record<'good' | 'marginal' | 'bad', string> = {
@@ -71,6 +72,7 @@ export function decodeCompassMot(payload: number[] | Uint8Array): CompassMotSamp
 }
 
 export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
+  const { t } = useTranslation();
   const [run, setRun] = useState<RunState>({ kind: 'idle' });
   const [acknowledged, setAcknowledged] = useState(false);
   const [samples, setSamples] = useState<CompassMotSample[]>([]);
@@ -103,13 +105,13 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
     try {
       const result = await window.electronAPI?.calibrationCompassMotStart?.();
       if (!result?.success) {
-        setRun({ kind: 'error', message: result?.error || 'Failed to start' });
+        setRun({ kind: 'error', message: result?.error || t('calibration:compassMotDialog.failedToStart') });
       }
       // Stay in 'starting' on success until the first COMPASSMOT_STATUS arrives.
     } catch (err) {
-      setRun({ kind: 'error', message: err instanceof Error ? err.message : 'Unknown error' });
+      setRun({ kind: 'error', message: err instanceof Error ? err.message : t('common:unknownError') });
     }
-  }, [acknowledged]);
+  }, [acknowledged, t]);
 
   const finish = useCallback(async () => {
     try {
@@ -155,10 +157,9 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
             <Zap className="w-5 h-5 text-orange-400" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-content">Compass/Motor Calibration</h3>
+            <h3 className="text-sm font-semibold text-content">{t('calibration:compassMotDialog.title')}</h3>
             <p className="text-xs text-content-secondary mt-1 leading-relaxed">
-              Measures compass interference from the motors under load and writes the
-              COMPASS_MOT compensation. Copter firmware only.
+              {t('calibration:compassMotDialog.description')}
             </p>
           </div>
         </div>
@@ -171,20 +172,20 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
               <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
                 <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="text-xs text-red-200 space-y-1.5">
-                  <p className="font-medium">The motors will spin. Secure the vehicle first.</p>
+                  <p className="font-medium">{t('calibration:compassMotDialog.motorsWillSpin')}</p>
                   <ul className="list-disc list-inside space-y-1 text-red-200/80">
-                    <li>Firmly tie down or hold the frame so it cannot move or flip.</li>
-                    <li>Props on and everyone clear of the disc.</li>
-                    <li>Battery-powered (USB alone cannot drive the motors), fully charged.</li>
-                    <li>You will raise the throttle on your transmitter to ~50-75%.</li>
+                    <li>{t('calibration:compassMotDialog.tieDown')}</li>
+                    <li>{t('calibration:compassMotDialog.propsOn')}</li>
+                    <li>{t('calibration:compassMotDialog.batteryPowered')}</li>
+                    <li>{t('calibration:compassMotDialog.raiseThrottle')}</li>
                   </ul>
                 </div>
               </div>
 
               <ol className="text-xs text-content-secondary space-y-1 list-decimal list-inside leading-relaxed">
-                <li>Press Start, then slowly raise throttle to 50-75% over ~5-10 seconds.</li>
-                <li>Hold briefly at high throttle, then smoothly lower back to zero.</li>
-                <li>Press Finish to save. Lower interference is better.</li>
+                <li>{t('calibration:compassMotDialog.stepStart')}</li>
+                <li>{t('calibration:compassMotDialog.stepHold')}</li>
+                <li>{t('calibration:compassMotDialog.stepFinish')}</li>
               </ol>
 
               <label className="flex items-center gap-2 text-xs text-content cursor-pointer select-none">
@@ -194,7 +195,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
                   onChange={(e) => setAcknowledged(e.target.checked)}
                   className="w-4 h-4 rounded border-subtle bg-surface accent-orange-500"
                 />
-                The vehicle is secured and the area is clear.
+                {t('calibration:compassMotDialog.acknowledge')}
               </label>
 
               {run.kind === 'error' && (
@@ -213,16 +214,16 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30">
                   <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
                   <div className="text-xs text-blue-200">
-                    Waiting for the flight controller to begin sampling...
+                    {t('calibration:compassMotDialog.waitingSampling')}
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-3 gap-2">
-                <Stat label="Throttle" value={`${(latest?.throttle ?? 0).toFixed(0)}%`} />
-                <Stat label="Current" value={`${(latest?.current ?? 0).toFixed(1)} A`} />
+                <Stat label={t('common:throttle')} value={`${(latest?.throttle ?? 0).toFixed(0)}%`} />
+                <Stat label={t('common:current')} value={`${(latest?.current ?? 0).toFixed(1)} A`} />
                 <Stat
-                  label="Interference"
+                  label={t('calibration:compassMotDialog.interference')}
                   value={`${(latest?.interference ?? 0).toFixed(0)}%`}
                   tone={interferenceQuality(latest?.interference ?? 0).tone}
                 />
@@ -231,8 +232,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
               <InterferencePlot samples={samples} />
 
               <p className="text-[11px] text-content-tertiary leading-relaxed">
-                Raise the throttle now. The plot plots interference against throttle as the
-                motors load up. Peak so far: {peakInterference.toFixed(0)}%.
+                {t('calibration:compassMotDialog.raiseNow', { peak: peakInterference.toFixed(0) })}
               </p>
             </>
           )}
@@ -243,26 +243,28 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
               <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="text-xs text-emerald-200">
-                  <span className="font-medium">Calibration saved.</span> COMPASS_MOT
-                  compensation has been written. A reboot is recommended before flying.
+                  <Trans
+                    i18nKey="calibration:compassMotDialog.saved"
+                    components={{ b: <span className="font-medium" /> }}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-lg bg-surface border border-subtle">
                   <div className="text-[11px] text-content-tertiary uppercase tracking-wide">
-                    Peak interference
+                    {t('calibration:compassMotDialog.peakInterference')}
                   </div>
                   <div className={`text-lg font-semibold ${TONE_TEXT[interferenceQuality(peakInterference).tone]}`}>
                     {peakInterference.toFixed(0)}%
                     <span className="text-xs font-normal text-content-secondary ml-2">
-                      {interferenceQuality(peakInterference).label}
+                      {t(interferenceQuality(peakInterference).labelKey)}
                     </span>
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-surface border border-subtle">
                   <div className="text-[11px] text-content-tertiary uppercase tracking-wide">
-                    Compensation (X, Y, Z)
+                    {t('calibration:compassMotDialog.compensation')}
                   </div>
                   <div className="text-sm font-medium text-content tabular-nums mt-0.5">
                     {latest
@@ -276,8 +278,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
                   <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="text-xs text-amber-200">
-                    Interference is high. Consider relocating the compass (or use an external
-                    GPS/compass mast) further from the power wiring and ESCs.
+                    {t('calibration:compassMotDialog.highWarning')}
                   </div>
                 </div>
               )}
@@ -291,7 +292,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
             onClick={handleClose}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface transition-colors"
           >
-            {run.kind === 'done' ? 'Close' : 'Cancel'}
+            {run.kind === 'done' ? t('common:close') : t('common:cancel')}
           </button>
           {(run.kind === 'idle' || run.kind === 'error') && (
             <button
@@ -300,7 +301,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-orange-600 hover:bg-orange-500 disabled:bg-orange-600/40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
             >
               <Play className="w-3.5 h-3.5" />
-              Start
+              {t('common:start')}
             </button>
           )}
           {isBusy && (
@@ -309,7 +310,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center gap-1.5"
             >
               <Square className="w-3.5 h-3.5" />
-              Finish &amp; Save
+              {t('calibration:compassMotDialog.finishSave')}
             </button>
           )}
         </div>
@@ -335,6 +336,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'go
  * accent that reads on both light and dark.
  */
 function InterferencePlot({ samples }: { samples: CompassMotSample[] }) {
+  const { t } = useTranslation();
   const W = 460;
   const H = 150;
   const PAD_L = 30;
@@ -387,10 +389,10 @@ function InterferencePlot({ samples }: { samples: CompassMotSample[] }) {
           fill="currentColor"
           transform={`rotate(-90 10 ${PAD_T + plotH / 2})`}
         >
-          Interf %
+          {t('calibration:compassMotDialog.axisInterference')}
         </text>
         <text x={PAD_L + plotW / 2} y={H} textAnchor="middle" fontSize={9} fill="currentColor">
-          Throttle %
+          {t('calibration:compassMotDialog.axisThrottle')}
         </text>
 
         {/* Interference trace */}

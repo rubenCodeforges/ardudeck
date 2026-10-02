@@ -10,6 +10,7 @@ import { join } from 'path';
 import { copyFileSync, existsSync, mkdirSync } from 'fs';
 import { app } from 'electron';
 import { detectFlightGear } from './simulator-detector';
+import { t } from '../../shared/i18n/index.js';
 
 export interface FlightGearConfig {
   // Aircraft selection
@@ -39,23 +40,23 @@ export interface FlightGearConfig {
 
 // Default aircraft options
 export const FLIGHTGEAR_AIRCRAFT = [
-  { id: 'c172p', name: 'Cessna 172P Skyhawk' },
-  { id: 'c182s', name: 'Cessna 182S Skylane' },
-  { id: 'pa28-161', name: 'Piper PA-28-161 Warrior' },
-  { id: 'j3cub', name: 'Piper J-3 Cub' },
-  { id: 'dr400', name: 'Robin DR400' },
+  { id: 'c172p', name: 'Cessna 172P Skyhawk' }, // i18n-exempt
+  { id: 'c182s', name: 'Cessna 182S Skylane' }, // i18n-exempt
+  { id: 'pa28-161', name: 'Piper PA-28-161 Warrior' }, // i18n-exempt
+  { id: 'j3cub', name: 'Piper J-3 Cub' }, // i18n-exempt
+  { id: 'dr400', name: 'Robin DR400' }, // i18n-exempt
   { id: 'ufo', name: 'UFO (Testing)' },
 ] as const;
 
 // Popular airports
 export const FLIGHTGEAR_AIRPORTS = [
-  { id: 'KSFO', name: 'San Francisco International' },
-  { id: 'KLAX', name: 'Los Angeles International' },
-  { id: 'KJFK', name: 'New York JFK' },
-  { id: 'KORD', name: 'Chicago O\'Hare' },
-  { id: 'EGLL', name: 'London Heathrow' },
-  { id: 'LFPG', name: 'Paris Charles de Gaulle' },
-  { id: 'EDDF', name: 'Frankfurt Airport' },
+  { id: 'KSFO', name: 'San Francisco International' }, // i18n-exempt
+  { id: 'KLAX', name: 'Los Angeles International' }, // i18n-exempt
+  { id: 'KJFK', name: 'New York JFK' }, // i18n-exempt
+  { id: 'KORD', name: 'Chicago O\'Hare' }, // i18n-exempt
+  { id: 'EGLL', name: 'London Heathrow' }, // i18n-exempt
+  { id: 'LFPG', name: 'Paris Charles de Gaulle' }, // i18n-exempt
+  { id: 'EDDF', name: 'Frankfurt Airport' }, // i18n-exempt
 ] as const;
 
 class FlightGearLauncher {
@@ -89,7 +90,7 @@ class FlightGearLauncher {
       baseDir = process.env.APPDATA || join(process.env.USERPROFILE || '', 'AppData', 'Roaming');
     } else if (platform === 'darwin') {
       // macOS: Use ~/Library/Application Support
-      baseDir = join(process.env.HOME || '', 'Library', 'Application Support');
+      baseDir = join(process.env.HOME || '', 'Library', 'Application Support'); // i18n-exempt
     } else {
       // Linux: Use ~/.local/share
       baseDir = process.env.XDG_DATA_HOME || join(process.env.HOME || '', '.local', 'share');
@@ -224,13 +225,13 @@ class FlightGearLauncher {
   async launch(config: FlightGearConfig, customPath?: string): Promise<{ success: boolean; error?: string }> {
     // Check if already running
     if (this.isRunning()) {
-      return { success: false, error: 'FlightGear is already running' };
+      return { success: false, error: t('main:simulators.flightgearRunning') };
     }
 
     // Detect FlightGear installation (use custom path if provided)
     const fgInfo = await detectFlightGear(customPath);
     if (!fgInfo.installed || !fgInfo.executable || !fgInfo.path) {
-      return { success: false, error: 'FlightGear not found. Please install FlightGear or set a custom path.' };
+      return { success: false, error: t('main:simulators.flightgearNotFound') };
     }
 
     // Install our protocol files to a user-writable directory
@@ -282,7 +283,7 @@ class FlightGearLauncher {
 
       return { success: true };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('common:unknownError');
       console.error('[FlightGear] Failed to launch:', message);
       return { success: false, error: message };
     }

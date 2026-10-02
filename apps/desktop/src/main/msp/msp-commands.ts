@@ -10,6 +10,7 @@ import { sendMspRequest, withConfigLock } from './msp-transport.js';
 import { stopMspTelemetry } from './msp-telemetry.js';
 import { cleanupMspConnection } from './msp-cleanup.js';
 import { enterCliMode, isCliModeActive } from '../cli/cli-handlers.js';
+import { t } from '../../shared/i18n/index.js';
 
 export function resetMspCliFlags(): void {
   console.log('[MSP] Resetting all CLI mode flags');
@@ -28,37 +29,30 @@ export async function saveEeprom(): Promise<boolean> {
   }
 
   if (ctx.servoCliModeActive || ctx.tuningCliModeActive) {
-    ctx.sendLog('info', 'In CLI mode, will use CLI save');
+    ctx.sendLog('info', 'In CLI mode, will use CLI save'); // i18n-exempt
     return await saveEepromViaCli();
   }
 
-  const mspSuccess = await withConfigLock(async () => {
+  return withConfigLock(async () => {
     try {
-      ctx.sendLog('info', 'Saving to EEPROM...');
+      ctx.sendLog('info', 'Saving to EEPROM...'); // i18n-exempt
       await sendMspRequest(MSP.EEPROM_WRITE, 5000);
-      ctx.sendLog('info', 'Settings saved to EEPROM');
+      ctx.sendLog('info', 'Settings saved to EEPROM'); // i18n-exempt
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[MSP] EEPROM_WRITE failed:', msg);
-      if (msg.includes('not supported')) {
-        ctx.sendLog('warn', 'MSP EEPROM_WRITE not supported, trying CLI...');
-        return null;
-      }
       ctx.sendLog('error', 'EEPROM save failed', msg);
       return false;
     }
   });
-
-  if (mspSuccess !== null) return mspSuccess;
-  return await saveEepromViaCli();
 }
 
 export async function saveEepromViaCli(): Promise<boolean> {
   if (!ctx.currentTransport?.isOpen) return false;
 
   try {
-    ctx.sendLog('info', 'CLI fallback', 'Saving via CLI (board will reboot)');
+    ctx.sendLog('info', 'CLI fallback', 'Saving via CLI (board will reboot)'); // i18n-exempt
 
     stopMspTelemetry();
 
@@ -102,7 +96,7 @@ export async function saveEepromViaCli(): Promise<boolean> {
 
     if (scheduleReconnect) {
       scheduleReconnect({
-        reason: 'Saving configuration',
+        reason: 'Saving configuration', // i18n-exempt
         delayMs: 4000,
         timeoutMs: 6000,
         maxAttempts: 12,
@@ -111,7 +105,7 @@ export async function saveEepromViaCli(): Promise<boolean> {
 
     await ctx.currentTransport.write(new TextEncoder().encode('save\n'));
 
-    ctx.sendLog('info', 'Settings saved via CLI', 'Board will reboot');
+    ctx.sendLog('info', 'Settings saved via CLI', 'Board will reboot'); // i18n-exempt
 
     await new Promise(r => setTimeout(r, 2000));
 
@@ -200,7 +194,7 @@ export async function readCalibrationData(): Promise<MSPCalibrationData | null> 
  */
 export async function saveCalibrationPersistent(): Promise<{ success: boolean; error?: string }> {
   if (!ctx.currentTransport?.isOpen) {
-    return { success: false, error: 'Not connected' };
+    return { success: false, error: t('main:msp.notConnected') };
   }
 
   const wasInCliMode = isCliModeActive();
@@ -210,7 +204,7 @@ export async function saveCalibrationPersistent(): Promise<{ success: boolean; e
     if (!wasInCliMode) {
       const entered = await enterCliMode();
       if (!entered) {
-        return { success: false, error: 'Failed to enter CLI mode' };
+        return { success: false, error: t('main:cliHandlers.enterCliFailed') };
       }
     }
 
@@ -225,7 +219,7 @@ export async function saveCalibrationPersistent(): Promise<{ success: boolean; e
     };
 
     if (!ctx.currentTransport?.isOpen) {
-      return { success: false, error: 'Transport closed during CLI setup' };
+      return { success: false, error: t('main:cliHandlers.transportClosedDuringSetup') };
     }
 
     // Add a second listener (CLI handler's listener still runs for terminal display)
@@ -268,11 +262,11 @@ export async function saveCalibrationPersistent(): Promise<{ success: boolean; e
       await exitCliMode();
     }
 
-    ctx.sendLog('info', 'Calibration saved to persistent storage');
+    ctx.sendLog('info', 'Calibration saved to persistent storage'); // i18n-exempt
     return { success: true };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    ctx.sendLog('error', 'Failed to save calibration to persistent storage', msg);
+    ctx.sendLog('error', 'Failed to save calibration to persistent storage', msg); // i18n-exempt
 
     // Try to exit CLI mode on error
     if (!wasInCliMode && isCliModeActive()) {
@@ -298,7 +292,7 @@ export async function reboot(autoReconnect = true): Promise<boolean> {
 
       if (scheduleReconnect) {
         scheduleReconnect({
-          reason: 'Rebooting board',
+          reason: 'Rebooting board', // i18n-exempt
           delayMs: 3000,
           timeoutMs: 60000,
           maxAttempts: 30,

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /** Shown over the synthetic fallback so the pilot knows why the view changed, and for how long. */
 export function VideoLinkBanner({ lostAt, compact = false }: { lostAt: number | null; compact?: boolean }) {
+  const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (lostAt === null) return;
@@ -18,7 +20,7 @@ export function VideoLinkBanner({ lostAt, compact = false }: { lostAt: number | 
           compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'
         }`}
       >
-        {lostAt === null ? 'NO VIDEO · retrying' : `VIDEO LINK LOST ${clock} · reconnecting`}
+        {lostAt === null ? t('camera:banner.noVideo') : t('camera:banner.linkLost', { clock })}
       </div>
     </div>
   );

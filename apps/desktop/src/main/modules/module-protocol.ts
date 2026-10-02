@@ -38,7 +38,7 @@ export function setupModuleProtocol(): void {
       const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
 
       if (!slug || /[\0]/.test(slug) || slug.includes('..')) {
-        return new Response('Invalid module slug', { status: 400 });
+        return new Response('Invalid module slug', { status: 400 }); // i18n-exempt
       }
 
       const devPath = getDevModulePath(slug);
@@ -47,7 +47,7 @@ export function setupModuleProtocol(): void {
         : resolve(app.getPath('userData'), 'modules', slug, 'extracted');
       const target = resolve(baseDir, rel);
       if (!target.startsWith(baseDir)) {
-        return new Response('Path traversal rejected', { status: 403 });
+        return new Response('Path traversal rejected', { status: 403 }); // i18n-exempt
       }
 
       return net.fetch(pathToFileURL(target).href);

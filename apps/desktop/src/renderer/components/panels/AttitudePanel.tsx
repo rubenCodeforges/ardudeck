@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { PanelContainer, formatNumber } from './panel-utils';
 
 // Exported for reuse in MapPanel - memoized to prevent unnecessary re-renders
 export const AttitudeIndicator = React.memo(function AttitudeIndicator({ roll, pitch, heading, size = 200 }: { roll: number; pitch: number; heading: number; size?: number }) {
+  const { t } = useTranslation();
   // Clamp pitch but allow more range for display
   const clampedPitch = Math.max(-60, Math.min(60, pitch));
 
@@ -15,7 +17,7 @@ export const AttitudeIndicator = React.memo(function AttitudeIndicator({ roll, p
   const pitchOffset = (clampedPitch / 60) * (innerSize * 0.4);
 
   // Compass tick marks - memoized since only scale affects geometry, heading only affects rotation
-  const directions = ['N', 'E', 'S', 'W'];
+  const directions = [t('panels:attitudeIndicator.n'), t('panels:attitudeIndicator.e'), t('panels:attitudeIndicator.s'), t('panels:attitudeIndicator.w')];
   const compassTicks = useMemo(() => {
     const ticks = [];
     for (let i = 0; i < 360; i += 10) {
@@ -162,6 +164,7 @@ export const AttitudeIndicator = React.memo(function AttitudeIndicator({ roll, p
 });
 
 export const AttitudePanel = React.memo(function AttitudePanel() {
+  const { t } = useTranslation();
   // Use selective subscriptions to prevent re-renders on unrelated telemetry updates
   const attitude = useTelemetryStore((s) => s.attitude);
   const vfrHud = useTelemetryStore((s) => s.vfrHud);
@@ -202,15 +205,15 @@ export const AttitudePanel = React.memo(function AttitudePanel() {
 
       <div className="flex gap-6 mt-4 text-sm">
         <div className="text-center">
-          <div className="text-content-secondary text-xs mb-0.5">Roll</div>
+          <div className="text-content-secondary text-xs mb-0.5">{t('common:roll')}</div>
           <div className="font-mono text-content">{formatNumber(throttled.roll, 1)}°</div>
         </div>
         <div className="text-center">
-          <div className="text-content-secondary text-xs mb-0.5">Pitch</div>
+          <div className="text-content-secondary text-xs mb-0.5">{t('common:pitch')}</div>
           <div className="font-mono text-content">{formatNumber(throttled.pitch, 1)}°</div>
         </div>
         <div className="text-center">
-          <div className="text-content-secondary text-xs mb-0.5">Yaw</div>
+          <div className="text-content-secondary text-xs mb-0.5">{t('common:yaw')}</div>
           <div className="font-mono text-content">{formatNumber(throttled.yaw, 1)}°</div>
         </div>
       </div>

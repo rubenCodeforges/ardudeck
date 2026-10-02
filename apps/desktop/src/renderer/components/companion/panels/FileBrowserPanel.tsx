@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useCompanionStore } from '../../../stores/companion-store';
 import { PanelContainer } from '../../panels/panel-utils';
 import type { FileEntry } from '@ardudeck/companion-types';
+import { useTranslation } from 'react-i18next';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -38,6 +39,7 @@ function FileIcon({ isDirectory }: { isDirectory: boolean }) {
 }
 
 export function FileBrowserPanel() {
+  const { t } = useTranslation();
   const connectionState = useCompanionStore((s) => s.connectionState);
   const isConnected = connectionState.state === 'connected';
 
@@ -54,7 +56,7 @@ export function FileBrowserPanel() {
       setEntries(result);
       setCurrentPath(path);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to list directory');
+      setError(err instanceof Error ? err.message : t('companion:files.listFailed'));
       setEntries([]);
     } finally {
       setLoading(false);
@@ -122,8 +124,8 @@ export function FileBrowserPanel() {
     return (
       <PanelContainer className="flex items-center justify-center">
         <div className="text-center text-content-tertiary text-xs">
-          <div className="text-content-secondary mb-1">File browser unavailable</div>
-          <div>Connect to companion agent to browse files.</div>
+          <div className="text-content-secondary mb-1">{t('companion:files.unavailable')}</div>
+          <div>{t('companion:files.unavailableHint')}</div>
         </div>
       </PanelContainer>
     );
@@ -164,7 +166,7 @@ export function FileBrowserPanel() {
         <button
           onClick={() => loadDirectory(currentPath)}
           className="text-content-secondary hover:text-content transition-colors shrink-0 p-0.5"
-          title="Refresh"
+          title={t('common:refresh')}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -183,11 +185,11 @@ export function FileBrowserPanel() {
       <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex items-center justify-center h-full text-content-tertiary text-xs">
-            Loading...
+            {t('common:loading')}
           </div>
         ) : entries.length === 0 ? (
           <div className="flex items-center justify-center h-full text-content-tertiary text-xs">
-            Empty directory
+            {t('companion:files.empty')}
           </div>
         ) : (
           <div>
@@ -216,7 +218,7 @@ export function FileBrowserPanel() {
                           handleDownload(entry);
                         }}
                         className="opacity-0 group-hover:opacity-100 text-content-secondary hover:text-blue-400 transition-all"
-                        title="Download"
+                        title={t('common:download')}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

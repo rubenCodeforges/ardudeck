@@ -1,0 +1,97 @@
+{
+  "layoutDetails": {
+    "description": "Description",
+    "editTitle": "Edit layout",
+    "name": "Name",
+    "nameTaken": "That name is already taken.",
+    "optional": "(optional)",
+    "replace": "Replace",
+    "replaceContents": "Replace contents with the current screen",
+    "replaceContentsHint": "Panels, cockpit instruments, map split and vision mode as they are now.",
+    "replacesExisting": "A layout named \"{{name}}\" already exists. Saving replaces it.",
+    "saveTitle": "Save layout"
+  },
+  "layouts": {
+    "fpvDescription": "Map and Vision side by side.",
+    "fpvLabel": "FPV",
+    "importInvalidJson": "That file is not valid JSON.",
+    "importNoPanels": "The layout in that file has no panel arrangement.",
+    "importNotLayout": "That file is not an ArduDeck workspace layout.",
+    "importedName": "Imported layout",
+    "missionDescription": "Map, waypoints, altitude profile.",
+    "missionLabel": "Mission",
+    "pilotDescription": "Map with synthetic vision split.",
+    "pilotLabel": "Pilot"
+  },
+  "panelHeader": {
+    "hideInstrument": "Hide map instrument",
+    "popOut": "Pop out",
+    "popOutTitle": "Open {{title}} in new window",
+    "showInstrument": "Show as instrument on the map"
+  },
+  "quickStats": {
+    "alt": "ALT",
+    "armed": "Armed",
+    "bat": "BAT",
+    "disarmed": "Disarmed",
+    "hdg": "HDG",
+    "noLink": "No Link",
+    "notConnected": "Not connected",
+    "sat": "SAT",
+    "spd": "SPD",
+    "thr": "THR"
+  },
+  "savedLayout": {
+    "confirmDelete": "Delete?",
+    "copyToClipboard": "Copy to clipboard",
+    "deleteTip": "Delete",
+    "renameTip": "Rename or describe",
+    "saveAsFile": "Save as file…",
+    "share": "Share…",
+    "shareTip": "Share"
+  },
+  "sensorHealth": {
+    "unhealthyTitle": "Unhealthy: {{sensors}} - check Messages panel for details"
+  },
+  "share": {
+    "copied": "Copied",
+    "failed": "Could not share",
+    "saved": "Saved"
+  },
+  "speed": {
+    "eco": "Eco",
+    "ecoTip": "Slow updates: easy on weak or long-range telemetry links",
+    "fc": "FC",
+    "fcTip": "Hands off: ArduDeck never asks for different data rates. The vehicle keeps sending at the rates saved on the flight controller. Pick this if you tuned those rates yourself.",
+    "max": "Max",
+    "maxTip": "Fastest updates, for fast links like USB or WiFi",
+    "normal": "Normal",
+    "normalTip": "Balanced update speed, good for most links"
+  },
+  "workspace": {
+    "buttonTip": "Workspace: panel layout, view and panels",
+    "title": "Workspace"
+  },
+  "workspaceDialog": {
+    "addPanel": "Add panel",
+    "builtIn": "Built-in",
+    "clipboardReadFailed": "Could not read the clipboard.",
+    "fromFile": "From file…",
+    "import": "Import",
+    "importTip": "Import a layout someone shared",
+    "map2d": "2D map",
+    "map3d": "3D terrain",
+    "mapView": "Map view",
+    "offlineHint": "Draw a box on the map to cache its tiles for flying without a connection.",
+    "offlineMaps": "Offline maps",
+    "panelLayout": "Panel layout",
+    "pasteFromClipboard": "Paste from clipboard",
+    "resetToPreset": "Reset to preset",
+    "saveCurrentAs": "Save current as…",
+    "saveOfflineArea": "Save an area for offline use",
+    "saved": "Saved",
+    "selectingArea": "Selecting… draw a box on the map",
+    "telemetryRate": "Telemetry rate",
+    "telemetryRateHint": "How often the vehicle streams telemetry. FC leaves the flight controller's own rates untouched."
+  }
+}

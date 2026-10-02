@@ -8,13 +8,15 @@
  */
 
 import { X, Download, BookOpen, LayoutGrid, Volume2, Activity } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 
 /** The 128x64 screen, drawn to scale with its regions called out. */
 function ScreenMap() {
+  const { t } = useTranslation();
   const w = 128;
   const h = 64;
   return (
-    <svg viewBox={`-2 -2 ${w + 4} ${h + 4}`} className="w-full max-w-sm" role="img" aria-label="Screen layout">
+    <svg viewBox={`-2 -2 ${w + 4} ${h + 4}`} className="w-full max-w-sm" role="img" aria-label={t('radio-hud:bwGuide.screenLayoutAria')}>
       <rect x={0} y={0} width={w} height={h} rx={2} className="fill-[#c9d2bd] stroke-[#242b1f]" strokeWidth={1} />
       {/* top strip */}
       <rect x={0} y={0} width={w} height={8} className="fill-[#242b1f]" />
@@ -38,15 +40,16 @@ function ScreenMap() {
       ))}
       {/* bottom strip */}
       <rect x={0} y={56} width={w} height={8} className="fill-[#242b1f]" />
-      <text x={2} y={62} fontSize={5.5} fontFamily="monospace" className="fill-[#c9d2bd]">EKF3 IMU0 is using GPS</text>
+      <text x={2} y={62} fontSize={5.5} fontFamily="monospace" className="fill-[#c9d2bd]">EKF3 IMU0 is using GPS</text>{/* i18n-exempt */}
     </svg>
   );
 }
 
 /** Where PAGE lives on a Pocket-class radio. */
 function RadioFace() {
+  const { t } = useTranslation();
   return (
-    <svg viewBox="0 0 150 90" className="w-full max-w-[220px]" role="img" aria-label="Radio front">
+    <svg viewBox="0 0 150 90" className="w-full max-w-[220px]" role="img" aria-label={t('radio-hud:bwGuide.radioFrontAria')}>
       <rect x={1} y={1} width={148} height={88} rx={10} className="fill-surface-input stroke-subtle" strokeWidth={1.5} />
       <rect x={40} y={10} width={70} height={36} rx={2} className="fill-[#c9d2bd] stroke-subtle" strokeWidth={1} />
       <rect x={40} y={10} width={70} height={5} className="fill-[#242b1f]" />
@@ -57,7 +60,7 @@ function RadioFace() {
       <text x={55} y={64} fontSize={7} className="fill-teal-300">PAGE</text>
       <rect x={78} y={56} width={20} height={11} rx={3} className="fill-surface stroke-subtle" strokeWidth={1} />
       <text x={81} y={64} fontSize={7} className="fill-content-secondary">SYS</text>
-      <text x={46} y={80} fontSize={6.5} className="fill-content-secondary">press PAGE from the main view</text>
+      <text x={46} y={80} fontSize={6.5} className="fill-content-secondary">{t('radio-hud:bwGuide.pressPageHint')}</text>
     </svg>
   );
 }
@@ -65,7 +68,7 @@ function RadioFace() {
 interface Step {
   Icon: typeof Download;
   color: string;
-  title: string;
+  titleKey: string;
   body: React.ReactNode;
   figure?: React.ReactNode;
 }
@@ -74,70 +77,39 @@ const STEPS: Step[] = [
   {
     Icon: Download,
     color: 'text-sky-400',
-    title: 'Install it',
-    body: (
-      <>
-        Power the radio, connect USB, choose <span className="text-content">USB Storage (SD)</span> on
-        its screen, then press Install here. ArduDeck copies the script and points every model's
-        telemetry screen at it, so there is nothing to set up on the radio.
-      </>
-    ),
+    titleKey: 'radio-hud:bwGuide.installTitle',
+    body: <Trans i18nKey="radio-hud:bwGuide.installBody" components={{ b: <span className="text-content" /> }} />,
   },
   {
     Icon: BookOpen,
     color: 'text-teal-400',
-    title: 'Open it',
-    body: (
-      <>
-        Eject the card, unplug USB, then press <span className="text-content">PAGE</span> from the
-        main view until the ArduDeck screen appears. It sits with the radio's other telemetry
-        screens.
-      </>
-    ),
+    titleKey: 'radio-hud:bwGuide.openTitle',
+    body: <Trans i18nKey="radio-hud:bwGuide.openBody" components={{ b: <span className="text-content" /> }} />,
     figure: <RadioFace />,
   },
   {
     Icon: Activity,
     color: 'text-emerald-400',
-    title: 'Read it',
-    body: (
-      <>
-        Top strip: flight mode, armed timer, link quality. Bottom strip: the vehicle's own messages.
-        Between them, everything is a slot: the big readout, a left column, the horizon (or two more
-        data columns) and a right column. An <span className="text-content">S</span> before the
-        signal figure means the values come from EdgeTX's own sensors rather than passthrough.
-      </>
-    ),
+    titleKey: 'radio-hud:bwGuide.readTitle',
+    body: <Trans i18nKey="radio-hud:bwGuide.readBody" components={{ b: <span className="text-content" /> }} />,
     figure: <ScreenMap />,
   },
   {
     Icon: LayoutGrid,
     color: 'text-violet-400',
-    title: 'Change what it shows',
-    body: (
-      <>
-        Press <span className="text-content">Edit slots</span>, click any slot in the preview and
-        pick a field. Set a slot to <span className="text-content">(empty)</span> and its neighbour
-        grows into the free row, so a trimmed layout gets bigger numbers rather than gaps. Apply
-        writes it to the card.
-      </>
-    ),
+    titleKey: 'radio-hud:bwGuide.changeTitle',
+    body: <Trans i18nKey="radio-hud:bwGuide.changeBody" components={{ b: <span className="text-content" /> }} />,
   },
   {
     Icon: Volume2,
     color: 'text-amber-400',
-    title: 'Listen to it',
-    body: (
-      <>
-        The callouts play whether or not the telemetry screen is open, so you can watch the aircraft:
-        telemetry gained and lost, battery thresholds, fence and EKF warnings. Arming calls stay
-        silent until the vehicle actually reports armed state, rather than guessing.
-      </>
-    ),
+    titleKey: 'radio-hud:bwGuide.listenTitle',
+    body: <Trans i18nKey="radio-hud:bwGuide.listenBody" />,
   },
 ];
 
 export function BwGuide({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
@@ -149,13 +121,14 @@ export function BwGuide({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-subtle bg-surface-raised">
           <div>
-            <h3 className="text-sm font-medium text-content">The HUD on a monochrome radio</h3>
+            <h3 className="text-sm font-medium text-content">{t('radio-hud:bwGuide.title')}</h3>
+            {/* i18n-exempt */}
             <p className="text-xs text-content-secondary">Pocket, Boxer, Zorro, TX12, MT12, T-Lite, X9D</p>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded text-content-secondary hover:text-content hover:bg-surface-input transition-colors"
-            data-tip="Close"
+            data-tip={t('common:close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -163,13 +136,13 @@ export function BwGuide({ onClose }: { onClose: () => void }) {
 
         <div className="p-5 grid gap-3 sm:grid-cols-2">
           {STEPS.map((step, i) => (
-            <div key={step.title} className="bg-surface border border-subtle rounded-lg p-4 flex flex-col gap-2">
+            <div key={step.titleKey} className="bg-surface border border-subtle rounded-lg p-4 flex flex-col gap-2">
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-surface-input">
                   <step.Icon className={`w-4 h-4 ${step.color}`} />
                 </div>
                 <h4 className="text-sm font-medium text-content">
-                  <span className="text-content-secondary mr-1.5">{i + 1}.</span>{step.title}
+                  <span className="text-content-secondary mr-1.5">{i + 1}.</span>{t(step.titleKey)}
                 </h4>
               </div>
               <p className="text-xs text-content-secondary leading-relaxed">{step.body}</p>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect } from 'react';
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -10,7 +11,7 @@ import { viewAllowedForVehicle } from '../../../shared/vehicle-profile';
 
 interface NavItem {
   id: ViewId;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   disabled?: boolean;
   /**
@@ -23,7 +24,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     id: 'telemetry',
-    label: 'Telemetry',
+    labelKey: 'common:telemetry',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -32,7 +33,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'mission',
-    label: 'Mission Planning',
+    labelKey: 'common:missionPlanning',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -41,7 +42,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'library',
-    label: 'Mission Library',
+    labelKey: 'common:missionLibrary',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -50,7 +51,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'parameters',
-    label: 'Parameters',
+    labelKey: 'navigation:navigationRail.parameters',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -59,7 +60,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'vault',
-    label: 'Fleet Vault',
+    labelKey: 'navigation:navigationRail.fleetVault',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         <line x1="6" x2="6" y1="3" y2="15" />
@@ -71,7 +72,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'inspector',
-    label: 'MAVLink Inspector',
+    labelKey: 'common:mavlinkInspector',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -81,7 +82,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'weather',
-    label: 'Weather Briefing',
+    labelKey: 'navigation:navigationRail.weatherBriefing',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a4 4 0 004 4h9a5 5 0 001-9.9A6 6 0 006.34 8.03 4.5 4.5 0 003 15z" />
@@ -91,7 +92,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'trainer',
-    label: 'Trainer',
+    labelKey: 'navigation:navigationRail.trainer',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3v18" />
@@ -102,7 +103,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'settings',
-    label: 'Settings',
+    labelKey: 'common:settings',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -112,7 +113,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'firmware',
-    label: 'Firmware',
+    labelKey: 'common:firmware',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
@@ -121,7 +122,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'osd',
-    label: 'OSD Tool',
+    labelKey: 'navigation:navigationRail.osdTool',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -131,7 +132,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'radio-hud',
-    label: 'Radio HUD',
+    labelKey: 'common:radioHud',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <rect x="4" y="7" width="16" height="11" rx="2" strokeWidth={1.5} />
@@ -141,7 +142,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'sitl',
-    label: 'SITL Simulator',
+    labelKey: 'common:sitlSimulator',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -150,7 +151,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'lua-graph',
-    label: 'Lua Graph Editor',
+    labelKey: 'navigation:navigationRail.luaGraphEditor',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z" />
@@ -160,7 +161,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'modules' as const,
-    label: 'Cargo',
+    labelKey: 'navigation:navigationRail.cargo',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -172,7 +173,7 @@ const navItems: NavItem[] = [
 // CLI nav item - only shown for MSP connections (Betaflight/iNav)
 const cliNavItem: NavItem = {
   id: 'cli',
-  label: 'CLI Terminal',
+  labelKey: 'navigation:navigationRail.cliTerminal',
   icon: (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -183,7 +184,7 @@ const cliNavItem: NavItem = {
 // Calibration nav item - shown for connected devices
 const calibrationNavItem: NavItem = {
   id: 'calibration',
-  label: 'Calibration',
+  labelKey: 'common:calibration',
   icon: (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -194,7 +195,7 @@ const calibrationNavItem: NavItem = {
 // Companion nav item - only shown when a companion is detected
 const companionNavItem: NavItem = {
   id: 'companion',
-  label: 'Companion Computer',
+  labelKey: 'navigation:navigationRail.companionComputer',
   icon: (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
@@ -204,7 +205,7 @@ const companionNavItem: NavItem = {
 
 const logsNavItem: NavItem = {
   id: 'logs',
-  label: 'Flight Logs',
+  labelKey: 'common:flightLogs',
   icon: (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -220,6 +221,7 @@ interface NavigationRailProps {
 }
 
 export function NavigationRail({ onViewChange }: NavigationRailProps) {
+  const { t } = useTranslation();
   const { currentView, setView } = useNavigationStore();
   const connectionState = useConnectionStore((s) => s.connectionState);
 
@@ -300,7 +302,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
                 : 'text-content-tertiary hover:text-content-secondary hover:bg-surface-raised'
             }
           `}
-          title={item.label}
+          title={t(item.labelKey)}
         >
           {/* Active indicator */}
           {currentView === item.id && !item.disabled && (
@@ -310,7 +312,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
 
           {/* Tooltip */}
           <div className={`absolute left-full ml-2 px-2 py-1 bg-surface-raised text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg ${item.disabled ? 'text-content-tertiary' : 'text-content'}`}>
-            {item.label}
+            {t(item.labelKey)}
           </div>
         </button>
       ))}
@@ -324,13 +326,13 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
           key={item.id}
           disabled
           className="relative w-10 h-10 rounded-lg flex items-center justify-center text-content-disabled cursor-not-allowed group"
-          title={item.label}
+          title={t(item.labelKey)}
         >
           {item.icon}
 
           {/* Tooltip */}
           <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content-tertiary text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
-            {item.label}
+            {t(item.labelKey)}
           </div>
         </button>
       ))}
@@ -352,7 +354,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
             : 'text-content-tertiary hover:text-content-secondary hover:bg-surface-raised'
           }
         `}
-        title="Report a Bug"
+        title={t('navigation:navigationRail.reportBug')}
       >
         {currentView === 'report' && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-400 rounded-r" />
@@ -361,7 +363,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
-          Report a Bug
+          {t('navigation:navigationRail.reportBug')}
         </div>
       </button>
     </nav>
@@ -369,13 +371,14 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
 }
 
 const THEME_CYCLE: ThemePreference[] = ['dark', 'light', 'system'];
-const THEME_LABELS: Record<ThemePreference, string> = {
-  dark: 'Dark theme',
-  light: 'Light theme',
-  system: 'System theme',
+const THEME_LABEL_KEYS: Record<ThemePreference, string> = {
+  dark: 'navigation:navigationRail.themeDark',
+  light: 'navigation:navigationRail.themeLight',
+  system: 'navigation:navigationRail.themeSystem',
 };
 
 function ThemeToggle() {
+  const { t } = useTranslation();
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
 
@@ -389,7 +392,7 @@ function ThemeToggle() {
     <button
       onClick={cycle}
       className="relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 group text-content-tertiary hover:text-content-secondary hover:bg-surface-raised mb-1"
-      title={THEME_LABELS[theme]}
+      title={t(THEME_LABEL_KEYS[theme])}
     >
       {theme === 'dark' && (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -407,7 +410,7 @@ function ThemeToggle() {
         </svg>
       )}
       <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
-        {THEME_LABELS[theme]}
+        {t(THEME_LABEL_KEYS[theme])}
       </div>
     </button>
   );

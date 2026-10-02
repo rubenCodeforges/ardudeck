@@ -9,6 +9,7 @@
 import { SYM } from './osd-symbols';
 import type { OsdElementCategory } from './element-categories';
 import { listModuleOsdElements, getModuleOsdElement } from '../../modules/module-osd-registry';
+import { t } from '../../../shared/i18n/index.js';
 
 /** Size of an OSD element in character units */
 export interface ElementSize {
@@ -107,9 +108,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── General ───────────────────────────────────────────────────────────
   {
     id: 'flymode',
-    name: 'Flight Mode',
+    name: 'Flight Mode', // i18n-exempt
     category: 'general',
-    description: 'Current flight mode name (ANGLE, HORIZON, etc.)',
+    description: 'Current flight mode name (ANGLE, HORIZON, etc.)', // i18n-exempt
     previewSymbol: SYM.HEADING,
     previewText: 'ANGLE',
     size: { width: 8, height: 1 },
@@ -118,9 +119,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'armed_status',
-    name: 'Armed Status',
+    name: 'Armed Status', // i18n-exempt
     category: 'general',
-    description: 'Shows ARMED or DISARMED state',
+    description: 'Shows ARMED or DISARMED state', // i18n-exempt
     previewSymbol: SYM.ALERT,
     previewText: 'ARMED',
     size: { width: 8, height: 1 },
@@ -129,9 +130,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'craft_name',
-    name: 'Craft Name',
+    name: 'Craft Name', // i18n-exempt
     category: 'general',
-    description: 'User-configured aircraft name',
+    description: 'User-configured aircraft name', // i18n-exempt
     previewSymbol: SYM.HEADING,
     previewText: 'ARDUDECK',
     size: { width: 10, height: 1 },
@@ -140,9 +141,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'warnings',
-    name: 'Warnings',
+    name: 'Warnings', // i18n-exempt
     category: 'general',
-    description: 'System warnings (low battery, GPS lost, etc.)',
+    description: 'System warnings (low battery, GPS lost, etc.)', // i18n-exempt
     previewSymbol: SYM.ALERT,
     previewText: 'LOW BATT',
     size: { width: 12, height: 1 },
@@ -151,9 +152,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'messages',
-    name: 'Messages',
+    name: 'Messages', // i18n-exempt
     category: 'general',
-    description: 'FC status messages and notifications',
+    description: 'FC status messages and notifications', // i18n-exempt
     previewSymbol: SYM.HEADING,
     previewText: 'MSG',
     size: { width: 12, height: 1 },
@@ -163,9 +164,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Battery & Power ───────────────────────────────────────────────────
   {
     id: 'battery_voltage',
-    name: 'Battery Voltage',
+    name: 'Battery Voltage', // i18n-exempt
     category: 'battery',
-    description: 'Total battery pack voltage',
+    description: 'Total battery pack voltage', // i18n-exempt
     previewSymbol: SYM.BATT,
     previewText: '11.8V',
     size: { width: 6, height: 1 },
@@ -174,9 +175,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'battery_cell_voltage',
-    name: 'Cell Voltage',
+    name: 'Cell Voltage', // i18n-exempt
     category: 'battery',
-    description: 'Average voltage per cell',
+    description: 'Average voltage per cell', // i18n-exempt
     previewSymbol: SYM.BATT,
     previewText: '3.95V',
     size: { width: 6, height: 1 },
@@ -185,9 +186,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'battery_percent',
-    name: 'Battery Percent',
+    name: 'Battery Percent', // i18n-exempt
     category: 'battery',
-    description: 'Battery charge remaining percentage',
+    description: 'Battery charge remaining percentage', // i18n-exempt
     previewSymbol: SYM.BATT,
     previewText: ' 75%',
     size: { width: 5, height: 1 },
@@ -196,9 +197,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'current_draw',
-    name: 'Current Draw',
+    name: 'Current Draw', // i18n-exempt
     category: 'battery',
-    description: 'Instantaneous current draw in amps',
+    description: 'Instantaneous current draw in amps', // i18n-exempt
     previewSymbol: SYM.AMP,
     previewText: ' 8.5A',
     size: { width: 6, height: 1 },
@@ -207,9 +208,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'mah_drawn',
-    name: 'mAh Drawn',
+    name: 'mAh Drawn', // i18n-exempt
     category: 'battery',
-    description: 'Total milliamp-hours consumed',
+    description: 'Total milliamp-hours consumed', // i18n-exempt
     previewSymbol: SYM.MAH,
     previewText: ' 850',
     size: { width: 6, height: 1 },
@@ -218,9 +219,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'power_watts',
-    name: 'Power (Watts)',
+    name: 'Power (Watts)', // i18n-exempt
     category: 'battery',
-    description: 'Instantaneous power consumption',
+    description: 'Instantaneous power consumption', // i18n-exempt
     previewSymbol: SYM.WATT,
     previewText: '100W',
     size: { width: 5, height: 1 },
@@ -228,9 +229,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'efficiency',
-    name: 'Efficiency',
+    name: 'Efficiency', // i18n-exempt
     category: 'battery',
-    description: 'mAh per km efficiency indicator',
+    description: 'mAh per km efficiency indicator', // i18n-exempt
     previewSymbol: SYM.MAH_KM_0,
     previewText: '120',
     size: { width: 6, height: 1 },
@@ -240,9 +241,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Altitude & Vario ──────────────────────────────────────────────────
   {
     id: 'altitude',
-    name: 'Altitude (AGL)',
+    name: 'Altitude (AGL)', // i18n-exempt
     category: 'altitude',
-    description: 'Altitude above ground level / home',
+    description: 'Altitude above ground level / home', // i18n-exempt
     previewSymbol: SYM.ALT_M,
     previewText: ' 120m',
     size: { width: 6, height: 1 },
@@ -251,9 +252,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'msl_altitude',
-    name: 'MSL Altitude',
+    name: 'MSL Altitude', // i18n-exempt
     category: 'altitude',
-    description: 'Altitude above mean sea level',
+    description: 'Altitude above mean sea level', // i18n-exempt
     previewSymbol: SYM.ALT_M,
     previewText: ' 450m',
     size: { width: 6, height: 1 },
@@ -261,9 +262,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'vario',
-    name: 'Variometer',
+    name: 'Variometer', // i18n-exempt
     category: 'altitude',
-    description: 'Vertical speed indicator (climb/sink)',
+    description: 'Vertical speed indicator (climb/sink)', // i18n-exempt
     previewSymbol: SYM.VARIO_UP_2A,
     previewText: '+2.5',
     size: { width: 5, height: 1 },
@@ -273,9 +274,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Speed & Distance ──────────────────────────────────────────────────
   {
     id: 'speed',
-    name: 'Ground Speed',
+    name: 'Ground Speed', // i18n-exempt
     category: 'speed',
-    description: 'Speed over ground',
+    description: 'Speed over ground', // i18n-exempt
     previewSymbol: SYM.KMH,
     previewText: ' 54',
     size: { width: 4, height: 1 },
@@ -284,9 +285,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'airspeed',
-    name: 'Airspeed',
+    name: 'Airspeed', // i18n-exempt
     category: 'speed',
-    description: 'Indicated airspeed from pitot tube',
+    description: 'Indicated airspeed from pitot tube', // i18n-exempt
     previewSymbol: SYM.AIR,
     previewText: ' 65',
     size: { width: 5, height: 1 },
@@ -294,9 +295,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'max_speed',
-    name: 'Max Speed',
+    name: 'Max Speed', // i18n-exempt
     category: 'speed',
-    description: 'Maximum speed achieved in flight',
+    description: 'Maximum speed achieved in flight', // i18n-exempt
     previewSymbol: SYM.MAX,
     previewText: ' 72',
     size: { width: 5, height: 1 },
@@ -304,9 +305,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'distance',
-    name: 'Home Distance',
+    name: 'Home Distance', // i18n-exempt
     category: 'speed',
-    description: 'Distance from home point',
+    description: 'Distance from home point', // i18n-exempt
     previewSymbol: SYM.HOME,
     previewText: ' 350m',
     size: { width: 6, height: 1 },
@@ -315,9 +316,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'home_direction',
-    name: 'Home Direction',
+    name: 'Home Direction', // i18n-exempt
     category: 'speed',
-    description: 'Arrow pointing towards home',
+    description: 'Arrow pointing towards home', // i18n-exempt
     previewSymbol: SYM.DIR_TO_HOME,
     previewText: '',
     size: { width: 2, height: 1 },
@@ -328,9 +329,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── GPS ───────────────────────────────────────────────────────────────
   {
     id: 'gps_sats',
-    name: 'GPS Satellites',
+    name: 'GPS Satellites', // i18n-exempt
     category: 'gps',
-    description: 'Number of GPS satellites in view',
+    description: 'Number of GPS satellites in view', // i18n-exempt
     previewSymbol: SYM.GPS_SAT1,
     previewText: '12',
     size: { width: 4, height: 1 },
@@ -339,9 +340,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'gps_hdop',
-    name: 'GPS HDOP',
+    name: 'GPS HDOP', // i18n-exempt
     category: 'gps',
-    description: 'Horizontal dilution of precision',
+    description: 'Horizontal dilution of precision', // i18n-exempt
     previewSymbol: SYM.GPS_HDP1,
     previewText: '0.9',
     size: { width: 5, height: 1 },
@@ -349,9 +350,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'latitude',
-    name: 'Latitude',
+    name: 'Latitude', // i18n-exempt
     category: 'gps',
-    description: 'Current latitude coordinate',
+    description: 'Current latitude coordinate', // i18n-exempt
     previewSymbol: SYM.LAT,
     previewText: '37.7749',
     size: { width: 10, height: 1 },
@@ -360,9 +361,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'longitude',
-    name: 'Longitude',
+    name: 'Longitude', // i18n-exempt
     category: 'gps',
-    description: 'Current longitude coordinate',
+    description: 'Current longitude coordinate', // i18n-exempt
     previewSymbol: SYM.LON,
     previewText: '-122.42',
     size: { width: 10, height: 1 },
@@ -371,9 +372,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'coordinates',
-    name: 'Coordinates',
+    name: 'Coordinates', // i18n-exempt
     category: 'gps',
-    description: 'Latitude and longitude on two lines',
+    description: 'Latitude and longitude on two lines', // i18n-exempt
     previewSymbol: SYM.LAT,
     previewText: '37.77/-122.4',
     size: { width: 11, height: 2 },
@@ -383,9 +384,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Attitude ──────────────────────────────────────────────────────────
   {
     id: 'crosshairs',
-    name: 'Crosshairs',
+    name: 'Crosshairs', // i18n-exempt
     category: 'attitude',
-    description: 'Center screen aircraft indicator',
+    description: 'Center screen aircraft indicator', // i18n-exempt
     previewSymbol: SYM.AH_AIRCRAFT2,
     previewText: '',
     size: { width: 3, height: 1 },
@@ -394,9 +395,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'artificial_horizon',
-    name: 'Artificial Horizon',
+    name: 'Artificial Horizon', // i18n-exempt
     category: 'attitude',
-    description: 'Attitude horizon line indicator',
+    description: 'Attitude horizon line indicator', // i18n-exempt
     previewSymbol: SYM.AH_BAR9_0,
     previewText: '',
     size: { width: 9, height: 1 },
@@ -405,9 +406,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'horizon_sidebars',
-    name: 'Horizon Sidebars',
+    name: 'Horizon Sidebars', // i18n-exempt
     category: 'attitude',
-    description: 'Side markers for artificial horizon',
+    description: 'Side markers for artificial horizon', // i18n-exempt
     previewSymbol: SYM.AH_LEFT,
     previewText: '',
     size: { width: 15, height: 7 },
@@ -416,9 +417,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'pitch',
-    name: 'Pitch Angle',
+    name: 'Pitch Angle', // i18n-exempt
     category: 'attitude',
-    description: 'Aircraft pitch angle in degrees',
+    description: 'Aircraft pitch angle in degrees', // i18n-exempt
     previewSymbol: SYM.PITCH_UP,
     previewText: '  5',
     size: { width: 5, height: 1 },
@@ -427,9 +428,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'roll',
-    name: 'Roll Angle',
+    name: 'Roll Angle', // i18n-exempt
     category: 'attitude',
-    description: 'Aircraft roll/bank angle in degrees',
+    description: 'Aircraft roll/bank angle in degrees', // i18n-exempt
     previewSymbol: SYM.ROLL_LEVEL,
     previewText: ' -3',
     size: { width: 5, height: 1 },
@@ -438,9 +439,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'heading',
-    name: 'Heading',
+    name: 'Heading', // i18n-exempt
     category: 'attitude',
-    description: 'Compass heading in degrees',
+    description: 'Compass heading in degrees', // i18n-exempt
     previewSymbol: SYM.HEADING,
     previewText: '270',
     size: { width: 5, height: 1 },
@@ -449,9 +450,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'heading_graph',
-    name: 'Heading Graph',
+    name: 'Heading Graph', // i18n-exempt
     category: 'attitude',
-    description: 'Graphical compass heading tape',
+    description: 'Graphical compass heading tape', // i18n-exempt
     previewSymbol: SYM.HEADING_N,
     previewText: 'N--E--S',
     size: { width: 9, height: 1 },
@@ -461,9 +462,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Timers ────────────────────────────────────────────────────────────
   {
     id: 'flight_time',
-    name: 'Flight Time',
+    name: 'Flight Time', // i18n-exempt
     category: 'timers',
-    description: 'Time since arming',
+    description: 'Time since arming', // i18n-exempt
     previewSymbol: SYM.FLY_M,
     previewText: '03:05',
     size: { width: 6, height: 1 },
@@ -472,9 +473,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'on_time',
-    name: 'On Time',
+    name: 'On Time', // i18n-exempt
     category: 'timers',
-    description: 'Time since power on',
+    description: 'Time since power on', // i18n-exempt
     previewSymbol: SYM.ON_M,
     previewText: '12:30',
     size: { width: 6, height: 1 },
@@ -483,9 +484,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'rtc_time',
-    name: 'RTC Time',
+    name: 'RTC Time', // i18n-exempt
     category: 'timers',
-    description: 'Real-time clock (current time)',
+    description: 'Real-time clock (current time)', // i18n-exempt
     previewSymbol: SYM.CLOCK,
     previewText: '14:23',
     size: { width: 6, height: 1 },
@@ -493,9 +494,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'remaining_flight_time',
-    name: 'Remaining Time',
+    name: 'Remaining Time', // i18n-exempt
     category: 'timers',
-    description: 'Estimated remaining flight time',
+    description: 'Estimated remaining flight time', // i18n-exempt
     previewSymbol: SYM.FLIGHT_MINS_REMAINING,
     previewText: '08:15',
     size: { width: 6, height: 1 },
@@ -505,9 +506,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Radio & Control ───────────────────────────────────────────────────
   {
     id: 'rssi',
-    name: 'RSSI',
+    name: 'RSSI', // i18n-exempt
     category: 'radio',
-    description: 'Received signal strength indicator (%)',
+    description: 'Received signal strength indicator (%)', // i18n-exempt
     previewSymbol: SYM.RSSI,
     previewText: ' 85',
     size: { width: 4, height: 1 },
@@ -516,9 +517,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'rssi_dbm',
-    name: 'RSSI (dBm)',
+    name: 'RSSI (dBm)', // i18n-exempt
     category: 'radio',
-    description: 'Signal strength in dBm (ELRS, Crossfire)',
+    description: 'Signal strength in dBm (ELRS, Crossfire)', // i18n-exempt
     previewSymbol: SYM.DBM,
     previewText: '-62',
     size: { width: 5, height: 1 },
@@ -526,9 +527,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'throttle',
-    name: 'Throttle',
+    name: 'Throttle', // i18n-exempt
     category: 'radio',
-    description: 'Current throttle position percentage',
+    description: 'Current throttle position percentage', // i18n-exempt
     previewSymbol: SYM.THR,
     previewText: ' 45%',
     size: { width: 5, height: 1 },
@@ -537,9 +538,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'throttle_gauge',
-    name: 'Throttle Gauge',
+    name: 'Throttle Gauge', // i18n-exempt
     category: 'radio',
-    description: 'Visual throttle bar gauge',
+    description: 'Visual throttle bar gauge', // i18n-exempt
     previewSymbol: SYM.THROTTLE_GAUGE_FULL,
     previewText: '',
     size: { width: 1, height: 5 },
@@ -549,9 +550,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Sensors ───────────────────────────────────────────────────────────
   {
     id: 'baro_temp',
-    name: 'Baro Temperature',
+    name: 'Baro Temperature', // i18n-exempt
     category: 'sensors',
-    description: 'Barometer sensor temperature',
+    description: 'Barometer sensor temperature', // i18n-exempt
     previewSymbol: SYM.BARO_TEMP,
     previewText: '32C',
     size: { width: 5, height: 1 },
@@ -559,9 +560,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'imu_temp',
-    name: 'IMU Temperature',
+    name: 'IMU Temperature', // i18n-exempt
     category: 'sensors',
-    description: 'IMU/gyro sensor temperature',
+    description: 'IMU/gyro sensor temperature', // i18n-exempt
     previewSymbol: SYM.IMU_TEMP,
     previewText: '45C',
     size: { width: 5, height: 1 },
@@ -569,9 +570,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'esc_temp',
-    name: 'ESC Temperature',
+    name: 'ESC Temperature', // i18n-exempt
     category: 'sensors',
-    description: 'Electronic speed controller temperature',
+    description: 'Electronic speed controller temperature', // i18n-exempt
     previewSymbol: SYM.ESC_TEMPERATURE,
     previewText: '55C',
     size: { width: 5, height: 1 },
@@ -579,9 +580,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'g_force',
-    name: 'G-Force',
+    name: 'G-Force', // i18n-exempt
     category: 'sensors',
-    description: 'Current G-force loading',
+    description: 'Current G-force loading', // i18n-exempt
     previewSymbol: SYM.GFORCE,
     previewText: '1.2G',
     size: { width: 5, height: 1 },
@@ -589,9 +590,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'esc_rpm',
-    name: 'ESC RPM',
+    name: 'ESC RPM', // i18n-exempt
     category: 'sensors',
-    description: 'Motor RPM from ESC telemetry',
+    description: 'Motor RPM from ESC telemetry', // i18n-exempt
     previewSymbol: SYM.RPM,
     previewText: '12500',
     size: { width: 7, height: 1 },
@@ -601,9 +602,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   // ── Mission ───────────────────────────────────────────────────────────
   {
     id: 'vtx_channel',
-    name: 'VTX Channel',
+    name: 'VTX Channel', // i18n-exempt
     category: 'mission',
-    description: 'Video transmitter band/channel/power',
+    description: 'Video transmitter band/channel/power', // i18n-exempt
     previewSymbol: SYM.VTX_POWER,
     previewText: 'R:4:25',
     size: { width: 7, height: 1 },
@@ -612,9 +613,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'wind_horizontal',
-    name: 'Wind (Horizontal)',
+    name: 'Wind (Horizontal)', // i18n-exempt
     category: 'mission',
-    description: 'Horizontal wind speed and direction',
+    description: 'Horizontal wind speed and direction', // i18n-exempt
     previewSymbol: SYM.WIND_SPEED_HORIZONTAL,
     previewText: '12',
     size: { width: 5, height: 1 },
@@ -622,9 +623,9 @@ export const ELEMENT_REGISTRY: OsdElementDefinition[] = [
   },
   {
     id: 'wind_vertical',
-    name: 'Wind (Vertical)',
+    name: 'Wind (Vertical)', // i18n-exempt
     category: 'mission',
-    description: 'Vertical wind component',
+    description: 'Vertical wind component', // i18n-exempt
     previewSymbol: SYM.WIND_SPEED_VERTICAL,
     previewText: '+2',
     size: { width: 5, height: 1 },
@@ -676,6 +677,16 @@ export function getAllOsdElements(): AnyOsdElementDef[] {
 const _registryMap = new Map<OsdElementId, OsdElementDefinition>();
 for (const def of ELEMENT_REGISTRY) {
   _registryMap.set(def.id, def);
+}
+
+/** Translated display name; module-contributed elements keep their own. */
+export function osdElementName(def: Pick<AnyOsdElementDef, 'id' | 'name'>): string {
+  return _registryMap.has(def.id as OsdElementId) ? t(`utils:osdElements.${def.id}.name`) : def.name;
+}
+
+/** Translated description; module-contributed elements keep their own. */
+export function osdElementDescription(def: Pick<AnyOsdElementDef, 'id' | 'description'>): string {
+  return _registryMap.has(def.id as OsdElementId) ? t(`utils:osdElements.${def.id}.description`) : def.description;
 }
 
 /** Get element definition by ID */

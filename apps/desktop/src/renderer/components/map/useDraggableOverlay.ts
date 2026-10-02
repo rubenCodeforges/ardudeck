@@ -221,6 +221,8 @@ function fromRatioLegacy(el: HTMLElement, ratio: { xr: number; yr: number }): Po
 export function useDraggableOverlay(
   storageKey: string,
   getOverhang?: () => OverlayOverhang | null,
+  // Off for draggables outside the map, so moving them leaves the instruments' arrange undo alone.
+  { announce = true }: { announce?: boolean } = {},
 ): {
   ref: (el: HTMLElement | null) => void;
   style: CSSProperties | undefined;
@@ -367,7 +369,7 @@ export function useDraggableOverlay(
           }
           return p;
         });
-        window.dispatchEvent(new CustomEvent(USER_MOVED_EVENT, { detail: { key: storageKey } }));
+        if (announce) window.dispatchEvent(new CustomEvent(USER_MOVED_EVENT, { detail: { key: storageKey } }));
         // Swallow the click that follows a real drag so buttons under the
         // pointer don't fire.
         window.addEventListener('click', (ce) => { ce.stopPropagation(); ce.preventDefault(); }, { capture: true, once: true });
@@ -376,7 +378,7 @@ export function useDraggableOverlay(
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-  }, [storageKey]);
+  }, [storageKey, announce]);
 
   const style: CSSProperties | undefined = pos
     ? {

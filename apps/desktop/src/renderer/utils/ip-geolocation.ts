@@ -97,7 +97,7 @@ async function fetchLocation(): Promise<GeoLocation> {
   try {
     const position = await new Promise<GeolocationPosition>((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'));
+        reject(new Error('Geolocation not supported')); // i18n-exempt
         return;
       }
 

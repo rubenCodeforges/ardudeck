@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t as i18nT } from '../../shared/i18n/index.js';
 import {
   loadFont,
   CachedFont,
@@ -306,7 +307,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
   loadBundledFont: async (name: string) => {
     const content = BUNDLED_FONTS[name];
     if (!content) {
-      set({ fontError: `Unknown bundled font: ${name}` });
+      set({ fontError: i18nT('stores:osdStore.unknownFont', { name }) });
       return;
     }
     set({ isLoadingFont: true, fontError: null });
@@ -317,7 +318,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
       savePersisted(get());
     } catch (err) {
       set({
-        fontError: err instanceof Error ? err.message : 'Failed to load font',
+        fontError: err instanceof Error ? err.message : i18nT('stores:osdStore.loadFontFailed'),
         isLoadingFont: false,
       });
     }
@@ -331,7 +332,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
       get().updateScreenBuffer();
     } catch (err) {
       set({
-        fontError: err instanceof Error ? err.message : 'Failed to load font',
+        fontError: err instanceof Error ? err.message : i18nT('stores:osdStore.loadFontFailed'),
         isLoadingFont: false,
       });
     }
@@ -537,7 +538,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
 
   readFromFc: async () => {
     const target = detectTarget();
-    set({ fc: { busy: true, progress: null, message: 'Reading from flight controller...', error: false } });
+    set({ fc: { busy: true, progress: null, message: i18nT('stores:osdStore.reading'), error: false } });
 
     try {
       if (target === 'msp') {
@@ -546,7 +547,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
           videoSystem?: number;
         } | null;
         if (!config || config.elements.length === 0) {
-          set({ fc: { busy: false, progress: null, message: 'No OSD config returned by FC', error: true } });
+          set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.noConfig'), error: true } });
           return false;
         }
         // videoSystem: 1=PAL, 2=NTSC, 3=HD (Betaflight-HD compatible canvas)
@@ -565,7 +566,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         }
         set({
           elementPositions: next,
-          fc: { busy: false, progress: null, message: `Loaded ${count} elements from FC`, error: false },
+          fc: { busy: false, progress: null, message: i18nT('stores:osdStore.loadedFromFc', { count }), error: false },
         });
         get().updateScreenBuffer();
         savePersisted(get());
@@ -575,12 +576,12 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
       if (target === 'ardupilot') {
         let params = useParameterStore.getState().parameters;
         if (params.size === 0) {
-          set({ fc: { busy: true, progress: null, message: 'Downloading parameters...', error: false } });
+          set({ fc: { busy: true, progress: null, message: i18nT('common:downloadingParameters'), error: false } });
           await useParameterStore.getState().fetchParameters();
           params = useParameterStore.getState().parameters;
         }
         if (!hasArdupilotOsd(params)) {
-          set({ fc: { busy: false, progress: null, message: 'No OSD parameters on this board (set OSD_TYPE?)', error: true } });
+          set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.noOsdParams'), error: true } });
           return false;
         }
         const screen = get().screen;
@@ -593,18 +594,18 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
           elementPositions: next,
           supportedElements: supportedArdupilotElements(params, screen),
           availableScreens: detectArdupilotOsdScreens(params),
-          fc: { busy: false, progress: null, message: `Loaded ${resolved} elements from screen ${screen}`, error: false },
+          fc: { busy: false, progress: null, message: i18nT('stores:osdStore.loadedFromScreen', { resolved, screen }), error: false },
         });
         get().updateScreenBuffer();
         savePersisted(get());
         return resolved > 0;
       }
 
-      set({ fc: { busy: false, progress: null, message: 'Connect to an ArduPilot or Betaflight/iNav FC first', error: true } });
+      set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.connectFirst'), error: true } });
       return false;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      set({ fc: { busy: false, progress: null, message: `Read failed: ${msg}`, error: true } });
+      set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.readFailed', { msg }), error: true } });
       return false;
     }
   },
@@ -619,15 +620,15 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
           const p = positions[d.id];
           return { index: d.betaflightIndex!, x: p.x, y: p.y, visible: p.enabled };
         });
-        set({ fc: { busy: true, progress: { done: 0, total: elements.length }, message: 'Uploading OSD layout...', error: false } });
+        set({ fc: { busy: true, progress: { done: 0, total: elements.length }, message: i18nT('stores:osdStore.uploadingLayout'), error: false } });
         const res = await window.electronAPI.mspSetOsdConfig(elements);
         set({
           fc: {
             busy: false,
             progress: null,
             message: res.success
-              ? `Uploaded ${res.written} elements and saved to FC`
-              : `Upload failed: ${res.error ?? 'unknown error'}`,
+              ? i18nT('stores:osdStore.uploadedSaved', { count: res.written })
+              : i18nT('stores:osdStore.uploadFailed', { msg: res.error ?? i18nT('stores:osdStore.unknownError') }),
             error: !res.success,
           },
         });
@@ -639,7 +640,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
         // Need the board's OSD params to know which exist + their types. Pull
         // them first if we haven't yet, so upload doesn't silently no-op.
         if (params.size === 0) {
-          set({ fc: { busy: true, progress: null, message: 'Downloading parameters…', error: false } });
+          set({ fc: { busy: true, progress: null, message: i18nT('stores:osdStore.downloadingParams'), error: false } });
           await useParameterStore.getState().fetchParameters();
           params = useParameterStore.getState().parameters;
         }
@@ -657,7 +658,7 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
           });
           return false;
         }
-        set({ fc: { busy: true, progress: { done: 0, total: writes.length }, message: `Uploading ${writes.length} parameters...`, error: false } });
+        set({ fc: { busy: true, progress: { done: 0, total: writes.length }, message: i18nT('stores:osdStore.uploadingParams', { count: writes.length }), error: false } });
 
         const off = window.electronAPI.onParamSetBatchProgress?.((p) => {
           set((state) => ({ fc: { ...state.fc, progress: { done: p.confirmed, total: p.total } } }));
@@ -671,19 +672,19 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
             busy: false,
             progress: null,
             message: ok
-              ? `Uploaded ${res.confirmed} parameters to screen ${get().screen}`
-              : `Uploaded ${res.confirmed}/${writes.length}; ${res.failed.length} not confirmed`,
+              ? i18nT('stores:osdStore.uploadedToScreen', { count: res.confirmed, screen: get().screen })
+              : i18nT('stores:osdStore.uploadedPartial', { confirmed: res.confirmed, total: writes.length, failed: res.failed.length }),
             error: !ok,
           },
         });
         return ok;
       }
 
-      set({ fc: { busy: false, progress: null, message: 'Connect to a flight controller first', error: true } });
+      set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.connectFcFirst'), error: true } });
       return false;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      set({ fc: { busy: false, progress: null, message: `Upload failed: ${msg}`, error: true } });
+      set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.uploadFailed', { msg }), error: true } });
       return false;
     }
   },
@@ -697,8 +698,8 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
           progress: null,
           message:
             target === 'ardupilot'
-              ? 'ArduPilot picks a font via the OSD_FONT parameter, not by upload'
-              : 'Connect a Betaflight/iNAV board to upload an analog font',
+              ? i18nT('stores:osdStore.ardupilotFont')
+              : i18nT('stores:osdStore.connectForFont'),
           error: true,
         },
       });
@@ -706,11 +707,11 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
     }
     const font = get().currentFont;
     if (!font) {
-      set({ fc: { busy: false, progress: null, message: 'No font loaded', error: true } });
+      set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.noFont'), error: true } });
       return false;
     }
     const chars = font.font.characters.map((c) => ({ address: c.index, bytes: Array.from(c.rawBytes) }));
-    set({ fc: { busy: true, progress: { done: 0, total: chars.length }, message: 'Uploading font to FC NVM…', error: false } });
+    set({ fc: { busy: true, progress: { done: 0, total: chars.length }, message: i18nT('stores:osdStore.uploadingFont'), error: false } });
     try {
       const res = await window.electronAPI.mspUploadOsdFont(chars);
       set({
@@ -718,15 +719,15 @@ export const useOsdStore = create<OsdStore>((set, get) => ({
           busy: false,
           progress: null,
           message: res.success
-            ? `Font uploaded (${res.written} chars), reboot the FC to apply`
-            : `Font upload failed: ${res.error ?? 'unknown error'}`,
+            ? i18nT('stores:osdStore.fontUploaded', { count: res.written })
+            : i18nT('stores:osdStore.fontUploadFailed', { msg: res.error ?? i18nT('stores:osdStore.unknownError') }),
           error: !res.success,
         },
       });
       return res.success;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      set({ fc: { busy: false, progress: null, message: `Font upload failed: ${msg}`, error: true } });
+      set({ fc: { busy: false, progress: null, message: i18nT('stores:osdStore.fontUploadFailed', { msg }), error: true } });
       return false;
     }
   },

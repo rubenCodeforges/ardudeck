@@ -11,12 +11,14 @@
  */
 import { Github, AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useFleetRepoStore, useCurrentVaultUnit } from '../../stores/fleet-repo-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useCargoEnabled, VAULT_CARGO_SLUG } from '../../modules/capabilities';
 
 export function VaultAutoSyncToggle({ savesLabel }: { savesLabel?: string }) {
+  const { t } = useTranslation();
   const status = useFleetRepoStore((s) => s.status);
   const units = useFleetRepoStore((s) => s.units);
   const refresh = useFleetRepoStore((s) => s.refresh);
@@ -59,12 +61,12 @@ export function VaultAutoSyncToggle({ savesLabel }: { savesLabel?: string }) {
       <button
         onClick={handleClick}
         title={identityUnknown
-          ? 'Auto backup is on, but this vehicle could not be identified. Click to pick which vehicle you are working on in the vault.'
-          : `"${currentUnit?.name}" has no saved history, so saves would start a new vehicle entry. If it is one of your saved vehicles, click to link it in the vault.`}
+          ? t('vault:vaultAutoSyncToggle.identityUnknownTip')
+          : t('vault:vaultAutoSyncToggle.identityNewTip', { name: currentUnit?.name })}
         className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium transition-colors border-amber-500/30 bg-amber-500/10 text-amber-500"
       >
         <AlertTriangle className="w-3 h-3" />
-        {identityUnknown ? 'Vehicle unknown' : 'Backs up as new vehicle'}
+        {identityUnknown ? t('vault:vaultAutoSyncToggle.vehicleUnknown') : t('vault:vaultAutoSyncToggle.backsUpAsNew')}
       </button>
     );
   }
@@ -74,10 +76,10 @@ export function VaultAutoSyncToggle({ savesLabel }: { savesLabel?: string }) {
       onClick={handleClick}
       title={
         !configured
-          ? 'Not backed up. Click to set up online backup in the vault.'
+          ? t('vault:vaultAutoSyncToggle.notConfiguredTip')
           : on
-            ? 'This save is snapshotted and pushed to your repository automatically. Click to turn off.'
-            : 'Automatic backup is off. Click to back up and sync after every save.'
+            ? t('vault:vaultAutoSyncToggle.onTip')
+            : t('vault:vaultAutoSyncToggle.offTip')
       }
       className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium transition-colors ${
         on
@@ -87,10 +89,10 @@ export function VaultAutoSyncToggle({ savesLabel }: { savesLabel?: string }) {
     >
       <Github className="w-3 h-3" />
       {!configured
-        ? 'Not backed up'
+        ? t('vault:vaultAutoSyncToggle.notBackedUp')
         : on
-          ? savesLabel ?? (currentUnit ? `Backs up: ${currentUnit.name}` : 'Backs up after save')
-          : 'Backup off'}
+          ? savesLabel ?? (currentUnit ? t('vault:vaultAutoSyncToggle.backsUpNamed', { name: currentUnit.name }) : t('vault:vaultAutoSyncToggle.backsUpAfterSave'))
+          : t('vault:vaultAutoSyncToggle.backupOff')}
     </button>
   );
 }

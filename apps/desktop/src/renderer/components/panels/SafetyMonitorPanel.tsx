@@ -7,6 +7,7 @@
  * when docked small so it can sit alongside the HUD during takeoff.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ShieldCheck, ShieldAlert, Volume2, VolumeX, RotateCcw, Zap, FileUp, Square } from 'lucide-react';
 import { useSafetyMonitorStore } from '../../stores/safety-monitor-store';
@@ -32,10 +33,10 @@ const TONES: Record<Severity, Tone> = {
   danger: { text: 'text-red-400', fill: 'rgb(239 68 68)', border: 'rgb(239 68 68 / 0.5)', bg: 'rgb(239 68 68 / 0.16)' },
 };
 
-const SEVERITY_TITLE: Record<Severity, string> = {
-  nominal: 'NOMINAL',
-  caution: 'CAUTION',
-  danger: 'DANGER',
+const SEVERITY_TITLE_KEY: Record<Severity, string> = {
+  nominal: 'panels:safetyMonitorPanel.nominal',
+  caution: 'panels:safetyMonitorPanel.caution',
+  danger: 'panels:safetyMonitorPanel.danger',
 };
 
 function useCompact<T extends HTMLElement>(): [React.RefObject<T>, boolean] {
@@ -73,6 +74,7 @@ function DeviationBar({ signal }: { signal: SignalResult }) {
 }
 
 function SignalRow({ signal, compact }: { signal: SignalResult; compact: boolean }) {
+  const { t } = useTranslation();
   const tone = TONES[signal.severity];
   const isPidSignal = signal.id === 'integratorLoad' || signal.id === 'controllerFighting';
 
@@ -81,15 +83,15 @@ function SignalRow({ signal, compact }: { signal: SignalResult; compact: boolean
       <div className="py-1.5">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-content-secondary text-xs truncate">{signal.label}</span>
-          <span className="text-content-tertiary text-[10px]">unavailable</span>
+          <span className="text-content-tertiary text-[10px]">{t('panels:safetyMonitorPanel.unavailable')}</span>
         </div>
         {isPidSignal && (
           <button
             onClick={() => void enablePidStreaming()}
             className="mt-1 text-[11px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors"
-            data-tip="Set the roll+pitch bits of GCS_PID_MASK so the FC streams PID_TUNING"
+            data-tip={t('panels:safetyMonitorPanel.enablePidTip')}
           >
-            <Zap className="w-3 h-3" /> Enable PID streaming
+            <Zap className="w-3 h-3" /> {t('panels:safetyMonitorPanel.enablePid')}
           </button>
         )}
       </div>
@@ -137,6 +139,7 @@ function IntegratorGauge({ label, pct }: { label: string; pct: number | null }) 
 }
 
 export function SafetyMonitorPanel() {
+  const { t } = useTranslation();
   const monitor = useSafetyMonitorStore((s) => s.monitor);
   const audioEnabled = useSafetyMonitorStore((s) => s.audioEnabled);
   const setAudioEnabled = useSafetyMonitorStore((s) => s.setAudioEnabled);
@@ -206,7 +209,7 @@ export function SafetyMonitorPanel() {
             <Icon className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} ${tone.text} shrink-0`} />
             <div className="min-w-0 flex-1">
               <div className={`font-bold tracking-wide ${compact ? 'text-lg' : 'text-2xl'} ${tone.text} leading-none`}>
-                {SEVERITY_TITLE[monitor.overall]}
+                {t(SEVERITY_TITLE_KEY[monitor.overall])}
               </div>
               {monitor.action && (
                 <div className={`mt-1 font-semibold ${compact ? 'text-xs' : 'text-sm'} ${tone.text}`}>
@@ -215,7 +218,7 @@ export function SafetyMonitorPanel() {
               )}
               {!monitor.action && !compact && (
                 <div className="mt-1 text-xs text-content-tertiary">
-                  {monitor.tipoverArmed ? 'Armed & on the ground - tip-over watch active' : 'Tip-over watch idle'}
+                  {monitor.tipoverArmed ? t('panels:safetyMonitorPanel.tipoverActive') : t('panels:safetyMonitorPanel.tipoverIdle')}
                 </div>
               )}
             </div>
@@ -223,7 +226,7 @@ export function SafetyMonitorPanel() {
               <button
                 onClick={() => setAudioEnabled(!audioEnabled)}
                 className="p-1.5 rounded-md text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
-                data-tip={audioEnabled ? 'Mute the DANGER audio cue' : 'Enable the DANGER audio cue'}
+                data-tip={audioEnabled ? t('panels:safetyMonitorPanel.muteTip') : t('panels:safetyMonitorPanel.unmuteTip')}
               >
                 {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
@@ -231,7 +234,7 @@ export function SafetyMonitorPanel() {
                 <button
                   onClick={() => clearLatch()}
                   className="p-1.5 rounded-md text-red-400 hover:bg-red-500/15 transition-colors"
-                  data-tip="Clear the latched DANGER"
+                  data-tip={t('panels:safetyMonitorPanel.clearLatchTip')}
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
@@ -243,10 +246,10 @@ export function SafetyMonitorPanel() {
         {/* Integrator gauges */}
         <div className="rounded-lg border border-subtle p-2.5 flex flex-col gap-2">
           <div className="text-[10px] font-medium text-content-secondary uppercase tracking-wider">
-            Integrator load (% of IMAX)
+            {t('panels:safetyMonitorPanel.integratorLoad')}
           </div>
-          <IntegratorGauge label="R" pct={monitor.integrator.roll} />
-          <IntegratorGauge label="P" pct={monitor.integrator.pitch} />
+          <IntegratorGauge label={t('panels:safetyMonitorPanel.rollShort')} pct={monitor.integrator.roll} />
+          <IntegratorGauge label={t('panels:safetyMonitorPanel.pitchShort')} pct={monitor.integrator.pitch} />
         </div>
 
         {/* Signal rows */}
@@ -261,22 +264,22 @@ export function SafetyMonitorPanel() {
           <div className="rounded-lg border border-subtle p-2.5 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium text-content-secondary uppercase tracking-wider">
-                Replay log (.tlog)
+                {t('panels:safetyMonitorPanel.replayLog')}
               </span>
               {replayProgress === null ? (
                 <button
                   onClick={() => fileRef.current?.click()}
                   className="text-[11px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-raised border border-subtle text-content-secondary hover:text-content transition-colors"
-                  data-tip="Replay a recorded .tlog through the monitor"
+                  data-tip={t('panels:safetyMonitorPanel.replayTip')}
                 >
-                  <FileUp className="w-3 h-3" /> Load
+                  <FileUp className="w-3 h-3" /> {t('common:load')}
                 </button>
               ) : (
                 <button
                   onClick={stopReplay}
                   className="text-[11px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
                 >
-                  <Square className="w-3 h-3" /> Stop
+                  <Square className="w-3 h-3" /> {t('common:stop')}
                 </button>
               )}
             </div>
@@ -307,13 +310,13 @@ export function SafetyMonitorPanel() {
           <div className="flex flex-col gap-1">
             {landedSource === 'inferred' && (
               <div className="text-[10px] text-content-tertiary">
-                Ground state inferred (no EXTENDED_SYS_STATE on this link).
+                {t('panels:safetyMonitorPanel.groundInferred')}
               </div>
             )}
             {recentEvents.length > 0 && (
               <div className="rounded-lg border border-subtle p-2 flex flex-col gap-0.5">
                 <div className="text-[10px] font-medium text-content-secondary uppercase tracking-wider mb-0.5">
-                  Events
+                  {t('panels:safetyMonitorPanel.events')}
                 </div>
                 {recentEvents.map((e, i) => (
                   <div key={i} className="flex items-baseline justify-between gap-2 text-[11px]">

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Gamepad2, Check, RotateCcw } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -28,6 +29,7 @@ import {
 const LEARN_TIMEOUT_MS = 8000;
 
 export function StickAssignmentCard(): JSX.Element {
+  const { t } = useTranslation();
   const { parameters, setParameterImmediate } = useParameterStore();
   const fcRc = useTelemetryStore((s) => s.rcChannels);
   const rcChannels = useEffectiveRc(fcRc);
@@ -52,7 +54,7 @@ export function StickAssignmentCard(): JSX.Element {
   const write = async (next: Rcmap, description: string) => {
     const changes = rcmapChanges(rcmap, next);
     if (changes.length === 0) {
-      setStatus('Already set that way.');
+      setStatus(t('mavlink-config:stickAssignmentCard.alreadySet'));
       return;
     }
     setBusy(true);
@@ -61,7 +63,7 @@ export function StickAssignmentCard(): JSX.Element {
       for (const change of changes) {
         const ok = await setParameterImmediate(change.param, change.value);
         if (!ok) {
-          setStatus(`Could not write ${change.param}. Nothing else was changed.`);
+          setStatus(t('mavlink-config:stickAssignmentCard.writeFailed', { param: change.param }));
           return;
         }
       }
@@ -89,14 +91,14 @@ export function StickAssignmentCard(): JSX.Element {
       baselineRef.current = [];
       void write(
         assignChannel(rcmap, fn, channel),
-        `${stickLabel(fn, isGround)} is now on channel ${channel}.`,
+        t('mavlink-config:stickAssignmentCard.nowOnChannel', { stick: stickLabel(fn, isGround), channel }),
       );
       return;
     }
     if (Date.now() - learnStartedRef.current > LEARN_TIMEOUT_MS) {
       setLearning(null);
       baselineRef.current = [];
-      setStatus('No stick movement picked up. Check the receiver is bound and try again.');
+      setStatus(t('mavlink-config:stickAssignmentCard.noMovement'));
     }
   }, [learning, rcChannels.channels]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -111,8 +113,8 @@ export function StickAssignmentCard(): JSX.Element {
     try {
       const ok = await window.electronAPI?.mavlinkReboot();
       setStatus(ok
-        ? 'Flight controller rebooting. Sticks take effect when it comes back.'
-        : 'Reboot command was not accepted. Power-cycle the vehicle instead.');
+        ? t('mavlink-config:stickAssignmentCard.rebooting')
+        : t('mavlink-config:stickAssignmentCard.rebootRejected'));
       if (ok) setNeedsReboot(false);
     } finally {
       setBusy(false);
@@ -129,16 +131,16 @@ export function StickAssignmentCard(): JSX.Element {
           <Gamepad2 className="w-5 h-5 text-violet-400" />
         </div>
         <div className="flex-1">
-          <h3 className="font-medium text-content">Stick assignment</h3>
+          <h3 className="font-medium text-content">{t('mavlink-config:stickAssignmentCard.title')}</h3>
           <p className="text-xs text-content-secondary">
-            Put a control on a different stick without touching the transmitter
+            {t('mavlink-config:stickAssignmentCard.subtitle')}
           </p>
         </div>
       </div>
 
       {armed && (
         <div className="mb-4 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-          Disarm before changing which stick does what.
+          {t('mavlink-config:stickAssignmentCard.disarmFirst')}
         </div>
       )}
 
@@ -148,28 +150,28 @@ export function StickAssignmentCard(): JSX.Element {
           // on a custom assignment keeps it, throttle and pitch just trade.
           onClick={() => write(
             assignChannel(rcmap, 'throttle', rcmap.pitch),
-            'Throttle moved to the elevator stick.',
+            t('mavlink-config:stickAssignmentCard.throttleMoved'),
           )}
           disabled={disabled}
-          data-tip="Drive on the self-centering stick: throttle and pitch trade channels"
+          data-tip={t('mavlink-config:stickAssignmentCard.elevatorTip')}
           className={presetButton}
         >
-          <div className="text-content">Throttle on the elevator stick</div>
+          <div className="text-content">{t('mavlink-config:stickAssignmentCard.elevatorTitle')}</div>
           <div className="mt-0.5 text-[11px] text-content-tertiary">
-            Self-centering stick for drive and reverse, the usual rover setup
+            {t('mavlink-config:stickAssignmentCard.elevatorDesc')}
           </div>
         </button>
         <button
-          onClick={() => write(DEFAULT_RCMAP, 'Back to the standard stick assignment.')}
+          onClick={() => write(DEFAULT_RCMAP, t('mavlink-config:stickAssignmentCard.backToStandard'))}
           disabled={disabled}
-          data-tip="Roll 1, pitch 2, throttle 3, yaw 4"
+          data-tip={t('mavlink-config:stickAssignmentCard.standardTip')}
           className={presetButton}
         >
           <div className="flex items-center gap-1.5 text-content">
-            <RotateCcw className="w-3 h-3" /> Standard assignment
+            <RotateCcw className="w-3 h-3" /> {t('mavlink-config:stickAssignmentCard.standardTitle')}
           </div>
           <div className="mt-0.5 text-[11px] text-content-tertiary">
-            Channels 1 to 4 in the usual order
+            {t('mavlink-config:stickAssignmentCard.standardDesc')}
           </div>
         </button>
       </div>
@@ -182,7 +184,7 @@ export function StickAssignmentCard(): JSX.Element {
           return (
             <div key={fn} className="flex items-center gap-3 rounded-lg bg-surface-raised px-3 py-2">
               <span className="w-28 shrink-0 text-xs text-content">{stickLabel(fn, isGround)}</span>
-              <span className="w-16 shrink-0 text-xs text-content-secondary tabular-nums">Ch {channel}</span>
+              <span className="w-16 shrink-0 text-xs text-content-secondary tabular-nums">{t('mavlink-config:stickAssignmentCard.ch', { channel })}</span>
               <span className="w-14 shrink-0 text-[11px] text-content-tertiary tabular-nums">
                 {pwm ? `${pwm}` : '--'}
               </span>
@@ -203,7 +205,7 @@ export function StickAssignmentCard(): JSX.Element {
                     : 'bg-violet-600/80 text-white hover:bg-violet-500'
                 }`}
               >
-                {teaching ? 'Move that stick…' : 'Assign a stick'}
+                {teaching ? t('mavlink-config:stickAssignmentCard.moveStick') : t('mavlink-config:stickAssignmentCard.assign')}
               </button>
             </div>
           );
@@ -220,14 +222,14 @@ export function StickAssignmentCard(): JSX.Element {
       {needsReboot && (
         <div className="mt-3 flex items-center gap-3 rounded-lg bg-blue-500/10 px-3 py-2">
           <span className="flex-1 text-xs text-blue-300">
-            ArduPilot only picks up a new stick assignment after a restart.
+            {t('mavlink-config:stickAssignmentCard.rebootNeeded')}
           </span>
           <button
             onClick={reboot}
             disabled={busy}
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 transition-colors"
           >
-            Reboot flight controller
+            {t('common:rebootFlightController')}
           </button>
         </div>
       )}

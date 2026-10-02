@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AUX_CHANNELS } from '../presets/mode-presets';
 
 interface AuxChannelPickerProps {
@@ -21,6 +22,7 @@ export const AuxChannelPicker: React.FC<AuxChannelPickerProps> = ({
   rcChannels,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,12 +57,12 @@ export const AuxChannelPicker: React.FC<AuxChannelPickerProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <div className="font-medium text-content">{selectedChannel!.name}</div>
-            <div className="text-xs text-content-secondary">{selectedChannel!.description}</div>
+            <div className="text-xs text-content-secondary">{t(selectedChannel!.descriptionKey)}</div>
           </div>
           <div className="flex items-center gap-3">
             {/* Live RC value */}
             <div className="text-right">
-              <div className="text-xs text-content-secondary">Current</div>
+              <div className="text-xs text-content-secondary">{t('modes:auxChannelPicker.current')}</div>
               <div className="font-mono text-sm text-yellow-400">{currentRcValue}</div>
             </div>
             {/* Dropdown arrow */}
@@ -112,7 +114,7 @@ export const AuxChannelPicker: React.FC<AuxChannelPickerProps> = ({
                     >
                       {channel.name}
                     </div>
-                    <div className="text-xs text-content-secondary">{channel.description}</div>
+                    <div className="text-xs text-content-secondary">{t(channel.descriptionKey)}</div>
                   </div>
                   <div className="flex items-center gap-3">
                     {/* Live RC value with visual bar */}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMessagesStore } from '../../stores/messages-store';
 import { evaluateRadioPreflight, type PreflightCheck } from '../../utils/radio-preflight';
@@ -7,12 +8,12 @@ import { ELRS_USB_BAUD } from '../../../shared/link-doctor-types';
 
 type Step = 'scan' | 'noradio' | 'switch' | 'connect' | 'vehicle' | 'done';
 
-const STEP_LABELS: Array<{ key: Step[]; label: string }> = [
-  { key: ['scan', 'noradio'], label: 'Find radio' },
-  { key: ['switch'], label: 'Radio mode' },
-  { key: ['connect'], label: 'Connect' },
-  { key: ['vehicle'], label: 'Vehicle' },
-  { key: ['done'], label: 'Done' },
+const STEP_LABELS: Array<{ key: Step[]; labelKey: string }> = [
+  { key: ['scan', 'noradio'], labelKey: 'connection:radioSetup.stepFindRadio' },
+  { key: ['switch'], labelKey: 'connection:radioSetup.stepRadioMode' },
+  { key: ['connect'], labelKey: 'common:connect' },
+  { key: ['vehicle'], labelKey: 'common:vehicle' },
+  { key: ['done'], labelKey: 'common:done' },
 ];
 
 type FoundRadio =
@@ -38,6 +39,7 @@ interface Props {
  * across tabs or parameter lists.
  */
 export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListen }: Props) {
+  const { t } = useTranslation();
   const { connectionState, isConnecting, error: connectionError } = useConnectionStore();
   const messages = useMessagesStore((s) => s.messages);
 
@@ -96,7 +98,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
   }, [connectionState.isConnected, step, restarting]);
 
   const scanForRadio = async () => {
-    setScanStatus('Looking at your USB ports...');
+    setScanStatus(t('connection:radioSetup.lookingAtPorts'));
     const all = await window.electronAPI.listPorts();
     // USB serial devices only - skips Bluetooth and debug consoles.
     const usb = all.filter((p) => p.vendorId);
@@ -106,7 +108,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
     for (const port of candidates) {
       if (!openRef.current) return;
       try {
-        setScanStatus(`Checking ${port}...`);
+        setScanStatus(t('connection:radioSetup.checkingPort', { port }));
         const info = await window.electronAPI.elrsDetect(port);
         if (info) {
           setRadio({ kind: 'serial', port, info });
@@ -128,7 +130,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
     // the only path for internal TX modules, which have no USB port at all.
     if (!openRef.current) return;
     try {
-      setScanStatus('Listening for a WiFi radio (TX Backpack)...');
+      setScanStatus(t('connection:radioSetup.listeningWifi'));
       const { diagnosis, sender } = await window.electronAPI.linkDoctorProbeUdp(BACKPACK_UDP_PORT);
       if (!openRef.current) return;
       if (diagnosis.protocol === 'mavlink2' || diagnosis.protocol === 'mavlink1') {
@@ -153,11 +155,11 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
         setStep('connect');
       } else if (result.status === 'timeout') {
         setFailure(
-          'The module kept refusing the change - the receiver was still powered and linked. Unpower the vehicle completely (battery AND USB cable) and press Start again.',
+          t('connection:radioSetup.switchTimeout'),
         );
       }
     } catch (e) {
-      setFailure(e instanceof Error ? e.message : 'The module stopped responding.');
+      setFailure(e instanceof Error ? e.message : t('connection:radioSetup.moduleStopped'));
     } finally {
       setSwitching(false);
     }
@@ -173,8 +175,8 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
     if (!ok) {
       setFailure(
         radio.kind === 'serial'
-          ? 'Could not open the port. Is another program using it?'
-          : 'Could not listen on the WiFi port. Is another program using UDP 14550?',
+          ? t('connection:radioSetup.portOpenFailed')
+          : t('connection:radioSetup.wifiListenFailed'),
       );
     }
     // Success advances via the isConnected effect.
@@ -198,7 +200,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
       setChecks(result);
       if (result.every((c) => c.status === 'pass')) setStep('done');
     } catch (e) {
-      setFailure(e instanceof Error ? e.message : 'Could not read vehicle settings.');
+      setFailure(e instanceof Error ? e.message : t('connection:radioSetup.readFailed'));
     } finally {
       setBusy(false);
     }
@@ -214,12 +216,12 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
         .map((f) => ({ paramId: f.param, value: f.value, type: paramTypes[f.param] ?? 6 }));
       const result = await window.electronAPI.setParameterBatch(batch);
       if ((result?.failed ?? []).length > 0) {
-        setFailure(`The vehicle rejected: ${result!.failed.join(', ')}`);
+        setFailure(t('connection:radioPreflight.vehicleRejected', { params: result!.failed.join(', ') }));
       } else {
         setFixApplied(true);
       }
     } catch (e) {
-      setFailure(e instanceof Error ? e.message : 'Applying settings failed.');
+      setFailure(e instanceof Error ? e.message : t('connection:radioPreflight.applyFailed'));
     } finally {
       setBusy(false);
     }
@@ -232,7 +234,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
       await window.electronAPI.mavlinkReboot();
     } catch {
       setRestarting(false);
-      setFailure('The restart command was not accepted.');
+      setFailure(t('connection:radioSetup.restartRejected'));
     }
   };
 
@@ -259,8 +261,8 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
       <div className="card w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
         <div className="card-body space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-content">Radio Setup</h3>
-            <button onClick={close} className="text-content-secondary hover:text-content transition-colors" aria-label="Close">
+            <h3 className="text-base font-semibold text-content">{t('connection:radioSetup.title')}</h3>
+            <button onClick={close} className="text-content-secondary hover:text-content transition-colors" aria-label={t('common:close')}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -273,7 +275,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
               const active = s.key.includes(step);
               const passed = STEP_LABELS.findIndex((x) => x.key.includes(step)) > i;
               return (
-                <div key={s.label} className="flex items-center gap-1 flex-1">
+                <div key={s.labelKey} className="flex items-center gap-1 flex-1">
                   <div
                     className={`h-1 rounded-full flex-1 ${
                       active ? 'bg-blue-500' : passed ? 'bg-emerald-500' : 'bg-surface-raised'
@@ -284,7 +286,10 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
             })}
           </div>
           <p className="text-xs text-content-secondary -mt-2">
-            {STEP_LABELS.find((s) => s.key.includes(step))?.label}
+            {(() => {
+              const current = STEP_LABELS.find((s) => s.key.includes(step));
+              return current ? t(current.labelKey) : null;
+            })()}
           </p>
 
           {failure && (
@@ -302,29 +307,24 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
 
           {step === 'noradio' && (
             <div className="space-y-3">
-              <p className="text-sm text-content">No radio found - two ways to hook one up:</p>
+              <p className="text-sm text-content">{t('connection:radioSetup.noRadio')}</p>
               <div className="p-3 bg-surface-raised rounded-lg space-y-1">
-                <p className="text-xs font-medium text-content">USB cable (external modules)</p>
+                <p className="text-xs font-medium text-content">{t('connection:radioSetup.usbTitle')}</p>
                 <p className="text-xs text-content-secondary">
-                  Plug the radio module into this computer with a USB data cable. It can stay in the handset bay -
-                  it just also needs the cable to this computer.
+                  {t('connection:radioSetup.usbHint')}
                   {scannedPorts.length > 0
-                    ? ` Checked: ${scannedPorts.join(', ')}.`
-                    : ' No USB serial devices were present.'}
+                    ? ` ${t('connection:radioSetup.checkedPorts', { ports: scannedPorts.join(', ') })}`
+                    : ` ${t('connection:radioSetup.noUsbDevices')}`}
                 </p>
               </div>
               <div className="p-3 bg-surface-raised rounded-lg space-y-1">
-                <p className="text-xs font-medium text-content">WiFi (TX Backpack - required for internal modules)</p>
+                <p className="text-xs font-medium text-content">{t('connection:radioSetup.wifiTitle')}</p>
                 <p className="text-xs text-content-secondary">
-                  Radios built into the handset (e.g. TX16S internal) have no USB - they stream over WiFi instead.
-                  Enable Backpack WiFi from the ELRS menu on the handset, then either join this computer to the
-                  "ExpressLRS TX Backpack" network (password: expresslrs) or put the backpack on your home WiFi.
-                  Note: WiFi streaming only works once the radio link is already in MAVLink mode - switching the
-                  mode itself needs USB or the handset menu.
+                  {t('connection:radioSetup.wifiHint')}
                 </p>
               </div>
               <button onClick={() => { setStep('scan'); void scanForRadio(); }} className="btn btn-primary w-full text-sm">
-                Scan again (USB + WiFi)
+                {t('connection:radioSetup.scanAgain')}
               </button>
             </div>
           )}
@@ -335,44 +335,41 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
                 <span className="text-content font-medium">{radio.info.name}</span>
                 {radio.info.firmware && <span className="text-content-secondary">v{radio.info.firmware}</span>}
                 <span className="px-2 py-0.5 rounded-full border text-amber-300 border-amber-500/30 bg-amber-500/10">
-                  {radio.info.linkMode?.value ?? 'Normal'} mode
+                  {t('connection:radioSetup.modeBadge', { mode: radio.info.linkMode?.value ?? 'Normal' })}
                 </span>
               </div>
               {radio.info.firmware?.startsWith('4.0.0') && (
                 <p className="text-xs text-amber-300">
-                  This module runs ELRS 4.0.0, which corrupts stick positions in MAVLink mode. Update it (and the
-                  receiver) to 4.0.1 or newer before operating with sticks.
+                  {t('connection:radioSetup.elrs400Warning')}
                 </p>
               )}
               <p className="text-sm text-content">
-                The radio needs to switch to MAVLink mode to carry telemetry.
+                {t('connection:radioSetup.needsSwitch')}
               </p>
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <p className="text-xs text-amber-200 font-medium mb-1">First: power the receiver off</p>
+                <p className="text-xs text-amber-200 font-medium mb-1">{t('connection:radioSetup.powerOffTitle')}</p>
                 <p className="text-xs text-content-secondary">
-                  The radio refuses this change while its receiver is linked. Unpower the vehicle completely -
-                  battery out AND USB cable unplugged. You can also press Start now and unpower the vehicle while
-                  ArduDeck keeps retrying.
+                  {t('connection:radioSetup.powerOffHint')}
                 </p>
               </div>
               {switching ? (
                 <div className="p-3 bg-surface-raised rounded-lg space-y-2">
                   <div className="flex items-center gap-2 text-xs text-content">
                     {spinner}
-                    Switching{progress ? ` - attempt ${progress.attempt}` : ''}...
+                    {progress ? t('connection:radioSetup.switchingAttempt', { attempt: progress.attempt }) : t('connection:radioSetup.switching')}
                   </div>
                   {progress?.currentMode && progress.currentMode !== 'MAVLink' && (
                     <p className="text-xs text-content-secondary">
-                      Module still reports {progress.currentMode} - waiting for the receiver to go dark.
+                      {t('connection:radioSetup.stillReports', { mode: progress.currentMode })}
                     </p>
                   )}
                   <button onClick={() => window.electronAPI.elrsCancel()} className="btn btn-secondary w-full text-xs">
-                    Cancel
+                    {t('common:cancel')}
                   </button>
                 </div>
               ) : (
                 <button onClick={startSwitch} className="btn btn-primary w-full text-sm">
-                  Start
+                  {t('common:start')}
                 </button>
               )}
             </div>
@@ -381,20 +378,20 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
           {step === 'connect' && (
             <div className="space-y-3">
               <p className="text-sm text-content">
-                The radio on {radioLabel} is ready and speaking MAVLink.
+                {t('connection:radioSetup.radioReady', { radio: radioLabel })}
               </p>
               <p className="text-xs text-content-secondary">
-                Power the vehicle back on and give the link a few seconds to come up, then connect.
+                {t('connection:radioSetup.powerBackOn')}
               </p>
               {connectionError && <p className="text-xs text-red-300">{connectionError}</p>}
               {isConnecting || connectionState.isWaitingForHeartbeat ? (
                 <div className="flex items-center gap-2 text-xs text-content-secondary">
                   {spinner}
-                  Connecting through the radio...
+                  {t('connection:radioSetup.connectingThroughRadio')}
                 </div>
               ) : (
                 <button onClick={doConnect} className="btn btn-primary w-full text-sm">
-                  Connect through the radio
+                  {t('connection:radioSetup.connectThroughRadio')}
                 </button>
               )}
             </div>
@@ -402,17 +399,17 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
 
           {step === 'vehicle' && (
             <div className="space-y-3">
-              <p className="text-sm text-content">Connected. Checking the vehicle for radio-link readiness...</p>
+              <p className="text-sm text-content">{t('connection:radioSetup.checkingVehicle')}</p>
               {busy && (
                 <div className="flex items-center gap-2 text-xs text-content-secondary">
                   {spinner}
-                  Reading vehicle settings over the radio...
+                  {t('connection:radioSetup.readingSettings')}
                 </div>
               )}
               {restarting && (
                 <div className="flex items-center gap-2 text-xs text-content-secondary">
                   {spinner}
-                  Restarting the vehicle - the link reconnects by itself...
+                  {t('connection:radioSetup.restartingVehicle')}
                 </div>
               )}
               {checks && !busy && (
@@ -431,15 +428,15 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
               {checks && !busy && !restarting && (
                 fixApplied ? (
                   <button onClick={restartVehicle} className="btn btn-primary w-full text-sm">
-                    Restart vehicle to finish
+                    {t('connection:radioSetup.restartToFinish')}
                   </button>
                 ) : fixable.length > 0 ? (
                   <button onClick={applyFixes} className="btn btn-primary w-full text-sm">
-                    Fix for me
+                    {t('connection:radioPreflight.fixForMe')}
                   </button>
                 ) : failing.length > 0 ? (
                   <p className="text-xs text-content-secondary">
-                    The remaining item cannot be fixed from here (see above). Telemetry works regardless.
+                    {t('connection:radioSetup.cannotFix')}
                   </p>
                 ) : null
               )}
@@ -449,14 +446,13 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
           {step === 'done' && (
             <div className="space-y-3">
               <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                <p className="text-sm text-emerald-300 font-medium">Radio link fully set up.</p>
+                <p className="text-sm text-emerald-300 font-medium">{t('connection:radioSetup.doneTitle')}</p>
                 <p className="text-xs text-content-secondary mt-1">
-                  Telemetry, stick control and signal strength all flow through the radio. The SiK-style modem
-                  workflow applies from here: just connect on {radioLabel} whenever you fly or drive.
+                  {t('connection:radioSetup.doneHint', { radio: radioLabel })}
                 </p>
               </div>
               <button onClick={close} className="btn btn-primary w-full text-sm">
-                Close
+                {t('common:close')}
               </button>
             </div>
           )}

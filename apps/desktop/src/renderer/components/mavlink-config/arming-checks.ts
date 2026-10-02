@@ -21,7 +21,7 @@ export interface ArmingCheckBit {
   /** Bit index, identical in both parameters. */
   bit: number;
   name: string;
-  description: string;
+  descriptionKey: string;
   /** Plane-only check, hidden elsewhere. */
   planeOnly?: boolean;
 }
@@ -29,25 +29,25 @@ export interface ArmingCheckBit {
 /** Bit list from AP_Arming's own documentation. Bit 0 was "all" on the old
  * parameter and has no equivalent on the new one. */
 export const ARMING_CHECK_BITS: ArmingCheckBit[] = [
-  { bit: 1, name: 'Barometer', description: 'Barometer health' },
-  { bit: 2, name: 'Compass', description: 'Compass health and calibration' },
-  { bit: 3, name: 'GPS lock', description: 'Position fix before arming' },
-  { bit: 4, name: 'INS', description: 'Accelerometer and gyro health' },
-  { bit: 5, name: 'Parameters', description: 'Parameter sanity' },
-  { bit: 6, name: 'RC channels', description: 'Receiver calibrated and present' },
-  { bit: 7, name: 'Board voltage', description: 'Autopilot supply within range' },
-  { bit: 8, name: 'Battery level', description: 'Pack above the arming threshold' },
-  { bit: 9, name: 'Airspeed', description: 'Airspeed sensor health', planeOnly: true },
-  { bit: 10, name: 'Logging', description: 'Logging is running (needs a card)' },
-  { bit: 11, name: 'Safety switch', description: 'Hardware safety switch released' },
-  { bit: 12, name: 'GPS configuration', description: 'Receiver configured as expected' },
-  { bit: 13, name: 'System', description: 'Overall system health' },
-  { bit: 14, name: 'Mission', description: 'Loaded mission is valid' },
-  { bit: 15, name: 'Rangefinder', description: 'Rangefinder health' },
-  { bit: 16, name: 'Camera', description: 'Camera and gimbal health' },
-  { bit: 17, name: 'AuxAuth', description: 'Authorisation from a companion computer' },
-  { bit: 18, name: 'Visual odometry', description: 'Visual odometry health' },
-  { bit: 19, name: 'FFT', description: 'In-flight FFT health' },
+  { bit: 1, name: 'Barometer', descriptionKey: 'mavlink-config:armingChecks.bit1Desc' },
+  { bit: 2, name: 'Compass', descriptionKey: 'mavlink-config:armingChecks.bit2Desc' },
+  { bit: 3, name: 'GPS lock', descriptionKey: 'mavlink-config:armingChecks.bit3Desc' },
+  { bit: 4, name: 'INS', descriptionKey: 'mavlink-config:armingChecks.bit4Desc' },
+  { bit: 5, name: 'Parameters', descriptionKey: 'mavlink-config:armingChecks.bit5Desc' },
+  { bit: 6, name: 'RC channels', descriptionKey: 'mavlink-config:armingChecks.bit6Desc' },
+  { bit: 7, name: 'Board voltage', descriptionKey: 'mavlink-config:armingChecks.bit7Desc' }, // i18n-exempt
+  { bit: 8, name: 'Battery level', descriptionKey: 'mavlink-config:armingChecks.bit8Desc' }, // i18n-exempt
+  { bit: 9, name: 'Airspeed', descriptionKey: 'mavlink-config:armingChecks.bit9Desc', planeOnly: true },
+  { bit: 10, name: 'Logging', descriptionKey: 'mavlink-config:armingChecks.bit10Desc' },
+  { bit: 11, name: 'Safety switch', descriptionKey: 'mavlink-config:armingChecks.bit11Desc' }, // i18n-exempt
+  { bit: 12, name: 'GPS configuration', descriptionKey: 'mavlink-config:armingChecks.bit12Desc' },
+  { bit: 13, name: 'System', descriptionKey: 'mavlink-config:armingChecks.bit13Desc' },
+  { bit: 14, name: 'Mission', descriptionKey: 'mavlink-config:armingChecks.bit14Desc' },
+  { bit: 15, name: 'Rangefinder', descriptionKey: 'mavlink-config:armingChecks.bit15Desc' },
+  { bit: 16, name: 'Camera', descriptionKey: 'mavlink-config:armingChecks.bit16Desc' },
+  { bit: 17, name: 'AuxAuth', descriptionKey: 'mavlink-config:armingChecks.bit17Desc' },
+  { bit: 18, name: 'Visual odometry', descriptionKey: 'mavlink-config:armingChecks.bit18Desc' }, // i18n-exempt
+  { bit: 19, name: 'FFT', descriptionKey: 'mavlink-config:armingChecks.bit19Desc' },
 ];
 
 /** Which parameter this board speaks. SKIPCHK wins when both are present, as

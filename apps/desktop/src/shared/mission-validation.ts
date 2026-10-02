@@ -14,6 +14,7 @@ import {
   formatAltitudeFromMeters,
   type AltitudeUnit,
 } from './user-units';
+import { t } from './i18n/index.js';
 
 export type ValidationSeverity = 'error' | 'warn';
 
@@ -62,7 +63,7 @@ export function validateMission(
     checks.push({
       id: 'ceiling',
       severity: 'error',
-      message: `${items.length} items exceeds the ${ceiling}-item FC limit. Split into smaller flights.`,
+      message: t('shared:missionValidation.ceiling', { count: items.length, ceiling }),
     });
   }
 
@@ -73,7 +74,7 @@ export function validateMission(
   }
   for (const g of groups) {
     if ((counts.get(g.id) ?? 0) === 0) {
-      checks.push({ id: `empty-group:${g.id}`, severity: 'warn', message: `Group "${g.name}" has no waypoints.` });
+      checks.push({ id: `empty-group:${g.id}`, severity: 'warn', message: t('shared:missionValidation.emptyGroup', { name: g.name }) });
     }
   }
 
@@ -93,10 +94,10 @@ export function validateMission(
     else if (it.altitude > maxAlt) tooHighAlt++;
   }
   if (nonPositiveAlt > 0) {
-    checks.push({ id: 'alt-nonpositive', severity: 'warn', message: `${nonPositiveAlt} waypoint(s) at or below ${formatAltitudeFromMeters(0, altitudeUnit)} altitude.` });
+    checks.push({ id: 'alt-nonpositive', severity: 'warn', message: t('shared:missionValidation.altNonPositive', { count: nonPositiveAlt, altitude: formatAltitudeFromMeters(0, altitudeUnit) }) });
   }
   if (tooHighAlt > 0) {
-    checks.push({ id: 'alt-high', severity: 'warn', message: `${tooHighAlt} waypoint(s) above ${formatAltitudeFromMeters(maxAlt, altitudeUnit)} - check your altitude reference.` });
+    checks.push({ id: 'alt-high', severity: 'warn', message: t('shared:missionValidation.altHigh', { count: tooHighAlt, altitude: formatAltitudeFromMeters(maxAlt, altitudeUnit) }) });
   }
 
   // 4. DO_JUMP targets must point at a real sequence.
@@ -108,7 +109,7 @@ export function validateMission(
     if (!seqs.has(target)) badJumps++;
   }
   if (badJumps > 0) {
-    checks.push({ id: 'do-jump', severity: 'error', message: `${badJumps} DO_JUMP command(s) target a missing waypoint.` });
+    checks.push({ id: 'do-jump', severity: 'error', message: t('shared:missionValidation.badJumps', { count: badJumps }) });
   }
 
   // 5. Air mission with nav waypoints but no takeoff.
@@ -118,7 +119,7 @@ export function validateMission(
       (it) => it.command === MAV_CMD.NAV_TAKEOFF || it.command === MAV_CMD.NAV_VTOL_TAKEOFF,
     );
     if (hasNav && !hasTakeoff) {
-      checks.push({ id: 'no-takeoff', severity: 'warn', message: 'No takeoff command - the vehicle will fly to the first waypoint from its current state.' });
+      checks.push({ id: 'no-takeoff', severity: 'warn', message: t('shared:missionValidation.noTakeoff') });
     }
   }
 
@@ -129,7 +130,7 @@ export function validateMission(
     checks.push({
       id: 'mid-mission-return',
       severity: 'warn',
-      message: `${n} survey${n === 1 ? '' : 's'} return${n === 1 ? 's' : ''} home before the mission ends. Connect them to fly straight on.`,
+      message: t('shared:missionValidation.midMissionReturn', { count: n }),
       action: 'connect-surveys',
     });
   }

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, XCircle, Play, Check, X } from 'lucide-react';
 import { OrientationScene } from './shared/OrientationScene';
 import { AD_CAL_REQ, type VehicleCalibration, type VehicleProfile } from '../../../shared/vehicle-profile';
@@ -14,11 +15,11 @@ import { useVehicleCalibrationStore } from '../../stores/vehicle-calibration-sto
 import { useTelemetryStore } from '../../stores/telemetry-store';
 
 const REQUIREMENT_TEXT: [number, string][] = [
-  [AD_CAL_REQ.MOTORS_LIVE, 'Motors will spin. Remove the propellers and secure the airframe.'],
-  [AD_CAL_REQ.PROPS_OFF, 'Remove the propellers before starting.'],
-  [AD_CAL_REQ.DISARMED, 'The vehicle must be disarmed.'],
-  [AD_CAL_REQ.STATIONARY, 'Put the vehicle down and keep it still.'],
-  [AD_CAL_REQ.LEVEL_SURFACE, 'Use a surface you know to be level.'],
+  [AD_CAL_REQ.MOTORS_LIVE, 'calibration:vehicleCalibrationPanel.reqMotorsLive'],
+  [AD_CAL_REQ.PROPS_OFF, 'calibration:vehicleCalibrationPanel.reqPropsOff'],
+  [AD_CAL_REQ.DISARMED, 'calibration:vehicleCalibrationPanel.reqDisarmed'],
+  [AD_CAL_REQ.STATIONARY, 'calibration:vehicleCalibrationPanel.reqStationary'],
+  [AD_CAL_REQ.LEVEL_SURFACE, 'calibration:vehicleCalibrationPanel.reqLevelSurface'],
 ];
 
 function requirementsFor(cal: VehicleCalibration): string[] {
@@ -47,6 +48,7 @@ function TrackBar({ label, unit, value, needed }: { label: string; unit: string;
 }
 
 export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<VehicleCalibration | null>(null);
   const { activeId, progress, result, start, accept, cancel, save, reset } = useVehicleCalibrationStore();
   const attitude = useTelemetryStore((s) => s.attitude);
@@ -56,7 +58,9 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
   if (profile.calibrations.length === 0) {
     return (
       <div className="p-6 rounded-xl bg-surface-raised border border-subtle text-sm text-content-secondary">
-        {profile.vendor || 'This vehicle'} declares no calibrations.
+        {profile.vendor
+          ? t('calibration:vehicleCalibrationPanel.noCalibrationsVendor', { vendor: profile.vendor })
+          : t('calibration:vehicleCalibrationPanel.noCalibrations')}
       </div>
     );
   }
@@ -87,7 +91,7 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
                 <div className="text-xs text-content-tertiary mt-0.5 capitalize">{cal.kind}</div>
                 {localOnly && (
                   <div className="text-xs text-amber-400 mt-2">
-                    Must be started at the vehicle
+                    {t('calibration:vehicleCalibrationPanel.localOnly')}
                   </div>
                 )}
               </button>
@@ -109,9 +113,9 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
 
           {requirementsFor(selected).length > 0 && (
             <ul className="space-y-1.5">
-              {requirementsFor(selected).map((text) => (
-                <li key={text} className="flex gap-2 text-sm text-content-secondary">
-                  <span className="text-content-tertiary">·</span>{text}
+              {requirementsFor(selected).map((key) => (
+                <li key={key} className="flex gap-2 text-sm text-content-secondary">
+                  <span className="text-content-tertiary">·</span>{t(key)}
                 </li>
               ))}
             </ul>
@@ -122,7 +126,7 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
           )}
 
           <button onClick={() => void start(selected.id)} className="btn-primary text-sm">
-            <Play className="w-4 h-4" /> Start
+            <Play className="w-4 h-4" /> {t('common:start')}
           </button>
         </div>
       )}
@@ -147,10 +151,10 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
               />
               <div className="text-content-primary font-medium">{pose.name}</div>
               <div className="text-xs text-content-tertiary">
-                Position {(progress?.step ?? 0) + 1} of {selected.poses.length}
+                {t('calibration:vehicleCalibrationPanel.positionOf', { n: (progress?.step ?? 0) + 1, total: selected.poses.length })}
               </div>
               <button onClick={() => void accept()} className="btn-primary text-sm">
-                <Check className="w-4 h-4" /> Captured
+                <Check className="w-4 h-4" /> {t('calibration:vehicleCalibrationPanel.captured')}
               </button>
             </div>
           )}
@@ -174,15 +178,15 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
           )}
 
           {!progress && (
-            <p className="text-sm text-content-tertiary">Waiting for the vehicle to report…</p>
+            <p className="text-sm text-content-tertiary">{t('calibration:vehicleCalibrationPanel.waiting')}</p>
           )}
 
           <div className="flex gap-2">
             <button onClick={() => void cancel()} className="btn-secondary text-sm">
-              <X className="w-4 h-4" /> Cancel
+              <X className="w-4 h-4" /> {t('common:cancel')}
             </button>
             <button onClick={() => void save()} className="btn-secondary text-sm">
-              Save
+              {t('common:save')}
             </button>
           </div>
         </div>
@@ -197,17 +201,17 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
               ? <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               : <XCircle className="w-5 h-5 text-red-400" />}
             <span className="text-content-primary font-medium">
-              {result.ok ? 'Calibration stored' : 'Calibration failed'}
+              {result.ok ? t('calibration:vehicleCalibrationPanel.stored') : t('calibration:vehicleCalibrationPanel.failed')}
             </span>
           </div>
           {result.detail && <p className="text-sm text-content-secondary">{result.detail}</p>}
           {Number.isFinite(result.quality) && (
             <p className="text-xs text-content-tertiary">
-              Fit quality {(result.quality * 100).toFixed(0)}%
+              {t('calibration:vehicleCalibrationPanel.fitQuality', { pct: (result.quality * 100).toFixed(0) })}
             </p>
           )}
           <button onClick={() => { reset(); setSelected(null); }} className="btn-secondary text-sm">
-            Done
+            {t('common:done')}
           </button>
         </div>
       )}

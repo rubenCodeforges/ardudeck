@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 /**
  * SITL-unsafe parameter classification.
  *
@@ -160,7 +162,7 @@ const ALWAYS_UNSAFE_PREFIXES: ReadonlyArray<string> = [
 interface ValueGatedRule {
   readonly id: string | RegExp;
   readonly safeValues: ReadonlySet<number>;
-  readonly reason: string;
+  readonly reasonKey: string;
 }
 
 const VALUE_GATED: ReadonlyArray<ValueGatedRule> = [
@@ -168,17 +170,17 @@ const VALUE_GATED: ReadonlyArray<ValueGatedRule> = [
   // 5=solo, 6=bebop, 7=SMBus-Maxell, 8=DroneCAN, 9=ESC, 10=SumOfBatts,
   // 11=FuelFlow, 12=FuelLevel, 13=NeoDesign, 14=SMBus-Maxell, 15=Sui3,
   // 16=Sui6. Only 0/3/4/10 are SITL-safe.
-  { id: /^BATT\d?_MONITOR$/, safeValues: new Set([0, 3, 4, 10]), reason: 'hardware battery monitor type' },
+  { id: /^BATT\d?_MONITOR$/, safeValues: new Set([0, 3, 4, 10]), reasonKey: 'shared:sitlUnsafeParams.batteryMonitor' },
   // GPS_TYPE / GPS2_TYPE: 0=none, 1=auto, 2=ublox, 5=NMEA, 7=SBP,
   // 9=DroneCAN, 14=ESP32, etc. SITL only models a generic UBlox-ish GPS,
   // value 1 (Auto) or 0 (None) are safe; others try to drive a real chip.
-  { id: /^GPS\d?_TYPE$/, safeValues: new Set([0, 1, 2]), reason: 'hardware GPS driver type' },
+  { id: /^GPS\d?_TYPE$/, safeValues: new Set([0, 1, 2]), reasonKey: 'shared:sitlUnsafeParams.gpsDriver' },
   // RNGFND*_TYPE: most rangefinder types touch hardware buses. Safe values
   // are 0 (None) and 100 (SITL-fake — present in modern ArduPilot).
-  { id: /^RNGFND\d_TYPE$/, safeValues: new Set([0, 100]), reason: 'hardware rangefinder type' },
+  { id: /^RNGFND\d_TYPE$/, safeValues: new Set([0, 100]), reasonKey: 'shared:sitlUnsafeParams.rangefinder' },
   // ADSB_TYPE: 0=none, 1=uAvionix-MAVLink (works in SITL via MAVLink),
   // 2=Sagetech, 3=uAvionix-UCP (UAVCAN), 4=Sagetech-MX (UAVCAN). Only 0 or 1.
-  { id: 'ADSB_TYPE', safeValues: new Set([0, 1]), reason: 'hardware ADSB transponder type' },
+  { id: 'ADSB_TYPE', safeValues: new Set([0, 1]), reasonKey: 'shared:sitlUnsafeParams.adsb' },
 ];
 
 // ── Unsafe by prefix when value is non-default ───────────────────────────────
@@ -210,21 +212,21 @@ export interface SitlUnsafeReason {
  */
 export function classifySitlUnsafeParam(paramId: string, value: number): SitlUnsafeReason | null {
   if (ALWAYS_UNSAFE_NAMES.includes(paramId)) {
-    return { reason: 'hardware identity / board-specific', kind: 'always' };
+    return { reason: t('shared:sitlUnsafeParams.boardSpecific'), kind: 'always' };
   }
   for (const prefix of ALWAYS_UNSAFE_PREFIXES) {
     if (paramId.startsWith(prefix)) {
-      return { reason: 'hardware identity / driver family', kind: 'always' };
+      return { reason: t('shared:sitlUnsafeParams.driverFamily'), kind: 'always' };
     }
   }
   for (const rule of VALUE_GATED) {
     const match = typeof rule.id === 'string' ? paramId === rule.id : rule.id.test(paramId);
     if (match && !rule.safeValues.has(value)) {
-      return { reason: rule.reason, kind: 'value' };
+      return { reason: t(rule.reasonKey), kind: 'value' };
     }
   }
   if (SERIAL_PROTOCOL_RE.test(paramId) && !SERIAL_PROTOCOL_SAFE.has(value)) {
-    return { reason: 'hardware-bus serial protocol', kind: 'value' };
+    return { reason: t('shared:sitlUnsafeParams.serialProtocol'), kind: 'value' };
   }
   return null;
 }

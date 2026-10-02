@@ -19,6 +19,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { detectFlightGear } from './simulator-detector';
 import type { ArduPilotFlightGearConfig } from '../../shared/ipc-channels.js';
+import { t } from '../../shared/i18n/index.js';
 
 export type { ArduPilotFlightGearConfig };
 
@@ -115,14 +116,14 @@ class ArduPilotFlightGearViewer {
     customPath?: string,
   ): Promise<{ success: boolean; error?: string }> {
     if (this.isRunning()) {
-      return { success: false, error: 'FlightGear is already running' };
+      return { success: false, error: t('main:simulators.flightgearRunning') };
     }
 
     const fgInfo = await detectFlightGear(customPath);
     if (!fgInfo.installed || !fgInfo.executable) {
       return {
         success: false,
-        error: 'FlightGear not found. Install it from flightgear.org or set a custom path.',
+        error: t('main:simulators.flightgearNotFoundInstall'),
       };
     }
 
@@ -155,7 +156,7 @@ class ArduPilotFlightGearViewer {
 
       return { success: true };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('common:unknownError');
       console.error('[ArduPilot FlightGear] Failed to launch:', message);
       this.process = null;
       this.config = null;

@@ -1,5 +1,6 @@
 import { RotateCcw } from 'lucide-react';
 import type { VehicleTemplate } from '../types.js';
+import { t } from '../../../../shared/i18n/index.js';
 import { batteryParams, airspeedParams, commonSafetyParams, simPhysicsParams, matches } from '../param-helpers.js';
 
 /**
@@ -8,8 +9,8 @@ import { batteryParams, airspeedParams, commonSafetyParams, simPhysicsParams, ma
  */
 export const vtolTailsitterConventional: VehicleTemplate = {
   slug: 'vtol-tailsitter-conventional',
-  name: 'Tailsitter (conventional)',
-  description: 'Sits on its tail, tilts to fly forward, elevons for hover control',
+  name: 'Tailsitter (conventional)', // i18n-exempt
+  description: 'Sits on its tail, tilts to fly forward, elevons for hover control', // i18n-exempt
   icon: RotateCcw,
   vehicleType: 'vtol',
   category: 'vtol',
@@ -27,15 +28,15 @@ export const vtolTailsitterConventional: VehicleTemplate = {
     batteryCapacity: 5000,
   },
   toParams: (p) => [
-    { name: 'Q_ENABLE',         value: 1, reason: 'Enable VTOL',                    requiresReboot: true },
-    { name: 'Q_TAILSIT_ENABLE', value: 1, reason: 'Enable tailsitter mode',         requiresReboot: true },
-    { name: 'Q_FRAME_CLASS',    value: 10, reason: 'Single/coax copter lift frame', requiresReboot: true },
-    { name: 'Q_FRAME_TYPE',     value: 2, reason: 'Vectored yaw tailsitter',         requiresReboot: true },
-    { name: 'Q_TAILSIT_INPUT',  value: 2, reason: 'Body-frame control input',        requiresReboot: true },
-    { name: 'SERVO1_FUNCTION',  value: 77, reason: 'Elevon Left',                    requiresReboot: true },
-    { name: 'SERVO2_FUNCTION',  value: 78, reason: 'Elevon Right',                   requiresReboot: true },
-    { name: 'SERVO3_FUNCTION',  value: 33, reason: 'Motor 1',                        requiresReboot: true },
-    { name: 'SERVO4_FUNCTION',  value: 34, reason: 'Motor 2',                        requiresReboot: true },
+    { name: 'Q_ENABLE',         value: 1, reason: t('lib:vehicleTemplates.reason.enableVTOL'),                    requiresReboot: true },
+    { name: 'Q_TAILSIT_ENABLE', value: 1, reason: t('lib:vehicleTemplates.reason.enableTailsitterMode'),         requiresReboot: true },
+    { name: 'Q_FRAME_CLASS',    value: 10, reason: t('lib:vehicleTemplates.reason.singleCoaxCopterLiftFrame'), requiresReboot: true },
+    { name: 'Q_FRAME_TYPE',     value: 2, reason: t('lib:vehicleTemplates.reason.vectoredYawTailsitter'),         requiresReboot: true },
+    { name: 'Q_TAILSIT_INPUT',  value: 2, reason: t('lib:vehicleTemplates.reason.bodyFrameControlInput'),        requiresReboot: true },
+    { name: 'SERVO1_FUNCTION',  value: 77, reason: t('lib:vehicleTemplates.reason.elevonLeft'),                    requiresReboot: true },
+    { name: 'SERVO2_FUNCTION',  value: 78, reason: t('lib:vehicleTemplates.reason.elevonRight'),                   requiresReboot: true },
+    { name: 'SERVO3_FUNCTION',  value: 33, reason: t('lib:vehicleTemplates.reason.motor1'),                        requiresReboot: true },
+    { name: 'SERVO4_FUNCTION',  value: 34, reason: t('lib:vehicleTemplates.reason.motor2'),                        requiresReboot: true },
     ...airspeedParams(p),
     ...batteryParams(p),
     ...commonSafetyParams(),

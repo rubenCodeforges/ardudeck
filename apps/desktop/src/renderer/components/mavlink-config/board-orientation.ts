@@ -7,30 +7,33 @@
  * in a full list.
  */
 
+import { t } from '../../../shared/i18n/index.js';
+
 export interface BoardOrientation {
   value: number;
   /** ArduPilot's own name, so a value looked up elsewhere still matches. */
   code: string;
   label: string;
-  hint?: string;
+  labelKey: string;
+  hintKey?: string;
 }
 
 /** What people actually mount. Order is deliberate: upright, upside down, then
  * the quarter turns, which is roughly how often each one happens. */
 export const COMMON_ORIENTATIONS: BoardOrientation[] = [
-  { value: 0, code: 'None', label: 'Upright, arrow forward', hint: 'Factory default' },
-  { value: 8, code: 'Roll180', label: 'Upside down, arrow forward', hint: 'Board flipped over' },
-  { value: 2, code: 'Yaw90', label: 'Upright, arrow right' },
-  { value: 4, code: 'Yaw180', label: 'Upright, arrow backward' },
-  { value: 6, code: 'Yaw270', label: 'Upright, arrow left' },
-  { value: 10, code: 'Yaw90Roll180', label: 'Upside down, arrow right' },
-  { value: 12, code: 'Pitch180', label: 'Upside down, arrow backward' },
-  { value: 14, code: 'Yaw270Roll180', label: 'Upside down, arrow left' },
-  { value: 16, code: 'Roll90', label: 'On its right edge' },
-  { value: 20, code: 'Roll270', label: 'On its left edge' },
+  { value: 0, code: 'None', label: 'Upright, arrow forward', labelKey: 'mavlink-config:boardOrientation.uprightForward', hintKey: 'mavlink-config:boardOrientation.uprightForwardHint' }, // i18n-exempt
+  { value: 8, code: 'Roll180', label: 'Upside down, arrow forward', labelKey: 'mavlink-config:boardOrientation.upsideDownForward', hintKey: 'mavlink-config:boardOrientation.upsideDownForwardHint' }, // i18n-exempt
+  { value: 2, code: 'Yaw90', label: 'Upright, arrow right', labelKey: 'mavlink-config:boardOrientation.uprightRight' }, // i18n-exempt
+  { value: 4, code: 'Yaw180', label: 'Upright, arrow backward', labelKey: 'mavlink-config:boardOrientation.uprightBackward' }, // i18n-exempt
+  { value: 6, code: 'Yaw270', label: 'Upright, arrow left', labelKey: 'mavlink-config:boardOrientation.uprightLeft' }, // i18n-exempt
+  { value: 10, code: 'Yaw90Roll180', label: 'Upside down, arrow right', labelKey: 'mavlink-config:boardOrientation.upsideDownRight' }, // i18n-exempt
+  { value: 12, code: 'Pitch180', label: 'Upside down, arrow backward', labelKey: 'mavlink-config:boardOrientation.upsideDownBackward' }, // i18n-exempt
+  { value: 14, code: 'Yaw270Roll180', label: 'Upside down, arrow left', labelKey: 'mavlink-config:boardOrientation.upsideDownLeft' }, // i18n-exempt
+  { value: 16, code: 'Roll90', label: 'On its right edge', labelKey: 'mavlink-config:boardOrientation.rightEdge' }, // i18n-exempt
+  { value: 20, code: 'Roll270', label: 'On its left edge', labelKey: 'mavlink-config:boardOrientation.leftEdge' }, // i18n-exempt
   // Pitch90 turns the arrow up (positive pitch is nose up), Pitch270 down.
-  { value: 24, code: 'Pitch90', label: 'Standing, arrow up' },
-  { value: 25, code: 'Pitch270', label: 'Standing, arrow down' },
+  { value: 24, code: 'Pitch90', label: 'Standing, arrow up', labelKey: 'mavlink-config:boardOrientation.standingUp' }, // i18n-exempt
+  { value: 25, code: 'Pitch270', label: 'Standing, arrow down', labelKey: 'mavlink-config:boardOrientation.standingDown' }, // i18n-exempt
 ];
 
 /** Every value ArduPilot accepts, for the cases the common list does not name. */
@@ -51,8 +54,8 @@ export const ALL_ORIENTATIONS: Record<number, string> = {
 
 export function orientationName(value: number): string {
   const common = COMMON_ORIENTATIONS.find((o) => o.value === value);
-  if (common) return common.label;
-  return ALL_ORIENTATIONS[value] ?? `Value ${value}`;
+  if (common) return t(common.labelKey);
+  return ALL_ORIENTATIONS[value] ?? t('mavlink-config:boardOrientation.valueN', { value });
 }
 
 /**
@@ -69,8 +72,8 @@ export function orientationCheck(
   return {
     level,
     note: level
-      ? 'Reading level. Tip the nose up: pitch should go positive. Lift the left side: roll should go positive.'
-      : `Reading roll ${Math.round(roll)}°, pitch ${Math.round(pitch)}°. If the vehicle is level, the orientation or the level calibration is wrong.`,
+      ? t('mavlink-config:boardOrientation.checkLevel')
+      : t('mavlink-config:boardOrientation.checkTilted', { roll: Math.round(roll), pitch: Math.round(pitch) }),
   };
 }
 

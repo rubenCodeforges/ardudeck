@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { VehicleProfile, WingShape, VtolStyle, MotorArrangement } from '../../../stores/settings-store.js';
 
 interface ConfigSelectorsProps {
@@ -5,36 +6,36 @@ interface ConfigSelectorsProps {
   onUpdate: (updates: Partial<VehicleProfile>) => void;
 }
 
-const WING_SHAPES: Array<{ value: WingShape; label: string; hint: string }> = [
-  { value: 'standard',     label: 'Standard',      hint: 'Traditional fuselage with separate elevator/rudder/ailerons' },
-  { value: 'delta',        label: 'Delta',         hint: 'Triangular wing, elevons combine pitch+roll' },
-  { value: 'flying-wing',  label: 'Flying Wing',   hint: 'No tail, wing-only: elevons for control' },
-  { value: 'v-tail',       label: 'V-Tail',        hint: 'Two surfaces mix pitch and yaw' },
-  { value: 'biplane',      label: 'Biplane',       hint: 'Two wings stacked: rare, nostalgic' },
-  { value: 'inverted-v',   label: 'Inverted V',    hint: 'Inverted-V tail' },
+const WING_SHAPES: Array<{ value: WingShape; labelKey: string; hintKey: string }> = [
+  { value: 'standard', labelKey: 'settings:configSelectors.wing.standard', hintKey: 'settings:configSelectors.wing.standardHint' },
+  { value: 'delta', labelKey: 'settings:configSelectors.wing.delta', hintKey: 'settings:configSelectors.wing.deltaHint' },
+  { value: 'flying-wing', labelKey: 'settings:configSelectors.wing.flyingWing', hintKey: 'settings:configSelectors.wing.flyingWingHint' },
+  { value: 'v-tail', labelKey: 'settings:configSelectors.wing.vTail', hintKey: 'settings:configSelectors.wing.vTailHint' },
+  { value: 'biplane', labelKey: 'settings:configSelectors.wing.biplane', hintKey: 'settings:configSelectors.wing.biplaneHint' },
+  { value: 'inverted-v', labelKey: 'settings:configSelectors.wing.invertedV', hintKey: 'settings:configSelectors.wing.invertedVHint' },
 ];
 
-const VTOL_STYLES: Array<{ value: VtolStyle; label: string; hint: string }> = [
-  { value: 'quadplane',   label: 'Quadplane',    hint: 'Plane + separate vertical lift motors' },
-  { value: 'tailsitter',  label: 'Tailsitter',   hint: 'Sits on its tail, tilts to fly forward' },
-  { value: 'tiltrotor',   label: 'Tiltrotor',    hint: 'Motors tilt from vertical to horizontal' },
-  { value: 'tiltwing',    label: 'Tiltwing',     hint: 'Whole wing tilts with the motors' },
+const VTOL_STYLES: Array<{ value: VtolStyle; labelKey: string; hintKey: string }> = [
+  { value: 'quadplane', labelKey: 'settings:configSelectors.vtol.quadplane', hintKey: 'settings:configSelectors.vtol.quadplaneHint' },
+  { value: 'tailsitter', labelKey: 'settings:configSelectors.vtol.tailsitter', hintKey: 'settings:configSelectors.vtol.tailsitterHint' },
+  { value: 'tiltrotor', labelKey: 'settings:configSelectors.vtol.tiltrotor', hintKey: 'settings:configSelectors.vtol.tiltrotorHint' },
+  { value: 'tiltwing', labelKey: 'settings:configSelectors.vtol.tiltwing', hintKey: 'settings:configSelectors.vtol.tiltwingHint' },
 ];
 
-const MOTOR_ARRANGEMENTS: Array<{ value: MotorArrangement; label: string; hint: string }> = [
-  { value: 'quad-x',       label: 'Quad X',       hint: '4 motors in X pattern' },
-  { value: 'quad-plus',    label: 'Quad +',       hint: '4 motors in + pattern' },
-  { value: 'quad-h',       label: 'Quad H',       hint: '4 motors in H pattern' },
-  { value: 'hex-x',        label: 'Hex X',        hint: '6 motors in X pattern' },
-  { value: 'hex-plus',     label: 'Hex +',        hint: '6 motors in + pattern' },
-  { value: 'octo-x',       label: 'Octo X',       hint: '8 motors in X pattern' },
-  { value: 'octo-plus',    label: 'Octo +',       hint: '8 motors in + pattern' },
-  { value: 'y6',           label: 'Y6',           hint: '3 arms, 2 coaxial motors each' },
-  { value: 'tri',          label: 'Tricopter',    hint: '3 motors + yaw servo' },
-  { value: 'coaxial',      label: 'Coaxial X8',   hint: '4 coaxial pairs stacked' },
-  { value: 'inline-2',     label: 'Inline 2',     hint: '2 motors side-by-side' },
-  { value: 'twin-tractor', label: 'Twin-Tractor', hint: '2 motors pulling from wing LE' },
-  { value: 'twin-pusher',  label: 'Twin-Pusher',  hint: '2 motors pushing from wing TE' },
+const MOTOR_ARRANGEMENTS: Array<{ value: MotorArrangement; labelKey: string; hintKey: string }> = [
+  { value: 'quad-x', labelKey: 'settings:configSelectors.motor.quadX', hintKey: 'settings:configSelectors.motor.quadXHint' },
+  { value: 'quad-plus', labelKey: 'settings:configSelectors.motor.quadPlus', hintKey: 'settings:configSelectors.motor.quadPlusHint' },
+  { value: 'quad-h', labelKey: 'settings:configSelectors.motor.quadH', hintKey: 'settings:configSelectors.motor.quadHHint' },
+  { value: 'hex-x', labelKey: 'settings:configSelectors.motor.hexX', hintKey: 'settings:configSelectors.motor.hexXHint' },
+  { value: 'hex-plus', labelKey: 'settings:configSelectors.motor.hexPlus', hintKey: 'settings:configSelectors.motor.hexPlusHint' },
+  { value: 'octo-x', labelKey: 'settings:configSelectors.motor.octoX', hintKey: 'settings:configSelectors.motor.octoXHint' },
+  { value: 'octo-plus', labelKey: 'settings:configSelectors.motor.octoPlus', hintKey: 'settings:configSelectors.motor.octoPlusHint' },
+  { value: 'y6', labelKey: 'settings:configSelectors.motor.y6', hintKey: 'settings:configSelectors.motor.y6Hint' },
+  { value: 'tri', labelKey: 'settings:configSelectors.motor.tri', hintKey: 'settings:configSelectors.motor.triHint' },
+  { value: 'coaxial', labelKey: 'settings:configSelectors.motor.coaxial', hintKey: 'settings:configSelectors.motor.coaxialHint' },
+  { value: 'inline-2', labelKey: 'settings:configSelectors.motor.inline2', hintKey: 'settings:configSelectors.motor.inline2Hint' },
+  { value: 'twin-tractor', labelKey: 'settings:configSelectors.motor.twinTractor', hintKey: 'settings:configSelectors.motor.twinTractorHint' },
+  { value: 'twin-pusher', labelKey: 'settings:configSelectors.motor.twinPusher', hintKey: 'settings:configSelectors.motor.twinPusherHint' },
 ];
 
 /**
@@ -42,6 +43,7 @@ const MOTOR_ARRANGEMENTS: Array<{ value: MotorArrangement; label: string; hint: 
  * Only renders what's relevant for the vehicle type.
  */
 export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
+  const { t } = useTranslation();
   const showWing = vehicle.type === 'plane' || vehicle.type === 'vtol';
   const showVtol = vehicle.type === 'vtol';
   const showMotor = vehicle.type === 'copter' || vehicle.type === 'vtol';
@@ -52,7 +54,7 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
     <div className="grid grid-cols-2 gap-4">
       {showWing && (
         <Selector
-          label="Wing Shape"
+          label={t('settings:configSelectors.wingShape')}
           value={vehicle.wingShape}
           options={WING_SHAPES}
           onChange={v => onUpdate({ wingShape: v as WingShape })}
@@ -60,7 +62,7 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
       )}
       {showVtol && (
         <Selector
-          label="VTOL Style"
+          label={t('settings:configSelectors.vtolStyle')}
           value={vehicle.vtolStyle}
           options={VTOL_STYLES}
           onChange={v => onUpdate({ vtolStyle: v as VtolStyle })}
@@ -68,7 +70,7 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
       )}
       {showMotor && (
         <Selector
-          label="Motor Arrangement"
+          label={t('settings:configSelectors.motorArrangement')}
           value={vehicle.motorArrangement}
           options={MOTOR_ARRANGEMENTS}
           onChange={v => onUpdate({ motorArrangement: v as MotorArrangement })}
@@ -81,11 +83,12 @@ export function ConfigSelectors({ vehicle, onUpdate }: ConfigSelectorsProps) {
 interface SelectorProps<T extends string> {
   label: string;
   value: T | undefined;
-  options: Array<{ value: T; label: string; hint: string }>;
+  options: Array<{ value: T; labelKey: string; hintKey: string }>;
   onChange: (value: T) => void;
 }
 
 function Selector<T extends string>({ label, value, options, onChange }: SelectorProps<T>) {
+  const { t } = useTranslation();
   const current = options.find(o => o.value === value);
   return (
     <div>
@@ -95,13 +98,13 @@ function Selector<T extends string>({ label, value, options, onChange }: Selecto
         onChange={e => onChange(e.target.value as T)}
         className="w-full px-3 py-2 bg-surface-input border border-border rounded-lg text-content focus:outline-none focus:border-blue-500"
       >
-        <option value="">- select -</option>
+        <option value="">{t('settings:configSelectors.select')}</option>
         {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
         ))}
       </select>
       {current && (
-        <div className="text-[10px] text-content-secondary mt-1">{current.hint}</div>
+        <div className="text-[10px] text-content-secondary mt-1">{t(current.hintKey)}</div>
       )}
     </div>
   );

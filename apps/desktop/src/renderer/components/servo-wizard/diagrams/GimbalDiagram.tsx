@@ -4,6 +4,7 @@
  * SVG diagram of a 2-axis camera gimbal (pan/tilt).
  */
 
+import { useTranslation } from 'react-i18next';
 import { ControlSurface } from '../presets/servo-presets';
 
 interface Props {
@@ -19,6 +20,7 @@ export default function GimbalDiagram({
   servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
+  const { t } = useTranslation();
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
@@ -59,7 +61,7 @@ export default function GimbalDiagram({
         onClick={handleClick('gimbal_pan')}
       />
       <text x="100" y="155" textAnchor="end" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        Pan Servo
+        {t('servo-wizard:diagrams.panServo')}
       </text>
       {servoLabels.gimbal_pan && (
         <text x="100" y="167" textAnchor="end" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -90,7 +92,7 @@ export default function GimbalDiagram({
         onClick={handleClick('gimbal_tilt')}
       />
       <text x="200" y="85" textAnchor="start" fill="#9CA3AF" fontSize="10" fontWeight="500">
-        Tilt Servo
+        {t('servo-wizard:diagrams.tiltServo')}
       </text>
       {servoLabels.gimbal_tilt && (
         <text x="200" y="97" textAnchor="start" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -115,12 +117,12 @@ export default function GimbalDiagram({
 
       {/* Camera label */}
       <text x="150" y="25" textAnchor="middle" fill="#9CA3AF" fontSize="10">
-        Camera
+        {t('servo-wizard:diagrams.camera')}
       </text>
 
       {/* Info text */}
       <text x="150" y="190" textAnchor="middle" fill="#6B7280" fontSize="9">
-        Pan = horizontal, Tilt = vertical
+        {t('servo-wizard:diagrams.gimbalHint')}
       </text>
     </svg>
   );

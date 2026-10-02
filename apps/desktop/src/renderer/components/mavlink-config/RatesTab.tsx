@@ -13,11 +13,12 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { MoveHorizontal, MoveVertical, RefreshCw, Link, Lightbulb, AlertTriangle, Info } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
 import { RateResponsePlot } from './RateResponsePlot';
-import { PresetSelector } from '../ui/PresetSelector';
+import { PresetSelector, type Preset } from '../ui/PresetSelector';
 import { ProfileManager } from '../ui/ProfileManager';
 import { InfoCard } from '../ui/InfoCard';
 import { RateCurve } from '../ui/RateCurve';
@@ -28,6 +29,7 @@ import { detectRateScheme, buildRatePresetParams, type RateScheme } from './mavl
 const RATE_PROFILES_KEY = 'ardudeck_mavlink_rate_profiles';
 
 const RatesTab: React.FC = () => {
+  const { t } = useTranslation();
   const { parameters, setParameter, fetchParameters, isLoading, downloadState } = useParameterStore();
 
   // A completed download, not just whatever parameters happen to be present:
@@ -40,6 +42,13 @@ const RatesTab: React.FC = () => {
     if (!hasParameters) return null;
     return detectRateScheme(parameters);
   }, [hasParameters, parameters]);
+  const rateUnit = scheme?.rateUnitKey ? t(scheme.rateUnitKey) : (scheme?.rateUnit ?? '');
+  const ratePresets = useMemo(
+    () => Object.fromEntries(
+      Object.entries(RATE_PRESETS).map(([key, preset]) => [key, { ...preset, name: t(preset.nameKey), description: t(preset.descriptionKey) }]),
+    ) as Record<string, Preset>,
+    [t],
+  );
 
   const isUnknown = scheme?.id === 'unknown';
 
@@ -100,8 +109,8 @@ const RatesTab: React.FC = () => {
               <Lightbulb className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-amber-300 font-medium">Parameters Not Loaded</p>
-              <p className="text-xs text-content-secondary">Fetch parameters from the FC to use presets</p>
+              <p className="text-amber-300 font-medium">{t('mavlink-config:ratesTab.paramsNotLoaded')}</p>
+              <p className="text-xs text-content-secondary">{t('mavlink-config:ratesTab.fetchHint')}</p>
             </div>
           </div>
           <button
@@ -109,7 +118,7 @@ const RatesTab: React.FC = () => {
             disabled={isLoading}
             className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Loading...' : 'Fetch Parameters'}
+            {isLoading ? t('common:loading') : t('mavlink-config:ratesTab.fetchParameters')}
           </button>
         </div>
       )}
@@ -122,13 +131,12 @@ const RatesTab: React.FC = () => {
               <AlertTriangle className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <p className="text-red-300 font-medium">Unrecognized Rate Parameters</p>
+              <p className="text-red-300 font-medium">{t('mavlink-config:ratesTab.unrecognized')}</p>
               <p className="text-sm text-content-secondary mt-1">
-                Could not detect <span className="font-mono text-content">ACRO_RP_RATE</span> or
-                <span className="font-mono text-content"> ACRO_RP_P</span> parameters on this board.
+                <Trans i18nKey="mavlink-config:ratesTab.couldNotDetect" components={{ b: <span className="font-mono text-content" /> }} />
               </p>
               <p className="text-sm text-content-secondary mt-1">
-                Use the <span className="font-medium text-content">All Parameters</span> tab to find and edit rate parameters directly.
+                <Trans i18nKey="mavlink-config:ratesTab.useAllParams" components={{ b: <span className="font-medium text-content" /> }} />
               </p>
             </div>
           </div>
@@ -140,27 +148,25 @@ const RatesTab: React.FC = () => {
         <div className="bg-blue-500/10 rounded-xl border-blue-500/20 p-3 flex items-center gap-3">
           <Info className="w-4 h-4 text-blue-400 shrink-0" />
           <p className="text-sm text-blue-300">
-            Detected <span className="font-medium">{scheme.label}</span> rate parameters
-            ({scheme.rateUnit})
-            {!scheme.hasExpo && <span className="text-blue-400/60"> (no expo on this firmware)</span>}
+            <Trans i18nKey="mavlink-config:ratesTab.detected" values={{ label: scheme.label, unit: rateUnit }} components={{ b: <span className="font-medium" /> }} />
+            {!scheme.hasExpo && <span className="text-blue-400/60">{t('mavlink-config:ratesTab.noExpo')}</span>}
           </p>
         </div>
       )}
 
       {/* Info card */}
-      <InfoCard title="What are rates?" variant="info">
-        Rates control how fast your aircraft spins when you move the sticks.
-        Higher rates = faster rotation.{scheme?.hasExpo ? ' Expo adds a curve so small stick movements are slower.' : ''}
+      <InfoCard title={t('mavlink-config:ratesTab.whatAreRates')} variant="info">
+        {t('mavlink-config:ratesTab.whatAreRatesBody')}{scheme?.hasExpo ? ` ${t('mavlink-config:ratesTab.whatAreRatesExpo')}` : ''}
       </InfoCard>
 
       {/* Controls disabled when scheme unknown */}
       <div className={isUnknown || !scheme ? 'opacity-40 pointer-events-none' : ''}>
       <div className="space-y-6">
       <PresetSelector
-        presets={RATE_PRESETS}
+        presets={ratePresets}
         onApply={applyPreset}
-        label="Quick Presets"
-        hint="Click to apply a rate style"
+        label={t('common:quickPresets')}
+        hint={t('mavlink-config:ratesTab.presetsHint')}
       />
 
       <ProfileManager<Record<string, number>>
@@ -168,28 +174,28 @@ const RatesTab: React.FC = () => {
         currentData={profileData}
         onLoad={loadProfile}
         onReset={resetToDefaults}
-        label="My Profiles"
+        label={t('common:myProfiles')}
       />
 
       {/* The two numbers as one picture, before the sliders that set them. */}
       {scheme && rateValues && scheme.hasExpo && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-2">
-            <div className="text-xs text-content-secondary">Roll and pitch</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:ratesTab.rollAndPitch')}</div>
             <RateResponsePlot
               maxRate={rateValues.rpRate}
               expo={rateValues.rpExpo}
-              unit={scheme.rateUnit}
+              unit={rateUnit}
               axis="roll"
               accent="#3B82F6"
             />
           </div>
           <div className="space-y-2">
-            <div className="text-xs text-content-secondary">Yaw</div>
+            <div className="text-xs text-content-secondary">{t('common:yaw')}</div>
             <RateResponsePlot
               maxRate={rateValues.yawRate}
               expo={rateValues.yawExpo}
-              unit={scheme.rateUnit}
+              unit={rateUnit}
               axis="yaw"
               accent="#F97316"
             />
@@ -203,29 +209,29 @@ const RatesTab: React.FC = () => {
         {/* Roll */}
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-            <MoveHorizontal className="w-5 h-5 text-blue-400" /> Roll
+            <MoveHorizontal className="w-5 h-5 text-blue-400" /> {t('common:roll')}
           </h3>
           <div className="space-y-4">
             <DraggableSlider
-              label={`Max Rate (${scheme.rateUnit})`}
+              label={t('mavlink-config:ratesTab.maxRate', { unit: rateUnit })}
               value={rateValues.rpRate}
               onChange={(v) => setParameter(scheme.rollPitch.rate, v)}
               min={scheme.rpRateMin}
               max={scheme.rpRateMax}
               step={scheme.rpRateStep}
               color="#3B82F6"
-              hint={scheme.hasExpo ? 'At full stick deflection' : 'Rate multiplier'}
+              hint={scheme.hasExpo ? t('mavlink-config:ratesTab.atFullStick') : t('mavlink-config:ratesTab.rateMultiplier')}
             />
             {scheme.hasExpo && scheme.rollPitch.expo && (
               <DraggableSlider
-                label="Expo"
+                label={t('common:expo')}
                 value={Math.round(rateValues.rpExpo * scheme.expoScale)}
                 onChange={(v) => setParameter(scheme.rollPitch.expo!, v / scheme.expoScale)}
                 min={0}
                 max={100}
                 step={5}
                 color="#3B82F6"
-                hint="Curve softness near center"
+                hint={t('mavlink-config:ratesTab.curveSoftness')}
               />
             )}
           </div>
@@ -245,35 +251,35 @@ const RatesTab: React.FC = () => {
         {/* Pitch */}
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-            <MoveVertical className="w-5 h-5 text-emerald-400" /> Pitch
+            <MoveVertical className="w-5 h-5 text-emerald-400" /> {t('common:pitch')}
             {scheme.rpLinked && (
               <span className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded-full">
-                <Link className="w-3 h-3" /> Linked to Roll
+                <Link className="w-3 h-3" /> {t('mavlink-config:ratesTab.linkedToRoll')}
               </span>
             )}
           </h3>
           <div className="space-y-4">
             <DraggableSlider
-              label={`Max Rate (${scheme.rateUnit})`}
+              label={t('mavlink-config:ratesTab.maxRate', { unit: rateUnit })}
               value={!scheme.rpLinked && rateValues.pitchRate !== undefined ? rateValues.pitchRate : rateValues.rpRate}
               onChange={!scheme.rpLinked && scheme.pitch ? (v) => setParameter(scheme.pitch!.rate, v) : () => {}}
               min={scheme.rpRateMin}
               max={scheme.rpRateMax}
               step={scheme.rpRateStep}
               color="#10B981"
-              hint={scheme.rpLinked ? 'Controlled by Roll settings' : 'At full stick deflection'}
+              hint={scheme.rpLinked ? t('mavlink-config:ratesTab.controlledByRoll') : t('mavlink-config:ratesTab.atFullStick')}
               disabled={scheme.rpLinked}
             />
             {scheme.hasExpo && scheme.rollPitch.expo && (
               <DraggableSlider
-                label="Expo"
+                label={t('common:expo')}
                 value={Math.round(rateValues.rpExpo * scheme.expoScale)}
                 onChange={() => {}}
                 min={0}
                 max={100}
                 step={5}
                 color="#10B981"
-                hint={scheme.rpLinked ? 'Controlled by Roll settings' : ''}
+                hint={scheme.rpLinked ? t('mavlink-config:ratesTab.controlledByRoll') : ''}
                 disabled={scheme.rpLinked}
               />
             )}
@@ -294,29 +300,29 @@ const RatesTab: React.FC = () => {
         {/* Yaw */}
         <div className="bg-surface rounded-xl border border-subtle p-5">
           <h3 className="text-lg font-medium text-content mb-4 flex items-center gap-2">
-            <RefreshCw className="w-5 h-5 text-orange-400" /> Yaw
+            <RefreshCw className="w-5 h-5 text-orange-400" /> {t('common:yaw')}
           </h3>
           <div className="space-y-4">
             <DraggableSlider
-              label={`Max Rate (${scheme.rateUnit})`}
+              label={t('mavlink-config:ratesTab.maxRate', { unit: rateUnit })}
               value={rateValues.yawRate}
               onChange={(v) => setParameter(scheme.yaw.rate, v)}
               min={scheme.yawRateMin}
               max={scheme.yawRateMax}
               step={scheme.yawRateStep}
               color="#F97316"
-              hint={scheme.hasExpo ? 'At full stick deflection' : 'Rate multiplier'}
+              hint={scheme.hasExpo ? t('mavlink-config:ratesTab.atFullStick') : t('mavlink-config:ratesTab.rateMultiplier')}
             />
             {scheme.hasExpo && scheme.yaw.expo && (
               <DraggableSlider
-                label="Expo"
+                label={t('common:expo')}
                 value={Math.round(rateValues.yawExpo * scheme.expoScale)}
                 onChange={(v) => setParameter(scheme.yaw.expo!, v / scheme.expoScale)}
                 min={0}
                 max={100}
                 step={5}
                 color="#F97316"
-                hint="Curve softness near center"
+                hint={t('mavlink-config:ratesTab.curveSoftness')}
               />
             )}
           </div>
@@ -338,21 +344,21 @@ const RatesTab: React.FC = () => {
       {/* Current settings summary */}
       {scheme && rateValues && (
       <div className="bg-surface rounded-xl border border-subtle p-4">
-        <h3 className="text-sm font-medium text-content mb-3">Current Settings Summary</h3>
+        <h3 className="text-sm font-medium text-content mb-3">{t('mavlink-config:ratesTab.summary')}</h3>
         <div className={`grid ${scheme.hasExpo ? 'grid-cols-4' : scheme.rpLinked ? 'grid-cols-2' : 'grid-cols-3'} gap-4 text-center`}>
           <div>
             <div className="text-2xl font-mono text-blue-400">{rateValues.rpRate}</div>
-            <div className="text-xs text-content-secondary">{scheme.rpLinked ? 'Roll/Pitch' : 'Roll'} Rate ({scheme.rateUnit})</div>
+            <div className="text-xs text-content-secondary">{scheme.rpLinked ? t('mavlink-config:ratesTab.rollPitchRate', { unit: rateUnit }) : t('mavlink-config:ratesTab.rollRate', { unit: rateUnit })}</div>
           </div>
           {!scheme.rpLinked && rateValues.pitchRate !== undefined && (
             <div>
               <div className="text-2xl font-mono text-emerald-400">{rateValues.pitchRate}</div>
-              <div className="text-xs text-content-secondary">Pitch Rate ({scheme.rateUnit})</div>
+              <div className="text-xs text-content-secondary">{t('mavlink-config:ratesTab.pitchRate', { unit: rateUnit })}</div>
             </div>
           )}
           <div>
             <div className="text-2xl font-mono text-orange-400">{rateValues.yawRate}</div>
-            <div className="text-xs text-content-secondary">Yaw Rate ({scheme.rateUnit})</div>
+            <div className="text-xs text-content-secondary">{t('mavlink-config:ratesTab.yawRate', { unit: rateUnit })}</div>
           </div>
           {scheme.hasExpo && (
             <>
@@ -360,13 +366,13 @@ const RatesTab: React.FC = () => {
                 <div className="text-2xl font-mono text-emerald-400">
                   {Math.round(rateValues.rpExpo * scheme.expoScale)}%
                 </div>
-                <div className="text-xs text-content-secondary">Roll/Pitch Expo</div>
+                <div className="text-xs text-content-secondary">{t('mavlink-config:ratesTab.rollPitchExpo')}</div>
               </div>
               <div>
                 <div className="text-2xl font-mono text-amber-400">
                   {Math.round(rateValues.yawExpo * scheme.expoScale)}%
                 </div>
-                <div className="text-xs text-content-secondary">Yaw Expo</div>
+                <div className="text-xs text-content-secondary">{t('mavlink-config:ratesTab.yawExpo')}</div>
               </div>
             </>
           )}
@@ -377,11 +383,12 @@ const RatesTab: React.FC = () => {
       </div>
 
       {/* Tip */}
-      <InfoCard title="Finding the right rates" variant="tip">
-        Start with a Beginner preset and gradually increase rates as you get comfortable.
+      <InfoCard title={t('mavlink-config:ratesTab.tipTitle')} variant="tip">
+        {t('mavlink-config:ratesTab.tipBody')}
+        {' '}
         {scheme?.hasExpo
-          ? ' Most pilots use 180-360 deg/s for roll/pitch and 90-180 deg/s for yaw. Add expo (20-40%) if you want smoother control near center while keeping fast response at full stick.'
-          : ' Adjust the multiplier to control how aggressively the aircraft responds to stick inputs.'
+          ? t('mavlink-config:ratesTab.tipExpo')
+          : t('mavlink-config:ratesTab.tipNoExpo')
         }
       </InfoCard>
     </div>

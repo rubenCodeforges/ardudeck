@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { CameraPreset } from './survey-types';
 import { CAMERA_PRESET_GROUPS, CUSTOM_CAMERA, MANUAL_CAMERA } from './camera-presets';
 import { useSettingsStore } from '../../stores/settings-store';
+import { useTranslation } from 'react-i18next';
 
 interface CameraPresetSelectorProps {
   value: CameraPreset;
@@ -12,6 +13,7 @@ interface CameraPresetSelectorProps {
 }
 
 export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,7 +52,7 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
         onClick={() => { setIsOpen(!isOpen); setSearch(''); }}
         className="w-full px-3 py-2 text-left text-xs bg-surface-raised border border rounded-lg text-content hover:border transition-colors flex items-center justify-between"
       >
-        <span className="truncate">{value.name}</span>
+        <span className="truncate">{isCustom ? t('survey:cameraPresets.custom') : isManual ? t('survey:cameraPresets.manual') : value.name}</span>
         <svg className={`w-3.5 h-3.5 text-content-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -59,12 +61,12 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
       {/* Sensor info summary */}
       {!isCustom && !isManual && (
         <div className="mt-1 text-[10px] text-content-secondary leading-tight">
-          {value.sensorWidth}x{value.sensorHeight}mm sensor, {value.focalLength}mm, {value.imageWidth}x{value.imageHeight}px
+          {t('survey:cameraPresetSelector.sensorSummary', { sensorWidth: value.sensorWidth, sensorHeight: value.sensorHeight, focalLength: value.focalLength, imageWidth: value.imageWidth, imageHeight: value.imageHeight })}
         </div>
       )}
       {isManual && (
         <div className="mt-1 text-[10px] text-content-secondary leading-tight">
-          Corridor width set directly (no camera)
+          {t('survey:cameraPresetSelector.manualSummary')}
         </div>
       )}
 
@@ -77,7 +79,7 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search cameras..."
+              placeholder={t('survey:cameraPresetSelector.searchPlaceholder')}
               className="w-full px-2 py-1 text-xs bg-surface-input border border rounded text-content placeholder-content-tertiary focus:border-purple-500 focus:outline-none"
               autoFocus
             />
@@ -87,7 +89,7 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
           {filteredGroups.map(group => (
             <div key={group.group}>
               <div className="px-3 py-1 text-[10px] font-medium text-content-secondary uppercase tracking-wider bg-surface-input">
-                {group.group}
+                {group.groupKey ? t(group.groupKey) : group.group}
               </div>
               {group.presets.map(preset => (
                 <button
@@ -107,7 +109,7 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
           {savedMatches.length > 0 && (
             <div>
               <div className="px-3 py-1 text-[10px] font-medium text-content-secondary uppercase tracking-wider bg-surface-input">
-                Saved
+                {t('survey:cameraPresetSelector.saved')}
               </div>
               {savedMatches.map((preset) => (
                 <div
@@ -127,7 +129,7 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
                   <button
                     onClick={(e) => { e.stopPropagation(); removeCameraPreset(preset.name); }}
                     className="opacity-0 group-hover:opacity-100 px-2 text-content-tertiary hover:text-red-400 transition-opacity"
-                    title="Delete saved camera"
+                    title={t('survey:cameraPresetSelector.deleteSaved')}
                   >
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -147,20 +149,20 @@ export function CameraPresetSelector({ value, onChange }: CameraPresetSelectorPr
               className={`w-full px-3 py-1.5 text-left text-xs hover:bg-purple-600/20 transition-colors ${
                 isCustom ? 'text-purple-300 bg-purple-600/10' : 'text-content-secondary'
               }`}
-              title="Camera not in presets: enter sensor/focal specs to compute the footprint"
+              title={t('survey:cameraPresetSelector.customTitle')}
             >
-              <div className="font-medium">Custom camera...</div>
-              <div className="text-[10px] text-content-tertiary">Enter sensor + focal length</div>
+              <div className="font-medium">{t('survey:cameraPresetSelector.customLabel')}</div>
+              <div className="text-[10px] text-content-tertiary">{t('survey:cameraPresetSelector.customHint')}</div>
             </button>
             <button
               onClick={() => { onChange({ ...MANUAL_CAMERA }); setIsOpen(false); }}
               className={`w-full px-3 py-1.5 text-left text-xs hover:bg-purple-600/20 transition-colors ${
                 isManual ? 'text-purple-300 bg-purple-600/10' : 'text-content-secondary'
               }`}
-              title="No camera: set the line spacing directly (e.g. rover/lawnmower deck width)"
+              title={t('survey:cameraPresetSelector.manualTitle')}
             >
-              <div className="font-medium">No camera (manual width)...</div>
-              <div className="text-[10px] text-content-tertiary">Set corridor width directly (rover/mower)</div>
+              <div className="font-medium">{t('survey:cameraPresetSelector.manualLabel')}</div>
+              <div className="text-[10px] text-content-tertiary">{t('survey:cameraPresetSelector.manualHint')}</div>
             </button>
           </div>
         </div>

@@ -2,12 +2,15 @@
  * CountdownTimer - Display countdown for timed calibrations
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface CountdownTimerProps {
   seconds: number;
   total: number;
 }
 
 export function CountdownTimer({ seconds, total }: CountdownTimerProps) {
+  const { t } = useTranslation();
   const progress = total > 0 ? ((total - seconds) / total) * 100 : 0;
   const size = 160;
   const strokeWidth = 8;
@@ -61,7 +64,7 @@ export function CountdownTimer({ seconds, total }: CountdownTimerProps) {
         <span className="text-4xl font-bold text-content font-mono">
           {seconds}
         </span>
-        <span className="text-xs text-content-secondary mt-1">seconds</span>
+        <span className="text-xs text-content-secondary mt-1">{t('calibration:countdownTimer.seconds', { count: seconds })}</span>
       </div>
 
       {/* Pulsing ring animation */}

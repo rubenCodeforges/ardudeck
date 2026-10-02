@@ -11,6 +11,7 @@
  * parent inspector — it has its own dockview instance.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useRef } from 'react';
 import {
   DockviewReact,
@@ -39,12 +40,13 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
 };
 
 function EmptyWatermark(): JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="h-full w-full flex items-center justify-center p-6 text-center">
       <div className="max-w-sm">
-        <div className="text-sm font-medium text-content mb-1">No graphs</div>
+        <div className="text-sm font-medium text-content mb-1">{t('inspector:inspectorGraphsView.noGraphs')}</div>
         <div className="text-xs text-content-secondary">
-          All tabs in this window have been closed. Use Dock back to return to the inspector.
+          {t('inspector:inspectorGraphsView.noGraphsHint')}
         </div>
       </div>
     </div>
@@ -52,6 +54,7 @@ function EmptyWatermark(): JSX.Element {
 }
 
 export function InspectorGraphsView(propsIn: Record<string, unknown>): JSX.Element {
+  const { t } = useTranslation();
   const initialGraphs = (propsIn.initialGraphs as GraphSpec[] | undefined) ?? [];
   const initialSamples = (propsIn.initialSamples as Record<string, GraphSample[]> | undefined) ?? {};
   const initialOverlays = (propsIn.initialOverlays as Record<string, string[]> | undefined) ?? {};
@@ -104,7 +107,7 @@ export function InspectorGraphsView(propsIn: Record<string, unknown>): JSX.Eleme
           paused ? 'bg-amber-500' : isConnected ? 'bg-emerald-500' : 'bg-content-tertiary'
         }`} />
         <div className="text-xs text-content-secondary flex-1">
-          {paused ? 'Paused' : isConnected ? 'Live · streaming from connected FC' : 'Not connected'}
+          {paused ? t('inspector:inspectorGraphsView.paused') : isConnected ? t('inspector:inspectorGraphsView.live') : t('inspector:inspectorGraphsView.notConnected')}
         </div>
         <button
           onClick={() => setPaused(!paused)}
@@ -113,16 +116,16 @@ export function InspectorGraphsView(propsIn: Record<string, unknown>): JSX.Eleme
               ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 hover:bg-amber-500/25'
               : 'bg-surface border-subtle text-content-secondary hover:bg-surface-raised hover:text-content'
           }`}
-          title={paused ? 'Resume graph sampling' : 'Pause graph sampling: graphs freeze, packets keep arriving'}
+          title={paused ? t('inspector:inspectorGraphsView.resumeTitle') : t('inspector:inspectorGraphsView.pauseTitle')}
         >
-          {paused ? 'Resume' : 'Pause'}
+          {paused ? t('inspector:mavlinkInspector.resume') : t('common:pause')}
         </button>
         <button
           onClick={resetStats}
           className="px-2.5 py-1 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors"
-          title="Clear inspector stats: graphs reset their sample buffers on the next packet"
+          title={t('inspector:inspectorGraphsView.clearTitle')}
         >
-          Clear
+          {t('common:clear')}
         </button>
       </div>
 

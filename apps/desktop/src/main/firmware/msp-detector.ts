@@ -374,7 +374,7 @@ export async function rebootToBootloaderCli(
     }
 
     // Step 3: Send 'dfu\r\n' to trigger bootloader
-    info('Sending dfu command...');
+    info('Sending dfu command...'); // i18n-exempt
     const dfuCmd = new TextEncoder().encode('dfu\r\n');
     await transport.write(dfuCmd);
 

@@ -13,6 +13,7 @@ import type { MSPModeRange } from '@ardudeck/msp-ts';
 import { MODE_INFO, AUX_CHANNELS } from '../presets/mode-presets';
 import RcChannelBar from './RcChannelBar';
 import { HelpCircle, Pencil, Trash2, Settings2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ModeCardProps {
   mode: MSPModeRange;
@@ -38,13 +39,14 @@ export const ModeCard: React.FC<ModeCardProps> = ({
   readOnly = false,
   dynamicName,
 }) => {
+  const { t } = useTranslation();
   const modeInfo = MODE_INFO[mode.boxId];
   const info = modeInfo || {
-    name: `Mode ${mode.boxId}`,
+    name: t('modes:modeFallback', { id: mode.boxId }),
     icon: HelpCircle,
-    description: 'Unknown mode',
+    descriptionKey: 'modes:modeCard.unknownMode',
     color: 'bg-zinc-500',
-    beginner: '',
+    beginnerKey: '',
   };
   // Use dynamic name from FC if provided (for Betaflight compatibility)
   const displayName = dynamicName || info.name;
@@ -77,11 +79,11 @@ export const ModeCard: React.FC<ModeCardProps> = ({
               <h3 className="font-semibold text-content">{displayName}</h3>
               {info.essential && (
                 <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">
-                  ESSENTIAL
+                  {t('modes:modeCard.essential')}
                 </span>
               )}
             </div>
-            <p className="text-sm text-content-secondary">{info.description}</p>
+            <p className="text-sm text-content-secondary">{t(info.descriptionKey)}</p>
           </div>
         </div>
 
@@ -96,10 +98,10 @@ export const ModeCard: React.FC<ModeCardProps> = ({
             <button
               onClick={() => onConfigure(modeInfo.configureTab!)}
               className="px-2 py-1 text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded-lg transition-colors flex items-center gap-1"
-              title={`Configure ${displayName} settings`}
+              title={t('modes:modeCard.configureTitle', { name: displayName })}
             >
               <Settings2 className="w-3 h-3" />
-              Configure
+              {t('modes:modeCard.configure')}
             </button>
           )}
 
@@ -109,7 +111,7 @@ export const ModeCard: React.FC<ModeCardProps> = ({
                 <button
                   onClick={onEdit}
                   className="p-2 text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
-                  title="Edit mode"
+                  title={t('modes:modeCard.editMode')}
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -118,7 +120,7 @@ export const ModeCard: React.FC<ModeCardProps> = ({
                 <button
                   onClick={onDelete}
                   className="p-2 text-content-secondary hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                  title="Remove mode"
+                  title={t('modes:modeCard.removeMode')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -129,10 +131,10 @@ export const ModeCard: React.FC<ModeCardProps> = ({
       </div>
 
       {/* Beginner description */}
-      {showDescription && info.beginner && (expanded || info.essential) && (
+      {showDescription && info.beginnerKey && (expanded || info.essential) && (
         <div className="px-4 pb-3">
           <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-sm text-blue-200">{info.beginner}</p>
+            <p className="text-sm text-blue-200">{t(info.beginnerKey)}</p>
           </div>
         </div>
       )}
@@ -152,11 +154,11 @@ export const ModeCard: React.FC<ModeCardProps> = ({
       {expanded && (
         <div className="px-4 pb-4 pt-0 flex items-center justify-between text-xs text-content-secondary">
           <span>
-            Range: <span className="font-mono text-content">{mode.rangeStart}</span> -{' '}
+            {t('modes:modeCard.range')} <span className="font-mono text-content">{mode.rangeStart}</span> -{' '}
             <span className="font-mono text-content">{mode.rangeEnd}</span>
           </span>
           <span>
-            Channel: <span className="text-content">{auxChannel?.name}</span>
+            {t('modes:modeCard.channel')} <span className="text-content">{auxChannel?.name}</span>
           </span>
         </div>
       )}

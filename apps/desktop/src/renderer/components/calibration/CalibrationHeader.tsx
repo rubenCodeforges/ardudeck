@@ -4,21 +4,23 @@
  * Shows title, protocol badge, step indicator, and close button.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useCalibrationStore } from '../../stores/calibration-store';
-import { CALIBRATION_TYPES, type CalibrationStep } from '../../../shared/calibration-types';
+import { CALIBRATION_TYPES, calibrationTypeName, type CalibrationStep } from '../../../shared/calibration-types';
 
-const STEPS: { id: CalibrationStep; label: string }[] = [
-  { id: 'select', label: 'Select' },
-  { id: 'prepare', label: 'Prepare' },
-  { id: 'calibrating', label: 'Calibrate' },
-  { id: 'complete', label: 'Complete' },
+const STEPS: { id: CalibrationStep; labelKey: string }[] = [
+  { id: 'select', labelKey: 'calibration:calibrationHeader.stepSelect' },
+  { id: 'prepare', labelKey: 'calibration:calibrationHeader.stepPrepare' },
+  { id: 'calibrating', labelKey: 'calibration:calibrationHeader.stepCalibrate' },
+  { id: 'complete', labelKey: 'calibration:calibrationHeader.stepComplete' },
 ];
 
 export function CalibrationHeader() {
+  const { t } = useTranslation();
   const { currentStep, calibrationType, protocol, fcVariant } = useCalibrationStore();
 
   const calTypeInfo = calibrationType
-    ? CALIBRATION_TYPES.find((t) => t.id === calibrationType)
+    ? CALIBRATION_TYPES.find((c) => c.id === calibrationType)
     : null;
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
@@ -36,7 +38,7 @@ export function CalibrationHeader() {
 
           <div>
             <h2 className="text-lg font-semibold text-content">
-              {calTypeInfo ? calTypeInfo.name : 'Calibration'}
+              {calTypeInfo ? calibrationTypeName(calTypeInfo) : t('common:calibration')}
             </h2>
             <div className="flex items-center gap-2 mt-0.5">
               {/* FC variant badge - show variant name, or protocol as fallback */}
@@ -87,7 +89,7 @@ export function CalibrationHeader() {
                 <span className={`ml-1.5 text-xs hidden sm:block ${
                   isActive ? 'text-cyan-400' : isCompleted ? 'text-content-secondary' : 'text-content-tertiary'
                 }`}>
-                  {step.label}
+                  {t(step.labelKey)}
                 </span>
 
                 {/* Connector line */}

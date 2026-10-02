@@ -13,6 +13,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { detectXPlane } from './simulator-detector';
+import { t } from '../../shared/i18n/index.js';
 
 export interface XPlaneConfig {
   // Aircraft (X-Plane uses its own aircraft selection in-app)
@@ -125,13 +126,13 @@ class XPlaneLauncher {
   async launch(config: XPlaneConfig, customPath?: string): Promise<{ success: boolean; error?: string }> {
     // Check if already running
     if (this.isRunning()) {
-      return { success: false, error: 'X-Plane is already running' };
+      return { success: false, error: t('main:simulators.xplaneRunning') };
     }
 
     // Detect X-Plane installation
     const xpInfo = await detectXPlane(customPath);
     if (!xpInfo.installed || !xpInfo.executable || !xpInfo.path) {
-      return { success: false, error: 'X-Plane not found. Please install X-Plane or set a custom path.' };
+      return { success: false, error: t('main:simulators.xplaneNotFound') };
     }
 
     // Configure network output
@@ -181,7 +182,7 @@ class XPlaneLauncher {
 
       return { success: true };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('common:unknownError');
       console.error('[X-Plane] Failed to launch:', message);
       return { success: false, error: message };
     }

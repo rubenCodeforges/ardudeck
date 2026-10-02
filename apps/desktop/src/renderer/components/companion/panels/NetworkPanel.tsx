@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useCompanionStore } from '../../../stores/companion-store';
 import { PanelContainer, SectionTitle } from '../../panels/panel-utils';
 import type { NetworkInterface } from '@ardudeck/companion-types';
+import { useTranslation } from 'react-i18next';
 
 function InterfaceIcon({ type }: { type: string }) {
   if (type === 'wireless') {
@@ -38,6 +39,7 @@ function SignalStrength({ signal }: { signal: number }) {
 }
 
 function InterfaceCard({ iface }: { iface: NetworkInterface }) {
+  const { t } = useTranslation();
   return (
     <div className="p-2.5 bg-surface-raised rounded-lg space-y-1.5">
       <div className="flex items-center justify-between">
@@ -49,19 +51,21 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
           </span>
         </div>
         {iface.speed > 0 && (
-          <span className="text-[10px] text-content-secondary">{iface.speed} Mbps</span>
+          <span className="text-[10px] text-content-secondary">{iface.speed} Mbps{/* i18n-exempt */}</span>
         )}
       </div>
 
       <div className="space-y-0.5 text-xs">
         {iface.ip4 && (
           <div className="flex justify-between">
+            {/* i18n-exempt */}
             <span className="text-content-secondary">IPv4</span>
             <span className="text-content font-mono">{iface.ip4}</span>
           </div>
         )}
         {iface.ip6 && (
           <div className="flex justify-between">
+            {/* i18n-exempt */}
             <span className="text-content-secondary">IPv6</span>
             <span className="text-content font-mono text-[10px] truncate max-w-[200px]">{iface.ip6}</span>
           </div>
@@ -80,7 +84,7 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
         )}
         {iface.signal !== undefined && iface.signal !== 0 && (
           <div className="flex justify-between items-center">
-            <span className="text-content-secondary">Signal</span>
+            <span className="text-content-secondary">{t('common:signal')}</span>
             <SignalStrength signal={iface.signal} />
           </div>
         )}
@@ -90,6 +94,7 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
 }
 
 export function NetworkPanel() {
+  const { t } = useTranslation();
   const network = useCompanionStore((s) => s.network);
   const setNetwork = useCompanionStore((s) => s.setNetwork);
   const connectionState = useCompanionStore((s) => s.connectionState);
@@ -116,8 +121,8 @@ export function NetworkPanel() {
     return (
       <PanelContainer className="flex items-center justify-center">
         <div className="text-center text-content-tertiary text-xs">
-          <div className="text-content-secondary mb-1">No network data</div>
-          <div>Waiting for agent connection...</div>
+          <div className="text-content-secondary mb-1">{t('companion:network.none')}</div>
+          <div>{t('companion:waitingAgent')}</div>
         </div>
       </PanelContainer>
     );
@@ -126,10 +131,10 @@ export function NetworkPanel() {
   return (
     <PanelContainer>
       <div className="space-y-3">
-        <SectionTitle>Network Interfaces</SectionTitle>
+        <SectionTitle>{t('companion:network.interfaces')}</SectionTitle>
         {network.interfaces.length === 0 ? (
           <div className="text-xs text-content-tertiary text-center py-4">
-            No interfaces found
+            {t('companion:network.noInterfaces')}
           </div>
         ) : (
           <div className="space-y-2">

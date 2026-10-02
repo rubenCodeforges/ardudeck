@@ -13,6 +13,7 @@ import {
   type CanvasStreamSnapshot,
   type VisionStreamOpenOptions,
 } from '../../shared/camera-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 let win: BrowserWindow | null = null;
 let snap: CanvasStreamSnapshot = IDLE_STREAM;
@@ -33,7 +34,7 @@ export function openVisionStreamWindow(opts: VisionStreamOpenOptions): void {
     ...VISION_STREAM_SIZE,
     useContentSize: true,
     show: false,
-    title: 'Vision stream',
+    title: t('main:media.visionStreamTitle'),
     backgroundColor: '#000000',
     webPreferences: {
       preload: preloadPath(),
@@ -48,7 +49,7 @@ export function openVisionStreamWindow(opts: VisionStreamOpenOptions): void {
   const params = new URLSearchParams();
   params.set('detached', '1');
   params.set('componentId', 'vision-stream');
-  params.set('title', 'Vision stream');
+  params.set('title', t('main:media.visionStreamTitle'));
   params.set('props', JSON.stringify(opts));
   loadRendererRoute(w, params);
   w.webContents.on('render-process-gone', (_e, details) => {

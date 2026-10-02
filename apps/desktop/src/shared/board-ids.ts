@@ -166,7 +166,7 @@ export const BOARD_TYPE_IDS: Record<number, BoardTypeInfo> = {
   4201: { name: 'HAKRC-F405Wing', displayName: 'HAKRC F405 Wing', manufacturer: 'HAKRC' },
 
   // Revolution/Airbot
-  124: { name: 'revo-mini', displayName: 'Revolution Mini', manufacturer: 'Airbot' },
+  124: { name: 'revo-mini', displayName: 'Revolution Mini', manufacturer: 'Airbot' }, // i18n-exempt
   128: { name: 'AirbotF4', displayName: 'Airbot F4', manufacturer: 'Airbot' },
 
   // RadioLink

@@ -7,12 +7,13 @@
 
 import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useCalibrationStore, getAvailableCalibrationTypes, isCalibrationTypeAvailable } from '../../../stores/calibration-store';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { accelCalibrationState, accelCalibrationNote } from '../accel-calibration-state';
 import { useConnectionStore } from '../../../stores/connection-store';
-import { type CalibrationTypeId } from '../../../../shared/calibration-types';
+import { calibrationTypeName, calibrationTypeDescription, type CalibrationTypeId } from '../../../../shared/calibration-types';
 import { LargeVehicleMagCalDialog } from '../LargeVehicleMagCalDialog';
 import { LoadCalibrationFromFileDialog } from '../LoadCalibrationFromFileDialog';
 import { CompassMotDialog } from '../CompassMotDialog';
@@ -22,11 +23,11 @@ import { CalibrationHealthBanner } from '../shared/CalibrationHealthBanner';
 // iNav flags: 'Accelerometer', 'Compass', 'No Gyro'
 // Betaflight flags: 'Acc Calibration', 'No Gyro'
 const CALIBRATION_ARMING_FLAGS: Record<CalibrationTypeId, string[]> = {
-  'accel-level': ['Accelerometer', 'Acc Calibration'],
-  'accel-quick': ['Accelerometer', 'Acc Calibration'],
-  'accel-6point': ['Accelerometer', 'Acc Calibration'],
+  'accel-level': ['Accelerometer', 'Acc Calibration'], // i18n-exempt
+  'accel-quick': ['Accelerometer', 'Acc Calibration'], // i18n-exempt
+  'accel-6point': ['Accelerometer', 'Acc Calibration'], // i18n-exempt
   compass: ['Compass'],
-  gyro: ['No Gyro'],
+  gyro: ['No Gyro'], // i18n-exempt
   opflow: [], // No specific arming flag for optical flow
 };
 
@@ -231,6 +232,7 @@ const BackgroundPatterns: Record<CalibrationTypeId, React.ReactNode> = {
 };
 
 export function SelectCalibrationStep() {
+  const { t } = useTranslation();
   const { protocol, sensors, isSensorsLoading, selectCalibrationType, error, completedCalibrations } = useCalibrationStore();
   const flight = useTelemetryStore((s) => s.flight);
   const parameters = useParameterStore((s) => s.parameters);
@@ -283,7 +285,7 @@ export function SelectCalibrationStep() {
             <AlertTriangle className="mt-0.5 w-5 h-5 shrink-0 text-amber-400" />
             <div>
               <div className="text-sm font-medium text-amber-300">
-                This board has no 3D accelerometer calibration
+                {t('calibration:selectCalibrationStep.noAccelCal')}
               </div>
               <p className="mt-0.5 text-xs text-amber-200/90">{accelNote}</p>
             </div>
@@ -293,10 +295,9 @@ export function SelectCalibrationStep() {
 
       {/* Introduction */}
       <div className="text-center max-w-2xl mx-auto">
-        <h3 className="text-xl font-semibold text-content mb-2">Select Calibration Type</h3>
+        <h3 className="text-xl font-semibold text-content mb-2">{t('calibration:selectCalibrationStep.title')}</h3>
         <p className="text-content-secondary">
-          Choose the sensor you want to calibrate. Some calibrations require specific sensors
-          to be present on your flight controller.
+          {t('calibration:selectCalibrationStep.intro')}
         </p>
       </div>
 
@@ -359,14 +360,14 @@ export function SelectCalibrationStep() {
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        OK
+                        {t('calibration:selectCalibrationStep.statusOk')}
                       </div>
                     ) : calibrationNeeded ? (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        Needed
+                        {t('calibration:selectCalibrationStep.statusNeeded')}
                       </div>
                     ) : null}
                   </div>
@@ -385,14 +386,14 @@ export function SelectCalibrationStep() {
                 <h4 className={`relative font-semibold mb-1 ${
                   isAvailable ? 'text-content' : 'text-content-secondary'
                 }`}>
-                  {calType.name}
+                  {calibrationTypeName(calType)}
                 </h4>
                 <p className={`relative text-sm leading-relaxed ${
                   isAvailable ? 'text-content-secondary' : 'text-content-tertiary'
                 }`}>
                   {noCompass
-                    ? 'No magnetometer detected on this flight controller. Add an external compass on I2C to enable it. Not required for Stabilize.'
-                    : calType.description}
+                    ? t('calibration:selectCalibrationStep.noMagnetometer')
+                    : calibrationTypeDescription(calType)}
                 </p>
 
                 {/* Duration badge */}
@@ -404,13 +405,13 @@ export function SelectCalibrationStep() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  ~{calType.estimatedDuration}s
+                  {t('calibration:selectCalibrationStep.duration', { s: calType.estimatedDuration })}
                 </div>
 
                 {/* Unavailable indicator */}
                 {!isAvailable && (
                   <div className="absolute top-4 right-4 px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
-                    {noCompass ? 'No compass detected' : 'Sensor Missing'}
+                    {noCompass ? t('calibration:selectCalibrationStep.noCompassDetected') : t('calibration:selectCalibrationStep.sensorMissing')}
                   </div>
                 )}
               </button>
@@ -430,16 +431,16 @@ export function SelectCalibrationStep() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-content">Large Vehicle MagCal</h4>
+              <h4 className="text-sm font-semibold text-content">{t('calibration:largeVehicleMagCalDialog.title')}</h4>
               <p className="text-xs text-content-secondary mt-0.5 leading-relaxed">
-                Single-shot compass cal for aircraft too large to rotate. Requires GPS lock and a known true heading.
+                {t('calibration:selectCalibrationStep.largeVehicleDesc')}
               </p>
             </div>
             <button
               onClick={() => setShowLargeVehicleMagCal(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors shrink-0"
             >
-              Run
+              {t('calibration:selectCalibrationStep.run')}
             </button>
           </div>
 
@@ -451,17 +452,16 @@ export function SelectCalibrationStep() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-content">Compass/Motor Calibration</h4>
+              <h4 className="text-sm font-semibold text-content">{t('calibration:compassMotDialog.title')}</h4>
               <p className="text-xs text-content-secondary mt-0.5 leading-relaxed">
-                Measures compass interference from the motors under load and writes COMPASS_MOT
-                compensation. Copter only. Motors spin, secure the vehicle first.
+                {t('calibration:selectCalibrationStep.compassMotDesc')}
               </p>
             </div>
             <button
               onClick={() => setShowCompassMot(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-orange-300 bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 hover:border-orange-400/60 transition-colors shrink-0"
             >
-              Run
+              {t('calibration:selectCalibrationStep.run')}
             </button>
           </div>
 
@@ -473,16 +473,16 @@ export function SelectCalibrationStep() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-content">Load calibration from file</h4>
+              <h4 className="text-sm font-semibold text-content">{t('calibration:loadCalibrationFromFileDialog.title')}</h4>
               <p className="text-xs text-content-secondary mt-0.5 leading-relaxed">
-                Restore ACC / MAG calibration from a .param file. The source board's sensor IDs are verified against this FC before writing.
+                {t('calibration:selectCalibrationStep.loadFromFileDesc')}
               </p>
             </div>
             <button
               onClick={() => setShowLoadCalFromFile(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-400/60 transition-colors shrink-0"
             >
-              Open
+              {t('common:open')}
             </button>
           </div>
         </div>
@@ -491,8 +491,7 @@ export function SelectCalibrationStep() {
       {/* Help text */}
       <div className="text-center text-xs text-content-secondary mt-6">
         <p>
-          Ensure your vehicle is disarmed and in a safe location before calibrating.
-          {protocol === 'msp' && ' For best results, disconnect motors.'}
+          {protocol === 'msp' ? t('calibration:selectCalibrationStep.helpMsp') : t('calibration:selectCalibrationStep.help')}
         </p>
       </div>
 

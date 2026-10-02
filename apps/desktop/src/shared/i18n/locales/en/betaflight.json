@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "accCalStarted": "Accelerometer calibration started. Keep the board still!",
+    "armedBadge": "ARMED",
+    "calibrateAcc": "Calibrate ACC",
+    "connectedOn": "{{variant}} {{version}} on {{board}}",
+    "cpuLoad": "CPU Load",
+    "cycleTime": "Cycle Time",
+    "disarmedBadge": "DISARMED",
+    "fix": "Fix",
+    "lastUpdate": "Last update: {{time}}",
+    "rebootConfirm": "Reboot the flight controller?",
+    "refreshPorts": "Refresh ports",
+    "startTelemetry": "Start Telemetry",
+    "stopTelemetry": "Stop Telemetry",
+    "subtitle": "Connect to Betaflight, iNav, or Cleanflight boards",
+    "used": "Used"
+  }
+}

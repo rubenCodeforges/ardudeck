@@ -7,6 +7,7 @@
  * - Exclusion Zones (polygons and circles)
  */
 
+import { useTranslation } from 'react-i18next';
 import { useFenceStore } from '../../stores/fence-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { FENCE_BREACH } from '../../../shared/fence-types';
@@ -36,6 +37,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
     removeCircle,
     clearReturnPoint,
   } = useFenceStore();
+  const { t } = useTranslation();
 
   // Check if connected to MSP board (iNav/Betaflight)
   const connectionState = useConnectionStore((state) => state.connectionState);
@@ -52,12 +54,12 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
     if (fenceStatus.breachStatus === 0) return null;
 
     const breachTypes: Record<number, string> = {
-      [FENCE_BREACH.MINALT]: 'Below minimum altitude',
-      [FENCE_BREACH.MAXALT]: 'Above maximum altitude',
-      [FENCE_BREACH.BOUNDARY]: 'Outside boundary',
+      [FENCE_BREACH.MINALT]: t('geofence:fenceListPanel.belowMinAlt'),
+      [FENCE_BREACH.MAXALT]: t('geofence:fenceListPanel.aboveMaxAlt'),
+      [FENCE_BREACH.BOUNDARY]: t('geofence:fenceListPanel.outsideBoundary'),
     };
 
-    return breachTypes[fenceStatus.breachType] || 'Fence breached';
+    return breachTypes[fenceStatus.breachType] || t('geofence:fenceListPanel.fenceBreached');
   };
 
   const breachText = getBreachStatusText();
@@ -67,9 +69,9 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
       {/* Header */}
       <div className="p-3 border-b border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Geofence</h3>
+          <h3 className="text-sm font-medium">{t('common:geofence')}</h3>
           {isDirty && (
-            <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">Modified</span>
+            <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">{t('common:modified')}</span>
           )}
         </div>
         {breachText && (
@@ -88,7 +90,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
           <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Geofencing is not supported on iNav/Betaflight boards. You can still plan fences and save to file for reference.</span>
+          <span>{t('geofence:fenceListPanel.mspUnsupported')}</span>
         </div>
       )}
 
@@ -103,7 +105,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
       <div className="flex-1 overflow-y-auto">
         {/* Return Point */}
         <div className="p-2 border-b border-subtle">
-          <div className="text-xs font-medium text-amber-400 mb-1">Return Point</div>
+          <div className="text-xs font-medium text-amber-400 mb-1">{t('geofence:fenceListPanel.returnPoint')}</div>
           {returnPoint ? (
             <div
               className="flex items-center justify-between p-2 bg-surface-raised rounded cursor-pointer hover:bg-surface-raised"
@@ -111,13 +113,13 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
             >
               <div className="text-xs">
                 <div>{returnPoint.lat.toFixed(6)}, {returnPoint.lon.toFixed(6)}</div>
-                <div className="text-content-secondary">Alt: {formatAltitudeFromMeters(returnPoint.altitude, altitudeUnit)}</div>
+                <div className="text-content-secondary">{t('geofence:fenceListPanel.alt', { value: formatAltitudeFromMeters(returnPoint.altitude, altitudeUnit) })}</div>
               </div>
               {!readOnly && (
                 <button
                   onClick={(e) => { e.stopPropagation(); clearReturnPoint(); }}
                   className="p-1 text-content-secondary hover:text-red-400"
-                  title="Remove"
+                  title={t('common:remove')}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -126,17 +128,17 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
               )}
             </div>
           ) : (
-            <div className="text-xs text-content-secondary">No return point set</div>
+            <div className="text-xs text-content-secondary">{t('geofence:fenceListPanel.noReturnPoint')}</div>
           )}
         </div>
 
         {/* Inclusion Zones */}
         <div className="p-2 border-b border-subtle">
           <div className="text-xs font-medium text-green-400 mb-1">
-            Inclusion Zones ({inclusionPolygons.length + inclusionCircles.length})
+            {t('geofence:fenceListPanel.inclusionZones', { count: inclusionPolygons.length + inclusionCircles.length })}
           </div>
           {inclusionPolygons.length === 0 && inclusionCircles.length === 0 ? (
-            <div className="text-xs text-content-secondary">No inclusion zones</div>
+            <div className="text-xs text-content-secondary">{t('geofence:fenceListPanel.noInclusionZones')}</div>
           ) : (
             <div className="space-y-1">
               {inclusionPolygons.map((polygon) => (
@@ -144,7 +146,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
                   key={polygon.id}
                   id={polygon.id}
                   type="polygon"
-                  label={`Polygon (${polygon.vertices.length} pts)`}
+                  label={t('geofence:fenceListPanel.polygonPts', { count: polygon.vertices.length })}
                   isSelected={selectedFenceId === polygon.id}
                   color="green"
                   readOnly={readOnly}
@@ -157,7 +159,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
                   key={circle.id}
                   id={circle.id}
                   type="circle"
-                  label={`Circle (${Math.round(circle.radius)}m)`}
+                  label={t('geofence:fenceListPanel.circleRadius', { radius: Math.round(circle.radius) })}
                   isSelected={selectedFenceId === circle.id}
                   color="green"
                   readOnly={readOnly}
@@ -172,10 +174,10 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
         {/* Exclusion Zones */}
         <div className="p-2">
           <div className="text-xs font-medium text-red-400 mb-1">
-            Exclusion Zones ({exclusionPolygons.length + exclusionCircles.length})
+            {t('geofence:fenceListPanel.exclusionZones', { count: exclusionPolygons.length + exclusionCircles.length })}
           </div>
           {exclusionPolygons.length === 0 && exclusionCircles.length === 0 ? (
-            <div className="text-xs text-content-secondary">No exclusion zones</div>
+            <div className="text-xs text-content-secondary">{t('geofence:fenceListPanel.noExclusionZones')}</div>
           ) : (
             <div className="space-y-1">
               {exclusionPolygons.map((polygon) => (
@@ -183,7 +185,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
                   key={polygon.id}
                   id={polygon.id}
                   type="polygon"
-                  label={`Polygon (${polygon.vertices.length} pts)`}
+                  label={t('geofence:fenceListPanel.polygonPts', { count: polygon.vertices.length })}
                   isSelected={selectedFenceId === polygon.id}
                   color="red"
                   readOnly={readOnly}
@@ -196,7 +198,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
                   key={circle.id}
                   id={circle.id}
                   type="circle"
-                  label={`Circle (${Math.round(circle.radius)}m)`}
+                  label={t('geofence:fenceListPanel.circleRadius', { radius: Math.round(circle.radius) })}
                   isSelected={selectedFenceId === circle.id}
                   color="red"
                   readOnly={readOnly}
@@ -211,7 +213,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
         {/* Editing hint - shown while zones exist but none is selected */}
         {!readOnly && (polygons.length > 0 || circles.length > 0) && !selectedFenceId && (
           <div className="px-2 pb-2 text-[11px] text-content-tertiary">
-            Click a zone (here or on the map) to move, reshape, or delete it.
+            {t('geofence:fenceListPanel.editHint')}
           </div>
         )}
       </div>
@@ -219,11 +221,11 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
       {/* Status Bar */}
       <div className="p-2 border-t border-subtle text-xs text-content-secondary flex items-center justify-between">
         <span>
-          {polygons.length} polygon{polygons.length !== 1 ? 's' : ''}, {circles.length} circle{circles.length !== 1 ? 's' : ''}
+          {t('geofence:fenceListPanel.polygonCount', { count: polygons.length })}, {t('geofence:fenceListPanel.circleCount', { count: circles.length })}
         </span>
         {fenceStatus && fenceStatus.breachCount > 0 && (
           <span className="text-red-400">
-            {fenceStatus.breachCount} breach{fenceStatus.breachCount !== 1 ? 'es' : ''}
+            {t('geofence:fenceListPanel.breachCount', { count: fenceStatus.breachCount })}
           </span>
         )}
       </div>
@@ -244,6 +246,7 @@ interface FenceListItemProps {
 }
 
 function FenceListItem({ id, type, label, isSelected, color, readOnly, onSelect, onRemove }: FenceListItemProps) {
+  const { t } = useTranslation();
   const bgColor = isSelected
     ? color === 'green'
       ? 'bg-green-500/20 ring-1 ring-green-500'
@@ -275,7 +278,7 @@ function FenceListItem({ id, type, label, isSelected, color, readOnly, onSelect,
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
           className="p-1 text-content-secondary hover:text-red-400"
-          title="Remove"
+          title={t('common:remove')}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

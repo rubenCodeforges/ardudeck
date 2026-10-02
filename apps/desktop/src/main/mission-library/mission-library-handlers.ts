@@ -16,6 +16,7 @@ import { isSurveyDocument, type SaveSurveyAreaPayload } from '../../shared/surve
 import { isStoredMission, type StoredMission } from '../../shared/mission-library-types.js';
 import { LocalMissionLibraryProvider } from './local-provider.js';
 import { LocalSurveyAreaProvider, type SurveyAreaFilter } from './area-provider.js';
+import { t } from '../../shared/i18n/index.js';
 
 const provider = new LocalMissionLibraryProvider();
 const areas = new LocalSurveyAreaProvider();
@@ -75,12 +76,12 @@ export function initMissionLibraryHandlers(): void {
   // unlike .waypoints which flattens everything.
   ipcMain.handle(IPC_CHANNELS.MISSION_LIBRARY_EXPORT_FILE, async (event, id: string) => {
     const mission = await provider.getMission(id);
-    if (!mission) return { success: false, error: 'Mission not found' };
+    if (!mission) return { success: false, error: t('main:missionLibrary.missionNotFound') };
     const window = BrowserWindow.fromWebContents(event.sender);
     const options = {
-      title: 'Export Mission',
+      title: t('main:missionLibrary.exportMissionTitle'),
       defaultPath: `${fileSlug(mission.name)}.mission.json`,
-      filters: [{ name: 'ArduDeck Mission', extensions: ['json'] }],
+      filters: [{ name: t('main:fileFilters.ardudeckMission'), extensions: ['json'] }],
     };
     const dlg = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options);
     if (dlg.canceled || !dlg.filePath) return { success: false, error: 'Cancelled' };
@@ -95,16 +96,16 @@ export function initMissionLibraryHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.MISSION_LIBRARY_IMPORT_FILE, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     const options = {
-      title: 'Import Mission',
+      title: t('main:missionLibrary.importMissionTitle'),
       properties: ['openFile' as const],
-      filters: [{ name: 'ArduDeck Mission', extensions: ['json'] }],
+      filters: [{ name: t('main:fileFilters.ardudeckMission'), extensions: ['json'] }],
     };
     const dlg = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);
     const path = dlg.filePaths[0];
     if (dlg.canceled || !path) return { success: false, error: 'Cancelled' };
     try {
       const raw: unknown = JSON.parse(await readFile(path, 'utf-8'));
-      if (!isStoredMission(raw)) return { success: false, error: 'Not an ArduDeck mission file' };
+      if (!isStoredMission(raw)) return { success: false, error: t('main:missionLibrary.notMissionFile') };
       return { success: true, mission: await importMission(raw) };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -140,12 +141,12 @@ export function initMissionLibraryHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.SURVEY_AREA_EXPORT_FILE, async (event, id: string) => {
     const doc = await areas.get(id);
-    if (!doc) return { success: false, error: 'Area not found' };
+    if (!doc) return { success: false, error: t('main:missionLibrary.areaNotFound') };
     const window = BrowserWindow.fromWebContents(event.sender);
     const options = {
-      title: 'Export Survey Area',
+      title: t('main:missionLibrary.exportAreaTitle'),
       defaultPath: `${fileSlug(doc.name)}.survey.json`,
-      filters: [{ name: 'ArduDeck Survey', extensions: ['json'] }],
+      filters: [{ name: t('main:fileFilters.ardudeckSurvey'), extensions: ['json'] }],
     };
     const dlg = window
       ? await dialog.showSaveDialog(window, options)
@@ -162,9 +163,9 @@ export function initMissionLibraryHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.SURVEY_AREA_IMPORT_FILE, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     const options = {
-      title: 'Import Survey Area',
+      title: t('main:missionLibrary.importAreaTitle'),
       properties: ['openFile' as const],
-      filters: [{ name: 'ArduDeck Survey', extensions: ['json'] }],
+      filters: [{ name: t('main:fileFilters.ardudeckSurvey'), extensions: ['json'] }],
     };
     const dlg = window
       ? await dialog.showOpenDialog(window, options)
@@ -174,7 +175,7 @@ export function initMissionLibraryHandlers(): void {
     try {
       const raw: unknown = JSON.parse(await readFile(path, 'utf-8'));
       if (!isSurveyDocument(raw)) {
-        return { success: false, error: 'Not an ArduDeck survey area file' };
+        return { success: false, error: t('main:missionLibrary.notAreaFile') };
       }
       return { success: true, area: await areas.import(raw) };
     } catch (err) {

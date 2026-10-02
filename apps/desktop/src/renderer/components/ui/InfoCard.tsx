@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { Info, Lightbulb, AlertTriangle, HelpCircle, type LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settings-store';
 
 export type InfoCardVariant = 'info' | 'tip' | 'warning' | 'help';
@@ -125,6 +126,7 @@ export interface TipProps {
 }
 
 export function Tip({ children, className = '' }: TipProps) {
+  const { t } = useTranslation();
   const showTips = useSettingsStore((s) => s.uiVisibility.showTips);
 
   if (!showTips) {
@@ -134,7 +136,7 @@ export function Tip({ children, className = '' }: TipProps) {
   return (
     <div className={`bg-surface-raised rounded-lg p-3 ${className}`}>
       <p className="text-xs text-content-secondary">
-        <span className="text-blue-400">Tip:</span> {children}
+        <span className="text-blue-400">{t('ui:infoCard.tip')}</span> {children}
       </p>
     </div>
   );

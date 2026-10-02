@@ -15,6 +15,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DraftNumberInput } from '../../../hooks/useNumericDraft';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Play, Square, Zap, Shield } from 'lucide-react';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useConnectionStore } from '../../../stores/connection-store';
@@ -35,6 +36,7 @@ import {
 const HIGH_THROTTLE_WARNING = 25;
 
 export const MotorTestTab: React.FC = () => {
+  const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const connectionState = useConnectionStore((s) => s.connectionState);
   const escTelemetry = useTelemetryStore((s) => s.escTelemetry);
@@ -141,7 +143,7 @@ export const MotorTestTab: React.FC = () => {
           throttleType: 'percent',
         });
         if (!result?.success) {
-          setLastError(result?.error ?? 'Command failed');
+          setLastError(result?.error ?? t('mavlink-config:motorTestTab.commandFailed'));
         }
       } catch (err) {
         setLastError(err instanceof Error ? err.message : String(err));
@@ -149,7 +151,7 @@ export const MotorTestTab: React.FC = () => {
       // Clear active motor after the test duration + a small buffer
       window.setTimeout(() => setActiveMotor(null), duration * 1000 + 300);
     },
-    [canTest, throttle, duration, layout, setActiveMotor, setLastError]
+    [canTest, throttle, duration, layout, setActiveMotor, setLastError, t]
   );
 
   const testAllInSequence = useCallback(async () => {
@@ -166,7 +168,7 @@ export const MotorTestTab: React.FC = () => {
         motorCount,
       });
       if (!result?.success) {
-        setLastError(result?.error ?? 'Command failed');
+        setLastError(result?.error ?? t('mavlink-config:motorTestTab.commandFailed'));
         setSequenceRunning(false);
         return;
       }
@@ -183,7 +185,7 @@ export const MotorTestTab: React.FC = () => {
       },
       duration * motorCount * 1000 + 500
     );
-  }, [canTest, throttle, duration, motorCount, setActiveMotor, setLastError, setSequenceRunning]);
+  }, [canTest, throttle, duration, motorCount, setActiveMotor, setLastError, setSequenceRunning, t]);
 
   const testAllAtOnce = useCallback(async () => {
     if (!canTest) return;
@@ -202,7 +204,7 @@ export const MotorTestTab: React.FC = () => {
       const results = await Promise.all(promises);
       const failed = results.find((r) => !r?.success);
       if (failed) {
-        setLastError(failed?.error ?? 'Command failed');
+        setLastError(failed?.error ?? t('mavlink-config:motorTestTab.commandFailed'));
         setSequenceRunning(false);
         return;
       }
@@ -215,7 +217,7 @@ export const MotorTestTab: React.FC = () => {
       setSequenceRunning(false);
       setActiveMotor(null);
     }, duration * 1000 + 500);
-  }, [canTest, throttle, duration, motorsByTestOrder, setActiveMotor, setLastError, setSequenceRunning]);
+  }, [canTest, throttle, duration, motorsByTestOrder, setActiveMotor, setLastError, setSequenceRunning, t]);
 
   const stopAll = useCallback(async () => {
     setSequenceRunning(false);
@@ -231,14 +233,14 @@ export const MotorTestTab: React.FC = () => {
   if (!connectionState.isConnected) {
     return (
       <div className="p-8 text-center text-content-secondary">
-        Connect to a flight controller first to run motor tests.
+        {t('mavlink-config:motorTestTab.connectFirst')}
       </div>
     );
   }
   if (connectionState.protocol !== 'mavlink') {
     return (
       <div className="p-8 text-center text-content-secondary">
-        Motor test requires a MAVLink connection.
+        {t('mavlink-config:motorTestTab.requiresMavlink')}
       </div>
     );
   }
@@ -254,17 +256,17 @@ export const MotorTestTab: React.FC = () => {
                 <AlertTriangle className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-content">Safety Check</div>
-                <div className="text-xs text-content-secondary">Required before motor test</div>
+                <div className="text-lg font-semibold text-content">{t('mavlink-config:motorTestTab.safetyCheck')}</div>
+                <div className="text-xs text-content-secondary">{t('mavlink-config:motorTestTab.requiredBefore')}</div>
               </div>
             </div>
             <div className="text-sm text-content mb-5 space-y-2">
-              <p>Before spinning motors you MUST confirm:</p>
+              <p>{t('mavlink-config:motorTestTab.mustConfirm')}</p>
               <ul className="list-disc ml-5 space-y-1 text-content-secondary">
-                <li>Propellers are REMOVED from all motors</li>
-                <li>Frame is secured and cannot tip over</li>
-                <li>Nobody is near the propellers or motors</li>
-                <li>Battery is connected and ESCs are powered</li>
+                <li>{t('mavlink-config:motorTestTab.propsRemoved')}</li>
+                <li>{t('mavlink-config:motorTestTab.frameSecured')}</li>
+                <li>{t('mavlink-config:motorTestTab.nobodyNear')}</li>
+                <li>{t('mavlink-config:motorTestTab.batteryConnected')}</li>
               </ul>
             </div>
             <div className="flex gap-2">
@@ -275,7 +277,7 @@ export const MotorTestTab: React.FC = () => {
                 }}
                 className="flex-1 px-4 py-2.5 bg-red-500/80 hover:bg-red-500 text-white font-semibold rounded-lg transition-colors"
               >
-                I Confirm - Props Removed
+                {t('mavlink-config:motorTestTab.confirmPropsRemoved')}
               </button>
             </div>
           </div>
@@ -287,10 +289,9 @@ export const MotorTestTab: React.FC = () => {
         <div className="bg-red-500/10 border-red-500/30 rounded-lg p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
           <div className="flex-1">
-            <div className="text-sm font-semibold text-red-300">Motor test disabled on this vehicle</div>
+            <div className="text-sm font-semibold text-red-300">{t('mavlink-config:motorTestTab.px4DisabledTitle')}</div>
             <div className="text-xs text-red-400/70">
-              PX4 refuses actuator test commands while COM_MOT_TEST_EN is 0. Set it to 1 in the
-              parameter table and save to enable.
+              {t('mavlink-config:motorTestTab.px4DisabledBody')}
             </div>
           </div>
         </div>
@@ -301,8 +302,8 @@ export const MotorTestTab: React.FC = () => {
         <div className="bg-red-500/10 border-red-500/30 rounded-lg p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
           <div className="flex-1">
-            <div className="text-sm font-semibold text-red-300">Vehicle is ARMED</div>
-            <div className="text-xs text-red-400/70">Disarm the vehicle before running motor tests.</div>
+            <div className="text-sm font-semibold text-red-300">{t('mavlink-config:motorTestTab.armedTitle')}</div>
+            <div className="text-xs text-red-400/70">{t('mavlink-config:motorTestTab.armedBody')}</div>
           </div>
         </div>
       )}
@@ -312,7 +313,7 @@ export const MotorTestTab: React.FC = () => {
         <div className="bg-amber-500/10 border-amber-500/30 rounded-lg p-3 flex items-center gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <div className="text-xs text-amber-300">
-            High throttle ({throttle}%): ensure props are removed and the frame is secured.
+            {t('mavlink-config:motorTestTab.highThrottle', { throttle })}
           </div>
         </div>
       )}
@@ -325,7 +326,7 @@ export const MotorTestTab: React.FC = () => {
             onClick={() => setLastError(null)}
             className="text-xs text-red-400 hover:text-red-300"
           >
-            dismiss
+            {t('mavlink-config:motorTestTab.dismiss')}
           </button>
         </div>
       )}
@@ -349,8 +350,8 @@ export const MotorTestTab: React.FC = () => {
               <Zap className="w-5 h-5 text-yellow-400" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-content">Motor Test</div>
-              <div className="text-[11px] text-content-secondary">{motorCount} motors · {frameTypeDisplayName(layout.TypeName)}</div>
+              <div className="text-sm font-semibold text-content">{t('mavlink-config:motorTestTab.title')}</div>
+              <div className="text-[11px] text-content-secondary">{t('mavlink-config:motorTestTab.motorCount', { count: motorCount })} · {frameTypeDisplayName(layout.TypeName)}</div>
             </div>
           </div>
 
@@ -358,7 +359,7 @@ export const MotorTestTab: React.FC = () => {
           <div>
             <div className="flex items-baseline justify-between mb-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                Throttle
+                {t('common:throttle')}
               </label>
               <div className="flex items-baseline gap-1">
                 <DraftNumberInput
@@ -386,7 +387,7 @@ export const MotorTestTab: React.FC = () => {
           <div>
             <div className="flex items-baseline justify-between mb-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                Duration
+                {t('common:duration')}
               </label>
               <div className="flex items-baseline gap-1">
                 <DraftNumberInput
@@ -405,7 +406,7 @@ export const MotorTestTab: React.FC = () => {
           {/* Individual motor buttons (sorted by TestOrder) */}
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-content-secondary mb-2">
-              Test Individual
+              {t('mavlink-config:motorTestTab.testIndividual')}
             </div>
             <div className="grid grid-cols-2 gap-2">
               {motorsByTestOrder.map((m) => (
@@ -440,7 +441,7 @@ export const MotorTestTab: React.FC = () => {
               className="w-full px-4 py-2.5 bg-emerald-500/15 border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-emerald-300 transition-colors flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4" />
-              Test All In Sequence
+              {t('mavlink-config:motorTestTab.testAllSequence')}
             </button>
             <button
               onClick={testAllAtOnce}
@@ -448,14 +449,14 @@ export const MotorTestTab: React.FC = () => {
               className="w-full px-4 py-2.5 bg-blue-500/15 border-blue-500/30 hover:bg-blue-500/25 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-blue-300 transition-colors flex items-center justify-center gap-2"
             >
               <Zap className="w-4 h-4" />
-              Test All At Once
+              {t('mavlink-config:motorTestTab.testAllAtOnce')}
             </button>
             <button
               onClick={stopAll}
               className="w-full px-4 py-3 bg-red-500/80 hover:bg-red-500 rounded-lg text-sm font-bold text-white transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
             >
               <Square className="w-4 h-4" />
-              STOP ALL MOTORS
+              {t('mavlink-config:motorTestTab.stopAll')}
             </button>
           </div>
 
@@ -469,7 +470,7 @@ export const MotorTestTab: React.FC = () => {
               className="w-full text-[11px] text-content-secondary hover:text-content-secondary flex items-center justify-center gap-1.5 py-1"
             >
               <Shield className="w-3 h-3" />
-              Reset safety confirmation
+              {t('mavlink-config:motorTestTab.resetSafety')}
             </button>
           )}
         </div>

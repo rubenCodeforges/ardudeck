@@ -1,0 +1,358 @@
+{
+  "appStore": {
+    "installFailed": "Installation fehlgeschlagen",
+    "uninstallFailed": "Deinstallation fehlgeschlagen"
+  },
+  "ardupilotSitlStore": {
+    "browseFailed": "Durchsuchen fehlgeschlagen",
+    "downloadBinaryFailed": "{{track}}-Binärdatei konnte nicht heruntergeladen werden",
+    "downloadFailed": "Herunterladen fehlgeschlagen",
+    "flightGearFailed": "FlightGear konnte nicht gestartet werden",
+    "model": {
+      "balancebot": "Balance Bot",
+      "coax": "Koaxial-Copter",
+      "hexa": "Hexacopter",
+      "plane": "Flächenflugzeug (Standard)",
+      "quad": "Quad (Standard)",
+      "quadPlus": "Quad Plus (+)",
+      "rover": "Rover (Standard)",
+      "sailboat": "Segelboot",
+      "single": "Single-Copter",
+      "skid": "Skid-Steering",
+      "spoilers": "Flächenflugzeug mit Spoilern",
+      "vectored": "Vectored (Standard)",
+      "vectored6dof": "Vectored 6DOF",
+      "vtail": "V-Leitwerk-Flugzeug"
+    },
+    "startFailed": "SITL konnte nicht gestartet werden"
+  },
+  "calibrationStore": {
+    "confirmPositionFailed": "Position konnte nicht bestätigt werden",
+    "finalizing": "Kalibrierung wird auf dem Flugcontroller abgeschlossen...",
+    "instructions": {
+      "compass": "Drehen Sie Ihr Fahrzeug in alle Richtungen",
+      "default": "Folgen Sie den Anweisungen auf dem Bildschirm",
+      "gyro": "Halten Sie Ihr Fahrzeug völlig still",
+      "level": "Stellen Sie Ihr Fahrzeug auf eine waagerechte Fläche",
+      "opflow": "Halten Sie das Fahrzeug ruhig über einer strukturierten Oberfläche"
+    },
+    "loadFileFailed": "Datei konnte nicht geladen werden",
+    "loadSensorConfigFailed": "Sensorkonfiguration konnte nicht geladen werden",
+    "noCompassFitness": "Keine Kompass-Fitness gemeldet.",
+    "noTrackedParams": "Keine der überwachten Parameter konnten vom Flugcontroller gelesen werden",
+    "noTypeSelected": "Kein Kalibrierungstyp ausgewählt",
+    "readParamsFailed": "Kalibrierungsparameter konnten nicht gelesen werden",
+    "recorded": "Erfasst.",
+    "saveDataFailed": "Kalibrierungsdaten konnten nicht gespeichert werden",
+    "savePersistentFailed": "Speichern im permanenten Speicher fehlgeschlagen",
+    "saving": "Kalibrierung wird gespeichert...",
+    "sensorMissing": "{{name}} erfordert den Sensor {{sensor}}, der nicht verfügbar ist",
+    "silentFailure": "Der Flugcontroller meldete Erfolg, aber die Kalibrierungsparameter haben sich nicht geändert. Die Kalibrierung ist unbemerkt fehlgeschlagen, bitte versuchen Sie es erneut.",
+    "startFailed": "Kalibrierung konnte nicht gestartet werden",
+    "unsupportedProtocol": "{{name}} wird für das Protokoll {{protocol}} nicht unterstützt",
+    "verificationFailed": "Überprüfung fehlgeschlagen",
+    "waitingForFc": "Warte auf Flugcontroller..."
+  },
+  "cliStore": {
+    "rebooting": "Board wird neu gestartet...",
+    "reconnecting": "Verbindung zum Board wird wiederhergestellt...",
+    "saveFailed": "Konfiguration konnte nicht gespeichert werden",
+    "savedReconnected": "Konfiguration gespeichert! Board wieder verbunden.",
+    "savedReconnecting": "Konfiguration gespeichert! Verbindung wird wiederhergestellt...",
+    "savingConfig": "Konfiguration wird im EEPROM gespeichert..."
+  },
+  "fenceStore": {
+    "clearFailed": "Geofence konnte nicht gelöscht werden",
+    "cleared": "Geofence vom Flugcontroller gelöscht",
+    "downloadFailed": "Geofence konnte nicht heruntergeladen werden",
+    "downloaded": "{{count}} Geofence-Elemente vom Flugcontroller heruntergeladen",
+    "nothingToUpload": "Keine Geofence-Elemente zum Hochladen",
+    "uploadFailed": "Geofence konnte nicht hochgeladen werden",
+    "uploaded": "{{count}} Geofence-Elemente auf den Flugcontroller hochgeladen"
+  },
+  "firmwareStore": {
+    "alreadyAirplane": "Board ist bereits als Flächenflugzeug konfiguriert",
+    "bootloaderFailed": "Bootloader konnte nicht gestartet werden",
+    "cannotIdentify": "Board an {{port}} konnte nicht erkannt werden. Wählen Sie Ihr Board manuell aus.",
+    "checkingPlatform": "Plattformkonfiguration wird geprüft...",
+    "configurationFailed": "Konfiguration fehlgeschlagen",
+    "configuredAirplane": "Board als Flächenflugzeug konfiguriert! Verbinden Sie sich neu, wenn Sie bereit sind.",
+    "configuringAirplane": "Board wird als Flächenflugzeug konfiguriert...",
+    "connectRetry": "Verbindung fehlgeschlagen, neuer Versuch in {{seconds}} s...",
+    "connectingAttempt": "Verbindung zum Board wird hergestellt (Versuch {{attempt}}/{{max}})...",
+    "detectionFailed": "Erkennung fehlgeschlagen",
+    "downloadFailed": "Herunterladen fehlgeschlagen",
+    "downloadingFirmware": "Firmware wird heruntergeladen...",
+    "fetchBoardsFailed": "Boards konnten nicht abgerufen werden",
+    "fetchBoardsNoMessage": "Boards konnten nicht abgerufen werden (keine Fehlermeldung)",
+    "fetchVersionsFailed": "Versionen konnten nicht abgerufen werden",
+    "fetchVersionsNoMessage": "Versionen konnten nicht abgerufen werden (keine Fehlermeldung)",
+    "noBoard": "Kein Board verbunden. Klicken Sie zuerst auf Verbinden.",
+    "noBootloader": "Kein STM32-Bootloader an {{port}} gefunden. Stellen Sie sicher, dass sich das Board im Bootloader-Modus befindet.",
+    "noFile": "Keine Firmware-Datei ausgewählt",
+    "noPortForReconnect": "Kein Port für die Neuverbindung gefunden",
+    "noUsbDevice": "Kein USB-Gerät erkannt. Stellen Sie sicher, dass Ihr Flugcontroller verbunden ist.",
+    "noVersion": "Keine Firmware-Version ausgewählt",
+    "probeFailed": "Abfrage fehlgeschlagen",
+    "readMixerFailed": "iNav-Mixer-Konfiguration konnte nicht gelesen werden",
+    "reconnectAfterFlashFailed": "Nach dem Flashen konnte keine Verbindung hergestellt werden. Der USB-Seriell-Chip muss eventuell physisch aus- und wieder eingesteckt werden. Trennen Sie das Board, schließen Sie es wieder an und konfigurieren Sie es dann mit dem Servo-Assistenten als Flächenflugzeug.",
+    "savingEeprom": "Wird im EEPROM gespeichert...",
+    "setPlatformFailed": "Plattformtyp konnte nicht auf Flächenflugzeug gesetzt werden",
+    "startingFlash": "Flashen wird gestartet...",
+    "vehicleTypeMismatch": "Fahrzeugtyp stimmt nicht überein: Sie haben {{selected}} gewählt, aber die gewählte Version ist {{version}}. Wählen Sie Fahrzeug und Version erneut und versuchen Sie es noch einmal.",
+    "waitingReboot": "Warte auf Neustart des Boards (6 s)..."
+  },
+  "fleetRepoStore": {
+    "boundarySaved": "Begrenzung in {{site}} gespeichert",
+    "boundaryUnchanged": "Begrenzung seit dem letzten Snapshot unverändert",
+    "cannotIdentify": "Das Fahrzeug konnte nicht erkannt werden. Wählen Sie im Vault unter \"Working on\" eines aus.",
+    "firmwareMismatch": "Dieser Snapshot stammt von {{snapshotFirmware}}, aber auf diesem Fahrzeug läuft {{liveFirmware}}. Die Parameternamen lassen sich nicht zwischen Flight-Stacks übertragen.",
+    "linkFailed": "Verknüpfen fehlgeschlagen",
+    "linked": "Fahrzeug verknüpft; Snapshots werden in dieser Einheit fortgesetzt",
+    "missionSaved": "Mission in {{site}} gespeichert",
+    "missionUnchanged": "Mission seit dem letzten Snapshot unverändert",
+    "newVehicleSaved": "Neues Fahrzeug \"{{name}}\" gespeichert ({{count}} Parameter)",
+    "noChanges": "Keine Änderungen seit dem letzten Snapshot",
+    "noMission": "Keine Mission für einen Snapshot geladen.",
+    "noParams": "Keine Parameter für einen Snapshot geladen.",
+    "noSurveyPolygon": "Kein Vermessungspolygon auf der Karte für einen Snapshot.",
+    "readSnapshotFailed": "Snapshot konnte nicht aus dem Vault gelesen werden.",
+    "renameFailed": "Umbenennen fehlgeschlagen",
+    "restoredPartial": "{{applied}} wiederhergestellt, {{failed}} fehlgeschlagen",
+    "restored_one": "{{count}} Parameter wiederhergestellt",
+    "restored_other": "{{count}} Parameter wiederhergestellt",
+    "snapshotFailed": "Snapshot fehlgeschlagen",
+    "snapshotSaved": "Snapshot gespeichert ({{count}} Parameter)",
+    "syncFailed": "Synchronisierung fehlgeschlagen",
+    "synced": "Mit GitHub synchronisiert",
+    "vaultUnavailable": "Vault nicht verfügbar",
+    "wrongOwner": "Dieser Snapshot gehört zu {{owner}}, nicht zum verbundenen Fahrzeug. Öffnen Sie einen Snapshot aus dem Verlauf dieses Fahrzeugs oder setzen Sie \"Working on\" auf {{owner}}, falls es sich um dieses Luftfahrzeug handelt."
+  },
+  "flightControlStore": {
+    "trainerActive": "Trainer-Sitzung aktiv - der Trainer hat die Sticks"
+  },
+  "groupShapeStore": {
+    "description": {
+      "edgesOnly": "Nur die Enden der Reihe wölben sich, Anzeigen in der Mitte bleiben bündig",
+      "roundedAll": "Jede runde Anzeige wölbt ihren eigenen Kreis",
+      "square": "Flache Karte, keine Wölbung - der ursprüngliche Look"
+    },
+    "label": {
+      "edgesOnly": "Abgerundet (nur Enden)",
+      "roundedAll": "Abgerundet (jede Anzeige)",
+      "square": "Eckig"
+    }
+  },
+  "guideStore": {
+    "emptyFile": "Leere Datei",
+    "importUnavailable": "Import nicht verfügbar",
+    "noShapes": "Keine Polygone oder Linien in der Datei gefunden",
+    "noValidPoints": "Keine gültigen Punkte zum Hinzufügen."
+  },
+  "legacyConfigStore": {
+    "loadFailed": "Konfiguration konnte nicht geladen werden",
+    "rebooting": "Board wird neu gestartet...",
+    "reconnecting": "Verbindung zum Board wird wiederhergestellt...",
+    "saveFailed": "Konfiguration konnte nicht gespeichert werden",
+    "savedReconnect": "Konfiguration gespeichert! Board neu gestartet. Bitte verbinden Sie sich neu.",
+    "savingConfig": "Konfiguration wird im EEPROM gespeichert..."
+  },
+  "missionLibraryStore": {
+    "readFailed": "Diese Mission konnte nicht aus der Sicherung gelesen werden",
+    "writeFailed": "In die Sicherung konnte nicht geschrieben werden"
+  },
+  "missionStore": {
+    "clearFailed": "Mission konnte nicht gelöscht werden",
+    "clearWaypointsFailed": "Wegpunkte konnten nicht gelöscht werden",
+    "cleared": "Mission vom Flugcontroller gelöscht",
+    "clearedFromFc": "Mission vom FC gelöscht",
+    "downloadFailed": "Mission konnte nicht heruntergeladen werden",
+    "downloadedFromFcInto": "{{count}} Wegpunkte vom Flugcontroller in \"{{group}}\" heruntergeladen",
+    "downloadedInto": "{{count}} Wegpunkte vom FC in \"{{group}}\" heruntergeladen",
+    "groupEmptySave": "Keine Wegpunkte in dieser Gruppe zum Speichern",
+    "groupEmptyUpload": "Keine Wegpunkte in dieser Gruppe zum Hochladen",
+    "mspNotSupported": "Wegpunkte konnten nicht heruntergeladen werden - MSP nicht unterstützt",
+    "noWaypointsOnFc": "Keine Wegpunkte auf dem FC",
+    "noWaypointsToUpload": "Keine Wegpunkte zum Hochladen (alle Gruppen abgewählt?)",
+    "recovered": "{{count}} Wegpunkte aus Ihrer letzten Sitzung wiederhergestellt",
+    "savedToFile": "{{count}} Wegpunkte in Datei gespeichert",
+    "uploadFailed": "Mission konnte nicht hochgeladen werden",
+    "uploadToVehicleFailed": "Mission konnte nicht auf das Fahrzeug hochgeladen werden",
+    "uploadWaypointsFailed": "Wegpunkte konnten nicht hochgeladen werden",
+    "uploadedToFc": "{{count}} Wegpunkte auf den FC hochgeladen",
+    "uploadedToFlightController": "{{count}} Wegpunkte auf den Flugcontroller hochgeladen",
+    "uploadedToVehicle": "{{count}} Wegpunkte auf das Fahrzeug hochgeladen"
+  },
+  "modesWizardStore": {
+    "clearSlotFailed": "Modus-Slot {{i}} konnte nicht gelöscht werden",
+    "eepromSaveFailed": "Modi gesendet, aber Speichern im EEPROM fehlgeschlagen",
+    "loadFailed": "Modi konnten nicht geladen werden",
+    "loadFromFcFailed": "Modi konnten nicht vom FC geladen werden",
+    "saveFailed": "Modi konnten nicht gespeichert werden",
+    "setModeFailed": "Modus {{i}} konnte nicht gesetzt werden"
+  },
+  "moduleStore": {
+    "activationFailed": "Aktivierung fehlgeschlagen",
+    "installFailed": "Installation fehlgeschlagen",
+    "toggleFailed": "Umschalten fehlgeschlagen",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "updateFailedFor": "Aktualisierung für {{slug}} fehlgeschlagen"
+  },
+  "orchestratorEngineStore": {
+    "addSourceFailed": "Quelle konnte nicht hinzugefügt werden",
+    "startFailed": "Mehrfahrzeugbetrieb konnte nicht gestartet werden"
+  },
+  "osdStore": {
+    "ardupilotFont": "ArduPilot wählt eine Schriftart über den Parameter OSD_FONT, nicht per Upload",
+    "connectFcFirst": "Verbinden Sie sich zuerst mit einem Flugcontroller",
+    "connectFirst": "Verbinden Sie sich zuerst mit einem ArduPilot- oder Betaflight/iNav-FC",
+    "connectForFont": "Verbinden Sie ein Betaflight/iNAV-Board, um eine analoge Schriftart hochzuladen",
+    "downloadingParams": "Parameter werden heruntergeladen…",
+    "fontUploadFailed": "Hochladen der Schriftart fehlgeschlagen: {{msg}}",
+    "fontUploaded": "Schriftart hochgeladen ({{count}} Zeichen), FC zum Übernehmen neu starten",
+    "loadFontFailed": "Schriftart konnte nicht geladen werden",
+    "loadedFromFc": "{{count}} Elemente vom FC geladen",
+    "loadedFromScreen": "{{resolved}} Elemente von Bildschirm {{screen}} geladen",
+    "noConfig": "Keine OSD-Konfiguration vom FC zurückgegeben",
+    "noFont": "Keine Schriftart geladen",
+    "noOsdParams": "Keine OSD-Parameter auf diesem Board (OSD_TYPE gesetzt?)",
+    "readFailed": "Lesen fehlgeschlagen: {{msg}}",
+    "reading": "Wird vom Flugcontroller gelesen...",
+    "unknownError": "unbekannter Fehler",
+    "unknownFont": "Unbekannte mitgelieferte Schriftart: {{name}}",
+    "uploadFailed": "Hochladen fehlgeschlagen: {{msg}}",
+    "uploadedPartial": "{{confirmed}}/{{total}} hochgeladen; {{failed}} nicht bestätigt",
+    "uploadedSaved": "{{count}} Elemente hochgeladen und auf dem FC gespeichert",
+    "uploadedToScreen": "{{count}} Parameter auf Bildschirm {{screen}} hochgeladen",
+    "uploadingFont": "Schriftart wird in den FC-NVM hochgeladen…",
+    "uploadingLayout": "OSD-Layout wird hochgeladen...",
+    "uploadingParams": "{{count}} Parameter werden hochgeladen..."
+  },
+  "parameterStore": {
+    "requestFailed": "Parameter konnten nicht angefordert werden",
+    "setFailed": "Parameter konnte nicht gesetzt werden"
+  },
+  "pseudoTxStore": {
+    "enableFirst": "Schalten Sie zuerst den USB-Sender ein",
+    "linkLost": "Fahrzeugverbindung verloren - Joystick-Steuerung freigegeben",
+    "needsMavlink": "Benötigt ein verbundenes MAVLink-Fahrzeug",
+    "noBridge": "Keine SITL-RC-Bridge in diesem Fenster - Frames gehen ins Leere",
+    "overrideRejected": "Override von der Verbindung abgelehnt"
+  },
+  "px4SitlStore": {
+    "disconnecting": "Verbindung zum gestoppten SITL wird getrennt.",
+    "downloadFailed": "Herunterladen fehlgeschlagen",
+    "startFailed": "SITL konnte nicht gestartet werden"
+  },
+  "quickSetupStore": {
+    "applyFailed": "Übernehmen fehlgeschlagen",
+    "applyPresetFailed": "Voreinstellung konnte nicht übernommen werden",
+    "changePlatformFailed": "Plattformtyp konnte nicht geändert werden",
+    "connectionLost": "Verbindung während der Einrichtung verloren. Bitte verbinden Sie sich neu und versuchen Sie es erneut.",
+    "noPreset": "Keine Voreinstellung ausgewählt",
+    "notConnected": "Nicht mit dem Flugcontroller verbunden. Bitte verbinden Sie sich zuerst.",
+    "platformChangeUnknown": "Unbekannter Fehler beim Plattformwechsel",
+    "reconnectFailed": "Neuverbindung nach dem Plattformwechsel fehlgeschlagen. Bitte verbinden Sie sich manuell neu und versuchen Sie es erneut.",
+    "saveEepromFailed": "Speichern im EEPROM fehlgeschlagen",
+    "setPidsFailed": "PIDs konnten nicht gesetzt werden",
+    "setRatesFailed": "Raten konnten nicht gesetzt werden",
+    "task": {
+      "checkPlatform": "Plattform wird geprüft",
+      "clearModes": "Alte Modi werden gelöscht",
+      "clearServoMixer": "Servo-Mixer wird geleert",
+      "exitCli": "CLI-Modus wird beendet",
+      "failsafe": "Failsafe wird eingestellt",
+      "modes": "Flugmodi werden eingestellt",
+      "motorMixer": "Motor-Mixer wird konfiguriert",
+      "pids": "PIDs werden eingestellt",
+      "rates": "Raten werden eingestellt",
+      "saveEeprom": "Wird im EEPROM gespeichert",
+      "saveReboot": "Speichern und Neustart",
+      "sendCli": "CLI-Befehle werden gesendet",
+      "servoMixer": "Servo-Mixer wird konfiguriert"
+    }
+  },
+  "rallyStore": {
+    "clearFailed": "Rally-Punkte konnten nicht gelöscht werden",
+    "cleared": "Rally-Punkte vom Flugcontroller gelöscht",
+    "downloadFailed": "Rally-Punkte konnten nicht heruntergeladen werden",
+    "downloaded": "{{count}} Rally-Punkte vom Flugcontroller heruntergeladen",
+    "nothingToUpload": "Keine Rally-Punkte zum Hochladen",
+    "uploadFailed": "Rally-Punkte konnten nicht hochgeladen werden",
+    "uploaded": "{{count}} Rally-Punkte auf den Flugcontroller hochgeladen"
+  },
+  "servoWizardStore": {
+    "changePlatformFailed": "Plattform konnte nicht auf {{platform}} geändert werden. Bei iNav 2.0.0 müssen Sie eventuell den iNav Configurator verwenden, um den Mixer-Typ zu ändern, und sich dann neu verbinden.",
+    "checkSupportFailed": "Servo-Unterstützung konnte nicht geprüft werden. Bitte versuchen Sie es erneut.",
+    "firmwareTooOld": "Servokonfiguration wird von dieser Firmware nicht unterstützt. iNav 2.0.0 ist eventuell zu alt - versuchen Sie, auf eine neuere Version zu aktualisieren.",
+    "multirotorNoServos": "Servoausgänge sind auf diesem Board im Multirotor-Modus nicht verfügbar. Dies ist eine Hardware-Einschränkung - nicht alle Flugcontroller-Boards können Servosignale ausgeben, wenn sie als Quad/Hex konfiguriert sind.",
+    "noServos": "Keine Servoausgänge erkannt. Stellen Sie sicher, dass Ihr Board Servos unterstützt.",
+    "noServosGimbal": "Auf diesem Board sind keine Servoausgänge für die Gimbal-Steuerung verfügbar.",
+    "platformChangeError": "Fehler beim Plattformwechsel: {{error}}. Versuchen Sie, den Mixer-Typ mit dem iNav Configurator zu ändern.",
+    "saveEepromFailed": "Speichern im EEPROM fehlgeschlagen",
+    "setServoFailed": "Konfiguration von Servo {{index}} konnte nicht gesetzt werden",
+    "step": {
+      "aircraft": "Luftfahrzeug",
+      "aircraftDesc": "Wählen Sie Ihren Luftfahrzeugtyp",
+      "assign": "Zuweisen",
+      "assignDesc": "Servos den Steuerflächen zuordnen",
+      "endpoints": "Kalibrieren",
+      "endpointsDesc": "Servo-Grenzwerte anpassen",
+      "review": "Speichern",
+      "reviewDesc": "Prüfen und speichern",
+      "test": "Test",
+      "testDesc": "Servobewegung überprüfen"
+    },
+    "timeout": "Zeitüberschreitung"
+  },
+  "signingStore": {
+    "enableFailed": "Signierung konnte nicht aktiviert werden",
+    "sendFailed": "Senden an den FC fehlgeschlagen",
+    "setKeyFailed": "Schlüssel konnte nicht gesetzt werden"
+  },
+  "sitlStore": {
+    "bridgeStopped": "Protokoll-Bridge gestoppt.",
+    "cannotDeleteStandard": "Standardprofile können nicht gelöscht werden",
+    "flightGearFailed": "FlightGear konnte nicht gestartet werden",
+    "nameExists": "Profilname existiert bereits",
+    "noProfile": "Kein Profil ausgewählt",
+    "profileDescription": {
+      "Airplane": "Vorkonfiguriert für Flächenflugzeug-Tests mit Flugzeug-Mixer.",
+      "Default": "Frische iNav-Installation mit Werkseinstellungen. Für allgemeine Tests.",
+      "Quadcopter": "Vorkonfiguriert für Quad-Tests mit X-Mixer."
+    },
+    "startFailed": "SITL konnte nicht gestartet werden",
+    "startingBridge": "Protokoll-Bridge wird gestartet...",
+    "startingInav": "iNav SITL wird gestartet...",
+    "stoppingBridge": "Protokoll-Bridge wird gestoppt...",
+    "waitingFlightGear": "Warte auf Initialisierung von FlightGear (15-30 Sekunden)...",
+    "waitingXPlane": "Warte auf Initialisierung von X-Plane (10 Sekunden)...",
+    "xplaneFailed": "X-Plane konnte nicht gestartet werden"
+  },
+  "surveyAreaStore": {
+    "readFailed": "Diese Fläche konnte nicht aus dem Vault gelesen werden",
+    "writeFailed": "In den Vault konnte nicht geschrieben werden"
+  },
+  "surveyStore": {
+    "emptyFile": "Leere Datei",
+    "generateFailed": "Aus den importierten Flächen konnte keine Vermessung erzeugt werden",
+    "generating": "Wegpunkte werden erzeugt...",
+    "generatorFailed": "Generator fehlgeschlagen: {{message}}",
+    "importUnavailable": "Import nicht verfügbar",
+    "importing": "Vermessung wird importiert - Wegpunkte werden erzeugt...",
+    "loading": "Vermessung wird geladen...",
+    "noShapes": "Keine Polygonbegrenzung oder Linie in der Datei gefunden",
+    "recomputing": "{{count}} Wegpunkte werden neu berechnet...",
+    "reloadingArea": "Gespeicherte Fläche wird neu geladen..."
+  },
+  "swarmSitlStore": {
+    "startFailed": "Schwarm konnte nicht gestartet werden"
+  },
+  "weatherStore": {
+    "unavailable": "Wetterdaten nicht verfügbar. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+  },
+  "windStore": {
+    "fetchFailed": "Abruf der Winddaten fehlgeschlagen",
+    "unavailable": "Winddaten nicht verfügbar"
+  }
+}

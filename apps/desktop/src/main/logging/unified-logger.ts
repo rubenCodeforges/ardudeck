@@ -354,7 +354,7 @@ export function initUnifiedLogger(window: BrowserWindow): void {
 export function shutdownLogger(): void {
   if (!isInitialized) return;
 
-  log('info', 'main', 'Logger shutting down');
+  log('info', 'main', 'Logger shutting down'); // i18n-exempt
 
   // Flush remaining buffer
   flushBuffer();

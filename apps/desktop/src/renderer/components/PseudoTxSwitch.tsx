@@ -16,6 +16,8 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { Usb, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { usePseudoTxStore } from '../stores/pseudo-tx-store';
 import { useConnectionStore } from '../stores/connection-store';
 import { isTrainerActive, onTrainerActive } from '../utils/rc-source-arbiter';
@@ -26,16 +28,16 @@ function useTrainerActive(): boolean {
 }
 
 /** Human-readable description of where a channel gets its value. */
-function sourceLabel(src: ChannelSource): string {
+function sourceLabel(src: ChannelSource, t: TFunction): string {
   switch (src.kind) {
     case 'none':
-      return 'unassigned';
+      return t('app:pseudoTx.source.unassigned');
     case 'axis':
-      return `axis ${src.index}`;
+      return t('app:pseudoTx.source.axis', { index: src.index });
     case 'button':
-      return `button ${src.index}`;
+      return t('app:pseudoTx.source.button', { index: src.index });
     case 'button3':
-      return `buttons ${src.low}/${src.high}`;
+      return t('app:pseudoTx.source.buttons', { low: src.low, high: src.high });
   }
 }
 
@@ -47,6 +49,7 @@ function sourceLabel(src: ChannelSource): string {
  * the only way to know, and it takes a second per channel.
  */
 function MappingPanel(): JSX.Element {
+  const { t } = useTranslation();
   const mapping = usePseudoTxStore((s) => s.mapping);
   const channels = usePseudoTxStore((s) => s.channels);
   const learning = usePseudoTxStore((s) => s.learning);
@@ -59,13 +62,13 @@ function MappingPanel(): JSX.Element {
   return (
     <div className="mt-3 pt-3 border-t border-subtle">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-content">Channel mapping</span>
+        <span className="text-xs font-medium text-content">{t('common:channelMapping')}</span>
         <button
           type="button"
           onClick={resetMapping}
           className="text-xs text-content-secondary hover:text-content transition-colors"
         >
-          Reset
+          {t('common:reset')}
         </button>
       </div>
 
@@ -90,23 +93,23 @@ function MappingPanel(): JSX.Element {
 
               <span
                 className="w-20 shrink-0 text-[10px] text-content-secondary truncate"
-                title={sourceLabel(m.source)}
+                title={sourceLabel(m.source, t)}
               >
-                {sourceLabel(m.source)}
+                {sourceLabel(m.source, t)}
               </span>
 
               <button
                 type="button"
                 onClick={() => updateMap(i, { reverse: !m.reverse })}
                 disabled={m.source.kind === 'none'}
-                data-tip={m.reverse ? 'Channel is reversed - click to restore' : 'Reverse this channel'}
+                data-tip={m.reverse ? t('app:pseudoTx.reversedRestore') : t('common:reverseThisChannel')}
                 className={`shrink-0 px-1.5 py-1 rounded-lg text-xs border transition-colors disabled:opacity-30 ${
                   m.reverse
                     ? 'bg-amber-500/15 text-amber-400 border-amber-500/40'
                     : 'bg-surface-raised text-content-secondary border-subtle hover:text-content'
                 }`}
               >
-                Rev
+                {t('common:rev')}
               </button>
 
               <button
@@ -118,14 +121,14 @@ function MappingPanel(): JSX.Element {
                     : 'bg-surface-raised text-content-secondary border border-subtle hover:text-content'
                 }`}
               >
-                {isLearning ? 'move it' : 'Assign'}
+                {isLearning ? t('app:pseudoTx.moveIt') : t('common:assign')}
               </button>
 
               <button
                 type="button"
                 onClick={() => setSource(i, { kind: 'none' })}
                 disabled={m.source.kind === 'none'}
-                title="Unassign"
+                title={t('common:unassign')}
                 className="shrink-0 w-5 text-xs text-content-secondary hover:text-content disabled:opacity-0 transition-colors"
               >
                 ×
@@ -136,8 +139,7 @@ function MappingPanel(): JSX.Element {
       </div>
 
       <p className="mt-2 text-xs text-content-secondary">
-        Press <span className="text-content">Assign</span>, then move the stick or flick the
-        switch you want on that channel. Unassigned channels hold 1500.
+        <Trans i18nKey="app:pseudoTx.assignHint" components={{ b: <span className="text-content" /> }} />
       </p>
 
       <DeviceMonitor />
@@ -158,23 +160,21 @@ function DeviceMonitor(): JSX.Element {
   const raw = usePseudoTxStore((s) => s.raw);
   const mappingMode = usePseudoTxStore((s) => s.mappingMode);
   const standard = mappingMode === 'standard';
+  const { t } = useTranslation();
 
   return (
     <div className="mt-3 pt-3 border-t border-subtle">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-content">Device monitor</span>
+        <span className="text-xs font-medium text-content">{t('common:deviceMonitor')}</span>
         <span className="text-[10px] text-content-secondary">
-          {raw.axes.length} axes - {raw.buttons.length} buttons
-          {mappingMode ? ` - mapping "${mappingMode}"` : ' - raw HID'}
+          {t('app:pseudoTx.monitorCounts', { axes: raw.axes.length, buttons: raw.buttons.length })}
+          {mappingMode ? t('app:pseudoTx.monitorMapping', { mode: mappingMode }) : t('app:pseudoTx.monitorRawHid')}
         </span>
       </div>
 
       {standard && (
         <p className="mb-2 text-xs text-amber-400">
-          The browser has applied its standard gamepad layout to this device, which keeps only
-          four axes and drops the rest - so the switches never arrive. Re-plug with the handset
-          already in USB Joystick mode, or use a model whose USB descriptor is not recognised as
-          a game controller.
+          {t('app:pseudoTx.standardLayoutWarning')}
         </p>
       )}
 
@@ -206,6 +206,7 @@ function DeviceMonitor(): JSX.Element {
 }
 
 export function PseudoTxSwitch(): JSX.Element {
+  const { t } = useTranslation();
   const [showMap, setShowMap] = useState(false);
   const [vehicleRefusal, setVehicleRefusal] = useState<string | null>(null);
   const enabled = usePseudoTxStore((s) => s.enabled);
@@ -226,10 +227,10 @@ export function PseudoTxSwitch(): JSX.Element {
   const sentFrames = usePseudoTxStore((s) => s.sentFrames);
 
   const detail = !enabled
-    ? 'Off - the sliders below are driving RC'
+    ? t('app:pseudoTx.detailOff')
     : connected
-      ? `${deviceName} - ${sentFrames} RC frames sent`
-      : 'Waiting for a handset - set EdgeTX to USB Joystick mode';
+      ? t('app:pseudoTx.detailConnected', { device: deviceName, frames: sentFrames })
+      : t('app:pseudoTx.detailWaiting');
 
   return (
     <div className="bg-surface rounded-xl border border-subtle p-4">
@@ -241,11 +242,11 @@ export function PseudoTxSwitch(): JSX.Element {
             }`}
           />
           <div className="min-w-0">
-            <h3 className="text-sm font-medium text-content">Fly with USB transmitter</h3>
+            <h3 className="text-sm font-medium text-content">{t('app:pseudoTx.title')}</h3>
             <p className="text-xs text-content-secondary mt-0.5 truncate" title={detail}>
               {sendError ? <span className="text-amber-400">{sendError}</span> : detail}
               {enabled && connected && !isTransmitter && (
-                <span className="text-amber-400"> - looks like a gamepad, not a handset</span>
+                <span className="text-amber-400">{t('app:pseudoTx.gamepadWarning')}</span>
               )}
             </p>
           </div>
@@ -255,7 +256,7 @@ export function PseudoTxSwitch(): JSX.Element {
           type="button"
           role="switch"
           aria-checked={enabled}
-          aria-label="Fly with USB transmitter"
+          aria-label={t('app:pseudoTx.title')}
           onClick={() => (enabled ? disable() : enable())}
           className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${
             enabled ? 'bg-emerald-500' : 'bg-surface-inset'
@@ -272,7 +273,7 @@ export function PseudoTxSwitch(): JSX.Element {
       {trainerActive && (
         <p className="mt-3 flex items-center gap-2 text-xs text-amber-400">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          Trainer session active - the Trainer owns the sticks
+          {t('app:pseudoTx.trainerActive')}
         </p>
       )}
 
@@ -285,20 +286,20 @@ export function PseudoTxSwitch(): JSX.Element {
             <div className="min-w-0">
               <h3
                 className="text-sm font-medium text-content"
-                data-tip="Sends RC_CHANNELS_OVERRIDE to the connected vehicle. The joystick WILL command the aircraft."
+                data-tip={t('app:pseudoTx.overrideTip')}
               >
-                Joystick controls vehicle
+                {t('common:joystickControlsVehicle')}
               </h3>
               <p className="text-xs mt-0.5 truncate">
                 {vehicleControl ? (
                   vehicleSendError ? (
                     <span className="text-red-400">{vehicleSendError}</span>
                   ) : (
-                    <span className="text-amber-400">{vehicleFps} frames/s to vehicle</span>
+                    <span className="text-amber-400">{t('app:pseudoTx.framesToVehicle', { fps: vehicleFps })}</span>
                   )
                 ) : (
                   <span className="text-content-secondary">
-                    {vehicleRefusal ?? 'Off - sends nothing to the aircraft'}
+                    {vehicleRefusal ?? t('app:pseudoTx.vehicleOff')}
                   </span>
                 )}
               </p>
@@ -308,14 +309,14 @@ export function PseudoTxSwitch(): JSX.Element {
             type="button"
             role="switch"
             aria-checked={vehicleControl}
-            aria-label="Joystick controls vehicle"
+            aria-label={t('common:joystickControlsVehicle')}
             onClick={() => {
               if (vehicleControl) {
                 disableVehicleControl();
                 setVehicleRefusal(null);
               } else {
                 const r = enableVehicleControl();
-                setVehicleRefusal(r.ok ? null : (r.reason ?? 'Unavailable'));
+                setVehicleRefusal(r.ok ? null : (r.reason ?? t('app:pseudoTx.unavailable')));
               }
             }}
             className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${
@@ -343,7 +344,7 @@ export function PseudoTxSwitch(): JSX.Element {
             ) : (
               <ChevronRight className="w-3.5 h-3.5" />
             )}
-            Channel mapping
+            {t('common:channelMapping')}
           </button>
           {showMap && <MappingPanel />}
         </>

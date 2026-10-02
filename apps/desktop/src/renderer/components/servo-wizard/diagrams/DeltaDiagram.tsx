@@ -4,6 +4,7 @@
  * Top-down SVG diagram of a delta wing with elevons and rudder.
  */
 
+import { useTranslation } from 'react-i18next';
 import { ControlSurface } from '../presets/servo-presets';
 
 interface Props {
@@ -19,6 +20,7 @@ export default function DeltaDiagram({
   servoLabels = {} as Record<ControlSurface, string>,
   surfaceDeflections = {},
 }: Props) {
+  const { t } = useTranslation();
   const getDeflection = (surface: ControlSurface): number => {
     const d = surfaceDeflections[surface] ?? 0;
     return Math.max(-1, Math.min(1, d));
@@ -63,7 +65,7 @@ export default function DeltaDiagram({
         onClick={handleClick('elevon_left')}
       />
       <text x="55" y="138" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        L Elevon
+        {t('servo-wizard:diagrams.leftElevon')}
       </text>
       {servoLabels.elevon_left && (
         <text x="70" y="175" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -78,7 +80,7 @@ export default function DeltaDiagram({
         onClick={handleClick('elevon_right')}
       />
       <text x="245" y="138" textAnchor="middle" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        R Elevon
+        {t('servo-wizard:diagrams.rightElevon')}
       </text>
       {servoLabels.elevon_right && (
         <text x="230" y="175" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -99,7 +101,7 @@ export default function DeltaDiagram({
         onClick={handleClick('rudder')}
       />
       <text x="175" y="160" textAnchor="start" fill="#9CA3AF" fontSize="9" fontWeight="500">
-        Rudder
+        {t('servo-wizard:diagrams.rudder')}
       </text>
       {servoLabels.rudder && (
         <text x="175" y="172" textAnchor="start" fill="#60A5FA" fontSize="9" fontWeight="bold">
@@ -110,12 +112,12 @@ export default function DeltaDiagram({
       {/* Direction arrow */}
       <path d="M150 10 L145 20 L155 20 Z" fill="#6B7280" />
       <text x="165" y="18" fill="#6B7280" fontSize="8">
-        FRONT
+        {t('servo-wizard:diagrams.front')}
       </text>
 
       {/* Info text */}
       <text x="150" y="192" textAnchor="middle" fill="#6B7280" fontSize="9">
-        Delta with vertical tail
+        {t('servo-wizard:diagrams.deltaHint')}
       </text>
     </svg>
   );

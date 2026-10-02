@@ -5,6 +5,7 @@
  * Shows position editor with alignment buttons and nudge controls.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useOsdStore, DEFAULT_ELEMENT_POSITIONS, type OsdElementId, type OsdElementKey } from '../../stores/osd-store';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { getElementSize } from '../../utils/osd/element-sizes';
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function OsdEditPanel({ selectedElement, onDone }: Props) {
+  const { t } = useTranslation();
   const elementPositions = useOsdStore((s) => s.elementPositions);
   const setElementPosition = useOsdStore((s) => s.setElementPosition);
   const toggleElement = useOsdStore((s) => s.toggleElement);
@@ -28,7 +30,7 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <p className="text-xs text-content-secondary text-center">
-          Select an element to edit its position.
+          {t('osd:osdEditPanel.selectElement')}
         </p>
       </div>
     );
@@ -39,7 +41,7 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <p className="text-xs text-content-secondary text-center">
-          Select an element to edit its position.
+          {t('osd:osdEditPanel.selectElement')}
         </p>
       </div>
     );
@@ -88,17 +90,17 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
           <h3 className="text-xs font-medium text-content">{formatName(selectedElement)}</h3>
           <div className="flex items-center gap-2">
             <button onClick={handleReset} className="text-[10px] text-blue-400 hover:text-blue-300">
-              Reset
+              {t('common:reset')}
             </button>
             {onDone && (
               <button onClick={onDone} className="text-[10px] text-content-secondary hover:text-content">
-                Done
+                {t('common:done')}
               </button>
             )}
           </div>
         </div>
         <p className="text-[10px] text-content-secondary mt-0.5">
-          {size.width}x{size.height} chars
+          {t('osd:osdEditPanel.chars', { width: size.width, height: size.height })}
         </p>
         <label className="flex items-center gap-2 mt-2 text-[11px] text-content cursor-pointer">
           <input
@@ -107,11 +109,11 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
             onChange={() => toggleElement(selectedElement)}
             className="w-3 h-3 rounded-sm bg-surface-raised border"
           />
-          Show this element
+          {t('osd:osdEditPanel.showElement')}
         </label>
         {unsupported && (
           <p className="mt-2 text-[10px] text-amber-500">
-            This board has no parameter for this element; it will not upload to the FC.
+            {t('osd:osdEditPanel.unsupported')}
           </p>
         )}
       </div>
@@ -120,7 +122,7 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
         {/* Position inputs */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[10px] text-content-secondary mb-1">X Position</label>
+            <label className="block text-[10px] text-content-secondary mb-1">{t('osd:osdEditPanel.xPosition')}</label>
             <DraftNumberInput
               value={pos.x}
               integer
@@ -131,7 +133,7 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
             />
           </div>
           <div>
-            <label className="block text-[10px] text-content-secondary mb-1">Y Position</label>
+            <label className="block text-[10px] text-content-secondary mb-1">{t('osd:osdEditPanel.yPosition')}</label>
             <DraftNumberInput
               value={pos.y}
               integer
@@ -145,7 +147,7 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
 
         {/* Nudge arrows */}
         <div>
-          <p className="text-[10px] text-content-secondary mb-1.5">Nudge</p>
+          <p className="text-[10px] text-content-secondary mb-1.5">{t('osd:osdEditPanel.nudge')}</p>
           <div className="grid grid-cols-3 gap-1 w-24 mx-auto">
             <div />
             <NudgeBtn label="^" onClick={() => nudge(0, -1)} />
@@ -161,19 +163,19 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
 
         {/* Alignment */}
         <div>
-          <p className="text-[10px] text-content-secondary mb-1.5">Align</p>
+          <p className="text-[10px] text-content-secondary mb-1.5">{t('osd:osdEditPanel.align')}</p>
           <div className="flex gap-1.5">
             <button
               onClick={centerH}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
-              Center H
+              {t('osd:osdEditPanel.centerH')}
             </button>
             <button
               onClick={centerV}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
-              Center V
+              {t('osd:osdEditPanel.centerV')}
             </button>
           </div>
           <div className="flex gap-1.5 mt-1.5">
@@ -181,13 +183,13 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
               onClick={() => setPos(0, pos.y)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
-              Left
+              {t('osd:osdEditPanel.left')}
             </button>
             <button
               onClick={() => setPos(maxX, pos.y)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
-              Right
+              {t('osd:osdEditPanel.right')}
             </button>
           </div>
           <div className="flex gap-1.5 mt-1.5">
@@ -195,13 +197,13 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
               onClick={() => setPos(pos.x, 0)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
-              Top
+              {t('osd:osdEditPanel.top')}
             </button>
             <button
               onClick={() => setPos(pos.x, maxY)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
-              Bottom
+              {t('osd:osdEditPanel.bottom')}
             </button>
           </div>
         </div>

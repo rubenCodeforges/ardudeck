@@ -17,6 +17,7 @@ import { surveyToMissionItems } from './mission-builder';
 import { isSurveyGroup, type SurveyGroup } from '../../../shared/mission-group-types';
 import { computeSurveyGroupSignature } from './survey-group-signature';
 import type { SurveyConfig } from './survey-types';
+import { t } from '../../../shared/i18n/index.js';
 
 export interface RegenerateResult {
   ok: boolean;
@@ -26,14 +27,14 @@ export interface RegenerateResult {
 export async function regenerateSurveyGroup(groupId: string): Promise<RegenerateResult> {
   const store = useMissionStore.getState();
   const group = store.groups.find((g) => g.id === groupId);
-  if (!group) return { ok: false, reason: 'Group not found' };
-  if (!isSurveyGroup(group)) return { ok: false, reason: 'Not a survey group' };
+  if (!group) return { ok: false, reason: t('survey:surveyRegen.groupNotFound') };
+  if (!isSurveyGroup(group)) return { ok: false, reason: t('survey:surveyRegen.notSurveyGroup') };
 
   const reg = getSurveyGenerator(group.generatorId);
   if (!reg) {
     return {
       ok: false,
-      reason: `Generator "${group.generatorId}" not installed`,
+      reason: t('survey:surveyRegen.generatorNotInstalled', { generatorId: group.generatorId }),
     };
   }
 
@@ -51,13 +52,13 @@ export async function regenerateSurveyGroup(groupId: string): Promise<Regenerate
     return { ok: false, reason: err instanceof Error ? err.message : String(err) };
   }
   if (!result) {
-    return { ok: false, reason: 'Generator returned no result' };
+    return { ok: false, reason: t('survey:surveyRegen.noResult') };
   }
 
   const firmware = useConnectionStore.getState().connectionState.firmware;
   const items = surveyToMissionItems(result, config, firmware);
   if (items.length === 0) {
-    return { ok: false, reason: 'Generator produced no waypoints' };
+    return { ok: false, reason: t('survey:surveyRegen.noWaypoints') };
   }
 
   // Re-read the group: an async generator may have taken a while, and the
@@ -65,7 +66,7 @@ export async function regenerateSurveyGroup(groupId: string): Promise<Regenerate
   const freshStore = useMissionStore.getState();
   const freshGroup = freshStore.groups.find((g) => g.id === groupId);
   if (!freshGroup || !isSurveyGroup(freshGroup)) {
-    return { ok: false, reason: 'Group changed during regeneration' };
+    return { ok: false, reason: t('survey:surveyRegen.groupChanged') };
   }
   const signature = computeSurveyGroupSignature(freshGroup as SurveyGroup);
   freshStore.replaceSurveyGroupItems(groupId, items, signature, result.generatorResult);

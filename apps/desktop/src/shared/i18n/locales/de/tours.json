@@ -1,0 +1,36 @@
+{
+  "activeTour": {
+    "nextFeature": "Nächste Funktion",
+    "nextTitle": "Weiter: {{title}}"
+  },
+  "tourLaunchGate": {
+    "apNotInstalled": "ArduPilot SITL ist noch nicht installiert. Laden Sie die Binärdatei in der SITL-Ansicht herunter - die Tour wird automatisch fortgesetzt, sobald Sie verbunden sind.",
+    "apNotSupported": "ArduPilot SITL wird auf dieser Plattform nicht unterstützt.",
+    "connectOwnFc": "Ich verbinde meinen eigenen FC",
+    "connectOwnToContinue": "Verbinden Sie Ihren eigenen FC, um die Tour fortzusetzen.",
+    "failedToStartSitl": "SITL konnte nicht gestartet werden",
+    "goToSitlInstall": "Zu SITL wechseln und installieren",
+    "intro": "Diese Einführung zeigt Funktionen, die einen aktiven Flugcontroller benötigen. Sie können eine sichere <b>{{sitl}}</b>-Simulation starten, um sie auszuprobieren, oder Ihren eigenen FC verbinden.",
+    "launch": "{{sitl}} starten",
+    "needsVehicle": "Tour benötigt ein Fahrzeug",
+    "notNow": "Nicht jetzt",
+    "startingSitl": "SITL wird gestartet...",
+    "tcpConnectionFailed": "SITL gestartet, aber TCP-Verbindung fehlgeschlagen"
+  },
+  "tourPanelsGate": {
+    "layoutAdjustment": "Layout-Anpassung",
+    "missing": "Fehlt: <b>{{panels}}</b>",
+    "panelsNotInLayout": "Diese Tour zeigt Panels, die nicht in Ihrem aktuellen Layout enthalten sind:",
+    "recommendedLayout": "empfohlenes Layout",
+    "skipTour": "Diese Tour überspringen",
+    "switchPrompt": "Zum Layout <b>{{preset}}</b> wechseln, um die Tour zu sehen? Ihr aktuelles Layout bleibt gespeichert - Sie können jederzeit über das Layout-Menü zurückwechseln.",
+    "switchTo": "Zu {{preset}} wechseln"
+  },
+  "tourPrompt": {
+    "dontOfferAgain": "Keine Touren mehr anbieten",
+    "noThanks": "Nein danke",
+    "quickTour": "Kurze Tour",
+    "remindLater": "Später erinnern",
+    "showMe": "Zeigen"
+  }
+}

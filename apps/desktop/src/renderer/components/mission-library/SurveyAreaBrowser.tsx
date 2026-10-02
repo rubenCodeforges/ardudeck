@@ -4,6 +4,7 @@
  * machine, by whoever has the file.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { CloudUpload, Copy, Download, MapPin, Trash2, Upload } from 'lucide-react';
 import { useSurveyAreaStore } from '../../stores/survey-area-store';
@@ -11,7 +12,7 @@ import { useSurveyStore } from '../../stores/survey-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { formatAreaFromSquareMeters } from '../../../shared/user-units';
-import { getSurveyGenerator } from '../survey/generator-registry';
+import { generatorDisplayName, getSurveyGenerator } from '../survey/generator-registry';
 import type { SurveyDocumentSummary } from '../../../shared/survey-document-types';
 import { BackupTargetDialog } from './BackupTargetDialog';
 
@@ -20,6 +21,7 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
     areas, isLoading, error, search, setSearch, loadAreas, getArea, deleteArea, duplicateArea,
     exportArea, importArea, vaultAreas, vaultSites, isVaultLoading, loadVault, pushToVault, pullFromVault,
   } = useSurveyAreaStore();
+  const { t } = useTranslation();
   const addSavedArea = useSurveyStore((s) => s.addSavedArea);
   const areaUnit = useSettingsStore((s) => s.unitPreferences.area);
   const setView = useNavigationStore((s) => s.setView);
@@ -61,7 +63,7 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
             className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:brightness-125 text-content rounded-lg transition-colors flex items-center gap-1.5"
           >
             <Upload className="w-3.5 h-3.5" />
-            Import Area
+            {t('mission-library:surveyAreaBrowser.importArea')}
           </button>
 
           <div className="flex-1 max-w-sm">
@@ -69,7 +71,7 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search areas..."
+              placeholder={t('mission-library:surveyAreaBrowser.searchPlaceholder')}
               className="w-full px-3 py-1.5 bg-surface border border-subtle rounded-lg text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-blue-500/50"
             />
           </div>
@@ -83,13 +85,13 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
                   source === s ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'
                 }`}
               >
-                {s === 'local' ? 'On this computer' : 'In backup'}
+                {s === 'local' ? t('mission-library:surveyAreaBrowser.onThisComputer') : t('mission-library:surveyAreaBrowser.inBackup')}
               </button>
             ))}
           </div>
 
           <span className="text-xs text-content-secondary">
-            {source === 'local' ? `${areas.length} saved here` : `${vaultAreas.length} in backup`}
+            {source === 'local' ? t('mission-library:surveyAreaBrowser.savedHereCount', { count: areas.length }) : t('mission-library:surveyAreaBrowser.inBackupCount', { count: vaultAreas.length })}
           </span>
         </div>
         {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
@@ -98,16 +100,15 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
       <div className="flex-1 overflow-auto p-6">
         {source === 'vault' ? (
           isVaultLoading ? (
-            <div className="flex items-center justify-center h-48 text-content-secondary text-sm">Reading your backup...</div>
+            <div className="flex items-center justify-center h-48 text-content-secondary text-sm">{t('mission-library:surveyAreaBrowser.readingBackup')}</div>
           ) : vaultAreas.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <div className="w-16 h-16 rounded-2xl bg-surface border border-subtle flex items-center justify-center mb-4">
                 <MapPin className="w-7 h-7 text-content-tertiary" />
               </div>
-              <h3 className="text-sm font-medium text-content mb-1">Nothing in your backup yet</h3>
+              <h3 className="text-sm font-medium text-content mb-1">{t('mission-library:surveyAreaBrowser.backupEmptyTitle')}</h3>
               <p className="text-xs text-content-secondary max-w-sm">
-                Save a copy of an area to your backup and it is filed under its project, with every earlier version
-                kept. With online backup on, your other computers can open it too.
+                {t('mission-library:surveyAreaBrowser.backupEmptyBody')}
               </p>
             </div>
           ) : (
@@ -122,8 +123,8 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
                         <div key={item.path} className="rounded-xl border border-subtle bg-surface p-3 flex flex-col gap-2">
                           <div className="text-sm font-medium text-content truncate">{item.name}</div>
                           <div className="text-[11px] text-content-secondary">
-                            {generatorLabel(item.generatorId)} · version {item.revision}
-                            {local && local.revision >= item.revision ? ' · already on this computer' : ''}
+                            {t('mission-library:surveyAreaBrowser.version', { generator: generatorLabel(item.generatorId), n: item.revision })}
+                            {local && local.revision >= item.revision ? t('mission-library:surveyAreaBrowser.alreadyLocal') : ''}
                           </div>
                           <div className="text-[11px] text-content-secondary tabular-nums">
                             {new Date(item.updatedAt).toLocaleDateString()}
@@ -134,10 +135,10 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
                             className="mt-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-surface-raised hover:brightness-125 text-content transition-colors disabled:opacity-50"
                           >
                             {busyId === item.path
-                              ? 'Copying...'
+                              ? t('mission-library:surveyAreaBrowser.copying')
                               : local && local.revision >= item.revision
-                                ? 'Copy again'
-                                : 'Copy to this computer'}
+                                ? t('mission-library:surveyAreaBrowser.copyAgain')
+                                : t('mission-library:surveyAreaBrowser.copyToComputer')}
                           </button>
                         </div>
                       );
@@ -148,17 +149,15 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
             </div>
           )
         ) : isLoading ? (
-          <div className="flex items-center justify-center h-48 text-content-secondary text-sm">Loading...</div>
+          <div className="flex items-center justify-center h-48 text-content-secondary text-sm">{t('common:loading')}</div>
         ) : areas.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <div className="w-16 h-16 rounded-2xl bg-surface border border-subtle flex items-center justify-center mb-4">
               <MapPin className="w-7 h-7 text-content-tertiary" />
             </div>
-            <h3 className="text-sm font-medium text-content mb-1">No survey areas saved yet</h3>
+            <h3 className="text-sm font-medium text-content mb-1">{t('mission-library:surveyAreaBrowser.emptyTitle')}</h3>
             <p className="text-xs text-content-secondary max-w-sm">
-              Open a survey in Mission Planning and use Save area. The shape and every generator setting are stored,
-              the waypoints are not: they are regenerated when the area is loaded, so the same field can be flown
-              again with a different altitude, camera or vehicle.
+              {t('mission-library:surveyAreaBrowser.emptyBody')}
             </p>
           </div>
         ) : (
@@ -173,7 +172,7 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
                 onLoad={() => void handleLoad(area.id)}
                 onPush={() => setPushTarget(area)}
                 onExport={() => void exportArea(area.id)}
-                onDuplicate={() => void duplicateArea(area.id, `${area.name} (copy)`)}
+                onDuplicate={() => void duplicateArea(area.id, t('mission-library:copyName', { name: area.name }))}
                 onDelete={() => {
                   if (confirmDeleteId === area.id) {
                     void deleteArea(area.id);
@@ -191,7 +190,7 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
 
       {pushTarget && (
         <BackupTargetDialog
-          title="Save survey area to backup"
+          title={t('mission-library:surveyAreaBrowser.saveToBackupTitle')}
           itemName={pushTarget.name}
           kind="survey area"
           sites={vaultSites}
@@ -209,7 +208,8 @@ export function SurveyAreaBrowser({ tabs }: { tabs: React.ReactNode }) {
 
 /** The generator's own name when it is installed, its id when it is not. */
 function generatorLabel(id: string): string {
-  return getSurveyGenerator(id)?.displayName ?? id;
+  const gen = getSurveyGenerator(id);
+  return gen ? generatorDisplayName(gen) : id;
 }
 
 function groupBySite<T extends { site: string }>(items: T[]): Array<[string, T[]]> {
@@ -235,13 +235,14 @@ function AreaCard({
   onDuplicate: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-subtle bg-surface p-3 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-sm font-medium text-content truncate">{area.name}</div>
           <div className="text-[11px] text-content-secondary">
-            {generatorLabel(area.generatorId)} · version {area.revision}
+            {t('mission-library:surveyAreaBrowser.version', { generator: generatorLabel(area.generatorId), n: area.revision })}
           </div>
         </div>
         {area.site && (
@@ -256,7 +257,7 @@ function AreaCard({
       )}
 
       <div className="flex items-center gap-3 text-[11px] text-content-secondary tabular-nums">
-        <span>{area.preview.vertexCount} points</span>
+        <span>{t('mission-library:surveyAreaBrowser.pointCount', { count: area.preview.vertexCount })}</span>
         {area.preview.areaSqm !== null && <span>{formatAreaFromSquareMeters(area.preview.areaSqm, areaUnit)}</span>}
         <span className="ml-auto">{new Date(area.updatedAt).toLocaleDateString()}</span>
       </div>
@@ -277,32 +278,32 @@ function AreaCard({
           disabled={busy}
           className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors disabled:opacity-50"
         >
-          {busy ? 'Loading...' : 'Load into mission'}
+          {busy ? t('common:loading') : t('mission-library:surveyAreaBrowser.loadIntoMission')}
         </button>
         <button
           onClick={onPush}
-          data-tip="Save a copy to your backup so your other computers can open it"
+          data-tip={t('mission-library:actions.saveCopyToBackup')}
           className="p-1.5 rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
         >
           <CloudUpload className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={onExport}
-          data-tip="Save this area to a file"
+          data-tip={t('mission-library:surveyAreaBrowser.saveAreaToFile')}
           className="p-1.5 rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={onDuplicate}
-          data-tip="Duplicate"
+          data-tip={t('mission-library:actions.duplicate')}
           className="p-1.5 rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
         >
           <Copy className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={onDelete}
-          data-tip={confirmingDelete ? 'Click again to delete' : 'Delete'}
+          data-tip={confirmingDelete ? t('mission-library:surveyAreaBrowser.clickAgainToDelete') : t('mission-library:actions.delete')}
           className={`p-1.5 rounded-lg transition-colors ${
             confirmingDelete
               ? 'bg-red-500/15 text-red-400'

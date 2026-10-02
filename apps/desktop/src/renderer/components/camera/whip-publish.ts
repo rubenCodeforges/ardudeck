@@ -110,7 +110,7 @@ export async function publishWhip(
     });
   } catch (err) {
     pc.close();
-    throw new Error(`WHIP unreachable: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`WHIP unreachable: ${err instanceof Error ? err.message : String(err)}`); // i18n-exempt: protocol diagnostic
   }
   if (!res.ok) {
     const reason = (await res.text().catch(() => '')).trim().slice(0, 200);

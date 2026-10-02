@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { Wand2, type LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settings-store';
 
 export interface Preset {
@@ -33,10 +34,11 @@ export interface PresetSelectorProps<T extends Record<string, Preset>> {
 export function PresetSelector<T extends Record<string, Preset>>({
   presets,
   onApply,
-  label = 'Quick Presets',
-  hint = 'Click to apply a tuning style',
+  label,
+  hint,
   activeKey,
 }: PresetSelectorProps<T>) {
+  const { t } = useTranslation();
   const showQuickPresets = useSettingsStore((s) => s.uiVisibility.showQuickPresets);
   if (!showQuickPresets) return null;
 
@@ -48,8 +50,8 @@ export function PresetSelector<T extends Record<string, Preset>>({
             <Wand2 className="w-5 h-5 text-indigo-400" />
           </div>
           <div>
-            <p className="text-indigo-300 font-medium">{label}</p>
-            <p className="text-xs text-content-secondary">{hint}</p>
+            <p className="text-indigo-300 font-medium">{label ?? t('common:quickPresets')}</p>
+            <p className="text-xs text-content-secondary">{hint ?? t('ui:presetSelector.hint')}</p>
           </div>
         </div>
         <div className="flex gap-2">

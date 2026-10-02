@@ -83,9 +83,9 @@ export const MODE_INFO: Record<
   {
     name: string;
     icon: LucideIcon;
-    description: string;
+    descriptionKey: string;
     color: string;
-    beginner: string;
+    beginnerKey: string;
     essential?: boolean;
     configureTab?: string; // Tab ID to configure this mode's settings
   }
@@ -93,193 +93,185 @@ export const MODE_INFO: Record<
   [BOX_ID.ARM]: {
     name: 'ARM',
     icon: Power,
-    description: 'Enable motors',
+    descriptionKey: 'modes:modePresets.arm.description',
     color: 'bg-red-500',
-    beginner:
-      'SAFETY SWITCH - Arms/disarms your aircraft. ALWAYS put this on a dedicated switch! When armed, propellers can spin at any moment.',
+    beginnerKey: 'modes:modePresets.arm.beginner',
     essential: true,
   },
   [BOX_ID.ANGLE]: {
     name: 'ANGLE',
     icon: Square,
-    description: 'Self-level',
+    descriptionKey: 'modes:modePresets.angle.description',
     color: 'bg-blue-500',
-    beginner:
-      'BEGINNER MODE - Your aircraft will automatically level itself when you release the sticks. Maximum tilt angle is limited. Perfect for learning to fly!',
+    beginnerKey: 'modes:modePresets.angle.beginner',
     essential: true,
   },
   [BOX_ID.HORIZON]: {
     name: 'HORIZON',
     icon: Sunrise,
-    description: 'Self-level + acro',
+    descriptionKey: 'modes:modePresets.horizon.description',
     color: 'bg-purple-500',
-    beginner:
-      'INTERMEDIATE MODE - Self-levels near center stick like ANGLE, but allows flips and rolls at full stick. A bridge between ANGLE and ACRO.',
+    beginnerKey: 'modes:modePresets.horizon.beginner',
   },
   [BOX_ID.AIRMODE]: {
     name: 'AIRMODE',
     icon: Wind,
-    description: 'Full control at zero throttle',
+    descriptionKey: 'modes:modePresets.airmode.description',
     color: 'bg-cyan-500',
-    beginner:
-      'ADVANCED - Keeps full stick authority even at zero throttle. Essential for freestyle tricks and flips. Usually kept on all the time.',
+    beginnerKey: 'modes:modePresets.airmode.beginner',
   },
   [BOX_ID.NAV_ALTHOLD]: {
     name: 'NAV ALTHOLD',
     icon: ArrowUpFromLine,
-    description: 'Hold altitude',
+    descriptionKey: 'modes:modePresets.navAlthold.description',
     color: 'bg-teal-500',
-    beginner: 'Holds current altitude using barometer/GPS. Throttle controls climb/descent rate.',
+    beginnerKey: 'modes:modePresets.navAlthold.beginner',
   },
   [BOX_ID.NAV_RTH]: {
     name: 'NAV RTH',
     icon: Home,
-    description: 'Return to home',
+    descriptionKey: 'modes:modePresets.navRth.description',
     color: 'bg-green-500',
-    beginner: 'Return To Home - Aircraft will climb to safe altitude and fly back to launch point. Essential safety feature!',
+    beginnerKey: 'modes:modePresets.navRth.beginner',
     essential: true,
   },
   [BOX_ID.NAV_POSHOLD]: {
     name: 'NAV POSHOLD',
     icon: MapPin,
-    description: 'Hold position',
+    descriptionKey: 'modes:modePresets.navPoshold.description',
     color: 'bg-cyan-500',
-    beginner: 'GPS position hold - Aircraft will stay in place. Great for aerial photography or when you need to stop.',
+    beginnerKey: 'modes:modePresets.navPoshold.beginner',
   },
   [BOX_ID.NAV_WP]: {
     name: 'NAV WP',
     icon: Map,
-    description: 'Waypoint mission',
+    descriptionKey: 'modes:modePresets.navWp.description',
     color: 'bg-indigo-500',
-    beginner: 'Execute uploaded waypoint mission. Aircraft will fly to each waypoint automatically.',
+    beginnerKey: 'modes:modePresets.navWp.beginner',
     essential: true,
   },
   [BOX_ID.NAV_COURSE_HOLD]: {
     name: 'NAV COURSE HOLD',
     icon: Compass,
-    description: 'Hold course',
+    descriptionKey: 'modes:modePresets.navCourseHold.description',
     color: 'bg-violet-500',
-    beginner: 'Maintains current heading while allowing altitude control. Good for flying in a straight line.',
+    beginnerKey: 'modes:modePresets.navCourseHold.beginner',
   },
   [BOX_ID.NAV_CRUISE]: {
     name: 'NAV CRUISE',
     icon: Plane,
-    description: 'Cruise control',
+    descriptionKey: 'modes:modePresets.navCruise.description',
     color: 'bg-sky-500',
-    beginner: 'Fixed-wing cruise mode - Maintains heading and altitude. Perfect for long-range flights.',
+    beginnerKey: 'modes:modePresets.navCruise.beginner',
   },
   [BOX_ID.NAV_LAUNCH]: {
     name: 'NAV LAUNCH',
     icon: Rocket,
-    description: 'Auto launch',
+    descriptionKey: 'modes:modePresets.navLaunch.description',
     color: 'bg-orange-500',
-    beginner: 'Automatic launch sequence for fixed-wing. Throw the plane and it will climb to safe altitude.',
+    beginnerKey: 'modes:modePresets.navLaunch.beginner',
     configureTab: 'auto-launch',
   },
   [BOX_ID.GCS_NAV]: {
     name: 'GCS NAV',
     icon: Gamepad2,
-    description: 'Ground control',
+    descriptionKey: 'modes:modePresets.gcsNav.description',
     color: 'bg-purple-500',
-    beginner: 'Allow ground control station to send navigation commands (fly-to-here, etc).',
+    beginnerKey: 'modes:modePresets.gcsNav.beginner',
   },
   [BOX_ID.BEEPER]: {
     name: 'BEEPER',
     icon: Volume2,
-    description: 'Find aircraft',
+    descriptionKey: 'modes:modePresets.beeper.description',
     color: 'bg-yellow-500',
-    beginner:
-      'FINDER - Makes your aircraft beep loudly to help you find it after a crash. Very useful when it lands in tall grass!',
+    beginnerKey: 'modes:modePresets.beeper.beginner',
   },
   [BOX_ID.FAILSAFE]: {
     name: 'FAILSAFE',
     icon: ShieldAlert,
-    description: 'Emergency landing',
+    descriptionKey: 'modes:modePresets.failsafe.description',
     color: 'bg-orange-500',
-    beginner:
-      'EMERGENCY - Triggers failsafe behavior (usually landing or disarm). Normally activated automatically when signal is lost.',
+    beginnerKey: 'modes:modePresets.failsafe.beginner',
   },
   [BOX_ID.BLACKBOX]: {
     name: 'BLACKBOX',
     icon: Package,
-    description: 'Flight logging',
+    descriptionKey: 'modes:modePresets.blackbox.description',
     color: 'bg-gray-500',
-    beginner:
-      'LOGGING - Records flight data to the SD card for analysis. Useful for tuning PIDs and reviewing crashes.',
+    beginnerKey: 'modes:modePresets.blackbox.beginner',
   },
   [BOX_ID.GIMBAL_LEVEL_TILT]: {
     name: 'GIMBAL LEVEL TILT',
     icon: Satellite,
-    description: 'Gimbal tilt leveling',
+    descriptionKey: 'modes:modePresets.gimbalLevelTilt.description',
     color: 'bg-indigo-500',
-    beginner:
-      'Keeps gimbal tilt axis level regardless of aircraft attitude. Useful for camera stabilization.',
+    beginnerKey: 'modes:modePresets.gimbalLevelTilt.beginner',
   },
   [BOX_ID.MANUAL]: {
     name: 'MANUAL',
     icon: Joystick,
-    description: 'Direct control',
+    descriptionKey: 'modes:modePresets.manual.description',
     color: 'bg-rose-500',
-    beginner: 'Direct servo/motor control without stabilization. For experienced pilots only!',
+    beginnerKey: 'modes:modePresets.manual.beginner',
   },
   [BOX_ID.FLAPERON]: {
     name: 'FLAPERON',
     icon: PlaneTakeoff,
-    description: 'Flaps mode',
+    descriptionKey: 'modes:modePresets.flaperon.description',
     color: 'bg-amber-500',
-    beginner: 'Activates flaperons for slower landing approach. Ailerons droop down to act as flaps.',
+    beginnerKey: 'modes:modePresets.flaperon.beginner',
   },
   [BOX_ID.TURN_ASSIST]: {
     name: 'TURN ASSIST',
     icon: RotateCw,
-    description: 'Coordinated turns',
+    descriptionKey: 'modes:modePresets.turnAssist.description',
     color: 'bg-lime-500',
-    beginner: 'Auto-coordinates rudder with ailerons for smooth turns. Great for fixed-wing beginners.',
+    beginnerKey: 'modes:modePresets.turnAssist.beginner',
   },
   [BOX_ID.HOME_RESET]: {
     name: 'HOME RESET',
     icon: RotateCcw,
-    description: 'Reset home position',
+    descriptionKey: 'modes:modePresets.homeReset.description',
     color: 'bg-red-400',
-    beginner: 'Sets current position as new home point. Use when you relocate during a session.',
+    beginnerKey: 'modes:modePresets.homeReset.beginner',
   },
   [BOX_ID.WP_PLANNER]: {
     name: 'WP PLANNER',
     icon: Waypoints,
-    description: 'Mission planner',
+    descriptionKey: 'modes:modePresets.wpPlanner.description',
     color: 'bg-fuchsia-500',
-    beginner: 'Enable in-flight waypoint planning via stick commands.',
+    beginnerKey: 'modes:modePresets.wpPlanner.beginner',
   },
   [BOX_ID.HEADING_HOLD]: {
     name: 'HEADING HOLD',
     icon: Navigation,
-    description: 'Hold heading',
+    descriptionKey: 'modes:modePresets.headingHold.description',
     color: 'bg-emerald-500',
-    beginner: 'Maintains current magnetic heading. Useful for flying straight lines.',
+    beginnerKey: 'modes:modePresets.headingHold.beginner',
   },
   [BOX_ID.PREARM]: {
     name: 'PREARM',
     icon: KeyRound,
-    description: 'Pre-arm check',
+    descriptionKey: 'modes:modePresets.prearm.description',
     color: 'bg-yellow-600',
-    beginner: 'Safety switch - must be enabled before arming. Prevents accidental arm.',
+    beginnerKey: 'modes:modePresets.prearm.beginner',
   },
   [BOX_ID.TURTLE]: {
     name: 'TURTLE',
     icon: Turtle,
-    description: 'Flip over',
+    descriptionKey: 'modes:modePresets.turtle.description',
     color: 'bg-stone-500',
-    beginner: 'Flip crashed aircraft back over using motor spin. For multirotors only.',
+    beginnerKey: 'modes:modePresets.turtle.beginner',
   },
 };
 
 // Preset configurations
 export interface ModePreset {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
-  description: string;
-  tip: string;
+  descriptionKey: string;
+  tipKey: string;
   gradient: string;
   modes: MSPModeRange[];
   // Which modes to configure in the wizard (in order)
@@ -289,10 +281,10 @@ export interface ModePreset {
 export const PRESETS: Record<string, ModePreset> = {
   beginner: {
     id: 'beginner',
-    name: 'Beginner',
+    nameKey: 'modes:presets.beginner.name',
     icon: 'baby',
-    description: 'Safe & simple - great for learning',
-    tip: 'Your aircraft will always stay level. Perfect for learning to hover and basic movements!',
+    descriptionKey: 'modes:presets.beginner.description',
+    tipKey: 'modes:presets.beginner.tip',
     gradient: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
     modes: [
       // ARM on AUX1 high (1800-2100)
@@ -305,10 +297,10 @@ export const PRESETS: Record<string, ModePreset> = {
 
   freestyle: {
     id: 'freestyle',
-    name: 'Freestyle',
+    nameKey: 'modes:presets.freestyle.name',
     icon: 'sparkles',
-    description: 'Balanced for tricks & flow',
-    tip: 'Three-position switch on AUX2 gives you ANGLE/HORIZON/ACRO. Flip a switch to change your flying style!',
+    descriptionKey: 'modes:presets.freestyle.description',
+    tipKey: 'modes:presets.freestyle.tip',
     gradient: 'from-purple-500/20 to-violet-500/10 border-purple-500/30',
     modes: [
       // ARM on AUX1 high
@@ -325,10 +317,10 @@ export const PRESETS: Record<string, ModePreset> = {
 
   racing: {
     id: 'racing',
-    name: 'Racing',
+    nameKey: 'modes:presets.racing.name',
     icon: 'trophy',
-    description: 'Fast & responsive for speed',
-    tip: 'Pure ACRO mode for maximum control. Beeper on AUX3 helps find your aircraft after a crash!',
+    descriptionKey: 'modes:presets.racing.description',
+    tipKey: 'modes:presets.racing.tip',
     gradient: 'from-red-500/20 to-orange-500/10 border-red-500/30',
     modes: [
       // ARM on AUX1 high
@@ -343,10 +335,10 @@ export const PRESETS: Record<string, ModePreset> = {
 
   cinematic: {
     id: 'cinematic',
-    name: 'Cinematic',
+    nameKey: 'modes:presets.cinematic.name',
     icon: 'video',
-    description: 'Ultra-smooth for filming',
-    tip: 'NAV RTH brings your aircraft home if signal is lost (requires GPS!). Perfect for long-range filming.',
+    descriptionKey: 'modes:presets.cinematic.description',
+    tipKey: 'modes:presets.cinematic.tip',
     gradient: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
     modes: [
       // ARM on AUX1 high
@@ -361,10 +353,10 @@ export const PRESETS: Record<string, ModePreset> = {
 
   fixedWing: {
     id: 'fixedWing',
-    name: 'Fixed Wing',
+    nameKey: 'modes:presets.fixedWing.name',
     icon: 'plane',
-    description: 'For airplanes with navigation',
-    tip: 'Complete setup for fixed-wing with launch assist, RTH, and waypoint navigation.',
+    descriptionKey: 'modes:presets.fixedWing.description',
+    tipKey: 'modes:presets.fixedWing.tip',
     gradient: 'from-sky-500/20 to-blue-500/10 border-sky-500/30',
     modes: [
       // ARM on AUX1 high
@@ -400,18 +392,18 @@ export const ESSENTIAL_MODES = ALL_MODES.filter((m) => m.essential);
 
 // AUX channel names (iNav/Betaflight support up to 12 AUX channels)
 export const AUX_CHANNELS = [
-  { index: 0, name: 'AUX 1', description: 'Usually a 2-position switch' },
-  { index: 1, name: 'AUX 2', description: 'Often a 3-position switch' },
-  { index: 2, name: 'AUX 3', description: 'Additional switch' },
-  { index: 3, name: 'AUX 4', description: 'Additional switch' },
-  { index: 4, name: 'AUX 5', description: 'Additional channel (knob/slider)' },
-  { index: 5, name: 'AUX 6', description: 'Additional channel (knob/slider)' },
-  { index: 6, name: 'AUX 7', description: 'Additional channel' },
-  { index: 7, name: 'AUX 8', description: 'Additional channel' },
-  { index: 8, name: 'AUX 9', description: 'Additional channel' },
-  { index: 9, name: 'AUX 10', description: 'Additional channel' },
-  { index: 10, name: 'AUX 11', description: 'Additional channel' },
-  { index: 11, name: 'AUX 12', description: 'Additional channel' },
+  { index: 0, name: 'AUX 1', descriptionKey: 'modes:auxChannels.aux1' },
+  { index: 1, name: 'AUX 2', descriptionKey: 'modes:auxChannels.aux2' },
+  { index: 2, name: 'AUX 3', descriptionKey: 'modes:auxChannels.aux3' },
+  { index: 3, name: 'AUX 4', descriptionKey: 'modes:auxChannels.aux4' },
+  { index: 4, name: 'AUX 5', descriptionKey: 'modes:auxChannels.aux5' },
+  { index: 5, name: 'AUX 6', descriptionKey: 'modes:auxChannels.aux6' },
+  { index: 6, name: 'AUX 7', descriptionKey: 'modes:auxChannels.aux7' },
+  { index: 7, name: 'AUX 8', descriptionKey: 'modes:auxChannels.aux8' },
+  { index: 8, name: 'AUX 9', descriptionKey: 'modes:auxChannels.aux9' },
+  { index: 9, name: 'AUX 10', descriptionKey: 'modes:auxChannels.aux10' },
+  { index: 10, name: 'AUX 11', descriptionKey: 'modes:auxChannels.aux11' },
+  { index: 11, name: 'AUX 12', descriptionKey: 'modes:auxChannels.aux12' },
 ] as const;
 
 // PWM range constants

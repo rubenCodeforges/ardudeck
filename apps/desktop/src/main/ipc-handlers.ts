@@ -33,6 +33,7 @@ import {
 } from '@ardudeck/comms';
 import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers.js';
 import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-handlers.js';
+import { registerCameraSettingsIpcHandlers } from './camera-settings/camera-settings-ipc.js';
 import { mavlinkTee } from './mavlink-tee.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
 import { setupTrafficHandlers } from './traffic/traffic-ipc-handlers.js';
@@ -133,6 +134,9 @@ import {
   GPS_RTCM_DATA_CRC_EXTRA,
   getAllMessageInfos,
   type ParamValue,
+  SERIAL_CONTROL_ID,
+  SERIAL_CONTROL_CRC_EXTRA,
+  deserializeSerialControl,
 } from '@ardudeck/mavlink-ts';
 import {
   LED_CONTROL_ID,
@@ -170,6 +174,7 @@ import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemet
 import { initCalibrationHandlers, cleanupCalibrationHandlers, handleCalibrationStatusText, handleCalibrationCommandAck, handleIncomingCommandLong, handleMagCalProgress, handleMagCalReport, isMavlinkCalibrationActive, cancelCalibration, type MavlinkCalibrationDeps } from './calibration/index.js';
 import { initMissionLibraryHandlers, cleanupMissionLibraryHandlers } from './mission-library/index.js';
 import { nextTxSeq } from './tx-sequence.js';
+import { GpsPassthrough } from './gps/gps-passthrough.js';
 import { telemetryKeyFor } from './telemetry-routing.js';
 import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } from './mavlink-ftp/index.js';
 import { ingestNamedValueFloat, getScriptHealth, resetHeartbeat, subscribeHealth } from './script-installer/heartbeat-tracker.js';
@@ -247,6 +252,7 @@ import { ardupilotFlightGear } from './simulators/ardupilot-flightgear.js';
 import { detectFlightGear } from './simulators/simulator-detector.js';
 import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo, SwarmSitlConfig, SwarmSitlStatus, ArduPilotFlightGearConfig, Px4SitlConfig, Px4SitlStatus, Px4SitlBinaryInfo, Px4ReleaseTrack } from '../shared/ipc-channels.js';
 import { openAreaEditorWindow, setMainMapViewport } from './area-editor-window.js';
+import { t } from '../shared/i18n/index.js';
 
 // =============================================================================
 // Legacy Board Detection
@@ -393,6 +399,8 @@ let packetBatchTimer: NodeJS.Timeout | null = null;
 const packetStreamWindows = new Set<number>();
 // Tracks last armed state reported to renderer so we only log on transitions
 let lastReportedArmed: boolean | null = null;
+// GPS diagnostics passthrough; holds the GPS port exclusively, so it only runs disarmed
+let gpsPassthrough: GpsPassthrough | null = null;
 let mavlinkParser: MAVLinkParser | null = null;
 let heartbeatTimeout: NodeJS.Timeout | null = null;
 let linkLivenessTimer: NodeJS.Timeout | null = null;
@@ -1388,6 +1396,7 @@ function cleanupTransportListeners(): void {
     }
   }
   stopCrsfLink();
+  void gpsPassthrough?.stop();
   mavlinkDataHandler = null;
   transportErrorHandler = null;
   transportCloseHandler = null;
@@ -1660,15 +1669,15 @@ async function refreshPx4ComponentMetadata(mainWindow: BrowserWindow): Promise<v
 function buildBackgroundTransport(options: ConnectOptions): Transport {
   switch (options.type) {
     case 'serial':
-      if (!options.port) throw new Error('Port required for serial connection');
+      if (!options.port) throw new Error(t('main:ipc.portRequired'));
       return new SerialTransport(options.port, { baudRate: options.baudRate ?? 115200 });
     case 'tcp':
-      if (!options.host || !options.tcpPort) throw new Error('Host and port required for TCP');
+      if (!options.host || !options.tcpPort) throw new Error(t('main:ipc.hostPortRequired'));
       return new TcpTransport({ host: options.host, port: options.tcpPort });
     case 'udp':
       if (options.udpMode === 'client') {
         if (!options.udpRemoteHost || !options.udpRemotePort) {
-          throw new Error('Remote host and port required for UDP client mode');
+          throw new Error(t('main:ipc.udpRemoteRequired'));
         }
         return new UdpTransport({
           localPort: options.udpClientLocalPort ?? 14550,
@@ -2180,7 +2189,7 @@ function settleMissionUpload(mainWindow: BrowserWindow, ok: boolean, error?: str
     sendLog(mainWindow, 'info', `Mission upload complete: ${state.items.length} items`);
     safeSend(mainWindow, IPC_CHANNELS.MISSION_UPLOAD_COMPLETE, state.items.length);
   } else {
-    safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, error ?? 'Mission upload failed');
+    safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, error ?? t('main:ipc.missionUploadFailed'));
   }
 }
 
@@ -2827,6 +2836,14 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
   }
 
   switch (msgid) {
+    case SERIAL_CONTROL_ID: {
+      if (gpsPassthrough?.isOpen) {
+        const full = new Uint8Array(79);
+        full.set(payload.subarray(0, 79));
+        gpsPassthrough.handleSerialControl(deserializeSerialControl(full));
+      }
+      break;
+    }
     // Camera / gimbal discovery. These ride peripheral component ids (camera,
     // gimbal) so they're scoped to the ACTIVE vehicle key (which keys off the
     // autopilot component) rather than the sender's compid.
@@ -2924,6 +2941,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           `base_mode=0x${baseMode.toString(16)} system_status=${systemStatus} armed_flag=${armedFlag} sysid=${packet.sysid} compid=${packet.compid}`
         );
         lastReportedArmed = armed;
+        if (armed && gpsPassthrough?.isOpen) void gpsPassthrough.stop();
       }
 
       // Get mode name based on autopilot + vehicle type
@@ -3607,7 +3625,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       if (ackCommand === 22) {
         const severity = ackResult === 0 ? 6 : 4;
         const severityLabel = SEVERITY_LABELS[severity] ?? 'INFO';
-        const text = ackResult === 0 ? 'Takeoff accepted' : `Takeoff ${resultName}`;
+        const text = ackResult === 0 ? t('main:ipc.takeoffAccepted') : t('main:ipc.takeoffResult', { result: resultName });
         mainWindow.webContents.send(IPC_CHANNELS.MAVLINK_STATUSTEXT, { severity, severityLabel, text });
         sendLog(mainWindow, ackResult === 0 ? 'info' : 'warn', text);
       }
@@ -4354,24 +4372,24 @@ async function sendMissionAck(mainWindow: BrowserWindow, result: number, mission
 // Helper: Get human-readable mission result name
 function getMissionResultName(result: number): string {
   const names: Record<number, string> = {
-    [MAV_MISSION_RESULT.ACCEPTED]: 'Accepted',
-    [MAV_MISSION_RESULT.ERROR]: 'General error',
-    [MAV_MISSION_RESULT.UNSUPPORTED_FRAME]: 'Unsupported frame',
-    [MAV_MISSION_RESULT.UNSUPPORTED]: 'Unsupported command',
-    [MAV_MISSION_RESULT.NO_SPACE]: 'No space on vehicle',
-    [MAV_MISSION_RESULT.INVALID]: 'Invalid mission item',
-    [MAV_MISSION_RESULT.INVALID_PARAM1]: 'Invalid param1',
-    [MAV_MISSION_RESULT.INVALID_PARAM2]: 'Invalid param2',
-    [MAV_MISSION_RESULT.INVALID_PARAM3]: 'Invalid param3',
-    [MAV_MISSION_RESULT.INVALID_PARAM4]: 'Invalid param4',
-    [MAV_MISSION_RESULT.INVALID_PARAM5_X]: 'Invalid x/latitude',
-    [MAV_MISSION_RESULT.INVALID_PARAM6_Y]: 'Invalid y/longitude',
-    [MAV_MISSION_RESULT.INVALID_PARAM7]: 'Invalid z/altitude',
-    [MAV_MISSION_RESULT.INVALID_SEQUENCE]: 'Invalid sequence',
-    [MAV_MISSION_RESULT.DENIED]: 'Denied',
-    [MAV_MISSION_RESULT.OPERATION_CANCELLED]: 'Operation cancelled',
+    [MAV_MISSION_RESULT.ACCEPTED]: t('main:missionResult.accepted'),
+    [MAV_MISSION_RESULT.ERROR]: t('main:missionResult.generalError'),
+    [MAV_MISSION_RESULT.UNSUPPORTED_FRAME]: t('main:missionResult.unsupportedFrame'),
+    [MAV_MISSION_RESULT.UNSUPPORTED]: t('main:missionResult.unsupportedCommand'),
+    [MAV_MISSION_RESULT.NO_SPACE]: t('main:missionResult.noSpace'),
+    [MAV_MISSION_RESULT.INVALID]: t('main:missionResult.invalidItem'),
+    [MAV_MISSION_RESULT.INVALID_PARAM1]: t('main:missionResult.invalidParam1'),
+    [MAV_MISSION_RESULT.INVALID_PARAM2]: t('main:missionResult.invalidParam2'),
+    [MAV_MISSION_RESULT.INVALID_PARAM3]: t('main:missionResult.invalidParam3'),
+    [MAV_MISSION_RESULT.INVALID_PARAM4]: t('main:missionResult.invalidParam4'),
+    [MAV_MISSION_RESULT.INVALID_PARAM5_X]: t('main:missionResult.invalidX'),
+    [MAV_MISSION_RESULT.INVALID_PARAM6_Y]: t('main:missionResult.invalidY'),
+    [MAV_MISSION_RESULT.INVALID_PARAM7]: t('main:missionResult.invalidZ'),
+    [MAV_MISSION_RESULT.INVALID_SEQUENCE]: t('main:missionResult.invalidSequence'),
+    [MAV_MISSION_RESULT.DENIED]: t('main:missionResult.denied'),
+    [MAV_MISSION_RESULT.OPERATION_CANCELLED]: t('main:missionResult.operationCancelled'),
   };
-  return names[result] || `Unknown error (${result})`;
+  return names[result] || t('main:missionResult.unknown', { result });
 }
 
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
@@ -4383,7 +4401,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     IPC_CHANNELS.LED_CONTROL_SET,
     async (_e, rgb: { red: number; green: number; blue: number; rateHz?: number }) => {
       if (!currentTransport?.isOpen || !connectionState.isConnected) {
-        return { success: false, error: 'Not connected' };
+        return { success: false, error: t('main:ipc.notConnected') };
       }
       try {
         const payload = serializeLedControl({
@@ -4556,7 +4574,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       safeSend(mainWindow, IPC_CHANNELS.MAVLINK_STATUSTEXT, {
         severity: 4,
         severityLabel: 'WARNING',
-        text: `Vehicle selection failed to sync (${payload.vehicleKey ?? 'none'}) - commands still target the previous vehicle`,
+        text: t('main:ipc.vehicleSelectionFailed', { vehicle: payload.vehicleKey ?? 'none' }),
       });
     }
     // Broadcast to every window so other views (the 3D world pop-out) follow the
@@ -4739,13 +4757,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // The desktop addresses fleet vehicles by the virtual sysid it sees on the
   // passthrough channel; the orchestrator maps it to the real link + runs the job.
   ipcMain.handle(IPC_CHANNELS.FLEET_LOG_LIST_REQUEST, async (_, virtualSysid: number): Promise<{ ok: boolean; id?: string; error?: string }> => {
-    if (!activeOrchestrationLink) return { ok: false, error: 'No orchestrator connected' };
+    if (!activeOrchestrationLink) return { ok: false, error: t('main:ipc.noOrchestrator') };
     const id = activeOrchestrationLink.requestLogList(virtualSysid);
     return { ok: true, id };
   });
 
   ipcMain.handle(IPC_CHANNELS.FLEET_LOG_FETCH, async (_, virtualSysid: number, logId: number): Promise<{ ok: boolean; id?: string; error?: string }> => {
-    if (!activeOrchestrationLink) return { ok: false, error: 'No orchestrator connected' };
+    if (!activeOrchestrationLink) return { ok: false, error: t('main:ipc.noOrchestrator') };
     const id = activeOrchestrationLink.fetchLog(virtualSysid, logId);
     fleetLogJobs.set(id, { virtualSysid, logId });
     return { ok: true, id };
@@ -4868,13 +4886,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           return false;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Vehicle command failed (${cmd.kind})`, message);
       return false;
     }
   });
 
   // ==================== Camera / video ====================
+  mediaEngine.onPhase = (sourceId, phase) => safeSend(mainWindow, IPC_CHANNELS.CAMERA_START_PHASE, { sourceId, phase });
   ipcMain.handle(IPC_CHANNELS.CAMERA_START, async (_, source: CameraSourceConfig, resolvedUrl?: string) => {
     const result = await mediaEngine.start(source, resolvedUrl);
     // A feed that fails in the field is reported by screenshot, so the reason
@@ -4905,6 +4924,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_RECORD_TOGGLE, async (_, sourceId: string) => {
     return mediaEngine.toggleRecord(sourceId);
+  });
+  ipcMain.handle(IPC_CHANNELS.CAMERA_REVEAL_MEDIA, (_, filePath: string) => {
+    if (typeof filePath === 'string' && mediaEngine.isOwnMedia(filePath)) shell.showItemInFolder(filePath);
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_DIAGNOSTICS, async () => {
     return mediaEngine.diagnostics();
@@ -5037,7 +5059,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           return false;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Gimbal command failed (${cmd.kind})`, message);
       return false;
     }
@@ -5056,7 +5078,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param1: cmd.mode === 'range' ? 2 : 1, param2: cmd.value,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Camera command failed (${cmd.kind})`, message);
       return false;
     }
@@ -5138,11 +5160,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const willAutoReconnect = !suppressAutoReconnect && !!lastConnectOptions;
       if (willAutoReconnect) {
         connectionState.isReconnecting = true;
-        connectionState.reconnectReason = 'Link lost';
+        connectionState.reconnectReason = t('main:ipc.linkLost');
       }
       sendLog(mainWindow, 'info', 'Connection closed');
       sendConnectionState(mainWindow);
-      if (willAutoReconnect) scheduleAutoReconnect('Link lost');
+      if (willAutoReconnect) scheduleAutoReconnect(t('main:ipc.linkLost'));
     }
   };
 
@@ -5633,7 +5655,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Unexpected close (e.g. physical USB disconnect) - full cleanup
       // so port watcher can restart and detect reconnected devices
       const wasConnected = connectionState.isConnected;
-      cancelCalibration('Flight controller disconnected');
+      cancelCalibration(t('main:ipc.fcDisconnected'));
       cleanupMspConnection();
       cleanupTransportListeners();
       if (gcsHeartbeatInterval) {
@@ -5663,11 +5685,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const willAutoReconnect = wasConnected && !suppressAutoReconnect && !!lastConnectOptions;
       if (willAutoReconnect) {
         connectionState.isReconnecting = true;
-        connectionState.reconnectReason = 'Link dropped';
+        connectionState.reconnectReason = t('main:ipc.linkDropped');
       }
       sendLog(mainWindow, 'info', 'Connection closed');
       sendConnectionState(mainWindow);
-      if (willAutoReconnect) scheduleAutoReconnect('Link dropped');
+      if (willAutoReconnect) scheduleAutoReconnect(t('main:ipc.linkDropped'));
     };
     currentTransport!.on('close', transportCloseHandler);
 
@@ -6023,7 +6045,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       // Unexpected close (e.g. physical USB disconnect) - full cleanup
       // so port watcher can restart and detect reconnected devices
-      cancelCalibration('Flight controller disconnected');
+      cancelCalibration(t('main:ipc.fcDisconnected'));
       cleanupMspConnection();
       cleanupTransportListeners();
       if (gcsHeartbeatInterval) {
@@ -6044,7 +6066,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', 'Connection closed');
       sendConnectionState(mainWindow);
       // The link was up and dropped on its own: recover it automatically.
-      if (wasConnected && !suppressAutoReconnect && lastConnectOptions) scheduleAutoReconnect('Link dropped');
+      if (wasConnected && !suppressAutoReconnect && lastConnectOptions) scheduleAutoReconnect(t('main:ipc.linkDropped'));
     };
     transport.on('close', transportCloseHandler);
   };
@@ -6225,14 +6247,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       let transportName = '';
       switch (options.type) {
         case 'serial':
-          if (!options.port) throw new Error('Port required for serial connection');
+          if (!options.port) throw new Error(t('main:ipc.portRequired'));
           currentTransport = new SerialTransport(options.port, {
             baudRate: options.baudRate ?? 115200,
           });
           transportName = `${options.port} @ ${options.baudRate ?? 115200}`;
           break;
         case 'tcp':
-          if (!options.host || !options.tcpPort) throw new Error('Host and port required for TCP');
+          if (!options.host || !options.tcpPort) throw new Error(t('main:ipc.hostPortRequired'));
           currentTransport = new TcpTransport({
             host: options.host,
             port: options.tcpPort,
@@ -6241,7 +6263,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           break;
         case 'udp':
           if (options.udpMode === 'client') {
-            if (!options.udpRemoteHost || !options.udpRemotePort) throw new Error('Remote host and port required for UDP client mode');
+            if (!options.udpRemoteHost || !options.udpRemotePort) throw new Error(t('main:ipc.udpRemoteRequired'));
             // Bind to a fixed local port (default 14550). ArduPilot UDPIN
             // latches the source IP+port of the first packet it receives and
             // replies there for the lifetime of the link; using an ephemeral
@@ -6320,7 +6342,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
         // Unexpected close (e.g. physical USB disconnect) - full cleanup
         // so port watcher can restart and detect reconnected devices
-        cancelCalibration('Flight controller disconnected');
+        cancelCalibration(t('main:ipc.fcDisconnected'));
         cleanupMspConnection();
         cleanupTransportListeners();
         if (mavlinkBatchTimer) {
@@ -6345,7 +6367,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         sendLog(mainWindow, 'info', 'Connection closed');
         sendConnectionState(mainWindow);
         // The link was up and dropped on its own: recover it automatically.
-        if (wasConnected && !suppressAutoReconnect && lastConnectOptions) scheduleAutoReconnect('Link dropped');
+        if (wasConnected && !suppressAutoReconnect && lastConnectOptions) scheduleAutoReconnect(t('main:ipc.linkDropped'));
       };
       currentTransport.on('close', transportCloseHandler);
 
@@ -6547,7 +6569,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
           return true;
         } else {
-          const errorMsg = 'Device did not respond to MSP protocol.';
+          const errorMsg = t('main:ipc.noMspResponseDevice');
           sendLog(mainWindow, 'error', 'MSP detection failed', errorMsg);
           safeSend(mainWindow, 'connection:error', errorMsg);
           currentTransport?.close();
@@ -6705,7 +6727,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             const diagnosis = classifyStream(sample);
             safeSend(mainWindow, IPC_CHANNELS.CONNECTION_DIAGNOSIS, diagnosis);
             const errorMsg = diagnosis.protocol === 'silence' || diagnosis.protocol === 'unknown'
-              ? 'Device did not respond to MAVLink or MSP. Check connection.'
+              ? t('main:ipc.noProtocolResponse')
               : diagnosis.summary;
             sendLog(mainWindow, 'error', 'No protocol detected', `${errorMsg} (link doctor: ${diagnosis.protocol})`);
             safeSend(mainWindow, 'connection:error', errorMsg);
@@ -6719,7 +6741,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return true;
     } catch (error) {
       console.error('Connection failed:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Connection failed', message);
       currentTransport = null;
       mavlinkParser = null;
@@ -6732,7 +6754,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // they refuse to touch the port the primary connection is using.
   const assertPortFree = (port: string): void => {
     if (currentTransport?.isOpen && connectionState.portPath === port) {
-      throw new Error('This port is in use by the active connection. Disconnect first.');
+      throw new Error(t('main:ipc.portInUse'));
     }
   };
 
@@ -6769,7 +6791,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // the only path for internal TX modules, which have no USB serial at all.
   ipcMain.handle(IPC_CHANNELS.LINKDOCTOR_PROBE_UDP, async (_e, port: number) => {
     if (currentTransport?.isOpen && connectionState.connectionType === 'udp') {
-      throw new Error('A UDP connection is already active. Disconnect first.');
+      throw new Error(t('main:ipc.udpAlreadyActive'));
     }
     const dgram = await import('node:dgram');
     return await new Promise<{ diagnosis: ReturnType<typeof classifyStream>; sender: string | null }>(
@@ -6860,8 +6882,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS.WFBNG_IMPORT_KEY, async () => {
     const result = await dialog.showOpenDialog({
-      title: 'Import wfb-ng pairing key',
-      filters: [{ name: 'gs.key', extensions: ['key'] }, { name: 'All files', extensions: ['*'] }],
+      title: t('main:ipc.importPairingKeyTitle'),
+      filters: [{ name: 'gs.key', extensions: ['key'] }, { name: t('main:fileFilters.allFilesLower'), extensions: ['*'] }],
       properties: ['openFile'],
     });
     const file = result.filePaths[0];
@@ -6876,6 +6898,40 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Disconnect
+  gpsPassthrough = new GpsPassthrough({
+    send: async (payload) => {
+      if (!currentTransport?.isOpen) return;
+      const packet = await sendMavlinkPacket(SERIAL_CONTROL_ID, payload, SERIAL_CONTROL_CRC_EXTRA);
+      await currentTransport.write(packet);
+      connectionState.packetsSent++;
+    },
+    emit: (e) => safeSend(mainWindow, IPC_CHANNELS.GPS_DIAG_EVENT, e),
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GPS_DIAG_START, async (): Promise<{ ok: boolean; error?: string }> => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) return { ok: false, error: t('main:ipc.notConnected') };
+    if (lastConnectOptions?.protocol === 'crsf' || connectionState.protocol !== 'mavlink') {
+      return { ok: false, error: 'GPS diagnostics need a MAVLink connection' };
+    }
+    if (connectionState.firmware === 'px4') return { ok: false, error: 'GPS diagnostics are ArduPilot only' };
+    if (lastReportedArmed) return { ok: false, error: 'Disarm first: the vehicle loses its GPS while diagnostics run' };
+    await gpsPassthrough!.start();
+    return { ok: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GPS_DIAG_STOP, async (): Promise<void> => {
+    await gpsPassthrough?.stop();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GPS_DIAG_BRIDGE_START, async (_e, port: number): Promise<{ ok: boolean; error?: string }> => {
+    if (!gpsPassthrough?.isOpen) return { ok: false, error: t('main:ipc.startGpsDiagnosticsFirst') };
+    return gpsPassthrough.startBridge(port);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GPS_DIAG_BRIDGE_STOP, async (): Promise<void> => {
+    gpsPassthrough?.stopBridge();
+  });
+
   ipcMain.handle(IPC_CHANNELS.COMMS_DISCONNECT, async (): Promise<void> => {
     // User is intentionally disconnecting: stop the transport `close` handler from
     // mistaking this teardown for a drop and auto-reconnecting, and forget the saved link.
@@ -6891,7 +6947,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Tear down any in-flight calibration so its module-scope state can't
     // survive into the next connection (otherwise the next start would fail
     // with "Another calibration is already in progress").
-    cancelCalibration('User disconnected');
+    cancelCalibration(t('main:ipc.userDisconnected'));
 
     stopPx4ManualControlStream();
     clearPx4MotorTestTimers();
@@ -7051,9 +7107,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.LAYOUT_EXPORT_FILE, async (e, fileName: string, content: string): Promise<string | null> => {
     const win = BrowserWindow.fromWebContents(e.sender) ?? mainWindow;
     const result = await dialog.showSaveDialog(win, {
-      title: 'Save workspace layout',
+      title: t('main:ipc.saveLayoutTitle'),
       defaultPath: join(app.getPath('documents'), fileName),
-      filters: [{ name: 'ArduDeck workspace layout', extensions: ['json'] }],
+      filters: [{ name: t('main:fileFilters.workspaceLayout'), extensions: ['json'] }],
     });
     if (result.canceled || !result.filePath) return null;
     await writeFileAsync(result.filePath, content, 'utf8');
@@ -7196,7 +7252,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_SET_KEY, async (_, passphrase: string): Promise<{ success: boolean; error?: string }> => {
     try {
       if (!passphrase || passphrase.length === 0) {
-        return { success: false, error: 'Passphrase cannot be empty' };
+        return { success: false, error: t('main:ipc.passphraseEmpty') };
       }
       const key = await passphraseToKey(passphrase);
       const newB64 = Buffer.from(key).toString('base64').slice(0, 12);
@@ -7220,7 +7276,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
       return { success: true };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: msg };
     }
   });
@@ -7231,7 +7287,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // Try to load from storage
       signingKey = loadSigningKey();
       if (!signingKey) {
-        return { success: false, error: 'No signing key configured. Set a passphrase first.' };
+        return { success: false, error: t('main:ipc.noSigningKeySetPassphrase') };
       }
     }
     signingEnabled = true;
@@ -7278,16 +7334,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Send SETUP_SIGNING message to the flight controller
   ipcMain.handle(IPC_CHANNELS.MAVLINK_SIGNING_SEND_TO_FC, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
-      return { success: false, error: 'Signing is only available for MAVLink connections' };
+      return { success: false, error: t('main:ipc.signingMavlinkOnly') };
     }
     if (detectedMavlinkVersion !== 2) {
-      return { success: false, error: 'Signing requires MAVLink v2. This board uses MAVLink v1.' };
+      return { success: false, error: t('main:ipc.signingNeedsV2') };
     }
     if (!signingKey) {
-      return { success: false, error: 'No signing key configured' };
+      return { success: false, error: t('main:ipc.noSigningKey') };
     }
 
     try {
@@ -7360,7 +7416,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       safeSend(mainWindow, IPC_CHANNELS.MAVLINK_SIGNING_STATUS, getSigningStatus());
       return { success: true };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send SETUP_SIGNING', msg);
       return { success: false, error: msg };
     }
@@ -7400,7 +7456,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         connectionState.packetsSent++;
         sendLog(mainWindow, 'info', `SETUP_SIGNING (disable) sent to FC (sys=${targetSys}, comp=${targetComp})`);
       } catch (error) {
-        const msg = error instanceof Error ? error.message : 'Unknown error';
+        const msg = error instanceof Error ? error.message : t('common:unknownError');
         sendLog(mainWindow, 'error', 'Failed to send disable-signing to FC', msg);
         return { success: false, error: `Failed to disable on FC: ${msg}` };
       }
@@ -7442,11 +7498,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const dlg = await dialog.showSaveDialog(mainWindow, {
-        title: 'Export Secure Link Evidence Pack',
+        title: t('main:ipc.exportEvidenceTitle'),
         defaultPath: `ardudeck-secure-link-evidence-${stamp}.json`,
         filters: [
-          { name: 'Evidence Pack (JSON)', extensions: ['json'] },
-          { name: 'Posture Report (Markdown)', extensions: ['md'] },
+          { name: t('main:fileFilters.evidencePack'), extensions: ['json'] },
+          { name: t('main:fileFilters.postureReport'), extensions: ['md'] },
         ],
       });
       if (dlg.canceled || !dlg.filePath) return { success: false, error: 'Cancelled' };
@@ -7481,7 +7537,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Secure-link evidence pack exported (${pack.auditLog.length} audit entries, chain ${pack.chain.ok ? 'verified' : 'BROKEN'})`);
       return { success: true, path: dlg.filePath };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const msg = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: msg };
     }
   });
@@ -7537,7 +7593,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to request parameters', message);
       return { success: false, error: message };
     }
@@ -7647,7 +7703,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // view happens to be mounted.
   requestAllParametersFromMain = async () => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (detectedMavlinkVersion === 2 && connectionState.firmware !== 'px4') {
       try {
@@ -7659,7 +7715,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS.PARAM_REQUEST_ALL, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
+    }
+    if (lastConnectOptions?.protocol === 'crsf') {
+      return { success: false, error: 'CRSF telemetry is read-only: parameters need a MAVLink link' };
     }
 
     // Guard against concurrent requests (renderer may fire multiple times on connect)
@@ -7671,7 +7730,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // three log lines per try and nothing gained: say so once instead.
     const transport = currentTransport as (typeof currentTransport & { canWrite?: boolean }) | null;
     if (transport && transport.canWrite === false) {
-      return { success: false, error: 'Link is up but the vehicle has not been heard from yet' };
+      return { success: false, error: t('main:ipc.vehicleNotHeard') };
     }
     paramRequestInFlight = true;
 
@@ -7706,7 +7765,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Set a single parameter
   ipcMain.handle(IPC_CHANNELS.PARAM_SET, async (_, paramId: string, value: number, type: number): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     try {
@@ -7741,7 +7800,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Failed to set parameter ${paramId}`, message);
       return { success: false, error: message };
     }
@@ -7759,7 +7818,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, sent: 0, confirmed: 0, failed: [], error: 'Not connected' };
+      return { success: false, sent: 0, confirmed: 0, failed: [], error: t('main:ipc.notConnected') };
     }
 
     if (params.length === 0) {
@@ -7943,7 +8002,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   /** Record what a calibration wrote, so the reboot can be checked against it. */
   ipcMain.handle(IPC_CHANNELS.CALIBRATION_RECORD_SAVE, (_, boardUid: string, record: CalibrationRecord) => {
-    if (!boardUid) return { success: false, error: 'No board identity' };
+    if (!boardUid) return { success: false, error: t('main:ipc.noBoardIdentity') };
     const boards = calibrationRecordStore.get('boards');
     // One record per calibration type: the latest run is the one that matters.
     // A record whose every parameter this run rewrote is retired too, or it is
@@ -7973,9 +8032,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     records?: CalibrationRecord[];
     error?: string;
   }> => {
-    if (!boardUid) return { success: false, error: 'No board identity' };
+    if (!boardUid) return { success: false, error: t('main:ipc.noBoardIdentity') };
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     const boards = calibrationRecordStore.get('boards');
@@ -8031,7 +8090,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, values: {}, types: {}, missing: paramIds, error: 'Not connected' };
+      return { success: false, values: {}, types: {}, missing: paramIds, error: t('main:ipc.notConnected') };
     }
     if (!Array.isArray(paramIds) || paramIds.length === 0) {
       return { success: true, values: {}, types: {}, missing: [] };
@@ -8182,7 +8241,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         sendLog(mainWindow, 'warn', `Offline - using cached parameter metadata for ${vehicleType} (may be outdated)`);
         return { success: true, metadata: diskCacheMetadata };
       }
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Failed to fetch parameter metadata`, message);
       return { success: false, error: message };
     }
@@ -8192,7 +8251,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Sends MAV_CMD_PREFLIGHT_STORAGE (245) with param1=1 (write all)
   ipcMain.handle(IPC_CHANNELS.PARAM_WRITE_FLASH, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     try {
@@ -8220,7 +8279,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', 'Writing parameters to flash...');
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to write parameters to flash', message);
       return { success: false, error: message };
     }
@@ -8244,7 +8303,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // the impending disconnect as expected rather than tearing down state
       // we still need (matches the pattern in ftpUpload's SITL path above).
       scheduleReconnect({
-        reason: isArdupilotSitl ? 'Restarting SITL to apply changes' : 'Rebooting flight controller',
+        reason: isArdupilotSitl ? t('main:ipc.restartingSitlApply') : t('main:ipc.rebootingFc'),
         delayMs: isArdupilotSitl ? 6000 : 3000,
         timeoutMs: 60000,
         maxAttempts: isArdupilotSitl ? 40 : 30,
@@ -8283,7 +8342,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to reboot flight controller', message);
       return false;
     }
@@ -8367,7 +8426,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }, 3000);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Failed to ${arm ? 'arm' : 'disarm'}`, message);
       return false;
     }
@@ -8407,7 +8466,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return true;
       } catch (error) {
         sendLog(mainWindow, 'error', 'Calibration control failed',
-          error instanceof Error ? error.message : 'Unknown error');
+          error instanceof Error ? error.message : t('common:unknownError'));
         return false;
       }
     },
@@ -8463,7 +8522,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent SET_MODE customMode=${customMode} (DO_SET_MODE + legacy) to sysid ${target.sysid}`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to set mode', message);
       return false;
     }
@@ -8514,7 +8573,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent VTOL_TAKEOFF (COMMAND_INT, rel-alt=${altitude}m) to sysid ${target.sysid}`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send VTOL takeoff command', message);
       return false;
     }
@@ -8554,7 +8613,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent TAKEOFF command to sysid ${target.sysid}, altitude=${altitude}m pitch=${pitch}°`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send takeoff command', message);
       return false;
     }
@@ -8616,7 +8675,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, fallback ? 'warn' : 'info', `Sent DO_REPOSITION to ${lat.toFixed(7)}, ${lon.toFixed(7)}, alt=${alt.toFixed(1)}m ${frameName} (mode=${lastFlightModeName}, sysid=${target.sysid})${fallback}`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send GO_TO command', message);
       return false;
     }
@@ -8661,7 +8720,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent DO_ORBIT center=${lat.toFixed(7)}, ${lon.toFixed(7)} alt=${alt.toFixed(1)}m radius=${radius}m`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send ORBIT command', message);
       return false;
     }
@@ -8702,7 +8761,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent DO_CHANGE_SPEED ${speedMs.toFixed(1)} m/s (type ${speedType})`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send DO_CHANGE_SPEED', message);
       return false;
     }
@@ -8738,7 +8797,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent NAV_LAND at ${lat.toFixed(7)}, ${lon.toFixed(7)}`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send LAND command', message);
       return false;
     }
@@ -8779,7 +8838,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Sent USER_${cmdId - 31009} lat=${lat.toFixed(7)} lon=${lon.toFixed(7)} alt=${alt} p1=${param1} p2=${param2}`);
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', `Failed to send USER_${cmdId - 31009}`, message);
       return false;
     }
@@ -8811,7 +8870,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // FTP. Probe = check the working dir is writable.
       if (connectionState.isSitl) {
         const cfg = ardupilotSitlProcess.currentConfig;
-        if (!cfg) return { verdict: 'no_response' as const, detail: 'SITL is connected but ArduDeck has lost track of the launcher config - restart SITL from the connection panel.' };
+        if (!cfg) return { verdict: 'no_response' as const, detail: t('main:ipc.sitlConfigLost') };
         try {
           const binaryPath = ardupilotSitlProcess.getBinaryPath(cfg.vehicleType, cfg.releaseTrack);
           const fs = await import('fs/promises');
@@ -8826,7 +8885,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           return { verdict: 'writable' as const };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          return { verdict: 'rejected' as const, detail: `Could not write to SITL working directory: ${msg}` };
+          return { verdict: 'rejected' as const, detail: t('main:ipc.sitlWriteFailed', { error: msg }) };
         }
       }
       const targetSys = connectionState.systemId ?? 1;
@@ -8852,12 +8911,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         if (result.ok) return { verdict: 'writable' as const };
         const err = result.error ?? 'unknown';
         if (/no response/i.test(err)) {
-          return { verdict: 'no_response' as const, detail: `FC did not respond to a write probe within 1.5 s. The MAVLink FTP server may be disabled or the FC has no writable filesystem (no SD card?).` };
+          return { verdict: 'no_response' as const, detail: t('main:ipc.writeProbeNoResponse') };
         }
         if (/FileNotFound/i.test(err)) {
-          return { verdict: 'no_sd_card' as const, detail: `Parent directory missing - typically means there is no SD card present, or /APM/scripts/ has not been created. ArduPilot creates /APM/scripts/ on boot when SCR_ENABLE=1, so a reboot may help.` };
+          return { verdict: 'no_sd_card' as const, detail: t('main:ipc.parentDirMissing') };
         }
-        return { verdict: 'rejected' as const, detail: `FC rejected the write probe: ${err}` };
+        return { verdict: 'rejected' as const, detail: t('main:ipc.writeProbeRejected', { error: String(err) }) };
       } finally {
         ftpClient = previousFtpClient;
       }
@@ -8947,7 +9006,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         // existing reconnect machinery captures the connection options while
         // the connection is still alive (it reads connectionState).
         scheduleReconnect({
-          reason: 'ArduDeck script install: applying parameter change',
+          reason: t('main:ipc.scriptInstallApplyingParam'),
           delayMs: 4000,    // typical FC boot time
           timeoutMs: timeoutSec * 1000,
           maxAttempts: 20,
@@ -8990,7 +9049,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // respawning it (HAL_SITL just exit()s).
       if (connectionState.isSitl) {
         const cfg = ardupilotSitlProcess.currentConfig;
-        if (!cfg) throw new Error('SITL launcher config unavailable - restart SITL from the connection panel');
+        if (!cfg) throw new Error(t('main:ipc.sitlLauncherUnavailable'));
         const fs = await import('fs/promises');
         const nodePath = await import('path');
         const binaryPath = ardupilotSitlProcess.getBinaryPath(cfg.vehicleType, cfg.releaseTrack);
@@ -9025,7 +9084,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         //     throws; silent failures here were the previous bug.
         sendLog(mainWindow, 'info', 'SITL: restarting process to load the new script…');
         scheduleReconnect({
-          reason: 'ArduDeck script install: restarting SITL to load script',
+          reason: t('main:ipc.scriptInstallRestartingSitl'),
           delayMs: 8000,
           timeoutMs: 60000,
           maxAttempts: 40,
@@ -9033,7 +9092,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
         const restartResult = await ardupilotSitlProcess.restart();
         if (!restartResult.success) {
-          throw new Error(`SITL restart failed: ${restartResult.error ?? 'unknown error'}`);
+          throw new Error(t('main:ipc.sitlRestartFailed', { error: restartResult.error ?? 'unknown error' }));
         }
         sendLog(mainWindow, 'info', `SITL: relaunched OK, waiting for ArduPilot to boot and load the script…`);
         return true;
@@ -9113,9 +9172,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
       return [{
         id: 'not_connected',
-        label: 'Not connected to a flight controller',
+        label: t('main:ipc.notConnectedFc'),
         severity: 'block' as const,
-        detail: 'Connect to an FC before running preflight checks.',
+        detail: t('main:ipc.connectBeforePreflight'),
         fix: null,
       }];
     }
@@ -9167,11 +9226,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       const bundle = getScriptBundle();
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save ArduDeck Lua Script',
+        title: t('main:ipc.saveLuaScriptTitle'),
         defaultPath: bundle.manifest.filename,
         filters: [
-          { name: 'Lua Script', extensions: ['lua'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.luaScript'), extensions: ['lua'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
       if (result.canceled || !result.filePath) return { success: false, error: 'Cancelled' };
@@ -9235,7 +9294,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
@@ -9277,7 +9336,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
@@ -9285,7 +9344,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Ask user where to save the file before doing any FC work.
     const defaultName = fcPath.split('/').filter(Boolean).pop() ?? 'download.bin';
     const dlg = await dialog.showSaveDialog(mainWindow, {
-      title: `Save ${fcPath}`,
+      title: t('main:ipc.saveFileTitle', { path: fcPath }),
       defaultPath: defaultName,
     });
     if (dlg.canceled || !dlg.filePath) {
@@ -9320,13 +9379,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     cancelled?: boolean;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
     }
     const dlg = await dialog.showOpenDialog(mainWindow, {
-      title: `Upload to ${targetDir}`,
+      title: t('main:ipc.uploadToTitle', { dir: targetDir }),
       properties: ['openFile'],
     });
     if (dlg.canceled || dlg.filePaths.length === 0) {
@@ -9377,7 +9436,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
@@ -9407,7 +9466,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
@@ -9486,10 +9545,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // ArduPilot refuses the command if the vehicle is armed.
   ipcMain.handle(IPC_CHANNELS.MOTOR_TEST_START, async (_, request: MotorTestStartRequest): Promise<MotorTestResponse> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
-      return { success: false, error: 'Motor test requires MAVLink connection' };
+      return { success: false, error: t('main:ipc.motorTestNeedsMavlink') };
     }
 
     if (connectionState.firmware === 'px4') {
@@ -9517,7 +9576,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           `Actuator test: motor ${request.motorCount && request.motorCount > 1 ? `1-${request.motorCount} sequence` : request.motor}, ${request.throttle}%, ${request.duration}s`);
         return { success: true };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message = error instanceof Error ? error.message : t('common:unknownError');
         sendLog(mainWindow, 'error', 'Failed to send actuator test command', message);
         return { success: false, error: message };
       }
@@ -9549,7 +9608,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         `Motor test: motor ${request.motor}, ${request.throttle}${request.throttleType === 'pwm' ? ' PWM' : '%'}, ${request.duration}s${request.motorCount ? ` (seq ${request.motorCount})` : ''}`);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send motor test command', message);
       return { success: false, error: message };
     }
@@ -9561,10 +9620,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // ground testing; user is responsible for safety (props off, etc.).
   ipcMain.handle(IPC_CHANNELS.SERVO_TEST_PULSE, async (_, request: { channel: number; pwm: number }) => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
-      return { success: false, error: 'Servo test requires MAVLink connection' };
+      return { success: false, error: t('main:ipc.servoTestNeedsMavlink') };
     }
     try {
       const payload = serializeCommandLong({
@@ -9582,7 +9641,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Servo test: ch ${request.channel} -> ${request.pwm}us`);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send servo test', message);
       return { success: false, error: message };
     }
@@ -9597,7 +9656,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: 'Trainer session active - the Trainer owns the sticks' };
     }
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'RC override requires MAVLink connection' };
@@ -9630,7 +9689,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       connectionState.packetsSent++;
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -9639,7 +9698,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // documented signal that the GCS is no longer overriding RC.
   const sendOverrideReleaseFrame = async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'RC override requires MAVLink connection' };
@@ -9661,7 +9720,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', 'RC override released');
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   };
@@ -9689,7 +9748,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: 'Trainer session active - the Trainer owns the sticks' };
     }
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
       return { success: false, error: 'RC override requires MAVLink connection' };
@@ -9716,7 +9775,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       armJoystickWatchdog();
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -9731,10 +9790,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // autopilot's normal control.
   ipcMain.handle(IPC_CHANNELS.SERVO_TEST_RELEASE, async (_, request: { channel: number }) => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
     if (connectionState.protocol !== 'mavlink') {
-      return { success: false, error: 'Servo test requires MAVLink connection' };
+      return { success: false, error: t('main:ipc.servoTestNeedsMavlink') };
     }
     try {
       const payload = serializeCommandLong({
@@ -9752,7 +9811,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Servo test release: ch ${request.channel}`);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send servo release', message);
       return { success: false, error: message };
     }
@@ -9763,7 +9822,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // a user-triggered immediate stop.
   ipcMain.handle(IPC_CHANNELS.MOTOR_TEST_STOP, async (_, motorCount: number): Promise<MotorTestResponse> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     if (connectionState.firmware === 'px4') {
@@ -9777,7 +9836,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         sendLog(mainWindow, 'info', `Actuator test STOP sent to ${motorCount} motors`);
         return { success: true };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message = error instanceof Error ? error.message : t('common:unknownError');
         sendLog(mainWindow, 'error', 'Failed to stop motors', message);
         return { success: false, error: message };
       }
@@ -9805,7 +9864,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Motor test STOP sent to ${motorCount} motors`);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to stop motors', message);
       return { success: false, error: message };
     }
@@ -9815,12 +9874,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Parameters',
+        title: t('main:ipc.saveParametersTitle'),
         defaultPath: 'parameters.param',
         filters: [
-          { name: 'Parameter Files', extensions: ['param'] },
-          { name: 'Text Files', extensions: ['txt'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.parameterFiles'), extensions: ['param'] },
+          { name: t('main:fileFilters.textFiles'), extensions: ['txt'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
 
@@ -9854,7 +9913,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Saved ${params.length} parameters to ${result.filePath}`);
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save parameters', message);
       return { success: false, error: message };
     }
@@ -9867,13 +9926,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // separate window) so focus returns there, not to the main window.
       const parentWindow = BrowserWindow.fromWebContents(event.sender) ?? mainWindow;
       const result = await dialog.showOpenDialog(parentWindow, {
-        title: 'Import Survey Area',
+        title: t('main:ipc.importSurveyAreaTitle'),
         filters: [
-          { name: 'Boundary Files', extensions: ['kml', 'kmz', 'geojson', 'json', 'shp', 'zip'] },
-          { name: 'KML / KMZ', extensions: ['kml', 'kmz'] },
+          { name: t('main:fileFilters.boundaryFiles'), extensions: ['kml', 'kmz', 'geojson', 'json', 'shp', 'zip'] },
+          { name: t('main:fileFilters.kmlKmz'), extensions: ['kml', 'kmz'] },
           { name: 'GeoJSON', extensions: ['geojson', 'json'] },
           { name: 'Shapefile', extensions: ['shp', 'zip'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -9905,7 +9964,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         let prj: string | undefined;
         try { prj = await fs.readFile(prjPath, 'utf-8'); } catch { prj = undefined; }
         const { geojson, featureCount } = shapefileToGeoJson(new Uint8Array(shpBuf), prj);
-        if (featureCount === 0) return { success: false, error: 'No polygon or line geometry found in the shapefile' };
+        if (featureCount === 0) return { success: false, error: t('main:ipc.noShapefileGeometry') };
         return { success: true, format: 'geojson', content: JSON.stringify(geojson), fileName };
       }
 
@@ -9921,7 +9980,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         const prjEntry = entries.find((e) => e.entryName.toLowerCase() === `${base}.prj`);
         const prj = prjEntry ? prjEntry.getData().toString('utf-8') : undefined;
         const { geojson, featureCount } = shapefileToGeoJson(new Uint8Array(shpEntry.getData()), prj);
-        if (featureCount === 0) return { success: false, error: 'No polygon or line geometry found in the shapefile' };
+        if (featureCount === 0) return { success: false, error: t('main:ipc.noShapefileGeometry') };
         return { success: true, format: 'geojson', content: JSON.stringify(geojson), fileName };
       }
 
@@ -9936,11 +9995,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.PARAM_LOAD_FILE, async (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }>; vehicleType?: string; filePath?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
-        title: 'Load Parameters',
+        title: t('main:ipc.loadParametersTitle'),
         filters: [
-          { name: 'Parameter Files', extensions: ['param'] },
-          { name: 'Text Files', extensions: ['txt'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.parameterFiles'), extensions: ['param'] },
+          { name: t('main:fileFilters.textFiles'), extensions: ['txt'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -9991,7 +10050,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Loaded ${params.length} parameters from ${filePath}${vehicleType ? ` (${vehicleType})` : ''}`);
       return { success: true, params, vehicleType, filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to load parameters', message);
       return { success: false, error: message };
     }
@@ -10020,7 +10079,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Saved ${params.length} parameters to ${filePath}`);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save parameters', message);
       return { success: false, error: message };
     }
@@ -10066,7 +10125,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Param checkpoint saved: ${changes.length} change(s) for board ${boardUid}`);
       return { success: true, checkpointId: checkpoint.id };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save param checkpoint', message);
       return { success: false };
     }
@@ -10144,7 +10203,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (result.changed) sendLog(mainWindow, 'info', `Vault: snapshot of ${params.length} params for ${boardName}`);
       return { success: true, ...result };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Snapshot failed';
+      const message = err instanceof Error ? err.message : t('main:ipc.snapshotFailed');
       sendLog(mainWindow, 'error', 'Vault: param snapshot failed', message);
       return { success: false, error: message };
     }
@@ -10160,7 +10219,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const result = await (await vault()).snapshotMission(site, missionName, formatWaypointsFile(items));
       return { success: true, ...result };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.snapshotFailed') };
     }
   });
 
@@ -10173,7 +10232,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const result = await (await vault()).snapshotArea(site, kmlContent);
       return { success: true, ...result };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.snapshotFailed') };
     }
   });
 
@@ -10183,11 +10242,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     doc: SurveyDocument,
   ) => {
     try {
-      if (!isSurveyDocument(doc)) return { success: false, error: 'Not a survey area document' };
+      if (!isSurveyDocument(doc)) return { success: false, error: t('main:ipc.notSurveyDocument') };
       const result = await (await vault()).snapshotSurveyArea(site, doc);
       return { success: true, ...result };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.snapshotFailed') };
     }
   });
 
@@ -10213,11 +10272,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     mission: StoredMission,
   ) => {
     try {
-      if (!isStoredMission(mission)) return { success: false, error: 'Not a mission document' };
+      if (!isStoredMission(mission)) return { success: false, error: t('main:ipc.notMissionDocument') };
       const result = await (await vault()).snapshotMissionDocument(site, mission);
       return { success: true, ...result };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Snapshot failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.snapshotFailed') };
     }
   });
 
@@ -10262,7 +10321,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       return { success: true, ...(await (await vault()).githubDeviceStart()) };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Device flow failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.deviceFlowFailed') };
     }
   });
 
@@ -10317,13 +10376,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Download mission from flight controller
   ipcMain.handle(IPC_CHANNELS.MISSION_DOWNLOAD, async (): Promise<{ success: boolean; error?: string }> => {
+    if (lastConnectOptions?.protocol === 'crsf') {
+      return { success: false, error: 'CRSF telemetry is read-only: missions need a MAVLink link' };
+    }
     // Download from the ACTIVE/selected vehicle. In single-vehicle this resolves to
     // the primary connection (unchanged); in fleet mode it resolves the selected
     // fleet vehicle's background transport + virtual sysid, and its responses are
     // routed in from the background-link handler.
     const target = resolveVehicleTarget(connectionRegistry.getActiveVehicleKey());
     if (!target) {
-      return { success: false, error: 'Vehicle not reachable' };
+      return { success: false, error: t('main:ipc.vehicleNotReachable') };
     }
 
     // Initialize download state (carry the target so responses + per-item requests
@@ -10373,7 +10435,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to request mission', message);
       missionDownloadState = null;
       return { success: false, error: message };
@@ -10383,11 +10445,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Upload mission to flight controller
   ipcMain.handle(IPC_CHANNELS.MISSION_UPLOAD, async (_, items: MissionItem[]): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     if (items.length === 0) {
-      return { success: false, error: 'No mission items to upload' };
+      return { success: false, error: t('main:ipc.noMissionItems') };
     }
 
     // Initialize upload state
@@ -10450,7 +10512,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to upload mission', message);
       missionUploadState = null;
       return { success: false, error: message };
@@ -10461,15 +10523,15 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // proven upload engine via a per-vehicle target override and resolves when the
   // FC ACKs. Sequential: one vehicle at a time (callers await before the next).
   ipcMain.handle(IPC_CHANNELS.MISSION_UPLOAD_TO_VEHICLE, async (_, vehicleKey: string, items: MissionItem[]): Promise<{ success: boolean; error?: string }> => {
-    if (items.length === 0) return { success: false, error: 'No mission items to upload' };
+    if (items.length === 0) return { success: false, error: t('main:ipc.noMissionItems') };
     const target = resolveVehicleTarget(vehicleKey);
-    if (!target) return { success: false, error: 'Vehicle not reachable' };
+    if (!target) return { success: false, error: t('main:ipc.vehicleNotReachable') };
     // Mission protocol (REQUEST/ACK) is routed to this upload from whichever link
     // it arrives on - primary or background - via handleMissionRequestForUpload,
     // so the target may be on any connected link. Uploads are sequential: one at
     // a time (the singleton missionUploadState carries the active target).
     if (missionUploadState) {
-      return { success: false, error: 'Another mission upload is in progress' };
+      return { success: false, error: t('main:ipc.missionUploadInProgress') };
     }
 
     const total = items.length;
@@ -10516,7 +10578,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             }, 10000);
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message = error instanceof Error ? error.message : t('common:unknownError');
           settleMissionUpload(mainWindow, false, message);
         }
       })();
@@ -10529,7 +10591,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Clear mission from flight controller
   ipcMain.handle(IPC_CHANNELS.MISSION_CLEAR, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     try {
@@ -10564,7 +10626,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: true };
     } catch (error) {
       missionClearPending = false;
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to clear mission', message);
       return { success: false, error: message };
     }
@@ -10577,7 +10639,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // back via MISSION_CURRENT telemetry, no ACK handshake to route.
     const target = resolveVehicleTarget(connectionRegistry.getActiveVehicleKey());
     if (!target) {
-      return { success: false, error: 'Vehicle not reachable' };
+      return { success: false, error: t('main:ipc.vehicleNotReachable') };
     }
 
     try {
@@ -10611,7 +10673,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Setting current waypoint to ${seq} (MAVLink v${detectedMavlinkVersion})`);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to set current waypoint', message);
       return { success: false, error: message };
     }
@@ -10624,18 +10686,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // the filename + filter to it so the saved file is unambiguous; otherwise
       // offer all and decide by the chosen extension.
       const allFilters = {
-        waypoints: { name: 'Waypoints', extensions: ['waypoints', 'txt'] },
+        waypoints: { name: t('main:fileFilters.waypoints'), extensions: ['waypoints', 'txt'] },
         plan: { name: 'QGC Plan', extensions: ['plan'] },
         kmz: { name: 'DJI KMZ', extensions: ['kmz'] },
       };
       const first = format && format in allFilters ? format : 'waypoints';
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Mission',
+        title: t('main:ipc.saveMissionTitle'),
         defaultPath: `mission.${first === 'waypoints' ? 'waypoints' : first === 'plan' ? 'plan' : 'kmz'}`,
         filters: [
           allFilters[first],
           ...(['waypoints', 'plan', 'kmz'] as const).filter((f) => f !== first).map((f) => allFilters[f]),
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
 
@@ -10651,7 +10713,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         // DJI WPML mission (issue #121): zip with wpmz/template.kml + waylines.wpml
         const { templateKml, waylinesWpml, waypointCount } = buildDjiWpml(items, Date.now());
         if (waypointCount === 0) {
-          return { success: false, error: 'No exportable waypoints (DJI KMZ needs plain waypoints with coordinates)' };
+          return { success: false, error: t('main:ipc.noExportableWaypoints') };
         }
         const AdmZip = (await import('adm-zip')).default;
         const zip = new AdmZip();
@@ -10676,7 +10738,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Saved mission (${items.length} items) to ${result.filePath}`);
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save mission', message);
       return { success: false, error: message };
     }
@@ -10686,10 +10748,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.MISSION_LOAD_FILE, async (): Promise<{ success: boolean; items?: MissionItem[]; error?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
-        title: 'Load Mission',
+        title: t('main:ipc.loadMissionTitle'),
         filters: [
-          { name: 'Mission Files', extensions: ['waypoints', 'txt', 'plan', 'kmz'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.missionFiles'), extensions: ['waypoints', 'txt', 'plan', 'kmz'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -10714,7 +10776,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
         items = parseDjiWpml(entry.getData().toString('utf-8'));
         if (items.length === 0) {
-          return { success: false, error: 'No waypoints found in the DJI mission' };
+          return { success: false, error: t('main:ipc.noDjiWaypoints') };
         }
       } else {
         const content = await fs.readFile(filePath, 'utf-8');
@@ -10728,7 +10790,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Loaded mission (${items.length} items) from ${filePath}`);
       return { success: true, items };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to load mission', message);
       return { success: false, error: message };
     }
@@ -10741,7 +10803,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Download fence from flight controller
   ipcMain.handle(IPC_CHANNELS.FENCE_DOWNLOAD, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     fenceDownloadState = {
@@ -10785,7 +10847,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to request fence', message);
       fenceDownloadState = null;
       return { success: false, error: message };
@@ -10795,11 +10857,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Upload fence to flight controller
   ipcMain.handle(IPC_CHANNELS.FENCE_UPLOAD, async (_, items: FenceItem[]): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     if (items.length === 0) {
-      return { success: false, error: 'No fence items to upload' };
+      return { success: false, error: t('main:ipc.noFenceItems') };
     }
 
     fenceUploadState = {
@@ -10844,7 +10906,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to upload fence', message);
       fenceUploadState = null;
       return { success: false, error: message };
@@ -10854,7 +10916,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Clear fence from flight controller
   ipcMain.handle(IPC_CHANNELS.FENCE_CLEAR, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     try {
@@ -10885,7 +10947,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: true };
     } catch (error) {
       fenceClearPending = false;
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to clear fence', message);
       return { success: false, error: message };
     }
@@ -10895,11 +10957,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.FENCE_SAVE_FILE, async (_, items: FenceItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Fence',
+        title: t('main:ipc.saveFenceTitle'),
         defaultPath: 'fence.txt',
         filters: [
-          { name: 'Fence Files', extensions: ['txt', 'fence'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.fenceFiles'), extensions: ['txt', 'fence'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
 
@@ -10914,7 +10976,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Saved fence (${items.length} items) to ${result.filePath}`);
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save fence', message);
       return { success: false, error: message };
     }
@@ -10924,10 +10986,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.FENCE_LOAD_FILE, async (): Promise<{ success: boolean; items?: FenceItem[]; error?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
-        title: 'Load Fence',
+        title: t('main:ipc.loadFenceTitle'),
         filters: [
-          { name: 'Fence Files', extensions: ['txt', 'fence'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.fenceFiles'), extensions: ['txt', 'fence'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -10944,7 +11006,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Loaded fence (${items.length} items) from ${filePath}`);
       return { success: true, items };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to load fence', message);
       return { success: false, error: message };
     }
@@ -10957,7 +11019,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Download rally points from flight controller
   ipcMain.handle(IPC_CHANNELS.RALLY_DOWNLOAD, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     rallyDownloadState = {
@@ -10999,7 +11061,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to request rally points', message);
       rallyDownloadState = null;
       return { success: false, error: message };
@@ -11009,11 +11071,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Upload rally points to flight controller
   ipcMain.handle(IPC_CHANNELS.RALLY_UPLOAD, async (_, items: RallyItem[]): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     if (items.length === 0) {
-      return { success: false, error: 'No rally points to upload' };
+      return { success: false, error: t('main:ipc.noRallyPoints') };
     }
 
     rallyUploadState = {
@@ -11058,7 +11120,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to upload rally points', message);
       rallyUploadState = null;
       return { success: false, error: message };
@@ -11068,7 +11130,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Clear rally points from flight controller
   ipcMain.handle(IPC_CHANNELS.RALLY_CLEAR, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected' };
+      return { success: false, error: t('main:ipc.notConnected') };
     }
 
     try {
@@ -11099,7 +11161,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: true };
     } catch (error) {
       rallyClearPending = false;
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to clear rally points', message);
       return { success: false, error: message };
     }
@@ -11109,11 +11171,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.RALLY_SAVE_FILE, async (_, items: RallyItem[]): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Rally Points',
+        title: t('main:ipc.saveRallyTitle'),
         defaultPath: 'rally.txt',
         filters: [
-          { name: 'Rally Files', extensions: ['txt', 'rally'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.rallyFiles'), extensions: ['txt', 'rally'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
 
@@ -11128,7 +11190,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Saved rally points (${items.length} items) to ${result.filePath}`);
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save rally points', message);
       return { success: false, error: message };
     }
@@ -11138,10 +11200,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.RALLY_LOAD_FILE, async (): Promise<{ success: boolean; items?: RallyItem[]; error?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
-        title: 'Load Rally Points',
+        title: t('main:ipc.loadRallyTitle'),
         filters: [
-          { name: 'Rally Files', extensions: ['txt', 'rally'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.rallyFiles'), extensions: ['txt', 'rally'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -11158,7 +11220,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Loaded rally points (${items.length} items) from ${filePath}`);
       return { success: true, items };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to load rally points', message);
       return { success: false, error: message };
     }
@@ -11175,7 +11237,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Detected ${boards.length} ${boards.length === 1 ? 'board' : 'boards'}`);
       return { success: true, boards };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Board detection failed', message);
       return { success: false, error: message };
     }
@@ -11194,7 +11256,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Found ${manifest.versions.length} firmware versions`);
       return { success: true, manifest };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to fetch firmware manifest', message);
       return { success: false, error: message };
     }
@@ -11230,7 +11292,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // For other sources (px4, custom), return empty (they use detected board only)
       return { success: true, boards: [] };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to fetch boards', message);
       return { success: false, error: message };
     }
@@ -11265,13 +11327,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
       const groups: VersionGroup[] = [{
         major: 'all',
-        label: 'All Versions',
+        label: t('main:ipc.allVersions'),
         versions,
         isLatest: true,
       }];
       return { success: true, groups };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to fetch versions', message);
       return { success: false, error: message };
     }
@@ -11472,7 +11534,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.EDGETX_EJECT, async (_, volumePath: string): Promise<{ ok: boolean; error?: string }> => {
     // Only eject volumes we identified as EdgeTX cards - never arbitrary paths.
     const card = await probeEdgeTxVolume(volumePath);
-    if (!card) return { ok: false, error: 'Not a mounted EdgeTX SD card' };
+    if (!card) return { ok: false, error: t('main:ipc.notEdgetxCard') };
     const execFile = promisify(execFileCb);
     try {
       if (process.platform === 'darwin') {
@@ -11591,7 +11653,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, 'info', `Firmware downloaded to ${filePath}`);
       return { success: true, filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Firmware download failed', message);
       return { success: false, error: message };
     }
@@ -11698,14 +11760,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         sendLog(mainWindow, 'info', `Firmware flash complete in ${(result.duration || 0) / 1000}s`);
         safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_COMPLETE, result);
       } else {
-        sendLog(mainWindow, 'error', 'Firmware flash failed', result.error || 'Unknown error');
-        safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_ERROR, result.error || 'Unknown error');
+        sendLog(mainWindow, 'error', 'Firmware flash failed', result.error || t('common:unknownError'));
+        safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_ERROR, result.error || t('common:unknownError'));
       }
 
       return { success: result.success, result, error: result.error };
     } catch (error) {
       firmwareAbortController = null;
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Firmware flash failed', message);
       safeSend(mainWindow, IPC_CHANNELS.FIRMWARE_ERROR, message);
       return { success: false, error: message };
@@ -11726,10 +11788,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.FIRMWARE_SELECT_FILE, async (): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
-        title: 'Select Firmware File',
+        title: t('main:ipc.selectFirmwareTitle'),
         filters: [
-          { name: 'Firmware Files', extensions: ['apj', 'bin', 'hex', 'px4'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.firmwareFiles'), extensions: ['apj', 'bin', 'hex', 'px4'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -11745,7 +11807,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const cachedPath = await copyCustomFirmware(filePath);
       return { success: true, filePath: cachedPath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to select firmware file', message);
       return { success: false, error: message };
     }
@@ -11754,7 +11816,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Enter bootloader mode via MAVLink
   ipcMain.handle(IPC_CHANNELS.FIRMWARE_ENTER_BOOTLOADER, async (): Promise<{ success: boolean; error?: string }> => {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
-      return { success: false, error: 'Not connected to flight controller' };
+      return { success: false, error: t('main:ipc.notConnectedToFc') };
     }
 
     try {
@@ -11795,7 +11857,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to enter bootloader', message);
       return { success: false, error: message };
     }
@@ -11821,7 +11883,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         })),
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to list serial ports', message);
       return { success: false, error: message };
     }
@@ -11854,7 +11916,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: false, error: 'No STM32 bootloader detected' };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'warn', `STM32 probe failed on ${port}`, message);
       return { success: false, error: message };
     }
@@ -12041,7 +12103,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         firmwareVersion: result.firmwareVersion,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'warn', `MAVLink query failed on ${port}`, message);
       return { success: false, error: message };
     } finally {
@@ -12097,10 +12159,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         };
       }
 
-      sendLog(mainWindow, 'debug', 'No MSP response');
-      return { success: false, error: 'No MSP response' };
+      sendLog(mainWindow, 'debug', t('main:ipc.noMspResponse'));
+      return { success: false, error: t('main:ipc.noMspResponse') };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'warn', `MSP query failed on ${port}`, message);
       return { success: false, error: message };
     }
@@ -12300,7 +12362,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
 
     sendLog(mainWindow, 'warn', `Could not identify board on ${port}`);
-    return { success: false, error: 'No compatible firmware detected' };
+    return { success: false, error: t('main:ipc.noCompatibleFirmware') };
   });
 
   // ESP32 flashing via esptool
@@ -12416,7 +12478,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -12436,7 +12498,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const command = await sitlProcess.start(config);
       return { success: true, command };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[SITL] Failed to start:', message);
       return { success: false, error: message };
     }
@@ -12448,7 +12510,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sitlProcess.stop();
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[SITL] Failed to stop:', message);
       return { success: false };
     }
@@ -12467,7 +12529,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await sitlProcess.deleteEeprom(filename);
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -12515,7 +12577,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       ardupilotRcSender.stop();
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[ArduPilot SITL] Failed to stop:', message);
       return { success: false };
     }
@@ -12704,21 +12766,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       if (platform === 'win32') {
         filters = [
-          { name: 'FlightGear Executable', extensions: ['exe'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.flightgearExecutable'), extensions: ['exe'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select FlightGear Executable (fgfs.exe)';
+        title = t('main:ipc.selectFgExe');
       } else if (platform === 'darwin') {
         filters = [
-          { name: 'Applications', extensions: ['app'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.applications'), extensions: ['app'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select FlightGear Application';
+        title = t('main:ipc.selectFgApp');
       } else {
         filters = [
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select FlightGear Executable (fgfs)';
+        title = t('main:ipc.selectFgBin');
       }
 
       const result = await dialog.showOpenDialog(mainWindow, {
@@ -12734,7 +12796,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const selectedPath = result.filePaths[0];
       return { success: true, path: selectedPath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[Simulator] Browse for FlightGear failed:', message);
       return { success: false, error: message };
     }
@@ -12746,7 +12808,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const result = await flightGearLauncher.launch(config, customPath);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[Simulator] Failed to launch FlightGear:', message);
       return { success: false, error: message };
     }
@@ -12786,19 +12848,19 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       if (platform === 'win32') {
         filters = [
-          { name: 'FlightGear Executable', extensions: ['exe'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.flightgearExecutable'), extensions: ['exe'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select FlightGear Executable (fgfs.exe)';
+        title = t('main:ipc.selectFgExe');
       } else if (platform === 'darwin') {
         filters = [
-          { name: 'Applications', extensions: ['app'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.applications'), extensions: ['app'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select FlightGear Application';
+        title = t('main:ipc.selectFgApp');
       } else {
-        filters = [{ name: 'All Files', extensions: ['*'] }];
-        title = 'Select FlightGear Executable (fgfs)';
+        filters = [{ name: t('main:fileFilters.allFiles'), extensions: ['*'] }];
+        title = t('main:ipc.selectFgBin');
       }
 
       const result = await dialog.showOpenDialog(mainWindow, {
@@ -12812,7 +12874,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
       return { success: true, path: result.filePaths[0] };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[ArduPilot FlightGear] Browse failed:', message);
       return { success: false, error: message };
     }
@@ -12822,7 +12884,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       return await ardupilotFlightGear.launch(config, customPath);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[ArduPilot FlightGear] Failed to launch:', message);
       return { success: false, error: message };
     }
@@ -12851,21 +12913,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       if (platform === 'win32') {
         filters = [
-          { name: 'X-Plane Executable', extensions: ['exe'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.xplaneExecutable'), extensions: ['exe'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select X-Plane Executable (X-Plane.exe)';
+        title = t('main:ipc.selectXplaneExe');
       } else if (platform === 'darwin') {
         filters = [
-          { name: 'Applications', extensions: ['app'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.applications'), extensions: ['app'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select X-Plane Application';
+        title = t('main:ipc.selectXplaneApp');
       } else {
         filters = [
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ];
-        title = 'Select X-Plane Executable';
+        title = t('main:ipc.selectXplaneBin');
       }
 
       const result = await dialog.showOpenDialog(mainWindow, {
@@ -12882,7 +12944,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true, path: selectedPath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[Simulator] Browse for X-Plane failed:', message);
       return { success: false, error: message };
     }
@@ -12894,7 +12956,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const result = await xplaneLauncher.launch(config, customPath);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[Simulator] Failed to launch X-Plane:', message);
       return { success: false, error: message };
     }
@@ -12923,7 +12985,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const result = await protocolBridge.start(config);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[Simulator] Failed to start bridge:', message);
       return { success: false, error: message };
     }
@@ -12991,11 +13053,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       // Get connection state
       if (!connectionState.isConnected || connectionState.protocol !== 'msp') {
-        return { success: false, error: 'Not connected to MSP board' };
+        return { success: false, error: t('main:ipc.notConnectedMsp') };
       }
 
       // Notify progress
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_enter', message: 'Entering CLI mode...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_enter', message: t('main:ipc.reportEnteringCli') });
 
       // Enter CLI mode and collect data via the CLI dump function
       const { enterCliMode, sendCliCommand, exitCliMode, getCliDump } = await import('./cli/cli-handlers.js');
@@ -13003,21 +13065,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await enterCliMode();
 
       // Collect status
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'status', message: 'Collecting status...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'status', message: t('main:ipc.reportCollectingStatus') });
       let statusOutput = '';
       await sendCliCommand('status');
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Get dump all
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'dump', message: 'Collecting dump all...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'dump', message: t('main:ipc.reportCollectingDump') });
       const dumpOutput = await getCliDump(false); // false = dump all (not diff)
 
       // Get diff all
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'diff', message: 'Collecting diff all...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'diff', message: t('main:ipc.reportCollectingDiff') });
       const diffOutput = await getCliDump(true); // true = diff
 
       // Exit CLI (will reboot board)
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_exit', message: 'Exiting CLI mode (board will reboot)...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'cli_exit', message: t('main:ipc.reportExitingCli') });
       await exitCliMode();
 
       const dump = createMspBoardDump(
@@ -13031,7 +13093,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true, dump };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -13040,10 +13102,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.REPORT_COLLECT_MAVLINK_DUMP, async (): Promise<{ success: boolean; dump?: BoardDumpMavlink; error?: string }> => {
     try {
       if (!connectionState.isConnected || connectionState.protocol !== 'mavlink') {
-        return { success: false, error: 'Not connected to MAVLink board' };
+        return { success: false, error: t('main:ipc.notConnectedMavlink') };
       }
 
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'board_dump', message: 'Collecting MAVLink diagnostics...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'board_dump', message: t('main:ipc.reportCollectingMavlink') });
 
       const defaultSysStatus: BoardDumpMavlink['sys_status'] = {
         sensors_present: 0, sensors_enabled: 0, sensors_health: 0, load: 0,
@@ -13082,7 +13144,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         },
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -13097,23 +13159,23 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       // Show save dialog
       const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Bug Report',
+        title: t('main:ipc.saveBugReportTitle'),
         defaultPath: `ardudeck-report-${Date.now()}.deckreport`,
-        filters: [{ name: 'DeckReport Files', extensions: ['deckreport'] }],
+        filters: [{ name: t('main:fileFilters.deckReport'), extensions: ['deckreport'] }],
       });
 
       if (canceled || !filePath) {
-        return { success: false, error: 'Save canceled' };
+        return { success: false, error: t('main:ipc.saveCanceled') };
       }
 
       // Notify progress
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'collecting', message: 'Collecting logs...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'collecting', message: t('main:ipc.reportCollectingLogs') });
 
       const t0 = Date.now();
       const payload = await createReportPayload(userDescription, boardDump, logHours);
       sendLog(mainWindow, 'info', `Bug report: ${payload.app_logs.length} log entries collected in ${Date.now() - t0}ms`);
 
-      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'encrypting', message: 'Encrypting report...' });
+      safeSend(mainWindow, IPC_CHANNELS.REPORT_PROGRESS, { stage: 'encrypting', message: t('main:ipc.reportEncrypting') });
 
       const t1 = Date.now();
       const encrypted = encryptReport(payload);
@@ -13124,7 +13186,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true, filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to save bug report', message);
       return { success: false, error: message };
     }
@@ -13166,11 +13228,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.LUA_GRAPH_SAVE, async (_event, graph: unknown): Promise<{ success: boolean; filePath?: string; error?: string }> => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Save Lua Graph',
+        title: t('main:ipc.saveLuaGraphTitle'),
         defaultPath: `${(graph as any)?.name || 'untitled'}.adgraph`,
         filters: [
-          { name: 'ArduDeck Graph', extensions: ['adgraph'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.ardudeckGraph'), extensions: ['adgraph'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
       if (result.canceled || !result.filePath) return { success: false };
@@ -13178,17 +13240,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await fs.writeFile(result.filePath, JSON.stringify(graph, null, 2), 'utf-8');
       return { success: true, filePath: result.filePath };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Save failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.saveFailed') };
     }
   });
 
   ipcMain.handle(IPC_CHANNELS.LUA_GRAPH_OPEN, async (): Promise<{ success: boolean; data?: unknown; filePath?: string; error?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
-        title: 'Open Lua Graph',
+        title: t('main:ipc.openLuaGraphTitle'),
         filters: [
-          { name: 'ArduDeck Graph', extensions: ['adgraph'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.ardudeckGraph'), extensions: ['adgraph'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -13199,7 +13261,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const data = JSON.parse(content);
       return { success: true, data, filePath };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Open failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.openFailed') };
     }
   });
 
@@ -13207,11 +13269,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       const safeName = (name || 'script').replace(/[^a-zA-Z0-9_-]/g, '_');
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Export Lua Script',
+        title: t('main:ipc.exportLuaScriptTitle'),
         defaultPath: `${safeName}.lua`,
         filters: [
-          { name: 'Lua Script', extensions: ['lua'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('main:fileFilters.luaScript'), extensions: ['lua'] },
+          { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
       });
       if (result.canceled || !result.filePath) return { success: false };
@@ -13219,7 +13281,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       await fs.writeFile(result.filePath, code, 'utf-8');
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Export failed' };
+      return { success: false, error: err instanceof Error ? err.message : t('main:ipc.exportFailed') };
     }
   });
 
@@ -13231,6 +13293,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // DroneBridge ESP32 (REST API)
   registerDroneBridgeIpcHandlers(mainWindow);
+
+  // Camera settings over SSH (RunCam WiFiLink)
+  registerCameraSettingsIpcHandlers();
 
   // MAVLink forwarding tee (mobile second-screen / secondary GCS). The
   // injector reads currentTransport at call time so it survives reconnects.
@@ -13375,11 +13440,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     const isUlog = connectionState.firmware === 'px4';
     const logExt = isUlog ? 'ulg' : 'bin';
     const result = await dialog.showSaveDialog(mainWindow, {
-      title: 'Save Flight Log',
+      title: t('main:ipc.saveFlightLogTitle'),
       defaultPath: `log_${logId}.${logExt}`,
       filters: [
         { name: isUlog ? 'PX4 ULog' : 'ArduPilot Flight Logs', extensions: [logExt] },
-        { name: 'All Files', extensions: ['*'] },
+        { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
       ],
     });
 
@@ -13397,7 +13462,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     });
 
     if (!data) {
-      safeSend(mainWindow, IPC_CHANNELS.LOG_DOWNLOAD_ERROR, { logId, error: 'Download failed' });
+      safeSend(mainWindow, IPC_CHANNELS.LOG_DOWNLOAD_ERROR, { logId, error: t('main:ipc.downloadFailed') });
       return null;
     }
 
@@ -13471,10 +13536,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.LOG_OPEN_DIALOG, async (): Promise<{ path: string } | null> => {
     if (!mainWindow) return null;
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Open Flight Log',
+      title: t('main:ipc.openFlightLogTitle'),
       filters: [
-        { name: 'Flight Logs', extensions: ['bin', 'log', 'ulg'] },
-        { name: 'All Files', extensions: ['*'] },
+        { name: t('main:fileFilters.flightLogs'), extensions: ['bin', 'log', 'ulg'] },
+        { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
       ],
       properties: ['openFile'],
     });
@@ -13595,7 +13660,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   }): Promise<{ success: boolean; content?: unknown[]; stop_reason?: string; error?: string }> => {
     const apiKey = getApiKey('ai-claude');
     if (!apiKey) {
-      return { success: false, error: 'No API key configured for claude. Add it in Settings.' };
+      return { success: false, error: t('main:ipc.noClaudeKey') };
     }
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -13722,16 +13787,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       const isKmz = format === 'kmz';
       const result = await dialog.showSaveDialog(mainWindow, {
-        title: 'Export Areas',
+        title: t('main:ipc.exportAreasTitle'),
         defaultPath: isKmz ? 'areas.kmz' : 'areas.kml',
         filters: isKmz
           ? [
-              { name: 'KMZ Archive', extensions: ['kmz'] },
-              { name: 'All Files', extensions: ['*'] },
+              { name: t('main:fileFilters.kmzArchive'), extensions: ['kmz'] },
+              { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
             ]
           : [
-              { name: 'KML File', extensions: ['kml'] },
-              { name: 'All Files', extensions: ['*'] },
+              { name: t('main:fileFilters.kmlFile'), extensions: ['kml'] },
+              { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
             ],
       });
 
@@ -13753,7 +13818,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       return { success: false, error: message };
     }
   });
@@ -13784,7 +13849,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       console.log('[frame-blueprint] ok:', 'error' in parsed ? parsed.error : `${partCount} parts (${spec ? 'real build' : 'preset'})`);
       return parsed;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : t('common:unknownError');
       console.error('[frame-blueprint] invocation failed:', message);
       return { error: `frame_blueprint invocation failed: ${message}` };
     }

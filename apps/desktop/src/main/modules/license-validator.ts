@@ -6,6 +6,7 @@
 import { verify, createPublicKey, createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { LicensePayload, ReceiptPayload } from '../../shared/module-types.js';
+import { t } from '../../shared/i18n/index.js';
 
 /**
  * Ed25519 public key in SPKI PEM format - the production Hangar signing key.
@@ -45,7 +46,7 @@ export function verifyLicenseKey(
 ): { valid: boolean; payload?: LicensePayload; error?: string } {
   const parts = key.split('.');
   if (parts.length !== 3 || parts[0] !== 'ARDUDECK') {
-    return { valid: false, error: 'Invalid key format' };
+    return { valid: false, error: t('main:licenseValidator.invalidKeyFormat') };
   }
 
   const payloadB64 = parts[1]!;
@@ -57,7 +58,7 @@ export function verifyLicenseKey(
     const isValid = verify(null, Buffer.from(payloadB64, 'utf-8'), publicKey, signature);
 
     if (!isValid) {
-      return { valid: false, error: 'Invalid signature' };
+      return { valid: false, error: t('main:licenseValidator.invalidSignature') };
     }
 
     const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
@@ -67,13 +68,13 @@ export function verifyLicenseKey(
     if (payload.expiresAt) {
       const expiresAt = new Date(payload.expiresAt);
       if (expiresAt < new Date()) {
-        return { valid: false, payload, error: 'License has expired' };
+        return { valid: false, payload, error: t('main:licenseValidator.licenseExpired') };
       }
     }
 
     return { valid: true, payload };
   } catch (err) {
-    return { valid: false, error: `Verification failed: ${err}` };
+    return { valid: false, error: t('main:licenseValidator.verificationFailed', { error: String(err) }) };
   }
 }
 
@@ -107,7 +108,7 @@ export function verifyReceipt(
   const publicKey = opts.publicKeyPem ? createPublicKey(opts.publicKeyPem) : getPublicKey();
   const parts = receipt.split('.');
   if (parts.length !== 3 || parts[0] !== RECEIPT_PREFIX) {
-    return { valid: false, error: 'Not a receipt' };
+    return { valid: false, error: 'Not a receipt' }; // i18n-exempt
   }
   const payloadB64 = parts[1]!;
   const sigB64 = parts[2]!;
@@ -119,19 +120,19 @@ export function verifyReceipt(
       publicKey,
       Buffer.from(sigB64, 'base64url'),
     );
-    if (!ok) return { valid: false, error: 'Invalid signature' };
+    if (!ok) return { valid: false, error: 'Invalid signature' }; // i18n-exempt
 
     const payload = JSON.parse(
       Buffer.from(payloadB64, 'base64url').toString('utf-8'),
     ) as ReceiptPayload;
 
-    if (payload.v !== 1) return { valid: false, payload, error: 'Unsupported receipt version' };
-    if (!Array.isArray(payload.slugs)) return { valid: false, payload, error: 'No slugs' };
+    if (payload.v !== 1) return { valid: false, payload, error: 'Unsupported receipt version' }; // i18n-exempt
+    if (!Array.isArray(payload.slugs)) return { valid: false, payload, error: 'No slugs' }; // i18n-exempt
     if (payload.deviceId !== deviceId) {
-      return { valid: false, payload, error: 'Receipt belongs to another device' };
+      return { valid: false, payload, error: 'Receipt belongs to another device' }; // i18n-exempt
     }
     if (payload.expiresAt && new Date(payload.expiresAt) < now) {
-      return { valid: false, payload, error: 'Receipt has expired' };
+      return { valid: false, payload, error: 'Receipt has expired' }; // i18n-exempt
     }
     return { valid: true, payload };
   } catch (err) {
