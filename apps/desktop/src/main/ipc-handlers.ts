@@ -150,6 +150,7 @@ import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-t
 import { PARAMETER_METADATA_URLS, mavTypeToVehicleType, type VehicleType, type ParameterMetadata, type ParameterMetadataStore } from '../shared/parameter-metadata.js';
 import { persistsStreamRates, cappedLegacyRates } from '../shared/stream-rates.js';
 import { getPx4ParameterMetadata } from './px4-parameter-metadata.js';
+import { AP_PERIPH_METADATA_URL, parsePeriphMetadata } from '../shared/periph-param-metadata.js';
 import { formatPx4Event, px4EventSeverity, setPx4EventMetadata } from './px4-events/index.js';
 import { COMP_METADATA_TYPE, fetchPx4ComponentMetadata } from './px4-component-info/index.js';
 import { px4CellVoltageAtThreshold } from '../shared/px4-battery.js';
@@ -193,7 +194,17 @@ import {
   deserializeGimbalDeviceAttitudeStatus,
   GIMBAL_MANAGER_INFORMATION_ID,
   deserializeGimbalManagerInformation,
+  CAN_FRAME_ID,
+  CAN_FRAME_CRC_EXTRA,
+  serializeCanFrame,
+  deserializeCanFrame,
+  CAN_FILTER_MODIFY_ID,
+  CAN_FILTER_MODIFY_CRC_EXTRA,
+  serializeCanFilterModify,
 } from '@ardudeck/mavlink-ts';
+import { DroneCanBridge, MAV_CMD_CAN_FORWARD } from './dronecan/dronecan-bridge.js';
+import { canStatsPath, parseCanBusStats } from '../shared/can-bus-stats.js';
+import type { DroneCanParamValue } from '../shared/dronecan-types.js';
 import { LogDownloadManager, type LogListEntry } from './mavlink-log/index.js';
 import { classifyStream, classifyDatagrams } from './link-doctor/stream-classifier.js';
 import { detectElrsModule, setElrsLinkMode, cancelElrsOperation } from './link-doctor/elrs-service.js';
@@ -209,6 +220,7 @@ import { writeFile as writeFileAsync } from 'node:fs/promises';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { simEngineProcess } from './sim/sim-engine-process.js';
 import { mediaEngine } from './media/media-engine.js';
+import { isOwnMedia, listMedia, mediaDir, mediaDragIcon } from './media/media-library.js';
 import { CANVAS_STREAM_PATHS, type CanvasStreamSnapshot, type VisionStreamOpenOptions } from '../shared/camera-types.js';
 import { openVisionStreamWindow, closeVisionStreamWindow, reportVisionStream, visionStreamSnapshot } from './media/vision-stream-window.js';
 import { ardupilotSitlProcess, swarmSitlProcess, ardupilotSitlDownloader, ardupilotRcSender } from './sitl/index.js';
@@ -2106,6 +2118,7 @@ export function isParameterDownloadActive(): boolean {
 
 // MAVLink FTP client for fast parameter download
 let ftpClient: MavlinkFtpClient | null = null;
+let droneCan: DroneCanBridge | null = null;
 let paramRequestInFlight = false; // Guard against concurrent param download requests
 let logDownloadManager: LogDownloadManager | null = null;
 
@@ -3607,6 +3620,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // ACK detection for level/gyro and the wider command-tracking layer.
       const ackCommand = readUint16(payload, 0);
       const ackResult = payload[2] ?? 0;
+      if (ackCommand === MAV_CMD_CAN_FORWARD) droneCan?.handleForwardAck(ackResult);
       // MAV_RESULT: 0=ACCEPTED, 1=TEMPORARILY_REJECTED, 2=DENIED, 3=UNSUPPORTED, 4=FAILED, 5=IN_PROGRESS
       const MAV_RESULT_NAMES = ['ACCEPTED', 'TEMPORARILY_REJECTED', 'DENIED', 'UNSUPPORTED', 'FAILED', 'IN_PROGRESS'];
       const resultName = MAV_RESULT_NAMES[ackResult] ?? `UNKNOWN(${ackResult})`;
@@ -3980,6 +3994,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           if (payload.length >= 32 && !connectionState.boardId) {
             const boardVersion = view.getUint32(28, true);
             if (boardVersion > 0) {
+              connectionState.boardVersion = boardVersion;
               const boardInfo = getBoardInfoFromVersion(boardVersion);
               if (boardInfo) {
                 connectionState.boardId = boardInfo.name;
@@ -4029,6 +4044,10 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
             const vType = flightSwVersion & 0xFF;
             const typeLabel = vType === 255 ? 'official' : vType >= 192 ? `rc${vType - 191}` : vType >= 128 ? `beta${vType - 127}` : vType >= 64 ? `alpha` : 'dev';
             sendLog(mainWindow, 'info', `Firmware: ${connectionState.vehicleType ?? 'ArduPilot'} v${major}.${minor}.${patch} (${typeLabel})`);
+            if (connectionState.firmwareVersion !== `${major}.${minor}.${patch}`) {
+              connectionState.firmwareVersion = `${major}.${minor}.${patch}`;
+              sendConnectionState(mainWindow);
+            }
           }
 
           // Cache for bug report diagnostics
@@ -4040,6 +4059,17 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         }
       } catch (err) {
         sendLog(mainWindow, 'debug', 'Failed to parse AUTOPILOT_VERSION', String(err));
+      }
+      break;
+    }
+
+    case CAN_FRAME_ID: {
+      if (droneCan) {
+        // MAVLink v2 trims trailing zero bytes; pad back to the fixed 16-byte layout.
+        const full = new Uint8Array(16);
+        full.set(payload.subarray(0, 16));
+        const f = deserializeCanFrame(full);
+        droneCan.handleFrame(f.bus, f.id, Uint8Array.from(f.data.slice(0, Math.min(f.len, 8))));
       }
       break;
     }
@@ -4395,6 +4425,46 @@ function getMissionResultName(result: number): string {
 export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Auto-load signing key now that app is ready (safeStorage requires app.whenReady)
   autoLoadSigningKey();
+
+  const writeToVehicle = async (msgid: number, payload: Uint8Array, crcExtra: number) => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected) return;
+    await currentTransport.write(await sendMavlinkPacket(msgid, payload, crcExtra));
+    connectionState.packetsSent++;
+  };
+  droneCan = new DroneCanBridge({
+    sendForwardCommand: (bus) => writeToVehicle(COMMAND_LONG_ID, serializeCommandLong({
+      targetSystem: connectionState.systemId || 1, targetComponent: 1, command: MAV_CMD_CAN_FORWARD, confirmation: 0,
+      param1: bus, param2: 0, param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+    }), COMMAND_LONG_CRC_EXTRA),
+    sendFrame: (bus, id, data) => writeToVehicle(CAN_FRAME_ID, serializeCanFrame({
+      targetSystem: connectionState.systemId || 1, targetComponent: 1, bus, len: data.length, id, data: Array.from(data),
+    }), CAN_FRAME_CRC_EXTRA),
+    // CAN_FILTER_MODIFY takes the 1-based bus, like MAV_CMD_CAN_FORWARD. 0 = CAN_FILTER_REPLACE.
+    sendFilter: (bus, ids) => writeToVehicle(CAN_FILTER_MODIFY_ID, serializeCanFilterModify({
+      targetSystem: connectionState.systemId || 1, targetComponent: 1, bus, operation: 0, numIds: ids.length, ids,
+    }), CAN_FILTER_MODIFY_CRC_EXTRA),
+    onState: (state) => safeSend(mainWindow, IPC_CHANNELS.DRONECAN_STATE, state),
+  });
+
+  const droneCanCall = async <T>(fn: (bridge: DroneCanBridge) => Promise<T>) => {
+    if (!droneCan || !connectionState.isConnected) return { success: false as const, error: 'notConnected' };
+    try {
+      return { success: true as const, data: await fn(droneCan) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  };
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_START, (_e, bus: number) => droneCanCall((b) => b.start(bus)));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_STOP, () => droneCanCall((b) => b.stop()));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_GET_STATE, () => droneCan?.getState() ?? null);
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_REFRESH_NODE, (_e, nodeId: number) => droneCanCall((b) => b.requestNodeInfo(nodeId)));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_LIST_PARAMS, (_e, nodeId: number) => droneCanCall((b) =>
+    b.listParams(nodeId, (count) => safeSend(mainWindow, IPC_CHANNELS.DRONECAN_PARAM_PROGRESS, { nodeId, count }))));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_SET_PARAM, (_e, nodeId: number, name: string, value: DroneCanParamValue, index: number) =>
+    droneCanCall((b) => b.setParam(nodeId, name, value, index)));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_GET_PARAM, (_e, nodeId: number, name: string) => droneCanCall((b) => b.getParam(nodeId, name)));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_SAVE_PARAMS, (_e, nodeId: number) => droneCanCall((b) => b.saveParams(nodeId)));
+  ipcMain.handle(IPC_CHANNELS.DRONECAN_RESTART_NODE, (_e, nodeId: number) => droneCanCall((b) => b.restartNode(nodeId)));
 
   // List available serial ports
   ipcMain.handle(
@@ -4926,7 +4996,22 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return mediaEngine.toggleRecord(sourceId);
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_REVEAL_MEDIA, (_, filePath: string) => {
-    if (typeof filePath === 'string' && mediaEngine.isOwnMedia(filePath)) shell.showItemInFolder(filePath);
+    if (typeof filePath === 'string' && isOwnMedia(filePath)) shell.showItemInFolder(filePath);
+  });
+  ipcMain.handle(IPC_CHANNELS.CAMERA_MEDIA_LIST, () => listMedia());
+  ipcMain.handle(IPC_CHANNELS.CAMERA_MEDIA_OPEN_FOLDER, async (_, kind: 'video' | 'photo') => {
+    await shell.openPath(mediaDir(kind === 'photo' ? 'photos' : 'videos'));
+  });
+  ipcMain.handle(IPC_CHANNELS.CAMERA_MEDIA_OPEN, async (_, filePath: string) => {
+    if (typeof filePath === 'string' && isOwnMedia(filePath)) await shell.openPath(filePath);
+  });
+  ipcMain.handle(IPC_CHANNELS.CAMERA_MEDIA_TRASH, async (_, filePath: string) => {
+    if (typeof filePath !== 'string' || !isOwnMedia(filePath)) return false;
+    try { await shell.trashItem(filePath); return true; } catch { return false; }
+  });
+  ipcMain.on(IPC_CHANNELS.CAMERA_MEDIA_DRAG, (event, filePath: string) => {
+    if (typeof filePath !== 'string' || !isOwnMedia(filePath)) return;
+    event.sender.startDrag({ file: filePath, icon: mediaDragIcon() });
   });
   ipcMain.handle(IPC_CHANNELS.CAMERA_DIAGNOSTICS, async () => {
     return mediaEngine.diagnostics();
@@ -7031,6 +7116,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         ftpClient.cleanup().catch(() => {});
         ftpClient = null;
       }
+      droneCan?.reset();
       // Vehicle-supplied PX4 metadata belongs to the link that supplied it; the
       // next vehicle may run different firmware, so fall back to the bundled
       // definitions until it reports its own.
@@ -9370,6 +9456,65 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
+  // AP_Periph parameter docs, shared by every DroneCAN node that runs it.
+  // Same 7-day disk cache as the vehicle metadata; stale cache beats nothing offline.
+  let periphMetadata: ParameterMetadataStore | null = null;
+  ipcMain.handle(IPC_CHANNELS.PERIPH_PARAM_METADATA, async () => {
+    if (periphMetadata) return { success: true as const, data: periphMetadata };
+    const cacheDir = join(app.getPath('userData'), 'param-metadata-cache');
+    const cacheFile = join(cacheDir, 'ap_periph.json');
+    let stale: ParameterMetadataStore | null = null;
+    try {
+      const { stat } = await import('node:fs/promises');
+      const fresh = Date.now() - (await stat(cacheFile)).mtimeMs < 7 * 24 * 60 * 60 * 1000;
+      const cached = JSON.parse(await readFile(cacheFile, 'utf-8')) as ParameterMetadataStore;
+      if (fresh) {
+        periphMetadata = cached;
+        return { success: true as const, data: cached };
+      }
+      stale = cached;
+    } catch {
+      // No disk cache yet
+    }
+    try {
+      const response = await fetch(AP_PERIPH_METADATA_URL);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      periphMetadata = parsePeriphMetadata(await response.json());
+      try {
+        const { mkdir } = await import('node:fs/promises');
+        await mkdir(cacheDir, { recursive: true });
+        await writeFile(cacheFile, JSON.stringify(periphMetadata));
+      } catch {
+        // Non-critical
+      }
+      return { success: true as const, data: periphMetadata };
+    } catch (err) {
+      if (stale) {
+        periphMetadata = stale;
+        return { success: true as const, data: stale };
+      }
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CAN_BUS_STATS, async (_, iface: number) => {
+    if (!currentTransport?.isOpen || !connectionState.isConnected || connectionState.protocol !== 'mavlink') {
+      return { success: false as const, error: 'notConnected' };
+    }
+    const client = buildBrowserFtpClient();
+    const previous = ftpClient;
+    ftpClient = client;
+    try {
+      const bytes = await client.downloadFile(`/${canStatsPath(iface)}`);
+      if (!bytes) return { success: false as const, error: 'unavailable' };
+      return { success: true as const, data: parseCanBusStats(new TextDecoder().decode(bytes)) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    } finally {
+      ftpClient = previous;
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.MAVLINK_FTP_UPLOAD, async (_, targetDir: string): Promise<{
     success: boolean;
     fcPath?: string;
@@ -10348,6 +10493,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS.FLEET_REPO_RENAME_UNIT, async (_, uid: string, name: string) =>
     (await vault()).renameUnit(uid, name));
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_DELETE_UNIT, async (_, uid: string) =>
+    (await vault()).deleteUnit(uid));
 
   ipcMain.handle(IPC_CHANNELS.FLEET_REPO_LINK_UNIT, async (_, unitUid: string, aliasUid: string) =>
     (await vault()).linkUnit(unitUid, aliasUid));
@@ -14485,6 +14633,7 @@ export async function cleanupOnShutdown(): Promise<void> {
 
   try {
     // Tear down the media engine (MediaMTX hub + any ffmpeg ingest/record).
+    await withDeadline('finishing recordings', 4000, mediaEngine.finishRecordings());
     mediaEngine.shutdown();
   } catch (err) {
     console.warn('[Shutdown] Error stopping media engine:', err);

@@ -526,10 +526,10 @@
       }
     },
     "sensor-armed": {
-      "description": "Ob das Fahrzeug aktuell scharf ist",
-      "label": "Scharf-Status",
+      "description": "Ob das Fahrzeug aktuell gearmt ist",
+      "label": "Arming-Status",
       "outputs": {
-        "is_armed": "Ist scharf"
+        "is_armed": "Ist gearmt"
       }
     },
     "sensor-attitude": {
@@ -876,11 +876,11 @@
       "name": "ArduDeck-Heartbeat-Beacon"
     },
     "aerial-survey": {
-      "description": "Löst die Kamera automatisch in festen Zeitabständen aus, wenn alle Vermessungsbedingungen erfüllt sind: scharf, im AUTO-Modus, in Bewegung und auf korrekter Höhe. Loggt die GPS-Koordinaten für jedes Foto.",
+      "description": "Löst die Kamera automatisch in festen Zeitabständen aus, wenn alle Vermessungsbedingungen erfüllt sind: gearmt, im AUTO-Modus, in Bewegung und auf korrekter Höhe. Loggt die GPS-Koordinaten für jedes Foto.",
       "name": "Luftbildvermessung automatisieren"
     },
     "attitude-led-display": {
-      "description": "Steuert NeoPixel-LED-Farben anhand der Fluglage: Rollen steuert Rot, Nicken Grün, Gieren Blau. Per Aux-Schalter aktiviert, nur wenn scharf.",
+      "description": "Steuert NeoPixel-LED-Farben anhand der Fluglage: Rollen steuert Rot, Nicken Grün, Gieren Blau. Per Aux-Schalter aktiviert, nur wenn gearmt.",
       "name": "Fluglage-LED-Anzeige"
     },
     "auto-rtl-battery": {
@@ -888,8 +888,8 @@
       "name": "Auto-RTL bei niedrigem Akku"
     },
     "camera-on-arm": {
-      "description": "Benachrichtigt, wenn das Fahrzeug scharf oder unscharf geschaltet wird. Mit Relais/Servo erweiterbar, um die Kameraaufnahme automatisch zu starten. Basiert auf ArduPilot runcam_on_arm.lua.",
-      "name": "Kamera bei Scharf/Unscharf"
+      "description": "Benachrichtigt, wenn das Fahrzeug gearmt oder disarmt wird. Mit Relais/Servo erweiterbar, um die Kameraaufnahme automatisch zu starten. Basiert auf ArduPilot runcam_on_arm.lua.",
+      "name": "Kamera bei Arm/Disarm"
     },
     "camera-trigger": {
       "description": "Löst das Kamerarelais in festem Zeitintervall aus, während sich das Fahrzeug bewegt.",
@@ -952,7 +952,7 @@
       "name": "Modusansage"
     },
     "multi-timer-scheduler": {
-      "description": "Drei unabhängige Timer mit unterschiedlichen Raten: GPS-Logging alle 2s, bedingte Akkuwarnung alle 10s und GPS-Qualitätsprüfung alle 30s. Alle abhängig vom Scharf-Status.",
+      "description": "Drei unabhängige Timer mit unterschiedlichen Raten: GPS-Logging alle 2s, bedingte Akkuwarnung alle 10s und GPS-Qualitätsprüfung alle 30s. Alle abhängig vom Arming-Status.",
       "name": "Multi-Timer-Aufgabenplaner"
     },
     "patrol-two-anchors": {
@@ -964,7 +964,7 @@
       "name": "Nutzlastabwurf"
     },
     "preflight-health-check": {
-      "description": "Prüft beim Scharfschalten Satellitenanzahl, Akkuspannung und Zustand des Höhensensors. Meldet PASS oder FAIL mit einer Summermelodie. 19 verbundene Nodes.",
+      "description": "Prüft beim Arming Satellitenanzahl, Akkuspannung und Zustand des Höhensensors. Meldet PASS oder FAIL mit einer Summermelodie. 19 verbundene Nodes.",
       "name": "Vorflug-Zustandsprüfung"
     },
     "speed-limit-warning": {

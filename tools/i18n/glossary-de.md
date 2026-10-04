@@ -5,14 +5,11 @@ Keep it short: German runs ~30% longer than English and many labels sit in tight
 Use German quotation marks „..." only inside running text; never em dashes (use commas, colons, or " - ").
 
 ## Never translate
-Flight mode names (Loiter, RTL, Stabilize, AltHold, PosHold, Auto, Guided, Acro, QLoiter, ANGLE, HORIZON, NAV RTH ...), parameter names (ARMING_CHECK, SR0_*), MAVLink message/command names (HEARTBEAT, DO_SET_SERVO, MAV_CMD_*), STATUSTEXT, brand/product/board names (ArduPilot, PX4, iNav, Betaflight, ExpressLRS, EdgeTX, MAVLink, CRSF, SBUS, DroneCAN, Matek ...), unit symbols (m/s, V, mAh, Hz, °), file extensions, key shortcuts (Ctrl+Z), abbreviations used as data labels in HUD readouts unless a German abbreviation is standard (ALT stays ALT, GS stays GS).
+Arm / Disarm / Armed / Disarmed / ARMED / DISARMED / Force Arm / Arming (states, buttons and labels stay exactly English; in running German text use the pilots' German forms of the English word: armen, disarmen, gearmt, disarmt, das Arming, Arming-Checks). Flight mode names (Loiter, RTL, Stabilize, AltHold, PosHold, Auto, Guided, Acro, QLoiter, ANGLE, HORIZON, NAV RTH ...), parameter names (ARMING_CHECK, SR0_*), MAVLink message/command names (HEARTBEAT, DO_SET_SERVO, MAV_CMD_*), STATUSTEXT, brand/product/board names (ArduPilot, PX4, iNav, Betaflight, ExpressLRS, EdgeTX, MAVLink, CRSF, SBUS, DroneCAN, Matek ...), unit symbols (m/s, V, mAh, Hz, °), file extensions, key shortcuts (Ctrl+Z), abbreviations used as data labels in HUD readouts unless a German abbreviation is standard (ALT stays ALT, GS stays GS).
 
 ## Terms
 | English | German |
 |---|---|
-| arm / disarm | scharf schalten / unscharf schalten |
-| armed / disarmed | scharf / unscharf |
-| arming checks | Arming-Checks |
 | pre-arm checks | Pre-Arm-Checks |
 | vehicle | Fahrzeug |
 | aircraft / drone | Luftfahrzeug / Drohne |

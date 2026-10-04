@@ -30,7 +30,8 @@
   "moduleHost": {
     "fenceNotConfirmed": "The vehicle did not confirm the fence",
     "pickPolygonPrompt": "Click the corners of the area",
-    "snapshotFailed": "Snapshot failed"
+    "snapshotFailed": "Snapshot failed",
+    "viewNeedsUpdate": "Update this cargo in the Hangar to open its view here."
   },
   "moduleManager": {
     "addKeyTitle": "Add a cargo key",

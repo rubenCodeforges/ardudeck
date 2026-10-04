@@ -40,8 +40,8 @@
     "startMissionsTip": "Die zugewiesene WP-Gruppe jedes Fahrzeugs hochladen und alle {{count}} Missionen in AUTO starten",
     "takeOff": "Starten",
     "takeOffAll": "Alle starten",
-    "takeOffAllTip": "Alle verbundenen Fahrzeuge werden scharf geschaltet und steigen gemeinsam auf {{alt}} m",
-    "takeOffFleetTip": "Nur die Flotte von {{label}} scharf schalten und auf {{alt}} m steigen lassen"
+    "takeOffAllTip": "Alle verbundenen Fahrzeuge werden gearmt und steigen gemeinsam auf {{alt}} m",
+    "takeOffFleetTip": "Nur die Flotte von {{label}} armen und auf {{alt}} m steigen lassen"
   },
   "fleetDisclosure": {
     "collapseAll": "Alle einklappen",
@@ -51,11 +51,11 @@
     "fleets": "Flotten"
   },
   "fleetGroupActions": {
-    "arm": "Scharf schalten",
-    "confirmArm_one": "{{count}} Fahrzeug scharf schalten?",
-    "confirmArm_other": "{{count}} Fahrzeuge scharf schalten?",
-    "confirmDisarm_one": "{{count}} Fahrzeug unscharf schalten?",
-    "confirmDisarm_other": "{{count}} Fahrzeuge unscharf schalten?",
+    "arm": "Arm",
+    "confirmArm_one": "{{count}} Fahrzeug armen?",
+    "confirmArm_other": "{{count}} Fahrzeuge armen?",
+    "confirmDisarm_one": "{{count}} Fahrzeug disarmen?",
+    "confirmDisarm_other": "{{count}} Fahrzeuge disarmen?",
     "confirmRtl_one": "{{count}} Fahrzeug nach Hause schicken (RTL)?",
     "confirmRtl_other": "{{count}} Fahrzeuge nach Hause schicken (RTL)?",
     "confirmStart_one": "Mission auf {{count}} Fahrzeug starten?",
@@ -77,7 +77,7 @@
     "setColour": "Farbe {{color}} festlegen",
     "unassigned": "Nicht zugewiesen",
     "vehicleTip": "{{label}} - {{mode}}",
-    "vehicleTipArmed": "{{label}} - {{mode}} - SCHARF"
+    "vehicleTipArmed": "{{label}} - {{mode}} - ARMED"
   },
   "formationGlyphs": {
     "box": "Box (Raster)",

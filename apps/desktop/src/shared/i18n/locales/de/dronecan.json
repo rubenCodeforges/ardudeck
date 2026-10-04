@@ -1,0 +1,133 @@
+{
+  "applyHint": "Ein geschriebener Wert gilt sofort auf dem Knoten. Mit „Auf Knoten speichern“ bleibt er auch nach einem Neustart erhalten.",
+  "applyHintRestart": "Einige Änderungen werden erst nach einem Neustart des Knotens wirksam. Schreiben, dann \"Auf Knoten speichern\", dann neu starten.",
+  "busHealth": {
+    "bitrate": "Bitrate",
+    "busOff": "Bus-Off-Ereignisse",
+    "diagnosis": {
+      "bus-off": {
+        "hint": "Der CAN-Controller ist in den Bus-Off-Zustand gegangen: Der Bus ist elektrisch fehlerhaft. Prüfen Sie auf kurzgeschlossene oder lose CAN_H/CAN_L, fehlende Masse oder fehlenden Abschluss.",
+        "title": "Bus-Fehler"
+      },
+      "healthy": {
+        "hint": "",
+        "title": "Bus in Ordnung"
+      },
+      "idle": {
+        "hint": "Auf diesem Bus wird nichts gesendet oder empfangen. Prüfen Sie, ob ein CAN-Port DroneCAN verwendet und ob der Flugcontroller nach dem Ändern der CAN-Einstellungen neu gestartet wurde.",
+        "title": "Kein Verkehr"
+      },
+      "no-ack": {
+        "hint": "Der Flugcontroller sendet Frames, aber kein Gerät bestätigt sie. Prüfen Sie das Kabel (CAN_H und CAN_L nicht vertauscht), die Stromversorgung des Geräts, den Abschluss beider Enden mit 120 Ω (die meisten Autopiloten haben einen eingebaut) und ob die Bitrate zum Gerät passt (DroneCAN-Standard ist 1 Mbit/s).",
+        "title": "Niemand antwortet auf dem Bus"
+      },
+      "rx-errors": {
+        "hint": "Frames kommen beschädigt an oder werden verworfen. Prüfen Sie Abschluss, Kabellänge und die Bitrate aller Geräte.",
+        "title": "Empfangsfehler"
+      }
+    },
+    "measuring": "Wird gemessen…",
+    "received": "Empfangen",
+    "sent": "Gesendet OK",
+    "subtitle": "CAN{{port}} aus Sicht des Flugcontrollers, alle 5 s gemessen",
+    "timeouts": "Nicht bestätigt",
+    "title": "Bus-Zustand",
+    "unavailable": "Diese Firmware liefert keine CAN-Statistik (benötigt MAVLink-FTP und @SYS/can0_stats.txt)."
+  },
+  "col": {
+    "default": "Standard",
+    "name": "Name",
+    "range": "Bereich",
+    "value": "Wert"
+  },
+  "confirmRestart": "Neustart bestätigen",
+  "danger": "Vorsicht",
+  "dangerTip": "Ein falscher Wert kann diesen Knoten vom CAN-Bus trennen oder seinen Bootloader überschreiben. Zur Wiederherstellung braucht es dann eine USB- oder SLCAN-Verbindung zum Knoten.",
+  "discard": "Verwerfen",
+  "docsSource": "Beschreibungen aus der ArduPilot-AP_Periph-Dokumentation",
+  "error": {
+    "failed": "Der Flugcontroller hat die CAN-Weiterleitung für diesen Port abgelehnt.",
+    "noResponse": "Keine Antwort vom Flugcontroller. Prüfen Sie, ob der Treiber des Ports aktiv ist und der FC nach dem Ändern der CAN-Einstellungen neu gestartet wurde.",
+    "request": "Anfrage fehlgeschlagen: {{error}}",
+    "start": "CAN-Weiterleitung konnte nicht gestartet werden: {{error}}",
+    "unsupported": "Diese Firmware enthält keine CAN-Weiterleitung über MAVLink, daher kann ArduDeck den DroneCAN-Bus nicht sehen."
+  },
+  "fcHint": "Das ist der Flugcontroller selbst. Seine Einstellungen finden Sie in der normalen Parametertabelle.",
+  "filterPlaceholder": "Parameter filtern",
+  "framesTip": "Vom Bus empfangene CAN-Frames, solange dieser Tab geöffnet ist",
+  "frames_one": "{{count}} Frame",
+  "frames_other": "{{count}} Frames",
+  "hardware": "Hardware",
+  "health": {
+    "critical": "Kritisch",
+    "error": "Fehler",
+    "ok": "In Ordnung",
+    "warning": "Warnung"
+  },
+  "loadingParams": "Parameter werden gelesen… {{count}}",
+  "mode": {
+    "initialization": "Initialisierung",
+    "maintenance": "Wartung",
+    "offline": "Offline",
+    "operational": "Betriebsbereit",
+    "softwareUpdate": "Firmware-Update"
+  },
+  "noBitsSet": "Nichts ausgewählt",
+  "noBus": {
+    "body": "Kein CAN-Port verwendet das DroneCAN-Protokoll. Setzen Sie CAN_P1_DRIVER auf 1 und CAN_D1_PROTOCOL auf DroneCAN und starten Sie den Flugcontroller neu.",
+    "title": "Kein DroneCAN-Bus konfiguriert"
+  },
+  "noParams": "Dieser Knoten meldet keine Parameter.",
+  "nodeFallbackName": "Knoten {{id}}",
+  "offline": "Offline",
+  "paramsSubtitle_one": "Knoten {{id}} · {{count}} Parameter",
+  "paramsSubtitle_other": "Knoten {{id}} · {{count}} Parameter",
+  "port": "CAN{{port}}",
+  "reboot": "Neustart",
+  "rebootTip": "Wird erst nach einem Neustart des Knotens wirksam.",
+  "reload": "Neu laden",
+  "requestError": {
+    "not-active": "die Überwachung ist gestoppt",
+    "notConnected": "nicht verbunden",
+    "rejected": "vom Knoten abgelehnt",
+    "timeout": "der Knoten hat nicht geantwortet"
+  },
+  "restart": "Knoten neu starten",
+  "restarted": "Neustart gesendet. Der Knoten erscheint in wenigen Sekunden wieder.",
+  "review": {
+    "asksToWrite": "{{from}} möchte Knotenparameter ändern",
+    "saveOnNode": "Auch auf dem Knoten speichern, damit die Werte einen Neustart überstehen",
+    "title": "DroneCAN-Änderungen prüfen",
+    "write_one": "{{count}} Änderung schreiben",
+    "write_other": "{{count}} Änderungen schreiben"
+  },
+  "saveToNode": "Auf Knoten speichern",
+  "saveToNodeTip": "Aktuelle Werte im Flash des Knotens speichern, damit sie einen Neustart überstehen",
+  "saved": "Auf dem Knoten gespeichert.",
+  "software": "Software",
+  "start": "Starten",
+  "status": {
+    "active": "Überwachung aktiv",
+    "failed": "Abgelehnt",
+    "idle": "Gestoppt",
+    "noResponse": "Keine Antwort",
+    "starting": "Verbindet",
+    "unsupported": "Nicht unterstützt"
+  },
+  "stop": "Stoppen",
+  "stoppedHint": "Die Überwachung ist gestoppt. Mit Starten wird der Bus gelesen.",
+  "subtitle": "Geräte am CAN-Bus, gelesen über den Flugcontroller",
+  "thisFc": "Dieser FC",
+  "title": "DroneCAN",
+  "uniqueId": "Eindeutige ID",
+  "uptime": "Laufzeit",
+  "valueNotListed": "{{value}} (nicht in der Liste)",
+  "waitingForNodes": "Der Bus wird abgehört. Knoten erscheinen, sobald sie ihren Status senden.",
+  "writeChanges_one": "{{count}} Änderung schreiben",
+  "writeChanges_other": "{{count}} Änderungen schreiben",
+  "writeFailed": "Nicht geschrieben: {{names}}",
+  "writtenAndSaved_one": "{{count}} Wert geschrieben und auf dem Knoten gespeichert.",
+  "writtenAndSaved_other": "{{count}} Werte geschrieben und auf dem Knoten gespeichert.",
+  "written_one": "{{count}} Wert geschrieben.",
+  "written_other": "{{count}} Werte geschrieben."
+}

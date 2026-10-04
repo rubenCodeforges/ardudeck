@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Film } from 'lucide-react';
+import { MediaGallery } from '../camera/MediaGallery';
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore, type ThemePreference } from '../../stores/settings-store';
@@ -340,6 +342,8 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
+      <MediaButton />
+
       {/* Theme toggle */}
       <ThemeToggle />
 
@@ -367,6 +371,29 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
         </div>
       </button>
     </nav>
+  );
+}
+
+/** Recordings and snapshots, reachable from any screen and without a vehicle. */
+function MediaButton() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className={`relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 group mb-1 ${
+          open ? 'bg-blue-500/20 text-blue-400' : 'text-content-tertiary hover:text-content-secondary hover:bg-surface-raised'
+        }`}
+        title={t('camera:gallery.title')}
+      >
+        <Film className="w-5 h-5" strokeWidth={1.5} />
+        <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
+          {t('camera:gallery.title')}
+        </div>
+      </button>
+      {open && <MediaGallery onClose={() => setOpen(false)} />}
+    </>
   );
 }
 

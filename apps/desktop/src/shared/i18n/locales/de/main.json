@@ -74,7 +74,7 @@
   },
   "edgetxPackages": {
     "descriptions": {
-      "ardudeck-hud": "Übersichtlicher Flugbildschirm im ArduDeck-Stil: große, ehrliche Zahlen, Leiste für Scharf-Status und Modus, laufender STATUSTEXT-Ticker und eine Diagnoseleiter, die Ihnen genau sagt, warum die Telemetrie fehlt, statt nur „keine Telemetrie“. Die Konfiguration wird aus Ihrem verbundenen Fahrzeug erzeugt. Alle Farb-Fernsteuerungen; Layouts skalieren auf den Bildschirm. S/W-Fernsteuerungen erhalten ein kompaktes Telemetrieskript, das für Sie installiert und einem Telemetriebildschirm zugewiesen wird.",
+      "ardudeck-hud": "Übersichtlicher Flugbildschirm im ArduDeck-Stil: große, ehrliche Zahlen, Leiste für Arming-Status und Modus, laufender STATUSTEXT-Ticker und eine Diagnoseleiter, die Ihnen genau sagt, warum die Telemetrie fehlt, statt nur „keine Telemetrie“. Die Konfiguration wird aus Ihrem verbundenen Fahrzeug erzeugt. Alle Farb-Fernsteuerungen; Layouts skalieren auf den Bildschirm. S/W-Fernsteuerungen erhalten ein kompaktes Telemetrieskript, das für Sie installiert und einem Telemetriebildschirm zugewiesen wird.",
       "yaapu-telemetry": "Vollständiges ArduPilot-Telemetrie-Widget: HUD, Flugmodi, GPS, Akku, STATUSTEXT-Meldungen mit Sprachansagen. Funktioniert über ELRS 4.x MAVLink und CRSF-Passthrough."
     },
     "variants": {
@@ -189,6 +189,7 @@
   },
   "fleetRepo": {
     "adoptFailed": "Repository konnte nicht übernommen werden",
+    "deleteFailed": "Löschen fehlgeschlagen",
     "deviceFlowError": "Unbekannter Fehler im Device Flow",
     "linkFailed": "Verknüpfung fehlgeschlagen",
     "noRepository": "Kein Repository konfiguriert",
@@ -196,6 +197,7 @@
     "notConnectedSetup": "Nicht verbunden. Richten Sie zuerst die Sicherung im Vault ein.",
     "renameFailed": "Umbenennen fehlgeschlagen",
     "tokenRejected": "Token von GitHub abgelehnt",
+    "unitNotFound": "Fahrzeug {{unit}} ist nicht im Vault",
     "useHttpsUrl": "Verwenden Sie eine HTTPS-Repository-URL (SSH wird nicht unterstützt)",
     "vaultHasSnapshots": "Dieser Vault enthält bereits Snapshots. Erstellen Sie stattdessen ein neues Repository oder verschieben Sie zuerst den Vault-Ordner."
   },
@@ -343,7 +345,7 @@
     "compassMotInProgress": "CompassMot läuft bereits",
     "compassNotConverging": "Die Kompasskalibrierung konvergiert nicht. Prüfen Sie, ob der Kompass funktionsfähig ist (Prearm „Compass not healthy“ bedeutet, dass er es nicht ist), entfernen Sie sich von Metall, Magneten und Kabeln und drehen Sie durch alle Achsen. Wenn dieser FC keinen funktionierenden Kompass hat, deaktivieren Sie ihn (COMPASS_ENABLE=0). Stabilize benötigt keinen.",
     "compassRefusedStart": "Das Fahrzeug hat den Start verweigert: Es kalibriert nur Kompasse, die eingeschaltet sind UND Daten melden. Prüfen Sie die Karte „Kompasse“, mindestens einer muss in Verwendung und funktionsfähig sein. Versorgen Sie das Fahrzeug über seinen Akku, nicht nur über USB.",
-    "fcBusy": "Der Flugcontroller ist beschäftigt. Schalten Sie unscharf, warten Sie einige Sekunden und versuchen Sie es erneut.",
+    "fcBusy": "Der Flugcontroller ist beschäftigt. Disarmen Sie, warten Sie einige Sekunden und versuchen Sie es erneut.",
     "fitNotConverged": "die Anpassung ist nicht konvergiert",
     "hintAccel": "Halten Sie jede Position ruhig auf einer festen Unterlage und versuchen Sie es erneut.",
     "hintCompass": "Entfernen Sie sich von Metall, Magneten und Kabeln und versuchen Sie es dann erneut.",
@@ -391,7 +393,7 @@
     "tiltedLevel": "Das Fahrzeug ist mehr als 10° aus der Waagerechten geneigt. Legen Sie den Flugcontroller auf eine ebene Fläche und versuchen Sie es erneut.",
     "unsupportedPx4Type": "Nicht unterstützter PX4-Kalibrierungstyp: {{type}}",
     "unsupportedType": "Nicht unterstützter MAVLink-Kalibrierungstyp: {{type}}",
-    "vehicleRefused": "Das Fahrzeug hat die Kalibrierung verweigert. Stellen Sie sicher, dass es unscharf ist und am Boden steht.",
+    "vehicleRefused": "Das Fahrzeug hat die Kalibrierung verweigert. Stellen Sie sicher, dass es disarmt ist und am Boden steht.",
     "vehicleRejected": "Das Fahrzeug hat die Kalibrierung abgelehnt: {{name}}.",
     "vehicleRejectedData": "das Fahrzeug hat die Daten abgelehnt",
     "waitingFc": "Warten auf Flugcontroller...",
@@ -515,8 +517,8 @@
   },
   "scriptInstaller": {
     "cancelled": "Installation abgebrochen",
-    "cannotRebootArmed": "Neustart nicht möglich, solange das Fahrzeug scharf ist",
-    "disarmFirst": "Schalten Sie das Fahrzeug im Flugsteuerungs-Panel unscharf und versuchen Sie es erneut.",
+    "cannotRebootArmed": "Neustart nicht möglich, solange das Fahrzeug gearmt ist",
+    "disarmFirst": "Disarmen Sie das Fahrzeug im Flugsteuerungs-Panel und versuchen Sie es erneut.",
     "noFc": "Kein Flugcontroller verbunden",
     "noHeartbeat": "Skript hochgeladen, aber innerhalb von {{seconds}}s kein Heartbeat ({{name}}) empfangen. Mögliche Ursachen:\n  • SCR_ENABLE ist nicht 1 (die Vorabprüfung hätte das erkennen sollen)\n  • Das Skript ist beim Laden abgestürzt - prüfen Sie die STATUSTEXT-Meldungen des FC\n  • Der FC hat das Skript-Subsystem nicht tatsächlich neu gestartet/neu geladen\n  • SITL wurde nicht sauber neu gestartet",
     "preflightFailedAfterConsent": "Vorabprüfung nach der Zustimmung fehlgeschlagen. Beheben Sie die offenen Probleme.",
@@ -524,9 +526,9 @@
     "versionMismatch": "v{{expected}} erwartet, der FC meldet jedoch v{{observed}}. Möglicherweise ist noch ein älteres Skript geladen."
   },
   "scriptPreflight": {
-    "armedWarn": "Das Fahrzeug ist derzeit scharf. Die Installation wird fortgesetzt, aber ein erforderlicher Neustart wird abgelehnt, solange es scharf ist - schalten Sie zuerst unscharf, falls ein Neustart nötig ist.",
-    "disarmedLabel": "Fahrzeug unscharf",
-    "disarmedPass": "Das Fahrzeug ist unscharf - Installation ist sicher.",
+    "armedWarn": "Das Fahrzeug ist derzeit gearmt. Die Installation wird fortgesetzt, aber ein erforderlicher Neustart wird abgelehnt, solange es gearmt ist - disarmen Sie zuerst, falls ein Neustart nötig ist.",
+    "disarmedLabel": "Fahrzeug disarmt",
+    "disarmedPass": "Das Fahrzeug ist disarmt - Installation ist sicher.",
     "ftpFail": "Diese Verbindung unterstützt kein MAVLink FTP. Die Installation benötigt FTP, um das Skript auf die SD-Karte zu schreiben. Aktuelles ArduPilot (4.x+) unterstützt es; prüfen Sie, ob Sie mit einem echten FC verbunden sind und nicht mit einem Passthrough.",
     "ftpLabel": "MAVLink FTP verfügbar",
     "ftpPass": "Die Verbindung unterstützt MAVLink FTP - das Skript kann hochgeladen werden.",

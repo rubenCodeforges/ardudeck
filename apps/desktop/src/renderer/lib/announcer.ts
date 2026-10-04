@@ -178,6 +178,7 @@ async function playNext(): Promise<void> {
   if (playing) return;
   const item = queue.shift();
   if (!item) return;
+  if (muted()) { queue.length = 0; return; }
   playing = true;
   try {
     if (!ctx) ctx = new AudioContext();
@@ -310,13 +311,23 @@ export function initAnnouncer(): void {
   window.addEventListener('pointerdown', unlock);
   unsubs.push(() => window.removeEventListener('pointerdown', unlock));
 
-  // Boot greeting: once per renderer, straight to the queue (no link
-  // requirement - the app just started). Muted users stay ungreeted.
-  const gg = globalThis as { __adGreeted?: boolean };
-  if (!gg.__adGreeted && !muted()) {
+  // Boot greeting, once per renderer. Waits for saved settings: before they load, mute reads as off.
+  const greet = () => {
+    const gg = globalThis as { __adGreeted?: boolean };
+    if (gg.__adGreeted) return;
     gg.__adGreeted = true;
+    if (muted()) return;
     queue.push({ wav: 'welcome', key: 'welcome' });
     void playNext();
+  };
+  if (useSettingsStore.getState()._isInitialized) greet();
+  else {
+    const off = useSettingsStore.subscribe((s) => {
+      if (!s._isInitialized) return;
+      off();
+      greet();
+    });
+    unsubs.push(off);
   }
 
   unsubs.push(useTelemetryStore.subscribe((s) => {

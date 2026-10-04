@@ -12,6 +12,7 @@ import { setupModuleIpc } from './modules/module-ipc.js';
 import { setupAppIpc } from './apps/app-ipc.js';
 import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers } from './tile-cache.js';
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
+import { registerMediaSchemePrivileges, setupMediaProtocol } from './media/media-library.js';
 import { setupDeepLinks, handleStartupArgs, flushPendingDeepLink, deliverDeepLinkUrl } from './modules/deep-link.js';
 import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc, getMainFullScreen, setMainFullScreen } from './window-manager.js';
 import { createSplashWindow, splashSetStatus, closeSplash } from './splash-window.js';
@@ -140,6 +141,7 @@ graphicsPrefs.set('lastLaunchUnclean', true);
 // Register tile-cache:// scheme BEFORE app.ready (Electron requirement)
 registerTileCacheScheme();
 registerModuleSchemePrivileges();
+registerMediaSchemePrivileges();
 
 /**
  * macOS shows a scary system prompt ("ardudeck wants to access your
@@ -333,6 +335,7 @@ app.whenReady().then(() => {
   // Setup tile cache protocol handler (must be after app.ready)
   setupTileCacheProtocol();
   setupModuleProtocol();
+  setupMediaProtocol();
 
   // Must run before the first BrowserWindow exists: creating a session is
   // what triggers the Safe Storage keychain read on macOS.

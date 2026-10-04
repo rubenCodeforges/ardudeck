@@ -106,6 +106,8 @@
     "boundarySaved": "Begrenzung in {{site}} gespeichert",
     "boundaryUnchanged": "Begrenzung seit dem letzten Snapshot unverändert",
     "cannotIdentify": "Das Fahrzeug konnte nicht erkannt werden. Wählen Sie im Vault unter \"Working on\" eines aus.",
+    "deleteFailed": "Fahrzeug konnte nicht gelöscht werden",
+    "deleted": "Fahrzeug gelöscht. Seine Snapshots bleiben in der Historie.",
     "firmwareMismatch": "Dieser Snapshot stammt von {{snapshotFirmware}}, aber auf diesem Fahrzeug läuft {{liveFirmware}}. Die Parameternamen lassen sich nicht zwischen Flight-Stacks übertragen.",
     "linkFailed": "Verknüpfen fehlgeschlagen",
     "linked": "Fahrzeug verknüpft; Snapshots werden in dieser Einheit fortgesetzt",

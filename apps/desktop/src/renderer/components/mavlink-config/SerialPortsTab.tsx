@@ -10,6 +10,7 @@ import React, { useMemo } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Cable, Usb, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
+import { boardPortLabel, boardPortRegistry } from '../../modules/module-extension-registries';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useConnectionStore } from '../../stores/connection-store';
 
@@ -341,7 +342,9 @@ function PortRow({ index }: { index: number }) {
 
   const protocol = parameters.get(protocolParam)?.value ?? -1;
   const baud = parameters.get(baudParam)?.value ?? 115;
-  const label = PORT_LABELS[index] ?? `Serial${index}`;
+  const boardVersion = useConnectionStore((s) => s.connectionState.boardVersion);
+  const boardPort = boardPortLabel(boardPortRegistry.useEntries(), boardVersion ? boardVersion >>> 16 : undefined, index);
+  const label = boardPort?.label ?? PORT_LABELS[index] ?? `Serial${index}`;
   const isUsb = index === 0;
 
   const isRcin = Number(protocol) === 23;
@@ -361,7 +364,7 @@ function PortRow({ index }: { index: number }) {
           )}
           <div>
             <span className="text-sm text-content">SERIAL{index}</span>
-            <p className="text-[10px] text-content-secondary leading-tight">{label}</p>
+            <p className="text-[10px] text-content-secondary leading-tight" data-tip={boardPort?.note}>{label}</p>
           </div>
         </div>
       </td>

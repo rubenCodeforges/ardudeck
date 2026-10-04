@@ -236,7 +236,10 @@ export class MAVLinkParser {
       }
 
       this.stats.packetsReceived++;
-      this.packetQueue.push({ ...packet, crcValidated: true });
+      // v2 trims trailing zero bytes; restore them so decoders can read every field.
+      // `buffer` and `payloadLength` keep the wire form.
+      const payload = packet.payload.length < msgInfo.maxLength ? zeroPad(packet.payload, msgInfo.maxLength) : packet.payload;
+      this.packetQueue.push({ ...packet, payload, crcValidated: true });
       this.consume(packetLength);
     }
   }
@@ -246,6 +249,12 @@ export class MAVLinkParser {
     this.buffer.copyWithin(0, n, this.bufferLength);
     this.bufferLength -= n;
   }
+}
+
+function zeroPad(payload: Uint8Array, length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  out.set(payload);
+  return out;
 }
 
 /**

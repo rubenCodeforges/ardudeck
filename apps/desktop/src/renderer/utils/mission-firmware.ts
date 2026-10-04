@@ -31,6 +31,8 @@ export function detectMissionFirmware(link: MissionFirmwareLink): MissionFirmwar
   if (!link.isConnected) return null;
   if (link.protocol === 'msp' && link.fcVariant === 'INAV') return 'inav';
   if (link.firmware === 'px4') return 'px4';
+  // A generic autopilot (INAV over MAVLink, the Vehicle SDK) does not say which stack it is: the toggle decides.
+  if (link.firmware === 'custom') return null;
   return 'ardupilot';
 }
 

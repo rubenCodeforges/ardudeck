@@ -12,7 +12,7 @@
     "sourceReview": "QUELLCODE-PRÜFUNG"
   },
   "preflightChecksList": {
-    "disarmVehicle": "Fahrzeug unscharf schalten",
+    "disarmVehicle": "Fahrzeug disarmen",
     "fix": "Beheben",
     "need": " → benötigt: {{value}}",
     "now": "aktuell: {{value}}",
@@ -69,7 +69,7 @@
     "reviewTitle": "Prüfen & installieren",
     "reviewedInstall": "Geprüft - installieren",
     "safeRemovable": "Jederzeit in den Einstellungen entfernbar",
-    "safeSandboxed": "In einer Sandbox - kann Stabilisierung, Scharfschalten und Moduswechsel nicht beeinflussen",
+    "safeSandboxed": "In einer Sandbox - kann Stabilisierung, Arming und Moduswechsel nicht beeinflussen",
     "safeSource": "Sie sehen den vollständigen Quellcode und SHA256, bevor Sie zustimmen",
     "safeVehicle": "Läuft auf dem Fahrzeug, nicht auf der Bodenstation - übersteht Verbindungsverlust",
     "saveAgain": "Erneut speichern",
@@ -105,6 +105,6 @@
     "whySafe": "Warum es sicher ist",
     "wrongBenchTest": "Testen Sie den installierten Befehl am Boden, bevor Sie sich im Flug darauf verlassen",
     "wrongExperimental": "Diese Funktion ist <b>experimentell</b>. Das Skript könnte nicht laden, mitten im Flug abstürzen oder sich unerwartet verhalten",
-    "wrongReboot": "Wenn <code>SCR_ENABLE</code> geändert werden muss, startet der FC neu - dies wird abgelehnt, solange das Fahrzeug scharf ist"
+    "wrongReboot": "Wenn <code>SCR_ENABLE</code> geändert werden muss, startet der FC neu - dies wird abgelehnt, solange das Fahrzeug gearmt ist"
   }
 }

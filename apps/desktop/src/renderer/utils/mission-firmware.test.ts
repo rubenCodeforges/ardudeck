@@ -19,11 +19,11 @@ describe('detectMissionFirmware', () => {
     expect(detectMissionFirmware({ isConnected: true, protocol: 'msp', fcVariant: 'INAV' })).toBe('inav');
   });
 
-  it('falls back to ArduPilot for an unidentified MAVLink vehicle', () => {
+  it('leaves an unidentified MAVLink vehicle (INAV over MAVLink, Vehicle SDK) to the toggle', () => {
     // Deliberate: an unknown stack still speaks the common mission set, and
     // ArduPilot's palette is the superset. Documented rather than accidental.
     expect(detectMissionFirmware({ isConnected: true, protocol: 'mavlink' })).toBe('ardupilot');
-    expect(detectMissionFirmware({ isConnected: true, protocol: 'mavlink', firmware: 'custom' })).toBe('ardupilot');
+    expect(detectMissionFirmware({ isConnected: true, protocol: 'mavlink', firmware: 'custom' })).toBeNull();
   });
 
   it('does not treat a Betaflight MSP link as iNav', () => {

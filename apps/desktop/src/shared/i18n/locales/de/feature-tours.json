@@ -168,7 +168,7 @@
     },
     "vehicleSetup": {
       "battery": {
-        "body": "Monitortyp, Spannungs- und Strommessung sowie die Spannungen für niedrig, kritisch und Scharfschalten, vorgeschlagen anhand von Zellenzahl und Chemie.",
+        "body": "Monitortyp, Spannungs- und Strommessung sowie die Spannungen für niedrig, kritisch und Arming, vorgeschlagen anhand von Zellenzahl und Chemie.",
         "title": "Akku"
       },
       "blurb": "Jeder Tab hier ist eine Seite über die Parameter, die eine Aufgabe braucht, in verständlichen Worten. Die Rohtabelle ist der letzte Ausweg.",
@@ -189,7 +189,7 @@
         "title": "Tuning"
       },
       "safety": {
-        "body": "<b>Scharfschalten</b> listet die Pre-Arm-Checks und was gerade fehlschlägt. <b>Failsafes & Geofence</b> legt fest, was bei Verbindungsverlust, niedrigem Akku und einer Geofence-Verletzung passiert. Pre-Arm-Schnellkorrekturen öffnen diese Seiten.",
+        "body": "<b>Arming</b> listet die Pre-Arm-Checks und was gerade fehlschlägt. <b>Failsafes & Geofence</b> legt fest, was bei Verbindungsverlust, niedrigem Akku und einer Geofence-Verletzung passiert. Pre-Arm-Schnellkorrekturen öffnen diese Seiten.",
         "title": "Sicherheit"
       },
       "sensors": {
@@ -210,7 +210,7 @@
       },
       "title": "Fahrzeug-Setup ohne Parametertabelle",
       "tuning": {
-        "body": "<b>PID</b>-Gains pro Achse, <b>Raten</b> und Expo, <b>Tuning</b>-Presets und <b>AutoTune</b>, eingerichtet ohne Suche nach den Parametern. AutoTune verweigert Änderungen, solange das Fahrzeug scharf ist.",
+        "body": "<b>PID</b>-Gains pro Achse, <b>Raten</b> und Expo, <b>Tuning</b>-Presets und <b>AutoTune</b>, eingerichtet ohne Suche nach den Parametern. AutoTune verweigert Änderungen, solange das Fahrzeug gearmt ist.",
         "title": "Tuning"
       }
     },

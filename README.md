@@ -30,6 +30,8 @@
 <p align="center">
   <sub>Supported by</sub><br />
   <a href="https://adlerblix.de" target="_blank" rel="noopener noreferrer"><img src="docs/sponsors/adlerblix.svg" alt="Adlerblix - optical aerial surveying" height="40" /></a>
+  &nbsp;&nbsp;
+  <a href="https://www.uav-dev.com" target="_blank" rel="noopener noreferrer"><img src="docs/sponsors/uav-dev.svg" alt="UAV-DEV - autonomous systems hardware" height="40" /></a>
 </p>
 
 ArduDeck is an open-source ground control station built with Electron, React, and TypeScript. One app covers the whole workflow: connect, configure, calibrate, plan, fly, and analyze, for vehicles running ArduPilot (MAVLink) or Betaflight/iNav (MSP), from a single quad on USB to a fleet of vehicles on radio, IP, or cellular links.
@@ -261,6 +263,7 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first 
 ArduDeck is supported by companies that contribute hardware, time, or resources to the project.
 
 - [Adlerblix](https://adlerblix.de) - optical aerial surveying: photogrammetry, RTK precision, large-area mapping (Germany)
+- [UAV-DEV](https://www.uav-dev.com) - autonomous systems hardware: autopilots, DroneCAN sensors, radio and wiring from a single source (Germany)
 
 ---
 

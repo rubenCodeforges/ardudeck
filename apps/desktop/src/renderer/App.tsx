@@ -29,10 +29,12 @@ import { ModuleRuntime } from './modules/ModuleRuntime';
 import { MountPoint } from './modules/MountPoint';
 import { ModuleDock } from './modules/ModuleDock';
 import { ModuleProposalDialog } from './modules/ModuleProposalDialog';
+import { DroneCanReviewDialog } from './modules/DroneCanReviewDialog';
 import { CompanionDashboard } from './components/companion/CompanionDashboard';
 import { LogsView } from './components/logs/LogsView';
 import { MavlinkInspectorView } from './components/inspector/MavlinkInspectorView';
-import { VaultView } from './components/vault/VaultView';
+import { VaultBackupDialog } from './components/vault/VaultBackupDialog';
+import { ModuleViewBody } from './modules/ModuleViewBody';
 import { WeatherBriefingView } from './components/weather/WeatherBriefingView';
 import { TrainerView } from './components/trainer/TrainerView';
 import { setupWorkspaceSync } from './stores/workspace-store';
@@ -1080,7 +1082,7 @@ function App() {
       }
       if (currentView === 'vault') {
         // Local-first: history, diffs, GitHub setup and sync all work offline
-        return <VaultView />;
+        return <ModuleViewBody viewId="vault" />;
       }
       if (currentView === 'modules') {
         return <ModuleManagerView />;
@@ -1200,7 +1202,7 @@ function App() {
       case 'trainer':
         return <TrainerView />;
       case 'vault':
-        return <VaultView />;
+        return <ModuleViewBody viewId="vault" />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;
@@ -1329,6 +1331,8 @@ function App() {
     <MountPoint name="floatingOverlay" />
     <ModuleDock />
     <ModuleProposalDialog />
+    <DroneCanReviewDialog />
+    <VaultBackupDialog />
     </ModuleRuntime>
   );
 }

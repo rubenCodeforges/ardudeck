@@ -388,5 +388,36 @@
     "testTip": "Listens for a couple of seconds and reports what is arriving",
     "videoDetected": "Video detected - press Add and select the feed.",
     "videoDetectedFrom": "Video detected from {{sender}} - press Add and select the feed."
+  },
+  "gallery": {
+    "openTip": "Recordings and snapshots",
+    "menuItem": "Recordings and snapshots",
+    "toastLink": "Gallery",
+    "title": "Recordings and snapshots",
+    "summary": "{{videos}} videos, {{photos}} photos, {{size}}",
+    "loading": "Loading",
+    "filter": {
+      "all": "All",
+      "video": "Videos",
+      "photo": "Photos"
+    },
+    "openVideosFolder": "Open recordings folder",
+    "openPhotosFolder": "Open snapshots folder",
+    "closeTip": "Close",
+    "backTip": "Back to all",
+    "video": "Video",
+    "photo": "Photo",
+    "cardTip": "Click to play. Drag into a mail, chat or folder to send it.",
+    "newer": "Newer",
+    "older": "Older",
+    "dragTip": "Drag into a mail, chat or folder",
+    "dragHint": "Drag this into a mail, chat or folder to send it",
+    "showInFolder": "Show in folder",
+    "openInPlayer": "Open in player",
+    "openInViewer": "Open in viewer",
+    "trash": "Delete",
+    "confirmTrash": "Move to trash",
+    "emptyTitle": "Nothing recorded yet",
+    "emptyBody": "Use the record and snapshot buttons above the live feed. Recordings are saved to your Videos folder (Movies on a Mac) under ArduDeck, snapshots to Pictures/ArduDeck, and they all show up here."
   }
 }

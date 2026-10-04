@@ -30,7 +30,8 @@
   "moduleHost": {
     "fenceNotConfirmed": "Das Fahrzeug hat den Geofence nicht bestätigt",
     "pickPolygonPrompt": "Klicken Sie auf die Ecken der Fläche",
-    "snapshotFailed": "Snapshot fehlgeschlagen"
+    "snapshotFailed": "Snapshot fehlgeschlagen",
+    "viewNeedsUpdate": "Aktualisieren Sie diese Cargo im Hangar, um ihre Ansicht hier zu öffnen."
   },
   "moduleManager": {
     "addKeyTitle": "Cargo-Schlüssel hinzufügen",

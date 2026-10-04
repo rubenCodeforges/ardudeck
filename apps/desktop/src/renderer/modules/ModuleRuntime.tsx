@@ -7,7 +7,11 @@ import {
   clearModuleAlertsForSlug,
   unregisterModuleMapLayersForSlug,
   unregisterModuleSurveyGenerators,
+  unregisterModuleExtensionsForSlug,
 } from './module-host-renderer';
+import { unregisterModulePanels } from './module-panel-registry';
+import { unregisterModuleOsdElements } from './module-osd-registry';
+import { unregisterModuleHudInstruments } from './module-hud-registry';
 
 interface MountEntry {
   slug: string;
@@ -84,6 +88,10 @@ export function ModuleRuntime({ children }: { children: ReactNode }) {
       clearModuleAlertsForSlug(slug);
       unregisterModuleMapLayersForSlug(slug);
       unregisterModuleSurveyGenerators(slug);
+      unregisterModuleExtensionsForSlug(slug);
+      unregisterModulePanels(slug);
+      unregisterModuleOsdElements(slug);
+      unregisterModuleHudInstruments(slug);
       setMounts((prev) => {
         const next: MountMap = {};
         for (const [name, entries] of Object.entries(prev)) {

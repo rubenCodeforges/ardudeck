@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Search, Download } from 'lucide-react';
 import type { VehicleTemplate } from '../../../lib/vehicle-templates/types.js';
-import { VEHICLE_TEMPLATES } from '../../../lib/vehicle-templates/registry.js';
+import { allTemplates, subscribeTemplates } from '../../../lib/vehicle-templates/registry.js';
 import { useConnectionStore } from '../../../stores/connection-store.js';
 import { useParameterStore } from '../../../stores/parameter-store.js';
 import { inferProfileFromParams } from '../../../lib/vehicle-templates/import.js';
@@ -44,14 +44,15 @@ export function VehicleTemplatePicker({ onSelect, onImportFromConnected, onClose
   // which do not apply to PX4 (PX4 selects an airframe via SYS_AUTOSTART).
   const isPx4 = firmware === 'px4';
 
+  const templates = useSyncExternalStore(subscribeTemplates, allTemplates);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return VEHICLE_TEMPLATES.filter(t => {
+    return templates.filter(t => {
       if (category !== 'all' && t.category !== category) return false;
       if (!q) return true;
       return t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.slug.includes(q);
     });
-  }, [category, query]);
+  }, [category, query, templates]);
 
   useEffect(() => {
     setFocusedIndex(0);

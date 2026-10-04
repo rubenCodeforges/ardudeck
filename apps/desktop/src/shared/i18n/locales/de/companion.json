@@ -89,7 +89,7 @@
   "dbSettings": {
     "baudRate": "Baudrate",
     "confirmSave": "Beim Speichern startet die DroneBridge neu. Die Verbindung geht für ~5 Sekunden verloren. Fortfahren?",
-    "disableOnArm": "Funk beim Scharfschalten deaktivieren",
+    "disableOnArm": "Funk beim Arming deaktivieren",
     "extAntenna": "Externe Antenne",
     "gateway": "Gateway",
     "hostname": "Hostname",

@@ -274,9 +274,9 @@
       "4": "fehlerhaft"
     },
     "ev": {
-      "10": "Scharf",
-      "11": "Unscharf",
-      "15": "Automatisch scharf",
+      "10": "Armed",
+      "11": "Disarmed",
+      "15": "Auto armed",
       "17": "Landung abgeschlossen (vermutlich)",
       "18": "Landung abgeschlossen",
       "19": "GPS verloren",

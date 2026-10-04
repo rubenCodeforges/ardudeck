@@ -236,6 +236,7 @@ export const IPC_CHANNELS = {
   FLEET_REPO_SET_CUSTOM_REMOTE: 'fleet-repo:set-custom-remote',
   FLEET_REPO_SET_AUTO_SYNC: 'fleet-repo:set-auto-sync',
   FLEET_REPO_RENAME_UNIT: 'fleet-repo:rename-unit',
+  FLEET_REPO_DELETE_UNIT: 'fleet-repo:delete-unit',
   FLEET_REPO_LINK_UNIT: 'fleet-repo:link-unit',
   FLEET_REPO_GH_LIST_REPOS: 'fleet-repo:gh-list-repos',
   FLEET_REPO_GH_USE_EXISTING: 'fleet-repo:gh-use-existing',
@@ -877,6 +878,19 @@ export const IPC_CHANNELS = {
   NTRIP_DISCONNECT: 'ntrip:disconnect',
   NTRIP_GET_SOURCETABLE: 'ntrip:get-sourcetable',
   LED_CONTROL_SET: 'led:control-set',
+  DRONECAN_START: 'dronecan:start',
+  DRONECAN_STOP: 'dronecan:stop',
+  DRONECAN_GET_STATE: 'dronecan:get-state',
+  DRONECAN_STATE: 'dronecan:state',
+  DRONECAN_REFRESH_NODE: 'dronecan:refresh-node',
+  DRONECAN_LIST_PARAMS: 'dronecan:list-params',
+  DRONECAN_PARAM_PROGRESS: 'dronecan:param-progress',
+  DRONECAN_SET_PARAM: 'dronecan:set-param',
+  DRONECAN_GET_PARAM: 'dronecan:get-param',
+  DRONECAN_SAVE_PARAMS: 'dronecan:save-params',
+  DRONECAN_RESTART_NODE: 'dronecan:restart-node',
+  CAN_BUS_STATS: 'can:bus-stats',
+  PERIPH_PARAM_METADATA: 'dronecan:periph-param-metadata',
   NTRIP_GET_STATUS: 'ntrip:get-status',
   NTRIP_LIST_SERIAL_PORTS: 'ntrip:list-serial-ports', // free ports for the local base picker
 
@@ -953,6 +967,16 @@ export const IPC_CHANNELS = {
   CAMERA_RECORD_TOGGLE: 'camera:record-toggle',
   /** Renderer → main: open the folder of a snapshot or recording with the file selected. */
   CAMERA_REVEAL_MEDIA: 'camera:reveal-media',
+  /** Renderer -> main: list recordings and snapshots, newest first. */
+  CAMERA_MEDIA_LIST: 'camera:media-list',
+  /** Renderer -> main: open the recordings or snapshots folder. */
+  CAMERA_MEDIA_OPEN_FOLDER: 'camera:media-open-folder',
+  /** Renderer -> main: open a gallery file in the system player or viewer. */
+  CAMERA_MEDIA_OPEN: 'camera:media-open',
+  /** Renderer -> main: move a gallery file to the trash. */
+  CAMERA_MEDIA_TRASH: 'camera:media-trash',
+  /** Renderer -> main (send): start an OS drag of a gallery file, to drop into mail, chat or a folder. */
+  CAMERA_MEDIA_DRAG: 'camera:media-drag',
   /** Renderer → main: query MediaEngineStatus. */
   CAMERA_ENGINE_STATUS: 'camera:engine-status',
   /** Renderer → main: one pasteable block explaining a video failure. */
@@ -1254,6 +1278,10 @@ export interface ConnectionState {
   fcVariant?: string; // "BTFL", "INAV", "CLFL"
   fcVersion?: string; // "4.5.1"
   boardId?: string; // "SPRACINGH7"
+  /** AUTOPILOT_VERSION board_version; ArduPilot puts the APJ board id in the upper 16 bits. */
+  boardVersion?: number;
+  /** MAVLink autopilot firmware version from AUTOPILOT_VERSION, e.g. "4.7.0". MSP uses fcVersion. */
+  firmwareVersion?: string;
   apiVersion?: string;
   /**
    * Legacy board detection - TRUE for boards that only support CLI config:

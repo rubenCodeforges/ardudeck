@@ -51,7 +51,24 @@ import {
   unregisterSurveyGenerator,
   type SurveyGeneratorRegistration,
 } from '../components/survey/generator-registry';
-import { t } from '../../shared/i18n/index.js';
+import { t, i18n } from '../../shared/i18n/index.js';
+import {
+  boardPortRegistry, configCardRegistry, nodeProfileRegistry, detectHardware, firmwareSourceRegistry, hardwareCatalogRegistry,
+  viewBodyRegistry,
+} from './module-extension-registries';
+import { viewOwnerSlug } from './capabilities';
+import { vaultWorkspaceState, subscribeVaultWorkspace } from './vault-workspace';
+import { sampleCanBusHealth } from '../lib/can-bus-health';
+import { useDroneCanStore } from '../stores/dronecan-store';
+import { useFirmwareStore } from '../stores/firmware-store';
+import { droneCanPorts } from '../lib/dronecan-ports';
+import { proposeParameterChanges } from '../lib/param-proposal';
+import { requestDroneCanWrite } from '../lib/dronecan-review';
+import { registerModuleTemplate, unregisterModuleTemplate, unregisterModuleTemplates as unregisterModuleTemplatesForSlug } from '../lib/vehicle-templates/registry';
+import type { VehicleTemplate } from '../lib/vehicle-templates/types';
+import type { DroneCanNode } from '../../shared/dronecan-types';
+import type { DroneCanNodeInfo, DetectedHardware } from '@ardudeck/module-sdk';
+import { Package } from 'lucide-react';
 
 type RegisterFn = (slug: string, name: MountPointName, component: ComponentType) => void;
 
@@ -109,11 +126,55 @@ export function unregisterModuleSurveyGenerators(slug: string): void {
   surveyGeneratorsBySlug.delete(slug);
 }
 
+
+function toNodeInfo(n: DroneCanNode): DroneCanNodeInfo {
+  return {
+    nodeId: n.nodeId, health: n.health, mode: n.mode, uptimeSec: n.uptimeSec, online: n.online,
+    name: n.name, softwareVersion: n.softwareVersion, hardwareVersion: n.hardwareVersion, uniqueId: n.uniqueId,
+  };
+}
+
+function currentNodes(): DroneCanNode[] {
+  return useDroneCanStore.getState().state?.nodes ?? [];
+}
+
+function currentDetectedHardware(): DetectedHardware[] {
+  const cs = useConnectionStore.getState().connectionState;
+  const board = cs.isConnected ? { name: cs.boardId, boardVersion: cs.boardVersion } : null;
+  return detectHardware(hardwareCatalogRegistry.list(), board, currentNodes());
+}
+
+/** Remove every config card, catalog, firmware source and template a module registered (unload/reload). */
+const cargoNamespace = (slug: string) => `cargo.${slug}`;
+
+export function unregisterModuleExtensionsForSlug(slug: string): void {
+  for (const lang of Object.keys(i18n.store.data)) i18n.removeResourceBundle(lang, cargoNamespace(slug));
+  configCardRegistry.unregisterAll(slug);
+  hardwareCatalogRegistry.unregisterAll(slug);
+  firmwareSourceRegistry.unregisterAll(slug);
+  boardPortRegistry.unregisterAll(slug);
+  nodeProfileRegistry.unregisterAll(slug);
+  viewBodyRegistry.unregisterAll(slug);
+  unregisterModuleTemplatesForSlug(slug);
+}
+
 export function createRendererHostApi(
   slug: string,
   register: RegisterFn,
   permissions: readonly string[] = [],
 ): RendererHostApi {
+  const requireDronecan = () => {
+    if (!permissions.includes('dronecan')) {
+      throw new Error(`[module:${slug}] DroneCAN writes require the 'dronecan' manifest permission`);
+    }
+  };
+  const moduleName = () => useModuleStore.getState().modules.find((m) => m.slug === slug)?.name || slug;
+  const dronecanCall = async <T>(p: Promise<{ success: true; data: T } | { success: false; error: string }>): Promise<T> => {
+    const res = await p;
+    if (!res.success) throw new Error(res.error);
+    return res.data;
+  };
+
   const requireVault = () => {
     if (!permissions.includes('vault')) {
       throw new Error(`[module:${slug}] vault access requires the 'vault' manifest permission`);
@@ -169,9 +230,146 @@ export function createRendererHostApi(
         return (p as Record<string, unknown>)[name];
       },
       set: async (name, value) => {
-        // Type 9 = MAV_PARAM_TYPE_REAL32 (float). Module callers must know this.
-        await window.electronAPI.setParameter(name, value, 9);
+        const outcome = await proposeParameterChanges([{ name, value, reason: moduleName() }]);
+        if (!outcome.ok) throw new Error(outcome.reason ?? outcome.rejected[0]?.reason ?? 'not written'); // i18n-exempt
       },
+      propose: async (changes, reason) => {
+        const from = moduleName();
+        const outcome = await proposeParameterChanges(
+          changes.map((c) => ({ name: c.name, value: c.value, reason: `${from}: ${c.reason ?? reason}` })),
+        );
+        return {
+          accepted: outcome.ok,
+          applied: outcome.applied,
+          failed: outcome.failedParams,
+          rebootRequired: outcome.rebootRequired,
+          rejected: outcome.rejected,
+          ...(outcome.reason ? { error: outcome.reason } : {}),
+        };
+      },
+    },
+
+    i18n: {
+      addResources: (resources) => {
+        for (const [lang, res] of Object.entries(resources ?? {})) i18n.addResourceBundle(lang, cargoNamespace(slug), res, true, true);
+      },
+      t: (key, vars) => i18n.t(`${cargoNamespace(slug)}:${key}`, vars ?? {}) as string,
+      language: () => i18n.language,
+    },
+
+    config: {
+      registerCard: (reg) => {
+        if (!reg?.id || !reg.component) throw new Error(`[module:${slug}] config card needs an id and a component`);
+        configCardRegistry.register(slug, reg.id, reg);
+      },
+      unregisterCard: (id) => configCardRegistry.unregister(slug, id),
+    },
+
+    hardware: {
+      registerProducts: (products) => hardwareCatalogRegistry.register(slug, 'catalog', Array.isArray(products) ? products : []),
+      unregisterProducts: () => hardwareCatalogRegistry.unregister(slug, 'catalog'),
+      getDetected: () => currentDetectedHardware(),
+      registerBoardPorts: (boardId, ports) => boardPortRegistry.register(slug, `board:${boardId}`, { boardId, ports: Array.isArray(ports) ? ports : [] }),
+      subscribe: (listener) => {
+        const notify = () => listener(currentDetectedHardware());
+        const offs = [
+          hardwareCatalogRegistry.subscribe(notify),
+          useConnectionStore.subscribe(notify),
+          useDroneCanStore.subscribe(notify),
+        ];
+        const offInit = useDroneCanStore.getState().init();
+        return () => { offs.forEach((off) => off()); offInit(); };
+      },
+    },
+
+    dronecan: {
+      acquire: () => {
+        const offInit = useDroneCanStore.getState().init();
+        const port = droneCanPorts(useParameterStore.getState().parameters)[0];
+        if (!port) {
+          console.warn(`[module:${slug}] dronecan.acquire: no CAN port uses DroneCAN`);
+          return offInit;
+        }
+        const release = useDroneCanStore.getState().acquire(port.port);
+        return () => { release(); offInit(); };
+      },
+      getNodes: () => currentNodes().map(toNodeInfo),
+      subscribe: (listener) => {
+        const offInit = useDroneCanStore.getState().init();
+        const off = useDroneCanStore.subscribe((s, prev) => {
+          if (s.state?.nodes !== prev.state?.nodes) listener((s.state?.nodes ?? []).map(toNodeInfo));
+        });
+        return () => { off(); offInit(); };
+      },
+      listParams: async (nodeId) => {
+        // Share the DroneCAN tab's copy so a module panel and the parameter table read the node once.
+        const cached = useDroneCanStore.getState().paramsByNode[nodeId];
+        if (cached && !cached.loading && !cached.error && cached.params.length > 0) return cached.params;
+        return useDroneCanStore.getState().loadParams(nodeId);
+      },
+      getBusStats: async () => {
+        const port = droneCanPorts(useParameterStore.getState().parameters)[0];
+        if (!port) return null;
+        const h = await sampleCanBusHealth(port.port - 1);
+        return h ? { bitrate: h.bitrate, diagnosis: h.diagnosis, deltas: h.deltas, intervalMs: h.intervalMs } : null;
+      },
+      proposeParams: async (nodeId, changes, options) => {
+        requireDronecan();
+        const result = await requestDroneCanWrite({
+          from: moduleName(),
+          nodeId,
+          nodeName: currentNodes().find((n) => n.nodeId === nodeId)?.name,
+          reason: options?.reason,
+          saveByDefault: options?.saveByDefault,
+          changes: changes.map((c) => ({ name: c.name, value: c.value })),
+        });
+        useDroneCanStore.getState().applyWritten(nodeId, result.written);
+        return result;
+      },
+      restartNode: async (nodeId) => {
+        requireDronecan();
+        return dronecanCall(window.electronAPI.dronecanRestartNode(nodeId));
+      },
+      registerNodeProfile: (profile) => {
+        if (!profile?.id || !profile.match) throw new Error(`[module:${slug}] node profile needs an id and a match`);
+        nodeProfileRegistry.register(slug, profile.id, profile);
+      },
+      unregisterNodeProfile: (id) => nodeProfileRegistry.unregister(slug, id),
+    },
+
+    firmware: {
+      registerSource: (reg) => {
+        if (!reg?.id || !reg.name || !reg.component) throw new Error(`[module:${slug}] firmware source needs id, name and component`);
+        firmwareSourceRegistry.register(slug, reg.id, reg);
+      },
+      unregisterSource: (id) => firmwareSourceRegistry.unregister(slug, id),
+      useFile: (path) => useFirmwareStore.getState().setCustomFirmwarePath(path),
+      getDetectedBoard: () => {
+        const b = useFirmwareStore.getState().detectedBoard;
+        const version = useConnectionStore.getState().connectionState.boardVersion;
+        if (!b) return null;
+        return { name: b.name, target: b.boardId, mcu: b.mcuType, ...(version ? { apjBoardId: version >>> 16 } : {}) };
+      },
+    },
+
+    vehicleTemplates: {
+      register: (reg) => {
+        if (!reg?.slug || typeof reg.params !== 'function') throw new Error(`[module:${slug}] vehicle template needs a slug and params()`);
+        const template: VehicleTemplate = {
+          slug: reg.slug,
+          name: reg.name,
+          description: reg.description,
+          icon: Package,
+          vehicleType: reg.vehicleType,
+          category: reg.category,
+          defaults: (reg.defaults ?? {}) as VehicleTemplate['defaults'],
+          toParams: (p) => reg.params(p),
+          toSimParams: (p) => reg.simParams?.(p) ?? [],
+          inferFrom: () => 0,
+        };
+        registerModuleTemplate(slug, template);
+      },
+      unregister: (templateSlug) => unregisterModuleTemplate(slug, templateSlug),
     },
 
     logs: {
@@ -231,6 +429,15 @@ export function createRendererHostApi(
     panels: {
       register: (reg) => registerModulePanel(slug, reg),
       unregister: (id) => unregisterModulePanel(slug, id),
+    },
+
+    views: {
+      register: (reg) => {
+        if (!reg?.viewId || !reg.component) throw new Error(`[module:${slug}] view needs a viewId and a component`);
+        if (viewOwnerSlug(reg.viewId) !== slug) throw new Error(`[module:${slug}] view '${reg.viewId}' is not unlocked by this cargo`);
+        viewBodyRegistry.register(slug, reg.viewId, reg.component);
+      },
+      unregister: (viewId) => viewBodyRegistry.unregister(slug, viewId),
     },
 
     mission: {
@@ -356,7 +563,75 @@ export function createRendererHostApi(
       },
       sync: async () => {
         requireVault();
-        return window.electronAPI.fleetRepoGhSync();
+        // Store action: busy flag, notice and refresh reach every vault surface
+        await useFleetRepoStore.getState().sync();
+        const error = useFleetRepoStore.getState().lastError;
+        return error ? { success: false, error } : { success: true };
+      },
+      getState: () => {
+        requireVault();
+        return vaultWorkspaceState();
+      },
+      subscribe: (listener) => {
+        requireVault();
+        return subscribeVaultWorkspace(listener);
+      },
+      refresh: async () => {
+        requireVault();
+        await useFleetRepoStore.getState().refresh();
+      },
+      snapshotMission: async (site, missionName) => {
+        requireVault();
+        return useFleetRepoStore.getState().snapshotMission(site, missionName);
+      },
+      snapshotArea: async (site) => {
+        requireVault();
+        return useFleetRepoStore.getState().snapshotArea(site);
+      },
+      renameUnit: async (uid, name) => {
+        requireVault();
+        return useFleetRepoStore.getState().renameUnit(uid, name);
+      },
+      deleteUnit: async (uid) => {
+        requireVault();
+        return useFleetRepoStore.getState().deleteUnit(uid);
+      },
+      linkUnit: async (unitUid, aliasUid) => {
+        requireVault();
+        return useFleetRepoStore.getState().linkUnit(unitUid, aliasUid);
+      },
+      setUnitOverride: (uid) => {
+        requireVault();
+        useFleetRepoStore.getState().setUnitOverride(uid);
+      },
+      openSnapshot: async (oid, uid) => {
+        requireVault();
+        await useFleetRepoStore.getState().loadDiff(oid, uid);
+      },
+      closeSnapshot: () => {
+        requireVault();
+        useFleetRepoStore.getState().clearDiff();
+      },
+      restoreSnapshot: async (includeCalibration) => {
+        requireVault();
+        return useFleetRepoStore.getState().restoreSnapshot(includeCalibration);
+      },
+      setAutoSync: async (on) => {
+        requireVault();
+        await window.electronAPI.fleetRepoSetAutoSync(on);
+        await useFleetRepoStore.getState().refresh();
+      },
+      clearMessages: () => {
+        requireVault();
+        useFleetRepoStore.getState().clearMessages();
+      },
+      openFolder: () => {
+        requireVault();
+        void window.electronAPI.fleetRepoOpenDir();
+      },
+      openBackupSetup: () => {
+        requireVault();
+        useFleetRepoStore.getState().setBackupSetupOpen(true);
       },
     },
 

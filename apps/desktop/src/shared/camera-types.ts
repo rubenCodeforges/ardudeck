@@ -132,6 +132,15 @@ export interface CameraMediaActionResult {
   error?: string;
 }
 
+/** A recording or snapshot in the gallery. */
+export interface CameraMediaItem {
+  name: string;
+  kind: 'video' | 'photo';
+  filePath: string;
+  size: number;
+  modifiedAt: number;
+}
+
 /** Engine availability, surfaced so the UI can guide setup when binaries are absent. */
 export interface MediaEngineStatus {
   /** MediaMTX sidecar reachable. */

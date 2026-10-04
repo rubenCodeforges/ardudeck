@@ -267,7 +267,7 @@
     "subtitle": "Flugcontroller-Firmware ohne Hardware testen",
     "timeOfDay": "Tageszeit",
     "virtualRc": "Virtuelle RC-Steuerung",
-    "virtualRcHint": "Bei <code>receiver_type = SIM</code> steuern Sie die RC-Eingänge hier. Setzen Sie AUX4 auf hoch, um scharf zu schalten.",
+    "virtualRcHint": "Bei <code>receiver_type = SIM</code> steuern Sie die RC-Eingänge hier. Setzen Sie AUX4 auf hoch, um zu armen.",
     "visualSimulator": "Visueller Simulator",
     "weatherClear": "Klar",
     "weatherCloudy": "Bewölkt",

@@ -1,7 +1,7 @@
 {
   "vehicleTemplates": {
     "apply": {
-      "armed": "Fahrzeug ist scharf, vor dem Übernehmen unscharf schalten",
+      "armed": "Fahrzeug ist gearmt, vor dem Übernehmen disarmen",
       "expectedFc": "Echter FC erwartet, aber die Verbindung ist SITL",
       "expectedSitl": "SITL erwartet, aber die Verbindung ist ein echter FC",
       "noParams": "Parameter noch nicht geladen, zuerst abrufen",

@@ -189,6 +189,7 @@
   },
   "fleetRepo": {
     "adoptFailed": "Could not adopt repository",
+    "deleteFailed": "Delete failed",
     "deviceFlowError": "Unknown device flow error",
     "linkFailed": "Link failed",
     "noRepository": "No repository configured",
@@ -196,6 +197,7 @@
     "notConnectedSetup": "Not connected. Set up backup in the vault first.",
     "renameFailed": "Rename failed",
     "tokenRejected": "Token rejected by GitHub",
+    "unitNotFound": "Vehicle {{unit}} is not in the vault",
     "useHttpsUrl": "Use an HTTPS repository URL (SSH is not supported)",
     "vaultHasSnapshots": "This vault already has snapshots. Create a new repository instead, or move the vault folder away first."
   },

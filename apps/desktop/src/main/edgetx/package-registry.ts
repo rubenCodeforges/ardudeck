@@ -92,7 +92,7 @@ export const EDGETX_PACKAGES: EdgeTxPackage[] = [
       'Glanceable ArduDeck-styled flight screen: big honest numbers, armed/mode bar, live STATUSTEXT ticker, and a diagnostic ladder that tells you exactly why telemetry is missing instead of "no telemetry". Config is generated from your connected vehicle. All color radios; layouts rescale to the screen. B&W radios get a dense telemetry script, installed and wired to a telemetry screen for you.', // i18n-exempt
     homepage: 'https://ardudeck.com',
     license: 'GPL-3.0',
-    source: { kind: 'bundled', dir: 'ardudeck-hud', version: '0.5.1' },
+    source: { kind: 'bundled', dir: 'ardudeck-hud', version: '0.5.2' },
     // One payload for every color class: the widget rescales layouts to
     // LCD_W/LCD_H at load (hud.cfg carries the authored screen=WxH).
     // B&W radios have no widget API: they get a telemetry SCRIPT (SDBW)

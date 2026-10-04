@@ -31,9 +31,9 @@
   },
   "quickStats": {
     "alt": "ALT",
-    "armed": "Scharf",
+    "armed": "Armed",
     "bat": "BAT",
-    "disarmed": "Unscharf",
+    "disarmed": "Disarmed",
     "hdg": "HDG",
     "noLink": "Keine Verb.",
     "notConnected": "Nicht verbunden",

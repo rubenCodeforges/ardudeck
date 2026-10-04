@@ -163,3 +163,32 @@ describe('MAVLinkParser stream robustness', () => {
     expect(packet!.crcValidated).toBe(false);
   });
 });
+
+describe('MAVLinkParser v2 payload truncation', () => {
+  it('zero-pads a truncated payload so every field decodes (INAV PARAM_VALUE)', async () => {
+    const { getMessageInfo } = await import('../generated/message-registry.js');
+    const { deserializeParamValue } = await import('../generated/messages/param-value.js');
+    const info = getMessageInfo(22)!;
+    const parser = new MAVLinkParser();
+    parser.registerMessages([info]);
+
+    // value 1.5, count 10, index 3, id "AB"; the zero tail of the id and param_type is trimmed on the wire
+    const wire = new Uint8Array(10);
+    const v = new DataView(wire.buffer);
+    v.setFloat32(0, 1.5, true);
+    v.setUint16(4, 10, true);
+    v.setUint16(6, 3, true);
+    wire[8] = 0x41;
+    wire[9] = 0x42;
+    parser.feed(serializeV2(22, wire, info.crcExtra, { sysid: 1, compid: 1 }));
+
+    const pkt = parser.parseNext()!;
+    expect(pkt.payloadLength).toBe(10);
+    expect(pkt.payload.length).toBe(info.maxLength);
+    const param = deserializeParamValue(pkt.payload);
+    expect(param.paramValue).toBe(1.5);
+    expect(param.paramIndex).toBe(3);
+    expect(param.paramId).toBe('AB');
+    expect(param.paramType).toBe(0);
+  });
+});

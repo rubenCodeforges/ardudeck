@@ -90,6 +90,34 @@ See `src/host-types.ts` for full typings. The renderer host exposes telemetry, c
 - `host.vault` - Fleet Vault access (requires the `vault` permission): `status()`, `listUnits()`, `history(limit?)`, `readFile(path, oid?)`, `snapshotParams(note?)`, `sync()`. Snapshots follow the host's vehicle-identity rules (user override, SITL separation). Credential management and restore are host-owned and NOT exposed.
 - `host.vehicleIdentity` - which vehicle the app currently attributes work to: `get()` and `subscribe(listener)`. Null while disconnected or unidentified.
 - `host.events` - host lifecycle events. Currently `onParamsFlashed(listener)`, fired after parameters were successfully written to flash. Returns an unsubscribe function.
+- `host.params.propose(changes, reason)` - show parameter writes in the host's review dialog; the pilot applies or declines and the host writes. Resolves with what was applied, failed and rejected (unknown, read-only or protected parameters). `params.set(name, value)` goes through the same dialog for a single change and rejects if the pilot declines. A module never writes parameters silently.
+- `host.i18n` - `addResources({ en: {...}, de: {...} })` registers your module's strings, `t(key, vars)` translates them in the app's current language (with `{{placeholders}}` and `_one`/`_other` plurals), `language()` returns the active code. Every user-visible string in a module goes through it.
+- `host.config.registerCard({ id, slot, order?, component })` - add a card to an existing configuration screen. Slots: `notify` (Sensors, Status LED), `gps` (Sensors, below the GPS wiring card), `hardware` (Sensors, Hardware tab).
+- `host.hardware` - `registerProducts(products)` adds your product catalog (vendor, official name, kit, category, image, docs link, and a `match` on DroneCAN node name with optional trailing `*`, or APJ board id). Matches show in the Hardware tab and on DroneCAN node cards. `match.usb` ({ vendorId, productId, manufacturer }) recognises USB serial devices in the connection panel's port list; give `manufacturer` for shared bridge chips such as CP210x. `registerBoardPorts(apjBoardId, [{ serial, label, note? }])` names an autopilot's connectors in the Serial Ports tab. `getDetected()` / `subscribe()` return what the host detects, with matches from every loaded module.
+- `host.dronecan` - DroneCAN nodes through the flight controller (ArduPilot only). `acquire()` keeps the bus monitored until you call the returned release function. `getNodes()`, `subscribe()`, `listParams(nodeId)` read. `getBusStats()` returns the bus health from the FC's CAN statistics (`healthy`, `no-ack`, `bus-off`, `rx-errors`, `idle`, plus bitrate and counter changes). `proposeParams(nodeId, changes, { reason, saveByDefault })` shows the writes in the host's DroneCAN review dialog; the pilot applies (optionally saving on the node) or cancels, and the host writes. `proposeParams` and `restartNode` need the `dronecan` permission.
+- `host.dronecan.registerNodeProfile({ id, match, panel?, params? })` - teach the DroneCAN tab about your nodes. `match` is the GetNodeInfo name (trailing `*` matches a prefix). `panel` renders above the node's parameter table and gets `{ nodeId }`. `params()` returns docs per parameter (`displayName`, `description`, `values`, `units`, `min`, `max`, `rebootRequired`, `danger`) that override the host's AP_Periph docs; it runs on render, so use `host.i18n.t` inside it.
+- `host.firmware` - `registerSource({ id, name, component })` adds a source button on the Firmware screen; your component fetches a file (usually via your main process) and hands it over with `useFile(path)`. The pilot still selects the port and presses Flash. `getDetectedBoard()` returns the board the Firmware screen detected.
+- `host.vehicleTemplates.register({ slug, name, description, vehicleType, category, defaults?, params(profile), simParams? })` - add a template (for example a kit) to the vehicle profile template picker. Prefix the slug with your module slug; built-in slugs cannot be replaced.
+
+Everything registered through these is removed when the module unloads or reloads.
+
+### Example: a vendor hardware cargo
+
+```ts
+export function activate(host: RendererHostApi) {
+  host.hardware.registerProducts([
+    { id: 'led', vendor: 'Example', name: 'Status Light', category: 'lighting', kit: 'Nav Kit',
+      docsUrl: 'https://example.com/led', match: { dronecanNodeName: 'com.example.led*' } },
+  ]);
+  host.config.registerCard({ id: 'led', slot: 'notify', component: LedCard });
+}
+
+function LedCard() {
+  // Inside the card: const release = host.dronecan.acquire(); then listParams and proposeParams
+  // on the node whose name matches (the pilot reviews every write), and release() on unmount.
+  return null;
+}
+```
 
 ## Permissions
 
@@ -99,6 +127,7 @@ Declare what your module needs in `module.json`:
 - `filesystem` - Reserved for future use (currently all modules get a scoped data dir)
 - `network` - Reserved for future use
 - `vault` - Fleet Vault access via `host.vault` (read history, take snapshots, trigger sync)
+- `dronecan` - propose DroneCAN node parameter writes (always reviewed by the pilot) and restart nodes via `host.dronecan` (reading needs no permission)
 
 Permissions are enforced by the host at runtime.
 

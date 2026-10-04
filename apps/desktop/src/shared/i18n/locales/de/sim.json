@@ -183,7 +183,7 @@
     "noVehicle": "Kein Fahrzeug verbunden",
     "pillActiveTip": "{{label}} - klicken zum Abwählen",
     "pillTip": "{{label}} - {{mode}}",
-    "pillTipArmed": "{{label}} - {{mode}} - SCHARF",
+    "pillTipArmed": "{{label}} - {{mode}} - ARMED",
     "qualityLow": "Niedrig",
     "qualityMedium": "Mittel",
     "rcLink": "RC-VERB.",

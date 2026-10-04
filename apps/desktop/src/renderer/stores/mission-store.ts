@@ -28,6 +28,7 @@ import { applyFlightBreaks, groupEndsFlight, inFlightOrder, flightBoundaries } f
 import { bulkSetAltitude, bulkSetSpeed } from '../components/mission/bulk-edit';
 import { buildArduPilotWireMission, shiftJumpTargets } from '../../shared/mission-wire';
 import { useSettingsStore } from './settings-store';
+import { effectiveMissionFirmware } from '../utils/mission-firmware';
 import { useConnectionStore } from './connection-store';
 import { useParameterStore } from './parameter-store';
 import { useArduPilotSitlStore } from './ardupilot-sitl-store';
@@ -179,11 +180,19 @@ interface HomePosition {
   alt: number;  // Altitude (usually 0 for ground level)
 }
 
-// ArduPilot needs the HOME slot restored at seq 0 (mission-wire.ts); PX4 must not.
+/**
+ * Only ArduPilot reserves mission seq 0 for HOME; PX4, INAV and the Vehicle SDK fly it as WP1.
+ * Offline the planner's firmware toggle decides; a connected generic autopilot never has the slot.
+ */
+function missionHasHomeSlot(): boolean {
+  const { connectionState } = useConnectionStore.getState();
+  if (connectionState.isConnected && connectionState.firmware === 'custom') return false;
+  const toggle = useSettingsStore.getState().missionDefaults.missionFirmware;
+  return effectiveMissionFirmware(connectionState, toggle) === 'ardupilot';
+}
+
 function toWireMission(items: MissionItem[], home: HomePosition | null): MissionItem[] {
-  const isPx4 = useConnectionStore.getState().connectionState.firmware === 'px4';
-  if (isPx4) return items;
-  return buildArduPilotWireMission(items, home);
+  return missionHasHomeSlot() ? buildArduPilotWireMission(items, home) : items;
 }
 
 /**
@@ -1669,14 +1678,12 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     // It shares MAV_CMD 16 (WAYPOINT) but has current=true in the protocol.
     // Also detect seq=0 at 0,0 (placeholder when no GPS fix).
     let homePosition: HomePosition | null = null;
-    // ArduPilot's mission raw seq 0 is the HOME slot and must be stripped.
-    // PX4 has NO home item — its seq 0 is the first real waypoint, and
-    // stripping it silently deleted WP1 from every PX4 download (and shifted
-    // MISSION_CURRENT tracking by one via fcSeqOffset).
-    const isPx4Mission = useConnectionStore.getState().connectionState.firmware === 'px4';
-    const homeWasStripped = !isPx4Mission && items.some(item => item.seq === 0);
+    // ArduPilot's raw seq 0 is the HOME slot and is stripped. Everyone else flies seq 0
+    // as WP1; stripping it deleted the first waypoint and shifted MISSION_CURRENT by one.
+    const hasHomeSlot = missionHasHomeSlot();
+    const homeWasStripped = hasHomeSlot && items.some(item => item.seq === 0);
     const filteredItems = items.filter(item => {
-      if (!isPx4Mission && item.seq === 0) {
+      if (hasHomeSlot && item.seq === 0) {
         // seq=0 is home position - extract it if it has valid coordinates
         if (item.latitude !== 0 || item.longitude !== 0) {
           homePosition = { lat: item.latitude, lon: item.longitude, alt: item.altitude };

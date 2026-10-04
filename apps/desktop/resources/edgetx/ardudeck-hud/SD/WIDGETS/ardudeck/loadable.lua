@@ -71,6 +71,10 @@ local MODES = {
   [21]='SMART RTL',[22]='FLOWHOLD',[24]='ZIGZAG',[27]='AUTO RTL',
 }
 
+-- Clip per mode number, written by ArduDeck for this vehicle (voice=num:clip,...).
+-- Without it the mode_<n> clips speak the copter numbering.
+local VOICE = nil
+
 -- ============================ config ===================================
 local CFG = {
   name = '', cells = 0, capacity = 0, low_cell = 3.6, crit_cell = 3.4,
@@ -286,6 +290,10 @@ local function loadConfig()
       local t = {}
       for num, label in string.gmatch(v, '(%d+):([^,]+)') do t[tonumber(num)] = label end
       if next(t) then MODES = t end
+    elseif k == 'voice' then
+      local t = {}
+      for num, clip in string.gmatch(v, '(%d+):([%w_]+)') do t[tonumber(num)] = clip end
+      if next(t) then VOICE = t end
     elseif k == 'screen' then
       local sw, sh = string.match(v, '(%d+)x(%d+)')
       if sw then authW, authH = tonumber(sw), tonumber(sh) end
@@ -1699,9 +1707,10 @@ local function announceTransitions(live)
     end
   end
 
-  -- flight mode callouts (mode_<n>.wav per ArduPilot custom mode number)
+  -- flight mode callouts: this vehicle's clip, else the copter-numbered one
   if prevMode ~= nil and V.modeNum ~= prevMode and V.modeNum >= 0 then
-    playAlert('mode_' .. V.modeNum, V.muted)
+    local clip = VOICE and (VOICE[V.modeNum] or 'mode_changed') or ('mode_' .. V.modeNum)
+    playAlert(clip, V.muted)
   end
   prevMode = V.modeNum
 

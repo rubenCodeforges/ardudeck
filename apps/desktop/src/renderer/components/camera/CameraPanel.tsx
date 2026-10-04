@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, Circle, Layers, RotateCw, SlidersHorizontal } from 'lucide-react';
+import { Camera, Circle, Film, Layers, RotateCw, SlidersHorizontal } from 'lucide-react';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useFleetVehicles, type FleetVehicle } from '../../hooks/useFleet';
 import { useCameraStore } from '../../stores/camera-store';
@@ -27,6 +27,7 @@ import { VisionStreamControl } from './VisionStream';
 import { CameraSourceSwitch } from './CameraSourceSwitch';
 import { VideoLinkBanner } from './VideoLinkBanner';
 import { describePeers } from './webrtc-diag';
+import { MediaGallery } from './MediaGallery';
 import { Trans, useTranslation } from 'react-i18next';
 
 // Partial: the `waypoints` layer intentionally has no OSD toggle — the 3D
@@ -77,6 +78,10 @@ export function CameraPanel() {
   const [showOsdMenu, setShowOsdMenu] = useState(false);
   const [recordingSourceId, setRecordingSourceId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; filePath?: string } | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
+  const [mediaCount, setMediaCount] = useState(0);
+  const refreshMediaCount = () => { void window.electronAPI.cameraMediaList().then((l) => setMediaCount(l.length)); };
+  useEffect(refreshMediaCount, []);
   const [installing, setInstalling] = useState(false);
   const [installLog, setInstallLog] = useState<string | null>(null);
 
@@ -132,7 +137,7 @@ export function CameraPanel() {
   const handleSnapshot = async () => {
     if (!liveSourceId) return;
     const r = await window.electronAPI.cameraSnapshot(liveSourceId);
-    if (r.ok) flash(t('camera:panel.snapshotSaved'), r.filePath);
+    if (r.ok) { flash(t('camera:panel.snapshotSaved'), r.filePath); refreshMediaCount(); }
     else flash(t('camera:panel.snapshotFailed', { error: r.error ?? '' }));
   };
 
@@ -140,7 +145,7 @@ export function CameraPanel() {
     if (!liveSourceId) return;
     const r = await window.electronAPI.cameraRecordToggle(liveSourceId);
     if (!r.ok) { flash(t('camera:panel.recordFailed', { error: r.error ?? '' })); return; }
-    if (recordingSourceId === liveSourceId) { setRecordingSourceId(null); flash(t('camera:panel.recordingSaved', { folder: navigator.userAgent.includes('Macintosh') ? 'Movies' : 'Videos' }), r.filePath); }
+    if (recordingSourceId === liveSourceId) { setRecordingSourceId(null); flash(t('camera:panel.recordingSaved', { folder: navigator.userAgent.includes('Macintosh') ? 'Movies' : 'Videos' }), r.filePath); refreshMediaCount(); }
     else { setRecordingSourceId(liveSourceId); flash(t('camera:panel.recording')); }
   };
 
@@ -226,6 +231,19 @@ export function CameraPanel() {
             </button>
           </>
         )}
+
+        <button
+          onClick={() => setShowGallery(true)}
+          className={`${ICON_BTN} relative`}
+          data-tip={t('camera:gallery.openTip')}
+        >
+          <Film className="h-3.5 w-3.5" />
+          {mediaCount > 0 && (
+            <span className="absolute -right-1 -top-1 min-w-[14px] rounded-full bg-blue-500 px-1 text-center text-[9px] font-semibold leading-[14px] text-white">
+              {mediaCount > 99 ? '99+' : mediaCount}
+            </span>
+          )}
+        </button>
 
         {renderMode === 'synthetic' && <VisionStreamControl />}
 
@@ -329,6 +347,22 @@ export function CameraPanel() {
                   {t('camera:panel.configureFeeds')}
                 </MenuItem>
                 <MenuItem
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    setShowGallery(true);
+                  }}
+                >
+                  {t('camera:gallery.menuItem')}
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    void window.electronAPI.cameraMediaOpenFolder('video');
+                  }}
+                >
+                  {t('camera:gallery.openVideosFolder')}
+                </MenuItem>
+                <MenuItem
                   onClick={async () => {
                     setShowMoreMenu(false);
                     const text = await window.electronAPI.cameraDiagnostics();
@@ -376,6 +410,7 @@ export function CameraPanel() {
         {settingsSource && (
           <CameraSettingsDialog key={settingsSource.id} source={settingsSource} onClose={() => setSettingsSourceId(null)} />
         )}
+        {showGallery && <MediaGallery onClose={() => setShowGallery(false)} onChanged={setMediaCount} />}
         {toast && (
           <div className="absolute bottom-14 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded bg-black/75 px-3 py-1 text-[11px] text-white">
             {toast.text}
@@ -384,6 +419,12 @@ export function CameraPanel() {
                 onClick={() => { void window.electronAPI.cameraRevealMedia(toast.filePath!); setToast(null); }}
                 className="font-medium text-blue-300 hover:text-blue-200"
               >{t('common:show')}</button>
+            )}
+            {toast.filePath && (
+              <button
+                onClick={() => { setShowGallery(true); setToast(null); }}
+                className="font-medium text-blue-300 hover:text-blue-200"
+              >{t('camera:gallery.toastLink')}</button>
             )}
           </div>
         )}

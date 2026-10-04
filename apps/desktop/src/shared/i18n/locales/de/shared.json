@@ -25,10 +25,10 @@
     "accelNotRead": "Kalibrierwerte wurden nicht vom Fahrzeug gelesen.",
     "accelOffsetsHigh": "Akzeptiert, aber hoch: Offsets {{offsets}} m/s/s.",
     "accelOffsetsPastLimit": "Offsets {{offsets}} m/s/s, über der Arming-Grenze von {{limit}}.",
-    "accelOffsetsPastLimitAdvice": "Das Fahrzeug wird sich nicht scharf schalten lassen. Auf einer wirklich waagerechten Fläche neu kalibrieren.",
+    "accelOffsetsPastLimitAdvice": "Das Fahrzeug wird sich nicht armen lassen. Auf einer wirklich waagerechten Fläche neu kalibrieren.",
     "accelScaleHigh": "Akzeptiert, aber hoch: Skalierung weicht um {{percent}}% ab.",
     "accelScalePastLimit": "Skalierung weicht um {{percent}}% ab, über der Arming-Grenze.",
-    "accelScalePastLimitAdvice": "Das Fahrzeug wird sich nicht scharf schalten lassen. Neu kalibrieren und jede Position still halten.",
+    "accelScalePastLimitAdvice": "Das Fahrzeug wird sich nicht armen lassen. Neu kalibrieren und jede Position still halten.",
     "fitnessGood": "Gut: {{value}}.",
     "fitnessRejected": "Abgelehnt: {{value}}, über der Grenze von {{limit}}.",
     "fitnessRejectedAdvice": "Entfernen Sie sich von Metall, Akkus und Verkabelung und kalibrieren Sie erneut.",
@@ -52,7 +52,7 @@
       "name": "Beschleunigungssensor (Waagerecht)"
     },
     "accelQuick": {
-      "description": "Eine Position, Fahrzeug waagerecht und still. Schreibt die Offsets, die ArduPilot vor dem Scharfschalten verlangt, ohne das Fahrzeug umzudrehen.",
+      "description": "Eine Position, Fahrzeug waagerecht und still. Schreibt die Offsets, die ArduPilot vor dem Arming verlangt, ohne das Fahrzeug umzudrehen.",
       "name": "Beschleunigungssensor (Schnell)"
     },
     "compass": {
@@ -117,7 +117,7 @@
       "tuning": "Tuning"
     },
     "inFlight": "im Flug",
-    "mustBeArmed": "Fahrzeug muss scharf sein",
+    "mustBeArmed": "Fahrzeug muss gearmt sein",
     "needsGps": "Benötigt GPS / Positions-Lock",
     "noGps": "kein GPS nötig"
   },
@@ -583,11 +583,11 @@
       "px4Battery": "Der Akku ist schwach oder fehlerhaft. Laden oder ersetzen Sie ihn und prüfen Sie die Akkueinrichtung, falls der Wert falsch aussieht.",
       "px4Esc": "Ein ESC- oder Motorproblem wurde erkannt. Prüfen Sie ESC-Verkabelung, Telemetrie und Motorausgänge.",
       "px4Generic": "Für diesen Check ist keine automatische Lösung bekannt. Die Meldung kommt direkt vom Flugcontroller; die Preflight-Check-Referenz erklärt jede einzelne.",
-      "px4Geofence": "Eine Geofence-Bedingung blockiert das Scharfschalten. Bringen Sie das Fahrzeug in den Geofence oder überprüfen Sie den Geofence.",
+      "px4Geofence": "Eine Geofence-Bedingung blockiert das Arming. Bringen Sie das Fahrzeug in den Geofence oder überprüfen Sie den Geofence.",
       "px4GpsFix": "Warte auf GPS-Fix. Begeben Sie sich unter freien Himmel und warten Sie; falls es bestehen bleibt, prüfen Sie die GPS-Einrichtung.",
       "px4Gyro": "Das Gyroskop ist nicht kalibriert. Halten Sie das Fahrzeug während der Kalibrierung völlig still.",
       "px4Home": "Die Home-Position ist noch nicht gesetzt. Warten Sie auf eine gültige Position, damit Home erfasst werden kann.",
-      "px4KillSwitch": "Der Kill-Schalter ist aktiv. Deaktivieren Sie ihn am Sender, bevor Sie scharf schalten.",
+      "px4KillSwitch": "Der Kill-Schalter ist aktiv. Deaktivieren Sie ihn am Sender, bevor Sie armen.",
       "px4Mag": "Das Magnetometer ist nicht kalibriert, oder seine Werte stimmen nicht überein. Entfernen Sie sich von Metall und Stromkabeln und kalibrieren Sie neu.",
       "px4PositionEstimate": "Die Positionsschätzung ist nicht bereit. Warten Sie unter freiem Himmel auf einen GPS-Lock und bis sich der Schätzer stabilisiert hat.",
       "px4Radio": "Die Fernsteuerung ist nicht kalibriert oder ihr Signal ist verloren. Schalten Sie den Sender ein, prüfen Sie, dass er gebunden ist, und kalibrieren Sie ihn.",
@@ -633,7 +633,7 @@
       "title": "Verliert das Luftfahrzeug die Orientierung, passiert nichts"
     },
     "ekfThresholdDisabled": {
-      "consequence": "Nichts hindert Sie daran, mit einer schlechten Kurs- oder Positionsschätzung scharf zu schalten, und auch der Failsafe im Flug kann nicht auslösen.",
+      "consequence": "Nichts hindert Sie daran, mit einer schlechten Kurs- oder Positionsschätzung zu armen, und auch der Failsafe im Flug kann nicht auslösen.",
       "recommend": "Standard-Schwellwert wiederherstellen",
       "title": "Die Navigations-Qualitätsprüfung ist ausgeschaltet"
     },
@@ -663,12 +663,12 @@
       "title": "Der Verlust der Bodenstationsverbindung bewirkt nichts"
     },
     "px4MagCheckDisabled": {
-      "consequence": "Nichts hindert Sie daran, neben Stahl oder mit einem Magnetometer, das unsinnige Werte liefert, scharf zu schalten.",
-      "recommend": "Scharfschalten bei schlechtem Kompass verweigern",
+      "consequence": "Nichts hindert Sie daran, neben Stahl oder mit einem Magnetometer, das unsinnige Werte liefert, zu armen.",
+      "recommend": "Arming bei schlechtem Kompass verweigern",
       "title": "Die Kompass-Feldstärkeprüfung ist ausgeschaltet"
     },
     "px4RcLossTerminates": {
-      "consequence": "Flugabbruch und Unscharfschalten lassen das Luftfahrzeug beide an Ort und Stelle abstürzen. Ein kurzer RC-Ausfall wird zum Absturz.",
+      "consequence": "Flugabbruch und Disarming lassen das Luftfahrzeug beide an Ort und Stelle abstürzen. Ein kurzer RC-Ausfall wird zum Absturz.",
       "recommend": "Bei Funkverlust nach Hause zurückkehren",
       "title": "Der Verlust der Fernsteuerung schaltet die Motoren ab"
     }

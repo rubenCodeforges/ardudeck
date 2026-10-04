@@ -51,7 +51,7 @@
       "description": "Selbstnivellierung"
     },
     "arm": {
-      "beginner": "SICHERHEITSSCHALTER - Schaltet Ihr Luftfahrzeug scharf/unscharf. Legen Sie dies IMMER auf einen eigenen Schalter! Im scharfen Zustand können die Propeller jederzeit anlaufen.",
+      "beginner": "SICHERHEITSSCHALTER - Armt/disarmt Ihr Luftfahrzeug. Legen Sie dies IMMER auf einen eigenen Schalter! Im gearmten Zustand können die Propeller jederzeit anlaufen.",
       "description": "Motoren freigeben"
     },
     "beeper": {
@@ -63,7 +63,7 @@
       "description": "Flugaufzeichnung"
     },
     "failsafe": {
-      "beginner": "NOTFALL - Löst das Failsafe-Verhalten aus (meist Landung oder Unscharfschalten). Wird normalerweise bei Signalverlust automatisch aktiviert.",
+      "beginner": "NOTFALL - Löst das Failsafe-Verhalten aus (meist Landung oder Disarming). Wird normalerweise bei Signalverlust automatisch aktiviert.",
       "description": "Notlandung"
     },
     "flaperon": {
@@ -123,7 +123,7 @@
       "description": "Wegpunkt-Mission"
     },
     "prearm": {
-      "beginner": "Sicherheitsschalter - muss vor dem Scharfschalten aktiviert sein. Verhindert versehentliches Scharfschalten.",
+      "beginner": "Sicherheitsschalter - muss vor dem Arming aktiviert sein. Verhindert versehentliches Arming.",
       "description": "Pre-Arm-Check"
     },
     "turnAssist": {
@@ -213,7 +213,7 @@
   },
   "reviewStep": {
     "armMissing": "ARM-Modus ist nicht konfiguriert!",
-    "armMissingHint": "Ohne ARM-Modus können Sie Ihr Luftfahrzeug nicht scharf schalten. Gehen Sie zurück und legen Sie ARM auf einen Schalter.",
+    "armMissingHint": "Ohne ARM-Modus können Sie Ihr Luftfahrzeug nicht armen. Gehen Sie zurück und legen Sie ARM auf einen Schalter.",
     "beforeFly": "Vor dem Flug:",
     "configuredModes": "Konfigurierte Modi:",
     "configured_one": "Sie haben {{count}} Modus konfiguriert.",

@@ -1,12 +1,12 @@
 {
   "dashboard": {
     "accCalStarted": "Kalibrierung des Beschleunigungssensors gestartet. Halten Sie das Board ruhig!",
-    "armedBadge": "SCHARF",
+    "armedBadge": "ARMED",
     "calibrateAcc": "ACC kalibrieren",
     "connectedOn": "{{variant}} {{version}} auf {{board}}",
     "cpuLoad": "CPU-Last",
     "cycleTime": "Zykluszeit",
-    "disarmedBadge": "UNSCHARF",
+    "disarmedBadge": "DISARMED",
     "fix": "Fix",
     "lastUpdate": "Letzte Aktualisierung: {{time}}",
     "rebootConfirm": "Flugcontroller neu starten?",

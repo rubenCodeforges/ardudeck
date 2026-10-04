@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { BwGuide } from './BwGuide';
+import { modeVoiceCfg } from './mode-voice';
 import 'leaflet/dist/leaflet.css';
 import { SmoothWheelZoom } from '../map/SmoothWheelZoom';
 import { MapSearchControl } from '../map/MapSearchControl';
@@ -2002,6 +2003,7 @@ export function RadioHudView() {
     const vehicleClass = getVehicleClass(connectionState.mavType);
     cfgOut.vehicle = vehicleClass;
     cfgOut.modes = modeTableCfg(vehicleClass);
+    cfgOut.voice = modeVoiceCfg(vehicleClass);
     // authored canvas: the widget rescales tiles if its LCD differs (e.g.
     // the SD card later moves to another radio)
     cfgOut.screen = `${screen.w}x${screen.h}`;

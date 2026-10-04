@@ -1,0 +1,133 @@
+{
+  "applyHint": "Writing a value applies it on the node immediately. Use \"Save to node\" so it survives a restart.",
+  "applyHintRestart": "Some of your changes only take effect after the node restarts. Write, then \"Save to node\", then restart it.",
+  "busHealth": {
+    "bitrate": "Bitrate",
+    "busOff": "Bus-off events",
+    "diagnosis": {
+      "bus-off": {
+        "hint": "The CAN controller went bus-off: the bus is electrically faulty. Check for shorted or loose CAN_H/CAN_L, a missing ground, or missing termination.",
+        "title": "Bus errors"
+      },
+      "healthy": {
+        "hint": "",
+        "title": "Bus healthy"
+      },
+      "idle": {
+        "hint": "Nothing is being sent or received on this bus. Check that a CAN port uses DroneCAN and that the flight controller was rebooted after changing CAN settings.",
+        "title": "No traffic"
+      },
+      "no-ack": {
+        "hint": "The flight controller sends frames but no device acknowledges them. Check the cable (CAN_H and CAN_L not swapped), that the device is powered, that both ends are terminated with 120 Ω (most autopilots have one built in), and that the bitrate matches the device (DroneCAN default is 1 Mbit/s).",
+        "title": "Nothing answers on the bus"
+      },
+      "rx-errors": {
+        "hint": "Frames arrive damaged or are dropped. Check termination, cable length and the bitrate on every device.",
+        "title": "Receive errors"
+      }
+    },
+    "measuring": "Measuring…",
+    "received": "Received",
+    "sent": "Sent OK",
+    "subtitle": "CAN{{port}} as the flight controller sees it, measured every 5 s",
+    "timeouts": "Not acknowledged",
+    "title": "Bus health",
+    "unavailable": "This firmware does not report CAN statistics (needs MAVLink FTP and @SYS/can0_stats.txt)."
+  },
+  "col": {
+    "default": "Default",
+    "name": "Name",
+    "range": "Range",
+    "value": "Value"
+  },
+  "confirmRestart": "Confirm restart",
+  "danger": "Caution",
+  "dangerTip": "A wrong value can drop this node off the CAN bus or overwrite its bootloader. Recovering it then needs a USB or SLCAN connection to the node.",
+  "discard": "Discard",
+  "docsSource": "Descriptions from the ArduPilot AP_Periph documentation",
+  "error": {
+    "failed": "The flight controller refused CAN forwarding for this port.",
+    "noResponse": "No answer from the flight controller. Check that the port's driver is enabled and the FC was rebooted after changing CAN settings.",
+    "request": "Request failed: {{error}}",
+    "start": "Could not start CAN forwarding: {{error}}",
+    "unsupported": "This firmware build has no CAN forwarding over MAVLink, so ArduDeck cannot see the DroneCAN bus."
+  },
+  "fcHint": "This is the flight controller itself. Its settings are in the regular parameter table.",
+  "filterPlaceholder": "Filter parameters",
+  "framesTip": "CAN frames received from the bus while this tab is open",
+  "frames_one": "{{count}} frame",
+  "frames_other": "{{count}} frames",
+  "hardware": "Hardware",
+  "health": {
+    "critical": "Critical",
+    "error": "Error",
+    "ok": "Healthy",
+    "warning": "Warning"
+  },
+  "loadingParams": "Reading parameters… {{count}}",
+  "mode": {
+    "initialization": "Initializing",
+    "maintenance": "Maintenance",
+    "offline": "Offline",
+    "operational": "Operational",
+    "softwareUpdate": "Updating firmware"
+  },
+  "noBitsSet": "Nothing selected",
+  "noBus": {
+    "body": "No CAN port uses the DroneCAN protocol. Set CAN_P1_DRIVER to 1 and CAN_D1_PROTOCOL to DroneCAN, then reboot the flight controller.",
+    "title": "No DroneCAN bus configured"
+  },
+  "noParams": "This node reports no parameters.",
+  "nodeFallbackName": "Node {{id}}",
+  "offline": "Offline",
+  "paramsSubtitle_one": "Node {{id}} · {{count}} parameter",
+  "paramsSubtitle_other": "Node {{id}} · {{count}} parameters",
+  "port": "CAN{{port}}",
+  "reboot": "Restart",
+  "rebootTip": "Takes effect after the node restarts.",
+  "reload": "Reload",
+  "requestError": {
+    "not-active": "monitoring is stopped",
+    "notConnected": "not connected",
+    "rejected": "the node rejected it",
+    "timeout": "the node did not answer"
+  },
+  "restart": "Restart node",
+  "restarted": "Restart sent. The node reappears in a few seconds.",
+  "review": {
+    "asksToWrite": "{{from}} asks to change node parameters",
+    "saveOnNode": "Also save on the node, so the values survive a restart",
+    "title": "Review DroneCAN changes",
+    "write_one": "Write {{count}} change",
+    "write_other": "Write {{count}} changes"
+  },
+  "saveToNode": "Save to node",
+  "saveToNodeTip": "Store the current values in the node's flash so they survive a restart",
+  "saved": "Saved on the node.",
+  "software": "Software",
+  "start": "Start",
+  "status": {
+    "active": "Monitoring",
+    "failed": "Refused",
+    "idle": "Stopped",
+    "noResponse": "No response",
+    "starting": "Connecting",
+    "unsupported": "Not supported"
+  },
+  "stop": "Stop",
+  "stoppedHint": "Monitoring is stopped. Press Start to read the bus.",
+  "subtitle": "Devices on the CAN bus, read through the flight controller",
+  "thisFc": "This FC",
+  "title": "DroneCAN",
+  "uniqueId": "Unique ID",
+  "uptime": "Uptime",
+  "valueNotListed": "{{value}} (not in the list)",
+  "waitingForNodes": "Listening on the bus. Nodes appear within a second of sending their status.",
+  "writeChanges_one": "Write {{count}} change",
+  "writeChanges_other": "Write {{count}} changes",
+  "writeFailed": "Not written: {{names}}",
+  "writtenAndSaved_one": "{{count}} value written and saved on the node.",
+  "writtenAndSaved_other": "{{count}} values written and saved on the node.",
+  "written_one": "{{count}} value written.",
+  "written_other": "{{count}} values written."
+}

@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { app } from 'electron';
 import { mediaBinariesDownloader } from './media-binaries-downloader.js';
+import { mediaDir } from './media-library.js';
 import { bridgeFailureReason, buildWfbngSdp, buildWfbngFfmpegArgs, wfbngPort, wfbngShouldTranscode } from './wfbng.js';
 import { needsH264Relay, buildH264RelayArgs, encoderChain } from './h264-relay.js';
 import { wfbngReceiver } from './wfbng-receiver.js';
@@ -689,7 +690,7 @@ export class MediaEngine {
     if (!active) return;
     active.session.status = 'stopped';
     if (active.restartTimer) clearTimeout(active.restartTimer);
-    if (active.record) killProc(active.record);
+    if (active.record) await stopRecording(active.record);
     // Wait for it to exit: a restart right after would otherwise find the UDP port still bound.
     if (active.ingest) await killProcAndWait(active.ingest);
     if (active.configuredPath) await this.removeHubPath(active.configuredPath);
@@ -705,7 +706,7 @@ export class MediaEngine {
     const active = this.sessions.get(sourceId);
     if (!active?.session.path) return { ok: false, error: t('main:media.noStreamSnapshot') };
     if (!this.ffmpegPath) return { ok: false, error: t('main:media.ffmpegRequiredSnapshot') };
-    const filePath = join(this.mediaDir('photos'), `snapshot_${stamp()}.jpg`);
+    const filePath = join(mediaDir('photos'), `snapshot_${stamp()}.jpg`);
     return new Promise((resolve) => {
       const p = spawn(this.ffmpegPath as string, [
         '-y', '-rtsp_transport', 'tcp', '-i', this.rtspUrl(active.session.path as string),
@@ -721,14 +722,14 @@ export class MediaEngine {
     const active = this.sessions.get(sourceId);
     if (!active?.session.path) return { ok: false, error: t('main:media.noStreamRecord') };
     if (active.record) {
-      killProc(active.record);
       const filePath = active.recordPath;
+      await stopRecording(active.record);
       delete active.record;
       delete active.recordPath;
       return { ok: true, ...(filePath ? { filePath } : {}) };
     }
     if (!this.ffmpegPath) return { ok: false, error: t('main:media.ffmpegRequiredRecord') };
-    const filePath = join(this.mediaDir('videos'), `recording_${stamp()}.mp4`);
+    const filePath = join(mediaDir('videos'), `recording_${stamp()}.mp4`);
     const p = spawn(this.ffmpegPath, [
       '-rtsp_transport', 'tcp', '-i', this.rtspUrl(active.session.path),
       '-c', 'copy', '-f', 'mp4', filePath,
@@ -736,30 +737,6 @@ export class MediaEngine {
     active.record = p;
     active.recordPath = filePath;
     return { ok: true, filePath };
-  }
-
-  // Where people look for photos and videos, not the app's hidden data folder.
-  private mediaDir(kind: 'photos' | 'videos'): string {
-    let dir: string;
-    try {
-      dir = join(app.getPath(kind === 'photos' ? 'pictures' : 'videos'), 'ArduDeck');
-    } catch {
-      dir = join(app.getPath('userData'), 'camera-media');
-    }
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    return dir;
-  }
-
-  /** Only ever reveal files this engine wrote. */
-  isOwnMedia(filePath: string): boolean {
-    const name = basename(filePath);
-    if (!/^(snapshot|recording)_[\w-]+\.(jpg|mp4)$/.test(name)) return false;
-    const dir = dirname(filePath);
-    const dirs = [join(app.getPath('userData'), 'camera-media')];
-    for (const k of ['pictures', 'videos'] as const) {
-      try { dirs.push(join(app.getPath(k), 'ArduDeck')); } catch { /* platform without it */ }
-    }
-    return dirs.includes(dir) && existsSync(filePath);
   }
 
   /**
@@ -878,6 +855,16 @@ export class MediaEngine {
       .slice(-lines);
   }
 
+  /** Finish open recordings so they stay playable; run before shutdown on quit. */
+  async finishRecordings(): Promise<void> {
+    await Promise.all([...this.sessions.values()].map(async (s) => {
+      if (!s.record) return;
+      await stopRecording(s.record);
+      delete s.record;
+      delete s.recordPath;
+    }));
+  }
+
   /** Tear everything down — called on app quit. */
   shutdown(): void {
     if (this.watchdog) { clearInterval(this.watchdog); this.watchdog = null; }
@@ -915,6 +902,19 @@ function killProc(p: ChildProcess): void {
   } catch {
     /* already gone */
   }
+}
+
+/**
+ * Ask ffmpeg to finish: it writes the mp4 index on the way out. A kill skips that
+ * (on Windows SIGTERM is a hard kill) and leaves a file no player opens.
+ */
+function stopRecording(p: ChildProcess, timeoutMs = 8000): Promise<void> {
+  if (p.exitCode !== null || p.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => { killProc(p); resolve(); }, timeoutMs);
+    p.once('exit', () => { clearTimeout(timer); resolve(); });
+    try { p.stdin?.end('q'); } catch { killProc(p); }
+  });
 }
 
 function killProcAndWait(p: ChildProcess, timeoutMs = 2500): Promise<void> {

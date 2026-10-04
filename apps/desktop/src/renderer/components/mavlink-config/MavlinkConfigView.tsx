@@ -45,6 +45,8 @@ import {
   ChevronDown,
   HardDrive,
   FolderOpen,
+  Network,
+  Boxes,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
@@ -70,6 +72,8 @@ import RoverTuningTab from './RoverTuningTab';
 import ReceiverTab from './ReceiverTab';
 import SerialPortsTab from './SerialPortsTab';
 import TelemetryRatesTab from './TelemetryRatesTab';
+import DroneCanTab from './DroneCanTab';
+import HardwareTab from './HardwareTab';
 import ParamHistoryModal from './ParamHistoryModal';
 import { MotorTestTab } from './motor-test/MotorTestTab';
 import ServoOutputTab from './servo-output/ServoOutputTab';
@@ -88,7 +92,7 @@ interface Toast {
   type: ToastType;
 }
 
-type TabId = 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'telemetry-rates' | 'safety' | 'sensors' | 'sensor-config' | 'notify' | 'tuning' | 'autotune' | 'battery' | 'parameters' | 'files' | 'logging' | 'arming' | 'rover-tuning' | 'rover-nav' | 'motor-test' | 'servo-output';
+type TabId = 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'telemetry-rates' | 'safety' | 'sensors' | 'sensor-config' | 'notify' | 'tuning' | 'autotune' | 'battery' | 'parameters' | 'files' | 'logging' | 'arming' | 'rover-tuning' | 'rover-nav' | 'motor-test' | 'servo-output' | 'dronecan' | 'hardware';
 
 interface Tab {
   id: TabId;
@@ -223,6 +227,7 @@ const LINKS_GROUP: TabGroup = {
   children: [
     { id: 'serial-ports', nameKey: 'common:serialPorts', Icon: Cable, color: 'text-sky-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.serialPortsDesc' },
     { id: 'telemetry-rates', nameKey: 'mavlink-config:mavlinkConfigView.tabs.telemetryRates', Icon: Gauge, color: 'text-teal-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.telemetryRatesDesc' },
+    { id: 'dronecan', nameKey: 'mavlink-config:mavlinkConfigView.tabs.dronecan', Icon: Network, color: 'text-indigo-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.dronecanDesc' },
   ],
 };
 
@@ -259,6 +264,7 @@ const HARDWARE_GROUP: TabGroup = {
     { id: 'sensors', nameKey: 'mavlink-config:mavlinkConfigView.tabs.sensors', Icon: Cpu, color: 'text-cyan-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.sensorsDesc' },
     { id: 'sensor-config', nameKey: 'common:configuration', Icon: Satellite, color: 'text-emerald-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.sensorConfigDesc' },
     { id: 'notify', nameKey: 'mavlink-config:mavlinkConfigView.tabs.notify', Icon: Lightbulb, color: 'text-amber-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.notifyDesc' },
+    { id: 'hardware', nameKey: 'mavlink-config:mavlinkConfigView.tabs.hardware', Icon: Boxes, color: 'text-teal-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.hardwareDesc' },
   ],
 };
 
@@ -322,7 +328,7 @@ const ROVER_TABS: TabNode[] = [
 // shown hunting for parameters that do not exist; the parameter table still
 // exposes everything with PX4's own metadata.
 const PX4_UNSUPPORTED_TABS: ReadonlySet<TabId> = new Set([
-  'rates', 'tuning', 'autotune', 'rover-tuning', 'rover-nav',
+  'rates', 'tuning', 'autotune', 'rover-tuning', 'rover-nav', 'dronecan',
 ]);
 
 function filterTabsForFirmware(nodes: TabNode[], isPx4: boolean): TabNode[] {
@@ -582,6 +588,10 @@ export const MavlinkConfigView: React.FC = () => {
         return <SerialPortsTab />;
       case 'telemetry-rates':
         return <TelemetryRatesTab />;
+      case 'dronecan':
+        return <DroneCanTab />;
+      case 'hardware':
+        return <HardwareTab />;
       case 'safety':
         return <SafetyTab onGoTo={(tab) => {
           if (collectTabIds(tabs).includes(tab as TabId)) setActiveTab(tab as TabId);

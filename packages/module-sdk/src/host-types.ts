@@ -359,6 +359,12 @@ export interface ModulePanelRegistration {
   component: ComponentType;
 }
 
+/** Body of the nav view this cargo unlocks (e.g. 'vault'); the host keeps the rail entry and gating. */
+export interface ModuleViewRegistration {
+  viewId: string;
+  component: ComponentType;
+}
+
 // ── Fleet vault (requires the 'vault' manifest permission) ──────
 
 export interface VaultStatusInfo {
@@ -378,6 +384,63 @@ export interface VaultUnitInfo {
   sitl?: boolean;
   lastSnapshotAt?: number;
   paramCount?: number;
+  /** Other board ids filed under this unit (identity scheme change, swapped FC) */
+  aliases?: string[];
+}
+
+export interface VaultSiteInfo {
+  site: string;
+  hasBoundary: boolean;
+  missions: string[];
+}
+
+export interface VaultDiffRow {
+  id: string;
+  snapshotValue: number;
+  /** null = the connected vehicle doesn't report this param */
+  currentValue: number | null;
+  calibration: boolean;
+}
+
+/** An opened parameter snapshot compared against the live vehicle */
+export interface VaultSnapshotDiff {
+  oid: string;
+  uid: string;
+  changed: VaultDiffRow[];
+  missingOnVehicle: VaultDiffRow[];
+  sameCount: number;
+  totalInSnapshot: number;
+  liveAvailable: boolean;
+  /** Param download still running: the comparison would be misleading */
+  liveLoading: boolean;
+  snapshotFirmware?: string;
+  /** May this snapshot be written to the connected vehicle? The host enforces it on restore too. */
+  restore: {
+    targetMatches: boolean;
+    firmwareMatches: boolean;
+    ownerName: string;
+    liveFirmware?: string;
+  };
+}
+
+/** Everything a vault workspace UI renders; the host keeps it current. */
+export interface VaultWorkspaceState {
+  status: (VaultStatusInfo & { github: { connected: boolean; login?: string; repo?: string; mode: 'github' | 'custom' } }) | null;
+  units: VaultUnitInfo[];
+  sites: VaultSiteInfo[];
+  history: VaultHistoryEntryInfo[];
+  /** Live parameter count of the connected vehicle (0 = not loaded yet) */
+  paramCount: number;
+  /** Unit picked under "Working on", overriding automatic matching */
+  unitOverride: string | null;
+  snapshotBusy: boolean;
+  syncBusy: boolean;
+  lastError: string | null;
+  lastNotice: string | null;
+  diff: VaultSnapshotDiff | null;
+  diffLoading: boolean;
+  restoreBusy: boolean;
+  restoreProgress: { done: number; total: number } | null;
 }
 
 export interface VaultHistoryEntryInfo {
@@ -397,6 +460,219 @@ export interface VehicleIdentity {
   overridden?: boolean;
 }
 
+
+// --- Config cards ---------------------------------------------------------
+// A module adds a card to an existing configuration screen. The host owns the
+// slot's position; the module supplies the card body.
+
+/**
+ * `notify`: ArduPilot configuration, Sensors, Status LED, below the built-in LED controls.
+ * `gps`: ArduPilot configuration, Sensors, below the GPS wiring card.
+ * `hardware`: ArduPilot configuration, Sensors, Hardware, below the detected parts.
+ */
+export type ConfigCardSlot = 'notify' | 'gps' | 'hardware';
+
+export interface ConfigCardRegistration {
+  /** Stable id within this module. Re-registering the same id replaces it. */
+  id: string;
+  slot: ConfigCardSlot;
+  /** Order among module cards in the same slot, low first. */
+  order?: number;
+  component: ComponentType;
+}
+
+// --- Hardware catalog -----------------------------------------------------
+// A module describes products it knows. The host matches them against what it
+// detects on the vehicle and shows official names, kit and links in the
+// Hardware tab and on DroneCAN node cards.
+
+export type HardwareCategory = 'autopilot' | 'gnss' | 'compass' | 'lighting' | 'esc' | 'receiver' | 'datalink' | 'power' | 'other';
+
+export interface HardwareMatch {
+  /** DroneCAN node name from GetNodeInfo. A trailing `*` matches a prefix. */
+  dronecanNodeName?: string;
+  /** ArduPilot APJ board id reported in AUTOPILOT_VERSION. */
+  boardId?: number;
+  /** USB serial device. Shared bridge chips (CP210x, CH340) need `manufacturer` to tell products apart. */
+  usb?: { vendorId: number; productId: number; manufacturer?: string };
+}
+
+export interface BoardPortLabel {
+  /** SERIALx index. */
+  serial: number;
+  /** Connector name printed on the board, e.g. "GPS" or "TELEM1". */
+  label: string;
+  note?: string;
+}
+
+export type CanBusDiagnosis = 'healthy' | 'no-ack' | 'bus-off' | 'rx-errors' | 'idle';
+
+export interface CanBusHealthInfo {
+  bitrate: number | null;
+  diagnosis: CanBusDiagnosis;
+  /** Counter changes over the measurement window (tx_success, tx_timedout, rx_received, num_busoff_err ...). */
+  deltas: Record<string, number>;
+  intervalMs: number;
+}
+
+export interface HardwareProduct {
+  /** Stable id within this module. */
+  id: string;
+  vendor: string;
+  /** Official product name. */
+  name: string;
+  /** Kit this part ships in, if any. */
+  kit?: string;
+  category: HardwareCategory;
+  /** https URL or a data: URL. */
+  imageUrl?: string;
+  /** Product documentation. Opened in the system browser. */
+  docsUrl?: string;
+  match: HardwareMatch;
+}
+
+export interface DetectedHardware {
+  source: 'flight-controller' | 'dronecan';
+  /** What the vehicle reported (board name or DroneCAN node name). */
+  reportedName: string;
+  nodeId?: number;
+  boardId?: number;
+  /** The catalog entry that matched, from any loaded module. */
+  product?: HardwareProduct & { moduleSlug: string };
+}
+
+// --- DroneCAN -------------------------------------------------------------
+// Read and configure DroneCAN nodes through the flight controller (ArduPilot
+// MAV_CMD_CAN_FORWARD). Node-level writes need the 'dronecan' permission.
+
+export interface DroneCanNodeInfo {
+  nodeId: number;
+  /** 0 ok, 1 warning, 2 error, 3 critical. */
+  health: number;
+  /** 0 operational, 1 initialization, 2 maintenance, 3 software update, 7 offline. */
+  mode: number;
+  uptimeSec: number;
+  online: boolean;
+  name?: string;
+  softwareVersion?: string;
+  hardwareVersion?: string;
+  uniqueId?: string;
+}
+
+export type DroneCanParamValue =
+  | { type: 'empty' }
+  | { type: 'integer'; value: number }
+  | { type: 'real'; value: number }
+  | { type: 'boolean'; value: boolean }
+  | { type: 'string'; value: string };
+
+export interface DroneCanParamInfo {
+  index: number;
+  name: string;
+  value: DroneCanParamValue;
+  defaultValue: DroneCanParamValue;
+  min?: number;
+  max?: number;
+}
+
+export interface DroneCanParamChange {
+  name: string;
+  value: DroneCanParamValue;
+}
+
+export interface DroneCanProposalResult {
+  accepted: boolean;
+  /** Values the node confirmed. */
+  written: DroneCanParamInfo[];
+  failed: Array<{ name: string; error: string }>;
+  /** True when the pilot also saved on the node and it confirmed. */
+  saved: boolean;
+  error?: string;
+}
+
+/** What a module knows about one node parameter. Overrides the host's AP_Periph docs field by field. */
+export interface DroneCanParamDoc {
+  displayName?: string;
+  description?: string;
+  /** Enum labels by value; the host shows a picker instead of a number box. */
+  values?: Record<number, string>;
+  units?: string;
+  min?: number;
+  max?: number;
+  rebootRequired?: boolean;
+  /** Writing this can brick or disconnect the node; the host flags it. */
+  danger?: boolean;
+}
+
+/**
+ * Teach the DroneCAN tab about a node: a panel shown above its parameter table
+ * and parameter docs. Matched on the GetNodeInfo name; a trailing `*` matches a prefix.
+ */
+export interface DroneCanNodeProfile {
+  /** Stable id within this module. Re-registering the same id replaces it. */
+  id: string;
+  match: string;
+  /** Rendered in the node detail, above the parameters. */
+  panel?: ComponentType<{ nodeId: number }>;
+  /** Called on render, so labels can come from host.i18n and follow the language. */
+  params?: () => Record<string, DroneCanParamDoc>;
+}
+
+// --- Parameter proposals --------------------------------------------------
+
+export interface ParamChange {
+  name: string;
+  value: number;
+  /** Shown next to the change in the review dialog. */
+  reason?: string;
+}
+
+export interface ParamProposalResult {
+  /** True when the pilot applied and every change was written. */
+  accepted: boolean;
+  applied?: number;
+  failed?: string[];
+  rebootRequired?: string[];
+  /** Changes the host refused before showing the dialog (unknown, read-only, protected). */
+  rejected: Array<{ name: string; reason: string }>;
+  /** Why nothing or not everything was written. */
+  error?: string;
+}
+
+// --- Firmware sources -----------------------------------------------------
+
+export interface FirmwareSourceRegistration {
+  /** Stable id within this module. */
+  id: string;
+  /** Button label next to the built-in sources on the Firmware screen. */
+  name: string;
+  /**
+   * Shown in place of the file picker when the source is selected. It
+   * obtains a firmware file (typically through the module's main process)
+   * and hands it over with `host.firmware.useFile`. The host flashes it.
+   */
+  component: ComponentType;
+}
+
+// --- Vehicle templates ----------------------------------------------------
+
+export type VehicleTemplateType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat' | 'sub';
+
+export interface VehicleTemplateRegistration {
+  /** Globally unique; prefix it with your module slug. */
+  slug: string;
+  name: string;
+  description: string;
+  vehicleType: VehicleTemplateType;
+  category: 'multirotor' | 'fixed-wing' | 'vtol' | 'rover' | 'boat' | 'sub';
+  /** Starting values for the vehicle profile form (host VehicleProfile fields). */
+  defaults?: Record<string, unknown>;
+  /** Parameters this template sets for a profile. Shown and reviewed before writing. */
+  params(profile: unknown): Array<{ name: string; value: number; reason: string; requiresReboot?: boolean }>;
+  /** Extra parameters only for SITL. */
+  simParams?(profile: unknown): Array<{ name: string; value: number; reason: string }>;
+}
+
 export interface RendererHostApi {
   moduleSlug: string;
   telemetry: {
@@ -414,7 +690,17 @@ export interface RendererHostApi {
   params: {
     getAll(): Promise<unknown[]>;
     get(name: string): Promise<unknown>;
+    /**
+     * Same as proposing one change: the pilot sees it in the review dialog
+     * first. Resolves once written; rejects if declined or the write failed.
+     */
     set(name: string, value: number): Promise<void>;
+    /**
+     * Show proposed parameter writes in the host's review dialog. Nothing is
+     * written unless the pilot applies; the host does the write. Prefer this
+     * over `params.set`.
+     */
+    propose(changes: ParamChange[], reason: string): Promise<ParamProposalResult>;
   };
   /**
    * Read-only access to the flight log open in the Log Explorer, for modules
@@ -460,6 +746,27 @@ export interface RendererHostApi {
     /** Snapshot under a fresh minted identity (no unique board UID, or wrong auto-match). `name` seeds the unit label. */
     snapshotAsNewVehicle(name?: string, note?: string): Promise<{ success: boolean; error?: string }>;
     sync(): Promise<{ success: boolean; error?: string }>;
+    /** Workspace state for a full vault UI; `subscribe` fires on every change. */
+    getState(): VaultWorkspaceState;
+    subscribe(listener: (state: VaultWorkspaceState) => void): () => void;
+    refresh(): Promise<void>;
+    snapshotMission(site: string, missionName: string): Promise<boolean>;
+    snapshotArea(site: string): Promise<boolean>;
+    renameUnit(uid: string, name: string): Promise<boolean>;
+    /** Remove a vehicle from the vault; its snapshots stay in the history */
+    deleteUnit(uid: string): Promise<boolean>;
+    /** File the connected vehicle's board id under an existing unit */
+    linkUnit(unitUid: string, aliasUid: string): Promise<boolean>;
+    setUnitOverride(uid: string | null): void;
+    openSnapshot(oid: string, uid: string): Promise<void>;
+    closeSnapshot(): void;
+    /** Write the open snapshot's changed params to the vehicle (host checks owner and firmware) */
+    restoreSnapshot(includeCalibration: boolean): Promise<{ applied: number; failed: number }>;
+    setAutoSync(on: boolean): Promise<void>;
+    clearMessages(): void;
+    openFolder(): void;
+    /** Opens the host's backup setup; credentials never pass through a module */
+    openBackupSetup(): void;
   };
   /**
    * Which vehicle the app currently attributes work to (auto-detected or
@@ -484,6 +791,11 @@ export interface RendererHostApi {
     register(reg: ModulePanelRegistration): void;
     /** Remove a panel this module registered. Other modules' ids are ignored. */
     unregister(id: string): void;
+  };
+  /** Fill the nav view this cargo unlocks. Throws for a view another cargo owns. */
+  views: {
+    register(reg: ModuleViewRegistration): void;
+    unregister(viewId: string): void;
   };
   /**
    * HUD overlay geometry for `cameraOverlay` modules. `getProjection()` returns
@@ -581,6 +893,69 @@ export interface RendererHostApi {
      * Resolves with the ring, or null if they backed out.
      */
     pickPolygon(prompt?: string): Promise<MapPoint[] | null>;
+  };
+  /**
+   * Translations for this module's own text. Ship every language you support;
+   * the host falls back to English. Keys may be nested objects.
+   */
+  i18n: {
+    addResources(resources: Record<string, Record<string, unknown>>): void;
+    /** Translate a key from your resources, with {{placeholders}} and `count` plurals (key_one / key_other). */
+    t(key: string, vars?: Record<string, unknown>): string;
+    /** Active app language code, e.g. 'en' or 'de'. */
+    language(): string;
+  };
+  /** Add a card to an existing configuration screen. */
+  config: {
+    registerCard(reg: ConfigCardRegistration): void;
+    /** Remove a card this module registered. Other modules' ids are ignored. */
+    unregisterCard(id: string): void;
+  };
+  hardware: {
+    /** Add or replace this module's product catalog. */
+    registerProducts(products: HardwareProduct[]): void;
+    unregisterProducts(): void;
+    /** What the host currently detects, with catalog matches from every module. */
+    getDetected(): DetectedHardware[];
+    /** Name the serial connectors of an autopilot (APJ board id) in the Serial Ports tab. */
+    registerBoardPorts(boardId: number, ports: BoardPortLabel[]): void;
+    subscribe(listener: (detected: DetectedHardware[]) => void): () => void;
+  };
+  dronecan: {
+    /**
+     * Keep the bus monitored while you need it. Starts CAN forwarding on the
+     * first DroneCAN port if nothing else has; call the returned function to
+     * release. Monitoring stops when the last holder releases.
+     */
+    acquire(): () => void;
+    getNodes(): DroneCanNodeInfo[];
+    subscribe(listener: (nodes: DroneCanNodeInfo[]) => void): () => void;
+    listParams(nodeId: number): Promise<DroneCanParamInfo[]>;
+    /** Health of the first DroneCAN port from the FC's CAN statistics, or null when unavailable. Takes ~2 s on first call. */
+    getBusStats(): Promise<CanBusHealthInfo | null>;
+    /**
+     * Show node parameter writes in the host's DroneCAN review dialog. The
+     * pilot applies (optionally saving on the node) or cancels; the host
+     * writes. Needs the 'dronecan' permission.
+     */
+    proposeParams(nodeId: number, changes: DroneCanParamChange[], options?: { reason?: string; saveByDefault?: boolean }): Promise<DroneCanProposalResult>;
+    /** Needs the 'dronecan' permission. */
+    restartNode(nodeId: number): Promise<boolean>;
+    /** Add a panel and parameter docs for matching nodes in the DroneCAN tab. */
+    registerNodeProfile(profile: DroneCanNodeProfile): void;
+    unregisterNodeProfile(id: string): void;
+  };
+  firmware: {
+    registerSource(reg: FirmwareSourceRegistration): void;
+    unregisterSource(id: string): void;
+    /** Hand a firmware file to the Firmware screen; the pilot still presses Flash. */
+    useFile(path: string): void;
+    /** Board the Firmware screen detected, if any. */
+    getDetectedBoard(): { name: string; target: string; mcu?: string; apjBoardId?: number } | null;
+  };
+  vehicleTemplates: {
+    register(reg: VehicleTemplateRegistration): void;
+    unregister(slug: string): void;
   };
   survey: {
     /**

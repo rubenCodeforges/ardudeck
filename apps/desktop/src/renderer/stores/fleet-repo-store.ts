@@ -75,8 +75,10 @@ interface FleetRepoState {
   diffLoading: boolean;
   restoreBusy: boolean;
   restoreProgress: { done: number; total: number } | null;
+  backupSetupOpen: boolean;
 
   refresh: () => Promise<void>;
+  setBackupSetupOpen: (open: boolean) => void;
   setFilterPrefix: (prefix: string | null) => void;
   setUnitOverride: (uid: string | null) => void;
   clearMessages: () => void;
@@ -89,6 +91,7 @@ interface FleetRepoState {
   snapshotArea: (site: string) => Promise<boolean>;
 
   renameUnit: (uid: string, name: string) => Promise<boolean>;
+  deleteUnit: (uid: string) => Promise<boolean>;
   linkUnit: (unitUid: string, aliasUid: string) => Promise<boolean>;
   loadDiff: (oid: string, uid: string) => Promise<void>;
   clearDiff: () => void;
@@ -306,6 +309,9 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
   diffLoading: false,
   restoreBusy: false,
   restoreProgress: null,
+  backupSetupOpen: false,
+
+  setBackupSetupOpen: (open) => set({ backupSetupOpen: open }),
 
   refresh: async () => {
     const api = window.electronAPI;
@@ -429,6 +435,23 @@ export const useFleetRepoStore = create<FleetRepoState>()((set, get) => ({
       set({ lastError: result?.error ?? t('stores:fleetRepoStore.renameFailed') });
       return false;
     }
+    await get().refresh();
+    return true;
+  },
+
+  deleteUnit: async (uid) => {
+    const result = await window.electronAPI?.fleetRepoDeleteUnit(uid).catch(
+      (err: unknown) => ({ success: false, error: err instanceof Error ? err.message : undefined }),
+    );
+    if (!result?.success) {
+      set({ lastError: result?.error ?? t('stores:fleetRepoStore.deleteFailed') });
+      return false;
+    }
+    set((s) => ({
+      lastNotice: t('stores:fleetRepoStore.deleted'),
+      unitOverride: s.unitOverride === uid ? null : s.unitOverride,
+      diff: s.diff?.uid === uid ? null : s.diff,
+    }));
     await get().refresh();
     return true;
   },

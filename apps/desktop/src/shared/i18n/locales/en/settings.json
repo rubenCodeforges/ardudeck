@@ -211,6 +211,17 @@
       "releaseNotesNamed": "Release notes · {{name}}",
       "released": "Released {{date}}",
       "restartToUpdate": "Restart to Update",
+      "sponsors": {
+        "adlerblix": "Optical aerial surveying: photogrammetry, RTK precision, large-area mapping. Germany.",
+        "cargo": "Cargo on the Hangar",
+        "shop": "Shop",
+        "subtitle": "Companies that back ArduDeck with hardware, expertise and testing in the field.",
+        "thankYou": "Thank-you post",
+        "title": "Supported by",
+        "uavDev": "Autonomous systems hardware: autopilots, DroneCAN sensors, radio and wiring from a single source. Germany.",
+        "website": "Website",
+        "wiki": "Wiki"
+      },
       "title": "About",
       "upToDate": "You're up to date",
       "viewOnGithub": "View on GitHub",

@@ -388,5 +388,36 @@
     "testTip": "Lauscht einige Sekunden und meldet, was ankommt",
     "videoDetected": "Video erkannt - Hinzufügen drücken und den Feed auswählen.",
     "videoDetectedFrom": "Video von {{sender}} erkannt - Hinzufügen drücken und den Feed auswählen."
+  },
+  "gallery": {
+    "openTip": "Aufnahmen und Schnappschüsse",
+    "menuItem": "Aufnahmen und Schnappschüsse",
+    "toastLink": "Galerie",
+    "title": "Aufnahmen und Schnappschüsse",
+    "summary": "{{videos}} Videos, {{photos}} Fotos, {{size}}",
+    "loading": "Wird geladen",
+    "filter": {
+      "all": "Alle",
+      "video": "Videos",
+      "photo": "Fotos"
+    },
+    "openVideosFolder": "Aufnahmeordner öffnen",
+    "openPhotosFolder": "Schnappschussordner öffnen",
+    "closeTip": "Schließen",
+    "backTip": "Zurück zur Übersicht",
+    "video": "Video",
+    "photo": "Foto",
+    "cardTip": "Klicken zum Abspielen. In eine Mail, einen Chat oder Ordner ziehen, um sie zu senden.",
+    "newer": "Neuer",
+    "older": "Älter",
+    "dragTip": "In eine Mail, einen Chat oder Ordner ziehen",
+    "dragHint": "In eine Mail, einen Chat oder Ordner ziehen, um sie zu senden",
+    "showInFolder": "Im Ordner zeigen",
+    "openInPlayer": "Im Player öffnen",
+    "openInViewer": "Im Bildbetrachter öffnen",
+    "trash": "Löschen",
+    "confirmTrash": "In den Papierkorb",
+    "emptyTitle": "Noch nichts aufgenommen",
+    "emptyBody": "Nutze die Aufnahme- und Schnappschuss-Tasten über dem Livebild. Aufnahmen landen in deinem Videos-Ordner (auf dem Mac: Filme) unter ArduDeck, Schnappschüsse in Bilder/ArduDeck, und alles erscheint hier."
   }
 }

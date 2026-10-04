@@ -121,7 +121,8 @@ describe('ArduDeck dialect', () => {
     // Every one of these frames is shorter than the declared length, because v2 trims
     // trailing zeros. A decoder that reads at fixed offsets has to pad first.
     const packet = parseOne(MANIFEST);
-    expect(packet.payload.length).toBeLessThan(94);
+    expect(packet.payloadLength).toBeLessThan(94);
+    expect(packet.payload.length).toBe(94);
     expect(() => deserializeArdudeckManifest(packet.payload)).not.toThrow();
   });
 

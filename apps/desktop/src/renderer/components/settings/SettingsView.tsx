@@ -30,6 +30,7 @@ import { StallSpeedCalcButton } from './vehicle-profile/StallSpeedCalcButton';
 import { inferProfileFromParams } from '../../lib/vehicle-templates/import';
 import { saveParmToFile } from '../../lib/vehicle-templates/export-parm';
 import { getTemplate, defaultTemplateForType } from '../../lib/vehicle-templates/registry';
+import { SupportedBy } from './SupportedBy';
 import { Download, ArrowRight, Gauge, SlidersHorizontal, Map as MapIcon, FlaskConical, Info, type LucideIcon } from 'lucide-react';
 import { isWeatherBriefingAvailable, ADVISOR_CARGO_SLUG, useCargoEnabled } from '../../modules/capabilities';
 import type { VehicleTemplate } from '../../lib/vehicle-templates/types';
@@ -2799,6 +2800,8 @@ function AboutSection() {
           )}
         </div>
       </section>
+
+      <SupportedBy />
 
       <section className="mt-4 bg-surface rounded-xl border border-subtle p-5">
         <div className="flex items-center justify-between mb-3">

@@ -77,7 +77,7 @@
     },
     "armed_status": {
       "description": "Zeigt Zustand ARMED oder DISARMED",
-      "name": "Scharf-Status"
+      "name": "Arming-Status"
     },
     "artificial_horizon": {
       "description": "Horizontlinie zur Fluglageanzeige",
@@ -132,7 +132,7 @@
       "name": "ESC-Temperatur"
     },
     "flight_time": {
-      "description": "Zeit seit dem Scharfschalten",
+      "description": "Zeit seit dem Arming",
       "name": "Flugzeit"
     },
     "flymode": {

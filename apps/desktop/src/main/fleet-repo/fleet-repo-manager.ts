@@ -318,6 +318,32 @@ export async function renameUnit(
   }
 }
 
+/** Removes a unit folder as a commit, so its snapshots stay recoverable in history. */
+export async function deleteUnit(uid: string): Promise<{ success: boolean; error?: string }> {
+  const unit = sanitizeSegment(uid);
+  const prefix = `units/${unit}/`;
+  try {
+    await ensureRepo();
+    const dir = repoDir();
+    const files = (await git.listFiles({ fs, dir })).filter((f) => f.startsWith(prefix));
+    if (files.length === 0) return { success: false, error: t('main:fleetRepo.unitNotFound', { unit }) };
+    let name = unit;
+    try {
+      const meta = JSON.parse(await fsp.readFile(join(dir, `${prefix}meta.json`), 'utf-8')) as { name?: string };
+      if (meta.name) name = meta.name;
+    } catch { /* meta is optional */ }
+    for (const filepath of files) await git.remove({ fs, dir, filepath });
+    await fsp.rm(join(dir, 'units', unit), { recursive: true, force: true });
+    await git.commit({ fs, dir, message: `delete ${unit}: ${name}`, author: COMMITTER });
+    if (vaultStore.get('autoSync') && getToken()) {
+      void githubSync().catch(() => undefined);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : t('main:fleetRepo.deleteFailed') };
+  }
+}
+
 export async function snapshotMission(
   site: string,
   missionName: string,

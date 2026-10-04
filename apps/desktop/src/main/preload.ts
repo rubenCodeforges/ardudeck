@@ -6,9 +6,11 @@
 import type { CameraStartPhase } from '../shared/camera-types.js';
 import type { GpsDiagEvent } from '../shared/gps-diagnostics-types.js';
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlStartedData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type Px4SitlConfig, type Px4SitlStatus, type Px4SitlExitData, type Px4SitlStartedData, type Px4SitlDownloadProgress, type Px4SitlBinaryInfo, type Px4ReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlStartedData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type Px4SitlConfig, type Px4SitlStatus, type Px4SitlExitData, type Px4SitlStartedData, type Px4SitlDownloadProgress, type Px4SitlBinaryInfo, type Px4ReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type CameraMediaItem, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
 import type { SigningAuditSnapshot } from '../shared/signing-audit-types.js';
 import type { LanguageState } from './i18n-main.js';
+import type { DroneCanParam, DroneCanParamValue, DroneCanResult, DroneCanState } from '../shared/dronecan-types.js';
+import type { CanBusStats } from '../shared/can-bus-stats.js';
 import type { StreamDiagnosis, ElrsModuleInfo, ElrsSetModeResult, ElrsProgressEvent } from '../shared/link-doctor-types.js';
 import type { WfbngStatus, CanvasStreamStartResult, CanvasStreamStatus, CanvasStreamSnapshot, VisionStreamOpenOptions } from '../shared/camera-types.js';
 import type { CameraDiscoveryResult, CameraSettingsApplyResult, CameraSettingsLogin, CameraSettingsResult, CameraSettingValue } from '../shared/camera-settings-types.js';
@@ -202,6 +204,16 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_RECORD_TOGGLE, sourceId),
   cameraRevealMedia: (filePath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_REVEAL_MEDIA, filePath),
+  cameraMediaList: (): Promise<CameraMediaItem[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_MEDIA_LIST),
+  cameraMediaOpenFolder: (kind: 'video' | 'photo'): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_MEDIA_OPEN_FOLDER, kind),
+  cameraMediaOpen: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_MEDIA_OPEN, filePath),
+  cameraMediaTrash: (filePath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CAMERA_MEDIA_TRASH, filePath),
+  cameraMediaDrag: (filePath: string): void =>
+    ipcRenderer.send(IPC_CHANNELS.CAMERA_MEDIA_DRAG, filePath),
   cameraDiagnostics: (): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.CAMERA_DIAGNOSTICS),
   cameraEngineStatus: (): Promise<MediaEngineStatus> =>
@@ -795,6 +807,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SNAPSHOT_PARAMS, uid, boardName, params, vehicleType, note, sitl),
   fleetRepoRenameUnit: (uid: string, name: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_RENAME_UNIT, uid, name),
+  fleetRepoDeleteUnit: (uid: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_DELETE_UNIT, uid),
   fleetRepoLinkUnit: (unitUid: string, aliasUid: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_LINK_UNIT, unitUid, aliasUid),
   fleetRepoSnapshotMission: (site: string, missionName: string, items: MissionItem[]): Promise<{ success: boolean; changed?: boolean; oid?: string; error?: string }> =>
@@ -2831,6 +2845,30 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.NTRIP_DISCONNECT),
   ntripGetSourcetable: (): Promise<NtripSourcetableResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.NTRIP_GET_SOURCETABLE),
+
+  dronecanStart: (bus: number): Promise<DroneCanResult<void>> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_START, bus),
+  dronecanStop: (): Promise<DroneCanResult<void>> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_STOP),
+  dronecanGetState: (): Promise<DroneCanState | null> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_GET_STATE),
+  dronecanRefreshNode: (nodeId: number): Promise<DroneCanResult<void>> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_REFRESH_NODE, nodeId),
+  dronecanListParams: (nodeId: number): Promise<DroneCanResult<DroneCanParam[]>> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_LIST_PARAMS, nodeId),
+  dronecanSetParam: (nodeId: number, name: string, value: DroneCanParamValue, index: number): Promise<DroneCanResult<DroneCanParam>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_SET_PARAM, nodeId, name, value, index),
+  dronecanGetParam: (nodeId: number, name: string): Promise<DroneCanResult<DroneCanParam | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_GET_PARAM, nodeId, name),
+  dronecanSaveParams: (nodeId: number): Promise<DroneCanResult<boolean>> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_SAVE_PARAMS, nodeId),
+  dronecanRestartNode: (nodeId: number): Promise<DroneCanResult<boolean>> => ipcRenderer.invoke(IPC_CHANNELS.DRONECAN_RESTART_NODE, nodeId),
+  canBusStats: (iface: number): Promise<DroneCanResult<CanBusStats>> => ipcRenderer.invoke(IPC_CHANNELS.CAN_BUS_STATS, iface),
+  periphParamMetadata: (): Promise<DroneCanResult<ParameterMetadataStore>> => ipcRenderer.invoke(IPC_CHANNELS.PERIPH_PARAM_METADATA),
+  onDronecanState: (callback: (state: DroneCanState) => void): (() => void) => {
+    const handler = (_: unknown, state: DroneCanState) => callback(state);
+    ipcRenderer.on(IPC_CHANNELS.DRONECAN_STATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.DRONECAN_STATE, handler);
+  },
+  onDronecanParamProgress: (callback: (p: { nodeId: number; count: number }) => void): (() => void) => {
+    const handler = (_: unknown, p: { nodeId: number; count: number }) => callback(p);
+    ipcRenderer.on(IPC_CHANNELS.DRONECAN_PARAM_PROGRESS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.DRONECAN_PARAM_PROGRESS, handler);
+  },
 
   /** Drive the vehicle's LED ring. Needs NTF_LED_OVERRIDE = 1 on ArduPilot. */
   setLedColour: (rgb: { red: number; green: number; blue: number; rateHz?: number }):

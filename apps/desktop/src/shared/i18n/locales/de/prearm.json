@@ -6,7 +6,7 @@
   "preflightCheckCard": {
     "issues_one": "{{count}} Problem",
     "issues_other": "{{count}} Probleme",
-    "readyToArm": "Bereit zum Scharfschalten",
+    "readyToArm": "Bereit zum Arming",
     "recheck": "Erneut prüfen",
     "title": "Vorflug-Checks"
   },

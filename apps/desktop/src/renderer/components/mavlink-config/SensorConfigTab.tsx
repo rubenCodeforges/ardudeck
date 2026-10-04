@@ -6,6 +6,7 @@
 import { BoardOrientationCard } from './BoardOrientationCard';
 import { CompassCard } from './CompassCard';
 import { GpsSetupCard } from './GpsSetupCard';
+import { ModuleConfigCards } from '../../modules/ModuleConfigCards';
 
 export default function SensorConfigTab(): JSX.Element {
   return (
@@ -13,6 +14,7 @@ export default function SensorConfigTab(): JSX.Element {
       <BoardOrientationCard />
       <CompassCard />
       <GpsSetupCard />
+      <ModuleConfigCards slot="gps" />
     </div>
   );
 }

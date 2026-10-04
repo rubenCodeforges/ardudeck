@@ -4,6 +4,8 @@ import { useFirmwareStore, type BoardInfo } from '../../stores/firmware-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import type { FirmwareVehicleType, FirmwareSource } from '../../../shared/firmware-types';
 import { FIRMWARE_SOURCE_NAMES, KNOWN_BOARDS, firmwareSourceName } from '../../../shared/firmware-types';
+import { firmwareSourceRegistry } from '../../modules/module-extension-registries';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { BoardPicker } from './BoardPicker';
 import { BootPadWizard } from './BootPadWizard';
 import { RadioSdView } from './RadioSdView';
@@ -394,6 +396,9 @@ function isVehicleTypeSupported(type: FirmwareVehicleType, source: FirmwareSourc
 }
 
 export function FirmwareFlashView() {
+  const moduleSources = firmwareSourceRegistry.useEntries();
+  const [moduleSourceKey, setModuleSourceKey] = useState<string | null>(null);
+  const activeModuleSource = moduleSources.find((e) => `${e.slug}:${e.id}` === moduleSourceKey) ?? null;
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'fc' | 'radio'>('fc');
   const store = useFirmwareStore();
@@ -885,12 +890,12 @@ export function FirmwareFlashView() {
                 (source) => (
                   <button
                     key={source}
-                    onClick={() => setSelectedSource(source)}
+                    onClick={() => { setModuleSourceKey(null); setSelectedSource(source); }}
                     disabled={isFlashing}
                     className={`
                       px-3 py-2 rounded-lg border text-sm font-medium transition-colors
                       ${
-                        selectedSource === source
+                        selectedSource === source && !activeModuleSource
                           ? 'border-blue-500 bg-blue-500/10 text-blue-400'
                           : 'border bg-surface-raised text-content-secondary hover:border'
                       }
@@ -900,6 +905,20 @@ export function FirmwareFlashView() {
                   </button>
                 )
               )}
+              {moduleSources.map(({ slug, id, value }) => (
+                <button
+                  key={`${slug}:${id}`}
+                  onClick={() => { setModuleSourceKey(`${slug}:${id}`); setSelectedSource('custom'); }}
+                  disabled={isFlashing}
+                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    activeModuleSource?.slug === slug && activeModuleSource.id === id
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                      : 'border bg-surface-raised text-content-secondary hover:border'
+                  }`}
+                >
+                  {value.name}
+                </button>
+              ))}
             </div>
 
             {/* Firmware change warning */}
@@ -1111,6 +1130,12 @@ export function FirmwareFlashView() {
                 </div>
               )}
             </div>
+          )}
+
+          {selectedSource === 'custom' && activeModuleSource && (
+            <ErrorBoundary label={activeModuleSource.slug}>
+              <activeModuleSource.value.component />
+            </ErrorBoundary>
           )}
 
           {/* Custom Firmware File */}

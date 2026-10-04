@@ -19,6 +19,7 @@ import { MultiVehiclePanel } from './MultiVehiclePanel';
 import { RadioSetupWizard } from './RadioSetupWizard';
 import { RadioPreflightCard } from './RadioPreflightCard';
 import type { StreamDiagnosis } from '../../../shared/link-doctor-types';
+import { hardwareCatalogRegistry, matchUsbProduct } from '../../modules/module-extension-registries';
 
 const BAUD_RATES = [1500000, 921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600];
 
@@ -34,6 +35,7 @@ interface MavlinkForwardStatus {
 
 export function ConnectionPanel() {
   const { t } = useTranslation();
+  const usbCatalogs = hardwareCatalogRegistry.useEntries();
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();
   const { connectionMemory, updateConnectionMemory, removeRecentConnection } = useSettingsStore();
   const settingsInitialized = useSettingsStore((s) => s._isInitialized);
@@ -838,11 +840,14 @@ export function ConnectionPanel() {
                   disabled={connectionState.isConnected}
                 >
                   {ports.length === 0 && <option value="">{t('connection:connectionPanel.noPorts')}</option>}
-                  {ports.map((port) => (
-                    <option key={port.path} value={port.path}>
-                      {formatPortDisplayName(port)}
-                    </option>
-                  ))}
+                  {ports.map((port) => {
+                    const product = matchUsbProduct(usbCatalogs, port);
+                    return (
+                      <option key={port.path} value={port.path}>
+                        {product ? `${product.vendor} ${product.name} · ${formatPortDisplayName(port)}` : formatPortDisplayName(port)}
+                      </option>
+                    );
+                  })}
                 </select>
                 <button
                   type="button"

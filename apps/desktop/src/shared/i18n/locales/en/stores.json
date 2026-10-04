@@ -106,6 +106,8 @@
     "boundarySaved": "Boundary saved to {{site}}",
     "boundaryUnchanged": "Boundary unchanged since last snapshot",
     "cannotIdentify": "Could not identify the vehicle. Pick one under \"Working on\" in the vault.",
+    "deleteFailed": "Could not delete the vehicle",
+    "deleted": "Vehicle deleted. Its snapshots stay in the history.",
     "firmwareMismatch": "That snapshot was taken from {{snapshotFirmware}}, but this vehicle is running {{liveFirmware}}. Its parameter names do not carry across flight stacks.",
     "linkFailed": "Link failed",
     "linked": "Vehicle linked; snapshots continue in that unit",

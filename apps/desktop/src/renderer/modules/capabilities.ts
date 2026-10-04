@@ -81,6 +81,11 @@ const GATED_VIEWS: ReadonlyMap<ViewId, string> = new Map(
 );
 
 /** True if `viewId` is available given the set of enabled activatable slugs. */
+/** The cargo slug that unlocks a nav view, if any. */
+export function viewOwnerSlug(viewId: string): string | undefined {
+  return GATED_VIEWS.get(viewId as ViewId);
+}
+
 export function isViewAvailable(viewId: ViewId, enabledSlugs: ReadonlySet<string>): boolean {
   const requiredSlug = GATED_VIEWS.get(viewId);
   return !requiredSlug || enabledSlugs.has(requiredSlug);

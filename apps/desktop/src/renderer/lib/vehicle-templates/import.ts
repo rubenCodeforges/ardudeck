@@ -1,5 +1,5 @@
 import type { VehicleProfile, VehicleType } from '../../stores/settings-store.js';
-import { VEHICLE_TEMPLATES } from './registry.js';
+import { allTemplates } from './registry.js';
 import type { VehicleTemplate } from './types.js';
 
 export interface InferenceResult {
@@ -17,7 +17,7 @@ export interface InferenceResult {
  */
 export function inferProfileFromParams(paramMap: Map<string, number>): InferenceResult | null {
   let best: { template: VehicleTemplate; score: number } | null = null;
-  for (const t of VEHICLE_TEMPLATES) {
+  for (const t of allTemplates()) {
     const score = t.inferFrom(paramMap);
     if (!best || score > best.score) best = { template: t, score };
   }
