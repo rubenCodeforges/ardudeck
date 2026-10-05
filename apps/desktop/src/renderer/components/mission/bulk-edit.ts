@@ -98,3 +98,57 @@ export function selectionTouchesGroups(
     (it) => seqs.has(it.seq) && it.groupId != null && surveyGroupIds.has(it.groupId),
   );
 }
+
+/**
+ * Heading for one waypoint, ArduPilot style: a CONDITION_YAW (absolute) right after it.
+ * ArduCopter ignores NAV_WAYPOINT param4; the yaw command runs when the leg to the
+ * waypoint starts and holds until the next waypoint. null removes it.
+ */
+export function setWaypointHeading(
+  items: MissionItem[],
+  seq: number,
+  headingDeg: number | null,
+): BulkResult {
+  const wp = items.find((it) => it.seq === seq);
+  if (!wp) return { items, changed: 0 };
+  const next = items.find((it) => it.seq === seq + 1);
+  const existing = next && isAbsoluteYaw(next) ? next : undefined;
+
+  if (headingDeg === null) {
+    if (!existing) return { items, changed: 0 };
+    return { items: renumber(items.filter((it) => it !== existing)), changed: 1 };
+  }
+
+  const deg = ((headingDeg % 360) + 360) % 360;
+  if (existing) {
+    if (existing.param1 === deg) return { items, changed: 0 };
+    return { items: items.map((it) => (it === existing ? { ...it, param1: deg } : it)), changed: 1 };
+  }
+  const yaw: MissionItem = {
+    seq: 0, // renumbered below
+    frame: wp.frame,
+    command: MAV_CMD.CONDITION_YAW,
+    current: false,
+    autocontinue: true,
+    param1: deg,
+    param2: 0, // default turn rate
+    param3: 0, // shortest way
+    param4: 0, // absolute
+    latitude: 0,
+    longitude: 0,
+    altitude: 0,
+    groupId: wp.groupId,
+  };
+  const at = items.indexOf(wp) + 1;
+  return { items: renumber([...items.slice(0, at), yaw, ...items.slice(at)]), changed: 1 };
+}
+
+function isAbsoluteYaw(it: MissionItem): boolean {
+  return it.command === MAV_CMD.CONDITION_YAW && it.param4 === 0;
+}
+
+/** Heading a waypoint has through a following absolute CONDITION_YAW, or null. */
+export function waypointHeading(items: MissionItem[], seq: number): number | null {
+  const next = items.find((it) => it.seq === seq + 1);
+  return next && isAbsoluteYaw(next) ? next.param1 : null;
+}

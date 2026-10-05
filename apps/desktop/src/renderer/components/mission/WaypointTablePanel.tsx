@@ -16,7 +16,8 @@ import { type Group, isSurveyGroup, type SurveyGroup, GROUP_COLOR_PALETTE, isAss
 import { isSurveyGroupStale } from '../survey/survey-group-signature';
 import { regenerateSurveyGroup } from '../survey/survey-regen';
 import { hasReplayData } from './plan-replay';
-import { selectionTouchesGroups } from './bulk-edit';
+import { selectionTouchesGroups, waypointHeading } from './bulk-edit';
+import { mavTypeToVehicleType } from '../../../shared/parameter-metadata';
 import { useReplayStore } from '../../stores/replay-store';
 import { distanceLatLng } from '../survey/geo-math';
 import { calculateGSD } from '../survey/survey-stats';
@@ -3734,6 +3735,17 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
             )}
           </div>
 
+          {effectiveFirmware === 'ardupilot'
+            && (selectedWaypoint.command === MAV_CMD.NAV_WAYPOINT || selectedWaypoint.command === MAV_CMD.NAV_SPLINE_WAYPOINT)
+            && (!connectionState.isConnected || mavTypeToVehicleType(connectionState.mavType ?? -1) === 'copter')
+            && (
+              <WaypointHeadingField
+                heading={waypointHeading(missionItems, selectedWaypoint.seq)}
+                readOnly={!!readOnly}
+                onCommit={(deg) => useMissionStore.getState().setWaypointHeading(selectedWaypoint.seq, deg)}
+              />
+            )}
+
           {/* Help text */}
           {missionCommandDescription(selectedWaypoint.command) && (
             <p className="mt-3 text-[11px] text-content-secondary italic">
@@ -3757,6 +3769,41 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Heading at a waypoint (ArduPilot): empty means the vehicle's normal heading (WP_YAW_BEHAVIOR). */
+function WaypointHeadingField({ heading, readOnly, onCommit }: { heading: number | null; readOnly: boolean; onCommit(deg: number | null): void }) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(heading === null ? '' : String(heading));
+  useEffect(() => setDraft(heading === null ? '' : String(heading)), [heading]);
+
+  const commit = () => {
+    const text = draft.trim();
+    if (text === '') { if (heading !== null) onCommit(null); return; }
+    const n = Number(text);
+    if (!Number.isFinite(n)) { setDraft(heading === null ? '' : String(heading)); return; }
+    if (n !== heading) onCommit(n);
+  };
+
+  return (
+    <div className="mt-2">
+      <label className="block text-[11px] text-content-secondary mb-1">
+        {t('mission:waypointTable.heading.label')} <span className="text-content-tertiary">(°)</span>
+      </label>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={draft}
+        disabled={readOnly}
+        placeholder={t('mission:waypointTable.heading.auto')}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="w-full bg-surface-input text-content text-sm px-2 py-1.5 rounded border border-default focus:border-blue-500 focus:outline-none placeholder-content-tertiary"
+      />
+      <p className="mt-1 text-[11px] text-content-tertiary leading-snug">{t('mission:waypointTable.heading.hint')}</p>
     </div>
   );
 }

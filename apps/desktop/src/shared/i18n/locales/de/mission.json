@@ -571,6 +571,11 @@
       "wpCount_one": "{{count}} WP",
       "wpCount_other": "{{count}} WPs"
     },
+    "heading": {
+      "label": "Kurs",
+      "auto": "Automatisch",
+      "hint": "Hält diesen Kurs auf dem Weg zu diesem Wegpunkt und dort (0 ist Norden). Leer lassen für den normalen Kurs. Fügt nach dem Wegpunkt ein Condition Yaw ein."
+    },
     "list": {
       "addWaypoint": "Wegpunkt hinzufügen",
       "allSameFlight": "Alle Vermessungen sind bereits im selben Flug",

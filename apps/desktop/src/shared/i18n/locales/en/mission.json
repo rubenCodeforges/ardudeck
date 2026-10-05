@@ -571,6 +571,11 @@
       "wpCount_one": "{{count}} WP",
       "wpCount_other": "{{count}} WPs"
     },
+    "heading": {
+      "label": "Heading",
+      "auto": "Auto",
+      "hint": "Faces this heading on the way to and at this waypoint (0 is north). Leave empty for the normal heading. Adds a Condition Yaw after the waypoint."
+    },
     "list": {
       "addWaypoint": "Add Waypoint",
       "allSameFlight": "Every survey is already on the same flight",

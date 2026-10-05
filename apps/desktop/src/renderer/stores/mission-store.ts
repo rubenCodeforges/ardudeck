@@ -25,7 +25,7 @@ import {
 import { splitMissionForFleet } from '../components/mission/distribute-fleet';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
 import { applyFlightBreaks, groupEndsFlight, inFlightOrder, flightBoundaries } from '../components/mission/mission-end';
-import { bulkSetAltitude, bulkSetSpeed } from '../components/mission/bulk-edit';
+import { bulkSetAltitude, bulkSetSpeed, setWaypointHeading } from '../components/mission/bulk-edit';
 import { buildArduPilotWireMission, shiftJumpTargets } from '../../shared/mission-wire';
 import { useSettingsStore } from './settings-store';
 import { effectiveMissionFirmware } from '../utils/mission-firmware';
@@ -449,6 +449,8 @@ interface MissionStore {
   bulkSetAltitude: (seqs: number[], altMeters: number) => number;
   /** DO_CHANGE_SPEED for the selection (<= 0 clears); returns how many changed. */
   bulkSetSpeed: (seqs: number[], speedMs: number) => number;
+  /** ArduPilot heading for one waypoint (CONDITION_YAW after it); null removes it. */
+  setWaypointHeading: (seq: number, headingDeg: number | null) => void;
   reorderWaypoints: (fromSeq: number, toSeq: number) => void;
   insertMissionItems: (items: MissionItem[]) => void;
   applyTerrainPlan: (plan: {
@@ -1168,6 +1170,11 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       result.items.length === missionItems.length ? selectedSeq : null;
     set({ missionItems: result.items, isDirty: true, selectedSeq: nextSelected });
     return result.changed;
+  },
+
+  setWaypointHeading: (seq, headingDeg) => {
+    const result = setWaypointHeading(get().missionItems, seq, headingDeg);
+    if (result.changed > 0) set({ missionItems: result.items, isDirty: true });
   },
 
   reorderWaypoints: (fromSeq: number, toSeq: number) => {

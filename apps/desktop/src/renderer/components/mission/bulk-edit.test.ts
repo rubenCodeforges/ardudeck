@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MissionItem } from '../../../shared/mission-types';
 import { MAV_CMD, MAV_FRAME } from '../../../shared/mission-types';
-import { bulkSetAltitude, bulkSetSpeed, selectionTouchesGroups } from './bulk-edit';
+import { bulkSetAltitude, bulkSetSpeed, selectionTouchesGroups, setWaypointHeading, waypointHeading } from './bulk-edit';
 
 function item(seq: number, command: number, overrides: Partial<MissionItem> = {}): MissionItem {
   return {
@@ -135,5 +135,34 @@ describe('selectionTouchesGroups', () => {
       item(1, MAV_CMD.NAV_WAYPOINT, { groupId: 'survey-1' }),
     ];
     expect(selectionTouchesGroups(items, new Set([0]), new Set(['survey-1']))).toBe(false);
+  });
+});
+
+describe('setWaypointHeading', () => {
+  const mission = () => [item(0, MAV_CMD.NAV_WAYPOINT), item(1, MAV_CMD.NAV_WAYPOINT), item(2, MAV_CMD.NAV_WAYPOINT)];
+
+  it('inserts an absolute CONDITION_YAW right after the waypoint', () => {
+    const r = setWaypointHeading(mission(), 1, 90);
+    expect(r.changed).toBe(1);
+    expect(r.items.map((i) => i.command)).toEqual([MAV_CMD.NAV_WAYPOINT, MAV_CMD.NAV_WAYPOINT, MAV_CMD.CONDITION_YAW, MAV_CMD.NAV_WAYPOINT]);
+    expect(r.items[2]).toMatchObject({ seq: 2, param1: 90, param2: 0, param3: 0, param4: 0, groupId: 'g1' });
+    expect(r.items[3]!.seq).toBe(3);
+    expect(waypointHeading(r.items, 1)).toBe(90);
+  });
+
+  it('updates an existing heading instead of adding another', () => {
+    const once = setWaypointHeading(mission(), 1, 90).items;
+    const r = setWaypointHeading(once, 1, 400);
+    expect(r.items).toHaveLength(4);
+    expect(waypointHeading(r.items, 1)).toBe(40);
+  });
+
+  it('removes it with null and leaves relative yaw commands alone', () => {
+    const once = setWaypointHeading(mission(), 0, 180).items;
+    const r = setWaypointHeading(once, 0, null);
+    expect(r.items.map((i) => i.command)).toEqual([MAV_CMD.NAV_WAYPOINT, MAV_CMD.NAV_WAYPOINT, MAV_CMD.NAV_WAYPOINT]);
+    const relative = [item(0, MAV_CMD.NAV_WAYPOINT), item(1, MAV_CMD.CONDITION_YAW, { param1: 30, param4: 1 })];
+    expect(waypointHeading(relative, 0)).toBeNull();
+    expect(setWaypointHeading(relative, 0, null).changed).toBe(0);
   });
 });
