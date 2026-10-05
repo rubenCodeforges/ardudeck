@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Vehicle Link
+GenericName=ArduDeck Link Settings
+Comment=Choose how ArduDeck OS connects to the vehicle
+Exec=gjs -m /usr/share/ardudeck-os/link-settings/com.ardudeck.LinkSettings.js
+Icon=ardudeck
+Terminal=false
+Type=Application
+Categories=Settings;HardwareSettings;
+Keywords=mavlink;telemetry;radio;drone;vehicle;

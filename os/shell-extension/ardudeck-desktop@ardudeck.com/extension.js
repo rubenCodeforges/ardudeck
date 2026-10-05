@@ -11,6 +11,8 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {drawRoundGauge, drawAttitude, headingRose, vsiArc, COLORS} from './gauges.js';
+import {LocalApi} from './http.js';
+import {VehicleLinkIndicator} from './quick-settings.js';
 
 const STATION_URL = 'http://127.0.0.1:47800/state';
 const VEHICLE_URL = 'http://127.0.0.1:47801/v1/vehicle';
@@ -275,6 +277,9 @@ class Cluster {
 export default class ArduDeckDesktop extends Extension {
     enable() {
         this._session = new Soup.Session({timeout: 2});
+        this._api = new LocalApi();
+        this._linkIndicator = new VehicleLinkIndicator(this.path, this._api);
+        Main.panel.statusArea.quickSettings.addExternalIndicator(this._linkIndicator);
         this._station = new Card('GROUND STATION');
         this._vehicle = new Card('VEHICLE');
         this._cluster = new Cluster();
@@ -355,6 +360,10 @@ export default class ArduDeckDesktop extends Extension {
     }
 
     disable() {
+        this._linkIndicator?.destroy();
+        this._linkIndicator = null;
+        this._api?.destroy();
+        this._api = null;
         for (const id of this._timers ?? []) GLib.source_remove(id);
         this._timers = null;
         if (this._monitorsId) Main.layoutManager.disconnect(this._monitorsId);
