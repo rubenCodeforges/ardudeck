@@ -750,11 +750,11 @@ const SafetyTab: React.FC<SafetyTabProps> = ({ onGoTo }) => {
                 if (!ok) reportWriteError(t('mavlink-config:safetyTab.failedToSet', { params: 'FENCE_ENABLE' }));
               }}
               className={`relative w-12 h-6 rounded-full transition-colors ${
-                safetyValues.fenceEnable ? 'bg-blue-500' : 'bg-surface-raised'
+                safetyValues.fenceEnable ? 'bg-blue-500' : 'border border-subtle bg-surface-inset'
               }`}
             >
               <div
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                className={`absolute top-1 w-4 h-4 rounded-full border border-strong bg-white shadow-sm transition-transform ${
                   safetyValues.fenceEnable ? 'translate-x-7' : 'translate-x-1'
                 }`}
               />

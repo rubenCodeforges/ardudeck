@@ -1550,12 +1550,14 @@ export function SurveyConfigPanel() {
                   <span className="text-xs text-content-secondary" title={t('survey:surveyConfigPanel.cameraOffTitle')}>{t('survey:surveyConfigPanel.cameraOffOnTurns')}</span>
                   <button
                     onClick={() => setCameraOffOutside(!config.cameraOffOutside)}
-                    className={`w-8 h-4.5 rounded-full transition-colors relative ${
-                      config.cameraOffOutside ? 'bg-purple-600' : 'bg-surface-raised'
+                    role="switch"
+                    aria-checked={!!config.cameraOffOutside}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      config.cameraOffOutside ? 'bg-purple-600' : 'border border-subtle bg-surface-inset'
                     }`}
                   >
-                    <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all ${
-                      config.cameraOffOutside ? 'left-4' : 'left-0.5'
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full border border-strong bg-white shadow-sm transition-all ${
+                      config.cameraOffOutside ? 'left-[18px]' : 'left-0.5'
                     }`} />
                   </button>
                 </div>
@@ -1566,12 +1568,14 @@ export function SurveyConfigPanel() {
                   <span className="text-xs text-content-secondary">{t('survey:surveyConfigPanel.showFootprints')}</span>
                   <button
                     onClick={() => setShowFootprints(!showFootprints)}
-                    className={`w-8 h-4.5 rounded-full transition-colors relative ${
-                      showFootprints ? 'bg-purple-600' : 'bg-surface-raised'
+                    role="switch"
+                    aria-checked={!!showFootprints}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      showFootprints ? 'bg-purple-600' : 'border border-subtle bg-surface-inset'
                     }`}
                   >
-                    <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all ${
-                      showFootprints ? 'left-4' : 'left-0.5'
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full border border-strong bg-white shadow-sm transition-all ${
+                      showFootprints ? 'left-[18px]' : 'left-0.5'
                     }`} />
                   </button>
                 </div>
