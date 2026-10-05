@@ -1,0 +1,270 @@
+<title>ArduDeck OS Build Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of numbered spec sections with a sticky section index; dark-only, matching the ArduDeck app and ardudeck.com */
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0f;
+  --panel: #111827;
+  --line: #1f2937;
+  --ink: #e5e7eb;
+  --dim: #9ca3af;
+  --faint: #6b7280;
+  --teal: #2dd4bf;
+  --cyan: #22d3ee;
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --info: #60a5fa;
+  --sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--sans); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px; }
+@media (max-width: 820px) { .wrap { grid-template-columns: minmax(0, 1fr); } nav.toc { position: static !important; } }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 13px; }
+nav.toc a { display: block; color: var(--dim); text-decoration: none; padding: 4px 0; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--teal); outline: none; }
+nav.toc .k { font-family: var(--mono); color: var(--faint); margin-right: 8px; }
+header.top { grid-column: 1 / -1; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.eyebrow { font: 600 11px/1 var(--mono); letter-spacing: .18em; color: var(--teal); text-transform: uppercase; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.15; margin: 10px 0 8px; text-wrap: balance; }
+h1 span { background: linear-gradient(90deg, var(--teal), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { color: var(--dim); max-width: 68ch; margin: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; font: 12px var(--mono); color: var(--faint); }
+.meta b { color: var(--ink); font-weight: 600; }
+main { min-width: 0; display: grid; gap: 48px; }
+section h2 { font-size: 20px; margin: 0 0 4px; display: flex; gap: 12px; align-items: baseline; }
+section h2 .k { font: 600 13px var(--mono); color: var(--teal); }
+section > p.sub { color: var(--dim); margin: 0 0 16px; max-width: 70ch; }
+h3 { font-size: 15px; margin: 24px 0 8px; color: var(--ink); }
+p, li { max-width: 72ch; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+code { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: #d1d5db; }
+.table { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+th { text-align: left; font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); background: var(--panel); padding: 10px 12px; border-bottom: 1px solid var(--line); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.name { font-weight: 600; white-space: nowrap; }
+td .path { display: block; font: 11.5px var(--mono); color: var(--faint); margin-top: 2px; white-space: normal; }
+.pill { display: inline-block; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.pill.verified { color: var(--good); border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.08); }
+.pill.built { color: var(--info); border-color: rgba(96,165,250,.4); background: rgba(96,165,250,.08); }
+.pill.manual { color: var(--warn); border-color: rgba(251,191,36,.4); background: rgba(251,191,36,.08); }
+.pill.planned { color: var(--dim); border-color: var(--line); background: transparent; }
+.pill.issue { color: var(--bad); border-color: rgba(248,113,113,.4); background: rgba(248,113,113,.08); }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 12px; color: var(--dim); margin: 0 0 14px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 6px; font-size: 14px; }
+.card p { margin: 0; color: var(--dim); font-size: 13px; }
+.card .port { font: 600 20px var(--mono); color: var(--teal); }
+ul.log { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+ul.log li { border-left: 2px solid var(--line); padding: 2px 0 2px 14px; max-width: none; }
+ul.log li b { color: var(--ink); }
+ul.log li .why { color: var(--dim); font-size: 13.5px; display: block; }
+pre.mermaid { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
+.callout { border: 1px solid rgba(45,212,191,.35); background: rgba(45,212,191,.06); border-radius: 10px; padding: 14px 16px; color: var(--ink); font-size: 14px; }
+.callout b { color: var(--teal); }
+a { color: var(--teal); }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Living specification</div>
+    <h1>ArduDeck OS <span>build spec</span></h1>
+    <p class="lede">Everything that turns a stock Linux install into the ArduDeck ground-control OS: what exists, where its source lives, what was changed on the reference tablet by hand, and how each piece maps to Fedora and Debian images. Updated with every feature, so it survives context resets.</p>
+    <div class="meta">
+      <span>Reference device <b>Dell Latitude 7220 Rugged Extreme</b></span>
+      <span>Base <b>Fedora 44, GNOME 50, Wayland</b></span>
+      <span>Branch <b>feat/ardudeck-os</b></span>
+      <span>Updated <b>2026-10-05</b></span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#principles"><span class="k">01</span>Principles</a>
+    <a href="#architecture"><span class="k">02</span>Architecture</a>
+    <a href="#components"><span class="k">03</span>Components</a>
+    <a href="#system"><span class="k">04</span>System changes</a>
+    <a href="#ports"><span class="k">05</span>Ports and APIs</a>
+    <a href="#distros"><span class="k">06</span>Fedora and Debian</a>
+    <a href="#decisions"><span class="k">07</span>Decisions</a>
+    <a href="#issues"><span class="k">08</span>Known issues</a>
+    <a href="#roadmap"><span class="k">09</span>Roadmap</a>
+    <a href="#tests"><span class="k">10</span>Test log</a>
+  </nav>
+
+  <main>
+    <section id="principles">
+      <h2><span class="k">01</span>Principles</h2>
+      <p class="sub">The rules every feature is checked against.</p>
+      <ul class="log">
+        <li><b>The OS works with the app closed.</b><span class="why">Vehicle link, telemetry, parameter cache, desktop instruments and alerts are system services. The ArduDeck app is one client among several.</span></li>
+        <li><b>The desktop app is the reference.</b><span class="why">Protocol code, mode tables, MAVFTP and gauge designs are shared from the monorepo (<code>@ardudeck/mavlink-ts</code>, <code>@ardudeck/vehicle-core</code>, <code>@ardudeck/comms</code>), never rewritten.</span></li>
+        <li><b>Off ArduDeck OS the app is unchanged.</b><span class="why">Every integration is detected at runtime and falls back silently on macOS, Windows and other Linux.</span></li>
+        <li><b>Never compete with the pilot.</b><span class="why">Background downloads and stream requests run only while the vehicle is disarmed and no GCS is attached.</span></li>
+        <li><b>One spec, two distros.</b><span class="why">Each component lists how it ships on Fedora and on Debian; manual steps on the tablet are recorded so the images can reproduce them.</span></li>
+      </ul>
+    </section>
+
+    <section id="architecture">
+      <h2><span class="k">02</span>Architecture</h2>
+      <p class="sub">The link service owns the radio; everything else is a client.</p>
+<pre class="mermaid">
+flowchart LR
+  V[Vehicle<br/>ArduPilot / PX4] -->|ELRS backpack, SiK, Wi-Fi bridge| L
+  subgraph OS[ArduDeck OS]
+    L[os-linkd<br/>link, router, param cache] -->|UDP 14570| APP[ArduDeck app]
+    L -->|HTTP 47801| EXT[Desktop instruments<br/>GNOME extension]
+    L -->|HTTP 47801| QS[Vehicle Link<br/>quick settings]
+    S[stationd<br/>GNSS, LTE, batteries, sensors] -->|HTTP 47800| EXT
+    L -->|HTTP 47801| APP
+  end
+  L -.->|1 Hz heartbeat, LAN discovery| V
+</pre>
+    </section>
+
+    <section id="components">
+      <h2><span class="k">03</span>Components</h2>
+      <p class="sub">Every piece of the OS with its state, source and runtime.</p>
+      <div class="legend">
+        <span><i class="pill verified">verified</i> tested end to end</span>
+        <span><i class="pill built">built</i> code done, partly tested</span>
+        <span><i class="pill manual">manual</i> applied by hand on the tablet</span>
+        <span><i class="pill planned">planned</i> not started</span>
+      </div>
+      <div class="table">
+        <table>
+          <thead><tr><th>Component</th><th>State</th><th>What it does</th><th>Runtime</th></tr></thead>
+          <tbody>
+            <tr><td class="name">os-linkd<span class="path">apps/os-linkd</span></td><td><i class="pill verified">verified</i></td><td>Owns the vehicle link (saved connections: UDP listen, UDP peer, TCP, serial; one active, master switch). Routes MAVLink to local GCS clients, tracks vehicle state, requests light telemetry when unattended, caches parameters per board UID via MAVFTP or PARAM_REQUEST_LIST. 1 Hz GCS heartbeat (sysid 254) plus LAN broadcast discovery.</td><td>Node 22, systemd user unit <code>ardudeck-os-linkd</code></td></tr>
+            <tr><td class="name">vehicle-core<span class="path">packages/vehicle-core</span></td><td><i class="pill verified">verified</i></td><td>Shared with the app: flight-mode tables, vehicle heartbeat filter, MAVFTP client, param.pck parser. Dependency-free.</td><td>Library</td></tr>
+            <tr><td class="name">App OS integration<span class="path">apps/desktop/src/main/ardudeck-os.ts</span></td><td><i class="pill verified">verified</i></td><td>Probes the link service, shows the OS badge, opens connected through the OS link (local port 14571), loads cached params for the same board.</td><td>In the Electron app</td></tr>
+            <tr><td class="name">Desktop instruments<span class="path">os/shell-extension/ardudeck-desktop@ardudeck.com</span></td><td><i class="pill built">built</i></td><td>Ground-station card, vehicle card with STATUSTEXT, bottom cluster: battery, speed, attitude ball, altitude with climb arc, heading rose. Cairo port of the app's RoundGauge and AttitudeIndicator. Read-only, no map yet.</td><td>GNOME Shell extension</td></tr>
+            <tr><td class="name">stationd<span class="path">os/stationd</span></td><td><i class="pill verified">verified</i></td><td>Tablet hardware: u-blox GNSS (NMEA), LTE modem, Wi-Fi, both batteries, compass heading, ambient light.</td><td>Python 3 + PyGObject, systemd user unit</td></tr>
+            <tr><td class="name">Vehicle Link quick settings<span class="path">os/shell-extension (in progress)</span></td><td><i class="pill planned">in progress</i></td><td>Tile in the top-right menu: link state, on/off, saved and detected connections, Open ArduDeck, Link settings.</td><td>GNOME Shell extension</td></tr>
+            <tr><td class="name">Link settings window<span class="path">os/link-settings (planned)</span></td><td><i class="pill planned">planned</i></td><td>Add, edit, remove connections with libadwaita UI; later a native GNOME Settings panel in the image.</td><td>GJS + libadwaita</td></tr>
+            <tr><td class="name">Branding<span class="path">os/ (assets to be moved in)</span></td><td><i class="pill manual">manual</i></td><td>Wallpaper, GDM logo and accent, Plymouth theme, avatar, fonts, terminal palette, OSK colors.</td><td>See system changes</td></tr>
+            <tr><td class="name">GJS OSK<span class="path">third party, extensions.gnome.org 5949</span></td><td><i class="pill manual">manual</i></td><td>Replacement on-screen keyboard: non-split custom layout without F-keys, docked so windows move up, 40% height.</td><td>GNOME Shell extension</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="system">
+      <h2><span class="k">04</span>System changes on the reference tablet</h2>
+      <p class="sub">Applied by hand or by script so far. Each must become part of the image build.</p>
+      <div class="table">
+        <table>
+          <thead><tr><th>Change</th><th>How it was applied</th><th>Needs root</th></tr></thead>
+          <tbody>
+            <tr><td class="name">Hostname <code>ardudeck-gcs</code></td><td><code>hostnamectl set-hostname</code>; Avahi announces <code>ardudeck-gcs.local</code></td><td>yes</td></tr>
+            <tr><td class="name">os-release branding</td><td><code>/etc/os-release</code> as a real file: <code>PRETTY_NAME="ArduDeck OS (Fedora 44)"</code>, <code>VARIANT="ArduDeck OS"</code>, <code>VARIANT_ID=ardudeck-os</code>, ardudeck.com URLs. <code>ID</code> stays <code>fedora</code>. A fedora-release update may restore the symlink.</td><td>yes</td></tr>
+            <tr><td class="name">User in <code>dialout</code></td><td><code>usermod -aG dialout</code> for GNSS and USB flight controllers</td><td>yes</td></tr>
+            <tr><td class="name">SSH</td><td><code>sshd</code> enabled; Mac key in <code>~/.ssh/authorized_keys</code></td><td>yes</td></tr>
+            <tr><td class="name">Plymouth theme</td><td>Copy of <code>spinner</code> with the logo watermark, teal throbber, navy background; <code>plymouth-set-default-theme -R ardudeck</code></td><td>yes</td></tr>
+            <tr><td class="name">Login screen</td><td><code>/etc/dconf/db/gdm.d/90-ardudeck</code>: logo, teal accent, dark, Inter; <code>dconf update</code></td><td>yes</td></tr>
+            <tr><td class="name">Fonts</td><td>Inter Variable and JetBrains Mono in <code>/usr/local/share/fonts/ardudeck</code> and <code>~/.local/share/fonts</code></td><td>yes</td></tr>
+            <tr><td class="name">Desktop defaults</td><td>gsettings: dark, accent teal, Inter UI font, JetBrains Mono monospace, wallpaper and lock screen, no automatic suspend</td><td>no</td></tr>
+            <tr><td class="name">Avatar</td><td>AccountsService <code>SetIconFile</code> with the app icon</td><td>no</td></tr>
+            <tr><td class="name">Terminal palette</td><td><code>~/.local/share/org.gnome.Ptyxis/palettes/ardudeck.palette</code></td><td>no</td></tr>
+            <tr><td class="name">Dev toolchain</td><td>Node 22 in <code>~/.local/opt/node</code>; <code>make</code>, <code>gcc-c++</code> via dnf; ArduCopter SITL in <code>~/.local/opt/sitl</code></td><td>partly</td></tr>
+            <tr><td class="name">Linger</td><td><code>loginctl enable-linger</code> so user services start at boot</td><td>no</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ports">
+      <h2><span class="k">05</span>Ports and APIs</h2>
+      <p class="sub">Contracts other components rely on. Change them only with a version bump.</p>
+      <div class="cards">
+        <div class="card"><div class="port">14550/udp</div><h4>Vehicle link</h4><p>Default connection. ELRS backpacks, Wi-Fi bridges and forwarders send here. Bound on all interfaces.</p></div>
+        <div class="card"><div class="port">14570/udp</div><h4>GCS clients</h4><p>Loopback only. Any datagram registers a client; vehicle traffic fans out to all clients.</p></div>
+        <div class="card"><div class="port">14571/udp</div><h4>App local port</h4><p>Fixed source port of the ArduDeck app on the OS link, so reconnects keep their slot.</p></div>
+        <div class="card"><div class="port">47801/tcp</div><h4>Link API</h4><p><code>/v1/info</code>, <code>/v1/vehicle</code>, <code>/v1/vehicle/params</code>, <code>/v1/links</code>. Writes need <code>X-ArduDeck: 1</code>.</p></div>
+        <div class="card"><div class="port">47800/tcp</div><h4>Station API</h4><p><code>/state</code>: GNSS, LTE, Wi-Fi, batteries, heading, light.</p></div>
+        <div class="card"><div class="port">254 / 191</div><h4>MAVLink identity</h4><p>sysid 254, compid 191 for the service's own messages. Not 255, see decisions.</p></div>
+      </div>
+    </section>
+
+    <section id="distros">
+      <h2><span class="k">06</span>Fedora and Debian</h2>
+      <p class="sub">How each concern maps to both distro families.</p>
+      <div class="callout"><b>Proposed build tool:</b> mkosi builds images for both Fedora and Debian from one config tree, so packages, files and systemd presets can be shared and only the package lists differ. Fedora can additionally ship as a bootc image for atomic updates.</div>
+      <div class="table" style="margin-top:14px">
+        <table>
+          <thead><tr><th>Concern</th><th>Fedora</th><th>Debian</th></tr></thead>
+          <tbody>
+            <tr><td class="name">Packaging</td><td>RPM spec per component</td><td>debhelper <code>.deb</code> per component</td></tr>
+            <tr><td class="name">Node runtime</td><td><code>nodejs22</code> from Fedora</td><td>NodeSource 22 or Debian <code>nodejs</code> if 22+</td></tr>
+            <tr><td class="name">Services</td><td>systemd user units with a global preset</td><td>same units, same preset</td></tr>
+            <tr><td class="name">os-release</td><td>Fedora variant: keep <code>ID=fedora</code>, set <code>VARIANT*</code></td><td>Keep <code>ID=debian</code>, set <code>VARIANT*</code> in <code>/usr/lib/os-release</code></td></tr>
+            <tr><td class="name">Login screen</td><td><code>/etc/dconf/db/gdm.d</code></td><td><code>/etc/gdm3/greeter.dconf-defaults</code></td></tr>
+            <tr><td class="name">Boot splash</td><td>Plymouth, initramfs via dracut</td><td>Plymouth, initramfs via initramfs-tools</td></tr>
+            <tr><td class="name">Serial access</td><td><code>dialout</code> group</td><td><code>dialout</code> group</td></tr>
+            <tr><td class="name">ModemManager</td><td>udev rule <code>ID_MM_DEVICE_IGNORE</code> for FC and radio VIDs</td><td>same rule</td></tr>
+            <tr><td class="name">mDNS</td><td>avahi-daemon (default)</td><td>avahi-daemon (default on desktop tasks)</td></tr>
+            <tr><td class="name">Shell extensions</td><td><code>/usr/share/gnome-shell/extensions</code>, enabled via dconf</td><td>same path and dconf key</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="decisions">
+      <h2><span class="k">07</span>Decisions</h2>
+      <p class="sub">Why things are the way they are.</p>
+      <ul class="log">
+        <li><b>Service heartbeat uses sysid 254, not 255.</b><span class="why">ArduPilot's GCS failsafe tracks heartbeats from SYSID_MYGCS (255 by default). A 255 heartbeat from the OS could keep the failsafe from firing after the pilot's real GCS dies.</span></li>
+        <li><b>LAN broadcast discovery while no vehicle is live.</b><span class="why">Relays that learn their clients (the app's MAVLink forwarding, mavlink-router) never streamed until someone sent first, and dropped silent clients after 15 s.</span></li>
+        <li><b>Identity is re-learned on every reconnect.</b><span class="why">A different airframe on the same sysid was cached under the previous board's UID.</span></li>
+        <li><b>Parameters are fetched only while disarmed and with no client attached.</b><span class="why">Narrow links (ELRS) cannot carry a parameter download and live telemetry at once; a GCS that attaches takes over.</span></li>
+        <li><b>compid 191 for the service, 190 for the app.</b><span class="why">MAVFTP replies are routed by target component, so both can run sessions without stealing each other's replies.</span></li>
+        <li><b>vehicle-core has no dependencies.</b><span class="why">Importing one enum from the mavlink-ts root pulled the full generated registry into the app's renderer and slowed tests past 5 s.</span></li>
+        <li><b>Desktop instruments draw with Cairo in the shell.</b><span class="why">No extra process, works on the desktop layer, matches the app's gauge geometry. Maps and synthetic vision need a different surface, see roadmap.</span></li>
+        <li><b>os-release keeps <code>ID=fedora</code>.</b><span class="why">dnf, flatpak and toolbox key off ID; branding goes in VARIANT and PRETTY_NAME.</span></li>
+      </ul>
+    </section>
+
+    <section id="issues">
+      <h2><span class="k">08</span>Known issues</h2>
+      <p class="sub">Open problems, most important first.</p>
+      <ul class="log">
+        <li><i class="pill issue">open</i> <b>Lingering user manager keeps old group membership.</b><span class="why">With linger on, the user systemd manager survives logout, so <code>dialout</code> only applies to services after a reboot. GNSS stays unreadable until then.</span></li>
+        <li><i class="pill issue">open</i> <b>Installed AppImage (v0.1.1) does not know the OS link</b><span class="why">and would compete for UDP 14550. Ship the branch build in the image.</span></li>
+        <li><i class="pill issue">open</i> <b>USB device classes are by vendor ID only.</b><span class="why">Move KNOWN_BOARDS from the app into vehicle-core for board names.</span></li>
+        <li><i class="pill issue">open</i> <b>UDP peer connection not yet verified against a live forwarder.</b><span class="why">The Mac SITL was stopped during the test.</span></li>
+        <li><i class="pill issue">open</i> <b>Compass heading units on the HID sensor hub are inferred</b><span class="why">(raw / 1e5 degrees) and not yet checked against a real compass.</span></li>
+        <li><i class="pill issue">open</i> <b>Two existing tests time out on the tablet CPU</b><span class="why">(mavlink-parser truncation, workspace layouts under load). Not caused by OS work.</span></li>
+      </ul>
+    </section>
+
+    <section id="roadmap">
+      <h2><span class="k">09</span>Roadmap</h2>
+      <p class="sub">Next, in order.</p>
+      <ul class="log">
+        <li><b>Vehicle Link quick settings tile and link settings window.</b><span class="why">Status, on/off, saved and detected connections, add connection, open ArduDeck.</span></li>
+        <li><b>Interactive desktop surface with map and synthetic vision.</b><span class="why">A desktop-layer window (the pattern Desktop Icons NG uses) rendering the app's own map, SVT and instruments, fed by the link API over WebSocket. Read-mostly; any vehicle action needs confirmation.</span></li>
+        <li><b>ModemManager ignore rule for flight controllers and radios.</b></li>
+        <li><b>Branding assets and system changes moved into <code>os/</code></b><span class="why">with an install script, then mkosi configs for Fedora and Debian.</span></li>
+        <li><b>Armed-mode system state.</b><span class="why">No sleep, no updates, no notification noise while the vehicle is armed.</span></li>
+        <li><b>NTRIP and automatic log download in the link service, pilot logbook.</b></li>
+      </ul>
+    </section>
+
+    <section id="tests">
+      <h2><span class="k">10</span>Test log</h2>
+      <p class="sub">What has been proven and how.</p>
+      <ul class="log">
+        <li><b>ArduCopter 4.7.1 SITL on the tablet → os-linkd:</b><span class="why">1350 params via MAVFTP in 2.5 s; identity from AUTOPILOT_VERSION; telemetry streams requested when unattended.</span></li>
+        <li><b>Branch build of the app on the tablet:</b><span class="why">OS badge shown, opened connected via "ArduDeck OS link", 1350 params served from the cache (journal: <code>served 1350 cached params</code>).</span></li>
+        <li><b>SITL on a Mac with the app's MAVLink forwarding → tablet over a phone hotspot:</b><span class="why">found by discovery with no configuration, 1633 params via MAVFTP in 7.4 s, link stable after the keepalive fix.</span></li>
+        <li><b>Unit tests:</b><span class="why">vehicle-core 26, os-linkd 13, app OS integration 6; app suite otherwise unchanged.</span></li>
+      </ul>
+    </section>
+  </main>
+</div>
