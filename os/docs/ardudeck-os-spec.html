@@ -81,7 +81,7 @@ a { color: var(--teal); }
       <span>Reference device <b>Dell Latitude 7220 Rugged Extreme</b></span>
       <span>Base <b>Fedora 44, GNOME 50, Wayland</b></span>
       <span>Branch <b>feat/ardudeck-os</b></span>
-      <span>Updated <b>2026-10-05</b></span>
+      <span>Updated <b>2026-10-05, rev 2</b></span>
     </div>
   </header>
 
@@ -146,8 +146,9 @@ flowchart LR
             <tr><td class="name">App OS integration<span class="path">apps/desktop/src/main/ardudeck-os.ts</span></td><td><i class="pill verified">verified</i></td><td>Probes the link service, shows the OS badge, opens connected through the OS link (local port 14571), loads cached params for the same board.</td><td>In the Electron app</td></tr>
             <tr><td class="name">Desktop instruments<span class="path">os/shell-extension/ardudeck-desktop@ardudeck.com</span></td><td><i class="pill built">built</i></td><td>Ground-station card, vehicle card with STATUSTEXT, bottom cluster: battery, speed, attitude ball, altitude with climb arc, heading rose. Cairo port of the app's RoundGauge and AttitudeIndicator. Read-only, no map yet.</td><td>GNOME Shell extension</td></tr>
             <tr><td class="name">stationd<span class="path">os/stationd</span></td><td><i class="pill verified">verified</i></td><td>Tablet hardware: u-blox GNSS (NMEA), LTE modem, Wi-Fi, both batteries, compass heading, ambient light.</td><td>Python 3 + PyGObject, systemd user unit</td></tr>
-            <tr><td class="name">Vehicle Link quick settings<span class="path">os/shell-extension (in progress)</span></td><td><i class="pill planned">in progress</i></td><td>Tile in the top-right menu: link state, on/off, saved and detected connections, Open ArduDeck, Link settings.</td><td>GNOME Shell extension</td></tr>
-            <tr><td class="name">Link settings window<span class="path">os/link-settings (planned)</span></td><td><i class="pill planned">planned</i></td><td>Add, edit, remove connections with libadwaita UI; later a native GNOME Settings panel in the image.</td><td>GJS + libadwaita</td></tr>
+            <tr><td class="name">Vehicle Link quick settings<span class="path">os/shell-extension/…/quick-settings.js</span></td><td><i class="pill built">built</i></td><td>Tile in the top-right menu: live vehicle line as subtitle, tile click is the master switch, menu with saved connections (check = active), newly plugged USB devices, Open ArduDeck, Link Settings. Drone icon in the top bar while a vehicle is live, red when armed. Not yet seen running (needs re-login or nested shell).</td><td>GNOME Shell extension</td></tr>
+            <tr><td class="name">Link Settings window<span class="path">os/link-settings</span></td><td><i class="pill verified">verified</i></td><td>libadwaita app over <code>/v1/links</code>: master switch, switch / add / edit / remove connections, adopt detected USB devices. Rendered and checked offscreen (Broadway). Later a native GNOME Settings panel in the image.</td><td>GJS + libadwaita, <code>com.ardudeck.LinkSettings</code></td></tr>
+            <tr><td class="name">Interactive desktop surface<span class="path">proposed</span></td><td><i class="pill planned">planned</i></td><td>Map (MapLibre), synthetic vision (three.js) and the app's instruments on the desktop, interactive. See roadmap.</td><td>WebKitGTK host + app renderer entry</td></tr>
             <tr><td class="name">Branding<span class="path">os/ (assets to be moved in)</span></td><td><i class="pill manual">manual</i></td><td>Wallpaper, GDM logo and accent, Plymouth theme, avatar, fonts, terminal palette, OSK colors.</td><td>See system changes</td></tr>
             <tr><td class="name">GJS OSK<span class="path">third party, extensions.gnome.org 5949</span></td><td><i class="pill manual">manual</i></td><td>Replacement on-screen keyboard: non-split custom layout without F-keys, docked so windows move up, 40% height.</td><td>GNOME Shell extension</td></tr>
           </tbody>
@@ -247,8 +248,8 @@ flowchart LR
       <h2><span class="k">09</span>Roadmap</h2>
       <p class="sub">Next, in order.</p>
       <ul class="log">
-        <li><b>Vehicle Link quick settings tile and link settings window.</b><span class="why">Status, on/off, saved and detected connections, add connection, open ArduDeck.</span></li>
-        <li><b>Interactive desktop surface with map and synthetic vision.</b><span class="why">A desktop-layer window (the pattern Desktop Icons NG uses) rendering the app's own map, SVT and instruments, fed by the link API over WebSocket. Read-mostly; any vehicle action needs confirmation.</span></li>
+        <li><b>Interactive desktop surface with map and synthetic vision.</b><span class="why">A new renderer entry in apps/desktop that reuses the app's map, SVT and instrument components with stores fed by a link-service event stream (SSE), hosted in a lightweight WebKitGTK window that the shell extension pins to the desktop layer (the Desktop Icons NG pattern). Pan, zoom, tap to open the app at that view; vehicle actions only through slide-to-confirm.</span></li>
+        <li><b>Nested shell for testing</b><span class="why">(mutter-devkit, needs shell/mutter 50.0 → 50.5) so extension changes can be checked without logging out.</span></li>
         <li><b>ModemManager ignore rule for flight controllers and radios.</b></li>
         <li><b>Branding assets and system changes moved into <code>os/</code></b><span class="why">with an install script, then mkosi configs for Fedora and Debian.</span></li>
         <li><b>Armed-mode system state.</b><span class="why">No sleep, no updates, no notification noise while the vehicle is armed.</span></li>
@@ -263,6 +264,7 @@ flowchart LR
         <li><b>ArduCopter 4.7.1 SITL on the tablet → os-linkd:</b><span class="why">1350 params via MAVFTP in 2.5 s; identity from AUTOPILOT_VERSION; telemetry streams requested when unattended.</span></li>
         <li><b>Branch build of the app on the tablet:</b><span class="why">OS badge shown, opened connected via "ArduDeck OS link", 1350 params served from the cache (journal: <code>served 1350 cached params</code>).</span></li>
         <li><b>SITL on a Mac with the app's MAVLink forwarding → tablet over a phone hotspot:</b><span class="why">found by discovery with no configuration, 1633 params via MAVFTP in 7.4 s, link stable after the keepalive fix.</span></li>
+        <li><b>Link API and settings:</b><span class="why">connection add / switch / master switch through the API; writes without the header rejected (403); Link Settings window rendered offscreen with live data.</span></li>
         <li><b>Unit tests:</b><span class="why">vehicle-core 26, os-linkd 13, app OS integration 6; app suite otherwise unchanged.</span></li>
       </ul>
     </section>
