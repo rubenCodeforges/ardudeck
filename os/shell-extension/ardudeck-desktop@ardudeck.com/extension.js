@@ -2,6 +2,7 @@
 // desktop layer (above the wallpaper, below windows).
 //   ground station  <- ardudeck-stationd  http://127.0.0.1:47800/state
 //   vehicle         <- ardudeck-os-linkd  http://127.0.0.1:47801/v1/vehicle
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 import St from 'gi://St';
@@ -275,7 +276,27 @@ class Cluster {
 }
 
 export default class ArduDeckDesktop extends Extension {
+    // The extension also runs on the lock screen (session-modes in metadata),
+    // only to make sure an on-screen keyboard is there: GJS OSK, the user-session
+    // keyboard, switches GNOME's own keyboard off and is itself stopped while the
+    // screen is locked, which can leave the unlock prompt with no keyboard at all.
+    // Everything else exists only in the unlocked user session.
     enable() {
+        this._a11y = new Gio.Settings({schema_id: 'org.gnome.desktop.a11y.applications'});
+        this._modeId = Main.sessionMode.connect('updated', () => this._syncMode());
+        this._syncMode();
+    }
+
+    _syncMode() {
+        if (Main.sessionMode.isLocked) {
+            this._disableDesktop();
+            this._a11y.set_boolean('screen-keyboard-enabled', true);
+        } else if (!this._root) {
+            this._enableDesktop();
+        }
+    }
+
+    _enableDesktop() {
         this._session = new Soup.Session({timeout: 2});
         this._api = new LocalApi();
         this._linkIndicator = new VehicleLinkIndicator(this.path, this._api);
@@ -360,6 +381,13 @@ export default class ArduDeckDesktop extends Extension {
     }
 
     disable() {
+        if (this._modeId) Main.sessionMode.disconnect(this._modeId);
+        this._modeId = 0;
+        this._disableDesktop();
+        this._a11y = null;
+    }
+
+    _disableDesktop() {
         this._linkIndicator?.destroy();
         this._linkIndicator = null;
         this._api?.destroy();

@@ -6,7 +6,7 @@
   background-color: rgba(17, 24, 39, 0.82);
   border: 1px solid rgba(45, 212, 191, 0.22);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-  font-family: "Inter Variable", "Inter", sans-serif;
+  font-family: "Inter Variable";
   color: #e5e7eb;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .adk-value {
-  font-family: "JetBrains Mono", monospace;
+  font-family: "JetBrains Mono";
   font-size: 13px;
   color: #f3f4f6;
 }
@@ -55,7 +55,7 @@
 
 .adk-messages { spacing: 3px; padding-top: 8px; }
 .adk-message {
-  font-family: "JetBrains Mono", monospace;
+  font-family: "JetBrains Mono";
   font-size: 11px;
   color: #d1d5db;
 }

@@ -81,7 +81,7 @@ a { color: var(--teal); }
       <span>Reference device <b>Dell Latitude 7220 Rugged Extreme</b></span>
       <span>Base <b>Fedora 44, GNOME 50, Wayland</b></span>
       <span>Branch <b>feat/ardudeck-os</b></span>
-      <span>Updated <b>2026-10-05, rev 2</b></span>
+      <span>Updated <b>2026-10-05, rev 3</b></span>
     </div>
   </header>
 
@@ -235,8 +235,10 @@ flowchart LR
       <h2><span class="k">08</span>Known issues</h2>
       <p class="sub">Open problems, most important first.</p>
       <ul class="log">
+        <li><i class="pill issue">open</i> <b>Login screen (GDM) on-screen keyboard.</b><span class="why">Needs <code>/etc/dconf/db/gdm.d/91-ardudeck-osk</code> with <code>screen-keyboard-enabled=true</code>; root popup was dismissed, pending.</span></li>
+        <li><i class="pill verified">fixed</i> <b>Lock screen had no keyboard.</b><span class="why">GJS OSK switches GNOME's keyboard off while it runs and restores the value it saw at start; an unclean logout saved "off", so the lock screen (where user extensions stop) had none. The ArduDeck extension now also runs in the unlock-dialog session mode and switches GNOME's keyboard on whenever the screen locks; its widgets and the Vehicle Link tile exist only when unlocked.</span></li>
         <li><i class="pill issue">open</i> <b>Lingering user manager keeps old group membership.</b><span class="why">With linger on, the user systemd manager survives logout, so <code>dialout</code> only applies to services after a reboot. GNSS stays unreadable until then.</span></li>
-        <li><i class="pill issue">open</i> <b>Installed AppImage (v0.1.1) does not know the OS link</b><span class="why">and would compete for UDP 14550. Ship the branch build in the image.</span></li>
+        <li><i class="pill issue">open</i> <b>Release builds (now v0.1.2-rc8 in the menu) do not know the OS link</b><span class="why">and would compete for UDP 14550 if set to listen there. A second launcher "ArduDeck (OS build)" runs the feat/ardudeck-os build. Merge the integration before the next release.</span></li>
         <li><i class="pill issue">open</i> <b>USB device classes are by vendor ID only.</b><span class="why">Move KNOWN_BOARDS from the app into vehicle-core for board names.</span></li>
         <li><i class="pill issue">open</i> <b>UDP peer connection not yet verified against a live forwarder.</b><span class="why">The Mac SITL was stopped during the test.</span></li>
         <li><i class="pill issue">open</i> <b>Compass heading units on the HID sensor hub are inferred</b><span class="why">(raw / 1e5 degrees) and not yet checked against a real compass.</span></li>
