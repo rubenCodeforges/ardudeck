@@ -10,7 +10,9 @@
     "staleShort": "Keine Daten {{seconds}} s",
     "voiceMuted": "Sprachwarnungen stummgeschaltet. Klicken zum Aktivieren",
     "voiceOn": "Sprachwarnungen aktiv. Klicken zum Stummschalten",
-    "waiting": "Warten..."
+    "waiting": "Warten...",
+    "osBadge": "OS",
+    "osBadgeTitle": "Läuft auf {{osName}}. Fahrzeugverbindung und Parameter-Cache stellt das System bereit."
   },
   "armDisarm": {
     "arm": "ARM",

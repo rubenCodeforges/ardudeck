@@ -179,6 +179,7 @@ import { GpsPassthrough } from './gps/gps-passthrough.js';
 import { telemetryKeyFor } from './telemetry-routing.js';
 import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } from './mavlink-ftp/index.js';
 import { VEHICLE_NAMES, isVehicleHeartbeat } from '@ardudeck/vehicle-core';
+import { probeArduDeckOs, isOsLinkEndpoint, fetchOsParams } from './ardudeck-os.js';
 import { ingestNamedValueFloat, getScriptHealth, resetHeartbeat, subscribeHealth } from './script-installer/heartbeat-tracker.js';
 import * as scriptRegistry from './script-installer/registry-store.js';
 import { getScriptBundle } from './script-installer/bundle.js';
@@ -2040,6 +2041,8 @@ let connectionState: ConnectionState = {
 
 // Detected MAVLink version from flight controller (1 or 2)
 let detectedMavlinkVersion: 1 | 2 = 1; // Default to v1 for compatibility
+// True while connected through the ArduDeck OS link service (see ardudeck-os.ts).
+let connectedViaOs = false;
 
 // Parameter download state
 let expectedParamCount = 0;
@@ -6193,6 +6196,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // cycle, cable unplug) recovers on its own. Capturing the serial port's USB identity
     // lets reconnect find the device even if it re-enumerates to a different path.
     lastConnectOptions = { ...options };
+    connectedViaOs = false;
     suppressAutoReconnect = false;
     lastSerialUsbId = null;
     if (options.type === 'serial' && options.port) {
@@ -6274,7 +6278,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               remoteHost: options.udpRemoteHost,
               remotePort: options.udpRemotePort,
             });
-            transportName = `UDP client ${options.udpRemoteHost}:${options.udpRemotePort} (local :${clientLocalPort})`;
+            connectedViaOs = isOsLinkEndpoint(options.udpRemoteHost, options.udpRemotePort);
+            transportName = connectedViaOs
+              ? t('main:ardudeckOs.transportName')
+              : `UDP client ${options.udpRemoteHost}:${options.udpRemotePort} (local :${clientLocalPort})`;
           } else {
             currentTransport = new UdpTransport({
               localPort: options.udpPort ?? 14550,
@@ -7600,6 +7607,34 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   }
 
   /**
+   * ArduDeck OS fast path: when connected through the OS link service, take
+   * the parameter set it already cached for this board instead of
+   * downloading it again. Same delivery as the FTP path (PARAM_BULK_LOAD).
+   */
+  async function requestParamsFromOsCache(): Promise<boolean> {
+    if (!connectedViaOs) return false;
+    const snap = await fetchOsParams(connectionState.boardUid ?? undefined);
+    if (!snap) return false;
+    receivedParams.clear();
+    expectedParamCount = snap.paramCount;
+    const bulkPayload: ParamValuePayload[] = snap.params.map((p) => {
+      const entry: ParamValuePayload = {
+        paramId: p.paramId,
+        paramValue: p.paramValue,
+        paramType: p.paramType,
+        paramCount: snap.paramCount,
+        paramIndex: p.paramIndex,
+        defaultValue: p.defaultValue,
+      };
+      receivedParams.set(p.paramId, entry);
+      return entry;
+    });
+    safeSend(mainWindow, IPC_CHANNELS.PARAM_BULK_LOAD, bulkPayload);
+    sendLog(mainWindow, 'info', `Loaded ${bulkPayload.length} parameters from ArduDeck OS cache`);
+    return true;
+  }
+
+  /**
    * Try downloading parameters via MAVLink FTP (fast path).
    * Downloads @PARAM/param.pck and parses the packed binary format.
    * Returns true if successful (params sent to renderer), false to trigger fallback.
@@ -7705,6 +7740,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
+    if (await requestParamsFromOsCache()) return { success: true };
     if (detectedMavlinkVersion === 2 && connectionState.firmware !== 'px4') {
       try {
         if (await requestParamsViaFtp()) return { success: true };
@@ -7735,6 +7771,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     paramRequestInFlight = true;
 
     try {
+      if (await requestParamsFromOsCache()) return { success: true };
+
       // Only attempt FTP on MAVLink v2 connections (FTP requires v2).
       // Skip it on PX4 outright: @PARAM/param.pck is an ArduPilot virtual
       // file, so on PX4 the fast path can only ever burn its open-timeout
@@ -13257,6 +13295,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // ============================================================================
   // App Version & Updates
   // ============================================================================
+
+  ipcMain.handle(IPC_CHANNELS.OS_GET_INTEGRATION, () => probeArduDeckOs());
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, (): string => {
     return app.getVersion();

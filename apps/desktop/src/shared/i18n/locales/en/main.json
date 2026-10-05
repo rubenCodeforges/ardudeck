@@ -619,5 +619,8 @@
     "receiverNotInstalled": "The wfb-ng receiver component ({{asset}}) is not installed. Open the feed setup and press Install next to \"Receiver component missing\".",
     "receiverNotPublished": "The wfb-ng receiver for {{platform}} has not been published yet (release {{tag}} has no {{asset}}), so dongle mode cannot start. Until then, set the feed to Network mode and run the receiver on another machine that forwards video here.",
     "udpPortHeld": "UDP port {{port}} is still held by another program or the previous video process. Try again in a moment."
+  },
+  "ardudeckOs": {
+    "transportName": "ArduDeck OS link"
   }
 }

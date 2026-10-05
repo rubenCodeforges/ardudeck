@@ -10,7 +10,9 @@
     "staleShort": "No data {{seconds}}s",
     "voiceMuted": "Voice alerts muted. Click to unmute",
     "voiceOn": "Voice alerts on. Click to mute",
-    "waiting": "Waiting..."
+    "waiting": "Waiting...",
+    "osBadge": "OS",
+    "osBadgeTitle": "Running on {{osName}}. The vehicle link and parameter cache are provided by the system."
   },
   "armDisarm": {
     "arm": "ARM",

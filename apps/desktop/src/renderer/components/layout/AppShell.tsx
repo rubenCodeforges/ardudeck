@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useUpdateStore } from '../../stores/update-store';
+import { useOsIntegrationStore } from '../../stores/os-integration-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useTheme } from '../../hooks/useTheme';
@@ -40,6 +41,12 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     fetchVersion();
   }, [fetchVersion]);
+
+  const osInfo = useOsIntegrationStore((s) => s.info);
+  const initOs = useOsIntegrationStore((s) => s.init);
+  useEffect(() => {
+    void initOs();
+  }, [initOs]);
 
   // Tick once a second while the link is stale so the banner shows elapsed seconds.
   const [, setNow] = useState(0);
@@ -93,6 +100,16 @@ export function AppShell({ children }: AppShellProps) {
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               )}
             </button>
+          )}
+
+          {/* Running on ArduDeck OS: the vehicle link and param cache come from the system */}
+          {osInfo.available && (
+            <span
+              className="px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wider text-teal-300 bg-teal-500/10 border border-teal-500/30"
+              title={t('layout:appShell.osBadgeTitle', { osName: osInfo.osName ?? 'ArduDeck OS' })}
+            >
+              {t('layout:appShell.osBadge')}
+            </span>
           )}
 
           {/* FC-side Lua script health (only when advanced commands unlocked + AD_HB seen) */}
