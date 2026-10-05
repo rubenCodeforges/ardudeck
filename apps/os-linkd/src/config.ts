@@ -2,7 +2,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export interface LinkdConfig {
-  /** UDP port the vehicle side listens on (ELRS backpack / telemetry bridges broadcast to 14550). */
+  /** Default UDP listen port for the built-in Wi-Fi telemetry connection (ELRS backpacks and bridges send to 14550). */
   vehiclePort: number;
   /** UDP port local GCS clients (the ArduDeck app, QGC, MAVProxy) talk to. */
   clientPort: number;
@@ -10,6 +10,8 @@ export interface LinkdConfig {
   clientBind: string;
   /** HTTP API port, always on loopback. */
   apiPort: number;
+  /** Saved connections and which one is active (links.json). */
+  settingsFile: string;
   /** Where per-vehicle parameter caches are stored. */
   stateDir: string;
   /** MAVLink identity used for the service's own requests (params, AUTOPILOT_VERSION). */
@@ -25,12 +27,14 @@ function envInt(name: string, fallback: number): number {
 
 export function loadConfig(): LinkdConfig {
   const stateHome = process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state');
+  const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
   return {
     vehiclePort: envInt('ARDUDECK_LINKD_VEHICLE_PORT', 14550),
     clientPort: envInt('ARDUDECK_LINKD_CLIENT_PORT', 14570),
     clientBind: process.env.ARDUDECK_LINKD_CLIENT_BIND || '127.0.0.1',
     apiPort: envInt('ARDUDECK_LINKD_API_PORT', 47801),
     stateDir: process.env.ARDUDECK_LINKD_STATE_DIR || join(stateHome, 'ardudeck-os'),
+    settingsFile: process.env.ARDUDECK_LINKD_SETTINGS || join(configHome, 'ardudeck-os', 'links.json'),
     // Deliberately not 255: ArduPilot's GCS failsafe tracks heartbeats from
     // SYSID_MYGCS (255 by default), and this service heartbeats on its own, so
     // as 255 it could keep that failsafe from firing after the pilot's real GCS

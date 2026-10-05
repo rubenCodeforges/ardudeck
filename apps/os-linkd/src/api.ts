@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { readFileSync } from 'node:fs';
 import type { LinkService } from './link-service.js';
 import type { LogFn } from './param-fetcher.js';
+import { detectDevices } from './connections.js';
 
 export const API_VERSION = 1;
 export const SERVICE_NAME = 'ardudeck-os-linkd';
@@ -41,19 +42,55 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(data);
 }
 
+const MAX_BODY = 16 * 1024;
+
+function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => {
+      size += c.length;
+      if (size > MAX_BODY) { reject(new Error('body too large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try {
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolve(text ? (JSON.parse(text) as Record<string, unknown>) : {});
+      } catch {
+        reject(new Error('invalid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 /**
- * Loopback-only HTTP API consumed by the desktop app, desktop widgets and
- * scripts. Read-only: anything that commands the vehicle goes through the
- * MAVLink client port instead.
+ * Loopback-only HTTP API consumed by the desktop app, the shell extension,
+ * the link settings window and scripts. Vehicle commands never go through
+ * here; they use the MAVLink client port.
  *
- *   GET /v1/info              service, OS and link details
- *   GET /v1/vehicle           live vehicle state, or null
- *   GET /v1/vehicle/params    cached parameter snapshot for the live vehicle
+ *   GET    /v1/info              service, OS and link details
+ *   GET    /v1/vehicle           live vehicle state, or null
+ *   GET    /v1/vehicle/params    cached parameter snapshot for the live vehicle
+ *   GET    /v1/links             saved connections, active one, detected USB devices
+ *   POST   /v1/links             {connection, activate?} add or replace a connection
+ *   POST   /v1/links/active      {id} switch to a saved connection
+ *   POST   /v1/links/enabled     {enabled} master switch for the vehicle link
+ *   DELETE /v1/links/:id         remove a saved connection
+ *
+ * Writes require the `X-ArduDeck: 1` header and a JSON body. A custom header
+ * forces a CORS preflight that this server never approves, so a web page
+ * open in a browser on the tablet cannot change links.
  */
 export function createApi(link: LinkService, serviceVersion: string, os: OsInfo = readOsRelease(), log?: LogFn): Server {
   return createServer((req: IncomingMessage, res: ServerResponse) => {
-    if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
     const path = (req.url ?? '/').split('?')[0]!.replace(/\/+$/, '');
+    if (req.method === 'POST' || req.method === 'DELETE') {
+      void handleWrite(link, req, res, path, log);
+      return;
+    }
+    if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
     const v = link.vehicle;
 
     switch (path) {
@@ -76,8 +113,44 @@ export function createApi(link: LinkService, serviceVersion: string, os: OsInfo 
         log?.('info', `served ${snap.params.length} cached params for ${snap.uid} (complete: ${snap.complete})`);
         return json(res, 200, snap);
       }
+      case '/v1/links':
+        void detectDevices().then((detected) => json(res, 200, { ...link.settings, link: link.linkInfo, detected }));
+        return;
       default:
         return json(res, 404, { error: 'not found' });
     }
   });
+}
+
+async function handleWrite(link: LinkService, req: IncomingMessage, res: ServerResponse, path: string, log?: LogFn): Promise<void> {
+  if (req.headers['x-ardudeck'] !== '1') return json(res, 403, { error: 'missing X-ArduDeck header' });
+  try {
+    if (req.method === 'DELETE') {
+      const m = /^\/v1\/links\/([\w.-]+)$/.exec(path);
+      if (!m) return json(res, 404, { error: 'not found' });
+      await link.removeConnection(m[1]!);
+      log?.('info', `links: removed ${m[1]}`);
+      return json(res, 200, link.settings);
+    }
+    const body = await readJson(req);
+    switch (path) {
+      case '/v1/links': {
+        const conn = await link.upsertConnection(body.connection, body.activate === true);
+        log?.('info', `links: saved ${conn.id} (${conn.name})${body.activate === true ? ', active' : ''}`);
+        return json(res, 200, link.settings);
+      }
+      case '/v1/links/active':
+        await link.setActive(String(body.id ?? ''));
+        log?.('info', `links: active ${String(body.id)}`);
+        return json(res, 200, link.settings);
+      case '/v1/links/enabled':
+        await link.setEnabled(body.enabled === true);
+        log?.('info', `links: ${body.enabled === true ? 'enabled' : 'disabled'}`);
+        return json(res, 200, link.settings);
+      default:
+        return json(res, 404, { error: 'not found' });
+    }
+  } catch (err) {
+    return json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+  }
 }

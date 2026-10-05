@@ -209,6 +209,11 @@ export class VehicleTracker {
     return false;
   }
 
+  /** Forget the vehicle (the link was switched or closed). */
+  reset(): void {
+    this.vehicle = null;
+  }
+
   get current(): VehicleState | null {
     return this.vehicle;
   }

@@ -1,4 +1,4 @@
-import { UdpTransport, type Transport } from '@ardudeck/comms';
+import type { Transport } from '@ardudeck/comms';
 import {
   MAVLinkParser, getAllMessageInfos, serializeV2,
   COMMAND_LONG_ID, COMMAND_LONG_CRC_EXTRA, serializeCommandLong,
@@ -10,6 +10,7 @@ import { ClientRouter } from './client-router.js';
 import { VehicleTracker, type VehicleState } from './vehicle-state.js';
 import { ParamCache } from './param-cache.js';
 import { ParamFetcher, type LogFn } from './param-fetcher.js';
+import { createTransport, describe, LinkSettingsStore, parseConnection, type Connection, type LinkSettings } from './connections.js';
 
 const MAV_CMD_REQUEST_MESSAGE = 512;
 const MAV_CMD_SET_MESSAGE_INTERVAL = 511;
@@ -36,10 +37,12 @@ const TICK_MS = 1000;
 const IDENTITY_GRACE_MS = 6000;
 const IDENTITY_RETRY_MS = 2000;
 const FETCH_RETRY_MS = 60_000;
+/** Retry opening a connection that failed (radio unplugged, port busy) this often. */
+const REOPEN_MS = 5000;
 const MAX_FETCH_ATTEMPTS = 3;
 
 /** UDP only becomes writable once the vehicle's address is latched; stream transports are writable when open. */
-type VehicleTransport = Transport & { readonly canWrite?: boolean };
+type VehicleTransport = Transport & { readonly canWrite?: boolean; removeAllListeners(): unknown };
 
 function writable(t: VehicleTransport | null): boolean {
   return !!t && t.isOpen && (t.canWrite ?? true);
@@ -68,6 +71,12 @@ export class LinkService {
   readonly fetcher: ParamFetcher;
 
   private transport: VehicleTransport | null = null;
+  private readonly injectedTransport: VehicleTransport | null;
+  private readonly settingsStore: LinkSettingsStore;
+  private settingsState: LinkSettings;
+  private linkError: string | null = null;
+  private lastOpenAttempt = 0;
+  private applying: Promise<void> | null = null;
   private readonly parser = new MAVLinkParser();
   private seq = 0;
   private tick: NodeJS.Timeout | null = null;
@@ -81,14 +90,13 @@ export class LinkService {
     this.router = new ClientRouter(config.clientPort, config.clientBind);
     this.cache = new ParamCache(`${config.stateDir}/params`);
     this.fetcher = new ParamFetcher(this.cache, (id, p, crc) => this.send(id, p, crc), config.compid, log);
-    if (transport) this.transport = transport;
+    this.injectedTransport = transport ?? null;
+    this.settingsStore = new LinkSettingsStore(config.settingsFile, config.vehiclePort);
+    this.settingsState = this.settingsStore.load();
   }
 
   async start(): Promise<void> {
-    this.transport ??= new UdpTransport({ localPort: this.config.vehiclePort });
-    this.transport.on('data', (data: Uint8Array) => this.onVehicleData(data));
-    this.transport.on('error', (err: Error) => this.log('warn', `vehicle link: ${err.message}`));
-    await this.transport.open();
+    await this.applyLink();
 
     this.router.on('uplink', (bytes: Uint8Array) => {
       this.stats.clientBytes += bytes.length;
@@ -102,7 +110,105 @@ export class LinkService {
     await this.router.start();
 
     this.tick = setInterval(() => this.onTick(), TICK_MS);
-    this.log('info', `vehicle link UDP :${this.config.vehiclePort}, clients ${this.config.clientBind}:${this.config.clientPort}`);
+    this.log('info', `clients ${this.config.clientBind}:${this.config.clientPort}`);
+  }
+
+  // ---------------------------------------------------------------- connections
+
+  get settings(): LinkSettings {
+    return this.settingsState;
+  }
+
+  get activeConnection(): Connection | null {
+    return this.settingsState.connections.find((c) => c.id === this.settingsState.activeId) ?? null;
+  }
+
+  async setEnabled(enabled: boolean): Promise<void> {
+    this.settingsState = { ...this.settingsState, enabled };
+    await this.commit();
+  }
+
+  async setActive(id: string): Promise<void> {
+    if (!this.settingsState.connections.some((c) => c.id === id)) throw new Error(`no connection ${id}`);
+    this.settingsState = { ...this.settingsState, activeId: id, enabled: true };
+    await this.commit();
+  }
+
+  /** Add (or replace by id) a connection; `activate` switches to it. */
+  async upsertConnection(input: unknown, activate: boolean): Promise<Connection> {
+    const conn = parseConnection(input);
+    const others = this.settingsState.connections.filter((c) => c.id !== conn.id);
+    this.settingsState = {
+      ...this.settingsState,
+      connections: [...others, conn],
+      ...(activate ? { activeId: conn.id, enabled: true } : {}),
+    };
+    await this.commit();
+    return conn;
+  }
+
+  async removeConnection(id: string): Promise<void> {
+    const connections = this.settingsState.connections.filter((c) => c.id !== id);
+    if (connections.length === 0) throw new Error('cannot remove the last connection');
+    const activeId = this.settingsState.activeId === id ? connections[0]!.id : this.settingsState.activeId;
+    this.settingsState = { ...this.settingsState, connections, activeId };
+    await this.commit();
+  }
+
+  private async commit(): Promise<void> {
+    this.settingsStore.save(this.settingsState);
+    await this.applyLink();
+  }
+
+  /** Close whatever is open and open the active connection (if enabled). Serialised. */
+  private applyLink(): Promise<void> {
+    const run = async () => {
+      await this.closeTransport();
+      this.linkError = null;
+      if (this.injectedTransport) {
+        await this.openTransport(this.injectedTransport, 'injected transport');
+        return;
+      }
+      const conn = this.activeConnection;
+      if (!this.settingsState.enabled || !conn) {
+        this.log('info', 'vehicle link disabled');
+        return;
+      }
+      await this.openTransport(createTransport(conn) as VehicleTransport, `${conn.name} (${describe(conn)})`);
+    };
+    const prev = this.applying ?? Promise.resolve();
+    this.applying = prev.then(run, run).finally(() => { this.applying = null; });
+    return this.applying;
+  }
+
+  private async openTransport(t: VehicleTransport, label: string): Promise<void> {
+    this.lastOpenAttempt = Date.now();
+    t.on('data', (data: Uint8Array) => this.onVehicleData(data));
+    t.on('error', (err: Error) => {
+      this.linkError = err.message;
+      this.log('warn', `vehicle link: ${err.message}`);
+    });
+    try {
+      await t.open();
+      this.transport = t;
+      this.log('info', `vehicle link ${label}`);
+    } catch (err) {
+      this.linkError = err instanceof Error ? err.message : String(err);
+      this.log('warn', `vehicle link ${label} failed: ${this.linkError}`);
+      t.removeAllListeners();
+    }
+  }
+
+  private async closeTransport(): Promise<void> {
+    const t = this.transport;
+    this.transport = null;
+    this.fetcher.abort();
+    this.session = null;
+    this.tracker.reset();
+    this.parser.reset();
+    if (!t) return;
+    t.removeAllListeners();
+    await t.close().catch(() => {});
   }
 
   async stop(): Promise<void> {
@@ -120,8 +226,10 @@ export class LinkService {
 
   get linkInfo() {
     return {
-      type: 'udp' as const,
-      vehiclePort: this.config.vehiclePort,
+      enabled: this.settingsState.enabled,
+      active: this.activeConnection,
+      open: !!this.transport?.isOpen,
+      error: this.linkError,
       clientHost: this.config.clientBind,
       clientPort: this.config.clientPort,
       canWrite: writable(this.transport),
@@ -167,6 +275,10 @@ export class LinkService {
   }
 
   private onTick(now = Date.now()): void {
+    // A connection that failed to open (radio unplugged, port busy) is retried.
+    if (!this.transport && !this.applying && this.settingsState.enabled && now - this.lastOpenAttempt > REOPEN_MS) {
+      void this.applyLink();
+    }
     this.sendHeartbeat();
     if (this.tracker.checkTimeout(now)) {
       this.log('info', 'vehicle link lost');
@@ -217,10 +329,11 @@ export class LinkService {
     // Discovery: with no live vehicle, also announce on the LAN so a relay that
     // learns its clients starts streaming to us without any configuration.
     const t = this.transport as (VehicleTransport & { sendTo?: (d: Uint8Array, h: string, p: number) => Promise<void> }) | null;
-    if (!this.tracker.current?.connected && t?.isOpen && t.sendTo) {
+    const conn = this.activeConnection;
+    if (!this.tracker.current?.connected && conn?.type === 'udp-listen' && t?.isOpen && t.sendTo) {
       const packet = this.frame(HEARTBEAT_ID, payload, HEARTBEAT_CRC_EXTRA);
       this.stats.txBytes += packet.length;
-      void t.sendTo(packet, '255.255.255.255', this.config.vehiclePort).catch(() => {});
+      void t.sendTo(packet, '255.255.255.255', conn.port).catch(() => {});
     }
   }
 
