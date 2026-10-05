@@ -13388,7 +13388,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Initialize auto-updater (handles auto-check on its own schedule)
-  initAutoUpdater(mainWindow);
+  // The desktop surface is a second instance of the same build; only the app updates.
+  if (process.env['ARDUDECK_DESKTOP_SURFACE'] !== '1') initAutoUpdater(mainWindow);
 
   // Companion computer (agent WebSocket)
   registerCompanionIpcHandlers(mainWindow);

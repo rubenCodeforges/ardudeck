@@ -65,6 +65,17 @@ process.on('unhandledRejection', (reason: unknown) => {
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
+// ArduDeck OS desktop surface: a second, chrome-less instance that the OS shell
+// pins to the desktop layer (map, synthetic vision, instruments). It gets its
+// own profile so it holds its own single-instance lock and runs next to the
+// normal app, and it skips splash, updater, pop-out restore and deep links.
+const isDesktopSurface = process.argv.includes('--desktop-surface');
+if (isDesktopSurface) {
+  process.env['ARDUDECK_DESKTOP_SURFACE'] = '1';
+  app.setPath('userData', join(app.getPath('appData'), 'ardudeck-desktop-surface'));
+}
+const SURFACE_TITLE = 'ArduDeck Desktop Surface'; // i18n-exempt: window identity the shell extension matches on
+
 // Single-instance lock so ardudeck:// deep links route to the running app
 // instead of spawning a second one.
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -195,6 +206,7 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
     minWidth: 800,
     minHeight: 600,
     show: false,
+    ...(isDesktopSurface ? { frame: false, skipTaskbar: true, title: SURFACE_TITLE, minWidth: 320, minHeight: 240 } : {}),
     // Match the app's dark canvas (--bg-base). Without this the window defaults
     // to white, so any moment it's shown before the renderer's first paint (e.g.
     // the handoff fallback below on a slow load) flashes a blank WHITE screen.
@@ -239,7 +251,9 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
 
   // True fullscreen: on a field tablet the desktop's top bar and the title bar
   // are wasted rows over the map. F11 toggles, and the choice is remembered.
-  if (getMainFullScreen()) mainWindow.setFullScreen(true);
+  if (getMainFullScreen() && !isDesktopSurface) mainWindow.setFullScreen(true);
+  // The shell extension finds the surface by its title; keep the page from renaming it.
+  if (isDesktopSurface) mainWindow.on('page-title-updated', (e) => e.preventDefault());
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.type !== 'keyDown' || input.key !== 'F11' || mainWindow.isDestroyed()) return;
@@ -265,7 +279,7 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   });
 
   // Open DevTools in development
-  if (isDev) {
+  if (isDev && !isDesktopSurface) {
     mainWindow.webContents.openDevTools();
   }
 
@@ -279,10 +293,11 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   let loadAttempts = 0;
   function loadRenderer(): void {
     loadAttempts++;
+    const search = isDesktopSurface ? 'surface=1' : '';
     if (rendererUrl) {
-      mainWindow.loadURL(rendererUrl).catch(() => { /* handled by did-fail-load */ });
+      mainWindow.loadURL(search ? `${rendererUrl}?${search}` : rendererUrl).catch(() => { /* handled by did-fail-load */ });
     } else {
-      mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+      mainWindow.loadFile(join(__dirname, '../renderer/index.html'), search ? { search } : undefined)
         .catch(() => { /* handled by did-fail-load */ });
     }
   }
@@ -342,7 +357,7 @@ app.whenReady().then(() => {
   maybeShowKeychainNotice();
 
   // Instant branded launch card; covers the gap while the renderer boots hidden.
-  const splash = createSplashWindow();
+  const splash = isDesktopSurface ? null : createSplashWindow();
 
   const mainWindow = createWindow(splash);
   mainWindowRef = mainWindow;
@@ -365,6 +380,7 @@ app.whenReady().then(() => {
   // Defer until after the main window is ready so the renderer has subscribed
   // to the push channels by the time pop-outs spawn (they share the broadcast).
   mainWindow.webContents.once('did-finish-load', () => {
+    if (isDesktopSurface) return;
     restoreDetachedWindows();
     // Deliver any deep link captured before the renderer was ready, and handle
     // a link present in the initial launch argv (Windows/Linux cold start).
@@ -379,7 +395,7 @@ app.whenReady().then(() => {
   });
 
   // Dev-only: start test driver MCP server
-  if (isDev) {
+  if (isDev && !isDesktopSurface) {
     import('./testing/index.js').then((m) => m.initTestingMcp(mainWindow)).catch(console.error);
   }
 

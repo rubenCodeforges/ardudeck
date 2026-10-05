@@ -8,5 +8,9 @@
     "pinned": "Im Vordergrund fixiert, zum Lösen klicken",
     "toggleOnTop": "Immer im Vordergrund umschalten",
     "unknownComponent": "Unbekannte Komponente"
+  },
+  "surface": {
+    "linkServiceOff": "Der ArduDeck-OS-Verbindungsdienst läuft nicht",
+    "searching": "Suche nach dem Fahrzeug…"
   }
 }

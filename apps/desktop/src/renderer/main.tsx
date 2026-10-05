@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { DetachedRoot } from './detached/DetachedRoot';
+import { SurfaceRoot } from './surface/SurfaceRoot';
 // Subpath, not the barrel: the barrel re-exports core/signing.js (node:crypto),
 // which Vite externalizes in the renderer.
 import { registerArduDeckDialect } from '@ardudeck/mavlink-ts/dialect';
@@ -23,6 +24,8 @@ initVehicleCalibration();
 
 const params = new URLSearchParams(window.location.search);
 const isDetached = params.get('detached') === '1';
+// ArduDeck OS desktop surface (`--desktop-surface`): map, SVT and instruments only.
+const isSurface = params.get('surface') === '1';
 
 // Every window, main and pop-out alike: the handset has to follow you into the popped-out
 // 3D view, and only whichever window has focus gets to drive (see the store).
@@ -31,7 +34,7 @@ initPseudoTx();
 void initRendererI18n().then(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <I18nRoot>{isDetached ? <DetachedRoot /> : <App />}</I18nRoot>
+      <I18nRoot>{isSurface ? <SurfaceRoot /> : isDetached ? <DetachedRoot /> : <App />}</I18nRoot>
     </React.StrictMode>,
   );
 });

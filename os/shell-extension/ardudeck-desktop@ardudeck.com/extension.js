@@ -14,6 +14,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {drawRoundGauge, drawAttitude, headingRose, vsiArc, COLORS} from './gauges.js';
 import {LocalApi} from './http.js';
 import {VehicleLinkIndicator} from './quick-settings.js';
+import {DesktopSurfaceManager} from './surface.js';
 
 const STATION_URL = 'http://127.0.0.1:47800/state';
 const VEHICLE_URL = 'http://127.0.0.1:47801/v1/vehicle';
@@ -310,6 +311,13 @@ export default class ArduDeckDesktop extends Extension {
             this._root.add_child(a);
         Main.layoutManager._backgroundGroup.add_child(this._root);
 
+        // When the live desktop surface (map, SVT, instruments) is running it is
+        // the desktop; these lightweight Cairo widgets are the fallback without it.
+        this._surface = new DesktopSurfaceManager(active => {
+            if (this._root) this._root.visible = !active;
+        });
+        if (this._surface.active) this._root.visible = false;
+
         this._monitorsId = Main.layoutManager.connect('monitors-changed', () => this._place());
         for (const a of [this._vehicle.actor, this._cluster.actor])
             a.connect('notify::width', () => this._place());
@@ -388,6 +396,8 @@ export default class ArduDeckDesktop extends Extension {
     }
 
     _disableDesktop() {
+        this._surface?.destroy();
+        this._surface = null;
         this._linkIndicator?.destroy();
         this._linkIndicator = null;
         this._api?.destroy();
