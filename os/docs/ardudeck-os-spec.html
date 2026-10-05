@@ -81,7 +81,7 @@ a { color: var(--teal); }
       <span>Reference device <b>Dell Latitude 7220 Rugged Extreme</b></span>
       <span>Base <b>Fedora 44, GNOME 50, Wayland</b></span>
       <span>Branch <b>feat/ardudeck-os</b></span>
-      <span>Updated <b>2026-10-05, rev 3</b></span>
+      <span>Updated <b>2026-10-05, rev 5</b></span>
     </div>
   </header>
 
@@ -103,6 +103,7 @@ a { color: var(--teal); }
       <h2><span class="k">01</span>Principles</h2>
       <p class="sub">The rules every feature is checked against.</p>
       <ul class="log">
+        <li><b>Integrated, not a skin.</b><span class="why">Every feature lives in a real OS surface: the desktop layer, top bar, quick settings, lock screen, notifications, GNOME search, file associations, systemd services, native settings windows. Theming alone is never a feature.</span></li>
         <li><b>The OS works with the app closed.</b><span class="why">Vehicle link, telemetry, parameter cache, desktop instruments and alerts are system services. The ArduDeck app is one client among several.</span></li>
         <li><b>The desktop app is the reference.</b><span class="why">Protocol code, mode tables, MAVFTP and gauge designs are shared from the monorepo (<code>@ardudeck/mavlink-ts</code>, <code>@ardudeck/vehicle-core</code>, <code>@ardudeck/comms</code>), never rewritten.</span></li>
         <li><b>Off ArduDeck OS the app is unchanged.</b><span class="why">Every integration is detected at runtime and falls back silently on macOS, Windows and other Linux.</span></li>
@@ -148,7 +149,7 @@ flowchart LR
             <tr><td class="name">stationd<span class="path">os/stationd</span></td><td><i class="pill verified">verified</i></td><td>Tablet hardware: u-blox GNSS (NMEA), LTE modem, Wi-Fi, both batteries, compass heading, ambient light.</td><td>Python 3 + PyGObject, systemd user unit</td></tr>
             <tr><td class="name">Vehicle Link quick settings<span class="path">os/shell-extension/…/quick-settings.js</span></td><td><i class="pill built">built</i></td><td>Tile in the top-right menu: live vehicle line as subtitle, tile click is the master switch, menu with saved connections (check = active), newly plugged USB devices, Open ArduDeck, Link Settings. Drone icon in the top bar while a vehicle is live, red when armed. Not yet seen running (needs re-login or nested shell).</td><td>GNOME Shell extension</td></tr>
             <tr><td class="name">Link Settings window<span class="path">os/link-settings</span></td><td><i class="pill verified">verified</i></td><td>libadwaita app over <code>/v1/links</code>: master switch, switch / add / edit / remove connections, adopt detected USB devices. Rendered and checked offscreen (Broadway). Later a native GNOME Settings panel in the image.</td><td>GJS + libadwaita, <code>com.ardudeck.LinkSettings</code></td></tr>
-            <tr><td class="name">Interactive desktop surface<span class="path">proposed</span></td><td><i class="pill planned">planned</i></td><td>Map (MapLibre), synthetic vision (three.js) and the app's instruments on the desktop, interactive. See roadmap.</td><td>WebKitGTK host + app renderer entry</td></tr>
+            <tr><td class="name">Desktop surface<span class="path">apps/desktop/src/renderer/surface, os/…/surface.js</span></td><td><i class="pill built">built</i></td><td>The app's own MapPanel (satellite map, vehicle, mission), synthetic vision in the map split, and floating instruments, as the desktop itself: second app instance with <code>--desktop-surface</code> (own profile, no splash/updater/tours), connected through os-linkd on local port 14572. The extension makes it sticky, work-area sized, lowest in stack and paint order, hidden from the overview. Rendering verified with SITL flying a mission; desktop pinning verified after next login.</td><td>Electron (branch build) + systemd user unit <code>ardudeck-desktop-surface</code></td></tr>
             <tr><td class="name">Branding<span class="path">os/ (assets to be moved in)</span></td><td><i class="pill manual">manual</i></td><td>Wallpaper, GDM logo and accent, Plymouth theme, avatar, fonts, terminal palette, OSK colors.</td><td>See system changes</td></tr>
             <tr><td class="name">GJS OSK<span class="path">third party, extensions.gnome.org 5949</span></td><td><i class="pill manual">manual</i></td><td>Replacement on-screen keyboard: non-split custom layout without F-keys, docked so windows move up, 40% height.</td><td>GNOME Shell extension</td></tr>
           </tbody>
@@ -189,6 +190,7 @@ flowchart LR
         <div class="card"><div class="port">14571/udp</div><h4>App local port</h4><p>Fixed source port of the ArduDeck app on the OS link, so reconnects keep their slot.</p></div>
         <div class="card"><div class="port">47801/tcp</div><h4>Link API</h4><p><code>/v1/info</code>, <code>/v1/vehicle</code>, <code>/v1/vehicle/params</code>, <code>/v1/links</code>. Writes need <code>X-ArduDeck: 1</code>.</p></div>
         <div class="card"><div class="port">47800/tcp</div><h4>Station API</h4><p><code>/state</code>: GNSS, LTE, Wi-Fi, batteries, heading, light.</p></div>
+        <div class="card"><div class="port">14572/udp</div><h4>Surface local port</h4><p>Source port of the desktop surface instance on the OS link.</p></div>
         <div class="card"><div class="port">254 / 191</div><h4>MAVLink identity</h4><p>sysid 254, compid 191 for the service's own messages. Not 255, see decisions.</p></div>
       </div>
     </section>
@@ -250,7 +252,7 @@ flowchart LR
       <h2><span class="k">09</span>Roadmap</h2>
       <p class="sub">Next, in order.</p>
       <ul class="log">
-        <li><b>Interactive desktop surface with map and synthetic vision.</b><span class="why">A new renderer entry in apps/desktop that reuses the app's map, SVT and instrument components with stores fed by a link-service event stream (SSE), hosted in a lightweight WebKitGTK window that the shell extension pins to the desktop layer (the Desktop Icons NG pattern). Pan, zoom, tap to open the app at that view; vehicle actions only through slide-to-confirm.</span></li>
+        <li><b>Desktop surface polish.</b><span class="why">Hide it from Alt+Tab; show the operator's own GNSS position and the station card inside it; tap targets that open the full app at that view; vehicle actions only via slide-to-confirm; consider a lighter WebKitGTK host instead of a second Electron.</span></li>
         <li><b>Nested shell for testing</b><span class="why">(mutter-devkit, needs shell/mutter 50.0 → 50.5) so extension changes can be checked without logging out.</span></li>
         <li><b>ModemManager ignore rule for flight controllers and radios.</b></li>
         <li><b>Branding assets and system changes moved into <code>os/</code></b><span class="why">with an install script, then mkosi configs for Fedora and Debian.</span></li>
@@ -272,6 +274,7 @@ flowchart LR
         <li><b>Branch build of the app on the tablet:</b><span class="why">OS badge shown, opened connected via "ArduDeck OS link", 1350 params served from the cache (journal: <code>served 1350 cached params</code>).</span></li>
         <li><b>SITL on a Mac with the app's MAVLink forwarding → tablet over a phone hotspot:</b><span class="why">found by discovery with no configuration, 1633 params via MAVFTP in 7.4 s, link stable after the keepalive fix.</span></li>
         <li><b>Link API and settings:</b><span class="why">connection add / switch / master switch through the API; writes without the header rejected (403); Link Settings window rendered offscreen with live data.</span></li>
+        <li><b>Desktop surface:</b><span class="why">second app instance in surface mode attached to os-linkd (client 14572) and rendered the satellite map, mission line, instruments and synthetic vision for SITL flying a mission from the Mac (captured via DevTools).</span></li>
         <li><b>Unit tests:</b><span class="why">vehicle-core 26, os-linkd 13, app OS integration 6; app suite otherwise unchanged.</span></li>
       </ul>
     </section>
