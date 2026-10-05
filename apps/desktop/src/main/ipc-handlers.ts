@@ -3737,6 +3737,23 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Deserialize parameter value
       const param = deserializeParamValue(payload);
 
+      // INAV answers PARAM_REQUEST_LIST with one empty PARAM_VALUE (telemetry/mavlink.c), even when posing as ArduPilot
+      if (param.paramCount === 0 && !param.paramId) {
+        if (!connectionState.paramsUnsupported) {
+          connectionState.paramsUnsupported = true;
+          if (connectionState.firmware === 'ardupilot') connectionState.firmware = 'custom';
+          paramDownloadActive = false;
+          if (paramDownloadTimeout) {
+            clearTimeout(paramDownloadTimeout);
+            paramDownloadTimeout = null;
+          }
+          sendLog(mainWindow, 'info', 'This flight controller has no MAVLink parameters (INAV). Configure it over MSP.');
+          safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR, 'This flight controller has no MAVLink parameters (INAV). Configure it over MSP.');
+          sendConnectionState(mainWindow);
+        }
+        break;
+      }
+
       // PX4 transmits integer params bytewise: the param_value bytes hold the
       // raw typed integer bits, not a float. Reinterpret from the raw wire
       // bytes (not the already-decoded float, which is lossy for int bits)

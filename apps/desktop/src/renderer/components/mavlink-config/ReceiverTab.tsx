@@ -10,6 +10,8 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useFlightStack } from '../../hooks/useFlightStack';
+import { rcFunctionsFor } from '../../utils/flight-stack';
 import { useTranslation } from 'react-i18next';
 import { Radio, Signal, SignalZero, Activity, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useParameterStore } from '../../stores/parameter-store';
@@ -147,12 +149,10 @@ const ReceiverTab: React.FC = () => {
   const firmware = useConnectionStore((s) => s.connectionState.firmware);
 
   // RCMAP parameters — which physical channel carries which function (1-based)
-  const rcmap = useMemo(() => ({
-    roll: (parameters.get('RCMAP_ROLL')?.value as number) ?? 1,
-    pitch: (parameters.get('RCMAP_PITCH')?.value as number) ?? 2,
-    throttle: (parameters.get('RCMAP_THROTTLE')?.value as number) ?? 3,
-    yaw: (parameters.get('RCMAP_YAW')?.value as number) ?? 4,
-  }), [parameters]);
+  const stack = useFlightStack();
+  // INAV over MAVLink has no ArduPilot params: show its live channels only, in its own order
+  const isInav = stack === 'inav';
+  const rcmap = useMemo(() => rcFunctionsFor(parameters, stack), [parameters, stack]);
 
   // Channel names in physical order (for calibration table)
   const physicalChannelNames = useMemo(() => {
@@ -297,7 +297,13 @@ const ReceiverTab: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {isInav && (
+        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-sm text-content-secondary">
+          {t('mavlink-config:receiverTab.inavReadOnly')}
+        </div>
+      )}
       {/* RC Protocol Card */}
+      {!isInav && (
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center">
@@ -354,6 +360,7 @@ const ReceiverTab: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Live RC Channels Card */}
       <div className="bg-surface rounded-xl border border-subtle p-5">
@@ -427,9 +434,10 @@ const ReceiverTab: React.FC = () => {
         )}
       </div>
 
-      <StickAssignmentCard />
+      {!isInav && <StickAssignmentCard />}
 
       {/* RC Calibration Card */}
+      {!isInav && (
       <div className="bg-surface rounded-xl border border-subtle p-5">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -499,6 +507,7 @@ const ReceiverTab: React.FC = () => {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };

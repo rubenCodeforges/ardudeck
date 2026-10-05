@@ -1273,6 +1273,8 @@ export interface ConnectionState {
    * Unset on MSP connections, which use fcVariant instead.
    */
   firmware?: FirmwareSource;
+  /** MAVLink link answered PARAM_REQUEST_LIST with an empty PARAM_VALUE: no parameter interface (INAV). */
+  paramsUnsupported?: boolean;
   vehicleType?: string;
   mavType?: number; // Raw MAV_TYPE for metadata lookup
   // MSP-specific (Betaflight/iNav)

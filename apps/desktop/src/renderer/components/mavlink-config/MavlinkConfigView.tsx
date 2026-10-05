@@ -55,6 +55,7 @@ import { useConfigTabMenuStore } from '../../stores/config-tab-menu-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { formatParamValue } from '../../../shared/parameter-types';
 import { firmwareLabel } from '../../../shared/firmware-types';
+import { useFlightStack } from '../../hooks/useFlightStack';
 import PidTuningTab from './PidTuningTab';
 import RatesTab from './RatesTab';
 import FlightModesTab from './FlightModesTab';
@@ -331,18 +332,24 @@ const PX4_UNSUPPORTED_TABS: ReadonlySet<TabId> = new Set([
   'rates', 'tuning', 'autotune', 'rover-tuning', 'rover-nav', 'dronecan',
 ]);
 
-function filterTabsForFirmware(nodes: TabNode[], isPx4: boolean): TabNode[] {
-  if (!isPx4) return nodes;
+function filterTabs(nodes: TabNode[], keep: (id: TabId) => boolean): TabNode[] {
   const out: TabNode[] = [];
   for (const node of nodes) {
     if (node.kind === 'item') {
-      if (!PX4_UNSUPPORTED_TABS.has(node.id)) out.push(node);
+      if (keep(node.id)) out.push(node);
     } else {
-      const children = node.children.filter((c) => !PX4_UNSUPPORTED_TABS.has(c.id));
+      const children = node.children.filter((c) => keep(c.id));
       if (children.length > 0) out.push({ ...node, children });
     }
   }
   return out;
+}
+
+// INAV over MAVLink has no parameters: only the live receiver view applies
+function filterTabsForFirmware(nodes: TabNode[], isPx4: boolean, isInav: boolean): TabNode[] {
+  if (isInav) return filterTabs(nodes, (id) => id === 'receiver');
+  if (!isPx4) return nodes;
+  return filterTabs(nodes, (id) => !PX4_UNSUPPORTED_TABS.has(id));
 }
 
 function collectTabIds(nodes: TabNode[]): TabId[] {
@@ -381,11 +388,12 @@ export const MavlinkConfigView: React.FC = () => {
   const isRover = vehicleCategory === 'rover';
   const isPlane = vehicleCategory === 'plane';
   const isPx4Fw = connectionState.firmware === 'px4';
+  const isInavLink = useFlightStack() === 'inav';
   const tabs = useMemo(
-    () => filterTabsForFirmware(isRover ? ROVER_TABS : isPlane ? PLANE_TABS : COPTER_TABS, isPx4Fw),
-    [isRover, isPlane, isPx4Fw],
+    () => filterTabsForFirmware(isRover ? ROVER_TABS : isPlane ? PLANE_TABS : COPTER_TABS, isPx4Fw, isInavLink),
+    [isRover, isPlane, isPx4Fw, isInavLink],
   );
-  const defaultTab = isRover ? 'rover-tuning' : 'pid';
+  const defaultTab: TabId = isInavLink ? 'receiver' : isRover ? 'rover-tuning' : 'pid';
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
 
   // Reset active tab when vehicle type changes
@@ -634,7 +642,7 @@ export const MavlinkConfigView: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-content">
-                {t('mavlink-config:mavlinkConfigView.title', { firmware: firmwareLabel(connectionState) })}
+                {t('mavlink-config:mavlinkConfigView.title', { firmware: isInavLink ? 'INAV' : firmwareLabel(connectionState) })}
               </h2>
               <div className="flex items-center gap-2 text-sm text-content-secondary">
                 {connectionState.vehicleType && (
