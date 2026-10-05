@@ -88,4 +88,18 @@ describe('VehicleTracker', () => {
     expect(t.current!.connected).toBe(false);
     expect(t.handle(packet(HEARTBEAT_ID, heartbeat()), 9000)).toBe('new');
   });
+
+  it('forgets the board identity when a vehicle reconnects on the same sysid', () => {
+    const t = new VehicleTracker();
+    t.handle(packet(HEARTBEAT_ID, heartbeat()), 1000);
+    t.handle(packet(AUTOPILOT_VERSION_ID, serializeAutopilotVersion({
+      capabilities: 0n, flightSwVersion: 0, middlewareSwVersion: 0, osSwVersion: 0, boardVersion: 0,
+      flightCustomVersion: [0, 0, 0, 0, 0, 0, 0, 0], middlewareCustomVersion: [0, 0, 0, 0, 0, 0, 0, 0],
+      osCustomVersion: [0, 0, 0, 0, 0, 0, 0, 0], vendorId: 0, productId: 0, uid: 0x1234n, uid2: new Array(18).fill(0),
+    })));
+    expect(t.current!.uidFromBoard).toBe(true);
+    t.checkTimeout(1000 + LINK_TIMEOUT_MS + 1);
+    t.handle(packet(HEARTBEAT_ID, heartbeat()), 9000);
+    expect(t.current).toMatchObject({ uid: 'mavlink-1', uidFromBoard: false });
+  });
 });

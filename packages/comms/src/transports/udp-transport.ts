@@ -152,6 +152,23 @@ export class UdpTransport extends BaseTransport {
     this._explicitRemote = true;
   }
 
+  /**
+   * Send one datagram to an explicit address from this transport's socket,
+   * bypassing the latched remote and the uplink queue. Used for discovery:
+   * a heartbeat to the LAN broadcast address lets relays that learn their
+   * clients (the desktop app's MAVLink forwarding, mavlink-router) find us
+   * before any vehicle traffic has arrived. Sent from the bound port, so
+   * whatever answers lands on this transport.
+   */
+  sendTo(data: Uint8Array, host: string, port: number): Promise<void> {
+    const socket = this.socket;
+    if (!socket || !this._isOpen) return Promise.reject(new Error('UDP socket is not open'));
+    return new Promise((resolve, reject) => {
+      if (host === '255.255.255.255' || host.endsWith('.255')) socket.setBroadcast(true);
+      socket.send(data, port, host, (err) => (err ? reject(err) : resolve()));
+    });
+  }
+
   async open(): Promise<void> {
     if (this.isOpen) {
       return;

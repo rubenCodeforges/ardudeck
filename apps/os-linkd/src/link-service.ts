@@ -2,6 +2,7 @@ import { UdpTransport, type Transport } from '@ardudeck/comms';
 import {
   MAVLinkParser, getAllMessageInfos, serializeV2,
   COMMAND_LONG_ID, COMMAND_LONG_CRC_EXTRA, serializeCommandLong,
+  HEARTBEAT_ID, HEARTBEAT_CRC_EXTRA, serializeHeartbeat,
   AUTOPILOT_VERSION_ID, SYS_STATUS_ID, GPS_RAW_INT_ID, GLOBAL_POSITION_INT_ID, VFR_HUD_ID, ATTITUDE_ID,
 } from '@ardudeck/mavlink-ts';
 import type { LinkdConfig } from './config.js';
@@ -12,6 +13,9 @@ import { ParamFetcher, type LogFn } from './param-fetcher.js';
 
 const MAV_CMD_REQUEST_MESSAGE = 512;
 const MAV_CMD_SET_MESSAGE_INTERVAL = 511;
+const MAV_TYPE_GCS = 6;
+const MAV_AUTOPILOT_INVALID = 8;
+const MAV_STATE_ACTIVE = 4;
 
 /**
  * Telemetry the OS needs for its widgets, at rates a narrow ELRS link can carry.
@@ -126,14 +130,18 @@ export class LinkService {
     };
   }
 
-  /** Send a message from the service's own MAVLink identity. */
-  async send(msgid: number, payload: Uint8Array, crcExtra: number): Promise<void> {
-    if (!writable(this.transport)) throw new Error('vehicle link is not writable yet');
-    const packet = serializeV2(msgid, payload, crcExtra, {
+  private frame(msgid: number, payload: Uint8Array, crcExtra: number): Uint8Array {
+    return serializeV2(msgid, payload, crcExtra, {
       sysid: this.config.sysid,
       compid: this.config.compid,
       sequence: this.seq++ & 0xff,
     });
+  }
+
+  /** Send a message from the service's own MAVLink identity. */
+  async send(msgid: number, payload: Uint8Array, crcExtra: number): Promise<void> {
+    if (!writable(this.transport)) throw new Error('vehicle link is not writable yet');
+    const packet = this.frame(msgid, payload, crcExtra);
     this.stats.txBytes += packet.length;
     await this.transport!.write(packet);
   }
@@ -159,6 +167,7 @@ export class LinkService {
   }
 
   private onTick(now = Date.now()): void {
+    this.sendHeartbeat();
     if (this.tracker.checkTimeout(now)) {
       this.log('info', 'vehicle link lost');
       this.fetcher.abort();
@@ -188,6 +197,30 @@ export class LinkService {
       s.fetchAttempts++;
       s.lastFetchAttempt = now;
       void this.fetcher.fetch(v).then((ok) => { if (ok && this.session === s) s.fetched = true; });
+    }
+  }
+
+  /**
+   * 1 Hz GCS heartbeat toward the vehicle side, like mavlink-router and the
+   * desktop app's MavlinkTee. Relays that learn their clients (MavlinkTee,
+   * mavlink-router, companion bridges) drop a silent client after ~15 s, which
+   * would cut the OS off between its own requests.
+   */
+  private sendHeartbeat(): void {
+    const payload = serializeHeartbeat({
+      type: MAV_TYPE_GCS, autopilot: MAV_AUTOPILOT_INVALID, baseMode: 0, customMode: 0,
+      systemStatus: MAV_STATE_ACTIVE, mavlinkVersion: 3,
+    });
+    if (writable(this.transport)) {
+      void this.send(HEARTBEAT_ID, payload, HEARTBEAT_CRC_EXTRA).catch(() => {});
+    }
+    // Discovery: with no live vehicle, also announce on the LAN so a relay that
+    // learns its clients starts streaming to us without any configuration.
+    const t = this.transport as (VehicleTransport & { sendTo?: (d: Uint8Array, h: string, p: number) => Promise<void> }) | null;
+    if (!this.tracker.current?.connected && t?.isOpen && t.sendTo) {
+      const packet = this.frame(HEARTBEAT_ID, payload, HEARTBEAT_CRC_EXTRA);
+      this.stats.txBytes += packet.length;
+      void t.sendTo(packet, '255.255.255.255', this.config.vehiclePort).catch(() => {});
     }
   }
 

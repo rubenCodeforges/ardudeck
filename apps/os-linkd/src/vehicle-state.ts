@@ -176,14 +176,15 @@ export class VehicleTracker {
 
     let isNew = false;
     let v = this.vehicle;
-    if (!v || (!v.connected && (v.sysid !== packet.sysid || v.compid !== packet.compid))) {
+    if (!v || !v.connected) {
+      // Every (re)connect starts from scratch: a different airframe can come
+      // back on the same sysid, so identity and cache key must be re-learned.
       v = blankVehicle(packet.sysid, packet.compid);
       this.vehicle = v;
       isNew = true;
     } else if (v.sysid !== packet.sysid || v.compid !== packet.compid) {
       return null; // a second vehicle while the first is live: not tracked yet
     }
-    if (!v.connected) isNew = true;
 
     v.connected = true;
     v.lastHeartbeat = now;
