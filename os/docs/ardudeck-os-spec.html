@@ -255,7 +255,12 @@ flowchart LR
         <li><b>ModemManager ignore rule for flight controllers and radios.</b></li>
         <li><b>Branding assets and system changes moved into <code>os/</code></b><span class="why">with an install script, then mkosi configs for Fedora and Debian.</span></li>
         <li><b>Armed-mode system state.</b><span class="why">No sleep, no updates, no notification noise while the vehicle is armed.</span></li>
-        <li><b>NTRIP and automatic log download in the link service, pilot logbook.</b></li>
+        <li><b>Drone files as first-class citizens</b> <i class="pill built">accepted</i><span class="why">Open .bin/.tlog/.ulg/.param/.waypoints/.plan in the right ArduDeck view; file-manager thumbnails (flight track, mission route); GNOME search over live params, logs and missions.</span></li>
+        <li><b>Companions and second screens</b> <i class="pill built">accepted</i><span class="why">ardudeck-agent companions announce over mDNS and appear under Detected in Vehicle Link, updatable from the tablet; QR pairing of the phone second screen; WFB-ng receiver as a system service with a video panel. Hardware not available yet for testing.</span></li>
+        <li><b>First boot and identity</b> <i class="pill built">accepted</i><span class="why">Welcome flow (connect vehicle, pair radio, Hangar sign-in, offline maps for the area); <code>ardudeck</code> CLI over the link API; vehicle status line on SSH login.</span></li>
+        <li><b>Offline packs</b> <i class="pill built">accepted</i><span class="why">Map tiles, terrain, firmware and docs as managed downloadable packs.</span></li>
+        <li><b>Hangar modules contributing desktop widgets</b> <i class="pill planned">deferred</i><span class="why">Too early; revisit once the module SDK settles.</span></li>
+        <li><b>Automatic log download, landing notifications, logbook</b> <i class="pill issue">rejected for now</i><span class="why">Log download time depends on the link and logs may not exist; reconsider later.</span></li>
       </ul>
     </section>
 
