@@ -105,44 +105,50 @@ function fmtCoord(lat, lon) {
     return `${Math.abs(lat).toFixed(5)}°${lat >= 0 ? 'N' : 'S'}  ${Math.abs(lon).toFixed(5)}°${lon >= 0 ? 'E' : 'W'}`;
 }
 
+/** Present a value only when it is real: null/undefined/NaN mean "no row". */
+const known = v => v !== null && v !== undefined && !(typeof v === 'number' && Number.isNaN(v));
+
+// Ground station card: a row exists only while its data does. No receiver
+// means no GNSS rows, no fix means no position/altitude, a locked SIM or an
+// unregistered modem means no cellular row, and so on.
 function renderStation(card, s) {
     const rows = [];
     const g = s.gnss ?? {};
-    if (!g.available) {
-        card.setStatus('GNSS OFFLINE', 'warn');
-        rows.push(['GNSS', g.error ? 'No access' : 'Not found', 'dim']);
-    } else {
+    const batteries = s.batteries ?? [];
+
+    if (g.available) {
         const fix = g.fix_quality > 0 && g.valid !== false;
-        card.setStatus(fix ? (g.fix_quality >= 4 ? 'RTK FIX' : '3D FIX') : 'SEARCHING', fix ? 'good' : 'warn');
+        card.setStatus(fix ? (g.fix_quality >= 4 ? 'RTK FIX' : g.fix_quality === 2 ? 'DGPS FIX' : '3D FIX') : 'GPS SEARCHING', fix ? 'good' : 'warn');
         rows.push(['Satellites', `${g.sats_used ?? 0} used / ${g.sats_in_view ?? 0} seen`, fix ? 'good' : 'warn']);
-        if (fix) {
-            rows.push(['Position', fmtCoord(g.lat, g.lon)]);
-            rows.push(['Altitude', g.alt_m !== null ? `${g.alt_m.toFixed(0)} m` : null]);
-        }
+        if (fix && known(g.lat) && known(g.lon)) rows.push(['Position', fmtCoord(g.lat, g.lon)]);
+        if (fix && known(g.alt_m)) rows.push(['Altitude', `${g.alt_m.toFixed(0)} m`]);
+    } else if (batteries.length) {
+        // No receiver: lead with what the operator needs most, the station's power.
+        const lowest = Math.min(...batteries.map(b => b.percent));
+        card.setStatus(s.ac_online ? 'EXTERNAL POWER' : `BATTERY ${lowest}%`, s.ac_online ? 'good' : pctLevel(lowest));
+    } else {
+        card.setStatus('READY', 'good');
     }
-    if (s.heading_deg !== null && s.heading_deg !== undefined) {
+
+    if (known(s.heading_deg)) {
         const c = CARDINALS[Math.round(s.heading_deg / 45) % 8];
         rows.push(['Heading', `${Math.round(s.heading_deg)}°  ${c}`]);
     }
     const w = s.wifi ?? {};
-    if (w.available)
-        rows.push(['Wi-Fi', w.connected ? `${w.ssid}  ${w.signal_percent}%` : 'Disconnected', w.connected ? pctLevel(w.signal_percent, 40, 20) : 'dim']);
+    if (w.available && w.connected)
+        rows.push(['Wi-Fi', `${w.ssid}  ${w.signal_percent}%`, pctLevel(w.signal_percent, 40, 20)]);
     const l = s.lte ?? {};
-    if (l.available) {
-        let v, lvl;
-        if (l.sim_locked) [v, lvl] = ['SIM locked', 'warn'];
-        else if (l.state === 'connected' || l.state === 'registered') [v, lvl] = [`${l.access_tech ?? 'LTE'} ${l.signal_percent}%${l.operator ? '  ' + l.operator : ''}`, pctLevel(l.signal_percent, 40, 20)];
-        else [v, lvl] = [l.state, 'dim'];
-        rows.push(['Cellular', v, lvl]);
-    }
-    (s.batteries ?? []).forEach((b, i) => {
+    if (l.available && !l.sim_locked && (l.state === 'connected' || l.state === 'registered'))
+        rows.push(['Cellular', `${l.access_tech ?? 'LTE'} ${l.signal_percent}%${l.operator ? '  ' + l.operator : ''}`, pctLevel(l.signal_percent, 40, 20)]);
+    batteries.forEach((b, i) => {
         const arrow = b.state === 'charging' ? '  ▲' : b.state === 'discharging' ? '  ▼' : '';
-        rows.push([`Battery ${i + 1}`, `${b.percent}%${arrow}`, pctLevel(b.percent)]);
+        rows.push([batteries.length > 1 ? `Battery ${i + 1}` : 'Battery', `${b.percent}%${arrow}`, pctLevel(b.percent)]);
     });
-    if (s.illuminance_lux !== null && s.illuminance_lux !== undefined)
+    if (known(s.illuminance_lux))
         rows.push(['Ambient', `${Math.round(s.illuminance_lux)} lux`, 'dim']);
     card.setRows(rows);
-    card.footer.text = s.ac_online ? 'On external power' : 'On battery';
+    card.footer.text = g.available && g.model ? `GNSS ${g.model}` : s.ac_online ? 'On external power' : '';
+    card.footer.visible = card.footer.text !== '';
 }
 
 function renderVehicle(card, v, serviceUp) {

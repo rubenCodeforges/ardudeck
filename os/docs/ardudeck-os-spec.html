@@ -81,7 +81,7 @@ a { color: var(--teal); }
       <span>Reference device <b>Dell Latitude 7220 Rugged Extreme</b></span>
       <span>Base <b>Fedora 44, GNOME 50, Wayland</b></span>
       <span>Branch <b>feat/ardudeck-os</b></span>
-      <span>Updated <b>2026-10-05, rev 6</b></span>
+      <span>Updated <b>2026-10-05, rev 7</b></span>
     </div>
   </header>
 
@@ -104,6 +104,7 @@ a { color: var(--teal); }
       <p class="sub">The rules every feature is checked against.</p>
       <ul class="log">
         <li><b>Integrated, not a skin.</b><span class="why">Every feature lives in a real OS surface: the desktop layer, top bar, quick settings, lock screen, notifications, GNOME search, file associations, systemd services, native settings windows. Theming alone is never a feature.</span></li>
+        <li><b>Show only what is real.</b><span class="why">A widget row, gauge or menu item exists only while its data does: no receiver means no GNSS rows, no fix means no position or altitude, a locked SIM means no cellular row. Placeholders like "Not found" or "--" are not shown in status surfaces.</span></li>
         <li><b>The OS works with the app closed.</b><span class="why">Vehicle link, telemetry, parameter cache, desktop instruments and alerts are system services. The ArduDeck app is one client among several.</span></li>
         <li><b>The desktop app is the reference.</b><span class="why">Protocol code, mode tables, MAVFTP and gauge designs are shared from the monorepo (<code>@ardudeck/mavlink-ts</code>, <code>@ardudeck/vehicle-core</code>, <code>@ardudeck/comms</code>), never rewritten.</span></li>
         <li><b>Off ArduDeck OS the app is unchanged.</b><span class="why">Every integration is detected at runtime and falls back silently on macOS, Windows and other Linux.</span></li>
