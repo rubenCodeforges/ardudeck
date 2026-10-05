@@ -10,6 +10,7 @@ import { ClientRouter } from './client-router.js';
 import { VehicleTracker, type VehicleState } from './vehicle-state.js';
 import { ParamCache } from './param-cache.js';
 import { ParamFetcher, type LogFn } from './param-fetcher.js';
+import { GnssDetector } from './gnss/detector.js';
 import { createTransport, describe, LinkSettingsStore, parseConnection, type Connection, type LinkSettings } from './connections.js';
 
 const MAV_CMD_REQUEST_MESSAGE = 512;
@@ -69,6 +70,7 @@ export class LinkService {
   readonly tracker = new VehicleTracker();
   readonly cache: ParamCache;
   readonly fetcher: ParamFetcher;
+  readonly gnss: GnssDetector;
 
   private transport: VehicleTransport | null = null;
   private readonly injectedTransport: VehicleTransport | null;
@@ -93,10 +95,16 @@ export class LinkService {
     this.injectedTransport = transport ?? null;
     this.settingsStore = new LinkSettingsStore(config.settingsFile, config.vehiclePort);
     this.settingsState = this.settingsStore.load();
+    // The serial port of the active vehicle link is never probed by the GNSS detector.
+    this.gnss = new GnssDetector(log, (path) => {
+      const c = this.activeConnection;
+      return this.settingsState.enabled && c?.type === 'serial' && c.path === path;
+    });
   }
 
   async start(): Promise<void> {
     await this.applyLink();
+    if (!this.injectedTransport) this.gnss.start();
 
     this.router.on('uplink', (bytes: Uint8Array) => {
       this.stats.clientBytes += bytes.length;
@@ -216,6 +224,7 @@ export class LinkService {
     this.tick = null;
     this.fetcher.abort();
     this.cache.flush();
+    await this.gnss.stop();
     await this.router.stop();
     await this.transport?.close();
   }

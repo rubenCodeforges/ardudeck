@@ -58,9 +58,9 @@ export function classifyDevice(path: string, vendorId?: string, productId?: stri
   const vid = vendorId?.toLowerCase() ?? null;
   const pid = productId?.toLowerCase() ?? null;
   if (!vid) return null; // built-in UARTs, Bluetooth: not vehicle hardware
-  // The ground station's own hardware, not vehicle links: Dell LTE modem
-  // ports, Intel on-board UARTs, and the u-blox GNSS that ardudeck-stationd reads.
-  if (vid === '413c' || vid === '8086' || vid === '1546') return null;
+  // The ground station's own non-GNSS hardware: Dell LTE modem ports and
+  // Intel on-board UARTs. GNSS receivers are sorted out by the GNSS detector.
+  if (vid === '413c' || vid === '8086') return null;
   if (FC_VENDORS[vid]) return { path, kind: 'flight-controller', label: FC_VENDORS[vid]!, vendorId: vid, productId: pid, suggestedBaud: 115200 };
   if (RADIO_VENDORS[vid]) return { path, kind: 'radio', label: RADIO_VENDORS[vid]!, vendorId: vid, productId: pid, suggestedBaud: 57600 };
   return { path, kind: 'serial', label: manufacturer || 'USB serial device', vendorId: vid, productId: pid, suggestedBaud: 57600 };

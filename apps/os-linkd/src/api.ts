@@ -74,6 +74,7 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
  *   GET    /v1/vehicle           live vehicle state, or null
  *   GET    /v1/vehicle/params    cached parameter snapshot for the live vehicle
  *   GET    /v1/links             saved connections, active one, detected USB devices
+ *   GET    /v1/gnss              GNSS receivers on this machine (model, RTK capability, fix) and the operator position
  *   POST   /v1/links             {connection, activate?} add or replace a connection
  *   POST   /v1/links/active      {id} switch to a saved connection
  *   POST   /v1/links/enabled     {enabled} master switch for the vehicle link
@@ -114,8 +115,20 @@ export function createApi(link: LinkService, serviceVersion: string, os: OsInfo 
         return json(res, 200, snap);
       }
       case '/v1/links':
-        void detectDevices().then((detected) => json(res, 200, { ...link.settings, link: link.linkInfo, detected }));
+        void detectDevices().then((detected) => {
+          // What the detector actually heard beats a guess from the USB vendor.
+          const seen = new Map(link.gnss.list().map((d) => [d.path, d]));
+          const merged = detected.flatMap((d) => {
+            const s = seen.get(d.path);
+            if (s?.role === 'gnss' || s?.role === 'rtcm-source') return [];
+            if (s?.role === 'vehicle-link' && s.baudRate) return [{ ...d, kind: 'radio' as const, verified: true, suggestedBaud: s.baudRate }];
+            return [{ ...d, verified: false }];
+          });
+          json(res, 200, { ...link.settings, link: link.linkInfo, detected: merged });
+        });
         return;
+      case '/v1/gnss':
+        return json(res, 200, { operator: link.gnss.operatorFix(), devices: link.gnss.list() });
       default:
         return json(res, 404, { error: 'not found' });
     }

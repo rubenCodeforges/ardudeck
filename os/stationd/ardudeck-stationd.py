@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """ArduDeck station daemon.
 
-Collects ground-station hardware state (GNSS, LTE, Wi-Fi, batteries, compass,
-ambient light) and serves it as JSON on http://127.0.0.1:47800/state for
+Collects ground-station hardware state (LTE, Wi-Fi, batteries, compass,
+ambient light, and the GNSS fix published by ardudeck-os-linkd) and serves it as JSON on http://127.0.0.1:47800/state for
 desktop widgets and other local consumers. Vehicle state lives in os-linkd.
 Stdlib + PyGObject only, so it runs on a stock Fedora install.
 """
@@ -18,7 +18,6 @@ gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402
 
 HTTP_PORT = int(os.environ.get("ARDUDECK_STATIOND_PORT", "47800"))
-GNSS_DEV = os.environ.get("ARDUDECK_GNSS_DEV", "/dev/ttyACM0")
 IIO = "/sys/bus/iio/devices"
 
 state_lock = threading.Lock()
@@ -44,66 +43,42 @@ def update(path, value):
         node[path[-1]] = value
 
 
-# ---------------------------------------------------------------- GNSS (NMEA)
+# ---------------------------------------------------------------- GNSS
+# GNSS receivers belong to ardudeck-os-linkd (its detector finds and owns
+# them, built-in or USB); the station view reads the operator fix from it.
 
-def nmea_coord(value, hemi):
-    if not value:
-        return None
-    dot = value.index(".")
-    deg = float(value[: dot - 2])
-    minutes = float(value[dot - 2:])
-    coord = deg + minutes / 60
-    return -coord if hemi in ("S", "W") else coord
+LINKD_GNSS = os.environ.get("ARDUDECK_LINKD_GNSS", "http://127.0.0.1:47801/v1/gnss")
 
 
-def gnss_thread():
-    gsv = {}
-    while True:
-        try:
-            with open(GNSS_DEV, "rb", buffering=0) as port:
-                update(("station", "gnss", "available"), True)
-                update(("station", "gnss", "error"), None)
-                buf = b""
-                while True:
-                    chunk = port.read(512)
-                    if not chunk:
-                        time.sleep(0.1)
-                        continue
-                    buf += chunk
-                    while b"\n" in buf:
-                        line, buf = buf.split(b"\n", 1)
-                        handle_nmea(line.decode("ascii", "ignore").strip(), gsv)
-        except PermissionError:
-            update(("station", "gnss", "available"), False)
-            update(("station", "gnss", "error"), "no permission (user not in dialout group)")
-        except OSError as exc:
-            update(("station", "gnss", "available"), False)
-            update(("station", "gnss", "error"), str(exc))
-        time.sleep(5)
-
-
-def handle_nmea(line, gsv):
-    if not line.startswith("$") or "*" not in line:
+def gnss_poll():
+    import urllib.request
+    try:
+        with urllib.request.urlopen(LINKD_GNSS, timeout=1.5) as r:
+            data = json.loads(r.read())
+    except Exception as exc:  # link service down or starting
+        update(("station", "gnss"), {"available": False, "error": f"link service: {exc}"})
         return
-    body = line[1:line.index("*")]
-    f = body.split(",")
-    kind = f[0][2:]
-    with state_lock:
-        g = state["station"]["gnss"]
-        if kind == "GGA" and len(f) > 9:
-            g["fix_quality"] = int(f[6] or 0)
-            g["sats_used"] = int(f[7] or 0)
-            g["hdop"] = float(f[8]) if f[8] else None
-            g["alt_m"] = float(f[9]) if f[9] else None
-            g["lat"] = nmea_coord(f[2], f[3])
-            g["lon"] = nmea_coord(f[4], f[5])
-        elif kind == "RMC" and len(f) > 8:
-            g["valid"] = f[2] == "A"
-            g["speed_mps"] = float(f[7]) * 0.514444 if f[7] else None
-            g["utc"] = f[1]
-        elif kind == "GSV" and len(f) > 3:
-            gsv[f[0][:2]] = int(f[3] or 0)
-            g["sats_in_view"] = sum(gsv.values())
+    receivers = [d for d in data.get("devices", []) if d.get("role") == "gnss"]
+    if not receivers:
+        update(("station", "gnss"), {"available": False, "error": None})
+        return
+    fix = data.get("operator") or receivers[0].get("fix") or {}
+    rx = next((d for d in receivers if d["path"] == fix.get("path")), receivers[0])
+    ident = rx.get("receiver") or {}
+    update(("station", "gnss"), {
+        "available": True,
+        "error": None,
+        "model": ident.get("model"),
+        "rtk_base_capable": bool(ident.get("rtkBase")),
+        "fix_quality": fix.get("quality", 0),
+        "valid": fix.get("valid", False),
+        "sats_used": fix.get("satellitesUsed", 0),
+        "sats_in_view": fix.get("satellitesInView", 0),
+        "hdop": fix.get("hdop"),
+        "lat": fix.get("lat"),
+        "lon": fix.get("lon"),
+        "alt_m": fix.get("altMsl"),
+    })
 
 
 # ------------------------------------------------------------- sensors (IIO)
@@ -252,6 +227,7 @@ def poll_thread():
     slow = 0
     while True:
         sensors_poll()
+        gnss_poll()
         if slow % 5 == 0:
             for fn in (power_poll, lte_poll, wifi_poll):
                 try:
@@ -284,7 +260,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    for target in (gnss_thread, poll_thread):
+    for target in (poll_thread,):
         threading.Thread(target=target, daemon=True).start()
     print(f"ardudeck-stationd: http://127.0.0.1:{HTTP_PORT}/state", flush=True)
     ThreadingHTTPServer(("127.0.0.1", HTTP_PORT), Handler).serve_forever()
