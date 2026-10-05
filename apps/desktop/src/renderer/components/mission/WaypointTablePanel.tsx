@@ -566,7 +566,7 @@ function CommandDropdown({
       </button>
 
       {isOpen && createPortal(
-        <div ref={popupRef} className="z-[9999] bg-surface-raised border border-default rounded-lg shadow-xl flex flex-col overflow-hidden" style={popupStyle}>
+        <div ref={popupRef} className="z-[9999] bg-surface-solid border border-default rounded-lg shadow-xl flex flex-col overflow-hidden" style={popupStyle}>
           {/* Search input */}
           <div className="p-1.5 border-b border-subtle shrink-0">
             <div className="relative">
@@ -1730,7 +1730,7 @@ function GroupHeaderRow({
             <>
               <div className="fixed inset-0 z-[9998]" onClick={() => setColorOpen(false)} />
               <div
-                className="fixed z-[9999] p-1.5 bg-surface-raised border border-subtle rounded-lg shadow-2xl grid grid-cols-4 gap-1"
+                className="fixed z-[9999] p-1.5 bg-surface-solid border border-subtle rounded-lg shadow-2xl grid grid-cols-4 gap-1"
                 style={{ top: colorPos.top, left: colorPos.left }}
               >
                 {GROUP_COLOR_PALETTE.map((c) => (

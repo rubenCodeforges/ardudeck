@@ -200,7 +200,7 @@ function PresetMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-56 bg-surface-raised border border-subtle rounded-lg shadow-2xl z-50 p-2">
+        <div className="absolute right-0 top-full mt-1.5 w-56 bg-surface-solid border border-subtle rounded-lg shadow-2xl z-50 p-2">
           <div className="flex gap-1.5 mb-2">
             <input
               value={name}

@@ -383,7 +383,7 @@ export default function CliTerminal({ onReady }: CliTerminalProps) {
 
       {/* Autocomplete Popup */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute bottom-16 left-4 bg-surface-raised border border rounded-lg shadow-xl max-h-48 overflow-y-auto z-10">
+        <div className="absolute bottom-16 left-4 bg-surface-solid border border rounded-lg shadow-xl max-h-48 overflow-y-auto z-10">
           {suggestions.map((suggestion, index) => (
             <div
               key={suggestion}

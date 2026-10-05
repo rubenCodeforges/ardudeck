@@ -140,7 +140,7 @@ export function OfflineAreaDownload({ bounds, activeLayer }: OfflineAreaDownload
       {open && (
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => !isDownloading && setOpen(false)} />
-          <div className="absolute right-0 bottom-full mb-1 w-64 bg-surface-raised border border-subtle rounded-lg shadow-xl z-[999] p-3 space-y-2.5">
+          <div className="absolute right-0 bottom-full mb-1 w-64 bg-surface-solid border border-subtle rounded-lg shadow-xl z-[999] p-3 space-y-2.5">
             <div className="text-xs font-medium text-content">{t('map:offlineArea.heading')}</div>
 
             {!bounds ? (
