@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFileSync } from 'node:fs';
 import type { LinkService } from './link-service.js';
+import type { LogFn } from './param-fetcher.js';
 
 export const API_VERSION = 1;
 export const SERVICE_NAME = 'ardudeck-os-linkd';
@@ -49,7 +50,7 @@ function json(res: ServerResponse, status: number, body: unknown): void {
  *   GET /v1/vehicle           live vehicle state, or null
  *   GET /v1/vehicle/params    cached parameter snapshot for the live vehicle
  */
-export function createApi(link: LinkService, serviceVersion: string, os: OsInfo = readOsRelease()): Server {
+export function createApi(link: LinkService, serviceVersion: string, os: OsInfo = readOsRelease(), log?: LogFn): Server {
   return createServer((req: IncomingMessage, res: ServerResponse) => {
     if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
     const path = (req.url ?? '/').split('?')[0]!.replace(/\/+$/, '');
@@ -72,6 +73,7 @@ export function createApi(link: LinkService, serviceVersion: string, os: OsInfo 
         if (!v) return json(res, 404, { error: 'no vehicle' });
         const snap = link.cache.get(v.uid);
         if (!snap) return json(res, 404, { error: 'no cached parameters', status: link.fetcher.status });
+        log?.('info', `served ${snap.params.length} cached params for ${snap.uid} (complete: ${snap.complete})`);
         return json(res, 200, snap);
       }
       default:

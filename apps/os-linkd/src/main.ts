@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   const link = new LinkService(config, log);
   await link.start();
 
-  const api = createApi(link, pkg.version);
+  const api = createApi(link, pkg.version, undefined, log);
   await new Promise<void>((resolve) => api.listen(config.apiPort, '127.0.0.1', resolve));
   log('info', `api http://127.0.0.1:${config.apiPort}/v1/info`);
 
