@@ -6,3 +6,4 @@
 export * from './modes.js';
 export * from './ftp/index.js';
 export * from './vehicle-types.js';
+export * from './gnss/index.js';

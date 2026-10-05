@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { UBX, UbxParser, decodeMonRf, decodeMonVer, decodeNavSat, ubxFrame, ubxPoll } from './ubx';
+import { UBX, UbxParser, decodeMonRf, decodeMonVer, decodeNavSat, ubxFrame, ubxPoll } from './ubx.js';
 
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(' ');
 
