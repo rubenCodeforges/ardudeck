@@ -1,0 +1,29 @@
+{
+  "name": "@ardudeck/os-linkd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ArduDeck OS link service: owns the vehicle link, routes MAVLink to local clients, tracks vehicle state and caches parameters",
+  "type": "module",
+  "main": "./dist/main.js",
+  "bin": {
+    "ardudeck-os-linkd": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ardudeck/comms": "workspace:*",
+    "@ardudeck/mavlink-ts": "workspace:*",
+    "@ardudeck/vehicle-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "license": "MIT"
+}

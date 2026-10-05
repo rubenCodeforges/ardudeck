@@ -62,6 +62,9 @@ importers:
       '@ardudeck/ulog-parser':
         specifier: workspace:^
         version: link:../../packages/ulog-parser
+      '@ardudeck/vehicle-core':
+        specifier: workspace:*
+        version: link:../../packages/vehicle-core
       '@reactour/tour':
         specifier: ^3.8.0
         version: 3.8.0(react@18.3.1)
@@ -231,6 +234,28 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+
+  apps/os-linkd:
+    dependencies:
+      '@ardudeck/comms':
+        specifier: workspace:*
+        version: link:../../packages/comms
+      '@ardudeck/mavlink-ts':
+        specifier: workspace:*
+        version: link:../../packages/mavlink-ts
+      '@ardudeck/vehicle-core':
+        specifier: workspace:*
+        version: link:../../packages/vehicle-core
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.5
+        version: 20.19.27
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.19.27)(jsdom@29.1.1)
 
   apps/sim-engine:
     dependencies:
@@ -413,6 +438,18 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.13.6)(jsdom@29.1.1)
+
+  packages/vehicle-core:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.5
+        version: 20.19.27
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.19.27)(jsdom@29.1.1)
 
   tools/mavlink-generator:
     dependencies:
@@ -1740,6 +1777,7 @@ packages:
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xterm/addon-fit@0.11.0':
     resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
@@ -2596,6 +2634,7 @@ packages:
   eslint@9.39.2:
     resolution: {integrity: sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
