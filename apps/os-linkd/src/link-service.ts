@@ -131,13 +131,24 @@ export class LinkService {
     return this.settingsState.connections.find((c) => c.id === this.settingsState.activeId) ?? null;
   }
 
+  /**
+   * Any change that would drop the live link is refused while the vehicle is
+   * armed, whoever asks (quick settings, Link Settings, the app, a script).
+   */
+  private assertSafeToDropLink(): void {
+    const v = this.tracker.current;
+    if (v?.connected && v.armed) throw new Error('the vehicle is armed; disarm before changing or turning off the vehicle link');
+  }
+
   async setEnabled(enabled: boolean): Promise<void> {
+    if (!enabled) this.assertSafeToDropLink();
     this.settingsState = { ...this.settingsState, enabled };
     await this.commit();
   }
 
   async setActive(id: string): Promise<void> {
     if (!this.settingsState.connections.some((c) => c.id === id)) throw new Error(`no connection ${id}`);
+    if (id !== this.settingsState.activeId) this.assertSafeToDropLink();
     this.settingsState = { ...this.settingsState, activeId: id, enabled: true };
     await this.commit();
   }
@@ -145,6 +156,8 @@ export class LinkService {
   /** Add (or replace by id) a connection; `activate` switches to it. */
   async upsertConnection(input: unknown, activate: boolean): Promise<Connection> {
     const conn = parseConnection(input);
+    // Activating another connection, or editing the active one, reopens the link.
+    if (activate || conn.id === this.settingsState.activeId) this.assertSafeToDropLink();
     const others = this.settingsState.connections.filter((c) => c.id !== conn.id);
     this.settingsState = {
       ...this.settingsState,
@@ -156,6 +169,7 @@ export class LinkService {
   }
 
   async removeConnection(id: string): Promise<void> {
+    if (id === this.settingsState.activeId) this.assertSafeToDropLink();
     const connections = this.settingsState.connections.filter((c) => c.id !== id);
     if (connections.length === 0) throw new Error('cannot remove the last connection');
     const activeId = this.settingsState.activeId === id ? connections[0]!.id : this.settingsState.activeId;

@@ -621,6 +621,7 @@
     "udpPortHeld": "UDP-Port {{port}} ist noch von einem anderen Programm oder dem vorherigen Videoprozess belegt. Versuchen Sie es gleich noch einmal."
   },
   "ardudeckOs": {
-    "transportName": "ArduDeck-OS-Verbindung"
+    "transportName": "ArduDeck-OS-Verbindung",
+    "connectBlocked": "Unter ArduDeck OS verwaltet das System die Fahrzeugverbindung. Ändern Sie sie unter Fahrzeugverbindung."
   }
 }

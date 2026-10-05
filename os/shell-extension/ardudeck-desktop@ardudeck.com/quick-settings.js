@@ -22,11 +22,18 @@ function vehicleLine(v) {
 const VehicleLinkToggle = GObject.registerClass(
 class VehicleLinkToggle extends QuickMenuToggle {
     _init(icon, api) {
-        super._init({title: 'Vehicle Link', subtitle: 'Starting…', gicon: icon, toggleMode: true});
+        // Not a toggle: a tap on a quick settings tile is too easy to make for it
+        // to switch off the vehicle link. Tapping opens the menu; the master
+        // switch lives inside it and refuses to cut the link while armed.
+        super._init({title: 'Vehicle Link', subtitle: 'Starting…', gicon: icon, toggleMode: false});
         this._api = api;
         this._icon = icon;
         this.menu.setHeader(icon, 'Vehicle Link', '');
 
+        this._enabledItem = new PopupMenu.PopupSwitchMenuItem('Link enabled', true);
+        this._enabledItem.connect('toggled', (_i, on) => void this._setEnabled(on));
+        this.menu.addMenuItem(this._enabledItem);
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._savedSection = new PopupMenu.PopupMenuSection();
         this._detectedSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._savedSection);
@@ -35,11 +42,7 @@ class VehicleLinkToggle extends QuickMenuToggle {
         this.menu.addAction('Open ArduDeck', () => this._launch(APP_ID));
         this.menu.addAction('Link Settings', () => this._launch(SETTINGS_APP_ID));
 
-        // Clicking the tile itself is the master switch.
-        this.connect('clicked', () => {
-            void this._api.write('POST', `${API}/links/enabled`, {enabled: this.checked})
-                .then(() => this.refresh()).catch(e => this._fail(e));
-        });
+        this.connect('clicked', () => this.menu.open());
         this.menu.connect('open-state-changed', (_m, open) => {
             if (open) void this.refresh();
         });
@@ -54,8 +57,24 @@ class VehicleLinkToggle extends QuickMenuToggle {
         }
     }
 
+    async _setEnabled(on) {
+        if (!on && this._vehicle?.connected && this._vehicle.armed) {
+            Main.notify('Vehicle Link', 'Disarm before turning the vehicle link off.');
+            this._enabledItem.setToggleState(true);
+            return;
+        }
+        try {
+            await this._api.write('POST', `${API}/links/enabled`, {enabled: on});
+        } catch (e) {
+            this._fail(e);
+        }
+        await this.refresh();
+    }
+
     _render(links, info) {
         const v = info.vehicle;
+        this._vehicle = v;
+        this._enabledItem.setToggleState(links.enabled);
         const active = links.connections.find(c => c.id === links.activeId);
         this.checked = links.enabled;
         if (!links.enabled) this.subtitle = 'Off';

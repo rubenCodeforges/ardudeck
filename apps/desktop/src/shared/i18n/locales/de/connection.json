@@ -206,5 +206,23 @@
     "removeFromRecent": "Aus zuletzt verwendeten entfernen",
     "removeLabel": "{{label}} entfernen",
     "title": "Zuletzt verwendete Verbindungen ({{count}})"
+  },
+  "osLink": {
+    "title": "Fahrzeugverbindung",
+    "managedBy": "Verwaltet von ArduDeck OS",
+    "serviceDown": "Der Verbindungsdienst läuft nicht",
+    "off": "Verbindung ist aus",
+    "connected": "Verbunden: {{vehicle}}",
+    "vehicle": "Fahrzeug",
+    "searching": "Suche nach dem Fahrzeug",
+    "via": "über {{name}}",
+    "connections": "Verbindungen",
+    "switching": "Wechsle…",
+    "switchFailed": "Verbindung konnte nicht gewechselt werden",
+    "newDevices": "{{label}} ist angeschlossen. Fügen Sie es in den Verbindungseinstellungen hinzu.",
+    "newDevices_other": "{{count}} neue Geräte sind angeschlossen. Fügen Sie sie in den Verbindungseinstellungen hinzu.",
+    "openSettings": "Verbindungseinstellungen",
+    "shared": "Diese Verbindung gehört dem System. Die Desktop-Instrumente und jede Bodenstation auf diesem Gerät teilen sie, ein Wechsel hier gilt für alle.",
+    "pillTitle": "Fahrzeugverbindung wird von ArduDeck OS verwaltet. Klicken, um die Verbindungseinstellungen zu öffnen."
   }
 }

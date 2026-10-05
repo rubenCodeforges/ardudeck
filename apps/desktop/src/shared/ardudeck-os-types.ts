@@ -27,3 +27,22 @@ export interface OsParamSnapshot {
   paramCount: number;
   params: { paramId: string; paramValue: number; paramType: number; paramIndex: number; defaultValue?: number }[];
 }
+
+export interface OsConnection {
+  id: string;
+  name: string;
+  type: 'udp-listen' | 'udp-peer' | 'tcp' | 'serial';
+  port?: number;
+  host?: string;
+  path?: string;
+  baudRate?: number;
+}
+
+/** GET /v1/links from the ArduDeck OS link service. */
+export interface OsLinksState {
+  enabled: boolean;
+  activeId: string;
+  connections: OsConnection[];
+  link: { open: boolean; error: string | null; clients: { host: string; port: number }[] };
+  detected: { path: string; kind: string; label: string; verified?: boolean }[];
+}

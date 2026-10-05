@@ -179,7 +179,7 @@ import { GpsPassthrough } from './gps/gps-passthrough.js';
 import { telemetryKeyFor } from './telemetry-routing.js';
 import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } from './mavlink-ftp/index.js';
 import { VEHICLE_NAMES, isVehicleHeartbeat } from '@ardudeck/vehicle-core';
-import { probeArduDeckOs, isOsLinkEndpoint, fetchOsParams } from './ardudeck-os.js';
+import { probeArduDeckOs, isOsLinkEndpoint, fetchOsParams, isOsManaged, getOsLinks, setOsActiveLink, openOsLinkSettings } from './ardudeck-os.js';
 import { ingestNamedValueFloat, getScriptHealth, resetHeartbeat, subscribeHealth } from './script-installer/heartbeat-tracker.js';
 import * as scriptRegistry from './script-installer/registry-store.js';
 import { getScriptBundle } from './script-installer/bundle.js';
@@ -6177,6 +6177,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Connect to a device
   ipcMain.handle(IPC_CHANNELS.COMMS_CONNECT, async (_, options: ConnectOptions): Promise<boolean> => {
+    // On ArduDeck OS the system owns the vehicle link: the app may only attach
+    // to it. Opening the radio, a serial port or UDP 14550 directly would fight
+    // the link service for the same hardware and port.
+    if (isOsManaged() && !(options.type === 'udp' && options.udpMode === 'client' && isOsLinkEndpoint(options.udpRemoteHost, options.udpRemotePort))) {
+      sendLog(mainWindow, 'warn', t('main:ardudeckOs.connectBlocked'));
+      return false;
+    }
     // Claim this connect attempt. Any older attempt still in flight will see a
     // newer generation at its next checkpoint and abandon itself, so we never
     // end up with two sockets racing to the same target.
@@ -13297,6 +13304,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // ============================================================================
 
   ipcMain.handle(IPC_CHANNELS.OS_GET_INTEGRATION, () => probeArduDeckOs());
+  ipcMain.handle(IPC_CHANNELS.OS_GET_LINKS, () => getOsLinks());
+  ipcMain.handle(IPC_CHANNELS.OS_SET_ACTIVE_LINK, (_e, id: string) => setOsActiveLink(String(id)));
+  ipcMain.handle(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS, () => openOsLinkSettings());
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, (): string => {
     return app.getVersion();

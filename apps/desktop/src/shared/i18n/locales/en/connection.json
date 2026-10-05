@@ -206,5 +206,23 @@
     "removeFromRecent": "Remove from recent",
     "removeLabel": "Remove {{label}}",
     "title": "Recent connections ({{count}})"
+  },
+  "osLink": {
+    "title": "Vehicle link",
+    "managedBy": "Managed by ArduDeck OS",
+    "serviceDown": "Link service is not running",
+    "off": "Link is off",
+    "connected": "Connected: {{vehicle}}",
+    "vehicle": "vehicle",
+    "searching": "Looking for the vehicle",
+    "via": "via {{name}}",
+    "connections": "Connections",
+    "switching": "Switching…",
+    "switchFailed": "Could not switch the connection",
+    "newDevices": "{{label}} is plugged in. Add it in Vehicle Link settings.",
+    "newDevices_other": "{{count}} new devices are plugged in. Add them in Vehicle Link settings.",
+    "openSettings": "Vehicle Link Settings",
+    "shared": "This link belongs to the system. The desktop instruments and every ground station on this device share it, so switching here switches it for all of them.",
+    "pillTitle": "Vehicle link managed by ArduDeck OS. Click to open Vehicle Link settings."
   }
 }

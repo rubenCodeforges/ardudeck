@@ -3,7 +3,7 @@
  * Exposes safe APIs to the renderer process
  */
 
-import type { OsIntegrationInfo } from '../shared/ardudeck-os-types.js';
+import type { OsIntegrationInfo, OsLinksState } from '../shared/ardudeck-os-types.js';
 import type { CameraStartPhase } from '../shared/camera-types.js';
 import type { GpsDiagEvent } from '../shared/gps-diagnostics-types.js';
 import { contextBridge, ipcRenderer } from 'electron';
@@ -2320,6 +2320,12 @@ const api = {
   /** ArduDeck OS link service status (always unavailable off ArduDeck OS). */
   getOsIntegration: (): Promise<OsIntegrationInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.OS_GET_INTEGRATION),
+  getOsLinks: (): Promise<OsLinksState | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS_GET_LINKS),
+  setOsActiveLink: (id: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS_SET_ACTIVE_LINK, id),
+  openOsLinkSettings: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS),
 
   getGraphicsInfo: (): Promise<{ features: Record<string, string>; platform: string; softwareRendering: boolean; mode: 'auto' | 'safe' | 'off' }> =>
     ipcRenderer.invoke(IPC_CHANNELS.APP_GET_GRAPHICS_INFO),

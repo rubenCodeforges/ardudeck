@@ -10,7 +10,8 @@
  * Everywhere else (macOS, Windows, other Linux) the probe fails fast and the
  * app behaves exactly as before.
  */
-import type { OsIntegrationInfo, OsParamSnapshot } from '../shared/ardudeck-os-types.js';
+import { spawn } from 'node:child_process';
+import type { OsIntegrationInfo, OsParamSnapshot, OsLinksState } from '../shared/ardudeck-os-types.js';
 
 const API_BASE = 'http://127.0.0.1:47801/v1';
 const PROBE_TIMEOUT_MS = 800;
@@ -35,6 +36,13 @@ interface InfoResponse {
 const NOT_AVAILABLE: OsIntegrationInfo = { available: false };
 
 let lastEndpoint: { host: string; port: number } | null = null;
+/** Set by the last successful probe: on ArduDeck OS the OS owns the vehicle link. */
+let osManaged = false;
+
+/** True when connections must go through the ArduDeck OS link (see COMMS_CONNECT). */
+export function isOsManaged(): boolean {
+  return osManaged;
+}
 
 export async function probeArduDeckOs(): Promise<OsIntegrationInfo> {
   if (process.platform !== 'linux') return NOT_AVAILABLE;
@@ -45,6 +53,7 @@ export async function probeArduDeckOs(): Promise<OsIntegrationInfo> {
     if (info.service !== 'ardudeck-os-linkd' || !info.link?.clientPort) return NOT_AVAILABLE;
     const endpoint = { host: info.link.clientHost || '127.0.0.1', port: info.link.clientPort };
     lastEndpoint = endpoint;
+    osManaged = true;
     return {
       available: true,
       osName: info.os?.name ?? null,
@@ -85,4 +94,38 @@ export async function fetchOsParams(expectedBoardUid?: string): Promise<OsParamS
   } catch {
     return null;
   }
+}
+
+/** Saved connections, active one and detected devices, straight from the OS. */
+export async function getOsLinks(): Promise<OsLinksState | null> {
+  try {
+    const res = await fetch(`${API_BASE}/links`, { signal: AbortSignal.timeout(PARAMS_TIMEOUT_MS) });
+    return res.ok ? ((await res.json()) as OsLinksState) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Switch the OS link to another saved connection (affects every client, as intended). */
+export async function setOsActiveLink(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/links/active`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-ArduDeck': '1' },
+      body: JSON.stringify({ id }),
+      signal: AbortSignal.timeout(PARAMS_TIMEOUT_MS),
+    });
+    if (res.ok) return { success: true };
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    return { success: false, error: body.error ?? `HTTP ${res.status}` };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Open the system's Vehicle Link settings window. */
+export function openOsLinkSettings(): void {
+  const child = spawn('gtk-launch', ['com.ardudeck.LinkSettings'], { detached: true, stdio: 'ignore' });
+  child.on('error', () => { /* not installed: nothing to open */ });
+  child.unref();
 }

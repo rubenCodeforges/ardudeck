@@ -44,6 +44,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const osInfo = useOsIntegrationStore((s) => s.info);
   const initOs = useOsIntegrationStore((s) => s.init);
+  const openOsLinkSettings = useOsIntegrationStore((s) => s.openLinkSettings);
   useEffect(() => {
     void initOs();
   }, [initOs]);
@@ -102,16 +103,6 @@ export function AppShell({ children }: AppShellProps) {
             </button>
           )}
 
-          {/* Running on ArduDeck OS: the vehicle link and param cache come from the system */}
-          {osInfo.available && (
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wider text-teal-300 bg-teal-500/10 border border-teal-500/30"
-              title={t('layout:appShell.osBadgeTitle', { osName: osInfo.osName ?? 'ArduDeck OS' })}
-            >
-              {t('layout:appShell.osBadge')}
-            </span>
-          )}
-
           {/* FC-side Lua script health (only when advanced commands unlocked + AD_HB seen) */}
           <ScriptHealthBadge />
 
@@ -121,12 +112,12 @@ export function AppShell({ children }: AppShellProps) {
           {/* Connection status */}
           {connectionState.isConnected ? (
             <button
-              onClick={disconnect}
-              title={connectionState.isStale ? t('layout:appShell.staleDisconnect', { seconds: staleSeconds }) : t('layout:appShell.clickToDisconnect')}
+              onClick={osInfo.available ? openOsLinkSettings : disconnect}
+              title={osInfo.available ? t('connection:osLink.pillTitle') : connectionState.isStale ? t('layout:appShell.staleDisconnect', { seconds: staleSeconds }) : t('layout:appShell.clickToDisconnect')}
               className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface border transition-colors cursor-pointer ${
                 connectionState.isStale
                   ? 'border-yellow-500/50 hover:border-red-500/50'
-                  : 'border-emerald-500/30 hover:border-red-500/50'
+                  : osInfo.available ? 'border-emerald-500/30 hover:border-teal-400/60' : 'border-emerald-500/30 hover:border-red-500/50'
               }`}
             >
               {connectionState.isStale ? (
@@ -134,16 +125,18 @@ export function AppShell({ children }: AppShellProps) {
                   <path d="M12 2L1 21h22L12 2zm0 6l7.53 13H4.47L12 8zm-1 4v4h2v-4h-2zm0 6v2h2v-2h-2z" />
                 </svg>
               ) : (
-                <div className="status-dot status-dot-connected group-hover:bg-red-400" />
+                <div className={`status-dot status-dot-connected ${osInfo.available ? '' : 'group-hover:bg-red-400'}`} />
               )}
               <span className={`text-sm font-medium transition-colors ${
-                connectionState.isStale ? 'text-yellow-300' : 'text-content-secondary group-hover:text-red-300'
+                connectionState.isStale ? 'text-yellow-300' : osInfo.available ? 'text-content-secondary group-hover:text-content' : 'text-content-secondary group-hover:text-red-300'
               }`}>
                 {connectionState.isStale ? t('layout:appShell.staleShort', { seconds: staleSeconds }) : connectionState.transport}
               </span>
-              <svg className="w-3 h-3 text-content-tertiary opacity-0 group-hover:opacity-100 group-hover:text-red-400 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              {!osInfo.available && (
+                <svg className="w-3 h-3 text-content-tertiary opacity-0 group-hover:opacity-100 group-hover:text-red-400 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
             </button>
           ) : fleetConnected ? (
             <button

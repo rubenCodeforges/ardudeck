@@ -621,6 +621,7 @@
     "udpPortHeld": "UDP port {{port}} is still held by another program or the previous video process. Try again in a moment."
   },
   "ardudeckOs": {
-    "transportName": "ArduDeck OS link"
+    "transportName": "ArduDeck OS link",
+    "connectBlocked": "On ArduDeck OS the vehicle link is managed by the system. Change it in Vehicle Link."
   }
 }
