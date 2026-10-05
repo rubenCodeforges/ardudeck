@@ -6,6 +6,9 @@
 import { createSocket, Socket as DgramSocket } from 'dgram';
 import { BaseTransport, UdpOptions } from '../interfaces/transport.js';
 
+/** Same cap as SerialTransport. */
+const MAX_RX_BUFFER_BYTES = 1024 * 1024;
+
 const MAVLINK_STX_V1 = 0xfe;
 const MAVLINK_STX_V2 = 0xfd;
 
@@ -88,6 +91,9 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 export class UdpTransport extends BaseTransport {
   private socket: DgramSocket | null = null;
   private rxBuffer: Uint8Array[] = [];
+  // Bounded like SerialTransport: most consumers take 'data' events and never
+  // read(), so an unbounded buffer grew for the whole session.
+  private rxBufferBytes = 0;
   private _localPort: number;
   private _remoteHost: string | undefined;
   private _remotePort: number | undefined;
@@ -125,7 +131,7 @@ export class UdpTransport extends BaseTransport {
   }
 
   get bytesToRead(): number {
-    return this.rxBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+    return this.rxBufferBytes;
   }
 
   get bytesToWrite(): number {
@@ -193,6 +199,10 @@ export class UdpTransport extends BaseTransport {
       this.socket.on('message', (msg: Buffer, rinfo) => {
         const uint8 = new Uint8Array(msg);
         this.rxBuffer.push(uint8);
+        this.rxBufferBytes += uint8.length;
+        while (this.rxBufferBytes > MAX_RX_BUFFER_BYTES && this.rxBuffer.length > 1) {
+          this.rxBufferBytes -= this.rxBuffer.shift()!.length;
+        }
         this._inboundBytes += uint8.length;
         this.emit('data', uint8);
 
@@ -274,9 +284,11 @@ export class UdpTransport extends BaseTransport {
         buffer.set(chunk, offset + bytesRead);
         bytesRead += chunk.length;
         this.rxBuffer.shift();
+        this.rxBufferBytes -= chunk.length;
       } else {
         buffer.set(chunk.slice(0, needed), offset + bytesRead);
         this.rxBuffer[0] = chunk.slice(needed);
+        this.rxBufferBytes -= needed;
         bytesRead += needed;
       }
     }
@@ -412,5 +424,6 @@ export class UdpTransport extends BaseTransport {
 
   async discardInBuffer(): Promise<void> {
     this.rxBuffer = [];
+    this.rxBufferBytes = 0;
   }
 }
