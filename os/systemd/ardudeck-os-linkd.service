@@ -1,0 +1,13 @@
+[Unit]
+Description=ArduDeck OS link service (vehicle link, MAVLink routing, parameter cache)
+After=network-online.target
+
+[Service]
+# Development layout: Node in ~/.local/opt/node, service built in the monorepo.
+# The distro image installs both under /usr and swaps these paths.
+ExecStart=%h/.local/opt/node/bin/node %h/work/ardudeck/apps/os-linkd/dist/main.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,8 @@
+{
+  "uuid": "ardudeck-desktop@ardudeck.com",
+  "name": "ArduDeck Desktop",
+  "description": "Live ground-station status and vehicle instruments on the desktop, fed by ardudeck-stationd and ardudeck-os-linkd.",
+  "shell-version": ["48", "49", "50"],
+  "url": "https://ardudeck.com",
+  "version": 1
+}

@@ -19,7 +19,12 @@ export function readOsRelease(path = '/etc/os-release'): OsInfo {
       const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
       if (m) fields[m[1]!] = m[2]!.replace(/^"|"$/g, '');
     }
-    return { id: fields.ID ?? null, name: fields.NAME ?? null, version: fields.VERSION_ID ?? null };
+    // ArduDeck OS brands itself as a Fedora variant (ID stays 'fedora' for package tooling).
+    return {
+      id: fields.VARIANT_ID ?? fields.ID ?? null,
+      name: fields.VARIANT ?? fields.NAME ?? null,
+      version: fields.VERSION_ID ?? null,
+    };
   } catch {
     return { id: null, name: null, version: null };
   }
