@@ -112,12 +112,21 @@ const graphicsPrefs = new Store<GraphicsPrefs>({
 });
 const graphicsMode = graphicsPrefs.get('graphicsMode', 'auto');
 
+/** Adds a Chromium feature without dropping ones set elsewhere (the switch keeps only its last value). */
+function enableFeature(name: string): void {
+  const current = app.commandLine.getSwitchValue('enable-features');
+  app.commandLine.appendSwitch('enable-features', current ? `${current},${name}` : name);
+}
+
+// Lets a frozen page report where its JavaScript is stuck (see the 'unresponsive' handler).
+enableFeature('DocumentPolicyIncludeJSCallStacksInCrashReports');
+
 if (graphicsMode === 'off') {
   app.disableHardwareAcceleration();
 } else if (process.platform === 'linux') {
   if (!process.argv.some((a) => a.startsWith('--ozone-platform'))) {
     app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-    app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
+    enableFeature('WaylandWindowDecorations');
   }
   if (graphicsMode === 'auto') {
     app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -298,6 +307,23 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
     } else {
       console.error(`[Main] renderer failed to load after ${loadAttempts} attempts: ${errorCode} ${errorDescription}`);
     }
+  });
+
+  // A frozen page keeps playing video but nothing drawn by JavaScript moves; log where it is stuck.
+  let frozenAt = 0;
+  mainWindow.on('unresponsive', () => {
+    frozenAt = Date.now();
+    console.error(`[Main] window stopped responding at ${new Date(frozenAt).toISOString()}`);
+    // Electron 34+; the bundled typings are older than the runtime
+    const frame = mainWindow.webContents.mainFrame as unknown as { collectJavaScriptCallStack?: () => Promise<string | undefined> };
+    if (!frame.collectJavaScriptCallStack) return;
+    frame.collectJavaScriptCallStack()
+      .then((stack) => console.error('[Main] JavaScript call stack of the frozen page:\n' + (stack ?? '(not available)')))
+      .catch((err: unknown) => console.error('[Main] could not read the frozen page stack:', err));
+  });
+  mainWindow.on('responsive', () => {
+    if (frozenAt) console.error(`[Main] window responding again after ${((Date.now() - frozenAt) / 1000).toFixed(1)} s`);
+    frozenAt = 0;
   });
 
   // Recover from a renderer crash (also surfaces as a blank window) by reloading.

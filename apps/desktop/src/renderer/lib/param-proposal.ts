@@ -23,10 +23,12 @@ const DENY = new Set<string>(['MOT_PWM_TYPE', 'FRAME_CLASS', 'FRAME_TYPE', 'COMP
 export async function proposeParameterChanges(
   proposals: ParamChangeProposal[],
   timeoutMs = 5 * 60 * 1000,
+  /** Pilot-initiated in-flight tuning (e.g. loiter radius). Agents and modules never pass this. */
+  options: { allowArmed?: boolean } = {},
 ): Promise<ParamProposalOutcome> {
   if (!Array.isArray(proposals) || proposals.length === 0) throw new Error('proposals array is empty'); // i18n-exempt
 
-  if (useTelemetryStore.getState().flight?.armed) {
+  if (!options.allowArmed && useTelemetryStore.getState().flight?.armed) {
     return { ok: false, reason: 'vehicle is armed, disarm before applying parameter changes', rejected: [] }; // i18n-exempt
   }
 

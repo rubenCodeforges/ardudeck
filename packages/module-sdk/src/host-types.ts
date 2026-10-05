@@ -970,6 +970,71 @@ export interface RendererHostApi {
   };
 }
 
+export type VehicleClass = 'copter' | 'plane' | 'other';
+
+/** What the safety gate sees for the commanded vehicle. Steering needs connected, ardupilot, armed and guided. */
+export interface GuidedState {
+  connected: boolean;
+  sysid: number | null;
+  armed: boolean;
+  guided: boolean;
+  vehicleClass: VehicleClass;
+  ardupilot: boolean;
+}
+
+/**
+ * A MAV_CMD for the commanded vehicle. Sent as COMMAND_INT when latitude and
+ * longitude are given, else COMMAND_LONG. Only camera, gimbal and Guided
+ * steering commands are allowed; steering ones need the vehicle armed in Guided.
+ */
+export interface VehicleCommandRequest {
+  command: number;
+  /** param1..param7 (COMMAND_INT uses param1..param4) */
+  params?: number[];
+  latitude?: number;
+  longitude?: number;
+  altitude?: number;
+  /** MAV_FRAME for COMMAND_INT, default 6 (global, relative altitude) */
+  frame?: number;
+  targetComponent?: number;
+  /** Resolve once sent, without waiting for COMMAND_ACK */
+  noAck?: boolean;
+}
+
+export interface VehicleCommandResult {
+  ok: boolean;
+  /** MAV_RESULT from the vehicle's COMMAND_ACK */
+  result?: number;
+  error?: string;
+}
+
+/**
+ * Guided steering. Velocities are metres per second in the aircraft's own frame
+ * (forward, right, down) with yaw rate in rad/s. A copter stops on its own about
+ * 3 s after the last one. Position targets use altitude relative to home.
+ */
+export type VehicleSetpoint =
+  | { kind: 'velocityBody'; forward: number; right: number; down: number; yawRate: number }
+  | { kind: 'positionGlobal'; latitude: number; longitude: number; altitude: number };
+
+export interface VehicleSetpointResult {
+  ok: boolean;
+  error?: string;
+}
+
+export interface MavlinkFrame {
+  msgid: number;
+  sysid: number;
+  compid: number;
+  payload: Uint8Array;
+}
+
+export interface CameraStreamInfo {
+  sourceId: string;
+  /** Loopback RTSP URL of the live feed (TCP only). */
+  rtspUrl: string;
+}
+
 export interface MainHostApi {
   moduleSlug: string;
   dataDir: string;
@@ -989,6 +1054,25 @@ export interface MainHostApi {
     channel: string,
     handler: (data: unknown) => unknown | Promise<unknown>,
   ): () => void;
+  /**
+   * Command and steer the vehicle the pilot has selected. Needs the
+   * 'vehicleControl' permission. The host refuses anything that moves the
+   * aircraft unless it is an ArduPilot vehicle, armed and in Guided, so the
+   * pilot's mode switch always wins.
+   */
+  vehicle: {
+    getGuidedState(): GuidedState;
+    command(req: VehicleCommandRequest): Promise<VehicleCommandResult>;
+    setpoint(sp: VehicleSetpoint): Promise<VehicleSetpointResult>;
+  };
+  /** Raw frames from the vehicle link. Pass null to receive every message. */
+  mavlink: {
+    subscribe(msgIds: number[] | null, listener: (frame: MavlinkFrame) => void): () => void;
+  };
+  /** Live video feeds the host is relaying. */
+  camera: {
+    listStreams(): Promise<CameraStreamInfo[]>;
+  };
 }
 
 export interface ModuleMainExports {

@@ -50,6 +50,9 @@ interface CameraState {
   svtSatellite: boolean;
   /** Synthetic-vision terrain detail (never the near-field imagery). */
   svtQuality: SvtQuality;
+  /** Ground point the synthetic-vision test subjects move around; null = off. */
+  svtSubjects: { lat: number; lon: number } | null;
+  setSvtSubjects: (anchor: { lat: number; lon: number } | null) => void;
   /** Pin this window to one vehicle, ignoring the active selection. Null = follow. */
   lockedVehicleKey: string | null;
   osd: OsdLayers;
@@ -106,6 +109,7 @@ export const useCameraStore = create<CameraState>()(
       syntheticFallback: true,
       svtSatellite: false,
       svtQuality: 'medium',
+      svtSubjects: null,
       lockedVehicleKey: null,
       osd: { ...DEFAULT_OSD_LAYERS },
       gridCols: 2,
@@ -196,6 +200,7 @@ export const useCameraStore = create<CameraState>()(
       setSyntheticFallback: (syntheticFallback) => set({ syntheticFallback }),
       setSvtSatellite: (svtSatellite) => set({ svtSatellite }),
       setSvtQuality: (svtQuality) => set({ svtQuality }),
+      setSvtSubjects: (svtSubjects) => set({ svtSubjects }),
       setLockedVehicle: (lockedVehicleKey) => set({ lockedVehicleKey }),
       toggleOsd: (layer) => set((s) => ({ osd: { ...s.osd, [layer]: !s.osd[layer] } })),
       setGridCols: (gridCols) => set({ gridCols: Math.max(1, Math.min(4, gridCols)) }),
@@ -240,6 +245,7 @@ export const useCameraStore = create<CameraState>()(
         syntheticFallback: s.syntheticFallback,
         svtSatellite: s.svtSatellite,
         svtQuality: s.svtQuality,
+        svtSubjects: s.svtSubjects,
         osd: s.osd,
         gridCols: s.gridCols,
         gimbalByVehicle: s.gimbalByVehicle,
@@ -249,6 +255,13 @@ export const useCameraStore = create<CameraState>()(
 );
 
 /** Sources owned by a given vehicle. */
+// The Vision stream renders in its own window: pick up settings changed in another window.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'ardudeck-camera') void useCameraStore.persist.rehydrate();
+  });
+}
+
 export function sourcesForVehicle(state: CameraState, vehicleKey: string): CameraSourceConfig[] {
   return Object.values(state.sources).filter((s) => s.vehicleKey === vehicleKey);
 }

@@ -119,7 +119,9 @@
     "syntheticTip": "Synthetic vision (3D terrain from GPS + attitude)",
     "terrainDetail": "Terrain detail",
     "terrainHint": "The ground nearest the aircraft always uses the sharpest imagery.",
-    "thisVehicle": "this vehicle"
+    "thisVehicle": "this vehicle",
+    "testSubjects": "Test subjects for tracking",
+    "testSubjectsTip": "Cars, a person and buildings moving near the aircraft, for trying ActiveTrack in the simulator. Placed ahead of the aircraft when switched on."
   },
   "presets": {
     "ardudeckSim": {

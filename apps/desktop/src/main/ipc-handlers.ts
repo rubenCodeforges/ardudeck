@@ -220,6 +220,7 @@ import { writeFile as writeFileAsync } from 'node:fs/promises';
 import { sitlProcess } from './sitl/sitl-process.js';
 import { simEngineProcess } from './sim/sim-engine-process.js';
 import { mediaEngine } from './media/media-engine.js';
+import { vehicleControl } from './vehicle-control/vehicle-control.js';
 import { isOwnMedia, listMedia, mediaDir, mediaDragIcon } from './media/media-library.js';
 import { CANVAS_STREAM_PATHS, type CanvasStreamSnapshot, type VisionStreamOpenOptions } from '../shared/camera-types.js';
 import { openVisionStreamWindow, closeVisionStreamWindow, reportVisionStream, visionStreamSnapshot } from './media/vision-stream-window.js';
@@ -5627,6 +5628,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
             // Parse telemetry data from known message types
             parseTelemetry(mainWindow, packet);
+            vehicleControl.notePacket(packet);
 
             // Broadcast raw frame to the renderer windows holding a live
             // onPacket subscription, batched into 50ms buckets (see
@@ -8705,6 +8707,22 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
+  // Cargo steering and commands go to whatever vehicle the pilot is commanding.
+  vehicleControl.setBackend({
+    target: () => {
+      const t = resolveVehicleTarget(connectionRegistry.getActiveVehicleKey());
+      return t ? { sysid: t.sysid, compid: t.compid } : null;
+    },
+    send: async (msgid, payload, crcExtra) => {
+      const t = resolveVehicleTarget(connectionRegistry.getActiveVehicleKey());
+      if (!t?.transport.isOpen) return false;
+      const packet = await sendMavlinkPacket(msgid, payload, crcExtra, { link: t.transport });
+      await t.transport.write(packet);
+      connectionState.packetsSent++;
+      return true;
+    },
+  });
+
   // MAV_CMD_DO_REPOSITION (command 192) via COMMAND_INT - fly to a location in GUIDED mode.
   // Uses COMMAND_INT (msg 75) instead of COMMAND_LONG so lat/lon are int32 (degrees * 1e7)
   // which preserves full precision. COMMAND_LONG float32 truncates coordinates.
@@ -8849,6 +8867,43 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     } catch (error) {
       const message = error instanceof Error ? error.message : t('common:unknownError');
       sendLog(mainWindow, 'error', 'Failed to send DO_CHANGE_SPEED', message);
+      return false;
+    }
+  });
+
+  /**
+   * MAV_CMD_DO_CHANGE_ALTITUDE (186): new target altitude above home for the
+   * current navigation target (ArduPlane AUTO, GUIDED, LOITER, CRUISE).
+   * param2 is the altitude frame; 3 = MAV_FRAME_GLOBAL_RELATIVE_ALT.
+   */
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_CHANGE_ALTITUDE, async (_, altitudeM: number): Promise<boolean> => {
+    const target = activeFlightTarget();
+    if (!target || !Number.isFinite(altitudeM)) return false;
+
+    try {
+      const payload = serializeCommandInt({
+        targetSystem: target.sysid,
+        targetComponent: 1,
+        frame: 0,
+        command: 186,     // MAV_CMD_DO_CHANGE_ALTITUDE
+        current: 0,
+        autocontinue: 0,
+        param1: altitudeM,
+        param2: 3,        // MAV_FRAME_GLOBAL_RELATIVE_ALT
+        param3: 0,
+        param4: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+      });
+      const packet = await sendMavlinkPacket(COMMAND_INT_ID, payload, COMMAND_INT_CRC_EXTRA, { link: target.transport });
+      await target.transport.write(packet);
+      connectionState.packetsSent++;
+      sendLog(mainWindow, 'info', `Sent DO_CHANGE_ALTITUDE ${altitudeM.toFixed(1)} m (relative)`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('common:unknownError');
+      sendLog(mainWindow, 'error', 'Failed to send DO_CHANGE_ALTITUDE', message);
       return false;
     }
   });

@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import type { DrapeRing } from './svt-satellite';
 import { attachDrape } from './drape-material';
+import { createSubjectMeshes, type SubjectMeshes } from './svt-subjects';
 import {
   type ElevationGrid,
   buildTerrainGridGeometry,
@@ -75,6 +76,10 @@ export interface SvtScene {
       the SAME fov so its world-locked symbology aligns with the SVT terrain. */
   getFov: () => number;
   hasTerrain: () => boolean;
+  /** Moving test subjects around a ground point, or null to remove them. */
+  setTestSubjects: (anchor: { lat: number; lon: number } | null) => void;
+  /** True while something in the scene moves on its own, so the view must redraw every frame. */
+  isAnimating: () => boolean;
   render: () => void;
   dispose: () => void;
 }
@@ -177,6 +182,22 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
   let terrainGrid: THREE.LineSegments | null = null;
   let clearanceM = NaN;
 
+  let subjects: SubjectMeshes | null = null;
+  let subjectAnchor: { lat: number; lon: number } | null = null;
+  const M_PER_DEG_LAT = 111_320;
+
+  const placeSubjects = () => {
+    if (!subjects || !subjectAnchor || !grid) return;
+    const g = grid;
+    const a = subjectAnchor;
+    const base = lonLatToLocal(g, a.lat, a.lon);
+    subjects.update(Date.now() / 1000, (north, east) => ({
+      x: base.x + east,
+      y: sampleElevation(g, a.lat + north / M_PER_DEG_LAT, a.lon + east / g.mPerDegLon),
+      z: base.z - north,
+    }));
+  };
+
   return {
     resize(width: number, height: number) {
       renderer.setSize(width, height, false);
@@ -230,8 +251,25 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       return terrainMesh !== null;
     },
 
+    setTestSubjects(anchor) {
+      subjectAnchor = anchor;
+      if (anchor && !subjects) {
+        subjects = createSubjectMeshes();
+        scene.add(subjects.group);
+      } else if (!anchor && subjects) {
+        scene.remove(subjects.group);
+        subjects.dispose();
+        subjects = null;
+      }
+    },
+
+    isAnimating() {
+      return subjects !== null;
+    },
+
     render() {
       if (contextLost) return;
+      placeSubjects();
       renderer.render(scene, camera);
     },
 
@@ -246,6 +284,7 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       terrainMat.dispose();
       if (terrainGrid) terrainGrid.geometry.dispose();
       terrainGridMat.dispose();
+      subjects?.dispose();
       skyGeom.dispose();
       skyMat.dispose();
       renderer.dispose();

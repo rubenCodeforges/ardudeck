@@ -30,6 +30,7 @@ import { ModeAnnunciator } from './flight-modes/ModeAnnunciator';
 import { ModePicker } from './flight-modes/ModePicker';
 import { modeMetaFor, modeSubline, isPilotThrottleMode, MISSION_MODES } from '../../../shared/flight-mode-meta';
 import { executeTakeoff, presentTakeoff } from './takeoff-strategies';
+import { InFlightAdjust } from './InFlightAdjust';
 import {
   altitudeValueFromMeters,
   formatAltitudeFromMeters,
@@ -1060,6 +1061,8 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
     [vehicleClass, connectionState.firmware, t],
   );
 
+  const showInFlightAdjust = connectionState.firmware !== 'px4' && (vehicleClass === 'plane' || vehicleClass === 'vtol');
+
   // RTL/Land sourced from the per-vehicle capability matrix.
   const rtlModeNum = capabilities.rtlModeNum;
   const landModeNum = capabilities.land.modeNum;
@@ -1237,6 +1240,12 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
                     {renderMissionExtras()}
                   </div>
                 )}
+                {showInFlightAdjust && (
+                  <>
+                    <div className="w-px self-stretch bg-subtle mx-0.5 my-0.5" />
+                    <InFlightAdjust inline />
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1365,6 +1374,12 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
                 </div>
               )}
             </div>
+
+            {showInFlightAdjust && (
+              <div className="mb-2 p-2 rounded-lg border border-subtle">
+                <InFlightAdjust />
+              </div>
+            )}
 
             {/* Takeoff altitude dialog — compact single-row: label, small
                 fixed-width number input, Go, and an ✕ for cancel. The

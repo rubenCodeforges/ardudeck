@@ -212,6 +212,11 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
   // overlay can drive its own camera with the exact same fov (zero calibration).
   const [svtFov, setSvtFov] = useState(62);
   const satellite = useCameraStore((s) => s.svtSatellite);
+  const subjects = useCameraStore((s) => s.svtSubjects);
+  useEffect(() => {
+    sceneRef.current?.setTestSubjects(subjects);
+    dirtyRef.current = true;
+  }, [subjects]);
   const quality = useCameraStore((s) => s.svtQuality);
   // The grid the drape follows: state, not a ref, so a new patch re-runs the
   // imagery effect. Quality changes and the toggle do the same.
@@ -394,6 +399,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
 
     const scene = createSvtScene(canvas);
     sceneRef.current = scene;
+    scene.setTestSubjects(useCameraStore.getState().svtSubjects);
     setSvtFov(scene.getFov());
 
     const sizeToContainer = () => {
@@ -446,7 +452,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
           shown.headingDeg !== was.headingDeg
         ));
       shownRef.current = shown;
-      if (dirtyRef.current || moved) {
+      if (dirtyRef.current || moved || scene.isAnimating()) {
         dirtyRef.current = false;
         if (shown) scene.setPose(shown);
         scene.render();

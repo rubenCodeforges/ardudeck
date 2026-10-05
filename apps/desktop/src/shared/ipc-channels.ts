@@ -96,6 +96,7 @@ export const IPC_CHANNELS = {
   MAVLINK_SET_MODE: 'mavlink:set-mode',
   MAVLINK_COMMAND_TAKEOFF: 'mavlink:command-takeoff',
   MAVLINK_CHANGE_SPEED: 'mavlink:change-speed',
+  MAVLINK_CHANGE_ALTITUDE: 'mavlink:change-altitude',
   MAVLINK_COMMAND_VTOL_TAKEOFF: 'mavlink:command-vtol-takeoff',
   MAVLINK_GOTO: 'mavlink:goto',
   MAVLINK_ORBIT: 'mavlink:orbit',

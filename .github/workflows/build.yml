@@ -51,7 +51,8 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+          # rpm provides rpmbuild, which electron-builder needs for the Fedora/RHEL package
+          sudo apt-get install -y libudev-dev libusb-1.0-0-dev rpm
 
       - name: Install dependencies
         run: pnpm install
@@ -112,6 +113,12 @@ jobs:
           name: ${{ env.BUILD_NAME }}-deb
           path: apps/desktop/release/*.deb
 
+      - name: Upload Linux rpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUILD_NAME }}-rpm
+          path: apps/desktop/release/*.rpm
+
       - name: Upload Linux update metadata
         uses: actions/upload-artifact@v4
         with:
@@ -133,7 +140,7 @@ jobs:
           TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
         run: |
           shopt -s nullglob
-          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          files=(release/*.AppImage release/*.deb release/*.rpm release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
           if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
           printf 'uploading: %s\n' "${files[@]}"
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
@@ -260,7 +267,7 @@ jobs:
           TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
         run: |
           shopt -s nullglob
-          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          files=(release/*.AppImage release/*.deb release/*.rpm release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
           if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
           printf 'uploading: %s\n' "${files[@]}"
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
@@ -391,7 +398,7 @@ jobs:
           TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
         run: |
           shopt -s nullglob
-          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          files=(release/*.AppImage release/*.deb release/*.rpm release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
           if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
           printf 'uploading: %s\n' "${files[@]}"
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
@@ -504,7 +511,7 @@ jobs:
           TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
         run: |
           shopt -s nullglob
-          files=(release/*.AppImage release/*.deb release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
+          files=(release/*.AppImage release/*.deb release/*.rpm release/*.dmg release/*.zip release/*.exe release/latest*.yml release/*.blockmap)
           if [ ${#files[@]} -eq 0 ]; then echo "No release files produced"; exit 1; fi
           printf 'uploading: %s\n' "${files[@]}"
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"

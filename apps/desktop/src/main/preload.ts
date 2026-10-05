@@ -299,6 +299,8 @@ const api = {
 
   mavlinkChangeSpeed: (speedMs: number, speedType: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_CHANGE_SPEED, speedMs, speedType),
+  mavlinkChangeAltitude: (altitudeM: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_CHANGE_ALTITUDE, altitudeM),
 
   mavlinkGoto: (lat: number, lon: number, alt: number, frame?: number, yawRad?: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_GOTO, lat, lon, alt, frame, yawRad),

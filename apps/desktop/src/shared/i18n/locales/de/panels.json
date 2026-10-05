@@ -101,6 +101,21 @@
     "receiverN": "GPS {{n}}",
     "vdop": "VDOP"
   },
+  "inFlightAdjust": {
+    "altSent": "Höhenänderung gesendet.",
+    "altTip": "Neue Sollhöhe über Home für das aktuelle Ziel (DO_CHANGE_ALTITUDE). In AUTO setzt der nächste Wegpunkt wieder seine eigene Höhe.",
+    "changeAlt": "Höhe ändern",
+    "changeSpeed": "Geschw. ändern",
+    "notSent": "Nicht gesendet: keine Verbindung zum Fahrzeug.",
+    "radiusFailed": "Loiter-Radius wurde nicht geschrieben.",
+    "radiusReason": "Loiter-Radius im Flug geändert",
+    "radiusSet": "Loiter-Radius gesetzt.",
+    "radiusTip": "Schreibt WP_LOITER_RAD nach Ihrer Prüfung. Gilt für LOITER und Loiter-Wegpunkte; das Vorzeichen (Richtung) bleibt erhalten.",
+    "setLoiterRadius": "Loiter-Radius setzen",
+    "speedSent": "Geschwindigkeitsänderung gesendet.",
+    "speedTip": "Neue Soll-Fluggeschwindigkeit (DO_CHANGE_SPEED). Gilt, bis die Mission oder ein anderer Befehl sie ändert.",
+    "title": "Im Flug anpassen"
+  },
   "joystickPanel": {
     "armedWarning": "Armed. Die Sticks sind aktiv: Dieses Fenster muss den Fokus behalten, da ein Browser den Controller nicht mehr meldet, wenn es den Fokus verliert.",
     "assign": "Zuweisen",
