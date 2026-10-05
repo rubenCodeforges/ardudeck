@@ -15,6 +15,7 @@ import {drawRoundGauge, drawAttitude, headingRose, vsiArc, COLORS} from './gauge
 import {LocalApi} from './http.js';
 import {VehicleLinkIndicator} from './quick-settings.js';
 import {DesktopSurfaceManager} from './surface.js';
+import {DesktopMenu, applySurfaceSetting} from './desktop-menu.js';
 
 const STATION_URL = 'http://127.0.0.1:47800/state';
 const VEHICLE_URL = 'http://127.0.0.1:47801/v1/vehicle';
@@ -319,10 +320,18 @@ export default class ArduDeckDesktop extends Extension {
 
         // When the live desktop surface (map, SVT, instruments) is running it is
         // the desktop; these lightweight Cairo widgets are the fallback without it.
-        this._surface = new DesktopSurfaceManager(active => {
-            if (this._root) this._root.visible = !active;
-        });
-        if (this._surface.active) this._root.visible = false;
+        this._surface = new DesktopSurfaceManager(() => this._applyVisibility());
+
+        // Per-widget switches, shown in the desktop's right-click menu.
+        this._settings = this.getSettings();
+        this._settingsIds = [
+            this._settings.connect('changed', (_s, key) => {
+                if (key === 'show-surface') applySurfaceSetting(this._settings.get_boolean(key));
+                this._applyVisibility();
+            }),
+        ];
+        this._desktopMenu = new DesktopMenu(this._settings);
+        this._applyVisibility();
 
         this._monitorsId = Main.layoutManager.connect('monitors-changed', () => this._place());
         for (const a of [this._vehicle.actor, this._cluster.actor])
@@ -401,7 +410,20 @@ export default class ArduDeckDesktop extends Extension {
         this._a11y = null;
     }
 
+    _applyVisibility() {
+        if (!this._root || !this._settings) return;
+        this._root.visible = !this._surface?.active;
+        this._station.actor.visible = this._settings.get_boolean('show-station');
+        this._vehicle.actor.visible = this._settings.get_boolean('show-vehicle');
+        this._cluster.actor.visible = this._settings.get_boolean('show-instruments');
+    }
+
     _disableDesktop() {
+        this._desktopMenu?.destroy();
+        this._desktopMenu = null;
+        for (const id of this._settingsIds ?? []) this._settings.disconnect(id);
+        this._settingsIds = null;
+        this._settings = null;
         this._surface?.destroy();
         this._surface = null;
         this._linkIndicator?.destroy();
