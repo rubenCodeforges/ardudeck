@@ -184,7 +184,8 @@
     "steer": "Lenkung",
     "tilt": "Neigung",
     "vsi": "VSI",
-    "xtrack": "Querablage"
+    "xtrack": "Querablage",
+    "inFlightAdjust": "Im Flug anpassen"
   },
   "instrumentsCatalog": {
     "arrange": "Anordnen",
@@ -512,5 +513,12 @@
     "clearLog": "Alarmprotokoll leeren",
     "disclaimer": "Nur zur Lageerkennung. Eventuelle Gegenmaßnahmen werden von gesondert befugten Stellen durchgeführt.",
     "in": "in"
+  },
+  "inFlightAdjustInstrument": {
+    "title": "IM FLUG ANPASSEN",
+    "fixedWingOnly": "NUR STARRFLÜGLER",
+    "tagRadius": "RAD",
+    "set": "SETZEN",
+    "revert": "Zurück zum zuletzt gesendeten Wert"
   }
 }

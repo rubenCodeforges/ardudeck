@@ -27,6 +27,23 @@ export function bulkSetAltitude(
   return { items: changed > 0 ? next : items, changed };
 }
 
+/** Raise or lower every located item by the same amount, never below zero; frames untouched. */
+export function bulkShiftAltitude(
+  items: MissionItem[],
+  seqs: ReadonlySet<number>,
+  deltaMeters: number,
+): BulkResult {
+  let changed = 0;
+  const next = items.map((it) => {
+    if (!seqs.has(it.seq) || !commandHasLocation(it.command)) return it;
+    const altitude = Math.max(0, it.altitude + deltaMeters);
+    if (altitude === it.altitude) return it;
+    changed++;
+    return { ...it, altitude };
+  });
+  return { items: changed > 0 ? next : items, changed };
+}
+
 /** speedMs <= 0 removes the selection's DO_CHANGE_SPEED items ("zero clears it"). */
 export function bulkSetSpeed(
   items: MissionItem[],

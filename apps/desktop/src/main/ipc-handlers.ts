@@ -8817,6 +8817,43 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // Altitude frame: 6 = rel home (default), 11 = terrain, 5 = AMSL.
     const altFrame = frame === 11 || frame === 5 ? frame : 6;
 
+    // ArduPlane (plane and quadplane) has no DO_ORBIT: it circles a DO_REPOSITION target,
+    // param3 = loiter radius, param4 non-zero = CCW (GCS_MAVLink_Plane.cpp handle_command_int_do_reposition)
+    const activeKey = connectionRegistry.getActiveVehicleKey();
+    const veh = activeKey ? connectionRegistry.getVehicleByKey(activeKey) : null;
+    const mavType = veh?.mavType ?? connectionState.mavType;
+    const isArduPilot = veh ? veh.autopilot === 3 : connectionState.firmware === 'ardupilot';
+    const isArduPlane = isArduPilot && mavType !== undefined && (mavType === 1 || (mavType >= 19 && mavType <= 25));
+    if (isArduPlane) {
+      try {
+        const payload = serializeCommandInt({
+          targetSystem: target.sysid,
+          targetComponent: 1,
+          frame: altFrame,
+          command: 192,       // MAV_CMD_DO_REPOSITION
+          current: 0,
+          autocontinue: 0,
+          param1: -1,         // groundspeed: default
+          param2: 1,          // MAV_DO_REPOSITION_FLAGS_CHANGE_MODE (GUIDED)
+          param3: Math.abs(radius),
+          param4: radius < 0 ? 1 : 0,
+          x: Math.round(lat * 1e7),
+          y: Math.round(lon * 1e7),
+          z: alt,
+        });
+        const packet = await sendMavlinkPacket(COMMAND_INT_ID, payload, COMMAND_INT_CRC_EXTRA, { link: target.transport });
+        await target.transport.write(packet);
+        connectionState.packetsSent++;
+        lastGotoFrameBySysid.set(target.sysid, altFrame);
+        sendLog(mainWindow, 'info', `Sent plane orbit (DO_REPOSITION) center=${lat.toFixed(7)}, ${lon.toFixed(7)} alt=${alt.toFixed(1)}m radius=${Math.abs(radius)}m ${radius < 0 ? 'CCW' : 'CW'}`);
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t('common:unknownError');
+        sendLog(mainWindow, 'error', 'Failed to send ORBIT command', message);
+        return false;
+      }
+    }
+
     try {
       const payload = serializeCommandInt({
         targetSystem: target.sysid,

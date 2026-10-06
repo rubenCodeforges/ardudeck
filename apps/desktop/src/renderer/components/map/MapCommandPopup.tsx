@@ -92,7 +92,11 @@ interface ActionMeta {
 }
 
 const AIR: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane'];
-const HOVER: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol'];
+// Hover camera moves are copter-only; script v1.2+ also flies orbit, spiral and climb+RTL on ArduPlane
+const SCRIPT_CLASSES: ReadonlyArray<TacticalVehicleClass> = ['copter'];
+const PLANE_SCRIPT_CLASSES: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane'];
+/** First script version with an ArduPlane branch; older ones would put a plane in ACRO. */
+const PLANE_SCRIPT_MIN_VERSION = 1.2;
 const ALL: ReadonlyArray<TacticalVehicleClass> = ['copter', 'vtol', 'plane', 'rover', 'boat', 'sub', 'antenna'];
 
 /**
@@ -127,15 +131,15 @@ const ACTIONS: ActionMeta[] = [
   { id: 'orbit', zone: 'primary', labelKey: 'map:mapCommand.orbitLabel', accent: 'violet', icon: RotateCw, goKey: 'map:mapCommand.orbitGo',
     hintKey: 'map:mapCommand.orbitHint', modeTo: 'GUIDED', script: 'fallback', advanced: true, supportedClasses: AIR },
   { id: 'spiral', zone: 'secondary', labelKey: 'map:mapCommand.spiralLabel', accent: 'violet', icon: Tornado, goKey: 'map:mapCommand.spiralGo',
-    hintKey: 'map:mapCommand.spiralHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: AIR },
+    hintKey: 'map:mapCommand.spiralHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: PLANE_SCRIPT_CLASSES },
   { id: 'watchtower', zone: 'secondary', labelKey: 'map:mapCommand.watchLabel', accent: 'violet', icon: Eye, goKey: 'map:mapCommand.watchGo',
-    hintKey: 'map:mapCommand.watchHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+    hintKey: 'map:mapCommand.watchHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: SCRIPT_CLASSES },
   { id: 'reveal', zone: 'secondary', labelKey: 'map:mapCommand.revealLabel', accent: 'violet', icon: Film, goKey: 'map:mapCommand.revealGo',
-    hintKey: 'map:mapCommand.revealHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+    hintKey: 'map:mapCommand.revealHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: SCRIPT_CLASSES },
   { id: 'strafe', zone: 'secondary', labelKey: 'map:mapCommand.strafeLabel', accent: 'violet', icon: MoveHorizontal, goKey: 'map:mapCommand.strafeGo',
-    hintKey: 'map:mapCommand.strafeHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+    hintKey: 'map:mapCommand.strafeHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: SCRIPT_CLASSES },
   { id: 'climbRtl', zone: 'escape', labelKey: 'map:mapCommand.climbRtlLabel', accent: 'rose', icon: ArrowUpFromLine, goKey: 'map:mapCommand.climbRtlGo',
-    hintKey: 'map:mapCommand.climbRtlHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: HOVER },
+    hintKey: 'map:mapCommand.climbRtlHint', modeTo: 'GUIDED', script: 'required', advanced: true, supportedClasses: PLANE_SCRIPT_CLASSES },
   { id: 'land', zone: 'escape', labelKey: 'map:mapCommand.landLabel', accent: 'rose', icon: ArrowDownToLine, goKey: 'map:mapCommand.landGo',
     hintKey: 'map:mapCommand.landHint', modeTo: 'LAND', advanced: true, guarded: true, supportedClasses: ALL },
 ];
@@ -246,6 +250,9 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
     if (apClass === 'vtol') return 'vtol';
     return mavType === undefined ? 'copter' : mavTypeToTacticalClass(mavType);
   }, [mavType, apClass]);
+  // A plane only gets script commands from a script that knows planes
+  const scriptReady = scriptHealthy && (vehicleClass === 'copter'
+    || (scriptHealth.status === 'present' && scriptHealth.version >= PLANE_SCRIPT_MIN_VERSION - 1e-6));
 
   // Speed bounds come from the vehicle, not a number picked by eye: ArduPlane
   // refuses a DO_CHANGE_SPEED outside AIRSPEED_MIN..MAX instead of clamping.
@@ -277,8 +284,8 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   }, [visible]);
 
   const isDisabled = useCallback(
-    (a: ActionMeta) => a.script === 'required' && !scriptHealthy,
-    [scriptHealthy],
+    (a: ActionMeta) => a.script === 'required' && !scriptReady,
+    [scriptReady],
   );
 
   // Snap selection back if the selected tile vanished (vehicle class change).
@@ -312,8 +319,8 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   const terrainBlocks = useCallback(
     (id: CommandId) =>
       altFrame === 'terrain' && terrainAvailable !== true &&
-      (id === 'fly' || (id === 'orbit' && !scriptHealthy)),
-    [altFrame, terrainAvailable, scriptHealthy],
+      (id === 'fly' || (id === 'orbit' && !scriptReady)),
+    [altFrame, terrainAvailable, scriptReady],
   );
   const sendBlockedByTerrain = terrainBlocks(meta.id);
 
@@ -353,7 +360,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   // ── send ──────────────────────────────────────────────────────────────────
   const send = useCallback((id: CommandId) => {
     const a = ACTIONS.find(x => x.id === id);
-    if (!a || (a.script === 'required' && !scriptHealthy)) return;
+    if (!a || (a.script === 'required' && !scriptReady)) return;
     if (terrainBlocks(id)) return;
     const signedRadius = direction === 'cw' ? radius : -radius;
     const signedYawRate = direction === 'cw' ? Math.abs(yawRate) : -Math.abs(yawRate);
@@ -367,7 +374,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
       case 'orbit':
         onConfirm(
           { type: 'orbit', lat, lon, alt: altitude, radius: signedRadius, revolutions, frame: altFrame, speed: cruiseSpeed > 0 ? cruiseSpeed : undefined },
-          { preferScript: scriptHealthy },
+          { preferScript: scriptReady },
         );
         break;
       case 'spiral':
@@ -396,13 +403,13 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
         break;
       case 'land':
         // Script LAND_AT flies to the point first; native NAV_LAND descends in place.
-        onConfirm({ type: 'land', lat, lon }, { preferScript: scriptHealthy });
+        onConfirm({ type: 'land', lat, lon }, { preferScript: scriptReady && vehicleClass === 'copter' });
         break;
     }
   }, [
     lat, lon, altitude, altFrame, radius, direction, revolutions, spiralTargetAlt, climbRate,
     yawRate, climbRtlAlt, revealPullback, revealClimb, revealSpeed,
-    strafeOffset, strafeLength, strafeSpeed, currentAltAgl, scriptHealthy,
+    strafeOffset, strafeLength, strafeSpeed, currentAltAgl, scriptReady, cruiseSpeed, vehicleClass,
     onConfirm, onSetRoi, terrainBlocks,
   ]);
 
@@ -561,7 +568,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                     const belowMin = speedRange.enforced && cruiseSpeed > 0 && cruiseSpeed < speedRange.min;
                     if (!hint) return null;
                     return (
-                      <p className={`px-1 text-[10px] leading-snug ${belowMin ? 'text-amber-400' : 'text-content-tertiary'}`}>
+                      <p className={`col-span-2 px-1 text-[10px] leading-snug ${belowMin ? 'text-amber-400' : 'text-content-tertiary'}`}>
                         {belowMin
                           ? t('map:mapCommand.belowAirspeedMin', { min: displaySpeed(speedRange.min), unit: UNIT_LABELS.speed[speedUnit] })
                           : hint}
@@ -694,7 +701,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
               </div>
             )}
 
-            {meta.id === 'orbit' && !scriptHealthy && (
+            {meta.id === 'orbit' && !scriptReady && (
               <div className="mt-1.5 text-[9.5px] text-content-tertiary">
                 {scriptHealth.status === 'stale'
                   ? t('map:mapCommand.orbitScriptStale')

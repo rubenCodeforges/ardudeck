@@ -853,6 +853,7 @@ function App() {
     const unsubComplete = window.electronAPI?.onMissionComplete(setMissionItems);
     const unsubProgress = window.electronAPI?.onMissionProgress(updateMissionProgress);
     const unsubCurrent = window.electronAPI?.onMissionCurrent(setCurrentSeq);
+    const unsubReached = window.electronAPI?.onMissionReached((seq) => useMissionStore.getState().setReachedSeq(seq));
     const unsubError = window.electronAPI?.onMissionError(setMissionError);
     const unsubUploadComplete = window.electronAPI?.onMissionUploadComplete(setUploadComplete);
     const unsubClearComplete = window.electronAPI?.onMissionClearComplete(setClearComplete);
@@ -861,6 +862,7 @@ function App() {
       unsubComplete?.();
       unsubProgress?.();
       unsubCurrent?.();
+      unsubReached?.();
       unsubError?.();
       unsubUploadComplete?.();
       unsubClearComplete?.();

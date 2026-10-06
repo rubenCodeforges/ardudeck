@@ -184,7 +184,8 @@
     "steer": "Steering",
     "tilt": "Tilt",
     "vsi": "VSI",
-    "xtrack": "Cross-track"
+    "xtrack": "Cross-track",
+    "inFlightAdjust": "In-flight adjust"
   },
   "instrumentsCatalog": {
     "arrange": "Arrange",
@@ -512,5 +513,12 @@
     "clearLog": "Clear alert log",
     "disclaimer": "Awareness only. Mitigation, if any, is performed by separately authorized parties.",
     "in": "in"
+  },
+  "inFlightAdjustInstrument": {
+    "title": "IN-FLIGHT ADJUST",
+    "fixedWingOnly": "FIXED-WING ONLY",
+    "tagRadius": "RAD",
+    "set": "SET",
+    "revert": "Revert to the value last sent"
   }
 }
