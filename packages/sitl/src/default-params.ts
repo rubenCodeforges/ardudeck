@@ -143,7 +143,7 @@ export function generateDefaultParams(
     lines.push('TKOFF_THR_MINSPD 0');
 
     // VTOL/quadplane/tailsitter only: enable Q-mode operations inside GUIDED.
-    // Without this, NAV_VTOL_TAKEOFF in GUIDED is silently ignored — vehicle
+    // Without this, NAV_VTOL_TAKEOFF in GUIDED is silently ignored: vehicle
     // stays armed at 0% throttle and never lifts. The param is harmless on
     // pure-plane builds where Q_ENABLE=0 (FCU just doesn't register it).
     //   https://ardupilot.org/plane/docs/parameters.html#q-guided-mode

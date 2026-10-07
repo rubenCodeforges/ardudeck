@@ -76,7 +76,7 @@ class Card {
                 this.rows.insert_child_at_index(row.box, i);
             else
                 this.rows.set_child_at_index(row.box, i);
-            row.v.text = value ?? '—';
+            row.v.text = value ?? '-';
             row.v.style_class = `adk-value adk-${level ?? 'plain'}`;
         });
         for (const [label, row] of this._rowCache) {
