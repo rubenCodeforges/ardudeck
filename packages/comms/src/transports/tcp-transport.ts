@@ -6,12 +6,17 @@
 import { Socket, createConnection } from 'net';
 import { BaseTransport, TcpOptions } from '../interfaces/transport.js';
 
+/** Same cap as SerialTransport. */
+const MAX_RX_BUFFER_BYTES = 1024 * 1024;
+
 /**
  * TCP socket transport for MAVLink communication
  */
 export class TcpTransport extends BaseTransport {
   private socket: Socket | null = null;
   private rxBuffer: Uint8Array[] = [];
+  // Most consumers listen to 'data' events and never read(), so the buffer must stay bounded.
+  private rxBufferBytes = 0;
   private _host: string;
   private _port: number;
   private _isOpen = false;
@@ -29,7 +34,7 @@ export class TcpTransport extends BaseTransport {
   }
 
   get bytesToRead(): number {
-    return this.rxBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+    return this.rxBufferBytes;
   }
 
   get bytesToWrite(): number {
@@ -63,6 +68,10 @@ export class TcpTransport extends BaseTransport {
       this.socket.on('data', (data: Buffer) => {
         const uint8 = new Uint8Array(data);
         this.rxBuffer.push(uint8);
+        this.rxBufferBytes += uint8.length;
+        while (this.rxBufferBytes > MAX_RX_BUFFER_BYTES && this.rxBuffer.length > 1) {
+          this.rxBufferBytes -= this.rxBuffer.shift()!.length;
+        }
         this.emit('data', uint8);
       });
 
@@ -130,9 +139,11 @@ export class TcpTransport extends BaseTransport {
         buffer.set(chunk, offset + bytesRead);
         bytesRead += chunk.length;
         this.rxBuffer.shift();
+        this.rxBufferBytes -= chunk.length;
       } else {
         buffer.set(chunk.slice(0, needed), offset + bytesRead);
         this.rxBuffer[0] = chunk.slice(needed);
+        this.rxBufferBytes -= needed;
         bytesRead += needed;
       }
     }
@@ -173,5 +184,6 @@ export class TcpTransport extends BaseTransport {
 
   async discardInBuffer(): Promise<void> {
     this.rxBuffer = [];
+    this.rxBufferBytes = 0;
   }
 }
