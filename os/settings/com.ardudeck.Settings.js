@@ -126,7 +126,7 @@ class LinkPage {
             : v?.connected ? `Connected: ${v.firmware} in ${v.mode}${v.armed ? ', armed' : ''}`
                 : links.link.error ? `Problem: ${links.link.error}` : 'Searching for the vehicle';
 
-        const key = JSON.stringify([links.activeId, links.connections, links.detected]);
+        const key = JSON.stringify([links.activeId, links.connections, links.detected, (links.discovered ?? []).map(v => v.id)]);
         if (!rebuild && key === this._lastKey) return;
         this._lastKey = key;
         this.renderConnections(links);
@@ -160,11 +160,19 @@ class LinkPage {
 
     renderDetected(links) {
         if (this.detectGroup) this.page.remove(this.detectGroup);
-        this.detectGroup = new Adw.PreferencesGroup({title: 'Detected devices', description: 'USB radios and flight controllers plugged into this tablet.'});
+        this.detectGroup = new Adw.PreferencesGroup({title: 'Detected', description: 'Vehicles and radios this tablet can reach right now.'});
         const saved = new Set(links.connections.filter(c => c.type === 'serial').map(c => c.path));
         const devices = links.detected ?? [];
-        if (devices.length === 0)
-            this.detectGroup.add(new Adw.ActionRow({title: 'Nothing plugged in', subtitle: 'Connect a SiK or ELRS radio, or a flight controller, by USB.'}));
+        const simulators = links.discovered ?? [];
+        if (devices.length === 0 && simulators.length === 0)
+            this.detectGroup.add(new Adw.ActionRow({title: 'Nothing detected', subtitle: 'Plug in a SiK or ELRS radio or a flight controller by USB, or start a simulator.'}));
+        for (const v of simulators) {
+            const row = new Adw.ActionRow({title: v.label, subtitle: `System ${v.sysid}  ·  TCP ${v.connection.host}:${v.connection.port}`});
+            const use = new Gtk.Button({label: 'Connect', valign: Gtk.Align.CENTER, css_classes: ['suggested-action']});
+            use.connect('clicked', () => void this.act(() => request('POST', '/links', {connection: v.connection, activate: true}), `Connecting to ${v.label}`));
+            row.add_suffix(use);
+            this.detectGroup.add(row);
+        }
         for (const d of devices) {
             const row = new Adw.ActionRow({title: d.label, subtitle: `${d.path}${d.vendorId ? `  ·  USB ${d.vendorId}:${d.productId}` : ''}`});
             if (saved.has(d.path)) {

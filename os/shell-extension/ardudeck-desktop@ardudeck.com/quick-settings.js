@@ -101,8 +101,18 @@ class VehicleLinkToggle extends QuickMenuToggle {
         this._detectedSection.removeAll();
         const saved = new Set(links.connections.filter(c => c.type === 'serial').map(c => c.path));
         const fresh = (links.detected ?? []).filter(d => !saved.has(d.path));
-        if (fresh.length) {
+        const simulators = links.discovered ?? [];
+        if (fresh.length || simulators.length)
             this._detectedSection.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Detected'));
+        for (const v of simulators) {
+            const item = new PopupMenu.PopupMenuItem(`${v.label} (TCP ${v.connection.port})`);
+            item.connect('activate', () => {
+                void this._api.write('POST', `${API}/links`, {connection: v.connection, activate: true})
+                    .then(() => this.refresh()).catch(e => this._fail(e));
+            });
+            this._detectedSection.addMenuItem(item);
+        }
+        if (fresh.length) {
             for (const d of fresh) {
                 const item = new PopupMenu.PopupMenuItem(`${d.label} (${d.path.replace('/dev/', '')})`);
                 item.connect('activate', () => {

@@ -45,4 +45,13 @@ export interface OsLinksState {
   connections: OsConnection[];
   link: { open: boolean; error: string | null; clients: { host: string; port: number }[] };
   detected: { path: string; kind: string; label: string; verified?: boolean }[];
+  /** Simulators the service found on this machine, ready to connect. */
+  discovered?: OsDiscoveredVehicle[];
+}
+
+export interface OsDiscoveredVehicle {
+  id: string;
+  label: string;
+  sysid: number;
+  connection: { name: string; type: 'tcp'; host: string; port: number };
 }

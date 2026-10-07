@@ -15,6 +15,7 @@ import { LinkSettingsStore, parseConnection, type Connection, type LinkSettings 
 import { EngineProcess } from './engine/engine-process.js';
 import { EngineTransport } from './engine/engine-transport.js';
 import { engineLinkFor } from './engine/engine-links.js';
+import { SitlProbe } from './discovery/sitl-probe.js';
 
 const MAV_CMD_REQUEST_MESSAGE = 512;
 const MAV_CMD_SET_MESSAGE_INTERVAL = 511;
@@ -77,6 +78,7 @@ export class LinkService {
   readonly gnss: GnssDetector;
 
   readonly engine: EngineProcess;
+  readonly discovery = new SitlProbe(() => this.localTcpPortsInLinks());
   private readonly engineTransport: EngineTransport;
   /** Links added at runtime by their owner (the simulator), on top of the active connection. */
   private readonly extraLinks = new Map<string, string[]>();
@@ -114,7 +116,10 @@ export class LinkService {
 
   async start(): Promise<void> {
     await this.applyLink();
-    if (!this.injectedTransport) this.gnss.start();
+    if (!this.injectedTransport) {
+      this.gnss.start();
+      this.discovery.start();
+    }
 
     this.router.on('uplink', (bytes: Uint8Array) => {
       this.stats.clientBytes += bytes.length;
@@ -195,6 +200,15 @@ export class LinkService {
     await this.applyLink();
   }
 
+  private localTcpPortsInLinks(): Set<number> {
+    const ports = new Set<number>();
+    for (const link of this.engine.status.links) {
+      const m = /^tcpout:(?:127\.0\.0\.1|localhost):(\d+)$/.exec(link);
+      if (m) ports.add(Number(m[1]));
+    }
+    return ports;
+  }
+
   private engineLinks(): string[] {
     const conn = this.activeConnection;
     const primary = this.settingsState.enabled && conn ? [engineLinkFor(conn)] : [];
@@ -261,6 +275,7 @@ export class LinkService {
   async stop(): Promise<void> {
     if (this.tick) clearInterval(this.tick);
     this.tick = null;
+    this.discovery.stop();
     this.fetcher.abort();
     this.cache.flush();
     await this.gnss.stop();

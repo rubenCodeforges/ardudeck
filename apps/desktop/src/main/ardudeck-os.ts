@@ -11,7 +11,7 @@
  * app behaves exactly as before.
  */
 import { spawn } from 'node:child_process';
-import type { OsIntegrationInfo, OsParamSnapshot, OsLinksState } from '../shared/ardudeck-os-types.js';
+import type { OsIntegrationInfo, OsParamSnapshot, OsLinksState, OsDiscoveredVehicle } from '../shared/ardudeck-os-types.js';
 import type { SwarmSitlConfig, SwarmSitlStatus } from '../shared/ipc-channels.js';
 
 const API_BASE = 'http://127.0.0.1:47801/v1';
@@ -130,6 +130,12 @@ async function osWrite<T>(method: 'POST' | 'DELETE', path: string, body: unknown
 /** Switch the OS link to another saved connection (affects every client, as intended). */
 export async function setOsActiveLink(id: string): Promise<{ success: boolean; error?: string }> {
   const result = await osWrite('POST', '/links/active', { id });
+  return result.success ? { success: true } : result;
+}
+
+/** Save a vehicle the OS discovered as a connection and switch the OS link to it. */
+export async function connectOsDiscovered(connection: OsDiscoveredVehicle['connection']): Promise<{ success: boolean; error?: string }> {
+  const result = await osWrite('POST', '/links', { connection, activate: true });
   return result.success ? { success: true } : result;
 }
 

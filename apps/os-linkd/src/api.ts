@@ -74,7 +74,7 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
  *   GET    /v1/info              service, OS and link details
  *   GET    /v1/vehicle           live vehicle state, or null
  *   GET    /v1/vehicle/params    cached parameter snapshot for the live vehicle
- *   GET    /v1/links             saved connections, active one, detected USB devices
+ *   GET    /v1/links             saved connections, active one, detected USB devices, discovered simulators
  *   GET    /v1/gnss              GNSS receivers on this machine (model, RTK capability, fix) and the operator position
  *   POST   /v1/links             {connection, activate?} add or replace a connection
  *   POST   /v1/links/active      {id} switch to a saved connection
@@ -134,7 +134,9 @@ export function createApi(link: LinkService, serviceVersion: string, { os = read
             if (s?.role === 'vehicle-link' && s.baudRate) return [{ ...d, kind: 'radio' as const, verified: true, suggestedBaud: s.baudRate }];
             return [{ ...d, verified: false }];
           });
-          json(res, 200, { ...link.settings, link: link.linkInfo, detected: merged });
+          const saved = new Set(link.settings.connections.map((c) => (c.type === 'tcp' ? `${c.host}:${c.port}` : '')));
+          const discovered = link.discovery.vehicles.filter((v) => !saved.has(`${v.connection.host}:${v.connection.port}`));
+          json(res, 200, { ...link.settings, link: link.linkInfo, detected: merged, discovered });
         });
         return;
       case '/v1/gnss':

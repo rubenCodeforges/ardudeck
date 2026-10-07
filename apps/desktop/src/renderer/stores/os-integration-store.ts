@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { OsIntegrationInfo, OsLinksState } from '../../shared/ardudeck-os-types';
+import type { OsIntegrationInfo, OsLinksState, OsDiscoveredVehicle } from '../../shared/ardudeck-os-types';
 import { useConnectionStore } from './connection-store';
 
 interface OsIntegrationStore {
@@ -9,6 +9,7 @@ interface OsIntegrationStore {
   init: () => Promise<void>;
   refreshLinks: () => Promise<void>;
   setActiveLink: (id: string) => Promise<{ success: boolean; error?: string }>;
+  connectDiscovered: (vehicle: OsDiscoveredVehicle) => Promise<{ success: boolean; error?: string }>;
   openLinkSettings: () => void;
 }
 
@@ -59,6 +60,12 @@ export const useOsIntegrationStore = create<OsIntegrationStore>((set, get) => ({
 
   setActiveLink: async (id) => {
     const result = await window.electronAPI.setOsActiveLink(id);
+    await get().refreshLinks();
+    return result;
+  },
+
+  connectDiscovered: async (vehicle) => {
+    const result = await window.electronAPI.connectOsDiscovered(vehicle.connection);
     await get().refreshLinks();
     return result;
   },

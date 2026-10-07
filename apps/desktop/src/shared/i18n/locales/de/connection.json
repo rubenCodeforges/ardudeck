@@ -223,6 +223,9 @@
     "newDevices_other": "{{count}} neue Geräte sind angeschlossen. Fügen Sie sie in den Verbindungseinstellungen hinzu.",
     "openSettings": "Verbindungseinstellungen",
     "shared": "Diese Verbindung gehört dem System. Die Desktop-Instrumente und jede Bodenstation auf diesem Gerät teilen sie, ein Wechsel hier gilt für alle.",
-    "pillTitle": "Fahrzeugverbindung wird von ArduDeck OS verwaltet. Klicken, um die Verbindungseinstellungen zu öffnen."
+    "pillTitle": "Fahrzeugverbindung wird von ArduDeck OS verwaltet. Klicken, um die Verbindungseinstellungen zu öffnen.",
+    "detected": "Gefunden",
+    "connectTo": "Verbinden",
+    "discoveredDetail": "System {{sysid}} · TCP {{host}}:{{port}}"
   }
 }

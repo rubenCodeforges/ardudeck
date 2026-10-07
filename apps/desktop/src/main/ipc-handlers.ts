@@ -183,8 +183,9 @@ import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } fro
 import { VEHICLE_NAMES, isVehicleHeartbeat } from '@ardudeck/vehicle-core';
 import {
   probeArduDeckOs, isOsLinkEndpoint, fetchOsParams, isOsManaged, getOsLinks, setOsActiveLink, openOsLinkSettings,
-  startOsSimSwarm, stopOsSimSwarm, getOsSimStatus,
+  startOsSimSwarm, stopOsSimSwarm, getOsSimStatus, connectOsDiscovered,
 } from './ardudeck-os.js';
+import type { OsDiscoveredVehicle } from '../shared/ardudeck-os-types.js';
 import { ingestNamedValueFloat, getScriptHealth, resetHeartbeat, subscribeHealth } from './script-installer/heartbeat-tracker.js';
 import * as scriptRegistry from './script-installer/registry-store.js';
 import { getScriptBundle } from './script-installer/bundle.js';
@@ -1443,6 +1444,16 @@ function clearPrimarySession(): void {
   }
   connectionRegistry.unregister(primaryTransportId);
   primaryTransportId = null;
+}
+
+/**
+ * On ArduDeck OS the system owns radios, serial ports and UDP 14550, so the app may
+ * attach to the OS link and to simulators on this machine (loopback TCP), nothing else.
+ */
+function isAllowedOnArduDeckOs(options: ConnectOptions): boolean {
+  if (options.type === 'udp' && options.udpMode === 'client') return isOsLinkEndpoint(options.udpRemoteHost, options.udpRemotePort);
+  if (options.type === 'tcp') return options.host === '127.0.0.1' || options.host === 'localhost' || options.host === '::1';
+  return false;
 }
 
 /** Human-readable label for a transport, for the fleet/connection UI. */
@@ -6443,7 +6454,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // On ArduDeck OS the system owns the vehicle link: the app may only attach
     // to it. Opening the radio, a serial port or UDP 14550 directly would fight
     // the link service for the same hardware and port.
-    if (isOsManaged() && !(options.type === 'udp' && options.udpMode === 'client' && isOsLinkEndpoint(options.udpRemoteHost, options.udpRemotePort))) {
+    if (isOsManaged() && !isAllowedOnArduDeckOs(options)) {
       sendLog(mainWindow, 'warn', t('main:ardudeckOs.connectBlocked'));
       return false;
     }
@@ -13633,6 +13644,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.OS_GET_INTEGRATION, () => probeArduDeckOs());
   ipcMain.handle(IPC_CHANNELS.OS_GET_LINKS, () => getOsLinks());
   ipcMain.handle(IPC_CHANNELS.OS_SET_ACTIVE_LINK, (_e, id: string) => setOsActiveLink(String(id)));
+  ipcMain.handle(IPC_CHANNELS.OS_CONNECT_DISCOVERED, (_e, connection: OsDiscoveredVehicle['connection']) => connectOsDiscovered(connection));
   ipcMain.handle(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS, () => openOsLinkSettings());
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, (): string => {

@@ -3,7 +3,7 @@
  * Exposes safe APIs to the renderer process
  */
 
-import type { OsIntegrationInfo, OsLinksState } from '../shared/ardudeck-os-types.js';
+import type { OsIntegrationInfo, OsLinksState, OsDiscoveredVehicle } from '../shared/ardudeck-os-types.js';
 import type { CameraStartPhase } from '../shared/camera-types.js';
 import type { GpsDiagEvent } from '../shared/gps-diagnostics-types.js';
 import { contextBridge, ipcRenderer } from 'electron';
@@ -2390,6 +2390,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.OS_GET_LINKS),
   setOsActiveLink: (id: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.OS_SET_ACTIVE_LINK, id),
+  connectOsDiscovered: (connection: OsDiscoveredVehicle['connection']): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS_CONNECT_DISCOVERED, connection),
   openOsLinkSettings: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS),
 

@@ -223,6 +223,9 @@
     "newDevices_other": "{{count}} new devices are plugged in. Add them in Vehicle Link settings.",
     "openSettings": "Vehicle Link Settings",
     "shared": "This link belongs to the system. The desktop instruments and every ground station on this device share it, so switching here switches it for all of them.",
-    "pillTitle": "Vehicle link managed by ArduDeck OS. Click to open Vehicle Link settings."
+    "pillTitle": "Vehicle link managed by ArduDeck OS. Click to open Vehicle Link settings.",
+    "detected": "Detected",
+    "connectTo": "Connect",
+    "discoveredDetail": "System {{sysid}} · TCP {{host}}:{{port}}"
   }
 }
