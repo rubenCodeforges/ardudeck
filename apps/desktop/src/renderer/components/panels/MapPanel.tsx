@@ -35,6 +35,7 @@ import { SmoothWheelZoom } from '../map/SmoothWheelZoom';
 import { useDraggableOverlay } from '../map/useDraggableOverlay';
 import { createPortal } from 'react-dom';
 import { computeOffsetPosition } from '../../utils/geo-offset';
+import { observeSettledResize } from '../../utils/observe-settled-resize';
 import { getElevation } from '../../utils/elevation-api';
 import { formatAltitudeFromMeters, formatDistanceFromMeters, formatSpeedFromMetersPerSecond, type DistanceUnit } from '../../../shared/user-units.js';
 
@@ -387,24 +388,16 @@ function MapController({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const resizeObserver = new ResizeObserver(() => {
-      setTimeout(() => {
-        // Safety check: ensure map is initialized and has valid container
-        try {
-          if (map && map.getContainer()) {
-            map.invalidateSize();
-          }
-        } catch {
-          // Map not ready yet, ignore
+    return observeSettledResize(containerRef.current, () => {
+      // Safety check: ensure map is initialized and has valid container
+      try {
+        if (map && map.getContainer()) {
+          map.invalidateSize();
         }
-      }, 100);
-    });
-
-    resizeObserver.observe(containerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
+      } catch {
+        // Map not ready yet, ignore
+      }
+    }, 100);
   }, [map, containerRef]);
 
   // Disable follow-vehicle when user manually interacts with map (drag/zoom)

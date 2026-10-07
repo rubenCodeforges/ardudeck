@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import { latLngToLocal } from '../../survey/geo-math';
 import { mavFrameToAltFrame } from '../../../../shared/mission-types';
 import { createWaypointSymbology, type Wp, type WaypointSymbology } from './waypoint-symbology';
+import { observeSettledResize } from '../../../utils/observe-settled-resize';
 
 const DEG = Math.PI / 180;
 
@@ -121,11 +122,10 @@ export function HudWorldOverlay({
       setSize({ w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)) });
     };
     measure();
-    const ro = new ResizeObserver(measure);
-    if (parent) ro.observe(parent);
+    const stopObservingSize = parent ? observeSettledResize(parent, measure) : () => {};
 
     return () => {
-      ro.disconnect();
+      stopObservingSize();
       sym.dispose();
       renderer.dispose();
       rendererRef.current = null;
@@ -137,6 +137,12 @@ export function HudWorldOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // setSize reallocates the drawing buffer even for an unchanged size, so it
+  // must not run in the draw effect below, which follows every pose update.
+  useEffect(() => {
+    rendererRef.current?.setSize(size.w, size.h, false);
+  }, [size.w, size.h]);
+
   // ─── On-demand draw: one render per pose / mission / size change ───────────
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -145,7 +151,6 @@ export function HudWorldOverlay({
     const sym = symRef.current;
     if (!renderer || !scene || !camera || !sym) return;
 
-    renderer.setSize(size.w, size.h, false);
     camera.aspect = size.w / Math.max(1, size.h);
     camera.fov = fov;
 

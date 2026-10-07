@@ -43,6 +43,7 @@ import {
   type Sample,
 } from './svt/svt-pose-buffer';
 import { useTranslation } from 'react-i18next';
+import { observeSettledResize } from '../../utils/observe-settled-resize';
 
 /**
  * Module-level cache of the last loaded terrain grid per vehicle. Grids are plain
@@ -402,14 +403,22 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
     scene.setTestSubjects(useCameraStore.getState().svtSubjects);
     setSvtFov(scene.getFov());
 
+    let lastWidth = 0;
+    let lastHeight = 0;
     const sizeToContainer = () => {
       const r = container.getBoundingClientRect();
-      scene.resize(r.width, r.height);
+      const width = Math.round(r.width);
+      const height = Math.round(r.height);
+      if (width === lastWidth && height === lastHeight) return;
+      lastWidth = width;
+      lastHeight = height;
+      scene.resize(width, height);
       dirtyRef.current = true;
     };
     sizeToContainer();
-    const ro = new ResizeObserver(sizeToContainer);
-    ro.observe(container);
+    // Reallocating the WebGL buffer on every frame of a layout animation stalls it;
+    // the canvas stretches via CSS until the resize settles.
+    const stopObservingSize = observeSettledResize(container, sizeToContainer);
 
     let raf = 0;
     const loop = () => {
@@ -468,7 +477,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
 
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect();
+      stopObservingSize();
       scene.dispose();
       sceneRef.current = null;
     };
